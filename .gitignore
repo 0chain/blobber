@@ -1,2 +1,8 @@
 .DS_Store
 
+**/client
+!**/client/main.go
+
+**/blobber/blobber
+!**/blobber/blobber/main.go
+
