@@ -2,11 +2,15 @@ package blobber
 
 import (
 	"encoding/json"
-	"io"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
 )
+
+type UploadResponse struct {
+	NumBytes int64 `json:"num_bytes"`
+}
 
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
@@ -21,12 +25,13 @@ func UploadHandler(respW http.ResponseWriter, r *http.Request) {
 
 	//io.WriteString(respW, `{"allocation_id": `+vars["allocation"]+`}`)
 	n, err := StoreFileFromHTTPRequest(r, vars["allocation"])
+	fmt.Println(n)
 	if err != nil {
 		respW.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(respW).Encode(err)
 		return
 	}
-
-	io.WriteString(respW, `{"num_bytes": `+string(n)+`}`)
+	c := UploadResponse{NumBytes: n}
+	json.NewEncoder(respW).Encode(c)
 	return
 }
