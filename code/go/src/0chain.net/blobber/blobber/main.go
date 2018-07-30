@@ -4,10 +4,11 @@ import (
 	"net/http"
 
 	"0chain.net/blobber"
+	"github.com/gorilla/mux"
 )
 
 func main() {
-
-	blobber.SetupHandlers()
-	http.ListenAndServe(":5050", nil)
+	r := mux.NewRouter()
+	blobber.SetupHandlers(r)
+	http.ListenAndServe(":5050", r)
 }
