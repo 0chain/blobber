@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path"
 	"strings"
 
 	"0chain.net/common"
@@ -35,14 +34,11 @@ func StoreFileFromHTTPRequest(r *http.Request, transID string) (int64, *common.E
 	defer file.Close()
 
 	uploadDirPath := r.FormValue("uploadDirPath")
+	uploadDirPath = strings.Trim(uploadDirPath, "/")
 	fmt.Println(uploadDirPath)
 	stringPaths := make([]string, 0)
 	stringPaths = append(stringPaths, transID)
 	stringPaths = append(stringPaths, uploadDirPath)
-
-	j := strings.LastIndex(handler.Filename, path.Ext(handler.Filename))
-	name := handler.Filename[:j]
-	stringPaths = append(stringPaths, name)
 
 	dirPath := strings.Join(stringPaths, "/")
 

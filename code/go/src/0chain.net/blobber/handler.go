@@ -23,7 +23,6 @@ func UploadHandler(respW http.ResponseWriter, r *http.Request) {
 
 	respW.Header().Set("Content-Type", "application/json")
 
-	//io.WriteString(respW, `{"allocation_id": `+vars["allocation"]+`}`)
 	n, err := StoreFileFromHTTPRequest(r, vars["allocation"])
 	fmt.Println(n)
 	if err != nil {
