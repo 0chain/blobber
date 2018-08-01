@@ -1,6 +1,7 @@
 package node
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io"
 	"strconv"
@@ -117,7 +118,7 @@ func Read(line string) (*Node, error) {
 	node.Port = int(port)
 	node.ID = fields[3]
 	node.PublicKey = fields[4]
-	node.Client.SetPublicKey(node.PublicKey)
+	node.SetPublicKey(node.PublicKey)
 	hash := encryption.Hash(node.PublicKeyBytes)
 	if node.ID != hash {
 		return nil, common.NewError("invalid_client_id", fmt.Sprintf("public key: %v, client_id: %v, hash: %v\n", node.PublicKey, node.ID, hash))
@@ -129,6 +130,26 @@ func Read(line string) (*Node, error) {
 	return node, nil
 }
 
+/*ComputeProperties - implement interface */
+func (n *Node) ComputeProperties() {
+	n.computePublicKeyBytes(n.PublicKey)
+}
+
+func (n *Node) computePublicKeyBytes(key string) {
+	b, _ := hex.DecodeString(key)
+	if len(b) > len(n.PublicKeyBytes) {
+		b = b[len(b)-encryption.HASH_LENGTH:]
+	}
+	copy(n.PublicKeyBytes[encryption.HASH_LENGTH-len(b):], b)
+}
+
+/*SetPublicKey - set the public key */
+func (n *Node) SetPublicKey(key string) {
+	n.PublicKey = key
+	n.computePublicKeyBytes(key)
+	n.ID = encryption.Hash(n.PublicKeyBytes)
+}
+
 /*GetURLBase - get the end point base */
 func (n *Node) GetURLBase() string {
 	host := n.Host
@@ -138,16 +159,17 @@ func (n *Node) GetURLBase() string {
 	return fmt.Sprintf("http://%v:%v", host, n.Port)
 }
 
-/*GetStatusURL - get the end point where to ping for the status */
-func (n *Node) GetStatusURL() string {
-	return fmt.Sprintf("%v/_nh/status?id=%v&publicKey=%v", n.GetURLBase(), n.ID, n.PublicKey)
-}
-
 /*GetNodeType - as a string */
 func (n *Node) GetNodeType() string {
 	return NodeTypeNames[n.Type].Code
 }
 
+/*GetNodeTypeName - as a string */
 func (n *Node) GetNodeTypeName() string {
 	return NodeTypeNames[n.Type].Value
+}
+
+/*GetKey - Get Key of the node */
+func (n *Node) GetKey() string {
+	return n.ID
 }

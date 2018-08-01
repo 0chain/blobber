@@ -25,13 +25,13 @@ func createDirIfNotExist(dir string) error {
 //StoreFileFromHTTPRequest stores the file into the blobber from the HTTP request
 func StoreFileFromHTTPRequest(r *http.Request, transID string) (int64, *common.Error) {
 	if r.Method == "GET" {
-		return -1, common.NewError("1001", "Invalid method used for the upload URL. Use multi-part form POST instead")
+		return -1, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST instead")
 	}
 
 	file, handler, err := r.FormFile("uploadFile")
 	if err != nil {
 		Logger.Debug("", zap.Any("error", err))
-		return 0, common.NewError("1002", err.Error())
+		return 0, common.NewError("file_handler_error", err.Error())
 	}
 	defer file.Close()
 
@@ -50,19 +50,19 @@ func StoreFileFromHTTPRequest(r *http.Request, transID string) (int64, *common.E
 
 	if err != nil {
 		Logger.Debug("", zap.Any("error", err))
-		return -1, common.NewError("1003", err.Error())
+		return -1, common.NewError("dir_creation_error", err.Error())
 	}
 	f, err := os.OpenFile("./"+dirPath+"/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0700)
 	if err != nil {
 		Logger.Debug("", zap.Any("error", err))
-		return -1, common.NewError("1003", err.Error())
+		return -1, common.NewError("file_creation_error", err.Error())
 	}
 	defer f.Close()
 
 	n, ferr := io.Copy(f, file)
 	if ferr != nil {
 		Logger.Debug("", zap.Any("error", ferr))
-		return -1, common.NewError("1004", ferr.Error())
+		return -1, common.NewError("file_write_error", ferr.Error())
 	}
 	return int64(n), nil
 }

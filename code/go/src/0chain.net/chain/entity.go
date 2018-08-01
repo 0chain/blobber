@@ -3,9 +3,9 @@ package chain
 import (
 	"context"
 
-	
 	"0chain.net/common"
 	"0chain.net/config"
+	"0chain.net/node"
 	"github.com/spf13/viper"
 )
 
@@ -22,17 +22,11 @@ func GetServerChain() *Chain {
 	return ServerChain
 }
 
-/*BlockStateHandler - handles the block state changes */
-type BlockStateHandler interface {
-	UpdatePendingBlock(ctx context.Context, b *block.Block, txns []datastore.Entity)
-	UpdateFinalizedBlock(ctx context.Context, b *block.Block)
-}
-
 /*Chain - data structure that holds the chain data*/
 type Chain struct {
-	ID string
-	Version string
-	CreationDate common.Timestamp
+	ID            string
+	Version       string
+	CreationDate  common.Timestamp
 	OwnerID       string
 	ParentChainID string
 
@@ -46,34 +40,29 @@ type Chain struct {
 	Blobbers *node.Pool
 
 	GenesisBlockHash string
-
-	
 }
-
-
 
 /*Validate - implementing the interface */
 func (c *Chain) Validate(ctx context.Context) error {
 	if common.IsEmpty(c.ID) {
 		return common.InvalidRequest("chain id is required")
 	}
-	if datastore.IsEmpty(c.OwnerID) {
+	if common.IsEmpty(c.OwnerID) {
 		return common.InvalidRequest("owner id is required")
 	}
 	return nil
 }
 
-
 //NewChainFromConfig - create a new chain from config
 func NewChainFromConfig() *Chain {
-	chain := Provider().(*Chain)
-	chain.ID = datastore.ToKey(config.Configuration.ChainID)
+	chain := Provider()
+	chain.ID = common.ToKey(config.Configuration.ChainID)
 	chain.OwnerID = viper.GetString("server_chain.owner")
 	return chain
 }
 
 /*Provider - entity provider for chain object */
-func Provider() datastore.Entity {
+func Provider() *Chain {
 	c := &Chain{}
 	c.Initialize()
 	c.Version = "1.0"
@@ -86,11 +75,15 @@ func Provider() datastore.Entity {
 
 /*Initialize - intializes internal datastructures to start again */
 func (c *Chain) Initialize() {
-	
+
+}
+
+/*InitializeCreationDate - intializes the creation date for the chain */
+func (c *Chain) InitializeCreationDate() {
+	c.CreationDate = common.Now()
 }
 
 /*GenerateGenesisBlock - Create the genesis block for the chain */
 func (c *Chain) GenerateGenesisBlock(hash string) {
 	c.GenesisBlockHash = hash
 }
-
