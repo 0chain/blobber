@@ -1,11 +1,13 @@
 package blobber
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
+
+	. "0chain.net/logging"
+	"go.uber.org/zap"
 
 	"0chain.net/common"
 )
@@ -28,38 +30,38 @@ func StoreFileFromHTTPRequest(r *http.Request, transID string) (int64, *common.E
 
 	file, handler, err := r.FormFile("uploadFile")
 	if err != nil {
-		fmt.Println(err)
+		Logger.Debug("", zap.Any("error", err))
 		return 0, common.NewError("1002", err.Error())
 	}
 	defer file.Close()
 
 	uploadDirPath := r.FormValue("uploadDirPath")
 	uploadDirPath = strings.Trim(uploadDirPath, "/")
-	fmt.Println(uploadDirPath)
+	Logger.Info("Upload", zap.Any("Directory Path", uploadDirPath))
 	stringPaths := make([]string, 0)
 	stringPaths = append(stringPaths, transID)
 	stringPaths = append(stringPaths, uploadDirPath)
 
 	dirPath := strings.Join(stringPaths, "/")
 
-	fmt.Println(dirPath)
+	Logger.Debug("DirectoryPath", zap.Any("Path", dirPath))
 
 	err = createDirIfNotExist("./" + dirPath)
 
 	if err != nil {
-		fmt.Println(err)
+		Logger.Debug("", zap.Any("error", err))
 		return -1, common.NewError("1003", err.Error())
 	}
 	f, err := os.OpenFile("./"+dirPath+"/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0700)
 	if err != nil {
-		fmt.Println(err)
+		Logger.Debug("", zap.Any("error", err))
 		return -1, common.NewError("1003", err.Error())
 	}
 	defer f.Close()
 
 	n, ferr := io.Copy(f, file)
 	if ferr != nil {
-		fmt.Println(ferr)
+		Logger.Debug("", zap.Any("error", ferr))
 		return -1, common.NewError("1004", ferr.Error())
 	}
 	return int64(n), nil

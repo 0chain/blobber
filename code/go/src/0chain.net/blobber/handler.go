@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
+	. "0chain.net/logging"
 	"github.com/gorilla/mux"
+	"go.uber.org/zap"
 )
 
 type UploadResponse struct {
@@ -24,6 +26,7 @@ func UploadHandler(respW http.ResponseWriter, r *http.Request) {
 	respW.Header().Set("Content-Type", "application/json")
 
 	n, err := StoreFileFromHTTPRequest(r, vars["allocation"])
+	Logger.Info("n", zap.Any("n", n))
 	fmt.Println(n)
 	if err != nil {
 		respW.WriteHeader(http.StatusInternalServerError)
