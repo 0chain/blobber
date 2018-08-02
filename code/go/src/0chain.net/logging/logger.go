@@ -14,7 +14,7 @@ var (
 )
 
 func InitLogging(mode string) {
-	var logName = "0chainBlobber.log"
+	var logName = "logs/0chainBlobber.log"
 
 	var logWriter = getWriteSyncer(logName)
 
