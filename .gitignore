@@ -6,3 +6,4 @@
 **/blobber/blobber
 !**/blobber/blobber/main.go
 
+**/pkg/

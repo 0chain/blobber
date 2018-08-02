@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"sort"
 
 	"0chain.net/common"
 )
@@ -81,21 +80,6 @@ func (np *Pool) computeNodesArray() {
 		array = append(array, v)
 	}
 	np.Nodes = array
-	np.computeNodePositions()
-}
-
-/*GetActiveCount - get the active count */
-func (np *Pool) GetActiveCount() int {
-	count := 0
-	for _, node := range nodes {
-		if node == Self.Node {
-			continue
-		}
-		if node.Status == NodeStatusActive {
-			count++
-		}
-	}
-	return count
 }
 
 /*GetRandomNodes - get a random set of nodes from the pool
@@ -114,9 +98,7 @@ func (np *Pool) GetRandomNodes(num int) []*Node {
 func (np *Pool) Print(w io.Writer) {
 	nodes := np.shuffleNodes()
 	for _, node := range nodes {
-		if node.Status == NodeStatusActive {
-			node.Print(w)
-		}
+		node.Print(w)
 	}
 }
 
@@ -146,16 +128,8 @@ func ReadNodes(r io.Reader, minerPool *Pool, sharderPool *Pool, blobberPool *Poo
 	}
 }
 
-func (np *Pool) computeNodePositions() {
-	sort.SliceStable(np.Nodes, func(i, j int) bool { return np.Nodes[i].GetKey() < np.Nodes[j].GetKey() })
-	for idx, node := range np.Nodes {
-		node.SetIndex = idx
-	}
-}
-
 func (np *Pool) ComputeProperties() {
 	np.computeNodesArray()
-	np.computeNodePositions()
 	for _, node := range np.Nodes {
 		RegisterNode(node)
 	}

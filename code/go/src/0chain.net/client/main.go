@@ -2,16 +2,12 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"os"
-
-	"go.uber.org/zap"
-
-	"0chain.net/logging"
-	. "0chain.net/logging"
 )
 
 func postFile(filename string, targetUrl string) error {
@@ -21,14 +17,12 @@ func postFile(filename string, targetUrl string) error {
 	// this step is very important
 	fileWriter, err := bodyWriter.CreateFormFile("uploadFile", filename)
 	if err != nil {
-		Logger.Info("error writing to buffer")
 		return err
 	}
 
 	// open file handle
 	fh, err := os.Open("./" + filename)
 	if err != nil {
-		Logger.Info("error opening file")
 		return err
 	}
 	defer fh.Close()
@@ -53,14 +47,12 @@ func postFile(filename string, targetUrl string) error {
 	if err != nil {
 		return err
 	}
-	Logger.Info(resp.Status)
-	Logger.Debug("response body", zap.Any("resp_body", resp_body))
+	fmt.Println(resp_body)
 	return nil
 }
 
 // sample usage
 func main() {
-	logging.InitLogging("development")
 	target_url := "http://localhost:5050/v1/file/upload/sampleTransaction"
 	filename := "test.txt"
 	postFile(filename, target_url)

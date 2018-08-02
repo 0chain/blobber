@@ -6,7 +6,6 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"time"
 
 	"0chain.net/common"
 	"0chain.net/config"
@@ -56,10 +55,6 @@ type Node struct {
 	Host           string
 	Port           int
 	Type           int
-	SetIndex       int
-	Status         int
-	LastActiveTime time.Time
-	ErrorCount     int
 }
 
 /*Provider - create a node object */
