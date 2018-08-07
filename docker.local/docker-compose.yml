@@ -1,0 +1,25 @@
+version: '2.2'
+services:
+
+  blobber:
+    environment:
+      - DOCKER= true
+    build: 
+      context: ../
+      dockerfile: ./docker.local/Dockerfile
+    volumes:
+     - ./config:/blobber/config
+    ports:
+     - "5050:5050"
+    networks:
+      default:
+      testnetblobber0:
+        ipv4_address: 198.18.0.91
+    command: ./blobber --deployment_mode 0 --deployment_mode 0 --keys_file config/bnode1_keys.txt --nodes_file config/single_machine_3_nodes.txt
+  
+
+networks:
+  default:
+    driver: bridge
+  testnetblobber0:
+    external: true
