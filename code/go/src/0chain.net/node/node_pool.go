@@ -94,6 +94,14 @@ func (np *Pool) GetRandomNodes(num int) []*Node {
 	return nodes[:num]
 }
 
+/*GetRandomNode - get a random node from the pool
+* Doesn't consider active/inactive status
+ */
+func (np *Pool) GetRandomNode() *Node {
+	nodes := np.GetRandomNodes(1)
+	return nodes[0]
+}
+
 /*Print - print this pool. This will be used for http response and Read method should be able to consume it*/
 func (np *Pool) Print(w io.Writer) {
 	nodes := np.shuffleNodes()

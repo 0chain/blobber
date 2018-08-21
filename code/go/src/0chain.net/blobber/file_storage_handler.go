@@ -12,6 +12,17 @@ import (
 	"0chain.net/common"
 )
 
+//FSStorageHandler - implments the StorageHandler interface
+type FSStorageHandler struct {
+	RootDirectory string
+}
+
+/*SetupFSStorageHandler - Setup a file system based block storage */
+func SetupFSStorageHandler(rootDir string) {
+	createDirIfNotExist(rootDir)
+	SHandler = &FSStorageHandler{RootDirectory: rootDir}
+}
+
 func createDirIfNotExist(dir string) error {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0700)
@@ -22,8 +33,8 @@ func createDirIfNotExist(dir string) error {
 	return nil
 }
 
-//StoreFileFromHTTPRequest stores the file into the blobber from the HTTP request
-func StoreFileFromHTTPRequest(r *http.Request, transID string) (int64, *common.Error) {
+//WriteFile stores the file into the blobber files system from the HTTP request
+func (fsh *FSStorageHandler) WriteFile(r *http.Request, transID string) (int64, *common.Error) {
 	if r.Method == "GET" {
 		return -1, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST instead")
 	}
@@ -66,3 +77,4 @@ func StoreFileFromHTTPRequest(r *http.Request, transID string) (int64, *common.E
 	}
 	return int64(n), nil
 }
+

@@ -10,6 +10,14 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	AllocationTransactionHeader = "X-Allocation-Transaction"
+	BlobberTransactionHeader = "X-Blobber-Transaction"
+)
+
+var storageHandler StorageHandler
+
+//UploadResponse - response to upload or write requests
 type UploadResponse struct {
 	NumBytes int64 `json:"num_bytes"`
 }
@@ -17,6 +25,7 @@ type UploadResponse struct {
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/upload/{allocation}", UploadHandler)
+	storageHandler = GetStorageHandler()
 }
 
 /*UploadHandler is the handler to respond to upload requests fro clients*/
@@ -24,8 +33,8 @@ func UploadHandler(respW http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	respW.Header().Set("Content-Type", "application/json")
-
-	n, err := StoreFileFromHTTPRequest(r, vars["allocation"])
+	
+	n, err := storageHandler.WriteFile(r, vars["allocation"])
 	Logger.Info("n", zap.Any("n", n))
 	fmt.Println(n)
 	if err != nil {
