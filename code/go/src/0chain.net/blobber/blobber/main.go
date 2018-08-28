@@ -32,7 +32,7 @@ func initHandlers(r *mux.Router) {
 }
 
 func initEntities() {
-	blobber.SetupFSStorageHandler("./files")
+	blobber.SetupObjectStorageHandler("./files")
 	blobber.SetupProtocol(serverChain)
 }
 
