@@ -1,18 +1,14 @@
 package filechunk
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 
-	"math"
-
 	"os"
 	"path/filepath"
-	"strconv"
 
 	// . "0chain.net/logging"
 	"github.com/klauspost/reedsolomon"
@@ -26,9 +22,10 @@ type FileInfo struct {
 	OutDir     string
 }
 
+// var Messages = make(chan *os.File)
+
 //ChunkingFilebyShards is used to divide the file in chunks using erasure coding
 func (fi *FileInfo) ChunkingFilebyShards() {
-
 	if fi.DataShards > 257 {
 		fmt.Fprintf(os.Stderr, "Error: Too many data shards\n")
 		os.Exit(1)
@@ -54,11 +51,10 @@ func (fi *FileInfo) ChunkingFilebyShards() {
 	if fi.OutDir != "" {
 		dir = fi.OutDir
 	}
+
 	for i := range out {
 		outfn := fmt.Sprintf("%s.%d", file, i)
-		// fmt.Println("Creating", outfn)
 		out[i], err = os.Create(filepath.Join(dir, outfn))
-		// fmt.Println("out[i]", out)
 		checkErr(err)
 	}
 
@@ -73,100 +69,68 @@ func (fi *FileInfo) ChunkingFilebyShards() {
 
 	// Close and re-open the files.
 	input := make([]io.Reader, fi.DataShards)
+	target_url := "http://localhost:5050/v1/file/upload/sampleTransaction"
 
 	for i := range data {
+		out[i].Close()
 		f, err := os.Open(out[i].Name())
 		checkErr(err)
 		input[i] = f
 		defer f.Close()
-		const fileChunk = 1 * (1 << 16)
-		fmt.Println("main file size", instat.Size())
-		// outfurther := make([]byte, BufferSize)
-		ffn, err := f.Stat()
-		checkErr(err)
-		fileSize := int(ffn.Size())
-		fmt.Println("small file size", fileSize)
-		totalPartsNum := int(math.Ceil(float64(fileSize) / float64(fileChunk)))
-		// chunksizes := make([]Chunks, totalPartsNum)
-		fmt.Println("totalPartsNum", totalPartsNum)
-		for j := 0; j < totalPartsNum; j++ {
-			partSize := int(math.Min(fileChunk, float64(fileSize-j*fileChunk)))
-			partBuffer := make([]byte, partSize)
-			f.Read(partBuffer)
-			fileName1 := "sampleFiles" + strconv.Itoa(i) + strconv.Itoa(j)
-			// target_url := "http://localhost:5050/v1/file/upload/sampleTransaction"
-			// postFile(fileName1, target_url)
-			_, err := os.Create(fileName1)
-
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			ioutil.WriteFile(fileName1, partBuffer, os.ModeAppend)
-
-			// fmt.Println("Split to : ", fileName1)
-			target_url := "http://localhost:5050/v1/file/upload/sampleTransaction"
-			postFile(fileName1, target_url)
-		}
-		out[i].Close()
-		fin, err := os.Open(out[i].Name())
-		checkErr(err)
-		input[i] = fin
-		defer fin.Close()
 	}
 
 	// Create parity output writers
 	parity := make([]io.Writer, fi.ParShards)
-	fmt.Println("parity", parity)
 	for i := range parity {
 		parity[i] = out[fi.DataShards+i]
 		defer out[fi.DataShards+i].Close()
 	}
 
-	// Encode parity
 	err = enc.Encode(input, parity)
 	checkErr(err)
+
 	fmt.Printf("File split into %d data + %d parity shards.\n", fi.DataShards, fi.ParShards)
-}
 
-func checkErr(err error) {
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", err.Error())
-		os.Exit(2)
+	for _, val := range out {
+		postFile(val.Name(), target_url)
 	}
-}
 
+}
 func postFile(filename string, targetUrl string) error {
-	bodyBuf := &bytes.Buffer{}
-	bodyWriter := multipart.NewWriter(bodyBuf)
-	fmt.Println("body buffer", bodyBuf)
-	// Logger.Info("body buffer", zap.Any("body", bodyBuf))
+	bodyReader, bodyWriter := io.Pipe()
+	multiWriter := multipart.NewWriter(bodyWriter)
+	go func() {
+		// fmt.Println("body buffer", bodyWriter)
 
-	// this step is very important
-	fileWriter, err := bodyWriter.CreateFormFile("uploadFile", filename)
-	if err != nil {
-		return err
-	}
+		// this step is very important
 
-	// open file handle
-	fh, err := os.Open("./" + filename)
-	if err != nil {
-		return err
-	}
-	defer fh.Close()
+		fileWriter, err := multiWriter.CreateFormFile("uploadFile", filename)
+		if err != nil {
+			bodyWriter.CloseWithError(err)
+			return
+		}
+		fmt.Println("here")
+		// open file handle
+		fh, err := os.Open("./" + filename)
+		if err != nil {
+			bodyWriter.CloseWithError(err)
+			return
+		}
+		defer fh.Close()
 
-	//iocopy
-	_, err = io.Copy(fileWriter, fh)
-	if err != nil {
-		return err
-	}
+		//iocopy
+		_, err = io.Copy(fileWriter, fh)
+		if err != nil {
+			bodyWriter.CloseWithError(err)
+			return
+		}
 
-	bodyWriter.WriteField("uploadDirPath", "testDir")
+		multiWriter.WriteField("uploadDirPath", "")
 
-	contentType := bodyWriter.FormDataContentType()
-	bodyWriter.Close()
-
-	resp, err := http.Post(targetUrl, contentType, bodyBuf)
+		bodyWriter.CloseWithError(multiWriter.Close())
+	}()
+	contentType := multiWriter.FormDataContentType()
+	resp, err := http.Post(targetUrl, contentType, bodyReader)
 	if err != nil {
 		return err
 	}
@@ -174,7 +138,16 @@ func postFile(filename string, targetUrl string) error {
 	resp_body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
+
 	}
-	fmt.Println(resp_body)
+	fmt.Println("resp", resp_body)
 	return nil
+
+}
+
+func checkErr(err error) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s", err.Error())
+		os.Exit(2)
+	}
 }
