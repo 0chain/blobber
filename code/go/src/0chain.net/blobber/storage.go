@@ -19,9 +19,17 @@ type UploadResponse struct {
 	Error *common.Error `json:"error,omitempty"`
 }
 
+type DownloadResponse struct {
+	Filename string
+	Size string
+	ContentType string
+	Path string
+}
+
 //StorageHandler - interfact for handling storage requests
 type StorageHandler interface {
 	WriteFile(r *http.Request, transID string) (UploadResponse)
+	DownloadFile(r *http.Request, allocationID string) (*DownloadResponse, *common.Error)
 }
 
 //SHandler - Singleton for the storage handler

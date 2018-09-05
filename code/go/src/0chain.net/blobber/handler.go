@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	
 	"net/http"
-
+	"os"
+	"io"
+	"strconv"
 	
 	"github.com/gorilla/mux"
 	
@@ -22,6 +24,7 @@ var storageHandler StorageHandler
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/upload/{allocation}", UploadHandler)
+	r.HandleFunc("/v1/file/download/{allocation}", DownloadHandler)
 	storageHandler = GetStorageHandler()
 }
 
@@ -37,5 +40,55 @@ func UploadHandler(respW http.ResponseWriter, r *http.Request) {
 		respW.WriteHeader(http.StatusInternalServerError)
 	}
 	json.NewEncoder(respW).Encode(response)
+	return
+}
+
+
+/*DownloadHandler is the handler to respond to download requests from clients*/
+func DownloadHandler(respW http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	respW.Header().Set("Content-Type", "application/json")
+	
+	response, err := storageHandler.DownloadFile(r, vars["allocation"])
+	
+	if err != nil {
+		respW.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(respW).Encode(err)
+		return
+	}
+	
+	//Check if file exists and open
+	Openfile, errN := os.Open(response.Path)
+	defer Openfile.Close() //Close after function return
+	if errN != nil {
+		//File not found, send 404
+		http.Error(respW, "File not found.", 404)
+		return
+	}
+
+	//File is found, create and send the correct headers
+
+	//Get the Content-Type of the file
+	//Create a buffer to store the header of the file in
+	FileHeader := make([]byte, 512)
+	//Copy the headers into the FileHeader buffer
+	Openfile.Read(FileHeader)
+	//Get content type of file
+	FileContentType := http.DetectContentType(FileHeader)
+
+	//Get the file size
+	FileStat, _ := Openfile.Stat()                     //Get info from file
+	FileSize := strconv.FormatInt(FileStat.Size(), 10) //Get file size as a string
+
+	//Send the headers
+	respW.Header().Set("Content-Disposition", "attachment; filename="+response.Filename)
+	respW.Header().Set("Content-Type", FileContentType)
+	respW.Header().Set("Content-Length", FileSize)
+
+	//Send the file
+	//We read 512 bytes from the file already so we reset the offset back to 0
+	Openfile.Seek(0, 0)
+	io.Copy(respW, Openfile) //'Copy' the file to the client
 	return
 }

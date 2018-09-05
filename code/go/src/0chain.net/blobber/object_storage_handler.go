@@ -24,6 +24,7 @@ import (
 	"encoding/hex"
 	"github.com/jszwec/csvutil"
 	"encoding/csv"
+	"strconv"
 )
 
 //ObjectStorageHandler - implments the StorageHandler interface
@@ -55,12 +56,12 @@ type ReferenceHeader struct {
 }
 
 type ReferenceEntry struct {
-	ReferenceType EntryType
-	Name string
-	LookupHash string
-	PreviousRevisionHash string
-	Size uint64
-	IsCompressed bool	
+	ReferenceType EntryType `csv:"type"`
+	Name string `csv:"name"`
+	LookupHash string `csv:"lookup_hash"`
+	PreviousRevisionHash string `csv:"previous_rev_hash"`
+	Size uint64 `csv:"size"`
+	IsCompressed bool `csv:"is_compressed"`	
 }
 
 type ReferenceObject struct {
@@ -72,7 +73,7 @@ type ReferenceObject struct {
 	ActualPath string
 	ActualFilename string
 	Header ReferenceHeader
-	RefEntries []*ReferenceEntry 
+	RefEntries []ReferenceEntry 
 }
 
 type BlobObject struct {
@@ -258,6 +259,49 @@ func (refObject *ReferenceObject) AppendReferenceEntry(entry *ReferenceEntry) (e
 
 }
 
+func (refObject *ReferenceObject) LoadReferenceEntries() (error){
+	fh, err := os.Open(refObject.FullPath)
+	if err != nil {
+		Logger.Info("reference_object_open_error", zap.Any("reference_object_open_error", err))
+		return err
+	}
+	defer fh.Close()
+	
+	r:= bufio.NewReader(fh)
+	r.ReadString('\n')
+	
+	csvReader := csv.NewReader(r)
+	// ReferenceType EntryType `csv:"type"`
+	// Name string `csv:"name"`
+	// LookupHash string `csv:"lookup_hash"`
+	// PreviousRevisionHash string `csv:"previous_rev_hash"`
+	// Size uint64 `csv:"size"`
+	// IsCompressed bool `csv:"is_compressed"`	
+
+	dec, err := csvutil.NewDecoder(csvReader, "type", "name", "lookup_hash", "previous_rev_hash", "size", "is_compressed")
+	if(err != nil) {
+		Logger.Info("reference_object_decode_error", zap.Any("reference_object_decode_error", err))
+		return err
+	}
+
+	refObject.RefEntries = make([]ReferenceEntry, 0)
+
+	for {
+		u := ReferenceEntry{}
+		if err := dec.Decode(&u); err == io.EOF {
+			break
+		} else if err != nil {
+			Logger.Info("reference_decode_error", zap.Any("reference_decode_error", err))
+			return err
+		}
+
+		refObject.RefEntries = append(refObject.RefEntries, u)
+	}
+	Logger.Info("ref_entries", zap.Any("ref_entries", len(refObject.RefEntries)))
+
+	return nil
+}
+
 func (refObject *ReferenceObject) GetHeaders() ([]string) {
 	return []string{refObject.Header.Version, refObject.Header.ReferenceType.String()};
 }
@@ -324,7 +368,74 @@ func (fsh *ObjectStorageHandler) generateTransactionPath(transID string) string{
 	return dir.String()
 }
 
+func (fsh *ObjectStorageHandler) DownloadFile(r *http.Request, allocationID string) (*DownloadResponse, *common.Error){
+	if(r.Method == "POST") {
+		return nil, common.NewError("invalid_method", "Invalid method used for downloading the file. Use GET instead")
+	}
+	allocation, err := fsh.setupAllocation(allocationID)
 
+	if err != nil {
+		Logger.Info("", zap.Any("error", err))
+		//return -1, common.NewError("allocation_setup_error", err.Error())
+		return nil, common.NewError("allocation_setup_error", err.Error())
+	}
+
+	file_path, ok := r.URL.Query()["path"]
+	if !ok || len(file_path[0]) < 1 {
+        return nil, common.NewError("invalid_parameters", "path parameter not found")
+    }
+    filePath := file_path[0]
+
+	filename,ok := r.URL.Query()["filename"]
+	if !ok || len(filename[0]) < 1 {
+        return nil, common.NewError("invalid_parameters", "path parameter not found")
+    }
+    fileName := filename[0]
+
+	blobRefObject := allocation.getReferenceObject(filepath.Join(filePath,fileName), fileName, false, false)
+	if blobRefObject == nil {
+		Logger.Info("", zap.Any("blob_error", "Error getting the blob reference"))
+		//return -1, common.NewError("allocation_setup_error", err.Error())
+		return nil, common.NewError("invalid_parameters", "File not found. Please check the parameters")
+	}
+
+	if(blobRefObject.Header.ReferenceType != FILE ) {
+		return nil, common.NewError("invalid_parameters", "Requested object is not a file. Please check the parameters")
+	}
+	
+	blobRefObject.LoadReferenceEntries();
+
+	part_num,ok := r.URL.Query()["part"]
+	var partNum int
+	if !ok || len(part_num[0]) < 1 {
+        partNum = 1
+        err = nil
+    } else {
+    	partNum, err = strconv.Atoi(part_num[0])
+    } 
+   
+
+    if err!=nil || (partNum > len(blobRefObject.RefEntries) && partNum > 0) {
+    	return nil, common.NewError("invalid_parameters", "invalid part number")
+    }
+
+	Logger.Info("", zap.Any("entries_size", len(blobRefObject.RefEntries)))
+
+	// ReferenceType EntryType `csv:"type"`
+	// Name string `csv:"name"`
+	// LookupHash string `csv:"lookup_hash"`
+	// PreviousRevisionHash string `csv:"previous_rev_hash"`
+	// Size uint64 `csv:"size"`
+	// IsCompressed bool `csv:"is_compressed"`
+	partNum = partNum - 1
+	response := &DownloadResponse{}
+	response.Filename = blobRefObject.RefEntries[partNum].Name
+	//response.Size = blobRefObject.RefEntries[0].Size
+	dirPath, dirFileName := getFilePathFromHash(blobRefObject.RefEntries[partNum].LookupHash)
+	response.Path = filepath.Join(allocation.ObjectsPath, dirPath, dirFileName)
+
+	return response, nil
+}
 
 
 //WriteFile stores the file into the blobber files system from the HTTP request
