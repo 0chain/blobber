@@ -11,6 +11,7 @@ import (
 	"bufio"
 	"mime/multipart"
 	"io"
+	"errors"
 
 	. "0chain.net/logging"
 	"go.uber.org/zap"
@@ -34,6 +35,9 @@ const (
 	OSPathSeperator string = string(os.PathSeparator)
 	RefsDirName = "refs"
 	ObjectsDirName = "objects"
+	TempObjectsDirName = "tmp"
+	CurrentVersion = "1.0"
+	FORM_FILE_PARSE_MAX_MEMORY = 10 * 1024 * 1024
 )
 
 type Allocation struct {
@@ -78,6 +82,7 @@ type BlobObject struct {
 	Path string
 	ActualPath string
 	Filename string
+	Ref *ReferenceObject  
 }
 
 type EntryType int
@@ -122,22 +127,70 @@ func getFilePathFromHash(hash string) (string, string) {
 	return dir.String(), hash[9:]
 }
 
-func (allocation *Allocation) newRootReferenceObject() *ReferenceObject {
 
-	refObject := &ReferenceObject{ActualPath: OSPathSeperator, ActualFilename : OSPathSeperator}
+func (allocation * Allocation) getReferenceObject(relativePath string, filename string, isDir bool, shouldCreateRef bool) *ReferenceObject {
+	refObject := &ReferenceObject{ActualPath: relativePath, ActualFilename : filename}
 	refObject.Hash = util.Hash(refObject.ActualPath)
 	refObject.ID = fmt.Sprintf("%s%s%s", allocation.ID, "-", refObject.Hash)
 	path, filename := getFilePathFromHash(refObject.Hash);
 	refObject.Path = filepath.Join(allocation.RefsPath, path)
 	refObject.Filename = filename
 	refObject.FullPath = filepath.Join(refObject.Path, refObject.Filename)
+
+	//create the root reference dirs
+	err := util.CreateDirs(refObject.Path)
+	if err != nil {
+		Logger.Info("reference_dir_creation_error", zap.Any("reference_dir_creation_error", err))
+		return nil
+	}
+
+	if _, err := os.Stat(refObject.FullPath); err != nil {
+		var fh *os.File;
+	    if os.IsNotExist(err) {
+	    	if !shouldCreateRef {
+	    		return nil;
+	    	}
+	        //create the root reference file
+			fh, err = os.Create(refObject.FullPath)
+			if err != nil {
+				Logger.Info("reference_file_creation_error", zap.Any("reference_file_creation_error", err))
+				return nil
+			}
+			defer fh.Close()
+			refObject.Header.Version = CurrentVersion
+			if isDir {
+				refObject.Header.ReferenceType = DIRECTORY
+			} else {
+				refObject.Header.ReferenceType = FILE
+			}
+			w := bufio.NewWriter(fh)
+			w.WriteString(strings.Join(refObject.GetHeaders(), ",") + "\n")
+			w.Flush()
+	    }
+	} else {
+    	fh, err := os.Open(refObject.FullPath)
+		if err != nil {
+			Logger.Info("reference_file_open_error", zap.Any("reference_file_open_error", err))
+			return nil
+		}
+		defer fh.Close()
+		r:= bufio.NewReader(fh)
+		header,_ := r.ReadString('\n')
+		header = strings.TrimSuffix(header, "\n")
+		Logger.Info("", zap.Any("header", header))
+		refObject.LoadHeader(strings.Split(header, ","))
+    }
+
 	return refObject
 }
 
-func (allocation *Allocation) writeFileAndCalculateHash(parentRef *ReferenceObject, fileHeader *multipart.FileHeader) (*BlobObject, *common.Error){
-	blobObject := &BlobObject{Filename : fileHeader.Filename, ActualPath: filepath.Join(parentRef.ActualPath, fileHeader.Filename)}
+func (allocation *Allocation) writeFileAndCalculateHash(parentRef *ReferenceObject, fileHeader *multipart.FileHeader) (*BlobObject, *common.Error) {
+	blobRefObject := allocation.getReferenceObject(filepath.Join(parentRef.ActualPath, fileHeader.Filename), fileHeader.Filename, false, true)
+	
+	blobObject := &BlobObject{Filename : fileHeader.Filename, Ref: blobRefObject}
+
 	h := sha1.New()
-	tempFilePath := filepath.Join(allocation.TempObjectsPath, blobObject.Filename + "." + encryption.Hash(blobObject.ActualPath))
+	tempFilePath := filepath.Join(allocation.TempObjectsPath, blobObject.Filename + "." + encryption.Hash(blobObject.Ref.ActualPath))
     dest, err := os.Create(tempFilePath)
     if err != nil {
         return nil, common.NewError("file_creation_error", err.Error())
@@ -170,6 +223,11 @@ func (allocation *Allocation) writeFileAndCalculateHash(parentRef *ReferenceObje
 	}
 
 	err = parentRef.AppendReferenceEntry(&ReferenceEntry{ReferenceType : FILE, Name: blobObject.Filename, LookupHash: blobObject.Hash})
+	if err != nil {
+	   return nil, common.NewError("reference_parent_append_error", err.Error())
+	}
+
+	err = blobRefObject.AppendReferenceEntry(&ReferenceEntry{ReferenceType : FILE, Name: blobObject.Filename, LookupHash: blobObject.Hash})
 	if err != nil {
 	   return nil, common.NewError("reference_object_append_error", err.Error())
 	}
@@ -217,7 +275,7 @@ func (fsh *ObjectStorageHandler) setupAllocation(allocationID string) (*Allocati
 	allocation.Path = fsh.generateTransactionPath(allocationID)
 	allocation.RefsPath = fmt.Sprintf("%s%s%s", allocation.Path, OSPathSeperator, RefsDirName)
 	allocation.ObjectsPath = fmt.Sprintf("%s%s%s", allocation.Path, OSPathSeperator, ObjectsDirName)
-	allocation.TempObjectsPath = filepath.Join(allocation.ObjectsPath, "tmp")
+	allocation.TempObjectsPath = filepath.Join(allocation.ObjectsPath, TempObjectsDirName)
 	
 	//create the allocation object dirs
 	err := util.CreateDirs(allocation.ObjectsPath)
@@ -240,45 +298,13 @@ func (fsh *ObjectStorageHandler) setupAllocation(allocationID string) (*Allocati
 		return nil, err
 	}
 
-	root_ref := allocation.newRootReferenceObject()
+	root_ref := allocation.getReferenceObject(OSPathSeperator, OSPathSeperator, true, true)
 
-	//create the root reference dirs
-	err = util.CreateDirs(root_ref.Path)
-	if err != nil {
-		Logger.Info("allocation_root_dir_creation_error", zap.Any("allocation_root_dir_creation_error", err))
-		return nil, err
+	if(root_ref == nil) {
+		Logger.Info("allocation_refs_dir_creation_error", zap.Any("allocation_refs_dir_creation_error", err))
+		return nil, errors.New("error loading the reference for root directory")
 	}
 
-	if _, err := os.Stat(root_ref.FullPath); err != nil {
-		var fh *os.File;
-	    if os.IsNotExist(err) {
-	        //create the root reference file
-			fh, err = os.Create(root_ref.FullPath)
-			if err != nil {
-				Logger.Info("allocation_root_file_creation_error", zap.Any("allocation_root_file_creation_error", err))
-				return nil, err
-			}
-			defer fh.Close()
-			root_ref.Header.Version = "1.0"
-			root_ref.Header.ReferenceType = DIRECTORY
-			w := bufio.NewWriter(fh)
-			w.WriteString(strings.Join(root_ref.GetHeaders(), ",") + "\n")
-			w.Flush()
-	    }
-	} else {
-    	fh, err := os.Open(root_ref.FullPath)
-		if err != nil {
-			Logger.Info("allocation_root_file_open_error", zap.Any("allocation_root_file_open_error", err))
-			return nil, err
-		}
-		defer fh.Close()
-		r:= bufio.NewReader(fh)
-		header,_ := r.ReadString('\n')
-		header = strings.TrimSuffix(header, "\n")
-		Logger.Info("", zap.Any("header", header))
-		root_ref.LoadHeader(strings.Split(header, ","))
-
-    }
 	allocation.RootReferenceObject = *root_ref
 	Logger.Info("", zap.Any("ref.Version", root_ref.Header.Version))
 	Logger.Info("", zap.Any("ref.Type", root_ref.Header.ReferenceType))
@@ -299,37 +325,52 @@ func (fsh *ObjectStorageHandler) generateTransactionPath(transID string) string{
 }
 
 
+
+
 //WriteFile stores the file into the blobber files system from the HTTP request
-func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string) (int64, *common.Error) {
+func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string) (UploadResponse) {
 	
+	var response UploadResponse
 	if r.Method == "GET" {
-		return -1, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST instead")
+		return GenerateUploadResponseWithError(common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST instead")) 
 	}
 
 	allocation, err := fsh.setupAllocation(allocationID)
 
 	if err != nil {
 		Logger.Info("", zap.Any("error", err))
-		return -1, common.NewError("allocation_setup_error", err.Error())
+		//return -1, common.NewError("allocation_setup_error", err.Error())
+		return GenerateUploadResponseWithError(common.NewError("allocation_setup_error", err.Error())) 
 	}
 
-	// parse request  
-	const MAX_MEMORY = 10 * 1024 * 1024 
-	if err = r.ParseMultipartForm(MAX_MEMORY); nil != err {  
+	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {  
 	   	Logger.Info("", zap.Any("error", err))
-		return -1, common.NewError("request_parse_error", err.Error())  
+		//return -1, common.NewError("request_parse_error", err.Error())  
+		return GenerateUploadResponseWithError(common.NewError("request_parse_error", err.Error())) 	
 	}
 
+
+	response.Result = make([]UploadResult, 0)
 	for _, fheaders := range r.MultipartForm.File {
+		var result UploadResult
 		for _, hdr := range fheaders {
-			_, common_error := allocation.writeFileAndCalculateHash(&allocation.RootReferenceObject, hdr)
+			blobObject, common_error := allocation.writeFileAndCalculateHash(&allocation.RootReferenceObject, hdr)
 			if common_error != nil {
-				return -1, common_error  		
+				result.Error = common_error
+				result.Filename = hdr.Filename
+				
+			} else {
+				result.Filename = blobObject.Filename
+				result.Hash = blobObject.Hash
+				result.Size = hdr.Size
+
 			}
+			response.Result = append(response.Result, result)
 		}
+		
 	}
 
-	return 10, nil
+	return response
 }
 
 
