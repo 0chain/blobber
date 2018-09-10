@@ -111,8 +111,8 @@ func main() {
 		//tr := io.TeeReader(pr, f)
 		in[i] = pr
 		inr[i] = npr
-		destfilename := fmt.Sprintf("%s.%d", "big.txt", i)
-		go uploadFile(destfilename, npr, &wg)
+		//destfilename := fmt.Sprintf("%s.%d", "big.txt", i)
+		go uploadFile("big.txt", npr, &wg)
 		//go storeInFile(npr, i, &wg);
 	}
 
@@ -132,8 +132,8 @@ func main() {
 		// fmt.Println("file created" , destfilename)
 		pr, pw := io.Pipe()
 		parity[i] = pw
-		destfilename := fmt.Sprintf("%s.%d", "big.txt", 10+i)
-		go uploadFile(destfilename, pr, &wg)
+		//destfilename := fmt.Sprintf("%s.%d", "big.txt", 10+i)
+		go uploadFile("big.txt", pr, &wg)
 
 	}
 

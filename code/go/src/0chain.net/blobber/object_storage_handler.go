@@ -25,6 +25,9 @@ import (
 	"github.com/jszwec/csvutil"
 	"encoding/csv"
 	"strconv"
+	"sync"
+
+
 )
 
 //ObjectStorageHandler - implments the StorageHandler interface
@@ -40,6 +43,8 @@ const (
 	CurrentVersion = "1.0"
 	FORM_FILE_PARSE_MAX_MEMORY = 10 * 1024 * 1024
 )
+
+var mutex = &sync.Mutex{}
 
 type Allocation struct {
 	ID string
@@ -130,6 +135,8 @@ func getFilePathFromHash(hash string) (string, string) {
 
 
 func (allocation * Allocation) getReferenceObject(relativePath string, filename string, isDir bool, shouldCreateRef bool) *ReferenceObject {
+	mutex.Lock()
+	defer mutex.Unlock()
 	refObject := &ReferenceObject{ActualPath: relativePath, ActualFilename : filename}
 	refObject.Hash = util.Hash(refObject.ActualPath)
 	refObject.ID = fmt.Sprintf("%s%s%s", allocation.ID, "-", refObject.Hash)
@@ -187,11 +194,12 @@ func (allocation * Allocation) getReferenceObject(relativePath string, filename 
 
 func (allocation *Allocation) writeFileAndCalculateHash(parentRef *ReferenceObject, fileHeader *multipart.FileHeader) (*BlobObject, *common.Error) {
 	blobRefObject := allocation.getReferenceObject(filepath.Join(parentRef.ActualPath, fileHeader.Filename), fileHeader.Filename, false, true)
-	
+	mutex.Lock()
+	defer mutex.Unlock()
 	blobObject := &BlobObject{Filename : fileHeader.Filename, Ref: blobRefObject}
 
 	h := sha1.New()
-	tempFilePath := filepath.Join(allocation.TempObjectsPath, blobObject.Filename + "." + encryption.Hash(blobObject.Ref.ActualPath))
+	tempFilePath := filepath.Join(allocation.TempObjectsPath, blobObject.Filename + "." + encryption.Hash(blobObject.Ref.ActualPath) + "." + encryption.Hash(string(common.Now())))
     dest, err := os.Create(tempFilePath)
     if err != nil {
         return nil, common.NewError("file_creation_error", err.Error())
@@ -307,7 +315,7 @@ func (refObject *ReferenceObject) GetHeaders() ([]string) {
 }
 
 func (refObject *ReferenceObject) LoadHeader(headers []string) {
-	if(len(headers) > 0) { 
+	if(len(headers) > 1) { 
 		refObject.Header.Version = headers[0]
 		refObject.Header.ReferenceType = ParseEntryType(headers[1])
 	}
@@ -440,21 +448,23 @@ func (fsh *ObjectStorageHandler) DownloadFile(r *http.Request, allocationID stri
 
 //WriteFile stores the file into the blobber files system from the HTTP request
 func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string) (UploadResponse) {
-	
 	var response UploadResponse
 	if r.Method == "GET" {
+		//mutex.Unlock()
 		return GenerateUploadResponseWithError(common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST instead")) 
 	}
 
 	allocation, err := fsh.setupAllocation(allocationID)
 
 	if err != nil {
+		//mutex.Unlock()
 		Logger.Info("", zap.Any("error", err))
 		//return -1, common.NewError("allocation_setup_error", err.Error())
 		return GenerateUploadResponseWithError(common.NewError("allocation_setup_error", err.Error())) 
 	}
 
 	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {  
+		//mutex.Unlock()
 	   	Logger.Info("", zap.Any("error", err))
 		//return -1, common.NewError("request_parse_error", err.Error())  
 		return GenerateUploadResponseWithError(common.NewError("request_parse_error", err.Error())) 	
@@ -480,6 +490,7 @@ func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string)
 		}
 		
 	}
+	//mutex.Unlock()
 
 	return response
 }
