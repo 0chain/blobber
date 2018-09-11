@@ -197,36 +197,33 @@ func (fsh *ObjectStorageHandler) DownloadFile(r *http.Request, allocationID stri
 	
 	blobRefObject.LoadReferenceEntries()
 
-	part_num,ok := r.URL.Query()["part"]
-	var partNum int
-	if !ok || len(part_num[0]) < 1 {
-        partNum = 1
+	part_hash,ok := r.URL.Query()["part_hash"]
+	partHash := ""
+	if !ok || len(part_hash[0]) < 1 {
         err = nil
     } else {
-    	partNum, err = strconv.Atoi(part_num[0])
+    	partHash = part_hash[0]
     } 
    
 
-    if err!=nil || (partNum > len(blobRefObject.RefEntries) && partNum > 0) {
-    	return nil, common.NewError("invalid_parameters", "invalid part number")
+    if err!=nil || (len(partHash) < 1) {
+    	return nil, common.NewError("invalid_parameters", "invalid part hash")
     }
 
-	Logger.Info("", zap.Any("entries_size", len(blobRefObject.RefEntries)))
+	for i := range blobRefObject.RefEntries {
+		if blobRefObject.RefEntries[i].LookupHash == partHash {
+			partNum := i
+			response := &DownloadResponse{}
+			response.Filename = blobRefObject.RefEntries[partNum].Name
+			response.Size = strconv.FormatInt(blobRefObject.RefEntries[partNum].Size, 10)
+			dirPath, dirFileName := getFilePathFromHash(blobRefObject.RefEntries[partNum].LookupHash)
+			response.Path = filepath.Join(allocation.ObjectsPath, dirPath, dirFileName)
 
-	// ReferenceType EntryType `csv:"type"`
-	// Name string `csv:"name"`
-	// LookupHash string `csv:"lookup_hash"`
-	// PreviousRevisionHash string `csv:"previous_rev_hash"`
-	// Size uint64 `csv:"size"`
-	// IsCompressed bool `csv:"is_compressed"`
-	partNum = partNum - 1
-	response := &DownloadResponse{}
-	response.Filename = blobRefObject.RefEntries[partNum].Name
-	response.Size = strconv.FormatInt(blobRefObject.RefEntries[partNum].Size, 10)
-	dirPath, dirFileName := getFilePathFromHash(blobRefObject.RefEntries[partNum].LookupHash)
-	response.Path = filepath.Join(allocation.ObjectsPath, dirPath, dirFileName)
+			return response, nil
+		}
+	}
 
-	return response, nil
+	return nil, common.NewError("invalid_parameters", "invalid part hash")
 }
 
 
