@@ -25,6 +25,7 @@ var storageHandler StorageHandler
 func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/upload/{allocation}", UploadHandler)
 	r.HandleFunc("/v1/file/download/{allocation}", DownloadHandler)
+	r.HandleFunc("/v1/file/meta/{allocation}", MetaHandler)
 	storageHandler = GetStorageHandler()
 }
 
@@ -43,12 +44,27 @@ func UploadHandler(respW http.ResponseWriter, r *http.Request) {
 	return
 }
 
+/*MetaHandler is the handler to respond to file meta requests from clients*/
+func MetaHandler(respW http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	respW.Header().Set("Content-Type", "application/json")
+	
+	response, err := storageHandler.GetFileMeta(r, vars["allocation"])
+	
+	if err != nil {
+		respW.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(respW).Encode(err)
+		return
+	}
+	json.NewEncoder(respW).Encode(response)
+	return
+}
+
 
 /*DownloadHandler is the handler to respond to download requests from clients*/
 func DownloadHandler(respW http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-
-	respW.Header().Set("Content-Type", "application/json")
 	
 	response, err := storageHandler.DownloadFile(r, vars["allocation"])
 	

@@ -12,7 +12,7 @@ import (
 	"runtime"
 )
 
-func uploadFile(filename string, reader io.Reader, wg *sync.WaitGroup) error {
+func uploadFile(filename string, reader io.Reader, wg *sync.WaitGroup, meta string) error {
 	defer wg.Done()
 	bodyReader, bodyWriter := io.Pipe()
 	multiWriter := multipart.NewWriter(bodyWriter)
@@ -33,6 +33,14 @@ func uploadFile(filename string, reader io.Reader, wg *sync.WaitGroup) error {
 			bodyWriter.CloseWithError(err)
 			return
 		}
+
+		// Create a form field writer for field label
+    	metaWriter, err := multiWriter.CreateFormField("custom_meta")
+ 		if err != nil {
+			bodyWriter.CloseWithError(err)
+			return
+		}   	
+    	metaWriter.Write([]byte(meta))
 
 		bodyWriter.CloseWithError(multiWriter.Close())
 	}()
@@ -100,6 +108,7 @@ func main() {
 	inr := make([]io.Reader, shards)
 	for i := range out {
 		outfn := fmt.Sprintf("Part : %d", i)
+		meta := fmt.Sprintf("{\"part_num\" : %d}", i)
 		fmt.Println("Creating", outfn)
 		pr, pw := io.Pipe()
 		npr, npw := io.Pipe()
@@ -112,7 +121,7 @@ func main() {
 		in[i] = pr
 		inr[i] = npr
 		//destfilename := fmt.Sprintf("%s.%d", "big.txt", i)
-		go uploadFile("big.txt", npr, &wg)
+		go uploadFile("big.txt", npr, &wg, meta)
 		//go storeInFile(npr, i, &wg);
 	}
 
@@ -133,7 +142,8 @@ func main() {
 		pr, pw := io.Pipe()
 		parity[i] = pw
 		//destfilename := fmt.Sprintf("%s.%d", "big.txt", 10+i)
-		go uploadFile("big.txt", pr, &wg)
+		meta := fmt.Sprintf("{\"part_num\" : %d}", 10+i)
+		go uploadFile("big.txt", pr, &wg, meta)
 
 	}
 

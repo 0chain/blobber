@@ -26,10 +26,23 @@ type DownloadResponse struct {
 	Path string
 }
 
+type MetaInfo struct {
+	Filename string `json:"filename"`
+	CustomMeta string `json:"custom_meta"`
+	Size int64 `json:"size"`
+	ContentHash string `json:"content_hash"`
+}
+
+type FileMeta struct {
+	ID string `json:"id"`
+	Meta []MetaInfo `json:"meta"`
+}
+
 //StorageHandler - interfact for handling storage requests
 type StorageHandler interface {
-	WriteFile(r *http.Request, transID string) (UploadResponse)
+	WriteFile(r *http.Request, allocationID string) (UploadResponse)
 	DownloadFile(r *http.Request, allocationID string) (*DownloadResponse, *common.Error)
+	GetFileMeta(r *http.Request, allocationID string) (*FileMeta, *common.Error)
 }
 
 //SHandler - Singleton for the storage handler
