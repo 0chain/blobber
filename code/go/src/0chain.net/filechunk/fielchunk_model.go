@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"runtime"
 	"sort"
+	"strconv"
 	"sync"
 
 	"os"
@@ -32,27 +33,47 @@ type Maininfo struct {
 }
 
 type Metainfo struct {
-	Filename     string `json:"filename"`
-	Cmeta        string `json:"custom_meta"`
-	Size         int    `json:"size"`
-	Content_hash string `json:"content_hash"`
-	MetaCustom   *Custom_meta
+	Filename     string     `json:"filename"`
+	Custom       CustomMeta `json:"custom_meta"`
+	Size         int        `json:"size"`
+	Content_hash string     `json:"content_hash"`
+	// MetaCustom   *Custom_meta
 }
 
-type Custom_meta struct {
-	Part_num int `json:"part_num"`
+type CustomMeta struct {
+	PartNum int `json:"part_num"`
 }
 
 func getMeta(body []byte) (*Maininfo, error) {
 	var s = new(Maininfo)
 	err := json.Unmarshal(body, &s)
 	if err != nil {
-		fmt.Println("whoops:", err)
+		fmt.Println(err)
 	}
 	return s, err
 }
 
+func (cm *CustomMeta) UnmarshalJSON(bs []byte) error {
+	// Unquote the source string so we can unmarshal it.
+	unquoted, err := strconv.Unquote(string(bs))
+	if err != nil {
+		return err
+	}
+
+	// Create an aliased type so we can use the default unmarshaler.
+	type CustomMeta2 CustomMeta
+	var cm2 CustomMeta2
+
+	// Unmarshal the unquoted string and assign to the original object.
+	if err := json.Unmarshal([]byte(unquoted), &cm2); err != nil {
+		return err
+	}
+	*cm = CustomMeta(cm2)
+	return nil
+}
+
 func main() {
+
 	res, err := http.Get("http://localhost:5050/v1/file/meta/36f028580bb02cc8272a9a020f4200e346e276ae664e45ee80745574e2f5ab80?path=/&filename=big.txt")
 	if err != nil {
 		panic(err.Error())
@@ -64,36 +85,25 @@ func main() {
 		panic(err.Error())
 	}
 
-	s, err := getMeta([]byte(body))
-	fmt.Println("Main stuff", s)
+	var doc Maininfo
 
-	var metaInfo []Metainfo
-	metaInfo = s.Meta
-	fmt.Println("metaInfo", metaInfo)
-	for i := range metaInfo {
-		var cm = new(Custom_meta)
-		part := metaInfo[i].Cmeta
-		json.Unmarshal([]byte(part), &cm)
-		fmt.Println("cm part", cm.Part_num)
-		fmt.Println("part", part)
-		metaInfo[i].MetaCustom = cm
-
-		if err != nil {
-			fmt.Println("err")
-		}
-		hash := metaInfo[i].Content_hash
-		fmt.Println("hash", hash)
+	errs := json.Unmarshal([]byte(body), &doc)
+	if errs != nil {
+		panic(err)
 	}
 
-	sort.Slice(metaInfo, func(i, j int) bool {
-		return metaInfo[i].MetaCustom.Part_num < metaInfo[j].MetaCustom.Part_num
+	sort.Slice(doc.Meta, func(i, j int) bool {
+		p1 := doc.Meta[i].Custom.PartNum
+		p2 := doc.Meta[j].Custom.PartNum
+		return p1 < p2
 	})
+	for _, m := range doc.Meta {
+		fmt.Println(m.Custom.PartNum)
+	}
 
-	fmt.Println("entire meta", metaInfo)
-
-	for j := range metaInfo {
-		file := metaInfo[j].Filename
-		hash := metaInfo[j].Content_hash
+	for j := range doc.Meta {
+		file := doc.Meta[j].Filename
+		hash := doc.Meta[j].Content_hash
 		targetUrl := "http://localhost:5050/v1/file/download/36f028580bb02cc8272a9a020f4200e346e276ae664e45ee80745574e2f5ab80"
 		downloadFile(file, "/", targetUrl, hash)
 	}
@@ -112,7 +122,6 @@ func downloadFile(filename, filepath, targetUrl, part_hash string) (string, erro
 	}
 
 	file, _ := os.Create("file" + part_hash + ".txt")
-	fmt.Println("after file ")
 	io.Copy(file, resp.Body)
 
 	defer file.Close()
