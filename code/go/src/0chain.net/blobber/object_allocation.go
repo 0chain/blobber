@@ -260,12 +260,6 @@ func (refObject *ReferenceObject) LoadReferenceEntries() (error){
 	r.ReadString('\n')
 	
 	csvReader := csv.NewReader(r)
-	// ReferenceType EntryType `csv:"type"`
-	// Name string `csv:"name"`
-	// LookupHash string `csv:"lookup_hash"`
-	// PreviousRevisionHash string `csv:"previous_rev_hash"`
-	// Size uint64 `csv:"size"`
-	// IsCompressed bool `csv:"is_compressed"`	
 
 	dec, err := csvutil.NewDecoder(csvReader, "type", "name", "lookup_hash", "previous_rev_hash", "size", "is_compressed", "custom_meta")
 	if(err != nil) {
