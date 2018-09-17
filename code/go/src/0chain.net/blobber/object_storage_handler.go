@@ -102,6 +102,60 @@ func (fsh *ObjectStorageHandler) generateTransactionPath(transID string) string{
 	return dir.String()
 }
 
+func (fsh *ObjectStorageHandler) ListEntities(r *http.Request, allocationID string) (*ListResponse, *common.Error) {
+	if(r.Method == "POST") {
+		return nil, common.NewError("invalid_method", "Invalid method used for downloading the file. Use GET instead")
+	}
+
+	allocation, err := fsh.setupAllocation(allocationID)
+
+	if err != nil {
+		Logger.Info("", zap.Any("error", err))
+		//return -1, common.NewError("allocation_setup_error", err.Error())
+		return nil, common.NewError("allocation_setup_error", err.Error())
+	}
+
+	file_path, ok := r.URL.Query()["path"]
+	if !ok || len(file_path[0]) < 1 {
+        return nil, common.NewError("invalid_parameters", "path parameter not found")
+    }
+    filePath := file_path[0]
+
+    blobRefObject,_ := allocation.getReferenceObject(filePath, filePath, false, false)
+	if blobRefObject == nil {
+		Logger.Info("", zap.Any("blob_error", "Error getting the blob reference"))
+		//return -1, common.NewError("allocation_setup_error", err.Error())
+		return nil, common.NewError("invalid_parameters", "Invalid path. Please check the parameters")
+	}
+
+	if(blobRefObject.Header.ReferenceType != DIRECTORY ) {
+		return nil, common.NewError("invalid_parameters", "Requested object is not a directory. Cannot list on directories. Please check the parameters")
+	}
+	
+	blobRefObject.LoadReferenceEntries()
+
+	response:= &ListResponse{};
+
+	//response.Name = blobRefObject.Hash
+	response.ListEntries = make([]ListResponseEntity, 0)
+	for i:= range blobRefObject.RefEntries {
+		var listEntry ListResponseEntity
+		// Filename string `json:"filename"`
+		// CustomMeta string `json:"custom_meta"`
+		// Size int64 `json:"size"`
+		// ContentHash string `json:"content_hash"`
+		listEntry.Name = blobRefObject.RefEntries[i].Name
+		listEntry.LookupHash = blobRefObject.RefEntries[i].LookupHash
+		if blobRefObject.RefEntries[i].ReferenceType == DIRECTORY {
+			listEntry.IsDir = true	
+		} else {
+			listEntry.IsDir = false
+		}
+		response.ListEntries = append(response.ListEntries, listEntry)
+	}
+	return response, nil
+}
+
 func (fsh *ObjectStorageHandler) GetFileMeta(r *http.Request, allocationID string) (*FileMeta, *common.Error) {
 	if(r.Method == "POST") {
 		return nil, common.NewError("invalid_method", "Invalid method used for downloading the file. Use GET instead")

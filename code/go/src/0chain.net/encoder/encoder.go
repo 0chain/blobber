@@ -48,11 +48,6 @@ type downloadResult struct {
 	partNum int
 }
 
-type channelResult struct {
-	done bool
-	err error
-}
-
 const CHUNK_SIZE = 64 * 1024
 
 func (enc *ReedsolomonStreamEncoder) DownloadAndDecode(filePath string, blobberList []Blobber, writer io.Writer) (error) {
@@ -99,16 +94,15 @@ func (enc *ReedsolomonStreamEncoder) DownloadAndDecode(filePath string, blobberL
 
 		if(result.reader != nil) {
 			defer result.reader.Close()
-			fmt.Println("download result ", result.partNum)
 			dataReaders[result.partNum] = result 
 		} else {
-			fmt.Println("not found download result ", result.partNum)
 			dataReaders[result.partNum] = nil
 		}
 	}
 
 	perShard := (actualSize + int64(enc.datashards) - 1) / int64(enc.datashards)
 	remaining := perShard
+	totalRemaining := actualSize
 
 	for remaining > 0 {
 		shards := make([][]byte, chanSize)
@@ -118,15 +112,16 @@ func (enc *ReedsolomonStreamEncoder) DownloadAndDecode(filePath string, blobberL
 			if(dataReaders[i] != nil) {
 				chunkSize := int64(math.Min(float64(remaining), float64(CHUNK_SIZE)))
 				var bbuf bytes.Buffer
-				_, err := io.CopyN(bufio.NewWriter(&bbuf), dataReaders[i].reader, chunkSize)
+				bufWriter := bufio.NewWriter(&bbuf)
+				_, err := io.CopyN(bufWriter, dataReaders[i].reader, chunkSize)
 
 				if err != io.EOF && err != nil {
 					continue
 				}
+				bufWriter.Flush()
 
 			    shards[i] = bbuf.Bytes()
 			    sizeDone = len(shards[i])
-			    //fmt.Println(sizeDone)
 			    count ++
 			} else {
 				shards[i] = nil
@@ -150,16 +145,21 @@ func (enc *ReedsolomonStreamEncoder) DownloadAndDecode(filePath string, blobberL
 				return err
 			}
 		}
+		
+		joinSize := int(math.Min(float64(totalRemaining), float64(enc.datashards * sizeDone)))
 		//destBytes := make([]byte, count * sizeDone)
 		var bytesBuf bytes.Buffer
+		bufWriter := bufio.NewWriter(&bytesBuf)
 		// We don't know the exact filesize.
-		err = enc.encoder.Join(bufio.NewWriter(&bytesBuf), shards, enc.datashards * sizeDone)
+		err = enc.encoder.Join(bufWriter, shards, joinSize)
 		if(err != nil) {
 			fmt.Println("join failed")
 			return err
 		}
+		bufWriter.Flush()
 		writer.Write(bytesBuf.Bytes())
 		remaining = remaining - int64(sizeDone)
+		totalRemaining = int64(math.Abs(float64(totalRemaining - int64(enc.datashards * sizeDone))))
 	}
 
 	return nil

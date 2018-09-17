@@ -26,7 +26,26 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/upload/{allocation}", UploadHandler)
 	r.HandleFunc("/v1/file/download/{allocation}", DownloadHandler)
 	r.HandleFunc("/v1/file/meta/{allocation}", MetaHandler)
+	r.HandleFunc("/v1/file/list/{allocation}", ListHandler)
 	storageHandler = GetStorageHandler()
+}
+
+
+/*ListHandler is the handler to respond to list requests from clients*/
+func ListHandler(respW http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	respW.Header().Set("Content-Type", "application/json")
+	
+	response, err := storageHandler.ListEntities(r, vars["allocation"])
+	
+	if err != nil {
+		respW.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(respW).Encode(err)
+		return
+	}
+	json.NewEncoder(respW).Encode(response)
+	return
 }
 
 /*UploadHandler is the handler to respond to upload requests fro clients*/

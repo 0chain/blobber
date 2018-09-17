@@ -26,6 +26,16 @@ type DownloadResponse struct {
 	Path string
 }
 
+type ListResponseEntity struct {
+	Name string `json:"name"`
+	LookupHash string `"json:"lookup_hash"`
+	IsDir bool `json:"is_dir"`
+}
+
+type ListResponse struct {
+	ListEntries []ListResponseEntity `json:"entries"`
+}
+
 type MetaInfo struct {
 	Filename string `json:"filename"`
 	CustomMeta string `json:"custom_meta"`
@@ -43,6 +53,7 @@ type StorageHandler interface {
 	WriteFile(r *http.Request, allocationID string) (UploadResponse)
 	DownloadFile(r *http.Request, allocationID string) (*DownloadResponse, *common.Error)
 	GetFileMeta(r *http.Request, allocationID string) (*FileMeta, *common.Error)
+	ListEntities(r *http.Request, allocationID string) (*ListResponse, *common.Error)
 }
 
 //SHandler - Singleton for the storage handler

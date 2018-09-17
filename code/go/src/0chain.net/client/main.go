@@ -18,7 +18,7 @@ func main() {
 	enc.AddBlobber("http://localhost:5050", "36f028580bb02cc8272a9a020f4200e346e276ae664e45ee80745574e2f5ab80", "36f028580bb02cc8272a9a020f4200e346e276ae664e45ee80745574e2f5ab80")
 
 	//err:=enc.EncodeAndUpload(fname)
-	err:=enc.DownloadAndDecode("/" + fname)
+	err:=enc.DownloadAndDecode("/" + fname, "big_result.txt")
 
 	checkErr(err)	
 

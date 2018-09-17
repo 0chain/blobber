@@ -19,4 +19,7 @@ type Blobber struct {
 	UploadURL string
 	MetaURL string
 	DownloadURL string
+	ListURL string
 }
+
+
