@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"fmt"
+	"bufio"
 	"io"
 	"encoding/json"
 	"bytes"
@@ -36,16 +37,20 @@ type PartMeta struct {
 }
 
 type ReedsolomonStreamEncoder struct {
-	encoder reedsolomon.StreamEncoder
+	encoder reedsolomon.Encoder
 	datashards int
 	parityshards int
-	wg sync.WaitGroup
 }
 
 type downloadResult struct {
 	contentHash string
 	reader io.ReadCloser
 	partNum int
+}
+
+type channelResult struct {
+	done bool
+	err error
 }
 
 const CHUNK_SIZE = 64 * 1024
@@ -77,66 +82,91 @@ func (enc *ReedsolomonStreamEncoder) DownloadAndDecode(filePath string, blobberL
 	}
 
 	ch := make(chan *downloadResult, len(metaArray))
-	//var wg sync.WaitGroup
-	//wg.Add(len(metaArray))
+	var wg sync.WaitGroup
+	wg.Add(len(metaArray))
 
 	for i:= range metaArray {
-		go enc.downloadPart(filePath, blobberList[i%len(blobberList)].DownloadURL, metaArray[i], ch)
+		go enc.downloadPart(filePath, blobberList[i%len(blobberList)].DownloadURL, metaArray[i], ch, &wg)
 	}
+
+	wg.Wait()
 	
-	shards := make([]io.Reader, enc.datashards+enc.parityshards)
-	//inputReader := make([]io.Reader, enc.datashards+enc.parityshards)
+	chanSize := enc.datashards + enc.parityshards
+	
+	dataReaders := make([]*downloadResult, chanSize)
 	for range metaArray {
-		//go enc.createFile("big.txt", ch, &wg)
 		result := <- ch
-		
-		//pr, pw := io.Pipe()
-		//tr := io.TeeReader(result.reader, pw)
+
 		if(result.reader != nil) {
-			shards[result.partNum] = result.reader
+			defer result.reader.Close()
+			fmt.Println("download result ", result.partNum)
+			dataReaders[result.partNum] = result 
 		} else {
-			shards[result.partNum] = nil
+			fmt.Println("not found download result ", result.partNum)
+			dataReaders[result.partNum] = nil
+		}
+	}
+
+	perShard := (actualSize + int64(enc.datashards) - 1) / int64(enc.datashards)
+	remaining := perShard
+
+	for remaining > 0 {
+		shards := make([][]byte, chanSize)
+		sizeDone := 0
+		count := 0
+		for i := range dataReaders {
+			if(dataReaders[i] != nil) {
+				chunkSize := int64(math.Min(float64(remaining), float64(CHUNK_SIZE)))
+				var bbuf bytes.Buffer
+				_, err := io.CopyN(bufio.NewWriter(&bbuf), dataReaders[i].reader, chunkSize)
+
+				if err != io.EOF && err != nil {
+					continue
+				}
+
+			    shards[i] = bbuf.Bytes()
+			    sizeDone = len(shards[i])
+			    //fmt.Println(sizeDone)
+			    count ++
+			} else {
+				shards[i] = nil
+			}
 		}
 		
-		//inputReader[result.partNum] = pr 
-
-		defer result.reader.Close()
+		// Verify the shards
+		ok, err := enc.encoder.Verify(shards)
+		if ok {
+			fmt.Println("No reconstruction needed")
+		} else {
+			fmt.Println("Verification failed. Reconstructing data")
+			err = enc.encoder.Reconstruct(shards)
+			if err != nil {
+				fmt.Println("Reconstruct failed -", err)
+				return err
+			}
+			ok, err = enc.encoder.Verify(shards)
+			if !ok {
+				fmt.Println("Verification failed after reconstruction, data likely corrupted.")
+				return err
+			}
+		}
+		//destBytes := make([]byte, count * sizeDone)
+		var bytesBuf bytes.Buffer
+		// We don't know the exact filesize.
+		err = enc.encoder.Join(bufio.NewWriter(&bytesBuf), shards, enc.datashards * sizeDone)
+		if(err != nil) {
+			fmt.Println("join failed")
+			return err
+		}
+		writer.Write(bytesBuf.Bytes())
+		remaining = remaining - int64(sizeDone)
 	}
-	//wg.Wait()
 
-	// Verify the shards
-	// ok, err := enc.encoder.Verify(shards)
-
-	// if ok {
-	// 	fmt.Println("No reconstruction needed")
-	// } else {
-	// 	fmt.Println("Verification required")
-	// 	return err
-	// }
-	// fmt.Println(len(shards))
-	// We don't know the exact filesize.
-	err := enc.Join(writer, shards, actualSize)
-
-	return err
+	return nil
 }
 
-func (enc *ReedsolomonStreamEncoder) createFile(filename string, ch <-chan *downloadResult, wg *sync.WaitGroup) {
+func (enc *ReedsolomonStreamEncoder) downloadPart(filePath string, baseURL string, metaInfo MetaInfo, ch chan<- *downloadResult, wg *sync.WaitGroup) {
 	defer wg.Done()
-	result := <- ch
-	destfilename := fmt.Sprintf("%s.%d", "big.txt", result.partNum)
-	fmt.Println("file to be created" , destfilename)
-	f, _ := os.Create(destfilename)
- 	
-	//checkErr(err)
-	// copy from reader data into writer file
-	io.Copy(f,result.reader)
-	
-	fmt.Println("file created" , destfilename)
-	f.Close()
-	//result.reader.Close()
-}
-
-func (enc *ReedsolomonStreamEncoder) downloadPart(filePath string, baseURL string, metaInfo MetaInfo, ch chan<- *downloadResult) {
 	u, _ := url.Parse(baseURL)
 	q := u.Query()
 	dirPath, filename := filepath.Split(filePath)
@@ -147,11 +177,14 @@ func (enc *ReedsolomonStreamEncoder) downloadPart(filePath string, baseURL strin
 	fmt.Println(u.String())
 	
 	response, err := http.Get(u.String())
-    if err != nil || response.StatusCode < 200 || response.StatusCode > 299 {
+	//var reader io.ReadCloser
+	//reader = response.Body
+    if err != nil || response.StatusCode < 200 || response.StatusCode > 299 || response.ContentLength != metaInfo.Size {
         ch <- &downloadResult{contentHash: metaInfo.ContentHash, reader: nil, partNum : metaInfo.customMetaPartInfo.Partnum}
     } else {
         ch <- &downloadResult{contentHash: metaInfo.ContentHash, reader: response.Body, partNum : metaInfo.customMetaPartInfo.Partnum}
     }
+    
     return
 }
 
@@ -180,22 +213,25 @@ func (enc *ReedsolomonStreamEncoder) getPartMeta(filePath string, baseURL string
 }
 
 
-func(enc *ReedsolomonStreamEncoder) uploadFile(filename string, url string, reader io.Reader, wg *sync.WaitGroup, meta []byte) error {
+func(enc *ReedsolomonStreamEncoder) uploadFile(filename string, url string, dataChannel chan []byte, stopChannel chan bool, size int64, meta []byte, wg *sync.WaitGroup) {
 	defer wg.Done()
 	bodyReader, bodyWriter := io.Pipe()
 	multiWriter := multipart.NewWriter(bodyWriter)
 	go func() {
+		//fmt.Println("here");
 		fileWriter, err := multiWriter.CreateFormFile("uploadFile", filename)
 		if err != nil {
 			bodyWriter.CloseWithError(err)
 			return
 		}
 
-		//iocopy
-		_, err = io.Copy(fileWriter, reader)
-		if err != nil {
-			bodyWriter.CloseWithError(err)
-			return
+		perShard := (size + int64(enc.datashards) - 1) / int64(enc.datashards)
+		remaining := perShard
+
+		for remaining > 0 {
+			dataBytes := <-dataChannel
+			fileWriter.Write(dataBytes)	
+			remaining = remaining - int64(len(dataBytes))
 		}
 
 		// Create a form field writer for field label
@@ -213,97 +249,22 @@ func(enc *ReedsolomonStreamEncoder) uploadFile(filename string, url string, read
 	resp, err := http.Post(url, contentType, bodyReader)
 	fmt.Println("url", url)
 	if err != nil {
-		return err
+		return
 	}
 	defer resp.Body.Close()
 	resp_body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return
 
 	}
 	fmt.Println("resp", string(resp_body))
-	return nil
+	return 
 }
 
 
-func (enc *ReedsolomonStreamEncoder) Split(data io.Reader, dst []io.Writer, size int64) error {
-	if size == 0 {
-		return reedsolomon.ErrShortData
-	}
-	if len(dst) != enc.datashards {
-		return reedsolomon.ErrInvShardNum
-	}
-
-	for i := range dst {
-		if dst[i] == nil {
-			return reedsolomon.StreamWriteError{Err: reedsolomon.ErrShardNoData, Stream: i}
-		}
-	}
-
-	// Calculate number of bytes per shard.
-	perShard := (size + int64(enc.datashards) - 1) / int64(enc.datashards)
-
-	// Pad data to r.Shards*perShard.
-	padding := make([]byte, (int64(enc.datashards)*perShard)-size)
-	data = io.MultiReader(data, bytes.NewBuffer(padding))
-
-	chunksPerShard := (perShard + int64(CHUNK_SIZE) - 1) / CHUNK_SIZE
-	ctr := int64(0)
-	for ctr < chunksPerShard {
-		remaining := int64(math.Min(float64(perShard - (ctr * CHUNK_SIZE)), CHUNK_SIZE))
-		// Split into equal-length shards and copy.
-		for i := range dst {
-			_, err := io.CopyN(dst[i], data, remaining)
-			if err != io.EOF && err != nil {
-				return err
-			}
-		}
-		ctr++
-	}
-
-	return nil
-}
-
-func (enc *ReedsolomonStreamEncoder) Join(dst io.Writer, shards []io.Reader, outSize int64) error {
-	// Do we have enough shards?
-	if len(shards) < enc.datashards {
-		fmt.Println("Too few shards");
-		return reedsolomon.ErrTooFewShards
-	}
-
-	// Trim off parity shards if any
-	shards = shards[:enc.datashards]
-	for i := range shards {
-		if shards[i] == nil {
-			return reedsolomon.StreamReadError{Err: reedsolomon.ErrShardNoData, Stream: i}
-		}
-	}
-	// Calculate number of bytes per shard.
-	perShard := (outSize + int64(enc.datashards) - 1) / int64(enc.datashards)
-
-	// Pad data to r.Shards*perShard.
-	padding := (int64(enc.datashards)*perShard)-outSize
-	chunksPerShard := (perShard + int64(CHUNK_SIZE) - 1) / CHUNK_SIZE
-	ctr := int64(0)
-	for ctr < chunksPerShard {
-		remaining := int64(math.Min(float64(perShard - (ctr * CHUNK_SIZE)), CHUNK_SIZE))
-		// Split into equal-length shards and copy.
-		for i := range shards {
-			if(ctr + 1 == chunksPerShard && i + 1 == len(shards)){
-				remaining = remaining - padding
-			}
-			_, err := io.CopyN(dst, shards[i], remaining)
-			if err != io.EOF && err != nil {
-				return err
-			}
-		}
-		ctr++
-	}
-	return nil
-}
 
 func(enc *ReedsolomonStreamEncoder) Init (dataShards int, parityShards int) (error) {
-	encoder, err := reedsolomon.NewStreamC(dataShards, parityShards, true, true)
+	encoder, err := reedsolomon.New(dataShards, parityShards)
 	if(err != nil) {
 		return err
 	}
@@ -313,6 +274,52 @@ func(enc *ReedsolomonStreamEncoder) Init (dataShards int, parityShards int) (err
 	enc.parityshards = parityShards
 
 	return nil
+}
+
+func (enc *ReedsolomonStreamEncoder) readFile (inputfile io.Reader, dataChannels []chan []byte, stopChannel chan bool, size int64) {
+	
+	
+	// Calculate number of bytes per shard.
+	perShard := (size + int64(enc.datashards) - 1) / int64(enc.datashards)
+
+	// Pad data to r.Shards*perShard.
+	padding := make([]byte, (int64(enc.datashards)*perShard)-size)
+	dataReader := io.MultiReader(inputfile, bytes.NewBuffer(padding))
+
+	chunksPerShard := (perShard + int64(CHUNK_SIZE) - 1) / CHUNK_SIZE
+	
+	for ctr:= int64(0); ctr < chunksPerShard; ctr++ {
+		
+		remaining := int64(math.Min(float64(perShard - (ctr * CHUNK_SIZE)), CHUNK_SIZE))
+		//fmt.Println(remaining)
+		
+		b1 := make([]byte, remaining * int64(enc.datashards))
+
+		_, err := dataReader.Read(b1)
+
+		if(err != nil) {
+			fmt.Println("reading failed")
+			stopChannel <- true
+			return
+		}
+		
+		data, err := enc.encoder.Split(b1)
+		if(err != nil) {
+			fmt.Println("split failed", err)
+			stopChannel <- true
+			return
+		}
+		err = enc.encoder.Encode(data)
+		if(err != nil) {
+			fmt.Println("encode failed", err)
+			stopChannel <- true
+			return
+		}
+		for i := range data {
+			dataChannels[i] <- data[i]
+		}
+	}
+	return
 }
 
 func (enc *ReedsolomonStreamEncoder) EncodeAndUpload (filePath string, blobberList []Blobber) (error){
@@ -325,84 +332,34 @@ func (enc *ReedsolomonStreamEncoder) EncodeAndUpload (filePath string, blobberLi
 	if(err !=nil) {
 		return err
 	}
-	wg := enc.wg
-	wg.Add(enc.datashards + enc.parityshards + 2)
 
-	fileout := make([]io.Writer, enc.datashards)
-	httpout := make([]io.Writer, enc.datashards)
-	allout := make([]io.Writer, enc.datashards)
+	chanSize := enc.datashards + enc.parityshards
 
-	filein := make([]io.Reader, enc.datashards)
+	dataChannels := make([]chan []byte, chanSize)
+	var stopChannel chan bool
+	for i := range dataChannels {
+	   dataChannels[i] = make(chan []byte)
+	}
+	size := inputstat.Size()
+	go enc.readFile(inputfile, dataChannels, stopChannel, size)
+
+	var wg sync.WaitGroup
+	wg.Add(chanSize)
+
 	filename := filepath.Base(filePath)
-	for i := range allout {
+
+	for i:=0; i < chanSize; i++ {
 		var meta PartMeta
 		meta.Partnum = i
-		meta.Filesize = inputstat.Size()
+		meta.Filesize = size
 
 		metaBytes,err := json.Marshal(meta)
-		if(err!=nil) {
-			return err
-		}
-
-
-		pr, pw := io.Pipe()
-		npr, npw := io.Pipe()
-
-		fileout[i] = pw
-		httpout[i] = npw
-		allout[i] = io.MultiWriter(pw, npw)
-		filein[i] = pr
-
 		if(err!=nil) {
 			return err
 		}
 		blobberindex := i % len(blobberList)
-		
-		go enc.uploadFile(filename,blobberList[blobberindex].UploadURL, npr, &wg, metaBytes)
+		go enc.uploadFile(filename, blobberList[blobberindex].UploadURL, dataChannels[i], stopChannel, size, metaBytes, &wg)
 	}
-
-	// Create parity output writers
-	parity := make([]io.Writer, enc.parityshards)
-	for i := range parity {
-		pr, pw := io.Pipe()
-		parity[i] = pw
-		var meta PartMeta
-		meta.Partnum = enc.datashards+i
-		meta.Filesize = inputstat.Size()
-
-		metaBytes,err := json.Marshal(meta)
-		if(err!=nil) {
-			return err
-		}
-		blobberindex := (enc.datashards+i) % len(blobberList)
-		go enc.uploadFile(filename,blobberList[blobberindex].UploadURL, pr, &wg, metaBytes)
-
-	}
-
-	go func() {
-		defer wg.Done()
-		// Encode parity
-		err = enc.encoder.Encode(filein, parity)
-		if(err!=nil) {
-			return
-		}
-		for i:= range parity {
-			parity[i].(*io.PipeWriter).Close()
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		// Do the split
-		err = enc.Split(inputfile, allout, inputstat.Size())
-		if(err!=nil) {
-			return
-		}
-		for i := range allout {
-			httpout[i].(*io.PipeWriter).Close()
-			fileout[i].(*io.PipeWriter).Close()
-		}
-	}()
 
 	wg.Wait()
 	return nil
