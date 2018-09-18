@@ -84,8 +84,6 @@ func (fsh *ObjectStorageHandler) setupAllocation(allocationID string) (*Allocati
 	}
 
 	allocation.RootReferenceObject = *root_ref
-	Logger.Info("", zap.Any("ref.Version", root_ref.Header.Version))
-	Logger.Info("", zap.Any("ref.Type", root_ref.Header.ReferenceType))
 	return allocation, nil
 }
 
@@ -94,11 +92,11 @@ func (fsh *ObjectStorageHandler) setupAllocation(allocationID string) (*Allocati
 func (fsh *ObjectStorageHandler) generateTransactionPath(transID string) string{
 
 	var dir bytes.Buffer
-	fmt.Fprintf(&dir, "%s%s", fsh.RootDirectory, string(os.PathSeparator))
+	fmt.Fprintf(&dir, "%s%s", fsh.RootDirectory, OSPathSeperator)
 	for i := 0; i < 3; i++ {
-		fmt.Fprintf(&dir, "%s%s", string(os.PathSeparator), transID[3*i:3*i+3])
+		fmt.Fprintf(&dir, "%s%s", OSPathSeperator, transID[3*i:3*i+3])
 	}
-	fmt.Fprintf(&dir, "%s%s", string(os.PathSeparator), transID[9:])
+	fmt.Fprintf(&dir, "%s%s", OSPathSeperator, transID[9:])
 	return dir.String()
 }
 

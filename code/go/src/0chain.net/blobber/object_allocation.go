@@ -162,7 +162,6 @@ func (allocation * Allocation) getReferenceObject(relativePath string, filename 
 		r:= bufio.NewReader(fh)
 		header,_ := r.ReadString('\n')
 		header = strings.TrimSuffix(header, "\n")
-		Logger.Info("", zap.Any("header", header))
 		refObject.LoadHeader(strings.Split(header, ","))
 		isNew = false
     }
@@ -193,7 +192,6 @@ func (allocation *Allocation) writeFileAndCalculateHash(parentRef *ReferenceObje
         return nil, common.NewError("file_write_error", err.Error())
     }
     blobObject.Hash = hex.EncodeToString(h.Sum(nil))
-    Logger.Info("blob_hash", zap.Any("blob_hash", blobObject.Hash))
 
     //move file from tmp location to the objects folder
     dirPath, destFile := getFilePathFromHash(blobObject.Hash)
@@ -280,7 +278,7 @@ func (refObject *ReferenceObject) LoadReferenceEntries() (error){
 
 		refObject.RefEntries = append(refObject.RefEntries, u)
 	}
-	Logger.Info("ref_entries", zap.Any("ref_entries", len(refObject.RefEntries)))
+	
 
 	return nil
 }

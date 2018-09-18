@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"net/http"
 	"encoding/json"
+	"fmt"
 	storagesdk "0chain.net/encoder"
 )
 
@@ -63,15 +64,14 @@ func (enc *StorageErasureEncoder) DownloadAndDecode(filepath string, destFilePat
 
 func (enc *StorageErasureEncoder) ListEntities(filepath string) ([]byte, error) {
 	//return enc.encoder.ListEntities(filepath, enc.blobberList)
+	listEntryMap = make(map[string]listResponseEntity)
 	listEntries := make([]listResponseEntity, 0)
 	for i:= range enc.blobberList {
 		u, _ := url.Parse(enc.blobberList[i].ListURL)
 		q := u.Query()
 		q.Set("path", filepath)
 		u.RawQuery = q.Encode()
-		
 		var listResponseObj listResponse
-		listResponseObj.ListEntries = listEntries
 		response, err := http.Get(u.String())
 	    if err != nil {
 	        return nil, err
@@ -82,9 +82,17 @@ func (enc *StorageErasureEncoder) ListEntities(filepath string) ([]byte, error) 
 	        if(err != nil) {
 	        	return nil, err
 	        }
-	        
+	        for j:= range listResponseObj.ListEntries {
+	        	key := listResponseObj.ListEntries[j].LookupHash
+	        	_, ok := listEntryMap[key]
+	        	if(!ok) {
+	        		listEntryMap[key] = listResponseObj.ListEntries[j]
+	        		listEntries = append(listEntries, listResponseObj.ListEntries[j])
+	        	}
+	        }
 	    }
 	}
-	return nil, nil
+	retBytes, err := json.Marshal(listEntries)
+	return retBytes, err
 
 }
