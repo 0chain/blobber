@@ -1,3 +1,3 @@
 #!/bin/sh
 
-BLOBBER=$BLOBBER_ID docker-compose -p blobber$BLOBBER_ID -f ../docker-compose.yml exec $SERVICE $CMD $*
+BLOBBER=$i docker-compose -p blobber$i -f ../docker-compose.yml exec $SERVICE $CMD $*
