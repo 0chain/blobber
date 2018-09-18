@@ -36,7 +36,7 @@ $ ./docker.local/bin/build.blobber.sh
 ```
 2) After building the container for blobber, go to Blobber1 directory (git/blobber/docker.local/blobber1) and run the container using
 ```
-$ ./docker.local/bin/blobber.start.sh
+$ ../bin/blobber.start.sh
 ```
 
 ## Troubleshooting
@@ -61,7 +61,7 @@ $ docker system prune
 $ docker system prune -a
 ```
 
-3)Stop All Containers
+3) Stop All Containers
 ```
 docker stop $(docker ps -a -q)
 ```
