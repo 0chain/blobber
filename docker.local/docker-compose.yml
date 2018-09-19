@@ -9,6 +9,7 @@ services:
       dockerfile: ./docker.local/Dockerfile
     volumes:
      - ./config:/blobber/config
+     - ./blobber${BLOBBER}/files:/blobber/files
     ports:
      - "505${BLOBBER}:505${BLOBBER}"
     networks:
