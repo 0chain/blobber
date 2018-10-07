@@ -68,7 +68,6 @@ func main() {
 
 	common.SetupRootContext(node.GetNodeContext())
 	//ctx := common.GetRootContext()
-	initEntities()
 	serverChain = chain.NewChainFromConfig()
 
 	if *nodesFile == "" {
@@ -93,6 +92,8 @@ func main() {
 	serverChain.Miners.ComputeProperties()
 	serverChain.Sharders.ComputeProperties()
 	serverChain.Blobbers.ComputeProperties()
+	// Initializa after serverchain is setup.
+	initEntities()
 	//miner.GetMinerChain().SetupGenesisBlock(viper.GetString("server_chain.genesis_block.id"))
 
 	mode := "main net"
@@ -126,7 +127,10 @@ func main() {
 
 	initHandlers(r)
 	initServer()
-	
+
+	// Now register blobber to chain
+	go blobber.GetProtocolImpl().Register()
+
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()
 	log.Fatal(server.ListenAndServe())

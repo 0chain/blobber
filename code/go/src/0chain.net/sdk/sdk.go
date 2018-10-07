@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"net/http"
 	"encoding/json"
-	"fmt"
 	storagesdk "0chain.net/encoder"
 )
 
@@ -64,7 +63,7 @@ func (enc *StorageErasureEncoder) DownloadAndDecode(filepath string, destFilePat
 
 func (enc *StorageErasureEncoder) ListEntities(filepath string) ([]byte, error) {
 	//return enc.encoder.ListEntities(filepath, enc.blobberList)
-	listEntryMap = make(map[string]listResponseEntity)
+	listEntryMap := make(map[string]listResponseEntity)
 	listEntries := make([]listResponseEntity, 0)
 	for i:= range enc.blobberList {
 		u, _ := url.Parse(enc.blobberList[i].ListURL)
