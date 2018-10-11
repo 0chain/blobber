@@ -76,11 +76,12 @@ func (sp *StorageProtocolImpl) Register() {
 		}
 		txn.Data = fmt.Sprintf("{\"name\":\"add_blobber\",\"input\":{\"id\":\"%v\",\"url\":\"%v\"", node.Self.GetKey(),node.Self.GetURLBase())
 		hashdata := fmt.Sprintf("%v:%v:%v:%v:%v", txn.CreationDate, txn.ClientID, 
-					txn.ToClientID, txn.Value, encryption.Hash(string(txn.Data)))
+					txn.ToClientID, txn.Value, encryption.Hash(txn.Data))
+		txn.Hash = encryption.Hash(hashdata)
 		var err error
-		txn.Signature, err = node.Self.Sign(hashdata)
+		txn.Signature, err = node.Self.Sign(txn.Hash)
 		if (err != nil) {
-			Logger.Info("Signing Failed")
+			Logger.Info("Signing Failed",zap.String("err:", err.Error()))
 		}
 		// Get miners
 		miners := sp.ServerChain.Miners.GetRandomNodes(sp.ServerChain.Miners.Size())
@@ -132,10 +133,8 @@ func sendTransaction(url string, txn transaction.Transaction) {
 
 	if (err == nil) {
 		defer resp.Body.Close()
-		fmt.Println("response Status:", resp.Status)
-		fmt.Println("response Headers:", resp.Header)
 		body, _ := ioutil.ReadAll(resp.Body)
-		fmt.Println("response Body:", string(body))			
+		fmt.Println("response Status:", resp.Status, "Body:", string(body))			
 		return
 	}
 	Logger.Error("Failed after ", zap.Int("retried", MAX_REGISTRATION_RETRIES))
