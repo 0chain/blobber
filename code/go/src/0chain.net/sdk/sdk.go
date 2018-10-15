@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-
 	storagesdk "0chain.net/encoder"
 )
 

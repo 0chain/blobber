@@ -4,6 +4,8 @@ import (
 	"0chain.net/common"
 )
 
+const TRANSACTION_VERION 	=	"1.0"
+
 //Transaction entity that encapsulates the transaction related data and meta data
 type Transaction struct {
 	Hash            string           `json:"hash,omitempty"`
