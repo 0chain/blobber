@@ -15,8 +15,8 @@ type SelfNode struct {
 
 /*SetKeys - setter */
 func (sn *SelfNode) SetKeys(publicKey string, privateKey string) {
-	sn.PublicKey = publicKey
 	sn.privateKey = privateKey
+	sn.SetPublicKey(publicKey)
 }
 
 /*Sign - sign the given hash */
