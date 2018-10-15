@@ -20,10 +20,13 @@ import (
 	. "0chain.net/logging"
 	"0chain.net/node"
 	"0chain.net/writemarker"
+	"github.com/blobber/code/go/src/0chain.net/datastore"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
+
+const BLOBBER_REGISTERED_LOOKUP_KEY = datastore.ToKey("blobber_registration")
 
 var startTime time.Time
 var serverChain *chain.Chain
@@ -171,12 +174,25 @@ func main() {
 	initHandlers(r)
 	initServer()
 
-	// Now register blobber to chain
-	go blobber.GetProtocolImpl("", "", "", nil).RegisterBlobber()
-
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()
 	log.Fatal(server.ListenAndServe())
+}
+
+func RegisterBlobber() {
+
+	txnHash, err := blobber.GetProtocolImpl("", "", "", nil).RegisterBlobber()
+	if err == nil {
+		badgerdbstore.GetStorageProvider().WriteBytes(common.GetRootContext(), BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
+	}
+}
+
+func SetupBlobberOnBC() {
+	_, err := badgerdbstore.GetStorageProvider().ReadBytes(common.GetRootContext(), BLOBBER_REGISTERED_LOOKUP_KEY)
+	if err != nil {
+		// Now register blobber to chain
+		go RegisterBlobber()
+	}
 }
 
 /*HomePageHandler - provides basic info when accessing the home page of the server */

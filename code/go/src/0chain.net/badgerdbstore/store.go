@@ -14,8 +14,8 @@ var storageAPI *Store
 func SetupStorageProvider() {
 	storageAPI = &Store{}
 	opts := badger.DefaultOptions
-	opts.Dir = "/tmp/badger"
-	opts.ValueDir = "/tmp/badger"
+	opts.Dir = "data/badgerdb/blobberstate"
+	opts.ValueDir = "data/badgerdb/blobberstate"
 	db, err := badger.Open(opts)
 	if err != nil {
 		panic(err)
@@ -55,6 +55,28 @@ func (ps *Store) Read(ctx context.Context, key datastore.Key, entity datastore.E
 	return err
 }
 
+/*ReadBytes - reads a key from the store */
+func (ps *Store) ReadBytes(ctx context.Context, key datastore.Key) ([]byte, error) {
+	resultBytes := make([]byte, 0)
+	err := ps.DB.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(key))
+		if err != nil {
+			return err
+		}
+		resultBytes, err = item.ValueCopy(nil)
+		if err != nil {
+			return nil
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resultBytes, err
+}
+
 /*Write - write an entity to the store */
 func (ps *Store) Write(ctx context.Context, entity datastore.Entity) error {
 	// Start a writable transaction.
@@ -69,6 +91,24 @@ func (ps *Store) Write(ctx context.Context, entity datastore.Entity) error {
 	}
 
 	err = txn.Set([]byte(entity.GetKey()), b.Bytes())
+	if err != nil {
+		return err
+	}
+
+	// Commit the transaction and check for error.
+	if err := txn.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+/*WriteBytes - write bytes to the store */
+func (ps *Store) WriteBytes(ctx context.Context, key datastore.Key, value []byte) error {
+	// Start a writable transaction.
+	txn := ps.DB.NewTransaction(true)
+	defer txn.Discard()
+
+	err := txn.Set([]byte(key), value)
 	if err != nil {
 		return err
 	}

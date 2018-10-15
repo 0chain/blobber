@@ -20,7 +20,7 @@ import (
 
 //StorageProtocol - interface for the storage protocol
 type StorageProtocol interface {
-	RegisterBlobber() error
+	RegisterBlobber() (string, error)
 	VerifyAllocationTransaction()
 	VerifyBlobberTransaction()
 	VerifyMarker() error
@@ -45,7 +45,7 @@ func GetProtocolImpl(allocationID string, intentTxn string, dataID string, wm *w
 		WriteMarker:  wm}
 }
 
-func (sp *StorageProtocolImpl) RegisterBlobber() error {
+func (sp *StorageProtocolImpl) RegisterBlobber() (string, error) {
 	txn := transaction.NewTransactionEntity()
 
 	sn := &transaction.StorageNode{}
@@ -61,14 +61,14 @@ func (sp *StorageProtocolImpl) RegisterBlobber() error {
 	txn.TransactionType = transaction.TxnTypeSmartContract
 	txnBytes, err := json.Marshal(scData)
 	if err != nil {
-		return err
+		return "", err
 	}
 	txn.TransactionData = string(txnBytes)
 
 	err = txn.ComputeHashAndSign()
 	if err != nil {
 		Logger.Info("Signing Failed during registering blobber to the mining network", zap.String("err:", err.Error()))
-		return err
+		return "", err
 	}
 	// Get miners
 	miners := sp.ServerChain.Miners.GetRandomNodes(sp.ServerChain.Miners.Size())
@@ -76,7 +76,7 @@ func (sp *StorageProtocolImpl) RegisterBlobber() error {
 		url := fmt.Sprintf("%v/%v", miner.GetURLBase(), transaction.TXN_SUBMIT_URL)
 		go sendTransaction(url, txn)
 	}
-	return nil
+	return txn.Hash, nil
 }
 
 func (sp *StorageProtocolImpl) VerifyAllocationTransaction() {

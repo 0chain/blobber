@@ -12,6 +12,8 @@ type Store interface {
 	Read(ctx context.Context, key Key, entity Entity) error
 	Write(ctx context.Context, entity Entity) error
 	Delete(ctx context.Context, entity Entity) error
+	ReadBytes(ctx context.Context, key Key) ([]byte, error)
+	WriteBytes(ctx context.Context, key Key, value []byte) error
 
 	MultiRead(ctx context.Context, entityMetadata EntityMetadata, keys []Key, entities []Entity) error
 	MultiWrite(ctx context.Context, entityMetadata EntityMetadata, entities []Entity) error
