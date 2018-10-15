@@ -55,6 +55,7 @@ type Node struct {
 	Host           string
 	Port           int
 	Type           int
+	Description    string
 }
 
 /*Provider - create a node object */

@@ -4,7 +4,6 @@
 
 - [Initial Setup](#initial-setup)
 	- [Directory Setup for Blobbers](#directory-setup-for-blobbers)
-	- [Setup Network](#setup-network)
 - [Building and Starting the Blobber](#building-and-starting-the-nodes)
 - [Troubleshooting](#troubleshooting)
 - [Miscellaneous](#miscellaneous)
@@ -18,13 +17,6 @@
 In the git/blobber run the following command
 ```
 $ ./docker.local/bin/blobber.init.setup.sh
-```
-
-### Setup Network
-
-Setup a network called as testnetblobber0 for all node containers to talk to each other
-```
-$ ./docker.local/bin/setup_network.sh
 ```
 
 ## Building and Starting the Nodes

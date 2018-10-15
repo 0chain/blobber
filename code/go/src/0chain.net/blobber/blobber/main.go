@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"0chain.net/badgerdbstore"
@@ -44,15 +45,44 @@ func initServer() {
 
 }
 
+func processBlockChainConfig(nodesFileName string) {
+	nodeConfig := viper.New()
+	nodeConfig.AddConfigPath("./config")
+	nodeConfig.SetConfigName(nodesFileName)
+
+	err := nodeConfig.ReadInConfig()
+	if err != nil {
+		panic(fmt.Errorf("fatal error config file: %s", err))
+	}
+	config := nodeConfig.Get("miners")
+	if miners, ok := config.([]interface{}); ok {
+		serverChain.Miners.AddNodes(miners)
+	}
+	config = nodeConfig.Get("sharders")
+	if sharders, ok := config.([]interface{}); ok {
+		serverChain.Sharders.AddNodes(sharders)
+	}
+	config = nodeConfig.Get("blobbers")
+	//There shoud be none. Remove it.
+	if blobbers, ok := config.([]interface{}); ok {
+
+		serverChain.Blobbers.AddNodes(blobbers)
+	}
+}
+
 func main() {
 	deploymentMode := flag.Int("deployment_mode", 2, "deployment_mode")
-	nodesFile := flag.String("nodes_file", "config/single_node.txt", "nodes_file")
-	keysFile := flag.String("keys_file", "config/single_node_miner_keys.txt", "keys_file")
+	nodesFile := flag.String("nodes_file", "", "nodes_file")
+	keysFile := flag.String("keys_file", "", "keys_file")
 	maxDelay := flag.Int("max_delay", 0, "max_delay")
+
 	flag.Parse()
+
 	config.Configuration.DeploymentMode = byte(*deploymentMode)
 	viper.SetDefault("logging.level", "info")
+
 	config.SetupConfig()
+
 	if config.Development() {
 		logging.InitLogging("development")
 	} else {
@@ -65,7 +95,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	publicKey, privateKey := encryption.ReadKeys(reader)
+	clientId := encryption.Hash(publicKey)
+	Logger.Info("The client ID = " + clientId)
 	node.Self.SetKeys(publicKey, privateKey)
 	reader.Close()
 	config.SetServerChainID(config.Configuration.ChainID)
@@ -78,12 +111,19 @@ func main() {
 	if *nodesFile == "" {
 		panic("Please specify --nodes_file file.txt option with a file.txt containing nodes including self")
 	}
-	reader, err = os.Open(*nodesFile)
-	if err != nil {
-		log.Fatalf("%v", err)
+
+	if strings.HasSuffix(*nodesFile, "txt") {
+		reader, err = os.Open(*nodesFile)
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+
+		node.ReadNodes(reader, serverChain.Miners, serverChain.Sharders, serverChain.Blobbers)
+		reader.Close()
+	} else { //assumption it has yaml extension
+		processBlockChainConfig(*nodesFile)
 	}
-	node.ReadNodes(reader, serverChain.Miners, serverChain.Sharders, serverChain.Blobbers)
-	reader.Close()
+
 	if node.Self.ID == "" {
 		Logger.Panic("node definition for self node doesn't exist")
 	} else {
