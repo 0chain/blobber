@@ -1,26 +1,29 @@
 package blobber
 
 import (
-	
+	"encoding/json"
+
+	"0chain.net/writemarker"
+
 	"net/http"
 	"os"
-	
-	"fmt"
+
 	"bytes"
-	
+	"fmt"
+
 	"errors"
+
+	"path/filepath"
 
 	. "0chain.net/logging"
 	"go.uber.org/zap"
-	"path/filepath"
 
 	"0chain.net/common"
 	"0chain.net/util"
-	
-	"strconv"
-	"sync"
-	"strings"
 
+	"strconv"
+	"strings"
+	"sync"
 )
 
 //ObjectStorageHandler - implments the StorageHandler interface
@@ -29,18 +32,15 @@ type ObjectStorageHandler struct {
 }
 
 const (
-	OSPathSeperator string = string(os.PathSeparator)
-	RefsDirName = "refs"
-	ObjectsDirName = "objects"
-	TempObjectsDirName = "tmp"
-	CurrentVersion = "1.0"
-	FORM_FILE_PARSE_MAX_MEMORY = 10 * 1024 * 1024
+	OSPathSeperator            string = string(os.PathSeparator)
+	RefsDirName                       = "refs"
+	ObjectsDirName                    = "objects"
+	TempObjectsDirName                = "tmp"
+	CurrentVersion                    = "1.0"
+	FORM_FILE_PARSE_MAX_MEMORY        = 10 * 1024 * 1024
 )
 
 var mutex = &sync.Mutex{}
-
-
-
 
 /*SetupFSStorageHandler - Setup a file system based block storage */
 func SetupObjectStorageHandler(rootDir string) {
@@ -48,13 +48,13 @@ func SetupObjectStorageHandler(rootDir string) {
 	SHandler = &ObjectStorageHandler{RootDirectory: rootDir}
 }
 
-func (fsh *ObjectStorageHandler) setupAllocation(allocationID string) (*Allocation, error){
-	allocation:= &Allocation{ID: allocationID}
+func (fsh *ObjectStorageHandler) setupAllocation(allocationID string) (*Allocation, error) {
+	allocation := &Allocation{ID: allocationID}
 	allocation.Path = fsh.generateTransactionPath(allocationID)
 	allocation.RefsPath = fmt.Sprintf("%s%s%s", allocation.Path, OSPathSeperator, RefsDirName)
 	allocation.ObjectsPath = fmt.Sprintf("%s%s%s", allocation.Path, OSPathSeperator, ObjectsDirName)
 	allocation.TempObjectsPath = filepath.Join(allocation.ObjectsPath, TempObjectsDirName)
-	
+
 	//create the allocation object dirs
 	err := util.CreateDirs(allocation.ObjectsPath)
 	if err != nil {
@@ -76,9 +76,9 @@ func (fsh *ObjectStorageHandler) setupAllocation(allocationID string) (*Allocati
 		return nil, err
 	}
 
-	root_ref,_ := allocation.getReferenceObject(OSPathSeperator, OSPathSeperator, true, true)
+	root_ref, _ := allocation.getReferenceObject(OSPathSeperator, OSPathSeperator, true, true)
 
-	if(root_ref == nil) {
+	if root_ref == nil {
 		Logger.Info("allocation_refs_dir_creation_error", zap.Any("allocation_refs_dir_creation_error", err))
 		return nil, errors.New("error loading the reference for root directory")
 	}
@@ -87,9 +87,7 @@ func (fsh *ObjectStorageHandler) setupAllocation(allocationID string) (*Allocati
 	return allocation, nil
 }
 
-
-
-func (fsh *ObjectStorageHandler) generateTransactionPath(transID string) string{
+func (fsh *ObjectStorageHandler) generateTransactionPath(transID string) string {
 
 	var dir bytes.Buffer
 	fmt.Fprintf(&dir, "%s%s", fsh.RootDirectory, OSPathSeperator)
@@ -101,7 +99,7 @@ func (fsh *ObjectStorageHandler) generateTransactionPath(transID string) string{
 }
 
 func (fsh *ObjectStorageHandler) ListEntities(r *http.Request, allocationID string) (*ListResponse, *common.Error) {
-	if(r.Method == "POST") {
+	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used for downloading the file. Use GET instead")
 	}
 
@@ -115,28 +113,28 @@ func (fsh *ObjectStorageHandler) ListEntities(r *http.Request, allocationID stri
 
 	file_path, ok := r.URL.Query()["path"]
 	if !ok || len(file_path[0]) < 1 {
-        return nil, common.NewError("invalid_parameters", "path parameter not found")
-    }
-    filePath := file_path[0]
+		return nil, common.NewError("invalid_parameters", "path parameter not found")
+	}
+	filePath := file_path[0]
 
-    blobRefObject,_ := allocation.getReferenceObject(filePath, filePath, false, false)
+	blobRefObject, _ := allocation.getReferenceObject(filePath, filePath, false, false)
 	if blobRefObject == nil {
 		Logger.Info("", zap.Any("blob_error", "Error getting the blob reference"))
 		//return -1, common.NewError("allocation_setup_error", err.Error())
 		return nil, common.NewError("invalid_parameters", "Invalid path. Please check the parameters")
 	}
 
-	if(blobRefObject.Header.ReferenceType != DIRECTORY ) {
+	if blobRefObject.Header.ReferenceType != DIRECTORY {
 		return nil, common.NewError("invalid_parameters", "Requested object is not a directory. Cannot list on directories. Please check the parameters")
 	}
-	
+
 	blobRefObject.LoadReferenceEntries()
 
-	response:= &ListResponse{};
+	response := &ListResponse{}
 
 	//response.Name = blobRefObject.Hash
 	response.ListEntries = make([]ListResponseEntity, 0)
-	for i:= range blobRefObject.RefEntries {
+	for i := range blobRefObject.RefEntries {
 		var listEntry ListResponseEntity
 		// Filename string `json:"filename"`
 		// CustomMeta string `json:"custom_meta"`
@@ -145,7 +143,7 @@ func (fsh *ObjectStorageHandler) ListEntities(r *http.Request, allocationID stri
 		listEntry.Name = blobRefObject.RefEntries[i].Name
 		listEntry.LookupHash = blobRefObject.RefEntries[i].LookupHash
 		if blobRefObject.RefEntries[i].ReferenceType == DIRECTORY {
-			listEntry.IsDir = true	
+			listEntry.IsDir = true
 		} else {
 			listEntry.IsDir = false
 		}
@@ -155,7 +153,7 @@ func (fsh *ObjectStorageHandler) ListEntities(r *http.Request, allocationID stri
 }
 
 func (fsh *ObjectStorageHandler) GetFileMeta(r *http.Request, allocationID string) (*FileMeta, *common.Error) {
-	if(r.Method == "POST") {
+	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used for downloading the file. Use GET instead")
 	}
 
@@ -169,34 +167,34 @@ func (fsh *ObjectStorageHandler) GetFileMeta(r *http.Request, allocationID strin
 
 	file_path, ok := r.URL.Query()["path"]
 	if !ok || len(file_path[0]) < 1 {
-        return nil, common.NewError("invalid_parameters", "path parameter not found")
-    }
-    filePath := file_path[0]
+		return nil, common.NewError("invalid_parameters", "path parameter not found")
+	}
+	filePath := file_path[0]
 
-	filename,ok := r.URL.Query()["filename"]
+	filename, ok := r.URL.Query()["filename"]
 	if !ok || len(filename[0]) < 1 {
-        return nil, common.NewError("invalid_parameters", "path parameter not found")
-    }
-    fileName := filename[0]
+		return nil, common.NewError("invalid_parameters", "path parameter not found")
+	}
+	fileName := filename[0]
 
-	blobRefObject,_ := allocation.getReferenceObject(filepath.Join(filePath,fileName), fileName, false, false)
+	blobRefObject, _ := allocation.getReferenceObject(filepath.Join(filePath, fileName), fileName, false, false)
 	if blobRefObject == nil {
 		Logger.Info("", zap.Any("blob_error", "Error getting the blob reference"))
 		//return -1, common.NewError("allocation_setup_error", err.Error())
 		return nil, common.NewError("invalid_parameters", "File not found. Please check the parameters")
 	}
 
-	if(blobRefObject.Header.ReferenceType != FILE ) {
+	if blobRefObject.Header.ReferenceType != FILE {
 		return nil, common.NewError("invalid_parameters", "Requested object is not a file. Please check the parameters")
 	}
-	
+
 	blobRefObject.LoadReferenceEntries()
 
-	response:= &FileMeta{};
+	response := &FileMeta{}
 
 	response.ID = blobRefObject.Hash
 	response.Meta = make([]MetaInfo, 0)
-	for i:= range blobRefObject.RefEntries {
+	for i := range blobRefObject.RefEntries {
 		var meta MetaInfo
 		// Filename string `json:"filename"`
 		// CustomMeta string `json:"custom_meta"`
@@ -212,8 +210,8 @@ func (fsh *ObjectStorageHandler) GetFileMeta(r *http.Request, allocationID strin
 
 }
 
-func (fsh *ObjectStorageHandler) DownloadFile(r *http.Request, allocationID string) (*DownloadResponse, *common.Error){
-	if(r.Method == "POST") {
+func (fsh *ObjectStorageHandler) DownloadFile(r *http.Request, allocationID string) (*DownloadResponse, *common.Error) {
+	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used for downloading the file. Use GET instead")
 	}
 	allocation, err := fsh.setupAllocation(allocationID)
@@ -226,41 +224,40 @@ func (fsh *ObjectStorageHandler) DownloadFile(r *http.Request, allocationID stri
 
 	file_path, ok := r.URL.Query()["path"]
 	if !ok || len(file_path[0]) < 1 {
-        return nil, common.NewError("invalid_parameters", "path parameter not found")
-    }
-    filePath := file_path[0]
+		return nil, common.NewError("invalid_parameters", "path parameter not found")
+	}
+	filePath := file_path[0]
 
-	filename,ok := r.URL.Query()["filename"]
+	filename, ok := r.URL.Query()["filename"]
 	if !ok || len(filename[0]) < 1 {
-        return nil, common.NewError("invalid_parameters", "path parameter not found")
-    }
-    fileName := filename[0]
+		return nil, common.NewError("invalid_parameters", "path parameter not found")
+	}
+	fileName := filename[0]
 
-	blobRefObject,_ := allocation.getReferenceObject(filepath.Join(filePath,fileName), fileName, false, false)
+	blobRefObject, _ := allocation.getReferenceObject(filepath.Join(filePath, fileName), fileName, false, false)
 	if blobRefObject == nil {
 		Logger.Info("", zap.Any("blob_error", "Error getting the blob reference"))
 		//return -1, common.NewError("allocation_setup_error", err.Error())
 		return nil, common.NewError("invalid_parameters", "File not found. Please check the parameters")
 	}
 
-	if(blobRefObject.Header.ReferenceType != FILE ) {
+	if blobRefObject.Header.ReferenceType != FILE {
 		return nil, common.NewError("invalid_parameters", "Requested object is not a file. Please check the parameters")
 	}
-	
+
 	blobRefObject.LoadReferenceEntries()
 
-	part_hash,ok := r.URL.Query()["part_hash"]
+	part_hash, ok := r.URL.Query()["part_hash"]
 	partHash := ""
 	if !ok || len(part_hash[0]) < 1 {
-        err = nil
-    } else {
-    	partHash = part_hash[0]
-    } 
-   
+		err = nil
+	} else {
+		partHash = part_hash[0]
+	}
 
-    if err!=nil || (len(partHash) < 1) {
-    	return nil, common.NewError("invalid_parameters", "invalid part hash")
-    }
+	if err != nil || (len(partHash) < 1) {
+		return nil, common.NewError("invalid_parameters", "invalid part hash")
+	}
 
 	for i := range blobRefObject.RefEntries {
 		if blobRefObject.RefEntries[i].LookupHash == partHash {
@@ -278,56 +275,76 @@ func (fsh *ObjectStorageHandler) DownloadFile(r *http.Request, allocationID stri
 	return nil, common.NewError("invalid_parameters", "invalid part hash")
 }
 
-
 //WriteFile stores the file into the blobber files system from the HTTP request
-func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string) (UploadResponse) {
+func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string) UploadResponse {
 	var response UploadResponse
 	if r.Method == "GET" {
-		return GenerateUploadResponseWithError(common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST instead")) 
+		return GenerateUploadResponseWithError(common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST instead"))
 	}
 
 	allocation, err := fsh.setupAllocation(allocationID)
 
 	if err != nil {
-		Logger.Info("", zap.Any("error", err))
-		return GenerateUploadResponseWithError(common.NewError("allocation_setup_error", err.Error())) 
+		Logger.Info("Error during setting up the allocation ", zap.Any("error", err))
+		return GenerateUploadResponseWithError(common.NewError("allocation_setup_error", err.Error()))
 	}
 
-	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {  
-	   	Logger.Info("", zap.Any("error", err))
-		return GenerateUploadResponseWithError(common.NewError("request_parse_error", err.Error())) 	
+	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
+		Logger.Info("Error Parsing the request", zap.Any("error", err))
+		return GenerateUploadResponseWithError(common.NewError("request_parse_error", err.Error()))
 	}
-
 
 	response.Result = make([]UploadResult, 0)
 
 	custom_meta := ""
+	wm := &writemarker.WriteMarker{}
+	data_id := ""
 	for key, value := range r.MultipartForm.Value {
-		if(key == "custom_meta") {
+		if key == "custom_meta" {
 			custom_meta = strings.Join(value, "")
 		}
+		if key == "write_marker" {
+			wmString := strings.Join(value, "")
+			Logger.Info("Write Marker", zap.Any("wm", wmString))
+			err = json.Unmarshal([]byte(wmString), wm)
+			if err != nil {
+				Logger.Info("Invalid Write Marker in the request", zap.Any("error", err))
+				return GenerateUploadResponseWithError(common.NewError("write_marker_decode_error", err.Error()))
+			}
+		}
+		if key == "data_id" {
+			data_id = strings.Join(value, "")
+		}
+	}
+
+	if len(data_id) == 0 {
+		return GenerateUploadResponseWithError(common.NewError("invalid_data_id", "No Data ID was found"))
+	}
+
+	protocolImpl := GetProtocolImpl(allocationID, wm.IntentTransactionID, data_id, wm)
+
+	err = protocolImpl.VerifyMarker()
+	if err != nil {
+		return GenerateUploadResponseWithError(common.NewError("invalid_write_marker", err.Error()))
 	}
 
 	for _, fheaders := range r.MultipartForm.File {
 		var result UploadResult
 		for _, hdr := range fheaders {
-			blobObject, common_error := allocation.writeFileAndCalculateHash(&allocation.RootReferenceObject, hdr, custom_meta)
+			blobObject, common_error := allocation.writeFileAndCalculateHash(&allocation.RootReferenceObject, hdr, custom_meta, wm)
 			if common_error != nil {
 				result.Error = common_error
 				result.Filename = hdr.Filename
-				
+
 			} else {
 				result.Filename = blobObject.Filename
 				result.Hash = blobObject.Hash
 				result.Size = hdr.Size
-
 			}
 			response.Result = append(response.Result, result)
 		}
-		
+
 	}
 
 	return response
 }
-
-

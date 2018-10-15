@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"0chain.net/badgerdbstore"
 	"0chain.net/blobber"
 	"0chain.net/chain"
 	"0chain.net/common"
@@ -18,6 +19,7 @@ import (
 	"0chain.net/logging"
 	. "0chain.net/logging"
 	"0chain.net/node"
+	"0chain.net/writemarker"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -35,6 +37,8 @@ func initHandlers(r *mux.Router) {
 func initEntities() {
 	blobber.SetupObjectStorageHandler("./files")
 	blobber.SetupProtocol(serverChain)
+	badgerdbstore.SetupStorageProvider()
+	writemarker.SetupWMEntity(badgerdbstore.GetStorageProvider())
 }
 
 func initServer() {
@@ -101,7 +105,6 @@ func main() {
 
 	common.SetupRootContext(node.GetNodeContext())
 	//ctx := common.GetRootContext()
-	initEntities()
 	serverChain = chain.NewChainFromConfig()
 
 	if *nodesFile == "" {
@@ -132,6 +135,8 @@ func main() {
 	serverChain.Miners.ComputeProperties()
 	serverChain.Sharders.ComputeProperties()
 	serverChain.Blobbers.ComputeProperties()
+	// Initializa after serverchain is setup.
+	initEntities()
 	//miner.GetMinerChain().SetupGenesisBlock(viper.GetString("server_chain.genesis_block.id"))
 
 	mode := "main net"
@@ -165,6 +170,10 @@ func main() {
 
 	initHandlers(r)
 	initServer()
+
+
+	// Now register blobber to chain
+//	go blobber.GetProtocolImpl().Register()
 
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()
