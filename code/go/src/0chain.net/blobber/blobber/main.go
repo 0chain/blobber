@@ -107,10 +107,6 @@ func main() {
 	if *nodesFile == "" {
 		panic("Please specify --nodes_file file.txt option with a file.txt containing nodes including self")
 	}
-	logStr := " nodesFile = " + *nodesFile
-	Logger.Info(logStr)
-	logStr = "Keys file = " + *keysFile + " publicKey = " + publicKey + " privateKey = " + privateKey
-	Logger.Info(logStr)
 
 	if strings.HasSuffix(*nodesFile, "txt") {
 		reader, err = os.Open(*nodesFile)
@@ -123,10 +119,6 @@ func main() {
 	} else { //assumption it has yaml extension
 		processBlockChainConfig(*nodesFile)
 	}
-
-	logStr += " Number of miners = " + fmt.Sprintf("%v", len(serverChain.Miners.Nodes))
-	logStr += " Number of sharders = " + fmt.Sprintf("%v", len(serverChain.Sharders.Nodes))
-	log.Fatal(logStr)
 
 	if node.Self.ID == "" {
 		Logger.Panic("node definition for self node doesn't exist")
