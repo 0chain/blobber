@@ -7,6 +7,7 @@ import (
 	"math/rand"
 
 	"0chain.net/common"
+	. "0chain.net/logging"
 )
 
 var ErrNodeNotFound = common.NewError("node_not_found", "Requested node is not found")
@@ -31,13 +32,48 @@ func (np *Pool) Size() int {
 	return len(np.Nodes)
 }
 
+/*NewNode - read a node config line and create the node */
+func NewNode(nc map[interface{}]interface{}) (*Node, error) {
+	node := Provider()
+	node.Type = nc["type"].(int)
+	node.Host = nc["public_ip"].(string)
+
+	node.Port = nc["port"].(int)
+	node.ID = nc["id"].(string)
+	node.PublicKey = nc["public_key"].(string)
+	node.Description = nc["description"].(string)
+	return node, nil
+}
+
+/*AddNodes - add nodes to the node pool */
+func (np *Pool) AddNodes(nodes []interface{}) {
+	for _, nci := range nodes {
+		nc, ok := nci.(map[interface{}]interface{})
+		if !ok {
+			continue
+		}
+		nc["type"] = np.Type
+		nd, err := NewNode(nc)
+		if err != nil {
+			panic(err)
+		}
+		np.AddNode(nd, false) //We will computeArray after we add all the nodes
+	}
+	np.computeNodesArray() //Add nodes to nodes array.
+}
+
 /*AddNode - add a nodes to the pool */
-func (np *Pool) AddNode(node *Node) {
+func (np *Pool) AddNode(node *Node, doCompute bool) {
 	if np.Type != node.Type {
+		Logger.Info("did not add node to the nodemap. Node Type = " + fmt.Sprintf("%v", node.Type))
 		return
 	}
 	var nodeID = common.ToKey(node.GetKey())
 	np.NodesMap[nodeID] = node
+
+	if doCompute {
+		np.computeNodesArray()
+	} //else we do not want to compute as it does array allocation
 }
 
 /*GetNode - given node id, get the node object or nil */
@@ -125,11 +161,11 @@ func ReadNodes(r io.Reader, minerPool *Pool, sharderPool *Pool, blobberPool *Poo
 			}*/
 		switch node.Type {
 		case NodeTypeMiner:
-			minerPool.AddNode(node)
+			minerPool.AddNode(node, false)
 		case NodeTypeSharder:
-			sharderPool.AddNode(node)
+			sharderPool.AddNode(node, false)
 		case NodeTypeBlobber:
-			blobberPool.AddNode(node)
+			blobberPool.AddNode(node, false)
 		default:
 			panic(fmt.Sprintf("unkown node type %v:%v\n", node.GetKey(), node.Type))
 		}
@@ -137,7 +173,7 @@ func ReadNodes(r io.Reader, minerPool *Pool, sharderPool *Pool, blobberPool *Poo
 }
 
 func (np *Pool) ComputeProperties() {
-	np.computeNodesArray()
+	//np.computeNodesArray()
 	for _, node := range np.Nodes {
 		RegisterNode(node)
 	}

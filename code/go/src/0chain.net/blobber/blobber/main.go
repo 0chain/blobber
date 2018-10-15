@@ -2,21 +2,24 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"log"
 	"net/http"
 	"os"
-	"log"
-	"fmt"
 	"runtime"
+	"strings"
 	"time"
 
+	"0chain.net/badgerdbstore"
 	"0chain.net/blobber"
+	"0chain.net/chain"
+	"0chain.net/common"
 	"0chain.net/config"
+	"0chain.net/encryption"
 	"0chain.net/logging"
 	. "0chain.net/logging"
-	"0chain.net/encryption"
 	"0chain.net/node"
-	"0chain.net/common"
-	"0chain.net/chain"
+	"0chain.net/writemarker"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -34,21 +37,52 @@ func initHandlers(r *mux.Router) {
 func initEntities() {
 	blobber.SetupObjectStorageHandler("./files")
 	blobber.SetupProtocol(serverChain)
+	badgerdbstore.SetupStorageProvider()
+	writemarker.SetupWMEntity(badgerdbstore.GetStorageProvider())
 }
 
 func initServer() {
 
 }
 
+func processBlockChainConfig(nodesFileName string) {
+	nodeConfig := viper.New()
+	nodeConfig.AddConfigPath("./config")
+	nodeConfig.SetConfigName(nodesFileName)
+
+	err := nodeConfig.ReadInConfig()
+	if err != nil {
+		panic(fmt.Errorf("fatal error config file: %s", err))
+	}
+	config := nodeConfig.Get("miners")
+	if miners, ok := config.([]interface{}); ok {
+		serverChain.Miners.AddNodes(miners)
+	}
+	config = nodeConfig.Get("sharders")
+	if sharders, ok := config.([]interface{}); ok {
+		serverChain.Sharders.AddNodes(sharders)
+	}
+	config = nodeConfig.Get("blobbers")
+	//There shoud be none. Remove it.
+	if blobbers, ok := config.([]interface{}); ok {
+
+		serverChain.Blobbers.AddNodes(blobbers)
+	}
+}
+
 func main() {
 	deploymentMode := flag.Int("deployment_mode", 2, "deployment_mode")
-	nodesFile := flag.String("nodes_file", "config/single_node.txt", "nodes_file")
-	keysFile := flag.String("keys_file", "config/single_node_miner_keys.txt", "keys_file")
+	nodesFile := flag.String("nodes_file", "", "nodes_file")
+	keysFile := flag.String("keys_file", "", "keys_file")
 	maxDelay := flag.Int("max_delay", 0, "max_delay")
+
 	flag.Parse()
+
 	config.Configuration.DeploymentMode = byte(*deploymentMode)
 	viper.SetDefault("logging.level", "info")
+
 	config.SetupConfig()
+
 	if config.Development() {
 		logging.InitLogging("development")
 	} else {
@@ -61,7 +95,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	publicKey, privateKey := encryption.ReadKeys(reader)
+	clientId := encryption.Hash(publicKey)
+	Logger.Info("The client ID = " + clientId)
 	node.Self.SetKeys(publicKey, privateKey)
 	reader.Close()
 	config.SetServerChainID(config.Configuration.ChainID)
@@ -73,12 +110,19 @@ func main() {
 	if *nodesFile == "" {
 		panic("Please specify --nodes_file file.txt option with a file.txt containing nodes including self")
 	}
-	reader, err = os.Open(*nodesFile)
-	if err != nil {
-		log.Fatalf("%v", err)
+
+	if strings.HasSuffix(*nodesFile, "txt") {
+		reader, err = os.Open(*nodesFile)
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+
+		node.ReadNodes(reader, serverChain.Miners, serverChain.Sharders, serverChain.Blobbers)
+		reader.Close()
+	} else { //assumption it has yaml extension
+		processBlockChainConfig(*nodesFile)
 	}
-	node.ReadNodes(reader, serverChain.Miners, serverChain.Sharders, serverChain.Blobbers)
-	reader.Close()
+
 	if node.Self.ID == "" {
 		Logger.Panic("node definition for self node doesn't exist")
 	} else {
@@ -86,7 +130,6 @@ func main() {
 	}
 	address := fmt.Sprintf(":%v", node.Self.Port)
 
-	
 	chain.SetServerChain(serverChain)
 
 	serverChain.Miners.ComputeProperties()
@@ -112,7 +155,7 @@ func main() {
 			Addr:           address,
 			ReadTimeout:    30 * time.Second,
 			MaxHeaderBytes: 1 << 20,
-			Handler: r, // Pass our instance of gorilla/mux in.
+			Handler:        r, // Pass our instance of gorilla/mux in.
 		}
 	} else {
 		server = &http.Server{
@@ -120,7 +163,7 @@ func main() {
 			ReadTimeout:    30 * time.Second,
 			WriteTimeout:   30 * time.Second,
 			MaxHeaderBytes: 1 << 20,
-			Handler: r, // Pass our instance of gorilla/mux in.
+			Handler:        r, // Pass our instance of gorilla/mux in.
 		}
 	}
 	common.HandleShutdown(server)
@@ -128,8 +171,9 @@ func main() {
 	initHandlers(r)
 	initServer()
 
+
 	// Now register blobber to chain
-	go blobber.GetProtocolImpl().Register()
+//	go blobber.GetProtocolImpl().Register()
 
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()
@@ -142,7 +186,7 @@ func HomePageHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "<div>Running since %v ...\n", startTime)
 	fmt.Fprintf(w, "<div>Working on the chain: %v</div>\n", mc.ID)
 	fmt.Fprintf(w, "<div>I am a %v with <ul><li>id:%v</li><li>public_key:%v</li></ul></div>\n", node.Self.GetNodeTypeName(), node.Self.GetKey(), node.Self.PublicKey)
-	serverChain.Miners.Print(w);
-	serverChain.Sharders.Print(w);
-	serverChain.Blobbers.Print(w);
+	serverChain.Miners.Print(w)
+	serverChain.Sharders.Print(w)
+	serverChain.Blobbers.Print(w)
 }

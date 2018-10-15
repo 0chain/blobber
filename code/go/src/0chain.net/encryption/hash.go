@@ -1,6 +1,7 @@
 package encryption
 
 import (
+	"crypto/sha1"
 	"encoding/hex"
 
 	"golang.org/x/crypto/sha3"
@@ -29,6 +30,30 @@ func RawHash(data interface{}) []byte {
 		panic("unknown type")
 	}
 	hash := sha3.New256()
+	hash.Write(databuf)
+	var buf []byte
+	return hash.Sum(buf)
+}
+
+/*FastHash - sha1 hash the given data and return the hash as hex string */
+func FastHash(data interface{}) string {
+	return hex.EncodeToString(RawFastHash(data))
+}
+
+/*RawFastHash - Logic to sha1 hash the text and return the hash bytes */
+func RawFastHash(data interface{}) []byte {
+	var databuf []byte
+	switch dataImpl := data.(type) {
+	case []byte:
+		databuf = dataImpl
+	case HashBytes:
+		databuf = dataImpl[:]
+	case string:
+		databuf = []byte(dataImpl)
+	default:
+		panic("unknown type")
+	}
+	hash := sha1.New()
 	hash.Write(databuf)
 	var buf []byte
 	return hash.Sum(buf)

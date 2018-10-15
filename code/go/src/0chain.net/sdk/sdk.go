@@ -1,18 +1,17 @@
 package sdk
 
 import (
-	"os"
-	"net/url"
-	"net/http"
 	"encoding/json"
+	"net/http"
+	"net/url"
+	"os"
 	storagesdk "0chain.net/encoder"
 )
 
-
 type listResponseEntity struct {
-	Name string `json:"name"`
+	Name       string `json:"name"`
 	LookupHash string `"json:"lookup_hash"`
-	IsDir bool `json:"is_dir"`
+	IsDir      bool   `json:"is_dir"`
 }
 
 type listResponse struct {
@@ -20,18 +19,18 @@ type listResponse struct {
 }
 
 type StorageErasureEncoder struct {
-	encoder storagesdk.ReedsolomonStreamEncoder
+	encoder      storagesdk.ReedsolomonStreamEncoder
 	allocationID string
-	blobberList []storagesdk.Blobber
+	intentTxnID  string
+	blobberList  []storagesdk.Blobber
 }
 
-func NewErasureEncoder(allocationID string, dataShards int, parityShards int) (*StorageErasureEncoder){
-	enc := &StorageErasureEncoder{allocationID: allocationID}
+func NewErasureEncoder(allocationID string, intentTxnID string, dataShards int, parityShards int) *StorageErasureEncoder {
+	enc := &StorageErasureEncoder{allocationID: allocationID, intentTxnID: intentTxnID}
 	enc.blobberList = make([]storagesdk.Blobber, 0)
 	enc.encoder.Init(dataShards, parityShards)
 	return enc
 }
-
 
 func (enc *StorageErasureEncoder) AddBlobber(url string, id string, txnHash string) {
 	var blobber storagesdk.Blobber
@@ -45,15 +44,15 @@ func (enc *StorageErasureEncoder) AddBlobber(url string, id string, txnHash stri
 	enc.blobberList = append(enc.blobberList, blobber)
 }
 
-func (enc *StorageErasureEncoder) EncodeAndUpload(filepath string) (error) {
+func (enc *StorageErasureEncoder) EncodeAndUpload(filepath string) error {
 	return enc.encoder.EncodeAndUpload(filepath, enc.blobberList)
 }
 
-func (enc *StorageErasureEncoder) DownloadAndDecode(filepath string, destFilePath string) (error) {
-	
+func (enc *StorageErasureEncoder) DownloadAndDecode(filepath string, destFilePath string) error {
+
 	f, err := os.Create(destFilePath)
 	defer f.Close()
-	if(err != nil) {
+	if err != nil {
 		return err
 	}
 
@@ -65,31 +64,31 @@ func (enc *StorageErasureEncoder) ListEntities(filepath string) ([]byte, error) 
 	//return enc.encoder.ListEntities(filepath, enc.blobberList)
 	listEntryMap := make(map[string]listResponseEntity)
 	listEntries := make([]listResponseEntity, 0)
-	for i:= range enc.blobberList {
+	for i := range enc.blobberList {
 		u, _ := url.Parse(enc.blobberList[i].ListURL)
 		q := u.Query()
 		q.Set("path", filepath)
 		u.RawQuery = q.Encode()
 		var listResponseObj listResponse
 		response, err := http.Get(u.String())
-	    if err != nil {
-	        return nil, err
-	    } else {
-	        defer response.Body.Close()
+		if err != nil {
+			return nil, err
+		} else {
+			defer response.Body.Close()
 
-	        err = json.NewDecoder(response.Body).Decode(&listResponseObj)
-	        if(err != nil) {
-	        	return nil, err
-	        }
-	        for j:= range listResponseObj.ListEntries {
-	        	key := listResponseObj.ListEntries[j].LookupHash
-	        	_, ok := listEntryMap[key]
-	        	if(!ok) {
-	        		listEntryMap[key] = listResponseObj.ListEntries[j]
-	        		listEntries = append(listEntries, listResponseObj.ListEntries[j])
-	        	}
-	        }
-	    }
+			err = json.NewDecoder(response.Body).Decode(&listResponseObj)
+			if err != nil {
+				return nil, err
+			}
+			for j := range listResponseObj.ListEntries {
+				key := listResponseObj.ListEntries[j].LookupHash
+				_, ok := listEntryMap[key]
+				if !ok {
+					listEntryMap[key] = listResponseObj.ListEntries[j]
+					listEntries = append(listEntries, listResponseObj.ListEntries[j])
+				}
+			}
+		}
 	}
 	retBytes, err := json.Marshal(listEntries)
 	return retBytes, err
