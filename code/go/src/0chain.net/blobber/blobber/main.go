@@ -36,7 +36,7 @@ func initHandlers(r *mux.Router) {
 
 func initEntities() {
 	blobber.SetupObjectStorageHandler("./files")
-	blobber.SetupProtocol(serverChain)
+	//blobber.SetupProtocol(serverChain)
 	badgerdbstore.SetupStorageProvider()
 	writemarker.SetupWMEntity(badgerdbstore.GetStorageProvider())
 }
@@ -171,9 +171,8 @@ func main() {
 	initHandlers(r)
 	initServer()
 
-
 	// Now register blobber to chain
-//	go blobber.GetProtocolImpl().Register()
+	go blobber.GetProtocolImpl("", "", "", nil).RegisterBlobber()
 
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()

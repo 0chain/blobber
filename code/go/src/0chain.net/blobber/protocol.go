@@ -1,46 +1,26 @@
 package blobber
 
 import (
-	"fmt"
-	"time"
 	"bytes"
 	"context"
-	"io/ioutil"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
+	"time"
 
 	"0chain.net/chain"
 	"0chain.net/common"
-	"0chain.net/encryption"
-	"0chain.net/transaction"
 	. "0chain.net/logging"
 	"0chain.net/node"
-	"go.uber.org/zap"
-
-	"0chain.net/node"
+	"0chain.net/transaction"
 	"0chain.net/writemarker"
+	"go.uber.org/zap"
 )
-
-const MAX_REGISTRATION_RETRIES = 3
-
-// TODO: (0) Fix hardcoding
-const STORAGE_CONTRACT_ADDRESS 	= "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d7"
-const PUT_TRANSACTION 			= "v1/transaction/put"
-const SMART_CONTRACT_TYPE		= 1000
-
-
-// Storage smart contract 
-type StorageData struct {
-	Name 	  string 	`json:"name"`
-	ID        string 	`json:"id"`
-	BaseURL   string 	`json:"url"`
-}
-
-
 
 //StorageProtocol - interface for the storage protocol
 type StorageProtocol interface {
-	Register()
+	RegisterBlobber() error
 	VerifyAllocationTransaction()
 	VerifyBlobberTransaction()
 	VerifyMarker() error
@@ -56,9 +36,6 @@ type StorageProtocolImpl struct {
 	WriteMarker  *writemarker.WriteMarker
 }
 
-//ProtocolImpl - singleton for the protocol implementation
-var ProtocolImpl StorageProtocol
-
 func GetProtocolImpl(allocationID string, intentTxn string, dataID string, wm *writemarker.WriteMarker) StorageProtocol {
 	return &StorageProtocolImpl{
 		ServerChain:  chain.GetServerChain(),
@@ -68,41 +45,39 @@ func GetProtocolImpl(allocationID string, intentTxn string, dataID string, wm *w
 		WriteMarker:  wm}
 }
 
-//SetupProtocol - sets up the protocol for the chain
-func SetupProtocol(c *chain.Chain) {
-	ProtocolImpl = &StorageProtocolImpl{ServerChain: c}
-}
+func (sp *StorageProtocolImpl) RegisterBlobber() error {
+	txn := transaction.NewTransactionEntity()
 
-func (sp *StorageProtocolImpl) Register() {
-	if (sp.ServerChain != nil) {	
+	sn := &transaction.StorageNode{}
+	sn.ID = node.Self.GetKey()
+	sn.BaseURL = node.Self.GetURLBase()
 
-		txn := transaction.Transaction {
-			Version 	: 	transaction.TRANSACTION_VERION,
-			ClientID 	:	node.Self.ID,
-			PublicKey 	: 	encryption.Hash(node.Self.ID),
-			ToClientID 	:	STORAGE_CONTRACT_ADDRESS,
-			Value		: 	0,
-			TxType 		:   SMART_CONTRACT_TYPE,
-			CreationDate: 	common.Now(),
-		}
-		txn.Data = fmt.Sprintf("{\"name\":\"add_blobber\",\"input\":{\"id\":\"%v\",\"url\":\"%v\"", node.Self.GetKey(),node.Self.GetURLBase())
-		hashdata := fmt.Sprintf("%v:%v:%v:%v:%v", txn.CreationDate, txn.ClientID, 
-					txn.ToClientID, txn.Value, encryption.Hash(txn.Data))
-		txn.Hash = encryption.Hash(hashdata)
-		var err error
-		txn.Signature, err = node.Self.Sign(txn.Hash)
-		if (err != nil) {
-			Logger.Info("Signing Failed",zap.String("err:", err.Error()))
-		}
-		// Get miners
-		miners := sp.ServerChain.Miners.GetRandomNodes(sp.ServerChain.Miners.Size())
-		for _, miner := range miners {
-			url := fmt.Sprintf("%v/%v", miner.GetURLBase(), PUT_TRANSACTION);
-			go sendTransaction(url, txn)
-    	}
+	scData := &transaction.SmartContractTxnData{}
+	scData.Name = transaction.ADD_BLOBBER_SC_NAME
+	scData.InputArgs = sn
+
+	txn.ToClientID = transaction.STORAGE_CONTRACT_ADDRESS
+	txn.Value = 0
+	txn.TransactionType = transaction.TxnTypeSmartContract
+	txnBytes, err := json.Marshal(scData)
+	if err != nil {
+		return err
 	}
-}
+	txn.TransactionData = string(txnBytes)
 
+	err = txn.ComputeHashAndSign()
+	if err != nil {
+		Logger.Info("Signing Failed during registering blobber to the mining network", zap.String("err:", err.Error()))
+		return err
+	}
+	// Get miners
+	miners := sp.ServerChain.Miners.GetRandomNodes(sp.ServerChain.Miners.Size())
+	for _, miner := range miners {
+		url := fmt.Sprintf("%v/%v", miner.GetURLBase(), transaction.TXN_SUBMIT_URL)
+		go sendTransaction(url, txn)
+	}
+	return nil
+}
 
 func (sp *StorageProtocolImpl) VerifyAllocationTransaction() {
 
@@ -135,37 +110,36 @@ func (sp *StorageProtocolImpl) RedeemMarker() {
 }
 
 /*============================ Private functions =======================*/
-func sendTransaction(url string, txn transaction.Transaction) {
+func sendTransaction(url string, txn *transaction.Transaction) {
 	jsObj, err := json.Marshal(txn)
-	if (err != nil) {
-		fmt.Println("Error:" , err)
+	if err != nil {
+		fmt.Println("Error:", err)
 	}
 	req, ctx, cncl, err := newHttpRequest(http.MethodPost, url, jsObj)
 	defer cncl()
 	var resp *http.Response
-	for i:= 0; i < MAX_REGISTRATION_RETRIES; i++ {
+	for i := 0; i < transaction.MAX_TXN_RETRIES; i++ {
 		resp, err = http.DefaultClient.Do(req.WithContext(ctx))
 		if err == nil {
-		    break;
+			break
 		}
 		//TODO: Handle ctx cncl
 		Logger.Error("Register", zap.String("error", err.Error()), zap.String("URL", url))
 	}
 
-	if (err == nil) {
+	if err == nil {
 		defer resp.Body.Close()
 		body, _ := ioutil.ReadAll(resp.Body)
-		fmt.Println("response Status:", resp.Status, "Body:", string(body))			
+		fmt.Println("response Status:", resp.Status, "Body:", string(body))
 		return
 	}
-	Logger.Error("Failed after ", zap.Int("retried", MAX_REGISTRATION_RETRIES))
+	Logger.Error("Failed after ", zap.Int("retried", transaction.MAX_TXN_RETRIES))
 }
 
 func newHttpRequest(method string, url string, data []byte) (*http.Request, context.Context, context.CancelFunc, error) {
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
-   	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Access-Control-Allow-Origin", "*")
 	ctx, cncl := context.WithTimeout(context.Background(), time.Second*10)
 	return req, ctx, cncl, err
 }
-
