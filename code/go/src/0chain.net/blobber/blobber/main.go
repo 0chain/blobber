@@ -15,18 +15,18 @@ import (
 	"0chain.net/chain"
 	"0chain.net/common"
 	"0chain.net/config"
+	"0chain.net/datastore"
 	"0chain.net/encryption"
 	"0chain.net/logging"
 	. "0chain.net/logging"
 	"0chain.net/node"
 	"0chain.net/writemarker"
-	"github.com/blobber/code/go/src/0chain.net/datastore"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
-const BLOBBER_REGISTERED_LOOKUP_KEY = datastore.ToKey("blobber_registration")
+var BLOBBER_REGISTERED_LOOKUP_KEY = datastore.ToKey("blobber_registration")
 
 var startTime time.Time
 var serverChain *chain.Chain
