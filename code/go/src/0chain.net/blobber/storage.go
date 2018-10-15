@@ -7,29 +7,29 @@ import (
 )
 
 type UploadResult struct {
-	Filename string `json:"filename"`
-	Size int64 `json:"size,omitempty"`
-	Hash string `json:"content_hash,omitempty"`
-	Error *common.Error `json:"error,omitempty"`
+	Filename string        `json:"filename"`
+	Size     int64         `json:"size,omitempty"`
+	Hash     string        `json:"content_hash,omitempty"`
+	Error    *common.Error `json:"error,omitempty"`
 }
 
 //UploadResponse - response to upload or write requests
 type UploadResponse struct {
 	Result []UploadResult `json:"result"`
-	Error *common.Error `json:"error,omitempty"`
+	Error  *common.Error  `json:"error,omitempty"`
 }
 
 type DownloadResponse struct {
-	Filename string
-	Size string
+	Filename    string
+	Size        string
 	ContentType string
-	Path string
+	Path        string
 }
 
 type ListResponseEntity struct {
-	Name string `json:"name"`
+	Name       string `json:"name"`
 	LookupHash string `"json:"lookup_hash"`
-	IsDir bool `json:"is_dir"`
+	IsDir      bool   `json:"is_dir"`
 }
 
 type ListResponse struct {
@@ -37,20 +37,20 @@ type ListResponse struct {
 }
 
 type MetaInfo struct {
-	Filename string `json:"filename"`
-	CustomMeta string `json:"custom_meta"`
-	Size int64 `json:"size"`
+	Filename    string `json:"filename"`
+	CustomMeta  string `json:"custom_meta"`
+	Size        int64  `json:"size"`
 	ContentHash string `json:"content_hash"`
 }
 
 type FileMeta struct {
-	ID string `json:"id"`
+	ID   string     `json:"id"`
 	Meta []MetaInfo `json:"meta"`
 }
 
 //StorageHandler - interfact for handling storage requests
 type StorageHandler interface {
-	WriteFile(r *http.Request, allocationID string) (UploadResponse)
+	WriteFile(r *http.Request, allocationID string) UploadResponse
 	DownloadFile(r *http.Request, allocationID string) (*DownloadResponse, *common.Error)
 	GetFileMeta(r *http.Request, allocationID string) (*FileMeta, *common.Error)
 	ListEntities(r *http.Request, allocationID string) (*ListResponse, *common.Error)
@@ -64,7 +64,7 @@ func GetStorageHandler() StorageHandler {
 	return SHandler
 }
 
-func  GenerateUploadResponseWithError(err *common.Error) UploadResponse{
+func GenerateUploadResponseWithError(err *common.Error) UploadResponse {
 	var response UploadResponse
 	response.Error = err
 	return response

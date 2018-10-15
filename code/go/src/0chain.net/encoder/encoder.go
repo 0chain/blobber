@@ -15,7 +15,9 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
+	"0chain.net/encryption"
 	"github.com/klauspost/reedsolomon"
 )
 
@@ -48,6 +50,16 @@ type downloadResult struct {
 	contentHash string
 	reader      io.ReadCloser
 	partNum     int
+}
+
+type WriteMarker struct {
+	DataID              string `json:"data_id"`
+	MerkleRoot          string `json:"merkle_root"`
+	IntentTransactionID string `json:"intent_txn"`
+	BlobberID           string `json:"blobber_id"`
+	Timestamp           int64  `json:"timestamp"`
+	ClientID            string `json:"client_id"`
+	Signature           string `json:"signature"`
 }
 
 const CHUNK_SIZE = 64 * 1024
@@ -215,7 +227,7 @@ func (enc *ReedsolomonStreamEncoder) getPartMeta(filePath string, baseURL string
 	return fileMeta.Meta, nil
 }
 
-func (enc *ReedsolomonStreamEncoder) uploadFile(filename string, url string, dataChannel chan []byte, stopChannel chan bool, size int64, meta []byte, wg *sync.WaitGroup) {
+func (enc *ReedsolomonStreamEncoder) uploadFile(filename string, url string, dataChannel chan []byte, stopChannel chan bool, size int64, meta []byte, wm []byte, dataid string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	bodyReader, bodyWriter := io.Pipe()
 	multiWriter := multipart.NewWriter(bodyWriter)
@@ -243,6 +255,22 @@ func (enc *ReedsolomonStreamEncoder) uploadFile(filename string, url string, dat
 			return
 		}
 		metaWriter.Write(meta)
+
+		// Create a form field writer for field label
+		wmWriter, err := multiWriter.CreateFormField("write_marker")
+		if err != nil {
+			bodyWriter.CloseWithError(err)
+			return
+		}
+		wmWriter.Write(wm)
+
+		// Create a form field writer for field label
+		dataIDWriter, err := multiWriter.CreateFormField("data_id")
+		if err != nil {
+			bodyWriter.CloseWithError(err)
+			return
+		}
+		dataIDWriter.Write([]byte(dataid))
 
 		bodyWriter.CloseWithError(multiWriter.Close())
 	}()
@@ -357,7 +385,17 @@ func (enc *ReedsolomonStreamEncoder) EncodeAndUpload(filePath string, blobberLis
 			return err
 		}
 		blobberindex := i % len(blobberList)
-		go enc.uploadFile(filename, blobberList[blobberindex].UploadURL, dataChannels[i], stopChannel, size, metaBytes, &wg)
+		var wm WriteMarker
+		wm.BlobberID = blobberList[blobberindex].ID
+		wm.ClientID = "5d2926deef3b0a18d31eaf088627412725993374d17ff4f42e634ae90571804a"
+		wm.DataID = encryption.Hash(fmt.Sprintf("/%s%d", filename, i))
+		wm.IntentTransactionID = blobberList[blobberindex].TxnHash
+		wm.Timestamp = time.Now().Unix()
+		wmBytes, err := json.Marshal(wm)
+		if err != nil {
+			return err
+		}
+		go enc.uploadFile(filename, blobberList[blobberindex].UploadURL, dataChannels[i], stopChannel, size, metaBytes, wmBytes, wm.DataID, &wg)
 	}
 
 	wg.Wait()
