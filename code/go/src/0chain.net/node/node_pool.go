@@ -173,7 +173,7 @@ func ReadNodes(r io.Reader, minerPool *Pool, sharderPool *Pool, blobberPool *Poo
 }
 
 func (np *Pool) ComputeProperties() {
-	//np.computeNodesArray()
+	np.computeNodesArray()
 	for _, node := range np.Nodes {
 		RegisterNode(node)
 	}

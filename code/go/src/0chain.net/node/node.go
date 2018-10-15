@@ -47,15 +47,15 @@ var NodeTypeNames []*common.Lookup = common.CreateLookups("m", "Miner", "s", "Sh
 
 /*Node - a struct holding the node information */
 type Node struct {
-	ID             string
-	Version        string
-	CreationDate   common.Timestamp
-	PublicKey      string
-	PublicKeyBytes encryption.HashBytes
-	Host           string
-	Port           int
-	Type           int
-	Description    string
+	ID             string               `json:"id"`
+	Version        string               `json:"-"`
+	CreationDate   common.Timestamp     `json:"-"`
+	PublicKey      string               `json:"public_key"`
+	PublicKeyBytes encryption.HashBytes `json:"-"`
+	Host           string               `json:"-"`
+	Port           int                  `json:"-"`
+	Type           int                  `json:"-"`
+	Description    string               `json:"-"`
 }
 
 /*Provider - create a node object */
