@@ -41,7 +41,7 @@ func GetProtocolImpl(allocationID string, intentTxn string, dataID string, wm *w
 
 func (sp *StorageProtocolImpl) RegisterBlobber() (string, error) {
 	nodeBytes, _ := json.Marshal(node.Self)
-	transaction.SendPostRequest(transaction.REGISTER_CLIENT, nodeBytes, sp.ServerChain)
+	transaction.SendPostRequestSync(transaction.REGISTER_CLIENT, nodeBytes, sp.ServerChain)
 	txn := transaction.NewTransactionEntity()
 
 	sn := &transaction.StorageNode{}

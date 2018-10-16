@@ -32,6 +32,15 @@ func SendTransaction(txn *Transaction, chain *chain.Chain) {
 	}
 }
 
+func SendPostRequestSync(relativeURL string, data []byte, chain *chain.Chain) {
+	// Get miners
+	miners := chain.Miners.GetRandomNodes(chain.Miners.Size())
+	for _, miner := range miners {
+		url := fmt.Sprintf("%v/%v", miner.GetURLBase(), relativeURL)
+		sendPostRequest(url, data)
+	}
+}
+
 func SendPostRequest(relativeURL string, data []byte, chain *chain.Chain) {
 	// Get miners
 	miners := chain.Miners.GetRandomNodes(chain.Miners.Size())

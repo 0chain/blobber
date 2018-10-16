@@ -188,12 +188,12 @@ func RegisterBlobber() {
 }
 
 func SetupBlobberOnBC() {
-	txnHash, err := badgerdbstore.GetStorageProvider().ReadBytes(common.GetRootContext(), BLOBBER_REGISTERED_LOOKUP_KEY)
-	if err != nil {
-		// Now register blobber to chain
-		go RegisterBlobber()
-	}
-	Logger.Info("Blobber already registered", zap.Any("blobberTxn", string(txnHash)))
+	//txnHash, err := badgerdbstore.GetStorageProvider().ReadBytes(common.GetRootContext(), BLOBBER_REGISTERED_LOOKUP_KEY)
+	//if err != nil {
+	// Now register blobber to chain
+	go RegisterBlobber()
+	//}
+	//Logger.Info("Blobber already registered", zap.Any("blobberTxn", string(txnHash)))
 }
 
 /*HomePageHandler - provides basic info when accessing the home page of the server */
