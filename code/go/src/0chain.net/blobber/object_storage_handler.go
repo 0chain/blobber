@@ -311,9 +311,7 @@ func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string)
 				Logger.Info("Invalid Write Marker in the request", zap.Any("error", err))
 				return GenerateUploadResponseWithError(common.NewError("write_marker_decode_error", err.Error()))
 			}
-		}
-		if key == "data_id" {
-			data_id = strings.Join(value, "")
+			data_id = wm.DataID
 		}
 	}
 
@@ -321,9 +319,9 @@ func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string)
 		return GenerateUploadResponseWithError(common.NewError("invalid_data_id", "No Data ID was found"))
 	}
 
-	protocolImpl := GetProtocolImpl(allocationID, wm.IntentTransactionID, data_id, wm)
+	protocolImpl := GetProtocolImpl(allocationID)
 
-	err = protocolImpl.VerifyMarker()
+	err = protocolImpl.VerifyMarker(wm)
 	if err != nil {
 		return GenerateUploadResponseWithError(common.NewError("invalid_write_marker", err.Error()))
 	}

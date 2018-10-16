@@ -6,6 +6,7 @@ import (
 	. "0chain.net/logging"
 	"0chain.net/util"
 	"0chain.net/writemarker"
+	"golang.org/x/crypto/sha3"
 
 	"path/filepath"
 
@@ -186,11 +187,27 @@ func (allocation *Allocation) writeFileAndCalculateHash(parentRef *ReferenceObje
 	if err != nil {
 		return nil, common.NewError("file_reading_error", err.Error())
 	}
-	tReader := io.TeeReader(infile, h)
-	_, err = io.Copy(dest, tReader)
-	if err != nil {
-		return nil, common.NewError("file_write_error", err.Error())
+	merkleHash := sha3.New256()
+	multiHashWriter := io.MultiWriter(h, merkleHash)
+	chunkSize := int64(64 * 1024)
+	tReader := io.TeeReader(infile, multiHashWriter)
+	merkleLeaves := make([]util.Hashable, 0)
+	for true {
+		_, err := io.CopyN(dest, tReader, chunkSize)
+		if err != io.EOF && err != nil {
+			return nil, common.NewError("file_write_error", err.Error())
+		}
+		merkleLeaves = append(merkleLeaves, util.NewStringHashable(hex.EncodeToString(merkleHash.Sum(nil))))
+		merkleHash.Reset()
+		if err != nil && err == io.EOF {
+			break
+		}
 	}
+
+	var mt util.MerkleTreeI = &util.MerkleTree{}
+	mt.ComputeTree(merkleLeaves)
+	Logger.Info("Calculated Merkle root", zap.String("merkle_root", mt.GetRoot()), zap.Int("merkle_leaf_count", len(merkleLeaves)))
+
 	blobObject.Hash = hex.EncodeToString(h.Sum(nil))
 
 	//move file from tmp location to the objects folder
@@ -223,7 +240,7 @@ func (allocation *Allocation) writeFileAndCalculateHash(parentRef *ReferenceObje
 	writeMarker, _ := wmentity.(*writemarker.WriteMarkerEntity)
 	writeMarker.AllocationID = allocation.ID
 	writeMarker.ContentHash = blobObject.Hash
-	writeMarker.MerkleRoot = blobObject.Hash
+	writeMarker.MerkleRoot = mt.GetRoot()
 	writeMarker.WM = wm
 	err = writeMarker.Write(common.GetRootContext())
 	if err != nil {

@@ -41,7 +41,7 @@ func SendPostRequestSync(relativeURL string, data []byte, chain *chain.Chain) {
 	}
 }
 
-func SendPostRequest(relativeURL string, data []byte, chain *chain.Chain) {
+func SendPostRequestAsync(relativeURL string, data []byte, chain *chain.Chain) {
 	// Get miners
 	miners := chain.Miners.GetRandomNodes(chain.Miners.Size())
 	for _, miner := range miners {
@@ -95,22 +95,30 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 		if err != nil {
 			Logger.Error("Error getting transaction confirmation", zap.Any("error", err))
 		} else {
+			if response.StatusCode != 200 {
+				continue
+			}
 			defer response.Body.Close()
 			contents, err := ioutil.ReadAll(response.Body)
 			if err != nil {
 				Logger.Error("Error reading response from transaction confirmation", zap.Any("error", err))
+				continue
 			}
 			var objmap map[string]*json.RawMessage
 			err = json.Unmarshal(contents, &objmap)
 			if err != nil {
 				Logger.Error("Error unmarshalling response", zap.Any("error", err))
+				continue
+			}
+			if *objmap["txn"] == nil {
+				Logger.Error("Not transaction information. Only block summary.")
 			}
 			txn := &Transaction{}
 			err = json.Unmarshal(*objmap["txn"], &txn)
 			if err != nil {
 				Logger.Error("Error unmarshalling to get transaction response", zap.Any("error", err))
 			}
-			if len(retTxn.Signature) > 0 {
+			if len(txn.Signature) > 0 {
 				retTxn = txn
 			}
 

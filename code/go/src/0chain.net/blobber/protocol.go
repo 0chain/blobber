@@ -2,6 +2,7 @@ package blobber
 
 import (
 	"encoding/json"
+	"time"
 
 	"0chain.net/chain"
 	"0chain.net/common"
@@ -16,8 +17,8 @@ import (
 type StorageProtocol interface {
 	RegisterBlobber() (string, error)
 	VerifyAllocationTransaction()
-	VerifyBlobberTransaction()
-	VerifyMarker() error
+	VerifyBlobberTransaction(txn_hash string) (string, error)
+	VerifyMarker(wm *writemarker.WriteMarker) error
 	RedeemMarker()
 }
 
@@ -25,23 +26,19 @@ type StorageProtocol interface {
 type StorageProtocolImpl struct {
 	ServerChain  *chain.Chain
 	AllocationID string
-	IntentTxnID  string
-	DataID       string
-	WriteMarker  *writemarker.WriteMarker
 }
 
-func GetProtocolImpl(allocationID string, intentTxn string, dataID string, wm *writemarker.WriteMarker) StorageProtocol {
+func GetProtocolImpl(allocationID string) StorageProtocol {
 	return &StorageProtocolImpl{
 		ServerChain:  chain.GetServerChain(),
-		AllocationID: allocationID,
-		IntentTxnID:  intentTxn,
-		DataID:       dataID,
-		WriteMarker:  wm}
+		AllocationID: allocationID}
 }
 
 func (sp *StorageProtocolImpl) RegisterBlobber() (string, error) {
 	nodeBytes, _ := json.Marshal(node.Self)
 	transaction.SendPostRequestSync(transaction.REGISTER_CLIENT, nodeBytes, sp.ServerChain)
+	time.Sleep(3 * time.Second)
+
 	txn := transaction.NewTransactionEntity()
 
 	sn := &transaction.StorageNode{}
@@ -74,24 +71,37 @@ func (sp *StorageProtocolImpl) VerifyAllocationTransaction() {
 
 }
 
-func (sp *StorageProtocolImpl) VerifyBlobberTransaction() {
-
+func (sp *StorageProtocolImpl) VerifyBlobberTransaction(txn_hash string) (string, error) {
+	t, err := transaction.VerifyTransaction(txn_hash, sp.ServerChain)
+	if err != nil {
+		return "", err
+	}
+	return t.TransactionOutput, nil
 }
 
-func (sp *StorageProtocolImpl) VerifyMarker() error {
-	wm := sp.WriteMarker
+func (sp *StorageProtocolImpl) VerifyMarker(wm *writemarker.WriteMarker) error {
+
 	if wm == nil {
 		return common.NewError("no_write_marker", "No Write Marker was found")
 	} else {
 		if wm.BlobberID != node.Self.ID {
 			return common.NewError("write_marker_validation_failed", "Write Marker is not for the blobber")
 		}
-		if wm.DataID != sp.DataID {
-			return common.NewError("write_marker_validation_failed", "Write Marker is not for the data being uploaded")
+		if len(wm.IntentTransactionID) == 0 {
+			return common.NewError("write_marker_validation_failed", "Write Marker has no valid intent transaction")
 		}
-		if wm.IntentTransactionID != sp.IntentTxnID {
-			return common.NewError("write_marker_validation_failed", "Write Marker is not for the same intent transaction")
+		txnoutput, err := sp.VerifyBlobberTransaction(wm.IntentTransactionID)
+		if err != nil {
+			return err
 		}
+		Logger.Info("Transaction out received.", zap.String("txn_output", txnoutput))
+		// if wm.DataID != sp.DataID {
+		// 	Logger.Error("Validation of DataID failed. ", zap.Any("wm_data_id", wm.DataID), zap.Any("sp_data_id", sp.DataID))
+		// 	return common.NewError("write_marker_validation_failed", "Write Marker is not for the data being uploaded")
+		// }
+		// if wm.AllocationID != sp.AllocationID {
+		// 	return common.NewError("write_marker_validation_failed", "Write Marker is not for the same intent transaction")
+		// }
 	}
 	return nil
 }

@@ -11,7 +11,7 @@ import (
 type WriteMarker struct {
 	DataID              string           `json:"data_id"`
 	MerkleRoot          string           `json:"merkle_root"`
-	IntentTransactionID string           `json:"intent_txn"`
+	IntentTransactionID string           `json:"intent_tx_id"`
 	BlobberID           string           `json:"blobber_id"`
 	Timestamp           common.Timestamp `json:"timestamp"`
 	ClientID            string           `json:"client_id"`

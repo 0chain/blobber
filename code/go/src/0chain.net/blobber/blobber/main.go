@@ -21,6 +21,7 @@ import (
 	. "0chain.net/logging"
 	"0chain.net/node"
 	"0chain.net/writemarker"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -152,13 +153,17 @@ func main() {
 
 	var server *http.Server
 	r := mux.NewRouter()
+	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+	rHandler := handlers.CORS(originsOk, headersOk, methodsOk)(r)
 	if config.Development() {
 		// No WriteTimeout setup to enable pprof
 		server = &http.Server{
 			Addr:           address,
 			ReadTimeout:    30 * time.Second,
 			MaxHeaderBytes: 1 << 20,
-			Handler:        r, // Pass our instance of gorilla/mux in.
+			Handler:        rHandler, // Pass our instance of gorilla/mux in.
 		}
 	} else {
 		server = &http.Server{
@@ -166,7 +171,7 @@ func main() {
 			ReadTimeout:    30 * time.Second,
 			WriteTimeout:   30 * time.Second,
 			MaxHeaderBytes: 1 << 20,
-			Handler:        r, // Pass our instance of gorilla/mux in.
+			Handler:        rHandler, // Pass our instance of gorilla/mux in.
 		}
 	}
 	common.HandleShutdown(server)
@@ -181,7 +186,7 @@ func main() {
 
 func RegisterBlobber() {
 
-	txnHash, err := blobber.GetProtocolImpl("", "", "", nil).RegisterBlobber()
+	txnHash, err := blobber.GetProtocolImpl("").RegisterBlobber()
 	if err == nil {
 		badgerdbstore.GetStorageProvider().WriteBytes(common.GetRootContext(), BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
 	}

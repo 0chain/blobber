@@ -36,3 +36,18 @@ func Hash(text string) string {
 func MHash(h1 string, h2 string) string {
 	return Hash(h1 + h2)
 }
+
+type StringHashable struct {
+	Hash string
+}
+
+func NewStringHashable(hash string) *StringHashable {
+	return &StringHashable{Hash: hash}
+}
+
+func (sh *StringHashable) GetHash() string {
+	return sh.Hash
+}
+func (sh *StringHashable) GetHashBytes() []byte {
+	return []byte(sh.Hash)
+}
