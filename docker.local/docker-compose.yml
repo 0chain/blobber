@@ -12,6 +12,17 @@ services:
      - ./blobber${BLOBBER}/files:/blobber/files
      - ./blobber${BLOBBER}/data:/blobber/data
     ports:
-     - "505${BLOBBER}:505${BLOBBER}"
+      - "505${BLOBBER}:505${BLOBBER}"
+    networks:
+      default:
+      testnet0:
+        ipv4_address: 198.18.0.9${BLOBBER}
     #command: ./blobber --deployment_mode 0 --deployment_mode 0 --keys_file config/bnode${BLOBBER}_keys.txt --nodes_file config/single_machine_3_nodes.txt
     command: ./blobber --deployment_mode 0 --deployment_mode 0 --keys_file config/bnode${BLOBBER}_keys.txt --nodes_file single_machine_3_nodes
+
+
+networks:
+  default:
+    driver: bridge
+  testnet0:
+    external: true
