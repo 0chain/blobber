@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -100,7 +101,7 @@ func main() {
 		panic(err)
 	}
 
-	publicKey, privateKey := encryption.ReadKeys(reader)
+	publicKey, privateKey, address := encryption.ReadKeys(reader)
 	clientId := encryption.Hash(publicKey)
 	Logger.Info("The client ID = " + clientId)
 	node.Self.SetKeys(publicKey, privateKey)
@@ -132,7 +133,11 @@ func main() {
 	} else {
 		Logger.Info("self identity", zap.Any("id", node.Self.Node.GetKey()))
 	}
-	address := fmt.Sprintf(":%v", node.Self.Port)
+	node.Self.Port, err = strconv.Atoi(address)
+	if err != nil {
+		log.Fatalf("Port is not a valid integer . %v", err)
+	}
+	//address := fmt.Sprintf(":%v", node.Self.Port)
 
 	chain.SetServerChain(serverChain)
 
