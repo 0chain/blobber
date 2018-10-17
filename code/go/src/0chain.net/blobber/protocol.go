@@ -95,6 +95,12 @@ func (sp *StorageProtocolImpl) VerifyMarker(wm *writemarker.WriteMarker) error {
 			return err
 		}
 		Logger.Info("Transaction out received.", zap.String("txn_output", txnoutput))
+		var objmap map[string]*json.RawMessage
+		err = json.Unmarshal([]byte(txnoutput), &objmap)
+		if err != nil {
+			Logger.Error("Error unmarshalling response", zap.Any("error", err))
+			return err
+		}
 		// if wm.DataID != sp.DataID {
 		// 	Logger.Error("Validation of DataID failed. ", zap.Any("wm_data_id", wm.DataID), zap.Any("sp_data_id", sp.DataID))
 		// 	return common.NewError("write_marker_validation_failed", "Write Marker is not for the data being uploaded")

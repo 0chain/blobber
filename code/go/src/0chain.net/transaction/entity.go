@@ -7,6 +7,7 @@ import (
 	"0chain.net/common"
 	"0chain.net/encryption"
 	"0chain.net/node"
+	"0chain.net/writemarker"
 )
 
 //Transaction entity that encapsulates the transaction related data and meta data
@@ -35,6 +36,12 @@ type StorageNode struct {
 	ID        string `json:"id"`
 	BaseURL   string `json:"url"`
 	PublicKey string `json:"-"`
+}
+
+type CloseConnection struct {
+	DataID      string                  `json:"data_id"`
+	MerkleRoot  string                  `json:"merkle_root"`
+	WriteMarker writemarker.WriteMarker `json:"write_marker"`
 }
 
 const ADD_BLOBBER_SC_NAME = "add_blobber"

@@ -94,6 +94,7 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 		response, err := http.Get(url)
 		if err != nil {
 			Logger.Error("Error getting transaction confirmation", zap.Any("error", err))
+			numSharders--
 		} else {
 			if response.StatusCode != 200 {
 				continue
