@@ -27,14 +27,15 @@ const (
 )
 
 type WriteMarkerEntity struct {
-	ID            string            `json:"id"`
-	Version       string            `json:"version"`
-	AllocationID  string            `json:"allocation_id"`
-	WM            *WriteMarker      `json:"write_marker"`
-	MerkleRoot    string            `json:"merkle_root"`
-	ContentHash   string            `json:"content_hash"`
-	Status        WriteMarkerStatus `json:"status"`
-	StatusMessage string            `json:"status_message"`
+	ID             string            `json:"id"`
+	Version        string            `json:"version"`
+	AllocationID   string            `json:"allocation_id"`
+	WM             *WriteMarker      `json:"write_marker"`
+	MerkleRoot     string            `json:"merkle_root"`
+	ContentHash    string            `json:"content_hash"`
+	Status         WriteMarkerStatus `json:"status"`
+	StatusMessage  string            `json:"status_message"`
+	ReedeemRetries int64             `json:"redeem_retries"`
 }
 
 var writeMarkerEntityMetaData *datastore.EntityMetadataImpl
@@ -63,7 +64,7 @@ func (wm *WriteMarkerEntity) SetKey(key datastore.Key) {
 	wm.ID = datastore.ToString(key)
 }
 func (wm *WriteMarkerEntity) GetKey() datastore.Key {
-	return datastore.ToKey(encryption.Hash(wm.AllocationID + wm.WM.DataID))
+	return datastore.ToKey("wm:" + encryption.Hash(wm.AllocationID+wm.WM.DataID))
 }
 func (wm *WriteMarkerEntity) Read(ctx context.Context, key datastore.Key) error {
 	return writeMarkerEntityMetaData.GetStore().Read(ctx, key, wm)

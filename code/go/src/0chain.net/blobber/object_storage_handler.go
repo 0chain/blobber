@@ -3,6 +3,8 @@ package blobber
 import (
 	"encoding/json"
 
+	"0chain.net/node"
+	"0chain.net/transaction"
 	"0chain.net/writemarker"
 
 	"net/http"
@@ -320,8 +322,23 @@ func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string)
 	}
 
 	protocolImpl := GetProtocolImpl(allocationID)
+	sc, err := protocolImpl.VerifyBlobberTransaction(wm.IntentTransactionID)
+	if err != nil {
+		return GenerateUploadResponseWithError(common.NewError("invalid_open_connection", err.Error()))
+	}
 
-	err = protocolImpl.VerifyMarker(wm)
+	var wmBlobberConnection *transaction.StorageConnectionBlobber
+	for _, blobberConnection := range sc.BlobberData {
+		if blobberConnection.BlobberID == node.Self.ID && wm.DataID == blobberConnection.DataID {
+			wmBlobberConnection = &blobberConnection
+		}
+	}
+
+	if wmBlobberConnection == nil {
+		return GenerateUploadResponseWithError(common.NewError("invalid_open_connection", "Blobber is not par of the open connection transaction"))
+	}
+
+	err = protocolImpl.VerifyMarker(wm, sc)
 	if err != nil {
 		return GenerateUploadResponseWithError(common.NewError("invalid_write_marker", err.Error()))
 	}
@@ -329,15 +346,21 @@ func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string)
 	for _, fheaders := range r.MultipartForm.File {
 		var result UploadResult
 		for _, hdr := range fheaders {
-			blobObject, common_error := allocation.writeFileAndCalculateHash(&allocation.RootReferenceObject, hdr, custom_meta, wm)
-			if common_error != nil {
-				result.Error = common_error
+			if hdr.Size != wmBlobberConnection.Size {
+				Logger.Info("Sizes dont match", zap.Any("got_size", hdr.Size), zap.Any("expected", wmBlobberConnection.Size))
+				result.Error = common.NewError("invalid_upload", "Size on the open connection does not match the size of the file uploaded")
 				result.Filename = hdr.Filename
-
 			} else {
-				result.Filename = blobObject.Filename
-				result.Hash = blobObject.Hash
-				result.Size = hdr.Size
+				blobObject, common_error := allocation.writeFileAndCalculateHash(&allocation.RootReferenceObject, hdr, custom_meta, wm)
+				if common_error != nil {
+					result.Error = common_error
+					result.Filename = hdr.Filename
+
+				} else {
+					result.Filename = blobObject.Filename
+					result.Hash = blobObject.Hash
+					result.Size = hdr.Size
+				}
 			}
 			response.Result = append(response.Result, result)
 		}

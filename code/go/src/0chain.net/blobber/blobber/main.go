@@ -44,6 +44,7 @@ func initEntities() {
 	//blobber.SetupProtocol(serverChain)
 	badgerdbstore.SetupStorageProvider()
 	writemarker.SetupWMEntity(badgerdbstore.GetStorageProvider())
+	blobber.SetupWorkers(common.GetRootContext())
 }
 
 func initServer() {
@@ -137,7 +138,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Port is not a valid integer . %v", err)
 	}
-	//address := fmt.Sprintf(":%v", node.Self.Port)
+	address = fmt.Sprintf(":%v", node.Self.Port)
 
 	chain.SetServerChain(serverChain)
 

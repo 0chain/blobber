@@ -9,7 +9,7 @@ miners:
 - id: 4155d4fd4d0172ec44cb87fa58712c4b220bf24de8953a4de26c067d65850c9d
   public_key: cb9babd82cf33b77568cb74b8c235b7de3b0807bd7e336c9a79c8872dd31a9a7
   n2n_ip: 198.18.0.72
-  public_ip: 198.18.0.71
+  public_ip: 198.18.0.72
   port: 7072
   description: localhost.m1
 
