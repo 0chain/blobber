@@ -2,24 +2,21 @@ package blobber
 
 import (
 	"encoding/json"
-	
+
+	"io"
 	"net/http"
 	"os"
-	"io"
 	"strconv"
-	
+
 	"github.com/gorilla/mux"
-	
 )
 
 const (
 	AllocationTransactionHeader = "X-Allocation-Transaction"
-	BlobberTransactionHeader = "X-Blobber-Transaction"
+	BlobberTransactionHeader    = "X-Blobber-Transaction"
 )
 
 var storageHandler StorageHandler
-
-
 
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
@@ -30,15 +27,14 @@ func SetupHandlers(r *mux.Router) {
 	storageHandler = GetStorageHandler()
 }
 
-
 /*ListHandler is the handler to respond to list requests from clients*/
 func ListHandler(respW http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	respW.Header().Set("Content-Type", "application/json")
-	
+
 	response, err := storageHandler.ListEntities(r, vars["allocation"])
-	
+
 	if err != nil {
 		respW.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(respW).Encode(err)
@@ -53,9 +49,9 @@ func UploadHandler(respW http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	respW.Header().Set("Content-Type", "application/json")
-	
+
 	response := storageHandler.WriteFile(r, vars["allocation"])
-	
+
 	if response.Error != nil {
 		respW.WriteHeader(http.StatusInternalServerError)
 	}
@@ -68,9 +64,9 @@ func MetaHandler(respW http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	respW.Header().Set("Content-Type", "application/json")
-	
+
 	response, err := storageHandler.GetFileMeta(r, vars["allocation"])
-	
+
 	if err != nil {
 		respW.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(respW).Encode(err)
@@ -80,19 +76,18 @@ func MetaHandler(respW http.ResponseWriter, r *http.Request) {
 	return
 }
 
-
 /*DownloadHandler is the handler to respond to download requests from clients*/
 func DownloadHandler(respW http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	
+
 	response, err := storageHandler.DownloadFile(r, vars["allocation"])
-	
+
 	if err != nil {
 		respW.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(respW).Encode(err)
 		return
 	}
-	
+
 	//Check if file exists and open
 	Openfile, errN := os.Open(response.Path)
 	defer Openfile.Close() //Close after function return

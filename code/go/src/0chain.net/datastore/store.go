@@ -8,6 +8,9 @@ import (
 /*Key - a type for the entity key */
 type Key = string
 
+/*StoreIteratorHandler is a iteration handler function type */
+type StoreIteratorHandler func(ctx context.Context, key Key, value []byte) error
+
 type Store interface {
 	Read(ctx context.Context, key Key, entity Entity) error
 	Write(ctx context.Context, entity Entity) error
@@ -18,6 +21,8 @@ type Store interface {
 	MultiRead(ctx context.Context, entityMetadata EntityMetadata, keys []Key, entities []Entity) error
 	MultiWrite(ctx context.Context, entityMetadata EntityMetadata, entities []Entity) error
 	MultiDelete(ctx context.Context, entityMetadata EntityMetadata, entities []Entity) error
+	Iterate(ctx context.Context, iter StoreIteratorHandler) error
+	IteratePrefix(ctx context.Context, prefix string, iter StoreIteratorHandler) error
 }
 
 /*ToString - return string representation of the key */

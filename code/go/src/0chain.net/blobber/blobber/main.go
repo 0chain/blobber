@@ -44,6 +44,7 @@ func initEntities() {
 	//blobber.SetupProtocol(serverChain)
 	badgerdbstore.SetupStorageProvider()
 	writemarker.SetupWMEntity(badgerdbstore.GetStorageProvider())
+	blobber.SetupWorkers(common.GetRootContext())
 }
 
 func initServer() {

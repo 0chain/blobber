@@ -140,3 +140,44 @@ func (ps *Store) MultiDelete(ctx context.Context, entityMetadata datastore.Entit
 	// TODO
 	return nil
 }
+
+func (ps *Store) Iterate(ctx context.Context, handler datastore.StoreIteratorHandler) error {
+	err := ps.DB.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 10
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			valueBytes, err := item.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+			handler(ctx, string(k), valueBytes)
+		}
+		return nil
+	})
+	return err
+}
+
+func (ps *Store) IteratePrefix(ctx context.Context, prefix string, handler datastore.StoreIteratorHandler) error {
+	err := ps.DB.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 10
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		prefixI := []byte(prefix)
+		for it.Seek(prefixI); it.ValidForPrefix(prefixI); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			valueBytes, err := item.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+			handler(ctx, string(k), valueBytes)
+		}
+		return nil
+	})
+	return err
+}

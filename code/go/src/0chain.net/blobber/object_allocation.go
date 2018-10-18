@@ -20,7 +20,6 @@ import (
 	"mime/multipart"
 	"strings"
 
-	"0chain.net/badgerdbstore"
 	"github.com/jszwec/csvutil"
 
 	"os"
@@ -206,7 +205,7 @@ func (allocation *Allocation) writeFileAndCalculateHash(parentRef *ReferenceObje
 
 	var mt util.MerkleTreeI = &util.MerkleTree{}
 	mt.ComputeTree(merkleLeaves)
-	Logger.Info("Calculated Merkle root", zap.String("merkle_root", mt.GetRoot()), zap.Int("merkle_leaf_count", len(merkleLeaves)))
+	//Logger.Info("Calculated Merkle root", zap.String("merkle_root", mt.GetRoot()), zap.Int("merkle_leaf_count", len(merkleLeaves)))
 
 	blobObject.Hash = hex.EncodeToString(h.Sum(nil))
 
@@ -242,13 +241,15 @@ func (allocation *Allocation) writeFileAndCalculateHash(parentRef *ReferenceObje
 	writeMarker.ContentHash = blobObject.Hash
 	writeMarker.MerkleRoot = mt.GetRoot()
 	writeMarker.WM = wm
+	writeMarker.Status = writemarker.Accepted
 	err = writeMarker.Write(common.GetRootContext())
 	if err != nil {
 		return nil, common.NewError("error_persisting_write_marker", err.Error())
 	}
-	debugEntity := writemarker.Provider()
-	badgerdbstore.GetStorageProvider().Read(common.GetRootContext(), writeMarker.GetKey(), debugEntity)
-	Logger.Info("Debugging to see if saving was successful", zap.Any("wm", debugEntity))
+	go GetProtocolImpl(allocation.ID).RedeemMarker(wmentity.(*writemarker.WriteMarkerEntity))
+	// debugEntity := writemarker.Provider()
+	// badgerdbstore.GetStorageProvider().Read(common.GetRootContext(), writeMarker.GetKey(), debugEntity)
+	// Logger.Info("Debugging to see if saving was successful", zap.Any("wm", debugEntity))
 
 	return blobObject, nil
 }
