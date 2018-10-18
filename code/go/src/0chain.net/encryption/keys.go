@@ -25,18 +25,18 @@ func GenerateKeysBytes() ([]byte, []byte, error) {
 
 /*ReadKeys - reads a publicKey and a privateKey from a Reader.
 They are assumed to be in two separate lines one followed by the other*/
-func ReadKeys(reader io.Reader) (publicKey string, privateKey string, port string) {
+func ReadKeys(reader io.Reader) (publicKey string, privateKey string, publicIp string, port string) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Scan()
 	publicKey = scanner.Text()
 	scanner.Scan()
 	privateKey = scanner.Text()
-	result := scanner.Scan()
-	if !result {
-		return publicKey, privateKey, ""
-	}
+	scanner.Scan()
+
+	publicIp = scanner.Text()
+	scanner.Scan()
 	port = scanner.Text()
-	return publicKey, privateKey, port
+	return publicKey, privateKey, publicIp, port
 }
 
 /*SignerVerifier - an interface that can sign a hash and verify a signature and hash */

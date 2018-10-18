@@ -19,6 +19,11 @@ func (sn *SelfNode) SetKeys(publicKey string, privateKey string) {
 	sn.SetPublicKey(publicKey)
 }
 
+/*SetHostURL - setter for Host and Port */
+func (sn *SelfNode) SetHostURL(address string, port int) {
+	sn.SetURLBase(address, port)
+}
+
 /*Sign - sign the given hash */
 func (sn *SelfNode) Sign(hash string) (string, error) {
 	return encryption.Sign(sn.privateKey, hash)
