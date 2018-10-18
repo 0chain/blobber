@@ -155,6 +155,12 @@ func (n *Node) GetURLBase() string {
 	return fmt.Sprintf("http://%v:%v", host, n.Port)
 }
 
+/*SetURLBase - set the base url [setter for Host and Port] */
+func (n *Node) SetURLBase(address string, port int) {
+	n.Host = address
+	n.Port = port
+}
+
 /*GetNodeType - as a string */
 func (n *Node) GetNodeType() string {
 	return NodeTypeNames[n.Type].Code

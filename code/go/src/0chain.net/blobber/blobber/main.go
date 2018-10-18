@@ -102,11 +102,19 @@ func main() {
 		panic(err)
 	}
 
-	publicKey, privateKey, address := encryption.ReadKeys(reader)
-	clientId := encryption.Hash(publicKey)
-	Logger.Info("The client ID = " + clientId)
-	node.Self.SetKeys(publicKey, privateKey)
+	publicKey, privateKey, publicIP, portString := encryption.ReadKeys(reader)
 	reader.Close()
+	node.Self.SetKeys(publicKey, privateKey)
+
+	port, err := strconv.Atoi(portString) //fmt.Sprintf(":%v", port) // node.Self.Port
+	if err != nil {
+		Logger.Panic("Port specified is not Int " + portString)
+		return
+	}
+
+	node.Self.SetHostURL(publicIP, port)
+	Logger.Info(" Base URL" + node.Self.GetURLBase())
+
 	config.SetServerChainID(config.Configuration.ChainID)
 
 	common.SetupRootContext(node.GetNodeContext())
@@ -134,11 +142,9 @@ func main() {
 	} else {
 		Logger.Info("self identity", zap.Any("id", node.Self.Node.GetKey()))
 	}
-	node.Self.Port, err = strconv.Atoi(address)
-	if err != nil {
-		log.Fatalf("Port is not a valid integer . %v", err)
-	}
-	address = fmt.Sprintf(":%v", node.Self.Port)
+
+	//address := publicIP + ":" + portString
+	address := ":" + portString
 
 	chain.SetServerChain(serverChain)
 
@@ -155,8 +161,7 @@ func main() {
 	} else if config.TestNet() {
 		mode = "test net"
 	}
-	Logger.Info("Starting blobber", zap.Int("available_cpus", runtime.NumCPU()), zap.String("port", address), zap.String("chain_id", config.GetServerChainID()), zap.String("mode", mode))
-
+	Logger.Info("Starting blobber", zap.Int("available_cpus", runtime.NumCPU()), zap.String("port", portString), zap.String("chain_id", config.GetServerChainID()), zap.String("mode", mode))
 	var server *http.Server
 	r := mux.NewRouter()
 	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
