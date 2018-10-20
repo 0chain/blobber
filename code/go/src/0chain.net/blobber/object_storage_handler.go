@@ -277,6 +277,40 @@ func (fsh *ObjectStorageHandler) DownloadFile(r *http.Request, allocationID stri
 	return nil, common.NewError("invalid_parameters", "invalid part hash")
 }
 
+//ChallengeData triggers a challenge request and response with a transaction on the blockchain
+func (fsh *ObjectStorageHandler) ChallengeData(r *http.Request) error {
+	data_id, ok := r.URL.Query()["data_id"]
+	if !ok || len(data_id[0]) < 1 {
+		return common.NewError("invalid_parameters", "data_id parameter not found")
+	}
+	dataID := data_id[0]
+
+	block_num, ok := r.URL.Query()["block_num"]
+	if !ok || len(block_num[0]) < 1 {
+		return common.NewError("invalid_parameters", "block_num parameter not found")
+	}
+	blockNum, err := strconv.ParseInt(block_num[0], 10, 64)
+	if err != nil {
+		return common.NewError("invalid_parameters", "block_num parsing failed."+err.Error())
+	}
+
+	allocation_id, ok := r.URL.Query()["allocation_id"]
+	if !ok || len(allocation_id[0]) < 1 {
+		return common.NewError("invalid_parameters", "allocation_id parameter not found")
+	}
+	allocationID := allocation_id[0]
+
+	allocationObj, err := fsh.setupAllocation(allocationID)
+	if err != nil {
+		return common.NewError("invalid_allocation", "Error in looking up on the allocation."+err.Error())
+	}
+	_, err = GetProtocolImpl(allocationID).GetChallengeResponse(allocationID, dataID, blockNum, allocationObj.ObjectsPath)
+	if err != nil {
+		return common.NewError("challenge_error", "Error in getting response for challenge."+err.Error())
+	}
+	return nil
+}
+
 //WriteFile stores the file into the blobber files system from the HTTP request
 func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string) UploadResponse {
 	var response UploadResponse
@@ -322,7 +356,7 @@ func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string)
 	}
 
 	protocolImpl := GetProtocolImpl(allocationID)
-	sc, err := protocolImpl.VerifyBlobberTransaction(wm.IntentTransactionID)
+	sc, err := protocolImpl.VerifyBlobberTransaction(wm.IntentTransactionID, wm.ClientID)
 	if err != nil {
 		return GenerateUploadResponseWithError(common.NewError("invalid_open_connection", err.Error()))
 	}

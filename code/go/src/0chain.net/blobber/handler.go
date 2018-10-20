@@ -24,7 +24,22 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/download/{allocation}", DownloadHandler)
 	r.HandleFunc("/v1/file/meta/{allocation}", MetaHandler)
 	r.HandleFunc("/v1/file/list/{allocation}", ListHandler)
+	r.HandleFunc("/v1/data/challenge", ChallengeHandler)
 	storageHandler = GetStorageHandler()
+}
+
+/*ChallengeHandler is the handler to respond to challenge requests*/
+func ChallengeHandler(respW http.ResponseWriter, r *http.Request) {
+	respW.Header().Set("Content-Type", "application/json")
+	err := storageHandler.ChallengeData(r)
+	if err != nil {
+		respW.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(respW).Encode(err)
+		return
+	}
+
+	json.NewEncoder(respW).Encode("challenge accepted")
+	return
 }
 
 /*ListHandler is the handler to respond to list requests from clients*/

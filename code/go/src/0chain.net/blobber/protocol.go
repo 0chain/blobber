@@ -1,9 +1,17 @@
 package blobber
 
 import (
+	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"time"
+
+	"0chain.net/util"
+	"golang.org/x/crypto/sha3"
 
 	"0chain.net/badgerdbstore"
 	"0chain.net/encryption"
@@ -17,13 +25,24 @@ import (
 	"go.uber.org/zap"
 )
 
+const CHUNK_SIZE = 64 * 1024
+
+type ChallengeResponse struct {
+	Data        []byte                   `json:"data_bytes"`
+	WriteMarker *writemarker.WriteMarker `json:"write_marker"`
+	MerkleRoot  string                   `json:"merkle_root"`
+	MerklePath  *util.MTPath             `json:"merkle_path"`
+	CloseTxnID  string                   `json:"close_txn_id"`
+}
+
 //StorageProtocol - interface for the storage protocol
 type StorageProtocol interface {
 	RegisterBlobber() (string, error)
 	VerifyAllocationTransaction()
-	VerifyBlobberTransaction(txn_hash string) (*transaction.StorageConnection, error)
+	VerifyBlobberTransaction(txn_hash string, clientID string) (*transaction.StorageConnection, error)
 	VerifyMarker(wm *writemarker.WriteMarker, sc *transaction.StorageConnection) error
 	RedeemMarker(wm *writemarker.WriteMarkerEntity)
+	GetChallengeResponse(allocationID string, dataID string, blockNum int64, objectsPath string) (string, error)
 }
 
 //StorageProtocolImpl - implementation of the storage protocol
@@ -36,6 +55,145 @@ func GetProtocolImpl(allocationID string) StorageProtocol {
 	return &StorageProtocolImpl{
 		ServerChain:  chain.GetServerChain(),
 		AllocationID: allocationID}
+}
+
+func (sp *StorageProtocolImpl) SubmitChallenge(path string, wmEntity *writemarker.WriteMarkerEntity, blockNum int64) {
+	file, err := os.Open(path)
+	if err != nil {
+		Logger.Error("Error opening the file in respoding to challenge", zap.String("path", path))
+		return
+	}
+	defer file.Close()
+
+	response := &ChallengeResponse{}
+	response.CloseTxnID = wmEntity.CloseTxnID
+
+	bytesBuf := bytes.NewBuffer(make([]byte, 0))
+	merkleHash := sha3.New256()
+	tReader := io.TeeReader(file, merkleHash)
+	merkleLeaves := make([]util.Hashable, 0)
+	numRead := int64(0)
+	counter := int64(0)
+	for true {
+		n, err := io.CopyN(bytesBuf, tReader, CHUNK_SIZE)
+		if err != io.EOF && err != nil {
+			Logger.Error("Error generating merkle tree for the file in respoding to challenge", zap.String("path", path))
+			return
+		}
+		//Logger.Info("reading bytes from file", zap.Int64("read", n))
+		numRead += n
+		//Logger.Info("hex.EncodeToString(merkleHash.Sum(nil))", zap.String("hash", hex.EncodeToString(merkleHash.Sum(nil))))
+		merkleLeaves = append(merkleLeaves, util.NewStringHashable(hex.EncodeToString(merkleHash.Sum(nil))))
+		counter++
+		if counter == blockNum {
+			//Logger.Info("Length of bytes read : ", zap.Int("length", len(bytesBuf.Bytes())))
+			//Logger.Info("Hash of bytes read : ", zap.String("hash", encryption.Hash(bytesBuf.Bytes())))
+			tmp := make([]byte, len(bytesBuf.Bytes()))
+			copy(tmp, bytesBuf.Bytes())
+			response.Data = tmp
+		}
+		merkleHash.Reset()
+		bytesBuf.Reset()
+		if err != nil && err == io.EOF {
+			break
+		}
+	}
+
+	var mt util.MerkleTreeI = &util.MerkleTree{}
+	mt.ComputeTree(merkleLeaves)
+
+	response.MerkleRoot = mt.GetRoot()
+	response.MerklePath = mt.GetPathByIndex(int(blockNum) - 1)
+	response.WriteMarker = wmEntity.WM
+
+	txn := transaction.NewTransactionEntity()
+
+	scData := &transaction.SmartContractTxnData{}
+	scData.Name = transaction.CHALLENGE_RESPONSE
+	scData.InputArgs = response
+
+	txn.ToClientID = transaction.STORAGE_CONTRACT_ADDRESS
+	txn.Value = 0
+	txn.TransactionType = transaction.TxnTypeSmartContract
+	txnBytes, err := json.Marshal(scData)
+	if err != nil {
+		Logger.Error("Error encoding challenge input", zap.String("err:", err.Error()), zap.Any("scdata", scData))
+		return
+	}
+	txn.TransactionData = string(txnBytes)
+
+	err = txn.ComputeHashAndSign()
+	if err != nil {
+		Logger.Error("Signing Failed during sending challenge response connection to the miner. ", zap.String("err:", err.Error()))
+		return
+	}
+	transaction.SendTransactionSync(txn, sp.ServerChain)
+
+	verifyRetries := 0
+	txnVerified := false
+	for verifyRetries < transaction.MAX_TXN_RETRIES {
+		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+		t, err := transaction.VerifyTransaction(txn.Hash, sp.ServerChain)
+		if err == nil {
+			txnVerified = true
+			Logger.Info("Transaction for challenge response is accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+			break
+		}
+		verifyRetries++
+	}
+
+	if !txnVerified {
+		Logger.Error("Error verifying the challenge response transaction", zap.String("err:", err.Error()), zap.String("txn.Hash", txn.Hash))
+		return
+	}
+
+	// challengeResponse, _ := json.Marshal(response)
+	// responseObj := &ChallengeResponse{}
+	// json.Unmarshal(challengeResponse, responseObj)
+
+	// //var dataBytes bytes.Buffer
+	// //dataBytesWriter := bufio.NewWriter(&dataBytes)
+	// //base64Decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(responseObj.Data))
+	// //io.Copy(dataBytesWriter, base64Decoder)
+	// fmt.Printf("%d bytes", len(responseObj.Data))
+	// Logger.Info("challenge_data_hash", zap.String("hash", encryption.Hash(responseObj.Data)))
+	// verified := util.VerifyMerklePath(encryption.Hash(responseObj.Data), responseObj.MerklePath, responseObj.MerkleRoot)
+	// Logger.Info("Merkle tree verification: ", zap.Bool("verified", verified))
+	// //scData1 := &transaction.SmartContractTxnData{}
+	// //json.Unmarshal(txnBytes, scData1)
+	// //scData1.InputArgs.(*)
+
+	return
+}
+
+func (sp *StorageProtocolImpl) GetChallengeResponse(allocationID string, dataID string, blockNum int64, objectsPath string) (string, error) {
+
+	dbstore := badgerdbstore.GetStorageProvider()
+	wmEntity := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+	wmEntity.AllocationID = allocationID
+	wmEntity.WM = &writemarker.WriteMarker{}
+	wmEntity.WM.DataID = dataID
+
+	err := dbstore.Read(common.GetRootContext(), wmEntity.GetKey(), wmEntity)
+	if err != nil {
+		return "", common.NewError("invalid_challenge_parameters", "Could not locate the data id")
+	}
+
+	numBlocks := int64(wmEntity.ContentSize/(CHUNK_SIZE)) + 1
+	if numBlocks < blockNum || blockNum <= 0 {
+		return "", common.NewError("invalid_challenge_parameters", "Invalid block number. Data does not have that many blocks.")
+	}
+
+	dirPath, dirFileName := getFilePathFromHash(wmEntity.ContentHash)
+	path := filepath.Join(objectsPath, dirPath, dirFileName)
+
+	file, err := os.Open(path)
+	if err != nil {
+		return "", common.NewError("file_not_found", "Could not find the object from the storage")
+	}
+	defer file.Close()
+	go sp.SubmitChallenge(path, wmEntity, blockNum)
+	return "success", nil
 }
 
 func (sp *StorageProtocolImpl) RegisterBlobber() (string, error) {
@@ -75,7 +233,7 @@ func (sp *StorageProtocolImpl) VerifyAllocationTransaction() {
 
 }
 
-func (sp *StorageProtocolImpl) VerifyBlobberTransaction(txn_hash string) (*transaction.StorageConnection, error) {
+func (sp *StorageProtocolImpl) VerifyBlobberTransaction(txn_hash string, clientID string) (*transaction.StorageConnection, error) {
 	if len(txn_hash) == 0 {
 		return nil, common.NewError("open_connection_txn_invalid", "Open connection Txn is blank. ")
 	}
@@ -83,6 +241,9 @@ func (sp *StorageProtocolImpl) VerifyBlobberTransaction(txn_hash string) (*trans
 	t, err := transaction.VerifyTransaction(txn_hash, sp.ServerChain)
 	if err != nil {
 		return nil, common.NewError("open_connection_txn_invalid", "Open connection Txn could not be found. "+err.Error())
+	}
+	if t.ClientID != clientID {
+		return nil, common.NewError("open_connection_txn_invalid", "Open connection Txn should be same client as the write marker. "+err.Error())
 	}
 	var storageConnection transaction.StorageConnection
 	err = json.Unmarshal([]byte(t.TransactionOutput), &storageConnection)
@@ -116,7 +277,7 @@ func (sp *StorageProtocolImpl) VerifyMarker(wm *writemarker.WriteMarker, storage
 		txnoutput := storageConnection
 		var err error
 		if txnoutput == nil {
-			txnoutput, err = sp.VerifyBlobberTransaction(wm.IntentTransactionID)
+			txnoutput, err = sp.VerifyBlobberTransaction(wm.IntentTransactionID, wm.ClientID)
 			if err != nil {
 				return err
 			}
@@ -173,6 +334,7 @@ func (sp *StorageProtocolImpl) RedeemMarker(wm *writemarker.WriteMarkerEntity) {
 	sn.DataID = wm.WM.DataID
 	sn.MerkleRoot = wm.MerkleRoot
 	sn.WriteMarker = *wm.WM
+	sn.Size = wm.ContentSize
 
 	scData := &transaction.SmartContractTxnData{}
 	scData.Name = transaction.CLOSE_CONNECTION_SC_NAME
@@ -214,6 +376,7 @@ func (sp *StorageProtocolImpl) RedeemMarker(wm *writemarker.WriteMarkerEntity) {
 	}
 	wm.Status = writemarker.Committed
 	wm.StatusMessage = t.TransactionOutput
+	wm.CloseTxnID = t.Hash
 	wm.Write(common.GetRootContext())
 
 	debugEntity := writemarker.Provider()

@@ -188,11 +188,10 @@ func (allocation *Allocation) writeFileAndCalculateHash(parentRef *ReferenceObje
 	}
 	merkleHash := sha3.New256()
 	multiHashWriter := io.MultiWriter(h, merkleHash)
-	chunkSize := int64(64 * 1024)
 	tReader := io.TeeReader(infile, multiHashWriter)
 	merkleLeaves := make([]util.Hashable, 0)
 	for true {
-		_, err := io.CopyN(dest, tReader, chunkSize)
+		_, err := io.CopyN(dest, tReader, CHUNK_SIZE)
 		if err != io.EOF && err != nil {
 			return nil, common.NewError("file_write_error", err.Error())
 		}
@@ -241,6 +240,7 @@ func (allocation *Allocation) writeFileAndCalculateHash(parentRef *ReferenceObje
 	writeMarker.ContentHash = blobObject.Hash
 	writeMarker.MerkleRoot = mt.GetRoot()
 	writeMarker.WM = wm
+	writeMarker.ContentSize = fileHeader.Size
 	writeMarker.Status = writemarker.Accepted
 	err = writeMarker.Write(common.GetRootContext())
 	if err != nil {

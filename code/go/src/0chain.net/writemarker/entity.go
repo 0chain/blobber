@@ -33,9 +33,11 @@ type WriteMarkerEntity struct {
 	WM             *WriteMarker      `json:"write_marker"`
 	MerkleRoot     string            `json:"merkle_root"`
 	ContentHash    string            `json:"content_hash"`
+	ContentSize    int64             `json:"size"`
 	Status         WriteMarkerStatus `json:"status"`
 	StatusMessage  string            `json:"status_message"`
 	ReedeemRetries int64             `json:"redeem_retries"`
+	CloseTxnID     string            `json:"close_txn_id"`
 }
 
 var writeMarkerEntityMetaData *datastore.EntityMetadataImpl

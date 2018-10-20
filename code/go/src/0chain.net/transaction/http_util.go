@@ -90,7 +90,7 @@ func sendPostRequest(url string, data []byte, wg *sync.WaitGroup) ([]byte, error
 	defer resp.Body.Close()
 
 	body, _ := ioutil.ReadAll(resp.Body)
-	Logger.Info("SendPostRequest success", zap.String("response", string(body)), zap.String("url", url))
+	Logger.Info("SendPostRequest success", zap.String("url", url))
 	return body, nil
 }
 
