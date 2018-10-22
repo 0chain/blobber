@@ -57,11 +57,34 @@ func GetProtocolImpl(allocationID string) StorageProtocol {
 		AllocationID: allocationID}
 }
 
-func (sp *StorageProtocolImpl) SubmitChallenge(path string, wmEntity *writemarker.WriteMarkerEntity, blockNum int64) {
+func (sp *StorageProtocolImpl) sendChallengeTransaction(txn *transaction.Transaction) {
+	transaction.SendTransactionSync(txn, sp.ServerChain)
+
+	verifyRetries := 0
+	txnVerified := false
+	var err error
+	for verifyRetries < transaction.MAX_TXN_RETRIES {
+		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+		t, err := transaction.VerifyTransaction(txn.Hash, sp.ServerChain)
+		if err == nil {
+			txnVerified = true
+			Logger.Info("Transaction for challenge response is accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+			break
+		}
+		verifyRetries++
+	}
+
+	if !txnVerified {
+		Logger.Error("Error verifying the challenge response transaction", zap.Any("err:", err), zap.String("txn.Hash", txn.Hash))
+		return
+	}
+}
+
+func (sp *StorageProtocolImpl) SubmitChallenge(path string, wmEntity *writemarker.WriteMarkerEntity, blockNum int64) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		Logger.Error("Error opening the file in respoding to challenge", zap.String("path", path))
-		return
+		return "", err
 	}
 	defer file.Close()
 
@@ -78,7 +101,7 @@ func (sp *StorageProtocolImpl) SubmitChallenge(path string, wmEntity *writemarke
 		n, err := io.CopyN(bytesBuf, tReader, CHUNK_SIZE)
 		if err != io.EOF && err != nil {
 			Logger.Error("Error generating merkle tree for the file in respoding to challenge", zap.String("path", path))
-			return
+			return "", err
 		}
 		//Logger.Info("reading bytes from file", zap.Int64("read", n))
 		numRead += n
@@ -118,34 +141,17 @@ func (sp *StorageProtocolImpl) SubmitChallenge(path string, wmEntity *writemarke
 	txnBytes, err := json.Marshal(scData)
 	if err != nil {
 		Logger.Error("Error encoding challenge input", zap.String("err:", err.Error()), zap.Any("scdata", scData))
-		return
+		return "", err
 	}
 	txn.TransactionData = string(txnBytes)
 
 	err = txn.ComputeHashAndSign()
 	if err != nil {
 		Logger.Error("Signing Failed during sending challenge response connection to the miner. ", zap.String("err:", err.Error()))
-		return
-	}
-	transaction.SendTransactionSync(txn, sp.ServerChain)
-
-	verifyRetries := 0
-	txnVerified := false
-	for verifyRetries < transaction.MAX_TXN_RETRIES {
-		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-		t, err := transaction.VerifyTransaction(txn.Hash, sp.ServerChain)
-		if err == nil {
-			txnVerified = true
-			Logger.Info("Transaction for challenge response is accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-			break
-		}
-		verifyRetries++
+		return "", err
 	}
 
-	if !txnVerified {
-		Logger.Error("Error verifying the challenge response transaction", zap.String("err:", err.Error()), zap.String("txn.Hash", txn.Hash))
-		return
-	}
+	go sp.sendChallengeTransaction(txn)
 
 	// challengeResponse, _ := json.Marshal(response)
 	// responseObj := &ChallengeResponse{}
@@ -163,7 +169,7 @@ func (sp *StorageProtocolImpl) SubmitChallenge(path string, wmEntity *writemarke
 	// //json.Unmarshal(txnBytes, scData1)
 	// //scData1.InputArgs.(*)
 
-	return
+	return txn.Hash, nil
 }
 
 func (sp *StorageProtocolImpl) GetChallengeResponse(allocationID string, dataID string, blockNum int64, objectsPath string) (string, error) {
@@ -192,8 +198,8 @@ func (sp *StorageProtocolImpl) GetChallengeResponse(allocationID string, dataID 
 		return "", common.NewError("file_not_found", "Could not find the object from the storage")
 	}
 	defer file.Close()
-	go sp.SubmitChallenge(path, wmEntity, blockNum)
-	return "success", nil
+	txn, err := sp.SubmitChallenge(path, wmEntity, blockNum)
+	return txn, err
 }
 
 func (sp *StorageProtocolImpl) RegisterBlobber() (string, error) {

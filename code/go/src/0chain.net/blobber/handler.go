@@ -31,14 +31,14 @@ func SetupHandlers(r *mux.Router) {
 /*ChallengeHandler is the handler to respond to challenge requests*/
 func ChallengeHandler(respW http.ResponseWriter, r *http.Request) {
 	respW.Header().Set("Content-Type", "application/json")
-	err := storageHandler.ChallengeData(r)
+	txnHash, err := storageHandler.ChallengeData(r)
 	if err != nil {
 		respW.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(respW).Encode(err)
 		return
 	}
 
-	json.NewEncoder(respW).Encode("challenge accepted")
+	json.NewEncoder(respW).Encode(txnHash)
 	return
 }
 

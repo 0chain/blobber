@@ -54,7 +54,7 @@ type StorageHandler interface {
 	DownloadFile(r *http.Request, allocationID string) (*DownloadResponse, *common.Error)
 	GetFileMeta(r *http.Request, allocationID string) (*FileMeta, *common.Error)
 	ListEntities(r *http.Request, allocationID string) (*ListResponse, *common.Error)
-	ChallengeData(r *http.Request) error
+	ChallengeData(r *http.Request) (string, error)
 }
 
 //SHandler - Singleton for the storage handler
