@@ -333,6 +333,7 @@ func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string)
 	response.Result = make([]UploadResult, 0)
 
 	custom_meta := ""
+	public_key := ""
 	wm := &writemarker.WriteMarker{}
 	data_id := ""
 	for key, value := range r.MultipartForm.Value {
@@ -349,10 +350,17 @@ func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string)
 			}
 			data_id = wm.DataID
 		}
+		if key == "public_key" {
+			public_key = strings.Join(value, "")
+		}
 	}
 
 	if len(data_id) == 0 {
 		return GenerateUploadResponseWithError(common.NewError("invalid_data_id", "No Data ID was found"))
+	}
+
+	if len(public_key) == 0 {
+		return GenerateUploadResponseWithError(common.NewError("invalid_public_key", "No Client Public Key was found"))
 	}
 
 	protocolImpl := GetProtocolImpl(allocationID)
@@ -372,7 +380,7 @@ func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string)
 		return GenerateUploadResponseWithError(common.NewError("invalid_open_connection", "Blobber is not par of the open connection transaction"))
 	}
 
-	err = protocolImpl.VerifyMarker(wm, sc)
+	err = protocolImpl.VerifyMarker(wm, sc, public_key)
 	if err != nil {
 		return GenerateUploadResponseWithError(common.NewError("invalid_write_marker", err.Error()))
 	}

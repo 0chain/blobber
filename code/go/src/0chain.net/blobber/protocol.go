@@ -40,7 +40,7 @@ type StorageProtocol interface {
 	RegisterBlobber() (string, error)
 	VerifyAllocationTransaction()
 	VerifyBlobberTransaction(txn_hash string, clientID string) (*transaction.StorageConnection, error)
-	VerifyMarker(wm *writemarker.WriteMarker, sc *transaction.StorageConnection) error
+	VerifyMarker(wm *writemarker.WriteMarker, sc *transaction.StorageConnection, clientPublicKey string) error
 	RedeemMarker(wm *writemarker.WriteMarkerEntity)
 	GetChallengeResponse(allocationID string, dataID string, blockNum int64, objectsPath string) (string, error)
 }
@@ -269,7 +269,7 @@ func (sp *StorageProtocolImpl) VerifyBlobberTransaction(txn_hash string, clientI
 	return &storageConnection, nil
 }
 
-func (sp *StorageProtocolImpl) VerifyMarker(wm *writemarker.WriteMarker, storageConnection *transaction.StorageConnection) error {
+func (sp *StorageProtocolImpl) VerifyMarker(wm *writemarker.WriteMarker, storageConnection *transaction.StorageConnection, clientPublicKey string) error {
 
 	if wm == nil {
 		return common.NewError("no_write_marker", "No Write Marker was found")
@@ -312,8 +312,12 @@ func (sp *StorageProtocolImpl) VerifyMarker(wm *writemarker.WriteMarker, storage
 		if wmBlobberConnection != nil && wmBlobberConnection.OpenConnectionTxn != wm.IntentTransactionID {
 			return common.NewError("write_marker_validation_failed", "Write Marker is not for the same intent transaction")
 		}
-		if wmBlobberConnection != nil && len(txnoutput.ClientPublicKey) == 0 {
+		if wmBlobberConnection != nil && len(txnoutput.ClientPublicKey) == 0 && len(clientPublicKey) == 0 {
 			return common.NewError("client_public_not_found", "Could not get the public key of the client")
+		}
+		clientPubKey := txnoutput.ClientPublicKey
+		if len(clientPubKey) == 0 {
+			clientPubKey = clientPublicKey
 		}
 		merkleRoot := wm.MerkleRoot
 		if len(wm.MerkleRoot) == 0 {
@@ -322,7 +326,7 @@ func (sp *StorageProtocolImpl) VerifyMarker(wm *writemarker.WriteMarker, storage
 		hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v", wm.DataID, merkleRoot, wm.IntentTransactionID, wm.BlobberID, wm.Timestamp, wm.ClientID)
 		signatureHash := encryption.Hash(hashData)
 		Logger.Info("Computed the hash for verifying wm signature. ", zap.String("hashdata", hashData), zap.String("hash", signatureHash))
-		sigOK, err := encryption.Verify(txnoutput.ClientPublicKey, wm.Signature, signatureHash)
+		sigOK, err := encryption.Verify(clientPubKey, wm.Signature, signatureHash)
 		if err != nil {
 			return common.NewError("write_marker_validation_failed", "Error during verifying signature. "+err.Error())
 		}
