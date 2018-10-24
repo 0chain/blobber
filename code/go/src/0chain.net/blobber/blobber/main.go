@@ -21,6 +21,7 @@ import (
 	"0chain.net/logging"
 	. "0chain.net/logging"
 	"0chain.net/node"
+	"0chain.net/transaction"
 	"0chain.net/writemarker"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -196,11 +197,29 @@ func main() {
 }
 
 func RegisterBlobber() {
+	registrationRetries := 0
+	for registrationRetries < 10 {
+		txnHash, err := blobber.GetProtocolImpl("").RegisterBlobber()
+		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+		txnVerified := false
+		verifyRetries := 0
+		for verifyRetries < transaction.MAX_TXN_RETRIES {
+			time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
+			if err == nil {
+				txnVerified = true
+				Logger.Info("Transaction for adding blobber accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+				badgerdbstore.GetStorageProvider().WriteBytes(common.GetRootContext(), BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
+				return
+			}
+			verifyRetries++
+		}
 
-	txnHash, err := blobber.GetProtocolImpl("").RegisterBlobber()
-	if err == nil {
-		badgerdbstore.GetStorageProvider().WriteBytes(common.GetRootContext(), BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
+		if !txnVerified {
+			Logger.Error("Add blobber transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txnHash))
+		}
 	}
+
 }
 
 func SetupBlobberOnBC() {

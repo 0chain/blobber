@@ -231,6 +231,7 @@ func (sp *StorageProtocolImpl) RegisterBlobber() (string, error) {
 		Logger.Info("Signing Failed during registering blobber to the mining network", zap.String("err:", err.Error()))
 		return "", err
 	}
+	Logger.Info("Adding blobber to the blockchain.", zap.String("txn", txn.Hash))
 	transaction.SendTransaction(txn, sp.ServerChain)
 	return txn.Hash, nil
 }
