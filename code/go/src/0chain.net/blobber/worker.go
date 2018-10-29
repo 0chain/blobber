@@ -21,7 +21,7 @@ func SetupWorkers(ctx context.Context) {
 
 /*CleanupWorker - a worker to delete transactiosn that are no longer valid */
 func RedeemMarkers(ctx context.Context) {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(1 * time.Minute)
 	dbstore := badgerdbstore.GetStorageProvider()
 	numWms := 0
 	//totalUsed := 0

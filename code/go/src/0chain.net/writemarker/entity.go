@@ -38,6 +38,7 @@ type WriteMarkerEntity struct {
 	StatusMessage  string            `json:"status_message"`
 	ReedeemRetries int64             `json:"redeem_retries"`
 	CloseTxnID     string            `json:"close_txn_id"`
+	CreationDate   common.Timestamp  `json:"creation_date"`
 }
 
 var writeMarkerEntityMetaData *datastore.EntityMetadataImpl
@@ -46,6 +47,7 @@ var writeMarkerEntityMetaData *datastore.EntityMetadataImpl
 func Provider() datastore.Entity {
 	t := &WriteMarkerEntity{}
 	t.Version = "1.0"
+	t.CreationDate = common.Now()
 	return t
 }
 

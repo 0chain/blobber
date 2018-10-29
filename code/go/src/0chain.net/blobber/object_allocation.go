@@ -246,10 +246,6 @@ func (allocation *Allocation) writeFileAndCalculateHash(parentRef *ReferenceObje
 	if err != nil {
 		return nil, common.NewError("error_persisting_write_marker", err.Error())
 	}
-	go GetProtocolImpl(allocation.ID).RedeemMarker(wmentity.(*writemarker.WriteMarkerEntity))
-	// debugEntity := writemarker.Provider()
-	// badgerdbstore.GetStorageProvider().Read(common.GetRootContext(), writeMarker.GetKey(), debugEntity)
-	// Logger.Info("Debugging to see if saving was successful", zap.Any("wm", debugEntity))
 
 	return blobObject, nil
 }
