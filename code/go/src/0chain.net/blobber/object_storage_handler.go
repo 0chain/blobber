@@ -306,7 +306,7 @@ func (fsh *ObjectStorageHandler) ChallengeData(r *http.Request) (string, error) 
 	}
 	txnHash, err := GetProtocolImpl(allocationID).GetChallengeResponse(allocationID, dataID, blockNum, allocationObj.ObjectsPath)
 	if err != nil {
-		return "", common.NewError("challenge_error", "Error in getting response for challenge."+err.Error())
+		return txnHash, common.NewError("challenge_error", "Error in getting response for challenge."+err.Error())
 	}
 	return txnHash, nil
 }

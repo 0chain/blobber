@@ -32,13 +32,14 @@ func SetupHandlers(r *mux.Router) {
 func ChallengeHandler(respW http.ResponseWriter, r *http.Request) {
 	respW.Header().Set("Content-Type", "application/json")
 	txnHash, err := storageHandler.ChallengeData(r)
+	responseMap := make(map[string]interface{})
+	responseMap["txn"] = txnHash
+	responseMap["error"] = err
 	if err != nil {
 		respW.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(respW).Encode(err)
-		return
 	}
 
-	json.NewEncoder(respW).Encode(txnHash)
+	json.NewEncoder(respW).Encode(responseMap)
 	return
 }
 

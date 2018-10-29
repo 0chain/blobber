@@ -82,8 +82,3 @@ func (c *Chain) Initialize() {
 func (c *Chain) InitializeCreationDate() {
 	c.CreationDate = common.Now()
 }
-
-/*GenerateGenesisBlock - Create the genesis block for the chain */
-func (c *Chain) GenerateGenesisBlock(hash string) {
-	c.GenesisBlockHash = hash
-}

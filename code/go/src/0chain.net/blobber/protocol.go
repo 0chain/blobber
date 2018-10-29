@@ -57,7 +57,7 @@ func GetProtocolImpl(allocationID string) StorageProtocol {
 		AllocationID: allocationID}
 }
 
-func (sp *StorageProtocolImpl) sendChallengeTransaction(txn *transaction.Transaction) {
+func (sp *StorageProtocolImpl) sendChallengeTransaction(txn *transaction.Transaction) bool {
 	transaction.SendTransactionSync(txn, sp.ServerChain)
 
 	verifyRetries := 0
@@ -76,8 +76,9 @@ func (sp *StorageProtocolImpl) sendChallengeTransaction(txn *transaction.Transac
 
 	if !txnVerified {
 		Logger.Error("Error verifying the challenge response transaction", zap.Any("err:", err), zap.String("txn.Hash", txn.Hash))
-		return
+		return false
 	}
+	return true
 }
 
 func (sp *StorageProtocolImpl) SubmitChallenge(path string, wmEntity *writemarker.WriteMarkerEntity, blockNum int64) (string, error) {
@@ -129,47 +130,43 @@ func (sp *StorageProtocolImpl) SubmitChallenge(path string, wmEntity *writemarke
 	response.MerklePath = mt.GetPathByIndex(int(blockNum) - 1)
 	response.WriteMarker = wmEntity.WM
 
-	txn := transaction.NewTransactionEntity()
+	
 
 	scData := &transaction.SmartContractTxnData{}
 	scData.Name = transaction.CHALLENGE_RESPONSE
 	scData.InputArgs = response
 
-	txn.ToClientID = transaction.STORAGE_CONTRACT_ADDRESS
-	txn.Value = 0
-	txn.TransactionType = transaction.TxnTypeSmartContract
-	txnBytes, err := json.Marshal(scData)
-	if err != nil {
-		Logger.Error("Error encoding challenge input", zap.String("err:", err.Error()), zap.Any("scdata", scData))
-		return "", err
+	challengeRetries := 0
+	lastChallengeTxn:=""
+	for (challengeRetries < transaction.MAX_TXN_RETRIES) {
+		txn := transaction.NewTransactionEntity()
+		txn.ToClientID = transaction.STORAGE_CONTRACT_ADDRESS
+		txn.Value = 0
+		txn.TransactionType = transaction.TxnTypeSmartContract
+		txnBytes, err := json.Marshal(scData)
+		if err != nil {
+			Logger.Error("Error encoding challenge input", zap.String("err:", err.Error()), zap.Any("scdata", scData))
+			return "", err
+		}
+		txn.TransactionData = string(txnBytes)
+
+		err = txn.ComputeHashAndSign()
+		if err != nil {
+			Logger.Error("Signing Failed during sending challenge response connection to the miner. ", zap.String("err:", err.Error()))
+			return "", err
+		}
+		if (sp.sendChallengeTransaction(txn)) {
+			return txn.Hash, nil
+		}
+		challengeRetries++
+		time.Sleep(transaction.SLEEP_BETWEEN_RETRIES)
+		lastChallengeTxn = txn.Hash
 	}
-	txn.TransactionData = string(txnBytes)
+	
 
-	err = txn.ComputeHashAndSign()
-	if err != nil {
-		Logger.Error("Signing Failed during sending challenge response connection to the miner. ", zap.String("err:", err.Error()))
-		return "", err
-	}
+	
 
-	go sp.sendChallengeTransaction(txn)
-
-	// challengeResponse, _ := json.Marshal(response)
-	// responseObj := &ChallengeResponse{}
-	// json.Unmarshal(challengeResponse, responseObj)
-
-	// //var dataBytes bytes.Buffer
-	// //dataBytesWriter := bufio.NewWriter(&dataBytes)
-	// //base64Decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(responseObj.Data))
-	// //io.Copy(dataBytesWriter, base64Decoder)
-	// fmt.Printf("%d bytes", len(responseObj.Data))
-	// Logger.Info("challenge_data_hash", zap.String("hash", encryption.Hash(responseObj.Data)))
-	// verified := util.VerifyMerklePath(encryption.Hash(responseObj.Data), responseObj.MerklePath, responseObj.MerkleRoot)
-	// Logger.Info("Merkle tree verification: ", zap.Bool("verified", verified))
-	// //scData1 := &transaction.SmartContractTxnData{}
-	// //json.Unmarshal(txnBytes, scData1)
-	// //scData1.InputArgs.(*)
-
-	return txn.Hash, nil
+	return lastChallengeTxn, common.NewError("challenge_failed", "Challenge failed to verify after max retries")
 }
 
 func (sp *StorageProtocolImpl) GetChallengeResponse(allocationID string, dataID string, blockNum int64, objectsPath string) (string, error) {
@@ -281,6 +278,18 @@ func (sp *StorageProtocolImpl) VerifyMarker(wm *writemarker.WriteMarker, storage
 		if len(wm.IntentTransactionID) == 0 {
 			return common.NewError("write_marker_validation_failed", "Write Marker has no valid intent transaction")
 		}
+
+		dbstore := badgerdbstore.GetStorageProvider()
+		wmEntity := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+		wmEntity.AllocationID = sp.AllocationID
+		wmEntity.WM = wm
+		
+
+		errWmRead := dbstore.Read(common.GetRootContext(), wmEntity.GetKey(), wmEntity)
+		if errWmRead == nil && wmEntity.Status != writemarker.Failed {
+			return common.NewError("write_marker_validation_failed", "Duplicate write marker. Validation failed")
+		}
+		
 		txnoutput := storageConnection
 		var err error
 		if txnoutput == nil {
@@ -316,6 +325,7 @@ func (sp *StorageProtocolImpl) VerifyMarker(wm *writemarker.WriteMarker, storage
 		if wmBlobberConnection != nil && len(txnoutput.ClientPublicKey) == 0 && len(clientPublicKey) == 0 {
 			return common.NewError("client_public_not_found", "Could not get the public key of the client")
 		}
+		
 		clientPubKey := txnoutput.ClientPublicKey
 		if len(clientPubKey) == 0 {
 			clientPubKey = clientPublicKey
