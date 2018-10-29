@@ -130,15 +130,13 @@ func (sp *StorageProtocolImpl) SubmitChallenge(path string, wmEntity *writemarke
 	response.MerklePath = mt.GetPathByIndex(int(blockNum) - 1)
 	response.WriteMarker = wmEntity.WM
 
-	
-
 	scData := &transaction.SmartContractTxnData{}
 	scData.Name = transaction.CHALLENGE_RESPONSE
 	scData.InputArgs = response
 
 	challengeRetries := 0
-	lastChallengeTxn:=""
-	for (challengeRetries < transaction.MAX_TXN_RETRIES) {
+	lastChallengeTxn := ""
+	for challengeRetries < transaction.MAX_TXN_RETRIES {
 		txn := transaction.NewTransactionEntity()
 		txn.ToClientID = transaction.STORAGE_CONTRACT_ADDRESS
 		txn.Value = 0
@@ -155,16 +153,13 @@ func (sp *StorageProtocolImpl) SubmitChallenge(path string, wmEntity *writemarke
 			Logger.Error("Signing Failed during sending challenge response connection to the miner. ", zap.String("err:", err.Error()))
 			return "", err
 		}
-		if (sp.sendChallengeTransaction(txn)) {
+		if sp.sendChallengeTransaction(txn) {
 			return txn.Hash, nil
 		}
 		challengeRetries++
 		time.Sleep(transaction.SLEEP_BETWEEN_RETRIES)
 		lastChallengeTxn = txn.Hash
 	}
-	
-
-	
 
 	return lastChallengeTxn, common.NewError("challenge_failed", "Challenge failed to verify after max retries")
 }
@@ -283,13 +278,12 @@ func (sp *StorageProtocolImpl) VerifyMarker(wm *writemarker.WriteMarker, storage
 		wmEntity := writemarker.Provider().(*writemarker.WriteMarkerEntity)
 		wmEntity.AllocationID = sp.AllocationID
 		wmEntity.WM = wm
-		
 
 		errWmRead := dbstore.Read(common.GetRootContext(), wmEntity.GetKey(), wmEntity)
 		if errWmRead == nil && wmEntity.Status != writemarker.Failed {
 			return common.NewError("write_marker_validation_failed", "Duplicate write marker. Validation failed")
 		}
-		
+
 		txnoutput := storageConnection
 		var err error
 		if txnoutput == nil {
@@ -325,7 +319,7 @@ func (sp *StorageProtocolImpl) VerifyMarker(wm *writemarker.WriteMarker, storage
 		if wmBlobberConnection != nil && len(txnoutput.ClientPublicKey) == 0 && len(clientPublicKey) == 0 {
 			return common.NewError("client_public_not_found", "Could not get the public key of the client")
 		}
-		
+
 		clientPubKey := txnoutput.ClientPublicKey
 		if len(clientPubKey) == 0 {
 			clientPubKey = clientPublicKey
@@ -388,9 +382,9 @@ func (sp *StorageProtocolImpl) RedeemMarker(wm *writemarker.WriteMarkerEntity) {
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 	t, err := transaction.VerifyTransaction(txn.Hash, sp.ServerChain)
 	if err != nil {
-		Logger.Error("Error verifying the commit transaction", zap.String("err:", err.Error()))
+		Logger.Error("Error verifying the commit transaction", zap.String("err:", err.Error()), zap.String("txn", t.Hash))
 		wm.Status = writemarker.Failed
-		wm.StatusMessage = "Signing Failed during sending close connection to the miner. " + err.Error()
+		wm.StatusMessage = "Error verifying the commit transaction." + err.Error()
 		wm.ReedeemRetries++
 		wm.Write(common.GetRootContext())
 		return

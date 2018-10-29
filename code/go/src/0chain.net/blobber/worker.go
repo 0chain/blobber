@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"0chain.net/common"
+
 	"0chain.net/writemarker"
 	"go.uber.org/zap"
 
@@ -21,7 +23,7 @@ func SetupWorkers(ctx context.Context) {
 
 /*CleanupWorker - a worker to delete transactiosn that are no longer valid */
 func RedeemMarkers(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(30 * time.Second)
 	dbstore := badgerdbstore.GetStorageProvider()
 	numWms := 0
 	//totalUsed := 0
@@ -36,7 +38,7 @@ func RedeemMarkers(ctx context.Context) {
 		//Logger.Info("Write marker being processed", zap.Any("wm:", wmEntity))
 		//totalUsed += wmEntity.WM.IntentTransactionID
 
-		if wmEntity.Status != writemarker.Committed && wmEntity.ReedeemRetries < 10 {
+		if wmEntity.Status != writemarker.Committed && wmEntity.ReedeemRetries < 10 && !common.Within(int64(wmEntity.CreationDate), 30) {
 			go GetProtocolImpl(wmEntity.AllocationID).RedeemMarker(&wmEntity)
 		}
 		return nil
