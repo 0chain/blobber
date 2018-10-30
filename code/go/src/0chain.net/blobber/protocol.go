@@ -382,9 +382,9 @@ func (sp *StorageProtocolImpl) RedeemMarker(wm *writemarker.WriteMarkerEntity) {
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 	t, err := transaction.VerifyTransaction(txn.Hash, sp.ServerChain)
 	if err != nil {
-		Logger.Error("Error verifying the commit transaction", zap.String("err:", err.Error()), zap.String("txn", t.Hash))
+		Logger.Error("Error verifying the close connection transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
 		wm.Status = writemarker.Failed
-		wm.StatusMessage = "Error verifying the commit transaction." + err.Error()
+		wm.StatusMessage = "Error verifying the close connection transaction." + err.Error()
 		wm.ReedeemRetries++
 		wm.Write(common.GetRootContext())
 		return
@@ -393,9 +393,5 @@ func (sp *StorageProtocolImpl) RedeemMarker(wm *writemarker.WriteMarkerEntity) {
 	wm.StatusMessage = t.TransactionOutput
 	wm.CloseTxnID = t.Hash
 	wm.Write(common.GetRootContext())
-
-	debugEntity := writemarker.Provider()
-	badgerdbstore.GetStorageProvider().Read(common.GetRootContext(), wm.GetKey(), debugEntity)
-	Logger.Info("Debugging to see if saving was successful", zap.Any("wm", debugEntity))
 	return
 }
