@@ -11,11 +11,12 @@ import (
 
 var storageAPI *Store
 
-func SetupStorageProvider() {
+/*SetupStorageProvider - sets up badgerDB and opens */
+func SetupStorageProvider(badgerDir string) {
 	storageAPI = &Store{}
 	opts := badger.DefaultOptions
-	opts.Dir = "data/badgerdb/blobberstate"
-	opts.ValueDir = "data/badgerdb/blobberstate"
+	opts.Dir = badgerDir + "/badgerdb/blobberstate"
+	opts.ValueDir = badgerDir + "/badgerdb/blobberstate"
 	db, err := badger.Open(opts)
 	if err != nil {
 		panic(err)
