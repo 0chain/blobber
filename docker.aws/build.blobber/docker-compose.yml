@@ -3,7 +3,7 @@ services:
 
   blobber:
     build:
-      content: ${DOCKER_CODEBASE}
+      context: ${DOCKER_CODEBASE}
       dockerfile: ./docker.aws/build.blobber/Dockerfile
 
     image: ${IMAGE_NAME}:${IMAGE_TAG}
