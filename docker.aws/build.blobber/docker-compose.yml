@@ -2,24 +2,38 @@ version: "3"
 services:
 
   blobber:
-    image: "0chainjay/zchain_blobber:latest"
+    build:
+      content: ${BLOBBER_CODEBASE}
+      dockerfile: ./docker.aws/build.blobber/Dockerfile
+
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
+
     environment:
-      - DOCKER= true
-    command: "./blobber --deployment_mode 0 --keys_file /blobber/config/owner_keys.txt --nodes_file nodes --files_dir /blobber/files --badger_dir /blobber/data"
+    - DOCKER= true
+
+    user: ${ZCHAIN_USER}:${ZCHAIN_GROUP}
+
+    command: /blobber/bin/blobber --deployment_mode 0 --keys_file /blobber/config/blobber.txt --nodes_file nodes --files_dir /blobber/files --badger_dir /blobber/data
+
     ports:
-      - "5051:5051"
+    - "5051:5051"
+
     volumes:
-     - "/0chain/config:/blobber/config"
-     - "/0chain/data/files:/blobber/files"
-     - "/0chain/data:/blobber/data"
-     - "/0chain/files:/blobber/files"
-     - "/0chain/logs:/blobber/logs"
-    logging: 
+    - /0chain/config:/blobber/config
+    - /0chain/data:/blobber/data
+    - /0chain/data/files:/blobber/files
+    - /0chain/files:/blobber/files
+    - /0chain/logs:/blobber/logs
+
+    logging:
       driver: json-file
-      options: 
+      options:
         max-file: "10"
-        max-size: 10M  
-  
+        max-size: 10M
+
+    networks:
+      default:
+
 networks:
   default:
     driver: bridge
