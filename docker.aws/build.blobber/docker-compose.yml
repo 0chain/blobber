@@ -13,17 +13,17 @@ services:
 
     user: ${ZCHAIN_USER}:${ZCHAIN_GROUP}
 
-    command: /blobber/bin/blobber --deployment_mode 0 --keys_file /blobber/config/blobber.txt --nodes_file nodes --files_dir /blobber/files --badger_dir /blobber/data
+    command: /0chain/bin/blobber --deployment_mode 0 --keys_file /0chain/config/blobber.txt --nodes_file nodes --files_dir /0chain/files --badger_dir /0chain/data
 
     ports:
     - "5051:5051"
 
     volumes:
-    - /0chain/config:/blobber/config
-    - /0chain/data:/blobber/data
-    - /0chain/data/files:/blobber/files
-    - /0chain/files:/blobber/files
-    - /0chain/logs:/blobber/logs
+    - /0chain/config:/0chain/config
+    - /0chain/data:/0chain/data
+    - /0chain/data/files:/0chain/files
+    - /0chain/files:/0chain/files
+    - /0chain/logs:/0chain/logs
 
     logging:
       driver: json-file

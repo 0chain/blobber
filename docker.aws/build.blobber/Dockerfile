@@ -4,7 +4,7 @@ RUN groupadd -r 0chain && useradd --no-log-init -r -g 0chain 0chain
 
 FROM iron/go:dev
 
-ENV SRC_DIR=/blobber
+ENV SRC_DIR=/0chain
 ENV GOPATH=$GOPATH:$SRC_DIR/go
 WORKDIR $SRC_DIR
 ADD ./docker.aws/build.blobber/BLOBBER_VERSION .
