@@ -24,7 +24,7 @@ ADD ./code/go/src $SRC_DIR/go/src
 
 RUN go build 0chain.net/blobber/blobber
 WORKDIR $SRC_DIR/bin
-RUN cp $SRC_DIR/sharder $SRC_DIR/bin
+RUN cp $SRC_DIR/blobber $SRC_DIR/bin
 
 #Run the blobber
 WORKDIR $SRC_DIR
