@@ -20,10 +20,11 @@ services:
 
     volumes:
     - /0chain/config:/0chain/config
-    - /0chain/data:/0chain/data
-    - /0chain/data/files:/0chain/files
-    - /0chain/files:/0chain/files
     - /0chain/logs:/0chain/logs
+    - /0chain/data:/0chain/data
+    - /0chain/data/badgerdb:/0chain/data/badgerdb
+    - /0chain/data/badgerdb/blobberstate:/0chain/data/badgerdb/blobberstate
+    - /0chain/files:/0chain/files
 
     logging:
       driver: json-file
