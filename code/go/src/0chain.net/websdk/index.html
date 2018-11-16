@@ -1,0 +1,71 @@
+<!doctype html>
+<!--
+Copyright 2018 The Go Authors. All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+-->
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>0Chain WebSDK Demo</title>
+</head>
+
+<body>
+
+    <script src="wasm_exec.js"></script>
+
+    <script>
+
+        const go = new Go();
+
+        WebAssembly.instantiateStreaming(fetch("0chainwebsdk.wasm"), go.importObject).then(async (result) => {
+            mod = result.module;
+            inst = result.instance;
+            memoryBytes = new Uint8Array(inst.exports.mem.buffer)
+            await go.run(inst)
+        });
+
+        var encodedData = [[]];
+        var numshards = 0;
+        function encodeDone(shardNum, length, pointer) {
+            encodedData[shardNum] = memoryBytes.slice(pointer, pointer + length);
+            numshards++;
+            console.log("Shard:", shardNum, encodedData[shardNum]);
+        }
+
+        function decodeDone(length, pointer) {
+            console.log("Decoded Data:", memoryBytes.slice(pointer, pointer + length));
+        }
+    
+        function onFileChange(currentTarget) {
+
+            const file = currentTarget.files[0];
+            var reader = new FileReader();
+
+            console.log(file);
+            reader.onload = function (e) {
+                console.log(file.name, reader.result); 
+                var uint8View = new Uint8Array(reader.result);
+                ZCNWebSdkSetupEncoder(10,6);
+                ZCNWebSdkEncode(uint8View, "encodeDone");
+            }
+
+            // reader.readAsBinaryString(file);
+            reader.readAsArrayBuffer(file);
+        }
+
+        function OnDecode() {
+            console.log("Total Shards", numshards, encodedData)
+            ZCNWebSdkDecode(encodedData, "decodeDone");
+        }
+
+    </script>
+
+    <div />
+    <input type="file" name="testfile" onchange="onFileChange(this)" />
+    <div />
+    <button onClick="OnDecode();" id="decodeButton">Do Decode</button>
+</body>
+
+</html>
