@@ -35,6 +35,12 @@ services:
     networks:
       default:
 
+    restart_policy:
+      condition: on-failure
+      delay: 20s
+      max_attempts: ${MAX_RETRY_ATTEMPTS}
+      window: 120s
+
 networks:
   default:
     driver: bridge
