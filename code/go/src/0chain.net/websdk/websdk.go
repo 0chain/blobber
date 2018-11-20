@@ -31,22 +31,16 @@ var WebSDK ZCNStreamEncoder
 func init() {
 	WebSDK.dataShards 		= 	DATA_SHARDS_DEFAULT
 	WebSDK.parityShards 	= 	PARITY_SHARDS_DEFAULT
-	WebSDK.setupCb			=	js.NewCallback(ZCNWebSdkSetupEncoder)
+	WebSDK.setupCb			=	js.NewCallback(ZCNWebSdkSetup)
 	WebSDK.encodeCb			=	js.NewCallback(ZCNWebSdkEncode)
 	WebSDK.decodeCb			= 	js.NewCallback(ZCNWebSdkDecode)
 	WebSDK.unloadCh			= 	make(chan struct{})
-	WebSDK.unloadCb			= 	js.NewEventCallback(0, unload)
-	addEventListener 		:= 	js.Global().Get("addEventListener")
-	addEventListener.Invoke("beforeunload", WebSDK.unloadCb)
-}
-
-func unload(event js.Value) {
-	WebSDK.unloadCh <- struct {} {}
+	WebSDK.unloadCb			= 	js.NewCallback(ZCNWebSdkUnload)
 }
 
 // args[0] : Number of data shards
 // args[1] : Number of parity shards
-func ZCNWebSdkSetupEncoder(args []js.Value) {
+func ZCNWebSdkSetup(args []js.Value) {
 	if (len(args) < 2) {
 		return
 	}
@@ -54,7 +48,7 @@ func ZCNWebSdkSetupEncoder(args []js.Value) {
 	parityShards	:= args[1].Int()
 	enc, err 	:= reedsolomon.New(dataShards, parityShards)
 	if err != nil {
-		fmt.Println("ZCNWebSdkSetupEncoder(): ",err.Error())
+		fmt.Println("ZCNWebSdkSetup(): ",err.Error())
 		return
 	}
 	WebSDK.encoder 		= enc
@@ -143,10 +137,17 @@ func ZCNWebSdkDecode(args []js.Value) {
 	js.Global().Call(js.ValueOf(args[1]).String(), len(outBuf), ptr)
 }
 
+// No argument
+func ZCNWebSdkUnload(args []js.Value) {
+	WebSDK.unloadCh <- struct {} {}
+}
+
+
 func exportFunctions() {
-	js.Global().Set("ZCNWebSdkSetupEncoder", WebSDK.setupCb)
+	js.Global().Set("ZCNWebSdkSetup", WebSDK.setupCb)
 	js.Global().Set("ZCNWebSdkEncode", WebSDK.encodeCb)
 	js.Global().Set("ZCNWebSdkDecode", WebSDK.decodeCb)
+	js.Global().Set("ZCNWebSdkUnload", WebSDK.unloadCb)
 }
 
 func releaseFunctions() {

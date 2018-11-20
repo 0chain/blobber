@@ -1,8 +1,10 @@
 @startuml
 collections Javascript
 control 0ChainSDK
-Javascript->0ChainSDK: WebAssembly.Instantiate(...)
-Javascript->0ChainSDK: ZCNWebSdkSetupEncoder(numdatashards, numparityshards)
+group Setup
+    Javascript->0ChainSDK: WebAssembly.Instantiate(...)
+    Javascript->0ChainSDK: ZCNWebSdkSetup(numdatashards, numparityshards)
+end
 group Encode/Split
     Javascript->0ChainSDK: ZCNWebSdkEncode(Uint8ArrayBuffer, CallbackFunction)
     loop numdatashards+parityshards
@@ -13,4 +15,7 @@ group Decode/Reconstruct
     Javascript->0ChainSDK: ZCNWebSdkDecode([]Uint8ArrayBuffer, CallbackFunction)
     0ChainSDK->Javascript: CallbackFunction(totallength, pointer)
 end
+group Unload
+    Javascript->0ChainSDK: ZCNWebSdkUnload()
+end 
 @enduml

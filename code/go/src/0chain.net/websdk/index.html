@@ -47,7 +47,7 @@ license that can be found in the LICENSE file.
             reader.onload = function (e) {
                 console.log(file.name, reader.result); 
                 var uint8View = new Uint8Array(reader.result);
-                ZCNWebSdkSetupEncoder(10,6);
+                ZCNWebSdkSetup(10,6);
                 ZCNWebSdkEncode(uint8View, "encodeDone");
             }
 
@@ -60,12 +60,18 @@ license that can be found in the LICENSE file.
             ZCNWebSdkDecode(encodedData, "decodeDone");
         }
 
+        function OnUnload() {
+            ZCNWebSdkUnload();
+        }
+
     </script>
 
     <div />
     <input type="file" name="testfile" onchange="onFileChange(this)" />
     <div />
     <button onClick="OnDecode();" id="decodeButton">Do Decode</button>
+    <div />
+    <button onClick="OnUnload();" id="releaseButton">Unload</button>
 </body>
 
 </html>
