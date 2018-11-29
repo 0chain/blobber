@@ -26,6 +26,8 @@ license that can be found in the LICENSE file.
             await go.run(inst)
         });
 
+        var fileSize = 0;
+        var fileName = "Unnamed";
         var encodedData = [[]];
         var numshards = 0;
         function encodeDone(shardNum, length, pointer) {
@@ -34,8 +36,11 @@ license that can be found in the LICENSE file.
             console.log("Shard:", shardNum, encodedData[shardNum]);
         }
 
+        var decodedData = [];
         function decodeDone(length, pointer) {
-            console.log("Decoded Data:", memoryBytes.slice(pointer, pointer + length));
+            // Use the filesize instead of length
+            decodedData = memoryBytes.slice(pointer, pointer + fileSize)
+            console.log("Decoded Data:", decodedData);
         }
     
         function onFileChange(currentTarget) {
@@ -44,6 +49,8 @@ license that can be found in the LICENSE file.
             var reader = new FileReader();
 
             console.log(file);
+            fileSize = file.size
+            fileName = file.name
             reader.onload = function (e) {
                 console.log(file.name, reader.result); 
                 var uint8View = new Uint8Array(reader.result);
@@ -64,12 +71,32 @@ license that can be found in the LICENSE file.
             ZCNWebSdkUnload();
         }
 
+        function download(filename, text) {
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+        }
+
+        function OnDownload() {
+            var str = String.fromCharCode.apply(null, decodedData);
+            download(fileName, str);
+        }
+
     </script>
 
     <div />
     <input type="file" name="testfile" onchange="onFileChange(this)" />
     <div />
     <button onClick="OnDecode();" id="decodeButton">Do Decode</button>
+    <div />
+    <button onClick="OnDownload();" id="download">Download</button>
     <div />
     <button onClick="OnUnload();" id="releaseButton">Unload</button>
 </body>
