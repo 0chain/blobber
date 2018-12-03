@@ -37,6 +37,8 @@ var BLOBBER_REGISTERED_LOOKUP_KEY = datastore.ToKey("blobber_registration")
 
 var startTime time.Time
 var serverChain *chain.Chain
+var filesDir *string
+var badgerDir *string
 
 func initHandlers(r *mux.Router) {
 
@@ -45,8 +47,8 @@ func initHandlers(r *mux.Router) {
 }
 
 func initEntities() {
-	badgerdbstore.SetupStorageProvider()
-	fsStore := filestore.SetupFSStore("./files")
+	badgerdbstore.SetupStorageProvider(*badgerDir)
+	fsStore := filestore.SetupFSStore(*filesDir + "/files")
 
 	blobber.SetupAllocationChangeCollectorEntity(badgerdbstore.GetStorageProvider())
 	allocation.SetupAllocationEntity(badgerdbstore.GetStorageProvider())
@@ -91,6 +93,8 @@ func main() {
 	nodesFile := flag.String("nodes_file", "", "nodes_file")
 	keysFile := flag.String("keys_file", "", "keys_file")
 	maxDelay := flag.Int("max_delay", 0, "max_delay")
+	filesDir = flag.String("files_dir", "", "files_dir")
+	badgerDir = flag.String("badger_dir", "", "badger_dir")
 
 	flag.Parse()
 
@@ -106,6 +110,14 @@ func main() {
 	}
 	config.Configuration.ChainID = viper.GetString("server_chain.id")
 	config.Configuration.MaxDelay = *maxDelay
+
+	if *filesDir == "" {
+		panic("Please specify --files_dir absolute folder name option where uploaded files can be stored")
+	}
+
+	if *badgerDir == "" {
+		panic("Please specify --badger_dir absolute folder name option where badger db can be stored")
+	}
 
 	reader, err := os.Open(*keysFile)
 	if err != nil {
@@ -206,6 +218,7 @@ func main() {
 }
 
 func RegisterBlobber() {
+
 	registrationRetries := 0
 	ctx := badgerdbstore.GetStorageProvider().WithConnection(common.GetRootContext())
 	for registrationRetries < 10 {
@@ -230,7 +243,6 @@ func RegisterBlobber() {
 			Logger.Error("Add blobber transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txnHash))
 		}
 	}
-
 }
 
 func SetupBlobberOnBC() {
