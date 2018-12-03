@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"0chain.net/allocation"
 	"0chain.net/badgerdbstore"
 	"0chain.net/blobber"
 	"0chain.net/chain"
@@ -18,11 +19,14 @@ import (
 	"0chain.net/config"
 	"0chain.net/datastore"
 	"0chain.net/encryption"
+	"0chain.net/filestore"
 	"0chain.net/logging"
 	. "0chain.net/logging"
 	"0chain.net/node"
+	"0chain.net/reference"
 	"0chain.net/transaction"
 	"0chain.net/writemarker"
+
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
@@ -41,10 +45,15 @@ func initHandlers(r *mux.Router) {
 }
 
 func initEntities() {
-	blobber.SetupObjectStorageHandler("./files")
-	//blobber.SetupProtocol(serverChain)
 	badgerdbstore.SetupStorageProvider()
-	writemarker.SetupWMEntity(badgerdbstore.GetStorageProvider())
+	fsStore := filestore.SetupFSStore("./files")
+
+	blobber.SetupAllocationChangeCollectorEntity(badgerdbstore.GetStorageProvider())
+	allocation.SetupAllocationEntity(badgerdbstore.GetStorageProvider())
+	reference.SetupFileRefEntity(badgerdbstore.GetStorageProvider())
+	reference.SetupRefEntity(badgerdbstore.GetStorageProvider())
+	blobber.SetupObjectStorageHandler(fsStore, badgerdbstore.GetStorageProvider())
+	writemarker.SetupEntity(badgerdbstore.GetStorageProvider())
 	blobber.SetupWorkers(common.GetRootContext())
 }
 
@@ -198,8 +207,9 @@ func main() {
 
 func RegisterBlobber() {
 	registrationRetries := 0
+	ctx := badgerdbstore.GetStorageProvider().WithConnection(common.GetRootContext())
 	for registrationRetries < 10 {
-		txnHash, err := blobber.GetProtocolImpl("").RegisterBlobber()
+		txnHash, err := blobber.GetProtocolImpl("").RegisterBlobber(ctx)
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 		txnVerified := false
 		verifyRetries := 0
@@ -209,7 +219,8 @@ func RegisterBlobber() {
 			if err == nil {
 				txnVerified = true
 				Logger.Info("Transaction for adding blobber accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-				badgerdbstore.GetStorageProvider().WriteBytes(common.GetRootContext(), BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
+				badgerdbstore.GetStorageProvider().WriteBytes(ctx, BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
+				badgerdbstore.GetStorageProvider().Commit(ctx)
 				return
 			}
 			verifyRetries++

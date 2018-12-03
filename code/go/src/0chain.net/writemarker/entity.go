@@ -2,6 +2,7 @@ package writemarker
 
 import (
 	"context"
+	"fmt"
 
 	"0chain.net/common"
 	"0chain.net/datastore"
@@ -9,13 +10,14 @@ import (
 )
 
 type WriteMarker struct {
-	DataID              string           `json:"data_id"`
-	MerkleRoot          string           `json:"merkle_root"`
-	IntentTransactionID string           `json:"intent_tx_id"`
-	BlobberID           string           `json:"blobber_id"`
-	Timestamp           common.Timestamp `json:"timestamp"`
-	ClientID            string           `json:"client_id"`
-	Signature           string           `json:"signature"`
+	AllocationRoot         string           `json:"allocation_root"`
+	PreviousAllocationRoot string           `json:"prev_allocation_root"`
+	AllocationID           string           `json:"allocation_id"`
+	Size                   int64            `json:"size"`
+	BlobberID              string           `json:"blobber_id"`
+	Timestamp              common.Timestamp `json:"timestamp"`
+	ClientID               string           `json:"client_id"`
+	Signature              string           `json:"signature"`
 }
 
 type WriteMarkerStatus int
@@ -27,13 +29,9 @@ const (
 )
 
 type WriteMarkerEntity struct {
-	ID             string            `json:"id"`
 	Version        string            `json:"version"`
-	AllocationID   string            `json:"allocation_id"`
+	PrevWM         string            `json:"prev_write_marker"`
 	WM             *WriteMarker      `json:"write_marker"`
-	MerkleRoot     string            `json:"merkle_root"`
-	ContentHash    string            `json:"content_hash"`
-	ContentSize    int64             `json:"size"`
 	Status         WriteMarkerStatus `json:"status"`
 	StatusMessage  string            `json:"status_message"`
 	ReedeemRetries int64             `json:"redeem_retries"`
@@ -51,10 +49,10 @@ func Provider() datastore.Entity {
 	return t
 }
 
-func SetupWMEntity(store datastore.Store) {
+func SetupEntity(store datastore.Store) {
 	writeMarkerEntityMetaData = datastore.MetadataProvider()
 	writeMarkerEntityMetaData.Name = "wm"
-	writeMarkerEntityMetaData.DB = "wmdb"
+	writeMarkerEntityMetaData.DB = "wm"
 	writeMarkerEntityMetaData.Provider = Provider
 	writeMarkerEntityMetaData.Store = store
 
@@ -65,10 +63,10 @@ func (wm *WriteMarkerEntity) GetEntityMetadata() datastore.EntityMetadata {
 	return writeMarkerEntityMetaData
 }
 func (wm *WriteMarkerEntity) SetKey(key datastore.Key) {
-	wm.ID = datastore.ToString(key)
+	//wm.ID = datastore.ToString(key)
 }
 func (wm *WriteMarkerEntity) GetKey() datastore.Key {
-	return datastore.ToKey("wm:" + encryption.Hash(wm.AllocationID+wm.WM.DataID))
+	return datastore.ToKey(writeMarkerEntityMetaData.GetDBName() + ":" + encryption.Hash(wm.WM.AllocationID+wm.WM.AllocationRoot))
 }
 func (wm *WriteMarkerEntity) Read(ctx context.Context, key datastore.Key) error {
 	return writeMarkerEntityMetaData.GetStore().Read(ctx, key, wm)
@@ -78,4 +76,9 @@ func (wm *WriteMarkerEntity) Write(ctx context.Context) error {
 }
 func (wm *WriteMarkerEntity) Delete(ctx context.Context) error {
 	return nil
+}
+
+func (wm *WriteMarker) GetHashData() string {
+	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", wm.AllocationRoot, wm.PreviousAllocationRoot, wm.AllocationID, wm.BlobberID, wm.ClientID, wm.Size, wm.Timestamp)
+	return hashData
 }

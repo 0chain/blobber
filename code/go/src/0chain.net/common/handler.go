@@ -12,6 +12,10 @@ import (
 /*AppErrorHeader - a http response header to send an application error code */
 const AppErrorHeader = "X-App-Error-Code"
 
+const ClientHeader = "X-App-Client-ID"
+const ClientKeyHeader = "X-App-Client-Key"
+const TimestampHeader = "X-App-Timestamp"
+
 /*ReqRespHandlerf - a type for the default hanlder signature */
 type ReqRespHandlerf func(w http.ResponseWriter, r *http.Request)
 

@@ -23,10 +23,10 @@ func GetEntity(entityName string) Entity {
 
 type EntityMetadata interface {
 	GetName() string
-	GetDB() string
 	Instance() Entity
 	GetStore() Store
 	GetIDColumnName() string
+	GetDBName() string
 }
 
 type EntityMetadataImpl struct {
@@ -46,10 +46,6 @@ func (em *EntityMetadataImpl) GetName() string {
 	return em.Name
 }
 
-func (em *EntityMetadataImpl) GetDB() string {
-	return em.DB
-}
-
 func (em *EntityMetadataImpl) Instance() Entity {
 	return em.Provider()
 }
@@ -60,4 +56,8 @@ func (em *EntityMetadataImpl) GetStore() Store {
 
 func (em *EntityMetadataImpl) GetIDColumnName() string {
 	return em.IDColumnName
+}
+
+func (em *EntityMetadataImpl) GetDBName() string {
+	return em.DB
 }

@@ -45,20 +45,20 @@ type CloseConnection struct {
 	WriteMarker writemarker.WriteMarker `json:"write_marker"`
 }
 
-type StorageConnection struct {
-	ClientPublicKey string                     `json:"client_public_key"`
-	AllocationID    string                     `json:"allocation_id"`
-	Status          int                        `json:"status"`
-	BlobberData     []StorageConnectionBlobber `json:"blobber_data"`
+type StorageAllocation struct {
+	OwnerID    string           `json:"owner_id"`
+	ID         string           `json:"allocation_id"`
+	Size       int64            `json:"size"`
+	UsedSize   int64            `json:"used_size"`
+	Expiration common.Timestamp `json:"expiration_date"`
+	Blobbers   []*StorageNode   `json:"blobbers"`
 }
 
-type StorageConnectionBlobber struct {
-	BlobberID         string `json:"blobber_id"`
-	DataID            string `json:"data_id"`
-	Size              int64  `json:"size"`
-	MerkleRoot        string `json:"merkle_root"`
-	OpenConnectionTxn string `json:"open_connection_txn"`
-	AllocationID      string `json:"allocation_id"`
+type StorageAllocationBlobber struct {
+	BlobberID      string `json:"blobber_id"`
+	Size           int64  `json:"size"`
+	UsedSize       int64  `json:"used_size"`
+	AllocationRoot string `json:"allocation_root"`
 }
 
 const ADD_BLOBBER_SC_NAME = "add_blobber"

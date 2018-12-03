@@ -1,413 +1,343 @@
 package blobber
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"net/http"
 
-	"0chain.net/node"
-	"0chain.net/transaction"
+	"0chain.net/allocation"
 	"0chain.net/writemarker"
 
-	"net/http"
-	"os"
-
-	"bytes"
-	"fmt"
-
-	"errors"
-
-	"path/filepath"
-
-	. "0chain.net/logging"
-	"go.uber.org/zap"
-
 	"0chain.net/common"
-	"0chain.net/util"
-
-	"strconv"
-	"strings"
-	"sync"
+	"0chain.net/datastore"
+	"0chain.net/filestore"
+	. "0chain.net/logging"
+	"0chain.net/reference"
+	"go.uber.org/zap"
 )
+
+const FORM_FILE_PARSE_MAX_MEMORY = 10 * 1024 * 1024
 
 //ObjectStorageHandler - implments the StorageHandler interface
 type ObjectStorageHandler struct {
-	RootDirectory string
 }
-
-const (
-	OSPathSeperator            string = string(os.PathSeparator)
-	RefsDirName                       = "refs"
-	ObjectsDirName                    = "objects"
-	TempObjectsDirName                = "tmp"
-	CurrentVersion                    = "1.0"
-	FORM_FILE_PARSE_MAX_MEMORY        = 10 * 1024 * 1024
-)
-
-var mutex = &sync.Mutex{}
 
 /*SetupFSStorageHandler - Setup a file system based block storage */
-func SetupObjectStorageHandler(rootDir string) {
-	util.CreateDirs(rootDir)
-	SHandler = &ObjectStorageHandler{RootDirectory: rootDir}
+func SetupObjectStorageHandler(fsStore filestore.FileStore, metaStore datastore.Store) {
+	SHandler = &ObjectStorageHandler{}
+	metaDataStore = metaStore
+	fileStore = fsStore
 }
 
-func (fsh *ObjectStorageHandler) setupAllocation(allocationID string) (*Allocation, error) {
-	allocation := &Allocation{ID: allocationID}
-	allocation.Path = fsh.generateTransactionPath(allocationID)
-	allocation.RefsPath = fmt.Sprintf("%s%s%s", allocation.Path, OSPathSeperator, RefsDirName)
-	allocation.ObjectsPath = fmt.Sprintf("%s%s%s", allocation.Path, OSPathSeperator, ObjectsDirName)
-	allocation.TempObjectsPath = filepath.Join(allocation.ObjectsPath, TempObjectsDirName)
-
-	//create the allocation object dirs
-	err := util.CreateDirs(allocation.ObjectsPath)
+func (fsh *ObjectStorageHandler) verifyAllocation(ctx context.Context, allocationID string) (*allocation.Allocation, error) {
+	if len(allocationID) == 0 {
+		return nil, common.NewError("invalid_allocation", "Invalid allocation id")
+	}
+	allocationObj, err := GetProtocolImpl(allocationID).VerifyAllocationTransaction(ctx)
 	if err != nil {
-		Logger.Info("allocation_objects_dir_creation_error", zap.Any("allocation_objects_dir_creation_error", err))
 		return nil, err
 	}
-
-	//create the allocation tmp object dirs
-	err = util.CreateDirs(allocation.TempObjectsPath)
-	if err != nil {
-		Logger.Info("allocation_temp_objects_dir_creation_error", zap.Any("allocation_temp_objects_dir_creation_error", err))
-		return nil, err
-	}
-
-	//create the allocation refs dirs
-	err = util.CreateDirs(allocation.RefsPath)
-	if err != nil {
-		Logger.Info("allocation_refs_dir_creation_error", zap.Any("allocation_refs_dir_creation_error", err))
-		return nil, err
-	}
-
-	root_ref, _ := allocation.getReferenceObject(OSPathSeperator, OSPathSeperator, true, true)
-
-	if root_ref == nil {
-		Logger.Info("allocation_refs_dir_creation_error", zap.Any("allocation_refs_dir_creation_error", err))
-		return nil, errors.New("error loading the reference for root directory")
-	}
-
-	allocation.RootReferenceObject = *root_ref
-	return allocation, nil
+	return allocationObj, nil
 }
 
-func (fsh *ObjectStorageHandler) generateTransactionPath(transID string) string {
-
-	var dir bytes.Buffer
-	fmt.Fprintf(&dir, "%s%s", fsh.RootDirectory, OSPathSeperator)
-	for i := 0; i < 3; i++ {
-		fmt.Fprintf(&dir, "%s%s", OSPathSeperator, transID[3*i:3*i+3])
-	}
-	fmt.Fprintf(&dir, "%s%s", OSPathSeperator, transID[9:])
-	return dir.String()
-}
-
-func (fsh *ObjectStorageHandler) ListEntities(r *http.Request, allocationID string) (*ListResponse, *common.Error) {
+func (fsh *ObjectStorageHandler) ListEntities(ctx context.Context, r *http.Request) (*ListResult, error) {
 	if r.Method == "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used for downloading the file. Use GET instead")
+		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
-
-	allocation, err := fsh.setupAllocation(allocationID)
+	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID)
 
 	if err != nil {
-		Logger.Info("", zap.Any("error", err))
-		//return -1, common.NewError("allocation_setup_error", err.Error())
-		return nil, common.NewError("allocation_setup_error", err.Error())
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	file_path, ok := r.URL.Query()["path"]
-	if !ok || len(file_path[0]) < 1 {
-		return nil, common.NewError("invalid_parameters", "path parameter not found")
-	}
-	filePath := file_path[0]
-
-	blobRefObject, _ := allocation.getReferenceObject(filePath, filePath, false, false)
-	if blobRefObject == nil {
-		Logger.Info("", zap.Any("blob_error", "Error getting the blob reference"))
-		//return -1, common.NewError("allocation_setup_error", err.Error())
-		return nil, common.NewError("invalid_parameters", "Invalid path. Please check the parameters")
+	path := r.FormValue("path")
+	if len(path) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 
-	if blobRefObject.Header.ReferenceType != DIRECTORY {
-		return nil, common.NewError("invalid_parameters", "Requested object is not a directory. Cannot list on directories. Please check the parameters")
+	dirref := reference.RefProvider().(*reference.Ref)
+	dirref.AllocationID = allocationID
+	dirref.Path = path
+
+	err = dirref.Read(ctx, dirref.GetKey())
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
 
-	blobRefObject.LoadReferenceEntries()
-
-	response := &ListResponse{}
-
-	//response.Name = blobRefObject.Hash
-	response.ListEntries = make([]ListResponseEntity, 0)
-	for i := range blobRefObject.RefEntries {
-		var listEntry ListResponseEntity
-		// Filename string `json:"filename"`
-		// CustomMeta string `json:"custom_meta"`
-		// Size int64 `json:"size"`
-		// ContentHash string `json:"content_hash"`
-		listEntry.Name = blobRefObject.RefEntries[i].Name
-		listEntry.LookupHash = blobRefObject.RefEntries[i].LookupHash
-		if blobRefObject.RefEntries[i].ReferenceType == DIRECTORY {
-			listEntry.IsDir = true
-		} else {
-			listEntry.IsDir = false
-		}
-		response.ListEntries = append(response.ListEntries, listEntry)
+	err = dirref.LoadChildren(ctx)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Error loading children in path. "+err.Error())
 	}
-	return response, nil
+
+	var result ListResult
+	result.AllocationRoot = allocationObj.AllocationRoot
+	result.Meta = dirref.GetListingData(ctx)
+	result.Entities = make([]map[string]interface{}, len(dirref.ChildRefs))
+	for idx, child := range dirref.Children {
+		result.Entities[idx] = child.GetListingData(ctx)
+	}
+
+	return &result, nil
 }
 
-func (fsh *ObjectStorageHandler) GetFileMeta(r *http.Request, allocationID string) (*FileMeta, *common.Error) {
-	if r.Method == "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used for downloading the file. Use GET instead")
-	}
+func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*CommitResult, error) {
 
-	allocation, err := fsh.setupAllocation(allocationID)
-
-	if err != nil {
-		Logger.Info("", zap.Any("error", err))
-		//return -1, common.NewError("allocation_setup_error", err.Error())
-		return nil, common.NewError("allocation_setup_error", err.Error())
-	}
-
-	file_path, ok := r.URL.Query()["path"]
-	if !ok || len(file_path[0]) < 1 {
-		return nil, common.NewError("invalid_parameters", "path parameter not found")
-	}
-	filePath := file_path[0]
-
-	filename, ok := r.URL.Query()["filename"]
-	if !ok || len(filename[0]) < 1 {
-		return nil, common.NewError("invalid_parameters", "path parameter not found")
-	}
-	fileName := filename[0]
-
-	blobRefObject, _ := allocation.getReferenceObject(filepath.Join(filePath, fileName), fileName, false, false)
-	if blobRefObject == nil {
-		Logger.Info("", zap.Any("blob_error", "Error getting the blob reference"))
-		//return -1, common.NewError("allocation_setup_error", err.Error())
-		return nil, common.NewError("invalid_parameters", "File not found. Please check the parameters")
-	}
-
-	if blobRefObject.Header.ReferenceType != FILE {
-		return nil, common.NewError("invalid_parameters", "Requested object is not a file. Please check the parameters")
-	}
-
-	blobRefObject.LoadReferenceEntries()
-
-	response := &FileMeta{}
-
-	response.ID = blobRefObject.Hash
-	response.Meta = make([]MetaInfo, 0)
-	for i := range blobRefObject.RefEntries {
-		var meta MetaInfo
-		// Filename string `json:"filename"`
-		// CustomMeta string `json:"custom_meta"`
-		// Size int64 `json:"size"`
-		// ContentHash string `json:"content_hash"`
-		meta.Filename = blobRefObject.RefEntries[i].Name
-		meta.CustomMeta = blobRefObject.RefEntries[i].CustomMeta
-		meta.Size = blobRefObject.RefEntries[i].Size
-		meta.ContentHash = blobRefObject.RefEntries[i].LookupHash
-		response.Meta = append(response.Meta, meta)
-	}
-	return response, nil
-
-}
-
-func (fsh *ObjectStorageHandler) DownloadFile(r *http.Request, allocationID string) (*DownloadResponse, *common.Error) {
-	if r.Method == "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used for downloading the file. Use GET instead")
-	}
-	allocation, err := fsh.setupAllocation(allocationID)
-
-	if err != nil {
-		Logger.Info("", zap.Any("error", err))
-		//return -1, common.NewError("allocation_setup_error", err.Error())
-		return nil, common.NewError("allocation_setup_error", err.Error())
-	}
-
-	file_path, ok := r.URL.Query()["path"]
-	if !ok || len(file_path[0]) < 1 {
-		return nil, common.NewError("invalid_parameters", "path parameter not found")
-	}
-	filePath := file_path[0]
-
-	filename, ok := r.URL.Query()["filename"]
-	if !ok || len(filename[0]) < 1 {
-		return nil, common.NewError("invalid_parameters", "path parameter not found")
-	}
-	fileName := filename[0]
-
-	blobRefObject, _ := allocation.getReferenceObject(filepath.Join(filePath, fileName), fileName, false, false)
-	if blobRefObject == nil {
-		Logger.Info("", zap.Any("blob_error", "Error getting the blob reference"))
-		//return -1, common.NewError("allocation_setup_error", err.Error())
-		return nil, common.NewError("invalid_parameters", "File not found. Please check the parameters")
-	}
-
-	if blobRefObject.Header.ReferenceType != FILE {
-		return nil, common.NewError("invalid_parameters", "Requested object is not a file. Please check the parameters")
-	}
-
-	blobRefObject.LoadReferenceEntries()
-
-	part_hash, ok := r.URL.Query()["part_hash"]
-	partHash := ""
-	if !ok || len(part_hash[0]) < 1 {
-		err = nil
-	} else {
-		partHash = part_hash[0]
-	}
-
-	if err != nil || (len(partHash) < 1) {
-		return nil, common.NewError("invalid_parameters", "invalid part hash")
-	}
-
-	for i := range blobRefObject.RefEntries {
-		if blobRefObject.RefEntries[i].LookupHash == partHash {
-			partNum := i
-			response := &DownloadResponse{}
-			response.Filename = blobRefObject.RefEntries[partNum].Name
-			response.Size = strconv.FormatInt(blobRefObject.RefEntries[partNum].Size, 10)
-			dirPath, dirFileName := getFilePathFromHash(blobRefObject.RefEntries[partNum].LookupHash)
-			response.Path = filepath.Join(allocation.ObjectsPath, dirPath, dirFileName)
-
-			return response, nil
-		}
-	}
-
-	return nil, common.NewError("invalid_parameters", "invalid part hash")
-}
-
-//ChallengeData triggers a challenge request and response with a transaction on the blockchain
-func (fsh *ObjectStorageHandler) ChallengeData(r *http.Request) (string, error) {
-	data_id, ok := r.URL.Query()["data_id"]
-	if !ok || len(data_id[0]) < 1 {
-		return "", common.NewError("invalid_parameters", "data_id parameter not found")
-	}
-	dataID := data_id[0]
-
-	block_num, ok := r.URL.Query()["block_num"]
-	if !ok || len(block_num[0]) < 1 {
-		return "", common.NewError("invalid_parameters", "block_num parameter not found")
-	}
-	blockNum, err := strconv.ParseInt(block_num[0], 10, 64)
-	if err != nil {
-		return "", common.NewError("invalid_parameters", "block_num parsing failed."+err.Error())
-	}
-
-	allocation_id, ok := r.URL.Query()["allocation_id"]
-	if !ok || len(allocation_id[0]) < 1 {
-		return "", common.NewError("invalid_parameters", "allocation_id parameter not found")
-	}
-	allocationID := allocation_id[0]
-
-	allocationObj, err := fsh.setupAllocation(allocationID)
-	if err != nil {
-		return "", common.NewError("invalid_allocation", "Error in looking up on the allocation."+err.Error())
-	}
-	txnHash, err := GetProtocolImpl(allocationID).GetChallengeResponse(allocationID, dataID, blockNum, allocationObj.ObjectsPath)
-	if err != nil {
-		return txnHash, common.NewError("challenge_error", "Error in getting response for challenge."+err.Error())
-	}
-	return txnHash, nil
-}
-
-//WriteFile stores the file into the blobber files system from the HTTP request
-func (fsh *ObjectStorageHandler) WriteFile(r *http.Request, allocationID string) UploadResponse {
-	var response UploadResponse
 	if r.Method == "GET" {
-		return GenerateUploadResponseWithError(common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST instead"))
+		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
 	}
+	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+	//clientKey := ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
 
-	allocation, err := fsh.setupAllocation(allocationID)
+	mutex := GetMutex(allocationID)
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID)
 
 	if err != nil {
-		Logger.Info("Error during setting up the allocation ", zap.Any("error", err))
-		return GenerateUploadResponseWithError(common.NewError("allocation_setup_error", err.Error()))
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
 		Logger.Info("Error Parsing the request", zap.Any("error", err))
-		return GenerateUploadResponseWithError(common.NewError("request_parse_error", err.Error()))
+		return nil, common.NewError("request_parse_error", err.Error())
 	}
 
-	response.Result = make([]UploadResult, 0)
-
-	custom_meta := ""
-	public_key := ""
-	wm := &writemarker.WriteMarker{}
-	data_id := ""
-	for key, value := range r.MultipartForm.Value {
-		if key == "custom_meta" {
-			custom_meta = strings.Join(value, "")
-		}
-		if key == "write_marker" {
-			wmString := strings.Join(value, "")
-			Logger.Info("Write Marker", zap.Any("wm", wmString))
-			err = json.Unmarshal([]byte(wmString), wm)
-			if err != nil {
-				Logger.Info("Invalid Write Marker in the request", zap.Any("error", err))
-				return GenerateUploadResponseWithError(common.NewError("write_marker_decode_error", err.Error()))
-			}
-			data_id = wm.DataID
-		}
-		if key == "public_key" {
-			public_key = strings.Join(value, "")
-		}
+	connectionID := r.FormValue("connection_id")
+	if len(connectionID) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	if len(data_id) == 0 {
-		return GenerateUploadResponseWithError(common.NewError("invalid_data_id", "No Data ID was found"))
-	}
+	connectionObj := AllocationChangeCollectorProvider().(*AllocationChangeCollector)
+	connectionObj.ConnectionID = connectionID
+	connectionObj.AllocationID = allocationID
 
-	if len(public_key) == 0 {
-		return GenerateUploadResponseWithError(common.NewError("invalid_public_key", "No Client Public Key was found"))
-	}
-
-	protocolImpl := GetProtocolImpl(allocationID)
-	sc, err := protocolImpl.VerifyBlobberTransaction(wm.IntentTransactionID, wm.ClientID)
+	err = GetMetaDataStore().Read(ctx, connectionObj.GetKey(), connectionObj)
 	if err != nil {
-		return GenerateUploadResponseWithError(common.NewError("invalid_open_connection", err.Error()))
+		return nil, common.NewError("invalid_parameters", "Invalid connection id. Connection id was not found. "+err.Error())
 	}
 
-	var wmBlobberConnection *transaction.StorageConnectionBlobber
-	for _, blobberConnection := range sc.BlobberData {
-		if blobberConnection.BlobberID == node.Self.ID && wm.DataID == blobberConnection.DataID {
-			wmBlobberConnection = &blobberConnection
+	if allocationObj.BlobberSizeUsed+connectionObj.Size > allocationObj.BlobberSize {
+		return nil, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
+	}
+
+	writeMarkerString := r.FormValue("write_marker")
+	writeMarker := &writemarker.WriteMarker{}
+	err = json.Unmarshal([]byte(writeMarkerString), &writeMarker)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the writemarker for commit."+err.Error())
+	}
+
+	var result CommitResult
+	latestWM := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+	if len(allocationObj.LatestWMEntity) == 0 {
+		latestWM = nil
+	} else {
+		err = latestWM.Read(ctx, allocationObj.LatestWMEntity)
+		if err != nil {
+			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
 	}
 
-	if wmBlobberConnection == nil {
-		return GenerateUploadResponseWithError(common.NewError("invalid_open_connection", "Blobber is not par of the open connection transaction"))
+	// err = GetProtocolImpl(allocationID).VerifyMarker(ctx, writeMarker, allocationObj, connectionObj)
+	// if err != nil {
+	// 	result.AllocationRoot = allocationObj.AllocationRoot
+	// 	result.ErrorMessage = "Verification of write marker failed. " + err.Error()
+	// 	result.Success = false
+	// 	result.WriteMarker = latestWM.WM
+	// 	return &result, nil
+	// }
+
+	rootRef, err := connectionObj.ApplyChanges(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	err = protocolImpl.VerifyMarker(wm, sc, public_key)
+	// if rootRef.Hash != writeMarker.AllocationRoot {
+	// 	result.AllocationRoot = allocationObj.AllocationRoot
+	// 	result.WriteMarker = latestWM.WM
+	// 	result.Success = false
+	// 	result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root"
+	// 	return &result, nil
+	// }
+
+	writemarkerObj := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+	if latestWM != nil {
+		writemarkerObj.PrevWM = latestWM.GetKey()
+	}
+
+	writemarkerObj.WM = writeMarker
+	err = writemarkerObj.Write(ctx)
 	if err != nil {
-		return GenerateUploadResponseWithError(common.NewError("invalid_write_marker", err.Error()))
+		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
+	}
+
+	allocationObj.BlobberSizeUsed += connectionObj.Size
+	allocationObj.UsedSize += connectionObj.Size
+	allocationObj.AllocationRoot = rootRef.Hash
+	allocationObj.LatestWMEntity = writemarkerObj.GetKey()
+	err = allocationObj.Write(ctx)
+	if err != nil {
+		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
+	}
+	connectionObj.Delete(ctx)
+
+	result.AllocationRoot = allocationObj.AllocationRoot
+	result.WriteMarker = writeMarker
+	result.Success = true
+	result.ErrorMessage = ""
+	return &result, nil
+}
+
+func (fsh *ObjectStorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID string, path string) bool {
+	mutex := GetMutex(allocationID)
+	mutex.Lock()
+	defer mutex.Unlock()
+	fileReference := reference.FileRefProvider().(*reference.FileRef)
+	fileReference.AllocationID = allocationID
+	fileReference.Path = path
+	err := GetMetaDataStore().Read(ctx, fileReference.GetKey(), fileReference)
+	if err != nil && err == datastore.ErrKeyNotFound {
+		return false
+	}
+	return true
+}
+
+func (fsh *ObjectStorageHandler) checkIfFilePartOfExisitingOpenConnection(ctx context.Context, allocationID string, path string) bool {
+	connectionObj := AllocationChangeCollectorProvider()
+	mutex := GetMutex(allocationID)
+	mutex.Lock()
+	defer mutex.Unlock()
+	handler := func(ctx context.Context, key datastore.Key, value []byte) error {
+		connectionObj := AllocationChangeCollectorProvider().(*AllocationChangeCollector)
+		err := json.Unmarshal(value, connectionObj)
+		if err != nil {
+			return err
+		}
+		connectionObj.ComputeChangeMap()
+		refKey := reference.GetReferenceLookup(allocationID, path)
+		if _, ok := connectionObj.ChangeMap[refKey]; ok {
+			Logger.Info("File already exists as part of an open connection")
+			return common.NewError("duplicate_file", "File already uploaded as part of exisiting open connection")
+		}
+
+		return nil
+	}
+
+	err := GetMetaDataStore().IteratePrefix(ctx, connectionObj.GetEntityMetadata().GetDBName(), handler)
+
+	if err != nil {
+		return true
+	}
+	return false
+}
+
+//WriteFile stores the file into the blobber files system from the HTTP request
+func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request) (*UploadResult, error) {
+	var result UploadResult
+	if r.Method == "GET" {
+		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST instead")
+	}
+
+	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+	//clientKey := ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
+
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
+		Logger.Info("Error Parsing the request", zap.Any("error", err))
+		return nil, common.NewError("request_parse_error", err.Error())
+	}
+
+	uploadMetaString := r.FormValue("uploadMeta")
+	fmt.Println(uploadMetaString)
+	var formData UploadFormData
+	err = json.Unmarshal([]byte(uploadMetaString), &formData)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the meta data for upload."+err.Error())
+	}
+
+	if len(formData.ConnectionID) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+
+	if fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path) {
+		return nil, common.NewError("duplicate_file", "File at path already exists")
+	}
+
+	if fsh.checkIfFilePartOfExisitingOpenConnection(ctx, allocationID, formData.Path) {
+		return nil, common.NewError("duplicate_file", "File at path already uploaded as part of another open connection")
+	}
+
+	connectionObj := AllocationChangeCollectorProvider().(*AllocationChangeCollector)
+	connectionObj.ConnectionID = formData.ConnectionID
+	connectionObj.AllocationID = allocationID
+
+	mutex := GetMutex(connectionObj.GetKey())
+	mutex.Lock()
+	defer mutex.Unlock()
+	err = GetMetaDataStore().Read(ctx, connectionObj.GetKey(), connectionObj)
+	if err != nil && err != datastore.ErrKeyNotFound {
+		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
 
 	for _, fheaders := range r.MultipartForm.File {
-		var result UploadResult
 		for _, hdr := range fheaders {
-			if hdr.Size != wmBlobberConnection.Size {
-				Logger.Info("Sizes dont match", zap.Any("got_size", hdr.Size), zap.Any("expected", wmBlobberConnection.Size))
-				result.Error = common.NewError("invalid_upload", "Size on the open connection does not match the size of the file uploaded")
-				result.Filename = hdr.Filename
-			} else {
-				blobObject, common_error := allocation.writeFileAndCalculateHash(&allocation.RootReferenceObject, hdr, custom_meta, wm)
-				if common_error != nil {
-					result.Error = common_error
-					result.Filename = hdr.Filename
-
-				} else {
-					result.Filename = blobObject.Filename
-					result.Hash = blobObject.Hash
-					result.Size = hdr.Size
-				}
+			fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path}
+			fileOutputData, err := fileStore.WriteFile(allocationID, fileInputData, hdr)
+			if err != nil {
+				return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 			}
-			response.Result = append(response.Result, result)
+			result.Filename = formData.Filename
+			result.Hash = fileOutputData.ContentHash
+			result.MerkleRoot = fileOutputData.MerkleRoot
+			result.Size = fileOutputData.Size
+
+			if len(formData.Hash) > 0 && formData.Hash != fileOutputData.ContentHash {
+				return nil, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
+			}
+			if len(formData.MerkleRoot) > 0 && formData.MerkleRoot != fileOutputData.MerkleRoot {
+				return nil, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
+			}
+
+			if allocationObj.BlobberSizeUsed+fileOutputData.Size > allocationObj.BlobberSize {
+				return nil, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
+			}
+
+			formData.Hash = fileOutputData.ContentHash
+			formData.MerkleRoot = fileOutputData.MerkleRoot
+
+			allocationChange := &AllocationChange{}
+			allocationChange.Size = fileOutputData.Size
+			allocationChange.UploadFormData = &formData
+			allocationChange.Operation = INSERT_OPERATION
+
+			connectionObj.Size += fileOutputData.Size
+			connectionObj.AddChange(allocationChange)
 		}
 
 	}
 
-	return response
+	err = connectionObj.Write(ctx)
+	if err != nil {
+		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+	}
+
+	return &result, nil
 }

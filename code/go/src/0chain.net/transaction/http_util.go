@@ -151,7 +151,7 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 			numSuccess++
 		}
 	}
-	if float64(numSuccess*1.0/numSharders) > float64(0.5) {
+	if numSharders == 0 || float64(numSuccess*1.0/numSharders) > float64(0.5) {
 		if retTxn != nil {
 			return retTxn, nil
 		}

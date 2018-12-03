@@ -23,7 +23,12 @@ type Store interface {
 	MultiDelete(ctx context.Context, entityMetadata EntityMetadata, entities []Entity) error
 	Iterate(ctx context.Context, iter StoreIteratorHandler) error
 	IteratePrefix(ctx context.Context, prefix string, iter StoreIteratorHandler) error
+	WithConnection(ctx context.Context) context.Context
+	Commit(ctx context.Context) error
+	Discard(ctx context.Context)
 }
+
+const CONNECTION_CONTEXT_KEY = "connection"
 
 /*ToString - return string representation of the key */
 func ToString(key Key) string {

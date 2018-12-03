@@ -1,140 +1,86 @@
 package blobber
 
 import (
-	"encoding/json"
+	"context"
 
-	"io"
 	"net/http"
-	"os"
-	"strconv"
 
+	"0chain.net/common"
 	"github.com/gorilla/mux"
-)
-
-const (
-	AllocationTransactionHeader = "X-Allocation-Transaction"
-	BlobberTransactionHeader    = "X-Blobber-Transaction"
 )
 
 var storageHandler StorageHandler
 
+const ALLOCATION_CONTEXT_KEY common.ContextKey = "allocation"
+const CLIENT_CONTEXT_KEY common.ContextKey = "client"
+const CLIENT_KEY_CONTEXT_KEY common.ContextKey = "client_key"
+
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
-	r.HandleFunc("/v1/file/upload/{allocation}", UploadHandler)
-	r.HandleFunc("/v1/file/download/{allocation}", DownloadHandler)
-	r.HandleFunc("/v1/file/meta/{allocation}", MetaHandler)
-	r.HandleFunc("/v1/file/list/{allocation}", ListHandler)
-	r.HandleFunc("/v1/data/challenge", ChallengeHandler)
+	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONResponse(WithConnection(UploadHandler)))
+	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithConnection(CommitHandler)))
+	// r.HandleFunc("/v1/file/download/{allocation}", DownloadHandler)
+	// r.HandleFunc("/v1/file/meta/{allocation}", MetaHandler)
+	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithConnection(ListHandler)))
+	// r.HandleFunc("/v1/data/challenge", ChallengeHandler)
 	storageHandler = GetStorageHandler()
 }
 
-/*ChallengeHandler is the handler to respond to challenge requests*/
-func ChallengeHandler(respW http.ResponseWriter, r *http.Request) {
-	respW.Header().Set("Content-Type", "application/json")
-	txnHash, err := storageHandler.ChallengeData(r)
-	responseMap := make(map[string]interface{})
-	responseMap["txn"] = txnHash
-	responseMap["error"] = err
-	if err != nil {
-		respW.WriteHeader(http.StatusInternalServerError)
+func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		ctx = GetMetaDataStore().WithConnection(ctx)
+		defer GetMetaDataStore().Discard(ctx)
+		res, err := handler(ctx, r)
+		if err != nil {
+			return res, err
+		}
+		err = GetMetaDataStore().Commit(ctx)
+		if err != nil {
+			return res, common.NewError("commit_error", "Error committing to meta store")
+		}
+		return res, err
 	}
-
-	json.NewEncoder(respW).Encode(responseMap)
-	return
-}
-
-/*ListHandler is the handler to respond to list requests from clients*/
-func ListHandler(respW http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	respW.Header().Set("Content-Type", "application/json")
-
-	response, err := storageHandler.ListEntities(r, vars["allocation"])
-
-	if err != nil {
-		respW.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(respW).Encode(err)
-		return
-	}
-	json.NewEncoder(respW).Encode(response)
-	return
 }
 
 /*UploadHandler is the handler to respond to upload requests fro clients*/
-func UploadHandler(respW http.ResponseWriter, r *http.Request) {
+func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
+	ctx = context.WithValue(ctx, CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
 
-	respW.Header().Set("Content-Type", "application/json")
-
-	response := storageHandler.WriteFile(r, vars["allocation"])
-
-	if response.Error != nil {
-		respW.WriteHeader(http.StatusInternalServerError)
+	response, err := storageHandler.WriteFile(ctx, r)
+	if err != nil {
+		return nil, err
 	}
-	json.NewEncoder(respW).Encode(response)
-	return
+
+	return response, nil
 }
 
-/*MetaHandler is the handler to respond to file meta requests from clients*/
-func MetaHandler(respW http.ResponseWriter, r *http.Request) {
+/*CommitHandler is the handler to respond to upload requests fro clients*/
+func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
 
-	respW.Header().Set("Content-Type", "application/json")
-
-	response, err := storageHandler.GetFileMeta(r, vars["allocation"])
-
+	response, err := storageHandler.ListEntities(ctx, r)
 	if err != nil {
-		respW.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(respW).Encode(err)
-		return
+		return nil, err
 	}
-	json.NewEncoder(respW).Encode(response)
-	return
+
+	return response, nil
 }
 
-/*DownloadHandler is the handler to respond to download requests from clients*/
-func DownloadHandler(respW http.ResponseWriter, r *http.Request) {
+/*CommitHandler is the handler to respond to upload requests fro clients*/
+func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
+	ctx = context.WithValue(ctx, CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
 
-	response, err := storageHandler.DownloadFile(r, vars["allocation"])
-
+	response, err := storageHandler.CommitWrite(ctx, r)
 	if err != nil {
-		respW.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(respW).Encode(err)
-		return
+		return nil, err
 	}
 
-	//Check if file exists and open
-	Openfile, errN := os.Open(response.Path)
-	defer Openfile.Close() //Close after function return
-	if errN != nil {
-		//File not found, send 404
-		http.Error(respW, "File not found.", 404)
-		return
-	}
-
-	//File is found, create and send the correct headers
-
-	//Get the Content-Type of the file
-	//Create a buffer to store the header of the file in
-	FileHeader := make([]byte, 512)
-	//Copy the headers into the FileHeader buffer
-	Openfile.Read(FileHeader)
-	//Get content type of file
-	FileContentType := http.DetectContentType(FileHeader)
-
-	//Get the file size
-	FileStat, _ := Openfile.Stat()                     //Get info from file
-	FileSize := strconv.FormatInt(FileStat.Size(), 10) //Get file size as a string
-
-	//Send the headers
-	respW.Header().Set("Content-Disposition", "attachment; filename="+response.Filename)
-	respW.Header().Set("Content-Type", FileContentType)
-	respW.Header().Set("Content-Length", FileSize)
-
-	//Send the file
-	//We read 512 bytes from the file already so we reset the offset back to 0
-	Openfile.Seek(0, 0)
-	io.Copy(respW, Openfile) //'Copy' the file to the client
-	return
+	return response, nil
 }
