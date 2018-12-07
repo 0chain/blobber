@@ -35,7 +35,7 @@ services:
     networks:
       default:
 
-    restart: on-failure:${MAX_RETRY_ATTEMPTS}
+    restart: ${RESTART_POLICY}
 
 networks:
   default:
