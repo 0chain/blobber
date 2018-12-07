@@ -36,6 +36,7 @@ func SetupAllocationEntity(store datastore.Store) {
 	allocationEntityMetaData.Store = store
 
 	datastore.RegisterEntityMetadata("allocation", allocationEntityMetaData)
+	SetupAllocationStatusEntity(store)
 }
 
 func (a *Allocation) GetEntityMetadata() datastore.EntityMetadata {

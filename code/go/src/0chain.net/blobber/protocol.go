@@ -35,7 +35,7 @@ type StorageProtocol interface {
 	VerifyAllocationTransaction(ctx context.Context) (*allocation.Allocation, error)
 	// VerifyBlobberTransaction(txn_hash string, clientID string) (*transaction.StorageConnection, error)
 	VerifyMarker(ctx context.Context, wm *writemarker.WriteMarker, sa *allocation.Allocation, co *AllocationChangeCollector) error
-	// RedeemMarker(wm *writemarker.WriteMarkerEntity)
+	RedeemMarker(ctx context.Context, wm *writemarker.WriteMarkerEntity) error
 	// GetChallengeResponse(allocationID string, dataID string, blockNum int64, objectsPath string) (string, error)
 }
 
@@ -49,6 +49,59 @@ func GetProtocolImpl(allocationID string) StorageProtocol {
 	return &StorageProtocolImpl{
 		ServerChain:  chain.GetServerChain(),
 		AllocationID: allocationID}
+}
+
+func (sp *StorageProtocolImpl) RedeemMarker(ctx context.Context, wm *writemarker.WriteMarkerEntity) error {
+	txn := transaction.NewTransactionEntity()
+
+	sn := &transaction.CommitConnection{}
+	sn.AllocationRoot = wm.WM.AllocationRoot
+	sn.PrevAllocationRoot = wm.WM.PreviousAllocationRoot
+	sn.WriteMarker = wm.WM
+
+	scData := &transaction.SmartContractTxnData{}
+	scData.Name = transaction.CLOSE_CONNECTION_SC_NAME
+	scData.InputArgs = sn
+
+	txn.ToClientID = transaction.STORAGE_CONTRACT_ADDRESS
+	txn.Value = 0
+	txn.TransactionType = transaction.TxnTypeSmartContract
+	txnBytes, err := json.Marshal(scData)
+	if err != nil {
+		Logger.Error("Error encoding sc input", zap.String("err:", err.Error()), zap.Any("scdata", scData))
+		wm.Status = writemarker.Failed
+		wm.StatusMessage = "Error encoding sc input. " + err.Error()
+		wm.ReedeemRetries++
+		wm.Write(ctx)
+		return err
+	}
+	txn.TransactionData = string(txnBytes)
+
+	err = txn.ComputeHashAndSign()
+	if err != nil {
+		Logger.Error("Signing Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))
+		wm.Status = writemarker.Failed
+		wm.StatusMessage = "Signing Failed during sending close connection to the miner. " + err.Error()
+		wm.ReedeemRetries++
+		wm.Write(common.GetRootContext())
+		return err
+	}
+	transaction.SendTransactionSync(txn, sp.ServerChain)
+	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+	t, err := transaction.VerifyTransaction(txn.Hash, sp.ServerChain)
+	if err != nil {
+		Logger.Error("Error verifying the close connection transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
+		wm.Status = writemarker.Failed
+		wm.StatusMessage = "Error verifying the close connection transaction." + err.Error()
+		wm.ReedeemRetries++
+		wm.Write(common.GetRootContext())
+		return err
+	}
+	wm.Status = writemarker.Committed
+	wm.StatusMessage = t.TransactionOutput
+	wm.CloseTxnID = t.Hash
+	err = wm.Write(common.GetRootContext())
+	return err
 }
 
 func (sp *StorageProtocolImpl) VerifyMarker(ctx context.Context, wm *writemarker.WriteMarker, sa *allocation.Allocation, co *AllocationChangeCollector) error {

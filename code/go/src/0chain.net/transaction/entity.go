@@ -38,11 +38,10 @@ type StorageNode struct {
 	PublicKey string `json:"-"`
 }
 
-type CloseConnection struct {
-	DataID      string                  `json:"data_id"`
-	MerkleRoot  string                  `json:"merkle_root"`
-	Size        int64                   `json:"size"`
-	WriteMarker writemarker.WriteMarker `json:"write_marker"`
+type CommitConnection struct {
+	AllocationRoot     string                   `json:"allocation_root"`
+	PrevAllocationRoot string                   `json:"prev_allocation_root"`
+	WriteMarker        *writemarker.WriteMarker `json:"write_marker"`
 }
 
 type StorageAllocation struct {
@@ -62,7 +61,7 @@ type StorageAllocationBlobber struct {
 }
 
 const ADD_BLOBBER_SC_NAME = "add_blobber"
-const CLOSE_CONNECTION_SC_NAME = "close_connection"
+const CLOSE_CONNECTION_SC_NAME = "commit_connection"
 const CHALLENGE_RESPONSE = "challenge_response"
 
 const STORAGE_CONTRACT_ADDRESS = "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d7"
