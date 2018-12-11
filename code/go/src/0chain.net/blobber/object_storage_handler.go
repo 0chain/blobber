@@ -41,6 +41,39 @@ func (fsh *ObjectStorageHandler) verifyAllocation(ctx context.Context, allocatio
 	return allocationObj, nil
 }
 
+func (fsh *ObjectStorageHandler) GetConnectionDetails(ctx context.Context, r *http.Request) (*AllocationChangeCollector, error) {
+	if r.Method == "POST" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
+	}
+	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID)
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	connectionID := r.FormValue("connection_id")
+	if len(connectionID) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+
+	connectionObj := AllocationChangeCollectorProvider().(*AllocationChangeCollector)
+	connectionObj.ConnectionID = connectionID
+	connectionObj.AllocationID = allocationID
+
+	err = GetMetaDataStore().Read(ctx, connectionObj.GetKey(), connectionObj)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id. Connection id was not found. "+err.Error())
+	}
+
+	return connectionObj, nil
+}
+
 func (fsh *ObjectStorageHandler) ListEntities(ctx context.Context, r *http.Request) (*ListResult, error) {
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
@@ -146,27 +179,31 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 		}
 	}
 
-	// err = GetProtocolImpl(allocationID).VerifyMarker(ctx, writeMarker, allocationObj, connectionObj)
-	// if err != nil {
-	// 	result.AllocationRoot = allocationObj.AllocationRoot
-	// 	result.ErrorMessage = "Verification of write marker failed. " + err.Error()
-	// 	result.Success = false
-	// 	result.WriteMarker = latestWM.WM
-	// 	return &result, nil
-	// }
+	err = GetProtocolImpl(allocationID).VerifyMarker(ctx, writeMarker, allocationObj, connectionObj)
+	if err != nil {
+		result.AllocationRoot = allocationObj.AllocationRoot
+		result.ErrorMessage = "Verification of write marker failed. " + err.Error()
+		result.Success = false
+		if latestWM != nil {
+			result.WriteMarker = latestWM.WM
+		}
+		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
+	}
 
 	rootRef, err := connectionObj.ApplyChanges(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// if rootRef.Hash != writeMarker.AllocationRoot {
-	// 	result.AllocationRoot = allocationObj.AllocationRoot
-	// 	result.WriteMarker = latestWM.WM
-	// 	result.Success = false
-	// 	result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root"
-	// 	return &result, nil
-	// }
+	if rootRef.Hash != writeMarker.AllocationRoot {
+		result.AllocationRoot = allocationObj.AllocationRoot
+		if latestWM != nil {
+			result.WriteMarker = latestWM.WM
+		}
+		result.Success = false
+		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root. Expected hash: " + rootRef.Hash
+		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
+	}
 
 	writemarkerObj := writemarker.Provider().(*writemarker.WriteMarkerEntity)
 	if latestWM != nil {
@@ -288,6 +325,7 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 	connectionObj := AllocationChangeCollectorProvider().(*AllocationChangeCollector)
 	connectionObj.ConnectionID = formData.ConnectionID
 	connectionObj.AllocationID = allocationID
+	connectionObj.ClientID = clientID
 
 	mutex := GetMutex(connectionObj.GetKey())
 	mutex.Lock()

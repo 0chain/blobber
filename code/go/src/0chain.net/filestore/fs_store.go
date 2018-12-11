@@ -91,18 +91,7 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, h
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
-	mfile, _ := hdr.Open()
-	fileSize := int64(0)
-	switch t := mfile.(type) {
-	case *os.File:
-		fi, _ := t.Stat()
-		fileSize = fi.Size()
-	default:
-		sr, _ := mfile.Seek(0, 0)
-		fileSize = sr
-	}
-	mfile.Close()
-	Logger.Info("File size", zap.Int64("file_size", fileSize))
+
 	h := sha1.New()
 	tempFilePath := filepath.Join(allocation.TempObjectsPath, fileData.Name+"."+encryption.Hash(fileData.Path)+"."+encryption.Hash(string(common.Now())))
 	dest, err := os.Create(tempFilePath)
@@ -118,18 +107,20 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, h
 	multiHashWriter := io.MultiWriter(h, merkleHash)
 	tReader := io.TeeReader(infile, multiHashWriter)
 	merkleLeaves := make([]util.Hashable, 0)
+	fileSize := int64(0)
 	for true {
-		_, err := io.CopyN(dest, tReader, CHUNK_SIZE)
+		written, err := io.CopyN(dest, tReader, CHUNK_SIZE)
 		if err != io.EOF && err != nil {
 			return nil, common.NewError("file_write_error", err.Error())
 		}
+		fileSize += written
 		merkleLeaves = append(merkleLeaves, util.NewStringHashable(hex.EncodeToString(merkleHash.Sum(nil))))
 		merkleHash.Reset()
 		if err != nil && err == io.EOF {
 			break
 		}
 	}
-
+	Logger.Info("File size", zap.Int64("file_size", fileSize))
 	var mt util.MerkleTreeI = &util.MerkleTree{}
 	mt.ComputeTree(merkleLeaves)
 	//Logger.Info("Calculated Merkle root", zap.String("merkle_root", mt.GetRoot()), zap.Int("merkle_leaf_count", len(merkleLeaves)))

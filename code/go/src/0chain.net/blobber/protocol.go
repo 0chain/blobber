@@ -12,6 +12,7 @@ import (
 	"0chain.net/encryption"
 	. "0chain.net/logging"
 	"0chain.net/node"
+	"0chain.net/reference"
 	"0chain.net/transaction"
 	"0chain.net/util"
 	"0chain.net/writemarker"
@@ -83,7 +84,7 @@ func (sp *StorageProtocolImpl) RedeemMarker(ctx context.Context, wm *writemarker
 		wm.Status = writemarker.Failed
 		wm.StatusMessage = "Signing Failed during sending close connection to the miner. " + err.Error()
 		wm.ReedeemRetries++
-		wm.Write(common.GetRootContext())
+		wm.Write(ctx)
 		return err
 	}
 	transaction.SendTransactionSync(txn, sp.ServerChain)
@@ -94,13 +95,13 @@ func (sp *StorageProtocolImpl) RedeemMarker(ctx context.Context, wm *writemarker
 		wm.Status = writemarker.Failed
 		wm.StatusMessage = "Error verifying the close connection transaction." + err.Error()
 		wm.ReedeemRetries++
-		wm.Write(common.GetRootContext())
+		wm.Write(ctx)
 		return err
 	}
 	wm.Status = writemarker.Committed
 	wm.StatusMessage = t.TransactionOutput
 	wm.CloseTxnID = t.Hash
-	err = wm.Write(common.GetRootContext())
+	err = wm.Write(ctx)
 	return err
 }
 
@@ -227,6 +228,10 @@ func (sp *StorageProtocolImpl) VerifyAllocationTransaction(ctx context.Context) 
 		err = allocationObj.Write(ctx)
 		if err != nil {
 			return nil, common.NewError("allocation_write_error", "Error storing the allocation meta data received from blockchain")
+		}
+		err = reference.CreateDirRefsIfNotExists(ctx, sp.AllocationID, "/", "")
+		if err != nil {
+			return nil, common.NewError("root_reference_creation_error", "Error creating the root reference")
 		}
 	}
 	return allocationObj, nil

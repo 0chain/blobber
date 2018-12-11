@@ -174,6 +174,7 @@ type StorageHandler interface {
 	// DownloadFile(r *http.Request, allocationID string) (*DownloadResponse, *common.Error)
 	// GetFileMeta(r *http.Request, allocationID string) (*FileMeta, *common.Error)
 	ListEntities(ctx context.Context, r *http.Request) (*ListResult, error)
+	GetConnectionDetails(ctx context.Context, r *http.Request) (*AllocationChangeCollector, error)
 	// ChallengeData(r *http.Request) (string, error)
 }
 

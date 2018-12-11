@@ -2,6 +2,8 @@ package reference
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"strings"
 
 	"0chain.net/encryption"
@@ -63,15 +65,15 @@ func (fr *FileRef) Delete(ctx context.Context) error {
 }
 
 func (fr *FileRef) GetHashData() string {
-	hashArray := make([]string, 9)
+	hashArray := make([]string, 0)
 	hashArray = append(hashArray, fr.AllocationID)
 	hashArray = append(hashArray, fr.Type)
 	hashArray = append(hashArray, fr.Name)
 	hashArray = append(hashArray, fr.Path)
-	hashArray = append(hashArray, string(fr.Size))
+	hashArray = append(hashArray, strconv.FormatInt(fr.Size, 10))
 	hashArray = append(hashArray, fr.ContentHash)
 	hashArray = append(hashArray, fr.MerkleRoot)
-	hashArray = append(hashArray, string(fr.ActualFileSize))
+	hashArray = append(hashArray, strconv.FormatInt(fr.ActualFileSize, 10))
 	hashArray = append(hashArray, fr.ActualFileHash)
 	return strings.Join(hashArray, ":")
 }
@@ -81,6 +83,7 @@ func (fr *FileRef) GetHash(ctx context.Context) string {
 }
 
 func (fr *FileRef) CalculateHash(context.Context) (string, error) {
+	fmt.Println("Fileref hash : " + fr.GetHashData())
 	fr.Hash = encryption.Hash(fr.GetHashData())
 	return fr.Hash, nil
 }

@@ -78,7 +78,9 @@ func RedeemMarkers(ctx context.Context) {
 		if len(allocationObj.LatestWMEntity) > 0 && (!ok || !inprogress) {
 			go func() {
 				doneChanMap[allocationObj.ID] = true
+				ctx = dbstore.WithConnection(ctx)
 				RedeemMarkersForAllocation(ctx, allocationObj.ID, allocationObj.LatestWMEntity)
+				dbstore.Commit(ctx)
 				doneChanMap[allocationObj.ID] = false
 			}()
 

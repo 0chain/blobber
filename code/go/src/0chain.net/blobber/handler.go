@@ -19,9 +19,11 @@ const CLIENT_KEY_CONTEXT_KEY common.ContextKey = "client_key"
 func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONResponse(WithConnection(UploadHandler)))
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithConnection(CommitHandler)))
+	r.HandleFunc("/v1/connection/details/{allocation}", common.ToJSONResponse(WithConnection(GetConnectionDetailsHandler)))
 	// r.HandleFunc("/v1/file/download/{allocation}", DownloadHandler)
 	// r.HandleFunc("/v1/file/meta/{allocation}", MetaHandler)
 	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithConnection(ListHandler)))
+
 	// r.HandleFunc("/v1/data/challenge", ChallengeHandler)
 	storageHandler = GetStorageHandler()
 }
@@ -57,12 +59,27 @@ func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-/*CommitHandler is the handler to respond to upload requests fro clients*/
+/*ListHandler is the handler to respond to upload requests fro clients*/
 func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
 	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
 
 	response, err := storageHandler.ListEntities(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+/*GetConnectionDetailsHandler is the handler to respond to upload requests fro clients*/
+func GetConnectionDetailsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
+	ctx = context.WithValue(ctx, CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
+
+	response, err := storageHandler.GetConnectionDetails(ctx, r)
 	if err != nil {
 		return nil, err
 	}

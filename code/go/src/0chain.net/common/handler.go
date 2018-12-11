@@ -37,7 +37,13 @@ func Respond(w http.ResponseWriter, data interface{}, err error) {
 		if cerr, ok := err.(*Error); ok {
 			w.Header().Set(AppErrorHeader, cerr.Code)
 		}
-		http.Error(w, err.Error(), 400)
+		if data != nil {
+			responseString, _ := json.Marshal(data)
+			http.Error(w, string(responseString), 400)
+		} else {
+			http.Error(w, err.Error(), 400)
+		}
+
 	} else {
 		if data != nil {
 			w.Header().Set("Content-Type", "application/json")
