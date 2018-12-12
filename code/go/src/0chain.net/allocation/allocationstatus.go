@@ -22,6 +22,7 @@ func AllocationStatusProvider() datastore.Entity {
 func SetupAllocationStatusEntity(store datastore.Store) {
 	allocationStatusMetaData = datastore.MetadataProvider()
 	allocationStatusMetaData.Name = "allocation_status"
+	allocationStatusMetaData.DB = "allocation_status"
 	allocationStatusMetaData.Provider = Provider
 	allocationStatusMetaData.Store = store
 
