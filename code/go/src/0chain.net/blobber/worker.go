@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"0chain.net/allocation"
+	"0chain.net/common"
 	"0chain.net/datastore"
 	. "0chain.net/logging"
 	"0chain.net/writemarker"
@@ -17,6 +18,7 @@ import (
 //SetupWorkers - setup workers */
 func SetupWorkers(ctx context.Context) {
 	go RedeemMarkers(ctx)
+	go CleanupOpenConnections(ctx)
 }
 
 func RedeemMarkersForAllocation(ctx context.Context, allocationID string, latestWmEntity string) {
@@ -52,6 +54,39 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationID string, latest
 			}
 			allocationStatus.LastCommittedWMEntity = marker.GetKey()
 			allocationStatus.Write(ctx)
+		}
+	}
+}
+
+func CleanupOpenConnections(ctx context.Context) {
+	ticker := time.NewTicker(30 * time.Second)
+
+	dbstore := GetMetaDataStore()
+	allocationChangeHandler := func(ctx context.Context, key datastore.Key, value []byte) error {
+		connectionObj := AllocationChangeCollectorProvider().(*AllocationChangeCollector)
+		err := json.Unmarshal(value, connectionObj)
+		if err != nil {
+			return err
+		}
+		if common.Within(int64(connectionObj.LastUpdated), 3600) {
+			return nil
+		}
+		Logger.Info("Removing open connection with no activity in the last hour", zap.Any("connection", connectionObj))
+		err = connectionObj.Delete(ctx)
+		return err
+	}
+	for true {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			ctx = dbstore.WithConnection(ctx)
+			err := dbstore.IteratePrefix(ctx, "allocation_change:", allocationChangeHandler)
+			if err != nil {
+				dbstore.Discard(ctx)
+			} else {
+				dbstore.Commit(ctx)
+			}
 		}
 	}
 }

@@ -105,17 +105,21 @@ func (ps *Store) WriteBytes(ctx context.Context, key datastore.Key, value []byte
 	return nil
 }
 
-/*Delete - Delete an entity from the store */
-func (ps *Store) Delete(ctx context.Context, entity datastore.Entity) error {
+func (ps *Store) DeleteKey(ctx context.Context, key datastore.Key) error {
 	// Start a writable transaction.
 	txn := ps.GetConnection(ctx)
 
-	err := txn.Delete([]byte(entity.GetKey()))
+	err := txn.Delete([]byte(key))
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+/*Delete - Delete an entity from the store */
+func (ps *Store) Delete(ctx context.Context, entity datastore.Entity) error {
+	return ps.DeleteKey(ctx, entity.GetKey())
 }
 
 /*MultiRead - read multiple entities from the store */
@@ -177,12 +181,19 @@ func (ps *Store) IteratePrefix(ctx context.Context, prefix string, handler datas
 	return nil
 }
 
-/*WithConnection takes a context and adds a connection value to it */
-func (ps *Store) WithConnection(ctx context.Context) context.Context {
-	return context.WithValue(ctx, datastore.CONNECTION_CONTEXT_KEY, ps.GetCon())
+func (ps *Store) WithReadOnlyConnection(ctx context.Context) context.Context {
+	return context.WithValue(ctx, datastore.CONNECTION_CONTEXT_KEY, ps.GetCon(true))
 }
 
-func (ps *Store) GetCon() *badger.Txn {
+/*WithConnection takes a context and adds a connection value to it */
+func (ps *Store) WithConnection(ctx context.Context) context.Context {
+	return context.WithValue(ctx, datastore.CONNECTION_CONTEXT_KEY, ps.GetCon(false))
+}
+
+func (ps *Store) GetCon(readonly bool) *badger.Txn {
+	if readonly {
+		return ps.DB.NewTransaction(false)
+	}
 	return ps.DB.NewTransaction(true)
 }
 
@@ -191,7 +202,7 @@ func (ps *Store) GetConnection(ctx context.Context) *badger.Txn {
 	if conn != nil {
 		return conn.(*badger.Txn)
 	}
-	return ps.GetCon()
+	return ps.GetCon(false)
 }
 
 func (ps *Store) Commit(ctx context.Context) error {

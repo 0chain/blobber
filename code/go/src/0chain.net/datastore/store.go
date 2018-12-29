@@ -15,6 +15,7 @@ type Store interface {
 	Read(ctx context.Context, key Key, entity Entity) error
 	Write(ctx context.Context, entity Entity) error
 	Delete(ctx context.Context, entity Entity) error
+	DeleteKey(ctx context.Context, key Key) error
 	ReadBytes(ctx context.Context, key Key) ([]byte, error)
 	WriteBytes(ctx context.Context, key Key, value []byte) error
 
@@ -24,6 +25,7 @@ type Store interface {
 	Iterate(ctx context.Context, iter StoreIteratorHandler) error
 	IteratePrefix(ctx context.Context, prefix string, iter StoreIteratorHandler) error
 	WithConnection(ctx context.Context) context.Context
+	WithReadOnlyConnection(ctx context.Context) context.Context
 	Commit(ctx context.Context) error
 	Discard(ctx context.Context)
 }

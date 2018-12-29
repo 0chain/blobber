@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -63,11 +64,15 @@ func (fs *FileFSStore) generateTransactionPath(transID string) string {
 	return dir.String()
 }
 
-func (fs *FileFSStore) setupAllocation(allocationID string) (*StoreAllocation, error) {
+func (fs *FileFSStore) setupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error) {
 	allocation := &StoreAllocation{ID: allocationID}
 	allocation.Path = fs.generateTransactionPath(allocationID)
 	allocation.ObjectsPath = fmt.Sprintf("%s%s%s", allocation.Path, OSPathSeperator, ObjectsDirName)
 	allocation.TempObjectsPath = filepath.Join(allocation.ObjectsPath, TempObjectsDirName)
+
+	if skipCreate {
+		return nil, nil
+	}
 
 	//create the allocation object dirs
 	err := util.CreateDirs(allocation.ObjectsPath)
@@ -86,8 +91,58 @@ func (fs *FileFSStore) setupAllocation(allocationID string) (*StoreAllocation, e
 	return allocation, nil
 }
 
+func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64) (json.RawMessage, error) {
+	allocation, err := fs.setupAllocation(allocationID, false)
+	if err != nil {
+		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	dirPath, destFile := getFilePathFromHash(fileData.Hash)
+	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
+	fileObjectPath = filepath.Join(fileObjectPath, destFile)
+
+	file, err := os.Open(fileObjectPath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	fileinfo, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	filesize := int(fileinfo.Size())
+	maxBlockNum := int64(filesize / CHUNK_SIZE)
+	// check for any left over bytes. Add one more go routine if required.
+	if remainder := filesize % CHUNK_SIZE; remainder != 0 {
+		maxBlockNum++
+	}
+
+	if blockNum > maxBlockNum || blockNum < 1 {
+		return nil, common.NewError("invalid_block_number", "Invalid block number")
+	}
+	buffer := make([]byte, CHUNK_SIZE)
+	n, err := file.ReadAt(buffer, ((blockNum - 1) * CHUNK_SIZE))
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+
+	return buffer[:n], nil
+}
+
+func (fs *FileFSStore) DeleteFile(allocationID string, fileData *FileInputData) error {
+	allocation, err := fs.setupAllocation(allocationID, false)
+	if err != nil {
+		return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	dirPath, destFile := getFilePathFromHash(fileData.Hash)
+	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
+	fileObjectPath = filepath.Join(fileObjectPath, destFile)
+
+	return util.DeleteFile(fileObjectPath)
+}
+
 func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, hdr *multipart.FileHeader) (*FileOutputData, error) {
-	allocation, err := fs.setupAllocation(allocationID)
+	allocation, err := fs.setupAllocation(allocationID, false)
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}

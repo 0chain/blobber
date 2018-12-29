@@ -19,13 +19,24 @@ const CLIENT_KEY_CONTEXT_KEY common.ContextKey = "client_key"
 func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONResponse(WithConnection(UploadHandler)))
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithConnection(CommitHandler)))
-	r.HandleFunc("/v1/connection/details/{allocation}", common.ToJSONResponse(WithConnection(GetConnectionDetailsHandler)))
-	// r.HandleFunc("/v1/file/download/{allocation}", DownloadHandler)
+	r.HandleFunc("/v1/connection/details/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(GetConnectionDetailsHandler)))
+	r.HandleFunc("/v1/file/download/{allocation}", common.ToJSONResponse(WithConnection(DownloadHandler)))
 	// r.HandleFunc("/v1/file/meta/{allocation}", MetaHandler)
-	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithConnection(ListHandler)))
+	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))
+
+	r.HandleFunc("/metastore", common.ToJSONResponse(WithConnection(MetaStoreHandler)))
 
 	// r.HandleFunc("/v1/data/challenge", ChallengeHandler)
 	storageHandler = GetStorageHandler()
+}
+
+func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		ctx = GetMetaDataStore().WithReadOnlyConnection(ctx)
+		defer GetMetaDataStore().Discard(ctx)
+		res, err := handler(ctx, r)
+		return res, err
+	}
 }
 
 func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
@@ -44,6 +55,26 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 	}
 }
 
+func MetaStoreHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	operation := r.FormValue("operation")
+	if operation == "delete" {
+		err := GetMetaDataStore().DeleteKey(ctx, r.FormValue("key"))
+		if err != nil {
+			return nil, err
+		}
+		response := make(map[string]string)
+		response["success"] = "true"
+		return response, nil
+	} else if operation == "get" {
+		dataBytes, err := GetMetaDataStore().ReadBytes(ctx, r.FormValue("key"))
+		if err != nil {
+			return nil, err
+		}
+		return string(dataBytes), err
+	}
+	return nil, common.NewError("invalid_parameters", "Invalid Parameters")
+}
+
 /*UploadHandler is the handler to respond to upload requests fro clients*/
 func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
@@ -52,6 +83,21 @@ func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = context.WithValue(ctx, CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
 
 	response, err := storageHandler.WriteFile(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+/*DownloadHandler is the handler to respond to download requests from clients*/
+func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
+	ctx = context.WithValue(ctx, CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
+
+	response, err := storageHandler.DownloadFile(ctx, r)
 	if err != nil {
 		return nil, err
 	}

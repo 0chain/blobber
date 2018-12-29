@@ -12,6 +12,7 @@ import (
 	"0chain.net/encryption"
 	. "0chain.net/logging"
 	"0chain.net/node"
+	"0chain.net/readmarker"
 	"0chain.net/reference"
 	"0chain.net/transaction"
 	"0chain.net/util"
@@ -37,6 +38,7 @@ type StorageProtocol interface {
 	// VerifyBlobberTransaction(txn_hash string, clientID string) (*transaction.StorageConnection, error)
 	VerifyMarker(ctx context.Context, wm *writemarker.WriteMarker, sa *allocation.Allocation, co *AllocationChangeCollector) error
 	RedeemMarker(ctx context.Context, wm *writemarker.WriteMarkerEntity) error
+	VerifyReadMarker(ctx context.Context, rm *readmarker.ReadMarker, sa *allocation.Allocation) error
 	// GetChallengeResponse(allocationID string, dataID string, blockNum int64, objectsPath string) (string, error)
 }
 
@@ -105,6 +107,56 @@ func (sp *StorageProtocolImpl) RedeemMarker(ctx context.Context, wm *writemarker
 	return err
 }
 
+func (sp *StorageProtocolImpl) VerifyReadMarker(ctx context.Context, rm *readmarker.ReadMarker, sa *allocation.Allocation) error {
+	if rm == nil {
+		return common.NewError("invalid_read_marker", "No read marker was found")
+	}
+	if rm.AllocationID != sp.AllocationID {
+		return common.NewError("read_marker_validation_failed", "Read Marker is not for the same allocation")
+	}
+
+	if rm.BlobberID != node.Self.ID {
+		return common.NewError("read_marker_validation_failed", "Read Marker is not for the blobber")
+	}
+
+	dbstore := GetMetaDataStore()
+	rmEntity := readmarker.Provider().(*readmarker.ReadMarkerEntity)
+	rmEntity.LatestRM = &readmarker.ReadMarker{}
+	rmEntity.LatestRM.BlobberID = rm.BlobberID
+	rmEntity.LatestRM.ClientID = rm.ClientID
+
+	errRmRead := dbstore.Read(ctx, rmEntity.GetKey(), rmEntity)
+	if errRmRead != nil && errRmRead != datastore.ErrKeyNotFound {
+		return common.NewError("read_marker_db_error", "Could not read from DB. "+errRmRead.Error())
+	}
+	if errRmRead == nil && rmEntity.LatestRM != nil {
+		if rmEntity.LatestRM.ReadCounter >= rm.ReadCounter {
+			return common.NewError("invalid_read_marker", "Read marker counter is lesser than previous")
+		}
+	}
+
+	clientPublicKey := ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
+	if len(clientPublicKey) == 0 {
+		return common.NewError("read_marker_validation_failed", "Could not get the public key of the client")
+	}
+
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 || clientID != rm.ClientID {
+		return common.NewError("read_marker_validation_failed", "Read Marker clientID does not match request clientID")
+	}
+
+	hashData := rm.GetHashData()
+	signatureHash := encryption.Hash(hashData)
+	sigOK, err := encryption.Verify(clientPublicKey, rm.Signature, signatureHash)
+	if err != nil {
+		return common.NewError("read_marker_validation_failed", "Error during verifying signature. "+err.Error())
+	}
+	if !sigOK {
+		return common.NewError("read_marker_validation_failed", "Read marker signature is not valid")
+	}
+	return nil
+}
+
 func (sp *StorageProtocolImpl) VerifyMarker(ctx context.Context, wm *writemarker.WriteMarker, sa *allocation.Allocation, co *AllocationChangeCollector) error {
 
 	if wm == nil {
@@ -140,7 +192,7 @@ func (sp *StorageProtocolImpl) VerifyMarker(ctx context.Context, wm *writemarker
 
 	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 || clientID != wm.ClientID || clientID != co.ClientID || co.ClientID != wm.ClientID {
-		return common.NewError("write_marker_validation_failed", "Write Marker is by the same client who uploaded")
+		return common.NewError("write_marker_validation_failed", "Write Marker is not by the same client who uploaded")
 	}
 
 	hashData := wm.GetHashData()

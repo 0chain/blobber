@@ -25,6 +25,7 @@ type AllocationChangeCollector struct {
 	AllocationID string                       `json:"allocation_id"`
 	ClientID     string                       `json:"client_id"`
 	Size         int64                        `json:"size"`
+	LastUpdated  common.Timestamp             `json:"last_updated"`
 	Changes      []*AllocationChange          `json:"changes"`
 	ChangeMap    map[string]*AllocationChange `json:"-"`
 }
@@ -167,11 +168,15 @@ type ListResult struct {
 	Entities       []map[string]interface{} `json:"list"`
 }
 
+type DownloadResponse struct {
+	Data []byte `json:"data"`
+}
+
 //StorageHandler - interfact for handling storage requests
 type StorageHandler interface {
 	WriteFile(ctx context.Context, r *http.Request) (*UploadResult, error)
 	CommitWrite(ctx context.Context, r *http.Request) (*CommitResult, error)
-	// DownloadFile(r *http.Request, allocationID string) (*DownloadResponse, *common.Error)
+	DownloadFile(ctx context.Context, r *http.Request) (*DownloadResponse, error)
 	// GetFileMeta(r *http.Request, allocationID string) (*FileMeta, *common.Error)
 	ListEntities(ctx context.Context, r *http.Request) (*ListResult, error)
 	GetConnectionDetails(ctx context.Context, r *http.Request) (*AllocationChangeCollector, error)

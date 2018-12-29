@@ -27,6 +27,7 @@ import (
 	"0chain.net/transaction"
 	"0chain.net/writemarker"
 
+	"0chain.net/readmarker"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
@@ -56,6 +57,7 @@ func initEntities() {
 	reference.SetupRefEntity(badgerdbstore.GetStorageProvider())
 	blobber.SetupObjectStorageHandler(fsStore, badgerdbstore.GetStorageProvider())
 	writemarker.SetupEntity(badgerdbstore.GetStorageProvider())
+	readmarker.SetupEntity(badgerdbstore.GetStorageProvider())
 	blobber.SetupWorkers(common.GetRootContext())
 }
 

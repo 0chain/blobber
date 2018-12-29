@@ -13,3 +13,7 @@ func CreateDirs(dir string) error {
 	}
 	return nil
 }
+
+func DeleteFile(path string) error {
+	return os.Remove(path)
+}

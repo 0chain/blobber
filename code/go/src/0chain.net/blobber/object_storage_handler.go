@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"0chain.net/allocation"
+	"0chain.net/readmarker"
 	"0chain.net/writemarker"
 
 	"0chain.net/common"
@@ -39,6 +41,88 @@ func (fsh *ObjectStorageHandler) verifyAllocation(ctx context.Context, allocatio
 		return nil, err
 	}
 	return allocationObj, nil
+}
+
+func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Request) (*DownloadResponse, error) {
+	if r.Method == "GET" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+	}
+	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID)
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	if len(clientID) == 0 {
+		return nil, common.NewError("invalid_operation", "Invalid client")
+	}
+
+	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
+		Logger.Info("Error Parsing the request", zap.Any("error", err))
+		return nil, common.NewError("request_parse_error", err.Error())
+	}
+
+	path := r.FormValue("path")
+	if len(path) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path")
+	}
+
+	blockNumStr := r.FormValue("block_num")
+	if len(blockNumStr) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path")
+	}
+
+	blockNum, err := strconv.ParseInt(blockNumStr, 10, 64)
+	if err != nil || blockNum < 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid block number")
+	}
+
+	readMarkerString := r.FormValue("read_marker")
+	readMarker := &readmarker.ReadMarker{}
+	err = json.Unmarshal([]byte(readMarkerString), &readMarker)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the readmarker for download."+err.Error())
+	}
+
+	err = GetProtocolImpl(allocationID).VerifyReadMarker(ctx, readMarker, allocationObj)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid read marker. Failed to verify the read marker. "+err.Error())
+	}
+	rmEntity := readmarker.Provider().(*readmarker.ReadMarkerEntity)
+	rmEntity.LatestRM = &readmarker.ReadMarker{}
+	rmEntity.LatestRM.BlobberID = readMarker.BlobberID
+	rmEntity.LatestRM.ClientID = readMarker.ClientID
+
+	errRmRead := GetMetaDataStore().Read(ctx, rmEntity.GetKey(), rmEntity)
+	if errRmRead != nil && errRmRead != datastore.ErrKeyNotFound {
+		return nil, common.NewError("read_marker_db_error", "Could not read from DB. "+errRmRead.Error())
+	}
+
+	if rmEntity.LatestRM.ReadCounter+1 != readMarker.ReadCounter {
+		return nil, common.NewError("invalid_parameters", "Invalid read marker. Read counter was not for one block")
+	}
+
+	rmEntity.LatestRM = readMarker
+
+	fileref := reference.FileRefProvider().(*reference.FileRef)
+	fileref.AllocationID = allocationID
+	fileref.Path = path
+
+	err = fileref.Read(ctx, fileref.GetKey())
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
+	}
+	fileData := &filestore.FileInputData{}
+	fileData.Name = fileref.Name
+	fileData.Path = fileref.Path
+	fileData.Hash = fileref.ContentHash
+	respData, err := fileStore.GetFileBlock(allocationID, fileData, blockNum)
+	rmEntity.Write(ctx)
+	response := &DownloadResponse{}
+	response.Data = respData
+	return response, err
 }
 
 func (fsh *ObjectStorageHandler) GetConnectionDetails(ctx context.Context, r *http.Request) (*AllocationChangeCollector, error) {
@@ -371,7 +455,7 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 		}
 
 	}
-
+	connectionObj.LastUpdated = common.Now()
 	err = connectionObj.Write(ctx)
 	if err != nil {
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
