@@ -203,7 +203,7 @@ type StorageHandler interface {
 	WriteFile(ctx context.Context, r *http.Request) (*UploadResult, error)
 	CommitWrite(ctx context.Context, r *http.Request) (*CommitResult, error)
 	DownloadFile(ctx context.Context, r *http.Request) (*DownloadResponse, error)
-	// GetFileMeta(r *http.Request, allocationID string) (*FileMeta, *common.Error)
+	GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error)
 	ListEntities(ctx context.Context, r *http.Request) (*ListResult, error)
 	GetConnectionDetails(ctx context.Context, r *http.Request) (*AllocationChangeCollector, error)
 	// ChallengeData(r *http.Request) (string, error)

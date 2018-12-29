@@ -21,7 +21,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithConnection(CommitHandler)))
 	r.HandleFunc("/v1/connection/details/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(GetConnectionDetailsHandler)))
 	r.HandleFunc("/v1/file/download/{allocation}", common.ToJSONResponse(WithConnection(DownloadHandler)))
-	// r.HandleFunc("/v1/file/meta/{allocation}", MetaHandler)
+	r.HandleFunc("/v1/file/meta/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(MetaHandler)))
 	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))
 
 	r.HandleFunc("/metastore", common.ToJSONResponse(WithConnection(MetaStoreHandler)))
@@ -73,6 +73,20 @@ func MetaStoreHandler(ctx context.Context, r *http.Request) (interface{}, error)
 		return string(dataBytes), err
 	}
 	return nil, common.NewError("invalid_parameters", "Invalid Parameters")
+}
+
+func MetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
+	ctx = context.WithValue(ctx, CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
+
+	response, err := storageHandler.GetFileMeta(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
 }
 
 /*UploadHandler is the handler to respond to upload requests fro clients*/

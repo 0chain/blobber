@@ -158,6 +158,36 @@ func (fsh *ObjectStorageHandler) GetConnectionDetails(ctx context.Context, r *ht
 	return connectionObj, nil
 }
 
+func (fsh *ObjectStorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method == "POST" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
+	}
+	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
+	_, err := fsh.verifyAllocation(ctx, allocationID)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	path := r.FormValue("path")
+	if len(path) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path")
+	}
+
+	fileref := reference.FileRefProvider().(*reference.FileRef)
+	fileref.AllocationID = allocationID
+	fileref.Path = path
+
+	err = fileref.Read(ctx, fileref.GetKey())
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid path / file. "+err.Error())
+	}
+
+	result := make(map[string]interface{})
+	result = fileref.GetListingData(ctx)
+	return result, nil
+}
+
 func (fsh *ObjectStorageHandler) ListEntities(ctx context.Context, r *http.Request) (*ListResult, error) {
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
