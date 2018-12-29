@@ -71,7 +71,7 @@ func (fs *FileFSStore) setupAllocation(allocationID string, skipCreate bool) (*S
 	allocation.TempObjectsPath = filepath.Join(allocation.ObjectsPath, TempObjectsDirName)
 
 	if skipCreate {
-		return nil, nil
+		return allocation, nil
 	}
 
 	//create the allocation object dirs
@@ -92,7 +92,7 @@ func (fs *FileFSStore) setupAllocation(allocationID string, skipCreate bool) (*S
 }
 
 func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64) (json.RawMessage, error) {
-	allocation, err := fs.setupAllocation(allocationID, false)
+	allocation, err := fs.setupAllocation(allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
 	}
@@ -129,26 +129,52 @@ func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData
 	return buffer[:n], nil
 }
 
-func (fs *FileFSStore) DeleteFile(allocationID string, fileData *FileInputData) error {
-	allocation, err := fs.setupAllocation(allocationID, false)
+func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error {
+	allocation, err := fs.setupAllocation(allocationID, true)
 	if err != nil {
 		return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
 	}
-	dirPath, destFile := getFilePathFromHash(fileData.Hash)
-	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
-	fileObjectPath = filepath.Join(fileObjectPath, destFile)
+
+	fileObjectPath := fs.generateTempPath(allocation, fileData, connectionID)
 
 	return util.DeleteFile(fileObjectPath)
 }
 
-func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, hdr *multipart.FileHeader) (*FileOutputData, error) {
+func (fs *FileFSStore) generateTempPath(allocation *StoreAllocation, fileData *FileInputData, connectionID string) string {
+	Logger.Info("Arguments for generate tmp path", zap.Any("allocation", allocation), zap.Any("fileinput", fileData), zap.Any("connection", connectionID))
+	return filepath.Join(allocation.TempObjectsPath, fileData.Name+"."+encryption.Hash(fileData.Path)+"."+connectionID)
+}
+
+func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData, connectionID string) error {
+	allocation, err := fs.setupAllocation(allocationID, true)
+	if err != nil {
+		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
+	}
+	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
+	//move file from tmp location to the objects folder
+	dirPath, destFile := getFilePathFromHash(fileData.Hash)
+	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
+	err = util.CreateDirs(fileObjectPath)
+	if err != nil {
+		return common.NewError("blob_object_dir_creation_error", err.Error())
+	}
+	fileObjectPath = filepath.Join(fileObjectPath, destFile)
+	err = os.Rename(tempFilePath, fileObjectPath)
+
+	if err != nil {
+		return common.NewError("blob_object_creation_error", err.Error())
+	}
+	return nil
+}
+
+func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, hdr *multipart.FileHeader, connectionID string) (*FileOutputData, error) {
 	allocation, err := fs.setupAllocation(allocationID, false)
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
 
 	h := sha1.New()
-	tempFilePath := filepath.Join(allocation.TempObjectsPath, fileData.Name+"."+encryption.Hash(fileData.Path)+"."+encryption.Hash(string(common.Now())))
+	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
 	dest, err := os.Create(tempFilePath)
 	if err != nil {
 		return nil, common.NewError("file_creation_error", err.Error())
@@ -186,19 +212,6 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, h
 	fileRef.Name = fileData.Name
 	fileRef.Path = fileData.Path
 	fileRef.MerkleRoot = mt.GetRoot()
-	Logger.Info("File ref", zap.Any("file_ref", fileRef))
-	//move file from tmp location to the objects folder
-	dirPath, destFile := getFilePathFromHash(fileRef.ContentHash)
-	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
-	err = util.CreateDirs(fileObjectPath)
-	if err != nil {
-		return nil, common.NewError("blob_object_dir_creation_error", err.Error())
-	}
-	fileObjectPath = filepath.Join(fileObjectPath, destFile)
-	err = os.Rename(tempFilePath, fileObjectPath)
 
-	if err != nil {
-		return nil, common.NewError("blob_object_creation_error", err.Error())
-	}
 	return fileRef, nil
 }

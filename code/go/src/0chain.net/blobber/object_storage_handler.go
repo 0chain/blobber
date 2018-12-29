@@ -422,7 +422,7 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 	for _, fheaders := range r.MultipartForm.File {
 		for _, hdr := range fheaders {
 			fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path}
-			fileOutputData, err := fileStore.WriteFile(allocationID, fileInputData, hdr)
+			fileOutputData, err := fileStore.WriteFile(allocationID, fileInputData, hdr, connectionObj.ConnectionID)
 			if err != nil {
 				return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 			}

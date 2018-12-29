@@ -87,6 +87,22 @@ func (a *AllocationChangeCollector) AddChange(change *AllocationChange) {
 	a.ChangeMap[key] = change
 }
 
+func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) error {
+	for _, change := range a.Changes {
+		if change.Operation == INSERT_OPERATION {
+			fileInputData := &filestore.FileInputData{}
+			fileInputData.Name = change.Filename
+			fileInputData.Path = change.Path
+			fileInputData.Hash = change.Hash
+			err := fileStore.DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return a.Delete(ctx)
+}
+
 func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context) (*reference.Ref, error) {
 	for _, change := range a.Changes {
 		if change.Operation == INSERT_OPERATION {
@@ -109,6 +125,12 @@ func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context) (*referenc
 			parentRef.AllocationID = a.AllocationID
 			parentRef.Path = parentdir
 			fileref.ParentRef = parentRef.GetKey()
+
+			fileInputData := &filestore.FileInputData{}
+			fileInputData.Name = fileref.Name
+			fileInputData.Path = fileref.Path
+			fileInputData.Hash = fileref.ContentHash
+
 			err := fileref.Write(ctx)
 			if err != nil {
 				return nil, common.NewError("fileref_write_error", "Error writing the file meta info. "+err.Error())
@@ -127,6 +149,10 @@ func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context) (*referenc
 				return nil, common.NewError("allocation_hash_error", "Error calculating the allocation hash. "+err.Error())
 			}
 
+			err = fileStore.CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
+			if err != nil {
+				return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+			}
 		}
 	}
 	rootRef, err := reference.GetRootReference(ctx, a.AllocationID)

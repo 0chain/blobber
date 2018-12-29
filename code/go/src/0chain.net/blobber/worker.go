@@ -72,7 +72,8 @@ func CleanupOpenConnections(ctx context.Context) {
 			return nil
 		}
 		Logger.Info("Removing open connection with no activity in the last hour", zap.Any("connection", connectionObj))
-		err = connectionObj.Delete(ctx)
+
+		err = connectionObj.DeleteChanges(ctx)
 		return err
 	}
 	for true {

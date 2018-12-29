@@ -22,7 +22,8 @@ type FileOutputData struct {
 }
 
 type FileStore interface {
-	WriteFile(allocationID string, fileData *FileInputData, hdr *multipart.FileHeader) (*FileOutputData, error)
-	DeleteFile(allocationID string, fileData *FileInputData) error
+	WriteFile(allocationID string, fileData *FileInputData, hdr *multipart.FileHeader, connectionID string) (*FileOutputData, error)
+	DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
 	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64) (json.RawMessage, error)
+	CommitWrite(allocationID string, fileData *FileInputData, connectionID string) error
 }
