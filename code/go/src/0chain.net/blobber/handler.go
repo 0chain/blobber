@@ -24,6 +24,8 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/meta/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(MetaHandler)))
 	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))
 
+	r.HandleFunc("/v1/readmarker/latest", common.ToJSONResponse(WithReadOnlyConnection(LatestRMHandler)))
+
 	r.HandleFunc("/metastore", common.ToJSONResponse(WithConnection(MetaStoreHandler)))
 
 	// r.HandleFunc("/v1/data/challenge", ChallengeHandler)
@@ -53,6 +55,18 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 		}
 		return res, err
 	}
+}
+
+func LatestRMHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = context.WithValue(ctx, CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
+
+	response, err := storageHandler.GetLatestReadMarker(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
 }
 
 func MetaStoreHandler(ctx context.Context, r *http.Request) (interface{}, error) {

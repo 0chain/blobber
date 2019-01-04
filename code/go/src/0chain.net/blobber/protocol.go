@@ -39,6 +39,7 @@ type StorageProtocol interface {
 	VerifyMarker(ctx context.Context, wm *writemarker.WriteMarker, sa *allocation.Allocation, co *AllocationChangeCollector) error
 	RedeemMarker(ctx context.Context, wm *writemarker.WriteMarkerEntity) error
 	VerifyReadMarker(ctx context.Context, rm *readmarker.ReadMarker, sa *allocation.Allocation) error
+	RedeemReadMarker(ctx context.Context, rm *readmarker.ReadMarkerEntity) error
 	// GetChallengeResponse(allocationID string, dataID string, blockNum int64, objectsPath string) (string, error)
 }
 
@@ -52,6 +53,46 @@ func GetProtocolImpl(allocationID string) StorageProtocol {
 	return &StorageProtocolImpl{
 		ServerChain:  chain.GetServerChain(),
 		AllocationID: allocationID}
+}
+
+func (sp *StorageProtocolImpl) RedeemReadMarker(ctx context.Context, rm *readmarker.ReadMarkerEntity) error {
+	txn := transaction.NewTransactionEntity()
+
+	sn := &transaction.ReadRedeem{}
+	sn.ReadMarker = rm.LatestRM
+	scData := &transaction.SmartContractTxnData{}
+
+	scData.Name = transaction.READ_REDEEM
+	scData.InputArgs = sn
+
+	txn.ToClientID = transaction.STORAGE_CONTRACT_ADDRESS
+	txn.Value = 0
+	txn.TransactionType = transaction.TxnTypeSmartContract
+	txnBytes, err := json.Marshal(scData)
+	if err != nil {
+		Logger.Error("Error encoding sc input", zap.String("err:", err.Error()), zap.Any("scdata", scData))
+		return err
+	}
+	txn.TransactionData = string(txnBytes)
+
+	err = txn.ComputeHashAndSign()
+	if err != nil {
+		Logger.Error("Signing Failed during read redeem. ", zap.String("err:", err.Error()))
+		return err
+	}
+	transaction.SendTransactionSync(txn, sp.ServerChain)
+	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+	t, err := transaction.VerifyTransaction(txn.Hash, sp.ServerChain)
+	if err != nil {
+		Logger.Error("Error verifying the read redeem transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
+		return err
+	}
+
+	rm.LastRedeemTxnID = t.Hash
+	rm.LastestRedeemedRM = rm.LatestRM
+	rm.StatusMessage = t.TransactionOutput
+	err = rm.Write(ctx)
+	return err
 }
 
 func (sp *StorageProtocolImpl) RedeemMarker(ctx context.Context, wm *writemarker.WriteMarkerEntity) error {
@@ -136,7 +177,7 @@ func (sp *StorageProtocolImpl) VerifyReadMarker(ctx context.Context, rm *readmar
 	}
 
 	clientPublicKey := ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
-	if len(clientPublicKey) == 0 {
+	if len(clientPublicKey) == 0 || clientPublicKey != rm.ClientPublicKey {
 		return common.NewError("read_marker_validation_failed", "Could not get the public key of the client")
 	}
 

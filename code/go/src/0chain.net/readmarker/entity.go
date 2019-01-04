@@ -10,20 +10,22 @@ import (
 )
 
 type ReadMarker struct {
-	ClientID     string           `json:"client_id"`
-	BlobberID    string           `json:"blobber_id"`
-	AllocationID string           `json:"allocation_id"`
-	OwnerID      string           `json:"owner_id"`
-	Timestamp    common.Timestamp `json:"timestamp"`
-	ReadCounter  int64            `json:"counter"`
-	FilePath     string           `json:"filepath"`
-	Signature    string           `json:"signature"`
+	ClientID        string           `json:"client_id"`
+	ClientPublicKey string           `json:"client_public_key"`
+	BlobberID       string           `json:"blobber_id"`
+	AllocationID    string           `json:"allocation_id"`
+	OwnerID         string           `json:"owner_id"`
+	Timestamp       common.Timestamp `json:"timestamp"`
+	ReadCounter     int64            `json:"counter"`
+	FilePath        string           `json:"filepath"`
+	Signature       string           `json:"signature"`
 }
 
 type ReadMarkerEntity struct {
 	LatestRM          *ReadMarker      `json:"latest_read_marker"`
 	LastestRedeemedRM *ReadMarker      `json:"last_redeemed_read_marker"`
 	LastRedeemTxnID   string           `json:"last_redeem_txn_id"`
+	StatusMessage     string           `json:"status_message"`
 	CreationDate      common.Timestamp `json:"creation_date"`
 }
 
@@ -46,6 +48,13 @@ func SetupEntity(store datastore.Store) {
 	datastore.RegisterEntityMetadata("rm", readMarkerEntityMetaData)
 }
 
+func (rm *ReadMarkerEntity) GetLatestReadMarker(ctx context.Context, clientID string, blobberID string) error {
+	newRM := &ReadMarker{ClientID: clientID, BlobberID: blobberID}
+	rm.LatestRM = newRM
+	err := rm.Read(ctx, rm.GetKey())
+	return err
+}
+
 func (rm *ReadMarkerEntity) GetEntityMetadata() datastore.EntityMetadata {
 	return readMarkerEntityMetaData
 }
@@ -66,6 +75,6 @@ func (rm *ReadMarkerEntity) Delete(ctx context.Context) error {
 }
 
 func (rm *ReadMarker) GetHashData() string {
-	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.BlobberID, rm.ClientID, rm.OwnerID, rm.FilePath, rm.ReadCounter, rm.Timestamp)
+	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.BlobberID, rm.ClientID, rm.ClientPublicKey, rm.OwnerID, rm.FilePath, rm.ReadCounter, rm.Timestamp)
 	return hashData
 }

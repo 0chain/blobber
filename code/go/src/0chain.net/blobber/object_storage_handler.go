@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"0chain.net/node"
+
 	"0chain.net/allocation"
 	"0chain.net/readmarker"
 	"0chain.net/writemarker"
@@ -41,6 +43,25 @@ func (fsh *ObjectStorageHandler) verifyAllocation(ctx context.Context, allocatio
 		return nil, err
 	}
 	return allocationObj, nil
+}
+
+func (fsh *ObjectStorageHandler) GetLatestReadMarker(ctx context.Context, r *http.Request) (*readmarker.ReadMarker, error) {
+	if r.Method == "POST" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+	}
+
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+
+	if len(clientID) == 0 {
+		return nil, common.NewError("invalid_operation", "Invalid client")
+	}
+
+	rmEntity := readmarker.Provider().(*readmarker.ReadMarkerEntity)
+	err := rmEntity.GetLatestReadMarker(ctx, clientID, node.Self.ID)
+	if err != nil {
+		return nil, err
+	}
+	return rmEntity.LatestRM, nil
 }
 
 func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Request) (*DownloadResponse, error) {
@@ -91,11 +112,7 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 		return nil, common.NewError("invalid_parameters", "Invalid read marker. Failed to verify the read marker. "+err.Error())
 	}
 	rmEntity := readmarker.Provider().(*readmarker.ReadMarkerEntity)
-	rmEntity.LatestRM = &readmarker.ReadMarker{}
-	rmEntity.LatestRM.BlobberID = readMarker.BlobberID
-	rmEntity.LatestRM.ClientID = readMarker.ClientID
-
-	errRmRead := GetMetaDataStore().Read(ctx, rmEntity.GetKey(), rmEntity)
+	errRmRead := rmEntity.GetLatestReadMarker(ctx, clientID, node.Self.ID)
 	if errRmRead != nil && errRmRead != datastore.ErrKeyNotFound {
 		return nil, common.NewError("read_marker_db_error", "Could not read from DB. "+errRmRead.Error())
 	}

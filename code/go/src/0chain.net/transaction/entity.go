@@ -7,6 +7,7 @@ import (
 	"0chain.net/common"
 	"0chain.net/encryption"
 	"0chain.net/node"
+	"0chain.net/readmarker"
 	"0chain.net/writemarker"
 )
 
@@ -60,9 +61,13 @@ type StorageAllocationBlobber struct {
 	AllocationRoot string `json:"allocation_root"`
 }
 
+type ReadRedeem struct {
+	ReadMarker *readmarker.ReadMarker `json:"read_marker"`
+}
+
 const ADD_BLOBBER_SC_NAME = "add_blobber"
 const CLOSE_CONNECTION_SC_NAME = "commit_connection"
-const CHALLENGE_RESPONSE = "challenge_response"
+const READ_REDEEM = "read_redeem"
 
 const STORAGE_CONTRACT_ADDRESS = "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d7"
 

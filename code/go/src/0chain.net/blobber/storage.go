@@ -11,6 +11,7 @@ import (
 	"0chain.net/datastore"
 	"0chain.net/encryption"
 	"0chain.net/filestore"
+	"0chain.net/readmarker"
 	"0chain.net/reference"
 	"0chain.net/writemarker"
 )
@@ -206,6 +207,7 @@ type StorageHandler interface {
 	GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error)
 	ListEntities(ctx context.Context, r *http.Request) (*ListResult, error)
 	GetConnectionDetails(ctx context.Context, r *http.Request) (*AllocationChangeCollector, error)
+	GetLatestReadMarker(ctx context.Context, r *http.Request) (*readmarker.ReadMarker, error)
 	// ChallengeData(r *http.Request) (string, error)
 }
 

@@ -11,6 +11,7 @@ import (
 	"0chain.net/common"
 	"0chain.net/datastore"
 	. "0chain.net/logging"
+	"0chain.net/readmarker"
 	"0chain.net/writemarker"
 	"go.uber.org/zap"
 )
@@ -19,6 +20,13 @@ import (
 func SetupWorkers(ctx context.Context) {
 	go RedeemMarkers(ctx)
 	go CleanupOpenConnections(ctx)
+}
+
+func RedeemReadMarker(ctx context.Context, rmEntity *readmarker.ReadMarkerEntity) {
+	err := GetProtocolImpl(rmEntity.LatestRM.AllocationID).RedeemReadMarker(ctx, rmEntity)
+	if err != nil {
+		Logger.Error("Error redeeming the read marker.", zap.Any("rm", rmEntity), zap.Any("error", err))
+	}
 }
 
 func RedeemMarkersForAllocation(ctx context.Context, allocationID string, latestWmEntity string) {
@@ -117,9 +125,28 @@ func RedeemMarkers(ctx context.Context) {
 				ctx = dbstore.WithConnection(ctx)
 				RedeemMarkersForAllocation(ctx, allocationObj.ID, allocationObj.LatestWMEntity)
 				dbstore.Commit(ctx)
-				doneChanMap[allocationObj.ID] = false
+				delete(doneChanMap, allocationObj.ID)
 			}()
 
+		}
+		return nil
+	}
+
+	rmHandler := func(ctx context.Context, key datastore.Key, value []byte) error {
+		rmEntity := readmarker.Provider().(*readmarker.ReadMarkerEntity)
+		err := json.Unmarshal(value, rmEntity)
+		if err != nil {
+			return err
+		}
+		inprogress, ok := doneChanMap[rmEntity.GetKey()]
+		if rmEntity.LatestRM != nil && (rmEntity.LastestRedeemedRM == nil || rmEntity.LastestRedeemedRM.ReadCounter < rmEntity.LatestRM.ReadCounter) && (!ok || !inprogress) {
+			go func() {
+				doneChanMap[rmEntity.GetKey()] = true
+				ctx = dbstore.WithConnection(ctx)
+				RedeemReadMarker(ctx, rmEntity)
+				dbstore.Commit(ctx)
+				delete(doneChanMap, rmEntity.GetKey())
+			}()
 		}
 		return nil
 	}
@@ -131,6 +158,7 @@ func RedeemMarkers(ctx context.Context) {
 		case <-ticker.C:
 			dbstore.Iterate(ctx, allhandler)
 			dbstore.IteratePrefix(ctx, "allocation:", allocationhandler)
+			dbstore.IteratePrefix(ctx, "rm:", rmHandler)
 		}
 	}
 
