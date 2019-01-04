@@ -23,12 +23,8 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/download/{allocation}", common.ToJSONResponse(WithConnection(DownloadHandler)))
 	r.HandleFunc("/v1/file/meta/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(MetaHandler)))
 	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))
-
 	r.HandleFunc("/v1/readmarker/latest", common.ToJSONResponse(WithReadOnlyConnection(LatestRMHandler)))
-
-	r.HandleFunc("/metastore", common.ToJSONResponse(WithConnection(MetaStoreHandler)))
-
-	// r.HandleFunc("/v1/data/challenge", ChallengeHandler)
+	//r.HandleFunc("/metastore", common.ToJSONResponse(WithConnection(MetaStoreHandler)))
 	storageHandler = GetStorageHandler()
 }
 
@@ -69,25 +65,25 @@ func LatestRMHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 	return response, nil
 }
 
-func MetaStoreHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	operation := r.FormValue("operation")
-	if operation == "delete" {
-		err := GetMetaDataStore().DeleteKey(ctx, r.FormValue("key"))
-		if err != nil {
-			return nil, err
-		}
-		response := make(map[string]string)
-		response["success"] = "true"
-		return response, nil
-	} else if operation == "get" {
-		dataBytes, err := GetMetaDataStore().ReadBytes(ctx, r.FormValue("key"))
-		if err != nil {
-			return nil, err
-		}
-		return string(dataBytes), err
-	}
-	return nil, common.NewError("invalid_parameters", "Invalid Parameters")
-}
+// func MetaStoreHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+// 	operation := r.FormValue("operation")
+// 	if operation == "delete" {
+// 		err := GetMetaDataStore().DeleteKey(ctx, r.FormValue("key"))
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		response := make(map[string]string)
+// 		response["success"] = "true"
+// 		return response, nil
+// 	} else if operation == "get" {
+// 		dataBytes, err := GetMetaDataStore().ReadBytes(ctx, r.FormValue("key"))
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		return string(dataBytes), err
+// 	}
+// 	return nil, common.NewError("invalid_parameters", "Invalid Parameters")
+// }
 
 func MetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
