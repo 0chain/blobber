@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 
@@ -142,7 +143,7 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 	return response, err
 }
 
-func (fsh *ObjectStorageHandler) GetConnectionDetails(ctx context.Context, r *http.Request) (*AllocationChangeCollector, error) {
+func (fsh *ObjectStorageHandler) GetConnectionDetails(ctx context.Context, r *http.Request) (*allocation.AllocationChangeCollector, error) {
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
@@ -163,7 +164,7 @@ func (fsh *ObjectStorageHandler) GetConnectionDetails(ctx context.Context, r *ht
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	connectionObj := AllocationChangeCollectorProvider().(*AllocationChangeCollector)
+	connectionObj := allocation.AllocationChangeCollectorProvider().(*allocation.AllocationChangeCollector)
 	connectionObj.ConnectionID = connectionID
 	connectionObj.AllocationID = allocationID
 
@@ -202,6 +203,36 @@ func (fsh *ObjectStorageHandler) GetFileMeta(ctx context.Context, r *http.Reques
 
 	result := make(map[string]interface{})
 	result = fileref.GetListingData(ctx)
+	return result, nil
+}
+
+func (fsh *ObjectStorageHandler) GetObjectPathFromBlockNum(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method == "POST" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
+	}
+	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
+	_, err := fsh.verifyAllocation(ctx, allocationID)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	path := r.FormValue("path")
+	if len(path) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path")
+	}
+
+	fileref := reference.FileRefProvider().(*reference.FileRef)
+	fileref.AllocationID = allocationID
+	fileref.Path = path
+
+	err = fileref.Read(ctx, fileref.GetKey())
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid path / file. "+err.Error())
+	}
+
+	result := make(map[string]interface{})
+
 	return result, nil
 }
 
@@ -279,7 +310,7 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	connectionObj := AllocationChangeCollectorProvider().(*AllocationChangeCollector)
+	connectionObj := allocation.AllocationChangeCollectorProvider().(*allocation.AllocationChangeCollector)
 	connectionObj.ConnectionID = connectionID
 	connectionObj.AllocationID = allocationID
 
@@ -321,7 +352,7 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
 	}
 
-	rootRef, err := connectionObj.ApplyChanges(ctx)
+	rootRef, err := connectionObj.ApplyChanges(ctx, fileStore)
 	if err != nil {
 		return nil, err
 	}
@@ -342,6 +373,7 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 	}
 
 	writemarkerObj.WM = writeMarker
+	writemarkerObj.Changes = connectionObj.Changes
 	err = writemarkerObj.Write(ctx)
 	if err != nil {
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
@@ -379,12 +411,12 @@ func (fsh *ObjectStorageHandler) checkIfFileAlreadyExists(ctx context.Context, a
 }
 
 func (fsh *ObjectStorageHandler) checkIfFilePartOfExisitingOpenConnection(ctx context.Context, allocationID string, path string) bool {
-	connectionObj := AllocationChangeCollectorProvider()
+	connectionObj := allocation.AllocationChangeCollectorProvider()
 	mutex := GetMutex(allocationID)
 	mutex.Lock()
 	defer mutex.Unlock()
 	handler := func(ctx context.Context, key datastore.Key, value []byte) error {
-		connectionObj := AllocationChangeCollectorProvider().(*AllocationChangeCollector)
+		connectionObj := allocation.AllocationChangeCollectorProvider().(*allocation.AllocationChangeCollector)
 		err := json.Unmarshal(value, connectionObj)
 		if err != nil {
 			return err
@@ -435,7 +467,7 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 
 	uploadMetaString := r.FormValue("uploadMeta")
 	fmt.Println(uploadMetaString)
-	var formData UploadFormData
+	var formData allocation.UploadFormData
 	err = json.Unmarshal([]byte(uploadMetaString), &formData)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the meta data for upload."+err.Error())
@@ -453,7 +485,7 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 		return nil, common.NewError("duplicate_file", "File at path already uploaded as part of another open connection")
 	}
 
-	connectionObj := AllocationChangeCollectorProvider().(*AllocationChangeCollector)
+	connectionObj := allocation.AllocationChangeCollectorProvider().(*allocation.AllocationChangeCollector)
 	connectionObj.ConnectionID = formData.ConnectionID
 	connectionObj.AllocationID = allocationID
 	connectionObj.ClientID = clientID
@@ -492,10 +524,11 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 			formData.Hash = fileOutputData.ContentHash
 			formData.MerkleRoot = fileOutputData.MerkleRoot
 
-			allocationChange := &AllocationChange{}
+			allocationChange := &allocation.AllocationChange{}
 			allocationChange.Size = fileOutputData.Size
 			allocationChange.UploadFormData = &formData
-			allocationChange.Operation = INSERT_OPERATION
+			allocationChange.Operation = allocation.INSERT_OPERATION
+			allocationChange.NumBlocks = int64(math.Ceil(float64(allocationChange.Size*1.0) / reference.CHUNK_SIZE))
 
 			connectionObj.Size += fileOutputData.Size
 			connectionObj.AddChange(allocationChange)

@@ -19,6 +19,7 @@ const (
 const LIST_TAG = "list"
 
 type RefEntity interface {
+	GetNumBlocks(context.Context) int64
 	GetHash(context.Context) string
 	CalculateHash(context.Context) (string, error)
 	GetListingData(context.Context) map[string]interface{}
@@ -33,6 +34,7 @@ type Ref struct {
 	Name         string           `json:"name" list:"name"`
 	Path         string           `json:"path" list:"path"`
 	Hash         string           `json:"hash" list:"hash"`
+	NumBlocks    int64            `json:"num_of_blocks" list:"num_of_blocks"`
 	ParentRef    string           `json:"parent"`
 	ChildRefs    []string         `json:"children"`
 	Children     []RefEntity      `json:"-"`
@@ -111,22 +113,29 @@ func (r *Ref) CalculateHash(ctx context.Context) (string, error) {
 		return "", err
 	}
 	childHashes := make([]string, len(r.Children))
+	var refNumBlocks int64
 	for index, childRef := range r.Children {
 		childHashes[index] = childRef.GetHash(ctx)
+		refNumBlocks += childRef.GetNumBlocks(ctx)
 	}
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
+	r.NumBlocks = refNumBlocks
 	return r.Hash, nil
 }
 
-func (r *Ref) GetHash(context.Context) string {
+func (r *Ref) GetHash(ctx context.Context) string {
 	return r.Hash
 }
 
-func (r *Ref) GetListingData(context.Context) map[string]interface{} {
+func (r *Ref) GetListingData(ctx context.Context) map[string]interface{} {
 	return GetListingFieldsMap(*r)
 }
 func (r *Ref) GetType() string {
 	return r.Type
+}
+
+func (r *Ref) GetNumBlocks(ctx context.Context) int64 {
+	return r.NumBlocks
 }
 
 func GetListingFieldsMap(refEntity interface{}) map[string]interface{} {
@@ -248,6 +257,7 @@ func RecalculateHashBottomUp(ctx context.Context, curRef *Ref) error {
 	if err != nil {
 		return err
 	}
+
 	err = curRef.Write(ctx)
 	if err != nil {
 		return err

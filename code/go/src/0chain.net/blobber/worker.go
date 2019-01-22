@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"0chain.net/allocation"
@@ -22,14 +23,30 @@ func SetupWorkers(ctx context.Context) {
 	go CleanupOpenConnections(ctx)
 }
 
-func RedeemReadMarker(ctx context.Context, rmEntity *readmarker.ReadMarkerEntity) {
-	err := GetProtocolImpl(rmEntity.LatestRM.AllocationID).RedeemReadMarker(ctx, rmEntity)
-	if err != nil {
-		Logger.Error("Error redeeming the read marker.", zap.Any("rm", rmEntity), zap.Any("error", err))
+func RedeemReadMarker(ctx context.Context, rmEntity *readmarker.ReadMarkerEntity) error {
+
+	//&& (rmEntity.LastestRedeemedRM == nil || rmEntity.LastestRedeemedRM.ReadCounter < rmEntity.LatestRM.ReadCounter)
+	rmStatus := &readmarker.ReadMarkerStatus{}
+	rmStatus.LastestRedeemedRM = &readmarker.ReadMarker{ClientID: rmEntity.LatestRM.ClientID, BlobberID: rmEntity.LatestRM.BlobberID}
+	mutex := GetMutex(rmStatus.GetKey())
+	mutex.Lock()
+	defer mutex.Unlock()
+	err := rmStatus.Read(ctx, rmStatus.GetKey())
+
+	if err != nil && err != datastore.ErrKeyNotFound {
+		return err
 	}
+	if (err != nil && err == datastore.ErrKeyNotFound) || (err == nil && rmStatus.LastestRedeemedRM.ReadCounter < rmEntity.LatestRM.ReadCounter) {
+		err := GetProtocolImpl(rmEntity.LatestRM.AllocationID).RedeemReadMarker(ctx, rmEntity.LatestRM, rmStatus)
+		if err != nil {
+			Logger.Error("Error redeeming the read marker.", zap.Any("rm", rmEntity), zap.Any("error", err))
+			return err
+		}
+	}
+	return nil
 }
 
-func RedeemMarkersForAllocation(ctx context.Context, allocationID string, latestWmEntity string) {
+func RedeemMarkersForAllocation(ctx context.Context, allocationID string, latestWmEntity string) error {
 
 	allocationStatus := allocation.AllocationStatusProvider().(*allocation.AllocationStatus)
 	allocationStatus.ID = allocationID
@@ -38,7 +55,7 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationID string, latest
 	defer mutex.Unlock()
 	err := allocationStatus.Read(ctx, allocationStatus.GetKey())
 	if err != nil && err != datastore.ErrKeyNotFound {
-		return
+		return err
 	}
 	currWmEntity := latestWmEntity
 
@@ -61,9 +78,13 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationID string, latest
 				continue
 			}
 			allocationStatus.LastCommittedWMEntity = marker.GetKey()
-			allocationStatus.Write(ctx)
+			err = allocationStatus.Write(ctx)
+			if err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
 func CleanupOpenConnections(ctx context.Context) {
@@ -71,7 +92,7 @@ func CleanupOpenConnections(ctx context.Context) {
 
 	dbstore := GetMetaDataStore()
 	allocationChangeHandler := func(ctx context.Context, key datastore.Key, value []byte) error {
-		connectionObj := AllocationChangeCollectorProvider().(*AllocationChangeCollector)
+		connectionObj := allocation.AllocationChangeCollectorProvider().(*allocation.AllocationChangeCollector)
 		err := json.Unmarshal(value, connectionObj)
 		if err != nil {
 			return err
@@ -81,7 +102,7 @@ func CleanupOpenConnections(ctx context.Context) {
 		}
 		Logger.Info("Removing open connection with no activity in the last hour", zap.Any("connection", connectionObj))
 
-		err = connectionObj.DeleteChanges(ctx)
+		err = connectionObj.DeleteChanges(ctx, fileStore)
 		return err
 	}
 	for true {
@@ -104,6 +125,7 @@ func CleanupOpenConnections(ctx context.Context) {
 func RedeemMarkers(ctx context.Context) {
 	ticker := time.NewTicker(30 * time.Second)
 	doneChanMap := make(map[string]bool)
+	doneChanMapMutex := sync.RWMutex{}
 	dbstore := GetMetaDataStore()
 
 	allhandler := func(ctx context.Context, key datastore.Key, value []byte) error {
@@ -118,14 +140,24 @@ func RedeemMarkers(ctx context.Context) {
 		if err != nil {
 			return err
 		}
+		doneChanMapMutex.RLock()
 		inprogress, ok := doneChanMap[allocationObj.ID]
+		doneChanMapMutex.RUnlock()
 		if len(allocationObj.LatestWMEntity) > 0 && (!ok || !inprogress) {
 			go func() {
+				doneChanMapMutex.Lock()
 				doneChanMap[allocationObj.ID] = true
+				doneChanMapMutex.Unlock()
 				ctx = dbstore.WithConnection(ctx)
-				RedeemMarkersForAllocation(ctx, allocationObj.ID, allocationObj.LatestWMEntity)
-				dbstore.Commit(ctx)
+				err = RedeemMarkersForAllocation(ctx, allocationObj.ID, allocationObj.LatestWMEntity)
+				if err != nil {
+					dbstore.Discard(ctx)
+				} else {
+					dbstore.Commit(ctx)
+				}
+				doneChanMapMutex.Lock()
 				delete(doneChanMap, allocationObj.ID)
+				doneChanMapMutex.Unlock()
 			}()
 
 		}
@@ -138,14 +170,24 @@ func RedeemMarkers(ctx context.Context) {
 		if err != nil {
 			return err
 		}
+		doneChanMapMutex.RLock()
 		inprogress, ok := doneChanMap[rmEntity.GetKey()]
-		if rmEntity.LatestRM != nil && (rmEntity.LastestRedeemedRM == nil || rmEntity.LastestRedeemedRM.ReadCounter < rmEntity.LatestRM.ReadCounter) && (!ok || !inprogress) {
+		doneChanMapMutex.RUnlock()
+		if rmEntity.LatestRM != nil && (!ok || !inprogress) {
 			go func() {
+				doneChanMapMutex.Lock()
 				doneChanMap[rmEntity.GetKey()] = true
+				doneChanMapMutex.Unlock()
 				ctx = dbstore.WithConnection(ctx)
-				RedeemReadMarker(ctx, rmEntity)
-				dbstore.Commit(ctx)
+				err := RedeemReadMarker(ctx, rmEntity)
+				if err != nil {
+					dbstore.Discard(ctx)
+				} else {
+					dbstore.Commit(ctx)
+				}
+				doneChanMapMutex.Lock()
 				delete(doneChanMap, rmEntity.GetKey())
+				doneChanMapMutex.Unlock()
 			}()
 		}
 		return nil
@@ -157,8 +199,8 @@ func RedeemMarkers(ctx context.Context) {
 			return
 		case <-ticker.C:
 			dbstore.Iterate(ctx, allhandler)
-			dbstore.IteratePrefix(ctx, "allocation:", allocationhandler)
-			dbstore.IteratePrefix(ctx, "rm:", rmHandler)
+			dbstore.IteratePrefix(context.WithValue(ctx, "write_marker_redeem", "true"), "allocation:", allocationhandler)
+			dbstore.IteratePrefix(context.WithValue(ctx, "read_marker_redeem", "true"), "rm:", rmHandler)
 		}
 	}
 

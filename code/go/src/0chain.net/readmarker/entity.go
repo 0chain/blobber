@@ -21,20 +21,22 @@ type ReadMarker struct {
 	Signature       string           `json:"signature"`
 }
 
+type ReadMarkerStatus struct {
+	LastestRedeemedRM *ReadMarker `json:"last_redeemed_read_marker"`
+	LastRedeemTxnID   string      `json:"last_redeem_txn_id"`
+	StatusMessage     string      `json:"status_message"`
+}
+
 type ReadMarkerEntity struct {
-	LatestRM          *ReadMarker      `json:"latest_read_marker"`
-	LastestRedeemedRM *ReadMarker      `json:"last_redeemed_read_marker"`
-	LastRedeemTxnID   string           `json:"last_redeem_txn_id"`
-	StatusMessage     string           `json:"status_message"`
-	CreationDate      common.Timestamp `json:"creation_date"`
+	LatestRM *ReadMarker `json:"latest_read_marker"`
 }
 
 var readMarkerEntityMetaData *datastore.EntityMetadataImpl
+var readMarkerStatusEntityMetaData *datastore.EntityMetadataImpl
 
 /*Provider - entity provider for client object */
 func Provider() datastore.Entity {
 	t := &ReadMarkerEntity{}
-	t.CreationDate = common.Now()
 	return t
 }
 
@@ -45,7 +47,14 @@ func SetupEntity(store datastore.Store) {
 	readMarkerEntityMetaData.Provider = Provider
 	readMarkerEntityMetaData.Store = store
 
+	readMarkerStatusEntityMetaData = datastore.MetadataProvider()
+	readMarkerStatusEntityMetaData.Name = "rm_status"
+	readMarkerStatusEntityMetaData.DB = "rm_status"
+	readMarkerStatusEntityMetaData.Provider = Provider
+	readMarkerStatusEntityMetaData.Store = store
+
 	datastore.RegisterEntityMetadata("rm", readMarkerEntityMetaData)
+	datastore.RegisterEntityMetadata("rm_status", readMarkerStatusEntityMetaData)
 }
 
 func (rm *ReadMarkerEntity) GetLatestReadMarker(ctx context.Context, clientID string, blobberID string) error {
@@ -77,4 +86,23 @@ func (rm *ReadMarkerEntity) Delete(ctx context.Context) error {
 func (rm *ReadMarker) GetHashData() string {
 	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.BlobberID, rm.ClientID, rm.ClientPublicKey, rm.OwnerID, rm.FilePath, rm.ReadCounter, rm.Timestamp)
 	return hashData
+}
+
+func (rmstatus *ReadMarkerStatus) GetEntityMetadata() datastore.EntityMetadata {
+	return readMarkerStatusEntityMetaData
+}
+func (rmstatus *ReadMarkerStatus) SetKey(key datastore.Key) {
+	//wm.ID = datastore.ToString(key)
+}
+func (rmstatus *ReadMarkerStatus) GetKey() datastore.Key {
+	return datastore.ToKey(readMarkerStatusEntityMetaData.GetDBName() + ":" + encryption.Hash(rmstatus.LastestRedeemedRM.ClientID+rmstatus.LastestRedeemedRM.BlobberID))
+}
+func (rmstatus *ReadMarkerStatus) Read(ctx context.Context, key datastore.Key) error {
+	return readMarkerStatusEntityMetaData.GetStore().Read(ctx, key, rmstatus)
+}
+func (rmstatus *ReadMarkerStatus) Write(ctx context.Context) error {
+	return readMarkerStatusEntityMetaData.GetStore().Write(ctx, rmstatus)
+}
+func (rmstatus *ReadMarkerStatus) Delete(ctx context.Context) error {
+	return nil
 }

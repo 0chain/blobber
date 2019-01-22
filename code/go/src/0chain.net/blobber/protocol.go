@@ -15,31 +15,30 @@ import (
 	"0chain.net/readmarker"
 	"0chain.net/reference"
 	"0chain.net/transaction"
-	"0chain.net/util"
 	"0chain.net/writemarker"
 
 	"go.uber.org/zap"
 )
 
-const CHUNK_SIZE = 64 * 1024
+const CHUNK_SIZE = reference.CHUNK_SIZE
 
-type ChallengeResponse struct {
-	Data        []byte                   `json:"data_bytes"`
-	WriteMarker *writemarker.WriteMarker `json:"write_marker"`
-	MerkleRoot  string                   `json:"merkle_root"`
-	MerklePath  *util.MTPath             `json:"merkle_path"`
-	CloseTxnID  string                   `json:"close_txn_id"`
-}
+// type ChallengeResponse struct {
+// 	Data        []byte                   `json:"data_bytes"`
+// 	WriteMarker *writemarker.WriteMarker `json:"write_marker"`
+// 	MerkleRoot  string                   `json:"merkle_root"`
+// 	MerklePath  *util.MTPath             `json:"merkle_path"`
+// 	CloseTxnID  string                   `json:"close_txn_id"`
+// }
 
 //StorageProtocol - interface for the storage protocol
 type StorageProtocol interface {
 	RegisterBlobber(ctx context.Context) (string, error)
 	VerifyAllocationTransaction(ctx context.Context) (*allocation.Allocation, error)
 	// VerifyBlobberTransaction(txn_hash string, clientID string) (*transaction.StorageConnection, error)
-	VerifyMarker(ctx context.Context, wm *writemarker.WriteMarker, sa *allocation.Allocation, co *AllocationChangeCollector) error
+	VerifyMarker(ctx context.Context, wm *writemarker.WriteMarker, sa *allocation.Allocation, co *allocation.AllocationChangeCollector) error
 	RedeemMarker(ctx context.Context, wm *writemarker.WriteMarkerEntity) error
 	VerifyReadMarker(ctx context.Context, rm *readmarker.ReadMarker, sa *allocation.Allocation) error
-	RedeemReadMarker(ctx context.Context, rm *readmarker.ReadMarkerEntity) error
+	RedeemReadMarker(ctx context.Context, rm *readmarker.ReadMarker, rmStatus *readmarker.ReadMarkerStatus) error
 	// GetChallengeResponse(allocationID string, dataID string, blockNum int64, objectsPath string) (string, error)
 }
 
@@ -55,11 +54,11 @@ func GetProtocolImpl(allocationID string) StorageProtocol {
 		AllocationID: allocationID}
 }
 
-func (sp *StorageProtocolImpl) RedeemReadMarker(ctx context.Context, rm *readmarker.ReadMarkerEntity) error {
+func (sp *StorageProtocolImpl) RedeemReadMarker(ctx context.Context, rm *readmarker.ReadMarker, rmStatus *readmarker.ReadMarkerStatus) error {
 	txn := transaction.NewTransactionEntity()
 
 	sn := &transaction.ReadRedeem{}
-	sn.ReadMarker = rm.LatestRM
+	sn.ReadMarker = rm
 	scData := &transaction.SmartContractTxnData{}
 
 	scData.Name = transaction.READ_REDEEM
@@ -88,10 +87,10 @@ func (sp *StorageProtocolImpl) RedeemReadMarker(ctx context.Context, rm *readmar
 		return err
 	}
 
-	rm.LastRedeemTxnID = t.Hash
-	rm.LastestRedeemedRM = rm.LatestRM
-	rm.StatusMessage = t.TransactionOutput
-	err = rm.Write(ctx)
+	rmStatus.LastRedeemTxnID = t.Hash
+	rmStatus.LastestRedeemedRM = rm
+	rmStatus.StatusMessage = t.TransactionOutput
+	err = rmStatus.Write(ctx)
 	return err
 }
 
@@ -198,7 +197,7 @@ func (sp *StorageProtocolImpl) VerifyReadMarker(ctx context.Context, rm *readmar
 	return nil
 }
 
-func (sp *StorageProtocolImpl) VerifyMarker(ctx context.Context, wm *writemarker.WriteMarker, sa *allocation.Allocation, co *AllocationChangeCollector) error {
+func (sp *StorageProtocolImpl) VerifyMarker(ctx context.Context, wm *writemarker.WriteMarker, sa *allocation.Allocation, co *allocation.AllocationChangeCollector) error {
 
 	if wm == nil {
 		return common.NewError("invalid_write_marker", "No Write Marker was found")

@@ -51,7 +51,7 @@ func initEntities() {
 	badgerdbstore.SetupStorageProvider(*badgerDir)
 	fsStore := filestore.SetupFSStore(*filesDir + "/files")
 
-	blobber.SetupAllocationChangeCollectorEntity(badgerdbstore.GetStorageProvider())
+	allocation.SetupAllocationChangeCollectorEntity(badgerdbstore.GetStorageProvider())
 	allocation.SetupAllocationEntity(badgerdbstore.GetStorageProvider())
 	reference.SetupFileRefEntity(badgerdbstore.GetStorageProvider())
 	reference.SetupRefEntity(badgerdbstore.GetStorageProvider())

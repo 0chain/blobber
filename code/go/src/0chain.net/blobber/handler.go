@@ -18,11 +18,13 @@ const CLIENT_KEY_CONTEXT_KEY common.ContextKey = "client_key"
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONResponse(WithConnection(UploadHandler)))
-	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithConnection(CommitHandler)))
-	r.HandleFunc("/v1/connection/details/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(GetConnectionDetailsHandler)))
 	r.HandleFunc("/v1/file/download/{allocation}", common.ToJSONResponse(WithConnection(DownloadHandler)))
 	r.HandleFunc("/v1/file/meta/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(MetaHandler)))
 	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))
+
+	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithConnection(CommitHandler)))
+	r.HandleFunc("/v1/connection/details/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(GetConnectionDetailsHandler)))
+
 	r.HandleFunc("/v1/readmarker/latest", common.ToJSONResponse(WithReadOnlyConnection(LatestRMHandler)))
 	//r.HandleFunc("/metastore", common.ToJSONResponse(WithConnection(MetaStoreHandler)))
 	storageHandler = GetStorageHandler()

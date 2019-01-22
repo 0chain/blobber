@@ -3,6 +3,7 @@ package reference
 import (
 	"context"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -21,6 +22,8 @@ type FileRef struct {
 	ActualFileSize int64  `json:"actual_file_size" list:"actual_file_size"`
 	ActualFileHash string `json:"actual_file_hash" list:"actual_file_hash"`
 }
+
+const CHUNK_SIZE = 64 * 1024
 
 var fileRefEntityMetaData *datastore.EntityMetadataImpl
 
@@ -85,6 +88,7 @@ func (fr *FileRef) GetHash(ctx context.Context) string {
 func (fr *FileRef) CalculateHash(context.Context) (string, error) {
 	fmt.Println("Fileref hash : " + fr.GetHashData())
 	fr.Hash = encryption.Hash(fr.GetHashData())
+	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / CHUNK_SIZE))
 	return fr.Hash, nil
 }
 
@@ -94,4 +98,8 @@ func (fr *FileRef) GetListingData(context.Context) map[string]interface{} {
 
 func (fr *FileRef) GetType() string {
 	return fr.Type
+}
+
+func (fr *FileRef) GetNumBlocks(context.Context) int64 {
+	return fr.NumBlocks
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"0chain.net/allocation"
 	"0chain.net/common"
 	"0chain.net/datastore"
 	"0chain.net/encryption"
@@ -29,14 +30,15 @@ const (
 )
 
 type WriteMarkerEntity struct {
-	Version        string            `json:"version"`
-	PrevWM         string            `json:"prev_write_marker"`
-	WM             *WriteMarker      `json:"write_marker"`
-	Status         WriteMarkerStatus `json:"status"`
-	StatusMessage  string            `json:"status_message"`
-	ReedeemRetries int64             `json:"redeem_retries"`
-	CloseTxnID     string            `json:"close_txn_id"`
-	CreationDate   common.Timestamp  `json:"creation_date"`
+	Version        string                         `json:"version"`
+	PrevWM         string                         `json:"prev_write_marker"`
+	WM             *WriteMarker                   `json:"write_marker"`
+	Status         WriteMarkerStatus              `json:"status"`
+	StatusMessage  string                         `json:"status_message"`
+	ReedeemRetries int64                          `json:"redeem_retries"`
+	CloseTxnID     string                         `json:"close_txn_id"`
+	CreationDate   common.Timestamp               `json:"creation_date"`
+	Changes        []*allocation.AllocationChange `json:"changes"`
 }
 
 var writeMarkerEntityMetaData *datastore.EntityMetadataImpl
