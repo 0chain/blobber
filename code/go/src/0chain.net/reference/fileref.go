@@ -2,7 +2,6 @@ package reference
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -85,8 +84,8 @@ func (fr *FileRef) GetHash(ctx context.Context) string {
 	return fr.Hash
 }
 
-func (fr *FileRef) CalculateHash(context.Context) (string, error) {
-	fmt.Println("Fileref hash : " + fr.GetHashData())
+func (fr *FileRef) CalculateHash(ctx context.Context, dbStore datastore.Store) (string, error) {
+	//fmt.Println("Fileref hash : " + fr.GetHashData())
 	fr.Hash = encryption.Hash(fr.GetHashData())
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / CHUNK_SIZE))
 	return fr.Hash, nil

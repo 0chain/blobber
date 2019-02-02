@@ -2,6 +2,8 @@ package blobber
 
 import (
 	"context"
+	"os"
+	"runtime/pprof"
 
 	"net/http"
 
@@ -21,12 +23,15 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/download/{allocation}", common.ToJSONResponse(WithConnection(DownloadHandler)))
 	r.HandleFunc("/v1/file/meta/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(MetaHandler)))
 	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))
+	r.HandleFunc("/v1/file/objectpath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler)))
 
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithConnection(CommitHandler)))
 	r.HandleFunc("/v1/connection/details/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(GetConnectionDetailsHandler)))
 
 	r.HandleFunc("/v1/readmarker/latest", common.ToJSONResponse(WithReadOnlyConnection(LatestRMHandler)))
 	//r.HandleFunc("/metastore", common.ToJSONResponse(WithConnection(MetaStoreHandler)))
+	r.HandleFunc("/debug", common.ToJSONResponse(DumpGoRoutines))
+
 	storageHandler = GetStorageHandler()
 }
 
@@ -53,6 +58,11 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 		}
 		return res, err
 	}
+}
+
+func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+	return "success", nil
 }
 
 func LatestRMHandler(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -137,6 +147,18 @@ func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
 
 	response, err := storageHandler.ListEntities(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
+
+	response, err := storageHandler.GetObjectPathFromBlockNum(ctx, r)
 	if err != nil {
 		return nil, err
 	}

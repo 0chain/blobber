@@ -30,3 +30,7 @@ func (c *LRU) Get(key string) (interface{}, error) {
 	}
 	return value, nil
 }
+
+func (c *LRU) Delete(key string) error {
+	return c.Cache.Delete(key)
+}

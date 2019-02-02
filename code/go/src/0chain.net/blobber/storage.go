@@ -43,6 +43,12 @@ type ListResult struct {
 	Entities       []map[string]interface{} `json:"list"`
 }
 
+type ObjectPathResult struct {
+	AllocationRoot string                 `json:"allocation_root"`
+	Meta           map[string]interface{} `json:"meta_data"`
+	Path           map[string]interface{} `json:"path"`
+}
+
 type DownloadResponse struct {
 	Data []byte `json:"data"`
 }
@@ -56,6 +62,7 @@ type StorageHandler interface {
 	ListEntities(ctx context.Context, r *http.Request) (*ListResult, error)
 	GetConnectionDetails(ctx context.Context, r *http.Request) (*allocation.AllocationChangeCollector, error)
 	GetLatestReadMarker(ctx context.Context, r *http.Request) (*readmarker.ReadMarker, error)
+	GetObjectPathFromBlockNum(ctx context.Context, r *http.Request) (*ObjectPathResult, error)
 	// ChallengeData(r *http.Request) (string, error)
 }
 

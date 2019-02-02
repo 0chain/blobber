@@ -145,10 +145,30 @@ func (fs *FileFSStore) generateTempPath(allocation *StoreAllocation, fileData *F
 	return filepath.Join(allocation.TempObjectsPath, fileData.Name+"."+encryption.Hash(fileData.Path)+"."+connectionID)
 }
 
-func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData, connectionID string) error {
+func (fs *FileFSStore) fileCopy(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+	return out.Close()
+}
+
+func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error) {
 	allocation, err := fs.setupAllocation(allocationID, true)
 	if err != nil {
-		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
+		return false, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
 	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
 	//move file from tmp location to the objects folder
@@ -156,15 +176,19 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
 	err = util.CreateDirs(fileObjectPath)
 	if err != nil {
-		return common.NewError("blob_object_dir_creation_error", err.Error())
+		return false, common.NewError("blob_object_dir_creation_error", err.Error())
 	}
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
-	err = os.Rename(tempFilePath, fileObjectPath)
+	if _, err := os.Stat(fileObjectPath); os.IsNotExist(err) {
+		err = fs.fileCopy(tempFilePath, fileObjectPath)
 
-	if err != nil {
-		return common.NewError("blob_object_creation_error", err.Error())
+		if err != nil {
+			return false, common.NewError("blob_object_creation_error", err.Error())
+		}
+		return true, nil
 	}
-	return nil
+
+	return false, err
 }
 
 func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, hdr *multipart.FileHeader, connectionID string) (*FileOutputData, error) {
@@ -201,7 +225,7 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, h
 			break
 		}
 	}
-	Logger.Info("File size", zap.Int64("file_size", fileSize))
+	//Logger.Info("File size", zap.Int64("file_size", fileSize))
 	var mt util.MerkleTreeI = &util.MerkleTree{}
 	mt.ComputeTree(merkleLeaves)
 	//Logger.Info("Calculated Merkle root", zap.String("merkle_root", mt.GetRoot()), zap.Int("merkle_leaf_count", len(merkleLeaves)))

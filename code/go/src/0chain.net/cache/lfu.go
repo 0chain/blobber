@@ -28,3 +28,7 @@ func (c *LFU) Get(key string) (interface{}, error) {
 	}
 	return value, err
 }
+
+func (c *LFU) Delete(key string) error {
+	return c.Cache.Delete(key)
+}

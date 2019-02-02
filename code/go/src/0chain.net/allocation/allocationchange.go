@@ -2,9 +2,7 @@ package allocation
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
-	"strings"
 
 	"0chain.net/common"
 	"0chain.net/datastore"
@@ -113,7 +111,27 @@ func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context, fileStore
 	return a.Delete(ctx)
 }
 
-func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context, fileStore filestore.FileStore) (*reference.Ref, error) {
+func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context, fileStore filestore.FileStore) error {
+	for _, change := range a.Changes {
+		if fileStore != nil {
+			fileInputData := &filestore.FileInputData{}
+			fileInputData.Name = change.Filename
+			fileInputData.Path = change.Path
+			fileInputData.Hash = change.Hash
+			_, err := fileStore.CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
+			if err != nil {
+				return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+			}
+		}
+	}
+	return nil
+}
+
+func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context, fileStore filestore.FileStore, dbStore datastore.Store) (*reference.Ref, error) {
+	if dbStore == nil {
+		dbStore = a.GetEntityMetadata().GetStore()
+	}
+
 	for _, change := range a.Changes {
 		if change.Operation == INSERT_OPERATION {
 			fileref := reference.FileRefProvider().(*reference.FileRef)
@@ -127,7 +145,7 @@ func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context, fileStore 
 			fileref.ActualFileSize = change.ActualSize
 			fileref.ActualFileHash = change.ActualHash
 			fileref.MerkleRoot = change.MerkleRoot
-			fileref.CalculateHash(ctx)
+			fileref.CalculateHash(ctx, dbStore)
 			parentdir, _ := filepath.Split(change.Path)
 			parentdir = filepath.Clean(parentdir)
 
@@ -136,36 +154,26 @@ func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context, fileStore 
 			parentRef.Path = parentdir
 			fileref.ParentRef = parentRef.GetKey()
 
-			fileInputData := &filestore.FileInputData{}
-			fileInputData.Name = fileref.Name
-			fileInputData.Path = fileref.Path
-			fileInputData.Hash = fileref.ContentHash
-
-			err := fileref.Write(ctx)
+			err := dbStore.Write(ctx, fileref)
 			if err != nil {
 				return nil, common.NewError("fileref_write_error", "Error writing the file meta info. "+err.Error())
 			}
-			err = reference.CreateDirRefsIfNotExists(ctx, a.AllocationID, parentdir, fileref.GetKey())
+			err = reference.CreateDirRefsIfNotExists(ctx, a.AllocationID, parentdir, fileref.GetKey(), dbStore)
 			if err != nil {
 				return nil, common.NewError("create_ref_error", "Error creating the dir meta info. "+err.Error())
 			}
-			err = parentRef.Read(ctx, parentRef.GetKey())
+			err = dbStore.Read(ctx, parentRef.GetKey(), parentRef)
 			if err != nil {
 				return nil, common.NewError("parent_ref_not_found", "Parent dir meta data not found. "+err.Error())
 			}
-			fmt.Println(parentRef.GetKey() + ", " + parentRef.Path + ", " + strings.Join(parentRef.ChildRefs, ","))
-			err = reference.RecalculateHashBottomUp(ctx, parentRef)
+			//fmt.Println(parentRef.GetKey() + ", " + parentRef.Path + ", " + strings.Join(parentRef.ChildRefs, ","))
+			err = reference.RecalculateHashBottomUp(ctx, parentRef, dbStore)
 			if err != nil {
 				return nil, common.NewError("allocation_hash_error", "Error calculating the allocation hash. "+err.Error())
 			}
-
-			err = fileStore.CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
-			if err != nil {
-				return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-			}
 		}
 	}
-	rootRef, err := reference.GetRootReference(ctx, a.AllocationID)
+	rootRef, err := reference.GetRootReferenceFromStore(ctx, a.AllocationID, dbStore)
 	if err != nil {
 		return nil, common.NewError("root_ref_read_error", "Error getting the root reference. "+err.Error())
 	}

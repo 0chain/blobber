@@ -21,7 +21,7 @@ const LIST_TAG = "list"
 type RefEntity interface {
 	GetNumBlocks(context.Context) int64
 	GetHash(context.Context) string
-	CalculateHash(context.Context) (string, error)
+	CalculateHash(context.Context, datastore.Store) (string, error)
 	GetListingData(context.Context) map[string]interface{}
 	GetType() string
 }
@@ -85,10 +85,9 @@ func GetReferenceLookup(allocationID string, path string) string {
 	return encryption.Hash(allocationID + ":" + path)
 }
 
-func (r *Ref) LoadChildren(ctx context.Context) error {
+func (r *Ref) LoadChildren(ctx context.Context, dbStore datastore.Store) error {
 	r.Children = make([]RefEntity, len(r.ChildRefs))
 	if len(r.ChildRefs) > 0 {
-		dbStore := refEntityMetaData.GetStore()
 		for index, childRef := range r.ChildRefs {
 			var childRefObj datastore.Entity
 			if strings.HasPrefix(childRef, fileRefEntityMetaData.GetDBName()) {
@@ -107,8 +106,8 @@ func (r *Ref) LoadChildren(ctx context.Context) error {
 	return nil
 }
 
-func (r *Ref) CalculateHash(ctx context.Context) (string, error) {
-	err := r.LoadChildren(ctx)
+func (r *Ref) CalculateHash(ctx context.Context, dbStore datastore.Store) (string, error) {
+	err := r.LoadChildren(ctx, dbStore)
 	if err != nil {
 		return "", err
 	}
@@ -118,6 +117,7 @@ func (r *Ref) CalculateHash(ctx context.Context) (string, error) {
 		childHashes[index] = childRef.GetHash(ctx)
 		refNumBlocks += childRef.GetNumBlocks(ctx)
 	}
+	//fmt.Println("ref hash : " + strings.Join(childHashes, ":"))
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
 	r.NumBlocks = refNumBlocks
 	return r.Hash, nil
@@ -162,14 +162,18 @@ func GetListingFieldsMap(refEntity interface{}) map[string]interface{} {
 
 			}
 		} else {
-			result[tag] = v.FieldByName(field.Name).Interface()
+			fieldValue := v.FieldByName(field.Name).Interface()
+			if fieldValue == nil || fieldValue == reflect.Zero(reflect.TypeOf(fieldValue)).Interface() {
+				continue
+			}
+			result[tag] = fieldValue
 		}
 
 	}
 	return result
 }
 
-func CreateDirRefsIfNotExists(ctx context.Context, allocation string, path string, childKey string) error {
+func CreateDirRefsIfNotExists(ctx context.Context, allocation string, path string, childKey string, dbStore datastore.Store) error {
 
 	if len(path) == 0 {
 		return common.NewError("invalid_parameters", "Invalid path to reference")
@@ -188,7 +192,7 @@ func CreateDirRefsIfNotExists(ctx context.Context, allocation string, path strin
 	dirref.Name = currdir
 	dirref.Path = path
 
-	dbStore := refEntityMetaData.GetStore()
+	//dbStore := refEntityMetaData.GetStore()
 	err := dbStore.Read(ctx, dirref.GetKey(), dirref)
 	if err == datastore.ErrKeyNotFound {
 		dirref.Type = DIRECTORY
@@ -211,15 +215,24 @@ func CreateDirRefsIfNotExists(ctx context.Context, allocation string, path strin
 	}
 
 	if len(childKey) > 0 {
-		dirref.ChildRefs = append(dirref.ChildRefs, childKey)
+		existingChild := false
+		for _, a := range dirref.ChildRefs {
+			if a == childKey {
+				existingChild = true
+			}
+		}
+		if !existingChild {
+			dirref.ChildRefs = append(dirref.ChildRefs, childKey)
+		}
+
 	}
-	err = dirref.Write(ctx)
+	err = dbStore.Write(ctx, dirref)
 	if err != nil {
 		return err
 	}
 
 	if !isRoot {
-		err = CreateDirRefsIfNotExists(ctx, allocation, parentdir, dirref.GetKey())
+		err = CreateDirRefsIfNotExists(ctx, allocation, parentdir, dirref.GetKey(), dbStore)
 		if err != nil {
 			return err
 		}
@@ -228,18 +241,22 @@ func CreateDirRefsIfNotExists(ctx context.Context, allocation string, path strin
 	return nil
 }
 
-func GetRootReference(ctx context.Context, allocationID string) (*Ref, error) {
+func GetRootReferenceFromStore(ctx context.Context, allocationID string, dbStore datastore.Store) (*Ref, error) {
 	parentDirRef, _ := RefProvider().(*Ref)
 	parentDirRef.AllocationID = allocationID
 	parentDirRef.Path = "/"
-	err := parentDirRef.Read(ctx, parentDirRef.GetKey())
+	err := dbStore.Read(ctx, parentDirRef.GetKey(), parentDirRef)
 	if err != nil {
 		return nil, err
 	}
 	return parentDirRef, nil
 }
 
-func RecalculateHashBottomUp(ctx context.Context, curRef *Ref) error {
+func GetRootReference(ctx context.Context, allocationID string) (*Ref, error) {
+	return GetRootReferenceFromStore(ctx, allocationID, refEntityMetaData.GetStore())
+}
+
+func RecalculateHashBottomUp(ctx context.Context, curRef *Ref, dbStore datastore.Store) error {
 
 	parentdir, currdir := filepath.Split(curRef.Path)
 	parentdir = filepath.Clean(parentdir)
@@ -253,12 +270,12 @@ func RecalculateHashBottomUp(ctx context.Context, curRef *Ref) error {
 		return common.NewError("invalid_reference", "Reference is not a directory. Path : "+curRef.Path)
 	}
 
-	_, err := curRef.CalculateHash(ctx)
+	_, err := curRef.CalculateHash(ctx, dbStore)
 	if err != nil {
 		return err
 	}
 
-	err = curRef.Write(ctx)
+	err = dbStore.Write(ctx, curRef)
 	if err != nil {
 		return err
 	}
@@ -267,11 +284,11 @@ func RecalculateHashBottomUp(ctx context.Context, curRef *Ref) error {
 		parentDirRef, _ := RefProvider().(*Ref)
 		parentDirRef.AllocationID = curRef.AllocationID
 		parentDirRef.Path = parentdir
-		err = parentDirRef.Read(ctx, parentDirRef.GetKey())
+		err = dbStore.Read(ctx, parentDirRef.GetKey(), parentDirRef)
 		if err != nil {
 			return err
 		}
-		err = RecalculateHashBottomUp(ctx, parentDirRef)
+		err = RecalculateHashBottomUp(ctx, parentDirRef, dbStore)
 		if err != nil {
 			return err
 		}

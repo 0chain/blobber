@@ -321,7 +321,7 @@ func (sp *StorageProtocolImpl) VerifyAllocationTransaction(ctx context.Context) 
 		if err != nil {
 			return nil, common.NewError("allocation_write_error", "Error storing the allocation meta data received from blockchain")
 		}
-		err = reference.CreateDirRefsIfNotExists(ctx, sp.AllocationID, "/", "")
+		err = reference.CreateDirRefsIfNotExists(ctx, sp.AllocationID, "/", "", allocationObj.GetEntityMetadata().GetStore())
 		if err != nil {
 			return nil, common.NewError("root_reference_creation_error", "Error creating the root reference")
 		}

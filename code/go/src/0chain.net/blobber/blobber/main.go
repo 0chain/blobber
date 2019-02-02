@@ -261,7 +261,7 @@ func HomePageHandler(w http.ResponseWriter, r *http.Request) {
 	mc := chain.GetServerChain()
 	fmt.Fprintf(w, "<div>Running since %v ...\n", startTime)
 	fmt.Fprintf(w, "<div>Working on the chain: %v</div>\n", mc.ID)
-	fmt.Fprintf(w, "<div>I am a %v with <ul><li>id:%v</li><li>public_key:%v</li></ul></div>\n", node.Self.GetNodeTypeName(), node.Self.GetKey(), node.Self.PublicKey)
+	fmt.Fprintf(w, "<div>I am a blobber with <ul><li>id:%v</li><li>public_key:%v</li></ul></div>\n", node.Self.GetKey(), node.Self.PublicKey)
 	serverChain.Miners.Print(w)
 	serverChain.Sharders.Print(w)
 	serverChain.Blobbers.Print(w)

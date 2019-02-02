@@ -8,6 +8,7 @@ import (
 	"0chain.net/common"
 	"0chain.net/datastore"
 	"0chain.net/encryption"
+	"0chain.net/hashmapstore"
 )
 
 type WriteMarker struct {
@@ -19,6 +20,11 @@ type WriteMarker struct {
 	Timestamp              common.Timestamp `json:"timestamp"`
 	ClientID               string           `json:"client_id"`
 	Signature              string           `json:"signature"`
+}
+
+func (wm *WriteMarker) GetHashData() string {
+	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", wm.AllocationRoot, wm.PreviousAllocationRoot, wm.AllocationID, wm.BlobberID, wm.ClientID, wm.Size, wm.Timestamp)
+	return hashData
 }
 
 type WriteMarkerStatus int
@@ -39,6 +45,7 @@ type WriteMarkerEntity struct {
 	CloseTxnID     string                         `json:"close_txn_id"`
 	CreationDate   common.Timestamp               `json:"creation_date"`
 	Changes        []*allocation.AllocationChange `json:"changes"`
+	DirStructure   map[string][]byte              `json:"dir_struct,omitempty"`
 }
 
 var writeMarkerEntityMetaData *datastore.EntityMetadataImpl
@@ -80,7 +87,35 @@ func (wm *WriteMarkerEntity) Delete(ctx context.Context) error {
 	return nil
 }
 
-func (wm *WriteMarker) GetHashData() string {
-	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", wm.AllocationRoot, wm.PreviousAllocationRoot, wm.AllocationID, wm.BlobberID, wm.ClientID, wm.Size, wm.Timestamp)
-	return hashData
+func (wm *WriteMarkerEntity) WriteAllocationDirStructure(ctx context.Context) error {
+	dbStore := hashmapstore.NewStore()
+	allocationChangeCollector := allocation.AllocationChangeCollectorProvider().(*allocation.AllocationChangeCollector)
+	allocationChangeCollector.AllocationID = wm.WM.AllocationID
+	allocationChangeCollector.ConnectionID = ""
+	curWM := wm
+	curDB := dbStore.DB
+	changes := make([]*allocation.AllocationChange, 0)
+	changes = append(curWM.Changes, changes...)
+	for len(curWM.PrevWM) > 0 {
+		prevWMEntity := wm.GetEntityMetadata().Instance().(*WriteMarkerEntity)
+		err := prevWMEntity.Read(ctx, curWM.PrevWM)
+		if err != nil {
+			return err
+		}
+		if prevWMEntity.DirStructure != nil {
+			curDB = prevWMEntity.DirStructure
+			break
+		}
+		curWM = prevWMEntity
+		changes = append(curWM.Changes, changes...)
+	}
+	dbStore.DB = curDB
+	allocationChangeCollector.Changes = changes
+
+	_, err := allocationChangeCollector.ApplyChanges(ctx, nil, dbStore)
+	if err != nil {
+		return err
+	}
+	wm.DirStructure = dbStore.DB
+	return nil
 }

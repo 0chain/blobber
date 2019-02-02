@@ -3,22 +3,20 @@ package blobber
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"math"
 	"net/http"
 	"strconv"
 
-	"0chain.net/node"
-
 	"0chain.net/allocation"
-	"0chain.net/readmarker"
-	"0chain.net/writemarker"
-
 	"0chain.net/common"
 	"0chain.net/datastore"
 	"0chain.net/filestore"
+	"0chain.net/hashmapstore"
 	. "0chain.net/logging"
+	"0chain.net/node"
+	"0chain.net/readmarker"
 	"0chain.net/reference"
+	"0chain.net/writemarker"
 	"go.uber.org/zap"
 )
 
@@ -206,34 +204,105 @@ func (fsh *ObjectStorageHandler) GetFileMeta(ctx context.Context, r *http.Reques
 	return result, nil
 }
 
-func (fsh *ObjectStorageHandler) GetObjectPathFromBlockNum(ctx context.Context, r *http.Request) (interface{}, error) {
+func (fsh *ObjectStorageHandler) GetObjectPathFromBlockNum(ctx context.Context, r *http.Request) (*ObjectPathResult, error) {
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
 	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
-	_, err := fsh.verifyAllocation(ctx, allocationID)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	path := r.FormValue("path")
-	if len(path) == 0 {
+	blockNumStr := r.FormValue("block_num")
+	if len(blockNumStr) == 0 {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 
-	fileref := reference.FileRefProvider().(*reference.FileRef)
-	fileref.AllocationID = allocationID
-	fileref.Path = path
-
-	err = fileref.Read(ctx, fileref.GetKey())
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid path / file. "+err.Error())
+	blockNum, err := strconv.ParseInt(blockNumStr, 10, 64)
+	if err != nil || blockNum < 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid block number")
 	}
 
-	result := make(map[string]interface{})
+	allocationRoot := r.FormValue("allocation_root")
+	if len(allocationRoot) == 0 {
+		//use latest allocation root from the allocation object
+		allocationRoot = allocationObj.AllocationRoot
+	}
 
-	return result, nil
+	wm := *writemarker.Provider().(*writemarker.WriteMarkerEntity)
+	writeMarker := &writemarker.WriteMarker{}
+	writeMarker.AllocationID = allocationID
+	writeMarker.AllocationRoot = allocationRoot
+	wm.WM = writeMarker
+	err = wm.Read(ctx, wm.GetKey())
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation root. No write marker found")
+	}
+
+	if wm.DirStructure == nil {
+		wm.WriteAllocationDirStructure(ctx)
+	}
+
+	dbStore := hashmapstore.NewStore()
+	dbStore.DB = wm.DirStructure
+
+	rootRef, err := reference.GetRootReferenceFromStore(ctx, allocationID, dbStore)
+	//fmt.Println("Root ref found with hash : " + rootRef.Hash)
+	if err != nil {
+		return nil, common.NewError("invalid_dir_struct", "Allocation root corresponds to an invalid directory structure")
+	}
+
+	if rootRef.NumBlocks < blockNum {
+		return nil, common.NewError("invalid_block_num", "Invalid block number")
+	}
+
+	found := false
+	var curRef reference.RefEntity
+	curRef = rootRef
+	remainingBlocks := blockNum
+
+	result := curRef.GetListingData(ctx)
+	curResult := result
+
+	for !found {
+		err := curRef.(*reference.Ref).LoadChildren(ctx, dbStore)
+		if err != nil {
+			return nil, common.NewError("error_loading_children", "Error loading children from store for path "+curRef.(*reference.Ref).Path)
+		}
+		list := make([]map[string]interface{}, len(curRef.(*reference.Ref).Children))
+		for idx, child := range curRef.(*reference.Ref).Children {
+			list[idx] = child.GetListingData(ctx)
+		}
+		curResult["list"] = list
+		for idx, child := range curRef.(*reference.Ref).Children {
+			//result.Entities[idx] = child.GetListingData(ctx)
+
+			if child.GetNumBlocks(ctx) < remainingBlocks {
+				remainingBlocks = remainingBlocks - child.GetNumBlocks(ctx)
+				continue
+			}
+			if child.GetType() == reference.FILE {
+				found = true
+				curRef = child
+				continue
+			}
+			curRef = child
+			curResult = list[idx]
+			break
+		}
+	}
+	if !found {
+		return nil, common.NewError("invalid_parameters", "Block num was not found")
+	}
+
+	var retObj ObjectPathResult
+	retObj.AllocationRoot = allocationObj.AllocationRoot
+	retObj.Meta = curRef.GetListingData(ctx)
+	retObj.Path = result
+
+	return &retObj, nil
 }
 
 func (fsh *ObjectStorageHandler) ListEntities(ctx context.Context, r *http.Request) (*ListResult, error) {
@@ -261,7 +330,7 @@ func (fsh *ObjectStorageHandler) ListEntities(ctx context.Context, r *http.Reque
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
 
-	err = dirref.LoadChildren(ctx)
+	err = dirref.LoadChildren(ctx, dirref.GetEntityMetadata().GetStore())
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Error loading children in path. "+err.Error())
 	}
@@ -352,7 +421,7 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
 	}
 
-	rootRef, err := connectionObj.ApplyChanges(ctx, fileStore)
+	rootRef, err := connectionObj.ApplyChanges(ctx, fileStore, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -387,12 +456,18 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 	if err != nil {
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
-	connectionObj.Delete(ctx)
+	err = connectionObj.CommitToFileStore(ctx, fileStore)
+	if err != nil {
+		return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+	}
+
+	connectionObj.DeleteChanges(ctx, fileStore)
 
 	result.AllocationRoot = allocationObj.AllocationRoot
 	result.WriteMarker = writeMarker
 	result.Success = true
 	result.ErrorMessage = ""
+
 	return &result, nil
 }
 
@@ -466,7 +541,7 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 	}
 
 	uploadMetaString := r.FormValue("uploadMeta")
-	fmt.Println(uploadMetaString)
+	//fmt.Println(uploadMetaString)
 	var formData allocation.UploadFormData
 	err = json.Unmarshal([]byte(uploadMetaString), &formData)
 	if err != nil {
