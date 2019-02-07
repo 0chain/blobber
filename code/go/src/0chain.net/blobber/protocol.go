@@ -7,6 +7,7 @@ import (
 
 	"0chain.net/allocation"
 	"0chain.net/chain"
+	"0chain.net/challenge"
 	"0chain.net/common"
 	"0chain.net/datastore"
 	"0chain.net/encryption"
@@ -39,6 +40,7 @@ type StorageProtocol interface {
 	RedeemMarker(ctx context.Context, wm *writemarker.WriteMarkerEntity) error
 	VerifyReadMarker(ctx context.Context, rm *readmarker.ReadMarker, sa *allocation.Allocation) error
 	RedeemReadMarker(ctx context.Context, rm *readmarker.ReadMarker, rmStatus *readmarker.ReadMarkerStatus) error
+	VerifyChallengeRequest(ctx context.Context, challengeID string) (*challenge.ChallengeEntity, error)
 	// GetChallengeResponse(allocationID string, dataID string, blockNum int64, objectsPath string) (string, error)
 }
 
@@ -52,6 +54,27 @@ func GetProtocolImpl(allocationID string) StorageProtocol {
 	return &StorageProtocolImpl{
 		ServerChain:  chain.GetServerChain(),
 		AllocationID: allocationID}
+}
+
+func (sp *StorageProtocolImpl) VerifyChallengeRequest(ctx context.Context, challengeID string) (*challenge.ChallengeEntity, error) {
+	challengeObj := challenge.Provider().(*challenge.ChallengeEntity)
+	challengeObj.ID = challengeID
+
+	err := challengeObj.Read(ctx, challengeObj.GetKey())
+	if err != datastore.ErrKeyNotFound {
+		return nil, common.NewError("invalid_challenge", "Invalid Challenge id. Already existing.")
+	}
+	t, err := transaction.VerifyTransaction(challengeID, sp.ServerChain)
+	if err != nil {
+		return nil, common.NewError("invalid_challenge", "Invalid Challenge id. Challenge not found in blockchain. "+err.Error())
+	}
+
+	err = json.Unmarshal([]byte(t.TransactionOutput), challengeObj)
+	if err != nil {
+		return nil, common.NewError("transaction_output_decode_error", "Error decoding the challenge transaction output."+err.Error())
+	}
+
+	return challengeObj, nil
 }
 
 func (sp *StorageProtocolImpl) RedeemReadMarker(ctx context.Context, rm *readmarker.ReadMarker, rmStatus *readmarker.ReadMarkerStatus) error {

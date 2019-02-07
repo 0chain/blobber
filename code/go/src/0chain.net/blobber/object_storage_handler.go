@@ -8,10 +8,12 @@ import (
 	"strconv"
 
 	"0chain.net/allocation"
+	"0chain.net/challenge"
 	"0chain.net/common"
 	"0chain.net/datastore"
 	"0chain.net/filestore"
 	"0chain.net/hashmapstore"
+	"0chain.net/lock"
 	. "0chain.net/logging"
 	"0chain.net/node"
 	"0chain.net/readmarker"
@@ -44,9 +46,58 @@ func (fsh *ObjectStorageHandler) verifyAllocation(ctx context.Context, allocatio
 	return allocationObj, nil
 }
 
+func (fsh *ObjectStorageHandler) AcceptChallenge(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method == "GET" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+	}
+
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+
+	if len(clientID) == 0 {
+		return nil, common.NewError("invalid_operation", "Invalid client")
+	}
+
+	challengeID := r.FormValue("challenge_txn")
+	if len(challengeID) == 0 {
+		return nil, common.NewError("invalid_parameters", "No challenge txn passed")
+	}
+
+	challengeRequest, err := GetProtocolImpl("").VerifyChallengeRequest(ctx, challengeID)
+	if err != nil {
+		return nil, err
+	}
+
+	mutex := lock.GetMutex(challengeRequest.GetKey())
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if challengeRequest.Blobber.ID != node.Self.ID {
+		return nil, common.NewError("invalid_parameters", "Challenge is not for this blobber")
+	}
+
+	writeMarkerEntity := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+	writeMarkerEntity.WM = &writemarker.WriteMarker{AllocationID: challengeRequest.AllocationID, AllocationRoot: challengeRequest.AllocationRoot}
+
+	err = writeMarkerEntity.Read(ctx, writeMarkerEntity.GetKey())
+	if err != nil {
+		return nil, common.NewError("write_marker_not_found", "Could not file write marker for the allocation root. "+challengeRequest.AllocationRoot+"."+err.Error())
+	}
+	challengeRequest.WriteMarker = writeMarkerEntity.GetKey()
+	challengeRequest.ValidationTickets = make([]*challenge.ValidationTicket, len(challengeRequest.Validators))
+	err = challengeRequest.Write(ctx)
+	if err != nil {
+		return nil, common.NewError("write_error", "Error Writing into the store. "+err.Error())
+	}
+
+	retObj := make(map[string]string)
+	retObj["id"] = challengeID
+	retObj["status"] = "Accepted"
+	return retObj, nil
+}
+
 func (fsh *ObjectStorageHandler) GetLatestReadMarker(ctx context.Context, r *http.Request) (*readmarker.ReadMarker, error) {
 	if r.Method == "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
 
 	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
@@ -248,59 +299,10 @@ func (fsh *ObjectStorageHandler) GetObjectPathFromBlockNum(ctx context.Context, 
 	dbStore := hashmapstore.NewStore()
 	dbStore.DB = wm.DirStructure
 
-	rootRef, err := reference.GetRootReferenceFromStore(ctx, allocationID, dbStore)
-	//fmt.Println("Root ref found with hash : " + rootRef.Hash)
-	if err != nil {
-		return nil, common.NewError("invalid_dir_struct", "Allocation root corresponds to an invalid directory structure")
-	}
-
-	if rootRef.NumBlocks < blockNum {
-		return nil, common.NewError("invalid_block_num", "Invalid block number")
-	}
-
-	found := false
-	var curRef reference.RefEntity
-	curRef = rootRef
-	remainingBlocks := blockNum
-
-	result := curRef.GetListingData(ctx)
-	curResult := result
-
-	for !found {
-		err := curRef.(*reference.Ref).LoadChildren(ctx, dbStore)
-		if err != nil {
-			return nil, common.NewError("error_loading_children", "Error loading children from store for path "+curRef.(*reference.Ref).Path)
-		}
-		list := make([]map[string]interface{}, len(curRef.(*reference.Ref).Children))
-		for idx, child := range curRef.(*reference.Ref).Children {
-			list[idx] = child.GetListingData(ctx)
-		}
-		curResult["list"] = list
-		for idx, child := range curRef.(*reference.Ref).Children {
-			//result.Entities[idx] = child.GetListingData(ctx)
-
-			if child.GetNumBlocks(ctx) < remainingBlocks {
-				remainingBlocks = remainingBlocks - child.GetNumBlocks(ctx)
-				continue
-			}
-			if child.GetType() == reference.FILE {
-				found = true
-				curRef = child
-				continue
-			}
-			curRef = child
-			curResult = list[idx]
-			break
-		}
-	}
-	if !found {
-		return nil, common.NewError("invalid_parameters", "Block num was not found")
-	}
+	objectpath, err := reference.GetObjectPath(ctx, allocationID, blockNum, dbStore)
 
 	var retObj ObjectPathResult
-	retObj.AllocationRoot = allocationObj.AllocationRoot
-	retObj.Meta = curRef.GetListingData(ctx)
-	retObj.Path = result
+	retObj.ObjectPath = objectpath
 
 	return &retObj, nil
 }
@@ -355,7 +357,7 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
 	//clientKey := ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
 
-	mutex := GetMutex(allocationID)
+	mutex := lock.GetMutex(allocationID)
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -472,7 +474,7 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 }
 
 func (fsh *ObjectStorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID string, path string) bool {
-	mutex := GetMutex(allocationID)
+	mutex := lock.GetMutex(allocationID)
 	mutex.Lock()
 	defer mutex.Unlock()
 	fileReference := reference.FileRefProvider().(*reference.FileRef)
@@ -487,7 +489,7 @@ func (fsh *ObjectStorageHandler) checkIfFileAlreadyExists(ctx context.Context, a
 
 func (fsh *ObjectStorageHandler) checkIfFilePartOfExisitingOpenConnection(ctx context.Context, allocationID string, path string) bool {
 	connectionObj := allocation.AllocationChangeCollectorProvider()
-	mutex := GetMutex(allocationID)
+	mutex := lock.GetMutex(allocationID)
 	mutex.Lock()
 	defer mutex.Unlock()
 	handler := func(ctx context.Context, key datastore.Key, value []byte) error {
@@ -565,7 +567,7 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 	connectionObj.AllocationID = allocationID
 	connectionObj.ClientID = clientID
 
-	mutex := GetMutex(connectionObj.GetKey())
+	mutex := lock.GetMutex(connectionObj.GetKey())
 	mutex.Lock()
 	defer mutex.Unlock()
 	err = GetMetaDataStore().Read(ctx, connectionObj.GetKey(), connectionObj)

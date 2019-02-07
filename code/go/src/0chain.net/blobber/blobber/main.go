@@ -1,6 +1,7 @@
 package main
 
 import (
+	
 	"flag"
 	"fmt"
 	"log"
@@ -23,9 +24,11 @@ import (
 	"0chain.net/logging"
 	. "0chain.net/logging"
 	"0chain.net/node"
+	"0chain.net/challenge"
 	"0chain.net/reference"
 	"0chain.net/transaction"
 	"0chain.net/writemarker"
+	"0chain.net/util"
 
 	"0chain.net/readmarker"
 	"github.com/gorilla/handlers"
@@ -58,7 +61,10 @@ func initEntities() {
 	blobber.SetupObjectStorageHandler(fsStore, badgerdbstore.GetStorageProvider())
 	writemarker.SetupEntity(badgerdbstore.GetStorageProvider())
 	readmarker.SetupEntity(badgerdbstore.GetStorageProvider())
+	challenge.SetupEntity(badgerdbstore.GetStorageProvider())
+	
 	blobber.SetupWorkers(common.GetRootContext())
+	challenge.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
 }
 
 func initServer() {
@@ -228,7 +234,7 @@ func RegisterBlobber() {
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 		txnVerified := false
 		verifyRetries := 0
-		for verifyRetries < transaction.MAX_TXN_RETRIES {
+		for verifyRetries < util.MAX_RETRIES {
 			time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
 			if err == nil {

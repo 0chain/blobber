@@ -3,6 +3,8 @@ package filestore
 import (
 	"encoding/json"
 	"mime/multipart"
+
+	"0chain.net/util"
 )
 
 const CHUNK_SIZE = 64 * 1024
@@ -26,4 +28,5 @@ type FileStore interface {
 	DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
 	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64) (json.RawMessage, error)
 	CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error)
+	GetMerkleTreeForFile(allocationID string, fileData *FileInputData) (util.MerkleTreeI, error)
 }

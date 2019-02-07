@@ -8,6 +8,7 @@ import (
 	"0chain.net/datastore"
 	"0chain.net/filestore"
 	"0chain.net/readmarker"
+	"0chain.net/reference"
 	"0chain.net/writemarker"
 )
 
@@ -44,9 +45,7 @@ type ListResult struct {
 }
 
 type ObjectPathResult struct {
-	AllocationRoot string                 `json:"allocation_root"`
-	Meta           map[string]interface{} `json:"meta_data"`
-	Path           map[string]interface{} `json:"path"`
+	*reference.ObjectPath
 }
 
 type DownloadResponse struct {
@@ -63,6 +62,7 @@ type StorageHandler interface {
 	GetConnectionDetails(ctx context.Context, r *http.Request) (*allocation.AllocationChangeCollector, error)
 	GetLatestReadMarker(ctx context.Context, r *http.Request) (*readmarker.ReadMarker, error)
 	GetObjectPathFromBlockNum(ctx context.Context, r *http.Request) (*ObjectPathResult, error)
+	AcceptChallenge(ctx context.Context, r *http.Request) (interface{}, error)
 	// ChallengeData(r *http.Request) (string, error)
 }
 

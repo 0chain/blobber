@@ -4,13 +4,13 @@ import (
 	"container/list"
 	"context"
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 
 	"0chain.net/allocation"
 	"0chain.net/common"
 	"0chain.net/datastore"
+	"0chain.net/lock"
 	. "0chain.net/logging"
 	"0chain.net/readmarker"
 	"0chain.net/writemarker"
@@ -28,7 +28,7 @@ func RedeemReadMarker(ctx context.Context, rmEntity *readmarker.ReadMarkerEntity
 	//&& (rmEntity.LastestRedeemedRM == nil || rmEntity.LastestRedeemedRM.ReadCounter < rmEntity.LatestRM.ReadCounter)
 	rmStatus := &readmarker.ReadMarkerStatus{}
 	rmStatus.LastestRedeemedRM = &readmarker.ReadMarker{ClientID: rmEntity.LatestRM.ClientID, BlobberID: rmEntity.LatestRM.BlobberID}
-	mutex := GetMutex(rmStatus.GetKey())
+	mutex := lock.GetMutex(rmStatus.GetKey())
 	mutex.Lock()
 	defer mutex.Unlock()
 	err := rmStatus.Read(ctx, rmStatus.GetKey())
@@ -50,7 +50,7 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationID string, latest
 
 	allocationStatus := allocation.AllocationStatusProvider().(*allocation.AllocationStatus)
 	allocationStatus.ID = allocationID
-	mutex := GetMutex(allocationStatus.GetKey())
+	mutex := lock.GetMutex(allocationStatus.GetKey())
 	mutex.Lock()
 	defer mutex.Unlock()
 	err := allocationStatus.Read(ctx, allocationStatus.GetKey())
@@ -72,7 +72,7 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationID string, latest
 	for e := unredeemedMarkers.Front(); e != nil; e = e.Next() {
 		marker := e.Value.(*writemarker.WriteMarkerEntity)
 		if marker.Status != writemarker.Committed {
-			wmMutex := GetMutex(marker.GetKey())
+			wmMutex := lock.GetMutex(marker.GetKey())
 			wmMutex.Lock()
 			err := GetProtocolImpl(marker.WM.AllocationID).RedeemMarker(ctx, marker)
 			if err != nil {
@@ -135,11 +135,11 @@ func RedeemMarkers(ctx context.Context) {
 	doneChanMapMutex := sync.RWMutex{}
 	dbstore := GetMetaDataStore()
 
-	allhandler := func(ctx context.Context, key datastore.Key, value []byte) error {
-		fmt.Println(string(key))
-		fmt.Println(string(value))
-		return nil
-	}
+	// allhandler := func(ctx context.Context, key datastore.Key, value []byte) error {
+	// 	fmt.Println(string(key))
+	// 	fmt.Println(string(value))
+	// 	return nil
+	// }
 
 	allocationhandler := func(ctx context.Context, key datastore.Key, value []byte) error {
 		allocationObj := allocation.Provider().(*allocation.Allocation)
@@ -158,10 +158,9 @@ func RedeemMarkers(ctx context.Context) {
 				redeemCtx = dbstore.WithConnection(redeemCtx)
 				err = RedeemMarkersForAllocation(redeemCtx, allocationObj.ID, allocationObj.LatestWMEntity)
 				if err != nil {
-					dbstore.Discard(redeemCtx)
-				} else {
-					dbstore.Commit(redeemCtx)
+					Logger.Error("Error redeeming the write marker.", zap.Error(err))
 				}
+				dbstore.Commit(redeemCtx)
 				doneChanMapMutex.Lock()
 				delete(doneChanMap, allocationObj.ID)
 				doneChanMapMutex.Unlock()
@@ -188,10 +187,9 @@ func RedeemMarkers(ctx context.Context) {
 				redeemCtx = dbstore.WithConnection(redeemCtx)
 				err := RedeemReadMarker(redeemCtx, rmEntity)
 				if err != nil {
-					dbstore.Discard(redeemCtx)
-				} else {
-					dbstore.Commit(redeemCtx)
+					Logger.Error("Error redeeming the read marker.", zap.Error(err))
 				}
+				dbstore.Commit(redeemCtx)
 				doneChanMapMutex.Lock()
 				delete(doneChanMap, rmEntity.GetKey())
 				doneChanMapMutex.Unlock()
@@ -205,7 +203,7 @@ func RedeemMarkers(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			dbstore.Iterate(ctx, allhandler)
+			//dbstore.Iterate(ctx, allhandler)
 			dbstore.IteratePrefix(ctx, "allocation:", allocationhandler)
 			dbstore.IteratePrefix(ctx, "rm:", rmHandler)
 		}

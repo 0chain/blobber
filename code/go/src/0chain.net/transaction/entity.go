@@ -68,6 +68,7 @@ type ReadRedeem struct {
 const ADD_BLOBBER_SC_NAME = "add_blobber"
 const CLOSE_CONNECTION_SC_NAME = "commit_connection"
 const READ_REDEEM = "read_redeem"
+const CHALLENGE_RESPONSE = "challenge_response"
 
 const STORAGE_CONTRACT_ADDRESS = "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d7"
 

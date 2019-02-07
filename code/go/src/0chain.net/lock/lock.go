@@ -1,4 +1,4 @@
-package blobber
+package lock
 
 import "sync"
 

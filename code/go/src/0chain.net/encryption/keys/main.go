@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	publicKey, privateKey := encryption.ReadKeys(reader)
+	publicKey, privateKey, _, _ := encryption.ReadKeys(reader)
 	pubKeyBytes, err := hex.DecodeString(publicKey)
 	if err != nil {
 		panic(err)

@@ -296,3 +296,70 @@ func RecalculateHashBottomUp(ctx context.Context, curRef *Ref, dbStore datastore
 
 	return nil
 }
+
+type ObjectPath struct {
+	AllocationRoot string                 `json:"allocation_root"`
+	Meta           map[string]interface{} `json:"meta_data"`
+	Path           map[string]interface{} `json:"path"`
+	FileBlockNum   int64                  `json:"file_block_num"`
+}
+
+func GetObjectPath(ctx context.Context, allocationID string, blockNum int64, dbStore datastore.Store) (*ObjectPath, error) {
+
+	rootRef, err := GetRootReferenceFromStore(ctx, allocationID, dbStore)
+	//fmt.Println("Root ref found with hash : " + rootRef.Hash)
+	if err != nil {
+		return nil, common.NewError("invalid_dir_struct", "Allocation root corresponds to an invalid directory structure")
+	}
+
+	if rootRef.NumBlocks < blockNum {
+		return nil, common.NewError("invalid_block_num", "Invalid block number"+string(rootRef.NumBlocks)+" / "+string(blockNum))
+	}
+
+	found := false
+	var curRef RefEntity
+	curRef = rootRef
+	remainingBlocks := blockNum
+
+	result := curRef.GetListingData(ctx)
+	curResult := result
+
+	for !found {
+		err := curRef.(*Ref).LoadChildren(ctx, dbStore)
+		if err != nil {
+			return nil, common.NewError("error_loading_children", "Error loading children from store for path "+curRef.(*Ref).Path)
+		}
+		list := make([]map[string]interface{}, len(curRef.(*Ref).Children))
+		for idx, child := range curRef.(*Ref).Children {
+			list[idx] = child.GetListingData(ctx)
+		}
+		curResult["list"] = list
+		for idx, child := range curRef.(*Ref).Children {
+			//result.Entities[idx] = child.GetListingData(ctx)
+
+			if child.GetNumBlocks(ctx) < remainingBlocks {
+				remainingBlocks = remainingBlocks - child.GetNumBlocks(ctx)
+				continue
+			}
+			if child.GetType() == FILE {
+				found = true
+				curRef = child
+				continue
+			}
+			curRef = child
+			curResult = list[idx]
+			break
+		}
+	}
+	if !found {
+		return nil, common.NewError("invalid_parameters", "Block num was not found")
+	}
+
+	var retObj ObjectPath
+	retObj.AllocationRoot = rootRef.Hash
+	retObj.Meta = curRef.GetListingData(ctx)
+	retObj.Path = result
+	retObj.FileBlockNum = remainingBlocks
+
+	return &retObj, nil
+}

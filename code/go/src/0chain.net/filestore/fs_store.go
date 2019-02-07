@@ -191,6 +191,42 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 	return false, err
 }
 
+func (fs *FileFSStore) GetMerkleTreeForFile(allocationID string, fileData *FileInputData) (util.MerkleTreeI, error) {
+	allocation, err := fs.setupAllocation(allocationID, true)
+	if err != nil {
+		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
+	}
+	dirPath, destFile := getFilePathFromHash(fileData.Hash)
+	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
+	fileObjectPath = filepath.Join(fileObjectPath, destFile)
+
+	file, err := os.Open(fileObjectPath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	merkleHash := sha3.New256()
+	tReader := io.TeeReader(file, merkleHash)
+	merkleLeaves := make([]util.Hashable, 0)
+	bytesBuf := bytes.NewBuffer(make([]byte, 0))
+	for true {
+		_, err := io.CopyN(bytesBuf, tReader, CHUNK_SIZE)
+		if err != io.EOF && err != nil {
+			return nil, common.NewError("file_write_error", err.Error())
+		}
+		merkleLeaves = append(merkleLeaves, util.NewStringHashable(hex.EncodeToString(merkleHash.Sum(nil))))
+		merkleHash.Reset()
+		if err != nil && err == io.EOF {
+			break
+		}
+	}
+
+	var mt util.MerkleTreeI = &util.MerkleTree{}
+	mt.ComputeTree(merkleLeaves)
+
+	return mt, nil
+}
+
 func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, hdr *multipart.FileHeader, connectionID string) (*FileOutputData, error) {
 	allocation, err := fs.setupAllocation(allocationID, false)
 	if err != nil {
