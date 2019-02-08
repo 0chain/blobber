@@ -118,8 +118,19 @@ func (sp *StorageProtocolImpl) RedeemReadMarker(ctx context.Context, rm *readmar
 }
 
 func (sp *StorageProtocolImpl) RedeemMarker(ctx context.Context, wm *writemarker.WriteMarkerEntity) error {
-	txn := transaction.NewTransactionEntity()
 
+	if len(wm.CloseTxnID) > 0 {
+		t, err := transaction.VerifyTransaction(wm.CloseTxnID, sp.ServerChain)
+		if err == nil {
+			wm.Status = writemarker.Committed
+			wm.StatusMessage = t.TransactionOutput
+			wm.CloseTxnID = t.Hash
+			err = wm.Write(ctx)
+			return err
+		}
+	}
+
+	txn := transaction.NewTransactionEntity()
 	sn := &transaction.CommitConnection{}
 	sn.AllocationRoot = wm.WM.AllocationRoot
 	sn.PrevAllocationRoot = wm.WM.PreviousAllocationRoot
@@ -160,6 +171,7 @@ func (sp *StorageProtocolImpl) RedeemMarker(ctx context.Context, wm *writemarker
 		wm.Status = writemarker.Failed
 		wm.StatusMessage = "Error verifying the close connection transaction." + err.Error()
 		wm.ReedeemRetries++
+		wm.CloseTxnID = t.Hash
 		wm.Write(ctx)
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"0chain.net/common"
 	"0chain.net/datastore"
 	"0chain.net/filestore"
 	"0chain.net/lock"
@@ -24,6 +25,9 @@ func SetupWorkers(ctx context.Context, metaStore datastore.Store, fsStore filest
 }
 
 var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte) error {
+	if numOfWorkers > 0 {
+		return common.NewError("already_in_progress", "Challenge In progress")
+	}
 	challengeObj := Provider().(*ChallengeEntity)
 	err := json.Unmarshal(value, challengeObj)
 	if err != nil {
@@ -32,19 +36,19 @@ var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte
 	mutex := lock.GetMutex(challengeObj.GetKey())
 	mutex.Lock()
 	if challengeObj.Status != Committed && challengeObj.Status != Failed && numOfWorkers < 1 {
+		numOfWorkers++
 		Logger.Info("Starting challenge with ID: " + challengeObj.ID)
 		if challengeObj.Status == Error {
 			challengeObj.Retries++
 		}
-		numOfWorkers++
 		challengeWorker.Add(1)
 		go func() {
-			ctx = dataStore.WithConnection(ctx)
-			err := challengeObj.SendDataBlockToValidators(ctx, fileStore)
+			newctx := dataStore.WithConnection(ctx)
+			err := challengeObj.SendDataBlockToValidators(newctx, fileStore)
 			if err != nil {
 				Logger.Error("Error in responding to challenge. ", zap.Any("error", err.Error()))
 			}
-			err = dataStore.Commit(ctx)
+			err = dataStore.Commit(newctx)
 			if err != nil {
 				Logger.Error("Error in challenge commit to DB", zap.Error(err))
 			}
@@ -59,6 +63,7 @@ var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte
 
 var challengeWorker sync.WaitGroup
 var numOfWorkers = 0
+var ch = make(chan bool)
 
 func FindChallenges(ctx context.Context) {
 	ticker := time.NewTicker(10 * time.Second)
@@ -68,12 +73,10 @@ func FindChallenges(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if numOfWorkers == 0 {
-
 				dataStore.IteratePrefix(ctx, "challenge:", challengeHandler)
 				challengeWorker.Wait()
 				numOfWorkers = 0
 			}
-
 		}
 	}
 

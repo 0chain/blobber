@@ -1,8 +1,10 @@
-FROM iron/go:dev
+FROM golang:1.11.4-alpine3.8
 
 ENV SRC_DIR=/blobber
 ENV GOPATH=$SRC_DIR/go
 WORKDIR $SRC_DIR
+
+RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep
 
 #Download the dependencies
 RUN go get github.com/spf13/viper

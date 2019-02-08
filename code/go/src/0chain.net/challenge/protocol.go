@@ -8,15 +8,15 @@ import (
 
 	"go.uber.org/zap"
 
+	"0chain.net/chain"
 	"0chain.net/common"
 	"0chain.net/filestore"
 	"0chain.net/hashmapstore"
 	. "0chain.net/logging"
 	"0chain.net/reference"
+	"0chain.net/transaction"
 	"0chain.net/util"
 	"0chain.net/writemarker"
-	"0chain.net/transaction"
-	"0chain.net/chain"
 )
 
 const VALIDATOR_URL = "/v1/storage/challenge/new"
@@ -25,7 +25,6 @@ type ChallengeResponse struct {
 	ChallengeID       string              `json:"challenge_id"`
 	ValidationTickets []*ValidationTicket `json:"validation_tickets"`
 }
-
 
 func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transaction.Transaction, error) {
 
@@ -59,12 +58,11 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
 	if err != nil {
 		Logger.Error("Error verifying the challenge response transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
-		return nil, err
+		return t, err
 	}
 	Logger.Info("Challenge committed and accepted", zap.Any("txn.hash", t.Hash), zap.Any("txn.output", t.TransactionOutput))
 	return t, nil
 }
-
 
 func (cr *ChallengeEntity) ErrorChallenge(ctx context.Context, err error) {
 	cr.Status = Error
@@ -78,6 +76,15 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		cr.StatusMessage = "No validators assigned to the challange"
 		cr.Write(ctx)
 		return common.NewError("no_validators", "No validators assigned to the challange")
+	}
+	if len(cr.CommitTxnID) > 0 {
+		t, err := transaction.VerifyTransaction(cr.CommitTxnID, chain.GetServerChain())
+		if err == nil {
+			cr.Status = Committed
+			cr.StatusMessage = t.TransactionOutput
+			cr.CommitTxnID = t.Hash
+			return nil
+		}
 	}
 	wm := writemarker.Provider().(*writemarker.WriteMarkerEntity)
 	wm.WM = &writemarker.WriteMarker{}
@@ -168,7 +175,7 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		responses[validator.ID] = validationTicket
 		cr.ValidationTickets[i] = &validationTicket
 	}
-	
+
 	numSuccess := 0
 	numFailure := 0
 
@@ -181,9 +188,12 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 			}
 		}
 	}
-	if numSuccess > (len(cr.Validators) / 2) || numFailure > (len(cr.Validators) / 2) {
+	if numSuccess > (len(cr.Validators)/2) || numFailure > (len(cr.Validators)/2) {
 		t, err := cr.SubmitChallengeToBC(ctx)
 		if err != nil {
+			if t != nil {
+				cr.CommitTxnID = t.Hash
+			}
 			cr.ErrorChallenge(ctx, err)
 		} else {
 			cr.Status = Committed
@@ -191,7 +201,7 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 			cr.CommitTxnID = t.Hash
 		}
 	}
-	
+
 	cr.Write(ctx)
 	return nil
 }
