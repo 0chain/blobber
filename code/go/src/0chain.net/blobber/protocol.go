@@ -171,7 +171,7 @@ func (sp *StorageProtocolImpl) RedeemMarker(ctx context.Context, wm *writemarker
 		wm.Status = writemarker.Failed
 		wm.StatusMessage = "Error verifying the close connection transaction." + err.Error()
 		wm.ReedeemRetries++
-		wm.CloseTxnID = t.Hash
+		wm.CloseTxnID = txn.Hash
 		wm.Write(ctx)
 		return err
 	}

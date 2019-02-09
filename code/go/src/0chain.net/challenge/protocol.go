@@ -58,7 +58,7 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
 	if err != nil {
 		Logger.Error("Error verifying the challenge response transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
-		return t, err
+		return txn, err
 	}
 	Logger.Info("Challenge committed and accepted", zap.Any("txn.hash", t.Hash), zap.Any("txn.output", t.TransactionOutput))
 	return t, nil
@@ -78,12 +78,16 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		return common.NewError("no_validators", "No validators assigned to the challange")
 	}
 	if len(cr.CommitTxnID) > 0 {
+		Logger.Info("Verifying the transaction : " + cr.CommitTxnID)
 		t, err := transaction.VerifyTransaction(cr.CommitTxnID, chain.GetServerChain())
 		if err == nil {
 			cr.Status = Committed
 			cr.StatusMessage = t.TransactionOutput
 			cr.CommitTxnID = t.Hash
+			cr.Write(ctx)
 			return nil
+		} else {
+			Logger.Error("Error verifying the txn from BC." + cr.CommitTxnID)
 		}
 	}
 	wm := writemarker.Provider().(*writemarker.WriteMarkerEntity)
@@ -103,6 +107,7 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 	rootRef, err := reference.GetRootReferenceFromStore(ctx, cr.AllocationID, dbStore)
 	rand.Seed(cr.RandomNumber)
 	blockNum := rand.Int63n(rootRef.NumBlocks)
+	blockNum = blockNum + 1
 	if err != nil {
 		cr.ErrorChallenge(ctx, err)
 		return err
@@ -113,7 +118,7 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		cr.ErrorChallenge(ctx, err)
 		return err
 	}
-	//Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum))
+	//Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta))
 	inputData := &filestore.FileInputData{}
 	inputData.Name = objectPath.Meta["name"].(string)
 	inputData.Path = objectPath.Meta["path"].(string)

@@ -8,7 +8,6 @@ import (
 
 	"go.uber.org/zap"
 
-	"0chain.net/common"
 	"0chain.net/datastore"
 	"0chain.net/filestore"
 	"0chain.net/lock"
@@ -25,9 +24,6 @@ func SetupWorkers(ctx context.Context, metaStore datastore.Store, fsStore filest
 }
 
 var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte) error {
-	if numOfWorkers > 0 {
-		return common.NewError("already_in_progress", "Challenge In progress")
-	}
 	challengeObj := Provider().(*ChallengeEntity)
 	err := json.Unmarshal(value, challengeObj)
 	if err != nil {
@@ -35,7 +31,7 @@ var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte
 	}
 	mutex := lock.GetMutex(challengeObj.GetKey())
 	mutex.Lock()
-	if challengeObj.Status != Committed && challengeObj.Status != Failed && numOfWorkers < 1 {
+	if challengeObj.Status != Committed && challengeObj.Status != Failed && numOfWorkers < 1 && challengeObj.Retries < 10 {
 		numOfWorkers++
 		Logger.Info("Starting challenge with ID: " + challengeObj.ID)
 		if challengeObj.Status == Error {
@@ -63,7 +59,7 @@ var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte
 
 var challengeWorker sync.WaitGroup
 var numOfWorkers = 0
-var ch = make(chan bool)
+var iterInprogress = false
 
 func FindChallenges(ctx context.Context) {
 	ticker := time.NewTicker(10 * time.Second)
@@ -72,9 +68,11 @@ func FindChallenges(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if numOfWorkers == 0 {
+			if !iterInprogress && numOfWorkers == 0 {
+				iterInprogress = true
 				dataStore.IteratePrefix(ctx, "challenge:", challengeHandler)
 				challengeWorker.Wait()
+				iterInprogress = false
 				numOfWorkers = 0
 			}
 		}
