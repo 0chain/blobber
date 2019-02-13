@@ -72,11 +72,12 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationID string, latest
 	for e := unredeemedMarkers.Front(); e != nil; e = e.Next() {
 		marker := e.Value.(*writemarker.WriteMarkerEntity)
 		if marker.Status != writemarker.Committed {
+			Logger.Info("Redeeming the write marker", zap.Any("wm", marker.GetKey()))
 			wmMutex := lock.GetMutex(marker.GetKey())
 			wmMutex.Lock()
 			err := GetProtocolImpl(marker.WM.AllocationID).RedeemMarker(ctx, marker)
 			if err != nil {
-				Logger.Error("Error redeeming the write marker.", zap.Any("wm", marker), zap.Any("error", err))
+				Logger.Error("Error redeeming the write marker.", zap.Any("wm", marker.GetKey()), zap.Any("error", err))
 				wmMutex.Unlock()
 				continue
 			}
@@ -87,8 +88,10 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationID string, latest
 			allocationStatus.LastCommittedWMEntity = marker.GetKey()
 			err = allocationStatus.Write(ctx)
 			if err != nil {
+				Logger.Error("Error redeeming the write marker. Allocation status update failed", zap.Any("wm", marker.GetKey()), zap.Any("error", err))
 				return err
 			}
+			Logger.Info("Success Redeeming the write marker", zap.Any("wm", marker.GetKey()), zap.Any("txn", marker.CloseTxnID))
 		}
 	}
 	return nil

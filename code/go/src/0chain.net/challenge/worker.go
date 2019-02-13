@@ -50,6 +50,7 @@ var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte
 			}
 			challengeWorker.Done()
 			mutex.Unlock()
+			Logger.Info("Challenge has been processed", zap.Any("id", challengeObj.ID), zap.String("txn", challengeObj.CommitTxnID))
 		}()
 	} else {
 		mutex.Unlock()

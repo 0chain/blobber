@@ -34,7 +34,7 @@ const CHUNK_SIZE = reference.CHUNK_SIZE
 //StorageProtocol - interface for the storage protocol
 type StorageProtocol interface {
 	RegisterBlobber(ctx context.Context) (string, error)
-	VerifyAllocationTransaction(ctx context.Context) (*allocation.Allocation, error)
+	VerifyAllocationTransaction(ctx context.Context, readonly bool) (*allocation.Allocation, error)
 	// VerifyBlobberTransaction(txn_hash string, clientID string) (*transaction.StorageConnection, error)
 	VerifyMarker(ctx context.Context, wm *writemarker.WriteMarker, sa *allocation.Allocation, co *allocation.AllocationChangeCollector) error
 	RedeemMarker(ctx context.Context, wm *writemarker.WriteMarkerEntity) error
@@ -318,7 +318,7 @@ func (sp *StorageProtocolImpl) RegisterBlobber(ctx context.Context) (string, err
 	return txn.Hash, nil
 }
 
-func (sp *StorageProtocolImpl) VerifyAllocationTransaction(ctx context.Context) (*allocation.Allocation, error) {
+func (sp *StorageProtocolImpl) VerifyAllocationTransaction(ctx context.Context, readonly bool) (*allocation.Allocation, error) {
 	allocationObj := allocation.Provider().(*allocation.Allocation)
 	allocationObj.ID = sp.AllocationID
 	err := allocationObj.Read(ctx, allocationObj.GetKey())
@@ -352,13 +352,15 @@ func (sp *StorageProtocolImpl) VerifyAllocationTransaction(ctx context.Context) 
 		allocationObj.OwnerID = storageAllocation.OwnerID
 		allocationObj.TotalSize = storageAllocation.Size
 		allocationObj.UsedSize = storageAllocation.UsedSize
-		err = allocationObj.Write(ctx)
-		if err != nil {
-			return nil, common.NewError("allocation_write_error", "Error storing the allocation meta data received from blockchain")
-		}
-		err = reference.CreateDirRefsIfNotExists(ctx, sp.AllocationID, "/", "", allocationObj.GetEntityMetadata().GetStore())
-		if err != nil {
-			return nil, common.NewError("root_reference_creation_error", "Error creating the root reference")
+		if !readonly {
+			err = allocationObj.Write(ctx)
+			if err != nil {
+				return nil, common.NewError("allocation_write_error", "Error storing the allocation meta data received from blockchain")
+			}
+			err = reference.CreateDirRefsIfNotExists(ctx, sp.AllocationID, "/", "", allocationObj.GetEntityMetadata().GetStore())
+			if err != nil {
+				return nil, common.NewError("root_reference_creation_error", "Error creating the root reference")
+			}
 		}
 	}
 	return allocationObj, nil

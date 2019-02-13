@@ -88,6 +88,7 @@ func (fr *FileRef) CalculateHash(ctx context.Context, dbStore datastore.Store) (
 	//fmt.Println("Fileref hash : " + fr.GetHashData())
 	fr.Hash = encryption.Hash(fr.GetHashData())
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / CHUNK_SIZE))
+	fr.PathHash = encryption.Hash(fr.Path)
 	return fr.Hash, nil
 }
 
@@ -101,4 +102,8 @@ func (fr *FileRef) GetType() string {
 
 func (fr *FileRef) GetNumBlocks(context.Context) int64 {
 	return fr.NumBlocks
+}
+
+func (fr *FileRef) GetPathHash() string {
+	return fr.PathHash
 }

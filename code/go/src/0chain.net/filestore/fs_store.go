@@ -77,14 +77,14 @@ func (fs *FileFSStore) setupAllocation(allocationID string, skipCreate bool) (*S
 	//create the allocation object dirs
 	err := util.CreateDirs(allocation.ObjectsPath)
 	if err != nil {
-		Logger.Info("allocation_objects_dir_creation_error", zap.Any("allocation_objects_dir_creation_error", err))
+		Logger.Error("allocation_objects_dir_creation_error", zap.Any("allocation_objects_dir_creation_error", err))
 		return nil, err
 	}
 
 	//create the allocation tmp object dirs
 	err = util.CreateDirs(allocation.TempObjectsPath)
 	if err != nil {
-		Logger.Info("allocation_temp_objects_dir_creation_error", zap.Any("allocation_temp_objects_dir_creation_error", err))
+		Logger.Error("allocation_temp_objects_dir_creation_error", zap.Any("allocation_temp_objects_dir_creation_error", err))
 		return nil, err
 	}
 
@@ -141,7 +141,6 @@ func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputDa
 }
 
 func (fs *FileFSStore) generateTempPath(allocation *StoreAllocation, fileData *FileInputData, connectionID string) string {
-	Logger.Info("Arguments for generate tmp path", zap.Any("allocation", allocation), zap.Any("fileinput", fileData), zap.Any("connection", connectionID))
 	return filepath.Join(allocation.TempObjectsPath, fileData.Name+"."+encryption.Hash(fileData.Path)+"."+connectionID)
 }
 

@@ -50,7 +50,6 @@ func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) ([]byte, error
 		resp, err = http.DefaultClient.Do(req.WithContext(ctx))
 		if err == nil {
 			if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
-				Logger.Info("Post call success", zap.Any("url", url))
 				break
 			}
 			body, _ := ioutil.ReadAll(resp.Body)
@@ -60,11 +59,10 @@ func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) ([]byte, error
 			err = common.NewError("http_error", "Error from HTTP call. "+string(body))
 		}
 		//TODO: Handle ctx cncl
-		Logger.Error("SendPostRequest Error", zap.String("error", err.Error()), zap.String("URL", url))
 		time.Sleep(SLEEP_BETWEEN_RETRIES * time.Second)
 	}
 	if resp == nil || err != nil {
-		Logger.Error("Failed after multiple retries", zap.Int("retried", MAX_RETRIES))
+		Logger.Error("Failed after multiple retries", zap.Any("url", url), zap.Int("retried", MAX_RETRIES))
 		return nil, err
 	}
 	if resp.Body == nil {
@@ -75,6 +73,5 @@ func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) ([]byte, error
 	}
 
 	body, _ := ioutil.ReadAll(resp.Body)
-	Logger.Info("SendPostRequest success", zap.String("url", url))
 	return body, nil
 }

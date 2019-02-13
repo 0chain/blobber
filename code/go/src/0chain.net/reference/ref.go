@@ -24,6 +24,7 @@ type RefEntity interface {
 	CalculateHash(context.Context, datastore.Store) (string, error)
 	GetListingData(context.Context) map[string]interface{}
 	GetType() string
+	GetPathHash() string
 }
 
 type Ref struct {
@@ -35,6 +36,7 @@ type Ref struct {
 	Path         string           `json:"path" list:"path"`
 	Hash         string           `json:"hash" list:"hash"`
 	NumBlocks    int64            `json:"num_of_blocks" list:"num_of_blocks"`
+	PathHash     string           `json:"path_hash" list:"path_hash"`
 	ParentRef    string           `json:"parent"`
 	ChildRefs    []string         `json:"children"`
 	Children     []RefEntity      `json:"-"`
@@ -112,14 +114,18 @@ func (r *Ref) CalculateHash(ctx context.Context, dbStore datastore.Store) (strin
 		return "", err
 	}
 	childHashes := make([]string, len(r.Children))
+	childPathHashes := make([]string, len(r.Children))
 	var refNumBlocks int64
 	for index, childRef := range r.Children {
 		childHashes[index] = childRef.GetHash(ctx)
+		childPathHashes[index] = childRef.GetPathHash()
 		refNumBlocks += childRef.GetNumBlocks(ctx)
 	}
 	//fmt.Println("ref hash : " + strings.Join(childHashes, ":"))
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
 	r.NumBlocks = refNumBlocks
+	//fmt.Println("Ref Path hash: " + strings.Join(childPathHashes, ":"))
+	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	return r.Hash, nil
 }
 
@@ -136,6 +142,10 @@ func (r *Ref) GetType() string {
 
 func (r *Ref) GetNumBlocks(ctx context.Context) int64 {
 	return r.NumBlocks
+}
+
+func (r *Ref) GetPathHash() string {
+	return r.PathHash
 }
 
 func GetListingFieldsMap(refEntity interface{}) map[string]interface{} {
