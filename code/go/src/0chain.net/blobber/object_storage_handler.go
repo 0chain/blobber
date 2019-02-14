@@ -473,7 +473,7 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 	return &result, nil
 }
 
-func (fsh *ObjectStorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID string, path string) bool {
+func (fsh *ObjectStorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID string, path string) *reference.FileRef {
 	mutex := lock.GetMutex(allocationID)
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -482,9 +482,9 @@ func (fsh *ObjectStorageHandler) checkIfFileAlreadyExists(ctx context.Context, a
 	fileReference.Path = path
 	err := GetMetaDataStore().Read(ctx, fileReference.GetKey(), fileReference)
 	if err != nil && err == datastore.ErrKeyNotFound {
-		return false
+		return nil
 	}
-	return true
+	return fileReference
 }
 
 func (fsh *ObjectStorageHandler) checkIfFilePartOfExisitingOpenConnection(ctx context.Context, allocationID string, path string) bool {
@@ -516,11 +516,35 @@ func (fsh *ObjectStorageHandler) checkIfFilePartOfExisitingOpenConnection(ctx co
 	return false
 }
 
+func (fsh *ObjectStorageHandler) DeleteFile(ctx context.Context, r *http.Request, formData *allocation.UploadFormData, connectionObj *allocation.AllocationChangeCollector) (*UploadResult, error) {
+
+	fileRef := fsh.checkIfFileAlreadyExists(ctx, connectionObj.AllocationID, formData.Path)
+	if fileRef != nil {
+		allocationChange := &allocation.AllocationChange{}
+		allocationChange.Size = fileRef.Size
+		allocationChange.UploadFormData = formData
+		allocationChange.Operation = allocation.DELETE_OPERATION
+		allocationChange.NumBlocks = int64(math.Ceil(float64(allocationChange.Size*1.0) / reference.CHUNK_SIZE))
+
+		connectionObj.Size -= allocationChange.Size
+		connectionObj.AddChange(allocationChange)
+		result := &UploadResult{}
+		result.Filename = fileRef.Name
+		result.Hash = fileRef.Hash
+		result.MerkleRoot = fileRef.MerkleRoot
+		result.Size = fileRef.Size
+		return result, nil
+	}
+
+	return nil, common.NewError("invalid_file", "File does not exist at path")
+
+}
+
 //WriteFile stores the file into the blobber files system from the HTTP request
 func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request) (*UploadResult, error) {
-	var result UploadResult
+
 	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST instead")
+		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE instead")
 	}
 
 	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
@@ -554,14 +578,6 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	if fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path) {
-		return nil, common.NewError("duplicate_file", "File at path already exists")
-	}
-
-	if fsh.checkIfFilePartOfExisitingOpenConnection(ctx, allocationID, formData.Path) {
-		return nil, common.NewError("duplicate_file", "File at path already uploaded as part of another open connection")
-	}
-
 	connectionObj := allocation.AllocationChangeCollectorProvider().(*allocation.AllocationChangeCollector)
 	connectionObj.ConnectionID = formData.ConnectionID
 	connectionObj.AllocationID = allocationID
@@ -574,49 +590,67 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 	if err != nil && err != datastore.ErrKeyNotFound {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
+	result := &UploadResult{}
+	if r.Method == "DELETE" {
+		result, err = fsh.DeleteFile(ctx, r, &formData, connectionObj)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-	for _, fheaders := range r.MultipartForm.File {
-		for _, hdr := range fheaders {
-			fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path}
-			fileOutputData, err := fileStore.WriteFile(allocationID, fileInputData, hdr, connectionObj.ConnectionID)
-			if err != nil {
-				return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
-			}
-			result.Filename = formData.Filename
-			result.Hash = fileOutputData.ContentHash
-			result.MerkleRoot = fileOutputData.MerkleRoot
-			result.Size = fileOutputData.Size
-
-			if len(formData.Hash) > 0 && formData.Hash != fileOutputData.ContentHash {
-				return nil, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
-			}
-			if len(formData.MerkleRoot) > 0 && formData.MerkleRoot != fileOutputData.MerkleRoot {
-				return nil, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
-			}
-
-			if allocationObj.BlobberSizeUsed+fileOutputData.Size > allocationObj.BlobberSize {
-				return nil, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
-			}
-
-			formData.Hash = fileOutputData.ContentHash
-			formData.MerkleRoot = fileOutputData.MerkleRoot
-
-			allocationChange := &allocation.AllocationChange{}
-			allocationChange.Size = fileOutputData.Size
-			allocationChange.UploadFormData = &formData
-			allocationChange.Operation = allocation.INSERT_OPERATION
-			allocationChange.NumBlocks = int64(math.Ceil(float64(allocationChange.Size*1.0) / reference.CHUNK_SIZE))
-
-			connectionObj.Size += fileOutputData.Size
-			connectionObj.AddChange(allocationChange)
+	if r.Method == "POST" {
+		if fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path) != nil {
+			return nil, common.NewError("duplicate_file", "File at path already exists")
 		}
 
+		if fsh.checkIfFilePartOfExisitingOpenConnection(ctx, allocationID, formData.Path) {
+			return nil, common.NewError("duplicate_file", "File at path already uploaded as part of another open connection")
+		}
+
+		for _, fheaders := range r.MultipartForm.File {
+			for _, hdr := range fheaders {
+				fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path}
+				fileOutputData, err := fileStore.WriteFile(allocationID, fileInputData, hdr, connectionObj.ConnectionID)
+				if err != nil {
+					return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
+				}
+				result.Filename = formData.Filename
+				result.Hash = fileOutputData.ContentHash
+				result.MerkleRoot = fileOutputData.MerkleRoot
+				result.Size = fileOutputData.Size
+
+				if len(formData.Hash) > 0 && formData.Hash != fileOutputData.ContentHash {
+					return nil, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
+				}
+				if len(formData.MerkleRoot) > 0 && formData.MerkleRoot != fileOutputData.MerkleRoot {
+					return nil, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
+				}
+
+				if allocationObj.BlobberSizeUsed+fileOutputData.Size > allocationObj.BlobberSize {
+					return nil, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
+				}
+
+				formData.Hash = fileOutputData.ContentHash
+				formData.MerkleRoot = fileOutputData.MerkleRoot
+
+				allocationChange := &allocation.AllocationChange{}
+				allocationChange.Size = fileOutputData.Size
+				allocationChange.UploadFormData = &formData
+				allocationChange.Operation = allocation.INSERT_OPERATION
+				allocationChange.NumBlocks = int64(math.Ceil(float64(allocationChange.Size*1.0) / reference.CHUNK_SIZE))
+
+				connectionObj.Size += fileOutputData.Size
+				connectionObj.AddChange(allocationChange)
+			}
+
+		}
 	}
+
 	connectionObj.LastUpdated = common.Now()
 	err = connectionObj.Write(ctx)
 	if err != nil {
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
 	}
 
-	return &result, nil
+	return result, nil
 }

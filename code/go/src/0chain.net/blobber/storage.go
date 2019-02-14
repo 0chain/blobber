@@ -12,17 +12,6 @@ import (
 	"0chain.net/writemarker"
 )
 
-type UploadFormData struct {
-	ConnectionID string `json:"connection_id"`
-	Filename     string `json:"filename"`
-	Path         string `json:"filepath"`
-	Hash         string `json:"content_hash"`
-	MerkleRoot   string `json:"merkle_root"`
-	ActualHash   string `json:"actual_hash"`
-	ActualSize   int64  `json:"actual_size"`
-	CustomMeta   string `json:"custom_meta"`
-}
-
 type UploadResult struct {
 	Filename   string `json:"filename"`
 	Size       int64  `json:"size"`
