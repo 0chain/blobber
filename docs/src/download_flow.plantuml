@@ -1,0 +1,25 @@
+@startuml
+
+actor Client
+
+
+Client -> Blobber : Request the latest read marker (if not cached)
+Blobber --> Client : Latest read marker with the read counter
+
+Client -> Blobber : request the meta data of a file for download
+Blobber --> Client : returns merkle root, size, hash and number of blocks
+
+loop till file is completely downloaded
+    Client -> Blobber : Request the file and the 64 KB block number. \nPass readmarker (read_ctr - seq for blobber/client combination)
+    Blobber --> Client : 64 KB block of the requested file
+end
+
+Blobber -> Blockchain : redeem the latest read marker for blobber / client combination
+note left
+async redeemption
+not blocking downloads
+end note
+
+Blockchain -> Blockchain : Tokens moved to blobber from client read pool
+
+@enduml

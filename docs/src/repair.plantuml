@@ -1,0 +1,50 @@
+@startuml
+actor Client
+actor Payer
+
+group partial upload
+Client -> Blobber : List command on a directory
+Blobber --> Client : Directory meta data and children \n\
+meta data has path hash
+Client -> OtherBlobbers : List command on same directory
+OtherBlobbers --> Client : Directory meta data and children \n\
+meta data has path hash
+Client -> Client : checks for the path hash on meta data to be same
+Client -> Client : Merge outputs from all blobbers to get true structure \n\
+Figure out the missing files in each Blobber
+
+loop each missing file
+alt file not present
+Client -> OtherBlobbers : Request for missing file
+OtherBlobbers --> Client : requested file
+end
+Client -> Blobber : File upload, commit, wm 
+Blobber --> Client : Success
+Blobber -> Blockchain : Redeem wm
+end 
+end
+
+group blobber lost data - after commit to Blockchain
+Blobber -> Blockchain : Request to opt out of allocation
+Blockchain -> Blockchain : Freeze challenges, \n\
+fail all pending challenges immediately \n\
+wipes blobber state for allocation \n\
+gives back 60% allocation stake and goes to Client
+loop each missing file
+alt file not present
+Client -> OtherBlobbers : Request for missing file
+OtherBlobbers --> Client : requested file
+end
+Client -> Blobber : File upload
+Blobber --> Client : Success
+
+end 
+note right 
+This heavy lifting can be done by
+payer of the allocation (0Box)
+but writemarker should be from owner of the allocation
+end note
+end
+Client -> Blobber : Commit the repair, write marker 
+Blobber -> Blockchain : Redeem writemarker
+@enduml

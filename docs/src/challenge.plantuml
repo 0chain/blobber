@@ -1,0 +1,48 @@
+@startuml
+
+actor Client
+participant Blockchain
+participant Blobber
+participant Validator
+
+Validator -> Blockchain : Add validator txn for storage
+Client -> Blockchain : Submits Challenge txn (allocation id - opt)
+Blockchain -> Blockchain : Find the blobber / allocation / validator for the challenge \n\
+based on current round number
+Blockchain -> Blockchain : Keep track of the open challenge in SC \n\
+confirms txn\n\
+dings the blobber stake
+Client -> Blockchain : Get challenge txn confirmation
+Blockchain --> Client : challenge txn confirmation 
+Client -> Blobber : New challenge requested (challenge txn)
+group file exists
+Blobber -> Validator : Object path for challenged block, write marker \n\
+raw bytes of file block, merkle path
+Validator -> Validator : Validates the object path to the latest wm, \n\
+verifies the merkle path
+end
+group file deleted
+Blobber -> Validator : Object path for challenged block, write marker \n\
+delete ticket (signed by client) shows file is deleted
+Validator -> Validator : Validated delete ticket for the file\n\
+verifies meta data in object path and delete ticket\n\
+verifies the delete ticket signature
+end
+group file updated
+Blobber -> Validator : Object path for challenged block, write marker \n\
+new object path for file, new wm, \n\
+raw bytes of file block, merkle path (based on new wm)
+Validator -> Validator : Validates old and new object paths, \n\
+validates the new wm and makes sure it is newer
+end
+Validator --> Blobber : Validation ticket signed with challenge result
+Blobber --> Blobber : waits for atleast atleast 50% consensus on validation result
+Blobber -> Blockchain : Submits a challenge response transaction with the validation tickets
+Blockchain -> Blockchain : Validates the challenge response, \nawards tokens to generators, sharders, validators, blobber\nrelease blobber stake held for challenge
+note right
+if challenge fails
+part of the challenge stake is given back
+because blobber was honest
+end note
+
+@enduml

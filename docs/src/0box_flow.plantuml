@@ -1,0 +1,67 @@
+@startuml
+
+actor Client
+
+0Box -> 0Box : Setup a wallet, fund this wallet
+Client -> 0Box : Choose the plan for 0Box storage
+0Box --> Client : KYC, Payment page
+Client -> Client : Create a wallet
+Client -> 0Box : KYC, Payment details, wallet details for the storage
+0Box -> 0Box : Stores the KYC details,\nprocess payment
+0Box -> Blockchain : Create a new allocation for the user \n(owner is client, payer is 0Box)
+0Box -> Blockchain : Fund the write pool with daily limit
+0Box -> Blockchain : Fund the read pool with daily limit
+0Box -> 0Box : Waits for confirmation for the 3 txns
+0Box --> Client : Success / Failure
+
+loop everday
+0Box -> 0Box : Checks funds for funding read and write pools
+0Box -> Blockchain : Fund the read and write pools for clients
+end loop
+
+Client -> Blobber : Uploads file(s)
+Blobber --> Client : Upload response
+Client -> Blobber : WM if upload is successful
+Blobber --> Client : WM accepted / rejected
+Blobber -> Blockchain : Redeems the wm if successful upload
+
+
+group PublicShare
+Client -> Client : Generate a re-encryption key for each blobber
+Client -> Blobber : Make file public and pass re-enc key
+Blobber -> Client : Change accepted
+Client -> Blobber : Commit the change and pass wm (after 12 pass)
+Blobber --> Client : Change committed
+Client -> 0Box : Get a share link (file, path)
+0Box --> Client : Shareable link
+
+RClient -> 0Box : Clicks on the shared link
+0Box --> RClient : navigate to app 
+RClient -> Blobber : Requests for file
+Blobber -> Blobber : Checks for public access \nre-enc file with re-enc key \n\
+decrypt with private key
+Blobber --> RClient : file response
+end 
+
+group PrivateShare
+Client -> Client : Generate a re-encryption key for receiver
+Client -> Blobber : Make file accessible to receiver and pass re-enc key
+Blobber -> Client : Change accepted
+Client -> Blobber : Commit the change and pass wm (after 12 pass)
+Blobber --> Client : Change committed
+
+Client -> Client : Generates an authorization ticket for receiver
+Client -> 0Box : Get a share link (passes the auth ticket)
+0Box --> Client : Shareable link
+
+RClient -> 0Box : Clicks on the shared link
+0Box --> RClient : Create 0Box account / login
+RClient -> 0Box : account creation / sign in
+RClient -> Blobber : Requests for file, pass auth ticket
+Blobber -> Blobber : Checks for access by receiver, \nre-enc file with re-enc key of receiver
+Blobber --> RClient : file response
+RClient -> RClient : decrypt with private key
+end 
+
+
+@enduml
