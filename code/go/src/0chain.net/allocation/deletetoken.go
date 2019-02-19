@@ -54,7 +54,7 @@ func DeleteTokenProvider() datastore.Entity {
 	return t
 }
 
-func SetupContentReferenceEntity(store datastore.Store) {
+func SetupDeleteTokenEntity(store datastore.Store) {
 	deleteTokenMetaData = datastore.MetadataProvider()
 	deleteTokenMetaData.Name = "deletetoken"
 	deleteTokenMetaData.DB = "deletetoken"

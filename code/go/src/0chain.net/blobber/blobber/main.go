@@ -55,6 +55,7 @@ func initEntities() {
 
 	allocation.SetupAllocationChangeCollectorEntity(badgerdbstore.GetStorageProvider())
 	allocation.SetupAllocationEntity(badgerdbstore.GetStorageProvider())
+	allocation.SetupDeleteTokenEntity(badgerdbstore.GetStorageProvider())
 	reference.SetupFileRefEntity(badgerdbstore.GetStorageProvider())
 	reference.SetupRefEntity(badgerdbstore.GetStorageProvider())
 	reference.SetupContentReferenceEntity(badgerdbstore.GetStorageProvider())

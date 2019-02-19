@@ -184,7 +184,7 @@ func GetListingFieldsMap(refEntity interface{}) map[string]interface{} {
 			}
 		} else {
 			fieldValue := v.FieldByName(field.Name).Interface()
-			if fieldValue == nil || fieldValue == reflect.Zero(reflect.TypeOf(fieldValue)).Interface() {
+			if fieldValue == nil {
 				continue
 			}
 			result[tag] = fieldValue

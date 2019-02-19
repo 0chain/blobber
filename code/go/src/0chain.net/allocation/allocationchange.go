@@ -103,18 +103,12 @@ func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context, fileStore
 			fileInputData.Name = change.Filename
 			fileInputData.Path = change.Path
 			fileInputData.Hash = change.Hash
-			err := fileStore.DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
-			if err != nil {
-				return err
-			}
+			fileStore.DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
 		}
 		if change.Operation == DELETE_OPERATION {
 			deleteToken := DeleteTokenProvider().(*DeleteToken)
 			err := deleteToken.Read(ctx, change.DeleteToken)
-			if err != nil {
-				return common.NewError("delete_token_read_error", "Error reading the delete token."+err.Error())
-			}
-			if deleteToken.Status == NEW {
+			if err == nil && deleteToken.Status == NEW {
 				err = deleteToken.Delete(ctx)
 				if err != nil {
 					return common.NewError("delete_token_remove_error", "Error removing the delete token."+err.Error())
@@ -127,7 +121,7 @@ func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context, fileStore
 
 func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context, fileStore filestore.FileStore) error {
 	for _, change := range a.Changes {
-		if fileStore != nil {
+		if fileStore != nil && change.Operation == INSERT_OPERATION {
 			fileInputData := &filestore.FileInputData{}
 			fileInputData.Name = change.Filename
 			fileInputData.Path = change.Path
@@ -166,7 +160,9 @@ func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context, fileStore 
 			if err != nil {
 				return nil, common.NewError("parent_ref_lookup_error", "Error looking up for the parent of the file reference."+err.Error())
 			}
+
 			parentRef.DeleteChild(fileref.GetKey())
+
 			err = reference.RecalculateHashBottomUp(ctx, parentRef, dbStore)
 			if err != nil {
 				return nil, common.NewError("allocation_hash_error", "Error calculating the allocation hash. "+err.Error())

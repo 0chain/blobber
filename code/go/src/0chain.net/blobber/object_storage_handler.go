@@ -444,7 +444,7 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 			result.WriteMarker = latestWM.WM
 		}
 		result.Success = false
-		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root. Expected hash: " + rootRef.Hash
+		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root. Expected hash: " + allocationRoot
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
 
@@ -564,7 +564,7 @@ func (fsh *ObjectStorageHandler) DeleteFile(ctx context.Context, r *http.Request
 		allocationChange.Operation = allocation.DELETE_OPERATION
 		allocationChange.NumBlocks = int64(math.Ceil(float64(allocationChange.Size*1.0) / reference.CHUNK_SIZE))
 		deleteToken.Status = allocation.NEW
-		//allocationChange.DeleteToken = deleteToken.GetKey()
+		allocationChange.DeleteToken = deleteToken.GetKey()
 		err = deleteToken.Write(ctx)
 		if err != nil {
 			return nil, common.NewError("delete_token_write_failed", "Delete token failed to save."+err.Error())
