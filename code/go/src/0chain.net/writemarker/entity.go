@@ -112,7 +112,7 @@ func (wm *WriteMarkerEntity) WriteAllocationDirStructure(ctx context.Context) er
 	dbStore.DB = curDB
 	allocationChangeCollector.Changes = changes
 
-	_, err := allocationChangeCollector.ApplyChanges(ctx, nil, dbStore)
+	_, err := allocationChangeCollector.ApplyChanges(ctx, nil, dbStore, wm.GetKey())
 	if err != nil {
 		return err
 	}

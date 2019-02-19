@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -138,11 +139,11 @@ func RedeemMarkers(ctx context.Context) {
 	doneChanMapMutex := sync.RWMutex{}
 	dbstore := GetMetaDataStore()
 
-	// allhandler := func(ctx context.Context, key datastore.Key, value []byte) error {
-	// 	fmt.Println(string(key))
-	// 	fmt.Println(string(value))
-	// 	return nil
-	// }
+	allhandler := func(ctx context.Context, key datastore.Key, value []byte) error {
+		fmt.Println(string(key))
+		fmt.Println(string(value))
+		return nil
+	}
 
 	allocationhandler := func(ctx context.Context, key datastore.Key, value []byte) error {
 		allocationObj := allocation.Provider().(*allocation.Allocation)
@@ -206,7 +207,7 @@ func RedeemMarkers(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			//dbstore.Iterate(ctx, allhandler)
+			dbstore.Iterate(ctx, allhandler)
 			dbstore.IteratePrefix(ctx, "allocation:", allocationhandler)
 			dbstore.IteratePrefix(ctx, "rm:", rmHandler)
 		}

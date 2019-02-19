@@ -11,6 +11,7 @@ import (
 	"0chain.net/challenge"
 	"0chain.net/common"
 	"0chain.net/datastore"
+	"0chain.net/encryption"
 	"0chain.net/filestore"
 	"0chain.net/hashmapstore"
 	"0chain.net/lock"
@@ -412,6 +413,14 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 		}
 	}
 
+	writemarkerObj := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+	if latestWM != nil {
+		writemarkerObj.PrevWM = latestWM.GetKey()
+	}
+
+	writemarkerObj.WM = writeMarker
+	writemarkerObj.Changes = connectionObj.Changes
+
 	err = GetProtocolImpl(allocationID).VerifyMarker(ctx, writeMarker, allocationObj, connectionObj)
 	if err != nil {
 		result.AllocationRoot = allocationObj.AllocationRoot
@@ -423,12 +432,13 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
 	}
 
-	rootRef, err := connectionObj.ApplyChanges(ctx, fileStore, nil)
+	rootRef, err := connectionObj.ApplyChanges(ctx, fileStore, nil, writemarkerObj.GetKey())
 	if err != nil {
 		return nil, err
 	}
+	allocationRoot := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
 
-	if rootRef.Hash != writeMarker.AllocationRoot {
+	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		if latestWM != nil {
 			result.WriteMarker = latestWM.WM
@@ -438,13 +448,6 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
 
-	writemarkerObj := writemarker.Provider().(*writemarker.WriteMarkerEntity)
-	if latestWM != nil {
-		writemarkerObj.PrevWM = latestWM.GetKey()
-	}
-
-	writemarkerObj.WM = writeMarker
-	writemarkerObj.Changes = connectionObj.Changes
 	err = writemarkerObj.Write(ctx)
 	if err != nil {
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
@@ -452,7 +455,7 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 
 	allocationObj.BlobberSizeUsed += connectionObj.Size
 	allocationObj.UsedSize += connectionObj.Size
-	allocationObj.AllocationRoot = rootRef.Hash
+	allocationObj.AllocationRoot = allocationRoot
 	allocationObj.LatestWMEntity = writemarkerObj.GetKey()
 	err = allocationObj.Write(ctx)
 	if err != nil {
@@ -519,13 +522,53 @@ func (fsh *ObjectStorageHandler) checkIfFilePartOfExisitingOpenConnection(ctx co
 func (fsh *ObjectStorageHandler) DeleteFile(ctx context.Context, r *http.Request, formData *allocation.UploadFormData, connectionObj *allocation.AllocationChangeCollector) (*UploadResult, error) {
 
 	fileRef := fsh.checkIfFileAlreadyExists(ctx, connectionObj.AllocationID, formData.Path)
+	clientKey := ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
 	if fileRef != nil {
+		deleteTokenString := r.FormValue("delete_token")
+		//fmt.Println(uploadMetaString)
+		deleteToken := allocation.DeleteTokenProvider().(*allocation.DeleteToken)
+		err := json.Unmarshal([]byte(deleteTokenString), deleteToken)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the delete token."+err.Error())
+		}
+
+		if deleteToken.AllocationID != connectionObj.AllocationID {
+			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Allocation ID mismatch.")
+		}
+
+		if deleteToken.BlobberID != node.Self.ID {
+			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Blobber ID mismatch.")
+		}
+		if deleteToken.ClientID != connectionObj.ClientID {
+			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Client ID mismatch.")
+		}
+		if deleteToken.Size != fileRef.Size {
+			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Size mismatch.")
+		}
+
+		if deleteToken.FileRefHash != fileRef.Hash {
+			return nil, common.NewError("invalid_delete_token", "Invalid delete token. File Ref hash mismatch.")
+		}
+
+		if deleteToken.FilePathHash != fileRef.PathHash {
+			return nil, common.NewError("invalid_delete_token", "Invalid delete token. File Path hash mismatch.")
+		}
+
+		if !deleteToken.VerifySignature(clientKey) {
+			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Signature verification failed.")
+		}
+
 		allocationChange := &allocation.AllocationChange{}
 		allocationChange.Size = fileRef.Size
 		allocationChange.UploadFormData = formData
 		allocationChange.Operation = allocation.DELETE_OPERATION
 		allocationChange.NumBlocks = int64(math.Ceil(float64(allocationChange.Size*1.0) / reference.CHUNK_SIZE))
-
+		deleteToken.Status = allocation.NEW
+		//allocationChange.DeleteToken = deleteToken.GetKey()
+		err = deleteToken.Write(ctx)
+		if err != nil {
+			return nil, common.NewError("delete_token_write_failed", "Delete token failed to save."+err.Error())
+		}
 		connectionObj.Size -= allocationChange.Size
 		connectionObj.AddChange(allocationChange)
 		result := &UploadResult{}
@@ -533,6 +576,7 @@ func (fsh *ObjectStorageHandler) DeleteFile(ctx context.Context, r *http.Request
 		result.Hash = fileRef.Hash
 		result.MerkleRoot = fileRef.MerkleRoot
 		result.Size = fileRef.Size
+
 		return result, nil
 	}
 
@@ -549,7 +593,6 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 
 	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
 	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
-	//clientKey := ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
 
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
 

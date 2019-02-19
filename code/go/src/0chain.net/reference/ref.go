@@ -129,6 +129,17 @@ func (r *Ref) CalculateHash(ctx context.Context, dbStore datastore.Store) (strin
 	return r.Hash, nil
 }
 
+func (r *Ref) DeleteChild(childKey string) {
+	i := 0 // output index
+	for _, x := range r.ChildRefs {
+		if x != childKey {
+			r.ChildRefs[i] = x
+			i++
+		}
+	}
+	r.ChildRefs = r.ChildRefs[:i]
+}
+
 func (r *Ref) GetHash(ctx context.Context) string {
 	return r.Hash
 }

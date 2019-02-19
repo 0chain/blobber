@@ -30,18 +30,19 @@ type UploadFormData struct {
 	ConnectionID string `json:"connection_id"`
 	Filename     string `json:"filename"`
 	Path         string `json:"filepath"`
-	Hash         string `json:"content_hash"`
-	MerkleRoot   string `json:"merkle_root"`
-	ActualHash   string `json:"actual_hash"`
-	ActualSize   int64  `json:"actual_size"`
-	CustomMeta   string `json:"custom_meta"`
+	Hash         string `json:"content_hash,omitempty"`
+	MerkleRoot   string `json:"merkle_root,omitempty"`
+	ActualHash   string `json:"actual_hash,omitempty"`
+	ActualSize   int64  `json:"actual_size,omitempty"`
+	CustomMeta   string `json:"custom_meta,omitempty"`
 }
 
 type AllocationChange struct {
 	*UploadFormData
-	Size      int64  `json:"size"`
-	NumBlocks int64  `json:"num_of_blocks"`
-	Operation string `json:"operation"`
+	DeleteToken string `json:"delete_token"`
+	Size        int64  `json:"size"`
+	NumBlocks   int64  `json:"num_of_blocks"`
+	Operation   string `json:"operation"`
 }
 
 var allocationChangeEntityMetaData *datastore.EntityMetadataImpl
@@ -107,6 +108,19 @@ func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context, fileStore
 				return err
 			}
 		}
+		if change.Operation == DELETE_OPERATION {
+			deleteToken := DeleteTokenProvider().(*DeleteToken)
+			err := deleteToken.Read(ctx, change.DeleteToken)
+			if err != nil {
+				return common.NewError("delete_token_read_error", "Error reading the delete token."+err.Error())
+			}
+			if deleteToken.Status == NEW {
+				err = deleteToken.Delete(ctx)
+				if err != nil {
+					return common.NewError("delete_token_remove_error", "Error removing the delete token."+err.Error())
+				}
+			}
+		}
 	}
 	return a.Delete(ctx)
 }
@@ -127,12 +141,60 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context, fileS
 	return nil
 }
 
-func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context, fileStore filestore.FileStore, dbStore datastore.Store) (*reference.Ref, error) {
+func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context, fileStore filestore.FileStore, dbStore datastore.Store, writeMarkerKey string) (*reference.Ref, error) {
 	if dbStore == nil {
 		dbStore = a.GetEntityMetadata().GetStore()
 	}
 
 	for _, change := range a.Changes {
+		if change.Operation == DELETE_OPERATION {
+			fileref := reference.FileRefProvider().(*reference.FileRef)
+			fileref.AllocationID = a.AllocationID
+			fileref.Name = change.Filename
+			fileref.Path = change.Path
+			err := dbStore.Read(ctx, fileref.GetKey(), fileref)
+			if err != nil {
+				return nil, common.NewError("file_ref_lookup_error", "Error looking up for the file reference."+err.Error())
+			}
+
+			err = dbStore.Delete(ctx, fileref)
+			if err != nil {
+				return nil, common.NewError("file_ref_delete_error", "Error deleting the file reference."+err.Error())
+			}
+			parentRef := reference.RefProvider().(*reference.Ref)
+			err = dbStore.Read(ctx, fileref.ParentRef, parentRef)
+			if err != nil {
+				return nil, common.NewError("parent_ref_lookup_error", "Error looking up for the parent of the file reference."+err.Error())
+			}
+			parentRef.DeleteChild(fileref.GetKey())
+			err = reference.RecalculateHashBottomUp(ctx, parentRef, dbStore)
+			if err != nil {
+				return nil, common.NewError("allocation_hash_error", "Error calculating the allocation hash. "+err.Error())
+			}
+			if dbStore == a.GetEntityMetadata().GetStore() {
+				deleteToken := DeleteTokenProvider().(*DeleteToken)
+				deleteToken.FileRefHash = fileref.Hash
+				err = dbStore.Read(ctx, deleteToken.GetKey(), deleteToken)
+				if err != nil {
+					return nil, common.NewError("delete_token_read_error", "Error reading the delete token."+err.Error())
+				}
+				deleteToken.Status = COMMITTED
+				err = dbStore.Write(ctx, deleteToken)
+				if err != nil {
+					return nil, common.NewError("delete_token_update_error", "Error updating the delete token status."+err.Error())
+				}
+
+				contentRef := reference.ContentReferenceProvider().(*reference.ContentReference)
+				contentRef.AllocationID = a.AllocationID
+				contentRef.ContentHash = change.Hash
+				contentRef.ReferenceCount--
+				err = dbStore.Write(ctx, contentRef)
+				if err != nil {
+					return nil, common.NewError("content_ref_write_error", "Errorn updating the content ref count")
+				}
+			}
+
+		}
 		if change.Operation == INSERT_OPERATION {
 			fileref := reference.FileRefProvider().(*reference.FileRef)
 			fileref.AllocationID = a.AllocationID
@@ -145,6 +207,7 @@ func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context, fileStore 
 			fileref.ActualFileSize = change.ActualSize
 			fileref.ActualFileHash = change.ActualHash
 			fileref.MerkleRoot = change.MerkleRoot
+			fileref.WriteMarker = writeMarkerKey
 			fileref.CalculateHash(ctx, dbStore)
 			parentdir, _ := filepath.Split(change.Path)
 			parentdir = filepath.Clean(parentdir)
@@ -170,6 +233,17 @@ func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context, fileStore 
 			err = reference.RecalculateHashBottomUp(ctx, parentRef, dbStore)
 			if err != nil {
 				return nil, common.NewError("allocation_hash_error", "Error calculating the allocation hash. "+err.Error())
+			}
+
+			if dbStore == a.GetEntityMetadata().GetStore() {
+				contentRef := reference.ContentReferenceProvider().(*reference.ContentReference)
+				contentRef.AllocationID = a.AllocationID
+				contentRef.ContentHash = change.Hash
+				contentRef.ReferenceCount++
+				err = dbStore.Write(ctx, contentRef)
+				if err != nil {
+					return nil, common.NewError("content_ref_write_error", "Error updating the content ref count")
+				}
 			}
 		}
 	}

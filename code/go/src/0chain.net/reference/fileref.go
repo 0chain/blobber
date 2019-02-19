@@ -20,6 +20,7 @@ type FileRef struct {
 	MerkleRoot     string `json:"merkle_root" list:"merkle_root"`
 	ActualFileSize int64  `json:"actual_file_size" list:"actual_file_size"`
 	ActualFileHash string `json:"actual_file_hash" list:"actual_file_hash"`
+	WriteMarker    string `json:"write_marker"`
 }
 
 const CHUNK_SIZE = 64 * 1024
