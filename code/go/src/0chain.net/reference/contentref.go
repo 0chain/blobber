@@ -53,3 +53,27 @@ func (fr *ContentReference) Write(ctx context.Context) error {
 func (fr *ContentReference) Delete(ctx context.Context) error {
 	return nil
 }
+
+func UpdateContentRefForWrite(ctx context.Context, allocationID string, contentHash string) error {
+	contentRef := ContentReferenceProvider().(*ContentReference)
+	contentRef.AllocationID = allocationID
+	contentRef.ContentHash = contentHash
+	err := contentRef.Read(ctx, contentRef.GetKey())
+	if err != nil && err != datastore.ErrKeyNotFound {
+		return err
+	}
+	contentRef.ReferenceCount++
+	return contentRef.Write(ctx)
+}
+
+func UpdateContentRefForDelete(ctx context.Context, allocationID string, contentHash string) error {
+	contentRef := ContentReferenceProvider().(*ContentReference)
+	contentRef.AllocationID = allocationID
+	contentRef.ContentHash = contentHash
+	err := contentRef.Read(ctx, contentRef.GetKey())
+	if err != nil {
+		return err
+	}
+	contentRef.ReferenceCount--
+	return contentRef.Write(ctx)
+}

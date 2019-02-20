@@ -180,11 +180,7 @@ func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context, fileStore 
 					return nil, common.NewError("delete_token_update_error", "Error updating the delete token status."+err.Error())
 				}
 
-				contentRef := reference.ContentReferenceProvider().(*reference.ContentReference)
-				contentRef.AllocationID = a.AllocationID
-				contentRef.ContentHash = change.Hash
-				contentRef.ReferenceCount--
-				err = dbStore.Write(ctx, contentRef)
+				err = reference.UpdateContentRefForDelete(ctx, a.AllocationID, fileref.ContentHash)
 				if err != nil {
 					return nil, common.NewError("content_ref_write_error", "Errorn updating the content ref count")
 				}
@@ -232,11 +228,7 @@ func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context, fileStore 
 			}
 
 			if dbStore == a.GetEntityMetadata().GetStore() {
-				contentRef := reference.ContentReferenceProvider().(*reference.ContentReference)
-				contentRef.AllocationID = a.AllocationID
-				contentRef.ContentHash = change.Hash
-				contentRef.ReferenceCount++
-				err = dbStore.Write(ctx, contentRef)
+				err = reference.UpdateContentRefForWrite(ctx, a.AllocationID, change.Hash)
 				if err != nil {
 					return nil, common.NewError("content_ref_write_error", "Error updating the content ref count")
 				}
