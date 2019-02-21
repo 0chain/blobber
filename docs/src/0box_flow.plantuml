@@ -1,4 +1,6 @@
-@startuml
+@startuml FileSharing
+
+title File Sharing - Public / Private
 
 actor Client
 
@@ -19,28 +21,31 @@ loop everday
 0Box -> Blockchain : Fund the read and write pools for clients
 end loop
 
-Client -> Blobber : Uploads file(s)
+Client -> Blobber : Uploads file(s) encrypted with public key
 Blobber --> Client : Upload response
-Client -> Blobber : WM if upload is successful
-Blobber --> Client : WM accepted / rejected
+Client -> Blobber : Write marker if upload is successful
+Blobber --> Client : Write marker accepted / rejected
 Blobber -> Blockchain : Redeems the wm if successful upload
 
 
-group PublicShare
-Client -> Client : Generate a re-encryption key for each blobber
-Client -> Blobber : Make file public and pass re-enc key
+group PublicShare - anyone with link
+Client -> Client : Generate a shared key-pair \n\
+Generate a re-encryption key for each blobber \n\
+anyone with the shared private key can access file 
+Client -> Blobber : Add a valid re-enc key for the file
 Blobber -> Client : Change accepted
-Client -> Blobber : Commit the change and pass wm (after 12 pass)
+Client -> Blobber : Commit the change and pass wm (after 12 blobbers pass)
 Blobber --> Client : Change committed
-Client -> 0Box : Get a share link (file, path)
+Client -> 0Box : Get a share link (file, path, auth-ticket, shared secret key)
 0Box --> Client : Shareable link
 
 RClient -> 0Box : Clicks on the shared link
-0Box --> RClient : navigate to app 
-RClient -> Blobber : Requests for file
-Blobber -> Blobber : Checks for public access \nre-enc file with re-enc key \n\
-decrypt with private key
+0Box --> RClient : navigate to app (shared secret key, auth ticket) 
+RClient -> Blobber : Requests for file - passes the auth ticket with the read marker
+Blobber -> Blobber : Checks if the re-enc key in the auth ticket is same as in the blobber
+Blobber -> Blobber : Re-encrypts the file with the re-enc key
 Blobber --> RClient : file response
+RClient -> RClient : uses the shared secret key to decrypt the file
 end 
 
 group PrivateShare
