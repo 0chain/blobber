@@ -190,6 +190,19 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 	return false, err
 }
 
+func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error {
+	allocation, err := fs.setupAllocation(allocationID, true)
+	if err != nil {
+		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
+	}
+
+	dirPath, destFile := getFilePathFromHash(contentHash)
+	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
+	fileObjectPath = filepath.Join(fileObjectPath, destFile)
+
+	return os.Remove(fileObjectPath)
+}
+
 func (fs *FileFSStore) GetMerkleTreeForFile(allocationID string, fileData *FileInputData) (util.MerkleTreeI, error) {
 	allocation, err := fs.setupAllocation(allocationID, true)
 	if err != nil {

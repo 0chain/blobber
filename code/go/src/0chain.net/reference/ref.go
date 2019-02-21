@@ -319,10 +319,10 @@ func RecalculateHashBottomUp(ctx context.Context, curRef *Ref, dbStore datastore
 }
 
 type ObjectPath struct {
-	AllocationRoot string                 `json:"allocation_root"`
-	Meta           map[string]interface{} `json:"meta_data"`
-	Path           map[string]interface{} `json:"path"`
-	FileBlockNum   int64                  `json:"file_block_num"`
+	RootHash     string                 `json:"root_hash"`
+	Meta         map[string]interface{} `json:"meta_data"`
+	Path         map[string]interface{} `json:"path"`
+	FileBlockNum int64                  `json:"file_block_num"`
 }
 
 func GetObjectPath(ctx context.Context, allocationID string, blockNum int64, dbStore datastore.Store) (*ObjectPath, error) {
@@ -377,7 +377,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64, dbS
 	}
 
 	var retObj ObjectPath
-	retObj.AllocationRoot = rootRef.Hash
+	retObj.RootHash = rootRef.Hash
 	retObj.Meta = curRef.GetListingData(ctx)
 	retObj.Path = result
 	retObj.FileBlockNum = remainingBlocks

@@ -35,6 +35,7 @@ type ListResult struct {
 
 type ObjectPathResult struct {
 	*reference.ObjectPath
+	AllocationRoot string `json:"allocation_root"`
 }
 
 type DownloadResponse struct {

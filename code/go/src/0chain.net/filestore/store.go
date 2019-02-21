@@ -29,4 +29,5 @@ type FileStore interface {
 	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64) (json.RawMessage, error)
 	CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error)
 	GetMerkleTreeForFile(allocationID string, fileData *FileInputData) (util.MerkleTreeI, error)
+	DeleteFile(allocationID string, contentHash string) error
 }

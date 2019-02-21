@@ -51,7 +51,7 @@ func (fr *ContentReference) Write(ctx context.Context) error {
 	return contentRefMetaData.GetStore().Write(ctx, fr)
 }
 func (fr *ContentReference) Delete(ctx context.Context) error {
-	return nil
+	return contentRefMetaData.GetStore().Delete(ctx, fr)
 }
 
 func UpdateContentRefForWrite(ctx context.Context, allocationID string, contentHash string) error {

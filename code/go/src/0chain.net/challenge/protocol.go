@@ -8,6 +8,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"0chain.net/allocation"
 	"0chain.net/chain"
 	"0chain.net/common"
 	"0chain.net/filestore"
@@ -118,26 +119,39 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		cr.ErrorChallenge(ctx, err)
 		return err
 	}
+
+	postData := make(map[string]interface{})
+	postData["challenge_id"] = cr.ID
+	postData["object_path"] = objectPath
+	postData["write_marker"] = wm.WM
+	postData["client_key"] = wm.ClientPublicKey
+
 	//Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta))
 	inputData := &filestore.FileInputData{}
 	inputData.Name = objectPath.Meta["name"].(string)
 	inputData.Path = objectPath.Meta["path"].(string)
 	inputData.Hash = objectPath.Meta["content_hash"].(string)
 	blockData, err := fileStore.GetFileBlock(cr.AllocationID, inputData, objectPath.FileBlockNum)
+
 	if err != nil {
-		cr.ErrorChallenge(ctx, err)
-		return err
+		dt := allocation.DeleteTokenProvider().(*allocation.DeleteToken)
+		dt.FileRefHash = objectPath.Meta["hash"].(string)
+		err = dt.Read(ctx, dt.GetKey())
+		if err != nil {
+			cr.ErrorChallenge(ctx, err)
+			return err
+		}
+		postData["delete_token"] = dt
+
+	} else {
+		mt, err := fileStore.GetMerkleTreeForFile(cr.AllocationID, inputData)
+		if err != nil {
+			cr.ErrorChallenge(ctx, err)
+			return err
+		}
+		postData["data"] = []byte(blockData)
+		postData["merkle_path"] = mt.GetPathByIndex(int(objectPath.FileBlockNum) - 1)
 	}
-	mt, err := fileStore.GetMerkleTreeForFile(cr.AllocationID, inputData)
-	if err != nil {
-		cr.ErrorChallenge(ctx, err)
-		return err
-	}
-	postData := make(map[string]interface{})
-	postData["challenge_id"] = cr.ID
-	postData["object_path"] = objectPath
-	postData["data"] = []byte(blockData)
-	postData["merkle_path"] = mt.GetPathByIndex(int(objectPath.FileBlockNum) - 1)
 
 	postDataBytes, err := json.Marshal(postData)
 	if err != nil {

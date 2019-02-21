@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"context"
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"0chain.net/lock"
 	. "0chain.net/logging"
 	"0chain.net/readmarker"
+	"0chain.net/reference"
 	"0chain.net/writemarker"
 	"go.uber.org/zap"
 )
@@ -22,6 +22,48 @@ import (
 func SetupWorkers(ctx context.Context) {
 	go RedeemMarkers(ctx)
 	go CleanupOpenConnections(ctx)
+	go CleanupContentRef(ctx)
+}
+
+func CleanupContentRef(ctx context.Context) {
+	ticker := time.NewTicker(3600 * time.Second)
+
+	dbstore := GetMetaDataStore()
+	contentRefHandler := func(ctx context.Context, key datastore.Key, value []byte) error {
+		contentRef := reference.ContentReferenceProvider().(*reference.ContentReference)
+		err := json.Unmarshal(value, contentRef)
+		if err != nil {
+			return err
+		}
+		if contentRef.ReferenceCount > 0 || common.Within(int64(contentRef.LastUpdated), 3600) {
+			return nil
+		}
+		Logger.Info("Removing file content with no activity in the last hour and no more references", zap.Any("contentref", contentRef))
+
+		err = contentRef.Delete(ctx)
+		if err != nil {
+			Logger.Error("Error deleting the content ref", zap.Error(err))
+		}
+		err = fileStore.DeleteFile(contentRef.AllocationID, contentRef.ContentHash)
+		if err != nil {
+			Logger.Error("Error deleting the content for the contentref", zap.Error(err))
+		}
+		return nil
+	}
+	for true {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			ctx = dbstore.WithConnection(ctx)
+			err := dbstore.IteratePrefix(ctx, "contentref:", contentRefHandler)
+			if err != nil {
+				dbstore.Discard(ctx)
+			} else {
+				dbstore.Commit(ctx)
+			}
+		}
+	}
 }
 
 func RedeemReadMarker(ctx context.Context, rmEntity *readmarker.ReadMarkerEntity) error {
@@ -139,11 +181,11 @@ func RedeemMarkers(ctx context.Context) {
 	doneChanMapMutex := sync.RWMutex{}
 	dbstore := GetMetaDataStore()
 
-	allhandler := func(ctx context.Context, key datastore.Key, value []byte) error {
-		fmt.Println(string(key))
-		fmt.Println(string(value))
-		return nil
-	}
+	// allhandler := func(ctx context.Context, key datastore.Key, value []byte) error {
+	// 	fmt.Println(string(key))
+	// 	fmt.Println(string(value))
+	// 	return nil
+	// }
 
 	allocationhandler := func(ctx context.Context, key datastore.Key, value []byte) error {
 		allocationObj := allocation.Provider().(*allocation.Allocation)
@@ -207,7 +249,7 @@ func RedeemMarkers(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			dbstore.Iterate(ctx, allhandler)
+			//dbstore.Iterate(ctx, allhandler)
 			dbstore.IteratePrefix(ctx, "allocation:", allocationhandler)
 			dbstore.IteratePrefix(ctx, "rm:", rmHandler)
 		}

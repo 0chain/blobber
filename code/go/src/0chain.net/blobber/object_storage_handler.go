@@ -2,6 +2,7 @@ package blobber
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"math"
 	"net/http"
@@ -304,6 +305,7 @@ func (fsh *ObjectStorageHandler) GetObjectPathFromBlockNum(ctx context.Context, 
 
 	var retObj ObjectPathResult
 	retObj.ObjectPath = objectpath
+	retObj.AllocationRoot = wm.WM.AllocationRoot
 
 	return &retObj, nil
 }
@@ -356,7 +358,8 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 	}
 	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
 	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
-	//clientKey := ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
+	clientKey := ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
+	clientKeyBytes, _ := hex.DecodeString(clientKey)
 
 	mutex := lock.GetMutex(allocationID)
 	mutex.Lock()
@@ -368,7 +371,7 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID || len(clientKey) == 0 || encryption.Hash(clientKeyBytes) != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
@@ -447,7 +450,7 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root. Expected hash: " + allocationRoot
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
-
+	writemarkerObj.ClientPublicKey = clientKey
 	err = writemarkerObj.Write(ctx)
 	if err != nil {
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")

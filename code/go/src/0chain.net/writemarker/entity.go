@@ -36,16 +36,17 @@ const (
 )
 
 type WriteMarkerEntity struct {
-	Version        string                         `json:"version"`
-	PrevWM         string                         `json:"prev_write_marker"`
-	WM             *WriteMarker                   `json:"write_marker"`
-	Status         WriteMarkerStatus              `json:"status"`
-	StatusMessage  string                         `json:"status_message"`
-	ReedeemRetries int64                          `json:"redeem_retries"`
-	CloseTxnID     string                         `json:"close_txn_id"`
-	CreationDate   common.Timestamp               `json:"creation_date"`
-	Changes        []*allocation.AllocationChange `json:"changes"`
-	DirStructure   map[string][]byte              `json:"dir_struct,omitempty"`
+	Version         string                         `json:"version"`
+	PrevWM          string                         `json:"prev_write_marker"`
+	WM              *WriteMarker                   `json:"write_marker"`
+	Status          WriteMarkerStatus              `json:"status"`
+	StatusMessage   string                         `json:"status_message"`
+	ReedeemRetries  int64                          `json:"redeem_retries"`
+	CloseTxnID      string                         `json:"close_txn_id"`
+	CreationDate    common.Timestamp               `json:"creation_date"`
+	Changes         []*allocation.AllocationChange `json:"changes"`
+	DirStructure    map[string][]byte              `json:"dir_struct,omitempty"`
+	ClientPublicKey string                         `json:"client_key"`
 }
 
 var writeMarkerEntityMetaData *datastore.EntityMetadataImpl
