@@ -149,6 +149,8 @@ func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 /*ListHandler is the handler to respond to upload requests fro clients*/
 func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
 	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
 
 	response, err := storageHandler.ListEntities(ctx, r)
@@ -161,6 +163,8 @@ func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
 	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
 
 	response, err := storageHandler.GetObjectPathFromBlockNum(ctx, r)

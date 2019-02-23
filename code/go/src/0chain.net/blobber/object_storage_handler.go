@@ -123,6 +123,7 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
 	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+	clientPublicKey := ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -183,6 +184,23 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
+
+	if clientID != allocationObj.OwnerID {
+		authTokenString := r.FormValue("auth_token")
+		if len(authTokenString) == 0 {
+			return nil, common.NewError("invalid_parameters", "Auth ticket required if data read by anyone other than owner.")
+		}
+		authToken := &readmarker.AuthTicket{}
+		err = json.Unmarshal([]byte(authTokenString), &authToken)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
+		}
+		err = authToken.Verify(allocationObj, fileref.PathHash, clientID, clientPublicKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	fileData := &filestore.FileInputData{}
 	fileData.Name = fileref.Name
 	fileData.Path = fileref.Path
@@ -232,10 +250,15 @@ func (fsh *ObjectStorageHandler) GetFileMeta(ctx context.Context, r *http.Reques
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
 	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
-	_, err := fsh.verifyAllocation(ctx, allocationID, true)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, true)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	path := r.FormValue("path")
@@ -266,6 +289,11 @@ func (fsh *ObjectStorageHandler) GetObjectPathFromBlockNum(ctx context.Context, 
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	blockNumStr := r.FormValue("block_num")
@@ -314,11 +342,16 @@ func (fsh *ObjectStorageHandler) ListEntities(ctx context.Context, r *http.Reque
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
 	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	path := r.FormValue("path")

@@ -4,10 +4,54 @@ import (
 	"context"
 	"fmt"
 
+	"0chain.net/allocation"
 	"0chain.net/common"
 	"0chain.net/datastore"
 	"0chain.net/encryption"
 )
+
+type AuthTicket struct {
+	ClientID     string           `json:"client_id"`
+	OwnerID      string           `json:"owner_id"`
+	AllocationID string           `json:"allocation_id"`
+	FilePathHash string           `json:"file_path_hash"`
+	Expiration   common.Timestamp `json:"expiration"`
+	Timestamp    common.Timestamp `json:"timestamp"`
+	Signature    string           `json:"signature"`
+}
+
+func (rm *AuthTicket) GetHashData() string {
+	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.ClientID, rm.OwnerID, rm.FilePathHash, rm.Expiration, rm.Timestamp)
+	return hashData
+}
+
+func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, pathHash string, clientID string, clientPublicKey string) error {
+	if authToken.AllocationID != allocationObj.ID {
+		return common.NewError("invalid_parameters", "Invalid auth ticket. Allocation id mismatch")
+	}
+	if authToken.ClientID != clientID && len(authToken.ClientID) > 0 {
+		return common.NewError("invalid_parameters", "Invalid auth ticket. Client ID mismatch")
+	}
+	if authToken.Expiration < authToken.Timestamp || authToken.Expiration < common.Now() {
+		return common.NewError("invalid_parameters", "Invalid auth ticket. Expired ticket")
+	}
+	if authToken.FilePathHash != pathHash {
+		return common.NewError("invalid_parameters", "Invalid auth ticket. Path hash mismatch")
+	}
+	if authToken.OwnerID != allocationObj.OwnerID {
+		return common.NewError("invalid_parameters", "Invalid auth ticket. Owner ID mismatch")
+	}
+	if authToken.Timestamp > common.Now() {
+		return common.NewError("invalid_parameters", "Invalid auth ticket. Timestamp in future")
+	}
+	hashData := authToken.GetHashData()
+	signatureHash := encryption.Hash(hashData)
+	sigOK, err := encryption.Verify(clientPublicKey, authToken.Signature, signatureHash)
+	if err != nil || !sigOK {
+		return common.NewError("invalid_parameters", "Invalid auth ticket. Signature verification failed")
+	}
+	return nil
+}
 
 type ReadMarker struct {
 	ClientID        string           `json:"client_id"`
@@ -17,7 +61,6 @@ type ReadMarker struct {
 	OwnerID         string           `json:"owner_id"`
 	Timestamp       common.Timestamp `json:"timestamp"`
 	ReadCounter     int64            `json:"counter"`
-	FilePath        string           `json:"filepath"`
 	Signature       string           `json:"signature"`
 }
 
@@ -28,7 +71,7 @@ type ReadMarkerStatus struct {
 }
 
 type ReadMarkerEntity struct {
-	LatestRM *ReadMarker `json:"latest_read_marker"`
+	LatestRM *ReadMarker `json:"latest_read_marker,omitempty"`
 }
 
 var readMarkerEntityMetaData *datastore.EntityMetadataImpl
@@ -84,7 +127,7 @@ func (rm *ReadMarkerEntity) Delete(ctx context.Context) error {
 }
 
 func (rm *ReadMarker) GetHashData() string {
-	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.BlobberID, rm.ClientID, rm.ClientPublicKey, rm.OwnerID, rm.FilePath, rm.ReadCounter, rm.Timestamp)
+	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.BlobberID, rm.ClientID, rm.ClientPublicKey, rm.OwnerID, rm.ReadCounter, rm.Timestamp)
 	return hashData
 }
 
