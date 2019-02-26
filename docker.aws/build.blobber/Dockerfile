@@ -5,7 +5,6 @@ FROM golang:1.11.4-alpine3.8 as blobber_build
 
 ENV SRC_DIR=/0chain
 ENV GOPATH=$GOPATH:$SRC_DIR/go
-ENV GO111MODULE=on
 WORKDIR $SRC_DIR
 
 RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep
