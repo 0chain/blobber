@@ -26,7 +26,7 @@ RUN go build 0chain.net/blobber/blobber
 FROM alpine:3.8
 ENV APP_DIR=/0chain
 WORKDIR $APP_DIR
-COPY --from=blobber_build $APP_DIR/go/0chain.net/blobber/blobber/blobber $APP_DIR/bin/blobber
+COPY --from=blobber_build $APP_DIR/blobber $APP_DIR/bin/blobber
 
 #Store all files and run environment under 0chain userid.
 RUN addgroup -g 2000 -S 0chain && adduser -u 2000 -S 0chain -G 0chain
