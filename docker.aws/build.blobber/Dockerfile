@@ -5,6 +5,7 @@ FROM golang:1.11.4-alpine3.8 as blobber_build
 
 ENV SRC_DIR=/0chain
 ENV GOPATH=$GOPATH:$SRC_DIR/go
+ENV GO111MODULE=on
 WORKDIR $SRC_DIR
 
 RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep
@@ -26,7 +27,7 @@ RUN go build 0chain.net/blobber/blobber
 FROM alpine:3.8
 ENV APP_DIR=/0chain
 WORKDIR $APP_DIR
-COPY --from=blobber_build $APP_DIR/bin/blobber $APP_DIR/bin/blobber
+COPY --from=blobber_build $APP_DIR/go/0chain.net/blobber/blobber/blobber $APP_DIR/bin/blobber
 
 #Store all files and run environment under 0chain userid.
 RUN addgroup -g 2000 -S 0chain && adduser -u 2000 -S 0chain -G 0chain
