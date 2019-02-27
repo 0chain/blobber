@@ -80,11 +80,13 @@ func RedeemReadMarker(ctx context.Context, rmEntity *readmarker.ReadMarkerEntity
 		return err
 	}
 	if (err != nil && err == datastore.ErrKeyNotFound) || (err == nil && rmStatus.LastestRedeemedRM.ReadCounter < rmEntity.LatestRM.ReadCounter) {
+		Logger.Info("Redeeming the read marker", zap.Any("rm", rmEntity.LatestRM))
 		err := GetProtocolImpl(rmEntity.LatestRM.AllocationID).RedeemReadMarker(ctx, rmEntity.LatestRM, rmStatus)
 		if err != nil {
 			Logger.Error("Error redeeming the read marker.", zap.Any("rm", rmEntity), zap.Any("error", err))
 			return err
 		}
+		Logger.Info("Successfully redeemed read marker", zap.Any("rm", rmEntity.LatestRM), zap.Any("rm_status", rmStatus))
 	}
 	return nil
 }

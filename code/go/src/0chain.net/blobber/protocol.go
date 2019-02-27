@@ -354,6 +354,7 @@ func (sp *StorageProtocolImpl) VerifyAllocationTransaction(ctx context.Context, 
 		}
 		allocationObj.Expiration = storageAllocation.Expiration
 		allocationObj.OwnerID = storageAllocation.OwnerID
+		allocationObj.OwnerPublicKey = storageAllocation.OwnerPublicKey
 		allocationObj.TotalSize = storageAllocation.Size
 		allocationObj.UsedSize = storageAllocation.UsedSize
 		if !readonly {

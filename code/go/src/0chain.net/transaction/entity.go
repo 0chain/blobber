@@ -46,12 +46,13 @@ type CommitConnection struct {
 }
 
 type StorageAllocation struct {
-	OwnerID    string           `json:"owner_id"`
-	ID         string           `json:"allocation_id"`
-	Size       int64            `json:"size"`
-	UsedSize   int64            `json:"used_size"`
-	Expiration common.Timestamp `json:"expiration_date"`
-	Blobbers   []*StorageNode   `json:"blobbers"`
+	OwnerPublicKey string           `json:"owner_public_key"`
+	OwnerID        string           `json:"owner_id"`
+	ID             string           `json:"allocation_id"`
+	Size           int64            `json:"size"`
+	UsedSize       int64            `json:"used_size"`
+	Expiration     common.Timestamp `json:"expiration_date"`
+	Blobbers       []*StorageNode   `json:"blobbers"`
 }
 
 type StorageAllocationBlobber struct {

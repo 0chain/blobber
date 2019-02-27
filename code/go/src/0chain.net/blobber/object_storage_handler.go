@@ -123,7 +123,7 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
 	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
-	clientPublicKey := ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
+	_ = ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -138,9 +138,13 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 		return nil, common.NewError("request_parse_error", err.Error())
 	}
 
+	path_hash := r.FormValue("path_hash")
 	path := r.FormValue("path")
-	if len(path) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
+	if len(path_hash) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		path_hash = reference.GetReferenceLookup(allocationID, path)
 	}
 
 	blockNumStr := r.FormValue("block_num")
@@ -177,10 +181,8 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 	rmEntity.LatestRM = readMarker
 
 	fileref := reference.FileRefProvider().(*reference.FileRef)
-	fileref.AllocationID = allocationID
-	fileref.Path = path
 
-	err = fileref.Read(ctx, fileref.GetKey())
+	err = fileref.Read(ctx, fileref.GetKeyFromPathHash(path_hash))
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
@@ -195,7 +197,7 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 		if err != nil {
 			return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
 		}
-		err = authToken.Verify(allocationObj, fileref.PathHash, clientID, clientPublicKey)
+		err = authToken.Verify(allocationObj, fileref.PathHash, clientID)
 		if err != nil {
 			return nil, err
 		}
@@ -246,8 +248,8 @@ func (fsh *ObjectStorageHandler) GetConnectionDetails(ctx context.Context, r *ht
 }
 
 func (fsh *ObjectStorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
+	if r.Method == "GET" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
 	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, true)
@@ -257,22 +259,42 @@ func (fsh *ObjectStorageHandler) GetFileMeta(ctx context.Context, r *http.Reques
 	}
 
 	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
+	_ = ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
+
+	path_hash := r.FormValue("path_hash")
 	path := r.FormValue("path")
-	if len(path) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
+	if len(path_hash) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		path_hash = reference.GetReferenceLookup(allocationID, path)
 	}
 
 	fileref := reference.FileRefProvider().(*reference.FileRef)
-	fileref.AllocationID = allocationID
-	fileref.Path = path
 
-	err = fileref.Read(ctx, fileref.GetKey())
+	err = fileref.Read(ctx, fileref.GetKeyFromPathHash(path_hash))
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid path / file. "+err.Error())
+	}
+
+	if clientID != allocationObj.OwnerID {
+		authTokenString := r.FormValue("auth_token")
+		if len(authTokenString) == 0 {
+			return nil, common.NewError("invalid_parameters", "Auth ticket required if data read by anyone other than owner.")
+		}
+		authToken := &readmarker.AuthTicket{}
+		err = json.Unmarshal([]byte(authTokenString), &authToken)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
+		}
+		err = authToken.Verify(allocationObj, fileref.PathHash, clientID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	result := make(map[string]interface{})

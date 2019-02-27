@@ -25,7 +25,7 @@ func (rm *AuthTicket) GetHashData() string {
 	return hashData
 }
 
-func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, pathHash string, clientID string, clientPublicKey string) error {
+func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, pathHash string, clientID string) error {
 	if authToken.AllocationID != allocationObj.ID {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Allocation id mismatch")
 	}
@@ -46,7 +46,7 @@ func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, pathHa
 	}
 	hashData := authToken.GetHashData()
 	signatureHash := encryption.Hash(hashData)
-	sigOK, err := encryption.Verify(clientPublicKey, authToken.Signature, signatureHash)
+	sigOK, err := encryption.Verify(allocationObj.OwnerPublicKey, authToken.Signature, signatureHash)
 	if err != nil || !sigOK {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Signature verification failed")
 	}
