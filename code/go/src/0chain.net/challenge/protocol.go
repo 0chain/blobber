@@ -13,6 +13,7 @@ import (
 	"0chain.net/common"
 	"0chain.net/filestore"
 	"0chain.net/hashmapstore"
+	"0chain.net/lock"
 	. "0chain.net/logging"
 	"0chain.net/reference"
 	"0chain.net/transaction"
@@ -91,6 +92,7 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 			Logger.Error("Error verifying the txn from BC." + cr.CommitTxnID)
 		}
 	}
+
 	wm := writemarker.Provider().(*writemarker.WriteMarkerEntity)
 	wm.WM = &writemarker.WriteMarker{}
 	wm.WM.AllocationRoot = cr.AllocationRoot
@@ -100,6 +102,9 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 	if err != nil {
 		return common.NewError("invalid_write_marker", "Write marker not found for the allocation root")
 	}
+	wmMutex := lock.GetMutex(wm.GetKey())
+	wmMutex.Lock()
+	defer wmMutex.Unlock()
 	if wm.DirStructure == nil {
 		wm.WriteAllocationDirStructure(ctx)
 	}
@@ -120,13 +125,19 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		return err
 	}
 
+	if objectPath.Meta["type"] != reference.FILE {
+		Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta), zap.Any("obejct_path", objectPath))
+		err = common.NewError("invalid_object_path", "Object path was not for a file")
+		cr.ErrorChallenge(ctx, err)
+		return err
+	}
+
 	postData := make(map[string]interface{})
 	postData["challenge_id"] = cr.ID
 	postData["object_path"] = objectPath
 	postData["write_marker"] = wm.WM
 	postData["client_key"] = wm.ClientPublicKey
 
-	//Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta))
 	inputData := &filestore.FileInputData{}
 	inputData.Name = objectPath.Meta["name"].(string)
 	inputData.Path = objectPath.Meta["path"].(string)

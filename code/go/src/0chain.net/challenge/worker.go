@@ -31,7 +31,7 @@ var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte
 	}
 	mutex := lock.GetMutex(challengeObj.GetKey())
 	mutex.Lock()
-	if challengeObj.Status != Committed && challengeObj.Status != Failed && numOfWorkers < 1 && challengeObj.Retries < 10 {
+	if challengeObj.Status != Committed && challengeObj.Status != Failed && numOfWorkers < 1 && challengeObj.Retries < 20 {
 		numOfWorkers++
 		Logger.Info("Starting challenge with ID: " + challengeObj.ID)
 		if challengeObj.Status == Error {

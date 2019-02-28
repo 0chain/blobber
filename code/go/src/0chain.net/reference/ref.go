@@ -365,7 +365,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64, dbS
 			if child.GetType() == FILE {
 				found = true
 				curRef = child
-				continue
+				break
 			}
 			curRef = child
 			curResult = list[idx]
