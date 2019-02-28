@@ -197,7 +197,7 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 		if err != nil {
 			return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
 		}
-		err = authToken.Verify(allocationObj, fileref.PathHash, clientID)
+		err = authToken.Verify(allocationObj, fileref.Name, fileref.PathHash, clientID)
 		if err != nil {
 			return nil, err
 		}
@@ -280,6 +280,8 @@ func (fsh *ObjectStorageHandler) GetFileMeta(ctx context.Context, r *http.Reques
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid path / file. "+err.Error())
 	}
+	result := make(map[string]interface{})
+	result = fileref.GetListingData(ctx)
 
 	if clientID != allocationObj.OwnerID {
 		authTokenString := r.FormValue("auth_token")
@@ -291,14 +293,12 @@ func (fsh *ObjectStorageHandler) GetFileMeta(ctx context.Context, r *http.Reques
 		if err != nil {
 			return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
 		}
-		err = authToken.Verify(allocationObj, fileref.PathHash, clientID)
+		err = authToken.Verify(allocationObj, fileref.Name, fileref.PathHash, clientID)
 		if err != nil {
 			return nil, err
 		}
+		delete(result, "path")
 	}
-
-	result := make(map[string]interface{})
-	result = fileref.GetListingData(ctx)
 	return result, nil
 }
 

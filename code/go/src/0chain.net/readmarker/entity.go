@@ -15,17 +15,18 @@ type AuthTicket struct {
 	OwnerID      string           `json:"owner_id"`
 	AllocationID string           `json:"allocation_id"`
 	FilePathHash string           `json:"file_path_hash"`
+	FileName     string           `json:"file_name"`
 	Expiration   common.Timestamp `json:"expiration"`
 	Timestamp    common.Timestamp `json:"timestamp"`
 	Signature    string           `json:"signature"`
 }
 
 func (rm *AuthTicket) GetHashData() string {
-	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.ClientID, rm.OwnerID, rm.FilePathHash, rm.Expiration, rm.Timestamp)
+	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.ClientID, rm.OwnerID, rm.FilePathHash, rm.FileName, rm.Expiration, rm.Timestamp)
 	return hashData
 }
 
-func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, pathHash string, clientID string) error {
+func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, filename string, pathHash string, clientID string) error {
 	if authToken.AllocationID != allocationObj.ID {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Allocation id mismatch")
 	}
@@ -43,6 +44,9 @@ func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, pathHa
 	}
 	if authToken.Timestamp > common.Now() {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Timestamp in future")
+	}
+	if authToken.FileName != filename {
+		return common.NewError("invalid_parameters", "Invalid auth ticket. Filename mismatch")
 	}
 	hashData := authToken.GetHashData()
 	signatureHash := encryption.Hash(hashData)
