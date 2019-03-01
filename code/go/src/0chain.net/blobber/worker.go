@@ -87,11 +87,9 @@ func RedeemReadMarker(ctx context.Context, rmEntity *readmarker.ReadMarkerEntity
 		params := make(map[string]string)
 		params["blobber"] = rmEntity.LatestRM.BlobberID
 		params["client"] = rmEntity.LatestRM.ClientID
-		resp, errsc := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/latestreadmarker", params, chain.GetServerChain())
+		var latestRM readmarker.ReadMarker
+		_, errsc := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/latestreadmarker", params, chain.GetServerChain(), &latestRM)
 		if errsc == nil {
-			var latestRM readmarker.ReadMarker
-			bytes, _ := json.Marshal(resp)
-			json.Unmarshal(bytes, &latestRM)
 			Logger.Info("Latest read marker from blockchain", zap.Any("rm", latestRM))
 			if latestRM.ReadCounter > 0 && latestRM.ReadCounter >= rmEntity.LatestRM.ReadCounter {
 				Logger.Info("Updating the local state to match the block chain")

@@ -136,11 +136,11 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 	return nil, common.NewError("transaction_not_found", "Transaction was not found on any of the sharders")
 }
 
-func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) (map[string]interface{}, error) {
+func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]string, chain *chain.Chain, entity interface{}) (interface{}, error) {
 	numSharders := chain.Sharders.Size()
 	sharders := chain.Sharders.GetRandomNodes(numSharders)
 	responses := make(map[string]int)
-	var retObj map[string]interface{}
+	var retObj interface{}
 	maxCount := 0
 	for _, sharder := range sharders {
 		urlString := fmt.Sprintf("%v/%v%v%v", sharder.GetURLBase(), SC_REST_API_URL, scAddress, relativePath)
@@ -161,24 +161,19 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			}
 			defer response.Body.Close()
 			tReader := io.TeeReader(response.Body, h)
-			contents, err := ioutil.ReadAll(tReader)
-			if err != nil {
-				Logger.Error("Error reading response for sc rest api", zap.Any("error", err))
-				continue
-			}
-			var objmap map[string]interface{}
-			err = json.Unmarshal(contents, &objmap)
+			d := json.NewDecoder(tReader)
+			d.UseNumber()
+			err := d.Decode(entity)
 			if err != nil {
 				Logger.Error("Error unmarshalling response", zap.Any("error", err))
 				continue
 			}
-
 			hashBytes := h.Sum(nil)
 			hash := hex.EncodeToString(hashBytes)
 			responses[hash]++
 			if responses[hash] > maxCount {
 				maxCount = responses[hash]
-				retObj = objmap
+				retObj = entity
 			}
 		}
 	}

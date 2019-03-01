@@ -118,7 +118,7 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		cr.ErrorChallenge(ctx, err)
 		return err
 	}
-	//Logger.Info("Block number to be challenged", zap.Any("block", blockNum))
+
 	objectPath, err := reference.GetObjectPath(ctx, cr.AllocationID, blockNum, dbStore)
 	if err != nil {
 		cr.ErrorChallenge(ctx, err)
@@ -171,6 +171,9 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		return err
 	}
 	responses := make(map[string]ValidationTicket)
+	if cr.ValidationTickets == nil {
+		cr.ValidationTickets = make([]*ValidationTicket, len(cr.Validators))
+	}
 	for i, validator := range cr.Validators {
 		if cr.ValidationTickets[i] != nil {
 			exisitingVT := cr.ValidationTickets[i]

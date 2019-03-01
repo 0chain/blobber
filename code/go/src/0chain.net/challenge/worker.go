@@ -6,13 +6,21 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
-
+	"0chain.net/chain"
 	"0chain.net/datastore"
 	"0chain.net/filestore"
 	"0chain.net/lock"
 	. "0chain.net/logging"
+	"0chain.net/node"
+	"0chain.net/transaction"
+	"0chain.net/writemarker"
+	"go.uber.org/zap"
 )
+
+type BCChallengeResponse struct {
+	BlobberID    string                      `json:"blobber_id"`
+	ChallengeMap map[string]*ChallengeEntity `json:"challenges"`
+}
 
 var dataStore datastore.Store
 var fileStore filestore.FileStore
@@ -69,6 +77,36 @@ func FindChallenges(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			params := make(map[string]string)
+			params["blobber"] = node.Self.ID
+			var blobberChallenges BCChallengeResponse
+			_, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain(), &blobberChallenges)
+			if err == nil {
+				tCtx := dataStore.WithConnection(ctx)
+				for k, v := range blobberChallenges.ChallengeMap {
+					if v == nil {
+						Logger.Info("No challenge entity from the challenge map")
+						continue
+					}
+					challengeObj := v
+					err = challengeObj.Read(tCtx, v.GetKey())
+					if err == datastore.ErrKeyNotFound {
+						Logger.Info("Adding new challenge found from blockchain", zap.String("challenge", k))
+						writeMarkerEntity := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+						writeMarkerEntity.WM = &writemarker.WriteMarker{AllocationID: challengeObj.AllocationID, AllocationRoot: challengeObj.AllocationRoot}
+
+						err = writeMarkerEntity.Read(tCtx, writeMarkerEntity.GetKey())
+						if err != nil {
+							continue
+						}
+						challengeObj.WriteMarker = writeMarkerEntity.GetKey()
+						challengeObj.ValidationTickets = make([]*ValidationTicket, len(challengeObj.Validators))
+						challengeObj.Write(tCtx)
+					}
+				}
+				dataStore.Commit(tCtx)
+			}
+
 			if !iterInprogress && numOfWorkers == 0 {
 				iterInprogress = true
 				dataStore.IteratePrefix(ctx, "challenge:", challengeHandler)

@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"0chain.net/allocation"
-	"0chain.net/challenge"
 	"0chain.net/common"
 	"0chain.net/datastore"
 	"0chain.net/encryption"
@@ -62,33 +61,6 @@ func (fsh *ObjectStorageHandler) AcceptChallenge(ctx context.Context, r *http.Re
 	challengeID := r.FormValue("challenge_txn")
 	if len(challengeID) == 0 {
 		return nil, common.NewError("invalid_parameters", "No challenge txn passed")
-	}
-
-	challengeRequest, err := GetProtocolImpl("").VerifyChallengeRequest(ctx, challengeID)
-	if err != nil {
-		return nil, err
-	}
-
-	mutex := lock.GetMutex(challengeRequest.GetKey())
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	if challengeRequest.Blobber.ID != node.Self.ID {
-		return nil, common.NewError("invalid_parameters", "Challenge is not for this blobber")
-	}
-
-	writeMarkerEntity := writemarker.Provider().(*writemarker.WriteMarkerEntity)
-	writeMarkerEntity.WM = &writemarker.WriteMarker{AllocationID: challengeRequest.AllocationID, AllocationRoot: challengeRequest.AllocationRoot}
-
-	err = writeMarkerEntity.Read(ctx, writeMarkerEntity.GetKey())
-	if err != nil {
-		return nil, common.NewError("write_marker_not_found", "Could not file write marker for the allocation root. "+challengeRequest.AllocationRoot+"."+err.Error())
-	}
-	challengeRequest.WriteMarker = writeMarkerEntity.GetKey()
-	challengeRequest.ValidationTickets = make([]*challenge.ValidationTicket, len(challengeRequest.Validators))
-	err = challengeRequest.Write(ctx)
-	if err != nil {
-		return nil, common.NewError("write_error", "Error Writing into the store. "+err.Error())
 	}
 
 	retObj := make(map[string]string)
