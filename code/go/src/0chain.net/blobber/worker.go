@@ -8,12 +8,14 @@ import (
 	"time"
 
 	"0chain.net/allocation"
+	"0chain.net/chain"
 	"0chain.net/common"
 	"0chain.net/datastore"
 	"0chain.net/lock"
 	. "0chain.net/logging"
 	"0chain.net/readmarker"
 	"0chain.net/reference"
+	"0chain.net/transaction"
 	"0chain.net/writemarker"
 	"go.uber.org/zap"
 )
@@ -79,8 +81,28 @@ func RedeemReadMarker(ctx context.Context, rmEntity *readmarker.ReadMarkerEntity
 	if err != nil && err != datastore.ErrKeyNotFound {
 		return err
 	}
+
 	if (err != nil && err == datastore.ErrKeyNotFound) || (err == nil && rmStatus.LastestRedeemedRM.ReadCounter < rmEntity.LatestRM.ReadCounter) {
 		Logger.Info("Redeeming the read marker", zap.Any("rm", rmEntity.LatestRM))
+		params := make(map[string]string)
+		params["blobber"] = rmEntity.LatestRM.BlobberID
+		params["client"] = rmEntity.LatestRM.ClientID
+		resp, errsc := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/latestreadmarker", params, chain.GetServerChain())
+		if errsc == nil {
+			var latestRM readmarker.ReadMarker
+			bytes, _ := json.Marshal(resp)
+			json.Unmarshal(bytes, &latestRM)
+			Logger.Info("Latest read marker from blockchain", zap.Any("rm", latestRM))
+			if latestRM.ReadCounter > 0 && latestRM.ReadCounter >= rmEntity.LatestRM.ReadCounter {
+				Logger.Info("Updating the local state to match the block chain")
+				rmStatus.LastestRedeemedRM = rmEntity.LatestRM
+				rmStatus.LastRedeemTxnID = "sync"
+				rmStatus.Write(ctx)
+				return nil
+			}
+		} else {
+			Logger.Error("Error from sc rest api call", zap.Error(errsc))
+		}
 		err := GetProtocolImpl(rmEntity.LatestRM.AllocationID).RedeemReadMarker(ctx, rmEntity.LatestRM, rmStatus)
 		if err != nil {
 			Logger.Error("Error redeeming the read marker.", zap.Any("rm", rmEntity), zap.Any("error", err))
