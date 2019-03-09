@@ -9,6 +9,7 @@ import (
 	"0chain.net/encryption"
 	"0chain.net/filestore"
 	"0chain.net/reference"
+	"0chain.net/stats"
 )
 
 const (
@@ -232,6 +233,7 @@ func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context, fileStore 
 				if err != nil {
 					return nil, common.NewError("content_ref_write_error", "Error updating the content ref count")
 				}
+				stats.FileUpdated(ctx, a.AllocationID, fileref.Path, writeMarkerKey)
 			}
 		}
 	}

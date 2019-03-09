@@ -48,6 +48,7 @@ type StorageHandler interface {
 	CommitWrite(ctx context.Context, r *http.Request) (*CommitResult, error)
 	DownloadFile(ctx context.Context, r *http.Request) (*DownloadResponse, error)
 	GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error)
+	GetFileStats(ctx context.Context, r *http.Request) (interface{}, error)
 	ListEntities(ctx context.Context, r *http.Request) (*ListResult, error)
 	GetConnectionDetails(ctx context.Context, r *http.Request) (*allocation.AllocationChangeCollector, error)
 	GetLatestReadMarker(ctx context.Context, r *http.Request) (*readmarker.ReadMarker, error)

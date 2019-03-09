@@ -19,6 +19,7 @@ import (
 	"0chain.net/node"
 	"0chain.net/readmarker"
 	"0chain.net/reference"
+	"0chain.net/stats"
 	"0chain.net/writemarker"
 	"go.uber.org/zap"
 )
@@ -180,6 +181,11 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 	fileData.Path = fileref.Path
 	fileData.Hash = fileref.ContentHash
 	respData, err := fileStore.GetFileBlock(allocationID, fileData, blockNum)
+	if err != nil {
+		return nil, err
+	}
+	stats.FileBlockDownloaded(ctx, fileref.AllocationID, fileref.Path)
+
 	rmEntity.Write(ctx)
 	response := &DownloadResponse{}
 	response.Data = respData
@@ -217,6 +223,59 @@ func (fsh *ObjectStorageHandler) GetConnectionDetails(ctx context.Context, r *ht
 	}
 
 	return connectionObj, nil
+}
+
+func (fsh *ObjectStorageHandler) GetFileStats(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method != "GET" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
+	}
+	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, true)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	_ = ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
+
+	path_hash := r.FormValue("path_hash")
+	path := r.FormValue("path")
+	if len(path_hash) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		path_hash = reference.GetReferenceLookup(allocationID, path)
+	}
+
+	fileref := reference.FileRefProvider().(*reference.FileRef)
+
+	err = fileref.Read(ctx, fileref.GetKeyFromPathHash(path_hash))
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid path / file. "+err.Error())
+	}
+
+	filestats, err := stats.GetFileStats(ctx, path_hash)
+
+	if err != nil {
+		return nil, common.NewError("no_data", "No Stats for the file")
+	}
+
+	wm := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+	wm.Read(ctx, filestats.WriteMarker)
+	if wm.Status == writemarker.Committed {
+		filestats.WriteMarkerRedeemTxn = wm.CloseTxnID
+	}
+
+	result := make(map[string]interface{})
+	result["meta"] = fileref.GetListingData(ctx)
+	result["stats"] = filestats
+
+	return result, nil
 }
 
 func (fsh *ObjectStorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {

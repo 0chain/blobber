@@ -25,6 +25,7 @@ import (
 	. "0chain.net/logging"
 	"0chain.net/node"
 	"0chain.net/reference"
+	"0chain.net/stats"
 	"0chain.net/transaction"
 	"0chain.net/util"
 	"0chain.net/writemarker"
@@ -63,9 +64,12 @@ func initEntities() {
 	writemarker.SetupEntity(badgerdbstore.GetStorageProvider())
 	readmarker.SetupEntity(badgerdbstore.GetStorageProvider())
 	challenge.SetupEntity(badgerdbstore.GetStorageProvider())
+	stats.SetupFileStatsEntity(badgerdbstore.GetStorageProvider())
 
 	blobber.SetupWorkers(common.GetRootContext())
 	challenge.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
+	readmarker.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
+	writemarker.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
 }
 
 func initServer() {
@@ -88,12 +92,6 @@ func processBlockChainConfig(nodesFileName string) {
 	config = nodeConfig.Get("sharders")
 	if sharders, ok := config.([]interface{}); ok {
 		serverChain.Sharders.AddNodes(sharders)
-	}
-	config = nodeConfig.Get("blobbers")
-	//There shoud be none. Remove it.
-	if blobbers, ok := config.([]interface{}); ok {
-
-		serverChain.Blobbers.AddNodes(blobbers)
 	}
 }
 

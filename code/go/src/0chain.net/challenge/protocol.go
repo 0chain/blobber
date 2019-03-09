@@ -16,6 +16,7 @@ import (
 	"0chain.net/lock"
 	. "0chain.net/logging"
 	"0chain.net/reference"
+	"0chain.net/stats"
 	"0chain.net/transaction"
 	"0chain.net/util"
 	"0chain.net/writemarker"
@@ -232,7 +233,11 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 			cr.Status = Committed
 			cr.StatusMessage = t.TransactionOutput
 			cr.CommitTxnID = t.Hash
+			stats.FileChallenged(ctx, cr.AllocationID, objectPath.Meta["path"].(string), t.Hash)
 		}
+	} else {
+		cr.ErrorChallenge(ctx, common.NewError("no_consensus_challenge", "No Consensus on the challenge result. Erroring out the challenge"))
+		return common.NewError("no_consensus_challenge", "No Consensus on the challenge result. Erroring out the challenge")
 	}
 
 	cr.Write(ctx)

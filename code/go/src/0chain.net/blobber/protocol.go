@@ -35,13 +35,9 @@ const CHUNK_SIZE = reference.CHUNK_SIZE
 type StorageProtocol interface {
 	RegisterBlobber(ctx context.Context) (string, error)
 	VerifyAllocationTransaction(ctx context.Context, readonly bool) (*allocation.Allocation, error)
-	// VerifyBlobberTransaction(txn_hash string, clientID string) (*transaction.StorageConnection, error)
 	VerifyMarker(ctx context.Context, wm *writemarker.WriteMarker, sa *allocation.Allocation, co *allocation.AllocationChangeCollector) error
-	RedeemMarker(ctx context.Context, wm *writemarker.WriteMarkerEntity) error
 	VerifyReadMarker(ctx context.Context, rm *readmarker.ReadMarker, sa *allocation.Allocation) error
-	RedeemReadMarker(ctx context.Context, rm *readmarker.ReadMarker, rmStatus *readmarker.ReadMarkerStatus) error
 	VerifyChallengeRequest(ctx context.Context, challengeID string) (*challenge.ChallengeEntity, error)
-	// GetChallengeResponse(allocationID string, dataID string, blockNum int64, objectsPath string) (string, error)
 }
 
 //StorageProtocolImpl - implementation of the storage protocol
@@ -75,111 +71,6 @@ func (sp *StorageProtocolImpl) VerifyChallengeRequest(ctx context.Context, chall
 	}
 
 	return challengeObj, nil
-}
-
-func (sp *StorageProtocolImpl) RedeemReadMarker(ctx context.Context, rm *readmarker.ReadMarker, rmStatus *readmarker.ReadMarkerStatus) error {
-	txn := transaction.NewTransactionEntity()
-
-	sn := &transaction.ReadRedeem{}
-	sn.ReadMarker = rm
-	scData := &transaction.SmartContractTxnData{}
-
-	scData.Name = transaction.READ_REDEEM
-	scData.InputArgs = sn
-
-	txn.ToClientID = transaction.STORAGE_CONTRACT_ADDRESS
-	txn.Value = 0
-	txn.TransactionType = transaction.TxnTypeSmartContract
-	txnBytes, err := json.Marshal(scData)
-	if err != nil {
-		Logger.Error("Error encoding sc input", zap.String("err:", err.Error()), zap.Any("scdata", scData))
-		return err
-	}
-	txn.TransactionData = string(txnBytes)
-
-	err = txn.ComputeHashAndSign()
-	if err != nil {
-		Logger.Error("Signing Failed during read redeem. ", zap.String("err:", err.Error()))
-		return err
-	}
-	transaction.SendTransactionSync(txn, sp.ServerChain)
-	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-	t, err := transaction.VerifyTransaction(txn.Hash, sp.ServerChain)
-	if err != nil {
-		Logger.Error("Error verifying the read redeem transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
-		return err
-	}
-
-	rmStatus.LastRedeemTxnID = t.Hash
-	rmStatus.LastestRedeemedRM = rm
-	rmStatus.StatusMessage = t.TransactionOutput
-	err = rmStatus.Write(ctx)
-	return err
-}
-
-func (sp *StorageProtocolImpl) RedeemMarker(ctx context.Context, wm *writemarker.WriteMarkerEntity) error {
-
-	if len(wm.CloseTxnID) > 0 {
-		t, err := transaction.VerifyTransaction(wm.CloseTxnID, sp.ServerChain)
-		if err == nil {
-			wm.Status = writemarker.Committed
-			wm.StatusMessage = t.TransactionOutput
-			wm.CloseTxnID = t.Hash
-			err = wm.Write(ctx)
-			return err
-		}
-	}
-
-	txn := transaction.NewTransactionEntity()
-	sn := &transaction.CommitConnection{}
-	sn.AllocationRoot = wm.WM.AllocationRoot
-	sn.PrevAllocationRoot = wm.WM.PreviousAllocationRoot
-	sn.WriteMarker = wm.WM
-
-	scData := &transaction.SmartContractTxnData{}
-	scData.Name = transaction.CLOSE_CONNECTION_SC_NAME
-	scData.InputArgs = sn
-
-	txn.ToClientID = transaction.STORAGE_CONTRACT_ADDRESS
-	txn.Value = 0
-	txn.TransactionType = transaction.TxnTypeSmartContract
-	txnBytes, err := json.Marshal(scData)
-	if err != nil {
-		Logger.Error("Error encoding sc input", zap.String("err:", err.Error()), zap.Any("scdata", scData))
-		wm.Status = writemarker.Failed
-		wm.StatusMessage = "Error encoding sc input. " + err.Error()
-		wm.ReedeemRetries++
-		wm.Write(ctx)
-		return err
-	}
-	txn.TransactionData = string(txnBytes)
-
-	err = txn.ComputeHashAndSign()
-	if err != nil {
-		Logger.Error("Signing Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))
-		wm.Status = writemarker.Failed
-		wm.StatusMessage = "Signing Failed during sending close connection to the miner. " + err.Error()
-		wm.ReedeemRetries++
-		wm.Write(ctx)
-		return err
-	}
-	transaction.SendTransactionSync(txn, sp.ServerChain)
-	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-	t, err := transaction.VerifyTransaction(txn.Hash, sp.ServerChain)
-	if err != nil {
-		Logger.Error("Error verifying the close connection transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
-		wm.Status = writemarker.Failed
-		wm.StatusMessage = "Error verifying the close connection transaction." + err.Error()
-		wm.ReedeemRetries++
-		wm.CloseTxnID = txn.Hash
-		wm.Write(ctx)
-		return err
-	}
-	wm.Status = writemarker.Committed
-	wm.StatusMessage = t.TransactionOutput
-	wm.CloseTxnID = t.Hash
-	err = wm.Write(ctx)
-	return err
 }
 
 func (sp *StorageProtocolImpl) VerifyReadMarker(ctx context.Context, rm *readmarker.ReadMarker, sa *allocation.Allocation) error {
