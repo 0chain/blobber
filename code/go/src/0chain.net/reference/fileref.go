@@ -112,3 +112,7 @@ func (fr *FileRef) GetNumBlocks(context.Context) int64 {
 func (fr *FileRef) GetPathHash() string {
 	return fr.PathHash
 }
+
+func (fr *FileRef) GetPath() string {
+	return fr.Path
+}

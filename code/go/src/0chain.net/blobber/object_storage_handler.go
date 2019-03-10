@@ -729,10 +729,22 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 			return nil, err
 		}
 	}
+	mode := allocation.INSERT_OPERATION
+	if r.Method == "PUT" {
+		mode = allocation.UPDATE_OPERATION
+	}
 
-	if r.Method == "POST" {
-		if fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path) != nil {
+	if mode == allocation.INSERT_OPERATION || mode == allocation.UPDATE_OPERATION {
+		exisitingFileRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
+		existingFileRefSize := int64(0)
+		if mode == allocation.INSERT_OPERATION && exisitingFileRef != nil {
 			return nil, common.NewError("duplicate_file", "File at path already exists")
+		} else if mode == allocation.UPDATE_OPERATION && exisitingFileRef == nil {
+			return nil, common.NewError("invalid_file_update", "File at path does not exist for update")
+		}
+
+		if exisitingFileRef != nil {
+			existingFileRefSize = exisitingFileRef.Size
 		}
 
 		if fsh.checkIfFilePartOfExisitingOpenConnection(ctx, allocationID, formData.Path) {
@@ -758,7 +770,7 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 					return nil, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
 				}
 
-				if allocationObj.BlobberSizeUsed+fileOutputData.Size > allocationObj.BlobberSize {
+				if allocationObj.BlobberSizeUsed+(fileOutputData.Size-existingFileRefSize) > allocationObj.BlobberSize {
 					return nil, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 				}
 
@@ -766,12 +778,13 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 				formData.MerkleRoot = fileOutputData.MerkleRoot
 
 				allocationChange := &allocation.AllocationChange{}
-				allocationChange.Size = fileOutputData.Size
+				allocationChange.Size = fileOutputData.Size - existingFileRefSize
+				allocationChange.NewFileSize = fileOutputData.Size
 				allocationChange.UploadFormData = &formData
-				allocationChange.Operation = allocation.INSERT_OPERATION
+				allocationChange.Operation = mode
 				allocationChange.NumBlocks = int64(math.Ceil(float64(allocationChange.Size*1.0) / reference.CHUNK_SIZE))
 
-				connectionObj.Size += fileOutputData.Size
+				connectionObj.Size += allocationChange.Size
 				connectionObj.AddChange(allocationChange)
 			}
 

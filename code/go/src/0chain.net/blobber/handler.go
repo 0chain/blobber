@@ -2,12 +2,14 @@ package blobber
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"runtime/pprof"
 
 	"net/http"
 
 	"0chain.net/common"
+	"0chain.net/datastore"
 	"github.com/gorilla/mux"
 )
 
@@ -93,12 +95,43 @@ func LatestRMHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 
 func MetaStoreHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	operation := r.FormValue("operation")
+
 	if len(operation) == 0 || operation == "get" {
-		dataBytes, err := GetMetaDataStore().ReadBytes(ctx, r.FormValue("key"))
+		key := r.FormValue("key")
+		if len(key) > 0 {
+			dataBytes, err := GetMetaDataStore().ReadBytes(ctx, key)
+			if err != nil {
+				return nil, err
+			}
+			return string(dataBytes), err
+		}
+		prefix := r.FormValue("prefix")
+		if len(prefix) > 0 {
+			retObj := make(map[string]interface{})
+			iterHandler := func(ctx context.Context, key datastore.Key, value []byte) error {
+				jsonObj := make(map[string]interface{})
+				err := json.Unmarshal(value, &jsonObj)
+				if err != nil {
+					return err
+				}
+				retObj[key] = jsonObj
+				return nil
+			}
+			err := GetMetaDataStore().IteratePrefix(ctx, prefix, iterHandler)
+			if err != nil {
+				return nil, err
+			}
+			return retObj, nil
+		}
+
+	}
+	if operation == "delete" {
+		key := r.FormValue("key")
+		err := GetMetaDataStore().DeleteKey(ctx, key)
 		if err != nil {
 			return nil, err
 		}
-		return string(dataBytes), err
+		return "Key deleted", err
 	}
 	return nil, common.NewError("invalid_parameters", "Invalid Parameters")
 }

@@ -20,7 +20,7 @@ func SetupWorkers(ctx context.Context) {
 }
 
 func CleanupContentRef(ctx context.Context) {
-	ticker := time.NewTicker(3600 * time.Second)
+	ticker := time.NewTicker(30 * time.Second)
 
 	dbstore := GetMetaDataStore()
 	contentRefHandler := func(ctx context.Context, key datastore.Key, value []byte) error {
@@ -61,7 +61,7 @@ func CleanupContentRef(ctx context.Context) {
 }
 
 func CleanupOpenConnections(ctx context.Context) {
-	ticker := time.NewTicker(3600 * time.Second)
+	ticker := time.NewTicker(30 * time.Second)
 
 	dbstore := GetMetaDataStore()
 	allocationChangeHandler := func(ctx context.Context, key datastore.Key, value []byte) error {

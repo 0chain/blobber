@@ -11,6 +11,7 @@ import (
 	"0chain.net/allocation"
 	"0chain.net/chain"
 	"0chain.net/common"
+	"0chain.net/datastore"
 	"0chain.net/filestore"
 	"0chain.net/hashmapstore"
 	"0chain.net/lock"
@@ -58,6 +59,7 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 	Logger.Info("Submitting challenge response to blockchain.", zap.String("txn", txn.Hash))
 	transaction.SendTransaction(txn, chain.GetServerChain())
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+
 	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
 	if err != nil {
 		Logger.Error("Error verifying the challenge response transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
@@ -146,14 +148,43 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 	blockData, err := fileStore.GetFileBlock(cr.AllocationID, inputData, objectPath.FileBlockNum)
 
 	if err != nil {
-		dt := allocation.DeleteTokenProvider().(*allocation.DeleteToken)
-		dt.FileRefHash = objectPath.Meta["hash"].(string)
-		err = dt.Read(ctx, dt.GetKey())
-		if err != nil {
-			cr.ErrorChallenge(ctx, err)
-			return err
+		fileref := reference.FileRefProvider().(*reference.FileRef)
+		err = fileref.Read(ctx, fileref.GetKeyFromPathHash(objectPath.Meta["path_hash"].(string)))
+		if err != nil && err == datastore.ErrKeyNotFound {
+			dt := allocation.DeleteTokenProvider().(*allocation.DeleteToken)
+			dt.FileRefHash = objectPath.Meta["hash"].(string)
+			err = dt.Read(ctx, dt.GetKey())
+			if err != nil {
+				cr.ErrorChallenge(ctx, err)
+				return err
+			}
+			postData["delete_token"] = dt
+		} else if err == nil {
+			if fileref.Hash != objectPath.Meta["hash"].(string) {
+				updatedObjectPath, err := reference.GetObjectPathFromFilePath(ctx, cr.AllocationID, objectPath.Meta["path"].(string), challengeEntityMetaData.GetStore())
+				if err != nil {
+					cr.ErrorChallenge(ctx, err)
+					return err
+				}
+
+				allocationObj := allocation.Provider().(*allocation.Allocation)
+				allocationObj.ID = cr.AllocationID
+				err = allocationObj.Read(ctx, allocationObj.GetKey())
+				if err != nil {
+					cr.ErrorChallenge(ctx, err)
+					return err
+				}
+				latestWM := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+				err = latestWM.Read(ctx, allocationObj.LatestWMEntity)
+				if err != nil {
+					cr.ErrorChallenge(ctx, err)
+					return err
+				}
+
+				postData["updated_object_path"] = updatedObjectPath
+				postData["updated_write_marker"] = latestWM.WM
+			}
 		}
-		postData["delete_token"] = dt
 
 	} else {
 		mt, err := fileStore.GetMerkleTreeForFile(cr.AllocationID, inputData)
