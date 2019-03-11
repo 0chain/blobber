@@ -723,18 +723,18 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
 	result := &UploadResult{}
-	if r.Method == "DELETE" {
+	mode := allocation.INSERT_OPERATION
+	if r.Method == "PUT" {
+		mode = allocation.UPDATE_OPERATION
+	} else if r.Method == "DELETE" {
+		mode = allocation.DELETE_OPERATION
+	}
+	if mode == allocation.DELETE_OPERATION {
 		result, err = fsh.DeleteFile(ctx, r, &formData, connectionObj)
 		if err != nil {
 			return nil, err
 		}
-	}
-	mode := allocation.INSERT_OPERATION
-	if r.Method == "PUT" {
-		mode = allocation.UPDATE_OPERATION
-	}
-
-	if mode == allocation.INSERT_OPERATION || mode == allocation.UPDATE_OPERATION {
+	} else if mode == allocation.INSERT_OPERATION || mode == allocation.UPDATE_OPERATION {
 		exisitingFileRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
 		existingFileRefSize := int64(0)
 		if mode == allocation.INSERT_OPERATION && exisitingFileRef != nil {

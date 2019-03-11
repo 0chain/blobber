@@ -7,6 +7,7 @@ import (
 
 	"0chain.net/allocation"
 	"0chain.net/common"
+	"0chain.net/config"
 	"0chain.net/datastore"
 	. "0chain.net/logging"
 	"0chain.net/reference"
@@ -20,7 +21,7 @@ func SetupWorkers(ctx context.Context) {
 }
 
 func CleanupContentRef(ctx context.Context) {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(time.Duration(config.Configuration.ContentRefWorkerFreq) * time.Second)
 
 	dbstore := GetMetaDataStore()
 	contentRefHandler := func(ctx context.Context, key datastore.Key, value []byte) error {
@@ -29,7 +30,7 @@ func CleanupContentRef(ctx context.Context) {
 		if err != nil {
 			return err
 		}
-		if contentRef.ReferenceCount > 0 || common.Within(int64(contentRef.LastUpdated), 3600) {
+		if contentRef.ReferenceCount > 0 || common.Within(int64(contentRef.LastUpdated), config.Configuration.ContentRefWorkerTolerance) {
 			return nil
 		}
 		Logger.Info("Removing file content with no activity in the last hour and no more references", zap.Any("contentref", contentRef))
@@ -61,7 +62,7 @@ func CleanupContentRef(ctx context.Context) {
 }
 
 func CleanupOpenConnections(ctx context.Context) {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(time.Duration(config.Configuration.OpenConnectionWorkerFreq) * time.Second)
 
 	dbstore := GetMetaDataStore()
 	allocationChangeHandler := func(ctx context.Context, key datastore.Key, value []byte) error {
@@ -70,7 +71,7 @@ func CleanupOpenConnections(ctx context.Context) {
 		if err != nil {
 			return err
 		}
-		if common.Within(int64(connectionObj.LastUpdated), 3600) {
+		if common.Within(int64(connectionObj.LastUpdated), config.Configuration.OpenConnectionWorkerTolerance) {
 			return nil
 		}
 		Logger.Info("Removing open connection with no activity in the last hour", zap.Any("connection", connectionObj))

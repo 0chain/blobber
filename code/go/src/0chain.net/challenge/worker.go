@@ -7,10 +7,12 @@ import (
 	"time"
 
 	"0chain.net/chain"
+	"0chain.net/config"
 	"0chain.net/datastore"
 	"0chain.net/filestore"
 	"0chain.net/lock"
 	. "0chain.net/logging"
+
 	"0chain.net/node"
 	"0chain.net/transaction"
 	"0chain.net/writemarker"
@@ -39,7 +41,7 @@ var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte
 	}
 	mutex := lock.GetMutex(challengeObj.GetKey())
 	mutex.Lock()
-	if challengeObj.Status != Committed && challengeObj.Status != Failed && numOfWorkers < 1 && challengeObj.Retries < 10 {
+	if challengeObj.Status != Committed && challengeObj.Status != Failed && numOfWorkers < config.Configuration.ChallengeResolveNumWorkers && challengeObj.Retries < 10 {
 		numOfWorkers++
 		Logger.Info("Starting challenge with ID: " + challengeObj.ID)
 		if challengeObj.Status == Error {
@@ -71,7 +73,7 @@ var numOfWorkers = 0
 var iterInprogress = false
 
 func FindChallenges(ctx context.Context) {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
 	for true {
 		select {
 		case <-ctx.Done():

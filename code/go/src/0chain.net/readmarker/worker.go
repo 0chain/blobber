@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"0chain.net/chain"
+	"0chain.net/config"
 	"0chain.net/datastore"
 	"0chain.net/filestore"
 	"0chain.net/lock"
@@ -72,7 +73,7 @@ var rmHandler = func(ctx context.Context, key datastore.Key, value []byte) error
 	if err != nil {
 		return err
 	}
-	if rmEntity.LatestRM != nil && numOfWorkers < 1 {
+	if rmEntity.LatestRM != nil && numOfWorkers < config.Configuration.RMRedeemNumWorkers {
 		numOfWorkers++
 		redeemWorker.Add(1)
 		go func(redeemCtx context.Context) {
@@ -93,7 +94,7 @@ var numOfWorkers = 0
 var iterInprogress = false
 
 func RedeemMarkers(ctx context.Context) {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(time.Duration(config.Configuration.RMRedeemFreq) * time.Second)
 	for true {
 		select {
 		case <-ctx.Done():

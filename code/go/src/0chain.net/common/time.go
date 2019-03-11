@@ -3,8 +3,6 @@ package common
 import (
 	"math/rand"
 	"time"
-
-	"0chain.net/config"
 )
 
 /*Timestamp - just a wrapper to control the json encoding */
@@ -22,15 +20,3 @@ func Within(ts int64, seconds int64) bool {
 }
 
 var randGenerator = rand.New(rand.NewSource(time.Now().UnixNano()))
-
-/*InduceDelay - induces some random delay - useful to test resilience */
-func InduceDelay() int {
-	if config.Development() && config.MaxDelay() > 0 {
-		r := randGenerator.Intn(config.MaxDelay())
-		if r < 500 {
-			time.Sleep(time.Duration(r) * time.Millisecond)
-			return r
-		}
-	}
-	return 0
-}

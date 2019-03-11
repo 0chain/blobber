@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"0chain.net/allocation"
+	"0chain.net/config"
 	"0chain.net/datastore"
 	"0chain.net/filestore"
 	"0chain.net/lock"
@@ -31,7 +32,7 @@ var allocationhandler = func(ctx context.Context, key datastore.Key, value []byt
 	if err != nil {
 		return err
 	}
-	if len(allocationObj.LatestWMEntity) > 0 && numOfWorkers < 1 {
+	if len(allocationObj.LatestWMEntity) > 0 && numOfWorkers < config.Configuration.WMRedeemNumWorkers {
 		numOfWorkers++
 		redeemWorker.Add(1)
 		go func(redeemCtx context.Context) {
@@ -104,7 +105,7 @@ var numOfWorkers = 0
 var iterInprogress = false
 
 func RedeemWriteMarkers(ctx context.Context) {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(time.Duration(config.Configuration.WMRedeemFreq) * time.Second)
 	for true {
 		select {
 		case <-ctx.Done():
