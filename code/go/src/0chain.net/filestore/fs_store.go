@@ -40,8 +40,18 @@ type StoreAllocation struct {
 }
 
 func SetupFSStore(rootDir string) FileStore {
-	util.CreateDirs(rootDir)
+	createDirs(rootDir)
 	return &FileFSStore{RootDirectory: rootDir}
+}
+
+func createDirs(dir string) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0700)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func getFilePathFromHash(hash string) (string, string) {
@@ -75,14 +85,14 @@ func (fs *FileFSStore) setupAllocation(allocationID string, skipCreate bool) (*S
 	}
 
 	//create the allocation object dirs
-	err := util.CreateDirs(allocation.ObjectsPath)
+	err := createDirs(allocation.ObjectsPath)
 	if err != nil {
 		Logger.Error("allocation_objects_dir_creation_error", zap.Any("allocation_objects_dir_creation_error", err))
 		return nil, err
 	}
 
 	//create the allocation tmp object dirs
-	err = util.CreateDirs(allocation.TempObjectsPath)
+	err = createDirs(allocation.TempObjectsPath)
 	if err != nil {
 		Logger.Error("allocation_temp_objects_dir_creation_error", zap.Any("allocation_temp_objects_dir_creation_error", err))
 		return nil, err
@@ -137,7 +147,7 @@ func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputDa
 
 	fileObjectPath := fs.generateTempPath(allocation, fileData, connectionID)
 
-	return util.DeleteFile(fileObjectPath)
+	return os.Remove(fileObjectPath)
 }
 
 func (fs *FileFSStore) generateTempPath(allocation *StoreAllocation, fileData *FileInputData, connectionID string) string {
@@ -173,7 +183,7 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 	//move file from tmp location to the objects folder
 	dirPath, destFile := getFilePathFromHash(fileData.Hash)
 	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
-	err = util.CreateDirs(fileObjectPath)
+	err = createDirs(fileObjectPath)
 	if err != nil {
 		return false, common.NewError("blob_object_dir_creation_error", err.Error())
 	}

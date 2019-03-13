@@ -19,7 +19,7 @@ const MAX_RETRIES = 5
 const SLEEP_BETWEEN_RETRIES = 5
 
 func NewHTTPRequest(method string, url string, data []byte) (*http.Request, context.Context, context.CancelFunc, error) {
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(data))
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Access-Control-Allow-Origin", "*")
 	req.Header.Set("X-App-Client-ID", node.Self.ID)

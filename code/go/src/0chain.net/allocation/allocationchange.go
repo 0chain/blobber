@@ -9,11 +9,13 @@ import (
 	"0chain.net/encryption"
 	"0chain.net/filestore"
 	"0chain.net/reference"
+	"0chain.net/stats"
 )
 
 const (
 	INSERT_OPERATION = "insert"
 	DELETE_OPERATION = "delete"
+	UPDATE_OPERATION = "update"
 )
 
 type AllocationChangeCollector struct {
@@ -41,6 +43,7 @@ type AllocationChange struct {
 	*UploadFormData
 	DeleteToken string `json:"delete_token"`
 	Size        int64  `json:"size"`
+	NewFileSize int64  `json:"new_size"`
 	NumBlocks   int64  `json:"num_of_blocks"`
 	Operation   string `json:"operation"`
 }
@@ -98,7 +101,7 @@ func (a *AllocationChangeCollector) AddChange(change *AllocationChange) {
 
 func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context, fileStore filestore.FileStore) error {
 	for _, change := range a.Changes {
-		if change.Operation == INSERT_OPERATION {
+		if change.Operation == INSERT_OPERATION || change.Operation == UPDATE_OPERATION {
 			fileInputData := &filestore.FileInputData{}
 			fileInputData.Name = change.Filename
 			fileInputData.Path = change.Path
@@ -121,7 +124,7 @@ func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context, fileStore
 
 func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context, fileStore filestore.FileStore) error {
 	for _, change := range a.Changes {
-		if fileStore != nil && change.Operation == INSERT_OPERATION {
+		if fileStore != nil && (change.Operation == INSERT_OPERATION || change.Operation == UPDATE_OPERATION) {
 			fileInputData := &filestore.FileInputData{}
 			fileInputData.Name = change.Filename
 			fileInputData.Path = change.Path
@@ -186,8 +189,7 @@ func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context, fileStore 
 				}
 			}
 
-		}
-		if change.Operation == INSERT_OPERATION {
+		} else if change.Operation == INSERT_OPERATION {
 			fileref := reference.FileRefProvider().(*reference.FileRef)
 			fileref.AllocationID = a.AllocationID
 			fileref.Name = change.Filename
@@ -232,6 +234,53 @@ func (a *AllocationChangeCollector) ApplyChanges(ctx context.Context, fileStore 
 				if err != nil {
 					return nil, common.NewError("content_ref_write_error", "Error updating the content ref count")
 				}
+				stats.FileUpdated(ctx, a.AllocationID, fileref.Path, writeMarkerKey)
+			}
+		} else if change.Operation == UPDATE_OPERATION {
+			fileref := reference.FileRefProvider().(*reference.FileRef)
+			fileref.AllocationID = a.AllocationID
+			fileref.Name = change.Filename
+			fileref.Path = change.Path
+			err := dbStore.Read(ctx, fileref.GetKey(), fileref)
+			if err != nil {
+				return nil, common.NewError("file_ref_lookup_error", "Error looking up for the file reference."+err.Error())
+			}
+			fileref.Size = change.Size + fileref.Size
+			origContentHash := fileref.ContentHash
+			fileref.ContentHash = change.Hash
+			fileref.CustomMeta = change.CustomMeta
+			fileref.ActualFileSize = change.ActualSize
+			fileref.ActualFileHash = change.ActualHash
+			fileref.MerkleRoot = change.MerkleRoot
+			fileref.WriteMarker = writeMarkerKey
+			fileref.CalculateHash(ctx, dbStore)
+
+			err = dbStore.Write(ctx, fileref)
+			if err != nil {
+				return nil, common.NewError("fileref_write_error", "Error writing the file meta info. "+err.Error())
+			}
+
+			parentRef := reference.RefProvider().(*reference.Ref)
+			err = dbStore.Read(ctx, fileref.ParentRef, parentRef)
+			if err != nil {
+				return nil, common.NewError("parent_ref_not_found", "Parent dir meta data not found. "+err.Error())
+			}
+			//fmt.Println(parentRef.GetKey() + ", " + parentRef.Path + ", " + strings.Join(parentRef.ChildRefs, ","))
+			err = reference.RecalculateHashBottomUp(ctx, parentRef, dbStore)
+			if err != nil {
+				return nil, common.NewError("allocation_hash_error", "Error calculating the allocation hash. "+err.Error())
+			}
+
+			if dbStore == a.GetEntityMetadata().GetStore() {
+				err = reference.UpdateContentRefForDelete(ctx, a.AllocationID, origContentHash)
+				if err != nil {
+					return nil, common.NewError("content_ref_write_error", "Error updating the content ref count for delete."+err.Error())
+				}
+				err = reference.UpdateContentRefForWrite(ctx, a.AllocationID, change.Hash)
+				if err != nil {
+					return nil, common.NewError("content_ref_write_error", "Error updating the content ref count for update."+err.Error())
+				}
+				stats.FileUpdated(ctx, a.AllocationID, fileref.Path, writeMarkerKey)
 			}
 		}
 	}

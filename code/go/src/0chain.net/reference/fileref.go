@@ -67,6 +67,10 @@ func (fr *FileRef) Delete(ctx context.Context) error {
 	return nil
 }
 
+func (fr *FileRef) GetKeyFromPathHash(path_hash string) datastore.Key {
+	return fr.GetEntityMetadata().GetDBName() + ":" + path_hash
+}
+
 func (fr *FileRef) GetHashData() string {
 	hashArray := make([]string, 0)
 	hashArray = append(hashArray, fr.AllocationID)
@@ -89,7 +93,7 @@ func (fr *FileRef) CalculateHash(ctx context.Context, dbStore datastore.Store) (
 	//fmt.Println("Fileref hash : " + fr.GetHashData())
 	fr.Hash = encryption.Hash(fr.GetHashData())
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / CHUNK_SIZE))
-	fr.PathHash = encryption.Hash(fr.Path)
+	fr.PathHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	return fr.Hash, nil
 }
 
@@ -107,4 +111,8 @@ func (fr *FileRef) GetNumBlocks(context.Context) int64 {
 
 func (fr *FileRef) GetPathHash() string {
 	return fr.PathHash
+}
+
+func (fr *FileRef) GetPath() string {
+	return fr.Path
 }

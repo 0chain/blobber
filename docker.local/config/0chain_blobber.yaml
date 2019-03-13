@@ -9,5 +9,18 @@ server_chain:
   owner: "65dfe7e15ca2f689edda6eff3d5c36e8c0975792fa443c5f5413fbca27c49567"
   genesis_block:
     id: "ed79cae70d439c11258236da1dfa6fc550f7cc569768304623e8fbd7d70efae4"
-  network:
-    relay_time: 100 # milliseconds
+contentref_cleaner:
+  frequency: 30
+  tolerance: 3600
+openconnection_cleaner:
+  frequency: 30
+  tolerance: 3600
+writemarker_redeem:
+  frequency: 30
+  num_workers : 1
+readmarker_redeem:
+  frequency: 30
+  num_workers : 1
+challenge_response:
+  frequency: 30
+  num_workers: 1 

@@ -25,6 +25,7 @@ type RefEntity interface {
 	GetListingData(context.Context) map[string]interface{}
 	GetType() string
 	GetPathHash() string
+	GetPath() string
 }
 
 type Ref struct {
@@ -157,6 +158,10 @@ func (r *Ref) GetNumBlocks(ctx context.Context) int64 {
 
 func (r *Ref) GetPathHash() string {
 	return r.PathHash
+}
+
+func (r *Ref) GetPath() string {
+	return r.Path
 }
 
 func GetListingFieldsMap(refEntity interface{}) map[string]interface{} {
@@ -365,7 +370,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64, dbS
 			if child.GetType() == FILE {
 				found = true
 				curRef = child
-				continue
+				break
 			}
 			curRef = child
 			curResult = list[idx]
@@ -381,6 +386,72 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64, dbS
 	retObj.Meta = curRef.GetListingData(ctx)
 	retObj.Path = result
 	retObj.FileBlockNum = remainingBlocks
+
+	return &retObj, nil
+}
+
+func GetObjectPathFromFilePath(ctx context.Context, allocationID string, filepath string, dbStore datastore.Store) (*ObjectPath, error) {
+
+	rootRef, err := GetRootReferenceFromStore(ctx, allocationID, dbStore)
+	//fmt.Println("Root ref found with hash : " + rootRef.Hash)
+	if err != nil {
+		return nil, common.NewError("invalid_dir_struct", "Allocation root corresponds to an invalid directory structure")
+	}
+
+	if len(filepath) == 0 {
+		return nil, common.NewError("invalid_block_num", "Invalid filepath")
+	}
+
+	fileref := FileRefProvider().(*FileRef)
+	fileref.AllocationID = allocationID
+	fileref.Path = filepath
+	err = fileref.Read(ctx, fileref.GetKey())
+	if err != nil {
+		return nil, common.NewError("invalid_block_num", "Invalid filepath. File not found")
+	}
+
+	curRef := RefProvider().(*Ref)
+	err = dbStore.Read(ctx, fileref.ParentRef, curRef)
+	if err != nil {
+		return nil, common.NewError("parent_read_error", "Error reading the ref of the parent")
+	}
+	//result := //curRef.GetListingData(ctx)
+	//curResult := result
+	prevPath := ""
+	var prevResult map[string]interface{}
+	for true {
+		newResult := curRef.GetListingData(ctx)
+		err := curRef.LoadChildren(ctx, dbStore)
+		if err != nil {
+			return nil, common.NewError("error_loading_children", "Error loading children from store for path "+curRef.Path)
+		}
+		list := make([]map[string]interface{}, len(curRef.Children))
+		for idx, child := range curRef.Children {
+			if len(prevPath) > 0 && prevResult != nil {
+				if child.GetPath() == prevPath {
+					list[idx] = prevResult
+					continue
+				}
+			}
+			list[idx] = child.GetListingData(ctx)
+		}
+		newResult["list"] = list
+		prevPath = curRef.GetPath()
+		prevResult = newResult
+		if curRef.GetPath() == rootRef.GetPath() {
+			break
+		}
+		err = dbStore.Read(ctx, curRef.ParentRef, curRef)
+		if err != nil {
+			return nil, common.NewError("parent_read_error", "Error reading the ref of the parent")
+		}
+	}
+
+	var retObj ObjectPath
+	retObj.RootHash = rootRef.Hash
+	retObj.Meta = fileref.GetListingData(ctx)
+	retObj.Path = prevResult
+	retObj.FileBlockNum = -1
 
 	return &retObj, nil
 }

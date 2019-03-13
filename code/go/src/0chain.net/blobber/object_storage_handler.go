@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"0chain.net/allocation"
-	"0chain.net/challenge"
 	"0chain.net/common"
 	"0chain.net/datastore"
 	"0chain.net/encryption"
@@ -20,6 +19,7 @@ import (
 	"0chain.net/node"
 	"0chain.net/readmarker"
 	"0chain.net/reference"
+	"0chain.net/stats"
 	"0chain.net/writemarker"
 	"go.uber.org/zap"
 )
@@ -64,33 +64,6 @@ func (fsh *ObjectStorageHandler) AcceptChallenge(ctx context.Context, r *http.Re
 		return nil, common.NewError("invalid_parameters", "No challenge txn passed")
 	}
 
-	challengeRequest, err := GetProtocolImpl("").VerifyChallengeRequest(ctx, challengeID)
-	if err != nil {
-		return nil, err
-	}
-
-	mutex := lock.GetMutex(challengeRequest.GetKey())
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	if challengeRequest.Blobber.ID != node.Self.ID {
-		return nil, common.NewError("invalid_parameters", "Challenge is not for this blobber")
-	}
-
-	writeMarkerEntity := writemarker.Provider().(*writemarker.WriteMarkerEntity)
-	writeMarkerEntity.WM = &writemarker.WriteMarker{AllocationID: challengeRequest.AllocationID, AllocationRoot: challengeRequest.AllocationRoot}
-
-	err = writeMarkerEntity.Read(ctx, writeMarkerEntity.GetKey())
-	if err != nil {
-		return nil, common.NewError("write_marker_not_found", "Could not file write marker for the allocation root. "+challengeRequest.AllocationRoot+"."+err.Error())
-	}
-	challengeRequest.WriteMarker = writeMarkerEntity.GetKey()
-	challengeRequest.ValidationTickets = make([]*challenge.ValidationTicket, len(challengeRequest.Validators))
-	err = challengeRequest.Write(ctx)
-	if err != nil {
-		return nil, common.NewError("write_error", "Error Writing into the store. "+err.Error())
-	}
-
 	retObj := make(map[string]string)
 	retObj["id"] = challengeID
 	retObj["status"] = "Accepted"
@@ -123,6 +96,7 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
 	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+	_ = ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -137,9 +111,13 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 		return nil, common.NewError("request_parse_error", err.Error())
 	}
 
+	path_hash := r.FormValue("path_hash")
 	path := r.FormValue("path")
-	if len(path) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
+	if len(path_hash) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		path_hash = reference.GetReferenceLookup(allocationID, path)
 	}
 
 	blockNumStr := r.FormValue("block_num")
@@ -176,18 +154,38 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 	rmEntity.LatestRM = readMarker
 
 	fileref := reference.FileRefProvider().(*reference.FileRef)
-	fileref.AllocationID = allocationID
-	fileref.Path = path
 
-	err = fileref.Read(ctx, fileref.GetKey())
+	err = fileref.Read(ctx, fileref.GetKeyFromPathHash(path_hash))
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
+
+	if clientID != allocationObj.OwnerID {
+		authTokenString := r.FormValue("auth_token")
+		if len(authTokenString) == 0 {
+			return nil, common.NewError("invalid_parameters", "Auth ticket required if data read by anyone other than owner.")
+		}
+		authToken := &readmarker.AuthTicket{}
+		err = json.Unmarshal([]byte(authTokenString), &authToken)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
+		}
+		err = authToken.Verify(allocationObj, fileref.Name, fileref.PathHash, clientID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	fileData := &filestore.FileInputData{}
 	fileData.Name = fileref.Name
 	fileData.Path = fileref.Path
 	fileData.Hash = fileref.ContentHash
 	respData, err := fileStore.GetFileBlock(allocationID, fileData, blockNum)
+	if err != nil {
+		return nil, err
+	}
+	stats.FileBlockDownloaded(ctx, fileref.AllocationID, fileref.Path)
+
 	rmEntity.Write(ctx)
 	response := &DownloadResponse{}
 	response.Data = respData
@@ -227,33 +225,111 @@ func (fsh *ObjectStorageHandler) GetConnectionDetails(ctx context.Context, r *ht
 	return connectionObj, nil
 }
 
-func (fsh *ObjectStorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "POST" {
+func (fsh *ObjectStorageHandler) GetFileStats(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method != "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
 	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
-	_, err := fsh.verifyAllocation(ctx, allocationID, true)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, true)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	_ = ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
+
+	path_hash := r.FormValue("path_hash")
 	path := r.FormValue("path")
-	if len(path) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
+	if len(path_hash) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		path_hash = reference.GetReferenceLookup(allocationID, path)
 	}
 
 	fileref := reference.FileRefProvider().(*reference.FileRef)
-	fileref.AllocationID = allocationID
-	fileref.Path = path
 
-	err = fileref.Read(ctx, fileref.GetKey())
+	err = fileref.Read(ctx, fileref.GetKeyFromPathHash(path_hash))
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid path / file. "+err.Error())
 	}
 
+	filestats, err := stats.GetFileStats(ctx, path_hash)
+
+	if err != nil {
+		return nil, common.NewError("no_data", "No Stats for the file")
+	}
+
+	wm := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+	wm.Read(ctx, filestats.WriteMarker)
+	if wm.Status == writemarker.Committed {
+		filestats.WriteMarkerRedeemTxn = wm.CloseTxnID
+	}
+
+	result := make(map[string]interface{})
+	result["meta"] = fileref.GetListingData(ctx)
+	result["stats"] = filestats
+
+	return result, nil
+}
+
+func (fsh *ObjectStorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method == "GET" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+	}
+	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, true)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	_ = ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)
+
+	path_hash := r.FormValue("path_hash")
+	path := r.FormValue("path")
+	if len(path_hash) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		path_hash = reference.GetReferenceLookup(allocationID, path)
+	}
+
+	fileref := reference.FileRefProvider().(*reference.FileRef)
+
+	err = fileref.Read(ctx, fileref.GetKeyFromPathHash(path_hash))
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid path / file. "+err.Error())
+	}
 	result := make(map[string]interface{})
 	result = fileref.GetListingData(ctx)
+
+	if clientID != allocationObj.OwnerID {
+		authTokenString := r.FormValue("auth_token")
+		if len(authTokenString) == 0 {
+			return nil, common.NewError("invalid_parameters", "Auth ticket required if data read by anyone other than owner.")
+		}
+		authToken := &readmarker.AuthTicket{}
+		err = json.Unmarshal([]byte(authTokenString), &authToken)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
+		}
+		err = authToken.Verify(allocationObj, fileref.Name, fileref.PathHash, clientID)
+		if err != nil {
+			return nil, err
+		}
+		delete(result, "path")
+	}
 	return result, nil
 }
 
@@ -266,6 +342,11 @@ func (fsh *ObjectStorageHandler) GetObjectPathFromBlockNum(ctx context.Context, 
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	blockNumStr := r.FormValue("block_num")
@@ -314,11 +395,16 @@ func (fsh *ObjectStorageHandler) ListEntities(ctx context.Context, r *http.Reque
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
 	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	path := r.FormValue("path")
@@ -637,16 +723,28 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
 	result := &UploadResult{}
-	if r.Method == "DELETE" {
+	mode := allocation.INSERT_OPERATION
+	if r.Method == "PUT" {
+		mode = allocation.UPDATE_OPERATION
+	} else if r.Method == "DELETE" {
+		mode = allocation.DELETE_OPERATION
+	}
+	if mode == allocation.DELETE_OPERATION {
 		result, err = fsh.DeleteFile(ctx, r, &formData, connectionObj)
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	if r.Method == "POST" {
-		if fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path) != nil {
+	} else if mode == allocation.INSERT_OPERATION || mode == allocation.UPDATE_OPERATION {
+		exisitingFileRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
+		existingFileRefSize := int64(0)
+		if mode == allocation.INSERT_OPERATION && exisitingFileRef != nil {
 			return nil, common.NewError("duplicate_file", "File at path already exists")
+		} else if mode == allocation.UPDATE_OPERATION && exisitingFileRef == nil {
+			return nil, common.NewError("invalid_file_update", "File at path does not exist for update")
+		}
+
+		if exisitingFileRef != nil {
+			existingFileRefSize = exisitingFileRef.Size
 		}
 
 		if fsh.checkIfFilePartOfExisitingOpenConnection(ctx, allocationID, formData.Path) {
@@ -672,7 +770,7 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 					return nil, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
 				}
 
-				if allocationObj.BlobberSizeUsed+fileOutputData.Size > allocationObj.BlobberSize {
+				if allocationObj.BlobberSizeUsed+(fileOutputData.Size-existingFileRefSize) > allocationObj.BlobberSize {
 					return nil, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 				}
 
@@ -680,12 +778,13 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 				formData.MerkleRoot = fileOutputData.MerkleRoot
 
 				allocationChange := &allocation.AllocationChange{}
-				allocationChange.Size = fileOutputData.Size
+				allocationChange.Size = fileOutputData.Size - existingFileRefSize
+				allocationChange.NewFileSize = fileOutputData.Size
 				allocationChange.UploadFormData = &formData
-				allocationChange.Operation = allocation.INSERT_OPERATION
+				allocationChange.Operation = mode
 				allocationChange.NumBlocks = int64(math.Ceil(float64(allocationChange.Size*1.0) / reference.CHUNK_SIZE))
 
-				connectionObj.Size += fileOutputData.Size
+				connectionObj.Size += allocationChange.Size
 				connectionObj.AddChange(allocationChange)
 			}
 

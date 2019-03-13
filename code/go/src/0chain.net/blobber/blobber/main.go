@@ -25,6 +25,7 @@ import (
 	. "0chain.net/logging"
 	"0chain.net/node"
 	"0chain.net/reference"
+	"0chain.net/stats"
 	"0chain.net/transaction"
 	"0chain.net/util"
 	"0chain.net/writemarker"
@@ -49,6 +50,23 @@ func initHandlers(r *mux.Router) {
 	blobber.SetupHandlers(r)
 }
 
+func SetupWorkerConfig() {
+	config.Configuration.ContentRefWorkerFreq = viper.GetInt64("contentref_cleaner.frequency")
+	config.Configuration.ContentRefWorkerTolerance = viper.GetInt64("contentref_cleaner.tolerance")
+
+	config.Configuration.OpenConnectionWorkerFreq = viper.GetInt64("openconnection_cleaner.frequency")
+	config.Configuration.OpenConnectionWorkerTolerance = viper.GetInt64("openconnection_cleaner.tolerance")
+
+	config.Configuration.WMRedeemFreq = viper.GetInt64("writemarker_redeem.frequency")
+	config.Configuration.WMRedeemNumWorkers = viper.GetInt("writemarker_redeem.num_workers")
+
+	config.Configuration.RMRedeemFreq = viper.GetInt64("readmarker_redeem.frequency")
+	config.Configuration.RMRedeemNumWorkers = viper.GetInt("readmarker_redeem.num_workers")
+
+	config.Configuration.ChallengeResolveFreq = viper.GetInt64("challenge_response.frequency")
+	config.Configuration.ChallengeResolveNumWorkers = viper.GetInt("challenge_response.num_workers")
+}
+
 func initEntities() {
 	badgerdbstore.SetupStorageProvider(*badgerDir)
 	fsStore := filestore.SetupFSStore(*filesDir + "/files")
@@ -63,9 +81,12 @@ func initEntities() {
 	writemarker.SetupEntity(badgerdbstore.GetStorageProvider())
 	readmarker.SetupEntity(badgerdbstore.GetStorageProvider())
 	challenge.SetupEntity(badgerdbstore.GetStorageProvider())
+	stats.SetupFileStatsEntity(badgerdbstore.GetStorageProvider())
 
 	blobber.SetupWorkers(common.GetRootContext())
 	challenge.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
+	readmarker.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
+	writemarker.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
 }
 
 func initServer() {
@@ -89,27 +110,20 @@ func processBlockChainConfig(nodesFileName string) {
 	if sharders, ok := config.([]interface{}); ok {
 		serverChain.Sharders.AddNodes(sharders)
 	}
-	config = nodeConfig.Get("blobbers")
-	//There shoud be none. Remove it.
-	if blobbers, ok := config.([]interface{}); ok {
-
-		serverChain.Blobbers.AddNodes(blobbers)
-	}
 }
 
 func main() {
 	deploymentMode := flag.Int("deployment_mode", 2, "deployment_mode")
 	nodesFile := flag.String("nodes_file", "", "nodes_file")
 	keysFile := flag.String("keys_file", "", "keys_file")
-	maxDelay := flag.Int("max_delay", 0, "max_delay")
 	filesDir = flag.String("files_dir", "", "files_dir")
 	badgerDir = flag.String("badger_dir", "", "badger_dir")
 
 	flag.Parse()
 
 	config.Configuration.DeploymentMode = byte(*deploymentMode)
-	viper.SetDefault("logging.level", "info")
 
+	config.SetupDefaultConfig()
 	config.SetupConfig()
 
 	if config.Development() {
@@ -118,7 +132,7 @@ func main() {
 		logging.InitLogging("production")
 	}
 	config.Configuration.ChainID = viper.GetString("server_chain.id")
-	config.Configuration.MaxDelay = *maxDelay
+	SetupWorkerConfig()
 
 	if *filesDir == "" {
 		panic("Please specify --files_dir absolute folder name option where uploaded files can be stored")

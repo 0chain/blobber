@@ -7,8 +7,6 @@ import (
 	"0chain.net/common"
 	"0chain.net/encryption"
 	"0chain.net/node"
-	"0chain.net/readmarker"
-	"0chain.net/writemarker"
 )
 
 //Transaction entity that encapsulates the transaction related data and meta data
@@ -39,19 +37,14 @@ type StorageNode struct {
 	PublicKey string `json:"-"`
 }
 
-type CommitConnection struct {
-	AllocationRoot     string                   `json:"allocation_root"`
-	PrevAllocationRoot string                   `json:"prev_allocation_root"`
-	WriteMarker        *writemarker.WriteMarker `json:"write_marker"`
-}
-
 type StorageAllocation struct {
-	OwnerID    string           `json:"owner_id"`
-	ID         string           `json:"allocation_id"`
-	Size       int64            `json:"size"`
-	UsedSize   int64            `json:"used_size"`
-	Expiration common.Timestamp `json:"expiration_date"`
-	Blobbers   []*StorageNode   `json:"blobbers"`
+	OwnerPublicKey string           `json:"owner_public_key"`
+	OwnerID        string           `json:"owner_id"`
+	ID             string           `json:"allocation_id"`
+	Size           int64            `json:"size"`
+	UsedSize       int64            `json:"used_size"`
+	Expiration     common.Timestamp `json:"expiration_date"`
+	Blobbers       []*StorageNode   `json:"blobbers"`
 }
 
 type StorageAllocationBlobber struct {
@@ -59,10 +52,6 @@ type StorageAllocationBlobber struct {
 	Size           int64  `json:"size"`
 	UsedSize       int64  `json:"used_size"`
 	AllocationRoot string `json:"allocation_root"`
-}
-
-type ReadRedeem struct {
-	ReadMarker *readmarker.ReadMarker `json:"read_marker"`
 }
 
 const ADD_BLOBBER_SC_NAME = "add_blobber"

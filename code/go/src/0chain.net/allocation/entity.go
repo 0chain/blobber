@@ -13,6 +13,7 @@ type Allocation struct {
 	TotalSize       int64            `json:"size"`
 	UsedSize        int64            `json:"used_size"`
 	OwnerID         string           `json:"owner_id"`
+	OwnerPublicKey  string           `json:"owner_public_key"`
 	Expiration      common.Timestamp `json:"expiration_date"`
 	AllocationRoot  string           `json:"allocation_root"`
 	BlobberSize     int64            `json:"blobber_size"`

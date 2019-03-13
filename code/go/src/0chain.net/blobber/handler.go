@@ -2,12 +2,14 @@ package blobber
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"runtime/pprof"
 
 	"net/http"
 
 	"0chain.net/common"
+	"0chain.net/datastore"
 	"github.com/gorilla/mux"
 )
 
@@ -22,6 +24,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONResponse(WithConnection(UploadHandler)))
 	r.HandleFunc("/v1/file/download/{allocation}", common.ToJSONResponse(WithConnection(DownloadHandler)))
 	r.HandleFunc("/v1/file/meta/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler)))
+	r.HandleFunc("/v1/file/stats/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)))
 	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithConnection(ListHandler)))
 	r.HandleFunc("/v1/file/objectpath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler)))
 
@@ -92,14 +95,59 @@ func LatestRMHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 
 func MetaStoreHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	operation := r.FormValue("operation")
+
 	if len(operation) == 0 || operation == "get" {
-		dataBytes, err := GetMetaDataStore().ReadBytes(ctx, r.FormValue("key"))
+		key := r.FormValue("key")
+		if len(key) > 0 {
+			dataBytes, err := GetMetaDataStore().ReadBytes(ctx, key)
+			if err != nil {
+				return nil, err
+			}
+			return string(dataBytes), err
+		}
+		prefix := r.FormValue("prefix")
+		if len(prefix) > 0 {
+			retObj := make(map[string]interface{})
+			iterHandler := func(ctx context.Context, key datastore.Key, value []byte) error {
+				jsonObj := make(map[string]interface{})
+				err := json.Unmarshal(value, &jsonObj)
+				if err != nil {
+					return err
+				}
+				retObj[key] = jsonObj
+				return nil
+			}
+			err := GetMetaDataStore().IteratePrefix(ctx, prefix, iterHandler)
+			if err != nil {
+				return nil, err
+			}
+			return retObj, nil
+		}
+
+	}
+	if operation == "delete" {
+		key := r.FormValue("key")
+		err := GetMetaDataStore().DeleteKey(ctx, key)
 		if err != nil {
 			return nil, err
 		}
-		return string(dataBytes), err
+		return "Key deleted", err
 	}
 	return nil, common.NewError("invalid_parameters", "Invalid Parameters")
+}
+
+func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
+	ctx = context.WithValue(ctx, CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
+
+	response, err := storageHandler.GetFileStats(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
 }
 
 func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -149,6 +197,8 @@ func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 /*ListHandler is the handler to respond to upload requests fro clients*/
 func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
 	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
 
 	response, err := storageHandler.ListEntities(ctx, r)
@@ -161,6 +211,8 @@ func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
 	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
 
 	response, err := storageHandler.GetObjectPathFromBlockNum(ctx, r)

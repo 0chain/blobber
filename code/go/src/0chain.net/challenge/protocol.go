@@ -11,10 +11,13 @@ import (
 	"0chain.net/allocation"
 	"0chain.net/chain"
 	"0chain.net/common"
+	"0chain.net/datastore"
 	"0chain.net/filestore"
 	"0chain.net/hashmapstore"
+	"0chain.net/lock"
 	. "0chain.net/logging"
 	"0chain.net/reference"
+	"0chain.net/stats"
 	"0chain.net/transaction"
 	"0chain.net/util"
 	"0chain.net/writemarker"
@@ -56,6 +59,7 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 	Logger.Info("Submitting challenge response to blockchain.", zap.String("txn", txn.Hash))
 	transaction.SendTransaction(txn, chain.GetServerChain())
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+
 	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
 	if err != nil {
 		Logger.Error("Error verifying the challenge response transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
@@ -91,6 +95,7 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 			Logger.Error("Error verifying the txn from BC." + cr.CommitTxnID)
 		}
 	}
+
 	wm := writemarker.Provider().(*writemarker.WriteMarkerEntity)
 	wm.WM = &writemarker.WriteMarker{}
 	wm.WM.AllocationRoot = cr.AllocationRoot
@@ -100,6 +105,9 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 	if err != nil {
 		return common.NewError("invalid_write_marker", "Write marker not found for the allocation root")
 	}
+	wmMutex := lock.GetMutex(wm.GetKey())
+	wmMutex.Lock()
+	defer wmMutex.Unlock()
 	if wm.DirStructure == nil {
 		wm.WriteAllocationDirStructure(ctx)
 	}
@@ -113,9 +121,16 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		cr.ErrorChallenge(ctx, err)
 		return err
 	}
-	//Logger.Info("Block number to be challenged", zap.Any("block", blockNum))
+
 	objectPath, err := reference.GetObjectPath(ctx, cr.AllocationID, blockNum, dbStore)
 	if err != nil {
+		cr.ErrorChallenge(ctx, err)
+		return err
+	}
+
+	if objectPath.Meta["type"] != reference.FILE {
+		Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta), zap.Any("obejct_path", objectPath))
+		err = common.NewError("invalid_object_path", "Object path was not for a file")
 		cr.ErrorChallenge(ctx, err)
 		return err
 	}
@@ -126,7 +141,6 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 	postData["write_marker"] = wm.WM
 	postData["client_key"] = wm.ClientPublicKey
 
-	//Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta))
 	inputData := &filestore.FileInputData{}
 	inputData.Name = objectPath.Meta["name"].(string)
 	inputData.Path = objectPath.Meta["path"].(string)
@@ -134,14 +148,43 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 	blockData, err := fileStore.GetFileBlock(cr.AllocationID, inputData, objectPath.FileBlockNum)
 
 	if err != nil {
-		dt := allocation.DeleteTokenProvider().(*allocation.DeleteToken)
-		dt.FileRefHash = objectPath.Meta["hash"].(string)
-		err = dt.Read(ctx, dt.GetKey())
-		if err != nil {
-			cr.ErrorChallenge(ctx, err)
-			return err
+		fileref := reference.FileRefProvider().(*reference.FileRef)
+		err = fileref.Read(ctx, fileref.GetKeyFromPathHash(objectPath.Meta["path_hash"].(string)))
+		if err != nil && err == datastore.ErrKeyNotFound {
+			dt := allocation.DeleteTokenProvider().(*allocation.DeleteToken)
+			dt.FileRefHash = objectPath.Meta["hash"].(string)
+			err = dt.Read(ctx, dt.GetKey())
+			if err != nil {
+				cr.ErrorChallenge(ctx, err)
+				return err
+			}
+			postData["delete_token"] = dt
+		} else if err == nil {
+			if fileref.Hash != objectPath.Meta["hash"].(string) {
+				updatedObjectPath, err := reference.GetObjectPathFromFilePath(ctx, cr.AllocationID, objectPath.Meta["path"].(string), challengeEntityMetaData.GetStore())
+				if err != nil {
+					cr.ErrorChallenge(ctx, err)
+					return err
+				}
+
+				allocationObj := allocation.Provider().(*allocation.Allocation)
+				allocationObj.ID = cr.AllocationID
+				err = allocationObj.Read(ctx, allocationObj.GetKey())
+				if err != nil {
+					cr.ErrorChallenge(ctx, err)
+					return err
+				}
+				latestWM := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+				err = latestWM.Read(ctx, allocationObj.LatestWMEntity)
+				if err != nil {
+					cr.ErrorChallenge(ctx, err)
+					return err
+				}
+
+				postData["updated_object_path"] = updatedObjectPath
+				postData["updated_write_marker"] = latestWM.WM
+			}
 		}
-		postData["delete_token"] = dt
 
 	} else {
 		mt, err := fileStore.GetMerkleTreeForFile(cr.AllocationID, inputData)
@@ -160,6 +203,9 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		return err
 	}
 	responses := make(map[string]ValidationTicket)
+	if cr.ValidationTickets == nil {
+		cr.ValidationTickets = make([]*ValidationTicket, len(cr.Validators))
+	}
 	for i, validator := range cr.Validators {
 		if cr.ValidationTickets[i] != nil {
 			exisitingVT := cr.ValidationTickets[i]
@@ -218,7 +264,11 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 			cr.Status = Committed
 			cr.StatusMessage = t.TransactionOutput
 			cr.CommitTxnID = t.Hash
+			stats.FileChallenged(ctx, cr.AllocationID, objectPath.Meta["path"].(string), t.Hash)
 		}
+	} else {
+		cr.ErrorChallenge(ctx, common.NewError("no_consensus_challenge", "No Consensus on the challenge result. Erroring out the challenge"))
+		return common.NewError("no_consensus_challenge", "No Consensus on the challenge result. Erroring out the challenge")
 	}
 
 	cr.Write(ctx)

@@ -1,22 +1,27 @@
 package transaction
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"sync"
 
 	"0chain.net/chain"
 	"0chain.net/common"
-	"0chain.net/util"
 	. "0chain.net/logging"
+	"0chain.net/util"
 
 	"go.uber.org/zap"
 )
 
 const TXN_SUBMIT_URL = "v1/transaction/put"
 const TXN_VERIFY_URL = "v1/transaction/get/confirmation?hash="
+const SC_REST_API_URL = "v1/screst/"
 const REGISTER_CLIENT = "v1/client/put"
 
 const SLEEP_FOR_TXN_CONFIRMATION = 5
@@ -64,7 +69,6 @@ func SendPostRequestAsync(relativeURL string, data []byte, chain *chain.Chain) {
 		go util.SendPostRequest(url, data, nil)
 	}
 }
-
 
 func sendTransactionToURL(url string, txn *Transaction, wg *sync.WaitGroup) ([]byte, error) {
 	if wg != nil {
@@ -132,3 +136,49 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 	return nil, common.NewError("transaction_not_found", "Transaction was not found on any of the sharders")
 }
 
+func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]string, chain *chain.Chain, entity interface{}) (interface{}, error) {
+	numSharders := chain.Sharders.Size()
+	sharders := chain.Sharders.GetRandomNodes(numSharders)
+	responses := make(map[string]int)
+	var retObj interface{}
+	maxCount := 0
+	for _, sharder := range sharders {
+		urlString := fmt.Sprintf("%v/%v%v%v", sharder.GetURLBase(), SC_REST_API_URL, scAddress, relativePath)
+		urlObj, _ := url.Parse(urlString)
+		q := urlObj.Query()
+		for k, v := range params {
+			q.Add(k, v)
+		}
+		urlObj.RawQuery = q.Encode()
+		h := sha1.New()
+		response, err := http.Get(urlObj.String())
+		if err != nil {
+			Logger.Error("Error getting response for sc rest api", zap.Any("error", err))
+			numSharders--
+		} else {
+			if response.StatusCode != 200 {
+				continue
+			}
+			defer response.Body.Close()
+			tReader := io.TeeReader(response.Body, h)
+			d := json.NewDecoder(tReader)
+			d.UseNumber()
+			err := d.Decode(entity)
+			if err != nil {
+				Logger.Error("Error unmarshalling response", zap.Any("error", err))
+				continue
+			}
+			hashBytes := h.Sum(nil)
+			hash := hex.EncodeToString(hashBytes)
+			responses[hash]++
+			if responses[hash] > maxCount {
+				maxCount = responses[hash]
+				retObj = entity
+			}
+		}
+	}
+	if maxCount > (numSharders / 2) {
+		return retObj, nil
+	}
+	return nil, common.NewError("invalid_response", "Sharder responses were invalid. Hash mismatch")
+}

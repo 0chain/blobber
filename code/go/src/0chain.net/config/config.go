@@ -6,6 +6,22 @@ import (
 	"github.com/spf13/viper"
 )
 
+//SetupDefaultConfig - setup the default config options that can be overridden via the config file
+func SetupDefaultConfig() {
+	viper.SetDefault("logging.level", "info")
+	viper.SetDefault("contentref_cleaner.frequency", 30)
+	viper.SetDefault("contentref_cleaner.tolerance", 3600)
+
+	viper.SetDefault("openconnection_cleaner.tolerance", 3600)
+	viper.SetDefault("openconnection_cleaner.frequency", 30)
+	viper.SetDefault("writemarker_redeem.frequency", 30)
+	viper.SetDefault("writemarker_redeem.num_workers", 1)
+	viper.SetDefault("readmarker_redeem.frequency", 30)
+	viper.SetDefault("readmarker_redeem.num_workers", 1)
+	viper.SetDefault("challenge_response.frequency", 30)
+	viper.SetDefault("challenge_response.num_workers", 1)
+}
+
 /*SetupConfig - setup the configuration system */
 func SetupConfig() {
 	viper.SetConfigName("0chain_blobber")
@@ -24,11 +40,20 @@ const (
 
 /*Config - all the config options passed from the command line*/
 type Config struct {
-	Host           string
-	Port           int
-	ChainID        string
-	DeploymentMode byte
-	MaxDelay       int
+	Host                          string
+	Port                          int
+	ChainID                       string
+	DeploymentMode                byte
+	ContentRefWorkerFreq          int64
+	ContentRefWorkerTolerance     int64
+	OpenConnectionWorkerFreq      int64
+	OpenConnectionWorkerTolerance int64
+	WMRedeemFreq                  int64
+	WMRedeemNumWorkers            int
+	RMRedeemFreq                  int64
+	RMRedeemNumWorkers            int
+	ChallengeResolveFreq          int64
+	ChallengeResolveNumWorkers    int
 }
 
 /*Configuration of the system */
@@ -83,9 +108,4 @@ func ValidChain(chain string) error {
 		return nil
 	}
 	return ErrSupportedChain
-}
-
-/*MaxDelay - indicates the amount of artificial delay to induce for testing resilience */
-func MaxDelay() int {
-	return Configuration.MaxDelay
 }
