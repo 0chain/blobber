@@ -747,9 +747,9 @@ func (fsh *ObjectStorageHandler) WriteFile(ctx context.Context, r *http.Request)
 			existingFileRefSize = exisitingFileRef.Size
 		}
 
-		if fsh.checkIfFilePartOfExisitingOpenConnection(ctx, allocationID, formData.Path) {
-			return nil, common.NewError("duplicate_file", "File at path already uploaded as part of another open connection")
-		}
+		// if fsh.checkIfFilePartOfExisitingOpenConnection(ctx, allocationID, formData.Path) {
+		// 	return nil, common.NewError("duplicate_file", "File at path already uploaded as part of another open connection")
+		// }
 
 		for _, fheaders := range r.MultipartForm.File {
 			for _, hdr := range fheaders {
