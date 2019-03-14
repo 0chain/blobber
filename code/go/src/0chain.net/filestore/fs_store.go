@@ -188,16 +188,16 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 		return false, common.NewError("blob_object_dir_creation_error", err.Error())
 	}
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
-	if _, err := os.Stat(fileObjectPath); os.IsNotExist(err) {
-		err = fs.fileCopy(tempFilePath, fileObjectPath)
+	//if _, err := os.Stat(fileObjectPath); os.IsNotExist(err) {
+	err = os.Rename(tempFilePath, fileObjectPath)
 
-		if err != nil {
-			return false, common.NewError("blob_object_creation_error", err.Error())
-		}
-		return true, nil
+	if err != nil {
+		return false, common.NewError("blob_object_creation_error", err.Error())
 	}
+	return true, nil
+	//}
 
-	return false, err
+	//return false, err
 }
 
 func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error {

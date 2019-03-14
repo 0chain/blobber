@@ -41,7 +41,15 @@ var allocationhandler = func(ctx context.Context, key datastore.Key, value []byt
 			if err != nil {
 				Logger.Error("Error redeeming the write marker.", zap.Error(err))
 			}
-			dbstore.Commit(redeemCtx)
+			err = dbstore.Commit(redeemCtx)
+			if err != nil {
+				Logger.Error("Error commiting the writemarker redeem", zap.Error(err))
+				time.Sleep(100 * time.Millisecond)
+				err = dbstore.Commit(redeemCtx)
+				if err != nil {
+					Logger.Error("Database commit for wm errors out even after retry", zap.Error(err))
+				}
+			}
 			redeemWorker.Done()
 		}(context.WithValue(ctx, "write_marker_redeem", "true"))
 
