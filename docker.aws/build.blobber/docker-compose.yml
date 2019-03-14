@@ -19,12 +19,12 @@ services:
     - "5051:5051"
 
     volumes:
-    - /0chain/config:/0chain/config
-    - /0chain/logs:/0chain/logs
-    - /0chain/data:/0chain/data
-    - /0chain/data/badgerdb:/0chain/data/badgerdb
-    - /0chain/data/badgerdb/blobberstate:/0chain/data/badgerdb/blobberstate
-    - /0chain/files:/0chain/files
+    - /0chain/blobber/config:/0chain/config
+    - /0chain/blobber/log:/0chain/log
+    - /0chain/blobber/data:/0chain/data
+    - /0chain/blobber/data/badgerdb:/0chain/data/badgerdb
+    - /0chain/blobber/data/badgerdb/blobberstate:/0chain/data/badgerdb/blobberstate
+    - /0chain/blobber/files:/0chain/files
 
     logging:
       driver: json-file
