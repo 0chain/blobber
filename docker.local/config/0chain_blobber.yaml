@@ -16,11 +16,11 @@ openconnection_cleaner:
   frequency: 30
   tolerance: 3600
 writemarker_redeem:
-  frequency: 30
-  num_workers : 1
+  frequency: 10
+  num_workers : 4
 readmarker_redeem:
-  frequency: 30
-  num_workers : 1
+  frequency: 10
+  num_workers : 4
 challenge_response:
   frequency: 30
-  num_workers: 1 
+  num_workers: 4 
