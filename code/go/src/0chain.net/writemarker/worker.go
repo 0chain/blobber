@@ -111,6 +111,7 @@ func RedeemWriteMarkers(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			Logger.Info("Trying to redeem writemarkers.", zap.Any("iterInprogress", iterInprogress), zap.Any("numOfWorkers", numOfWorkers))
 			if !iterInprogress && numOfWorkers == 0 {
 				iterInprogress = true
 				dbstore.IteratePrefix(ctx, "allocation:", allocationhandler)
