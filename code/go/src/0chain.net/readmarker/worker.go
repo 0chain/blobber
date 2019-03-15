@@ -85,11 +85,6 @@ var rmHandler = func(ctx context.Context, key datastore.Key, value []byte) error
 			err = dbstore.Commit(redeemCtx)
 			if err != nil {
 				Logger.Error("Error commiting the readmarker redeem", zap.Error(err))
-				time.Sleep(100 * time.Millisecond)
-				err = dbstore.Commit(redeemCtx)
-				if err != nil {
-					Logger.Error("Database commit for readmarker errors out even after retry", zap.Error(err))
-				}
 			}
 			redeemWorker.Done()
 		}(context.WithValue(ctx, "read_marker_redeem", "true"))

@@ -57,11 +57,6 @@ var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte
 			err = dataStore.Commit(newctx)
 			if err != nil {
 				Logger.Error("Error in challenge commit to DB", zap.Error(err))
-				time.Sleep(100 * time.Millisecond)
-				err = dataStore.Commit(newctx)
-				if err != nil {
-					Logger.Error("Database commit errors out even after retry")
-				}
 			}
 			challengeWorker.Done()
 			mutex.Unlock()
