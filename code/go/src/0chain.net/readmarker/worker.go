@@ -78,6 +78,7 @@ var rmHandler = func(ctx context.Context, key datastore.Key, value []byte) error
 		redeemWorker.Add(1)
 		go func(redeemCtx context.Context) {
 			redeemCtx = dbstore.WithConnection(redeemCtx)
+			defer redeemCtx.Done()
 			err := RedeemReadMarker(redeemCtx, rmEntity)
 			if err != nil {
 				Logger.Error("Error redeeming the read marker.", zap.Error(err))
@@ -87,7 +88,7 @@ var rmHandler = func(ctx context.Context, key datastore.Key, value []byte) error
 				Logger.Error("Error commiting the readmarker redeem", zap.Error(err))
 			}
 			redeemWorker.Done()
-		}(context.WithValue(ctx, "read_marker_redeem", "true"))
+		}(context.Background())
 	}
 	return nil
 }
@@ -105,10 +106,13 @@ func RedeemMarkers(ctx context.Context) {
 		case <-ticker.C:
 			if !iterInprogress && numOfWorkers == 0 {
 				iterInprogress = true
-				dbstore.IteratePrefix(ctx, "rm:", rmHandler)
+				rctx := dbstore.WithReadOnlyConnection(ctx)
+				dbstore.IteratePrefix(rctx, "rm:", rmHandler)
 				redeemWorker.Wait()
 				iterInprogress = false
 				numOfWorkers = 0
+				dbstore.Discard(rctx)
+				rctx.Done()
 			}
 		}
 	}
