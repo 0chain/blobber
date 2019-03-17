@@ -1,6 +1,7 @@
 package challenge
 
 import (
+	"container/list"
 	"context"
 	"encoding/json"
 	"sync"
@@ -12,10 +13,10 @@ import (
 	"0chain.net/filestore"
 	"0chain.net/lock"
 	. "0chain.net/logging"
-
 	"0chain.net/node"
 	"0chain.net/transaction"
 	"0chain.net/writemarker"
+
 	"go.uber.org/zap"
 )
 
@@ -33,38 +34,44 @@ func SetupWorkers(ctx context.Context, metaStore datastore.Store, fsStore filest
 	go FindChallenges(ctx)
 }
 
+func RespondToChallenge(challengeID string) {
+	ctx := context.Background()
+	newctx := dataStore.WithConnection(ctx)
+	challengeObj := Provider().(*ChallengeEntity)
+	challengeObj.ID = challengeID
+	err := challengeObj.Read(newctx, challengeObj.GetKey())
+	if err != nil {
+		Logger.Error("Error reading challenge from the database.", zap.Error(err), zap.String("challenge_id", challengeID))
+	}
+
+	mutex := lock.GetMutex(challengeObj.GetKey())
+	mutex.Lock()
+	if challengeObj.Status == Error {
+		challengeObj.Retries++
+	}
+	err = challengeObj.SendDataBlockToValidators(newctx, fileStore)
+	if err != nil {
+		Logger.Error("Error in responding to challenge. ", zap.Any("error", err.Error()))
+	}
+	err = dataStore.Commit(newctx)
+	if err != nil {
+		Logger.Error("Error in challenge commit to DB", zap.Error(err), zap.String("challenge_id", challengeID))
+	}
+	newctx.Done()
+	challengeWorker.Done()
+	mutex.Unlock()
+	Logger.Info("Challenge has been processed", zap.Any("id", challengeObj.ID), zap.String("txn", challengeObj.CommitTxnID))
+}
+
 var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte) error {
 	challengeObj := Provider().(*ChallengeEntity)
 	err := json.Unmarshal(value, challengeObj)
 	if err != nil {
 		return err
 	}
-	mutex := lock.GetMutex(challengeObj.GetKey())
-	mutex.Lock()
-	if challengeObj.Status != Committed && challengeObj.Status != Failed && numOfWorkers < config.Configuration.ChallengeResolveNumWorkers && challengeObj.Retries < 10 {
-		numOfWorkers++
-		Logger.Info("Starting challenge with ID: " + challengeObj.ID)
-		if challengeObj.Status == Error {
-			challengeObj.Retries++
-		}
-		challengeWorker.Add(1)
-		go func(nctx context.Context) {
-			newctx := dataStore.WithConnection(nctx)
-			defer newctx.Done()
-			err := challengeObj.SendDataBlockToValidators(newctx, fileStore)
-			if err != nil {
-				Logger.Error("Error in responding to challenge. ", zap.Any("error", err.Error()))
-			}
-			err = dataStore.Commit(newctx)
-			if err != nil {
-				Logger.Error("Error in challenge commit to DB", zap.Error(err))
-			}
-			challengeWorker.Done()
-			mutex.Unlock()
-			Logger.Info("Challenge has been processed", zap.Any("id", challengeObj.ID), zap.String("txn", challengeObj.CommitTxnID))
-		}(context.Background())
-	} else {
-		mutex.Unlock()
+
+	if challengeObj.Status != Committed && challengeObj.Status != Failed {
+		unredeemedMarkers.PushBack(challengeObj.ID)
 	}
 	return nil
 }
@@ -72,6 +79,7 @@ var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte
 var challengeWorker sync.WaitGroup
 var numOfWorkers = 0
 var iterInprogress = false
+var unredeemedMarkers *list.List
 
 func FindChallenges(ctx context.Context) {
 	ticker := time.NewTicker(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
@@ -82,14 +90,24 @@ func FindChallenges(ctx context.Context) {
 		case <-ticker.C:
 
 			if !iterInprogress && numOfWorkers == 0 {
+				unredeemedMarkers = list.New()
 				iterInprogress = true
 				rctx := dataStore.WithReadOnlyConnection(ctx)
 				dataStore.IteratePrefix(rctx, "challenge:", challengeHandler)
+				dataStore.Discard(rctx)
+				rctx.Done()
+				for e := unredeemedMarkers.Front(); e != nil; e = e.Next() {
+					if numOfWorkers < config.Configuration.ChallengeResolveNumWorkers {
+						numOfWorkers++
+						challengeWorker.Add(1)
+						Logger.Info("Starting challenge with ID: " + e.Value.(string))
+						go RespondToChallenge(e.Value.(string))
+					}
+				}
 				challengeWorker.Wait()
 				iterInprogress = false
 				numOfWorkers = 0
-				dataStore.Discard(rctx)
-				rctx.Done()
+				time.Sleep(1 * time.Second)
 				params := make(map[string]string)
 				params["blobber"] = node.Self.ID
 				var blobberChallenges BCChallengeResponse

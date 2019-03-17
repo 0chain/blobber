@@ -36,15 +36,9 @@ var allocationhandler = func(ctx context.Context, key datastore.Key, value []byt
 		numOfWorkers++
 		redeemWorker.Add(1)
 		go func(redeemCtx context.Context) {
-			redeemCtx = dbstore.WithConnection(redeemCtx)
-			defer redeemCtx.Done()
-			err = RedeemMarkersForAllocation(redeemCtx, allocationObj.ID, allocationObj.LatestWMEntity)
+			err = RedeemMarkersForAllocation(allocationObj.ID, allocationObj.LatestWMEntity)
 			if err != nil {
 				Logger.Error("Error redeeming the write marker.", zap.Error(err))
-			}
-			err = dbstore.Commit(redeemCtx)
-			if err != nil {
-				Logger.Error("Error commiting the writemarker redeem", zap.Error(err))
 			}
 			redeemWorker.Done()
 		}(context.Background())
@@ -53,8 +47,15 @@ var allocationhandler = func(ctx context.Context, key datastore.Key, value []byt
 	return nil
 }
 
-func RedeemMarkersForAllocation(ctx context.Context, allocationID string, latestWmEntity string) error {
-
+func RedeemMarkersForAllocation(allocationID string, latestWmEntity string) error {
+	ctx := dbstore.WithConnection(context.Background())
+	defer func() {
+		err := dbstore.Commit(ctx)
+		if err != nil {
+			Logger.Error("Error commiting the writemarker redeem", zap.Error(err))
+		}
+		ctx.Done()
+	}()
 	allocationStatus := allocation.AllocationStatusProvider().(*allocation.AllocationStatus)
 	allocationStatus.ID = allocationID
 	mutex := lock.GetMutex(allocationStatus.GetKey())
@@ -122,11 +123,11 @@ func RedeemWriteMarkers(ctx context.Context) {
 				iterInprogress = true
 				rctx := dbstore.WithReadOnlyConnection(ctx)
 				dbstore.IteratePrefix(rctx, "allocation:", allocationhandler)
+				dbstore.Discard(rctx)
+				rctx.Done()
 				redeemWorker.Wait()
 				iterInprogress = false
 				numOfWorkers = 0
-				dbstore.Discard(rctx)
-				rctx.Done()
 			}
 		}
 	}

@@ -56,16 +56,16 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 		Logger.Info("Signing Failed during submitting challenge to the mining network", zap.String("err:", err.Error()))
 		return nil, err
 	}
-	Logger.Info("Submitting challenge response to blockchain.", zap.String("txn", txn.Hash))
+	Logger.Info("Submitting challenge response to blockchain.", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ID))
 	transaction.SendTransaction(txn, chain.GetServerChain())
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
 	if err != nil {
-		Logger.Error("Error verifying the challenge response transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
+		Logger.Error("Error verifying the challenge response transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ID))
 		return txn, err
 	}
-	Logger.Info("Challenge committed and accepted", zap.Any("txn.hash", t.Hash), zap.Any("txn.output", t.TransactionOutput))
+	Logger.Info("Challenge committed and accepted", zap.Any("txn.hash", t.Hash), zap.Any("txn.output", t.TransactionOutput), zap.String("challenge_id", cr.ID))
 	return t, nil
 }
 
@@ -107,10 +107,10 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 	}
 	wmMutex := lock.GetMutex(wm.GetKey())
 	wmMutex.Lock()
-	defer wmMutex.Unlock()
 	if wm.DirStructure == nil {
 		wm.WriteAllocationDirStructure(ctx)
 	}
+	wmMutex.Unlock()
 	dbStore := hashmapstore.NewStore()
 	dbStore.DB = wm.DirStructure
 	rootRef, err := reference.GetRootReferenceFromStore(ctx, cr.AllocationID, dbStore)

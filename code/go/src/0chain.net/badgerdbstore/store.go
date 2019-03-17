@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 
 	"0chain.net/datastore"
+	. "0chain.net/logging"
 	"github.com/dgraph-io/badger"
 )
 
@@ -202,6 +203,7 @@ func (ps *Store) GetConnection(ctx context.Context) *badger.Txn {
 	if conn != nil {
 		return conn.(*badger.Txn)
 	}
+	Logger.Error("No connection in the context.")
 	return ps.GetCon(false)
 }
 
