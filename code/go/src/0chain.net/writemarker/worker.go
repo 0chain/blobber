@@ -30,12 +30,15 @@ var allocationhandler = func(ctx context.Context, key datastore.Key, value []byt
 	allocationObj := allocation.Provider().(*allocation.Allocation)
 	err := json.Unmarshal(value, allocationObj)
 	if err != nil {
+		Logger.Error("Error in unmarshal of the allocation object", zap.Error(err))
 		return err
 	}
+	Logger.Info("Attempting write marker redeem", zap.Any("allocation", allocationObj), zap.Any("num_workers", numOfWorkers), zap.Any("worker_config", config.Configuration))
 	if len(allocationObj.LatestWMEntity) > 0 && numOfWorkers < config.Configuration.WMRedeemNumWorkers {
 		numOfWorkers++
 		redeemWorker.Add(1)
 		go func(redeemCtx context.Context) {
+			Logger.Info("Starting to redeem", zap.Any("allocation", allocationObj.ID), zap.Any("wm", allocationObj.LatestWMEntity))
 			err = RedeemMarkersForAllocation(allocationObj.ID, allocationObj.LatestWMEntity)
 			if err != nil {
 				Logger.Error("Error redeeming the write marker.", zap.Error(err))
@@ -63,6 +66,7 @@ func RedeemMarkersForAllocation(allocationID string, latestWmEntity string) erro
 	defer mutex.Unlock()
 	err := allocationStatus.Read(ctx, allocationStatus.GetKey())
 	if err != nil && err != datastore.ErrKeyNotFound {
+		Logger.Error("Error in finding the allocation status from DB", zap.Error(err))
 		return err
 	}
 	currWmEntity := latestWmEntity
@@ -104,6 +108,8 @@ func RedeemMarkersForAllocation(allocationID string, latestWmEntity string) erro
 			Logger.Info("Success Redeeming the write marker", zap.Any("wm", marker.GetKey()), zap.Any("txn", marker.CloseTxnID))
 		}
 	}
+
+	Logger.Info("Returning from redeem", zap.Any("wm", latestWmEntity), zap.Any("allocation", allocationID))
 	return nil
 }
 
