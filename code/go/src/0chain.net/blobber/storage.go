@@ -20,10 +20,11 @@ type UploadResult struct {
 }
 
 type CommitResult struct {
-	AllocationRoot string                   `json:"allocation_root"`
-	WriteMarker    *writemarker.WriteMarker `json:"write_marker"`
-	Success        bool                     `json:"success"`
-	ErrorMessage   string                   `json:"error_msg,omitempty"`
+	AllocationRoot string                         `json:"allocation_root"`
+	WriteMarker    *writemarker.WriteMarker       `json:"write_marker"`
+	Success        bool                           `json:"success"`
+	ErrorMessage   string                         `json:"error_msg,omitempty"`
+	Changes        []*allocation.AllocationChange `json:"-"`
 	//Result         []*UploadResult         `json:"result"`
 }
 
@@ -39,7 +40,9 @@ type ObjectPathResult struct {
 }
 
 type DownloadResponse struct {
-	Data []byte `json:"data"`
+	Data         []byte `json:"data"`
+	AllocationID string `json:"-"`
+	Path         string `json:"-"`
 }
 
 //StorageHandler - interfact for handling storage requests

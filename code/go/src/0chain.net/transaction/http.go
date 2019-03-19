@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 
 	"0chain.net/chain"
 	"0chain.net/common"
@@ -91,8 +93,17 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 	sharders := chain.Sharders.GetRandomNodes(numSharders)
 	for _, sharder := range sharders {
 		url := fmt.Sprintf("%v/%v%v", sharder.GetURLBase(), TXN_VERIFY_URL, txnHash)
-
-		response, err := http.Get(url)
+		var netTransport = &http.Transport{
+			Dial: (&net.Dialer{
+				Timeout: 5 * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout: 5 * time.Second,
+		}
+		var netClient = &http.Client{
+			Timeout:   time.Second * 10,
+			Transport: netTransport,
+		}
+		response, err := netClient.Get(url)
 		if err != nil {
 			Logger.Error("Error getting transaction confirmation", zap.Any("error", err))
 			numSharders--
@@ -151,7 +162,17 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		}
 		urlObj.RawQuery = q.Encode()
 		h := sha1.New()
-		response, err := http.Get(urlObj.String())
+		var netTransport = &http.Transport{
+			Dial: (&net.Dialer{
+				Timeout: 5 * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout: 5 * time.Second,
+		}
+		var netClient = &http.Client{
+			Timeout:   time.Second * 10,
+			Transport: netTransport,
+		}
+		response, err := netClient.Get(urlObj.String())
 		if err != nil {
 			Logger.Error("Error getting response for sc rest api", zap.Any("error", err))
 			numSharders--

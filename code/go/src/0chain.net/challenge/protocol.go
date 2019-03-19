@@ -17,7 +17,6 @@ import (
 	"0chain.net/lock"
 	. "0chain.net/logging"
 	"0chain.net/reference"
-	"0chain.net/stats"
 	"0chain.net/transaction"
 	"0chain.net/util"
 	"0chain.net/writemarker"
@@ -91,9 +90,8 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 			cr.CommitTxnID = t.Hash
 			cr.Write(ctx)
 			return nil
-		} else {
-			Logger.Error("Error verifying the txn from BC." + cr.CommitTxnID)
 		}
+		Logger.Error("Error verifying the txn from BC."+cr.CommitTxnID, zap.String("challenge_id", cr.ID))
 	}
 
 	wm := writemarker.Provider().(*writemarker.WriteMarkerEntity)
@@ -117,11 +115,12 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 	rand.Seed(cr.RandomNumber)
 	blockNum := rand.Int63n(rootRef.NumBlocks)
 	blockNum = blockNum + 1
+	cr.BlockNum = blockNum
 	if err != nil {
 		cr.ErrorChallenge(ctx, err)
 		return err
 	}
-
+	Logger.Info("blockNum for challenge", zap.Any("blockNum", blockNum))
 	objectPath, err := reference.GetObjectPath(ctx, cr.AllocationID, blockNum, dbStore)
 	if err != nil {
 		cr.ErrorChallenge(ctx, err)
@@ -253,10 +252,17 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 			}
 		}
 	}
+	if numFailure > (len(cr.Validators)/2) && cr.Retries < 3 {
+		Logger.Error("Challenge failed from the validators. Will have to retry", zap.Any("block_num", cr.BlockNum), zap.Any("object_path", objectPath))
+		cr.ErrorChallenge(ctx, common.NewError("challenge_failed_retry", "Challenge failed from the validators. Will have to retry"))
+		return common.NewError("challenge_failed_retry", "Challenge failed from the validators. Will have to retry")
+	}
+
 	if numSuccess > (len(cr.Validators)/2) || numFailure > (len(cr.Validators)/2) {
 		t, err := cr.SubmitChallengeToBC(ctx)
 		if err != nil {
 			if t != nil {
+				cr.ObjectPath = objectPath
 				cr.CommitTxnID = t.Hash
 			}
 			cr.ErrorChallenge(ctx, err)
@@ -264,7 +270,7 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 			cr.Status = Committed
 			cr.StatusMessage = t.TransactionOutput
 			cr.CommitTxnID = t.Hash
-			stats.FileChallenged(ctx, cr.AllocationID, objectPath.Meta["path"].(string), t.Hash)
+			cr.ObjectPath = objectPath
 		}
 	} else {
 		cr.ErrorChallenge(ctx, common.NewError("no_consensus_challenge", "No Consensus on the challenge result. Erroring out the challenge"))

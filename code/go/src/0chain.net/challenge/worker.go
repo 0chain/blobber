@@ -14,6 +14,7 @@ import (
 	"0chain.net/lock"
 	. "0chain.net/logging"
 	"0chain.net/node"
+	"0chain.net/stats"
 	"0chain.net/transaction"
 	"0chain.net/writemarker"
 
@@ -53,13 +54,20 @@ func RespondToChallenge(challengeID string) {
 	if err != nil {
 		Logger.Error("Error in responding to challenge. ", zap.Any("error", err.Error()))
 	}
+
 	err = dataStore.Commit(newctx)
+
 	if err != nil {
 		Logger.Error("Error in challenge commit to DB", zap.Error(err), zap.String("challenge_id", challengeID))
 	}
+
+	mutex.Unlock()
+
+	if challengeObj.ObjectPath != nil && challengeObj.Status == Committed {
+		stats.FileChallenged(newctx, challengeObj.AllocationID, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
+	}
 	newctx.Done()
 	challengeWorker.Done()
-	mutex.Unlock()
 	Logger.Info("Challenge has been processed", zap.Any("id", challengeObj.ID), zap.String("txn", challengeObj.CommitTxnID))
 }
 
@@ -88,11 +96,10 @@ func FindChallenges(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-
 			if !iterInprogress && numOfWorkers == 0 {
 				unredeemedMarkers = list.New()
 				iterInprogress = true
-				rctx := dataStore.WithReadOnlyConnection(ctx)
+				rctx := dataStore.WithReadOnlyConnection(context.Background())
 				dataStore.IteratePrefix(rctx, "challenge:", challengeHandler)
 				dataStore.Discard(rctx)
 				rctx.Done()
@@ -107,7 +114,6 @@ func FindChallenges(ctx context.Context) {
 				challengeWorker.Wait()
 				iterInprogress = false
 				numOfWorkers = 0
-				time.Sleep(1 * time.Second)
 				params := make(map[string]string)
 				params["blobber"] = node.Self.ID
 				var blobberChallenges BCChallengeResponse

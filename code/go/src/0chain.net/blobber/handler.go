@@ -8,8 +8,12 @@ import (
 
 	"net/http"
 
+	"0chain.net/allocation"
 	"0chain.net/common"
 	"0chain.net/datastore"
+	"0chain.net/stats"
+	"0chain.net/writemarker"
+
 	"github.com/gorilla/mux"
 )
 
@@ -22,13 +26,13 @@ const CLIENT_KEY_CONTEXT_KEY common.ContextKey = "client_key"
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONResponse(WithConnection(UploadHandler)))
-	r.HandleFunc("/v1/file/download/{allocation}", common.ToJSONResponse(WithConnection(DownloadHandler)))
+	r.HandleFunc("/v1/file/download/{allocation}", common.ToJSONResponse(WithDownloadStats(WithConnection(DownloadHandler))))
 	r.HandleFunc("/v1/file/meta/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler)))
 	r.HandleFunc("/v1/file/stats/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)))
 	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithConnection(ListHandler)))
 	r.HandleFunc("/v1/file/objectpath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler)))
 
-	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithConnection(CommitHandler)))
+	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithUpdateStats(WithConnection(CommitHandler))))
 	r.HandleFunc("/v1/connection/details/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(GetConnectionDetailsHandler)))
 
 	r.HandleFunc("/v1/readmarker/latest", common.ToJSONResponse(WithReadOnlyConnection(LatestRMHandler)))
@@ -37,6 +41,39 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/debug", common.ToJSONResponse(DumpGoRoutines))
 
 	storageHandler = GetStorageHandler()
+}
+
+//stats.FileBlockDownloaded(ctx, fileref.AllocationID, fileref.Path)
+
+func WithDownloadStats(handler common.JSONResponderF) common.JSONResponderF {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		res, err := handler(ctx, r)
+		if err != nil {
+			return res, err
+		}
+		response := res.(*DownloadResponse)
+		stats.FileBlockDownloaded(ctx, response.AllocationID, response.Path)
+		return res, nil
+	}
+}
+
+func WithUpdateStats(handler common.JSONResponderF) common.JSONResponderF {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		res, err := handler(ctx, r)
+		if err != nil {
+			return res, err
+		}
+		response := res.(*CommitResult)
+		for _, change := range response.Changes {
+			if change.Operation == allocation.INSERT_OPERATION || change.Operation == allocation.UPDATE_OPERATION {
+				wm := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+				wm.WM = response.WriteMarker
+				stats.FileUpdated(ctx, response.WriteMarker.AllocationID, change.Path, wm.GetKey())
+			}
+		}
+
+		return res, nil
+	}
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {

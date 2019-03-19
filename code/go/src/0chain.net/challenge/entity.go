@@ -7,6 +7,7 @@ import (
 	"0chain.net/common"
 	"0chain.net/datastore"
 	"0chain.net/encryption"
+	"0chain.net/reference"
 	"0chain.net/transaction"
 )
 
@@ -59,6 +60,7 @@ type ChallengeEntity struct {
 	Retries           int                     `json:"retries"`
 	WriteMarker       string                  `json:"write_marker"`
 	ValidationTickets []*ValidationTicket     `json:"validation_tickets"`
+	ObjectPath        *reference.ObjectPath   `json:"object_path"`
 }
 
 var challengeEntityMetaData *datastore.EntityMetadataImpl

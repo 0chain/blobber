@@ -39,6 +39,7 @@ type Store struct {
 func (ps *Store) Read(ctx context.Context, key datastore.Key, entity datastore.Entity) error {
 	txn := ps.GetConnection(ctx)
 	item, err := txn.Get([]byte(key))
+	//Logger.Info("Reading from badger", zap.Any("key", key))
 	if err != nil && err == badger.ErrKeyNotFound {
 		return datastore.ErrKeyNotFound
 	}
@@ -53,7 +54,7 @@ func (ps *Store) Read(ctx context.Context, key datastore.Key, entity datastore.E
 	if err != nil {
 		return err
 	}
-
+	//Logger.Info("Read from badger", zap.Any("key", key), zap.Any("value", string(valCopy)))
 	return nil
 }
 
@@ -84,6 +85,8 @@ func (ps *Store) Write(ctx context.Context, entity datastore.Entity) error {
 	if err != nil {
 		return err
 	}
+
+	//Logger.Info("Writing to badger", zap.Any("key", entity.GetKey()), zap.Any("value", b.String()))
 
 	err = txn.Set([]byte(entity.GetKey()), b.Bytes())
 	if err != nil {

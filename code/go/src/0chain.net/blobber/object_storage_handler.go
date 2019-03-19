@@ -184,11 +184,12 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 	if err != nil {
 		return nil, err
 	}
-	stats.FileBlockDownloaded(ctx, fileref.AllocationID, fileref.Path)
 
 	rmEntity.Write(ctx)
 	response := &DownloadResponse{}
 	response.Data = respData
+	response.Path = fileref.Path
+	response.AllocationID = fileref.AllocationID
 	return response, err
 }
 
@@ -554,6 +555,8 @@ func (fsh *ObjectStorageHandler) CommitWrite(ctx context.Context, r *http.Reques
 	if err != nil {
 		return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 	}
+
+	result.Changes = connectionObj.Changes
 
 	connectionObj.DeleteChanges(ctx, fileStore)
 

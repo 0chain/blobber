@@ -7,6 +7,7 @@ import (
 
 	"0chain.net/common"
 	"0chain.net/datastore"
+	. "0chain.net/logging"
 	"0chain.net/reference"
 )
 
@@ -82,13 +83,24 @@ func FileBlockDownloaded(ctx context.Context, allocationID string, path string) 
 	mutex := lock.GetMutex(fs.GetKey())
 	mutex.Lock()
 	defer mutex.Unlock()
-	err := fs.Read(ctx, fs.GetKey())
+
+	nctx := fileStatsEntityMetaData.GetStore().WithConnection(ctx)
+	defer fileStatsEntityMetaData.GetStore().Discard(nctx)
+
+	err := fs.Read(nctx, fs.GetKey())
 	if err != nil {
 		return nil, err
 	}
 	fs.NumBlockDownloads++
-	err = fs.Write(ctx)
-	return fs, err
+	err = fs.Write(nctx)
+	if err != nil {
+		return nil, err
+	}
+	err = fileStatsEntityMetaData.GetStore().Commit(nctx)
+	if err != nil {
+		Logger.Error("Error committing the file download stats")
+	}
+	return fs, nil
 }
 
 func FileUpdated(ctx context.Context, allocationID string, path string, writeMarkerKey string) (*FileStats, error) {
@@ -101,32 +113,55 @@ func FileUpdated(ctx context.Context, allocationID string, path string, writeMar
 	mutex := lock.GetMutex(fs.GetKey())
 	mutex.Lock()
 	defer mutex.Unlock()
-	err := fs.Read(ctx, fs.GetKey())
+
+	nctx := fileStatsEntityMetaData.GetStore().WithConnection(ctx)
+	defer fileStatsEntityMetaData.GetStore().Discard(nctx)
+
+	err := fs.Read(nctx, fs.GetKey())
 	if err != nil && err != datastore.ErrKeyNotFound {
 		return nil, err
 	}
 	fs.NumUpdates++
 	fs.WriteMarker = writeMarkerKey
-	err = fs.Write(ctx)
-	return fs, err
+	err = fs.Write(nctx)
+	if err != nil {
+		return nil, err
+	}
+	err = fileStatsEntityMetaData.GetStore().Commit(nctx)
+	if err != nil {
+		Logger.Error("Error committing the file download stats")
+	}
+	return fs, nil
 }
 
 func FileChallenged(ctx context.Context, allocationID string, path string, challengeRedeemTxn string) (*FileStats, error) {
 	if len(allocationID) == 0 || len(path) == 0 {
 		return nil, common.NewError("invalid_paramaters", "Invalid parameters for file stats")
 	}
+
 	fs := FileStatsProvider().(*FileStats)
 	fs.Path = path
 	fs.AllocationID = allocationID
 	mutex := lock.GetMutex(fs.GetKey())
 	mutex.Lock()
 	defer mutex.Unlock()
-	err := fs.Read(ctx, fs.GetKey())
+
+	nctx := fileStatsEntityMetaData.GetStore().WithConnection(ctx)
+	defer fileStatsEntityMetaData.GetStore().Discard(nctx)
+
+	err := fs.Read(nctx, fs.GetKey())
 	if err != nil {
 		return nil, err
 	}
 	fs.NumSuccessChallenges++
 	fs.LastChallengeResponseTxn = challengeRedeemTxn
-	err = fs.Write(ctx)
-	return fs, err
+	err = fs.Write(nctx)
+	if err != nil {
+		return nil, err
+	}
+	err = fileStatsEntityMetaData.GetStore().Commit(nctx)
+	if err != nil {
+		Logger.Error("Error committing the file download stats")
+	}
+	return fs, nil
 }
