@@ -120,7 +120,7 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		cr.ErrorChallenge(ctx, err)
 		return err
 	}
-	Logger.Info("blockNum for challenge", zap.Any("blockNum", blockNum))
+	Logger.Info("blockNum for challenge", zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ID))
 	objectPath, err := reference.GetObjectPath(ctx, cr.AllocationID, blockNum, dbStore)
 	if err != nil {
 		cr.ErrorChallenge(ctx, err)
