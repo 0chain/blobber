@@ -31,21 +31,27 @@ var allocationhandler = func(ctx context.Context, key datastore.Key, value []byt
 	err := json.Unmarshal(value, allocationObj)
 	if err != nil {
 		Logger.Error("Error in unmarshal of the allocation object", zap.Error(err))
-		return err
+		return nil
 	}
-	Logger.Info("Attempting write marker redeem", zap.Any("allocation", allocationObj), zap.Any("num_workers", numOfWorkers), zap.Any("worker_config", config.Configuration))
-	if len(allocationObj.LatestWMEntity) > 0 && numOfWorkers < config.Configuration.WMRedeemNumWorkers {
+	allocationStatus := allocation.AllocationStatusProvider().(*allocation.AllocationStatus)
+	allocationStatus.ID = allocationObj.ID
+	err = allocationStatus.Read(ctx, allocationStatus.GetKey())
+	if err != nil && err != datastore.ErrKeyNotFound {
+		Logger.Error("Error in finding the allocation status from DB", zap.Error(err))
+		return nil
+	}
+	//Logger.Info("Attempting write marker redeem", zap.Any("allocation", allocationObj), zap.Any("num_workers", numOfWorkers), zap.Any("worker_config", config.Configuration))
+	if len(allocationObj.LatestWMEntity) > 0 && numOfWorkers < config.Configuration.WMRedeemNumWorkers && allocationObj.LatestWMEntity != allocationStatus.LastCommittedWMEntity {
 		numOfWorkers++
 		redeemWorker.Add(1)
 		go func(redeemCtx context.Context) {
-			Logger.Info("Starting to redeem", zap.Any("allocation", allocationObj.ID), zap.Any("wm", allocationObj.LatestWMEntity))
+			//Logger.Info("Starting to redeem", zap.Any("allocation", allocationObj.ID), zap.Any("wm", allocationObj.LatestWMEntity))
 			err = RedeemMarkersForAllocation(allocationObj.ID, allocationObj.LatestWMEntity)
 			if err != nil {
 				Logger.Error("Error redeeming the write marker.", zap.Error(err))
 			}
 			redeemWorker.Done()
 		}(context.Background())
-
 	}
 	return nil
 }
@@ -109,7 +115,7 @@ func RedeemMarkersForAllocation(allocationID string, latestWmEntity string) erro
 		}
 	}
 
-	Logger.Info("Returning from redeem", zap.Any("wm", latestWmEntity), zap.Any("allocation", allocationID))
+	//Logger.Info("Returning from redeem", zap.Any("wm", latestWmEntity), zap.Any("allocation", allocationID))
 	return nil
 }
 
@@ -124,7 +130,7 @@ func RedeemWriteMarkers(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			Logger.Info("Trying to redeem writemarkers.", zap.Any("iterInprogress", iterInprogress), zap.Any("numOfWorkers", numOfWorkers))
+			//Logger.Info("Trying to redeem writemarkers.", zap.Any("iterInprogress", iterInprogress), zap.Any("numOfWorkers", numOfWorkers))
 			if !iterInprogress && numOfWorkers == 0 {
 				iterInprogress = true
 				rctx := dbstore.WithReadOnlyConnection(ctx)
