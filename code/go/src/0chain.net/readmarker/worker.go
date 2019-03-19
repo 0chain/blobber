@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"0chain.net/chain"
+	"0chain.net/common"
 	"0chain.net/config"
 	"0chain.net/datastore"
 	"0chain.net/filestore"
@@ -71,24 +72,33 @@ var rmHandler = func(ctx context.Context, key datastore.Key, value []byte) error
 	rmEntity := Provider().(*ReadMarkerEntity)
 	err := json.Unmarshal(value, rmEntity)
 	if err != nil {
-		return err
+		return nil
 	}
-	if rmEntity.LatestRM != nil && numOfWorkers < config.Configuration.RMRedeemNumWorkers {
-		numOfWorkers++
-		redeemWorker.Add(1)
-		go func(redeemCtx context.Context) {
-			redeemCtx = dbstore.WithConnection(redeemCtx)
-			defer redeemCtx.Done()
-			err := RedeemReadMarker(redeemCtx, rmEntity)
-			if err != nil {
-				Logger.Error("Error redeeming the read marker.", zap.Error(err))
-			}
-			err = dbstore.Commit(redeemCtx)
-			if err != nil {
-				Logger.Error("Error commiting the readmarker redeem", zap.Error(err))
-			}
-			redeemWorker.Done()
-		}(context.Background())
+	if len(rmToProcess) > 0 && rmToProcess != rmEntity.GetKey() {
+		return nil
+	}
+	if rmEntity.LatestRM != nil {
+		if numOfWorkers < config.Configuration.RMRedeemNumWorkers {
+			numOfWorkers++
+			redeemWorker.Add(1)
+			go func(redeemCtx context.Context) {
+				redeemCtx = dbstore.WithConnection(redeemCtx)
+				defer redeemCtx.Done()
+				err := RedeemReadMarker(redeemCtx, rmEntity)
+				if err != nil {
+					Logger.Error("Error redeeming the read marker.", zap.Error(err))
+				}
+				err = dbstore.Commit(redeemCtx)
+				if err != nil {
+					Logger.Error("Error commiting the readmarker redeem", zap.Error(err))
+				}
+				redeemWorker.Done()
+			}(context.Background())
+		} else {
+			rmToProcess = rmEntity.GetKey()
+			return common.NewError("iter_break", "breaking the iteration")
+		}
+
 	}
 	return nil
 }
@@ -96,6 +106,7 @@ var rmHandler = func(ctx context.Context, key datastore.Key, value []byte) error
 var redeemWorker sync.WaitGroup
 var numOfWorkers = 0
 var iterInprogress = false
+var rmToProcess = ""
 
 func RedeemMarkers(ctx context.Context) {
 	ticker := time.NewTicker(time.Duration(config.Configuration.RMRedeemFreq) * time.Second)
@@ -107,7 +118,10 @@ func RedeemMarkers(ctx context.Context) {
 			if !iterInprogress && numOfWorkers == 0 {
 				iterInprogress = true
 				rctx := dbstore.WithReadOnlyConnection(ctx)
-				dbstore.IteratePrefix(rctx, "rm:", rmHandler)
+				err := dbstore.IteratePrefix(rctx, "rm:", rmHandler)
+				if err == nil {
+					rmToProcess = ""
+				}
 				redeemWorker.Wait()
 				iterInprogress = false
 				numOfWorkers = 0

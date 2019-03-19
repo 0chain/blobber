@@ -78,7 +78,7 @@ var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte
 		return err
 	}
 
-	if challengeObj.Status != Committed && challengeObj.Status != Failed {
+	if challengeObj.Status != Committed && challengeObj.Status != Failed && challengeObj.Retries < 10 {
 		unredeemedMarkers.PushBack(challengeObj.ID)
 	}
 	return nil
@@ -109,9 +109,10 @@ func FindChallenges(ctx context.Context) {
 						challengeWorker.Add(1)
 						Logger.Info("Starting challenge with ID: " + e.Value.(string))
 						go RespondToChallenge(e.Value.(string))
+					} else {
+						challengeWorker.Wait()
 					}
 				}
-				challengeWorker.Wait()
 				iterInprogress = false
 				numOfWorkers = 0
 				params := make(map[string]string)

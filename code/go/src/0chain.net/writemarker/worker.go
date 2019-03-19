@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"0chain.net/allocation"
+	"0chain.net/common"
 	"0chain.net/config"
 	"0chain.net/datastore"
 	"0chain.net/filestore"
@@ -24,36 +25,6 @@ func SetupWorkers(ctx context.Context, metaStore datastore.Store, fsStore filest
 	dbstore = metaStore
 	fileStore = fsStore
 	go RedeemWriteMarkers(ctx)
-}
-
-var allocationhandler = func(ctx context.Context, key datastore.Key, value []byte) error {
-	allocationObj := allocation.Provider().(*allocation.Allocation)
-	err := json.Unmarshal(value, allocationObj)
-	if err != nil {
-		Logger.Error("Error in unmarshal of the allocation object", zap.Error(err))
-		return nil
-	}
-	allocationStatus := allocation.AllocationStatusProvider().(*allocation.AllocationStatus)
-	allocationStatus.ID = allocationObj.ID
-	err = allocationStatus.Read(ctx, allocationStatus.GetKey())
-	if err != nil && err != datastore.ErrKeyNotFound {
-		Logger.Error("Error in finding the allocation status from DB", zap.Error(err))
-		return nil
-	}
-	//Logger.Info("Attempting write marker redeem", zap.Any("allocation", allocationObj), zap.Any("num_workers", numOfWorkers), zap.Any("worker_config", config.Configuration))
-	if len(allocationObj.LatestWMEntity) > 0 && numOfWorkers < config.Configuration.WMRedeemNumWorkers && allocationObj.LatestWMEntity != allocationStatus.LastCommittedWMEntity {
-		numOfWorkers++
-		redeemWorker.Add(1)
-		go func(redeemCtx context.Context) {
-			//Logger.Info("Starting to redeem", zap.Any("allocation", allocationObj.ID), zap.Any("wm", allocationObj.LatestWMEntity))
-			err = RedeemMarkersForAllocation(allocationObj.ID, allocationObj.LatestWMEntity)
-			if err != nil {
-				Logger.Error("Error redeeming the write marker.", zap.Error(err))
-			}
-			redeemWorker.Done()
-		}(context.Background())
-	}
-	return nil
 }
 
 func RedeemMarkersForAllocation(allocationID string, latestWmEntity string) error {
@@ -119,9 +90,49 @@ func RedeemMarkersForAllocation(allocationID string, latestWmEntity string) erro
 	return nil
 }
 
+var allocationhandler = func(ctx context.Context, key datastore.Key, value []byte) error {
+	allocationObj := allocation.Provider().(*allocation.Allocation)
+	err := json.Unmarshal(value, allocationObj)
+	if err != nil {
+		Logger.Error("Error in unmarshal of the allocation object", zap.Error(err))
+		return nil
+	}
+	if len(allocationToProcess) > 0 && allocationObj.ID != allocationToProcess {
+		return nil
+	}
+	allocationStatus := allocation.AllocationStatusProvider().(*allocation.AllocationStatus)
+	allocationStatus.ID = allocationObj.ID
+	err = allocationStatus.Read(ctx, allocationStatus.GetKey())
+	if err != nil && err != datastore.ErrKeyNotFound {
+		Logger.Error("Error in finding the allocation status from DB", zap.Error(err))
+		return nil
+	}
+	//Logger.Info("Attempting write marker redeem", zap.Any("allocation", allocationObj), zap.Any("num_workers", numOfWorkers), zap.Any("worker_config", config.Configuration))
+	if len(allocationObj.LatestWMEntity) > 0 && allocationObj.LatestWMEntity != allocationStatus.LastCommittedWMEntity {
+		if numOfWorkers < config.Configuration.WMRedeemNumWorkers {
+			numOfWorkers++
+			redeemWorker.Add(1)
+			go func(redeemCtx context.Context) {
+				//Logger.Info("Starting to redeem", zap.Any("allocation", allocationObj.ID), zap.Any("wm", allocationObj.LatestWMEntity))
+				err = RedeemMarkersForAllocation(allocationObj.ID, allocationObj.LatestWMEntity)
+				if err != nil {
+					Logger.Error("Error redeeming the write marker.", zap.Error(err))
+				}
+				redeemWorker.Done()
+			}(context.Background())
+		} else {
+			allocationToProcess = allocationObj.ID
+			return common.NewError("iter_break", "Breaking out of iteration")
+		}
+
+	}
+	return nil
+}
+
 var redeemWorker sync.WaitGroup
 var numOfWorkers = 0
 var iterInprogress = false
+var allocationToProcess = ""
 
 func RedeemWriteMarkers(ctx context.Context) {
 	ticker := time.NewTicker(time.Duration(config.Configuration.WMRedeemFreq) * time.Second)
@@ -134,7 +145,10 @@ func RedeemWriteMarkers(ctx context.Context) {
 			if !iterInprogress && numOfWorkers == 0 {
 				iterInprogress = true
 				rctx := dbstore.WithReadOnlyConnection(ctx)
-				dbstore.IteratePrefix(rctx, "allocation:", allocationhandler)
+				err := dbstore.IteratePrefix(rctx, "allocation:", allocationhandler)
+				if err == nil {
+					allocationToProcess = ""
+				}
 				dbstore.Discard(rctx)
 				rctx.Done()
 				redeemWorker.Wait()
