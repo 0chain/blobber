@@ -112,9 +112,15 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 	dbStore := hashmapstore.NewStore()
 	dbStore.DB = wm.DirStructure
 	rootRef, err := reference.GetRootReferenceFromStore(ctx, cr.AllocationID, dbStore)
-	rand.Seed(cr.RandomNumber)
-	blockNum := rand.Int63n(rootRef.NumBlocks)
-	blockNum = blockNum + 1
+	blockNum := int64(0)
+	if rootRef.NumBlocks > 0 {
+		rand.Seed(cr.RandomNumber)
+		blockNum = rand.Int63n(rootRef.NumBlocks)
+		blockNum = blockNum + 1
+	} else {
+		Logger.Error("Got a challenge for a blank allocation")
+	}
+
 	cr.BlockNum = blockNum
 	if err != nil {
 		cr.ErrorChallenge(ctx, err)
@@ -127,72 +133,74 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		return err
 	}
 
-	if objectPath.Meta["type"] != reference.FILE {
-		Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta), zap.Any("obejct_path", objectPath))
-		err = common.NewError("invalid_object_path", "Object path was not for a file")
-		cr.ErrorChallenge(ctx, err)
-		return err
-	}
-
 	postData := make(map[string]interface{})
 	postData["challenge_id"] = cr.ID
 	postData["object_path"] = objectPath
 	postData["write_marker"] = wm.WM
 	postData["client_key"] = wm.ClientPublicKey
 
-	inputData := &filestore.FileInputData{}
-	inputData.Name = objectPath.Meta["name"].(string)
-	inputData.Path = objectPath.Meta["path"].(string)
-	inputData.Hash = objectPath.Meta["content_hash"].(string)
-	blockData, err := fileStore.GetFileBlock(cr.AllocationID, inputData, objectPath.FileBlockNum)
+	if blockNum > 0 {
+		if objectPath.Meta["type"] != reference.FILE {
+			Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta), zap.Any("obejct_path", objectPath))
+			err = common.NewError("invalid_object_path", "Object path was not for a file")
+			cr.ErrorChallenge(ctx, err)
+			return err
+		}
 
-	if err != nil {
-		fileref := reference.FileRefProvider().(*reference.FileRef)
-		err = fileref.Read(ctx, fileref.GetKeyFromPathHash(objectPath.Meta["path_hash"].(string)))
-		if err != nil && err == datastore.ErrKeyNotFound {
-			dt := allocation.DeleteTokenProvider().(*allocation.DeleteToken)
-			dt.FileRefHash = objectPath.Meta["hash"].(string)
-			err = dt.Read(ctx, dt.GetKey())
+		inputData := &filestore.FileInputData{}
+		inputData.Name = objectPath.Meta["name"].(string)
+		inputData.Path = objectPath.Meta["path"].(string)
+		inputData.Hash = objectPath.Meta["content_hash"].(string)
+		blockData, err := fileStore.GetFileBlock(cr.AllocationID, inputData, objectPath.FileBlockNum)
+
+		if err != nil {
+			fileref := reference.FileRefProvider().(*reference.FileRef)
+			err = fileref.Read(ctx, fileref.GetKeyFromPathHash(objectPath.Meta["path_hash"].(string)))
+			if err != nil && err == datastore.ErrKeyNotFound {
+				dt := allocation.DeleteTokenProvider().(*allocation.DeleteToken)
+				dt.FileRefHash = objectPath.Meta["hash"].(string)
+				err = dt.Read(ctx, dt.GetKey())
+				if err != nil {
+					cr.ErrorChallenge(ctx, err)
+					return err
+				}
+				postData["delete_token"] = dt
+			} else if err == nil {
+				if fileref.Hash != objectPath.Meta["hash"].(string) {
+					updatedObjectPath, err := reference.GetObjectPathFromFilePath(ctx, cr.AllocationID, objectPath.Meta["path"].(string), challengeEntityMetaData.GetStore())
+					if err != nil {
+						cr.ErrorChallenge(ctx, err)
+						return err
+					}
+
+					allocationObj := allocation.Provider().(*allocation.Allocation)
+					allocationObj.ID = cr.AllocationID
+					err = allocationObj.Read(ctx, allocationObj.GetKey())
+					if err != nil {
+						cr.ErrorChallenge(ctx, err)
+						return err
+					}
+					latestWM := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+					err = latestWM.Read(ctx, allocationObj.LatestWMEntity)
+					if err != nil {
+						cr.ErrorChallenge(ctx, err)
+						return err
+					}
+
+					postData["updated_object_path"] = updatedObjectPath
+					postData["updated_write_marker"] = latestWM.WM
+				}
+			}
+
+		} else {
+			mt, err := fileStore.GetMerkleTreeForFile(cr.AllocationID, inputData)
 			if err != nil {
 				cr.ErrorChallenge(ctx, err)
 				return err
 			}
-			postData["delete_token"] = dt
-		} else if err == nil {
-			if fileref.Hash != objectPath.Meta["hash"].(string) {
-				updatedObjectPath, err := reference.GetObjectPathFromFilePath(ctx, cr.AllocationID, objectPath.Meta["path"].(string), challengeEntityMetaData.GetStore())
-				if err != nil {
-					cr.ErrorChallenge(ctx, err)
-					return err
-				}
-
-				allocationObj := allocation.Provider().(*allocation.Allocation)
-				allocationObj.ID = cr.AllocationID
-				err = allocationObj.Read(ctx, allocationObj.GetKey())
-				if err != nil {
-					cr.ErrorChallenge(ctx, err)
-					return err
-				}
-				latestWM := writemarker.Provider().(*writemarker.WriteMarkerEntity)
-				err = latestWM.Read(ctx, allocationObj.LatestWMEntity)
-				if err != nil {
-					cr.ErrorChallenge(ctx, err)
-					return err
-				}
-
-				postData["updated_object_path"] = updatedObjectPath
-				postData["updated_write_marker"] = latestWM.WM
-			}
+			postData["data"] = []byte(blockData)
+			postData["merkle_path"] = mt.GetPathByIndex(int(objectPath.FileBlockNum) - 1)
 		}
-
-	} else {
-		mt, err := fileStore.GetMerkleTreeForFile(cr.AllocationID, inputData)
-		if err != nil {
-			cr.ErrorChallenge(ctx, err)
-			return err
-		}
-		postData["data"] = []byte(blockData)
-		postData["merkle_path"] = mt.GetPathByIndex(int(objectPath.FileBlockNum) - 1)
 	}
 
 	postDataBytes, err := json.Marshal(postData)

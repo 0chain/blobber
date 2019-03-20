@@ -63,7 +63,7 @@ func RespondToChallenge(challengeID string) {
 
 	mutex.Unlock()
 
-	if challengeObj.ObjectPath != nil && challengeObj.Status == Committed {
+	if challengeObj.ObjectPath != nil && challengeObj.Status == Committed && challengeObj.ObjectPath.FileBlockNum > 0 {
 		stats.FileChallenged(newctx, challengeObj.AllocationID, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
 	}
 	newctx.Done()

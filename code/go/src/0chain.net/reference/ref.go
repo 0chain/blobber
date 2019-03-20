@@ -342,6 +342,24 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64, dbS
 		return nil, common.NewError("invalid_block_num", "Invalid block number"+string(rootRef.NumBlocks)+" / "+string(blockNum))
 	}
 
+	if rootRef.NumBlocks == 0 {
+		var retObj ObjectPath
+		retObj.RootHash = rootRef.Hash
+		retObj.FileBlockNum = 0
+		result := rootRef.GetListingData(ctx)
+		err := rootRef.LoadChildren(ctx, dbStore)
+		if err != nil {
+			return nil, common.NewError("error_loading_children", "Error loading children from store for root path ")
+		}
+		list := make([]map[string]interface{}, len(rootRef.Children))
+		for idx, child := range rootRef.Children {
+			list[idx] = child.GetListingData(ctx)
+		}
+		result["list"] = list
+		retObj.Path = result
+		return &retObj, nil
+	}
+
 	found := false
 	var curRef RefEntity
 	curRef = rootRef
