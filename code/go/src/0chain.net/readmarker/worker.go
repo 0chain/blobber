@@ -72,12 +72,21 @@ var rmHandler = func(ctx context.Context, key datastore.Key, value []byte) error
 	rmEntity := Provider().(*ReadMarkerEntity)
 	err := json.Unmarshal(value, rmEntity)
 	if err != nil {
+		Logger.Error("Error unmarshal of the read marker entity")
 		return nil
 	}
 	if len(rmToProcess) > 0 && rmToProcess != rmEntity.GetKey() {
 		return nil
 	}
-	if rmEntity.LatestRM != nil {
+	rmStatus := &ReadMarkerStatus{}
+	rmStatus.LastestRedeemedRM = &ReadMarker{ClientID: rmEntity.LatestRM.ClientID, BlobberID: rmEntity.LatestRM.BlobberID}
+	err = rmStatus.Read(ctx, rmStatus.GetKey())
+
+	if err != nil && err != datastore.ErrKeyNotFound {
+		Logger.Error("Error reading the read marker status." + rmStatus.GetKey())
+		return nil
+	}
+	if rmEntity.LatestRM != nil && rmStatus.LastestRedeemedRM.ReadCounter < rmEntity.LatestRM.ReadCounter {
 		if numOfWorkers < config.Configuration.RMRedeemNumWorkers {
 			numOfWorkers++
 			redeemWorker.Add(1)
