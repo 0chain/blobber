@@ -67,9 +67,19 @@ func SetupWorkerConfig() {
 	config.Configuration.ChallengeResolveNumWorkers = viper.GetInt("challenge_response.num_workers")
 }
 
+func SetupWorkers() {
+	blobber.SetupWorkers(common.GetRootContext())
+	challenge.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
+	readmarker.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
+	writemarker.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
+}
+
+var fsStore filestore.FileStore
+
 func initEntities() {
 	badgerdbstore.SetupStorageProvider(*badgerDir)
-	fsStore := filestore.SetupFSStore(*filesDir + "/files")
+	fsStore = filestore.SetupFSStore(*filesDir + "/files")
+	blobber.SetupObjectStorageHandler(fsStore, badgerdbstore.GetStorageProvider())
 
 	allocation.SetupAllocationChangeCollectorEntity(badgerdbstore.GetStorageProvider())
 	allocation.SetupAllocationEntity(badgerdbstore.GetStorageProvider())
@@ -77,16 +87,10 @@ func initEntities() {
 	reference.SetupFileRefEntity(badgerdbstore.GetStorageProvider())
 	reference.SetupRefEntity(badgerdbstore.GetStorageProvider())
 	reference.SetupContentReferenceEntity(badgerdbstore.GetStorageProvider())
-	blobber.SetupObjectStorageHandler(fsStore, badgerdbstore.GetStorageProvider())
 	writemarker.SetupEntity(badgerdbstore.GetStorageProvider())
 	readmarker.SetupEntity(badgerdbstore.GetStorageProvider())
 	challenge.SetupEntity(badgerdbstore.GetStorageProvider())
 	stats.SetupFileStatsEntity(badgerdbstore.GetStorageProvider())
-
-	blobber.SetupWorkers(common.GetRootContext())
-	challenge.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
-	readmarker.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
-	writemarker.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
 }
 
 func initServer() {
@@ -257,6 +261,7 @@ func RegisterBlobber() {
 				Logger.Info("Transaction for adding blobber accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
 				badgerdbstore.GetStorageProvider().WriteBytes(ctx, BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
 				badgerdbstore.GetStorageProvider().Commit(ctx)
+				SetupWorkers()
 				return
 			}
 			verifyRetries++

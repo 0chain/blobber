@@ -22,5 +22,5 @@ readmarker_redeem:
   frequency: 10
   num_workers : 5
 challenge_response:
-  frequency: 30
+  frequency: 10
   num_workers: 5
