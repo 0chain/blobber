@@ -52,7 +52,7 @@ func WithDownloadStats(handler common.JSONResponderF) common.JSONResponderF {
 			return res, err
 		}
 		response := res.(*DownloadResponse)
-		stats.FileBlockDownloaded(ctx, response.AllocationID, response.Path)
+		go stats.FileBlockDownloaded(common.GetRootContext(), response.AllocationID, response.Path)
 		return res, nil
 	}
 }
@@ -68,7 +68,7 @@ func WithUpdateStats(handler common.JSONResponderF) common.JSONResponderF {
 			if change.Operation == allocation.INSERT_OPERATION || change.Operation == allocation.UPDATE_OPERATION {
 				wm := writemarker.Provider().(*writemarker.WriteMarkerEntity)
 				wm.WM = response.WriteMarker
-				stats.FileUpdated(ctx, response.WriteMarker.AllocationID, change.Path, wm.GetKey())
+				go stats.FileUpdated(common.GetRootContext(), response.WriteMarker.AllocationID, change.Path, wm.GetKey())
 			}
 		}
 

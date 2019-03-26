@@ -22,8 +22,8 @@ import (
 )
 
 type BCChallengeResponse struct {
-	BlobberID    string                      `json:"blobber_id"`
-	ChallengeMap map[string]*ChallengeEntity `json:"challenges"`
+	BlobberID  string             `json:"blobber_id"`
+	Challenges []*ChallengeEntity `json:"challenges"`
 }
 
 var dataStore datastore.Store
@@ -78,7 +78,7 @@ var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte
 		return err
 	}
 
-	if challengeObj.Status != Committed && challengeObj.Status != Failed && challengeObj.Retries < 10 {
+	if challengeObj.Status != Committed && challengeObj.Status != Failed && challengeObj.Retries < 20 {
 		unredeemedMarkers.PushBack(challengeObj.ID)
 	}
 	return nil
@@ -113,15 +113,20 @@ func FindChallenges(ctx context.Context) {
 						challengeWorker.Wait()
 					}
 				}
+				if numOfWorkers > 0 {
+					challengeWorker.Wait()
+				}
+
 				iterInprogress = false
 				numOfWorkers = 0
 				params := make(map[string]string)
 				params["blobber"] = node.Self.ID
 				var blobberChallenges BCChallengeResponse
+				blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
 				_, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain(), &blobberChallenges)
 				if err == nil {
 					tCtx := dataStore.WithConnection(ctx)
-					for k, v := range blobberChallenges.ChallengeMap {
+					for _, v := range blobberChallenges.Challenges {
 						if v == nil {
 							Logger.Info("No challenge entity from the challenge map")
 							continue
@@ -129,7 +134,7 @@ func FindChallenges(ctx context.Context) {
 						challengeObj := v
 						err = challengeObj.Read(tCtx, v.GetKey())
 						if err == datastore.ErrKeyNotFound {
-							Logger.Info("Adding new challenge found from blockchain", zap.String("challenge", k))
+							Logger.Info("Adding new challenge found from blockchain", zap.String("challenge", v.ID))
 							writeMarkerEntity := writemarker.Provider().(*writemarker.WriteMarkerEntity)
 							writeMarkerEntity.WM = &writemarker.WriteMarker{AllocationID: challengeObj.AllocationID, AllocationRoot: challengeObj.AllocationRoot}
 
