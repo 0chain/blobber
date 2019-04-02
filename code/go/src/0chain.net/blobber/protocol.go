@@ -111,8 +111,13 @@ func (sp *StorageProtocolImpl) VerifyReadMarker(ctx context.Context, rm *readmar
 	if len(clientID) == 0 || clientID != rm.ClientID {
 		return common.NewError("read_marker_validation_failed", "Read Marker clientID does not match request clientID")
 	}
-
-	if rm.Timestamp > (common.Now() + 2) {
+	currentTS := common.Now()
+	if rm.Timestamp > currentTS {
+		Logger.Error("Timestamp is for future in the read marker", zap.Any("rm", rm), zap.Any("now", currentTS))
+	}
+	currentTS = common.Now()
+	if rm.Timestamp > (currentTS + 2) {
+		Logger.Error("Timestamp is for future in the read marker", zap.Any("rm", rm), zap.Any("now", currentTS))
 		return common.NewError("read_marker_validation_failed", "Timestamp is for future in the read marker")
 	}
 
