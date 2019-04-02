@@ -65,6 +65,9 @@ func SetupWorkerConfig() {
 
 	config.Configuration.ChallengeResolveFreq = viper.GetInt64("challenge_response.frequency")
 	config.Configuration.ChallengeResolveNumWorkers = viper.GetInt("challenge_response.num_workers")
+	config.Configuration.ChallengeMaxRetires = viper.GetInt("challenge_response.max_retries")
+
+	config.Configuration.Capacity = viper.GetInt64("capacity")
 }
 
 func SetupWorkers() {
@@ -72,6 +75,7 @@ func SetupWorkers() {
 	challenge.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
 	readmarker.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
 	writemarker.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
+	stats.StartEventDispatcher(2)
 }
 
 var fsStore filestore.FileStore
@@ -90,7 +94,7 @@ func initEntities() {
 	writemarker.SetupEntity(badgerdbstore.GetStorageProvider())
 	readmarker.SetupEntity(badgerdbstore.GetStorageProvider())
 	challenge.SetupEntity(badgerdbstore.GetStorageProvider())
-	stats.SetupFileStatsEntity(badgerdbstore.GetStorageProvider())
+	stats.SetupStatsEntity(badgerdbstore.GetStorageProvider())
 }
 
 func initServer() {

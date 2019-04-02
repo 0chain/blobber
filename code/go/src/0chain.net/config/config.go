@@ -14,12 +14,14 @@ func SetupDefaultConfig() {
 
 	viper.SetDefault("openconnection_cleaner.tolerance", 3600)
 	viper.SetDefault("openconnection_cleaner.frequency", 30)
-	viper.SetDefault("writemarker_redeem.frequency", 30)
-	viper.SetDefault("writemarker_redeem.num_workers", 1)
-	viper.SetDefault("readmarker_redeem.frequency", 30)
-	viper.SetDefault("readmarker_redeem.num_workers", 1)
-	viper.SetDefault("challenge_response.frequency", 30)
-	viper.SetDefault("challenge_response.num_workers", 1)
+	viper.SetDefault("writemarker_redeem.frequency", 10)
+	viper.SetDefault("writemarker_redeem.num_workers", 5)
+	viper.SetDefault("readmarker_redeem.frequency", 10)
+	viper.SetDefault("readmarker_redeem.num_workers", 5)
+	viper.SetDefault("challenge_response.frequency", 10)
+	viper.SetDefault("challenge_response.num_workers", 5)
+	viper.SetDefault("challenge_response.max_retries", 10)
+	viper.SetDefault("capacity", -1)
 }
 
 /*SetupConfig - setup the configuration system */
@@ -43,6 +45,7 @@ type Config struct {
 	Host                          string
 	Port                          int
 	ChainID                       string
+	Capacity                      int64
 	DeploymentMode                byte
 	ContentRefWorkerFreq          int64
 	ContentRefWorkerTolerance     int64
@@ -54,6 +57,7 @@ type Config struct {
 	RMRedeemNumWorkers            int
 	ChallengeResolveFreq          int64
 	ChallengeResolveNumWorkers    int
+	ChallengeMaxRetires           int
 }
 
 /*Configuration of the system */

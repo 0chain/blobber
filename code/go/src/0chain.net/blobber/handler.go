@@ -37,8 +37,10 @@ func SetupHandlers(r *mux.Router) {
 
 	r.HandleFunc("/v1/readmarker/latest", common.ToJSONResponse(WithReadOnlyConnection(LatestRMHandler)))
 	r.HandleFunc("/v1/challenge/new", common.ToJSONResponse(WithConnection(NewChallengeHandler)))
-	r.HandleFunc("/metastore", common.ToJSONResponse(WithReadOnlyConnection(MetaStoreHandler)))
-	r.HandleFunc("/debug", common.ToJSONResponse(DumpGoRoutines))
+
+	r.HandleFunc("/_metastore", common.ToJSONResponse(WithReadOnlyConnection(MetaStoreHandler)))
+	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
+	r.HandleFunc("/_stats", common.ToJSONResponse(WithReadOnlyConnection(stats.StatsHandler)))
 
 	storageHandler = GetStorageHandler()
 }
@@ -52,7 +54,7 @@ func WithDownloadStats(handler common.JSONResponderF) common.JSONResponderF {
 			return res, err
 		}
 		response := res.(*DownloadResponse)
-		go stats.FileBlockDownloaded(common.GetRootContext(), response.AllocationID, response.Path)
+		go stats.AddBlockDownloadedStatsEvent(response.AllocationID, response.Path)
 		return res, nil
 	}
 }
@@ -68,7 +70,7 @@ func WithUpdateStats(handler common.JSONResponderF) common.JSONResponderF {
 			if change.Operation == allocation.INSERT_OPERATION || change.Operation == allocation.UPDATE_OPERATION {
 				wm := writemarker.Provider().(*writemarker.WriteMarkerEntity)
 				wm.WM = response.WriteMarker
-				go stats.FileUpdated(common.GetRootContext(), response.WriteMarker.AllocationID, change.Path, wm.GetKey())
+				go stats.AddFileUploadedStatsEvent(response.WriteMarker.AllocationID, change.Path, wm.GetKey(), change.Size)
 			}
 		}
 

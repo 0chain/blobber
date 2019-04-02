@@ -15,6 +15,7 @@ import (
 	"0chain.net/node"
 	"0chain.net/readmarker"
 	"0chain.net/reference"
+	"0chain.net/stats"
 	"0chain.net/transaction"
 	"0chain.net/writemarker"
 
@@ -257,6 +258,7 @@ func (sp *StorageProtocolImpl) VerifyAllocationTransaction(ctx context.Context, 
 			if err != nil {
 				return nil, common.NewError("root_reference_creation_error", "Error creating the root reference")
 			}
+			go stats.AddNewAllocationEvent(allocationObj.ID)
 		}
 	}
 	return allocationObj, nil

@@ -267,6 +267,11 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 	}
 
 	if numSuccess > (len(cr.Validators)/2) || numFailure > (len(cr.Validators)/2) {
+		if numSuccess > (len(cr.Validators) / 2) {
+			cr.Result = ChallengeSuccess
+		} else {
+			cr.Result = ChallengeFailure
+		}
 		t, err := cr.SubmitChallengeToBC(ctx)
 		if err != nil {
 			if t != nil {

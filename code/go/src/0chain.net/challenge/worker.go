@@ -64,7 +64,19 @@ func RespondToChallenge(challengeID string) {
 	mutex.Unlock()
 
 	if challengeObj.ObjectPath != nil && challengeObj.Status == Committed && challengeObj.ObjectPath.FileBlockNum > 0 {
-		stats.FileChallenged(newctx, challengeObj.AllocationID, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
+		//stats.FileChallenged(challengeObj.AllocationID, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
+		if challengeObj.Result == ChallengeSuccess {
+			go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.SUCCESS, stats.REDEEMSUCCESS, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
+		} else if challengeObj.Result == ChallengeFailure {
+			go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.FAILED, stats.REDEEMSUCCESS, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
+		}
+
+	} else if challengeObj.ObjectPath != nil && challengeObj.Status != Committed && challengeObj.ObjectPath.FileBlockNum > 0 && challengeObj.Retries >= config.Configuration.ChallengeMaxRetires {
+		if challengeObj.Result == ChallengeSuccess {
+			go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.SUCCESS, stats.REDEEMERROR, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
+		} else if challengeObj.Result == ChallengeFailure {
+			go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.FAILED, stats.REDEEMERROR, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
+		}
 	}
 	newctx.Done()
 	challengeWorker.Done()
@@ -78,7 +90,7 @@ var challengeHandler = func(ctx context.Context, key datastore.Key, value []byte
 		return err
 	}
 
-	if challengeObj.Status != Committed && challengeObj.Status != Failed && challengeObj.Retries < 20 {
+	if challengeObj.Status != Committed && challengeObj.Status != Failed && challengeObj.Retries < config.Configuration.ChallengeMaxRetires {
 		unredeemedMarkers.PushBack(challengeObj.ID)
 	}
 	return nil
@@ -145,6 +157,7 @@ func FindChallenges(ctx context.Context) {
 							challengeObj.WriteMarker = writeMarkerEntity.GetKey()
 							challengeObj.ValidationTickets = make([]*ValidationTicket, len(challengeObj.Validators))
 							challengeObj.Write(tCtx)
+							go stats.AddNewChallengeEvent(challengeObj.AllocationID, challengeObj.ID)
 						}
 					}
 					dataStore.Commit(tCtx)

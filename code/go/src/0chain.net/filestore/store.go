@@ -31,3 +31,9 @@ type FileStore interface {
 	GetMerkleTreeForFile(allocationID string, fileData *FileInputData) (util.MerkleTreeI, error)
 	DeleteFile(allocationID string, contentHash string) error
 }
+
+var fsStore FileStore
+
+func GetFileStore() FileStore {
+	return fsStore
+}

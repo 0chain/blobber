@@ -1,0 +1,127 @@
+package stats
+
+import (
+	"context"
+	"encoding/json"
+	"sync"
+
+	"0chain.net/datastore"
+	"0chain.net/lock"
+)
+
+type AllocationStats struct {
+	AllocationID      string            `json:"allocation_id"`
+	GivenUpChallenges map[string]string `json:"given_up_challenges"`
+	Stats
+}
+
+func NewSyncAllocationStats(allocationID string) (*AllocationStats, *sync.Mutex) {
+	fs := &AllocationStats{}
+	fs.AllocationID = allocationID
+	fs.GivenUpChallenges = make(map[string]string)
+	mutex := lock.GetMutex(fs.GetKey())
+	mutex.Lock()
+	return fs, mutex
+}
+
+func (as *AllocationStats) GetKey() datastore.Key {
+	return "allocationstats:" + as.AllocationID
+}
+
+func (as *AllocationStats) NewChallenge(ctx context.Context, ch *ChallengeEvent) error {
+	fsbytes, err := GetStatsStore().ReadBytes(ctx, as.GetKey())
+	if err != nil && err != datastore.ErrKeyNotFound {
+		return err
+	}
+	err = json.Unmarshal(fsbytes, as)
+
+	as.OpenChallenges++
+	as.TotalChallenges++
+
+	fsbytes, err = json.Marshal(as)
+	if err != nil {
+		return err
+	}
+	err = GetStatsStore().WriteBytes(ctx, as.GetKey(), fsbytes)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (as *AllocationStats) ChallengeRedeemed(ctx context.Context, ch *ChallengeEvent) error {
+	fsbytes, err := GetStatsStore().ReadBytes(ctx, as.GetKey())
+	if err != nil && err != datastore.ErrKeyNotFound {
+		return err
+	}
+	err = json.Unmarshal(fsbytes, as)
+
+	as.OpenChallenges--
+	if ch.Result == SUCCESS {
+		as.SuccessChallenges++
+	}
+	if ch.Result == FAILED {
+		as.FailedChallenges++
+	}
+
+	if ch.RedeemStatus == REDEEMSUCCESS {
+		as.RedeemSuccessChallenges++
+	}
+	if ch.RedeemStatus == REDEEMERROR {
+		as.RedeemErrorChallenges++
+		as.GivenUpChallenges[ch.ChallengeID] = ch.ChallengeID
+	}
+
+	fsbytes, err = json.Marshal(as)
+	if err != nil {
+		return err
+	}
+	err = GetStatsStore().WriteBytes(ctx, as.GetKey(), fsbytes)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (as *AllocationStats) NewWrite(ctx context.Context, f *FileUploadedEvent) error {
+	fsbytes, err := GetStatsStore().ReadBytes(ctx, as.GetKey())
+	if err != nil && err != datastore.ErrKeyNotFound {
+		return err
+	}
+	err = json.Unmarshal(fsbytes, as)
+
+	as.NumWrites++
+	as.UsedSize += f.Size
+
+	fsbytes, err = json.Marshal(as)
+	if err != nil {
+		return err
+	}
+	err = GetStatsStore().WriteBytes(ctx, as.GetKey(), fsbytes)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (as *AllocationStats) NewBlockDownload(ctx context.Context, f *FileDownloadedEvent) error {
+	fsbytes, err := GetStatsStore().ReadBytes(ctx, as.GetKey())
+	if err != nil && err != datastore.ErrKeyNotFound {
+		return err
+	}
+	err = json.Unmarshal(fsbytes, as)
+	if err != nil {
+		return err
+	}
+	as.NumReads++
+
+	fsbytes, err = json.Marshal(as)
+	if err != nil {
+		return err
+	}
+	err = GetStatsStore().WriteBytes(ctx, as.GetKey(), fsbytes)
+	if err != nil {
+		return err
+	}
+	return nil
+}

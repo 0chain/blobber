@@ -41,7 +41,8 @@ type StoreAllocation struct {
 
 func SetupFSStore(rootDir string) FileStore {
 	createDirs(rootDir)
-	return &FileFSStore{RootDirectory: rootDir}
+	fsStore = &FileFSStore{RootDirectory: rootDir}
+	return fsStore
 }
 
 func createDirs(dir string) error {

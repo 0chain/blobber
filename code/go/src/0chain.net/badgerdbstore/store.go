@@ -63,6 +63,9 @@ func (ps *Store) ReadBytes(ctx context.Context, key datastore.Key) ([]byte, erro
 	resultBytes := make([]byte, 0)
 	txn := ps.GetConnection(ctx)
 	item, err := txn.Get([]byte(key))
+	if err != nil && err == badger.ErrKeyNotFound {
+		return nil, datastore.ErrKeyNotFound
+	}
 	if err != nil {
 		return nil, err
 	}

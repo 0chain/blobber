@@ -12,12 +12,16 @@ import (
 )
 
 type ChallengeStatus int
+type ChallengeResult int
 
 const (
 	Accepted  ChallengeStatus = 0
 	Committed ChallengeStatus = 1
 	Failed    ChallengeStatus = 2
 	Error     ChallengeStatus = 3
+
+	ChallengeSuccess ChallengeResult = 1
+	ChallengeFailure ChallengeResult = 2
 )
 
 type ValidationTicket struct {
@@ -54,6 +58,7 @@ type ChallengeEntity struct {
 	Blobber           transaction.StorageNode `json:"blobber"`
 	AllocationRoot    string                  `json:"allocation_root"`
 	Status            ChallengeStatus         `json:"status"`
+	Result            ChallengeResult         `json:"result"`
 	StatusMessage     string                  `json:"status_message"`
 	CommitTxnID       string                  `json:"commit_txn_id"`
 	BlockNum          int64                   `json:"block_num"`
