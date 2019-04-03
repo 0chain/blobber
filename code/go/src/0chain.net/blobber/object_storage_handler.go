@@ -185,12 +185,15 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 		return nil, err
 	}
 
-	rmEntity.Write(ctx)
+	err = rmEntity.Write(ctx)
+	if err != nil {
+		return nil, err
+	}
 	response := &DownloadResponse{}
 	response.Data = respData
 	response.Path = fileref.Path
 	response.AllocationID = fileref.AllocationID
-	return response, err
+	return response, nil
 }
 
 func (fsh *ObjectStorageHandler) GetConnectionDetails(ctx context.Context, r *http.Request) (*allocation.AllocationChangeCollector, error) {

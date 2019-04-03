@@ -103,7 +103,7 @@ func initServer() {
 
 func processBlockChainConfig(nodesFileName string) {
 	nodeConfig := viper.New()
-	nodeConfig.AddConfigPath("./config")
+	nodeConfig.AddConfigPath("./keysconfig")
 	nodeConfig.SetConfigName(nodesFileName)
 
 	err := nodeConfig.ReadInConfig()

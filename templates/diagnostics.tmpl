@@ -103,9 +103,10 @@
         <td>{{ .FailedChallenges }}</td>
         <td>{{ .RedeemSuccessChallenges }}</td>
         <td>{{ .RedeemErrorChallenges }}</td>
-        {{ range $key, $value := .GivenUpChallenges }}
-           <li>{{ $key }}</li>
-        {{ end }}
+        <td>{{ range $key, $value := .GivenUpChallenges }}
+             <p>{{ $key }}</p>
+            {{ end }}
+        </td>
       </tr>
       {{end}}
     </table>
