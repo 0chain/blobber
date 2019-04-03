@@ -3,13 +3,13 @@ package blobber
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"os"
 	"runtime/pprof"
 
-	"net/http"
-
 	"0chain.net/allocation"
 	"0chain.net/common"
+	"0chain.net/config"
 	"0chain.net/datastore"
 	"0chain.net/stats"
 	"0chain.net/writemarker"
@@ -40,6 +40,7 @@ func SetupHandlers(r *mux.Router) {
 
 	r.HandleFunc("/_metastore", common.ToJSONResponse(WithReadOnlyConnection(MetaStoreHandler)))
 	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
+	r.HandleFunc("/_config", common.ToJSONResponse(GetConfig))
 	r.HandleFunc("/_stats", stats.StatsHandler)
 
 	storageHandler = GetStorageHandler()
@@ -106,6 +107,10 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
 	pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 	return "success", nil
+}
+
+func GetConfig(ctx context.Context, r *http.Request) (interface{}, error) {
+	return config.Configuration, nil
 }
 
 func NewChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error) {
