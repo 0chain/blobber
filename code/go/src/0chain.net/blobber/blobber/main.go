@@ -225,15 +225,15 @@ func main() {
 		// No WriteTimeout setup to enable pprof
 		server = &http.Server{
 			Addr:           address,
-			ReadTimeout:    30 * time.Second,
+			ReadTimeout:    60 * time.Second,
 			MaxHeaderBytes: 1 << 20,
 			Handler:        rHandler, // Pass our instance of gorilla/mux in.
 		}
 	} else {
 		server = &http.Server{
 			Addr:           address,
-			ReadTimeout:    30 * time.Second,
-			WriteTimeout:   30 * time.Second,
+			ReadTimeout:    60 * time.Second,
+			WriteTimeout:   60 * time.Second,
 			MaxHeaderBytes: 1 << 20,
 			Handler:        rHandler, // Pass our instance of gorilla/mux in.
 		}
