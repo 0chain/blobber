@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Blobber Diagnostics</title>
+  </head>
+  <body>
+    <p>
+      Blobber Stats
+    </p>
+    <table border="1">
+      <tr>
+        <td>ID</td>
+        <td>{{ .ClientID }}</td>
+      </tr>
+      <tr>
+        <td>PublicKey</td>
+        <td>{{ .PublicKey }}</td>
+      </tr>
+      <tr>
+        <td>Capacity</td>
+        <td>{{ .Capacity }}</td>
+      </tr>
+      <tr>
+        <td>Allocations</td>
+        <td>{{ .NumAllocation }}</td>
+      </tr>
+      <tr>
+        <td>Temp Folder Size</td>
+        <td>{{ .TempFolderSize }}</td>
+      </tr>
+
+      <tr>
+        <td>Used Size</td>
+        <td>{{ .UsedSize }}</td>
+      </tr>
+      <tr>
+        <td>Disk Size Used</td>
+        <td>{{ .DiskSizeUsed }}</td>
+      </tr>
+      <tr>
+        <td>Writes</td>
+        <td>{{ .NumWrites }}</td>
+      </tr>
+      <tr>
+        <td>Reads</td>
+        <td>{{ .NumReads }}</td>
+      </tr>
+      <tr>
+        <td>Total Challenges</td>
+        <td>{{ .TotalChallenges }}</td>
+      </tr>
+      <tr>
+        <td>Open Challenges</td>
+        <td>{{ .OpenChallenges }}</td>
+      </tr>
+      <tr>
+        <td>Passed Challenges</td>
+        <td>{{ .SuccessChallenges }}</td>
+      </tr>
+      <tr>
+        <td>Failed Challenges</td>
+        <td>{{ .OpenChallenges }}</td>
+      </tr>
+      <tr>
+        <td>Redeemed Challenges</td>
+        <td>{{ .RedeemSuccessChallenges }}</td>
+      </tr>
+      <tr>
+        <td>Redeem Errored Challenges</td>
+        <td>{{ .RedeemErrorChallenges }}</td>
+      </tr>
+    </table>
+  </body>
+</html>

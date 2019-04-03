@@ -40,7 +40,7 @@ func SetupHandlers(r *mux.Router) {
 
 	r.HandleFunc("/_metastore", common.ToJSONResponse(WithReadOnlyConnection(MetaStoreHandler)))
 	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
-	r.HandleFunc("/_stats", common.ToJSONResponse(WithReadOnlyConnection(stats.StatsHandler)))
+	r.HandleFunc("/_stats", stats.StatsHandler)
 
 	storageHandler = GetStorageHandler()
 }

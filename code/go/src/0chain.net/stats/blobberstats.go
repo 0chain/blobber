@@ -37,6 +37,19 @@ func (bs *BlobberStats) GetKey() datastore.Key {
 	return "blobberstats:" + bs.ClientID
 }
 
+func LoadBlobberStats(ctx context.Context) *BlobberStats {
+	fs := &BlobberStats{}
+	fs.ClientID = node.Self.ID
+	fs.PublicKey = node.Self.PublicKey
+	fs.Capacity = config.Configuration.Capacity
+	fsbytes, err := GetStatsStore().ReadBytes(ctx, fs.GetKey())
+	if err != nil {
+		return fs
+	}
+	json.Unmarshal(fsbytes, fs)
+	return fs
+}
+
 func NewSyncBlobberStats() (*BlobberStats, *sync.Mutex) {
 	fs := &BlobberStats{}
 	fs.ClientID = node.Self.ID
