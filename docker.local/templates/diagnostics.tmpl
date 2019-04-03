@@ -4,9 +4,9 @@
     <title>Blobber Diagnostics</title>
   </head>
   <body>
-    <p>
+    <h1>
       Blobber Stats
-    </p>
+    </h1>
     <table border="1">
       <tr>
         <td>ID</td>
@@ -59,7 +59,7 @@
       </tr>
       <tr>
         <td>Failed Challenges</td>
-        <td>{{ .OpenChallenges }}</td>
+        <td>{{ .FailedChallenges }}</td>
       </tr>
       <tr>
         <td>Redeemed Challenges</td>
@@ -69,6 +69,45 @@
         <td>Redeem Errored Challenges</td>
         <td>{{ .RedeemErrorChallenges }}</td>
       </tr>
+    </table>
+
+    <h1>
+      Allocation Stats
+    </h1>
+    <table border="1">
+      <tr>
+        <td>ID</td>
+        <td>Used Size</td>
+        <td>Disk Size Used</td>
+        <td>Writes</td>
+        <td>Reads</td>
+        <td>Total Challenges</td>
+        <td>Open Challenges</td>
+        <td>Passed Challenges</td>
+        <td>Failed Challenges</td>
+        <td>Redeemed Challenges</td>
+        <td>Redeem Errored Challenges</td>
+        <td>Given Up Challenges</td>
+      </tr>
+      {{range .AllocationStats}}
+      
+      <tr>
+        <td>{{ .AllocationID }}</td>
+        <td>{{ .UsedSize }}</td>
+        <td>{{ .DiskSizeUsed }}</td>
+        <td>{{ .NumWrites }}</td>
+        <td>{{ .NumReads }}</td>
+        <td>{{ .TotalChallenges }}</td>
+        <td>{{ .OpenChallenges }}</td>
+        <td>{{ .SuccessChallenges }}</td>
+        <td>{{ .FailedChallenges }}</td>
+        <td>{{ .RedeemSuccessChallenges }}</td>
+        <td>{{ .RedeemErrorChallenges }}</td>
+        {{ range $key, $value := .GivenUpChallenges }}
+           <li>{{ $key }}</li>
+        {{ end }}
+      </tr>
+      {{end}}
     </table>
   </body>
 </html>

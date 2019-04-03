@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"0chain.net/datastore"
+	"0chain.net/filestore"
 	"0chain.net/lock"
 )
 
@@ -13,6 +14,20 @@ type AllocationStats struct {
 	AllocationID      string            `json:"allocation_id"`
 	GivenUpChallenges map[string]string `json:"given_up_challenges"`
 	Stats
+}
+
+func LoadAllocationStatsFromBytes(ctx context.Context, value []byte) (*AllocationStats, error) {
+	fs := &AllocationStats{}
+	err := json.Unmarshal(value, fs)
+	if err != nil {
+		return nil, err
+	}
+	du, err := filestore.GetFileStore().GetlDiskSizeUsed(fs.AllocationID)
+	if err != nil {
+		du = -1
+	}
+	fs.DiskSizeUsed = du
+	return fs, nil
 }
 
 func NewSyncAllocationStats(allocationID string) (*AllocationStats, *sync.Mutex) {

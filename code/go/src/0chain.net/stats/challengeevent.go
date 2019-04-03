@@ -3,6 +3,7 @@ package stats
 import (
 	"0chain.net/common"
 	. "0chain.net/logging"
+	"go.uber.org/zap"
 )
 
 type ChallengeStatus int
@@ -47,6 +48,8 @@ func (f *ChallengeEvent) PerformWork() error {
 		if err != nil {
 			return err
 		}
+
+		Logger.Info("New challenge received", zap.Any("as", as), zap.Any("bs", bs))
 
 		err = GetStatsStore().Commit(nctx)
 		if err != nil {

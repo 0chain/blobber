@@ -7,6 +7,7 @@ import (
 
 	"0chain.net/config"
 	"0chain.net/datastore"
+	"0chain.net/filestore"
 	"0chain.net/lock"
 	"0chain.net/node"
 )
@@ -26,11 +27,12 @@ type Stats struct {
 
 type BlobberStats struct {
 	Stats
-	NumAllocation  int64  `json:"num_of_allocations"`
-	ClientID       string `json:"-"`
-	PublicKey      string `json:"-"`
-	Capacity       int64  `json:"-"`
-	TempFolderSize int64  `json:"-"`
+	NumAllocation   int64              `json:"num_of_allocations"`
+	ClientID        string             `json:"-"`
+	PublicKey       string             `json:"-"`
+	Capacity        int64              `json:"-"`
+	TempFolderSize  int64              `json:"-"`
+	AllocationStats []*AllocationStats `json:"-"`
 }
 
 func (bs *BlobberStats) GetKey() datastore.Key {
@@ -39,14 +41,30 @@ func (bs *BlobberStats) GetKey() datastore.Key {
 
 func LoadBlobberStats(ctx context.Context) *BlobberStats {
 	fs := &BlobberStats{}
+	fs.AllocationStats = make([]*AllocationStats, 0)
 	fs.ClientID = node.Self.ID
 	fs.PublicKey = node.Self.PublicKey
 	fs.Capacity = config.Configuration.Capacity
+	du, err := filestore.GetFileStore().GetTotalDiskSizeUsed()
+	if err != nil {
+		du = -1
+	}
+	fs.DiskSizeUsed = du
 	fsbytes, err := GetStatsStore().ReadBytes(ctx, fs.GetKey())
 	if err != nil {
 		return fs
 	}
 	json.Unmarshal(fsbytes, fs)
+
+	statshandler := func(ctx context.Context, key datastore.Key, value []byte) error {
+		as, err := LoadAllocationStatsFromBytes(ctx, value)
+		if err != nil {
+			return nil
+		}
+		fs.AllocationStats = append(fs.AllocationStats, as)
+		return nil
+	}
+	GetStatsStore().IteratePrefix(ctx, "allocationstats", statshandler)
 	return fs
 }
 
