@@ -3,6 +3,7 @@ package stats
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"sync"
 
 	"0chain.net/datastore"
@@ -13,6 +14,7 @@ import (
 type AllocationStats struct {
 	AllocationID      string            `json:"allocation_id"`
 	GivenUpChallenges map[string]string `json:"given_up_challenges"`
+	TempFolderSize    int64             `json:"-"`
 	Stats
 }
 
@@ -27,6 +29,11 @@ func LoadAllocationStatsFromBytes(ctx context.Context, value []byte) (*Allocatio
 		du = -1
 	}
 	fs.DiskSizeUsed = du
+	tfs, err := filestore.GetFileStore().GetTempPathSize(fs.AllocationID)
+	if err != nil {
+		tfs = -1
+	}
+	fs.TempFolderSize = tfs
 	return fs, nil
 }
 
@@ -107,6 +114,7 @@ func (as *AllocationStats) NewWrite(ctx context.Context, f *FileUploadedEvent) e
 
 	as.NumWrites++
 	as.UsedSize += f.Size
+	as.BlockWrites += int64(math.Ceil(float64(f.Size*1.0) / filestore.CHUNK_SIZE))
 
 	fsbytes, err = json.Marshal(as)
 	if err != nil {

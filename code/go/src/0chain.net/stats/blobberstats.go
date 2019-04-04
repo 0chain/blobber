@@ -3,6 +3,7 @@ package stats
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"sync"
 
 	"0chain.net/config"
@@ -15,6 +16,7 @@ import (
 type Stats struct {
 	UsedSize                int64 `json:"used_size"`
 	DiskSizeUsed            int64 `json:"-"`
+	BlockWrites             int64 `json:"num_of_block_writes"`
 	NumWrites               int64 `json:"num_of_writes"`
 	NumReads                int64 `json:"num_of_reads"`
 	TotalChallenges         int64 `json:"total_challenges"`
@@ -31,7 +33,6 @@ type BlobberStats struct {
 	ClientID        string             `json:"-"`
 	PublicKey       string             `json:"-"`
 	Capacity        int64              `json:"-"`
-	TempFolderSize  int64              `json:"-"`
 	AllocationStats []*AllocationStats `json:"-"`
 }
 
@@ -107,6 +108,7 @@ func (bs *BlobberStats) NewWrite(ctx context.Context, f *FileUploadedEvent) erro
 
 	bs.NumWrites++
 	bs.UsedSize += f.Size
+	bs.BlockWrites += int64(math.Ceil(float64(f.Size*1.0) / filestore.CHUNK_SIZE))
 
 	fsbytes, err = json.Marshal(bs)
 	if err != nil {

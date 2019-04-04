@@ -32,6 +32,7 @@ type FileStore interface {
 	DeleteFile(allocationID string, contentHash string) error
 	GetTotalDiskSizeUsed() (int64, error)
 	GetlDiskSizeUsed(allocationID string) (int64, error)
+	GetTempPathSize(allocationID string) (int64, error)
 }
 
 var fsStore FileStore

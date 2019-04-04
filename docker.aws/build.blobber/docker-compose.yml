@@ -20,7 +20,6 @@ services:
 
     volumes:
     - /0chain/blobber/config:/0chain/config
-    - /0chain/blobber/templates:/0chain/templates
     - /0chain/blobber/log:/0chain/log
     - /0chain/blobber/data:/0chain/data
     - /0chain/blobber/data/badgerdb:/0chain/data/badgerdb

@@ -55,6 +55,24 @@ func createDirs(dir string) error {
 	return nil
 }
 
+func (fs *FileFSStore) GetTempPathSize(allocationID string) (int64, error) {
+	var size int64
+	allocationObj, err := fs.setupAllocation(allocationID, true)
+	if err != nil {
+		return size, err
+	}
+	err = filepath.Walk(allocationObj.TempObjectsPath, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return err
+	})
+	return size, err
+}
+
 func (fs *FileFSStore) GetTotalDiskSizeUsed() (int64, error) {
 	var size int64
 	err := filepath.Walk(fs.RootDirectory, func(_ string, info os.FileInfo, err error) error {

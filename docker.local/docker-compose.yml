@@ -10,7 +10,6 @@ services:
     volumes:
      - ./keys_config:/blobber/keysconfig
      - ../config:/blobber/config
-     - ../templates:/blobber/templates
      - ./blobber${BLOBBER}/files:/blobber/files
      - ./blobber${BLOBBER}/data:/blobber/data
     ports:

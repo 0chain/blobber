@@ -4,7 +4,7 @@ logging:
   level: "info"
   console: false # printing log to console is only supported in development mode
 
-capacity: 1073741824
+capacity: 1099511627776
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
   owner: "65dfe7e15ca2f689edda6eff3d5c36e8c0975792fa443c5f5413fbca27c49567"
