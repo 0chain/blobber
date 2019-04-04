@@ -30,7 +30,7 @@ const tpl = `<!DOCTYPE html>
         <td>{{ .PublicKey }}</td>
       </tr>
       <tr>
-        <td>Capacity (bytes)</td>
+        <td>Capacity - from config (bytes)</td>
         <td>{{ .Capacity }}</td>
       </tr>
       <tr>
@@ -42,7 +42,7 @@ const tpl = `<!DOCTYPE html>
         <td>{{ .UsedSize }}</td>
       </tr>
       <tr>
-        <td>Disk Size Used (bytes)</td>
+        <td>Actual Disk Usage (bytes)</td>
         <td>{{ .DiskSizeUsed }}</td>
       </tr>
       <tr>
@@ -91,7 +91,7 @@ const tpl = `<!DOCTYPE html>
       <tr>
         <td>ID</td>
         <td>Used Size (bytes)</td>
-		<td>Disk Size Used (bytes)</td>
+		<td>Actual Disk Usage (bytes)</td>
 		<td>Temp Folder Size (bytes)</td>
 		<td>Write Markers</td>
 		<td>Blocks Written</td>
