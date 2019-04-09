@@ -72,6 +72,10 @@ func WithUpdateStats(handler common.JSONResponderF) common.JSONResponderF {
 				wm := writemarker.Provider().(*writemarker.WriteMarkerEntity)
 				wm.WM = response.WriteMarker
 				go stats.AddFileUploadedStatsEvent(response.WriteMarker.AllocationID, change.Path, wm.GetKey(), change.Size)
+			} else if change.Operation == allocation.DELETE_OPERATION {
+				wm := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+				wm.WM = response.WriteMarker
+				go stats.AddFileDeletedStatsEvent(response.WriteMarker.AllocationID, change.Path, wm.GetKey(), change.Size)
 			}
 		}
 

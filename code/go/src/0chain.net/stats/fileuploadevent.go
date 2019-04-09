@@ -5,11 +5,17 @@ import (
 	. "0chain.net/logging"
 )
 
+const (
+	INSERT_UPDATE_OPERATION = 0
+	DELETE_OPERATION        = 1
+)
+
 type FileUploadedEvent struct {
 	AllocationID   string
 	Path           string
 	WriteMarkerKey string
 	Size           int64
+	Operation      int
 }
 
 func (f *FileUploadedEvent) PerformWork() error {
@@ -24,11 +30,19 @@ func (f *FileUploadedEvent) PerformWork() error {
 
 		nctx := GetStatsStore().WithConnection(ctx)
 		defer GetStatsStore().Discard(nctx)
-		err := fs.NewWrite(nctx, f)
-		if err != nil {
-			return err
+		if f.Operation == INSERT_UPDATE_OPERATION {
+			err := fs.NewWrite(nctx, f)
+			if err != nil {
+				return err
+			}
+		} else if f.Operation == DELETE_OPERATION {
+			err := GetStatsStore().DeleteKey(nctx, fs.GetKey())
+			if err != nil {
+				return err
+			}
 		}
-		err = as.NewWrite(nctx, f)
+
+		err := as.NewWrite(nctx, f)
 		if err != nil {
 			return err
 		}

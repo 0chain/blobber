@@ -100,13 +100,13 @@ func (a *AllocationChangeCollector) AddChange(change *AllocationChange) {
 
 func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context, fileStore filestore.FileStore) error {
 	for _, change := range a.Changes {
-		// if change.Operation == INSERT_OPERATION || change.Operation == UPDATE_OPERATION {
-		// 	fileInputData := &filestore.FileInputData{}
-		// 	fileInputData.Name = change.Filename
-		// 	fileInputData.Path = change.Path
-		// 	fileInputData.Hash = change.Hash
-		// 	fileStore.DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
-		// }
+		if change.Operation == INSERT_OPERATION || change.Operation == UPDATE_OPERATION {
+			fileInputData := &filestore.FileInputData{}
+			fileInputData.Name = change.Filename
+			fileInputData.Path = change.Path
+			fileInputData.Hash = change.Hash
+			fileStore.DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
+		}
 		if change.Operation == DELETE_OPERATION {
 			deleteToken := DeleteTokenProvider().(*DeleteToken)
 			err := deleteToken.Read(ctx, change.DeleteToken)
