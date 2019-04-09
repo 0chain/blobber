@@ -260,17 +260,13 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 			}
 		}
 	}
-	if numFailure > (len(cr.Validators)/2) && cr.Retries < 3 {
-		Logger.Error("Challenge failed from the validators. Will have to retry", zap.Any("block_num", cr.BlockNum), zap.Any("object_path", objectPath))
-		cr.ErrorChallenge(ctx, common.NewError("challenge_failed_retry", "Challenge failed from the validators. Will have to retry"))
-		return common.NewError("challenge_failed_retry", "Challenge failed from the validators. Will have to retry")
-	}
 
 	if numSuccess > (len(cr.Validators)/2) || numFailure > (len(cr.Validators)/2) {
 		if numSuccess > (len(cr.Validators) / 2) {
 			cr.Result = ChallengeSuccess
 		} else {
 			cr.Result = ChallengeFailure
+			Logger.Error("Challenge failed by the validators", zap.Any("block_num", cr.BlockNum), zap.Any("object_path", objectPath), zap.Any("challenge", cr))
 		}
 		t, err := cr.SubmitChallengeToBC(ctx)
 		if err != nil {

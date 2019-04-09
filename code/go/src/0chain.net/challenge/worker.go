@@ -37,16 +37,16 @@ func SetupWorkers(ctx context.Context, metaStore datastore.Store, fsStore filest
 
 func RespondToChallenge(challengeID string) {
 	ctx := context.Background()
-	newctx := dataStore.WithConnection(ctx)
 	challengeObj := Provider().(*ChallengeEntity)
 	challengeObj.ID = challengeID
+	mutex := lock.GetMutex(challengeObj.GetKey())
+	mutex.Lock()
+	newctx := dataStore.WithConnection(ctx)
 	err := challengeObj.Read(newctx, challengeObj.GetKey())
 	if err != nil {
 		Logger.Error("Error reading challenge from the database.", zap.Error(err), zap.String("challenge_id", challengeID))
 	}
 
-	mutex := lock.GetMutex(challengeObj.GetKey())
-	mutex.Lock()
 	if challengeObj.Status == Error {
 		challengeObj.Retries++
 	}
