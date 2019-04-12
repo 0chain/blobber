@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"0chain.net/encryption"
+
 	"0chain.net/common"
 	. "0chain.net/logging"
 	"0chain.net/node"
@@ -19,11 +21,13 @@ const MAX_RETRIES = 5
 const SLEEP_BETWEEN_RETRIES = 5
 
 func NewHTTPRequest(method string, url string, data []byte) (*http.Request, context.Context, context.CancelFunc, error) {
+	requestHash := encryption.Hash(data)
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(data))
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Access-Control-Allow-Origin", "*")
 	req.Header.Set("X-App-Client-ID", node.Self.ID)
 	req.Header.Set("X-App-Client-Key", node.Self.PublicKey)
+	req.Header.Set("X-App-Request-Hash", requestHash)
 	ctx, cncl := context.WithTimeout(context.Background(), time.Second*10)
 	return req, ctx, cncl, err
 }
