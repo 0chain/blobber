@@ -7,6 +7,7 @@ import (
 	"0chain.net/common"
 	"0chain.net/datastore"
 	"0chain.net/encryption"
+	"0chain.net/lock"
 	"0chain.net/reference"
 	"0chain.net/transaction"
 )
@@ -105,4 +106,29 @@ func (ch *ChallengeEntity) Write(ctx context.Context) error {
 }
 func (ch *ChallengeEntity) Delete(ctx context.Context) error {
 	return nil
+}
+
+func RetakeChallenge(ctx context.Context, challengeID string) error {
+	challengeObj := Provider().(*ChallengeEntity)
+	challengeObj.ID = challengeID
+	mutex := lock.GetMutex(challengeObj.GetKey())
+	mutex.Lock()
+	defer mutex.Unlock()
+	ctx = challengeEntityMetaData.GetStore().WithConnection(ctx)
+	defer challengeEntityMetaData.GetStore().Discard(ctx)
+
+	err := challengeObj.Read(ctx, challengeObj.GetKey())
+	if err != nil {
+		return err
+	}
+	challengeObj.CommitTxnID = ""
+	challengeObj.Retries = 0
+	challengeObj.Status = Accepted
+	challengeObj.ValidationTickets = make([]*ValidationTicket, len(challengeObj.Validators))
+	err = challengeObj.Write(ctx)
+	if err != nil {
+		return err
+	}
+	err = challengeEntityMetaData.GetStore().Commit(ctx)
+	return err
 }

@@ -8,6 +8,7 @@ import (
 	"runtime/pprof"
 
 	"0chain.net/allocation"
+	"0chain.net/challenge"
 	"0chain.net/common"
 	"0chain.net/config"
 	"0chain.net/datastore"
@@ -42,6 +43,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
 	r.HandleFunc("/_config", common.ToJSONResponse(GetConfig))
 	r.HandleFunc("/_stats", stats.StatsHandler)
+	r.HandleFunc("/_retakechallenge", common.ToJSONResponse(RetakeChallenge))
 
 	storageHandler = GetStorageHandler()
 }
@@ -299,4 +301,16 @@ func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 
 	return response, nil
+}
+
+func RetakeChallenge(ctx context.Context, r *http.Request) (interface{}, error) {
+	challengeID := r.FormValue("challenge_id")
+	if len(challengeID) == 0 {
+		return nil, common.NewError("invalid_parameters", "Please give a valid challenge ID")
+	}
+	err := challenge.RetakeChallenge(ctx, challengeID)
+	if err != nil {
+		return nil, err
+	}
+	return "Challenge triggered again", nil
 }
