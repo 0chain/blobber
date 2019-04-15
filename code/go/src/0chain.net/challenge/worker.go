@@ -139,12 +139,13 @@ func FindChallenges(ctx context.Context) {
 				handler := func(responseMap map[string][]byte, numSharders int, err error) {
 					Logger.Info("calling handler")
 					openChallengeMap := make(map[string]int)
-					for k, v := range responseMap {
-						Logger.Info("response received", zap.Any("sharder", k), zap.Any("response", string(v)))
+					for _, v := range responseMap {
+						//Logger.Info("response received", zap.Any("sharder", k), zap.Any("response", string(v)))
 						var blobberChallengest BCChallengeResponse
 						blobberChallengest.Challenges = make([]*ChallengeEntity, 0)
 						errd := json.Unmarshal(v, &blobberChallengest)
 						if errd != nil {
+							Logger.Error("Error in unmarshal of the sharder response")
 							continue
 						}
 						for _, challenge := range blobberChallengest.Challenges {
@@ -153,6 +154,7 @@ func FindChallenges(ctx context.Context) {
 							}
 							openChallengeMap[challenge.ID]++
 							if openChallengeMap[challenge.ID] > (numSharders / 2) {
+								Logger.Info("Challenge consesus passed.", zap.Any("challenge", challenge))
 								blobberChallenges.Challenges = append(blobberChallenges.Challenges, challenge)
 							}
 						}
