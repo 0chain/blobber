@@ -126,7 +126,7 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		cr.ErrorChallenge(ctx, err)
 		return err
 	}
-	Logger.Info("blockNum for challenge", zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ID))
+	Logger.Info("blockNum for challenge", zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ID), zap.Any("random_seed", cr.RandomNumber))
 	objectPath, err := reference.GetObjectPath(ctx, cr.AllocationID, blockNum, dbStore)
 	if err != nil {
 		cr.ErrorChallenge(ctx, err)
