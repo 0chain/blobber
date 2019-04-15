@@ -137,10 +137,8 @@ func FindChallenges(ctx context.Context) {
 				blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
 
 				handler := func(responseMap map[string][]byte, numSharders int, err error) {
-					Logger.Info("calling handler")
 					openChallengeMap := make(map[string]int)
 					for _, v := range responseMap {
-						//Logger.Info("response received", zap.Any("sharder", k), zap.Any("response", string(v)))
 						var blobberChallengest BCChallengeResponse
 						blobberChallengest.Challenges = make([]*ChallengeEntity, 0)
 						errd := json.Unmarshal(v, &blobberChallengest)
@@ -154,42 +152,38 @@ func FindChallenges(ctx context.Context) {
 							}
 							openChallengeMap[challenge.ID]++
 							if openChallengeMap[challenge.ID] > (numSharders / 2) {
-								Logger.Info("Challenge consesus passed.", zap.Any("challenge", challenge))
 								blobberChallenges.Challenges = append(blobberChallenges.Challenges, challenge)
 							}
 						}
 					}
 				}
 
-				_, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain(), handler)
-				if err == nil {
-					tCtx := dataStore.WithConnection(ctx)
-					for _, v := range blobberChallenges.Challenges {
-						if v == nil || len(v.ID) == 0 {
-							Logger.Info("No challenge entity from the challenge map")
+				transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain(), handler)
+				tCtx := dataStore.WithConnection(ctx)
+				for _, v := range blobberChallenges.Challenges {
+					if v == nil || len(v.ID) == 0 {
+						Logger.Info("No challenge entity from the challenge map")
+						continue
+					}
+					challengeObj := v
+					err := challengeObj.Read(tCtx, v.GetKey())
+					if err == datastore.ErrKeyNotFound {
+						Logger.Info("Adding new challenge found from blockchain", zap.String("challenge", v.ID))
+						writeMarkerEntity := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+						writeMarkerEntity.WM = &writemarker.WriteMarker{AllocationID: challengeObj.AllocationID, AllocationRoot: challengeObj.AllocationRoot}
+
+						err = writeMarkerEntity.Read(tCtx, writeMarkerEntity.GetKey())
+						if err != nil {
 							continue
 						}
-						challengeObj := v
-						err = challengeObj.Read(tCtx, v.GetKey())
-						if err == datastore.ErrKeyNotFound {
-							Logger.Info("Adding new challenge found from blockchain", zap.String("challenge", v.ID))
-							writeMarkerEntity := writemarker.Provider().(*writemarker.WriteMarkerEntity)
-							writeMarkerEntity.WM = &writemarker.WriteMarker{AllocationID: challengeObj.AllocationID, AllocationRoot: challengeObj.AllocationRoot}
-
-							err = writeMarkerEntity.Read(tCtx, writeMarkerEntity.GetKey())
-							if err != nil {
-								continue
-							}
-							challengeObj.WriteMarker = writeMarkerEntity.GetKey()
-							challengeObj.ValidationTickets = make([]*ValidationTicket, len(challengeObj.Validators))
-							challengeObj.Write(tCtx)
-							go stats.AddNewChallengeEvent(challengeObj.AllocationID, challengeObj.ID)
-						}
+						challengeObj.WriteMarker = writeMarkerEntity.GetKey()
+						challengeObj.ValidationTickets = make([]*ValidationTicket, len(challengeObj.Validators))
+						challengeObj.Write(tCtx)
+						go stats.AddNewChallengeEvent(challengeObj.AllocationID, challengeObj.ID)
 					}
-					dataStore.Commit(tCtx)
-					tCtx.Done()
 				}
-
+				dataStore.Commit(tCtx)
+				tCtx.Done()
 			}
 		}
 	}
