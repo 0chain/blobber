@@ -1,6 +1,7 @@
 package challenge
 
 import (
+	"bytes"
 	"container/list"
 	"context"
 	"encoding/json"
@@ -141,7 +142,10 @@ func FindChallenges(ctx context.Context) {
 					for _, v := range responseMap {
 						var blobberChallengest BCChallengeResponse
 						blobberChallengest.Challenges = make([]*ChallengeEntity, 0)
-						errd := json.Unmarshal(v, &blobberChallengest)
+						bytesReader := bytes.NewBuffer(v)
+						d := json.NewDecoder(bytesReader)
+						d.UseNumber()
+						errd := d.Decode(blobberChallengest)
 						if errd != nil {
 							Logger.Error("Error in unmarshal of the sharder response")
 							continue
