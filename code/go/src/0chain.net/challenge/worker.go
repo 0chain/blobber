@@ -137,8 +137,10 @@ func FindChallenges(ctx context.Context) {
 				blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
 
 				handler := func(responseMap map[string][]byte, numSharders int, err error) {
+					Logger.Info("calling handler")
 					openChallengeMap := make(map[string]int)
-					for _, v := range responseMap {
+					for k, v := range responseMap {
+						Logger.Info("response received", zap.Any("sharder", k), zap.Any("response", string(v)))
 						var blobberChallengest BCChallengeResponse
 						blobberChallengest.Challenges = make([]*ChallengeEntity, 0)
 						errd := json.Unmarshal(v, &blobberChallengest)
