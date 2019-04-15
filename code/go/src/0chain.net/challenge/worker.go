@@ -135,11 +135,33 @@ func FindChallenges(ctx context.Context) {
 				params["blobber"] = node.Self.ID
 				var blobberChallenges BCChallengeResponse
 				blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
-				_, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain(), &blobberChallenges)
+
+				handler := func(responseMap map[string][]byte, numSharders int, err error) {
+					openChallengeMap := make(map[string]int)
+					for _, v := range responseMap {
+						var blobberChallengest BCChallengeResponse
+						blobberChallengest.Challenges = make([]*ChallengeEntity, 0)
+						errd := json.Unmarshal(v, &blobberChallengest)
+						if errd != nil {
+							continue
+						}
+						for _, challenge := range blobberChallengest.Challenges {
+							if _, ok := openChallengeMap[challenge.ID]; !ok {
+								openChallengeMap[challenge.ID] = 0
+							}
+							openChallengeMap[challenge.ID]++
+							if openChallengeMap[challenge.ID] > (numSharders / 2) {
+								blobberChallenges.Challenges = append(blobberChallenges.Challenges, challenge)
+							}
+						}
+					}
+				}
+
+				_, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain(), handler)
 				if err == nil {
 					tCtx := dataStore.WithConnection(ctx)
 					for _, v := range blobberChallenges.Challenges {
-						if v == nil {
+						if v == nil || len(v.ID) == 0 {
 							Logger.Info("No challenge entity from the challenge map")
 							continue
 						}

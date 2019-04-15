@@ -45,16 +45,22 @@ func RedeemReadMarker(ctx context.Context, rmEntity *ReadMarkerEntity) error {
 		params["blobber"] = rmEntity.LatestRM.BlobberID
 		params["client"] = rmEntity.LatestRM.ClientID
 		var latestRM ReadMarker
-		_, errsc := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/latestreadmarker", params, chain.GetServerChain(), &latestRM)
+		latestRMBytes, errsc := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/latestreadmarker", params, chain.GetServerChain(), nil)
 		if errsc == nil {
-			Logger.Info("Latest read marker from blockchain", zap.Any("rm", latestRM))
-			if latestRM.ReadCounter > 0 && latestRM.ReadCounter >= rmEntity.LatestRM.ReadCounter {
-				Logger.Info("Updating the local state to match the block chain")
-				rmStatus.LastestRedeemedRM = rmEntity.LatestRM
-				rmStatus.LastRedeemTxnID = "sync"
-				rmStatus.Write(ctx)
-				return nil
+			errsc = json.Unmarshal(latestRMBytes, &latestRM)
+			if errsc != nil {
+				Logger.Error("Error from unmarshal of rm bytes", zap.Error(errsc))
+			} else {
+				Logger.Info("Latest read marker from blockchain", zap.Any("rm", latestRM))
+				if latestRM.ReadCounter > 0 && latestRM.ReadCounter >= rmEntity.LatestRM.ReadCounter {
+					Logger.Info("Updating the local state to match the block chain")
+					rmStatus.LastestRedeemedRM = rmEntity.LatestRM
+					rmStatus.LastRedeemTxnID = "sync"
+					rmStatus.Write(ctx)
+					return nil
+				}
 			}
+
 		} else {
 			Logger.Error("Error from sc rest api call", zap.Error(errsc))
 		}

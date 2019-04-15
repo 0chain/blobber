@@ -39,6 +39,8 @@ func SendTransaction(txn *Transaction, chain *chain.Chain) {
 	}
 }
 
+type SCRestAPIHandler func(response map[string][]byte, numSharders int, err error)
+
 func SendTransactionSync(txn *Transaction, chain *chain.Chain) {
 	wg := sync.WaitGroup{}
 	wg.Add(chain.Miners.Size())
@@ -147,11 +149,12 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 	return nil, common.NewError("transaction_not_found", "Transaction was not found on any of the sharders")
 }
 
-func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]string, chain *chain.Chain, entity interface{}) (interface{}, error) {
+func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]string, chain *chain.Chain, handler SCRestAPIHandler) ([]byte, error) {
 	numSharders := chain.Sharders.Size()
 	sharders := chain.Sharders.GetRandomNodes(numSharders)
 	responses := make(map[string]int)
-	var retObj interface{}
+	entityResult := make(map[string][]byte)
+	var retObj []byte
 	maxCount := 0
 	for _, sharder := range sharders {
 		urlString := fmt.Sprintf("%v/%v%v%v", sharder.GetURLBase(), SC_REST_API_URL, scAddress, relativePath)
@@ -182,11 +185,9 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			}
 			defer response.Body.Close()
 			tReader := io.TeeReader(response.Body, h)
-			d := json.NewDecoder(tReader)
-			d.UseNumber()
-			err := d.Decode(entity)
+			entityBytes, err := ioutil.ReadAll(tReader)
 			if err != nil {
-				Logger.Error("Error unmarshalling response", zap.Any("error", err))
+				Logger.Error("Error reading response", zap.Any("error", err))
 				continue
 			}
 			hashBytes := h.Sum(nil)
@@ -194,12 +195,21 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			responses[hash]++
 			if responses[hash] > maxCount {
 				maxCount = responses[hash]
-				retObj = entity
+				retObj = entityBytes
 			}
+			entityResult[sharder.Host] = retObj
 		}
+	}
+	var err error
+
+	if maxCount <= (numSharders / 2) {
+		err = common.NewError("invalid_response", "Sharder responses were invalid. Hash mismatch")
+	}
+	if handler != nil {
+		handler(entityResult, numSharders, err)
 	}
 	if maxCount > (numSharders / 2) {
 		return retObj, nil
 	}
-	return nil, common.NewError("invalid_response", "Sharder responses were invalid. Hash mismatch")
+	return nil, err
 }
