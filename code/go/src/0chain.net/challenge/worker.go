@@ -145,9 +145,9 @@ func FindChallenges(ctx context.Context) {
 						bytesReader := bytes.NewBuffer(v)
 						d := json.NewDecoder(bytesReader)
 						d.UseNumber()
-						errd := d.Decode(blobberChallengest)
+						errd := d.Decode(&blobberChallengest)
 						if errd != nil {
-							Logger.Error("Error in unmarshal of the sharder response")
+							Logger.Error("Error in unmarshal of the sharder response", zap.Error(errd))
 							continue
 						}
 						for _, challenge := range blobberChallengest.Challenges {
