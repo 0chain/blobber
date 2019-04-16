@@ -114,8 +114,9 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 	rootRef, err := reference.GetRootReferenceFromStore(ctx, cr.AllocationID, dbStore)
 	blockNum := int64(0)
 	if rootRef.NumBlocks > 0 {
-		rand.Seed(cr.RandomNumber)
-		blockNum = rand.Int63n(rootRef.NumBlocks)
+		r := rand.New(rand.NewSource(cr.RandomNumber))
+		//rand.Seed(cr.RandomNumber)
+		blockNum = r.Int63n(rootRef.NumBlocks)
 		blockNum = blockNum + 1
 	} else {
 		Logger.Error("Got a challenge for a blank allocation")
@@ -126,7 +127,7 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		cr.ErrorChallenge(ctx, err)
 		return err
 	}
-	Logger.Info("blockNum for challenge", zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ID), zap.Any("random_seed", cr.RandomNumber))
+	Logger.Info("blockNum for challenge", zap.Any("rootRef.NumBlocks", rootRef.NumBlocks), zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ID), zap.Any("random_seed", cr.RandomNumber))
 	objectPath, err := reference.GetObjectPath(ctx, cr.AllocationID, blockNum, dbStore)
 	if err != nil {
 		cr.ErrorChallenge(ctx, err)
