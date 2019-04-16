@@ -1,6 +1,7 @@
 package blobber
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -160,7 +161,10 @@ func MetaStoreHandler(ctx context.Context, r *http.Request) (interface{}, error)
 			retObj := make(map[string]interface{})
 			iterHandler := func(ctx context.Context, key datastore.Key, value []byte) error {
 				jsonObj := make(map[string]interface{})
-				err := json.Unmarshal(value, &jsonObj)
+				bytesReader := bytes.NewBuffer(value)
+				d := json.NewDecoder(bytesReader)
+				d.UseNumber()
+				err := d.Decode(&jsonObj)
 				if err != nil {
 					return err
 				}

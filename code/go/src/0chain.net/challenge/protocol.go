@@ -81,17 +81,20 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 		cr.Write(ctx)
 		return common.NewError("no_validators", "No validators assigned to the challange")
 	}
-	if len(cr.CommitTxnID) > 0 {
-		Logger.Info("Verifying the transaction : " + cr.CommitTxnID)
-		t, err := transaction.VerifyTransaction(cr.CommitTxnID, chain.GetServerChain())
-		if err == nil {
-			cr.Status = Committed
-			cr.StatusMessage = t.TransactionOutput
-			cr.CommitTxnID = t.Hash
-			cr.Write(ctx)
-			return nil
+	if len(cr.LastCommitTxnIDs) > 0 {
+		for _, lastTxn := range cr.LastCommitTxnIDs {
+			Logger.Info("Verifying the transaction : " + lastTxn)
+			t, err := transaction.VerifyTransaction(lastTxn, chain.GetServerChain())
+			if err == nil {
+				cr.Status = Committed
+				cr.StatusMessage = t.TransactionOutput
+				cr.CommitTxnID = t.Hash
+				cr.Write(ctx)
+				return nil
+			}
+			Logger.Error("Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ID))
 		}
-		Logger.Error("Error verifying the txn from BC."+cr.CommitTxnID, zap.String("challenge_id", cr.ID))
+
 	}
 
 	wm := writemarker.Provider().(*writemarker.WriteMarkerEntity)
@@ -274,12 +277,14 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context, fileSt
 			if t != nil {
 				cr.ObjectPath = objectPath
 				cr.CommitTxnID = t.Hash
+				cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
 			}
 			cr.ErrorChallenge(ctx, err)
 		} else {
 			cr.Status = Committed
 			cr.StatusMessage = t.TransactionOutput
 			cr.CommitTxnID = t.Hash
+			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
 			cr.ObjectPath = objectPath
 		}
 	} else {

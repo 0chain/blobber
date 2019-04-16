@@ -62,6 +62,7 @@ type ChallengeEntity struct {
 	Result            ChallengeResult         `json:"result"`
 	StatusMessage     string                  `json:"status_message"`
 	CommitTxnID       string                  `json:"commit_txn_id"`
+	LastCommitTxnIDs  []string                `json:"last_commit_txn_ids"`
 	BlockNum          int64                   `json:"block_num"`
 	Retries           int                     `json:"retries"`
 	WriteMarker       string                  `json:"write_marker"`
@@ -76,6 +77,7 @@ func Provider() datastore.Entity {
 	t := &ChallengeEntity{}
 	t.Version = "1.0"
 	t.CreationDate = common.Now()
+	t.LastCommitTxnIDs = make([]string, 0)
 	return t
 }
 
