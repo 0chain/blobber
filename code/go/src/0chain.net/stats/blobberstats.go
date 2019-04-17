@@ -108,7 +108,11 @@ func (bs *BlobberStats) NewWrite(ctx context.Context, f *FileUploadedEvent) erro
 
 	bs.NumWrites++
 	bs.UsedSize += f.Size
-	bs.BlockWrites += int64(math.Ceil(float64(f.Size*1.0) / filestore.CHUNK_SIZE))
+	if f.Operation == DELETE_OPERATION {
+		bs.BlockWrites += int64(math.Floor(float64(f.Size*1.0) / filestore.CHUNK_SIZE))
+	} else {
+		bs.BlockWrites += int64(math.Ceil(float64(f.Size*1.0) / filestore.CHUNK_SIZE))
+	}
 
 	fsbytes, err = json.Marshal(bs)
 	if err != nil {

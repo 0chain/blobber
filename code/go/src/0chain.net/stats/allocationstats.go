@@ -114,7 +114,11 @@ func (as *AllocationStats) NewWrite(ctx context.Context, f *FileUploadedEvent) e
 
 	as.NumWrites++
 	as.UsedSize += f.Size
-	as.BlockWrites += int64(math.Ceil(float64(f.Size*1.0) / filestore.CHUNK_SIZE))
+	if f.Operation == DELETE_OPERATION {
+		as.BlockWrites += int64(math.Floor(float64(f.Size*1.0) / filestore.CHUNK_SIZE))
+	} else {
+		as.BlockWrites += int64(math.Ceil(float64(f.Size*1.0) / filestore.CHUNK_SIZE))
+	}
 
 	fsbytes, err = json.Marshal(as)
 	if err != nil {
