@@ -89,6 +89,9 @@ func (fs *FileStats) NewBlockDownload(ctx context.Context, f *FileDownloadedEven
 	if err != nil && err != datastore.ErrKeyNotFound {
 		return err
 	}
+	if err == datastore.ErrKeyNotFound {
+		return nil
+	}
 	err = json.Unmarshal(fsbytes, fs)
 	if err != nil {
 		return err
@@ -110,6 +113,9 @@ func (fs *FileStats) ChallengeRedeemed(ctx context.Context, ch *ChallengeEvent) 
 	fsbytes, err := GetStatsStore().ReadBytes(ctx, fs.GetKey())
 	if err != nil && err != datastore.ErrKeyNotFound {
 		return err
+	}
+	if err == datastore.ErrKeyNotFound {
+		return nil
 	}
 	err = json.Unmarshal(fsbytes, fs)
 	if err != nil {
