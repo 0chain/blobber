@@ -41,7 +41,7 @@ func AddFileUploadedStatsEvent(allocationID string, path string, wmKey string, s
 }
 
 func AddFileDeletedStatsEvent(allocationID string, path string, wmKey string, size int64) {
-	event := &FileUploadedEvent{AllocationID: allocationID, Path: path, WriteMarkerKey: wmKey, Size: size, Operation: DELETE_OPERATION}
+	event := &FileUploadedEvent{AllocationID: allocationID, Path: path, WriteMarkerKey: wmKey, Size: -size, Operation: DELETE_OPERATION}
 	AddStatsEvent(event)
 }
 
