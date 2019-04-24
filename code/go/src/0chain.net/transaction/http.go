@@ -119,17 +119,23 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 				Logger.Error("Error reading response from transaction confirmation", zap.Any("error", err))
 				continue
 			}
-			var objmap map[string]*json.RawMessage
+			var objmap map[string]json.RawMessage
 			err = json.Unmarshal(contents, &objmap)
 			if err != nil {
 				Logger.Error("Error unmarshalling response", zap.Any("error", err))
 				continue
 			}
-			if *objmap["txn"] == nil {
-				Logger.Error("Not transaction information. Only block summary.")
+			if _, ok := objmap["txn"]; !ok {
+				Logger.Info("Not transaction information. Only block summary.", zap.Any("sharder", url), zap.Any("output", string(contents)))
+				if _, ok := objmap["block_hash"]; ok {
+					numSuccess++
+					continue
+				}
+				Logger.Info("Sharder does not have the block summary", zap.Any("sharder", url), zap.Any("output", string(contents)))
+				continue
 			}
 			txn := &Transaction{}
-			err = json.Unmarshal(*objmap["txn"], &txn)
+			err = json.Unmarshal(objmap["txn"], txn)
 			if err != nil {
 				Logger.Error("Error unmarshalling to get transaction response", zap.Any("error", err))
 			}
