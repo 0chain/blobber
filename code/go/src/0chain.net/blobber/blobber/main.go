@@ -235,6 +235,7 @@ func main() {
 			Addr:              address,
 			ReadHeaderTimeout: 30 * time.Second,
 			WriteTimeout:      30 * time.Second,
+			IdleTimeout:       30 * time.Second,
 			MaxHeaderBytes:    1 << 20,
 			Handler:           rHandler, // Pass our instance of gorilla/mux in.
 		}

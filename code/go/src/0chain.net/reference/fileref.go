@@ -116,3 +116,7 @@ func (fr *FileRef) GetPathHash() string {
 func (fr *FileRef) GetPath() string {
 	return fr.Path
 }
+
+func (fr *FileRef) GetName() string {
+	return fr.Name
+}

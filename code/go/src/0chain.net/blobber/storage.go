@@ -45,6 +45,11 @@ type DownloadResponse struct {
 	Path         string `json:"-"`
 }
 
+type ReferencePathResult struct {
+	*reference.ReferencePath
+	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
+}
+
 //StorageHandler - interfact for handling storage requests
 type StorageHandler interface {
 	WriteFile(ctx context.Context, r *http.Request) (*UploadResult, error)
@@ -56,6 +61,7 @@ type StorageHandler interface {
 	GetConnectionDetails(ctx context.Context, r *http.Request) (*allocation.AllocationChangeCollector, error)
 	GetLatestReadMarker(ctx context.Context, r *http.Request) (*readmarker.ReadMarker, error)
 	GetObjectPathFromBlockNum(ctx context.Context, r *http.Request) (*ObjectPathResult, error)
+	GetReferencePath(ctx context.Context, r *http.Request) (*ReferencePathResult, error)
 	AcceptChallenge(ctx context.Context, r *http.Request) (interface{}, error)
 	// ChallengeData(r *http.Request) (string, error)
 }

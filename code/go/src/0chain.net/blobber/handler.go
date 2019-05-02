@@ -33,6 +33,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/stats/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)))
 	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithConnection(ListHandler)))
 	r.HandleFunc("/v1/file/objectpath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler)))
+	r.HandleFunc("/v1/file/referencepath/{allocation}", common.ToJSONResponse(WithConnection(ReferencePathHandler)))
 
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithUpdateStats(WithConnection(CommitHandler))))
 	r.HandleFunc("/v1/connection/details/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(GetConnectionDetailsHandler)))
@@ -256,6 +257,20 @@ func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
 
 	response, err := storageHandler.ListEntities(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
+	ctx = context.WithValue(ctx, ALLOCATION_CONTEXT_KEY, vars["allocation"])
+
+	response, err := storageHandler.GetReferencePath(ctx, r)
 	if err != nil {
 		return nil, err
 	}

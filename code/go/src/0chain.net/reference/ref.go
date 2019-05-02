@@ -26,6 +26,7 @@ type RefEntity interface {
 	GetType() string
 	GetPathHash() string
 	GetPath() string
+	GetName() string
 }
 
 type Ref struct {
@@ -162,6 +163,10 @@ func (r *Ref) GetPathHash() string {
 
 func (r *Ref) GetPath() string {
 	return r.Path
+}
+
+func (r *Ref) GetName() string {
+	return r.Name
 }
 
 func GetListingFieldsMap(refEntity interface{}) map[string]interface{} {

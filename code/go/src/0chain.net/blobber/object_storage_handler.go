@@ -337,6 +337,48 @@ func (fsh *ObjectStorageHandler) GetFileMeta(ctx context.Context, r *http.Reques
 	return result, nil
 }
 
+func (fsh *ObjectStorageHandler) GetReferencePath(ctx context.Context, r *http.Request) (*ReferencePathResult, error) {
+	if r.Method == "POST" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
+	}
+	allocationID := ctx.Value(ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	clientID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+	path := r.FormValue("path")
+	if len(path) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path")
+	}
+
+	refPath, err := reference.GetReferencePath(ctx, allocationID, path, metaDataStore)
+	if err != nil {
+		return nil, err
+	}
+
+	latestWM := writemarker.Provider().(*writemarker.WriteMarkerEntity)
+	if len(allocationObj.LatestWMEntity) == 0 {
+		latestWM = nil
+	} else {
+		err = latestWM.Read(ctx, allocationObj.LatestWMEntity)
+		if err != nil {
+			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
+		}
+	}
+	var refPathResult ReferencePathResult
+	refPathResult.ReferencePath = refPath
+	if latestWM != nil {
+		refPathResult.LatestWM = latestWM.WM
+	}
+	return &refPathResult, nil
+}
+
 func (fsh *ObjectStorageHandler) GetObjectPathFromBlockNum(ctx context.Context, r *http.Request) (*ObjectPathResult, error) {
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
