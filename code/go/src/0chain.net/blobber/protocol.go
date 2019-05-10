@@ -24,14 +24,6 @@ import (
 
 const CHUNK_SIZE = reference.CHUNK_SIZE
 
-// type ChallengeResponse struct {
-// 	Data        []byte                   `json:"data_bytes"`
-// 	WriteMarker *writemarker.WriteMarker `json:"write_marker"`
-// 	MerkleRoot  string                   `json:"merkle_root"`
-// 	MerklePath  *util.MTPath             `json:"merkle_path"`
-// 	CloseTxnID  string                   `json:"close_txn_id"`
-// }
-
 //StorageProtocol - interface for the storage protocol
 type StorageProtocol interface {
 	RegisterBlobber(ctx context.Context) (string, error)
@@ -84,22 +76,6 @@ func (sp *StorageProtocolImpl) VerifyReadMarker(ctx context.Context, rm *readmar
 
 	if rm.BlobberID != node.Self.ID {
 		return common.NewError("read_marker_validation_failed", "Read Marker is not for the blobber")
-	}
-
-	dbstore := GetMetaDataStore()
-	rmEntity := readmarker.Provider().(*readmarker.ReadMarkerEntity)
-	rmEntity.LatestRM = &readmarker.ReadMarker{}
-	rmEntity.LatestRM.BlobberID = rm.BlobberID
-	rmEntity.LatestRM.ClientID = rm.ClientID
-
-	errRmRead := dbstore.Read(ctx, rmEntity.GetKey(), rmEntity)
-	if errRmRead != nil && errRmRead != datastore.ErrKeyNotFound {
-		return common.NewError("read_marker_db_error", "Could not read from DB. "+errRmRead.Error())
-	}
-	if errRmRead == nil && rmEntity.LatestRM != nil {
-		if rmEntity.LatestRM.ReadCounter >= rm.ReadCounter {
-			return common.NewError("invalid_read_marker", "Read marker counter is lesser than previous")
-		}
 	}
 
 	clientPublicKey := ctx.Value(CLIENT_KEY_CONTEXT_KEY).(string)

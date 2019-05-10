@@ -141,17 +141,6 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid read marker. Failed to verify the read marker. "+err.Error())
 	}
-	rmEntity := readmarker.Provider().(*readmarker.ReadMarkerEntity)
-	errRmRead := rmEntity.GetLatestReadMarker(ctx, clientID, node.Self.ID)
-	if errRmRead != nil && errRmRead != datastore.ErrKeyNotFound {
-		return nil, common.NewError("read_marker_db_error", "Could not read from DB. "+errRmRead.Error())
-	}
-
-	if rmEntity.LatestRM.ReadCounter+1 != readMarker.ReadCounter {
-		return nil, common.NewError("invalid_parameters", "Invalid read marker. Read counter was not for one block")
-	}
-
-	rmEntity.LatestRM = readMarker
 
 	fileref := reference.FileRefProvider().(*reference.FileRef)
 
@@ -176,6 +165,24 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 		}
 	}
 
+	rmEntity := readmarker.Provider().(*readmarker.ReadMarkerEntity)
+	errRmRead := rmEntity.GetLatestReadMarker(ctx, clientID, node.Self.ID)
+	if errRmRead != nil && errRmRead != datastore.ErrKeyNotFound {
+		return nil, common.NewError("read_marker_db_error", "Could not read from DB. "+errRmRead.Error())
+	}
+
+	if rmEntity.LatestRM.ReadCounter+1 != readMarker.ReadCounter {
+		//return nil, common.NewError("invalid_parameters", "Invalid read marker. Read counter was not for one block")
+		response := &DownloadResponse{}
+		response.Success = false
+		response.LatestRM = rmEntity.LatestRM
+		response.Path = fileref.Path
+		response.AllocationID = fileref.AllocationID
+		return response, nil
+	}
+
+	rmEntity.LatestRM = readMarker
+
 	fileData := &filestore.FileInputData{}
 	fileData.Name = fileref.Name
 	fileData.Path = fileref.Path
@@ -190,6 +197,8 @@ func (fsh *ObjectStorageHandler) DownloadFile(ctx context.Context, r *http.Reque
 		return nil, err
 	}
 	response := &DownloadResponse{}
+	response.Success = true
+	response.LatestRM = readMarker
 	response.Data = respData
 	response.Path = fileref.Path
 	response.AllocationID = fileref.AllocationID

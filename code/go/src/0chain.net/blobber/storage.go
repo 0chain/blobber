@@ -40,9 +40,11 @@ type ObjectPathResult struct {
 }
 
 type DownloadResponse struct {
-	Data         []byte `json:"data"`
-	AllocationID string `json:"-"`
-	Path         string `json:"-"`
+	Success      bool                   `json:"success"`
+	Data         []byte                 `json:"data"`
+	AllocationID string                 `json:"-"`
+	Path         string                 `json:"-"`
+	LatestRM     *readmarker.ReadMarker `json:"latest_rm"`
 }
 
 type ReferencePathResult struct {
