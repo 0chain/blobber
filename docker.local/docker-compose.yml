@@ -1,9 +1,33 @@
-version: '2.2'
+version: '3'
 services:
-
+  postgres:
+    image: postgres:11
+    volumes:
+      - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
+    networks:
+      default:
+    ports:
+      - "543${BLOBBER}:5432"
+  postgres-post:
+    image: postgres:11
+    environment:
+      POSTGRES_PORT: 5432
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+    volumes:
+      - ../bin:/blobber/bin
+      - ../sql:/blobber/sql
+    command: bash /blobber/bin/postgres-entrypoint.sh
+    links:
+      - postgres:postgres
+  
   blobber:
     environment:
       - DOCKER= true
+    depends_on:
+      - postgres-post
+    links:
+      - postgres-post:postgres-post
     build: 
       context: ../
       dockerfile: ./docker.local/Dockerfile
@@ -12,13 +36,14 @@ services:
      - ../config:/blobber/config
      - ./blobber${BLOBBER}/files:/blobber/files
      - ./blobber${BLOBBER}/data:/blobber/data
+     - ./blobber${BLOBBER}/log:/blobber/log
     ports:
       - "505${BLOBBER}:505${BLOBBER}"
     networks:
       default:
       testnet0:
         ipv4_address: 198.18.0.9${BLOBBER}
-    command: ./blobber --deployment_mode 0 --deployment_mode 0 --keys_file keysconfig/bnode${BLOBBER}_keys.txt --nodes_file single_machine_3_nodes --files_dir /blobber/files --badger_dir /blobber/data
+    command: ./bin/blobber --deployment_mode 0 --keys_file keysconfig/bnode${BLOBBER}_keys.txt --nodes_file single_machine_3_nodes --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data
 
 
 networks:
@@ -26,3 +51,7 @@ networks:
     driver: bridge
   testnet0:
     external: true
+volumes:
+  data:
+  config:
+  bin:
