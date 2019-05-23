@@ -12,7 +12,6 @@ import (
 	"0chain.net/core/transaction"
 
 	"github.com/jinzhu/gorm"
-	"go.uber.org/zap"
 )
 
 func VerifyAllocationTransaction(ctx context.Context, allocationID string, readonly bool) (*Allocation, error) {
@@ -20,12 +19,10 @@ func VerifyAllocationTransaction(ctx context.Context, allocationID string, reado
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Where(&Allocation{ID: allocationID}).First(a).Error
 	if err == nil {
-		Logger.Info("Got allocation from the database.", zap.Any("allocation", a))
 		return a, nil
 	}
 
 	if err != nil && gorm.IsRecordNotFoundError(err) {
-		Logger.Info("Getting the allocation from blockchain", zap.Any("id", allocationID))
 		t, err := transaction.VerifyTransaction(allocationID, chain.GetServerChain())
 		if err != nil {
 			return nil, common.NewError("invalid_allocation", "Invalid Allocation id. Allocation not found in blockchain. "+err.Error())

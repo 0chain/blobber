@@ -7,8 +7,6 @@ import (
 	"strings"
 
 	"0chain.net/blobbercore/reference"
-	. "0chain.net/core/logging"
-	"go.uber.org/zap"
 )
 
 type NewFileChange struct {
@@ -16,6 +14,7 @@ type NewFileChange struct {
 	AllocationID string `json:"allocation_id"`
 	Filename     string `json:"filename"`
 	Path         string `json:"filepath"`
+	Size         int64  `json:"size"`
 	Hash         string `json:"content_hash,omitempty"`
 	MerkleRoot   string `json:"merkle_root,omitempty"`
 	ActualHash   string `json:"actual_hash,omitempty"`
@@ -78,7 +77,6 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationCh
 	newFile.WriteMarker = allocationRoot
 	dirRef.AddChild(newFile)
 	rootRef.CalculateHash(ctx, true)
-	Logger.Info("Root ref after allocation root calculation", zap.Any("rootref", rootRef))
 	return rootRef, nil
 }
 

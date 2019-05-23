@@ -108,6 +108,14 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 			nfc := &NewFileChange{}
 			nfc.Unmarshal(change.Input)
 			cc.AllocationChanges[idx] = nfc
+		} else if change.Operation == UPDATE_OPERATION {
+			ufc := &UpdateFileChange{}
+			ufc.Unmarshal(change.Input)
+			cc.AllocationChanges[idx] = ufc
+		} else if change.Operation == DELETE_OPERATION {
+			dfc := &DeleteFileChange{}
+			dfc.Unmarshal(change.Input)
+			cc.AllocationChanges[idx] = dfc
 		}
 	}
 }
@@ -125,8 +133,18 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 
 func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error {
 	for idx, change := range a.Changes {
-		if change.Operation == INSERT_OPERATION || change.Operation == UPDATE_OPERATION {
+		if change.Operation == INSERT_OPERATION {
 			nfch := a.AllocationChanges[idx].(*NewFileChange)
+			fileInputData := &filestore.FileInputData{}
+			fileInputData.Name = nfch.Filename
+			fileInputData.Path = nfch.Path
+			fileInputData.Hash = nfch.Hash
+			_, err := filestore.GetFileStore().CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
+			if err != nil {
+				return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+			}
+		} else if change.Operation == UPDATE_OPERATION {
+			nfch := a.AllocationChanges[idx].(*UpdateFileChange)
 			fileInputData := &filestore.FileInputData{}
 			fileInputData.Name = nfch.Filename
 			fileInputData.Path = nfch.Path
@@ -142,8 +160,15 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 
 func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) error {
 	for idx, change := range a.Changes {
-		if change.Operation == INSERT_OPERATION || change.Operation == UPDATE_OPERATION {
+		if change.Operation == INSERT_OPERATION {
 			nfch := a.AllocationChanges[idx].(*NewFileChange)
+			fileInputData := &filestore.FileInputData{}
+			fileInputData.Name = nfch.Filename
+			fileInputData.Path = nfch.Path
+			fileInputData.Hash = nfch.Hash
+			filestore.GetFileStore().DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
+		} else if change.Operation == UPDATE_OPERATION {
+			nfch := a.AllocationChanges[idx].(*UpdateFileChange)
 			fileInputData := &filestore.FileInputData{}
 			fileInputData.Name = nfch.Filename
 			fileInputData.Path = nfch.Path

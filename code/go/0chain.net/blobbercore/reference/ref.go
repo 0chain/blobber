@@ -22,7 +22,8 @@ const (
 
 const CHUNK_SIZE = 64 * 1024
 
-const LIST_TAG = "list"
+const DIR_LIST_TAG = "dirlist"
+const FILE_LIST_TAG = "filelist"
 
 // type RefEntity interface {
 // 	GetNumBlocks() int64
@@ -37,21 +38,21 @@ const LIST_TAG = "list"
 
 type Ref struct {
 	ID             int64  `gorm:column:id;primary_key`
-	Type           string `gorm:"column:type" list:"type"`
+	Type           string `gorm:"column:type" dirlist:"type" filelist:"type"`
 	AllocationID   string `gorm:"column:allocation_id"`
-	Name           string `gorm:"column:name" list:"name"`
-	Path           string `gorm:"column:path" list:"path"`
-	Hash           string `gorm:"column:hash" list:"hash"`
-	NumBlocks      int64  `gorm:"column:num_of_blocks" list:"num_of_blocks"`
-	PathHash       string `gorm:"column:path_hash" list:"path_hash"`
+	Name           string `gorm:"column:name" dirlist:"name" filelist:"name"`
+	Path           string `gorm:"column:path" dirlist:"path" filelist:"path"`
+	Hash           string `gorm:"column:hash" dirlist:"hash" filelist:"hash"`
+	NumBlocks      int64  `gorm:"column:num_of_blocks" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
+	PathHash       string `gorm:"column:path_hash" dirlist:"path_hash" filelist:"path_hash"`
 	ParentPath     string `gorm:"column:parent_path"`
 	PathLevel      int    `gorm:"column:level"`
-	CustomMeta     string `gorm:"column:custom_meta" list:"custom_meta"`
-	ContentHash    string `gorm:"column:content_hash" list:"content_hash"`
-	Size           int64  `gorm:"column:size" list:"size"`
-	MerkleRoot     string `gorm:"column:merkle_root" list:"merkle_root"`
-	ActualFileSize int64  `gorm:"column:actual_file_size" list:"actual_file_size"`
-	ActualFileHash string `gorm:"column:actual_file_hash" list:"actual_file_hash"`
+	CustomMeta     string `gorm:"column:custom_meta" filelist:"custom_meta"`
+	ContentHash    string `gorm:"column:content_hash" filelist:"content_hash"`
+	Size           int64  `gorm:"column:size" filelist:"size"`
+	MerkleRoot     string `gorm:"column:merkle_root" filelist:"merkle_root"`
+	ActualFileSize int64  `gorm:"column:actual_file_size" filelist:"actual_file_size"`
+	ActualFileHash string `gorm:"column:actual_file_hash" filelist:"actual_file_hash"`
 	WriteMarker    string `gorm:"column:write_marker"`
 	Children       []*Ref `gorm:"-"`
 	datastore.ModelWithTS
@@ -113,6 +114,9 @@ func GetRefWithChildren(ctx context.Context, allocationID string, path string) (
 	err := db.Order("level, created_at").Find(&refs).Error
 	if err != nil {
 		return nil, err
+	}
+	if len(refs) == 0 {
+		return &Ref{Type: DIRECTORY, Path: "/", AllocationID: allocationID}, nil
 	}
 	curRef := &refs[0]
 	if curRef.Path != path {
@@ -253,16 +257,28 @@ func (r *Ref) AddChild(child *Ref) {
 	})
 }
 
+func (r *Ref) RemoveChild(idx int) {
+	if idx < len(r.Children)-1 {
+		r.Children = append(r.Children[:idx], r.Children[idx+1:]...)
+	}
+	sort.SliceStable(r.Children, func(i, j int) bool {
+		return strings.Compare(r.Children[i].Name, r.Children[j].Name) == -1
+	})
+}
+
 func (r *Ref) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Save(r).Error
 }
 
 func (r *Ref) GetListingData(ctx context.Context) map[string]interface{} {
-	return GetListingFieldsMap(*r)
+	if r.Type == FILE {
+		return GetListingFieldsMap(*r, FILE_LIST_TAG)
+	}
+	return GetListingFieldsMap(*r, DIR_LIST_TAG)
 }
 
-func GetListingFieldsMap(refEntity interface{}) map[string]interface{} {
+func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]interface{} {
 	result := make(map[string]interface{})
 	t := reflect.TypeOf(refEntity)
 	v := reflect.ValueOf(refEntity)
@@ -271,14 +287,14 @@ func GetListingFieldsMap(refEntity interface{}) map[string]interface{} {
 		field := t.Field(i)
 
 		// Get the field tag value
-		tag := field.Tag.Get(LIST_TAG)
+		tag := field.Tag.Get(tagName)
 		// Skip if tag is not defined or ignored
 		if !field.Anonymous && (tag == "" || tag == "-") {
 			continue
 		}
 
 		if field.Anonymous {
-			listMap := GetListingFieldsMap(v.FieldByName(field.Name).Interface())
+			listMap := GetListingFieldsMap(v.FieldByName(field.Name).Interface(), tagName)
 			if len(listMap) > 0 {
 				for k, v := range listMap {
 					result[k] = v

@@ -26,19 +26,6 @@ CREATE TABLE allocations(
 );
 
 CREATE TRIGGER allocation_modtime BEFORE UPDATE ON allocations FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();
-CREATE OR REPLACE FUNCTION update_write_redeem_required_column() 
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.allocation_root != NEW.latest_redeemed_write_marker THEN
-        NEW.is_redeem_required = true;
-    ELSE
-        NEW.is_redeem_required = false;
-    END IF;
-    RETURN NEW; 
-END;
-$$ language 'plpgsql';
-CREATE TRIGGER write_markers_redeem_required BEFORE UPDATE ON allocations FOR EACH ROW EXECUTE PROCEDURE  update_write_redeem_required_column();
-
 
 CREATE TABLE allocation_connections(
     connection_id VARCHAR (64) PRIMARY KEY,
@@ -104,6 +91,7 @@ CREATE TABLE write_markers (
     close_txn_id VARCHAR(64),
     connection_id VARCHAR(64) NOT NULL,
     client_key VARCHAR(256) NOT NULL,
+    sequence BIGSERIAL UNIQUE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -128,22 +116,3 @@ CREATE TABLE read_markers (
 );
 
 CREATE TRIGGER read_markers_modtime BEFORE UPDATE ON read_markers FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();
-CREATE OR REPLACE FUNCTION update_read_redeem_required_column() 
-RETURNS TRIGGER AS $$
-DECLARE
-    ctr    BIGINT := 0;
-    redeem_counter VARCHAR(50) := '0';
-BEGIN
-    IF NEW.latest_redeemed_rm IS NOT NULL THEN
-		select INTO redeem_counter NEW.latest_redeemed_rm ->> 'counter';
-		select INTO ctr CAST(redeem_counter AS BIGINT);
-	END IF;	
-    IF ctr < NEW.counter THEN
-        NEW.redeem_required = true;
-    ELSE
-        NEW.redeem_required = false;
-    END IF;
-    RETURN NEW; 
-END;
-$$ language 'plpgsql';
-CREATE TRIGGER read_markers_redeem_required BEFORE UPDATE ON read_markers FOR EACH ROW EXECUTE PROCEDURE  update_read_redeem_required_column();

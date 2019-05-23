@@ -60,7 +60,6 @@ func (wm *WriteMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.Al
 
 	hashData := wm.WM.GetHashData()
 	signatureHash := encryption.Hash(hashData)
-	Logger.Info("Computed the hash for verifying wm signature. ", zap.String("hashdata", hashData), zap.String("hash", signatureHash))
 	sigOK, err := encryption.Verify(clientPublicKey, wm.WM.Signature, signatureHash)
 	if err != nil {
 		return common.NewError("write_marker_validation_failed", "Error during verifying signature. "+err.Error())
@@ -104,7 +103,7 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 		wm.Status = Failed
 		wm.StatusMessage = "Error encoding sc input. " + err.Error()
 		wm.ReedeemRetries++
-		err = wm.UpdateStatus(ctx, Failed, "Error encoding sc input. "+err.Error(), "")
+		wm.UpdateStatus(ctx, Failed, "Error encoding sc input. "+err.Error(), "")
 		return err
 	}
 	txn.TransactionData = string(txnBytes)
@@ -115,7 +114,7 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 		wm.Status = Failed
 		wm.StatusMessage = "Signing Failed during sending close connection to the miner. " + err.Error()
 		wm.ReedeemRetries++
-		err = wm.UpdateStatus(ctx, Failed, "Signing Failed during sending close connection to the miner. "+err.Error(), "")
+		wm.UpdateStatus(ctx, Failed, "Signing Failed during sending close connection to the miner. "+err.Error(), "")
 		return err
 	}
 	transaction.SendTransactionSync(txn, chain.GetServerChain())
@@ -127,7 +126,7 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 		wm.StatusMessage = "Error verifying the close connection transaction." + err.Error()
 		wm.ReedeemRetries++
 		wm.CloseTxnID = txn.Hash
-		err = wm.UpdateStatus(ctx, Failed, "Error verifying the close connection transaction."+err.Error(), txn.Hash)
+		wm.UpdateStatus(ctx, Failed, "Error verifying the close connection transaction."+err.Error(), txn.Hash)
 		return err
 	}
 	wm.Status = Committed

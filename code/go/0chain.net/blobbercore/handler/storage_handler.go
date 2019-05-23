@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -16,6 +15,7 @@ import (
 	"0chain.net/blobbercore/reference"
 	"0chain.net/blobbercore/writemarker"
 	"0chain.net/core/common"
+	"0chain.net/core/node"
 	"0chain.net/core/encryption"
 	"0chain.net/core/lock"
 	. "0chain.net/core/logging"
@@ -245,7 +245,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	}
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, true)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -444,6 +444,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 	allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
 	allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
 	allocationUpdates["allocation_root"] = allocationRoot
+	allocationUpdates["is_redeem_required"] = true
 
 	err = db.Model(allocationObj).Updates(allocationUpdates).Error
 	if err != nil {
@@ -466,6 +467,68 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 	result.ErrorMessage = ""
 
 	return &result, nil
+}
+
+func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*UploadResult, error) {
+	deleteTokenString := r.FormValue("delete_token")
+	if len(deleteTokenString) == 0 {
+		return nil, common.NewError("invalid_delete_token", "Invalid delete token. Blank values")
+	}
+	deleteToken := &writemarker.DeleteToken{}
+	err := json.Unmarshal([]byte(deleteTokenString), deleteToken)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the delete token."+err.Error())
+	}
+	fileRef, _ := reference.GetReferenceFromPathHash(ctx, connectionObj.AllocationID, deleteToken.FilePathHash)
+	clientKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+	if fileRef != nil && fileRef.Type == reference.FILE {
+		if deleteToken.AllocationID != connectionObj.AllocationID {
+			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Allocation ID mismatch.")
+		}
+
+		if deleteToken.BlobberID != node.Self.ID {
+			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Blobber ID mismatch.")
+		}
+		if deleteToken.ClientID != connectionObj.ClientID {
+			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Client ID mismatch.")
+		}
+		if deleteToken.Size != fileRef.Size {
+			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Size mismatch.")
+		}
+
+		if deleteToken.FileRefHash != fileRef.Hash {
+			return nil, common.NewError("invalid_delete_token", "Invalid delete token. File Ref hash mismatch.")
+		}
+
+		if deleteToken.FilePathHash != fileRef.PathHash {
+			return nil, common.NewError("invalid_delete_token", "Invalid delete token. File Path hash mismatch.")
+		}
+
+		if !deleteToken.VerifySignature(clientKey) {
+			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Signature verification failed.")
+		}
+
+		allocationChange := &allocation.AllocationChange{}
+		allocationChange.ConnectionID = connectionObj.ConnectionID
+		allocationChange.Size = 0 - fileRef.Size
+		allocationChange.Operation = allocation.DELETE_OPERATION
+		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ConnectionID, 
+			AllocationID: connectionObj.AllocationID, Name: fileRef.Name, 
+			Hash : fileRef.Hash, Path: fileRef.Path, Size: fileRef.Size, DeleteToken: deleteToken}
+		
+		connectionObj.Size += allocationChange.Size
+		connectionObj.AddChange(allocationChange, dfc)
+				
+		result := &UploadResult{}
+		result.Filename = fileRef.Name
+		result.Hash = fileRef.Hash
+		result.MerkleRoot = fileRef.MerkleRoot
+		result.Size = fileRef.Size
+
+		return result, nil
+	}
+
+	return nil, common.NewError("invalid_file", "File does not exist at path")
 }
 
 //WriteFile stores the file into the blobber files system from the HTTP request
@@ -493,24 +556,17 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		return nil, common.NewError("request_parse_error", err.Error())
 	}
 
-	uploadMetaString := r.FormValue("uploadMeta")
-	fmt.Println(uploadMetaString)
-	var formData allocation.NewFileChange
-	err = json.Unmarshal([]byte(uploadMetaString), &formData)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the meta data for upload."+err.Error())
-	}
-
-	if len(formData.ConnectionID) == 0 {
+	connectionID := r.FormValue("connection_id")
+	if len(connectionID) == 0 {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	connectionObj, err := allocation.GetAllocationChanges(ctx, formData.ConnectionID, allocationID, clientID)
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
 
-	mutex := lock.GetMutex(connectionObj.TableName(), formData.ConnectionID)
+	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -522,11 +578,21 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		mode = allocation.DELETE_OPERATION
 	}
 	if mode == allocation.DELETE_OPERATION {
-		// result, err = fsh.DeleteFile(ctx, r, &formData, connectionObj)
-		// if err != nil {
-		// 	return nil, err
-		// }
+		result, err = fsh.DeleteFile(ctx, r, connectionObj)
+		if err != nil {
+			return nil, err
+		}
 	} else if mode == allocation.INSERT_OPERATION || mode == allocation.UPDATE_OPERATION {
+		var formData allocation.UpdateFileChange
+		formField := "uploadMeta"
+		if mode == allocation.UPDATE_OPERATION {
+			formField = "updateMeta"
+		}
+		uploadMetaString := r.FormValue(formField)
+		err = json.Unmarshal([]byte(uploadMetaString), &formData)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the meta data for upload."+err.Error())
+		}
 		exisitingFileRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
 		existingFileRefSize := int64(0)
 		if mode == allocation.INSERT_OPERATION && exisitingFileRef != nil {
@@ -565,6 +631,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 				formData.Hash = fileOutputData.ContentHash
 				formData.MerkleRoot = fileOutputData.MerkleRoot
 				formData.AllocationID = allocationID
+				formData.Size = fileOutputData.Size
 
 				allocationChange := &allocation.AllocationChange{}
 				allocationChange.ConnectionID = connectionObj.ConnectionID
@@ -572,9 +639,12 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 				allocationChange.Operation = mode
 
 				connectionObj.Size += allocationChange.Size
-				connectionObj.AddChange(allocationChange, &formData)
+				if mode == allocation.INSERT_OPERATION {
+					connectionObj.AddChange(allocationChange, &formData.NewFileChange)
+				} else if (mode == allocation.UPDATE_OPERATION) {
+					connectionObj.AddChange(allocationChange, &formData)
+				}
 			}
-
 		}
 	}
 	err = connectionObj.Save(ctx)

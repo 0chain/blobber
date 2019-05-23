@@ -30,7 +30,7 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationObj *allocation.A
 
 	writemarkers := make([]*WriteMarkerEntity, 0)
 
-	err := db.Debug().Not(WriteMarkerEntity{Status: Committed}).Where(WriteMarker{AllocationID: allocationObj.ID}).Order("timestamp").Find(&writemarkers).Error
+	err := db.Not(WriteMarkerEntity{Status: Committed}).Where(WriteMarker{AllocationID: allocationObj.ID}).Order("sequence").Find(&writemarkers).Error
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationObj *allocation.A
 				Logger.Error("Error redeeming the write marker.", zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
 				continue
 			}
-			err = db.Debug().Model(allocationObj).Update(allocation.Allocation{LatestRedeemedWM: wm.WM.AllocationRoot}).Error
+			err = db.Model(allocationObj).Update(allocation.Allocation{LatestRedeemedWM: wm.WM.AllocationRoot}).Error
 			if err != nil {
 				Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed", zap.Any("wm", wm.WM.AllocationRoot), zap.Any("error", err))
 				return err
@@ -53,7 +53,9 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationObj *allocation.A
 			allocationObj.LatestRedeemedWM = wm.WM.AllocationRoot
 			Logger.Info("Success Redeeming the write marker", zap.Any("wm", wm.WM.AllocationRoot), zap.Any("txn", wm.CloseTxnID))
 		}
-
+	}
+	if allocationObj.LatestRedeemedWM == allocationObj.AllocationRoot {
+		db.Model(allocationObj).Where("allocation_root = ? AND allocation_root = latest_redeemed_write_marker", allocationObj.AllocationRoot).Update("is_redeem_required", false)
 	}
 	//Logger.Info("Returning from redeem", zap.Any("wm", latestWmEntity), zap.Any("allocation", allocationID))
 	return nil
@@ -75,7 +77,7 @@ func RedeemWriteMarkers(ctx context.Context) {
 				db := datastore.GetStore().GetTransaction(rctx)
 				allocations := make([]*allocation.Allocation, 0)
 				alloc := &allocation.Allocation{IsRedeemRequired: true}
-				db.Debug().Where(alloc).Find(&allocations)
+				db.Where(alloc).Find(&allocations)
 				if len(allocations) > 0 {
 					swg := sizedwaitgroup.New(config.Configuration.WMRedeemNumWorkers)
 					for _, allocationObj := range allocations {

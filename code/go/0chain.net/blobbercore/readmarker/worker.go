@@ -34,6 +34,8 @@ func RedeemReadMarker(ctx context.Context, rmEntity *ReadMarkerEntity) error {
 			Logger.Info("Latest read marker from blockchain", zap.Any("rm", latestRM))
 			if latestRM.ReadCounter > 0 && latestRM.ReadCounter >= rmEntity.LatestRM.ReadCounter {
 				Logger.Info("Updating the local state to match the block chain")
+				SaveLatestReadMarker(ctx, &latestRM, false)
+				rmEntity.LatestRM = &latestRM
 				rmEntity.UpdateStatus(ctx, "Updating the local state to match the block chain", "sync")
 				return nil
 			}
