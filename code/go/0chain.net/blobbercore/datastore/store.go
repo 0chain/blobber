@@ -29,6 +29,8 @@ func (store *Store) Open() error {
 	if err != nil {
 		return errors.DBOpenError
 	}
+	// Enable Logger, show detailed log
+	db.LogMode(true)
 	store.db = db
 	return nil
 }

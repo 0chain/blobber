@@ -10,6 +10,7 @@ import (
 	. "0chain.net/core/logging"
 
 	"github.com/gorilla/mux"
+	"go.uber.org/zap"
 )
 
 var storageHandler StorageHandler
@@ -169,7 +170,7 @@ func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, vars["allocation"])
 	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
 	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
-
+	Logger.Info("ClientID = ", zap.Any("client_id", r.Header.Get(common.ClientHeader)))
 	response, err := storageHandler.WriteFile(ctx, r)
 	if err != nil {
 		return nil, err

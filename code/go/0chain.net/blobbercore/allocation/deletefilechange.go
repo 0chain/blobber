@@ -51,6 +51,7 @@ func (nf *DeleteFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	for i, child := range dirRef.Children {
 		if child.Type == reference.FILE && child.Hash == nf.Hash {
 			idx = i
+			reference.DeleteReference(ctx, child.ID, child.PathHash)
 			break
 		}
 	}

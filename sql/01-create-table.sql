@@ -71,7 +71,8 @@ CREATE TABLE reference_objects (
     actual_file_hash VARCHAR(64) NOT NULL,
     write_marker VARCHAR(64) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMP
 );
 
 CREATE TRIGGER reference_objects_modtime BEFORE UPDATE ON reference_objects FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();

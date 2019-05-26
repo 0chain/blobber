@@ -69,6 +69,27 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMa
 	return wm, nil
 }
 
+func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAllocationRoot string, endAllocationRoot string) ([]*WriteMarkerEntity, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	var seqRange []int64
+	err := db.Debug().Select("sequence").Where(WriteMarker{AllocationRoot: startAllocationRoot, AllocationID: allocationID}).Or(WriteMarker{AllocationRoot: endAllocationRoot, AllocationID: allocationID}).Find(&seqRange).Error
+	if err != nil {
+		return nil, err
+	}
+	if len(seqRange) == 2 {
+		retMarkers := make([]*WriteMarkerEntity, 0)
+		err = db.Debug().Where("sequence BETWEEN ? AND ?", seqRange[0], seqRange[1]).Order("sequence").Find(&retMarkers).Error
+		if err != nil {
+			return nil, err
+		}
+		if len(retMarkers) == 0 {
+			return nil, common.NewError("write_marker_not_found", "Could not find the write markers in the range")
+		}
+		return retMarkers, nil
+	}
+	return nil, common.NewError("write_marker_not_found", "Could not find the right write markers in the range")
+}
+
 func (wm *WriteMarkerEntity) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Save(wm).Error
