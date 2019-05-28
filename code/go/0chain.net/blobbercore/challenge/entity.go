@@ -5,25 +5,27 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"0chain.net/blobbercore/reference"
-
 	"0chain.net/blobbercore/datastore"
+	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
 	"0chain.net/core/encryption"
+
+	"github.com/jinzhu/gorm/dialects/postgres"
 )
 
 type ChallengeStatus int
 type ChallengeResult int
 
 const (
-	Accepted  ChallengeStatus = 1
-	Committed ChallengeStatus = 2
-	Failed    ChallengeStatus = 3
-	Error     ChallengeStatus = 4
+	Accepted ChallengeStatus = iota + 1
+	Processed
+	Committed
+)
 
-	ChallengeUnknown ChallengeResult = 0
-	ChallengeSuccess ChallengeResult = 1
-	ChallengeFailure ChallengeResult = 2
+const (
+	ChallengeUnknown ChallengeResult = iota
+	ChallengeSuccess
+	ChallengeFailure
 )
 
 type ValidationTicket struct {
@@ -62,13 +64,13 @@ type ChallengeEntity struct {
 	StatusMessage           string                `json:"status_message" gorm:"column:status_message"`
 	CommitTxnID             string                `json:"commit_txn_id" gorm:"column:commit_txn_id"`
 	BlockNum                int64                 `json:"block_num" gorm:"column:block_num"`
-	ValidationTicketsString string                `json:"-" gorm:"column:validation_tickets"`
-	ValidatorsString        string                `json:"-" gorm:"column:validators"`
-	LastCommitTxnList       string                `json:"-" gorm:"column:last_commit_txn_ids"`
+	ValidationTicketsString postgres.Jsonb        `json:"-" gorm:"column:validation_tickets"`
+	ValidatorsString        postgres.Jsonb        `json:"-" gorm:"column:validators"`
+	LastCommitTxnList       postgres.Jsonb        `json:"-" gorm:"column:last_commit_txn_ids"`
 	Validators              []ValidationNode      `json:"validators" gorm:"-"`
 	LastCommitTxnIDs        []string              `json:"last_commit_txn_ids" gorm:"-"`
 	ValidationTickets       []*ValidationTicket   `json:"validation_tickets" gorm:"-"`
-	ObjectPathString        string                `json:"-" gorm:"column:object_path"`
+	ObjectPathString        postgres.Jsonb        `json:"-" gorm:"column:object_path"`
 	ObjectPath              *reference.ObjectPath `json:"object_path" gorm:"-"`
 }
 
@@ -76,17 +78,24 @@ func (ChallengeEntity) TableName() string {
 	return "challenges"
 }
 
-func marshalField(obj interface{}, dest *string) error {
+func marshalField(obj interface{}, dest *postgres.Jsonb) error {
 	mbytes, err := json.Marshal(obj)
 	if err != nil {
 		return err
 	}
-	*dest = string(mbytes)
+	(*dest).RawMessage = json.RawMessage(string(mbytes))
 	return nil
 }
 
-func unMarshalField(stringObj string, dest interface{}) error {
-	return json.Unmarshal([]byte(stringObj), dest)
+func unMarshalField(stringObj postgres.Jsonb, dest interface{}) error {
+	retBytes, err := stringObj.Value()
+	if err != nil {
+		return err
+	}
+	if retBytes != nil {
+		return json.Unmarshal(retBytes.([]byte), dest)
+	}
+	return nil
 }
 
 func (cr *ChallengeEntity) Save(ctx context.Context) error {
@@ -113,37 +122,31 @@ func (cr *ChallengeEntity) Save(ctx context.Context) error {
 
 func (cr *ChallengeEntity) UnmarshalFields() error {
 	var err error
+
 	cr.Validators = make([]ValidationNode, 0)
-	if len(cr.ValidatorsString) > 0 {
-		err = unMarshalField(cr.ValidatorsString, &cr.Validators)
-		if err != nil {
-			return err
-		}
+	err = unMarshalField(cr.ValidatorsString, &cr.Validators)
+	if err != nil {
+		return err
 	}
 
 	cr.LastCommitTxnIDs = make([]string, 0)
-	if len(cr.LastCommitTxnList) > 0 {
-		err = unMarshalField(cr.LastCommitTxnList, &cr.LastCommitTxnIDs)
-		if err != nil {
-			return err
-		}
+	err = unMarshalField(cr.LastCommitTxnList, &cr.LastCommitTxnIDs)
+	if err != nil {
+		return err
 	}
 
 	cr.ValidationTickets = make([]*ValidationTicket, 0)
-	if len(cr.ValidationTicketsString) > 0 {
-		err = unMarshalField(cr.ValidationTicketsString, &cr.ValidationTickets)
-		if err != nil {
-			return err
-		}
+	err = unMarshalField(cr.ValidationTicketsString, &cr.ValidationTickets)
+	if err != nil {
+		return err
 	}
 
-	if len(cr.ObjectPathString) > 0 {
-		cr.ObjectPath = &reference.ObjectPath{}
-		err = unMarshalField(cr.ObjectPathString, cr.ObjectPath)
-		if err != nil {
-			return err
-		}
+	cr.ObjectPath = &reference.ObjectPath{}
+	err = unMarshalField(cr.ObjectPathString, cr.ObjectPath)
+	if err != nil {
+		return err
 	}
+
 	return nil
 }
 

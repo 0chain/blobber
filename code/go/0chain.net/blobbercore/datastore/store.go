@@ -30,7 +30,7 @@ func (store *Store) Open() error {
 		return errors.DBOpenError
 	}
 	// Enable Logger, show detailed log
-	db.LogMode(true)
+	//db.LogMode(true)
 	store.db = db
 	return nil
 }

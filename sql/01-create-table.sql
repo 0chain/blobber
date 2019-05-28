@@ -69,6 +69,7 @@ CREATE TABLE reference_objects (
     merkle_root VARCHAR(64) NOT NULL,
     actual_file_size BIGINT NOT NULL DEFAULT 0,
     actual_file_hash VARCHAR(64) NOT NULL,
+    mimetype VARCHAR(64) NOT NULL,
     write_marker VARCHAR(64) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -117,3 +118,26 @@ CREATE TABLE read_markers (
 );
 
 CREATE TRIGGER read_markers_modtime BEFORE UPDATE ON read_markers FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();
+
+CREATE TABLE challenges (
+    challenge_id VARCHAR(64) NOT NULL PRIMARY KEY,
+    prev_challenge_id VARCHAR(64),
+    seed BIGINT NOT NULL DEFAULT 0,
+    allocation_id VARCHAR(64) NOT NULL,
+    allocation_root VARCHAR(255),
+    responded_allocation_root VARCHAR(255),
+    status INT NOT NULL DEFAULT 0,
+    result INT NOT NULL DEFAULT 0,
+    status_message TEXT,
+    commit_txn_id VARCHAR(64),
+    block_num BIGINT,
+    validation_tickets JSON,
+    validators JSON,
+    last_commit_txn_ids JSON,
+    object_path JSON,
+    sequence BIGSERIAL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TRIGGER challenges_modtime BEFORE UPDATE ON challenges FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();

@@ -66,32 +66,15 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 }
 
 func (cr *ChallengeEntity) ErrorChallenge(ctx context.Context, err error) {
-	cr.Status = Error
 	cr.StatusMessage = err.Error()
 	cr.Save(ctx)
 }
 
-func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context) error {
+func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 	if len(cr.Validators) == 0 {
-		cr.Status = Failed
 		cr.StatusMessage = "No validators assigned to the challange"
 		cr.Save(ctx)
 		return common.NewError("no_validators", "No validators assigned to the challange")
-	}
-	if len(cr.LastCommitTxnIDs) > 0 {
-		for _, lastTxn := range cr.LastCommitTxnIDs {
-			Logger.Info("Verifying the transaction : " + lastTxn)
-			t, err := transaction.VerifyTransaction(lastTxn, chain.GetServerChain())
-			if err == nil {
-				cr.Status = Committed
-				cr.StatusMessage = t.TransactionOutput
-				cr.CommitTxnID = t.Hash
-				cr.Save(ctx)
-				return nil
-			}
-			Logger.Error("Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID))
-		}
-
 	}
 
 	allocationObj, err := allocation.VerifyAllocationTransaction(ctx, cr.AllocationID, true)
@@ -230,24 +213,44 @@ func (cr *ChallengeEntity) SendDataBlockToValidators(ctx context.Context) error 
 			cr.Result = ChallengeFailure
 			Logger.Error("Challenge failed by the validators", zap.Any("block_num", cr.BlockNum), zap.Any("object_path", objectPath), zap.Any("challenge", cr))
 		}
-		t, err := cr.SubmitChallengeToBC(ctx)
-		if err != nil {
-			if t != nil {
-				cr.CommitTxnID = t.Hash
-				cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
-			}
-			cr.ErrorChallenge(ctx, err)
-		} else {
-			cr.Status = Committed
-			cr.StatusMessage = t.TransactionOutput
-			cr.CommitTxnID = t.Hash
-			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
-		}
+
+		cr.Status = Processed
 	} else {
 		cr.ErrorChallenge(ctx, common.NewError("no_consensus_challenge", "No Consensus on the challenge result. Erroring out the challenge"))
 		return common.NewError("no_consensus_challenge", "No Consensus on the challenge result. Erroring out the challenge")
 	}
 
-	cr.Save(ctx)
-	return nil
+	return cr.Save(ctx)
 }
+
+func (cr *ChallengeEntity) CommitChallenge(ctx context.Context) error {
+	if len(cr.LastCommitTxnIDs) > 0 {
+		for _, lastTxn := range cr.LastCommitTxnIDs {
+			Logger.Info("Verifying the transaction : " + lastTxn)
+			t, err := transaction.VerifyTransaction(lastTxn, chain.GetServerChain())
+			if err == nil {
+				cr.Status = Committed
+				cr.StatusMessage = t.TransactionOutput
+				cr.CommitTxnID = t.Hash
+				cr.Save(ctx)
+				return nil
+			}
+			Logger.Error("Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID))
+		}
+	}
+	t, err := cr.SubmitChallengeToBC(ctx)
+	if err != nil {
+		if t != nil {
+			cr.CommitTxnID = t.Hash
+			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
+		}
+		cr.ErrorChallenge(ctx, err)
+	} else {
+		cr.Status = Committed
+		cr.StatusMessage = t.TransactionOutput
+		cr.CommitTxnID = t.Hash
+		cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
+	}
+	return cr.Save(ctx)
+}
+

@@ -55,6 +55,7 @@ func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	existingRef := dirRef.Children[idx]
 	existingRef.ActualFileHash = nf.ActualHash
 	existingRef.ActualFileSize = nf.ActualSize
+	existingRef.MimeType = nf.MimeType
 	existingRef.ContentHash = nf.Hash
 	existingRef.CustomMeta = nf.CustomMeta
 	existingRef.MerkleRoot = nf.MerkleRoot

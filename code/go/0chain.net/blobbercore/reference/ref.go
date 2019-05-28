@@ -54,6 +54,7 @@ type Ref struct {
 	MerkleRoot     string `gorm:"column:merkle_root" filelist:"merkle_root"`
 	ActualFileSize int64  `gorm:"column:actual_file_size" filelist:"actual_file_size"`
 	ActualFileHash string `gorm:"column:actual_file_hash" filelist:"actual_file_hash"`
+	MimeType       string `gorm:"column:mimetype" filelist:"mimetype"`
 	WriteMarker    string `gorm:"column:write_marker"`
 	Children       []*Ref `gorm:"-"`
 	//DeletedAt      *time.Time `gorm:"column:deleted_at"`

@@ -17,6 +17,7 @@ import (
 	"0chain.net/blobbercore/handler"
 	"0chain.net/blobbercore/readmarker"
 	"0chain.net/blobbercore/writemarker"
+	"0chain.net/blobbercore/challenge"
 	"0chain.net/core/chain"
 	"0chain.net/core/common"
 	"0chain.net/core/encryption"
@@ -72,7 +73,7 @@ func SetupWorkerConfig() {
 
 func SetupWorkers() {
 	// blobber.SetupWorkers(common.GetRootContext())
-	// challenge.SetupWorkers(common.GetRootContext(), badgerdbstore.GetStorageProvider(), fsStore)
+	challenge.SetupWorkers(common.GetRootContext())
 	readmarker.SetupWorkers(common.GetRootContext())
 	writemarker.SetupWorkers(common.GetRootContext())
 	// stats.StartEventDispatcher(2)

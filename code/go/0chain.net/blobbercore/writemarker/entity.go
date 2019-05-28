@@ -2,6 +2,7 @@ package writemarker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"0chain.net/blobbercore/datastore"
@@ -50,11 +51,13 @@ func (WriteMarkerEntity) TableName() string {
 func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarkerStatus, status_message string, redeemTxn string) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	var err error
+	statusBytes, _ := json.Marshal(status_message)
+	fmt.Println(string(statusBytes))
 	if status == Failed {
 		wm.ReedeemRetries++
-		err = db.Model(wm).Update(WriteMarkerEntity{Status: status, StatusMessage: status_message, CloseTxnID: redeemTxn, ReedeemRetries: wm.ReedeemRetries}).Error
+		err = db.Model(wm).Update(WriteMarkerEntity{Status: status, StatusMessage: string(statusBytes), CloseTxnID: redeemTxn, ReedeemRetries: wm.ReedeemRetries}).Error
 	} else {
-		err = db.Model(wm).Update(WriteMarkerEntity{Status: status, StatusMessage: status_message, CloseTxnID: redeemTxn}).Error
+		err = db.Model(wm).Update(WriteMarkerEntity{Status: status, StatusMessage: string(statusBytes), CloseTxnID: redeemTxn}).Error
 	}
 	return err
 }
@@ -72,13 +75,16 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMa
 func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAllocationRoot string, endAllocationRoot string) ([]*WriteMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	var seqRange []int64
-	err := db.Debug().Select("sequence").Where(WriteMarker{AllocationRoot: startAllocationRoot, AllocationID: allocationID}).Or(WriteMarker{AllocationRoot: endAllocationRoot, AllocationID: allocationID}).Find(&seqRange).Error
+	err := db.Table((WriteMarkerEntity{}).TableName()).Where(WriteMarker{AllocationRoot: startAllocationRoot, AllocationID: allocationID}).Or(WriteMarker{AllocationRoot: endAllocationRoot, AllocationID: allocationID}).Pluck("sequence", &seqRange).Error
 	if err != nil {
 		return nil, err
 	}
+	if len(seqRange) == 1 {
+		seqRange = append(seqRange, seqRange[0])
+	}
 	if len(seqRange) == 2 {
 		retMarkers := make([]*WriteMarkerEntity, 0)
-		err = db.Debug().Where("sequence BETWEEN ? AND ?", seqRange[0], seqRange[1]).Order("sequence").Find(&retMarkers).Error
+		err = db.Where("sequence BETWEEN ? AND ?", seqRange[0], seqRange[1]).Order("sequence").Find(&retMarkers).Error
 		if err != nil {
 			return nil, err
 		}

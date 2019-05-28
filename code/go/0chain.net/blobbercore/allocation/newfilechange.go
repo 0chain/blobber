@@ -19,6 +19,7 @@ type NewFileChange struct {
 	MerkleRoot   string `json:"merkle_root,omitempty"`
 	ActualHash   string `json:"actual_hash,omitempty"`
 	ActualSize   int64  `json:"actual_size,omitempty"`
+	MimeType     string `json:"mimetype,omitempty"`
 	CustomMeta   string `json:"custom_meta,omitempty"`
 }
 
@@ -74,6 +75,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationCh
 	newFile.ParentPath = dirRef.Path
 	newFile.Path = nf.Path
 	newFile.Size = change.Size
+	newFile.MimeType = nf.MimeType
 	newFile.WriteMarker = allocationRoot
 	dirRef.AddChild(newFile)
 	rootRef.CalculateHash(ctx, true)
