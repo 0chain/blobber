@@ -26,7 +26,6 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationObj *allocation.A
 			Logger.Error("Error commiting the writemarker redeem", zap.Error(err))
 		}
 		rctx.Done()
-		db.Close()
 	}()
 
 	writemarkers := make([]*WriteMarkerEntity, 0)
@@ -96,7 +95,6 @@ func RedeemWriteMarkers(ctx context.Context) {
 
 				iterInprogress = false
 				db.Rollback()
-				db.Close()
 				rctx.Done()
 			}
 		}

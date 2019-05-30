@@ -91,7 +91,6 @@ func RedeemMarkers(ctx context.Context) {
 							if err != nil {
 								Logger.Error("Error commiting the readmarker redeem", zap.Error(err))
 							}
-							db.Close()
 							swg.Done()
 						}(ctx, rmEntity)
 					}
@@ -100,7 +99,6 @@ func RedeemMarkers(ctx context.Context) {
 
 				iterInprogress = false
 				db.Rollback()
-				db.Close()
 				rctx.Done()
 			}
 		}
