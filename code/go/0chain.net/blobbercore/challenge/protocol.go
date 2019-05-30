@@ -112,6 +112,7 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 		cr.ErrorChallenge(ctx, err)
 		return err
 	}
+	cr.RefID = objectPath.RefID
 
 	postData := make(map[string]interface{})
 	postData["challenge_id"] = cr.ChallengeID

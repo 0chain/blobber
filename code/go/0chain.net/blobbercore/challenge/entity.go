@@ -67,6 +67,7 @@ type ChallengeEntity struct {
 	ValidationTicketsString postgres.Jsonb        `json:"-" gorm:"column:validation_tickets"`
 	ValidatorsString        postgres.Jsonb        `json:"-" gorm:"column:validators"`
 	LastCommitTxnList       postgres.Jsonb        `json:"-" gorm:"column:last_commit_txn_ids"`
+	RefID                   int64                 `json:"-" gorm:"column:ref_id"`
 	Validators              []ValidationNode      `json:"validators" gorm:"-"`
 	LastCommitTxnIDs        []string              `json:"last_commit_txn_ids" gorm:"-"`
 	ValidationTickets       []*ValidationTicket   `json:"validation_tickets" gorm:"-"`

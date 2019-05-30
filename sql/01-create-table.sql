@@ -131,6 +131,7 @@ CREATE TABLE challenges (
     status_message TEXT,
     commit_txn_id VARCHAR(64),
     block_num BIGINT,
+    ref_id BIGINT REFERENCES reference_objects(id),
     validation_tickets JSON,
     validators JSON,
     last_commit_txn_ids JSON,
@@ -141,3 +142,19 @@ CREATE TABLE challenges (
 );
 
 CREATE TRIGGER challenges_modtime BEFORE UPDATE ON challenges FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();
+
+
+CREATE TABLE file_stats (
+    id BIGSERIAL PRIMARY KEY,
+    ref_id BIGINT UNIQUE REFERENCES reference_objects(id),
+    allocation_id VARCHAR(64) NOT NULL,
+    num_of_updates BIGINT,
+    num_of_block_downloads BIGINT,
+    num_of_challenges BIGINT,
+    num_of_failed_challenges BIGINT,
+    last_challenge_txn VARCHAR(64),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+)
+
+CREATE TRIGGER file_stats_modtime BEFORE UPDATE ON file_stats FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();

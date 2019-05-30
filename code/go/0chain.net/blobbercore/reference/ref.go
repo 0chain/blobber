@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/core/common"
@@ -38,26 +39,26 @@ const FILE_LIST_TAG = "filelist"
 // }
 
 type Ref struct {
-	ID             int64  `gorm:column:id;primary_key`
-	Type           string `gorm:"column:type" dirlist:"type" filelist:"type"`
-	AllocationID   string `gorm:"column:allocation_id"`
-	Name           string `gorm:"column:name" dirlist:"name" filelist:"name"`
-	Path           string `gorm:"column:path" dirlist:"path" filelist:"path"`
-	Hash           string `gorm:"column:hash" dirlist:"hash" filelist:"hash"`
-	NumBlocks      int64  `gorm:"column:num_of_blocks" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
-	PathHash       string `gorm:"column:path_hash" dirlist:"path_hash" filelist:"path_hash"`
-	ParentPath     string `gorm:"column:parent_path"`
-	PathLevel      int    `gorm:"column:level"`
-	CustomMeta     string `gorm:"column:custom_meta" filelist:"custom_meta"`
-	ContentHash    string `gorm:"column:content_hash" filelist:"content_hash"`
-	Size           int64  `gorm:"column:size" filelist:"size"`
-	MerkleRoot     string `gorm:"column:merkle_root" filelist:"merkle_root"`
-	ActualFileSize int64  `gorm:"column:actual_file_size" filelist:"actual_file_size"`
-	ActualFileHash string `gorm:"column:actual_file_hash" filelist:"actual_file_hash"`
-	MimeType       string `gorm:"column:mimetype" filelist:"mimetype"`
-	WriteMarker    string `gorm:"column:write_marker"`
-	Children       []*Ref `gorm:"-"`
-	//DeletedAt      *time.Time `gorm:"column:deleted_at"`
+	ID             int64      `gorm:column:id;primary_key`
+	Type           string     `gorm:"column:type" dirlist:"type" filelist:"type"`
+	AllocationID   string     `gorm:"column:allocation_id"`
+	Name           string     `gorm:"column:name" dirlist:"name" filelist:"name"`
+	Path           string     `gorm:"column:path" dirlist:"path" filelist:"path"`
+	Hash           string     `gorm:"column:hash" dirlist:"hash" filelist:"hash"`
+	NumBlocks      int64      `gorm:"column:num_of_blocks" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
+	PathHash       string     `gorm:"column:path_hash" dirlist:"path_hash" filelist:"path_hash"`
+	ParentPath     string     `gorm:"column:parent_path"`
+	PathLevel      int        `gorm:"column:level"`
+	CustomMeta     string     `gorm:"column:custom_meta" filelist:"custom_meta"`
+	ContentHash    string     `gorm:"column:content_hash" filelist:"content_hash"`
+	Size           int64      `gorm:"column:size" filelist:"size"`
+	MerkleRoot     string     `gorm:"column:merkle_root" filelist:"merkle_root"`
+	ActualFileSize int64      `gorm:"column:actual_file_size" filelist:"actual_file_size"`
+	ActualFileHash string     `gorm:"column:actual_file_hash" filelist:"actual_file_hash"`
+	MimeType       string     `gorm:"column:mimetype" filelist:"mimetype"`
+	WriteMarker    string     `gorm:"column:write_marker"`
+	Children       []*Ref     `gorm:"-"`
+	DeletedAt      *time.Time `gorm:"column:deleted_at"`
 	datastore.ModelWithTS
 }
 
@@ -538,6 +539,7 @@ type ObjectPath struct {
 	Meta         map[string]interface{} `json:"meta_data"`
 	Path         map[string]interface{} `json:"path"`
 	FileBlockNum int64                  `json:"file_block_num"`
+	RefID        int64                  `json:"-"`
 }
 
 func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*ObjectPath, error) {
@@ -609,6 +611,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 	retObj.Meta = curRef.GetListingData(ctx)
 	retObj.Path = result
 	retObj.FileBlockNum = remainingBlocks
+	retObj.RefID = curRef.ID
 
 	return &retObj, nil
 }
