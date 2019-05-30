@@ -53,7 +53,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationID string, reado
 		a.UsedSize = storageAllocation.UsedSize
 		if !readonly {
 			Logger.Info("Saving the allocation to DB")
-			db.Exec("INSERT INTO allocations (id, size, used_size, expiration_date, owner_id, owner_public_key) VALUES (?,?,?,?,?,?) ON CONFLICT (did) DO NOTHING;", a.ID, a.TotalSize, a.UsedSize, a.Expiration, a.OwnerID, a.OwnerPublicKey)
+			db.Exec("INSERT INTO allocations (id, size, used_size, expiration_date, owner_id, owner_public_key) VALUES (?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING;", a.ID, a.TotalSize, a.UsedSize, a.Expiration, a.OwnerID, a.OwnerPublicKey)
 			return a, nil
 			// err = reference.CreateDirRefsIfNotExists(ctx, sp.AllocationID, "/", "", allocationObj.GetEntityMetadata().GetStore())
 			// if err != nil {
