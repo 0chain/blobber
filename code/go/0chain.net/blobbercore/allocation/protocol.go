@@ -53,10 +53,8 @@ func VerifyAllocationTransaction(ctx context.Context, allocationID string, reado
 		a.UsedSize = storageAllocation.UsedSize
 		if !readonly {
 			Logger.Info("Saving the allocation to DB")
-			err = db.Where(Allocation{ID: a.ID}).FirstOrCreate(a).Error
-			if err != nil {
-				return nil, common.NewError("allocation_write_error", "Error storing the allocation meta data received from blockchain")
-			}
+
+			db.Save(a)
 			return a, nil
 			// err = reference.CreateDirRefsIfNotExists(ctx, sp.AllocationID, "/", "", allocationObj.GetEntityMetadata().GetStore())
 			// if err != nil {
