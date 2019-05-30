@@ -66,12 +66,14 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 					mutex.Unlock()
 					db := datastore.GetStore().GetTransaction(redeemCtx)
 					db.Commit()
+					db.Close()
 					if err == nil && openchallenge.Status == Committed {
 						Logger.Info("Challenge has been submitted to blockchain", zap.Any("id", openchallenge.ChallengeID), zap.String("txn", openchallenge.CommitTxnID))
 					}
 				}
 			}
 			db.Rollback()
+			db.Close()
 			rctx.Done()
 		}
 		time.Sleep(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
@@ -131,12 +133,14 @@ func FindChallenges(ctx context.Context) {
 							if err != nil {
 								Logger.Error("Error commiting the readmarker redeem", zap.Error(err))
 							}
+							db.Close()
 							swg.Done()
 						}(ctx, openchallenge)
 					}
 					swg.Wait()
 				}
 				db.Rollback()
+				db.Close()
 				rctx.Done()
 
 				params := make(map[string]string)
@@ -179,6 +183,7 @@ func FindChallenges(ctx context.Context) {
 						}
 					}
 					db.Commit()
+					db.Close()
 					tCtx.Done()
 				}
 				iterInprogress = false
