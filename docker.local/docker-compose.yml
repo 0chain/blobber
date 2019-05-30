@@ -22,28 +22,28 @@ services:
       - postgres:postgres
   
   blobber:
+    build: 
+      context: ../
+      dockerfile: ./docker.local/Dockerfile
     environment:
       - DOCKER= true
     depends_on:
       - postgres-post
     links:
       - postgres-post:postgres-post
-    build: 
-      context: ../
-      dockerfile: ./docker.local/Dockerfile
     volumes:
-     - ./keys_config:/blobber/keysconfig
      - ../config:/blobber/config
      - ./blobber${BLOBBER}/files:/blobber/files
      - ./blobber${BLOBBER}/data:/blobber/data
      - ./blobber${BLOBBER}/log:/blobber/log
+     - ./keys_config:/blobber/keysconfig
     ports:
       - "505${BLOBBER}:505${BLOBBER}"
+    command: ./bin/blobber --deployment_mode 0 --keys_file keysconfig/bnode${BLOBBER}_keys.txt --nodes_file single_machine_3_nodes --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data
     networks:
       default:
       testnet0:
         ipv4_address: 198.18.0.9${BLOBBER}
-    command: ./bin/blobber --deployment_mode 0 --keys_file keysconfig/bnode${BLOBBER}_keys.txt --nodes_file single_machine_3_nodes --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data
 
 
 networks:
