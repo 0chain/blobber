@@ -155,6 +155,6 @@ CREATE TABLE file_stats (
     last_challenge_txn VARCHAR(64),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
 
 CREATE TRIGGER file_stats_modtime BEFORE UPDATE ON file_stats FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();
