@@ -53,13 +53,8 @@ func VerifyAllocationTransaction(ctx context.Context, allocationID string, reado
 		a.UsedSize = storageAllocation.UsedSize
 		if !readonly {
 			Logger.Info("Saving the allocation to DB")
-			db.Exec("INSERT INTO allocations (id, size, used_size, expiration_date, owner_id, owner_public_key) VALUES (?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING;", a.ID, a.TotalSize, a.UsedSize, a.Expiration, a.OwnerID, a.OwnerPublicKey)
+			db.Exec("INSERT INTO allocations (id, size, used_size, expiration_date, owner_id, owner_public_key, blobber_size) VALUES (?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING;", a.ID, a.TotalSize, a.UsedSize, a.Expiration, a.OwnerID, a.OwnerPublicKey, a.BlobberSize)
 			return a, nil
-			// err = reference.CreateDirRefsIfNotExists(ctx, sp.AllocationID, "/", "", allocationObj.GetEntityMetadata().GetStore())
-			// if err != nil {
-			// 	return nil, common.NewError("root_reference_creation_error", "Error creating the root reference")
-			// }
-			//go stats.AddNewAllocationEvent(a.ID)
 		}
 		return a, nil
 	}

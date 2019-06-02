@@ -49,9 +49,7 @@ func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
 		res, err := handler(ctx, r)
 		defer func() {
-			if err != nil {
-				GetMetaDataStore().GetTransaction(ctx).Rollback()
-			}
+			GetMetaDataStore().GetTransaction(ctx).Rollback()
 		}()
 		return res, err
 	}

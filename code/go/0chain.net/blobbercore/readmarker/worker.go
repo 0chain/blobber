@@ -96,10 +96,9 @@ func RedeemMarkers(ctx context.Context) {
 					}
 					swg.Wait()
 				} 
-
-				iterInprogress = false
 				db.Rollback()
 				rctx.Done()
+				iterInprogress = false
 			}
 		}
 	}

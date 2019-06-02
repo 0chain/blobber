@@ -3,6 +3,7 @@ package datastore
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/errors"
@@ -29,6 +30,9 @@ func (store *Store) Open() error {
 	if err != nil {
 		return errors.DBOpenError
 	}
+	db.DB().SetMaxIdleConns(100)
+	db.DB().SetMaxOpenConns(200)
+	db.DB().SetConnMaxLifetime(30*time.Second)
 	// Enable Logger, show detailed log
 	//db.LogMode(true)
 	store.db = db

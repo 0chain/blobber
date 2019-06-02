@@ -16,7 +16,7 @@ CREATE TABLE allocations(
     owner_id VARCHAR(64) NOT NULL,
     owner_public_key VARCHAR(256) NOT NULL,
     expiration_date BIGINT NOT NULL,
-    allocation_root VARCHAR(255),
+    allocation_root VARCHAR(255) NOT NULL DEFAULT '',
     blobber_size BIGINT NOT NULL DEFAULT 0,
     blobber_size_used BIGINT NOT NULL DEFAULT 0,
     latest_redeemed_write_marker VARCHAR(255),
