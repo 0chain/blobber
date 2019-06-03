@@ -54,7 +54,7 @@ CREATE TRIGGER allocation_changes_modtime BEFORE UPDATE ON allocation_changes FO
 
 CREATE TABLE reference_objects (
     id BIGSERIAL PRIMARY KEY,
-    path_hash VARCHAR (64) UNIQUE,
+    path_hash VARCHAR (64) NOT NULL,
     type VARCHAR(10) NOT NULL,
     allocation_id VARCHAR(64) NOT NULL,
     name VARCHAR(100) NOT NULL,
@@ -147,7 +147,6 @@ CREATE TRIGGER challenges_modtime BEFORE UPDATE ON challenges FOR EACH ROW EXECU
 CREATE TABLE file_stats (
     id BIGSERIAL PRIMARY KEY,
     ref_id BIGINT UNIQUE REFERENCES reference_objects(id),
-    allocation_id VARCHAR(64) NOT NULL,
     num_of_updates BIGINT,
     num_of_block_downloads BIGINT,
     num_of_challenges BIGINT,

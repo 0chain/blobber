@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"0chain.net/blobbercore/stats"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -236,6 +237,8 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (*
 	response.Data = respData
 	response.Path = fileref.Path
 	response.AllocationID = fileref.AllocationID
+	
+	stats.FileBlockDownloaded(ctx,fileref.ID)
 	return response, nil
 }
 

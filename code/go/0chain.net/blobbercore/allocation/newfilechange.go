@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"0chain.net/blobbercore/reference"
+	"0chain.net/blobbercore/stats"
 )
 
 type NewFileChange struct {
@@ -79,6 +80,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationCh
 	newFile.WriteMarker = allocationRoot
 	dirRef.AddChild(newFile)
 	rootRef.CalculateHash(ctx, true)
+	stats.NewFileCreated(ctx, newFile.ID)
 	return rootRef, nil
 }
 

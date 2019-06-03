@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"path/filepath"
 
+	"0chain.net/blobbercore/stats"
+
 	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
 )
@@ -62,6 +64,7 @@ func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	existingRef.WriteMarker = allocationRoot
 	existingRef.Size = nf.Size
 	_, err = rootRef.CalculateHash(ctx, true)
+	stats.FileUpdated(ctx, existingRef.ID)
 	return rootRef, err
 }
 

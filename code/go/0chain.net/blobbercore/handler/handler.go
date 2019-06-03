@@ -3,9 +3,13 @@ package handler
 import (
 	"context"
 	"net/http"
+	"runtime/pprof"
+	"os"
 
 	"0chain.net/blobbercore/constants"
 	"0chain.net/blobbercore/datastore"
+	"0chain.net/blobbercore/stats"
+	"0chain.net/blobbercore/config"
 	"0chain.net/core/common"
 	. "0chain.net/core/logging"
 
@@ -36,9 +40,9 @@ func SetupHandlers(r *mux.Router) {
 	// r.HandleFunc("/v1/challenge/new", common.ToJSONResponse(WithConnection(NewChallengeHandler)))
 
 	// r.HandleFunc("/_metastore", common.ToJSONResponse(WithReadOnlyConnection(MetaStoreHandler)))
-	// r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
-	// r.HandleFunc("/_config", common.ToJSONResponse(GetConfig))
-	// r.HandleFunc("/_stats", stats.StatsHandler)
+	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
+	r.HandleFunc("/_config", common.ToJSONResponse(GetConfig))
+	r.HandleFunc("/_stats", stats.StatsHandler)
 	// r.HandleFunc("/_retakechallenge", common.ToJSONResponse(RetakeChallenge))
 
 	r.HandleFunc("/allocation", common.ToJSONResponse(WithConnection(AllocationHandler)))
@@ -185,4 +189,13 @@ func HandleShutdown(ctx context.Context) {
 			datastore.GetStore().Close()
 		}
 	}()
+}
+
+func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+	return "success", nil
+}
+
+func GetConfig(ctx context.Context, r *http.Request) (interface{}, error) {
+	return config.Configuration, nil
 }
