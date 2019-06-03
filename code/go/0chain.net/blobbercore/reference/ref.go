@@ -136,6 +136,31 @@ func GetRefWithChildren(ctx context.Context, allocationID string, path string) (
 	return &refs[0], nil
 }
 
+func GetRefWithSortedChildren(ctx context.Context, allocationID string, path string) (*Ref, error) {
+	var refs []Ref
+	db := datastore.GetStore().GetTransaction(ctx)
+	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
+	err := db.Order("level, name").Find(&refs).Error
+	if err != nil {
+		return nil, err
+	}
+	if len(refs) == 0 {
+		return &Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID}, nil
+	}
+	curRef := &refs[0]
+	if curRef.Path != path {
+		return nil, common.NewError("invalid_dir_tree", "DB has invalid tree. Root not found in DB")
+	}
+	for i := 1; i < len(refs); i++ {
+		if refs[i].ParentPath == curRef.Path {
+			curRef.Children = append(curRef.Children, &refs[i])
+		} else {
+			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
+		}
+	}
+	return &refs[0], nil
+}
+
 func GetReferencePath(ctx context.Context, allocationID string, path string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
@@ -544,7 +569,7 @@ type ObjectPath struct {
 
 func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*ObjectPath, error) {
 
-	rootRef, err := GetRefWithChildren(ctx, allocationID, "/")
+	rootRef, err := GetRefWithSortedChildren(ctx, allocationID, "/")
 	//fmt.Println("Root ref found with hash : " + rootRef.Hash)
 	if err != nil {
 		return nil, common.NewError("invalid_dir_struct", "Allocation root corresponds to an invalid directory structure")
@@ -594,7 +619,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 				curRef = child
 				break
 			}
-			curRef, err := GetRefWithChildren(ctx, allocationID, child.Path)
+			curRef, err := GetRefWithSortedChildren(ctx, allocationID, child.Path)
 			if err != nil || len(curRef.Hash) == 0 {
 				return nil, common.NewError("failed_object_path", "Failed to get the object path")
 			}

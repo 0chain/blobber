@@ -13,8 +13,8 @@ func FileChallenged(ctx context.Context, refID int64, result ChallengeResult, ch
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := &stats.FileStats{RefID: refID}
 	if result == ChallengeSuccess {
-		db.Where(stats).Updates(map[string]interface{}{"num_of_challenges": gorm.Expr("num_of_challenges + ?", 1), "last_challenge_txn": challengeTxn})
+		db.Table(stats.TableName()).Where(stats).Updates(map[string]interface{}{"num_of_challenges": gorm.Expr("num_of_challenges + ?", 1), "last_challenge_txn": challengeTxn})
 	} else if result == ChallengeFailure {
-		db.Where(stats).Updates(map[string]interface{}{"num_of_failed_challenges": gorm.Expr("num_of_failed_challenges + ?", 1), "last_challenge_txn": challengeTxn})
+		db.Table(stats.TableName()).Where(stats).Updates(map[string]interface{}{"num_of_failed_challenges": gorm.Expr("num_of_failed_challenges + ?", 1), "last_challenge_txn": challengeTxn})
 	}
 }

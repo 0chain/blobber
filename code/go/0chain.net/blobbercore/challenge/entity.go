@@ -10,6 +10,8 @@ import (
 	"0chain.net/core/common"
 	"0chain.net/core/encryption"
 
+	//. "0chain.net/core/logging"
+
 	"github.com/jinzhu/gorm/dialects/postgres"
 )
 
@@ -116,6 +118,9 @@ func (cr *ChallengeEntity) Save(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	//j, _ := json.Marshal(&cr.ObjectPathString)
+	// Logger.Info("Object path", zap.Any("objectpath", string(j)))
+	// Logger.Info("Object path object", zap.Any("object_path", cr.ObjectPath))
 	db := datastore.GetStore().GetTransaction(ctx)
 	err = db.Save(cr).Error
 	return err

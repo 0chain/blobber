@@ -113,6 +113,8 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 		return err
 	}
 	cr.RefID = objectPath.RefID
+	cr.RespondedAllocationRoot = allocationObj.AllocationRoot
+	cr.ObjectPath = objectPath
 
 	postData := make(map[string]interface{})
 	postData["challenge_id"] = cr.ChallengeID
@@ -225,6 +227,7 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 }
 
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context) error {
+	
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
 			Logger.Info("Verifying the transaction : " + lastTxn)
@@ -234,6 +237,7 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context) error {
 				cr.StatusMessage = t.TransactionOutput
 				cr.CommitTxnID = t.Hash
 				cr.Save(ctx)
+				FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
 				return nil
 			}
 			Logger.Error("Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID))
@@ -252,6 +256,8 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context) error {
 		cr.CommitTxnID = t.Hash
 		cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
 	}
-	return cr.Save(ctx)
+	err = cr.Save(ctx)
+	FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
+	return err
 }
 

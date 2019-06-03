@@ -51,8 +51,16 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 		default:
 			rctx := datastore.GetStore().CreateTransaction(ctx)
 			db := datastore.GetStore().GetTransaction(rctx)
+			//lastChallengeRedeemed := &ChallengeEntity{}
+			rows, _ := db.Debug().Table("challenges").Select("commit_txn_id, sequence"). Where(ChallengeEntity{Status: Committed}).Order("sequence desc").Limit(1).Rows()
+			lastSeq := 0
+			lastCommitTxn := ""
+			for rows.Next() {
+				rows.Scan(&lastCommitTxn, &lastSeq)
+			}
+			
 			openchallenges := make([]*ChallengeEntity, 0)
-			db.Where(ChallengeEntity{Status: Processed}).Order("sequence").Find(&openchallenges)
+			db.Where(ChallengeEntity{Status: Processed}).Where("sequence > ?", lastSeq).Order("sequence").Find(&openchallenges)
 			if len(openchallenges) > 0 {
 				for _, openchallenge := range openchallenges {
 					openchallenge.UnmarshalFields()

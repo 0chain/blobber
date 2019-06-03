@@ -131,7 +131,7 @@ CREATE TABLE challenges (
     status_message TEXT,
     commit_txn_id VARCHAR(64),
     block_num BIGINT,
-    ref_id BIGINT REFERENCES reference_objects(id),
+    ref_id BIGINT,
     validation_tickets JSON,
     validators JSON,
     last_commit_txn_ids JSON,

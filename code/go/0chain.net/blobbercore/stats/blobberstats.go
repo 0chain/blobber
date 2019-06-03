@@ -47,6 +47,8 @@ func LoadBlobberStats(ctx context.Context) *BlobberStats {
 	fs.DiskSizeUsed = du
 	fs.loadStats(ctx)
 	fs.loadAllocationStats(ctx)
+	fs.loadChallengeStats(ctx)
+	fs.loadAllocationChallengeStats(ctx)
 	return fs
 }
 
@@ -93,4 +95,81 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 	}
 	rows.Close()
 
+}
+
+func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	rows, err := db.Debug().Table("challenges").Select("COUNT(*) as total_challenges, challenges.status, challenges.result",
+		).Group("challenges.status, challenges.result").Rows()
+	if err != nil {
+		Logger.Error("Error in getting the blobber challenge stats", zap.Error(err))
+	}
+	
+	for rows.Next() {
+		total := int64(0)
+		status := 0
+		result := 0
+		
+		err = rows.Scan(&total, &status, &result)
+		if err != nil {
+			Logger.Error("Error in scanning record for blobber stats", zap.Error(err))
+		}
+		bs.TotalChallenges += total
+		if status == 3 {
+			bs.RedeemedChallenges+=total
+		} else {
+			bs.OpenChallenges+=total
+		}
+
+		if result == 1 {
+			bs.SuccessChallenges+=total
+		} else if result == 2 {
+			bs.FailedChallenges+=total
+		}
+	}
+	rows.Close()
+}
+
+
+func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	rows, err := db.Debug().Table("challenges").Select("challenges.allocation_id, COUNT(*) as total_challenges, challenges.status, challenges.result",
+		).Group("challenges.allocation_id, challenges.status, challenges.result").Rows()
+	if err != nil {
+		Logger.Error("Error in getting the allocation challenge stats", zap.Error(err))
+	}
+
+	allocationStatsMap := make(map[string]*AllocationStats)
+
+	for _, as := range bs.AllocationStats {
+		allocationStatsMap[as.AllocationID] = as
+	}
+	
+	for rows.Next() {
+		total := int64(0)
+		status := 0
+		result := 0
+		allocationID := ""
+		err = rows.Scan(&allocationID, &total, &status, &result)
+		if err != nil {
+			Logger.Error("Error in scanning record for blobber stats", zap.Error(err))
+		}
+		as := allocationStatsMap[allocationID]
+		if as == nil {
+			continue
+		}
+		as.TotalChallenges += total
+		if status == 3 {
+			as.RedeemedChallenges+=total
+		} else {
+			as.OpenChallenges+=total
+		}
+
+		if result == 1 {
+			as.SuccessChallenges+=total
+		} else if result == 2 {
+			as.FailedChallenges+=total
+		}
+	}
+	rows.Close()
 }
