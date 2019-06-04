@@ -199,6 +199,7 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 	numSuccess := 0
 	numFailure := 0
 
+	numValidatorsResponded := 0
 	for _, vt := range cr.ValidationTickets {
 		if vt != nil {
 			if vt.Result {
@@ -206,10 +207,11 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 			} else {
 				numFailure++
 			}
+			numValidatorsResponded++
 		}
 	}
 
-	if numSuccess > (len(cr.Validators)/2) || numFailure > (len(cr.Validators)/2) || len(cr.ValidationTickets) == len(cr.Validators) {
+	if numSuccess > (len(cr.Validators)/2) || numFailure > (len(cr.Validators)/2) || numValidatorsResponded == len(cr.Validators) {
 		if numSuccess > (len(cr.Validators) / 2) {
 			cr.Result = ChallengeSuccess
 		} else {

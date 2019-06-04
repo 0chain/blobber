@@ -54,7 +54,7 @@ func LoadBlobberStats(ctx context.Context) *BlobberStats {
 
 func (bs *BlobberStats) loadStats(ctx context.Context) {
 	db := datastore.GetStore().GetTransaction(ctx)
-	rows, err := db.Debug().Table("reference_objects").Select(
+	rows, err := db.Table("reference_objects").Select(
 		"SUM(reference_objects.size) as used_size, SUM(file_stats.num_of_block_downloads) as num_of_reads, SUM(reference_objects.num_of_blocks) as num_of_block_writes, COUNT(*) as num_of_writes",
 	).Joins("inner join file_stats on reference_objects.id = file_stats.ref_id where reference_objects.type = 'f'").Rows()
 
@@ -70,13 +70,13 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 	}
 	rows.Close()
 
-	db.Debug().Table("allocations").Count(&bs.NumAllocation)
+	db.Table("allocations").Count(&bs.NumAllocation)
 }
 
 func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 	bs.AllocationStats = make([]*AllocationStats, 0)
 	db := datastore.GetStore().GetTransaction(ctx)
-	rows, err := db.Debug().Table("reference_objects").Select(
+	rows, err := db.Table("reference_objects").Select(
 		"reference_objects.allocation_id, SUM(reference_objects.size) as used_size, SUM(file_stats.num_of_block_downloads) as num_of_reads, SUM(reference_objects.num_of_blocks) as num_of_block_writes, COUNT(*) as num_of_writes",
 	).Joins("inner join file_stats on reference_objects.id = file_stats.ref_id where reference_objects.type = 'f'").Group("reference_objects.allocation_id").Rows()
 
@@ -99,7 +99,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 
 func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
 	db := datastore.GetStore().GetTransaction(ctx)
-	rows, err := db.Debug().Table("challenges").Select("COUNT(*) as total_challenges, challenges.status, challenges.result",
+	rows, err := db.Table("challenges").Select("COUNT(*) as total_challenges, challenges.status, challenges.result",
 		).Group("challenges.status, challenges.result").Rows()
 	if err != nil {
 		Logger.Error("Error in getting the blobber challenge stats", zap.Error(err))
@@ -133,7 +133,7 @@ func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
 
 func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
 	db := datastore.GetStore().GetTransaction(ctx)
-	rows, err := db.Debug().Table("challenges").Select("challenges.allocation_id, COUNT(*) as total_challenges, challenges.status, challenges.result",
+	rows, err := db.Table("challenges").Select("challenges.allocation_id, COUNT(*) as total_challenges, challenges.status, challenges.result",
 		).Group("challenges.allocation_id, challenges.status, challenges.result").Rows()
 	if err != nil {
 		Logger.Error("Error in getting the allocation challenge stats", zap.Error(err))

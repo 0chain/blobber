@@ -52,7 +52,7 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 			rctx := datastore.GetStore().CreateTransaction(ctx)
 			db := datastore.GetStore().GetTransaction(rctx)
 			//lastChallengeRedeemed := &ChallengeEntity{}
-			rows, _ := db.Debug().Table("challenges").Select("commit_txn_id, sequence"). Where(ChallengeEntity{Status: Committed}).Order("sequence desc").Limit(1).Rows()
+			rows, _ := db.Table("challenges").Select("commit_txn_id, sequence"). Where(ChallengeEntity{Status: Committed}).Order("sequence desc").Limit(1).Rows()
 			lastSeq := 0
 			lastCommitTxn := ""
 			for rows.Next() {
