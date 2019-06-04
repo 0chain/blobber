@@ -20,6 +20,7 @@ import (
 	"0chain.net/core/encryption"
 	"0chain.net/core/lock"
 	. "0chain.net/core/logging"
+	
 	"github.com/jinzhu/gorm"
 	"go.uber.org/zap"
 )
@@ -117,6 +118,59 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 			return nil, err
 		}
 		delete(result, "path")
+	}
+	return result, nil
+}
+
+func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method == "GET" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+	}
+	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, true)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID{
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+
+	path_hash := r.FormValue("path_hash")
+	path := r.FormValue("path")
+	if len(path_hash) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		path_hash = reference.GetReferenceLookup(allocationID, path)
+	}
+
+	fileref, err := reference.GetReferenceFromPathHash(ctx, allocationID, path_hash)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	if fileref.Type != reference.FILE {
+		return nil, common.NewError("invalid_parameters", "Path is not a file. "+err.Error())
+	}
+
+	result := make(map[string]interface{})
+	result = fileref.GetListingData(ctx)
+	stats, _ := stats.GetFileStats(ctx, fileref.ID)
+	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
+	if wm != nil && stats != nil {
+		stats.WriteMarkerRedeemTxn = wm.CloseTxnID
+	}
+	var statsMap map[string]interface{}
+	statsBytes, err := json.Marshal(stats)
+	err = json.Unmarshal(statsBytes, &statsMap)
+	for k, v := range statsMap {
+		result[k] = v
 	}
 	return result, nil
 }
