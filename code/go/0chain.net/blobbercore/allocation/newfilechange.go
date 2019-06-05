@@ -57,6 +57,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationCh
 			newRef.Path = "/" + strings.Join(tSubDirs[:treelevel+1], "/")
 			newRef.ParentPath = "/" + strings.Join(tSubDirs[:treelevel], "/")
 			newRef.Name = tSubDirs[treelevel]
+			newRef.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, newRef.Path)
 			dirRef.AddChild(newRef)
 			dirRef = newRef
 			treelevel++
@@ -75,6 +76,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationCh
 	newFile.Name = nf.Filename
 	newFile.ParentPath = dirRef.Path
 	newFile.Path = nf.Path
+	newFile.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, nf.Path)
 	newFile.Size = change.Size
 	newFile.MimeType = nf.MimeType
 	newFile.WriteMarker = allocationRoot

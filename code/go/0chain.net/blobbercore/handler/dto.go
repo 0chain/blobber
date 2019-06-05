@@ -34,6 +34,11 @@ type ReferencePathResult struct {
 	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
 }
 
+type ObjectPathResult struct {
+	*reference.ObjectPath
+	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
+}
+
 type ListResult struct {
 	AllocationRoot string                   `json:"allocation_root"`
 	Meta           map[string]interface{}   `json:"meta_data"`

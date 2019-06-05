@@ -42,6 +42,7 @@ type Ref struct {
 	ID             int64      `gorm:column:id;primary_key`
 	Type           string     `gorm:"column:type" dirlist:"type" filelist:"type"`
 	AllocationID   string     `gorm:"column:allocation_id"`
+	LookupHash     string     `gorm:"column:lookup_hash"`
 	Name           string     `gorm:"column:name" dirlist:"name" filelist:"name"`
 	Path           string     `gorm:"column:path" dirlist:"path" filelist:"path"`
 	Hash           string     `gorm:"column:hash" dirlist:"hash" filelist:"hash"`
@@ -137,28 +138,28 @@ func GetRefWithChildren(ctx context.Context, allocationID string, path string) (
 }
 
 func GetRefWithSortedChildren(ctx context.Context, allocationID string, path string) (*Ref, error) {
-	var refs []Ref
+	var refs []*Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
-	err := db.Order("level, name").Find(&refs).Error
+	db = db.Debug().Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
+	err := db.Order("level, lookup_hash").Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}
 	if len(refs) == 0 {
 		return &Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID}, nil
 	}
-	curRef := &refs[0]
+	curRef := refs[0]
 	if curRef.Path != path {
 		return nil, common.NewError("invalid_dir_tree", "DB has invalid tree. Root not found in DB")
 	}
 	for i := 1; i < len(refs); i++ {
 		if refs[i].ParentPath == curRef.Path {
-			curRef.Children = append(curRef.Children, &refs[i])
+			curRef.Children = append(curRef.Children, refs[i])
 		} else {
 			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
 		}
 	}
-	return &refs[0], nil
+	return refs[0], nil
 }
 
 func GetReferencePath(ctx context.Context, allocationID string, path string) (*Ref, error) {
@@ -172,7 +173,7 @@ func GetReferencePath(ctx context.Context, allocationID string, path string) (*R
 		curPath = filepath.Dir(curPath)
 	}
 	db = db.Or("parent_path = ? AND allocation_id = ?", "", allocationID)
-	err := db.Order("level, name").Find(&refs).Error
+	err := db.Order("level, lookup_hash").Find(&refs).Error
 	if (err != nil && gorm.IsRecordNotFoundError(err)) || len(refs) == 0 {
 		return &Ref{Type: DIRECTORY, AllocationID: allocationID, Name: "/", Path: "/", ParentPath: "", PathLevel: 1}, nil
 	}
@@ -204,6 +205,7 @@ func GetReferencePath(ctx context.Context, allocationID string, path string) (*R
 			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
 		}
 	}
+	//refs[0].CalculateHash(ctx, false)
 	return &refs[0], nil
 }
 
@@ -222,9 +224,10 @@ func (fr *Ref) GetFileHashData() string {
 }
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
-	//fmt.Println("fileref name , path", fr.Name, fr.Path)
-	//fmt.Println("Fileref hash : " + fr.GetHashData())
+	//fmt.Println("fileref name , path, hash", fr.Name, fr.Path, fr.Hash)
+	//fmt.Println("Fileref hash data: " + fr.GetFileHashData())
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
+	//fmt.Println("Fileref hash : " + fr.Hash)
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / CHUNK_SIZE))
 	fr.PathHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	fr.PathLevel = len(GetSubDirsFromPath(fr.Path)) + 1 //strings.Count(fr.Path, "/")
@@ -253,9 +256,10 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 		childPathHashes[index] = childRef.PathHash
 		refNumBlocks += childRef.NumBlocks
 	}
-	//fmt.Println("ref name and path " + r.Name + " " + r.Path)
-	//fmt.Println("ref hash : " + strings.Join(childHashes, ":"))
+	//fmt.Println("ref name and path, hash :" + r.Name + " " + r.Path + " " + r.Hash)
+	//fmt.Println("ref hash data: " + strings.Join(childHashes, ":"))
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
+	//fmt.Println("ref hash : " + r.Hash)
 	r.NumBlocks = refNumBlocks
 	//fmt.Println("Ref Path hash: " + strings.Join(childPathHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
@@ -282,7 +286,7 @@ func (r *Ref) AddChild(child *Ref) {
 	}
 	r.Children = append(r.Children, child)
 	sort.SliceStable(r.Children, func(i, j int) bool {
-		return strings.Compare(r.Children[i].Name, r.Children[j].Name) == -1
+		return strings.Compare(r.Children[i].LookupHash, r.Children[j].LookupHash) == -1
 	})
 }
 
@@ -292,7 +296,7 @@ func (r *Ref) RemoveChild(idx int) {
 	}
 	r.Children = append(r.Children[:idx], r.Children[idx+1:]...)
 	sort.SliceStable(r.Children, func(i, j int) bool {
-		return strings.Compare(r.Children[i].Name, r.Children[j].Name) == -1
+		return strings.Compare(r.Children[i].LookupHash, r.Children[j].LookupHash) == -1
 	})
 }
 
@@ -303,27 +307,6 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Where("path_hash = ?", pathHash).Delete(&Ref{ID: refID}).Error
 }
-
-// func (r *Ref) LoadChildren(ctx context.Context, dbStore datastore.Store) error {
-// 	r.Children = make([]RefEntity, len(r.ChildRefs))
-// 	if len(r.ChildRefs) > 0 {
-// 		for index, childRef := range r.ChildRefs {
-// 			var childRefObj datastore.Entity
-// 			if strings.HasPrefix(childRef, fileRefEntityMetaData.GetDBName()) {
-// 				childRefObj = fileRefEntityMetaData.Instance().(*FileRef)
-// 			} else {
-// 				childRefObj = refEntityMetaData.Instance().(*Ref)
-// 			}
-
-// 			err := dbStore.Read(ctx, childRef, childRefObj)
-// 			if err != nil {
-// 				return err
-// 			}
-// 			r.Children[index] = childRefObj.(RefEntity)
-// 		}
-// 	}
-// 	return nil
-// }
 
 func (r *Ref) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
@@ -371,193 +354,6 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 	}
 	return result
 }
-
-/*
-
-func (r *Ref) CalculateHash(ctx context.Context, dbStore datastore.Store) (string, error) {
-	err := r.LoadChildren(ctx, dbStore)
-	if err != nil {
-		return "", err
-	}
-	childHashes := make([]string, len(r.Children))
-	childPathHashes := make([]string, len(r.Children))
-	var refNumBlocks int64
-	for index, childRef := range r.Children {
-		childHashes[index] = childRef.GetHash(ctx)
-		childPathHashes[index] = childRef.GetPathHash()
-		refNumBlocks += childRef.GetNumBlocks(ctx)
-	}
-	//fmt.Println("ref hash : " + strings.Join(childHashes, ":"))
-	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
-	r.NumBlocks = refNumBlocks
-	//fmt.Println("Ref Path hash: " + strings.Join(childPathHashes, ":"))
-	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
-	return r.Hash, nil
-}
-
-func (r *Ref) DeleteChild(childKey string) {
-	i := 0 // output index
-	for _, x := range r.ChildRefs {
-		if x != childKey {
-			r.ChildRefs[i] = x
-			i++
-		}
-	}
-	r.ChildRefs = r.ChildRefs[:i]
-}
-
-func (r *Ref) GetHash(ctx context.Context) string {
-	return r.Hash
-}
-
-func (r *Ref) GetListingData(ctx context.Context) map[string]interface{} {
-	return GetListingFieldsMap(*r)
-}
-func (r *Ref) GetType() string {
-	return r.Type
-}
-
-func (r *Ref) GetNumBlocks(ctx context.Context) int64 {
-	return r.NumBlocks
-}
-
-func (r *Ref) GetPathHash() string {
-	return r.PathHash
-}
-
-func (r *Ref) GetPath() string {
-	return r.Path
-}
-
-func (r *Ref) GetName() string {
-	return r.Name
-}
-
-*/
-
-/*func CreateDirRefsIfNotExists(ctx context.Context, allocation string, path string, childKey string, dbStore datastore.Store) error {
-
-	if len(path) == 0 {
-		return common.NewError("invalid_parameters", "Invalid path to reference")
-	}
-	parentdir, currdir := filepath.Split(path)
-	parentdir = filepath.Clean(parentdir)
-
-	isRoot := false
-	if len(currdir) == 0 {
-		//Path is root
-		isRoot = true
-	}
-
-	dirref, _ := RefProvider().(*Ref)
-	dirref.AllocationID = allocation
-	dirref.Name = currdir
-	dirref.Path = path
-
-	//dbStore := refEntityMetaData.GetStore()
-	err := dbStore.Read(ctx, dirref.GetKey(), dirref)
-	if err == datastore.ErrKeyNotFound {
-		dirref.Type = DIRECTORY
-		if !isRoot {
-			parentDirRef, _ := RefProvider().(*Ref)
-			parentDirRef.AllocationID = allocation
-			parentDirRef.Path = parentdir
-			parentDirRef.Type = DIRECTORY
-
-			dirref.ParentRef = parentDirRef.GetKey()
-		}
-	}
-
-	if err != nil && err != datastore.ErrKeyNotFound {
-		return err
-	}
-
-	if dirref.Type != DIRECTORY {
-		return common.NewError("invalid_reference", "Reference is not a directory. Path : "+dirref.Path)
-	}
-
-	if len(childKey) > 0 {
-		existingChild := false
-		for _, a := range dirref.ChildRefs {
-			if a == childKey {
-				existingChild = true
-			}
-		}
-		if !existingChild {
-			dirref.ChildRefs = append(dirref.ChildRefs, childKey)
-		}
-
-	}
-	err = dbStore.Write(ctx, dirref)
-	if err != nil {
-		return err
-	}
-
-	if !isRoot {
-		err = CreateDirRefsIfNotExists(ctx, allocation, parentdir, dirref.GetKey(), dbStore)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func GetRootReferenceFromStore(ctx context.Context, allocationID string, dbStore datastore.Store) (*Ref, error) {
-	parentDirRef, _ := RefProvider().(*Ref)
-	parentDirRef.AllocationID = allocationID
-	parentDirRef.Path = "/"
-	err := dbStore.Read(ctx, parentDirRef.GetKey(), parentDirRef)
-	if err != nil {
-		return nil, err
-	}
-	return parentDirRef, nil
-}
-
-func GetRootReference(ctx context.Context, allocationID string) (*Ref, error) {
-	return GetRootReferenceFromStore(ctx, allocationID, refEntityMetaData.GetStore())
-}
-
-func RecalculateHashBottomUp(ctx context.Context, curRef *Ref, dbStore datastore.Store) error {
-
-	parentdir, currdir := filepath.Split(curRef.Path)
-	parentdir = filepath.Clean(parentdir)
-	isRoot := false
-	if len(currdir) == 0 {
-		//Path is root
-		isRoot = true
-	}
-
-	if curRef.Type != DIRECTORY {
-		return common.NewError("invalid_reference", "Reference is not a directory. Path : "+curRef.Path)
-	}
-
-	_, err := curRef.CalculateHash(ctx, dbStore)
-	if err != nil {
-		return err
-	}
-
-	err = dbStore.Write(ctx, curRef)
-	if err != nil {
-		return err
-	}
-
-	if !isRoot {
-		parentDirRef, _ := RefProvider().(*Ref)
-		parentDirRef.AllocationID = curRef.AllocationID
-		parentDirRef.Path = parentdir
-		err = dbStore.Read(ctx, parentDirRef.GetKey(), parentDirRef)
-		if err != nil {
-			return err
-		}
-		err = RecalculateHashBottomUp(ctx, parentDirRef, dbStore)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}*/
 
 type ObjectPath struct {
 	RootHash     string                 `json:"root_hash"`
@@ -619,7 +415,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 				curRef = child
 				break
 			}
-			curRef, err := GetRefWithSortedChildren(ctx, allocationID, child.Path)
+			curRef, err = GetRefWithSortedChildren(ctx, allocationID, child.Path)
 			if err != nil || len(curRef.Hash) == 0 {
 				return nil, common.NewError("failed_object_path", "Failed to get the object path")
 			}
@@ -637,75 +433,6 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 	retObj.Path = result
 	retObj.FileBlockNum = remainingBlocks
 	retObj.RefID = curRef.ID
-
+	//rootRef.CalculateHash(ctx, false)
 	return &retObj, nil
 }
-
-/*
-func GetObjectPathFromFilePath(ctx context.Context, allocationID string, filepath string, dbStore datastore.Store) (*ObjectPath, error) {
-
-	rootRef, err := GetRootReferenceFromStore(ctx, allocationID, dbStore)
-	//fmt.Println("Root ref found with hash : " + rootRef.Hash)
-	if err != nil {
-		return nil, common.NewError("invalid_dir_struct", "Allocation root corresponds to an invalid directory structure")
-	}
-
-	if len(filepath) == 0 {
-		return nil, common.NewError("invalid_block_num", "Invalid filepath")
-	}
-
-	fileref := FileRefProvider().(*FileRef)
-	fileref.AllocationID = allocationID
-	fileref.Path = filepath
-	err = fileref.Read(ctx, fileref.GetKey())
-	if err != nil {
-		return nil, common.NewError("invalid_block_num", "Invalid filepath. File not found")
-	}
-
-	curRef := RefProvider().(*Ref)
-	err = dbStore.Read(ctx, fileref.ParentRef, curRef)
-	if err != nil {
-		return nil, common.NewError("parent_read_error", "Error reading the ref of the parent")
-	}
-	//result := //curRef.GetListingData(ctx)
-	//curResult := result
-	prevPath := ""
-	var prevResult map[string]interface{}
-	for true {
-		newResult := curRef.GetListingData(ctx)
-		err := curRef.LoadChildren(ctx, dbStore)
-		if err != nil {
-			return nil, common.NewError("error_loading_children", "Error loading children from store for path "+curRef.Path)
-		}
-		list := make([]map[string]interface{}, len(curRef.Children))
-		for idx, child := range curRef.Children {
-			if len(prevPath) > 0 && prevResult != nil {
-				if child.GetPath() == prevPath {
-					list[idx] = prevResult
-					continue
-				}
-			}
-			list[idx] = child.GetListingData(ctx)
-		}
-		newResult["list"] = list
-		prevPath = curRef.GetPath()
-		prevResult = newResult
-		if curRef.GetPath() == rootRef.GetPath() {
-			break
-		}
-		err = dbStore.Read(ctx, curRef.ParentRef, curRef)
-		if err != nil {
-			return nil, common.NewError("parent_read_error", "Error reading the ref of the parent")
-		}
-	}
-
-	var retObj ObjectPath
-	retObj.RootHash = rootRef.Hash
-	retObj.Meta = fileref.GetListingData(ctx)
-	retObj.Path = prevResult
-	retObj.FileBlockNum = -1
-
-	return &retObj, nil
-}
-
-*/

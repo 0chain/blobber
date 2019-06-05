@@ -54,6 +54,7 @@ CREATE TRIGGER allocation_changes_modtime BEFORE UPDATE ON allocation_changes FO
 
 CREATE TABLE reference_objects (
     id BIGSERIAL PRIMARY KEY,
+    lookup_hash VARCHAR (64) NOT NULL,
     path_hash VARCHAR (64) NOT NULL,
     type VARCHAR(10) NOT NULL,
     allocation_id VARCHAR(64) NOT NULL,

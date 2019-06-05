@@ -392,6 +392,58 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 	return &refPathResult, nil
 }
 
+func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (*ObjectPathResult, error) {
+	if r.Method == "POST" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
+	}
+	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+	path := r.FormValue("path")
+	if len(path) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path")
+	}
+
+	blockNumStr := r.FormValue("block_num")
+	if len(blockNumStr) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path")
+	}
+
+	blockNum, err := strconv.ParseInt(blockNumStr, 10, 64)
+	if err != nil || blockNum < 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid block number")
+	}
+
+	objectPath, err := reference.GetObjectPath(ctx, allocationID, blockNum)
+	if err != nil {
+		return nil, err
+	}
+
+	var latestWM *writemarker.WriteMarkerEntity
+	if len(allocationObj.AllocationRoot) == 0 {
+		latestWM = nil
+	} else {
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+		if err != nil {
+			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
+		}
+	}
+	var objPathResult ObjectPathResult
+	objPathResult.ObjectPath = objectPath
+	if latestWM != nil {
+		objPathResult.LatestWM = &latestWM.WM
+	}
+	return &objPathResult, nil
+}
+
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*CommitResult, error) {
 
 	if r.Method == "GET" {
