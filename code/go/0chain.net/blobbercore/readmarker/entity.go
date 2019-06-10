@@ -19,17 +19,18 @@ type AuthTicket struct {
 	AllocationID string           `json:"allocation_id"`
 	FilePathHash string           `json:"file_path_hash"`
 	FileName     string           `json:"file_name"`
+	RefType      string           `json:"reference_type"`
 	Expiration   common.Timestamp `json:"expiration"`
 	Timestamp    common.Timestamp `json:"timestamp"`
 	Signature    string           `json:"signature"`
 }
 
 func (rm *AuthTicket) GetHashData() string {
-	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.ClientID, rm.OwnerID, rm.FilePathHash, rm.FileName, rm.Expiration, rm.Timestamp)
+	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.ClientID, rm.OwnerID, rm.FilePathHash, rm.FileName, rm.RefType, rm.Expiration, rm.Timestamp)
 	return hashData
 }
 
-func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, filename string, pathHash string, clientID string) error {
+func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, clientID string) error {
 	if authToken.AllocationID != allocationObj.ID {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Allocation id mismatch")
 	}
@@ -39,18 +40,14 @@ func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, filena
 	if authToken.Expiration < authToken.Timestamp || authToken.Expiration < common.Now() {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Expired ticket")
 	}
-	if authToken.FilePathHash != pathHash {
-		return common.NewError("invalid_parameters", "Invalid auth ticket. Path hash mismatch")
-	}
+
 	if authToken.OwnerID != allocationObj.OwnerID {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Owner ID mismatch")
 	}
 	if authToken.Timestamp > (common.Now() + 2) {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Timestamp in future")
 	}
-	if authToken.FileName != filename {
-		return common.NewError("invalid_parameters", "Invalid auth ticket. Filename mismatch")
-	}
+
 	hashData := authToken.GetHashData()
 	signatureHash := encryption.Hash(hashData)
 	sigOK, err := encryption.Verify(allocationObj.OwnerPublicKey, authToken.Signature, signatureHash)

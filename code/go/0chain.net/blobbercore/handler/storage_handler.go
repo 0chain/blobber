@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"strings"
 	"0chain.net/blobbercore/stats"
 	"context"
 	"encoding/hex"
@@ -39,6 +40,34 @@ func (fsh *StorageHandler) verifyAllocation(ctx context.Context, allocationID st
 		return nil, err
 	}
 	return allocationObj, nil
+}
+
+func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (bool, error) {
+	authTokenString := r.FormValue("auth_token")
+	if len(authTokenString) == 0 {
+		return false, common.NewError("invalid_parameters", "Auth ticket required if data read by anyone other than owner.")
+	}
+	authToken := &readmarker.AuthTicket{}
+	err := json.Unmarshal([]byte(authTokenString), &authToken)
+	if err != nil {
+		return false, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
+	}
+	err = authToken.Verify(allocationObj, clientID)
+	if err != nil {
+		return false, err
+	}
+	if refRequested.LookupHash != authToken.FilePathHash {
+		authTokenRef, err := reference.GetReferenceFromLookupHash(ctx, authToken.AllocationID, authToken.FilePathHash)
+		if err != nil {
+			return false, err
+		}
+		if refRequested.ParentPath != authTokenRef.Path || strings.HasPrefix(refRequested.ParentPath, authTokenRef.Path + "/") {
+			return false, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
+		}
+	}
+	
+	
+	return true, nil
 }
 
 func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -90,14 +119,14 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		path_hash = reference.GetReferenceLookup(allocationID, path)
 	}
 
-	fileref, err := reference.GetReferenceFromPathHash(ctx, allocationID, path_hash)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 
 	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file. "+err.Error())
+		return nil, common.NewError("invalid_parameters", "Path is not a file.")
 	}
 
 	result := make(map[string]interface{})
@@ -113,7 +142,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		if err != nil {
 			return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
 		}
-		err = authToken.Verify(allocationObj, fileref.Name, fileref.PathHash, clientID)
+		err = authToken.Verify(allocationObj, clientID)
 		if err != nil {
 			return nil, err
 		}
@@ -149,7 +178,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 		path_hash = reference.GetReferenceLookup(allocationID, path)
 	}
 
-	fileref, err := reference.GetReferenceFromPathHash(ctx, allocationID, path_hash)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -231,7 +260,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (*
 		return nil, common.NewError("invalid_parameters", "Invalid read marker. Failed to verify the read marker. "+err.Error())
 	}
 
-	fileref, err := reference.GetReferenceFromPathHash(ctx, allocationID, path_hash)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -242,18 +271,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (*
 	}
 
 	if clientID != allocationObj.OwnerID {
-		authTokenString := r.FormValue("auth_token")
-		if len(authTokenString) == 0 {
-			return nil, common.NewError("invalid_parameters", "Auth ticket required if data read by anyone other than owner.")
-		}
-		authToken := &readmarker.AuthTicket{}
-		err = json.Unmarshal([]byte(authTokenString), &authToken)
-		if err != nil {
-			return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
-		}
-		err = authToken.Verify(allocationObj, fileref.Name, fileref.PathHash, clientID)
+		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err
+		}
+		if !authTicketVerified {
+			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
 		}
 	}
 
@@ -308,26 +331,54 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
+	path_hash := r.FormValue("path_hash")
 	path := r.FormValue("path")
-	if len(path) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
+	if len(path_hash) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		path_hash = reference.GetReferenceLookup(allocationID, path)
 	}
 
-	dirref, err := reference.GetRefWithChildren(ctx, allocationID, path)
+	Logger.Info("Path Hash for list dir :" + path_hash)
+
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
+	}
+	if clientID != allocationObj.OwnerID {
+		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
+		if err != nil {
+			return nil, err
+		}
+		if !authTicketVerified {
+			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
+		}
+	}
+
+	dirref, err := reference.GetRefWithChildren(ctx, allocationID, fileref.Path)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
 
+	
+
 	var result ListResult
 	result.AllocationRoot = allocationObj.AllocationRoot
 	result.Meta = dirref.GetListingData(ctx)
+	if clientID != allocationObj.OwnerID {
+		delete(result.Meta, "path")
+	}
 	result.Entities = make([]map[string]interface{}, len(dirref.Children))
 	for idx, child := range dirref.Children {
 		result.Entities[idx] = child.GetListingData(ctx)
+		if clientID != allocationObj.OwnerID {
+			delete(result.Entities[idx], "path")
+		}
 	}
 
 	return &result, nil
@@ -588,7 +639,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the delete token."+err.Error())
 	}
-	fileRef, _ := reference.GetReferenceFromPathHash(ctx, connectionObj.AllocationID, deleteToken.FilePathHash)
+	fileRef, _ := reference.GetReferenceFromLookupHash(ctx, connectionObj.AllocationID, deleteToken.FilePathHash)
 	clientKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 	if fileRef != nil && fileRef.Type == reference.FILE {
 		if deleteToken.AllocationID != connectionObj.AllocationID {

@@ -42,7 +42,7 @@ type Ref struct {
 	ID             int64      `gorm:column:id;primary_key`
 	Type           string     `gorm:"column:type" dirlist:"type" filelist:"type"`
 	AllocationID   string     `gorm:"column:allocation_id"`
-	LookupHash     string     `gorm:"column:lookup_hash"`
+	LookupHash     string     `gorm:"column:lookup_hash" dirlist:"lookup_hash" filelist:"lookup_hash"`
 	Name           string     `gorm:"column:name" dirlist:"name" filelist:"name"`
 	Path           string     `gorm:"column:path" dirlist:"path" filelist:"path"`
 	Hash           string     `gorm:"column:hash" dirlist:"hash" filelist:"hash"`
@@ -89,10 +89,10 @@ func GetReference(ctx context.Context, allocationID string, path string) (*Ref, 
 	return nil, err
 }
 
-func GetReferenceFromPathHash(ctx context.Context, allocationID string, path_hash string) (*Ref, error) {
+func GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where(&Ref{AllocationID: allocationID, PathHash: path_hash}).First(ref).Error
+	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
 	if err == nil {
 		return ref, nil
 	}
@@ -140,7 +140,7 @@ func GetRefWithChildren(ctx context.Context, allocationID string, path string) (
 func GetRefWithSortedChildren(ctx context.Context, allocationID string, path string) (*Ref, error) {
 	var refs []*Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Debug().Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
+	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
 	err := db.Order("level, lookup_hash").Find(&refs).Error
 	if err != nil {
 		return nil, err
