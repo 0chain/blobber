@@ -1,5 +1,3 @@
-#FROM ubuntu:16.04
-#RUN groupadd -r 0chain && useradd --no-log-init -r -g 0chain 0chain
 ARG image_tag
 FROM golang:1.11.4-alpine3.8 as blobber_build
 
@@ -22,6 +20,9 @@ RUN go mod download
 ADD ./code/go/0chain.net $SRC_DIR/go/0chain.net
 
 ARG image_tag
+ARG go_build_mode
+ARG go_bls_tag
+RUN go build -tags ${go_build_mode} -tags ${go_bls_tag} 0chain.net/blobber/blobber
 RUN go build -v -ldflags "-X 0chain.net/core/build.BuildTag=${image_tag}"
 
 # Copy the build artifact into a minimal runtime image:
