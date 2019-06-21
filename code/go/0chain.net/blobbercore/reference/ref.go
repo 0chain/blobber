@@ -231,6 +231,7 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / CHUNK_SIZE))
 	fr.PathHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	fr.PathLevel = len(GetSubDirsFromPath(fr.Path)) + 1 //strings.Count(fr.Path, "/")
+	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	var err error
 	if saveToDB {
 		err = fr.Save(ctx)
@@ -264,7 +265,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	//fmt.Println("Ref Path hash: " + strings.Join(childPathHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1 //strings.Count(r.Path, "/")
-
+	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
 	var err error
 	if saveToDB {
 		err = r.Save(ctx)

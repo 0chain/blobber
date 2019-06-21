@@ -43,13 +43,13 @@ func FileUpdated(ctx context.Context, refID int64) {
 func FileBlockDownloaded(ctx context.Context, refID int64) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
-	db.Model(stats).Where(stats).Update("num_of_block_downloads", gorm.Expr("num_of_block_downloads + ?", 1))
+	db.Debug().Model(stats).Where(FileStats{RefID: refID}).Update("num_of_block_downloads", gorm.Expr("num_of_block_downloads + ?", 1))
 }
 
 func GetFileStats(ctx context.Context, refID int64) (*FileStats, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
-	err := db.Model(stats).First(stats).Error
+	err := db.Debug().Model(stats).First(stats).Error
 	if err != nil {
 		return nil, err
 	}

@@ -185,7 +185,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 
 	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file. "+err.Error())
+		return nil, common.NewError("invalid_parameters", "Path is not a file.")
 	}
 
 	result := make(map[string]interface{})
