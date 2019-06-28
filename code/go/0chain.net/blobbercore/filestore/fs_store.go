@@ -296,7 +296,7 @@ func (fs *FileFSStore) GetMerkleTreeForFile(allocationID string, fileData *FileI
 	return mt, nil
 }
 
-func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, hdr *multipart.FileHeader, connectionID string) (*FileOutputData, error) {
+func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
 	allocation, err := fs.setupAllocation(allocationID, false)
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
@@ -309,10 +309,10 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, h
 		return nil, common.NewError("file_creation_error", err.Error())
 	}
 	defer dest.Close()
-	infile, err := hdr.Open()
-	if err != nil {
-		return nil, common.NewError("file_reading_error", err.Error())
-	}
+	// infile, err := hdr.Open()
+	// if err != nil {
+	// 	return nil, common.NewError("file_reading_error", err.Error())
+	// }
 	merkleHash := sha3.New256()
 	multiHashWriter := io.MultiWriter(h, merkleHash)
 	tReader := io.TeeReader(infile, multiHashWriter)

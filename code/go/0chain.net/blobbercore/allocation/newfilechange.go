@@ -11,17 +11,22 @@ import (
 )
 
 type NewFileChange struct {
-	ConnectionID string `json:"connection_id"`
-	AllocationID string `json:"allocation_id"`
-	Filename     string `json:"filename"`
-	Path         string `json:"filepath"`
-	Size         int64  `json:"size"`
-	Hash         string `json:"content_hash,omitempty"`
-	MerkleRoot   string `json:"merkle_root,omitempty"`
-	ActualHash   string `json:"actual_hash,omitempty"`
-	ActualSize   int64  `json:"actual_size,omitempty"`
-	MimeType     string `json:"mimetype,omitempty"`
-	CustomMeta   string `json:"custom_meta,omitempty"`
+	ConnectionID        string `json:"connection_id"`
+	AllocationID        string `json:"allocation_id"`
+	Filename            string `json:"filename"`
+	ThumbnailFilename   string `json:"thumbnail_filename"`
+	Path                string `json:"filepath"`
+	Size                int64  `json:"size"`
+	Hash                string `json:"content_hash,omitempty"`
+	ThumbnailSize       int64  `json:"thumbnail_size"`
+	ThumbnailHash       string `json:"thumbnail_content_hash,omitempty"`
+	MerkleRoot          string `json:"merkle_root,omitempty"`
+	ActualHash          string `json:"actual_hash,omitempty"`
+	ActualSize          int64  `json:"actual_size,omitempty"`
+	ActualThumbnailSize int64  `json:"actual_thumb_size"`
+	ActualThumbnailHash string `json:"actual_thumb_hash"`
+	MimeType            string `json:"mimetype,omitempty"`
+	CustomMeta          string `json:"custom_meta,omitempty"`
 }
 
 func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
@@ -77,9 +82,14 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationCh
 	newFile.ParentPath = dirRef.Path
 	newFile.Path = nf.Path
 	newFile.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, nf.Path)
-	newFile.Size = change.Size
+	newFile.Size = nf.Size
 	newFile.MimeType = nf.MimeType
 	newFile.WriteMarker = allocationRoot
+	newFile.ThumbnailHash = nf.ThumbnailHash
+	newFile.ThumbnailSize = nf.ThumbnailSize
+	newFile.ActualThumbnailHash = nf.ActualThumbnailHash
+	newFile.ActualThumbnailSize = nf.ActualThumbnailSize
+
 	dirRef.AddChild(newFile)
 	rootRef.CalculateHash(ctx, true)
 	stats.NewFileCreated(ctx, newFile.ID)

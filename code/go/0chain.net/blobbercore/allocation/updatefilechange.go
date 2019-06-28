@@ -63,6 +63,10 @@ func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	existingRef.MerkleRoot = nf.MerkleRoot
 	existingRef.WriteMarker = allocationRoot
 	existingRef.Size = nf.Size
+	existingRef.ThumbnailHash = nf.ThumbnailHash
+	existingRef.ThumbnailSize = nf.ThumbnailSize
+	existingRef.ActualThumbnailHash = nf.ActualThumbnailHash
+	existingRef.ActualThumbnailSize = nf.ActualThumbnailSize
 	_, err = rootRef.CalculateHash(ctx, true)
 	stats.FileUpdated(ctx, existingRef.ID)
 	return rootRef, err

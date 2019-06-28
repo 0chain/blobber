@@ -27,6 +27,11 @@ import (
 )
 
 const FORM_FILE_PARSE_MAX_MEMORY = 10 * 1024 * 1024
+const (
+	DOWNLOAD_CONTENT_FULL = "full"
+	DOWNLOAD_CONTENT_THUMB = "thumbnail"
+)
+
 
 type StorageHandler struct {
 }
@@ -295,14 +300,29 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (*
 		return response, nil
 	}
 
-	fileData := &filestore.FileInputData{}
-	fileData.Name = fileref.Name
-	fileData.Path = fileref.Path
-	fileData.Hash = fileref.ContentHash
-	respData, err := filestore.GetFileStore().GetFileBlock(allocationID, fileData, blockNum)
-	if err != nil {
-		return nil, err
+	download_mode := r.FormValue("content")
+	var respData []byte
+	if len(download_mode) > 0 && download_mode == DOWNLOAD_CONTENT_THUMB {
+		fileData := &filestore.FileInputData{}
+		fileData.Name = fileref.Name
+		fileData.Path = fileref.Path
+		fileData.Hash = fileref.ThumbnailHash
+		respData, err = filestore.GetFileStore().GetFileBlock(allocationID, fileData, blockNum)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		fileData := &filestore.FileInputData{}
+		fileData.Name = fileref.Name
+		fileData.Path = fileref.Path
+		fileData.Hash = fileref.ContentHash
+		respData, err = filestore.GetFileStore().GetFileBlock(allocationID, fileData, blockNum)
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	
 
 	err = readmarker.SaveLatestReadMarker(ctx, readMarker, latestRM == nil)
 	if err != nil {
@@ -642,6 +662,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 	fileRef, _ := reference.GetReferenceFromLookupHash(ctx, connectionObj.AllocationID, deleteToken.FilePathHash)
 	clientKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 	if fileRef != nil && fileRef.Type == reference.FILE {
+		deleteSize := fileRef.Size + fileRef.ThumbnailSize
 		if deleteToken.AllocationID != connectionObj.AllocationID {
 			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Allocation ID mismatch.")
 		}
@@ -652,7 +673,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		if deleteToken.ClientID != connectionObj.ClientID {
 			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Client ID mismatch.")
 		}
-		if deleteToken.Size != fileRef.Size {
+		if deleteToken.Size != deleteSize {
 			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Size mismatch.")
 		}
 
@@ -670,11 +691,11 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 
 		allocationChange := &allocation.AllocationChange{}
 		allocationChange.ConnectionID = connectionObj.ConnectionID
-		allocationChange.Size = 0 - fileRef.Size
+		allocationChange.Size = 0 - deleteSize
 		allocationChange.Operation = allocation.DELETE_OPERATION
 		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ConnectionID, 
 			AllocationID: connectionObj.AllocationID, Name: fileRef.Name, 
-			Hash : fileRef.Hash, Path: fileRef.Path, Size: fileRef.Size, DeleteToken: deleteToken}
+			Hash : fileRef.Hash, Path: fileRef.Path, Size: deleteSize, DeleteToken: deleteToken}
 		
 		connectionObj.Size += allocationChange.Size
 		connectionObj.AddChange(allocationChange, dfc)
@@ -762,49 +783,76 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		}
 
 		if exisitingFileRef != nil {
-			existingFileRefSize = exisitingFileRef.Size
+			existingFileRefSize = exisitingFileRef.Size + exisitingFileRef.ThumbnailSize
 		}
 
-		for _, fheaders := range r.MultipartForm.File {
-			for _, hdr := range fheaders {
-				fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path}
-				fileOutputData, err := filestore.GetFileStore().WriteFile(allocationID, fileInputData, hdr, connectionObj.ConnectionID)
-				if err != nil {
-					return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
-				}
-				result.Filename = formData.Filename
-				result.Hash = fileOutputData.ContentHash
-				result.MerkleRoot = fileOutputData.MerkleRoot
-				result.Size = fileOutputData.Size
+		origfile, _, err := r.FormFile("uploadFile")
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Error Reading multi parts for file." + err.Error())
+		}
+		defer origfile.Close()
+		
+		thumbfile, thumbHeader, _ := r.FormFile("uploadThumbnailFile")
+		thumbnailPresent := false
+		if thumbHeader != nil {
+			thumbnailPresent = true
+			defer thumbfile.Close()
+		}
+		
+		fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path}
+		fileOutputData, err := filestore.GetFileStore().WriteFile(allocationID, fileInputData, origfile, connectionObj.ConnectionID)
+		if err != nil {
+			return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
+		}
+		
 
-				if len(formData.Hash) > 0 && formData.Hash != fileOutputData.ContentHash {
-					return nil, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
-				}
-				if len(formData.MerkleRoot) > 0 && formData.MerkleRoot != fileOutputData.MerkleRoot {
-					return nil, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
-				}
+		result.Filename = formData.Filename
+		result.Hash = fileOutputData.ContentHash
+		result.MerkleRoot = fileOutputData.MerkleRoot
+		result.Size = fileOutputData.Size
 
-				if allocationObj.BlobberSizeUsed+(fileOutputData.Size-existingFileRefSize) > allocationObj.BlobberSize {
-					return nil, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
-				}
+		if len(formData.Hash) > 0 && formData.Hash != fileOutputData.ContentHash {
+			return nil, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
+		}
+		if len(formData.MerkleRoot) > 0 && formData.MerkleRoot != fileOutputData.MerkleRoot {
+			return nil, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
+		}
 
-				formData.Hash = fileOutputData.ContentHash
-				formData.MerkleRoot = fileOutputData.MerkleRoot
-				formData.AllocationID = allocationID
-				formData.Size = fileOutputData.Size
+		formData.Hash = fileOutputData.ContentHash
+		formData.MerkleRoot = fileOutputData.MerkleRoot
+		formData.AllocationID = allocationID
+		formData.Size = fileOutputData.Size
 
-				allocationChange := &allocation.AllocationChange{}
-				allocationChange.ConnectionID = connectionObj.ConnectionID
-				allocationChange.Size = fileOutputData.Size - existingFileRefSize
-				allocationChange.Operation = mode
-
-				connectionObj.Size += allocationChange.Size
-				if mode == allocation.INSERT_OPERATION {
-					connectionObj.AddChange(allocationChange, &formData.NewFileChange)
-				} else if (mode == allocation.UPDATE_OPERATION) {
-					connectionObj.AddChange(allocationChange, &formData)
-				}
+		allocationSize := fileOutputData.Size
+		if thumbnailPresent {
+			thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: formData.Path}
+			thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationID, thumbInputData, thumbfile, connectionObj.ConnectionID)
+			if err != nil {
+				return nil, common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 			}
+			if len(formData.ThumbnailHash) > 0 && formData.ThumbnailHash != thumbOutputData.ContentHash {
+				return nil, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the thumbnail content")
+			}
+			formData.ThumbnailHash = thumbOutputData.ContentHash
+			formData.ThumbnailSize = thumbOutputData.Size
+			formData.ThumbnailFilename = thumbInputData.Name
+			allocationSize += thumbOutputData.Size
+		} 
+
+		if allocationObj.BlobberSizeUsed+(allocationSize-existingFileRefSize) > allocationObj.BlobberSize {
+			return nil, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
+		}
+
+		allocationChange := &allocation.AllocationChange{}
+		allocationChange.ConnectionID = connectionObj.ConnectionID
+		allocationChange.Size = allocationSize - existingFileRefSize
+		allocationChange.Operation = mode
+
+		connectionObj.Size += allocationChange.Size
+		if mode == allocation.INSERT_OPERATION {
+			connectionObj.AddChange(allocationChange, &formData.NewFileChange)
+		} else if (mode == allocation.UPDATE_OPERATION) {
+			connectionObj.AddChange(allocationChange, &formData)
 		}
 	}
 	err = connectionObj.Save(ctx)

@@ -44,12 +44,6 @@ func (AllocationChangeCollector) TableName() string {
 }
 
 type AllocationChange struct {
-	//*UploadFormData
-	// DeleteToken string `json:"delete_token"`
-	// Size        int64  `json:"size"`
-	// NewFileSize int64  `json:"new_size"`
-	// NumBlocks   int64  `json:"num_of_blocks"`
-	// Operation   string `json:"operation"`
 	ChangeID     int64  `gorm:"column:id;primary_key"`
 	Size         int64  `gorm:"column:size"`
 	Operation    string `gorm:"column:operation"`
@@ -143,6 +137,16 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 			if err != nil {
 				return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 			}
+			if nfch.ThumbnailSize > 0 {
+				fileInputData := &filestore.FileInputData{}
+				fileInputData.Name = nfch.ThumbnailFilename
+				fileInputData.Path = nfch.Path
+				fileInputData.Hash = nfch.ThumbnailHash
+				_, err := filestore.GetFileStore().CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
+				if err != nil {
+					return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+				}
+			}
 		} else if change.Operation == UPDATE_OPERATION {
 			nfch := a.AllocationChanges[idx].(*UpdateFileChange)
 			fileInputData := &filestore.FileInputData{}
@@ -152,6 +156,16 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 			_, err := filestore.GetFileStore().CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
 			if err != nil {
 				return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+			}
+			if nfch.ThumbnailSize > 0 {
+				fileInputData := &filestore.FileInputData{}
+				fileInputData.Name = nfch.ThumbnailFilename
+				fileInputData.Path = nfch.Path
+				fileInputData.Hash = nfch.ThumbnailHash
+				_, err := filestore.GetFileStore().CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
+				if err != nil {
+					return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+				}
 			}
 		}
 	}
@@ -167,6 +181,13 @@ func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) error {
 			fileInputData.Path = nfch.Path
 			fileInputData.Hash = nfch.Hash
 			filestore.GetFileStore().DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
+			if nfch.ThumbnailSize > 0 {
+				fileInputData := &filestore.FileInputData{}
+				fileInputData.Name = nfch.ThumbnailFilename
+				fileInputData.Path = nfch.Path
+				fileInputData.Hash = nfch.ThumbnailHash
+				filestore.GetFileStore().DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
+			}
 		} else if change.Operation == UPDATE_OPERATION {
 			nfch := a.AllocationChanges[idx].(*UpdateFileChange)
 			fileInputData := &filestore.FileInputData{}
@@ -174,6 +195,13 @@ func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) error {
 			fileInputData.Path = nfch.Path
 			fileInputData.Hash = nfch.Hash
 			filestore.GetFileStore().DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
+			if nfch.ThumbnailSize > 0 {
+				fileInputData := &filestore.FileInputData{}
+				fileInputData.Name = nfch.ThumbnailFilename
+				fileInputData.Path = nfch.Path
+				fileInputData.Hash = nfch.ThumbnailHash
+				filestore.GetFileStore().DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
+			}
 		}
 	}
 
