@@ -66,7 +66,7 @@ func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, r *http.Request
 		if err != nil {
 			return false, err
 		}
-		if refRequested.ParentPath != authTokenRef.Path || strings.HasPrefix(refRequested.ParentPath, authTokenRef.Path + "/") {
+		if refRequested.ParentPath != authTokenRef.Path && !strings.HasPrefix(refRequested.ParentPath, authTokenRef.Path + "/") {
 			return false, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
 		}
 	}
