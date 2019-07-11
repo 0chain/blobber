@@ -49,7 +49,7 @@ func FileBlockDownloaded(ctx context.Context, refID int64) {
 func GetFileStats(ctx context.Context, refID int64) (*FileStats, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
-	err := db.Debug().Model(stats).First(stats).Error
+	err := db.Debug().Model(stats).Where(FileStats{RefID: refID}).First(stats).Error
 	if err != nil {
 		return nil, err
 	}
