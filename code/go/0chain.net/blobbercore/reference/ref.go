@@ -244,9 +244,6 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 }
 
 func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, error) {
-	if len(r.Children) == 0 {
-		return r.Hash, nil
-	}
 	for _, childRef := range r.Children {
 		_, err := childRef.CalculateHash(ctx, saveToDB)
 		if err != nil {

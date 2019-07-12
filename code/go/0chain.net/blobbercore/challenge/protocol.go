@@ -179,7 +179,7 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 		var validationTicket ValidationTicket
 		err = json.Unmarshal(resp, &validationTicket)
 		if err != nil {
-			Logger.Info("Got error decoding from the validator response .", zap.Any("error", err.Error()))
+			Logger.Info("Got error decoding from the validator response .", zap.Any("resp", string(resp)), zap.Any("error", err.Error()))
 			delete(responses, validator.ID)
 			cr.ValidationTickets[i] = nil
 			continue
