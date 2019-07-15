@@ -137,8 +137,10 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	result := make(map[string]interface{})
 	result = fileref.GetListingData(ctx)
 
-	if clientID != allocationObj.OwnerID {
-		authTokenString := r.FormValue("auth_token")
+	authTokenString := r.FormValue("auth_token")
+
+	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
+		
 		if len(authTokenString) == 0 {
 			return nil, common.NewError("invalid_parameters", "Auth ticket required if data read by anyone other than owner.")
 		}
@@ -275,7 +277,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (*
 		return nil, common.NewError("invalid_parameters", "Path is not a file. "+err.Error())
 	}
 
-	if clientID != allocationObj.OwnerID {
+	authTokenString := r.FormValue("auth_token")
+
+	if clientID != allocationObj.OwnerID  || len(authTokenString) > 0 {
 		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err
@@ -370,7 +374,8 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
-	if clientID != allocationObj.OwnerID {
+	authTokenString := r.FormValue("auth_token")
+	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
 		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err
