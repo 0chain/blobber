@@ -1,32 +1,35 @@
-#FROM ubuntu:16.04
-#RUN groupadd -r 0chain && useradd --no-log-init -r -g 0chain 0chain
-
+ARG image_tag
 FROM golang:1.11.4-alpine3.8 as blobber_build
-
-ENV SRC_DIR=/0chain
-ENV GOPATH=$GOPATH:$SRC_DIR/go
-WORKDIR $SRC_DIR
 
 RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep
 
-#Download the dependencies
-RUN go get github.com/spf13/viper
-RUN go get -u golang.org/x/crypto/...
-RUN go get go.uber.org/zap
-RUN go get gopkg.in/natefinch/lumberjack.v2
-RUN go get github.com/gorilla/mux
-RUN go get github.com/dgraph-io/badger
-RUN go get github.com/gorilla/handlers
+ENV SRC_DIR=/0chain
+ENV GO111MODULE=on
+
+# Download the dependencies:
+# Will be cached if we don't change mod/sum files
+COPY ./code/go/0chain.net/core/go.mod          ./code/go/0chain.net/core/go.sum          $SRC_DIR/go/0chain.net/core/
+COPY ./code/go/0chain.net/blobbercore/go.mod     ./code/go/0chain.net/blobbercore/go.sum     $SRC_DIR/go/0chain.net/blobbercore/
+COPY ./code/go/0chain.net/blobber/go.mod     ./code/go/0chain.net/blobber/go.sum     $SRC_DIR/go/0chain.net/blobber/
+
+WORKDIR $SRC_DIR/go/0chain.net/blobber
+RUN go mod download
+
 
 #Add the source code
-ADD ./code/go/src $SRC_DIR/go/src
+ADD ./code/go/0chain.net $SRC_DIR/go/0chain.net
 
-RUN go build 0chain.net/blobber/blobber
+ARG image_tag
+ARG go_build_mode
+ARG go_bls_tag
+RUN go build -tags ${go_build_mode} -tags ${go_bls_tag}
+RUN go build -v -ldflags "-X 0chain.net/core/build.BuildTag=${image_tag}"
 
+# Copy the build artifact into a minimal runtime image:
 FROM alpine:3.8
 ENV APP_DIR=/0chain
 WORKDIR $APP_DIR
-COPY --from=blobber_build $APP_DIR/blobber $APP_DIR/bin/blobber
+COPY --from=blobber_build $APP_DIR/go/0chain.net/blobber/blobber $APP_DIR/bin/blobber
 
 #Store all files and run environment under 0chain userid.
 RUN addgroup -g 2000 -S 0chain && adduser -u 2000 -S 0chain -G 0chain

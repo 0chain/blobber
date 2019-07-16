@@ -1,30 +1,56 @@
-version: "3"
+version: '3'
 services:
+  postgres:
+    image: postgres:11
+    volumes:
+      - /0chain/${AGENT_DIR}/data/postgresql:/var/lib/postgresql/data
+    networks:
+      default:
+
+    container_name: ${AGENT_CONTAINER}-postgres
+
+  postgres-post:
+    image: postgres:11
+    environment:
+      POSTGRES_PORT: 5432
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+    volumes:
+      - /0chain/${AGENT_DIR}/bin:/blobber/bin
+      - /0chain/${AGENT_DIR}/sql:/blobber/sql
+    command: bash /blobber/bin/postgres-entrypoint.sh
+    links:
+      - postgres:postgres
+
+    container_name: ${AGENT_CONTAINER}-postgres-post
 
   blobber:
     build:
       context: ${DOCKER_CODEBASE}
       dockerfile: ./docker.aws/build.blobber/Dockerfile
 
-    image: ${IMAGE_NAME}:${IMAGE_TAG}
+
+    container_name: ${AGENT_CONTAINER}
 
     environment:
     - DOCKER= true
-
-    user: ${ZCHAIN_USER}:${ZCHAIN_GROUP}
-
-    command: /0chain/bin/blobber --deployment_mode 0 --keys_file /0chain/config/blobber.txt --nodes_file nodes --files_dir /0chain/files --badger_dir /0chain/data
+    depends_on:
+      - postgres-post
+    links:
+      - postgres-post:postgres-post
+    volumes:
+    - /0chain/${AGENT_DIR}/config:/0chain/config
+    - /0chain/${AGENT_DIR}/files:/0chain/files
+    - /0chain/${AGENT_DIR}/data:/0chain/data
+    - /0chain/${AGENT_DIR}/log:/0chain/log
 
     ports:
-    - "5051:5051"
+    - ${AGENT_PORT}:${AGENT_PORT}
 
-    volumes:
-    - /0chain/blobber/config:/0chain/config
-    - /0chain/blobber/log:/0chain/log
-    - /0chain/blobber/data:/0chain/data
-    - /0chain/blobber/data/badgerdb:/0chain/data/badgerdb
-    - /0chain/blobber/data/badgerdb/blobberstate:/0chain/data/badgerdb/blobberstate
-    - /0chain/blobber/files:/0chain/files
+    command: /0chain/bin/blobber --deployment_mode 0 --keys_file /0chain/config/blobber.txt --nodes_file nodes --files_dir /0chain/files --log_dir /0chain/log --db_dir /0chain/data
+
+    networks:
+      default:
 
     logging:
       driver: json-file
@@ -32,9 +58,9 @@ services:
         max-file: "10"
         max-size: 10M
 
-    networks:
-      default:
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
 
+    user: ${ZCHAIN_USER}:${ZCHAIN_GROUP}
     restart: ${RESTART_POLICY}
 
 networks:
