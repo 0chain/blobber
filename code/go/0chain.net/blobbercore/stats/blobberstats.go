@@ -14,6 +14,8 @@ import (
 
 type Stats struct {
 	UsedSize                int64 `json:"used_size"`
+	FilesSize 				int64 `json:"files_size"`
+	ThumbnailsSize 			int64 `json:"thumbnails_size"`
 	DiskSizeUsed            int64 `json:"-"`
 	BlockWrites             int64 `json:"num_of_block_writes"`
 	NumWrites               int64 `json:"num_of_writes"`
@@ -55,21 +57,21 @@ func LoadBlobberStats(ctx context.Context) *BlobberStats {
 func (bs *BlobberStats) loadStats(ctx context.Context) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	rows, err := db.Table("reference_objects").Select(
-		"SUM(reference_objects.size) as used_size, SUM(file_stats.num_of_block_downloads) as num_of_reads, SUM(reference_objects.num_of_blocks) as num_of_block_writes, COUNT(*) as num_of_writes",
-	).Joins("inner join file_stats on reference_objects.id = file_stats.ref_id where reference_objects.type = 'f'").Rows()
+		"SUM(reference_objects.size) as files_size, SUM(reference_objects.thumbnail_size) as thumbnails_size, SUM(file_stats.num_of_block_downloads) as num_of_reads, SUM(reference_objects.num_of_blocks) as num_of_block_writes, COUNT(*) as num_of_writes",
+	).Joins("inner join file_stats on reference_objects.id = file_stats.ref_id where reference_objects.type = 'f' and reference_objects.deleted_at IS NULL").Rows()
 
 	if err != nil {
 		Logger.Error("Error in getting the blobber stats", zap.Error(err))
 	}
 	for rows.Next() {
-		err = rows.Scan(&bs.UsedSize, &bs.NumReads, &bs.BlockWrites, &bs.NumWrites)
+		err = rows.Scan(&bs.FilesSize, &bs.ThumbnailsSize, &bs.NumReads, &bs.BlockWrites, &bs.NumWrites)
 		if err != nil {
 			Logger.Error("Error in scanning record for blobber stats", zap.Error(err))
 		}
 		break
 	}
 	rows.Close()
-
+	bs.UsedSize = bs.FilesSize + bs.ThumbnailsSize
 	db.Table("allocations").Count(&bs.NumAllocation)
 }
 
@@ -77,8 +79,8 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 	bs.AllocationStats = make([]*AllocationStats, 0)
 	db := datastore.GetStore().GetTransaction(ctx)
 	rows, err := db.Table("reference_objects").Select(
-		"reference_objects.allocation_id, SUM(reference_objects.size) as used_size, SUM(file_stats.num_of_block_downloads) as num_of_reads, SUM(reference_objects.num_of_blocks) as num_of_block_writes, COUNT(*) as num_of_writes",
-	).Joins("inner join file_stats on reference_objects.id = file_stats.ref_id where reference_objects.type = 'f'").Group("reference_objects.allocation_id").Rows()
+		"reference_objects.allocation_id, SUM(reference_objects.size) as files_size, SUM(reference_objects.thumbnail_size) as thumbnails_size, SUM(file_stats.num_of_block_downloads) as num_of_reads, SUM(reference_objects.num_of_blocks) as num_of_block_writes, COUNT(*) as num_of_writes",
+	).Joins("inner join file_stats on reference_objects.id = file_stats.ref_id where reference_objects.type = 'f' and reference_objects.deleted_at IS NULL").Group("reference_objects.allocation_id").Rows()
 
 	if err != nil {
 		Logger.Error("Error in getting the allocation stats", zap.Error(err))
@@ -86,10 +88,11 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 
 	for rows.Next() {
 		as := &AllocationStats{}
-		err = rows.Scan(&as.AllocationID, &as.UsedSize, &as.NumReads, &as.BlockWrites, &as.NumWrites)
+		err = rows.Scan(&as.AllocationID, &as.FilesSize, &as.ThumbnailsSize, &as.NumReads, &as.BlockWrites, &as.NumWrites)
 		if err != nil {
 			Logger.Error("Error in scanning record for blobber stats", zap.Error(err))
 		}
+		as.UsedSize = as.FilesSize + as.ThumbnailsSize
 		as.loadAllocationDiskUsageStats()
 		bs.AllocationStats = append(bs.AllocationStats, as)
 	}

@@ -43,6 +43,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
 	r.HandleFunc("/_config", common.ToJSONResponse(GetConfig))
 	r.HandleFunc("/_stats", stats.StatsHandler)
+	r.HandleFunc("/_cleanupdisk", common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))
 	// r.HandleFunc("/_retakechallenge", common.ToJSONResponse(RetakeChallenge))
 
 	r.HandleFunc("/allocation", common.ToJSONResponse(WithConnection(AllocationHandler)))
@@ -226,4 +227,9 @@ func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
 
 func GetConfig(ctx context.Context, r *http.Request) (interface{}, error) {
 	return config.Configuration, nil
+}
+
+func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	err := CleanupDiskFiles(ctx)
+	return "cleanup", err
 }

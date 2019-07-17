@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"0chain.net/blobbercore/filestore"
 	"0chain.net/blobbercore/reference"
 	"0chain.net/blobbercore/stats"
 )
@@ -106,5 +107,21 @@ func (nf *NewFileChange) Marshal() (string, error) {
 
 func (nf *NewFileChange) Unmarshal(input string) error {
 	err := json.Unmarshal([]byte(input), nf)
+	return err
+}
+
+func (nf *NewFileChange) DeleteTempFile() error {
+	fileInputData := &filestore.FileInputData{}
+	fileInputData.Name = nf.Filename
+	fileInputData.Path = nf.Path
+	fileInputData.Hash = nf.Hash
+	err := filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
+	if nf.ThumbnailSize > 0 {
+		fileInputData := &filestore.FileInputData{}
+		fileInputData.Name = nf.ThumbnailFilename
+		fileInputData.Path = nf.Path
+		fileInputData.Hash = nf.ThumbnailHash
+		err = filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
+	}
 	return err
 }

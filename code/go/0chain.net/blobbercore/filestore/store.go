@@ -23,6 +23,8 @@ type FileOutputData struct {
 	Size        int64
 }
 
+type FileObjectHandler func(contentHash string, contentSize int64)
+
 type FileStore interface {
 	WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
 	DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
@@ -33,6 +35,7 @@ type FileStore interface {
 	GetTotalDiskSizeUsed() (int64, error)
 	GetlDiskSizeUsed(allocationID string) (int64, error)
 	GetTempPathSize(allocationID string) (int64, error)
+	IterateObjects(allocationID string, handler FileObjectHandler) error
 }
 
 var fsStore FileStore

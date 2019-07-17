@@ -10,13 +10,15 @@ import (
 )
 
 type DeleteFileChange struct {
-	ConnectionID string      `json:"connection_id"`
-	AllocationID string      `json:"allocation_id"`
-	Name         string      `json:"name"`
-	Path         string      `json:"path"`
-	Size         int64       `json:"size"`
-	Hash         string      `json:"hash"`
-	DeleteToken  interface{} `json:"delete_token"`
+	ConnectionID  string `json:"connection_id"`
+	AllocationID  string `json:"allocation_id"`
+	Name          string `json:"name"`
+	Path          string `json:"path"`
+	Size          int64  `json:"size"`
+	Hash          string `json:"hash"`
+	ThumbnailHash string
+	ContentHash   string
+	DeleteToken   interface{} `json:"delete_token"`
 }
 
 func (nf *DeleteFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
@@ -52,6 +54,8 @@ func (nf *DeleteFileChange) ProcessChange(ctx context.Context, change *Allocatio
 		if child.Type == reference.FILE && child.Hash == nf.Hash {
 			idx = i
 			reference.DeleteReference(ctx, child.ID, child.PathHash)
+			nf.ThumbnailHash = child.ThumbnailHash
+			nf.ContentHash = child.ContentHash
 			break
 		}
 	}
@@ -75,4 +79,8 @@ func (nf *DeleteFileChange) Marshal() (string, error) {
 func (nf *DeleteFileChange) Unmarshal(input string) error {
 	err := json.Unmarshal([]byte(input), nf)
 	return err
+}
+
+func (nf *DeleteFileChange) DeleteTempFile() error {
+	return OperationNotApplicable
 }

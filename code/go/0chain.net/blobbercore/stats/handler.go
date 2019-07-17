@@ -47,7 +47,7 @@ const tpl = `<!DOCTYPE html>
         <td>{{ .DiskSizeUsed }}</td>
       </tr>
       <tr>
-        <td>Write Markers</td>
+        <td>Num of files</td>
         <td>{{ .NumWrites }}</td>
       </tr>
 	  <tr>
@@ -90,7 +90,7 @@ const tpl = `<!DOCTYPE html>
         <td>Used Size (bytes)</td>
         <td>Actual Disk Usage (bytes)</td>
         <td>Temp Folder Size (bytes)</td>
-        <td>Write Markers</td>
+        <td>Num of files</td>
         <td>Blocks Written</td>
         <td>Blocks Read</td>
         <td>Total Challenges</td>
