@@ -228,7 +228,7 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 	return cr.Save(ctx)
 }
 
-func (cr *ChallengeEntity) CommitChallenge(ctx context.Context) error {
+func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
 	
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
@@ -244,22 +244,28 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context) error {
 			}
 			Logger.Error("Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID))
 		}
+		if verifyOnly {
+			return nil
+		}
 	}
-	t, err := cr.SubmitChallengeToBC(ctx)
-	if err != nil {
-		if t != nil {
+	if !verifyOnly {
+		t, err := cr.SubmitChallengeToBC(ctx)
+		if err != nil {
+			if t != nil {
+				cr.CommitTxnID = t.Hash
+				cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
+			}
+			cr.ErrorChallenge(ctx, err)
+		} else {
+			cr.Status = Committed
+			cr.StatusMessage = t.TransactionOutput
 			cr.CommitTxnID = t.Hash
 			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
 		}
-		cr.ErrorChallenge(ctx, err)
-	} else {
-		cr.Status = Committed
-		cr.StatusMessage = t.TransactionOutput
-		cr.CommitTxnID = t.Hash
-		cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
+		err = cr.Save(ctx)
+		FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
+		return err
 	}
-	err = cr.Save(ctx)
-	FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
-	return err
+	return nil
 }
 
