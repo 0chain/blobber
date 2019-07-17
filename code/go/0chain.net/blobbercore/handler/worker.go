@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/jinzhu/gorm"
 	"0chain.net/core/lock"
 	"0chain.net/blobbercore/reference"
 	"0chain.net/blobbercore/filestore"
@@ -28,11 +29,16 @@ func CleanupDiskFiles(ctx context.Context) error {
 		mutex.Lock()
 		filestore.GetFileStore().IterateObjects(allocationObj.ID, func(contentHash string, contentSize int64) {
 			var refs []reference.Ref
-			db.Table((reference.Ref{}).TableName()).Where(reference.Ref{ContentHash: contentHash, Type: reference.FILE}).Or(reference.Ref{ThumbnailHash: contentHash, Type: reference.FILE}).Find(&refs)
-			Logger.Info("hash has a reference", zap.Any("count", len(refs)), zap.String("hash", contentHash))
-			// if count == 0 {
-			// 	filestore.GetFileStore().DeleteFile(allocationObj.ID, contentHash)
-			// }
+			err := db.Table((reference.Ref{}).TableName()).Where(reference.Ref{ContentHash: contentHash, Type: reference.FILE}).Or(reference.Ref{ThumbnailHash: contentHash, Type: reference.FILE}).Find(&refs).Error
+			if err!= nil && !gorm.IsRecordNotFoundError(err) {
+				Logger.Error("Error in cleanup of disk files.", zap.Error(err))
+				return
+			}
+			if len(refs) == 0 {
+				Logger.Info("hash has no references. Deleting from disk", zap.Any("count", len(refs)), zap.String("hash", contentHash))
+				filestore.GetFileStore().DeleteFile(allocationObj.ID, contentHash)
+			}
+			return
 		})
 		mutex.Unlock()
 	}
