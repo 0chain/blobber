@@ -140,18 +140,12 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	authTokenString := r.FormValue("auth_token")
 
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		
-		if len(authTokenString) == 0 {
-			return nil, common.NewError("invalid_parameters", "Auth ticket required if data read by anyone other than owner.")
-		}
-		authToken := &readmarker.AuthTicket{}
-		err = json.Unmarshal([]byte(authTokenString), &authToken)
-		if err != nil {
-			return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
-		}
-		err = authToken.Verify(allocationObj, clientID)
+		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err
+		}
+		if !authTicketVerified {
+			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
 		}
 		delete(result, "path")
 	}

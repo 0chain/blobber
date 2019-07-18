@@ -86,7 +86,7 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 			db = datastore.GetStore().GetTransaction(rctx)
 			toBeVerifiedChallenges := make([]*ChallengeEntity, 0)
 			//commit challenges on local state for all challenges that have missed the commit txn from blockchain
-			db.Debug().Where(ChallengeEntity{Status: Processed}).Where("sequence < ?", lastSeq).Find(&toBeVerifiedChallenges)
+			db.Where(ChallengeEntity{Status: Processed}).Where("sequence < ?", lastSeq).Find(&toBeVerifiedChallenges)
 			for _, toBeVerifiedChallenge := range toBeVerifiedChallenges {
 				toBeVerifiedChallenge.UnmarshalFields()
 				mutex := lock.GetMutex(toBeVerifiedChallenge.TableName(), toBeVerifiedChallenge.ChallengeID)
