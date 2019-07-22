@@ -25,28 +25,30 @@ func GetMetaDataStore() *datastore.Store {
 
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
+	//object operations
 	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONResponse(WithConnection(UploadHandler)))
 	r.HandleFunc("/v1/file/download/{allocation}", common.ToJSONResponse(WithConnection(DownloadHandler)))
+	r.HandleFunc("/v1/file/rename/{allocation}", common.ToJSONResponse(WithConnection(RenameHandler)))
+	
+	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithConnection(CommitHandler)))
+
+	//object info related apis
+	r.HandleFunc("/allocation", common.ToJSONResponse(WithConnection(AllocationHandler)))
 	r.HandleFunc("/v1/file/meta/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler)))
 	r.HandleFunc("/v1/file/stats/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)))
 	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))
 	r.HandleFunc("/v1/file/objectpath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler)))
 	r.HandleFunc("/v1/file/referencepath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))
-
-	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithConnection(CommitHandler)))
-	// r.HandleFunc("/v1/connection/details/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(GetConnectionDetailsHandler)))
-
-	// r.HandleFunc("/v1/readmarker/latest", common.ToJSONResponse(WithReadOnlyConnection(LatestRMHandler)))
-	// r.HandleFunc("/v1/challenge/new", common.ToJSONResponse(WithConnection(NewChallengeHandler)))
-
-	// r.HandleFunc("/_metastore", common.ToJSONResponse(WithReadOnlyConnection(MetaStoreHandler)))
+	r.HandleFunc("/v1/file/objecttree/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ObjectTreeHandler)))
+	
+	//admin related
 	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
 	r.HandleFunc("/_config", common.ToJSONResponse(GetConfig))
 	r.HandleFunc("/_stats", stats.StatsHandler)
 	r.HandleFunc("/_cleanupdisk", common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))
 	// r.HandleFunc("/_retakechallenge", common.ToJSONResponse(RetakeChallenge))
 
-	r.HandleFunc("/allocation", common.ToJSONResponse(WithConnection(AllocationHandler)))
+	
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
@@ -188,6 +190,34 @@ func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error
 	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, vars["allocation"])
 
 	response, err := storageHandler.GetObjectPath(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
+	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, vars["allocation"])
+
+	response, err := storageHandler.GetObjectTree(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, vars["allocation"])
+	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
+	Logger.Info("ClientID = ", zap.Any("client_id", r.Header.Get(common.ClientHeader)))
+	response, err := storageHandler.RenameObject(ctx, r)
 	if err != nil {
 		return nil, err
 	}

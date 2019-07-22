@@ -17,6 +17,7 @@ const (
 	INSERT_OPERATION = "insert"
 	DELETE_OPERATION = "delete"
 	UPDATE_OPERATION = "update"
+	RENAME_OPERATION = "rename"
 )
 
 const (
@@ -116,6 +117,10 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 			dfc := &DeleteFileChange{}
 			dfc.Unmarshal(change.Input)
 			cc.AllocationChanges[idx] = dfc
+		} else if change.Operation == RENAME_OPERATION {
+			rfc := &RenameFileChange{}
+			rfc.Unmarshal(change.Input)
+			cc.AllocationChanges[idx] = rfc
 		}
 	}
 }
