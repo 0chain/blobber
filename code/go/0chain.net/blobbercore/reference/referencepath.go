@@ -48,12 +48,12 @@ func GetReferencePath(ctx context.Context, allocationID string, path string) (*R
 				//curRef = &refs[i]
 				foundRef = &refs[i]
 			}
-			curRef.Children = append(curRef.Children, &refs[i])
+			curRef.AddChild(&refs[i])
 		} else {
 			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
 		}
 	}
-	//refs[0].CalculateHash(ctx, false)
+	refs[0].CalculateHash(ctx, false)
 	return &refs[0], nil
 }
 

@@ -169,10 +169,10 @@ func (fr *Ref) GetFileHashData() string {
 }
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
-	//fmt.Println("fileref name , path, hash", fr.Name, fr.Path, fr.Hash)
-	//fmt.Println("Fileref hash data: " + fr.GetFileHashData())
+	// fmt.Println("fileref name , path, hash", fr.Name, fr.Path, fr.Hash)
+	// fmt.Println("Fileref hash data: " + fr.GetFileHashData())
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
-	//fmt.Println("Fileref hash : " + fr.Hash)
+	// fmt.Println("Fileref hash : " + fr.Hash)
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / CHUNK_SIZE))
 	fr.PathHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	fr.PathLevel = len(GetSubDirsFromPath(fr.Path)) + 1 //strings.Count(fr.Path, "/")
@@ -188,6 +188,9 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	if len(r.Children) == 0 && !r.childrenLoaded {
 		return r.Hash, nil
 	}
+	sort.SliceStable(r.Children, func(i, j int) bool {
+		return strings.Compare(r.Children[i].LookupHash, r.Children[j].LookupHash) == -1
+	})
 	for _, childRef := range r.Children {
 		_, err := childRef.CalculateHash(ctx, saveToDB)
 		if err != nil {
@@ -204,16 +207,17 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
 	}
-	//fmt.Println("ref name and path, hash :" + r.Name + " " + r.Path + " " + r.Hash)
-	//fmt.Println("ref hash data: " + strings.Join(childHashes, ":"))
+	// fmt.Println("ref name and path, hash :" + r.Name + " " + r.Path + " " + r.Hash)
+	// fmt.Println("ref hash data: " + strings.Join(childHashes, ":"))
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
-	//fmt.Println("ref hash : " + r.Hash)
+	// fmt.Println("ref hash : " + r.Hash)
 	r.NumBlocks = refNumBlocks
 	r.Size = size
 	//fmt.Println("Ref Path hash: " + strings.Join(childPathHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1 //strings.Count(r.Path, "/")
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
+
 	var err error
 	if saveToDB {
 		err = r.Save(ctx)
@@ -248,6 +252,14 @@ func (r *Ref) RemoveChild(idx int) {
 	sort.SliceStable(r.Children, func(i, j int) bool {
 		return strings.Compare(r.Children[i].LookupHash, r.Children[j].LookupHash) == -1
 	})
+	r.childrenLoaded = true
+}
+
+func (r *Ref) UpdatePath(newPath string, parentPath string) {
+	r.Path = newPath
+	r.ParentPath = parentPath
+	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1 //strings.Count(r.Path, "/")
+	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
 }
 
 func DeleteReference(ctx context.Context, refID int64, pathHash string) error {

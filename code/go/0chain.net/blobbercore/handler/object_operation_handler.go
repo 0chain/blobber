@@ -18,7 +18,6 @@ import (
 	"0chain.net/blobbercore/stats"
 
 	"0chain.net/core/common"
-	"0chain.net/core/node"
 	"0chain.net/core/encryption"
 	"0chain.net/core/lock"
 	. "0chain.net/core/logging"
@@ -375,52 +374,23 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 }
 
 func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*UploadResult, error) {
-	deleteTokenString := r.FormValue("delete_token")
-	if len(deleteTokenString) == 0 {
-		return nil, common.NewError("invalid_delete_token", "Invalid delete token. Blank values")
+	path := r.FormValue("path")
+	if len(path) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
-	deleteToken := &writemarker.DeleteToken{}
-	err := json.Unmarshal([]byte(deleteTokenString), deleteToken)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the delete token."+err.Error())
-	}
-	fileRef, _ := reference.GetReferenceFromLookupHash(ctx, connectionObj.AllocationID, deleteToken.FilePathHash)
-	clientKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
-	if fileRef != nil && fileRef.Type == reference.FILE {
-		deleteSize := fileRef.Size + fileRef.ThumbnailSize
-		if deleteToken.AllocationID != connectionObj.AllocationID {
-			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Allocation ID mismatch.")
-		}
-
-		if deleteToken.BlobberID != node.Self.ID {
-			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Blobber ID mismatch.")
-		}
-		if deleteToken.ClientID != connectionObj.ClientID {
-			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Client ID mismatch.")
-		}
-		if deleteToken.Size != deleteSize {
-			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Size mismatch.")
-		}
-
-		if deleteToken.FileRefHash != fileRef.Hash {
-			return nil, common.NewError("invalid_delete_token", "Invalid delete token. File Ref hash mismatch.")
-		}
-
-		if deleteToken.FilePathHash != fileRef.PathHash {
-			return nil, common.NewError("invalid_delete_token", "Invalid delete token. File Path hash mismatch.")
-		}
-
-		if !deleteToken.VerifySignature(clientKey) {
-			return nil, common.NewError("invalid_delete_token", "Invalid delete token. Signature verification failed.")
-		}
-
+	
+	fileRef, _ := reference.GetReference(ctx, connectionObj.AllocationID, path)
+	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+	if fileRef != nil {
+		deleteSize := fileRef.Size
+		
 		allocationChange := &allocation.AllocationChange{}
 		allocationChange.ConnectionID = connectionObj.ConnectionID
 		allocationChange.Size = 0 - deleteSize
 		allocationChange.Operation = allocation.DELETE_OPERATION
 		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ConnectionID, 
 			AllocationID: connectionObj.AllocationID, Name: fileRef.Name, 
-			Hash : fileRef.Hash, Path: fileRef.Path, Size: deleteSize, DeleteToken: deleteToken}
+			Hash : fileRef.Hash, Path: fileRef.Path, Size: deleteSize}
 		
 		connectionObj.Size += allocationChange.Size
 		connectionObj.AddChange(allocationChange, dfc)
@@ -508,7 +478,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		}
 
 		if exisitingFileRef != nil {
-			existingFileRefSize = exisitingFileRef.Size + exisitingFileRef.ThumbnailSize
+			existingFileRefSize = exisitingFileRef.Size
 		}
 
 		origfile, _, err := r.FormFile("uploadFile")
@@ -561,7 +531,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 			formData.ThumbnailHash = thumbOutputData.ContentHash
 			formData.ThumbnailSize = thumbOutputData.Size
 			formData.ThumbnailFilename = thumbInputData.Name
-			allocationSize += thumbOutputData.Size
 		} 
 
 		if allocationObj.BlobberSizeUsed+(allocationSize-existingFileRefSize) > allocationObj.BlobberSize {

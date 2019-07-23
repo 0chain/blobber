@@ -4,12 +4,9 @@ import (
 	"context"
 
 	"0chain.net/blobbercore/datastore"
-	"0chain.net/blobbercore/filestore"
 	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
-	. "0chain.net/core/logging"
 
-	"go.uber.org/zap"
 	"github.com/jinzhu/gorm"
 )
 
@@ -26,10 +23,12 @@ const (
 	CommittedConnection  = 2
 	DeletedConnection    = 3
 )
+
 var OperationNotApplicable = common.NewError("operation_not_valid", "Not an applicable operation")
 
 type AllocationChangeProcessor interface {
-	DeleteTempFile() error 
+	CommitToFileStore(ctx context.Context) error
+	DeleteTempFile() error
 	ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error)
 	Marshal() (string, error)
 	Unmarshal(string) error
@@ -137,103 +136,18 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 }
 
 func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error {
-	for idx, change := range a.Changes {
-		if change.Operation == INSERT_OPERATION {
-			nfch := a.AllocationChanges[idx].(*NewFileChange)
-			fileInputData := &filestore.FileInputData{}
-			fileInputData.Name = nfch.Filename
-			fileInputData.Path = nfch.Path
-			fileInputData.Hash = nfch.Hash
-			_, err := filestore.GetFileStore().CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
-			if err != nil {
-				return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-			}
-			if nfch.ThumbnailSize > 0 {
-				fileInputData := &filestore.FileInputData{}
-				fileInputData.Name = nfch.ThumbnailFilename
-				fileInputData.Path = nfch.Path
-				fileInputData.Hash = nfch.ThumbnailHash
-				_, err := filestore.GetFileStore().CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
-				if err != nil {
-					return common.NewError("file_store_error", "Error committing thumbnail to file store. "+err.Error())
-				}
-			}
-		} else if change.Operation == UPDATE_OPERATION {
-			nfch := a.AllocationChanges[idx].(*UpdateFileChange)
-			fileInputData := &filestore.FileInputData{}
-			fileInputData.Name = nfch.Filename
-			fileInputData.Path = nfch.Path
-			fileInputData.Hash = nfch.Hash
-			_, err := filestore.GetFileStore().CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
-			if err != nil {
-				return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-			}
-			if nfch.ThumbnailSize > 0 {
-				fileInputData := &filestore.FileInputData{}
-				fileInputData.Name = nfch.ThumbnailFilename
-				fileInputData.Path = nfch.Path
-				fileInputData.Hash = nfch.ThumbnailHash
-				_, err := filestore.GetFileStore().CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
-				if err != nil {
-					return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-				}
-			}
-		} else if change.Operation == DELETE_OPERATION {
-			dfch := a.AllocationChanges[idx].(*DeleteFileChange)
-			var refs []reference.Ref
-			db := datastore.GetStore().GetTransaction(ctx)
-			if len(dfch.ThumbnailHash) > 0 {
-				err := db.Where(&reference.Ref{ThumbnailHash: dfch.ThumbnailHash}).Find(&refs).Error
-				if err == nil && len(refs) == 0 {
-					Logger.Info("Deleting the thumbnail hash", zap.Any("thumb", dfch.ThumbnailHash))
-					filestore.GetFileStore().DeleteFile(a.AllocationID, dfch.ThumbnailHash)
-				}
-			}
-
-			if len(dfch.ContentHash) > 0 {
-				err := db.Where(&reference.Ref{ContentHash: dfch.ContentHash}).Find(&refs).Error
-				if err == nil && len(refs) == 0 {
-					Logger.Info("Deleting the content hash", zap.Any("content", dfch.ContentHash))
-					filestore.GetFileStore().DeleteFile(a.AllocationID, dfch.ContentHash)
-				}
-			}
-
+	for _, change := range a.AllocationChanges {
+		err := change.CommitToFileStore(ctx)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
 func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) error {
-	for idx, change := range a.Changes {
-		if change.Operation == INSERT_OPERATION {
-			nfch := a.AllocationChanges[idx].(*NewFileChange)
-			fileInputData := &filestore.FileInputData{}
-			fileInputData.Name = nfch.Filename
-			fileInputData.Path = nfch.Path
-			fileInputData.Hash = nfch.Hash
-			filestore.GetFileStore().DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
-			if nfch.ThumbnailSize > 0 {
-				fileInputData := &filestore.FileInputData{}
-				fileInputData.Name = nfch.ThumbnailFilename
-				fileInputData.Path = nfch.Path
-				fileInputData.Hash = nfch.ThumbnailHash
-				filestore.GetFileStore().DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
-			}
-		} else if change.Operation == UPDATE_OPERATION {
-			nfch := a.AllocationChanges[idx].(*UpdateFileChange)
-			fileInputData := &filestore.FileInputData{}
-			fileInputData.Name = nfch.Filename
-			fileInputData.Path = nfch.Path
-			fileInputData.Hash = nfch.Hash
-			filestore.GetFileStore().DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
-			if nfch.ThumbnailSize > 0 {
-				fileInputData := &filestore.FileInputData{}
-				fileInputData.Name = nfch.ThumbnailFilename
-				fileInputData.Path = nfch.Path
-				fileInputData.Hash = nfch.ThumbnailHash
-				filestore.GetFileStore().DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
-			}
-		}
+	for _, change := range a.AllocationChanges {
+		change.DeleteTempFile()
 	}
 
 	return nil

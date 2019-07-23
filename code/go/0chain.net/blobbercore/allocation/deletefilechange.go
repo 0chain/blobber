@@ -7,21 +7,29 @@ import (
 
 	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
+	"0chain.net/blobbercore/datastore"
+	"0chain.net/blobbercore/filestore"
+	. "0chain.net/core/logging"
+
+	"go.uber.org/zap"
 )
 
 type DeleteFileChange struct {
-	ConnectionID  string `json:"connection_id"`
-	AllocationID  string `json:"allocation_id"`
-	Name          string `json:"name"`
-	Path          string `json:"path"`
-	Size          int64  `json:"size"`
-	Hash          string `json:"hash"`
-	ThumbnailHash string
-	ContentHash   string
-	DeleteToken   interface{} `json:"delete_token"`
+	ConnectionID string `json:"connection_id"`
+	AllocationID string `json:"allocation_id"`
+	Name         string `json:"name"`
+	Path         string `json:"path"`
+	Size         int64  `json:"size"`
+	Hash         string `json:"hash"`
+	ContentHash  map[string]bool
 }
 
 func (nf *DeleteFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+	affectedRef, err := reference.GetObjectTree(ctx, nf.AllocationID, nf.Path)
+
+	if err != nil {
+		return nil, err
+	}
 	path, _ := filepath.Split(nf.Path)
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
@@ -51,21 +59,39 @@ func (nf *DeleteFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	}
 	idx := -1
 	for i, child := range dirRef.Children {
-		if child.Type == reference.FILE && child.Hash == nf.Hash {
+		if child.Hash == nf.Hash && child.Hash == affectedRef.Hash {
 			idx = i
+			nf.ContentHash = make(map[string]bool)
 			reference.DeleteReference(ctx, child.ID, child.PathHash)
-			nf.ThumbnailHash = child.ThumbnailHash
-			nf.ContentHash = child.ContentHash
+			if child.Type == reference.FILE {
+				nf.ContentHash[child.ThumbnailHash] = true
+				nf.ContentHash[child.ContentHash] = true
+			} else {
+				nf.processChildren(ctx, affectedRef)
+			}
 			break
 		}
 	}
 	if idx < 0 {
-		return nil, common.NewError("file_not_found", "File to delete not found in blobber")
+		return nil, common.NewError("file_not_found", "Object to delete not found in blobber")
 	}
-	//dirRef.Children = append(dirRef.Children[:idx], dirRef.Children[idx+1:]...)
+	
 	dirRef.RemoveChild(idx)
 	rootRef.CalculateHash(ctx, true)
+	
 	return nil, nil
+}
+
+func (nf *DeleteFileChange) processChildren(ctx context.Context, curRef *reference.Ref) {
+	for _, childRef := range curRef.Children {
+		reference.DeleteReference(ctx, childRef.ID, childRef.PathHash)
+		if childRef.Type == reference.FILE {
+			nf.ContentHash[childRef.ThumbnailHash] = true
+			nf.ContentHash[childRef.ContentHash] = true
+		} else if childRef.Type == reference.DIRECTORY {
+			nf.processChildren(ctx, childRef)
+		}
+	}
 }
 
 func (nf *DeleteFileChange) Marshal() (string, error) {
@@ -83,4 +109,17 @@ func (nf *DeleteFileChange) Unmarshal(input string) error {
 
 func (nf *DeleteFileChange) DeleteTempFile() error {
 	return OperationNotApplicable
+}
+
+func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	for contenthash := range nf.ContentHash {
+		var count int64
+		err := db.Table((&reference.Ref{}).TableName()).Where(&reference.Ref{ThumbnailHash: contenthash}).Or(&reference.Ref{ContentHash: contenthash}).Count(&count).Error
+		if err == nil && count == 0 {
+			Logger.Info("Deleting content file", zap.String("content_hash", contenthash))
+			filestore.GetFileStore().DeleteFile(nf.AllocationID, contenthash)
+		}
+	}
+	return nil
 }

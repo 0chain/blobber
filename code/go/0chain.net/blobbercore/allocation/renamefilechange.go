@@ -26,7 +26,8 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	path, _ := filepath.Split(affectedRef.Path)
 	path = filepath.Clean(path)
 	affectedRef.Name = rf.NewName
-	affectedRef.Path = filepath.Join(path, rf.NewName)
+	newPath := filepath.Join(path, rf.NewName)
+	affectedRef.UpdatePath(newPath, path)
 	if affectedRef.Type == reference.FILE {
 		stats.FileUpdated(ctx, affectedRef.ID)
 	}
@@ -71,7 +72,9 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	if idx < 0 {
 		return nil, common.NewError("file_not_found", "File to update not found in blobber")
 	}
-	dirRef.Children[idx] = affectedRef
+	//dirRef.Children[idx] = affectedRef
+	dirRef.RemoveChild(idx)
+	dirRef.AddChild(affectedRef)
 	_, err = rootRef.CalculateHash(ctx, true)
 
 	return rootRef, err
@@ -79,8 +82,8 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 
 func (rf *RenameFileChange) processChildren(ctx context.Context, curRef *reference.Ref) {
 	for _, childRef := range curRef.Children {
-		childRef.Path = filepath.Join(curRef.Path, childRef.Name)
-		childRef.ParentPath = curRef.Path
+		newPath := filepath.Join(curRef.Path, childRef.Name)
+		childRef.UpdatePath(newPath, curRef.Path)
 		if childRef.Type == reference.FILE {
 			stats.FileUpdated(ctx, childRef.ID)
 		}
@@ -101,4 +104,8 @@ func (rf *RenameFileChange) Marshal() (string, error) {
 func (rf *RenameFileChange) Unmarshal(input string) error {
 	err := json.Unmarshal([]byte(input), rf)
 	return err
+}
+
+func (rf *RenameFileChange) CommitToFileStore(ctx context.Context) error {
+	return nil
 }

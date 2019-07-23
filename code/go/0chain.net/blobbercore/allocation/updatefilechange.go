@@ -101,3 +101,25 @@ func (nf *UpdateFileChange) DeleteTempFile() error {
 	}
 	return err
 }
+
+func (nfch *UpdateFileChange) CommitToFileStore(ctx context.Context) error {
+	fileInputData := &filestore.FileInputData{}
+	fileInputData.Name = nfch.Filename
+	fileInputData.Path = nfch.Path
+	fileInputData.Hash = nfch.Hash
+	_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, fileInputData, nfch.ConnectionID)
+	if err != nil {
+		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+	}
+	if nfch.ThumbnailSize > 0 {
+		fileInputData := &filestore.FileInputData{}
+		fileInputData.Name = nfch.ThumbnailFilename
+		fileInputData.Path = nfch.Path
+		fileInputData.Hash = nfch.ThumbnailHash
+		_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, fileInputData, nfch.ConnectionID)
+		if err != nil {
+			return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+		}
+	}
+	return nil
+}
