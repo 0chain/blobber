@@ -15,6 +15,7 @@ const (
 	DELETE_OPERATION = "delete"
 	UPDATE_OPERATION = "update"
 	RENAME_OPERATION = "rename"
+	COPY_OPERATION   = "copy"
 )
 
 const (
@@ -118,6 +119,10 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 			cc.AllocationChanges[idx] = dfc
 		} else if change.Operation == RENAME_OPERATION {
 			rfc := &RenameFileChange{}
+			rfc.Unmarshal(change.Input)
+			cc.AllocationChanges[idx] = rfc
+		} else if change.Operation == COPY_OPERATION {
+			rfc := &CopyFileChange{}
 			rfc.Unmarshal(change.Input)
 			cc.AllocationChanges[idx] = rfc
 		}

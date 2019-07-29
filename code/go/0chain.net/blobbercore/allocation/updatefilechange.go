@@ -10,6 +10,9 @@ import (
 
 	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
+	."0chain.net/core/logging"
+
+	"go.uber.org/zap"
 )
 
 type UpdateFileChange struct {
@@ -53,6 +56,7 @@ func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *Allocatio
 		}
 	}
 	if idx < 0 {
+		Logger.Error("error in file update", zap.Any("change",nf))
 		return nil, common.NewError("file_not_found", "File to update not found in blobber")
 	}
 	existingRef := dirRef.Children[idx]

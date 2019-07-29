@@ -277,12 +277,23 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
-	path := r.FormValue("path")
-	if len(path) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
+	
+	var paths []string 
+	pathsString := r.FormValue("paths")
+	if len(pathsString) == 0 {
+		path := r.FormValue("path")
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		paths = append(paths, path)
+	} else {
+		err = json.Unmarshal([]byte(pathsString), &paths)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid path array json")
+		}
 	}
-
-	rootRef, err := reference.GetReferencePath(ctx, allocationID, path)
+	
+	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
 	if err != nil {
 		return nil, err
 	}

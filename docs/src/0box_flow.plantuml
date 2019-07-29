@@ -29,33 +29,22 @@ Blobber -> Blockchain : Redeems the wm if successful upload
 
 
 group PublicShare - anyone with link
-Client -> Client : Generate a shared key-pair \n\
-Generate a re-encryption key for each blobber \n\
-anyone with the shared private key can access file 
-Client -> Blobber : Add a valid re-enc key for the file
-Blobber -> Client : Change accepted
-Client -> Blobber : Commit the change and pass wm (after 12 blobbers pass)
-Blobber --> Client : Change committed
-Client -> 0Box : Get a share link (file, path, auth-ticket, shared secret key)
+Client -> Client : Generate a shared key
+Client -> Blobber : Encrypt and upload the file
+Blobber --> Client : upload accepted
+Client -> 0Box : Get a share link (file, path, auth-ticket, shared key)
 0Box --> Client : Shareable link
 
 RClient -> 0Box : Clicks on the shared link
 0Box --> RClient : navigate to app (shared secret key, auth ticket) 
 RClient -> Blobber : Requests for file - passes the auth ticket with the read marker
-Blobber -> Blobber : Checks if the re-enc key in the auth ticket is same as in the blobber
-Blobber -> Blobber : Re-encrypts the file with the re-enc key
 Blobber --> RClient : file response
 RClient -> RClient : uses the shared secret key to decrypt the file
 end 
 
 group PrivateShare
 Client -> Client : Generate a re-encryption key for receiver
-Client -> Blobber : Make file accessible to receiver and pass re-enc key
-Blobber -> Client : Change accepted
-Client -> Blobber : Commit the change and pass wm (after 12 pass)
-Blobber --> Client : Change committed
-
-Client -> Client : Generates an authorization ticket for receiver
+Client -> Client : Generates an authorization ticket for receiver with the re-enc key
 Client -> 0Box : Get a share link (passes the auth ticket)
 0Box --> Client : Shareable link
 
@@ -63,7 +52,7 @@ RClient -> 0Box : Clicks on the shared link
 0Box --> RClient : Create 0Box account / login
 RClient -> 0Box : account creation / sign in
 RClient -> Blobber : Requests for file, pass auth ticket
-Blobber -> Blobber : Checks for access by receiver, \nre-enc file with re-enc key of receiver
+Blobber -> Blobber : re-enc file with re-enc key in the auth ticket
 Blobber --> RClient : file response
 RClient -> RClient : decrypt with private key
 end 

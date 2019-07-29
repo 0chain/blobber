@@ -368,9 +368,91 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	result.MerkleRoot = objectRef.MerkleRoot
 	result.Size = objectRef.Size
 
-	return result, nil
+	return result, nil	
+}
 
-	
+func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method == "GET" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+	}
+	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	if len(clientID) == 0 {
+		return nil, common.NewError("invalid_operation", "Invalid client")
+	}
+
+	destPath := r.FormValue("dest")
+	if len(destPath) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
+	}
+
+	path_hash := r.FormValue("path_hash")
+	path := r.FormValue("path")
+	if len(path_hash) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		path_hash = reference.GetReferenceLookup(allocationID, path)
+	}
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	connectionID := r.FormValue("connection_id")
+	if len(connectionID) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	if err != nil {
+		return nil, common.NewError("meta_error", "Error reading metadata for connection")
+	}
+
+	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	destRef, err := reference.GetReference(ctx, allocationID, destPath)
+	if err != nil || destRef.Type != reference.DIRECTORY {
+		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
+	}
+
+	allocationChange := &allocation.AllocationChange{}
+	allocationChange.ConnectionID = connectionObj.ConnectionID
+	allocationChange.Size = objectRef.Size
+	allocationChange.Operation = allocation.COPY_OPERATION
+	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ConnectionID, 
+		AllocationID: connectionObj.AllocationID, DestPath: destPath}
+	dfc.SrcPath = objectRef.Path
+	connectionObj.Size += allocationChange.Size
+	connectionObj.AddChange(allocationChange, dfc)
+
+	err = connectionObj.Save(ctx)
+	if err != nil {
+		Logger.Error("Error in writing the connection meta data", zap.Error(err))
+		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+	}
+
+	result := &UploadResult{}
+	result.Filename = objectRef.Name
+	result.Hash = objectRef.Hash
+	result.MerkleRoot = objectRef.MerkleRoot
+	result.Size = objectRef.Size
+
+	return result, nil	
 }
 
 func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*UploadResult, error) {
