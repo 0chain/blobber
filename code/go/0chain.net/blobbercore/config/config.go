@@ -22,6 +22,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("challenge_response.frequency", 10)
 	viper.SetDefault("challenge_response.num_workers", 5)
 	viper.SetDefault("challenge_response.max_retries", 10)
+
 	viper.SetDefault("capacity", -1)
 }
 
@@ -60,6 +61,8 @@ type Config struct {
 	ChallengeResolveFreq          int64
 	ChallengeResolveNumWorkers    int
 	ChallengeMaxRetires           int
+	TempFilesCleanupFreq          int64
+	TempFilesCleanupNumWorkers    int
 }
 
 /*Configuration of the system */

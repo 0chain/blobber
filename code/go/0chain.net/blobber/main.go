@@ -73,7 +73,7 @@ func SetupWorkerConfig() {
 }
 
 func SetupWorkers() {
-	// blobber.SetupWorkers(common.GetRootContext())
+	handler.SetupWorkers(common.GetRootContext())
 	challenge.SetupWorkers(common.GetRootContext())
 	readmarker.SetupWorkers(common.GetRootContext())
 	writemarker.SetupWorkers(common.GetRootContext())

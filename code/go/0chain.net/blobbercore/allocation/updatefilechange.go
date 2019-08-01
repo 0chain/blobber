@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"path/filepath"
 
+	"0chain.net/blobbercore/filestore"
 	"0chain.net/blobbercore/stats"
 
 	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
+	."0chain.net/core/logging"
+
+	"go.uber.org/zap"
 )
 
 type UpdateFileChange struct {
@@ -52,6 +56,7 @@ func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *Allocatio
 		}
 	}
 	if idx < 0 {
+		Logger.Error("error in file update", zap.Any("change",nf))
 		return nil, common.NewError("file_not_found", "File to update not found in blobber")
 	}
 	existingRef := dirRef.Children[idx]
@@ -83,4 +88,42 @@ func (nf *UpdateFileChange) Marshal() (string, error) {
 func (nf *UpdateFileChange) Unmarshal(input string) error {
 	err := json.Unmarshal([]byte(input), nf)
 	return err
+}
+
+func (nf *UpdateFileChange) DeleteTempFile() error {
+	fileInputData := &filestore.FileInputData{}
+	fileInputData.Name = nf.Filename
+	fileInputData.Path = nf.Path
+	fileInputData.Hash = nf.Hash
+	err := filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
+	if nf.ThumbnailSize > 0 {
+		fileInputData := &filestore.FileInputData{}
+		fileInputData.Name = nf.ThumbnailFilename
+		fileInputData.Path = nf.Path
+		fileInputData.Hash = nf.ThumbnailHash
+		err = filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
+	}
+	return err
+}
+
+func (nfch *UpdateFileChange) CommitToFileStore(ctx context.Context) error {
+	fileInputData := &filestore.FileInputData{}
+	fileInputData.Name = nfch.Filename
+	fileInputData.Path = nfch.Path
+	fileInputData.Hash = nfch.Hash
+	_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, fileInputData, nfch.ConnectionID)
+	if err != nil {
+		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+	}
+	if nfch.ThumbnailSize > 0 {
+		fileInputData := &filestore.FileInputData{}
+		fileInputData.Name = nfch.ThumbnailFilename
+		fileInputData.Path = nfch.Path
+		fileInputData.Hash = nfch.ThumbnailHash
+		_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, fileInputData, nfch.ConnectionID)
+		if err != nil {
+			return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+		}
+	}
+	return nil
 }

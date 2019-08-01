@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"0chain.net/blobbercore/datastore"
-	"0chain.net/blobbercore/filestore"
 	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
+
 	"github.com/jinzhu/gorm"
 )
 
@@ -14,15 +14,22 @@ const (
 	INSERT_OPERATION = "insert"
 	DELETE_OPERATION = "delete"
 	UPDATE_OPERATION = "update"
+	RENAME_OPERATION = "rename"
+	COPY_OPERATION   = "copy"
 )
 
 const (
 	NewConnection        = 0
 	InProgressConnection = 1
 	CommittedConnection  = 2
+	DeletedConnection    = 3
 )
 
+var OperationNotApplicable = common.NewError("operation_not_valid", "Not an applicable operation")
+
 type AllocationChangeProcessor interface {
+	CommitToFileStore(ctx context.Context) error
+	DeleteTempFile() error
 	ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error)
 	Marshal() (string, error)
 	Unmarshal(string) error
@@ -59,7 +66,7 @@ func (AllocationChange) TableName() string {
 func GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*AllocationChangeCollector, error) {
 	cc := &AllocationChangeCollector{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where(&AllocationChangeCollector{ConnectionID: connectionID, AllocationID: allocationID, ClientID: clientID}).Preload("Changes").First(cc).Error
+	err := db.Where(&AllocationChangeCollector{ConnectionID: connectionID, AllocationID: allocationID, ClientID: clientID}).Not(&AllocationChangeCollector{Status: DeletedConnection}).Preload("Changes").First(cc).Error
 
 	if err == nil {
 		cc.ComputeProperties()
@@ -110,6 +117,14 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 			dfc := &DeleteFileChange{}
 			dfc.Unmarshal(change.Input)
 			cc.AllocationChanges[idx] = dfc
+		} else if change.Operation == RENAME_OPERATION {
+			rfc := &RenameFileChange{}
+			rfc.Unmarshal(change.Input)
+			cc.AllocationChanges[idx] = rfc
+		} else if change.Operation == COPY_OPERATION {
+			rfc := &CopyFileChange{}
+			rfc.Unmarshal(change.Input)
+			cc.AllocationChanges[idx] = rfc
 		}
 	}
 }
@@ -126,83 +141,18 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 }
 
 func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error {
-	for idx, change := range a.Changes {
-		if change.Operation == INSERT_OPERATION {
-			nfch := a.AllocationChanges[idx].(*NewFileChange)
-			fileInputData := &filestore.FileInputData{}
-			fileInputData.Name = nfch.Filename
-			fileInputData.Path = nfch.Path
-			fileInputData.Hash = nfch.Hash
-			_, err := filestore.GetFileStore().CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
-			if err != nil {
-				return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-			}
-			if nfch.ThumbnailSize > 0 {
-				fileInputData := &filestore.FileInputData{}
-				fileInputData.Name = nfch.ThumbnailFilename
-				fileInputData.Path = nfch.Path
-				fileInputData.Hash = nfch.ThumbnailHash
-				_, err := filestore.GetFileStore().CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
-				if err != nil {
-					return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-				}
-			}
-		} else if change.Operation == UPDATE_OPERATION {
-			nfch := a.AllocationChanges[idx].(*UpdateFileChange)
-			fileInputData := &filestore.FileInputData{}
-			fileInputData.Name = nfch.Filename
-			fileInputData.Path = nfch.Path
-			fileInputData.Hash = nfch.Hash
-			_, err := filestore.GetFileStore().CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
-			if err != nil {
-				return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-			}
-			if nfch.ThumbnailSize > 0 {
-				fileInputData := &filestore.FileInputData{}
-				fileInputData.Name = nfch.ThumbnailFilename
-				fileInputData.Path = nfch.Path
-				fileInputData.Hash = nfch.ThumbnailHash
-				_, err := filestore.GetFileStore().CommitWrite(a.AllocationID, fileInputData, a.ConnectionID)
-				if err != nil {
-					return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-				}
-			}
+	for _, change := range a.AllocationChanges {
+		err := change.CommitToFileStore(ctx)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
 func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) error {
-	for idx, change := range a.Changes {
-		if change.Operation == INSERT_OPERATION {
-			nfch := a.AllocationChanges[idx].(*NewFileChange)
-			fileInputData := &filestore.FileInputData{}
-			fileInputData.Name = nfch.Filename
-			fileInputData.Path = nfch.Path
-			fileInputData.Hash = nfch.Hash
-			filestore.GetFileStore().DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
-			if nfch.ThumbnailSize > 0 {
-				fileInputData := &filestore.FileInputData{}
-				fileInputData.Name = nfch.ThumbnailFilename
-				fileInputData.Path = nfch.Path
-				fileInputData.Hash = nfch.ThumbnailHash
-				filestore.GetFileStore().DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
-			}
-		} else if change.Operation == UPDATE_OPERATION {
-			nfch := a.AllocationChanges[idx].(*UpdateFileChange)
-			fileInputData := &filestore.FileInputData{}
-			fileInputData.Name = nfch.Filename
-			fileInputData.Path = nfch.Path
-			fileInputData.Hash = nfch.Hash
-			filestore.GetFileStore().DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
-			if nfch.ThumbnailSize > 0 {
-				fileInputData := &filestore.FileInputData{}
-				fileInputData.Name = nfch.ThumbnailFilename
-				fileInputData.Path = nfch.Path
-				fileInputData.Hash = nfch.ThumbnailHash
-				filestore.GetFileStore().DeleteTempFile(a.AllocationID, fileInputData, a.ConnectionID)
-			}
-		}
+	for _, change := range a.AllocationChanges {
+		change.DeleteTempFile()
 	}
 
 	return nil

@@ -1,6 +1,7 @@
 package filestore
 
 import (
+	"strings"
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
@@ -343,4 +344,27 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, i
 	fileRef.MerkleRoot = mt.GetRoot()
 
 	return fileRef, nil
+}
+
+func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHandler) error {
+	allocation, err := fs.setupAllocation(allocationID, true)
+	if err != nil {
+		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
+	}
+	filepath.Walk(allocation.ObjectsPath, func(path string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() && !strings.HasPrefix(path, allocation.TempObjectsPath) {
+			f, err := os.Open(path)
+			if err != nil {
+				return nil
+			}
+			defer f.Close()
+			h := sha1.New()
+			if _, err := io.Copy(h, f); err != nil {
+				return nil
+			}
+			handler(hex.EncodeToString(h.Sum(nil)), info.Size())
+		}
+		return nil
+	})
+	return nil
 }
