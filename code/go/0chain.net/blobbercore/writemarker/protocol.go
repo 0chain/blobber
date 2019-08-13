@@ -84,40 +84,39 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 		}
 	}
 
-	txn := transaction.NewTransactionEntity()
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		wm.StatusMessage = "Error creating transaction entity. " + err.Error()
+		wm.ReedeemRetries++
+		wm.UpdateStatus(ctx, Failed, "Error creating transaction entity. " + err.Error(), "")
+		return err
+	}
+
 	sn := &CommitConnection{}
 	sn.AllocationRoot = wm.WM.AllocationRoot
 	sn.PrevAllocationRoot = wm.WM.PreviousAllocationRoot
 	sn.WriteMarker = &wm.WM
 
-	scData := &transaction.SmartContractTxnData{}
-	scData.Name = transaction.CLOSE_CONNECTION_SC_NAME
-	scData.InputArgs = sn
-
-	txn.ToClientID = transaction.STORAGE_CONTRACT_ADDRESS
-	txn.Value = 0
-	txn.TransactionType = transaction.TxnTypeSmartContract
-	txnBytes, err := json.Marshal(scData)
+	snBytes, err := json.Marshal(sn)
 	if err != nil {
-		Logger.Error("Error encoding sc input", zap.String("err:", err.Error()), zap.Any("scdata", scData))
+		Logger.Error("Error encoding sc input", zap.String("err:", err.Error()), zap.Any("scdata", sn))
 		wm.Status = Failed
 		wm.StatusMessage = "Error encoding sc input. " + err.Error()
 		wm.ReedeemRetries++
 		wm.UpdateStatus(ctx, Failed, "Error encoding sc input. "+err.Error(), "")
 		return err
 	}
-	txn.TransactionData = string(txnBytes)
 
-	err = txn.ComputeHashAndSign()
+	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CLOSE_CONNECTION_SC_NAME, string(snBytes), 0)
 	if err != nil {
-		Logger.Error("Signing Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))
+		Logger.Error("Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))
 		wm.Status = Failed
-		wm.StatusMessage = "Signing Failed during sending close connection to the miner. " + err.Error()
+		wm.StatusMessage = "Failed during sending close connection to the miner. " + err.Error()
 		wm.ReedeemRetries++
-		wm.UpdateStatus(ctx, Failed, "Signing Failed during sending close connection to the miner. "+err.Error(), "")
+		wm.UpdateStatus(ctx, Failed, "Failed during sending close connection to the miner. "+err.Error(), "")
 		return err
 	}
-	transaction.SendTransactionSync(txn, chain.GetServerChain())
+	
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
 	if err != nil {

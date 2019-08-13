@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"hash"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -149,6 +150,69 @@ func (fs *FileFSStore) setupAllocation(allocationID string, skipCreate bool) (*S
 	return allocation, nil
 }
 
+
+func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
+	allocation, err := fs.setupAllocation(allocationID, true)
+	if err != nil {
+		return nil, nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	dirPath, destFile := getFilePathFromHash(fileData.Hash)
+	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
+	fileObjectPath = filepath.Join(fileObjectPath, destFile)
+
+	file, err := os.Open(fileObjectPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer file.Close()
+
+	if blockoffset < 0 || blockoffset >= 1024 {
+		return nil, nil, common.NewError("invalid_block_number", "Invalid block offset")
+	}
+
+	var returnBytes []byte
+
+	merkleHashes := make([]hash.Hash, 1024)
+	merkleLeaves := make([]util.Hashable, 1024)
+	for idx := range merkleHashes {
+		merkleHashes[idx] = sha3.New256()
+	}
+	bytesBuf := bytes.NewBuffer(make([]byte, 0))
+	for true {
+		_, err := io.CopyN(bytesBuf, file, CHUNK_SIZE)
+		if err != io.EOF && err != nil {
+			return nil, nil, common.NewError("file_write_error", err.Error())
+		}
+		dataBytes := bytesBuf.Bytes()
+		tmpBytes := make([]byte, len(dataBytes))
+		copy(tmpBytes, dataBytes)
+		merkleChunkSize := 64
+		for i := 0; i < len(tmpBytes); i += merkleChunkSize {
+			end := i + merkleChunkSize
+			if end > len(tmpBytes) {
+				end = len(tmpBytes)
+			}
+			offset := i / merkleChunkSize
+			merkleHashes[offset].Write(tmpBytes[i:end])
+			if offset == blockoffset {
+				returnBytes = append(returnBytes, tmpBytes[i:end]...)
+			}
+		}
+		bytesBuf.Reset()
+		if err != nil && err == io.EOF {
+			break
+		}
+	}
+
+	for idx := range merkleHashes {
+		merkleLeaves[idx] = util.NewStringHashable(hex.EncodeToString(merkleHashes[idx].Sum(nil)))
+	}
+	var mt util.MerkleTreeI = &util.MerkleTree{}
+	mt.ComputeTree(merkleLeaves)
+
+	return returnBytes, mt, nil
+}
+
 func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64) (json.RawMessage, error) {
 	allocation, err := fs.setupAllocation(allocationID, true)
 	if err != nil {
@@ -275,20 +339,39 @@ func (fs *FileFSStore) GetMerkleTreeForFile(allocationID string, fileData *FileI
 		return nil, err
 	}
 	defer file.Close()
-	merkleHash := sha3.New256()
-	tReader := io.TeeReader(file, merkleHash)
-	merkleLeaves := make([]util.Hashable, 0)
+	//merkleHash := sha3.New256()
+	tReader := file //io.TeeReader(file, merkleHash)
+	//merkleLeaves := make([]util.Hashable, 0)
+	merkleHashes := make([]hash.Hash, 1024)
+	merkleLeaves := make([]util.Hashable, 1024)
+	for idx := range merkleHashes {
+		merkleHashes[idx] = sha3.New256()
+	}
 	bytesBuf := bytes.NewBuffer(make([]byte, 0))
 	for true {
 		_, err := io.CopyN(bytesBuf, tReader, CHUNK_SIZE)
 		if err != io.EOF && err != nil {
 			return nil, common.NewError("file_write_error", err.Error())
 		}
-		merkleLeaves = append(merkleLeaves, util.NewStringHashable(hex.EncodeToString(merkleHash.Sum(nil))))
-		merkleHash.Reset()
+		dataBytes := bytesBuf.Bytes()
+		merkleChunkSize := 64
+		for i := 0; i < len(dataBytes); i += merkleChunkSize {
+			end := i + merkleChunkSize
+			if end > len(dataBytes) {
+				end = len(dataBytes)
+			}
+			offset := i / merkleChunkSize
+			merkleHashes[offset].Write(dataBytes[i:end])
+		}
+		//merkleLeaves = append(merkleLeaves, util.NewStringHashable(hex.EncodeToString(merkleHash.Sum(nil))))
+		//merkleHash.Reset()
+		bytesBuf.Reset()
 		if err != nil && err == io.EOF {
 			break
 		}
+	}
+	for idx := range merkleHashes {
+		merkleLeaves[idx] = util.NewStringHashable(hex.EncodeToString(merkleHashes[idx].Sum(nil)))
 	}
 
 	var mt util.MerkleTreeI = &util.MerkleTree{}
@@ -314,10 +397,15 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, i
 	// if err != nil {
 	// 	return nil, common.NewError("file_reading_error", err.Error())
 	// }
-	merkleHash := sha3.New256()
-	multiHashWriter := io.MultiWriter(h, merkleHash)
+	bytesBuffer := bytes.NewBuffer(nil)
+	//merkleHash := sha3.New256()
+	multiHashWriter := io.MultiWriter(h, bytesBuffer)
 	tReader := io.TeeReader(infile, multiHashWriter)
-	merkleLeaves := make([]util.Hashable, 0)
+	merkleHashes := make([]hash.Hash, 1024)
+	merkleLeaves := make([]util.Hashable, 1024)
+	for idx := range merkleHashes {
+		merkleHashes[idx] = sha3.New256()
+	}
 	fileSize := int64(0)
 	for true {
 		written, err := io.CopyN(dest, tReader, CHUNK_SIZE)
@@ -325,11 +413,25 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, i
 			return nil, common.NewError("file_write_error", err.Error())
 		}
 		fileSize += written
-		merkleLeaves = append(merkleLeaves, util.NewStringHashable(hex.EncodeToString(merkleHash.Sum(nil))))
-		merkleHash.Reset()
+		dataBytes := bytesBuffer.Bytes()
+		merkleChunkSize := 64
+		for i := 0; i < len(dataBytes); i += merkleChunkSize {
+			end := i + merkleChunkSize
+			if end > len(dataBytes) {
+				end = len(dataBytes)
+			}
+			offset := i / merkleChunkSize
+			merkleHashes[offset].Write(dataBytes[i:end])
+		}
+
+		// merkleLeaves = append(merkleLeaves, util.NewStringHashable(hex.EncodeToString(merkleHash.Sum(nil))))
+		bytesBuffer.Reset()
 		if err != nil && err == io.EOF {
 			break
 		}
+	}
+	for idx := range merkleHashes {
+		merkleLeaves[idx] = util.NewStringHashable(hex.EncodeToString(merkleHashes[idx].Sum(nil)))
 	}
 	//Logger.Info("File size", zap.Int64("file_size", fileSize))
 	var mt util.MerkleTreeI = &util.MerkleTree{}

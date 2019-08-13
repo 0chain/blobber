@@ -28,32 +28,27 @@ type ChallengeResponse struct {
 
 func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transaction.Transaction, error) {
 
-	txn := transaction.NewTransactionEntity()
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return nil, err
+	}
 
 	sn := &ChallengeResponse{}
 	sn.ChallengeID = cr.ChallengeID
 	sn.ValidationTickets = cr.ValidationTickets
 
-	scData := &transaction.SmartContractTxnData{}
-	scData.Name = transaction.CHALLENGE_RESPONSE
-	scData.InputArgs = sn
-
-	txn.ToClientID = transaction.STORAGE_CONTRACT_ADDRESS
-	txn.Value = 0
-	txn.TransactionType = transaction.TxnTypeSmartContract
-	txnBytes, err := json.Marshal(scData)
+	snBytes, err := json.Marshal(sn)
 	if err != nil {
 		return nil, err
 	}
-	txn.TransactionData = string(txnBytes)
-
-	err = txn.ComputeHashAndSign()
+	
+	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CHALLENGE_RESPONSE, string(snBytes), 0)
 	if err != nil {
-		Logger.Info("Signing Failed during submitting challenge to the mining network", zap.String("err:", err.Error()))
+		Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
 		return nil, err
 	}
-	Logger.Info("Submitting challenge response to blockchain.", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
-	transaction.SendTransaction(txn, chain.GetServerChain())
+
+	Logger.Info("Verifying challenge response to blockchain.", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))	
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
@@ -141,14 +136,17 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 		inputData.Name = objectPath.Meta["name"].(string)
 		inputData.Path = objectPath.Meta["path"].(string)
 		inputData.Hash = objectPath.Meta["content_hash"].(string)
-		blockData, err := filestore.GetFileStore().GetFileBlock(cr.AllocationID, inputData, objectPath.FileBlockNum)
-		mt, err := filestore.GetFileStore().GetMerkleTreeForFile(cr.AllocationID, inputData) 
+		r := rand.New(rand.NewSource(cr.RandomNumber))
+		//rand.Seed(cr.RandomNumber)
+		blockoffset := r.Intn(1024)
+		blockData, mt, err := filestore.GetFileStore().GetFileBlockForChallenge(cr.AllocationID, inputData, blockoffset)
+		
 		if err != nil {
 			cr.ErrorChallenge(ctx, err)
 			return err
 		}
 		postData["data"] = []byte(blockData)
-		postData["merkle_path"] = mt.GetPathByIndex(int(objectPath.FileBlockNum) - 1)
+		postData["merkle_path"] = mt.GetPathByIndex(blockoffset)
 	}
 
 	postDataBytes, err := json.Marshal(postData)
