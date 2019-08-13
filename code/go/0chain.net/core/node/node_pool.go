@@ -178,3 +178,11 @@ func (np *Pool) ComputeProperties() {
 		RegisterNode(node)
 	}
 }
+
+func (np *Pool) GetBaseURLsArray() []string {
+	var retArray []string
+	for _, node := range np.Nodes {
+		retArray = append(retArray, node.GetURLBase())
+	}
+	return retArray
+}

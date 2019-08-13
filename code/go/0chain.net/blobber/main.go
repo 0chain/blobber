@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/0chain/gosdk/zcncore"
 	"flag"
 	"fmt"
 	"log"
@@ -11,13 +12,13 @@ import (
 	"strings"
 	"time"
 
+	"0chain.net/blobbercore/challenge"
 	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/filestore"
 	"0chain.net/blobbercore/handler"
 	"0chain.net/blobbercore/readmarker"
 	"0chain.net/blobbercore/writemarker"
-	"0chain.net/blobbercore/challenge"
 	"0chain.net/core/build"
 	"0chain.net/core/chain"
 	"0chain.net/core/common"
@@ -163,6 +164,7 @@ func main() {
 		logging.InitLogging("production", *logDir)
 	}
 	config.Configuration.ChainID = viper.GetString("server_chain.id")
+	config.Configuration.SignatureScheme = viper.GetString("server_chain.signature_scheme")
 	SetupWorkerConfig()
 
 	if *filesDir == "" {
@@ -233,7 +235,7 @@ func main() {
 	// Initializa after serverchain is setup.
 	initEntities()
 	//miner.GetMinerChain().SetupGenesisBlock(viper.GetString("server_chain.genesis_block.id"))
-	SetupBlobberOnBC()
+	SetupBlobberOnBC(*logDir)
 	mode := "main net"
 	if config.Development() {
 		mode = "development"
@@ -305,7 +307,12 @@ func RegisterBlobber() {
 	}
 }
 
-func SetupBlobberOnBC() {
+func SetupBlobberOnBC(logDir string) {
+	var logName = logDir + "/0chainBlobber.log"
+	zcncore.SetLogFile(logName, false)
+	zcncore.SetLogLevel(3)
+	zcncore.InitZCNSDK(serverChain.Miners.GetBaseURLsArray(), serverChain.Sharders.GetBaseURLsArray(), config.Configuration.SignatureScheme)
+	zcncore.SetWalletInfo(node.Self.GetWalletString(), false)
 	//txnHash, err := badgerdbstore.GetStorageProvider().ReadBytes(common.GetRootContext(), BLOBBER_REGISTERED_LOOKUP_KEY)
 	//if err != nil {
 	// Now register blobber to chain

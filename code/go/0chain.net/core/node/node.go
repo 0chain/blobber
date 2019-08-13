@@ -47,15 +47,15 @@ var NodeTypeNames []*common.Lookup = common.CreateLookups("m", "Miner", "s", "Sh
 
 /*Node - a struct holding the node information */
 type Node struct {
-	ID             string               `json:"id"`
-	Version        string               `json:"-"`
-	CreationDate   common.Timestamp     `json:"-"`
-	PublicKey      string               `json:"public_key"`
-	PublicKeyBytes encryption.HashBytes `json:"-"`
-	Host           string               `json:"-"`
-	Port           int                  `json:"-"`
-	Type           int                  `json:"-"`
-	Description    string               `json:"-"`
+	ID             string           `json:"id"`
+	Version        string           `json:"-"`
+	CreationDate   common.Timestamp `json:"-"`
+	PublicKey      string           `json:"public_key"`
+	PublicKeyBytes []byte           `json:"-"`
+	Host           string           `json:"-"`
+	Port           int              `json:"-"`
+	Type           int              `json:"-"`
+	Description    string           `json:"-"`
 }
 
 /*Provider - create a node object */
@@ -132,11 +132,13 @@ func (n *Node) ComputeProperties() {
 }
 
 func (n *Node) computePublicKeyBytes(key string) {
-	b, _ := hex.DecodeString(key)
-	if len(b) > len(n.PublicKeyBytes) {
-		b = b[len(b)-encryption.HASH_LENGTH:]
-	}
-	copy(n.PublicKeyBytes[encryption.HASH_LENGTH-len(b):], b)
+	// b, _ := hex.DecodeString(key)
+	// if len(b) > len(n.PublicKeyBytes) {
+	// 	b = b[len(b)-encryption.HASH_LENGTH:]
+	// }
+	// copy(n.PublicKeyBytes[encryption.HASH_LENGTH-len(b):], b)
+	b, _ := hex.DecodeString(n.PublicKey)
+	n.PublicKeyBytes = b
 }
 
 /*SetPublicKey - set the public key */

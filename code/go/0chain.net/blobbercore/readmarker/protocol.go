@@ -66,32 +66,27 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 }
 
 func (rmEntity *ReadMarkerEntity) RedeemReadMarker(ctx context.Context) error {
-	txn := transaction.NewTransactionEntity()
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return err
+	}
 	rm := rmEntity.LatestRM
 
 	sn := &ReadRedeem{}
 	sn.ReadMarker = rm
-	scData := &transaction.SmartContractTxnData{}
 
-	scData.Name = transaction.READ_REDEEM
-	scData.InputArgs = sn
-
-	txn.ToClientID = transaction.STORAGE_CONTRACT_ADDRESS
-	txn.Value = 0
-	txn.TransactionType = transaction.TxnTypeSmartContract
-	txnBytes, err := json.Marshal(scData)
+	snBytes, err := json.Marshal(sn)
 	if err != nil {
-		Logger.Error("Error encoding sc input", zap.String("err:", err.Error()), zap.Any("scdata", scData))
+		Logger.Error("Error encoding sc input", zap.String("err:", err.Error()), zap.Any("scdata", sn))
 		return err
 	}
-	txn.TransactionData = string(txnBytes)
 
-	err = txn.ComputeHashAndSign()
+	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.READ_REDEEM, string(snBytes), 0)
 	if err != nil {
-		Logger.Error("Signing Failed during read redeem. ", zap.String("err:", err.Error()))
+		Logger.Info("Failed submitting read redeem", zap.String("err:", err.Error()))
 		return err
 	}
-	transaction.SendTransactionSync(txn, chain.GetServerChain())
+	
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
 	if err != nil {

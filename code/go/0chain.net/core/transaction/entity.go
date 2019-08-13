@@ -1,11 +1,13 @@
 package transaction
 
 import (
-	"fmt"
+	"encoding/json"
+	"sync"
+
+	"github.com/0chain/gosdk/zcncore"
 
 	"0chain.net/core/chain"
 	"0chain.net/core/common"
-	"0chain.net/core/encryption"
 	"0chain.net/core/node"
 )
 
@@ -24,6 +26,8 @@ type Transaction struct {
 	TransactionType   int              `json:"transaction_type,omitempty"`
 	TransactionOutput string           `json:"transaction_output,omitempty"`
 	OutputHash        string           `json:"txn_output_hash"`
+	zcntxn            zcncore.TransactionScheme
+	wg                *sync.WaitGroup
 }
 
 type SmartContractTxnData struct {
@@ -61,24 +65,84 @@ const CHALLENGE_RESPONSE = "challenge_response"
 
 const STORAGE_CONTRACT_ADDRESS = "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d7"
 
-func NewTransactionEntity() *Transaction {
+func NewTransactionEntity() (*Transaction, error) {
 	txn := &Transaction{}
 	txn.Version = "1.0"
 	txn.ClientID = node.Self.ID
 	txn.CreationDate = common.Now()
 	txn.ChainID = chain.GetServerChain().ID
 	txn.PublicKey = node.Self.PublicKey
-	return txn
+	txn.wg = &sync.WaitGroup{}
+	zcntxn, err := zcncore.NewTransaction(txn, 0)
+	if err != nil {
+		return nil, err
+	}
+	txn.zcntxn = zcntxn
+	return txn, nil
 }
 
-func (t *Transaction) ComputeHashAndSign() error {
-	hashdata := fmt.Sprintf("%v:%v:%v:%v:%v", t.CreationDate, t.ClientID,
-		t.ToClientID, t.Value, encryption.Hash(t.TransactionData))
-	t.Hash = encryption.Hash(hashdata)
-	var err error
-	t.Signature, err = node.Self.Sign(t.Hash)
+func (t *Transaction) ExecuteSmartContract(address, methodName, input string, val int64) error {
+	t.wg.Add(1)
+	err := t.zcntxn.ExecuteSmartContract(address, methodName, input, val)
 	if err != nil {
+		t.wg.Done()
 		return err
 	}
+	t.wg.Wait()
+	t.Hash = t.zcntxn.GetTransactionHash()
+	if len(t.zcntxn.GetTransactionError()) > 0 {
+		return common.NewError("transaction_send_error", t.zcntxn.GetTransactionError())
+	}
 	return nil
+}
+
+func (t *Transaction) Verify() error {
+	t.zcntxn.SetTransactionHash(t.Hash)
+	t.wg.Add(1)
+	err := t.zcntxn.Verify()
+	if err != nil {
+		t.wg.Done()
+		return err
+	}
+	t.wg.Wait()
+	if len(t.zcntxn.GetVerifyError()) > 0 {
+		return common.NewError("transaction_verify_error", t.zcntxn.GetVerifyError())
+	}
+	output := t.zcntxn.GetVerifyOutput()
+
+	var objmap map[string]json.RawMessage
+	err = json.Unmarshal([]byte(output), &objmap)
+	if err != nil {
+		return common.NewError("transaction_verify_error", "Error unmarshaling verify output. "+err.Error())
+	}
+
+	err = json.Unmarshal(objmap["txn"], t)
+	if err != nil {
+		return common.NewError("transaction_verify_error", "Error unmarshaling verify output. "+err.Error())
+	}
+	return nil
+}
+
+// func (t *Transaction) ComputeHashAndSign() error {
+// 	hashdata := fmt.Sprintf("%v:%v:%v:%v:%v", t.CreationDate, t.ClientID,
+// 		t.ToClientID, t.Value, encryption.Hash(t.TransactionData))
+// 	t.Hash = encryption.Hash(hashdata)
+// 	var err error
+// 	t.Signature, err = node.Self.Sign(t.Hash)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
+
+func (t *Transaction) OnTransactionComplete(zcntxn *zcncore.Transaction, status int) {
+	t.wg.Done()
+}
+
+func (t *Transaction) OnVerifyComplete(zcntxn *zcncore.Transaction, status int) {
+	t.wg.Done()
+}
+
+func (t *Transaction) OnAuthComplete(zcntxn *zcncore.Transaction, status int) {
+
 }
