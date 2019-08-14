@@ -59,6 +59,7 @@ type StorageAllocationBlobber struct {
 }
 
 const ADD_BLOBBER_SC_NAME = "add_blobber"
+const ADD_VALIDATOR_SC_NAME = "add_validator"
 const CLOSE_CONNECTION_SC_NAME = "commit_connection"
 const READ_REDEEM = "read_redeem"
 const CHALLENGE_RESPONSE = "challenge_response"

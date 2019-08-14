@@ -20,11 +20,10 @@ services:
     command: bash /blobber/bin/postgres-entrypoint.sh
     links:
       - postgres:postgres
-  
-  blobber:
+  validator:
     build: 
       context: ../
-      dockerfile: ./docker.local/Dockerfile
+      dockerfile: ./docker.local/ValidatorDockerfile
     environment:
       - DOCKER= true
     depends_on:
@@ -33,13 +32,35 @@ services:
       - postgres-post:postgres-post
     volumes:
      - ../config:/blobber/config
+     - ./blobber${BLOBBER}/data:/blobber/data
+     - ./blobber${BLOBBER}/log:/blobber/log
+     - ./keys_config:/blobber/keysconfig
+    ports:
+      - "506${BLOBBER}:506${BLOBBER}"
+    command: ./bin/validator --port 506${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --nodes_file b0single_machine_3_nodes --log_dir /blobber/log
+    networks:
+      default:
+      testnet0:
+        ipv4_address: 198.18.0.6${BLOBBER}
+  blobber:
+    build: 
+      context: ../
+      dockerfile: ./docker.local/Dockerfile
+    environment:
+      - DOCKER= true
+    depends_on:
+      - validator
+    links:
+      - validator:validator
+    volumes:
+     - ../config:/blobber/config
      - ./blobber${BLOBBER}/files:/blobber/files
      - ./blobber${BLOBBER}/data:/blobber/data
      - ./blobber${BLOBBER}/log:/blobber/log
      - ./keys_config:/blobber/keysconfig
     ports:
       - "505${BLOBBER}:505${BLOBBER}"
-    command: ./bin/blobber --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --nodes_file b0single_machine_3_nodes --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data
+    command: ./bin/blobber --port 505${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --nodes_file b0single_machine_3_nodes --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data
     networks:
       default:
       testnet0:

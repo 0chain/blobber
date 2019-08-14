@@ -13,8 +13,8 @@ var (
 	Logger *zap.Logger
 )
 
-func InitLogging(mode string, logDir string) {
-	var logName = logDir + "/0chainBlobber.log"
+func InitLogging(mode string, logDir string, logFile string) {
+	var logName = logDir + "/" + logFile
 
 	var logWriter = getWriteSyncer(logName)
 

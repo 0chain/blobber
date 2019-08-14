@@ -11,13 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"0chain.net/blobbercore/challenge"
-	"0chain.net/blobbercore/config"
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/blobbercore/filestore"
-	"0chain.net/blobbercore/handler"
-	"0chain.net/blobbercore/readmarker"
-	"0chain.net/blobbercore/writemarker"
 	"0chain.net/core/build"
 	"0chain.net/core/chain"
 	"0chain.net/core/common"
@@ -27,6 +20,9 @@ import (
 	"0chain.net/core/node"
 	"0chain.net/core/transaction"
 	"0chain.net/core/util"
+	"0chain.net/validatorcore/storage"
+	"0chain.net/validatorcore/config"
+
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -35,92 +31,12 @@ import (
 	"github.com/0chain/gosdk/zcncore"
 )
 
-//var BLOBBER_REGISTERED_LOOKUP_KEY = datastore.ToKey("blobber_registration")
-
 var startTime time.Time
 var serverChain *chain.Chain
-var filesDir *string
-var metadataDB *string
 
 func initHandlers(r *mux.Router) {
 	r.HandleFunc("/", HomePageHandler)
-	handler.SetupHandlers(r)
-}
-
-func SetupWorkerConfig() {
-	config.Configuration.ContentRefWorkerFreq = viper.GetInt64("contentref_cleaner.frequency")
-	config.Configuration.ContentRefWorkerTolerance = viper.GetInt64("contentref_cleaner.tolerance")
-
-	config.Configuration.OpenConnectionWorkerFreq = viper.GetInt64("openconnection_cleaner.frequency")
-	config.Configuration.OpenConnectionWorkerTolerance = viper.GetInt64("openconnection_cleaner.tolerance")
-
-	config.Configuration.WMRedeemFreq = viper.GetInt64("writemarker_redeem.frequency")
-	config.Configuration.WMRedeemNumWorkers = viper.GetInt("writemarker_redeem.num_workers")
-
-	config.Configuration.RMRedeemFreq = viper.GetInt64("readmarker_redeem.frequency")
-	config.Configuration.RMRedeemNumWorkers = viper.GetInt("readmarker_redeem.num_workers")
-
-	config.Configuration.ChallengeResolveFreq = viper.GetInt64("challenge_response.frequency")
-	config.Configuration.ChallengeResolveNumWorkers = viper.GetInt("challenge_response.num_workers")
-	config.Configuration.ChallengeMaxRetires = viper.GetInt("challenge_response.max_retries")
-
-	config.Configuration.Capacity = viper.GetInt64("capacity")
-
-	config.Configuration.DBHost = viper.GetString("db.host")
-	config.Configuration.DBName = viper.GetString("db.name")
-	config.Configuration.DBPort = viper.GetString("db.port")
-	config.Configuration.DBUserName = viper.GetString("db.user")
-	config.Configuration.DBPassword = viper.GetString("db.password")
-}
-
-func SetupWorkers() {
-	handler.SetupWorkers(common.GetRootContext())
-	challenge.SetupWorkers(common.GetRootContext())
-	readmarker.SetupWorkers(common.GetRootContext())
-	writemarker.SetupWorkers(common.GetRootContext())
-	// stats.StartEventDispatcher(2)
-}
-
-var fsStore filestore.FileStore
-
-func initEntities() {
-	// badgerdbstore.SetupStorageProvider(*badgerDir)
-	fsStore = filestore.SetupFSStore(*filesDir + "/files")
-	// blobber.SetupObjectStorageHandler(fsStore, badgerdbstore.GetStorageProvider())
-
-	// allocation.SetupAllocationChangeCollectorEntity(badgerdbstore.GetStorageProvider())
-	// allocation.SetupAllocationEntity(badgerdbstore.GetStorageProvider())
-	// allocation.SetupDeleteTokenEntity(badgerdbstore.GetStorageProvider())
-	// reference.SetupFileRefEntity(badgerdbstore.GetStorageProvider())
-	// reference.SetupRefEntity(badgerdbstore.GetStorageProvider())
-	// reference.SetupContentReferenceEntity(badgerdbstore.GetStorageProvider())
-	// writemarker.SetupEntity(badgerdbstore.GetStorageProvider())
-	// readmarker.SetupEntity(badgerdbstore.GetStorageProvider())
-	// challenge.SetupEntity(badgerdbstore.GetStorageProvider())
-	// stats.SetupStatsEntity(badgerdbstore.GetStorageProvider())
-}
-
-func initServer() {
-
-}
-
-func checkForDBConnection() {
-	retries := 0
-	var err error
-	for retries < 600 {
-		err = datastore.GetStore().Open()
-		if err != nil {
-			time.Sleep(1 * time.Second)
-			retries++
-			continue
-		}
-		break
-	}
-
-	if err != nil {
-		Logger.Error("Error in opening the database. Shutting the server down")
-		panic(err)
-	}
+	storage.SetupHandlers(r)
 }
 
 func processBlockChainConfig(nodesFileName string) {
@@ -147,8 +63,6 @@ func main() {
 	deploymentMode := flag.Int("deployment_mode", 2, "deployment_mode")
 	nodesFile := flag.String("nodes_file", "", "nodes_file")
 	keysFile := flag.String("keys_file", "", "keys_file")
-	filesDir = flag.String("files_dir", "", "files_dir")
-	metadataDB = flag.String("db_dir", "", "db_dir")
 	logDir := flag.String("log_dir", "", "log_dir")
 	portString := flag.String("port", "", "port")
 	hostname := flag.String("hostname", "", "hostname")
@@ -161,21 +75,13 @@ func main() {
 	config.Configuration.DeploymentMode = byte(*deploymentMode)
 
 	if config.Development() {
-		logging.InitLogging("development", *logDir, "0chainBlobber.log")
+		logging.InitLogging("development", *logDir, "validator.log")
 	} else {
-		logging.InitLogging("production", *logDir, "0chainBlobber.log")
+		logging.InitLogging("production", *logDir, "validator.log")
 	}
+
 	config.Configuration.ChainID = viper.GetString("server_chain.id")
 	config.Configuration.SignatureScheme = viper.GetString("server_chain.signature_scheme")
-	SetupWorkerConfig()
-
-	if *filesDir == "" {
-		panic("Please specify --files_dir absolute folder name option where uploaded files can be stored")
-	}
-
-	if *metadataDB == "" {
-		panic("Please specify --db_dir absolute folder name option where meta data db can be stored")
-	}
 
 	if *hostname == "" {
 		panic("Please specify --hostname which is the public hostname")
@@ -240,19 +146,15 @@ func main() {
 	serverChain.Sharders.ComputeProperties()
 	serverChain.Blobbers.ComputeProperties()
 
-	checkForDBConnection()
+	SetupValidatorOnBC(*logDir)
 
-	// Initializa after serverchain is setup.
-	initEntities()
-	//miner.GetMinerChain().SetupGenesisBlock(viper.GetString("server_chain.genesis_block.id"))
-	SetupBlobberOnBC(*logDir)
 	mode := "main net"
 	if config.Development() {
 		mode = "development"
 	} else if config.TestNet() {
 		mode = "test net"
 	}
-	Logger.Info("Starting blobber", zap.Int("available_cpus", runtime.NumCPU()), zap.String("port", *portString), zap.String("chain_id", config.GetServerChainID()), zap.String("mode", mode))
+	Logger.Info("Starting validator", zap.Int("available_cpus", runtime.NumCPU()), zap.String("port", *portString), zap.String("chain_id", config.GetServerChainID()), zap.String("mode", mode))
 	var server *http.Server
 	r := mux.NewRouter()
 	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
@@ -278,22 +180,20 @@ func main() {
 		}
 	}
 	common.HandleShutdown(server)
-	handler.HandleShutdown(common.GetRootContext())
 
 	initHandlers(r)
-	initServer()
 
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()
 	log.Fatal(server.ListenAndServe())
 }
 
-func RegisterBlobber() {
+func RegisterValidator() {
 
 	registrationRetries := 0
 	//ctx := badgerdbstore.GetStorageProvider().WithConnection(common.GetRootContext())
 	for registrationRetries < 10 {
-		txnHash, err := handler.RegisterBlobber(common.GetRootContext())
+		txnHash, err := storage.GetProtocolImpl().RegisterValidator(common.GetRootContext())
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 		txnVerified := false
 		verifyRetries := 0
@@ -302,33 +202,26 @@ func RegisterBlobber() {
 			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
 			if err == nil {
 				txnVerified = true
-				Logger.Info("Transaction for adding blobber accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-				//badgerdbstore.GetStorageProvider().WriteBytes(ctx, BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
-				//badgerdbstore.GetStorageProvider().Commit(ctx)
-				SetupWorkers()
+				Logger.Info("Transaction for adding validator accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
 				return
 			}
 			verifyRetries++
 		}
 
 		if !txnVerified {
-			Logger.Error("Add blobber transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txnHash))
+			Logger.Error("Add validator transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txnHash))
 		}
 	}
 }
 
-func SetupBlobberOnBC(logDir string) {
-	var logName = logDir + "/0chainBlobber.log"
+
+func SetupValidatorOnBC(logDir string) {
+	var logName = logDir + "/validator.log"
 	zcncore.SetLogFile(logName, false)
 	zcncore.SetLogLevel(3)
 	zcncore.InitZCNSDK(serverChain.Miners.GetBaseURLsArray(), serverChain.Sharders.GetBaseURLsArray(), config.Configuration.SignatureScheme)
 	zcncore.SetWalletInfo(node.Self.GetWalletString(), false)
-	//txnHash, err := badgerdbstore.GetStorageProvider().ReadBytes(common.GetRootContext(), BLOBBER_REGISTERED_LOOKUP_KEY)
-	//if err != nil {
-	// Now register blobber to chain
-	go RegisterBlobber()
-	//}
-	//Logger.Info("Blobber already registered", zap.Any("blobberTxn", string(txnHash)))
+	go RegisterValidator()
 }
 
 /*HomePageHandler - provides basic info when accessing the home page of the server */
@@ -336,7 +229,7 @@ func HomePageHandler(w http.ResponseWriter, r *http.Request) {
 	mc := chain.GetServerChain()
 	fmt.Fprintf(w, "<div>Running since %v ...\n", startTime)
 	fmt.Fprintf(w, "<div>Working on the chain: %v</div>\n", mc.ID)
-	fmt.Fprintf(w, "<div>I am a blobber with <ul><li>id:%v</li><li>public_key:%v</li><li>build_tag:%v</li></ul></div>\n", node.Self.GetKey(), node.Self.PublicKey, build.BuildTag)
+	fmt.Fprintf(w, "<div>I am a validator with <ul><li>id:%v</li><li>public_key:%v</li><li>build_tag:%v</li></ul></div>\n", node.Self.GetKey(), node.Self.PublicKey, build.BuildTag)
 	serverChain.Miners.Print(w)
 	serverChain.Sharders.Print(w)
 	serverChain.Blobbers.Print(w)
