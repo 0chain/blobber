@@ -1,0 +1,43 @@
+version: '3'
+services:
+
+  validator:
+    build:
+      context: ${DOCKER_CODEBASE}
+      dockerfile: ./docker.aws/build.validator/Dockerfile
+
+    container_name: ${AGENT_CONTAINER}
+
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
+
+    environment:
+    - DOCKER= true
+
+    user: ${ZCHAIN_USER}:${ZCHAIN_GROUP}
+
+    command: /0chain/bin/validator --deployment_mode 0 --keys_file /0chain/config/validator.txt --nodes_file nodes
+
+    ports:
+    - ${AGENT_PORT}:${AGENT_PORT}
+
+    volumes:
+    - /0chain/${AGENT_DIR}/config:/0chain/config
+    - /0chain/${AGENT_DIR}/log:/0chain/log
+    - /0chain/${AGENT_DIR}/data:/0chain/data
+    - /0chain/${AGENT_DIR}/data/badgerdb:/0chain/data/badgerdb
+    - /0chain/${AGENT_DIR}/data/badgerdb/blobberstate:/0chain/data/badgerdb/blobberstate
+
+    logging:
+      driver: json-file
+      options:
+        max-file: "10"
+        max-size: 10M
+
+    networks:
+      default:
+
+    restart: ${RESTART_POLICY}
+
+networks:
+  default:
+    driver: bridge
