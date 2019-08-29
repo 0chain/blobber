@@ -36,7 +36,7 @@ ARG image_tag
 ARG go_build_mode
 ARG go_bls_tag
 RUN go build -tags ${go_build_mode} -tags ${go_bls_tag}
-RUN go build -v -ldflags "-X 0chain.net/core/build.BuildTag=${image_tag}"
+RUN go build -v -tags ${go_bls_tag} -ldflags "-X 0chain.net/core/build.BuildTag=${image_tag}"
 
 # Copy the build artifact into a minimal runtime image:
 FROM alpine:3.8
