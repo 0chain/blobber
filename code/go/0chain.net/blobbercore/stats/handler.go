@@ -138,19 +138,26 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	q := r.URL.Query()
-	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, q.Get("allocation"))
+	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, q.Get("allocation_id"))
 	ctx = datastore.GetStore().CreateTransaction(ctx)
 	db := datastore.GetStore().GetTransaction(ctx)
 	defer db.Rollback()
-	bs := LoadBlobberStats(ctx)
 	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	if len(allocationID) <= 0 {
-		return bs, nil
-	}
-	for _, allocStat := range bs.AllocationStats {
-		if allocStat.AllocationID == allocationID {
-			return allocStat, nil
+	bs := &BlobberStats{}
+	if len(allocationID) != 0 {
+		// TODO: Get only the allocation info from DB
+		bs.loadDetailedStats(ctx)
+		for _, allocStat := range bs.AllocationStats {
+			if allocStat.AllocationID == allocationID {
+				return allocStat, nil
+			}
 		}
+		return nil, common.NewError("allocation_stats_not_found", "Stats for allocation not found")
 	}
-	return nil, common.NewError("allocation_stats_not_found", "Stats for allocation not found")
+	allocations := q.Get("allocations")
+	if len(allocations) != 0 {
+		return loadAllocationList(ctx)
+	}
+	bs.loadBasicStats(ctx)
+	return bs, nil
 }
