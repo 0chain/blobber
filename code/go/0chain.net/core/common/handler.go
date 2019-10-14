@@ -73,7 +73,7 @@ func validOrigin(origin string) bool {
 	if host == "localhost" {
 		return true
 	}
-	if host == "0chain.net" || strings.HasSuffix(host, ".0chain.net") {
+	if host == "0chain.net" || strings.HasSuffix(host, "0chain.net") {
 		return true
 	}
 	return false
