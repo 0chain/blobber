@@ -76,6 +76,8 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 					db.Commit()
 					if err == nil && openchallenge.Status == Committed {
 						Logger.Info("Challenge has been submitted to blockchain", zap.Any("id", openchallenge.ChallengeID), zap.String("txn", openchallenge.CommitTxnID))
+					} else {
+						break
 					}
 				}
 			}

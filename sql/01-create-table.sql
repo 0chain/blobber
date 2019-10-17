@@ -76,6 +76,7 @@ CREATE TABLE reference_objects (
     thumbnail_size BIGINT NOT NULL DEFAULT 0,
     actual_thumbnail_size BIGINT NOT NULL DEFAULT 0,
     actual_thumbnail_hash VARCHAR(64) NOT NULL,
+    encrypted_key TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMP

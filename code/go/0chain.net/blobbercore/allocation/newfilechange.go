@@ -28,6 +28,7 @@ type NewFileChange struct {
 	ActualThumbnailSize int64  `json:"actual_thumb_size"`
 	ActualThumbnailHash string `json:"actual_thumb_hash"`
 	MimeType            string `json:"mimetype,omitempty"`
+	EncryptedKey        string `json:"encrypted_key,omitempty"`
 	CustomMeta          string `json:"custom_meta,omitempty"`
 }
 
@@ -91,6 +92,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationCh
 	newFile.ThumbnailSize = nf.ThumbnailSize
 	newFile.ActualThumbnailHash = nf.ActualThumbnailHash
 	newFile.ActualThumbnailSize = nf.ActualThumbnailSize
+	newFile.EncryptedKey = nf.EncryptedKey
 
 	dirRef.AddChild(newFile)
 	rootRef.CalculateHash(ctx, true)

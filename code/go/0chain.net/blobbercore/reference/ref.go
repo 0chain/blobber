@@ -49,6 +49,7 @@ type Ref struct {
 	ThumbnailHash       string `gorm:"column:thumbnail_hash" filelist:"thumbnail_hash"`
 	ActualThumbnailSize int64  `gorm:"column:actual_thumbnail_size" filelist:"actual_thumbnail_size"`
 	ActualThumbnailHash string `gorm:"column:actual_thumbnail_hash" filelist:"actual_thumbnail_hash"`
+	EncryptedKey        string `gorm:"column:encrypted_key" filelist:"encrypted_key"`
 	Children            []*Ref `gorm:"-"`
 	childrenLoaded      bool
 	DeletedAt           *time.Time `gorm:"column:deleted_at"`
