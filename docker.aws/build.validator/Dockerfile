@@ -1,5 +1,5 @@
 ARG image_tag
-FROM golang:1.11.4-alpine3.8 as blobber_build
+FROM golang:1.11.4-alpine3.8 as validator_build
 
 RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep
 
@@ -22,10 +22,10 @@ ENV GO111MODULE=on
 # Download the dependencies:
 # Will be cached if we don't change mod/sum files
 COPY ./code/go/0chain.net/core/go.mod          ./code/go/0chain.net/core/go.sum          $SRC_DIR/go/0chain.net/core/
-COPY ./code/go/0chain.net/blobbercore/go.mod     ./code/go/0chain.net/blobbercore/go.sum     $SRC_DIR/go/0chain.net/blobbercore/
-COPY ./code/go/0chain.net/blobber/go.mod     ./code/go/0chain.net/blobber/go.sum     $SRC_DIR/go/0chain.net/blobber/
+COPY ./code/go/0chain.net/validatorcore/go.mod     ./code/go/0chain.net/validatorcore/go.sum     $SRC_DIR/go/0chain.net/validatorcore/
+COPY ./code/go/0chain.net/validator/go.mod     ./code/go/0chain.net/validator/go.sum     $SRC_DIR/go/0chain.net/validator/
 
-WORKDIR $SRC_DIR/go/0chain.net/blobber
+WORKDIR $SRC_DIR/go/0chain.net/validator
 RUN go mod download
 
 
@@ -40,12 +40,12 @@ RUN go build -v -tags ${go_build_mode} -tags ${go_bls_tag} -ldflags "-X 0chain.n
 # Copy the build artifact into a minimal runtime image:
 FROM golang:1.11.4-alpine3.8
 RUN apk add gmp gmp-dev openssl-dev
-COPY --from=blobber_build  /usr/local/lib/libmcl*.so \
+COPY --from=validator_build  /usr/local/lib/libmcl*.so \
                         /usr/local/lib/libbls*.so \
                         /usr/local/lib/
 ENV APP_DIR=/0chain
 WORKDIR $APP_DIR
-COPY --from=blobber_build $APP_DIR/go/0chain.net/blobber/blobber $APP_DIR/bin/blobber
+COPY --from=validator_build $APP_DIR/go/0chain.net/validator/validator $APP_DIR/bin/validator
 
 #Store all files and run environment under 0chain userid.
 RUN addgroup -g 2000 -S 0chain && adduser -u 2000 -S 0chain -G 0chain

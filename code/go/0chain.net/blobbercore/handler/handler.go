@@ -3,13 +3,13 @@ package handler
 import (
 	"context"
 	"net/http"
-	"runtime/pprof"
 	"os"
+	"runtime/pprof"
 
+	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/constants"
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/stats"
-	"0chain.net/blobbercore/config"
 	"0chain.net/core/common"
 	. "0chain.net/core/logging"
 
@@ -29,7 +29,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/download/{allocation}", common.ToJSONResponse(WithConnection(DownloadHandler)))
 	r.HandleFunc("/v1/file/rename/{allocation}", common.ToJSONResponse(WithConnection(RenameHandler)))
 	r.HandleFunc("/v1/file/copy/{allocation}", common.ToJSONResponse(WithConnection(CopyHandler)))
-	
+
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithConnection(CommitHandler)))
 
 	//object info related apis
@@ -40,12 +40,13 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/objectpath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler)))
 	r.HandleFunc("/v1/file/referencepath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))
 	r.HandleFunc("/v1/file/objecttree/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ObjectTreeHandler)))
-	
+
 	//admin related
 	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
 	r.HandleFunc("/_config", common.ToJSONResponse(GetConfig))
 	r.HandleFunc("/_stats", stats.StatsHandler)
 	r.HandleFunc("/_cleanupdisk", common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))
+	r.HandleFunc("/getstats", common.ToJSONResponse(stats.GetStatsHandler))
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
@@ -69,7 +70,7 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 			}
 		}()
 		if err != nil {
-			Logger.Error("Error in handling the request." + err.Error() )
+			Logger.Error("Error in handling the request." + err.Error())
 			return res, err
 		}
 		err = GetMetaDataStore().GetTransaction(ctx).Commit().Error

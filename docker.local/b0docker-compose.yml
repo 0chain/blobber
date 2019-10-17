@@ -37,11 +37,12 @@ services:
      - ./keys_config:/blobber/keysconfig
     ports:
       - "506${BLOBBER}:506${BLOBBER}"
-    command: ./bin/validator --port 506${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --nodes_file b0single_machine_3_nodes --log_dir /blobber/log
+    command: ./bin/validator --port 506${BLOBBER} --hostname 198.18.0.6${BLOBBER} --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --nodes_file b0single_machine_3_nodes --log_dir /blobber/log
     networks:
       default:
       testnet0:
         ipv4_address: 198.18.0.6${BLOBBER}
+
   blobber:
     build: 
       context: ../
@@ -72,6 +73,7 @@ networks:
     driver: bridge
   testnet0:
     external: true
+
 volumes:
   data:
   config:
