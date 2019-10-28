@@ -52,62 +52,65 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 			rctx := datastore.GetStore().CreateTransaction(ctx)
 			db := datastore.GetStore().GetTransaction(rctx)
 			//lastChallengeRedeemed := &ChallengeEntity{}
-			rows, _ := db.Table("challenges").Select("commit_txn_id, sequence"). Where(ChallengeEntity{Status: Committed}).Order("sequence desc").Limit(1).Rows()
-			lastSeq := 0
-			lastCommitTxn := ""
-			for rows.Next() {
-				rows.Scan(&lastCommitTxn, &lastSeq)
-			}
-			
-			openchallenges := make([]*ChallengeEntity, 0)
-			db.Where(ChallengeEntity{Status: Processed}).Where("sequence > ?", lastSeq).Order("sequence").Find(&openchallenges)
-			if len(openchallenges) > 0 {
-				for _, openchallenge := range openchallenges {
-					openchallenge.UnmarshalFields()
-					mutex := lock.GetMutex(openchallenge.TableName(), openchallenge.ChallengeID)
+			rows, err := db.Table("challenges").Select("commit_txn_id, sequence"). Where(ChallengeEntity{Status: Committed}).Order("sequence desc").Limit(1).Rows()
+			if rows != nil && err == nil {
+				lastSeq := 0
+				lastCommitTxn := ""
+				for rows.Next() {
+					rows.Scan(&lastCommitTxn, &lastSeq)
+				}
+				
+				openchallenges := make([]*ChallengeEntity, 0)
+				db.Where(ChallengeEntity{Status: Processed}).Where("sequence > ?", lastSeq).Order("sequence").Find(&openchallenges)
+				if len(openchallenges) > 0 {
+					for _, openchallenge := range openchallenges {
+						openchallenge.UnmarshalFields()
+						mutex := lock.GetMutex(openchallenge.TableName(), openchallenge.ChallengeID)
+						mutex.Lock()
+						redeemCtx := datastore.GetStore().CreateTransaction(ctx)
+						err := openchallenge.CommitChallenge(redeemCtx, false)
+						if err != nil {
+							Logger.Error("Error committing to blockchain", zap.Error(err), zap.String("challenge_id", openchallenge.ChallengeID))
+						}
+						mutex.Unlock()
+						db := datastore.GetStore().GetTransaction(redeemCtx)
+						db.Commit()
+						if err == nil && openchallenge.Status == Committed {
+							Logger.Info("Challenge has been submitted to blockchain", zap.Any("id", openchallenge.ChallengeID), zap.String("txn", openchallenge.CommitTxnID))
+						} else {
+							break
+						}
+					}
+				}
+				db.Rollback()
+				rctx.Done()
+	
+				rctx = datastore.GetStore().CreateTransaction(ctx)
+				db = datastore.GetStore().GetTransaction(rctx)
+				toBeVerifiedChallenges := make([]*ChallengeEntity, 0)
+				//commit challenges on local state for all challenges that have missed the commit txn from blockchain
+				db.Where(ChallengeEntity{Status: Processed}).Where("sequence < ?", lastSeq).Find(&toBeVerifiedChallenges)
+				for _, toBeVerifiedChallenge := range toBeVerifiedChallenges {
+					toBeVerifiedChallenge.UnmarshalFields()
+					mutex := lock.GetMutex(toBeVerifiedChallenge.TableName(), toBeVerifiedChallenge.ChallengeID)
 					mutex.Lock()
 					redeemCtx := datastore.GetStore().CreateTransaction(ctx)
-					err := openchallenge.CommitChallenge(redeemCtx, false)
+					err := toBeVerifiedChallenge.CommitChallenge(redeemCtx, true)
 					if err != nil {
-						Logger.Error("Error committing to blockchain", zap.Error(err), zap.String("challenge_id", openchallenge.ChallengeID))
+						Logger.Error("Error committing to blockchain", zap.Error(err), zap.String("challenge_id", toBeVerifiedChallenge.ChallengeID))
 					}
 					mutex.Unlock()
 					db := datastore.GetStore().GetTransaction(redeemCtx)
 					db.Commit()
-					if err == nil && openchallenge.Status == Committed {
-						Logger.Info("Challenge has been submitted to blockchain", zap.Any("id", openchallenge.ChallengeID), zap.String("txn", openchallenge.CommitTxnID))
-					} else {
-						break
+					if err == nil && toBeVerifiedChallenge.Status == Committed {
+						Logger.Info("Challenge has been submitted to blockchain", zap.Any("id", toBeVerifiedChallenge.ChallengeID), zap.String("txn", toBeVerifiedChallenge.CommitTxnID))
 					}
 				}
-			}
-			db.Rollback()
-			rctx.Done()
-
-			rctx = datastore.GetStore().CreateTransaction(ctx)
-			db = datastore.GetStore().GetTransaction(rctx)
-			toBeVerifiedChallenges := make([]*ChallengeEntity, 0)
-			//commit challenges on local state for all challenges that have missed the commit txn from blockchain
-			db.Where(ChallengeEntity{Status: Processed}).Where("sequence < ?", lastSeq).Find(&toBeVerifiedChallenges)
-			for _, toBeVerifiedChallenge := range toBeVerifiedChallenges {
-				toBeVerifiedChallenge.UnmarshalFields()
-				mutex := lock.GetMutex(toBeVerifiedChallenge.TableName(), toBeVerifiedChallenge.ChallengeID)
-				mutex.Lock()
-				redeemCtx := datastore.GetStore().CreateTransaction(ctx)
-				err := toBeVerifiedChallenge.CommitChallenge(redeemCtx, true)
-				if err != nil {
-					Logger.Error("Error committing to blockchain", zap.Error(err), zap.String("challenge_id", toBeVerifiedChallenge.ChallengeID))
-				}
-				mutex.Unlock()
-				db := datastore.GetStore().GetTransaction(redeemCtx)
-				db.Commit()
-				if err == nil && toBeVerifiedChallenge.Status == Committed {
-					Logger.Info("Challenge has been submitted to blockchain", zap.Any("id", toBeVerifiedChallenge.ChallengeID), zap.String("txn", toBeVerifiedChallenge.CommitTxnID))
-				}
-			}
-			db.Rollback()
-			rctx.Done()
-			
+				db.Rollback()
+				rctx.Done()
+			} else {
+				Logger.Error("Error in getting the challenges for blockchain processing.", zap.Error(err))
+			}	
 		}
 		time.Sleep(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
 	}
