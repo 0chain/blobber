@@ -28,7 +28,7 @@ $ ./docker.local/bin/build.blobber.sh
 ```
 2) After building the container for blobber, go to Blobber1 directory (git/blobber/docker.local/blobber1) and run the container using
 ```
-$ ../bin/blobber.start.sh
+$ ../bin/blobber.start_bls.sh
 ```
 
 ## Troubleshooting
