@@ -213,7 +213,7 @@ func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *F
 	return returnBytes, mt, nil
 }
 
-func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64) (json.RawMessage, error) {
+func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) (json.RawMessage, error) {
 	allocation, err := fs.setupAllocation(allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())

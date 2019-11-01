@@ -59,12 +59,22 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (*
 
 	blockNumStr := r.FormValue("block_num")
 	if len(blockNumStr) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
+		return nil, common.NewError("invalid_parameters", "No block number")
 	}
 
 	blockNum, err := strconv.ParseInt(blockNumStr, 10, 64)
 	if err != nil || blockNum < 0 {
 		return nil, common.NewError("invalid_parameters", "Invalid block number")
+	}
+
+	numBlocksStr := r.FormValue("num_blocks")
+	if len(numBlocksStr) == 0 {
+		numBlocksStr = "1"
+	}
+
+	numBlocks, err := strconv.ParseInt(numBlocksStr, 10, 64)
+	if err != nil || numBlocks < 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid number of blocks")
 	}
 
 	readMarkerString := r.FormValue("read_marker")
@@ -109,7 +119,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (*
 		return nil, common.NewError("read_marker_db_error", "Could not read from DB. "+err.Error())
 	}
 
-	if latestRM != nil && latestRM.ReadCounter+1 != readMarker.ReadCounter {
+	if latestRM != nil && latestRM.ReadCounter+(numBlocks) != readMarker.ReadCounter {
 		//return nil, common.NewError("invalid_parameters", "Invalid read marker. Read counter was not for one block")
 		response := &DownloadResponse{}
 		response.Success = false
@@ -126,7 +136,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (*
 		fileData.Name = fileref.Name
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ThumbnailHash
-		respData, err = filestore.GetFileStore().GetFileBlock(allocationID, fileData, blockNum)
+		respData, err = filestore.GetFileStore().GetFileBlock(allocationID, fileData, blockNum, numBlocks)
 		if err != nil {
 			return nil, err
 		}
@@ -135,7 +145,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (*
 		fileData.Name = fileref.Name
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ContentHash
-		respData, err = filestore.GetFileStore().GetFileBlock(allocationID, fileData, blockNum)
+		respData, err = filestore.GetFileStore().GetFileBlock(allocationID, fileData, blockNum, numBlocks)
 		if err != nil {
 			return nil, err
 		}
