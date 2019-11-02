@@ -242,7 +242,7 @@ func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData
 	if blockNum > maxBlockNum || blockNum < 1 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number")
 	}
-	buffer := make([]byte, CHUNK_SIZE)
+	buffer := make([]byte, CHUNK_SIZE * numBlocks)
 	n, err := file.ReadAt(buffer, ((blockNum - 1) * CHUNK_SIZE))
 	if err != nil && err != io.EOF {
 		return nil, err
