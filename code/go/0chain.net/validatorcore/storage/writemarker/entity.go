@@ -48,7 +48,7 @@ func (wm *WriteMarker) Verify(allocationID string, allocationRoot string, client
 	}
 
 	if wm.AllocationRoot != allocationRoot {
-		return common.NewError("challenge_validation_failed", "Invalid write marker. Allocation root mismatch")
+		return common.NewError("challenge_validation_failed", "Invalid write marker. Allocation root mismatch. Got "+wm.AllocationID+" expected: "+allocationID)
 	}
 	clientKeyBytes, _ := hex.DecodeString(clientPublicKey)
 	if wm.ClientID != encryption.Hash(clientKeyBytes) {
