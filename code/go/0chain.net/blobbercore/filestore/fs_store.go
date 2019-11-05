@@ -12,6 +12,7 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"sync"
 
 	. "0chain.net/core/logging"
 	"go.uber.org/zap"
@@ -242,13 +243,41 @@ func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData
 	if blockNum > maxBlockNum || blockNum < 1 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number")
 	}
-	buffer := make([]byte, CHUNK_SIZE * numBlocks)
-	n, err := file.ReadAt(buffer, ((blockNum - 1) * CHUNK_SIZE))
-	if err != nil && err != io.EOF {
-		return nil, err
+	startOffset := (blockNum - 1)
+	endOffset := (blockNum - 1) + numBlocks
+	if endOffset > maxBlockNum {
+		endOffset = maxBlockNum
 	}
+	var wg sync.WaitGroup
+	wg.Add(int(endOffset - startOffset))
+	retData := make([][]byte, int(endOffset - startOffset))
+	errs := make([]error, int(endOffset - startOffset))
+	for i:= startOffset; i < endOffset; i++ {
+		go func(offset int64) {
+			defer wg.Done()
+			buffer := make([]byte, CHUNK_SIZE)
+			n, err := file.ReadAt(buffer, (((blockNum - 1) + offset) * CHUNK_SIZE))
+			if err != nil && err != io.EOF {
+				errs[offset] = err
+			}
+			retData[offset] = buffer[:n]
+		}(i)
+	}
+	wg.Wait()
+	result := make([]byte, 0)
+	for i:= startOffset; i < endOffset; i++ {
+		if errs[i] != nil {
+			return nil, errs[i]
+		}
+		result = append(result, retData[i]...)
+	}
+	// buffer := make([]byte, CHUNK_SIZE * numBlocks)
+	// n, err := file.ReadAt(buffer, ((blockNum - 1) * CHUNK_SIZE))
+	// if err != nil && err != io.EOF {
+	// 	return nil, err
+	// }
 
-	return buffer[:n], nil
+	return result, nil
 }
 
 func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error {
