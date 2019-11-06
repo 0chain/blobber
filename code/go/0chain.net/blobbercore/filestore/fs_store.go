@@ -256,20 +256,20 @@ func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData
 		go func(offset int64) {
 			defer wg.Done()
 			buffer := make([]byte, CHUNK_SIZE)
-			n, err := file.ReadAt(buffer, (offset * CHUNK_SIZE))
+			n, err := file.ReadAt(buffer, (((blockNum - 1) + offset) * CHUNK_SIZE))
 			if err != nil && err != io.EOF {
-				errs[offset - startOffset] = err
+				errs[offset] = err
 			}
-			retData[offset - startOffset] = buffer[:n]
+			retData[offset] = buffer[:n]
 		}(i)
 	}
 	wg.Wait()
 	result := make([]byte, 0)
 	for i:= startOffset; i < endOffset; i++ {
-		if errs[i-startOffset] != nil {
-			return nil, errs[i-startOffset]
+		if errs[i] != nil {
+			return nil, errs[i]
 		}
-		result = append(result, retData[i-startOffset]...)
+		result = append(result, retData[i]...)
 	}
 	// buffer := make([]byte, CHUNK_SIZE * numBlocks)
 	// n, err := file.ReadAt(buffer, ((blockNum - 1) * CHUNK_SIZE))
