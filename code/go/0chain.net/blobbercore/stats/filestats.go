@@ -40,10 +40,10 @@ func FileUpdated(ctx context.Context, refID int64) {
 	db.Model(stats).Where(stats).Update("num_of_updates", gorm.Expr("num_of_updates + ?", 1))
 }
 
-func FileBlockDownloaded(ctx context.Context, refID int64, numBlocks int64) {
+func FileBlockDownloaded(ctx context.Context, refID int64) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
-	db.Model(stats).Where(FileStats{RefID: refID}).Update("num_of_block_downloads", gorm.Expr("num_of_block_downloads + ?", numBlocks))
+	db.Model(stats).Where(FileStats{RefID: refID}).Update("num_of_block_downloads", gorm.Expr("num_of_block_downloads + ?", 1))
 }
 
 func GetFileStats(ctx context.Context, refID int64) (*FileStats, error) {

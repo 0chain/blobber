@@ -164,7 +164,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (*
 	response.Path = fileref.Path
 	response.AllocationID = fileref.AllocationID
 	
-	stats.FileBlockDownloaded(ctx,fileref.ID, numBlocks)
+	stats.FileBlockDownloaded(ctx,fileref.ID)
 	return response, nil
 }
 
