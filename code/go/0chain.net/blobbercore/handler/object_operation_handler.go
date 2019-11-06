@@ -26,7 +26,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (*DownloadResponse, error) {
+func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (interface{}, error) {
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
@@ -165,7 +165,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (*
 	response.AllocationID = fileref.AllocationID
 	
 	stats.FileBlockDownloaded(ctx,fileref.ID)
-	return response, nil
+	return respData, nil
 }
 
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*CommitResult, error) {
