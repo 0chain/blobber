@@ -151,8 +151,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		}
 	}
 
-	
-
 	err = readmarker.SaveLatestReadMarker(ctx, readMarker, latestRM == nil)
 	if err != nil {
 		return nil, err

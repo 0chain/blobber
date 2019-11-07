@@ -121,14 +121,14 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 
 		} else {
 			if data != nil {
-				w.Header().Set("Content-Type", "application/octet-stream")
 				//json.NewEncoder(w).Encode(data)
 				rawdata, ok := data.([]byte)
 				if ok {
+					w.Header().Set("Content-Type", "application/octet-stream")
 					w.Write(rawdata)
-
 				} else {
-					http.Error(w, "Invalid response from API", 400)
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(data)
 				}
 			}
 		}
