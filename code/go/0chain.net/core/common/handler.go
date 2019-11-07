@@ -126,8 +126,10 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 				rawdata, ok := data.([]byte)
 				if ok {
 					w.Write(rawdata)
+
+				} else {
+					http.Error(w, "Invalid response from API", 400)
 				}
-				http.Error(w, "Invalid response from API", 400)
 			}
 		}
 	}
