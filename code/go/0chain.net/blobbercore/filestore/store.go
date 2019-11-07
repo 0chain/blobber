@@ -28,7 +28,7 @@ type FileObjectHandler func(contentHash string, contentSize int64)
 type FileStore interface {
 	WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
 	DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
-	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) (json.RawMessage, error)
+	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
 	CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error)
 	//GetMerkleTreeForFile(allocationID string, fileData *FileInputData) (util.MerkleTreeI, error)
 	GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error)
