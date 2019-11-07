@@ -101,6 +101,38 @@ func SetupCORSResponse(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type")
 }
 
+func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !CheckCrossOrigin(w, r) {
+			return
+		}
+		ctx := r.Context()
+		data, err := handler(ctx, r)
+		if err != nil {
+			if cerr, ok := err.(*Error); ok {
+				w.Header().Set(AppErrorHeader, cerr.Code)
+			}
+			if data != nil {
+				responseString, _ := json.Marshal(data)
+				http.Error(w, string(responseString), 400)
+			} else {
+				http.Error(w, err.Error(), 400)
+			}
+
+		} else {
+			if data != nil {
+				w.Header().Set("Content-Type", "application/octet-stream")
+				//json.NewEncoder(w).Encode(data)
+				rawdata, ok := data.([]byte)
+				if ok {
+					w.Write(rawdata)
+				}
+				http.Error(w, "Invalid response from API", 400)
+			}
+		}
+	}
+}
+
 /*ToJSONResponse - An adapter that takes a handler of the form
 * func AHandler(r *http.Request) (interface{}, error)
 * which takes a request object, processes and returns an object or an error
