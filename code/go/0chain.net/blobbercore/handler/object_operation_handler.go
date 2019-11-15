@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"path/filepath"
 
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/constants"
@@ -432,8 +433,13 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
+	newPath := filepath.Join(destPath, objectRef.Name)
+	destRef, _ := reference.GetReference(ctx, allocationID, newPath)
+	if destRef != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
+	}
 
-	destRef, err := reference.GetReference(ctx, allocationID, destPath)
+	destRef, err = reference.GetReference(ctx, allocationID, destPath)
 	if err != nil || destRef.Type != reference.DIRECTORY {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 	}
