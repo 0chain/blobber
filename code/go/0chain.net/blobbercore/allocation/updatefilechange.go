@@ -72,6 +72,8 @@ func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	existingRef.ThumbnailSize = nf.ThumbnailSize
 	existingRef.ActualThumbnailHash = nf.ActualThumbnailHash
 	existingRef.ActualThumbnailSize = nf.ActualThumbnailSize
+	existingRef.EncryptedKey = nf.EncryptedKey
+	
 	_, err = rootRef.CalculateHash(ctx, true)
 	stats.FileUpdated(ctx, existingRef.ID)
 	return rootRef, err
