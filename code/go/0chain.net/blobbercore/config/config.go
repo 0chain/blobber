@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 
 	"0chain.net/core/config"
 	"github.com/spf13/viper"
@@ -28,6 +29,9 @@ func SetupDefaultConfig() {
 
 /*SetupConfig - setup the configuration system */
 func SetupConfig() {
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+	viper.AutomaticEnv()
 	viper.SetConfigName("0chain_blobber")
 	viper.AddConfigPath("./config")
 	err := viper.ReadInConfig() // Find and read the config file
