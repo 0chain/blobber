@@ -7,6 +7,9 @@ echo "${organisation:-0chaintest}/${ZCB}:$TAG"
 
 REGISTRY_BLOBBER="${organisation:-0chaintest}/${ZCB}"
 EGISTRY_VALIDATOR="${organisation:-0chaintest}/${ZCB}"
+if [[ $? -ne 0 ]]; then
+  docker login
+fi
 
 if [ -n "$TAG" ]; then
 echo " $TAG is the tage name provided"
