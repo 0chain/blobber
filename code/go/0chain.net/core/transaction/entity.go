@@ -119,7 +119,15 @@ func (t *Transaction) Verify() error {
 
 	err = json.Unmarshal(objmap["txn"], t)
 	if err != nil {
-		return common.NewError("transaction_verify_error", "Error unmarshaling verify output. "+err.Error())
+		var confirmation map[string]json.RawMessage
+		err = json.Unmarshal(objmap["confirmation"], &confirmation)
+		if err != nil {
+			return common.NewError("transaction_verify_error", "Error unmarshaling verify output. "+err.Error())
+		}
+		err = json.Unmarshal(confirmation["txn"], t)
+		if err != nil {
+			return common.NewError("transaction_verify_error", "Error unmarshaling verify output. "+err.Error())
+		}
 	}
 	return nil
 }
