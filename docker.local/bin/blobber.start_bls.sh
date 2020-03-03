@@ -8,4 +8,4 @@ echo Starting blobber$BLOBBER_ID ...
 
 # echo blobber$i
 
-BLOBBER=$BLOBBER_ID docker-compose -p blobber$BLOBBER_ID -f ../b0docker-compose.yml up -d
+BLOBBER=$BLOBBER_ID docker-compose -p blobber$BLOBBER_ID -f ../b0docker-compose.yml up

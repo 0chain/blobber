@@ -10,6 +10,8 @@ do
 	sleep 1
 done
 
+export PGPASSWORD="$POSTGRES_PASSWORD"
+
 for f in /blobber/sql/*; do
 	case "$f" in
 		*.sh)     echo "$0: running $f"; . "$f" ;;
