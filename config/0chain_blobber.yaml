@@ -4,7 +4,24 @@ logging:
   level: "info"
   console: false # printing log to console is only supported in development mode
 
-capacity: 1099511627776
+          
+capacity: 107374182400 # 100 GB bytes total blobber capacity
+read_price: 0.01       # token / GB for reading
+write_price: 1.00      # token / GB for writing
+# min_lock_demand is value in [0; 1] range; it represents number of tokens the
+# blobber earned even if a user will not read or write something
+# to an allocation; the number of tokens will be calculated by the following
+# formula
+#
+#     allocation_size * write_price * min_lock_demand
+#
+min_lock_demand: 0.1
+# max_offer_duration restrict long contacts where,
+# in the future, prices can be changed
+max_offer_duration: 744h # 31 day
+challenge_completion_time: 15m # duration to complete a challenge
+
+
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
   owner: "edb90b850f2e7e7cbd0a1fa370fdcc5cd378ffbec95363a7bc0e5a98b8ba5759"

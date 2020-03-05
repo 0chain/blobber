@@ -1,11 +1,12 @@
 package handler
 
 import (
-	"sync"
 	"context"
 	"encoding/json"
+	"sync"
 	"time"
 
+	"0chain.net/blobbercore/config"
 	. "0chain.net/core/logging"
 	"0chain.net/core/node"
 	"0chain.net/core/transaction"
@@ -15,7 +16,7 @@ import (
 )
 
 type WalletCallback struct {
-	wg *sync.WaitGroup
+	wg  *sync.WaitGroup
 	err string
 }
 
@@ -33,7 +34,7 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	txn, err := transaction.NewTransactionEntity()
@@ -44,6 +45,12 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 	sn := &transaction.StorageNode{}
 	sn.ID = node.Self.GetKey()
 	sn.BaseURL = node.Self.GetURLBase()
+	sn.Capacity = config.Configuration.Capacity
+	sn.Terms.ReadPrice = zcncore.ConvertToValue(config.Configuration.ReadPrice)
+	sn.Terms.WritePrice = zcncore.ConvertToValue(config.Configuration.WritePrice)
+	sn.Terms.MinLockDemand = config.Configuration.MinLockDemand
+	sn.Terms.MaxOfferDuration = config.Configuration.MaxOfferDuration
+	sn.Terms.ChallengeCompletionTime = config.Configuration.ChallengeCompletionTime
 
 	snBytes, err := json.Marshal(sn)
 	if err != nil {
@@ -55,6 +62,6 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 		Logger.Info("Failed during registering blobber to the mining network", zap.String("err:", err.Error()))
 		return "", err
 	}
-	
+
 	return txn.Hash, nil
 }
