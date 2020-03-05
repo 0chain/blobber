@@ -6,7 +6,7 @@ read -p "Provide the github organisation name[default:-0chaintest]: " organisati
 echo "${organisation:-0chaintest}/${ZCB}:$TAG"
 
 REGISTRY_BLOBBER="${organisation:-0chaintest}/${ZCB}"
-EGISTRY_VALIDATOR="${organisation:-0chaintest}/${ZCB}"
+EGISTRY_VALIDATOR="${organisation:-0chaintest}/${ZCV}"
 if [[ $? -ne 0 ]]; then
   docker login
 fi
