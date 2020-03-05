@@ -28,11 +28,11 @@ import (
 	"0chain.net/core/transaction"
 	"0chain.net/core/util"
 
+	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"github.com/0chain/gosdk/zcncore"
 )
 
 //var BLOBBER_REGISTERED_LOOKUP_KEY = datastore.ToKey("blobber_registration")
@@ -306,6 +306,7 @@ func RegisterBlobber() {
 				//badgerdbstore.GetStorageProvider().WriteBytes(ctx, BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
 				//badgerdbstore.GetStorageProvider().Commit(ctx)
 				SetupWorkers()
+				go BlobberHealthCheck()
 				return
 			}
 			verifyRetries++
@@ -314,6 +315,31 @@ func RegisterBlobber() {
 		if !txnVerified {
 			Logger.Error("Add blobber transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txnHash))
 		}
+	}
+}
+
+func BlobberHealthCheck() {
+	const HEALTH_CHECK_TIMER = 60 * 15 // 15 Minutes
+	for {
+		txnHash, err := handler.BlobberHealthCheck(common.GetRootContext())
+		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+		txnVerified := false
+		verifyRetries := 0
+		for verifyRetries < util.MAX_RETRIES {
+			time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
+			if err == nil {
+				txnVerified = true
+				Logger.Info("Transaction for blobber health check verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+				break
+			}
+			verifyRetries++
+		}
+
+		if !txnVerified {
+			Logger.Error("Blobber health check transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txnHash))
+		}
+		time.Sleep(HEALTH_CHECK_TIMER * time.Second)
 	}
 }
 

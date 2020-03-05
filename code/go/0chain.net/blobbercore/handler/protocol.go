@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"sync"
 	"context"
 	"encoding/json"
+	"sync"
 	"time"
 
 	. "0chain.net/core/logging"
@@ -15,7 +15,7 @@ import (
 )
 
 type WalletCallback struct {
-	wg *sync.WaitGroup
+	wg  *sync.WaitGroup
 	err string
 }
 
@@ -33,7 +33,7 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	txn, err := transaction.NewTransactionEntity()
@@ -55,6 +55,30 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 		Logger.Info("Failed during registering blobber to the mining network", zap.String("err:", err.Error()))
 		return "", err
 	}
-	
+
+	return txn.Hash, nil
+}
+
+func BlobberHealthCheck(ctx context.Context) (string, error) {
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return "", err
+	}
+
+	sn := &transaction.StorageNode{}
+	sn.ID = node.Self.GetKey()
+	sn.BaseURL = node.Self.GetURLBase()
+
+	snBytes, err := json.Marshal(sn)
+	if err != nil {
+		return "", err
+	}
+	Logger.Info("Blobber health check to the blockchain.")
+	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.BLOBBER_HEALTH_CHECK, string(snBytes), 0)
+	if err != nil {
+		Logger.Info("Failed during blobber health check to the mining network", zap.String("err:", err.Error()))
+		return "", err
+	}
+
 	return txn.Hash, nil
 }
