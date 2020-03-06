@@ -71,6 +71,13 @@ func SetupWorkerConfig() {
 	config.Configuration.DBPort = viper.GetString("db.port")
 	config.Configuration.DBUserName = viper.GetString("db.user")
 	config.Configuration.DBPassword = viper.GetString("db.password")
+
+	config.Configuration.Capacity = viper.GetInt64("capacity")
+	config.Configuration.ReadPrice = viper.GetFloat64("read_price")
+	config.Configuration.WritePrice = viper.GetFloat64("write_price")
+	config.Configuration.MinLockDemand = viper.GetFloat64("min_lock_demand")
+	config.Configuration.MaxOfferDuration = viper.GetDuration("max_offer_duration")
+	config.Configuration.ChallengeCompletionTime = viper.GetDuration("challenge_completion_time")
 }
 
 func SetupWorkers() {

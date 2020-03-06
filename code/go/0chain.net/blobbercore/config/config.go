@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"0chain.net/core/config"
 	"github.com/spf13/viper"
@@ -25,6 +26,11 @@ func SetupDefaultConfig() {
 	viper.SetDefault("challenge_response.max_retries", 10)
 
 	viper.SetDefault("capacity", -1)
+	viper.SetDefault("read_price", 0.0)
+	viper.SetDefault("write_price", 0.0)
+	viper.SetDefault("min_lock_demand", 0.0)
+	viper.SetDefault("max_offer_duration", time.Duration(0))
+	viper.SetDefault("challenge_completion_time", time.Duration(-1))
 }
 
 /*SetupConfig - setup the configuration system */
@@ -67,6 +73,12 @@ type Config struct {
 	ChallengeMaxRetires           int
 	TempFilesCleanupFreq          int64
 	TempFilesCleanupNumWorkers    int
+
+	ReadPrice               float64
+	WritePrice              float64
+	MinLockDemand           float64
+	MaxOfferDuration        time.Duration
+	ChallengeCompletionTime time.Duration
 }
 
 /*Configuration of the system */

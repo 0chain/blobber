@@ -3,6 +3,7 @@ package transaction
 import (
 	"encoding/json"
 	"sync"
+	"time"
 
 	"github.com/0chain/gosdk/zcncore"
 
@@ -35,9 +36,30 @@ type SmartContractTxnData struct {
 	InputArgs interface{} `json:"input"`
 }
 
+// Terms represents Blobber terms. A Blobber can update its terms,
+// but any existing offer will use terms of offer signing time.
+type Terms struct {
+	// ReadPrice is price for reading. Token / GB.
+	ReadPrice int64 `json:"read_price"`
+	// WritePrice is price for reading. Token / GB. Also,
+	// it used to calculate min_lock_demand value.
+	WritePrice int64 `json:"write_price"`
+	// MinLockDemand in number in [0; 1] range. It represents part of
+	// allocation should be locked for the blobber rewards even if
+	// user never write something to the blobber.
+	MinLockDemand float64 `json:"min_lock_demand"`
+	// MaxOfferDuration with this prices and the demand.
+	MaxOfferDuration time.Duration `json:"max_offer_duration"`
+	// ChallengeCompletionTime is duration required to complete a
+	// challenge.
+	ChallengeCompletionTime time.Duration `json:"challenge_completion_time"`
+}
+
 type StorageNode struct {
 	ID        string `json:"id"`
 	BaseURL   string `json:"url"`
+	Terms     Terms  `json:"terms"`
+	Capacity  int64  `json:"capacity"`
 	PublicKey string `json:"-"`
 }
 

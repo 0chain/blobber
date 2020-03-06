@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"0chain.net/blobbercore/config"
 	. "0chain.net/core/logging"
 	"0chain.net/core/node"
 	"0chain.net/core/transaction"
@@ -44,6 +45,12 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 	sn := &transaction.StorageNode{}
 	sn.ID = node.Self.GetKey()
 	sn.BaseURL = node.Self.GetURLBase()
+	sn.Capacity = config.Configuration.Capacity
+	sn.Terms.ReadPrice = zcncore.ConvertToValue(config.Configuration.ReadPrice)
+	sn.Terms.WritePrice = zcncore.ConvertToValue(config.Configuration.WritePrice)
+	sn.Terms.MinLockDemand = config.Configuration.MinLockDemand
+	sn.Terms.MaxOfferDuration = config.Configuration.MaxOfferDuration
+	sn.Terms.ChallengeCompletionTime = config.Configuration.ChallengeCompletionTime
 
 	snBytes, err := json.Marshal(sn)
 	if err != nil {
