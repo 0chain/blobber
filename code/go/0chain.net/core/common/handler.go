@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
 )
@@ -60,52 +59,8 @@ func getContext(r *http.Request) (context.Context, error) {
 
 var domainRE = regexp.MustCompile(`^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)`)
 
-func getHost(origin string) (string, error) {
-	url, err := url.Parse(origin)
-	return url.Hostname(), err
-}
-
-func validOrigin(origin string) bool {
-	host, err := getHost(origin)
-	if err != nil {
-		return false
-	}
-	if host == "localhost" || strings.HasPrefix(host, "file") {
-		return true
-	}
-	if host == "0chain.net" ||
-		strings.HasSuffix(host, ".0chain.net") ||
-		strings.HasSuffix(host, ".alphanet-0chain.net") ||
-		strings.HasSuffix(host, ".testnet-0chain.net") ||
-		strings.HasSuffix(host, ".devnet-0chain.net") ||
-		strings.HasSuffix(host, ".mainnet-0chain.net") {
-		return true
-	}
-	return false
-}
-
-func CheckCrossOrigin(w http.ResponseWriter, r *http.Request) bool {
-	origin := r.Header.Get("Origin")
-	if origin == "" {
-		return true
-	}
-	if validOrigin(origin) {
-		w.Header().Set("Access-Control-Allow-Origin", origin)
-		return true
-	}
-	return false
-}
-
-func SetupCORSResponse(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type")
-}
-
 func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !CheckCrossOrigin(w, r) {
-			return
-		}
 		ctx := r.Context()
 		data, err := handler(ctx, r)
 		if err != nil {
@@ -142,9 +97,6 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
  */
 func ToJSONResponse(handler JSONResponderF) ReqRespHandlerf {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !CheckCrossOrigin(w, r) {
-			return
-		}
 		ctx := r.Context()
 		data, err := handler(ctx, r)
 		Respond(w, data, err)
@@ -158,9 +110,6 @@ func ToJSONResponse(handler JSONResponderF) ReqRespHandlerf {
  */
 func ToJSONReqResponse(handler JSONReqResponderF) ReqRespHandlerf {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !CheckCrossOrigin(w, r) {
-			return
-		}
 		contentType := r.Header.Get("Content-type")
 		if !strings.HasPrefix(contentType, "application/json") {
 			http.Error(w, "Header Content-type=application/json not found", 400)

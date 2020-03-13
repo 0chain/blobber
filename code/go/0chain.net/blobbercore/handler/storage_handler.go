@@ -1,12 +1,12 @@
 package handler
 
 import (
-	"strings"
 	"0chain.net/blobbercore/stats"
 	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/constants"
@@ -20,10 +20,9 @@ import (
 
 const FORM_FILE_PARSE_MAX_MEMORY = 10 * 1024 * 1024
 const (
-	DOWNLOAD_CONTENT_FULL = "full"
+	DOWNLOAD_CONTENT_FULL  = "full"
 	DOWNLOAD_CONTENT_THUMB = "thumbnail"
 )
-
 
 type StorageHandler struct {
 }
@@ -58,12 +57,11 @@ func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, r *http.Request
 		if err != nil {
 			return false, err
 		}
-		if refRequested.ParentPath != authTokenRef.Path && !strings.HasPrefix(refRequested.ParentPath, authTokenRef.Path + "/") {
+		if refRequested.ParentPath != authTokenRef.Path && !strings.HasPrefix(refRequested.ParentPath, authTokenRef.Path+"/") {
 			return false, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
 		}
 	}
-	
-	
+
 	return true, nil
 }
 
@@ -156,7 +154,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID{
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
@@ -197,8 +195,8 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	return result, nil
 }
 
-
 func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*ListResult, error) {
+
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
@@ -277,8 +275,8 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
-	
-	var paths []string 
+
+	var paths []string
 	pathsString := r.FormValue("paths")
 	if len(pathsString) == 0 {
 		path := r.FormValue("path")
@@ -292,7 +290,7 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 			return nil, common.NewError("invalid_parameters", "Invalid path array json")
 		}
 	}
-	
+
 	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
 	if err != nil {
 		return nil, err
@@ -442,4 +440,3 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	}
 	return &refPathResult, nil
 }
-

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"runtime"
 	"strconv"
@@ -150,6 +151,26 @@ func processBlockChainConfig(nodesFileName string) {
 	}
 }
 
+func isValidOrigin(origin string) bool {
+	var url, err = url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	var host = url.Hostname()
+	if host == "localhost" {
+		return true
+	}
+	if host == "0chain.net" ||
+		strings.HasSuffix(host, ".0chain.net") ||
+		strings.HasSuffix(host, ".alphanet-0chain.net") ||
+		strings.HasSuffix(host, ".testnet-0chain.net") ||
+		strings.HasSuffix(host, ".devnet-0chain.net") ||
+		strings.HasSuffix(host, ".mainnet-0chain.net") {
+		return true
+	}
+	return false
+}
+
 func main() {
 	deploymentMode := flag.Int("deployment_mode", 2, "deployment_mode")
 	nodesFile := flag.String("nodes_file", "", "nodes_file")
@@ -260,11 +281,23 @@ func main() {
 		mode = "test net"
 	}
 	Logger.Info("Starting blobber", zap.Int("available_cpus", runtime.NumCPU()), zap.String("port", *portString), zap.String("chain_id", config.GetServerChainID()), zap.String("mode", mode))
+
 	var server *http.Server
+
+	// setup CORS
 	r := mux.NewRouter()
-	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
-	originsOk := handlers.AllowedOrigins([]string{"*"})
-	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+
+	headersOk := handlers.AllowedHeaders([]string{
+		"X-Requested-With", "X-App-Client-ID",
+		"X-App-Client-Key", "Content-Type",
+	})
+	originsOk := handlers.AllowedOriginValidator(isValidOrigin)
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT",
+		"DELETE", "OPTIONS"})
+
+	initHandlers(r)
+	initServer()
+
 	rHandler := handlers.CORS(originsOk, headersOk, methodsOk)(r)
 	if config.Development() {
 		// No WriteTimeout setup to enable pprof
@@ -272,7 +305,7 @@ func main() {
 			Addr:              address,
 			ReadHeaderTimeout: 30 * time.Second,
 			MaxHeaderBytes:    1 << 20,
-			Handler:           rHandler, // Pass our instance of gorilla/mux in.
+			Handler:           rHandler,
 		}
 	} else {
 		server = &http.Server{
@@ -281,14 +314,11 @@ func main() {
 			WriteTimeout:      30 * time.Second,
 			IdleTimeout:       30 * time.Second,
 			MaxHeaderBytes:    1 << 20,
-			Handler:           rHandler, // Pass our instance of gorilla/mux in.
+			Handler:           rHandler,
 		}
 	}
 	common.HandleShutdown(server)
 	handler.HandleShutdown(common.GetRootContext())
-
-	initHandlers(r)
-	initServer()
 
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()
