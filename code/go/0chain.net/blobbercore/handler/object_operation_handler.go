@@ -1,13 +1,12 @@
 package handler
 
 import (
-	
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"path/filepath"
+	"strconv"
 
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/constants"
@@ -15,14 +14,14 @@ import (
 	"0chain.net/blobbercore/filestore"
 	"0chain.net/blobbercore/readmarker"
 	"0chain.net/blobbercore/reference"
-	"0chain.net/blobbercore/writemarker"
 	"0chain.net/blobbercore/stats"
+	"0chain.net/blobbercore/writemarker"
 
 	"0chain.net/core/common"
 	"0chain.net/core/encryption"
 	"0chain.net/core/lock"
 	. "0chain.net/core/logging"
-	
+
 	"github.com/jinzhu/gorm"
 	"go.uber.org/zap"
 )
@@ -105,7 +104,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 	authTokenString := r.FormValue("auth_token")
 
-	if clientID != allocationObj.OwnerID  || len(authTokenString) > 0 {
+	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
 		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err
@@ -162,8 +161,8 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	response.Data = respData
 	response.Path = fileref.Path
 	response.AllocationID = fileref.AllocationID
-	
-	stats.FileBlockDownloaded(ctx,fileref.ID)
+
+	stats.FileBlockDownloaded(ctx, fileref.ID)
 	return respData, nil
 }
 
@@ -302,6 +301,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 }
 
 func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
@@ -359,7 +359,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	allocationChange.ConnectionID = connectionObj.ConnectionID
 	allocationChange.Size = 0
 	allocationChange.Operation = allocation.RENAME_OPERATION
-	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ConnectionID, 
+	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ConnectionID,
 		AllocationID: connectionObj.AllocationID, Path: objectRef.Path}
 	dfc.NewName = new_name
 	connectionObj.Size += allocationChange.Size
@@ -377,7 +377,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	result.MerkleRoot = objectRef.MerkleRoot
 	result.Size = objectRef.Size
 
-	return result, nil	
+	return result, nil
 }
 
 func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -448,7 +448,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	allocationChange.ConnectionID = connectionObj.ConnectionID
 	allocationChange.Size = objectRef.Size
 	allocationChange.Operation = allocation.COPY_OPERATION
-	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ConnectionID, 
+	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ConnectionID,
 		AllocationID: connectionObj.AllocationID, DestPath: destPath}
 	dfc.SrcPath = objectRef.Path
 	connectionObj.Size += allocationChange.Size
@@ -466,7 +466,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	result.MerkleRoot = objectRef.MerkleRoot
 	result.Size = objectRef.Size
 
-	return result, nil	
+	return result, nil
 }
 
 func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*UploadResult, error) {
@@ -474,23 +474,23 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 	if len(path) == 0 {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
-	
+
 	fileRef, _ := reference.GetReference(ctx, connectionObj.AllocationID, path)
 	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 	if fileRef != nil {
 		deleteSize := fileRef.Size
-		
+
 		allocationChange := &allocation.AllocationChange{}
 		allocationChange.ConnectionID = connectionObj.ConnectionID
 		allocationChange.Size = 0 - deleteSize
 		allocationChange.Operation = allocation.DELETE_OPERATION
-		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ConnectionID, 
-			AllocationID: connectionObj.AllocationID, Name: fileRef.Name, 
-			Hash : fileRef.Hash, Path: fileRef.Path, Size: deleteSize}
-		
+		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ConnectionID,
+			AllocationID: connectionObj.AllocationID, Name: fileRef.Name,
+			Hash: fileRef.Hash, Path: fileRef.Path, Size: deleteSize}
+
 		connectionObj.Size += allocationChange.Size
 		connectionObj.AddChange(allocationChange, dfc)
-				
+
 		result := &UploadResult{}
 		result.Filename = fileRef.Name
 		result.Hash = fileRef.Hash
@@ -579,23 +579,22 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 
 		origfile, _, err := r.FormFile("uploadFile")
 		if err != nil {
-			return nil, common.NewError("invalid_parameters", "Error Reading multi parts for file." + err.Error())
+			return nil, common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
 		}
 		defer origfile.Close()
-		
+
 		thumbfile, thumbHeader, _ := r.FormFile("uploadThumbnailFile")
 		thumbnailPresent := false
 		if thumbHeader != nil {
 			thumbnailPresent = true
 			defer thumbfile.Close()
 		}
-		
+
 		fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path}
 		fileOutputData, err := filestore.GetFileStore().WriteFile(allocationID, fileInputData, origfile, connectionObj.ConnectionID)
 		if err != nil {
 			return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 		}
-		
 
 		result.Filename = formData.Filename
 		result.Hash = fileOutputData.ContentHash
@@ -627,7 +626,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 			formData.ThumbnailHash = thumbOutputData.ContentHash
 			formData.ThumbnailSize = thumbOutputData.Size
 			formData.ThumbnailFilename = thumbInputData.Name
-		} 
+		}
 
 		if allocationObj.BlobberSizeUsed+(allocationSize-existingFileRefSize) > allocationObj.BlobberSize {
 			return nil, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
@@ -641,7 +640,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		connectionObj.Size += allocationChange.Size
 		if mode == allocation.INSERT_OPERATION {
 			connectionObj.AddChange(allocationChange, &formData.NewFileChange)
-		} else if (mode == allocation.UPDATE_OPERATION) {
+		} else if mode == allocation.UPDATE_OPERATION {
 			connectionObj.AddChange(allocationChange, &formData)
 		}
 	}
