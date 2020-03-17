@@ -7,7 +7,7 @@ replace 0chain.net/blobbercore => ../blobbercore
 require (
 	0chain.net/blobbercore v0.0.0
 	0chain.net/core v0.0.0
-	github.com/0chain/gosdk v1.0.36
+	github.com/0chain/gosdk v1.0.37
 	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v1.7.3
 	github.com/spf13/viper v1.4.0
