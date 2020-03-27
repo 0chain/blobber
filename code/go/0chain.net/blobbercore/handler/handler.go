@@ -45,6 +45,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
 	r.HandleFunc("/_config", common.ToJSONResponse(GetConfig))
 	r.HandleFunc("/_stats", stats.StatsHandler)
+	r.HandleFunc("/_statsJSON", common.ToJSONResponse(stats.StatsJSONHandler))
 	r.HandleFunc("/_cleanupdisk", common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))
 	r.HandleFunc("/getstats", common.ToJSONResponse(stats.GetStatsHandler))
 }

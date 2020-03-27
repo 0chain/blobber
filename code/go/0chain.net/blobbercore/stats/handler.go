@@ -136,6 +136,14 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func StatsJSONHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = datastore.GetStore().CreateTransaction(ctx)
+	db := datastore.GetStore().GetTransaction(ctx)
+	defer db.Rollback()
+	bs := LoadBlobberStats(ctx)
+	return bs, nil
+}
+
 func GetStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	q := r.URL.Query()
 	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, q.Get("allocation_id"))
