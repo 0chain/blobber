@@ -70,13 +70,13 @@ func intializeMinio() *minio.Client {
 	if err != nil {
 		exists, errBucketExists := minioClient.BucketExists(config.Configuration.BucketName)
 		if errBucketExists == nil && exists {
-			Logger.Info("We already own ", config.Configuration.BucketName)
+			Logger.Info("We already own ", zap.Any("bucket_name", config.Configuration.BucketName))
 		} else {
 			Logger.Panic("Minio bucket error", zap.Error(err))
 			panic(err)
 		}
 	} else {
-		Logger.Info(config.Configuration.BucketName + "bucket successfully created")
+		Logger.Info(config.Configuration.BucketName + " bucket successfully created")
 	}
 	return minioClient
 }
@@ -93,7 +93,7 @@ func createDirs(dir string) error {
 
 func (fs *FileFSStore) GetTempPathSize(allocationID string) (int64, error) {
 	var size int64
-	allocationObj, err := fs.setupAllocation(allocationID, true)
+	allocationObj, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return size, err
 	}
@@ -137,7 +137,7 @@ func (fs *FileFSStore) GetlDiskSizeUsed(allocationID string) (int64, error) {
 	return size, err
 }
 
-func getFilePathFromHash(hash string) (string, string) {
+func GetFilePathFromHash(hash string) (string, string) {
 	var dir bytes.Buffer
 	fmt.Fprintf(&dir, "%s", hash[0:3])
 	for i := 1; i < 3; i++ {
@@ -157,7 +157,7 @@ func (fs *FileFSStore) generateTransactionPath(transID string) string {
 	return dir.String()
 }
 
-func (fs *FileFSStore) setupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error) {
+func (fs *FileFSStore) SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error) {
 	allocation := &StoreAllocation{ID: allocationID}
 	allocation.Path = fs.generateTransactionPath(allocationID)
 	allocation.ObjectsPath = fmt.Sprintf("%s%s%s", allocation.Path, OSPathSeperator, ObjectsDirName)
@@ -185,13 +185,20 @@ func (fs *FileFSStore) setupAllocation(allocationID string, skipCreate bool) (*S
 }
 
 func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
-	allocation, err := fs.setupAllocation(allocationID, true)
+	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return nil, nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
 	}
-	dirPath, destFile := getFilePathFromHash(fileData.Hash)
+	dirPath, destFile := GetFilePathFromHash(fileData.Hash)
 	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
+
+	if fileData.OnCloud {
+		err = fs.DownloadFromCloud(fileData.Name, fileObjectPath)
+		if err != nil {
+			return nil, nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
+		}
+	}
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
@@ -247,13 +254,20 @@ func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *F
 }
 
 func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
-	allocation, err := fs.setupAllocation(allocationID, true)
+	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
 	}
-	dirPath, destFile := getFilePathFromHash(fileData.Hash)
+	dirPath, destFile := GetFilePathFromHash(fileData.Hash)
 	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
+
+	if fileData.OnCloud {
+		err = fs.DownloadFromCloud(fileData.Name, fileObjectPath)
+		if err != nil {
+			return nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
+		}
+	}
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
@@ -285,7 +299,7 @@ func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData
 }
 
 func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error {
-	allocation, err := fs.setupAllocation(allocationID, true)
+	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
 	}
@@ -320,13 +334,13 @@ func (fs *FileFSStore) fileCopy(src, dst string) error {
 }
 
 func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error) {
-	allocation, err := fs.setupAllocation(allocationID, true)
+	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return false, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
 	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
 	//move file from tmp location to the objects folder
-	dirPath, destFile := getFilePathFromHash(fileData.Hash)
+	dirPath, destFile := GetFilePathFromHash(fileData.Hash)
 	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
 	err = createDirs(fileObjectPath)
 	if err != nil {
@@ -346,12 +360,12 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 }
 
 func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error {
-	allocation, err := fs.setupAllocation(allocationID, true)
+	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
 
-	dirPath, destFile := getFilePathFromHash(contentHash)
+	dirPath, destFile := GetFilePathFromHash(contentHash)
 	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
 
@@ -359,11 +373,11 @@ func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error
 }
 
 func (fs *FileFSStore) GetMerkleTreeForFile(allocationID string, fileData *FileInputData) (util.MerkleTreeI, error) {
-	allocation, err := fs.setupAllocation(allocationID, true)
+	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
-	dirPath, destFile := getFilePathFromHash(fileData.Hash)
+	dirPath, destFile := GetFilePathFromHash(fileData.Hash)
 	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
 
@@ -414,7 +428,7 @@ func (fs *FileFSStore) GetMerkleTreeForFile(allocationID string, fileData *FileI
 }
 
 func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
-	allocation, err := fs.setupAllocation(allocationID, false)
+	allocation, err := fs.SetupAllocation(allocationID, false)
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
@@ -482,7 +496,7 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, i
 }
 
 func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHandler) error {
-	allocation, err := fs.setupAllocation(allocationID, true)
+	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}

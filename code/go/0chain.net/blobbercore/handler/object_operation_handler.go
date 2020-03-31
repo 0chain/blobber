@@ -136,6 +136,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		fileData.Name = fileref.Name
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ThumbnailHash
+		fileData.OnCloud = fileref.OnCloud
 		respData, err = filestore.GetFileStore().GetFileBlock(allocationID, fileData, blockNum, numBlocks)
 		if err != nil {
 			return nil, err
@@ -145,6 +146,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		fileData.Name = fileref.Name
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ContentHash
+		fileData.OnCloud = fileref.OnCloud
 		respData, err = filestore.GetFileStore().GetFileBlock(allocationID, fileData, blockNum, numBlocks)
 		if err != nil {
 			return nil, err
@@ -567,6 +569,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		}
 		exisitingFileRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
 		existingFileRefSize := int64(0)
+		exisitingFileOnCloud := false
 		if mode == allocation.INSERT_OPERATION && exisitingFileRef != nil {
 			return nil, common.NewError("duplicate_file", "File at path already exists")
 		} else if mode == allocation.UPDATE_OPERATION && exisitingFileRef == nil {
@@ -575,6 +578,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 
 		if exisitingFileRef != nil {
 			existingFileRefSize = exisitingFileRef.Size
+			exisitingFileOnCloud = exisitingFileRef.OnCloud
 		}
 
 		origfile, _, err := r.FormFile("uploadFile")
@@ -590,7 +594,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 			defer thumbfile.Close()
 		}
 
-		fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path}
+		fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path, OnCloud: exisitingFileOnCloud}
 		fileOutputData, err := filestore.GetFileStore().WriteFile(allocationID, fileInputData, origfile, connectionObj.ConnectionID)
 		if err != nil {
 			return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
