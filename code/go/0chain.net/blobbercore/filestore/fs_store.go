@@ -65,6 +65,19 @@ func intializeMinio() *minio.Client {
 		Logger.Panic("Unable to initiaze minio cliet", zap.Error(err))
 		panic(err)
 	}
+
+	err = minioClient.MakeBucket(config.Configuration.BucketName, config.Configuration.BucketLocation)
+	if err != nil {
+		exists, errBucketExists := minioClient.BucketExists(config.Configuration.BucketName)
+		if errBucketExists == nil && exists {
+			Logger.Info("We already own ", config.Configuration.BucketName)
+		} else {
+			Logger.Panic("Minio bucket error", zap.Error(err))
+			panic(err)
+		}
+	} else {
+		Logger.Info("Cloud bucket successfully created")
+	}
 	return minioClient
 }
 
@@ -490,3 +503,5 @@ func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHan
 	})
 	return nil
 }
+
+func (fs *FileFSStore) UploadToCloud()

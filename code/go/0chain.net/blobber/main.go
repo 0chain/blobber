@@ -70,6 +70,8 @@ func SetupWorkerConfig() {
 	config.Configuration.MinioAccessKeyID = viper.GetString("minio.access_key_id")
 	config.Configuration.MinioSecretAccessKey = viper.GetString("minio.secret_access_key")
 	config.Configuration.MinioUseSSL = viper.GetBool("minio.use_ssl")
+	config.Configuration.BucketName = viper.GetString("minio.bucket_name")
+	config.Configuration.BucketLocation = viper.GetString("minio.bucket_location")
 
 	config.Configuration.Capacity = viper.GetInt64("capacity")
 

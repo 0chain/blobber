@@ -79,6 +79,8 @@ type Config struct {
 	MinioAccessKeyID       string
 	MinioSecretAccessKey   string
 	MinioUseSSL            bool
+	BucketName             string
+	BucketLocation         string
 
 	ReadPrice               float64
 	WritePrice              float64
