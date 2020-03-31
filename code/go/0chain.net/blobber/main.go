@@ -359,6 +359,10 @@ func BlobberHealthCheck() {
 	const HEALTH_CHECK_TIMER = 60 * 15 // 15 Minutes
 	for {
 		txnHash, err := handler.BlobberHealthCheck(common.GetRootContext())
+		if err != nil && err == handler.ErrBlobberHasRemoved {
+			time.Sleep(HEALTH_CHECK_TIMER * time.Second)
+			continue
+		}
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 		txnVerified := false
 		verifyRetries := 0
