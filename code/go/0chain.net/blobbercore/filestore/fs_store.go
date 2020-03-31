@@ -76,7 +76,7 @@ func intializeMinio() *minio.Client {
 			panic(err)
 		}
 	} else {
-		Logger.Info("Cloud bucket successfully created")
+		Logger.Info(config.Configuration.BucketName + "bucket successfully created")
 	}
 	return minioClient
 }
@@ -504,4 +504,10 @@ func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHan
 	return nil
 }
 
-func (fs *FileFSStore) UploadToCloud()
+func (fs *FileFSStore) UploadToCloud(fileName, filePath string) (int64, error) {
+	return fs.Minio.FPutObject(config.Configuration.BucketName, fileName, filePath, minio.PutObjectOptions{})
+}
+
+func (fs *FileFSStore) DownloadFromCloud(fileName, filePath string) error {
+	return fs.Minio.FGetObject(config.Configuration.BucketName, fileName, filePath, minio.GetObjectOptions{})
+}
