@@ -65,6 +65,12 @@ func SetupWorkerConfig() {
 	config.Configuration.ChallengeResolveNumWorkers = viper.GetInt("challenge_response.num_workers")
 	config.Configuration.ChallengeMaxRetires = viper.GetInt("challenge_response.max_retries")
 
+	config.Configuration.MinioWorkerFreq = viper.GetInt64("minio.worker_frequency")
+	config.Configuration.MinioStorageServiceURL = viper.GetString("minio.storage_service_url")
+	config.Configuration.MinioAccessKeyID = viper.GetString("minio.access_key_id")
+	config.Configuration.MinioSecretAccessKey = viper.GetString("minio.secret_access_key")
+	config.Configuration.MinioUseSSL = viper.GetBool("minio.use_ssl")
+
 	config.Configuration.Capacity = viper.GetInt64("capacity")
 
 	config.Configuration.DBHost = viper.GetString("db.host")

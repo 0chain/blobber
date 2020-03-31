@@ -74,6 +74,12 @@ type Config struct {
 	TempFilesCleanupFreq          int64
 	TempFilesCleanupNumWorkers    int
 
+	MinioWorkerFreq        int64
+	MinioStorageServiceURL string
+	MinioAccessKeyID       string
+	MinioSecretAccessKey   string
+	MinioUseSSL            bool
+
 	ReadPrice               float64
 	WritePrice              float64
 	MinLockDemand           float64

@@ -1,17 +1,17 @@
 package filestore
 
 import (
-	"strings"
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"hash"
+	"io"
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"strings"
 
 	. "0chain.net/core/logging"
 	"go.uber.org/zap"
@@ -19,7 +19,10 @@ import (
 	"0chain.net/core/common"
 	"0chain.net/core/encryption"
 
+	"0chain.net/blobbercore/config"
+
 	"0chain.net/core/util"
+	"github.com/minio/minio-go"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -32,6 +35,7 @@ const (
 
 type FileFSStore struct {
 	RootDirectory string
+	Minio         *minio.Client
 }
 
 type StoreAllocation struct {
@@ -43,8 +47,25 @@ type StoreAllocation struct {
 
 func SetupFSStore(rootDir string) FileStore {
 	createDirs(rootDir)
-	fsStore = &FileFSStore{RootDirectory: rootDir}
+	fsStore = &FileFSStore{
+		RootDirectory: rootDir,
+		Minio:         intializeMinio(),
+	}
 	return fsStore
+}
+
+func intializeMinio() *minio.Client {
+	minioClient, err := minio.New(
+		config.Configuration.MinioStorageServiceURL,
+		config.Configuration.MinioAccessKeyID,
+		config.Configuration.MinioSecretAccessKey,
+		config.Configuration.MinioUseSSL,
+	)
+	if err != nil {
+		Logger.Panic("Unable to initiaze minio cliet", zap.Error(err))
+		panic(err)
+	}
+	return minioClient
 }
 
 func createDirs(dir string) error {
@@ -150,7 +171,6 @@ func (fs *FileFSStore) setupAllocation(allocationID string, skipCreate bool) (*S
 	return allocation, nil
 }
 
-
 func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
 	allocation, err := fs.setupAllocation(allocationID, true)
 	if err != nil {
@@ -242,7 +262,7 @@ func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData
 	if blockNum > maxBlockNum || blockNum < 1 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number")
 	}
-	buffer := make([]byte, CHUNK_SIZE * numBlocks)
+	buffer := make([]byte, CHUNK_SIZE*numBlocks)
 	n, err := file.ReadAt(buffer, ((blockNum - 1) * CHUNK_SIZE))
 	if err != nil && err != io.EOF {
 		return nil, err
