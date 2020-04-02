@@ -38,8 +38,8 @@ type FileStore interface {
 	GetlDiskSizeUsed(allocationID string) (int64, error)
 	GetTempPathSize(allocationID string) (int64, error)
 	IterateObjects(allocationID string, handler FileObjectHandler) error
-	UploadToCloud(fileName, filePath string) (int64, error)
-	DownloadFromCloud(fileName, filePath string) error
+	UploadToCloud(fileHash, filePath string) (int64, error)
+	DownloadFromCloud(fileHash, filePath string) error
 	SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)
 }
 

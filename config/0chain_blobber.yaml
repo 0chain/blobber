@@ -64,3 +64,4 @@ cold_storage:
   min_file_size: 1048576
   file_time_limit_in_hours: 720
   job_query_limit: 100
+  max_capacity_percentage: 50

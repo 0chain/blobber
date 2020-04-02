@@ -77,6 +77,7 @@ type Config struct {
 	ColdStorageMinimumFileSize  int64
 	ColdStorageTimeLimitInHours int64
 	ColdStorageJobQueryLimit    int64
+	MaxCapacityPercentage       float64
 
 	MinioWorkerFreq        int64
 	MinioNumWorkers        int
