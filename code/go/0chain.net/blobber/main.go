@@ -70,6 +70,7 @@ func SetupWorkerConfig() {
 	config.Configuration.ColdStorageJobQueryLimit = viper.GetInt64("cold_storage.job_query_limit")
 	config.Configuration.MaxCapacityPercentage = viper.GetFloat64("cold_storage.max_capacity_percentage")
 
+	config.Configuration.MinioStart = viper.GetBool("minio.start")
 	config.Configuration.MinioWorkerFreq = viper.GetInt64("minio.worker_frequency")
 	config.Configuration.MinioNumWorkers = viper.GetInt("minio.num_workers")
 	config.Configuration.MinioStorageServiceURL = viper.GetString("minio.storage_service_url")

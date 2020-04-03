@@ -22,7 +22,9 @@ import (
 
 func SetupWorkers(ctx context.Context) {
 	go CleanupTempFiles(ctx)
-	go MoveColdDataToCloud(ctx)
+	if config.Configuration.MinioStart {
+		go MoveColdDataToCloud(ctx)
+	}
 }
 
 func CleanupDiskFiles(ctx context.Context) error {
