@@ -199,6 +199,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			numSharders--
 		} else {
 			if response.StatusCode != 200 {
+				response.Body.Close()
 				continue
 			}
 			defer response.Body.Close()
@@ -206,6 +207,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			entityBytes, err := ioutil.ReadAll(tReader)
 			if err != nil {
 				Logger.Error("Error reading response", zap.Any("error", err))
+				response.Body.Close()
 				continue
 			}
 			hashBytes := h.Sum(nil)
@@ -216,6 +218,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 				retObj = entityBytes
 			}
 			entityResult[sharder.Host] = retObj
+			response.Body.Close()
 		}
 	}
 	var err error

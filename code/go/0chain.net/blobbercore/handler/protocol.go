@@ -170,7 +170,16 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 	return txn.Hash, nil
 }
 
+// ErrBlobberHasRemoved represents service health check error, where the
+// blobber has removed (by owner, in case the blobber doesn't provide its
+// service anymore). Thus the blobber shouldn't send the health check
+// transactions.
+var ErrBlobberHasRemoved = errors.New("blobber has removed")
+
 func BlobberHealthCheck(ctx context.Context) (string, error) {
+	if config.Configuration.Capacity == 0 {
+		return "", ErrBlobberHasRemoved
+	}
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		return "", err
