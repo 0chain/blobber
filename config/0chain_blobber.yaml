@@ -20,6 +20,13 @@ min_lock_demand: 0.1
 # in the future, prices can be changed
 max_offer_duration: 744h # 31 day
 challenge_completion_time: 15m # duration to complete a challenge
+# when a blobber receive a rad request it looks for client's read pools
+# the timeout if time before expiration of this tokens to treat the tokens
+# as alive and can be used; for example, if tokens expire after a second,
+# then blobber can't give them; but if the tokens expire after a hour then
+# the blobber can perform reading (handle download request) and redeem all
+# its read markers
+read_lock_timeout: 12m
 
 
 server_chain:

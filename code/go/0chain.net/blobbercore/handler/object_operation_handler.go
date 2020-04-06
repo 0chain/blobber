@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"strconv"
 
 	"0chain.net/blobbercore/allocation"
+	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/constants"
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/filestore"
@@ -83,6 +85,24 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the readmarker for download."+err.Error())
 	}
+
+	// check out read pool tokens if read_price > 0
+
+	if want := allocationObj.ReadValue(readMarker.ReadCounter); want > 0 {
+		value, err := readmarker.GetReadPool(ctx, clientID,
+			config.Configuration.ReadLockTimeout)
+		if err != nil {
+			return nil, common.NewError("download_failed",
+				"can't get "+clientID+" read pools: "+err.Error())
+		}
+		if value < want {
+			return nil, common.NewError("download_failed", fmt.Sprintf("not"+
+				" enough tokens in "+clientID+"'s read pools: %d < %d",
+				value, want))
+		}
+	}
+
+	// reading allowed
 
 	rmObj := &readmarker.ReadMarkerEntity{}
 	rmObj.LatestRM = readMarker
@@ -563,7 +583,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		uploadMetaString := r.FormValue(formField)
 		err = json.Unmarshal([]byte(uploadMetaString), &formData)
 		if err != nil {
-			return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the meta data for upload."+err.Error())
+			return nil, common.NewError("invalid_parameters",
+				"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 		}
 		exisitingFileRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
 		existingFileRefSize := int64(0)

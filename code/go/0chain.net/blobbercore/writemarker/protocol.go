@@ -88,7 +88,7 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 	if err != nil {
 		wm.StatusMessage = "Error creating transaction entity. " + err.Error()
 		wm.ReedeemRetries++
-		wm.UpdateStatus(ctx, Failed, "Error creating transaction entity. " + err.Error(), "")
+		wm.UpdateStatus(ctx, Failed, "Error creating transaction entity. "+err.Error(), "")
 		return err
 	}
 
@@ -116,7 +116,7 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 		wm.UpdateStatus(ctx, Failed, "Failed during sending close connection to the miner. "+err.Error(), "")
 		return err
 	}
-	
+
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
 	if err != nil {
@@ -133,4 +133,33 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 	wm.CloseTxnID = t.Hash
 	err = wm.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
 	return err
+}
+
+func GetWritePool(ctx context.Context, allocID string) (
+	value int64, err error) {
+
+	type writePoolStat struct {
+		Balance int64 `json:"balance"`
+	}
+
+	var resp []byte
+	resp, err = transaction.MakeSCRestAPICall(
+		transaction.STORAGE_CONTRACT_ADDRESS, "/getWritePoolStat",
+		map[string]string{"allocation_id": allocID}, chain.GetServerChain(),
+		nil)
+
+	if err != nil {
+		Logger.Error("can't get write pool stat from sharders",
+			zap.String("allocation_id", allocID), zap.Error(err))
+		return
+	}
+
+	var stat writePoolStat
+	if err = json.Unmarshal(resp, &stat); err != nil {
+		Logger.Error("can't decode write pool stat from sharders",
+			zap.String("allocation_id", allocID), zap.Error(err))
+		return
+	}
+
+	return stat.Balance, nil
 }

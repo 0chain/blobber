@@ -79,6 +79,22 @@ func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Req
 	return allocationObj, nil
 }
 
+func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method != "GET" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
+	}
+	allocationID := r.FormValue("id")
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	// TODO
+
+	return allocationObj, nil
+}
+
 func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID string, path string) *reference.Ref {
 	fileReference, err := reference.GetReference(ctx, allocationID, path)
 	if err != nil {
