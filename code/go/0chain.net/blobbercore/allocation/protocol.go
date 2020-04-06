@@ -17,7 +17,7 @@ import (
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string, readonly bool) (*Allocation, error) {
 	a := &Allocation{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where(&Allocation{ID: allocationTx}).First(a).Error
+	err := db.Where(&Allocation{Tx: allocationTx}).First(a).Error
 	if err == nil {
 		return a, nil
 	}
@@ -64,10 +64,20 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 			db.Exec(`INSERT INTO allocations (
 				id, tx, size, used_size, expiration_date, owner_id,
 				owner_public_key, blobber_size, read_price, write_price,
-				num_blobbers) VALUES (?,?,?,?,?,?,?,?,?,?)
-				ON CONFLICT (id) DO UPDATE;`, a.ID, a.Tx, a.TotalSize,
-				a.UsedSize, a.Expiration, a.OwnerID, a.OwnerPublicKey,
-				a.BlobberSize, a.ReadPrice, a.WritePrice, a.NumBlobbers)
+				num_blobbers
+			) VALUES (
+				?,?,?,?,?,?,?,?,?,?,?
+			) ON CONFLICT (id) DO UPDATE SET
+				tx = ?, size = ?, used_size = ?, expiration_date = ?,
+				owner_id = ?, owner_public_key = ?, blobber_size = ?,
+				read_price = ?, write_price = ?, num_blobbers = ?
+			`, a.ID, a.Tx, a.TotalSize, a.UsedSize, a.Expiration, a.OwnerID,
+				a.OwnerPublicKey, a.BlobberSize, a.ReadPrice, a.WritePrice,
+				a.NumBlobbers,
+				a.Tx, a.TotalSize, a.UsedSize, a.Expiration, a.OwnerID,
+				a.OwnerPublicKey, a.BlobberSize, a.ReadPrice, a.WritePrice,
+				a.NumBlobbers,
+			)
 			return a, nil
 		}
 		return a, nil
