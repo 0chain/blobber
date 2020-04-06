@@ -12,6 +12,7 @@ const (
 
 type Allocation struct {
 	ID               string           `gorm:"column:id;primary_key"`
+	Tx               string           `gorm:"column:tx"`
 	TotalSize        int64            `gorm:"column:size"`
 	UsedSize         int64            `gorm:"column:used_size"`
 	OwnerID          string           `gorm:"column:owner_id"`

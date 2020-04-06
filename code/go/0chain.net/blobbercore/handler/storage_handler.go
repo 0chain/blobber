@@ -27,11 +27,13 @@ const (
 type StorageHandler struct {
 }
 
-func (fsh *StorageHandler) verifyAllocation(ctx context.Context, allocationID string, readonly bool) (*allocation.Allocation, error) {
-	if len(allocationID) == 0 {
+func (fsh *StorageHandler) verifyAllocation(ctx context.Context,
+	allocationTx string, readonly bool) (*allocation.Allocation, error) {
+
+	if len(allocationTx) == 0 {
 		return nil, common.NewError("invalid_allocation", "Invalid allocation id")
 	}
-	allocationObj, err := allocation.VerifyAllocationTransaction(ctx, allocationID, readonly)
+	allocationObj, err := allocation.VerifyAllocationTransaction(ctx, allocationTx, readonly)
 	if err != nil {
 		return nil, err
 	}

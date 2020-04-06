@@ -69,6 +69,7 @@ type BlobberAllocation struct {
 }
 
 type StorageAllocation struct {
+	Tx             string               `json:"tx"`
 	OwnerPublicKey string               `json:"owner_public_key"`
 	OwnerID        string               `json:"owner_id"`
 	ID             string               `json:"allocation_id"`

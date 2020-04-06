@@ -14,16 +14,16 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-func VerifyAllocationTransaction(ctx context.Context, allocationID string, readonly bool) (*Allocation, error) {
+func VerifyAllocationTransaction(ctx context.Context, allocationTx string, readonly bool) (*Allocation, error) {
 	a := &Allocation{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where(&Allocation{ID: allocationID}).First(a).Error
+	err := db.Where(&Allocation{ID: allocationTx}).First(a).Error
 	if err == nil {
 		return a, nil
 	}
 
 	if err != nil && gorm.IsRecordNotFoundError(err) {
-		t, err := transaction.VerifyTransaction(allocationID, chain.GetServerChain())
+		t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
 		if err != nil {
 			return nil, common.NewError("invalid_allocation",
 				"Invalid Allocation id. Allocation not found in blockchain. "+err.Error())
@@ -49,7 +49,8 @@ func VerifyAllocationTransaction(ctx context.Context, allocationID string, reado
 			return nil, common.NewError("invalid_blobber",
 				"Blobber is not part of the open connection transaction")
 		}
-		a.ID = allocationID
+		a.ID = storageAllocation.ID
+		a.Tx = storageAllocation.Tx
 		a.Expiration = storageAllocation.Expiration
 		a.OwnerID = storageAllocation.OwnerID
 		a.OwnerPublicKey = storageAllocation.OwnerPublicKey
@@ -61,12 +62,12 @@ func VerifyAllocationTransaction(ctx context.Context, allocationID string, reado
 		if !readonly {
 			Logger.Info("Saving the allocation to DB")
 			db.Exec(`INSERT INTO allocations (
-				id, size, used_size, expiration_date, owner_id,
+				id, tx, size, used_size, expiration_date, owner_id,
 				owner_public_key, blobber_size, read_price, write_price,
 				num_blobbers) VALUES (?,?,?,?,?,?,?,?,?,?)
-				ON CONFLICT (id) DO NOTHING;`, a.ID, a.TotalSize, a.UsedSize,
-				a.Expiration, a.OwnerID, a.OwnerPublicKey, a.BlobberSize,
-				a.ReadPrice, a.WritePrice, a.NumBlobbers)
+				ON CONFLICT (id) DO UPDATE;`, a.ID, a.Tx, a.TotalSize,
+				a.UsedSize, a.Expiration, a.OwnerID, a.OwnerPublicKey,
+				a.BlobberSize, a.ReadPrice, a.WritePrice, a.NumBlobbers)
 			return a, nil
 		}
 		return a, nil
