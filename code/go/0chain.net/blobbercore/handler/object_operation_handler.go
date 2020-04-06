@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
+	//"fmt"
 	"net/http"
 	"path/filepath"
 	"strconv"
 
 	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/config"
+	//"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/constants"
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/filestore"
@@ -90,17 +90,18 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	// check out read pool tokens if read_price > 0
 
 	if want := allocationObj.ReadValue(readMarker.ReadCounter); want > 0 {
-		value, err := readmarker.GetReadPool(ctx, clientID,
-			config.Configuration.ReadLockTimeout)
-		if err != nil {
-			return nil, common.NewError("download_failed",
-				"can't get "+clientID+" read pools: "+err.Error())
-		}
-		if value < want {
-			return nil, common.NewError("download_failed", fmt.Sprintf("not"+
-				" enough tokens in "+clientID+"'s read pools: %d < %d",
-				value, want))
-		}
+		// SLOW
+		// value, err := readmarker.GetReadPool(ctx, clientID,
+		// 	config.Configuration.ReadLockTimeout)
+		// if err != nil {
+		// 	return nil, common.NewError("download_failed",
+		// 		"can't get "+clientID+" read pools: "+err.Error())
+		// }
+		// if value < want {
+		// 	return nil, common.NewError("download_failed", fmt.Sprintf("not"+
+		// 		" enough tokens in "+clientID+"'s read pools: %d < %d",
+		// 		value, want))
+		// }
 	}
 
 	// reading allowed

@@ -71,8 +71,8 @@ func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Req
 	if r.Method != "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
-	allocationID := r.FormValue("id")
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
+	allocationTx := r.FormValue("id")
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -85,8 +85,8 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 	if r.Method != "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
-	allocationID := r.FormValue("id")
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
+	allocationTx := r.FormValue("id")
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -109,12 +109,13 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, true)
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+	allocationID := allocationObj.ID
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 {
@@ -157,6 +158,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		}
 		delete(result, "path")
 	}
+
 	return result, nil
 }
 
@@ -164,12 +166,13 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, true)
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+	allocationID := allocationObj.ID
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
@@ -219,12 +222,13 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, true)
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
@@ -282,12 +286,13 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+	allocationID := allocationObj.ID
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
@@ -352,12 +357,13 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+	allocationID := allocationObj.ID
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
@@ -404,12 +410,13 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+	allocationID := allocationObj.ID
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
