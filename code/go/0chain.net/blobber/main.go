@@ -94,6 +94,7 @@ func SetupWorkerConfig() {
 	config.Configuration.MinLockDemand = viper.GetFloat64("min_lock_demand")
 	config.Configuration.MaxOfferDuration = viper.GetDuration("max_offer_duration")
 	config.Configuration.ChallengeCompletionTime = viper.GetDuration("challenge_completion_time")
+	config.Configuration.ReadLockTimeout = viper.GetDuration("read_lock_timeout")
 }
 
 func SetupWorkers() {
@@ -374,6 +375,10 @@ func BlobberHealthCheck() {
 	const HEALTH_CHECK_TIMER = 60 * 15 // 15 Minutes
 	for {
 		txnHash, err := handler.BlobberHealthCheck(common.GetRootContext())
+		if err != nil && err == handler.ErrBlobberHasRemoved {
+			time.Sleep(HEALTH_CHECK_TIMER * time.Second)
+			continue
+		}
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 		txnVerified := false
 		verifyRetries := 0

@@ -86,7 +86,7 @@ func (rmEntity *ReadMarkerEntity) RedeemReadMarker(ctx context.Context) error {
 		Logger.Info("Failed submitting read redeem", zap.String("err:", err.Error()))
 		return err
 	}
-	
+
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
 	if err != nil {
@@ -95,4 +95,47 @@ func (rmEntity *ReadMarkerEntity) RedeemReadMarker(ctx context.Context) error {
 	}
 	err = rmEntity.UpdateStatus(ctx, t.TransactionOutput, t.Hash)
 	return err
+}
+
+func GetReadPool(ctx context.Context, clientID string, timeout time.Duration) (
+	value int64, err error) {
+
+	type readPoolStat struct {
+		TimeLeft time.Duration `json:"time_left"`
+		Balance  int64         `json:"balance"`
+	}
+
+	type readPoolStats struct {
+		Stats []*readPoolStat `json:"stats"`
+	}
+
+	var resp []byte
+	resp, err = transaction.MakeSCRestAPICall(
+		transaction.STORAGE_CONTRACT_ADDRESS, "/getReadPoolsStats",
+		map[string]string{"client_id": clientID}, chain.GetServerChain(), nil)
+
+	if err != nil {
+		Logger.Error("can't get read pool stat from sharders",
+			zap.String("client_id", clientID), zap.Error(err))
+		return
+	}
+
+	var stats readPoolStats
+	if err = json.Unmarshal(resp, &stats); err != nil {
+		Logger.Error("can't decode read pool stat from sharders",
+			zap.String("client_id", clientID), zap.Error(err))
+		return
+	}
+
+	if len(stats.Stats) == 0 {
+		return 0, nil
+	}
+
+	for _, stat := range stats.Stats {
+		if stat.TimeLeft > timeout {
+			value += stat.Balance
+		}
+	}
+
+	return
 }

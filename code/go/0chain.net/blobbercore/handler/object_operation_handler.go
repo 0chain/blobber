@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	//"fmt"
 	"net/http"
 	"path/filepath"
 	"strconv"
 
 	"0chain.net/blobbercore/allocation"
+	//"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/constants"
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/filestore"
@@ -30,14 +32,15 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Invalid client")
@@ -83,6 +86,25 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the readmarker for download."+err.Error())
 	}
+
+	// check out read pool tokens if read_price > 0
+
+	if want := allocationObj.ReadValue(readMarker.ReadCounter); want > 0 {
+		// SLOW
+		// value, err := readmarker.GetReadPool(ctx, clientID,
+		// 	config.Configuration.ReadLockTimeout)
+		// if err != nil {
+		// 	return nil, common.NewError("download_failed",
+		// 		"can't get "+clientID+" read pools: "+err.Error())
+		// }
+		// if value < want {
+		// 	return nil, common.NewError("download_failed", fmt.Sprintf("not"+
+		// 		" enough tokens in "+clientID+"'s read pools: %d < %d",
+		// 		value, want))
+		// }
+	}
+
+	// reading allowed
 
 	rmObj := &readmarker.ReadMarkerEntity{}
 	rmObj.LatestRM = readMarker
@@ -173,16 +195,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
 	}
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	clientKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 	clientKeyBytes, _ := hex.DecodeString(clientKey)
 
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
-
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID || len(clientKey) == 0 || encryption.Hash(clientKeyBytes) != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
@@ -307,14 +329,14 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
-
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Invalid client")
@@ -386,14 +408,14 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
-
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Invalid client")
@@ -512,14 +534,14 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE instead")
 	}
 
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, false)
-
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
@@ -565,7 +587,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		uploadMetaString := r.FormValue(formField)
 		err = json.Unmarshal([]byte(uploadMetaString), &formData)
 		if err != nil {
-			return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the meta data for upload."+err.Error())
+			return nil, common.NewError("invalid_parameters",
+				"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 		}
 		exisitingFileRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
 		existingFileRefSize := int64(0)

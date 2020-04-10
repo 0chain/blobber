@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"encoding/json"
+	"math"
 	"sync"
 	"time"
 
@@ -63,14 +64,38 @@ type StorageNode struct {
 	PublicKey string `json:"-"`
 }
 
+type BlobberAllocation struct {
+	Terms Terms `json:"terms"`
+}
+
 type StorageAllocation struct {
-	OwnerPublicKey string           `json:"owner_public_key"`
-	OwnerID        string           `json:"owner_id"`
-	ID             string           `json:"allocation_id"`
-	Size           int64            `json:"size"`
-	UsedSize       int64            `json:"used_size"`
-	Expiration     common.Timestamp `json:"expiration_date"`
-	Blobbers       []*StorageNode   `json:"blobbers"`
+	ID             string               `json:"id"`
+	Tx             string               `json:"tx"`
+	OwnerPublicKey string               `json:"owner_public_key"`
+	OwnerID        string               `json:"owner_id"`
+	Size           int64                `json:"size"`
+	UsedSize       int64                `json:"used_size"`
+	Expiration     common.Timestamp     `json:"expiration_date"`
+	Blobbers       []*StorageNode       `json:"blobbers"`
+	BlobberDetails []*BlobberAllocation `json:"blobber_details"`
+}
+
+func (sa *StorageAllocation) AvgWritePrice() (price float64) {
+	for _, d := range sa.BlobberDetails {
+		price += float64(d.Terms.WritePrice)
+	}
+	return math.Ceil(float64(price) / float64(len(sa.BlobberDetails)))
+}
+
+func (sa *StorageAllocation) AvgReadPrice() (price float64) {
+	for _, d := range sa.BlobberDetails {
+		price += float64(d.Terms.ReadPrice)
+	}
+	return math.Ceil(float64(price) / float64(len(sa.BlobberDetails)))
+}
+
+func (sa *StorageAllocation) NumBlobbers() int64 {
+	return int64(len(sa.BlobberDetails))
 }
 
 type StorageAllocationBlobber struct {
