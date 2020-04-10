@@ -10,9 +10,10 @@ import (
 const CHUNK_SIZE = 64 * 1024
 
 type FileInputData struct {
-	Name string
-	Path string
-	Hash string
+	Name    string
+	Path    string
+	Hash    string
+	OnCloud bool
 }
 
 type FileOutputData struct {
@@ -37,6 +38,9 @@ type FileStore interface {
 	GetlDiskSizeUsed(allocationID string) (int64, error)
 	GetTempPathSize(allocationID string) (int64, error)
 	IterateObjects(allocationID string, handler FileObjectHandler) error
+	UploadToCloud(fileHash, filePath string) (int64, error)
+	DownloadFromCloud(fileHash, filePath string) error
+	SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)
 }
 
 var fsStore FileStore

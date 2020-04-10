@@ -53,6 +53,7 @@ type Ref struct {
 	Children            []*Ref `gorm:"-"`
 	childrenLoaded      bool
 	DeletedAt           *time.Time `gorm:"column:deleted_at"`
+	OnCloud             bool       `gorm:"on_cloud" filelist:"on_cloud"`
 	datastore.ModelWithTS
 }
 

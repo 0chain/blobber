@@ -65,6 +65,21 @@ func SetupWorkerConfig() {
 	config.Configuration.ChallengeResolveNumWorkers = viper.GetInt("challenge_response.num_workers")
 	config.Configuration.ChallengeMaxRetires = viper.GetInt("challenge_response.max_retries")
 
+	config.Configuration.ColdStorageMinimumFileSize = viper.GetInt64("cold_storage.min_file_size")
+	config.Configuration.ColdStorageTimeLimitInHours = viper.GetInt64("cold_storage.file_time_limit_in_hours")
+	config.Configuration.ColdStorageJobQueryLimit = viper.GetInt64("cold_storage.job_query_limit")
+	config.Configuration.MaxCapacityPercentage = viper.GetFloat64("cold_storage.max_capacity_percentage")
+
+	config.Configuration.MinioStart = viper.GetBool("minio.start")
+	config.Configuration.MinioWorkerFreq = viper.GetInt64("minio.worker_frequency")
+	config.Configuration.MinioNumWorkers = viper.GetInt("minio.num_workers")
+	config.Configuration.MinioStorageServiceURL = viper.GetString("minio.storage_service_url")
+	config.Configuration.MinioAccessKeyID = viper.GetString("minio.access_key_id")
+	config.Configuration.MinioSecretAccessKey = viper.GetString("minio.secret_access_key")
+	config.Configuration.MinioUseSSL = viper.GetBool("minio.use_ssl")
+	config.Configuration.BucketName = viper.GetString("minio.bucket_name")
+	config.Configuration.BucketLocation = viper.GetString("minio.bucket_location")
+
 	config.Configuration.Capacity = viper.GetInt64("capacity")
 
 	config.Configuration.DBHost = viper.GetString("db.host")

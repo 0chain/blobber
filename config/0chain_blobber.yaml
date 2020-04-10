@@ -4,10 +4,9 @@ logging:
   level: "info"
   console: false # printing log to console is only supported in development mode
 
-          
 capacity: 107374182400 # 100 GB bytes total blobber capacity
-read_price: 0.01       # token / GB for reading
-write_price: 1.00      # token / GB for writing
+read_price: 0.01 # token / GB for reading
+write_price: 1.00 # token / GB for writing
 # min_lock_demand is value in [0; 1] range; it represents number of tokens the
 # blobber earned even if a user will not read or write something
 # to an allocation; the number of tokens will be calculated by the following
@@ -28,7 +27,6 @@ challenge_completion_time: 15m # duration to complete a challenge
 # its read markers
 read_lock_timeout: 12m
 
-
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
   owner: "edb90b850f2e7e7cbd0a1fa370fdcc5cd378ffbec95363a7bc0e5a98b8ba5759"
@@ -44,17 +42,34 @@ openconnection_cleaner:
   tolerance: 3600
 writemarker_redeem:
   frequency: 10
-  num_workers : 5
+  num_workers: 5
 readmarker_redeem:
   frequency: 10
-  num_workers : 5
+  num_workers: 5
 challenge_response:
   frequency: 10
   num_workers: 5
-  max_retries : 20
+  max_retries: 20
 db:
   name: blobber_meta
   user: blobber_user
   password: blobber
   host: postgres
   port: 5432
+
+minio:
+  start: false
+  worker_frequency: 3600 #in seconds
+  num_workers: 5
+  storage_service_url: play.min.io
+  access_key_id: Q3AM3UQ867SPQQA43P2F
+  secret_access_key: zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
+  use_ssl: false
+  bucket_name: mytestbucket
+  bucket_location: us-east-1
+
+cold_storage:
+  min_file_size: 1048576 #in bytes
+  file_time_limit_in_hours: 720 #in hours
+  job_query_limit: 100
+  max_capacity_percentage: 50
