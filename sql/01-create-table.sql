@@ -77,7 +77,6 @@ CREATE TABLE reference_objects (
     actual_thumbnail_size BIGINT NOT NULL DEFAULT 0,
     actual_thumbnail_hash VARCHAR(64) NOT NULL,
     encrypted_key TEXT,
-    on_cloud BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMP

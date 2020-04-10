@@ -128,7 +128,7 @@ func MoveColdDataToCloud(ctx context.Context) {
 						swg := sizedwaitgroup.New(config.Configuration.MinioNumWorkers)
 						for _, fileRef := range fileRefs {
 							// Get file stats for the given fileRef
-							fileStat, err := stats.GetFileStats(ctx, fileRef.ID)
+							fileStat, err := stats.GetFileStats(rctx, fileRef.ID)
 							if err != nil {
 								Logger.Error("Unable to find filestats for fileRef with", zap.Any("reID", fileRef.ID))
 								continue
@@ -158,14 +158,17 @@ func MoveColdDataToCloud(ctx context.Context) {
 										Logger.Error("Error uploading cold data to cloud", zap.Error(err), zap.Any("file_name", fileRef.Name), zap.Any("file_path", filePath))
 									} else {
 										// Update fileRef with on cloud true
-										db.Table((&reference.Ref{}).TableName()).
+										err = db.Table((&reference.Ref{}).TableName()).
 											Where(&reference.Ref{ID: fileRef.ID}).
-											Update("on_cloud", true)
-
-										// Delete file from blobber
-										err = os.Remove(filePath)
+											UpdateColumn(&reference.Ref{OnCloud: true}).Error
 										if err != nil {
-											Logger.Error("Error deleting file after upload to cold storage", zap.Error(err))
+											Logger.Error("Failed to update reference_object for on cloud true", zap.Error(err))
+										} else {
+											// Delete file from blobber
+											err = os.Remove(filePath)
+											if err != nil {
+												Logger.Error("Error deleting file after upload to cold storage", zap.Error(err))
+											}
 										}
 									}
 									swg.Done()

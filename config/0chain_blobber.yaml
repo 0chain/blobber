@@ -59,7 +59,7 @@ db:
 
 minio:
   start: false
-  worker_frequency: 10
+  worker_frequency: 3600 #in seconds
   num_workers: 5
   storage_service_url: play.min.io
   access_key_id: Q3AM3UQ867SPQQA43P2F
@@ -69,7 +69,7 @@ minio:
   bucket_location: us-east-1
 
 cold_storage:
-  min_file_size: 1048576
-  file_time_limit_in_hours: 720
+  min_file_size: 1048576 #in bytes
+  file_time_limit_in_hours: 720 #in hours
   job_query_limit: 100
   max_capacity_percentage: 50
