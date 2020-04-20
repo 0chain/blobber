@@ -68,3 +68,8 @@ cold_storage:
   file_time_limit_in_hours: 720 #in hours
   job_query_limit: 100
   max_capacity_percentage: 50
+
+faucet:
+  worker_frequency: 10 #in minutes
+  minimum_balance: 2 #depends on capacity and price
+
