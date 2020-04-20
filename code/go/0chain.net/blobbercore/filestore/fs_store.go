@@ -33,6 +33,16 @@ const (
 	CurrentVersion            = "1.0"
 )
 
+type MinioConfiguration struct {
+	StorageServiceURL string
+	AccessKeyID       string
+	SecretAccessKey   string
+	BucketName        string
+	BucketLocation    string
+}
+
+var MinioConfig MinioConfiguration
+
 type FileFSStore struct {
 	RootDirectory string
 	Minio         *minio.Client
@@ -56,9 +66,9 @@ func SetupFSStore(rootDir string) FileStore {
 
 func intializeMinio() *minio.Client {
 	minioClient, err := minio.New(
-		config.Configuration.MinioStorageServiceURL,
-		config.Configuration.MinioAccessKeyID,
-		config.Configuration.MinioSecretAccessKey,
+		MinioConfig.StorageServiceURL,
+		MinioConfig.AccessKeyID,
+		MinioConfig.SecretAccessKey,
 		config.Configuration.MinioUseSSL,
 	)
 	if err != nil {
@@ -66,17 +76,17 @@ func intializeMinio() *minio.Client {
 		panic(err)
 	}
 
-	err = minioClient.MakeBucket(config.Configuration.BucketName, config.Configuration.BucketLocation)
+	err = minioClient.MakeBucket(MinioConfig.BucketName, MinioConfig.BucketLocation)
 	if err != nil {
-		exists, errBucketExists := minioClient.BucketExists(config.Configuration.BucketName)
+		exists, errBucketExists := minioClient.BucketExists(MinioConfig.BucketName)
 		if errBucketExists == nil && exists {
-			Logger.Info("We already own ", zap.Any("bucket_name", config.Configuration.BucketName))
+			Logger.Info("We already own ", zap.Any("bucket_name", MinioConfig.BucketName))
 		} else {
 			Logger.Panic("Minio bucket error", zap.Error(err))
 			panic(err)
 		}
 	} else {
-		Logger.Info(config.Configuration.BucketName + " bucket successfully created")
+		Logger.Info(MinioConfig.BucketName + " bucket successfully created")
 	}
 	return minioClient
 }
@@ -531,16 +541,16 @@ func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHan
 }
 
 func (fs *FileFSStore) UploadToCloud(fileHash, filePath string) (int64, error) {
-	return fs.Minio.FPutObject(config.Configuration.BucketName, fileHash, filePath, minio.PutObjectOptions{})
+	return fs.Minio.FPutObject(MinioConfig.BucketName, fileHash, filePath, minio.PutObjectOptions{})
 }
 
 func (fs *FileFSStore) DownloadFromCloud(fileHash, filePath string) error {
-	return fs.Minio.FGetObject(config.Configuration.BucketName, fileHash, filePath, minio.GetObjectOptions{})
+	return fs.Minio.FGetObject(MinioConfig.BucketName, fileHash, filePath, minio.GetObjectOptions{})
 }
 
 func (fs *FileFSStore) RemoveFromCloud(fileHash string) error {
-	if _, err := fs.Minio.StatObject(config.Configuration.BucketName, fileHash, minio.StatObjectOptions{}); err == nil {
-		return fs.Minio.RemoveObject(config.Configuration.BucketName, fileHash)
+	if _, err := fs.Minio.StatObject(MinioConfig.BucketName, fileHash, minio.StatObjectOptions{}); err == nil {
+		return fs.Minio.RemoveObject(MinioConfig.BucketName, fileHash)
 	}
 	return nil
 }

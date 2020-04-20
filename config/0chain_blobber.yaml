@@ -61,12 +61,7 @@ minio:
   start: false
   worker_frequency: 3600 #in seconds
   num_workers: 5
-  storage_service_url: play.min.io
-  access_key_id: Q3AM3UQ867SPQQA43P2F
-  secret_access_key: zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
   use_ssl: false
-  bucket_name: mytestbucket
-  bucket_location: us-east-1
 
 cold_storage:
   min_file_size: 1048576 #in bytes

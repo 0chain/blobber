@@ -80,15 +80,10 @@ type Config struct {
 	ColdStorageJobQueryLimit    int64
 	MaxCapacityPercentage       float64
 
-	MinioStart             bool
-	MinioWorkerFreq        int64
-	MinioNumWorkers        int
-	MinioStorageServiceURL string
-	MinioAccessKeyID       string
-	MinioSecretAccessKey   string
-	MinioUseSSL            bool
-	BucketName             string
-	BucketLocation         string
+	MinioStart      bool
+	MinioWorkerFreq int64
+	MinioNumWorkers int
+	MinioUseSSL     bool
 
 	ReadPrice               float64
 	WritePrice              float64

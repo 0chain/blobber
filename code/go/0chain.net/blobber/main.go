@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -73,12 +75,7 @@ func SetupWorkerConfig() {
 	config.Configuration.MinioStart = viper.GetBool("minio.start")
 	config.Configuration.MinioWorkerFreq = viper.GetInt64("minio.worker_frequency")
 	config.Configuration.MinioNumWorkers = viper.GetInt("minio.num_workers")
-	config.Configuration.MinioStorageServiceURL = viper.GetString("minio.storage_service_url")
-	config.Configuration.MinioAccessKeyID = viper.GetString("minio.access_key_id")
-	config.Configuration.MinioSecretAccessKey = viper.GetString("minio.secret_access_key")
 	config.Configuration.MinioUseSSL = viper.GetBool("minio.use_ssl")
-	config.Configuration.BucketName = viper.GetString("minio.bucket_name")
-	config.Configuration.BucketLocation = viper.GetString("minio.bucket_location")
 
 	config.Configuration.Capacity = viper.GetInt64("capacity")
 
@@ -167,6 +164,41 @@ func processBlockChainConfig(nodesFileName string) {
 	}
 }
 
+func processMinioConfig(reader io.Reader) error {
+	scanner := bufio.NewScanner(reader)
+	more := scanner.Scan()
+	if more == false {
+		return common.NewError("process_minio_config_failed", "Unable to read minio config from minio config file")
+	}
+
+	filestore.MinioConfig.StorageServiceURL = scanner.Text()
+	more = scanner.Scan()
+	if more == false {
+		return common.NewError("process_minio_config_failed", "Unable to read minio config from minio config file")
+	}
+
+	filestore.MinioConfig.AccessKeyID = scanner.Text()
+	more = scanner.Scan()
+	if more == false {
+		return common.NewError("process_minio_config_failed", "Unable to read minio config from minio config file")
+	}
+
+	filestore.MinioConfig.SecretAccessKey = scanner.Text()
+	more = scanner.Scan()
+	if more == false {
+		return common.NewError("process_minio_config_failed", "Unable to read minio config from minio config file")
+	}
+
+	filestore.MinioConfig.BucketName = scanner.Text()
+	more = scanner.Scan()
+	if more == false {
+		return common.NewError("process_minio_config_failed", "Unable to read minio config from minio config file")
+	}
+
+	filestore.MinioConfig.BucketLocation = scanner.Text()
+	return nil
+}
+
 func isValidOrigin(origin string) bool {
 	var url, err = url.Parse(origin)
 	if err != nil {
@@ -191,6 +223,7 @@ func main() {
 	deploymentMode := flag.Int("deployment_mode", 2, "deployment_mode")
 	nodesFile := flag.String("nodes_file", "", "nodes_file")
 	keysFile := flag.String("keys_file", "", "keys_file")
+	minioFile := flag.String("minio_file", "", "minio_file")
 	filesDir = flag.String("files_dir", "", "files_dir")
 	metadataDB = flag.String("db_dir", "", "db_dir")
 	logDir := flag.String("log_dir", "", "log_dir")
@@ -236,6 +269,18 @@ func main() {
 
 	publicKey, privateKey, _, _ := encryption.ReadKeys(reader)
 	reader.Close()
+
+	reader, err = os.Open(*minioFile)
+	if err != nil {
+		panic(err)
+	}
+
+	err = processMinioConfig(reader)
+	if err != nil {
+		panic(err)
+	}
+	reader.Close()
+
 	node.Self.SetKeys(publicKey, privateKey)
 
 	port, err := strconv.Atoi(*portString) //fmt.Sprintf(":%v", port) // node.Self.Port
