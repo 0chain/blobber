@@ -4,10 +4,15 @@ logging:
   level: "info"
   console: false # printing log to console is only supported in development mode
 
-          
-capacity: 107374182400 # 100 GB bytes total blobber capacity
-read_price: 0.01       # token / GB for reading
-write_price: 1.00      # token / GB for writing
+# for testing
+#  500 MB - 536870912
+#    1 GB - 1073741824
+#    2 GB - 2147483648
+#    3 GB - 3221225472
+#  100 GB - 107374182400
+capacity: 1073741824 # 1 GB bytes total blobber capacity
+read_price: 0.01     # token / GB for reading
+write_price: 0.10    # token / GB for writing
 # min_lock_demand is value in [0; 1] range; it represents number of tokens the
 # blobber earned even if a user will not read or write something
 # to an allocation; the number of tokens will be calculated by the following
@@ -19,15 +24,11 @@ min_lock_demand: 0.1
 # max_offer_duration restrict long contacts where,
 # in the future, prices can be changed
 max_offer_duration: 744h # 31 day
-challenge_completion_time: 15m # duration to complete a challenge
-# when a blobber receive a rad request it looks for client's read pools
-# the timeout if time before expiration of this tokens to treat the tokens
-# as alive and can be used; for example, if tokens expire after a second,
-# then blobber can't give them; but if the tokens expire after a hour then
-# the blobber can perform reading (handle download request) and redeem all
-# its read markers
+challenge_completion_time: 2m # duration to complete a challenge
+# these timeouts required by blobber to check client pools, perform
+# a task and redeem tokens, it should be big enough
 read_lock_timeout: 12m
-
+write_lock_timeout: 12m
 
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"

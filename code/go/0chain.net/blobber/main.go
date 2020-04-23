@@ -79,7 +79,12 @@ func SetupWorkerConfig() {
 	config.Configuration.MinLockDemand = viper.GetFloat64("min_lock_demand")
 	config.Configuration.MaxOfferDuration = viper.GetDuration("max_offer_duration")
 	config.Configuration.ChallengeCompletionTime = viper.GetDuration("challenge_completion_time")
-	config.Configuration.ReadLockTimeout = viper.GetDuration("read_lock_timeout")
+	config.Configuration.ReadLockTimeout = int64(
+		viper.GetDuration("read_lock_timeout") / time.Second,
+	)
+	config.Configuration.WriteLockTimeout = int64(
+		viper.GetDuration("write_lock_timeout") / time.Second,
+	)
 }
 
 func SetupWorkers() {

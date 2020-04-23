@@ -9,8 +9,10 @@ import (
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/core/common"
 	"0chain.net/core/encryption"
+	. "0chain.net/core/logging"
 
 	"github.com/jinzhu/gorm/dialects/postgres"
+	"go.uber.org/zap"
 )
 
 type AuthTicket struct {
@@ -70,7 +72,9 @@ type ReadMarker struct {
 }
 
 func (rm *ReadMarker) GetHashData() string {
-	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.BlobberID, rm.ClientID, rm.ClientPublicKey, rm.OwnerID, rm.ReadCounter, rm.Timestamp)
+	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", rm.AllocationID,
+		rm.BlobberID, rm.ClientID, rm.ClientPublicKey, rm.OwnerID,
+		rm.ReadCounter, rm.Timestamp)
 	return hashData
 }
 
@@ -98,6 +102,7 @@ func GetLatestReadMarker(ctx context.Context, clientID string) (*ReadMarker, err
 }
 
 func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, isCreate bool) error {
+
 	db := datastore.GetStore().GetTransaction(ctx)
 	rmEntity := &ReadMarkerEntity{}
 	rmEntity.LatestRM = rm
@@ -112,8 +117,9 @@ func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, isCreate bool) er
 }
 
 func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context, status_message string, redeemTxn string) error {
+
 	db := datastore.GetStore().GetTransaction(ctx)
-	var err error
+
 	rmUpdates := make(map[string]interface{})
 	rmUpdates["latest_redeem_txn_id"] = redeemTxn
 	rmUpdates["status_message"] = status_message
@@ -123,6 +129,47 @@ func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context, status_message str
 		return err
 	}
 	rmUpdates["latest_redeemed_rm"] = latestRMBytes
-	err = db.Model(rm).Where("counter = ?", rm.LatestRM.ReadCounter).Updates(rmUpdates).Error
+
+	err = db.Model(rm).
+		Where("counter = ?", rm.LatestRM.ReadCounter).
+		Updates(rmUpdates).Error
+
+	// update related pending
+	var rs []*allocation.ReadRedeem
+	rs, err = allocation.GetReadRedeems(db, rm.LatestRM.ReadCounter,
+		rm.LatestRM.ClientID, rm.LatestRM.AllocationID, rm.LatestRM.BlobberID)
+	if err != nil {
+		return fmt.Errorf("can't get pending RM records: %v", err)
+	}
+	var pend *allocation.Pending
+	pend, err = allocation.GetPending(db, rm.LatestRM.ClientID,
+		rm.LatestRM.AllocationID, rm.LatestRM.BlobberID)
+	if err != nil {
+		return fmt.Errorf("can't get allocation pending values: %v", err)
+	}
+	for _, r := range rs {
+		pend.SubPendingRead(r.Value) // released
+	}
+	if err = pend.Save(db); err != nil {
+		return fmt.Errorf("can't save allocation pending value: %v", err)
+	}
+	if err = db.Model(rs).Delete(rs).Error; err != nil {
+		return fmt.Errorf("can't delete pending RM records: %v", err)
+	}
+	// update read pools
+	var rps []*allocation.ReadPool
+	rps, err = allocation.RequestReadPools(rm.LatestRM.ClientID,
+		rm.LatestRM.AllocationID)
+	if err != nil {
+		Logger.Error("requesting read pools",
+			zap.String("client_id", rm.LatestRM.ClientID),
+			zap.String("allocation_id", rm.LatestRM.AllocationID),
+			zap.String("blobber_id", rm.LatestRM.BlobberID),
+			zap.Error(err))
+		// don't return
+	}
+	// set or reset read pools
+	err = allocation.SetReadPools(db, rm.LatestRM.ClientID,
+		rm.LatestRM.AllocationID, rm.LatestRM.BlobberID, rps)
 	return err
 }

@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	"0chain.net/blobbercore/allocation"
-	//"0chain.net/blobbercore/config"
+	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/constants"
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/filestore"
@@ -23,10 +23,167 @@ import (
 	"0chain.net/core/encryption"
 	"0chain.net/core/lock"
 	. "0chain.net/core/logging"
+	"0chain.net/core/node"
 
 	"github.com/jinzhu/gorm"
 	"go.uber.org/zap"
 )
+
+func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
+	numBlocks int64, readMarker *readmarker.ReadMarker) (err error) {
+
+	// check out read pool tokens if read_price > 0
+	var (
+		db        = datastore.GetStore().GetTransaction(ctx)
+		blobberID = node.Self.ID
+		until     = common.Now() +
+			common.Timestamp(config.Configuration.ReadLockTimeout)
+
+		want = alloc.WantRead(blobberID, numBlocks)
+
+		pend *allocation.Pending
+		rps  []*allocation.ReadPool
+	)
+
+	if want == 0 {
+		return // skip if read price is zero
+	}
+
+	pend, err = allocation.GetPending(db, readMarker.ClientID, alloc.ID,
+		blobberID)
+	if err != nil {
+		return common.NewError("internal_error",
+			"can't get pending payments: "+err.Error())
+	}
+
+	rps, err = pend.ReadPools(db, blobberID, until)
+	if err != nil {
+		return common.NewError("internal_error",
+			"can't get read pools from DB: "+err.Error())
+	}
+
+	var have = pend.HaveRead(rps)
+
+	if have < want {
+		rps, err = allocation.RequestReadPools(readMarker.ClientID,
+			alloc.ID)
+		if err != nil {
+			return common.NewError("request_error",
+				"can't request read pools from sharders: "+err.Error())
+		}
+		err = allocation.SetReadPools(db, readMarker.ClientID,
+			alloc.ID, blobberID, rps)
+		if err != nil {
+			return common.NewError("internal_error",
+				"can't save requested read pools: "+err.Error())
+		}
+		rps, err = pend.ReadPools(db, blobberID, until)
+		if err != nil {
+			return common.NewError("internal_error",
+				"can't get read pools from DB: "+err.Error())
+		}
+		have = pend.HaveRead(rps)
+	}
+
+	if have < want {
+		return common.NewError("not_enough_tokens", "not enough "+
+			"tokens in client's read pools associated with the"+
+			" allocation->blobber")
+	}
+
+	// update pending reads
+	pend.AddPendingRead(want)
+	if err = pend.Save(db); err != nil {
+		return common.NewError("internal_error",
+			"can't save pending reads in DB: "+err.Error())
+	}
+
+	err = allocation.AddReadRedeem(db, readMarker.ReadCounter, want,
+		readMarker.ClientID, alloc.ID, blobberID)
+	if err != nil {
+		return common.NewError("internal_error",
+			"can't save pending RM value in DB: "+err.Error())
+	}
+
+	return
+}
+
+func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
+	writeMarker *writemarker.WriteMarker) (err error) {
+
+	// check out read pool tokens if read_price > 0
+	var (
+		db        = datastore.GetStore().GetTransaction(ctx)
+		blobberID = node.Self.ID
+		until     = common.Now() +
+			common.Timestamp(config.Configuration.WriteLockTimeout)
+
+		want = alloc.WantWrite(blobberID, writeMarker.Size)
+
+		pend *allocation.Pending
+		wps  []*allocation.WritePool
+	)
+
+	if writeMarker.Size <= 0 || want <= 0 {
+		return // skip if write price is zero
+	}
+
+	pend, err = allocation.GetPending(db, writeMarker.ClientID,
+		alloc.ID, blobberID)
+	if err != nil {
+		return common.NewError("internal_error",
+			"can't get pending payments: "+err.Error())
+	}
+
+	wps, err = pend.WritePools(db, blobberID, until)
+	if err != nil {
+		return common.NewError("internal_error",
+			"can't get read pools from DB: "+err.Error())
+	}
+
+	var have = pend.HaveWrite(wps)
+	if have < want {
+		wps, err = allocation.RequestWritePools(writeMarker.ClientID,
+			alloc.ID)
+		if err != nil {
+			return common.NewError("request_error",
+				"can't request write pools from sharders: "+err.Error())
+		}
+		err = allocation.SetWritePools(db, writeMarker.ClientID,
+			alloc.ID, blobberID, wps)
+		if err != nil {
+			return common.NewError("internal_error",
+				"can't save requested write pools: "+err.Error())
+		}
+		wps, err = pend.WritePools(db, blobberID, until)
+		if err != nil {
+			return common.NewError("internal_error",
+				"can't get write pools from DB: "+err.Error())
+		}
+		have = pend.HaveWrite(wps)
+	}
+
+	if have < want {
+		return common.NewError("not_enough_tokens", "not enough "+
+			"tokens in client's write pools associated with the"+
+			" allocation->blobber")
+	}
+
+	// update pending writes
+	pend.AddPendingWrite(want)
+	if err = pend.Save(db); err != nil {
+		return common.NewError("internal_error",
+			"can't save pending writes in DB: "+err.Error())
+	}
+	err = allocation.AddWriteRedeem(db, writeMarker.Signature,
+		writeMarker.Size, want, writeMarker.ClientID, alloc.ID, blobberID)
+	if err != nil {
+		return common.NewError("internal_error",
+			"can't save pending WM value in DB: "+err.Error())
+	}
+
+	return
+}
 
 func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (interface{}, error) {
 	if r.Method == "GET" {
@@ -88,22 +245,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	}
 
 	// check out read pool tokens if read_price > 0
-
-	if want := allocationObj.ReadValue(readMarker.ReadCounter); want > 0 {
-		// SLOW
-		// value, err := readmarker.GetReadPool(ctx, clientID,
-		// 	config.Configuration.ReadLockTimeout)
-		// if err != nil {
-		// 	return nil, common.NewError("download_failed",
-		// 		"can't get "+clientID+" read pools: "+err.Error())
-		// }
-		// if value < want {
-		// 	return nil, common.NewError("download_failed", fmt.Sprintf("not"+
-		// 		" enough tokens in "+clientID+"'s read pools: %d < %d",
-		// 		value, want))
-		// }
+	err = readPreRedeem(ctx, allocationObj, numBlocks, readMarker)
+	if err != nil {
+		return nil, err
 	}
-
 	// reading allowed
 
 	rmObj := &readmarker.ReadMarkerEntity{}
@@ -264,6 +409,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 			result.WriteMarker = &latestWM.WM
 		}
 		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
+	}
+
+	if err = writePreRedeem(ctx, allocationObj, &writeMarker); err != nil {
+		return nil, err
 	}
 
 	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot)
