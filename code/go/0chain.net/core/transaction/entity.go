@@ -78,6 +78,8 @@ type StorageAllocation struct {
 	Expiration     common.Timestamp     `json:"expiration_date"`
 	Blobbers       []*StorageNode       `json:"blobbers"`
 	BlobberDetails []*BlobberAllocation `json:"blobber_details"`
+	// Finalized      bool                 `json:"finalized"`
+	// CCT            time.Duration        `json:"challenge_completion_time"`
 }
 
 func (sa *StorageAllocation) TotalReadPrice() (total int64) {
@@ -101,12 +103,15 @@ type StorageAllocationBlobber struct {
 	AllocationRoot string `json:"allocation_root"`
 }
 
-const ADD_BLOBBER_SC_NAME = "add_blobber"
-const ADD_VALIDATOR_SC_NAME = "add_validator"
-const CLOSE_CONNECTION_SC_NAME = "commit_connection"
-const READ_REDEEM = "read_redeem"
-const CHALLENGE_RESPONSE = "challenge_response"
-const BLOBBER_HEALTH_CHECK = "blobber_health_check"
+const (
+	ADD_BLOBBER_SC_NAME      = "add_blobber"
+	ADD_VALIDATOR_SC_NAME    = "add_validator"
+	CLOSE_CONNECTION_SC_NAME = "commit_connection"
+	READ_REDEEM              = "read_redeem"
+	CHALLENGE_RESPONSE       = "challenge_response"
+	BLOBBER_HEALTH_CHECK     = "blobber_health_check"
+	FINALIZE_ALLOCATION      = "finalize_allocation"
+)
 
 const STORAGE_CONTRACT_ADDRESS = "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d7"
 

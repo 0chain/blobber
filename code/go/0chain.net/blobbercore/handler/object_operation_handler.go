@@ -32,6 +32,11 @@ import (
 func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	numBlocks int64, readMarker *readmarker.ReadMarker) (err error) {
 
+	if numBlocks == 0 {
+		println("NUM BLOCKS IS ZERO")
+		return
+	}
+
 	// check out read pool tokens if read_price > 0
 	var (
 		db        = datastore.GetStore().GetTransaction(ctx)
@@ -244,13 +249,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the readmarker for download."+err.Error())
 	}
 
-	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, allocationObj, numBlocks, readMarker)
-	if err != nil {
-		return nil, err
-	}
-	// reading allowed
-
 	rmObj := &readmarker.ReadMarkerEntity{}
 	rmObj.LatestRM = readMarker
 
@@ -295,6 +293,16 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		response.AllocationID = fileref.AllocationID
 		return response, nil
 	}
+
+	println("READ COUNTER:", readMarker.ReadCounter)
+	println("NUM BLOCKS:  ", numBlocks)
+
+	// check out read pool tokens if read_price > 0
+	err = readPreRedeem(ctx, allocationObj, numBlocks, readMarker)
+	if err != nil {
+		return nil, err
+	}
+	// reading allowed
 
 	download_mode := r.FormValue("content")
 	var respData []byte

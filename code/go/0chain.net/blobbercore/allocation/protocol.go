@@ -22,13 +22,21 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 
 	a = new(Allocation)
 	err = tx.Model(&Allocation{}).
-		Related(&Terms{}).
-		Related(&ReadPool{}).
-		Related(&WritePool{}).
 		Where(&Allocation{Tx: allocationTx}).
 		First(a).Error
+
 	if err == nil {
-		return // found in DB
+		// load related terms
+		var terms []*Terms
+		err = tx.Model(terms).
+			Where("allocation_tx = ?", a.Tx).
+			Find(&terms).Error
+		if err != nil && !gorm.IsRecordNotFoundError(err) {
+			return // unexpected DB error
+		}
+		a.Terms = terms // set field
+		err = nil       // reset the error
+		return          // found in DB
 	}
 
 	if !gorm.IsRecordNotFoundError(err) {

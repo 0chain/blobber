@@ -62,7 +62,7 @@ CREATE TABLE write_pools (
     PRIMARY KEY (pool_id)
 );
 
-CREATE UNIQUE INDEX idx_read_pools_cab
+CREATE UNIQUE INDEX idx_write_pools_cab
     ON write_pools (client_id, allocation_id, blobber_id);
 
 

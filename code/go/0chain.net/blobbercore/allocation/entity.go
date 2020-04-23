@@ -28,7 +28,7 @@ type Allocation struct {
 	LatestRedeemedWM string           `gorm:"column:latest_redeemed_write_marker"`
 	IsRedeemRequired bool             `gorm:"column:is_redeem_required"`
 	// Has many terms.
-	Terms []*Terms `gorm:"foreignkey:allocation_tx;association_foreignkey:tx"`
+	Terms []*Terms `gorm:"-"`
 }
 
 func (Allocation) TableName() string {
@@ -227,11 +227,15 @@ func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string,
 		return
 	}
 
-	if len(rps) == 0 {
-		return nil
+	// GORM doesn't have bulk inserting (\0/)
+
+	for _, rp := range rps {
+		if err = db.Create(rp).Error; err != nil {
+			return
+		}
 	}
 
-	return db.Create(rps).Error
+	return
 }
 
 func SetWritePools(db *gorm.DB, clientID, allocationID, blobberID string,
@@ -249,11 +253,15 @@ func SetWritePools(db *gorm.DB, clientID, allocationID, blobberID string,
 		return
 	}
 
-	if len(wps) == 0 {
-		return nil
+	// GORM doesn't have bulk inserting (\0/)
+
+	for _, wp := range wps {
+		if err = db.Create(wp).Error; err != nil {
+			return
+		}
 	}
 
-	return db.Create(wps).Error
+	return
 }
 
 // pending read marker (value in ZCN)
