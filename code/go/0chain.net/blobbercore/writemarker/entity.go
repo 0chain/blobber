@@ -5,8 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/core/common"
+
+	. "0chain.net/core/logging"
+
+	"go.uber.org/zap"
 )
 
 type WriteMarker struct {
@@ -48,18 +53,73 @@ func (WriteMarkerEntity) TableName() string {
 	return "write_markers"
 }
 
-func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarkerStatus, status_message string, redeemTxn string) error {
+func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarkerStatus,
+	status_message string, redeemTxn string) (err error) {
+
 	db := datastore.GetStore().GetTransaction(ctx)
-	var err error
 	statusBytes, _ := json.Marshal(status_message)
 	fmt.Println(string(statusBytes))
 	if status == Failed {
 		wm.ReedeemRetries++
-		err = db.Model(wm).Update(WriteMarkerEntity{Status: status, StatusMessage: string(statusBytes), CloseTxnID: redeemTxn, ReedeemRetries: wm.ReedeemRetries}).Error
-	} else {
-		err = db.Model(wm).Update(WriteMarkerEntity{Status: status, StatusMessage: string(statusBytes), CloseTxnID: redeemTxn}).Error
+		err = db.Model(wm).Update(WriteMarkerEntity{
+			Status:         status,
+			StatusMessage:  string(statusBytes),
+			CloseTxnID:     redeemTxn,
+			ReedeemRetries: wm.ReedeemRetries,
+		}).Error
+		return
 	}
-	return err
+
+	err = db.Model(wm).Update(WriteMarkerEntity{
+		Status:        status,
+		StatusMessage: string(statusBytes),
+		CloseTxnID:    redeemTxn,
+	}).Error
+	if err != nil {
+		return
+	}
+
+	if status != Committed {
+		return
+	}
+
+	// WM has committed
+
+	// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+	var wr *allocation.WriteRedeem
+	wr, err = allocation.GetWriteRedeem(db, wm.WM.Signature, wm.WM.ClientID,
+		wm.WM.AllocationID, wm.WM.BlobberID)
+	if err != nil {
+		return fmt.Errorf("can't get pending WM record: %v", err)
+	}
+	var pend *allocation.Pending
+	pend, err = allocation.GetPending(db, wm.WM.ClientID, wm.WM.AllocationID,
+		wm.WM.BlobberID)
+	if err != nil {
+		return fmt.Errorf("can't get allocation pending values: %v", err)
+	}
+	pend.SubPendingWrite(wr.Value)
+	if err = pend.Save(db); err != nil {
+		return fmt.Errorf("can't save allocation pending value: %v", err)
+	}
+	if err = db.Model(wr).Delete(wr).Error; err != nil {
+		return fmt.Errorf("can't delete pending WM records: %v", err)
+	}
+	// update write pools
+	var wps []*allocation.WritePool
+	wps, err = allocation.RequestWritePools(wm.WM.ClientID, wm.WM.AllocationID)
+	if err != nil {
+		Logger.Error("requesting write pools",
+			zap.String("client_id", wm.WM.ClientID),
+			zap.String("allocation_id", wm.WM.AllocationID),
+			zap.String("blobber_id", wm.WM.BlobberID),
+			zap.Error(err))
+		// don't return
+	}
+	// set or reset write pools
+	err = allocation.SetWritePools(db, wm.WM.ClientID, wm.WM.AllocationID,
+		wm.WM.BlobberID, wps)
+	return
 }
 
 func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMarkerEntity, error) {
@@ -75,7 +135,11 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMa
 func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAllocationRoot string, endAllocationRoot string) ([]*WriteMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	var seqRange []int64
-	err := db.Table((WriteMarkerEntity{}).TableName()).Where(WriteMarker{AllocationRoot: startAllocationRoot, AllocationID: allocationID}).Or(WriteMarker{AllocationRoot: endAllocationRoot, AllocationID: allocationID}).Order("sequence").Pluck("sequence", &seqRange).Error
+	err := db.Table((WriteMarkerEntity{}).TableName()).
+		Where(WriteMarker{AllocationRoot: startAllocationRoot, AllocationID: allocationID}).
+		Or(WriteMarker{AllocationRoot: endAllocationRoot, AllocationID: allocationID}).
+		Order("sequence").
+		Pluck("sequence", &seqRange).Error
 	if err != nil {
 		return nil, err
 	}

@@ -37,6 +37,9 @@ func (fsh *StorageHandler) verifyAllocation(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	if allocationObj.Expiration < common.Now() {
+		return nil, common.NewError("expired_allocation", "use of expired allocation")
+	}
 	return allocationObj, nil
 }
 

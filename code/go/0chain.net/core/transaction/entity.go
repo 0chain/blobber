@@ -2,7 +2,6 @@ package transaction
 
 import (
 	"encoding/json"
-	"math"
 	"sync"
 	"time"
 
@@ -65,7 +64,8 @@ type StorageNode struct {
 }
 
 type BlobberAllocation struct {
-	Terms Terms `json:"terms"`
+	BlobberID string `json:"blobber_id"`
+	Terms     Terms  `json:"terms"`
 }
 
 type StorageAllocation struct {
@@ -78,24 +78,22 @@ type StorageAllocation struct {
 	Expiration     common.Timestamp     `json:"expiration_date"`
 	Blobbers       []*StorageNode       `json:"blobbers"`
 	BlobberDetails []*BlobberAllocation `json:"blobber_details"`
+	// Finalized      bool                 `json:"finalized"`
+	// CCT            time.Duration        `json:"challenge_completion_time"`
 }
 
-func (sa *StorageAllocation) AvgWritePrice() (price float64) {
+func (sa *StorageAllocation) TotalReadPrice() (total int64) {
 	for _, d := range sa.BlobberDetails {
-		price += float64(d.Terms.WritePrice)
+		total += d.Terms.ReadPrice
 	}
-	return math.Ceil(float64(price) / float64(len(sa.BlobberDetails)))
+	return
 }
 
-func (sa *StorageAllocation) AvgReadPrice() (price float64) {
+func (sa *StorageAllocation) TotalWritePrice() (total int64) {
 	for _, d := range sa.BlobberDetails {
-		price += float64(d.Terms.ReadPrice)
+		total += d.Terms.WritePrice
 	}
-	return math.Ceil(float64(price) / float64(len(sa.BlobberDetails)))
-}
-
-func (sa *StorageAllocation) NumBlobbers() int64 {
-	return int64(len(sa.BlobberDetails))
+	return
 }
 
 type StorageAllocationBlobber struct {
@@ -105,12 +103,15 @@ type StorageAllocationBlobber struct {
 	AllocationRoot string `json:"allocation_root"`
 }
 
-const ADD_BLOBBER_SC_NAME = "add_blobber"
-const ADD_VALIDATOR_SC_NAME = "add_validator"
-const CLOSE_CONNECTION_SC_NAME = "commit_connection"
-const READ_REDEEM = "read_redeem"
-const CHALLENGE_RESPONSE = "challenge_response"
-const BLOBBER_HEALTH_CHECK = "blobber_health_check"
+const (
+	ADD_BLOBBER_SC_NAME      = "add_blobber"
+	ADD_VALIDATOR_SC_NAME    = "add_validator"
+	CLOSE_CONNECTION_SC_NAME = "commit_connection"
+	READ_REDEEM              = "read_redeem"
+	CHALLENGE_RESPONSE       = "challenge_response"
+	BLOBBER_HEALTH_CHECK     = "blobber_health_check"
+	FINALIZE_ALLOCATION      = "finalize_allocation"
+)
 
 const STORAGE_CONTRACT_ADDRESS = "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d7"
 

@@ -32,6 +32,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("max_offer_duration", time.Duration(0))
 	viper.SetDefault("challenge_completion_time", time.Duration(-1))
 	viper.SetDefault("read_lock_timeout", time.Duration(-1))
+	viper.SetDefault("write_lock_timeout", time.Duration(-1))
 }
 
 /*SetupConfig - setup the configuration system */
@@ -90,10 +91,12 @@ type Config struct {
 	MinLockDemand           float64
 	MaxOfferDuration        time.Duration
 	ChallengeCompletionTime time.Duration
-	ReadLockTimeout         time.Duration
 
 	FaucetWorkerFreqInMinutes int64
 	FaucetMinimumBalance      float64
+
+	ReadLockTimeout  int64 // seconds
+	WriteLockTimeout int64 // seconds
 }
 
 /*Configuration of the system */

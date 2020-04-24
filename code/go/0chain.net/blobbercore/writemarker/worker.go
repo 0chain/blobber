@@ -23,14 +23,17 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationObj *allocation.A
 	defer func() {
 		err := db.Commit().Error
 		if err != nil {
-			Logger.Error("Error commiting the writemarker redeem", zap.Error(err))
+			Logger.Error("Error committing the writemarker redeem", zap.Error(err))
 		}
 		rctx.Done()
 	}()
 
 	writemarkers := make([]*WriteMarkerEntity, 0)
 
-	err := db.Not(WriteMarkerEntity{Status: Committed}).Where(WriteMarker{AllocationID: allocationObj.ID}).Order("sequence").Find(&writemarkers).Error
+	err := db.Not(WriteMarkerEntity{Status: Committed}).
+		Where(WriteMarker{AllocationID: allocationObj.ID}).
+		Order("sequence").
+		Find(&writemarkers).Error
 	if err != nil {
 		return err
 	}
