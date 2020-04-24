@@ -212,7 +212,11 @@ func SelfFund(ctx context.Context) {
 						Logger.Error("Failed to call faucet", zap.Error(err))
 						continue
 					}
-					balance++
+					balance, err = CheckBalance()
+					if err != nil {
+						Logger.Error("Failed to check balance", zap.Error(err))
+						continue
+					}
 					Logger.Info("Faucet successfully called", zap.Any("current_balance", balance))
 				}
 				iterInprogress = false

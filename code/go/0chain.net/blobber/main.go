@@ -495,7 +495,11 @@ func CheckForFunds() {
 			Logger.Error("Failed to call faucet", zap.Error(err))
 			return
 		}
-		balance++
+		balance, err = handler.CheckBalance()
+		if err != nil {
+			Logger.Error("Failed to check for funds", zap.Error(err))
+			return
+		}
 		Logger.Info("Faucet successfully called", zap.Any("current_balance", balance))
 	}
 }
