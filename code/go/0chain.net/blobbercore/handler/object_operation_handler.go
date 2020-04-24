@@ -33,7 +33,6 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	numBlocks int64, readMarker *readmarker.ReadMarker) (err error) {
 
 	if numBlocks == 0 {
-		println("NUM BLOCKS IS ZERO")
 		return
 	}
 
@@ -293,9 +292,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		response.AllocationID = fileref.AllocationID
 		return response, nil
 	}
-
-	println("READ COUNTER:", readMarker.ReadCounter)
-	println("NUM BLOCKS:  ", numBlocks)
 
 	// check out read pool tokens if read_price > 0
 	err = readPreRedeem(ctx, allocationObj, numBlocks, readMarker)

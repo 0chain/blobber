@@ -66,9 +66,6 @@ CREATE UNIQUE INDEX idx_write_pools_cab
     ON write_pools (client_id, allocation_id, blobber_id);
 
 
-ALTER TABLE read_markers ADD COLUMN
-    num_blocks bigint NOT NULL;
-
 CREATE TABLE read_redeems (
     id             bigserial,
 
@@ -98,3 +95,10 @@ CREATE TABLE write_redeems (
 );
 
 CREATE INDEX idx_write_redeems_signature ON write_redeems (signature);
+
+--
+-- grant again
+--
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO blobber_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO blobber_user;
