@@ -486,19 +486,19 @@ func CheckForFunds() {
 	balance, err := handler.CheckBalance()
 	if err != nil {
 		Logger.Error("Failed to check for funds", zap.Error(err))
-		return
+		panic("Unable to get balance")
 	}
 	for balance < config.Configuration.FaucetMinimumBalance {
 		Logger.Info("Doesn't have minimum balance required, Calling faucet")
 		err = handler.CallFaucet()
 		if err != nil {
 			Logger.Error("Failed to call faucet", zap.Error(err))
-			return
+			continue
 		}
 		balance, err = handler.CheckBalance()
 		if err != nil {
 			Logger.Error("Failed to check for funds", zap.Error(err))
-			return
+			panic("Unable to get balance")
 		}
 		Logger.Info("Faucet successfully called", zap.Any("current_balance", balance))
 	}
