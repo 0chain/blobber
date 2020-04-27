@@ -52,8 +52,9 @@ type Ref struct {
 	EncryptedKey        string `gorm:"column:encrypted_key" filelist:"encrypted_key"`
 	Children            []*Ref `gorm:"-"`
 	childrenLoaded      bool
-	DeletedAt           *time.Time `gorm:"column:deleted_at"`
-	OnCloud             bool       `gorm:"on_cloud" filelist:"on_cloud"`
+	DeletedAt           *time.Time      `gorm:"column:deleted_at"`
+	OnCloud             bool            `gorm:"column:on_cloud" filelist:"on_cloud"`
+	CommitMetaTxns      []CommitMetaTxn `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
 	datastore.ModelWithTS
 }
 
