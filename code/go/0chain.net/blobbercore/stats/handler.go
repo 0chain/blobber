@@ -34,10 +34,6 @@ const tpl = `<!DOCTYPE html>
         <td>{{ .PublicKey }}</td>
       </tr>
       <tr>
-        <td>Capacity - from config (bytes)</td>
-        <td>{{ .Capacity }}</td>
-      </tr>
-      <tr>
         <td>Allocations</td>
         <td>{{ .NumAllocation }}</td>
       </tr>
@@ -81,6 +77,23 @@ const tpl = `<!DOCTYPE html>
         <td>Redeemed Challenges</td>
         <td>{{ .RedeemedChallenges }}</td>
       </tr>
+      <tr>
+        <td>Redeemed Challenges</td>
+        <td>{{ .RedeemedChallenges }}</td>
+      </tr>
+      <tr>
+        <table>
+          <tr><th colspan="2">Configurations</th></tr>
+          <tr><td>Capacity</td><td>{{ .Capacity }}</td></tr>
+          <tr><td>Read price</td><td>{{ .ReadPrice }}</td></tr>
+          <tr><td>Write price</td><td>{{ .WritePrice }}</td></tr>
+          <tr><td>Min lock demand</td><td>{{ .MinLockDemand }}</td></tr>
+          <tr><td>Max offer duration</td><td>{{ .MaxOfferDuration }}</td></tr>
+          <tr><td>Challenge completion_time</td><td>{{ .ChallengeCompletionTime }}</td></tr>
+          <tr><td>Read lock timeout</td><td>{{ .ReadLockTimeout }}</td></tr>
+          <tr><td>Write lock timeout</td><td>{{ .WriteLockTimeout }}</td></tr>
+        </table>
+      </tr>
     </table>
 
     <h1>
@@ -101,6 +114,7 @@ const tpl = `<!DOCTYPE html>
         <td>Passed Challenges</td>
         <td>Failed Challenges</td>
         <td>Redeemed Challenges</td>
+        <td>Expiration</td>
       </tr>
       {{range .AllocationStats}}
 
@@ -117,6 +131,7 @@ const tpl = `<!DOCTYPE html>
         <td>{{ .SuccessChallenges }}</td>
         <td>{{ .FailedChallenges }}</td>
         <td>{{ .RedeemedChallenges }}</td>
+        <td>{{ .Expiration }}</td>
       </tr>
       {{end}}
     </table>
