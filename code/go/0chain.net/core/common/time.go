@@ -13,6 +13,11 @@ func Now() Timestamp {
 	return Timestamp(time.Now().Unix())
 }
 
+// String implements standard fmt.Stringer interface.
+func (t Timestamp) String() string {
+	return time.Unix(int64(t), 0).String()
+}
+
 /*Within ensures a given timestamp is within certain number of seconds */
 func Within(ts int64, seconds int64) bool {
 	now := time.Now().Unix()

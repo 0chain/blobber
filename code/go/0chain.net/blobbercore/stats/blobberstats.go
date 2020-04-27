@@ -2,11 +2,12 @@ package stats
 
 import (
 	"context"
+	"time"
 
-	"0chain.net/core/common"
 	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/filestore"
+	"0chain.net/core/common"
 	. "0chain.net/core/logging"
 	"0chain.net/core/node"
 
@@ -28,12 +29,28 @@ type Stats struct {
 	RedeemedChallenges int64 `json:"num_redeemed_challenges"`
 }
 
+type Duration int64
+
+func (d Duration) String() string {
+	return (time.Duration(d) * time.Second).String()
+}
+
 type BlobberStats struct {
 	Stats
-	NumAllocation   int64              `json:"num_of_allocations"`
-	ClientID        string             `json:"-"`
-	PublicKey       string             `json:"-"`
-	Capacity        int64              `json:capacity`
+	NumAllocation int64  `json:"num_of_allocations"`
+	ClientID      string `json:"-"`
+	PublicKey     string `json:"-"`
+
+	// configurations
+	Capacity                int64         `json:"capacity"`
+	ReadPrice               float64       `json:"read_price"`
+	WritePrice              float64       `json:"write_price"`
+	MinLockDemand           float64       `json:"min_lock_demand"`
+	MaxOfferDuration        time.Duration `json:"max_offer_duration"`
+	ChallengeCompletionTime time.Duration `json:"challnge_completion_time"`
+	ReadLockTimeout         Duration      `json:"read_lock_timeout"`
+	WriteLockTimeout        Duration      `json:"write_lock_timeout"`
+
 	AllocationStats []*AllocationStats `json:"-"`
 }
 
@@ -52,7 +69,16 @@ func (bs *BlobberStats) loadBasicStats(ctx context.Context) {
 	bs.AllocationStats = make([]*AllocationStats, 0)
 	bs.ClientID = node.Self.ID
 	bs.PublicKey = node.Self.PublicKey
+	// configurations
 	bs.Capacity = config.Configuration.Capacity
+	bs.ReadPrice = config.Configuration.ReadPrice
+	bs.WritePrice = config.Configuration.WritePrice
+	bs.MinLockDemand = config.Configuration.MinLockDemand
+	bs.MaxOfferDuration = config.Configuration.MaxOfferDuration
+	bs.ChallengeCompletionTime = config.Configuration.ChallengeCompletionTime
+	bs.ReadLockTimeout = Duration(config.Configuration.ReadLockTimeout)
+	bs.WriteLockTimeout = Duration(config.Configuration.WriteLockTimeout)
+	//
 	du, err := filestore.GetFileStore().GetTotalDiskSizeUsed()
 	if err != nil {
 		du = -1
@@ -91,9 +117,24 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 	bs.AllocationStats = make([]*AllocationStats, 0)
 	db := datastore.GetStore().GetTransaction(ctx)
-	rows, err := db.Table("reference_objects").Select(
-		"reference_objects.allocation_id, SUM(reference_objects.size) as files_size, SUM(reference_objects.thumbnail_size) as thumbnails_size, SUM(file_stats.num_of_block_downloads) as num_of_reads, SUM(reference_objects.num_of_blocks) as num_of_block_writes, COUNT(*) as num_of_writes",
-	).Joins("inner join file_stats on reference_objects.id = file_stats.ref_id where reference_objects.type = 'f' and reference_objects.deleted_at IS NULL").Group("reference_objects.allocation_id").Rows()
+	rows, err := db.Table("reference_objects").
+		Select(`
+            reference_objects.allocation_id,
+            SUM(reference_objects.size) as files_size,
+            SUM(reference_objects.thumbnail_size) as thumbnails_size,
+            SUM(file_stats.num_of_block_downloads) as num_of_reads,
+            SUM(reference_objects.num_of_blocks) as num_of_block_writes,
+            COUNT(*) as num_of_writes,
+            allocations.expiration_date AS expiration_date`).
+		Joins(`INNER JOIN file_stats
+            ON reference_objects.id = file_stats.ref_id`).
+		Joins(`
+            INNER JOIN allocations
+            ON allocations.id = reference_objects.allocation_id`).
+		Where(`reference_objects.type = 'f'
+            AND reference_objects.deleted_at IS NULL`).
+		Group(`reference_objects.allocation_id, allocations.expiration_date`).
+		Rows()
 
 	if err != nil {
 		Logger.Error("Error in getting the allocation stats", zap.Error(err))
@@ -101,7 +142,8 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 
 	for rows.Next() {
 		as := &AllocationStats{}
-		err = rows.Scan(&as.AllocationID, &as.FilesSize, &as.ThumbnailsSize, &as.NumReads, &as.BlockWrites, &as.NumWrites)
+		err = rows.Scan(&as.AllocationID, &as.FilesSize, &as.ThumbnailsSize,
+			&as.NumReads, &as.BlockWrites, &as.NumWrites, &as.Expiration)
 		if err != nil {
 			Logger.Error("Error in scanning record for blobber stats", zap.Error(err))
 		}

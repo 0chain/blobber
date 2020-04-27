@@ -2,12 +2,14 @@ package stats
 
 import (
 	"0chain.net/blobbercore/filestore"
+	"0chain.net/core/common"
 )
 
 type AllocationStats struct {
 	AllocationID   string `json:"allocation_id"`
 	TempFolderSize int64  `json:"-"`
 	Stats
+	Expiration common.Timestamp `json:"expiration_date" gorm:"column:expiration_date"`
 }
 
 func (fs *AllocationStats) loadAllocationDiskUsageStats() error {
@@ -21,6 +23,5 @@ func (fs *AllocationStats) loadAllocationDiskUsageStats() error {
 		tfs = -1
 	}
 	fs.TempFolderSize = tfs
-
 	return err
 }
