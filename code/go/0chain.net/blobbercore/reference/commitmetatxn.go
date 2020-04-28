@@ -7,8 +7,8 @@ import (
 )
 
 type CommitMetaTxn struct {
-	RefID int64  `gorm:"ref_id"`
-	TxnID string `gorm:"txn_id"`
+	RefID int64  `gorm:"ref_id" json:"ref_id"`
+	TxnID string `gorm:"txn_id" json:"txn_id"`
 }
 
 func (CommitMetaTxn) TableName() string {
