@@ -33,6 +33,8 @@ func SetupDefaultConfig() {
 	viper.SetDefault("challenge_completion_time", time.Duration(-1))
 	viper.SetDefault("read_lock_timeout", time.Duration(-1))
 	viper.SetDefault("write_lock_timeout", time.Duration(-1))
+
+	viper.SetDefault("update_allocations_interval", time.Duration(-1))
 }
 
 /*SetupConfig - setup the configuration system */
@@ -97,6 +99,8 @@ type Config struct {
 
 	ReadLockTimeout  int64 // seconds
 	WriteLockTimeout int64 // seconds
+
+	UpdateAllocationsInterval time.Duration
 }
 
 /*Configuration of the system */

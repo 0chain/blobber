@@ -78,22 +78,12 @@ type StorageAllocation struct {
 	Expiration     common.Timestamp     `json:"expiration_date"`
 	Blobbers       []*StorageNode       `json:"blobbers"`
 	BlobberDetails []*BlobberAllocation `json:"blobber_details"`
-	// Finalized      bool                 `json:"finalized"`
-	// CCT            time.Duration        `json:"challenge_completion_time"`
+	Finalized      bool                 `json:"finalized"`
+	CCT            time.Duration        `json:"challenge_completion_time"`
 }
 
-func (sa *StorageAllocation) TotalReadPrice() (total int64) {
-	for _, d := range sa.BlobberDetails {
-		total += d.Terms.ReadPrice
-	}
-	return
-}
-
-func (sa *StorageAllocation) TotalWritePrice() (total int64) {
-	for _, d := range sa.BlobberDetails {
-		total += d.Terms.WritePrice
-	}
-	return
+func (sa *StorageAllocation) Until() common.Timestamp {
+	return sa.Expiration + common.Timestamp(sa.CCT/time.Second)
 }
 
 type StorageAllocationBlobber struct {

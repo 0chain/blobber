@@ -30,6 +30,9 @@ challenge_completion_time: 2m # duration to complete a challenge
 read_lock_timeout: 12m
 write_lock_timeout: 12m
 
+# update_allocations_interval used to refresh known allocation objects from SC
+update_allocations_interval: 1m
+
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
   owner: "edb90b850f2e7e7cbd0a1fa370fdcc5cd378ffbec95363a7bc0e5a98b8ba5759"

@@ -76,6 +76,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	a.OwnerPublicKey = sa.OwnerPublicKey
 	a.TotalSize = sa.Size
 	a.UsedSize = sa.UsedSize
+	a.Finalized = sa.Finalized
 
 	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))
 	for _, d := range sa.BlobberDetails {

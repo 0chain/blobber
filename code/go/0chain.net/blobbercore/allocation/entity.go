@@ -27,6 +27,9 @@ type Allocation struct {
 	BlobberSizeUsed  int64            `gorm:"column:blobber_size_used"`
 	LatestRedeemedWM string           `gorm:"column:latest_redeemed_write_marker"`
 	IsRedeemRequired bool             `gorm:"column:is_redeem_required"`
+	// ending and cleaning
+	CleanedUp bool `gorm:"column:cleaned_up"`
+	Finalized bool `gorm:"column:finalized"`
 	// Has many terms.
 	Terms []*Terms `gorm:"-"`
 }
