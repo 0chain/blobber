@@ -31,6 +31,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/copy/{allocation}", common.ToJSONResponse(WithConnection(CopyHandler)))
 
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithConnection(CommitHandler)))
+	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.ToJSONResponse(WithConnection(CommitMetaTxnHandler)))
 
 	//object info related apis
 	r.HandleFunc("/allocation", common.ToJSONResponse(WithConnection(AllocationHandler)))
@@ -103,6 +104,20 @@ func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
 
 	response, err := storageHandler.GetFileMeta(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, vars["allocation"])
+	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
+
+	response, err := storageHandler.AddCommitMetaTxn(ctx, r)
 	if err != nil {
 		return nil, err
 	}

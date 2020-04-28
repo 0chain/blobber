@@ -1,12 +1,14 @@
 package handler
 
 import (
-	"0chain.net/blobbercore/stats"
 	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"0chain.net/blobbercore/stats"
+	"go.uber.org/zap"
 
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/constants"
@@ -149,6 +151,13 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	result := make(map[string]interface{})
 	result = fileref.GetListingData(ctx)
 
+	commitMetaTxns, err := reference.GetCommitMetaTxns(ctx, fileref.ID)
+	if err != nil {
+		Logger.Error("Failed to get commitMetaTxns from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
+	}
+
+	result["commit_meta_txns"] = commitMetaTxns
+
 	authTokenString := r.FormValue("auth_token")
 
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
@@ -160,6 +169,74 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
 		}
 		delete(result, "path")
+	}
+
+	return result, nil
+}
+
+func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method == "GET" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+	}
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+	allocationID := allocationObj.ID
+
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+
+	path_hash := r.FormValue("path_hash")
+	path := r.FormValue("path")
+	if len(path_hash) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		path_hash = reference.GetReferenceLookup(allocationID, path)
+	}
+
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	if fileref.Type != reference.FILE {
+		return nil, common.NewError("invalid_parameters", "Path is not a file.")
+	}
+
+	authTokenString := r.FormValue("auth_token")
+
+	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
+		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
+		if err != nil {
+			return nil, err
+		}
+		if !authTicketVerified {
+			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
+		}
+	}
+
+	txnID := r.FormValue("txn_id")
+	if len(txnID) == 0 {
+		return nil, common.NewError("invalid_parameter", "TxnID not present in the params")
+	}
+
+	err = reference.AddCommitMetaTxn(ctx, fileref.ID, txnID)
+	if err != nil {
+		return nil, common.NewError("add_commit_meta_txn_failed", "Failed to add commitMetaTxn with err :"+err.Error())
+	}
+
+	result := struct {
+		Msg string `json:"msg"`
+	}{
+		Msg: "Added commitMetaTxn successfully",
 	}
 
 	return result, nil
