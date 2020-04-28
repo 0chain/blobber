@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/challenge"
 	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/datastore"
@@ -101,13 +102,19 @@ func SetupWorkerConfig() {
 	config.Configuration.WriteLockTimeout = int64(
 		viper.GetDuration("write_lock_timeout") / time.Second,
 	)
+
+	config.Configuration.UpdateAllocationsInterval =
+		viper.GetDuration("update_allocations_interval")
 }
 
 func SetupWorkers() {
-	handler.SetupWorkers(common.GetRootContext())
-	challenge.SetupWorkers(common.GetRootContext())
-	readmarker.SetupWorkers(common.GetRootContext())
-	writemarker.SetupWorkers(common.GetRootContext())
+	var root = common.GetRootContext()
+	handler.SetupWorkers(root)
+	challenge.SetupWorkers(root)
+	readmarker.SetupWorkers(root)
+	writemarker.SetupWorkers(root)
+	allocation.StartUpdateWorker(root,
+		config.Configuration.UpdateAllocationsInterval)
 	// stats.StartEventDispatcher(2)
 }
 
