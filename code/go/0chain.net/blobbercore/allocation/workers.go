@@ -160,7 +160,7 @@ func updateAllocation(ctx context.Context, a *Allocation) {
 	}
 
 	// if new Tx, then we have to update the allocation
-	if sa.Tx != a.Tx {
+	if sa.Tx != a.Tx || sa.Finalized != a.Finalized {
 		if a, err = updateAllocationInDB(ctx, a, sa); err != nil {
 			Logger.Error("updating allocation in DB", zap.Error(err))
 			println("updateAllocation", a.ID, "R 2")
@@ -334,6 +334,10 @@ func newConnectionID() string {
 }
 
 func deleteInFakeConnection(ctx context.Context, a *Allocation) (err error) {
+	ctx = datastore.GetStore().CreateTransaction(ctx)
+	var tx = datastore.GetStore().GetTransaction(ctx)
+	defer commit(tx, &err)
+
 	var (
 		connID = newConnectionID()
 		conn   *AllocationChangeCollector
@@ -361,12 +365,10 @@ func deleteFiles(ctx context.Context, allocID string,
 
 	println("DELTE FILES:", allocID)
 
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-
-	var tx = datastore.GetStore().GetTransaction(ctx)
-	defer commit(tx, &err)
-
-	var refs = make([]*reference.Ref, 0)
+	var (
+		tx   = datastore.GetStore().GetTransaction(ctx)
+		refs = make([]*reference.Ref, 0)
+	)
 	err = tx.Where(&reference.Ref{
 		Type:         reference.FILE,
 		AllocationID: allocID,
