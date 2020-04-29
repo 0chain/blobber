@@ -225,6 +225,10 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 	var tx = datastore.GetStore().GetTransaction(ctx)
 	defer commit(tx, &err)
 
+	var changed bool
+
+	changed = a.Tx != sa.Tx
+
 	// transaction
 	a.Tx = sa.Tx
 
@@ -245,12 +249,12 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 	}
 
 	// save allocations
-	err = tx.Model(a).
-		Set("gorm:insert_option", "ON CONFLICT DO UPDATE").
-		Where(&Allocation{ID: a.ID}).
-		Create(a).Error
-	if err != nil {
+	if err = tx.Save(a).Error; err != nil {
 		return nil, err
+	}
+
+	if !changed {
+		return a, nil
 	}
 
 	// save allocation terms
