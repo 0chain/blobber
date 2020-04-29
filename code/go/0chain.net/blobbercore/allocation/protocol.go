@@ -42,7 +42,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		// load related terms
 		var terms []*Terms
 		err = tx.Model(terms).
-			Where("allocation_tx = ?", a.Tx).
+			Where("allocation_id = ?", a.ID).
 			Find(&terms).Error
 		if err != nil && !gorm.IsRecordNotFoundError(err) {
 			return // unexpected DB error
@@ -67,21 +67,36 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		return nil, common.NewError("transaction_output_decode_error",
 			"Error decoding the allocation transaction output."+err.Error())
 	}
-	foundBlobber := false
-	for _, blobberConnection := range sa.Blobbers {
-		if blobberConnection.ID == node.Self.ID {
-			foundBlobber = true
-			a.AllocationRoot = ""
-			a.BlobberSize = (sa.Size + int64(len(sa.Blobbers)-1)) /
-				int64(len(sa.Blobbers))
-			a.BlobberSizeUsed = 0
-			break
+
+	var isExist bool
+	err = tx.Model(&Allocation{}).
+		Where("id = ?", sa.ID).
+		First(a).Error
+	if err != nil && !gorm.IsRecordNotFoundError(err) {
+		return nil, err // unexpected
+	}
+
+	isExist = (a.ID != "")
+
+	if !isExist {
+		foundBlobber := false
+		for _, blobberConnection := range sa.Blobbers {
+			if blobberConnection.ID == node.Self.ID {
+				foundBlobber = true
+				a.AllocationRoot = ""
+				a.BlobberSize = (sa.Size + int64(len(sa.Blobbers)-1)) /
+					int64(len(sa.Blobbers))
+				a.BlobberSizeUsed = 0
+				break
+			}
+		}
+		if !foundBlobber {
+			return nil, common.NewError("invalid_blobber",
+				"Blobber is not part of the open connection transaction")
 		}
 	}
-	if !foundBlobber {
-		return nil, common.NewError("invalid_blobber",
-			"Blobber is not part of the open connection transaction")
-	}
+
+	// set/update fields
 	a.ID = sa.ID
 	a.Tx = sa.Tx
 	a.Expiration = sa.Expiration
@@ -91,11 +106,12 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	a.UsedSize = sa.UsedSize
 	a.Finalized = sa.Finalized
 
+	// related terms
 	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))
 	for _, d := range sa.BlobberDetails {
 		a.Terms = append(a.Terms, &Terms{
 			BlobberID:    d.BlobberID,
-			AllocationTx: sa.Tx,
+			AllocationID: a.ID,
 			ReadPrice:    d.Terms.ReadPrice,
 			WritePrice:   d.Terms.WritePrice,
 		})
@@ -107,25 +123,23 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 
 	Logger.Info("Saving the allocation to DB")
 
-	// save allocations
-	var stub Allocation
-	err = tx.Model(a).
-		Where(&Allocation{Tx: sa.Tx}).
-		Attrs(a).
-		FirstOrCreate(&stub).Error
+	if isExist {
+		err = tx.Save(a).Error
+	} else {
+		err = tx.Create(a).Error
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	// save or update client (the owner)
-
-	// save allocation terms
+	// save/update related terms
 	for _, t := range a.Terms {
-		var stub Terms
-		err = tx.Model(t).
-			Where(Terms{BlobberID: t.BlobberID, AllocationTx: sa.Tx}).
-			Assign(t).
-			FirstOrCreate(&stub).Error
+		if isExist {
+			err = tx.Save(t).Error
+		} else {
+			err = tx.Create(t).Error
+		}
 		if err != nil {
 			return nil, err
 		}

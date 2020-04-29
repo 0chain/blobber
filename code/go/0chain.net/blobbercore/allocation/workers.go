@@ -86,8 +86,6 @@ func updateWork(ctx context.Context) {
 
 	for start := true; start || (offset < count); start = false {
 
-		println("updateWork", offset, count)
-
 		allocs, count, err = findAllocations(ctx, offset)
 		if err != nil {
 			Logger.Error("finding allocations in DB", zap.Error(err))
@@ -97,9 +95,7 @@ func updateWork(ctx context.Context) {
 			continue
 		}
 
-		println("updateWork", "A", len(allocs), "O", offset, "C", count)
 		offset += len(allocs)
-		println("updateWork", "A", len(allocs), "O", offset, "C", count)
 
 		for _, a := range allocs {
 			updateAllocation(ctx, a)
@@ -113,8 +109,6 @@ func updateWork(ctx context.Context) {
 // not finalized, not cleaned up
 func findAllocations(ctx context.Context, offset int) (
 	allocs []*Allocation, count int, err error) {
-
-	println("findAllocations", offset)
 
 	const query = `finalized = false AND cleaned_up = false`
 
@@ -145,8 +139,6 @@ func shouldFinalize(sa *transaction.StorageAllocation) bool {
 
 func updateAllocation(ctx context.Context, a *Allocation) {
 
-	println("updateAllocation", a.ID)
-
 	if a.Finalized {
 		cleanupAllocation(ctx, a)
 		return
@@ -155,7 +147,6 @@ func updateAllocation(ctx context.Context, a *Allocation) {
 	var sa, err = requestAllocation(a.ID)
 	if err != nil {
 		Logger.Error("requesting allocations from SC", zap.Error(err))
-		println("updateAllocation", a.ID, "R 1")
 		return
 	}
 
@@ -163,34 +154,25 @@ func updateAllocation(ctx context.Context, a *Allocation) {
 	if sa.Tx != a.Tx || sa.Finalized != a.Finalized {
 		if a, err = updateAllocationInDB(ctx, a, sa); err != nil {
 			Logger.Error("updating allocation in DB", zap.Error(err))
-			println("updateAllocation", a.ID, "R 2")
 			return
 		}
 	}
 
-	println("SA F:", sa.Finalized, "SF", shouldFinalize(sa))
-	println("A  F:", a.Finalized, "CU", a.CleanedUp)
-
 	// send finalize allocation transaction
 	if shouldFinalize(sa) {
 		sendFinalizeAllocation(a)
-		println("updateAllocation", a.ID, "R 3")
 		return
 	}
 
 	// remove data
 	if a.Finalized && !a.CleanedUp {
-		println("updateAllocation", a.ID, "R 4")
 		cleanupAllocation(ctx, a)
 	}
 
-	println("updateAllocation", a.ID, "R 5", "F", a.Finalized, "CU", a.CleanedUp)
 }
 
 func requestAllocation(allocID string) (
 	sa *transaction.StorageAllocation, err error) {
-
-	println("requestAllocation", allocID)
 
 	var b []byte
 	b, err = transaction.MakeSCRestAPICall(
@@ -218,8 +200,6 @@ func commit(tx *gorm.DB, err *error) {
 func updateAllocationInDB(ctx context.Context, a *Allocation,
 	sa *transaction.StorageAllocation) (ua *Allocation, err error) {
 
-	println("updateAllocationInDB", a.ID)
-
 	ctx = datastore.GetStore().CreateTransaction(ctx)
 
 	var tx = datastore.GetStore().GetTransaction(ctx)
@@ -242,7 +222,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 	for _, d := range sa.BlobberDetails {
 		a.Terms = append(a.Terms, &Terms{
 			BlobberID:    d.BlobberID,
-			AllocationTx: sa.Tx,
+			AllocationID: a.ID,
 			ReadPrice:    d.Terms.ReadPrice,
 			WritePrice:   d.Terms.WritePrice,
 		})
@@ -259,12 +239,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 
 	// save allocation terms
 	for _, t := range a.Terms {
-		var stub Terms
-		err = tx.Model(t).
-			Where(Terms{BlobberID: t.BlobberID, AllocationTx: sa.Tx}).
-			Assign(t).
-			FirstOrCreate(&stub).Error
-		if err != nil {
+		if err = tx.Save(t).Error; err != nil {
 			return nil, err
 		}
 	}
@@ -285,7 +260,6 @@ func (fr *finalizeRequest) marshal() string {
 }
 
 func sendFinalizeAllocation(a *Allocation) {
-	println("sendFinalizeAllocation", a.ID)
 
 	var tx, err = transaction.NewTransactionEntity()
 	if err != nil {
@@ -308,7 +282,6 @@ func sendFinalizeAllocation(a *Allocation) {
 }
 
 func cleanupAllocation(ctx context.Context, a *Allocation) {
-	println("cleanupAllocation", a.ID)
 
 	var err error
 	if err = deleteInFakeConnection(ctx, a); err != nil {
@@ -320,7 +293,7 @@ func cleanupAllocation(ctx context.Context, a *Allocation) {
 	defer commit(tx, &err)
 
 	a.CleanedUp = true
-	if err = tx.Update(a).Error; err != nil {
+	if err = tx.Model(a).Update(a).Error; err != nil {
 		Logger.Error("updating allocation 'cleaned_up'", zap.Error(err))
 	}
 }
@@ -363,8 +336,6 @@ func deleteInFakeConnection(ctx context.Context, a *Allocation) (err error) {
 func deleteFiles(ctx context.Context, allocID string,
 	conn *AllocationChangeCollector) (err error) {
 
-	println("DELTE FILES:", allocID)
-
 	var (
 		tx   = datastore.GetStore().GetTransaction(ctx)
 		refs = make([]*reference.Ref, 0)
@@ -379,7 +350,6 @@ func deleteFiles(ctx context.Context, allocID string,
 	err = nil // reset the record not found error
 
 	for _, ref := range refs {
-		println("FOUND (DELETE):", ref.Path)
 		if err = deleteFile(ctx, ref.Path, conn); err != nil {
 			return
 		}
@@ -391,8 +361,6 @@ func deleteFiles(ctx context.Context, allocID string,
 // delete reference
 func deleteFile(ctx context.Context, path string,
 	conn *AllocationChangeCollector) (err error) {
-
-	println("DELTE FILE:", path)
 
 	var fileRef *reference.Ref
 	fileRef, err = reference.GetReference(ctx, conn.AllocationID, path)

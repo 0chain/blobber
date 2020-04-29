@@ -175,7 +175,7 @@ func (p *Pending) Save(tx *gorm.DB) error {
 type Terms struct {
 	ID           int64  `gorm:"column:id;primary_key"`
 	BlobberID    string `gorm:"blobber_id"`
-	AllocationTx string `gorm:"allocation_tx"`
+	AllocationID string `gorm:"allocation_id"`
 
 	ReadPrice  int64 `gorm:"read_price"`
 	WritePrice int64 `gorm:"write_price"`
