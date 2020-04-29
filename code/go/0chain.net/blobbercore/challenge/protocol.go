@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/writemarker"
-	"0chain.net/blobbercore/reference"
 	"0chain.net/blobbercore/filestore"
-	"0chain.net/core/transaction"
+	"0chain.net/blobbercore/reference"
+	"0chain.net/blobbercore/writemarker"
 	"0chain.net/core/chain"
 	"0chain.net/core/common"
+	. "0chain.net/core/logging"
+	"0chain.net/core/transaction"
 	"0chain.net/core/util"
-	."0chain.net/core/logging"
 
 	"go.uber.org/zap"
 )
@@ -41,14 +41,14 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 	if err != nil {
 		return nil, err
 	}
-	
+
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CHALLENGE_RESPONSE, string(snBytes), 0)
 	if err != nil {
 		Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
 		return nil, err
 	}
 
-	Logger.Info("Verifying challenge response to blockchain.", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))	
+	Logger.Info("Verifying challenge response to blockchain.", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
@@ -72,7 +72,7 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 		return common.NewError("no_validators", "No validators assigned to the challange")
 	}
 
-	allocationObj, err := allocation.VerifyAllocationTransaction(ctx, cr.AllocationID, true)
+	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 	if len(wms) == 0 {
 		return common.NewError("write_marker_not_found", "Could find the writemarker for the given allocation root on challenge")
 	}
-	
+
 	rootRef, err := reference.GetReference(ctx, cr.AllocationID, "/")
 	blockNum := int64(0)
 	if rootRef.NumBlocks > 0 {
@@ -114,7 +114,7 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 	postData := make(map[string]interface{})
 	postData["challenge_id"] = cr.ChallengeID
 	postData["object_path"] = objectPath
-	markersArray := make([]map[string]interface{},0)
+	markersArray := make([]map[string]interface{}, 0)
 	for _, wm := range wms {
 		markersMap := make(map[string]interface{})
 		markersMap["write_marker"] = wm.WM
@@ -122,7 +122,6 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 		markersArray = append(markersArray, markersMap)
 	}
 	postData["write_markers"] = markersArray
-	
 
 	if blockNum > 0 {
 		if objectPath.Meta["type"] != reference.FILE {
@@ -140,7 +139,7 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 		//rand.Seed(cr.RandomNumber)
 		blockoffset := r.Intn(1024)
 		blockData, mt, err := filestore.GetFileStore().GetFileBlockForChallenge(cr.AllocationID, inputData, blockoffset)
-		
+
 		if err != nil {
 			cr.ErrorChallenge(ctx, err)
 			return err
@@ -227,7 +226,7 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 }
 
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
-	
+
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
 			Logger.Info("Verifying the transaction : " + lastTxn)
@@ -266,4 +265,3 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 	}
 	return nil
 }
-

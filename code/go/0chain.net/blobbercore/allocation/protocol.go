@@ -15,6 +15,19 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
+// GetAllocationByID from DB. This function doesn't load related terms.
+func GetAllocationByID(ctx context.Context, allocID string) (
+	a *Allocation, err error) {
+
+	var tx = datastore.GetStore().GetTransaction(ctx)
+
+	a = new(Allocation)
+	err = tx.Model(&Allocation{}).
+		Where(&Allocation{ID: allocID}).
+		First(a).Error
+	return
+}
+
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	readonly bool) (a *Allocation, err error) {
 
