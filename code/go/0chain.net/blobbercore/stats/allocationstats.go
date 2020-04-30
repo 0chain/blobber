@@ -1,15 +1,24 @@
 package stats
 
 import (
+	"time"
+
 	"0chain.net/blobbercore/filestore"
-	"0chain.net/core/common"
 )
+
+// Timestamp that implements standard fmt.Stringer interface.
+type Timestamp int64
+
+// String implements standard fmt.Stringer interface.
+func (t Timestamp) String() string {
+	return time.Unix(int64(t), 0).String()
+}
 
 type AllocationStats struct {
 	AllocationID   string `json:"allocation_id"`
 	TempFolderSize int64  `json:"-"`
 	Stats
-	Expiration common.Timestamp `json:"expiration_date" gorm:"column:expiration_date"`
+	Expiration Timestamp `json:"expiration_date" gorm:"column:expiration_date"`
 }
 
 func (fs *AllocationStats) loadAllocationDiskUsageStats() error {
