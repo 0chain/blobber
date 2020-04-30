@@ -13,3 +13,6 @@ BEGIN;
     ALTER TABLE terms DROP COLUMN allocation_tx;
 
 COMMIT;
+
+-- for the commit_meta_txns
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO blobber_user;
