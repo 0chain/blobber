@@ -11,6 +11,7 @@ import (
 	. "0chain.net/core/logging"
 	"0chain.net/core/node"
 	"0chain.net/core/transaction"
+	"0chain.net/validatorcore/config"
 
 	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
@@ -90,7 +91,7 @@ func (sp *ValidatorProtocolImpl) VerifyChallengeTransaction(ctx context.Context,
 	params := make(map[string]string)
 	params["blobber"] = blobberID
 	params["challenge"] = challengeRequest.ChallengeID
-	challengeBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS,"/getchallenge",params, chain.GetServerChain(), nil)
+	challengeBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getchallenge", params, chain.GetServerChain(), nil)
 
 	if err != nil {
 		return nil, common.NewError("invalid_challenge", "Invalid challenge id. Challenge not found in blockchain. "+err.Error())
@@ -119,7 +120,7 @@ func (sp *ValidatorProtocolImpl) VerifyChallengeTransaction(ctx context.Context,
 }
 
 type WalletCallback struct {
-	wg *sync.WaitGroup
+	wg  *sync.WaitGroup
 	err string
 }
 
@@ -137,7 +138,7 @@ func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (string,
 	if err != nil {
 		return "", err
 	}
-	
+
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	txn, err := transaction.NewTransactionEntity()
@@ -148,6 +149,7 @@ func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (string,
 	sn := &transaction.StorageNode{}
 	sn.ID = node.Self.GetKey()
 	sn.BaseURL = node.Self.GetURLBase()
+	sn.DelegateWallets = config.Configuration.DelegateWallets
 
 	snBytes, err := json.Marshal(sn)
 	if err != nil {
@@ -159,6 +161,6 @@ func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (string,
 		Logger.Info("Failed during registering validator to the mining network", zap.String("err:", err.Error()))
 		return "", err
 	}
-	
+
 	return txn.Hash, nil
 }

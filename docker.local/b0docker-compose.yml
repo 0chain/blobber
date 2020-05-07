@@ -6,6 +6,7 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_HOST: postgres
       POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
     volumes:
       - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
     networks:
@@ -18,6 +19,7 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_HOST: postgres
       POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
     volumes:
       - ../bin:/blobber/bin
       - ../sql:/blobber/sql
