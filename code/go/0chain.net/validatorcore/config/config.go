@@ -10,6 +10,7 @@ import (
 //SetupDefaultConfig - setup the default config options that can be overridden via the config file
 func SetupDefaultConfig() {
 	viper.SetDefault("logging.level", "info")
+	viper.SetDefault("delegate_wallets", []string{})
 }
 
 /*SetupConfig - setup the configuration system */
@@ -31,6 +32,8 @@ const (
 
 type Config struct {
 	*config.Config
+	// DelegateWallets allowed to be a delegate of the Validator.
+	DelegateWallets []string
 }
 
 /*Configuration of the system */

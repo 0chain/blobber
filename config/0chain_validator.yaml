@@ -1,5 +1,9 @@
 version: 1.0
 
+# list of wallets allowed to be a delegate of the blobber, empty list
+# allows any user to be a delegate
+delegate_wallets: []
+
 logging:
   level: "info"
   console: false # printing log to console is only supported in development mode

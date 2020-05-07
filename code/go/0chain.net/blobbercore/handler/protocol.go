@@ -139,28 +139,15 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 	sn.Terms.MaxOfferDuration = config.Configuration.MaxOfferDuration
 	sn.Terms.ChallengeCompletionTime = config.Configuration.ChallengeCompletionTime
 
-	// request stake pool information first to provide required number of tokens
-	Logger.Info("Request stake pool info")
-	spi, err := getStakePoolInfo(sn.ID)
-	if err != nil {
-		Logger.Info("Failed to get stake pool information from sharder: " +
-			err.Error())
-		// don't return, we are using spi further even if it's nil
-	}
-
-	var stake = int64(sizeInGB(sn.Capacity) * float64(sn.Terms.WritePrice))
-	stake = spi.requiredStake(stake)
-
-	// if we have stake pool info, then we can provide correct number of tokens
-	// required in stake pool
+	sn.DelegateWallets = config.Configuration.DelegateWallets
 
 	snBytes, err := json.Marshal(sn)
 	if err != nil {
 		return "", err
 	}
-	Logger.Info("Adding blobber to the blockchain.", zap.Int64("lock", stake))
+	Logger.Info("Adding blobber to the blockchain.")
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
-		transaction.ADD_BLOBBER_SC_NAME, string(snBytes), stake)
+		transaction.ADD_BLOBBER_SC_NAME, string(snBytes), 0)
 	if err != nil {
 		Logger.Info("Failed during registering blobber to the mining network",
 			zap.String("err:", err.Error()))

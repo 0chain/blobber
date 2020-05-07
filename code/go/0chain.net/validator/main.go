@@ -20,15 +20,14 @@ import (
 	"0chain.net/core/node"
 	"0chain.net/core/transaction"
 	"0chain.net/core/util"
-	"0chain.net/validatorcore/storage"
 	"0chain.net/validatorcore/config"
+	"0chain.net/validatorcore/storage"
 
-
+	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"github.com/0chain/gosdk/zcncore"
 )
 
 var startTime time.Time
@@ -82,6 +81,15 @@ func main() {
 
 	config.Configuration.ChainID = viper.GetString("server_chain.id")
 	config.Configuration.SignatureScheme = viper.GetString("server_chain.signature_scheme")
+
+	// delegate wallets
+	config.Configuration.DelegateWallets =
+		viper.GetStringSlice("delegate_wallets")
+	for _, w := range config.Configuration.DelegateWallets {
+		if len(w) != 64 {
+			log.Fatal("invalid delegate wallet:", w)
+		}
+	}
 
 	if *hostname == "" {
 		panic("Please specify --hostname which is the public hostname")
@@ -213,7 +221,6 @@ func RegisterValidator() {
 		}
 	}
 }
-
 
 func SetupValidatorOnBC(logDir string) {
 	var logName = logDir + "/validator.log"
