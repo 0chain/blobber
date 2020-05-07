@@ -2,13 +2,15 @@ package reference
 
 import (
 	"context"
+	"time"
 
 	"0chain.net/blobbercore/datastore"
 )
 
 type CommitMetaTxn struct {
-	RefID int64  `gorm:"ref_id" json:"ref_id"`
-	TxnID string `gorm:"txn_id" json:"txn_id"`
+	RefID     int64     `gorm:"ref_id" json:"ref_id"`
+	TxnID     string    `gorm:"txn_id" json:"txn_id"`
+	CreatedAt time.Time `gorm:"created_at" json:"created_at"`
 }
 
 func (CommitMetaTxn) TableName() string {
@@ -28,6 +30,7 @@ func GetCommitMetaTxns(ctx context.Context, refID int64) ([]CommitMetaTxn, error
 	commitMetaTxns := []CommitMetaTxn{}
 	err := db.Table((&CommitMetaTxn{}).TableName()).
 		Where("ref_id = ?", refID).
+		Order("created_at desc").
 		Find(&commitMetaTxns).Error
 	return commitMetaTxns, err
 }
