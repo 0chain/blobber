@@ -379,9 +379,11 @@ func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error
 	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
 
-	err = fs.RemoveFromCloud(contentHash)
-	if err != nil {
-		Logger.Error("Unable to delete object from minio", zap.Error(err))
+	if config.Configuration.ColdStorageDeleteCloudCopy {
+		err = fs.RemoveFromCloud(contentHash)
+		if err != nil {
+			Logger.Error("Unable to delete object from minio", zap.Error(err))
+		}
 	}
 
 	return os.Remove(fileObjectPath)

@@ -79,6 +79,8 @@ cold_storage:
   file_time_limit_in_hours: 720 #in hours
   job_query_limit: 100
   max_capacity_percentage: 50
+  delete_local_copy: true
+  delete_cloud_copy: true
 
 faucet:
   worker_frequency: 10 #in minutes

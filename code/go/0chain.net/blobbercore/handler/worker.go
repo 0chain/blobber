@@ -159,7 +159,7 @@ func MoveColdDataToCloud(ctx context.Context) {
 									_, err := fs.UploadToCloud(fileRef.Hash, filePath)
 									if err != nil {
 										Logger.Error("Error uploading cold data to cloud", zap.Error(err), zap.Any("file_name", fileRef.Name), zap.Any("file_path", filePath))
-									} else {
+									} else if config.Configuration.ColdStorageDeleteLocalCopy {
 										// Update fileRef with on cloud true
 										err = db.Table((&reference.Ref{}).TableName()).
 											Where(&reference.Ref{ID: fileRef.ID}).

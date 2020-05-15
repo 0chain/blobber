@@ -72,6 +72,8 @@ func SetupWorkerConfig() {
 	config.Configuration.ColdStorageTimeLimitInHours = viper.GetInt64("cold_storage.file_time_limit_in_hours")
 	config.Configuration.ColdStorageJobQueryLimit = viper.GetInt64("cold_storage.job_query_limit")
 	config.Configuration.MaxCapacityPercentage = viper.GetFloat64("cold_storage.max_capacity_percentage")
+	config.Configuration.ColdStorageDeleteLocalCopy = viper.GetBool("cold_storage.delete_local_copy")
+	config.Configuration.ColdStorageDeleteCloudCopy = viper.GetBool("cold_storage.delete_cloud_copy")
 
 	config.Configuration.MinioStart = viper.GetBool("minio.start")
 	config.Configuration.MinioWorkerFreq = viper.GetInt64("minio.worker_frequency")

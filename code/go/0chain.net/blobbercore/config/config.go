@@ -83,6 +83,8 @@ type Config struct {
 	ColdStorageTimeLimitInHours int64
 	ColdStorageJobQueryLimit    int64
 	MaxCapacityPercentage       float64
+	ColdStorageDeleteLocalCopy  bool
+	ColdStorageDeleteCloudCopy  bool
 
 	MinioStart      bool
 	MinioWorkerFreq int64
