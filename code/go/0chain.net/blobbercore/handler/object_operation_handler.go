@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	//"fmt"
+
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -30,7 +30,7 @@ import (
 )
 
 func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
-	numBlocks int64, readMarker *readmarker.ReadMarker) (err error) {
+	numBlocks int64, readCounter int64, clientID string) (err error) {
 
 	if numBlocks == 0 {
 		return
@@ -53,7 +53,7 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 		return // skip if read price is zero
 	}
 
-	pend, err = allocation.GetPending(db, readMarker.ClientID, alloc.ID,
+	pend, err = allocation.GetPending(db, clientID, alloc.ID,
 		blobberID)
 	if err != nil {
 		return common.NewError("internal_error",
@@ -69,13 +69,13 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	var have = pend.HaveRead(rps)
 
 	if have < want {
-		rps, err = allocation.RequestReadPools(readMarker.ClientID,
+		rps, err = allocation.RequestReadPools(clientID,
 			alloc.ID)
 		if err != nil {
 			return common.NewError("request_error",
 				"can't request read pools from sharders: "+err.Error())
 		}
-		err = allocation.SetReadPools(db, readMarker.ClientID,
+		err = allocation.SetReadPools(db, clientID,
 			alloc.ID, blobberID, rps)
 		if err != nil {
 			return common.NewError("internal_error",
@@ -102,8 +102,8 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 			"can't save pending reads in DB: "+err.Error())
 	}
 
-	err = allocation.AddReadRedeem(db, readMarker.ReadCounter, want,
-		readMarker.ClientID, alloc.ID, blobberID)
+	err = allocation.AddReadRedeem(db, readCounter, want,
+		clientID, alloc.ID, blobberID)
 	if err != nil {
 		return common.NewError("internal_error",
 			"can't save pending RM value in DB: "+err.Error())
@@ -267,7 +267,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	}
 
 	authTokenString := r.FormValue("auth_token")
-
+	clientIDForReadRedeem := readMarker.ClientID
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
 		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
 		if err != nil {
@@ -276,6 +276,14 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		if !authTicketVerified {
 			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
 		}
+
+		authToken := &readmarker.AuthTicket{}
+		err = json.Unmarshal([]byte(authTokenString), &authToken)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
+		}
+
+		clientIDForReadRedeem = authToken.OwnerID
 	}
 
 	latestRM, err := readmarker.GetLatestReadMarker(ctx, clientID)
@@ -294,7 +302,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	}
 
 	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, allocationObj, numBlocks, readMarker)
+	err = readPreRedeem(ctx, allocationObj, numBlocks, readMarker.ReadCounter, clientIDForReadRedeem)
 	if err != nil {
 		return nil, err
 	}
