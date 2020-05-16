@@ -139,7 +139,7 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 	sn.Terms.MaxOfferDuration = config.Configuration.MaxOfferDuration
 	sn.Terms.ChallengeCompletionTime = config.Configuration.ChallengeCompletionTime
 
-	sn.DelegateWallets = config.Configuration.DelegateWallets
+	sn.DelegateWallet = config.Configuration.DelegateWallet
 
 	snBytes, err := json.Marshal(sn)
 	if err != nil {

@@ -1,8 +1,7 @@
 version: 1.0
 
-# list of wallets allowed to be a delegate of the blobber, empty list
-# allows any user to be a delegate
-delegate_wallets: []
+# delegate wallet for validator rewards
+delegate_wallet: ''
 
 logging:
   level: "info"

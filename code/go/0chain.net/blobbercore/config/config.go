@@ -33,7 +33,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("challenge_completion_time", time.Duration(-1))
 	viper.SetDefault("read_lock_timeout", time.Duration(-1))
 	viper.SetDefault("write_lock_timeout", time.Duration(-1))
-	viper.SetDefault("delegate_wallets", []string{})
+	viper.SetDefault("delegate_wallet", "")
 
 	viper.SetDefault("update_allocations_interval", time.Duration(-1))
 }
@@ -105,8 +105,8 @@ type Config struct {
 
 	UpdateAllocationsInterval time.Duration
 
-	// DelegateWallets allowed to be a delegate of the Blobber.
-	DelegateWallets []string
+	// DelegateWallet of the Blobber.
+	DelegateWallet string
 }
 
 /*Configuration of the system */

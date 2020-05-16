@@ -56,12 +56,12 @@ type Terms struct {
 }
 
 type StorageNode struct {
-	ID              string   `json:"id"`
-	BaseURL         string   `json:"url"`
-	Terms           Terms    `json:"terms"`
-	Capacity        int64    `json:"capacity"`
-	PublicKey       string   `json:"-"`
-	DelegateWallets []string `json:"delegate_wallets"`
+	ID             string `json:"id"`
+	BaseURL        string `json:"url"`
+	Terms          Terms  `json:"terms"`
+	Capacity       int64  `json:"capacity"`
+	PublicKey      string `json:"-"`
+	DelegateWallet string `json:"delegate_wallet"`
 }
 
 type BlobberAllocation struct {

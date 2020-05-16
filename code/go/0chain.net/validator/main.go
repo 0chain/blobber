@@ -82,13 +82,11 @@ func main() {
 	config.Configuration.ChainID = viper.GetString("server_chain.id")
 	config.Configuration.SignatureScheme = viper.GetString("server_chain.signature_scheme")
 
-	// delegate wallets
-	config.Configuration.DelegateWallets =
-		viper.GetStringSlice("delegate_wallets")
-	for _, w := range config.Configuration.DelegateWallets {
-		if len(w) != 64 {
-			log.Fatal("invalid delegate wallet:", w)
-		}
+	// delegate
+	config.Configuration.DelegateWallet =
+		viper.GetString("delegate_wallet")
+	if w := config.Configuration.DelegateWallet; len(w) != 64 {
+		log.Fatal("invalid delegate wallet:", w)
 	}
 
 	if *hostname == "" {
