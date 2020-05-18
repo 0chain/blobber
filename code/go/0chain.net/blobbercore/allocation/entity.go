@@ -28,8 +28,9 @@ type Allocation struct {
 	LatestRedeemedWM string           `gorm:"column:latest_redeemed_write_marker"`
 	IsRedeemRequired bool             `gorm:"column:is_redeem_required"`
 	// ending and cleaning
-	CleanedUp bool `gorm:"column:cleaned_up"`
-	Finalized bool `gorm:"column:finalized"`
+	CleanedUp   bool `gorm:"column:cleaned_up"`
+	Finalized   bool `gorm:"column:finalized"`
+	UnderRepair bool `gorm:"column:under_repair"`
 	// Has many terms.
 	Terms []*Terms `gorm:"-"`
 }
