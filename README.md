@@ -6,6 +6,7 @@
 	- [Directory Setup for Blobbers](#directory-setup-for-blobbers)
 - [Building and Starting the Blobber](#building-and-starting-the-nodes)
 - [Troubleshooting](#troubleshooting)
+- [Connect to other network](#connect-to-other-network)
 - [Miscellaneous](#miscellaneous)
 	- [Cleanup](#cleanup)
 
@@ -38,6 +39,8 @@ $ ../bin/blobber.start_bls.sh
 $ docker ps
 ```
 This should display a container image blobber_blobber and should have the ports mapped like "0.0.0.0:5050->5050/tcp"
+
+## Connect to other network
 
 ## Miscellaneous
 
