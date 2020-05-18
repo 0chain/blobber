@@ -1,6 +1,8 @@
 package allocation
 
 import (
+	"net/http"
+
 	"0chain.net/core/common"
 
 	"github.com/jinzhu/gorm"
@@ -64,6 +66,16 @@ func (a *Allocation) WantWrite(blobberID string, size int64) (value int64) {
 		}
 	}
 	return
+}
+
+func (a *Allocation) CheckRepair(r *http.Request) bool {
+	if a.UnderRepair {
+		repairRequest := r.FormValue("repair_request")
+		if len(repairRequest) == 0 || repairRequest != "true" {
+			return true
+		}
+	}
+	return false
 }
 
 type Pending struct {

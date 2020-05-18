@@ -201,6 +201,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+
+	if allocationObj.CheckRepair(r) {
+		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
+	}
+
 	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 {
@@ -361,6 +366,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+
+	if allocationObj.CheckRepair(r) {
+		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
+	}
+
 	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID || len(clientKey) == 0 || encryption.Hash(clientKeyBytes) != clientID {
@@ -497,6 +507,11 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+
+	if allocationObj.CheckRepair(r) {
+		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
+	}
+
 	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 {
@@ -576,6 +591,11 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+
+	if allocationObj.CheckRepair(r) {
+		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
+	}
+
 	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 {
@@ -702,6 +722,11 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+
+	if allocationObj.CheckRepair(r) {
+		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
+	}
+
 	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
