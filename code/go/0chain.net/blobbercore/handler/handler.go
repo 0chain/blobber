@@ -35,6 +35,7 @@ func SetupHandlers(r *mux.Router) {
 
 	//object info related apis
 	r.HandleFunc("/allocation", common.ToJSONResponse(WithConnection(AllocationHandler)))
+	r.HandleFunc("/allocation/repair/{allocation}", common.ToJSONResponse(WithConnection(AllocationRepairHandler)))
 	r.HandleFunc("/v1/file/meta/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler)))
 	r.HandleFunc("/v1/file/stats/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)))
 	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))
@@ -90,6 +91,20 @@ func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error
 	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
 
 	response, err := storageHandler.GetAllocationDetails(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func AllocationRepairHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, vars["allocation"])
+	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY, r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY, r.Header.Get(common.ClientKeyHeader))
+
+	response, err := storageHandler.UpdateAllocationRepairStatus(ctx, r)
 	if err != nil {
 		return nil, err
 	}

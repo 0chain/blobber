@@ -28,6 +28,15 @@ func GetAllocationByID(ctx context.Context, allocID string) (
 	return
 }
 
+func UpdateRepairStatus(ctx context.Context, allocationTx string, repairStatus bool) error {
+	var tx = datastore.GetStore().GetTransaction(ctx)
+	return tx.Model(&Allocation{}).
+		Where(&Allocation{Tx: allocationTx}).
+		UpdateColumn(&Allocation{
+			UnderRepair: repairStatus,
+		}).Error
+}
+
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	readonly bool) (a *Allocation, err error) {
 
