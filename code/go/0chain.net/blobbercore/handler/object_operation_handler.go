@@ -729,8 +729,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 
 	allocationID := allocationObj.ID
 
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	if len(clientID) == 0 || (allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID) {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
 	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
@@ -743,7 +743,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, allocationObj.OwnerID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}

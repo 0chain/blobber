@@ -1,5 +1,7 @@
 module 0chain.net/validatorcore
 
+go 1.14
+
 replace 0chain.net/core => ../core
 
 require (

@@ -114,6 +114,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	a.TotalSize = sa.Size
 	a.UsedSize = sa.UsedSize
 	a.Finalized = sa.Finalized
+	a.PayerID = t.ClientID
 
 	// related terms
 	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))
