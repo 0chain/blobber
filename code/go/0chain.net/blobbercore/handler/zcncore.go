@@ -86,3 +86,33 @@ func CallFaucet() error {
 	}
 	return nil
 }
+
+func Transfer(token float64, clientID string) error {
+	wg := &sync.WaitGroup{}
+	statusBar := &ZCNStatus{wg: wg}
+	txn, err := zcncore.NewTransaction(statusBar, 0)
+	if err != nil {
+		return common.NewError("call_transfer_failed", "Failed to create new transaction with err: "+err.Error())
+	}
+	wg.Add(1)
+	err = txn.Send(clientID, zcncore.ConvertToValue(token), "Blobber delegate transfer")
+	if err != nil {
+		return common.NewError("call_transfer_failed", "Failed to send tokens with err: "+err.Error())
+	}
+	wg.Wait()
+	if statusBar.success == false {
+		return common.NewError("call_transfer_failed", "Failed to send tokens with statusBar success failed")
+	}
+	statusBar.success = false
+	wg.Add(1)
+	err = txn.Verify()
+	if err != nil {
+		return common.NewError("call_transfer_failed", "Failed to verify send transaction with err: "+err.Error())
+	}
+	wg.Wait()
+	if statusBar.success == false {
+		return common.NewError("call_transfer_failed", "Failed to verify send transaction with statusBar success failed")
+	}
+	return nil
+
+}

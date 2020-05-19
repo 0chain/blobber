@@ -477,9 +477,6 @@ func SetupBlobberOnBC(logDir string) {
 	//txnHash, err := badgerdbstore.GetStorageProvider().ReadBytes(common.GetRootContext(), BLOBBER_REGISTERED_LOOKUP_KEY)
 	//if err != nil {
 	// Now register blobber to chain
-	if config.Development() {
-		CheckForFunds()
-	}
 	go RegisterBlobber()
 	//}
 	//Logger.Info("Blobber already registered", zap.Any("blobberTxn", string(txnHash)))
@@ -494,26 +491,4 @@ func HomePageHandler(w http.ResponseWriter, r *http.Request) {
 	serverChain.Miners.Print(w)
 	serverChain.Sharders.Print(w)
 	serverChain.Blobbers.Print(w)
-}
-
-func CheckForFunds() {
-	balance, err := handler.CheckBalance()
-	if err != nil {
-		Logger.Error("Failed to check for funds", zap.Error(err))
-		panic("Unable to get balance")
-	}
-	for balance < config.Configuration.FaucetMinimumBalance {
-		Logger.Info("Doesn't have minimum balance required, Calling faucet")
-		err = handler.CallFaucet()
-		if err != nil {
-			Logger.Error("Failed to call faucet", zap.Error(err))
-			continue
-		}
-		balance, err = handler.CheckBalance()
-		if err != nil {
-			Logger.Error("Failed to check for funds", zap.Error(err))
-			panic("Unable to get balance")
-		}
-		Logger.Info("Faucet successfully called", zap.Any("current_balance", balance))
-	}
 }
