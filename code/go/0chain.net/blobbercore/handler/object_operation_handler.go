@@ -202,7 +202,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if allocationObj.CheckRepair(r) {
+	if allocationObj.CheckRepair(ctx, r) {
 		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
 	}
 
@@ -367,7 +367,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if allocationObj.CheckRepair(r) {
+	if allocationObj.CheckRepair(ctx, r) {
 		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
 	}
 
@@ -508,7 +508,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if allocationObj.CheckRepair(r) {
+	if allocationObj.CheckRepair(ctx, r) {
 		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
 	}
 
@@ -592,7 +592,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if allocationObj.CheckRepair(r) {
+	if allocationObj.CheckRepair(ctx, r) {
 		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
 	}
 
@@ -723,7 +723,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if allocationObj.CheckRepair(r) {
+	if allocationObj.CheckRepair(ctx, r) {
 		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
 	}
 

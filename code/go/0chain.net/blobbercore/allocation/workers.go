@@ -25,6 +25,7 @@ const (
 	UPDATE_LIMIT       = 100             // items
 	UPDATE_DB_INTERVAL = 5 * time.Second //
 	REQUEST_TIMEOUT    = 1 * time.Second //
+	REPAIR_TIMEOUT     = 900             // 15 Minutes
 )
 
 func StartUpdateWorker(ctx context.Context, interval time.Duration) {
@@ -49,6 +50,7 @@ func UpdateWorker(ctx context.Context, interval time.Duration) {
 		select {
 		case <-tick:
 			updateWork(ctx)
+			updateRepairStatus(ctx)
 		case <-quit:
 			return
 		}
@@ -389,4 +391,13 @@ func deleteFile(ctx context.Context, path string,
 	conn.Size += change.Size
 	conn.AddChange(change, dfc)
 	return
+}
+
+func updateRepairStatus(ctx context.Context) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	return db.Model(&Allocation{}).
+		Where("under_repair = ? AND last_repair_request_at < ?", true, common.Now()-REPAIR_TIMEOUT).
+		UpdateColumn(&Allocation{
+			UnderRepair: false,
+		}).Error
 }

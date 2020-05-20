@@ -1,11 +1,15 @@
 package allocation
 
 import (
+	"context"
 	"net/http"
 
 	"0chain.net/core/common"
+	"go.uber.org/zap"
 
 	"github.com/jinzhu/gorm"
+
+	. "0chain.net/core/logging"
 )
 
 const (
@@ -30,12 +34,16 @@ type Allocation struct {
 	LatestRedeemedWM string           `gorm:"column:latest_redeemed_write_marker"`
 	IsRedeemRequired bool             `gorm:"column:is_redeem_required"`
 	// ending and cleaning
-	CleanedUp   bool   `gorm:"column:cleaned_up"`
-	Finalized   bool   `gorm:"column:finalized"`
-	UnderRepair bool   `gorm:"column:under_repair"`
-	PayerID     string `gorm:"column:payer_id"`
+	CleanedUp bool `gorm:"column:cleaned_up"`
+	Finalized bool `gorm:"column:finalized"`
 	// Has many terms.
 	Terms []*Terms `gorm:"-"`
+
+	UnderRepair         bool             `gorm:"column:under_repair"`
+	LastRepairRequestAt common.Timestamp `gorm:"column:last_repair_request_at"`
+
+	// Used for 3rd party/payer operations
+	PayerID string `gorm:"column:payer_id"`
 }
 
 func (Allocation) TableName() string {
@@ -69,11 +77,15 @@ func (a *Allocation) WantWrite(blobberID string, size int64) (value int64) {
 	return
 }
 
-func (a *Allocation) CheckRepair(r *http.Request) bool {
+func (a *Allocation) CheckRepair(ctx context.Context, r *http.Request) bool {
 	if a.UnderRepair {
 		repairRequest := r.FormValue("repair_request")
 		if len(repairRequest) == 0 || repairRequest != "true" {
 			return true
+		}
+		err := UpdateLastRepairTime(ctx, a.Tx)
+		if err != nil {
+			Logger.Error("Failed to update last repair time for the allocation", zap.Any("allocation", a.ID), zap.Error(err))
 		}
 	}
 	return false
