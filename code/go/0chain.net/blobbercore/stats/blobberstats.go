@@ -157,7 +157,12 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 
 func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
 	db := datastore.GetStore().GetTransaction(ctx)
-	rows, err := db.Table("challenges").Select("COUNT(*) as total_challenges, challenges.status, challenges.result").Group("challenges.status, challenges.result").Rows()
+	rows, err := db.Table("challenges").
+		Select(`COUNT(*) as total_challenges,
+		challenges.status,
+		challenges.result`).
+		Group(`challenges.status, challenges.result`).
+		Rows()
 	if err != nil {
 		Logger.Error("Error in getting the blobber challenge stats", zap.Error(err))
 	}
