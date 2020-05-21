@@ -109,7 +109,7 @@ func SetupWorkerConfig() {
 		viper.GetDuration("update_allocations_interval")
 
 	config.Configuration.DelegateWallet = viper.GetString("delegate_wallet")
-	if w := config.Configuration.DelegateWallet; w != "" && len(w) != 64 {
+	if w := config.Configuration.DelegateWallet; len(w) != 64 {
 		log.Fatal("invalid delegate wallet:", w)
 	}
 }
