@@ -33,7 +33,11 @@ func SetupDefaultConfig() {
 	viper.SetDefault("challenge_completion_time", time.Duration(-1))
 	viper.SetDefault("read_lock_timeout", time.Duration(-1))
 	viper.SetDefault("write_lock_timeout", time.Duration(-1))
+
 	viper.SetDefault("delegate_wallet", "")
+	viper.SetDefault("min_stake", 1.0)
+	viper.SetDefault("max_stake", 100.0)
+	viper.SetDefault("num_delegates", 100)
 
 	viper.SetDefault("update_allocations_interval", time.Duration(-1))
 }
@@ -105,8 +109,14 @@ type Config struct {
 
 	UpdateAllocationsInterval time.Duration
 
-	// DelegateWallet of the Blobber.
-	DelegateWallet string
+	// DelegateWallet for pool owner.
+	DelegateWallet string `json:"delegate_wallet"`
+	// MinStake allowed.
+	MinStake int64 `json:"min_stake"`
+	// MaxStake allowed.
+	MaxStake int64 `json:"max_stake"`
+	// NumDelegates maximum allowed.
+	NumDelegates int `json:"num_delegates"`
 }
 
 /*Configuration of the system */

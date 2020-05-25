@@ -11,6 +11,9 @@ import (
 func SetupDefaultConfig() {
 	viper.SetDefault("logging.level", "info")
 	viper.SetDefault("delegate_wallet", "")
+	viper.SetDefault("min_stake", 1.0)
+	viper.SetDefault("max_stake", 100.0)
+	viper.SetDefault("num_delegates", 100)
 }
 
 /*SetupConfig - setup the configuration system */
@@ -32,8 +35,14 @@ const (
 
 type Config struct {
 	*config.Config
-	// DelegateWallet of the Validator.
-	DelegateWallet string
+	// DelegateWallet for pool owner.
+	DelegateWallet string `json:"delegate_wallet"`
+	// MinStake allowed.
+	MinStake int64 `json:"min_stake"`
+	// MaxStake allowed.
+	MaxStake int64 `json:"max_stake"`
+	// NumDelegates maximum allowed.
+	NumDelegates int `json:"num_delegates"`
 }
 
 /*Configuration of the system */

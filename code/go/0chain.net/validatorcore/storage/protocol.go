@@ -149,7 +149,10 @@ func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (string,
 	sn := &transaction.StorageNode{}
 	sn.ID = node.Self.GetKey()
 	sn.BaseURL = node.Self.GetURLBase()
-	sn.DelegateWallet = config.Configuration.DelegateWallet
+	sn.StakePoolSettings.DelegateWallet = config.Configuration.DelegateWallet
+	sn.StakePoolSettings.MinStake = config.Configuration.MinStake
+	sn.StakePoolSettings.MaxStake = config.Configuration.MaxStake
+	sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
 
 	snBytes, err := json.Marshal(sn)
 	if err != nil {

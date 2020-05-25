@@ -55,13 +55,24 @@ type Terms struct {
 	ChallengeCompletionTime time.Duration `json:"challenge_completion_time"`
 }
 
-type StorageNode struct {
-	ID             string `json:"id"`
-	BaseURL        string `json:"url"`
-	Terms          Terms  `json:"terms"`
-	Capacity       int64  `json:"capacity"`
-	PublicKey      string `json:"-"`
+type StakePoolSettings struct {
+	// DelegateWallet for pool owner.
 	DelegateWallet string `json:"delegate_wallet"`
+	// MinStake allowed.
+	MinStake int64 `json:"min_stake"`
+	// MaxStake allowed.
+	MaxStake int64 `json:"max_stake"`
+	// NumDelegates maximum allowed.
+	NumDelegates int `json:"num_delegates"`
+}
+
+type StorageNode struct {
+	ID                string            `json:"id"`
+	BaseURL           string            `json:"url"`
+	Terms             Terms             `json:"terms"`
+	Capacity          int64             `json:"capacity"`
+	PublicKey         string            `json:"-"`
+	StakePoolSettings StakePoolSettings `json:"stake_pool_settings"`
 }
 
 type BlobberAllocation struct {
