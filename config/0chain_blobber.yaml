@@ -33,8 +33,14 @@ write_lock_timeout: 12m
 # update_allocations_interval used to refresh known allocation objects from SC
 update_allocations_interval: 1m
 
-# delegate wallet for blobber rewards
+# delegate wallet (must be set)
 delegate_wallet: ''
+# min stake allowed, tokens
+min_stake: 1.0
+# max stake allowed, tokens
+max_stake: 100.0 
+# maximum allowed number of stake holders
+num_delegates: 50
 
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"

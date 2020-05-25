@@ -1,7 +1,13 @@
 version: 1.0
 
-# delegate wallet for validator rewards
+# delegate wallet (must be set)
 delegate_wallet: ''
+# min stake allowed, tokens
+min_stake: 1.0
+# max stake allowed, tokens
+max_stake: 100.0 
+# maximum allowed number of stake holders
+num_delegates: 50
 
 logging:
   level: "info"
