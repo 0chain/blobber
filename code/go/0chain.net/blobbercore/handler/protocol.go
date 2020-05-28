@@ -134,7 +134,7 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 	}
 
 	sn := &transaction.StorageNode{}
-	sn.ID = node.Self.GetKey()
+	sn.ID = node.Self.ID
 	sn.BaseURL = node.Self.GetURLBase()
 	sn.Capacity = config.Configuration.Capacity
 	sn.Terms.ReadPrice = zcncore.ConvertToValue(config.Configuration.ReadPrice)

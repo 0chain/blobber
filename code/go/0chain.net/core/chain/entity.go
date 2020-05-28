@@ -5,7 +5,6 @@ import (
 
 	"0chain.net/core/common"
 	"0chain.net/core/config"
-	"0chain.net/core/node"
 	"github.com/spf13/viper"
 )
 
@@ -29,15 +28,7 @@ type Chain struct {
 	CreationDate  common.Timestamp
 	OwnerID       string
 	ParentChainID string
-
-	/*Miners - this is the pool of miners */
-	Miners *node.Pool
-
-	/*Sharders - this is the pool of sharders */
-	Sharders *node.Pool
-
-	/*Blobbers - this is the pool of blobbers */
-	Blobbers *node.Pool
+	BlockWorker   string
 
 	GenesisBlockHash string
 }
@@ -58,24 +49,16 @@ func NewChainFromConfig() *Chain {
 	chain := Provider()
 	chain.ID = common.ToKey(config.Configuration.ChainID)
 	chain.OwnerID = viper.GetString("server_chain.owner")
+	chain.BlockWorker = viper.GetString("block_worker")
 	return chain
 }
 
 /*Provider - entity provider for chain object */
 func Provider() *Chain {
 	c := &Chain{}
-	c.Initialize()
 	c.Version = "1.0"
 	c.InitializeCreationDate()
-	c.Miners = node.NewPool(node.NodeTypeMiner)
-	c.Sharders = node.NewPool(node.NodeTypeSharder)
-	c.Blobbers = node.NewPool(node.NodeTypeBlobber)
 	return c
-}
-
-/*Initialize - intializes internal datastructures to start again */
-func (c *Chain) Initialize() {
-
 }
 
 /*InitializeCreationDate - intializes the creation date for the chain */

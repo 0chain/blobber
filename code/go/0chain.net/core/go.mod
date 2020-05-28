@@ -1,7 +1,7 @@
 module 0chain.net/core
 
 require (
-	github.com/0chain/gosdk v1.0.40
+	github.com/0chain/gosdk v1.0.75
 	github.com/koding/cache v0.0.0-20161222233015-e8a81b0b3f20
 	github.com/spf13/viper v1.4.0
 	go.uber.org/zap v1.10.0

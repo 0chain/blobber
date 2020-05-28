@@ -147,7 +147,7 @@ func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (string,
 	}
 
 	sn := &transaction.StorageNode{}
-	sn.ID = node.Self.GetKey()
+	sn.ID = node.Self.ID
 	sn.BaseURL = node.Self.GetURLBase()
 	sn.StakePoolSettings.DelegateWallet = config.Configuration.DelegateWallet
 	sn.StakePoolSettings.MinStake = config.Configuration.MinStake

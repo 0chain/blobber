@@ -1,38 +1,53 @@
 package node
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
 	"0chain.net/core/common"
 	"0chain.net/core/config"
-	"0chain.net/core/encryption"
 	"github.com/0chain/gosdk/core/zcncrypto"
+	"golang.org/x/crypto/sha3"
 )
 
 /*SelfNode -- self node type*/
 type SelfNode struct {
-	*Node
-	wallet     *zcncrypto.Wallet
-	privateKey string
+	URL       string
+	wallet    *zcncrypto.Wallet
+	ID        string
+	PublicKey string
 }
 
 /*SetKeys - setter */
 func (sn *SelfNode) SetKeys(publicKey string, privateKey string) {
-	sn.privateKey = privateKey
-	sn.SetPublicKey(publicKey)
+	publicKeyBytes, err := hex.DecodeString(publicKey)
+	if err != nil {
+		panic(err)
+	}
 	sn.wallet = &zcncrypto.Wallet{}
-	sn.wallet.ClientID = sn.ID
-	sn.wallet.ClientKey = sn.PublicKey
+	sn.wallet.ClientID = Hash(publicKeyBytes)
+	sn.wallet.ClientKey = publicKey
 	sn.wallet.Keys = make([]zcncrypto.KeyPair, 1)
-	sn.wallet.Keys[0].PublicKey = sn.PublicKey
+	sn.wallet.Keys[0].PublicKey = publicKey
 	sn.wallet.Keys[0].PrivateKey = privateKey
 	sn.wallet.Version = zcncrypto.CryptoVersion
+
+	sn.PublicKey = publicKey
+	sn.ID = sn.wallet.ClientID
 }
 
 /*SetHostURL - setter for Host and Port */
 func (sn *SelfNode) SetHostURL(address string, port int) {
-	sn.SetURLBase(address, port)
+	if address == "" {
+		address = "localhost"
+	}
+	sn.URL = fmt.Sprintf("http://%v:%v", address, port)
+}
+
+/*GetURLBase - get the end point base */
+func (sn *SelfNode) GetURLBase() string {
+	return sn.URL
 }
 
 /*Sign - sign the given hash */
@@ -40,24 +55,13 @@ func (sn *SelfNode) Sign(hash string) (string, error) {
 	//return encryption.Sign(sn.privateKey, hash)
 	signScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
 	if signScheme != nil {
-		err := signScheme.SetPrivateKey(sn.privateKey)
+		err := signScheme.SetPrivateKey(sn.wallet.Keys[0].PrivateKey)
 		if err != nil {
 			return "", err
 		}
 		return signScheme.Sign(hash)
 	}
 	return "", common.NewError("invalid_signature_scheme", "Invalid signature scheme. Please check configuration")
-}
-
-/*TimeStampSignature - get timestamp based signature */
-func (sn *SelfNode) TimeStampSignature() (string, string, string, error) {
-	data := fmt.Sprintf("%v:%v", sn.ID, common.Now())
-	hash := encryption.Hash(data)
-	signature, err := sn.Sign(hash)
-	if err != nil {
-		return "", "", "", err
-	}
-	return data, hash, signature, err
 }
 
 func (sn *SelfNode) GetWallet() *zcncrypto.Wallet {
@@ -70,9 +74,32 @@ func (sn *SelfNode) GetWalletString() string {
 }
 
 /*Self represents the node of this intance */
-var Self *SelfNode
+var Self SelfNode
 
-func init() {
-	Self = &SelfNode{}
-	Self.Node = &Node{}
+const HASH_LENGTH = 32
+
+type HashBytes [HASH_LENGTH]byte
+
+/*Hash - hash the given data and return the hash as hex string */
+func Hash(data interface{}) string {
+	return hex.EncodeToString(RawHash(data))
+}
+
+/*RawHash - Logic to hash the text and return the hash bytes */
+func RawHash(data interface{}) []byte {
+	var databuf []byte
+	switch dataImpl := data.(type) {
+	case []byte:
+		databuf = dataImpl
+	case HashBytes:
+		databuf = dataImpl[:]
+	case string:
+		databuf = []byte(dataImpl)
+	default:
+		panic("unknown type")
+	}
+	hash := sha3.New256()
+	hash.Write(databuf)
+	var buf []byte
+	return hash.Sum(buf)
 }
