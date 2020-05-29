@@ -3,6 +3,7 @@ package transaction
 import (
 	"crypto/sha1"
 	"encoding/hex"
+
 	//"encoding/json"
 	"fmt"
 	"io"
@@ -10,12 +11,16 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+
 	//"sync"
 	"time"
 
 	"0chain.net/core/chain"
 	"0chain.net/core/common"
 	. "0chain.net/core/logging"
+	"github.com/0chain/gosdk/core/util"
+	"github.com/0chain/gosdk/zcncore"
+
 	//"0chain.net/core/util"
 
 	"go.uber.org/zap"
@@ -168,14 +173,15 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 }
 
 func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]string, chain *chain.Chain, handler SCRestAPIHandler) ([]byte, error) {
-	numSharders := chain.Sharders.Size()
-	sharders := chain.Sharders.GetRandomNodes(numSharders)
+	network := zcncore.GetNetwork()
+	numSharders := len(network.Sharders)
+	sharders := util.GetRandom(network.Sharders, numSharders)
 	responses := make(map[string]int)
 	entityResult := make(map[string][]byte)
 	var retObj []byte
 	maxCount := 0
 	for _, sharder := range sharders {
-		urlString := fmt.Sprintf("%v/%v%v%v", sharder.GetURLBase(), SC_REST_API_URL, scAddress, relativePath)
+		urlString := fmt.Sprintf("%v/%v%v%v", sharder, SC_REST_API_URL, scAddress, relativePath)
 		urlObj, _ := url.Parse(urlString)
 		q := urlObj.Query()
 		for k, v := range params {
@@ -195,7 +201,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		}
 		response, err := netClient.Get(urlObj.String())
 		if err != nil {
-			Logger.Error("Error getting response for sc rest api", zap.Any("error", err))
+			Logger.Error("Error getting response for sc rest api", zap.Any("error", err), zap.Any("sharder_url", sharder))
 			numSharders--
 		} else {
 			if response.StatusCode != 200 {
@@ -217,7 +223,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 				maxCount = responses[hash]
 				retObj = entityBytes
 			}
-			entityResult[sharder.Host] = retObj
+			entityResult[sharder] = retObj
 			response.Body.Close()
 		}
 	}

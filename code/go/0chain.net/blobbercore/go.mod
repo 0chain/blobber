@@ -4,7 +4,7 @@ replace 0chain.net/core => ../core
 
 require (
 	0chain.net/core v0.0.0
-	github.com/0chain/gosdk v1.0.40
+	github.com/0chain/gosdk v1.0.75
 	github.com/go-ini/ini v1.55.0 // indirect
 	github.com/gorilla/mux v1.6.2
 	github.com/jinzhu/gorm v1.9.8

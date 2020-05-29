@@ -170,26 +170,6 @@ func checkForDBConnection() {
 	}
 }
 
-func processBlockChainConfig(nodesFileName string) {
-	nodeConfig := viper.New()
-	nodeConfig.AddConfigPath("./keysconfig")
-	nodeConfig.AddConfigPath("./config")
-	nodeConfig.SetConfigName(nodesFileName)
-
-	err := nodeConfig.ReadInConfig()
-	if err != nil {
-		panic(fmt.Errorf("fatal error config file: %s", err))
-	}
-	config := nodeConfig.Get("miners")
-	if miners, ok := config.([]interface{}); ok {
-		serverChain.Miners.AddNodes(miners)
-	}
-	config = nodeConfig.Get("sharders")
-	if sharders, ok := config.([]interface{}); ok {
-		serverChain.Sharders.AddNodes(sharders)
-	}
-}
-
 func processMinioConfig(reader io.Reader) error {
 	scanner := bufio.NewScanner(reader)
 	more := scanner.Scan()
@@ -247,7 +227,6 @@ func isValidOrigin(origin string) bool {
 
 func main() {
 	deploymentMode := flag.Int("deployment_mode", 2, "deployment_mode")
-	nodesFile := flag.String("nodes_file", "", "nodes_file")
 	keysFile := flag.String("keys_file", "", "keys_file")
 	minioFile := flag.String("minio_file", "", "minio_file")
 	filesDir = flag.String("files_dir", "", "files_dir")
@@ -324,36 +303,16 @@ func main() {
 	//ctx := common.GetRootContext()
 	serverChain = chain.NewChainFromConfig()
 
-	if *nodesFile == "" {
-		panic("Please specify --nodes_file file.txt option with a file.txt containing nodes including self")
-	}
-
-	if strings.HasSuffix(*nodesFile, "txt") {
-		reader, err = os.Open(*nodesFile)
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
-
-		node.ReadNodes(reader, serverChain.Miners, serverChain.Sharders, serverChain.Blobbers)
-		reader.Close()
-	} else { //assumption it has yaml extension
-		processBlockChainConfig(*nodesFile)
-	}
-
 	if node.Self.ID == "" {
 		Logger.Panic("node definition for self node doesn't exist")
 	} else {
-		Logger.Info("self identity", zap.Any("id", node.Self.Node.GetKey()))
+		Logger.Info("self identity", zap.Any("id", node.Self.ID))
 	}
 
 	//address := publicIP + ":" + portString
 	address := ":" + *portString
 
 	chain.SetServerChain(serverChain)
-
-	serverChain.Miners.ComputeProperties()
-	serverChain.Sharders.ComputeProperties()
-	serverChain.Blobbers.ComputeProperties()
 
 	checkForDBConnection()
 
@@ -475,7 +434,7 @@ func SetupBlobberOnBC(logDir string) {
 	var logName = logDir + "/0chainBlobber.log"
 	zcncore.SetLogFile(logName, false)
 	zcncore.SetLogLevel(3)
-	zcncore.InitZCNSDK(serverChain.Miners.GetBaseURLsArray(), serverChain.Sharders.GetBaseURLsArray(), config.Configuration.SignatureScheme)
+	zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme)
 	zcncore.SetWalletInfo(node.Self.GetWalletString(), false)
 	//txnHash, err := badgerdbstore.GetStorageProvider().ReadBytes(common.GetRootContext(), BLOBBER_REGISTERED_LOOKUP_KEY)
 	//if err != nil {
@@ -490,8 +449,14 @@ func HomePageHandler(w http.ResponseWriter, r *http.Request) {
 	mc := chain.GetServerChain()
 	fmt.Fprintf(w, "<div>Running since %v ...\n", startTime)
 	fmt.Fprintf(w, "<div>Working on the chain: %v</div>\n", mc.ID)
-	fmt.Fprintf(w, "<div>I am a blobber with <ul><li>id:%v</li><li>public_key:%v</li><li>build_tag:%v</li></ul></div>\n", node.Self.GetKey(), node.Self.PublicKey, build.BuildTag)
-	serverChain.Miners.Print(w)
-	serverChain.Sharders.Print(w)
-	serverChain.Blobbers.Print(w)
+	fmt.Fprintf(w, "<div>I am a blobber with <ul><li>id:%v</li><li>public_key:%v</li><li>build_tag:%v</li></ul></div>\n", node.Self.ID, node.Self.PublicKey, build.BuildTag)
+	fmt.Fprintf(w, "<div>Miners ...\n")
+	network := zcncore.GetNetwork()
+	for _, miner := range network.Miners {
+		fmt.Fprintf(w, "%v\n", miner)
+	}
+	fmt.Fprintf(w, "<div>Sharders ...\n")
+	for _, sharder := range network.Sharders {
+		fmt.Fprintf(w, "%v\n", sharder)
+	}
 }

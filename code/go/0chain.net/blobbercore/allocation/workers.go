@@ -394,6 +394,7 @@ func deleteFile(ctx context.Context, path string,
 }
 
 func updateRepairStatus(ctx context.Context) error {
+	ctx = datastore.GetStore().CreateTransaction(ctx)
 	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Model(&Allocation{}).
 		Where("under_repair = ? AND last_repair_request_at < ?", true, common.Now()-REPAIR_TIMEOUT).
