@@ -156,7 +156,7 @@ func MoveColdDataToCloud(ctx context.Context) {
 								// Process upload to cloud
 								swg.Add()
 								go func(fileRef reference.Ref, filePath string) {
-									_, err := fs.UploadToCloud(fileRef.Hash, filePath)
+									err := fs.UploadToCloud(fileRef.Hash, filePath)
 									if err != nil {
 										Logger.Error("Error uploading cold data to cloud", zap.Error(err), zap.Any("file_name", fileRef.Name), zap.Any("file_path", filePath))
 									} else if config.Configuration.ColdStorageDeleteLocalCopy {
