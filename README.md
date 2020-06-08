@@ -44,7 +44,7 @@ This should display a container image blobber_blobber and should have the ports 
 
 ## Connect to other network
 
-- Your network connection depends on the block_worker url you give in the 0chain_blobber/validator.yaml config file.
+- Your network connection depends on the block_worker url you give in the `0chain_blobber/validator.yaml` config file.
 
 ```
 block_worker: http://198.18.0.98:9091
