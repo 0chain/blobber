@@ -44,18 +44,17 @@ This should display a container image blobber_blobber and should have the ports 
 
 ## Connect to other network
 
-- Your network connection depends on the nodes file you give in the docker-compose while starting the blobber node
+- Your network connection depends on the block_worker url you give in the 0chain_blobber/validator.yaml config file.
 
 ```
---nodes_file b0single_machine_3_nodes
+block_worker: http://198.18.0.98:9091
 ```
 
-The nodes files are inside the `docker.local/keys_config` foler, You can use any preset file or add/edit as per your requirement.
-
-- To use one network, Use the one.yaml which is already present in the `docker.local/keys_config` folder.
+This works as a dns service, You need to know the above url for any network you want to connect, Just replace it in the above metioned file.
+For example: If you want to connect to one network
 
 ```
---nodes_file one
+block_worker: http://one.testnet-0chain.net/dns
 ```
 
 ## Miscellaneous
