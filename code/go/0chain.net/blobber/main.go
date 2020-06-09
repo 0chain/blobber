@@ -95,9 +95,6 @@ func SetupWorkerConfig() {
 	config.Configuration.MaxOfferDuration = viper.GetDuration("max_offer_duration")
 	config.Configuration.ChallengeCompletionTime = viper.GetDuration("challenge_completion_time")
 
-	config.Configuration.FaucetWorkerFreqInMinutes = viper.GetInt64("faucet.worker_frequency")
-	config.Configuration.FaucetMinimumBalance = viper.GetFloat64("faucet.minimum_balance")
-
 	config.Configuration.ReadLockTimeout = int64(
 		viper.GetDuration("read_lock_timeout") / time.Second,
 	)

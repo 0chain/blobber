@@ -101,9 +101,6 @@ type Config struct {
 	MaxOfferDuration        time.Duration
 	ChallengeCompletionTime time.Duration
 
-	FaucetWorkerFreqInMinutes int64
-	FaucetMinimumBalance      float64
-
 	ReadLockTimeout  int64 // seconds
 	WriteLockTimeout int64 // seconds
 

@@ -25,9 +25,6 @@ func SetupWorkers(ctx context.Context) {
 	if config.Configuration.MinioStart {
 		go MoveColdDataToCloud(ctx)
 	}
-	if config.Development() {
-		go SelfFund(ctx)
-	}
 }
 
 func CleanupDiskFiles(ctx context.Context) error {
@@ -186,40 +183,6 @@ func MoveColdDataToCloud(ctx context.Context) {
 					iterInprogress = false
 					Logger.Info("Move cold data to cloud worker running successfully")
 				}
-			}
-		}
-	}
-}
-
-func SelfFund(ctx context.Context) {
-	var iterInprogress = false
-	ticker := time.NewTicker(time.Duration(config.Configuration.FaucetWorkerFreqInMinutes) * time.Minute)
-	for true {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			if !iterInprogress {
-				balance, err := CheckBalance()
-				if err != nil {
-					Logger.Error("Failed to check balance", zap.Error(err))
-					continue
-				}
-
-				for balance < config.Configuration.FaucetMinimumBalance {
-					err = CallFaucet()
-					if err != nil {
-						Logger.Error("Failed to call faucet", zap.Error(err))
-						continue
-					}
-					balance, err = CheckBalance()
-					if err != nil {
-						Logger.Error("Failed to check balance", zap.Error(err))
-						continue
-					}
-					Logger.Info("Faucet successfully called", zap.Any("current_balance", balance))
-				}
-				iterInprogress = false
 			}
 		}
 	}

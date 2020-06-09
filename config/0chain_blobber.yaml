@@ -87,7 +87,3 @@ cold_storage:
   max_capacity_percentage: 50
   delete_local_copy: true
   delete_cloud_copy: true
-
-faucet:
-  worker_frequency: 10 #in minutes
-  minimum_balance: 2 #depends on capacity and price

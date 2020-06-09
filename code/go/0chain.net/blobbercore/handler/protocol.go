@@ -122,10 +122,6 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	if config.Development() {
-		CheckForFunds()
-	}
-
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	txn, err := transaction.NewTransactionEntity()
@@ -188,33 +184,4 @@ func BlobberHealthCheck(ctx context.Context) (string, error) {
 	}
 
 	return txn.Hash, nil
-}
-
-func CheckForFunds() {
-	balance, err := CheckBalance()
-	if err != nil {
-		Logger.Error("Failed to check for funds", zap.Error(err))
-		panic("Unable to get balance")
-	}
-	for balance < config.Configuration.FaucetMinimumBalance {
-		Logger.Info("Doesn't have minimum balance required, Calling faucet")
-		err = CallFaucet()
-		if err != nil {
-			Logger.Error("Failed to call faucet", zap.Error(err))
-			continue
-		}
-		balance, err = CheckBalance()
-		if err != nil {
-			Logger.Error("Failed to check for funds", zap.Error(err))
-			panic("Unable to get balance")
-		}
-		Logger.Info("Faucet successfully called", zap.Any("current_balance", balance))
-	}
-
-	err = Transfer(balance, config.Configuration.DelegateWallet)
-	if err != nil {
-		Logger.Error("Failed to transfer funds to delegate wallet", zap.Error(err))
-		panic("Unable to transfer funds to delegate wallet")
-	}
-	Logger.Info("Transfer successfully called", zap.Any("tokens_transfered", balance))
 }
