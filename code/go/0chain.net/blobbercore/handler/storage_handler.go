@@ -86,36 +86,6 @@ func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Req
 	return allocationObj, nil
 }
 
-func (fsh *StorageHandler) UpdateAllocationRepairStatus(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method != "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-
-	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	if len(clientID) == 0 || clientID != allocationObj.OwnerID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
-	repairStatus := r.FormValue("repair")
-	statusBool, err := strconv.ParseBool(repairStatus)
-	if err != nil {
-		return nil, common.NewError("invalid_parameter", "Unable to parse repair parameter")
-	}
-
-	err = allocation.UpdateRepairStatus(ctx, allocationTx, statusBool)
-	if err != nil {
-		return nil, common.NewError("update_repair_status_failed", "Failed to update status with err : "+err.Error())
-	}
-
-	allocationObj.UnderRepair = statusBool
-	return allocationObj, nil
-}
-
 func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *http.Request) (interface{}, error) {
 	if r.Method != "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")

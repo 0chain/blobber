@@ -50,7 +50,6 @@ func UpdateWorker(ctx context.Context, interval time.Duration) {
 		select {
 		case <-tick:
 			updateWork(ctx)
-			updateRepairStatus(ctx)
 		case <-quit:
 			return
 		}
@@ -391,14 +390,4 @@ func deleteFile(ctx context.Context, path string,
 	conn.Size += change.Size
 	conn.AddChange(change, dfc)
 	return
-}
-
-func updateRepairStatus(ctx context.Context) error {
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Model(&Allocation{}).
-		Where("under_repair = ? AND last_repair_request_at < ?", true, common.Now()-REPAIR_TIMEOUT).
-		UpdateColumn(&Allocation{
-			UnderRepair: false,
-		}).Error
 }

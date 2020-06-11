@@ -28,26 +28,6 @@ func GetAllocationByID(ctx context.Context, allocID string) (
 	return
 }
 
-func UpdateRepairStatus(ctx context.Context, allocationTx string, repairStatus bool) error {
-	var tx = datastore.GetStore().GetTransaction(ctx)
-	return tx.Model(&Allocation{}).
-		Where(&Allocation{Tx: allocationTx}).
-		UpdateColumn(&Allocation{
-			UnderRepair: repairStatus,
-		}).Error
-}
-
-func UpdateLastRepairTime(ctx context.Context, allocationTx string) error {
-	var tx = datastore.GetStore().GetTransaction(ctx)
-	return tx.Model(&Allocation{}).
-		Where(&Allocation{
-			Tx: allocationTx,
-		}).
-		UpdateColumn(&Allocation{
-			LastRepairRequestAt: common.Now(),
-		}).Error
-}
-
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	readonly bool) (a *Allocation, err error) {
 
@@ -126,8 +106,6 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	a.UsedSize = sa.UsedSize
 	a.Finalized = sa.Finalized
 	a.PayerID = t.ClientID
-	a.LastRepairRequestAt = common.Now()
-	a.UnderRepair = false
 
 	// related terms
 	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))

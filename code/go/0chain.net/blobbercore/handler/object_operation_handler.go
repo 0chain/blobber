@@ -202,10 +202,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if allocationObj.CheckRepair(ctx, r) {
-		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
-	}
-
 	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 {
@@ -367,10 +363,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if allocationObj.CheckRepair(ctx, r) {
-		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
-	}
-
 	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID || len(clientKey) == 0 || encryption.Hash(clientKeyBytes) != clientID {
@@ -508,10 +500,6 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if allocationObj.CheckRepair(ctx, r) {
-		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
-	}
-
 	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 {
@@ -590,10 +578,6 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-
-	if allocationObj.CheckRepair(ctx, r) {
-		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
 	}
 
 	allocationID := allocationObj.ID
@@ -721,10 +705,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-
-	if allocationObj.CheckRepair(ctx, r) {
-		return nil, common.NewError("invalid_operation", "Allocation under repair, Non repair operations not allowed")
 	}
 
 	allocationID := allocationObj.ID
