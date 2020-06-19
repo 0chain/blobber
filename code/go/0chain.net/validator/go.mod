@@ -7,7 +7,7 @@ replace 0chain.net/validatorcore => ../validatorcore
 require (
 	0chain.net/core v0.0.0
 	0chain.net/validatorcore v0.0.0
-	github.com/0chain/gosdk v1.0.75
+	github.com/0chain/gosdk v1.0.85
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/spf13/viper v1.4.0
