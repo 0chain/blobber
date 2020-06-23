@@ -96,8 +96,7 @@ The following order is used for the content :
 CONNECTION_URL
 ACCESS_KEY_ID
 SECRET_ACCESS_KEY
-TIER_BUCKET_NAME
-COPY_BUCKET_NAME
+BUCKET_NAME
 REGION
 ```
 
@@ -125,8 +124,6 @@ minio:
   start: false
   # The frequency at which the worker should look for files, Ex: 3600 means it will run every 3600 seconds
   worker_frequency: 3600 # In Seconds
-  # Number of workers to run in parallel, Just to make execution faster we can have mutiple workers running simultaneously
-  num_workers: 5
   # Use SSL for connection or not
   use_ssl: false
 ```

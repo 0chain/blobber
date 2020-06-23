@@ -37,8 +37,7 @@ type MinioConfiguration struct {
 	StorageServiceURL string
 	AccessKeyID       string
 	SecretAccessKey   string
-	TierBucketName    string
-	CopyBucketName    string
+	BucketName        string
 	BucketLocation    string
 }
 
@@ -77,11 +76,7 @@ func intializeMinio() *minio.Client {
 		panic(err)
 	}
 
-	checkBucket(minioClient, MinioConfig.TierBucketName)
-	if len(MinioConfig.CopyBucketName) > 0 {
-		checkBucket(minioClient, MinioConfig.CopyBucketName)
-	}
-
+	checkBucket(minioClient, MinioConfig.BucketName)
 	return minioClient
 }
 
@@ -213,16 +208,20 @@ func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *F
 	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
 
-	if fileData.OnCloud {
-		err = fs.DownloadFromCloud(fileData.Hash, fileObjectPath)
-		if err != nil {
-			return nil, nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
-		}
-	}
-
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
-		return nil, nil, err
+		if os.IsNotExist(err) && fileData.OnCloud {
+			err = fs.DownloadFromCloud(fileData.Hash, fileObjectPath)
+			if err != nil {
+				return nil, nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
+			}
+			file, err = os.Open(fileObjectPath)
+			if err != nil {
+				return nil, nil, err
+			}
+		} else {
+			return nil, nil, err
+		}
 	}
 	defer file.Close()
 
@@ -282,16 +281,20 @@ func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData
 	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
 
-	if fileData.OnCloud {
-		err = fs.DownloadFromCloud(fileData.Hash, fileObjectPath)
-		if err != nil {
-			return nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
-		}
-	}
-
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
-		return nil, err
+		if os.IsNotExist(err) && fileData.OnCloud {
+			err = fs.DownloadFromCloud(fileData.Hash, fileObjectPath)
+			if err != nil {
+				return nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
+			}
+			file, err = os.Open(fileObjectPath)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
 	}
 	defer file.Close()
 	fileinfo, err := file.Stat()
@@ -408,16 +411,20 @@ func (fs *FileFSStore) GetMerkleTreeForFile(allocationID string, fileData *FileI
 	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
 
-	if fileData.OnCloud {
-		err = fs.DownloadFromCloud(fileData.Hash, fileObjectPath)
-		if err != nil {
-			return nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
-		}
-	}
-
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
-		return nil, err
+		if os.IsNotExist(err) && fileData.OnCloud {
+			err = fs.DownloadFromCloud(fileData.Hash, fileObjectPath)
+			if err != nil {
+				return nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
+			}
+			file, err = os.Open(fileObjectPath)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
 	}
 	defer file.Close()
 	//merkleHash := sha3.New256()
@@ -553,27 +560,21 @@ func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHan
 }
 
 func (fs *FileFSStore) UploadToCloud(fileHash, filePath string) error {
-	_, err := fs.Minio.FPutObject(MinioConfig.TierBucketName, fileHash, filePath, minio.PutObjectOptions{})
+	_, err := fs.Minio.FPutObject(MinioConfig.BucketName, fileHash, filePath, minio.PutObjectOptions{})
 	if err != nil {
 		return err
 	}
 
-	if len(MinioConfig.CopyBucketName) > 0 {
-		_, err := fs.Minio.FPutObject(MinioConfig.CopyBucketName, fileHash, filePath, minio.PutObjectOptions{})
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
 func (fs *FileFSStore) DownloadFromCloud(fileHash, filePath string) error {
-	return fs.Minio.FGetObject(MinioConfig.TierBucketName, fileHash, filePath, minio.GetObjectOptions{})
+	return fs.Minio.FGetObject(MinioConfig.BucketName, fileHash, filePath, minio.GetObjectOptions{})
 }
 
 func (fs *FileFSStore) RemoveFromCloud(fileHash string) error {
-	if _, err := fs.Minio.StatObject(MinioConfig.TierBucketName, fileHash, minio.StatObjectOptions{}); err == nil {
-		return fs.Minio.RemoveObject(MinioConfig.TierBucketName, fileHash)
+	if _, err := fs.Minio.StatObject(MinioConfig.BucketName, fileHash, minio.StatObjectOptions{}); err == nil {
+		return fs.Minio.RemoveObject(MinioConfig.BucketName, fileHash)
 	}
 	return nil
 }

@@ -11,7 +11,6 @@ import (
 	"0chain.net/blobbercore/stats"
 	"0chain.net/core/lock"
 	"github.com/jinzhu/gorm"
-	"github.com/remeh/sizedwaitgroup"
 
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/config"
@@ -114,25 +113,32 @@ func MoveColdDataToCloud(ctx context.Context) {
 					db := datastore.GetStore().GetTransaction(rctx)
 					// Get total number of fileRefs with size greater than limit and on_cloud = false
 					var totalRecords int64
-					db.Table((&reference.Ref{}).TableName()).Where("size > ? AND on_cloud = ?", coldStorageMinFileSize, false).Count(&totalRecords)
+					db.Table((&reference.Ref{}).TableName()).
+						Where("size > ? AND on_cloud = ?", coldStorageMinFileSize, false).
+						Count(&totalRecords)
+
 					offset := int64(0)
 					for offset < totalRecords {
 						// Get all fileRefs with size greater than limit and on_cloud false
-						var fileRefs []reference.Ref
+						var fileRefs []*reference.Ref
 						db.Offset(offset).Limit(limit).
 							Table((&reference.Ref{}).TableName()).
 							Where("size > ? AND on_cloud = ?", coldStorageMinFileSize, false).
 							Find(&fileRefs)
 
-						// Create sized wait group to do concurrent uploads
-						swg := sizedwaitgroup.New(config.Configuration.MinioNumWorkers)
 						for _, fileRef := range fileRefs {
+
+							if fileRef.Type == reference.DIRECTORY {
+								continue
+							}
+
 							// Get file stats for the given fileRef
 							fileStat, err := stats.GetFileStats(rctx, fileRef.ID)
 							if err != nil {
 								Logger.Error("Unable to find filestats for fileRef with", zap.Any("reID", fileRef.ID))
 								continue
 							}
+							Logger.Info("Moving file to cloud", zap.Any("path", fileRef.Path), zap.Any("allocation", fileRef.AllocationID))
 
 							// Check if last updatedAt is older then than the given limit
 							timeToAdd := time.Duration(config.Configuration.ColdStorageTimeLimitInHours) * time.Hour
@@ -150,39 +156,43 @@ func MoveColdDataToCloud(ctx context.Context) {
 								fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
 								fileObjectPath = filepath.Join(fileObjectPath, destFile)
 
-								// Process upload to cloud
-								swg.Add()
-								go func(fileRef reference.Ref, filePath string) {
-									err := fs.UploadToCloud(fileRef.Hash, filePath)
+								err = fs.UploadToCloud(fileRef.ContentHash, fileObjectPath)
+								if err != nil {
+									Logger.Error("Error uploading cold data to cloud", zap.Error(err), zap.Any("file_name", fileRef.Name), zap.Any("file_path", fileObjectPath))
+									continue
+								}
+
+								fileRef.OnCloud = true
+								nctx := datastore.GetStore().CreateTransaction(ctx)
+								ndb := datastore.GetStore().GetTransaction(nctx)
+								err = ndb.Save(fileRef).Error
+								if err != nil {
+									Logger.Error("Failed to update reference_object for on cloud true", zap.Error(err))
+									ndb.Rollback()
+									nctx.Done()
+									continue
+								}
+								ndb.Commit()
+								nctx.Done()
+
+								if config.Configuration.ColdStorageDeleteLocalCopy {
+									err = os.Remove(fileObjectPath)
 									if err != nil {
-										Logger.Error("Error uploading cold data to cloud", zap.Error(err), zap.Any("file_name", fileRef.Name), zap.Any("file_path", filePath))
-									} else if config.Configuration.ColdStorageDeleteLocalCopy {
-										// Update fileRef with on cloud true
-										err = db.Table((&reference.Ref{}).TableName()).
-											Where(&reference.Ref{ID: fileRef.ID}).
-											UpdateColumn(&reference.Ref{OnCloud: true}).Error
-										if err != nil {
-											Logger.Error("Failed to update reference_object for on cloud true", zap.Error(err))
-										} else {
-											// Delete file from blobber
-											err = os.Remove(filePath)
-											if err != nil {
-												Logger.Error("Error deleting file after upload to cold storage", zap.Error(err))
-											}
-										}
+										Logger.Error("Error deleting file after upload to cold storage", zap.Error(err))
+										continue
 									}
-									swg.Done()
-								}(fileRef, fileObjectPath)
+								}
+
+								Logger.Info("Successfully uploaded file to cloud", zap.Any("file_name", fileRef.Name), zap.Any("allocation", fileRef.AllocationID))
 							}
 						}
-						swg.Wait()
 						offset = offset + limit
 					}
-					db.Rollback()
+					db.Commit()
 					rctx.Done()
-					iterInprogress = false
-					Logger.Info("Move cold data to cloud worker running successfully")
 				}
+				iterInprogress = false
+				Logger.Info("Move cold data to cloud worker running successfully")
 			}
 		}
 	}

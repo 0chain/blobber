@@ -77,7 +77,6 @@ func SetupWorkerConfig() {
 
 	config.Configuration.MinioStart = viper.GetBool("minio.start")
 	config.Configuration.MinioWorkerFreq = viper.GetInt64("minio.worker_frequency")
-	config.Configuration.MinioNumWorkers = viper.GetInt("minio.num_workers")
 	config.Configuration.MinioUseSSL = viper.GetBool("minio.use_ssl")
 
 	config.Configuration.Capacity = viper.GetInt64("capacity")
@@ -192,13 +191,7 @@ func processMinioConfig(reader io.Reader) error {
 		return common.NewError("process_minio_config_failed", "Unable to read minio config from minio config file")
 	}
 
-	filestore.MinioConfig.TierBucketName = scanner.Text()
-	more = scanner.Scan()
-	if more == false {
-		return common.NewError("process_minio_config_failed", "Unable to read minio config from minio config file")
-	}
-
-	filestore.MinioConfig.CopyBucketName = scanner.Text()
+	filestore.MinioConfig.BucketName = scanner.Text()
 	more = scanner.Scan()
 	if more == false {
 		return common.NewError("process_minio_config_failed", "Unable to read minio config from minio config file")

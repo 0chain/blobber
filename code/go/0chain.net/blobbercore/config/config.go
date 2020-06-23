@@ -92,7 +92,6 @@ type Config struct {
 
 	MinioStart      bool
 	MinioWorkerFreq int64
-	MinioNumWorkers int
 	MinioUseSSL     bool
 
 	ReadPrice               float64
