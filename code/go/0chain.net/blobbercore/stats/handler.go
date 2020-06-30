@@ -2,6 +2,7 @@ package stats
 
 import (
 	"context"
+	"fmt"
 	"html/template"
 	"net/http"
 
@@ -13,7 +14,32 @@ import (
 	"go.uber.org/zap"
 )
 
-var funcMap = template.FuncMap{}
+func byteCountIEC(b int64) string {
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %ciB", float64(b)/float64(div), "KMGTPE"[exp])
+}
+
+const (
+	Ki            = 1024    // kilobyte
+	readBlockSize = 64 * Ki // read block size is 64 KiB
+)
+
+var funcMap = template.FuncMap{
+	"read_size": func(readCount int64) string {
+		return byteCountIEC(readCount * readBlockSize)
+	},
+	"write_size": func(readCount int64) string {
+		return byteCountIEC(readCount)
+	},
+}
 
 const tpl = `<!DOCTYPE html>
 <html>
@@ -94,6 +120,41 @@ const tpl = `<!DOCTYPE html>
           <tr><td>Write lock timeout</td><td>{{ .WriteLockTimeout }}</td></tr>
         </table>
       </tr>
+      <tr>
+        <table>
+          <tr><th colspan="2">Read markers</th></tr>
+          <tr>
+            <td>Pending</td>
+            <td>{{ .ReadMarkers.Pending }} <i>(64 KB blocks)</i></td>
+            <td>{{ read_size .ReadMarkers.Pending }}</td>
+          </tr>
+          <tr>
+            <td>Redeemed</td>
+            <td>{{ .ReadMarkers.Redeemed }} <i>(64 KB blocks)</i></td>
+            <td>{{ read_size .ReadMarkers.Redeemed }}</td>
+          </tr>
+        </table>
+      </tr>
+      <tr>
+        <table>
+          <tr><th colspan="3">Write markers</th></tr>
+          <tr>
+            <td>Accepted</td>
+            <td>{{ .WriteMarkers.Accepted.Count }} markers</td>
+            <td>{{ write_size .WriteMarkers.Accepted.Size }}</td>
+          </tr>
+          <tr>
+            <td>Committed</td>
+            <td>{{ .WriteMarkers.Committed.Count }} markers</td>
+            <td>{{ write_size .WriteMarkers.Committed.Size }}</td>
+          </tr>
+          <tr>
+            <td>Failed</td>
+            <td>{{ .WriteMarkers.Failed.Count }} markers</td>
+            <td>{{ write_size .WriteMarkers.Failed.Size }}</td>
+          </tr>
+        </table>
+      </tr>
     </table>
 
     <h1>
@@ -119,7 +180,7 @@ const tpl = `<!DOCTYPE html>
       {{range .AllocationStats}}
 
       <tr>
-        <td>{{ .AllocationID }}</td>
+        <td rowspan=2>{{ .AllocationID }}</td>
         <td>{{ .UsedSize }}</td>
         <td>{{ .DiskSizeUsed }}</td>
         <td>{{ .TempFolderSize }}</td>
@@ -132,6 +193,51 @@ const tpl = `<!DOCTYPE html>
         <td>{{ .FailedChallenges }}</td>
         <td>{{ .RedeemedChallenges }}</td>
         <td>{{ .Expiration }}</td>
+      </tr>
+      <tr>
+        <td colspan=6>
+          <table>
+            {{ if .ReadMarkers }}
+              <tr><th colspan="2">Read markers</th></tr>
+              <tr>
+                <td>Pending</td>
+                <td>{{ .ReadMarkers.Pending }} <i>(64 KB blocks)</i></td>
+                <td>{{ read_size .ReadMarkers.Pending }}</td>
+              </tr>
+              <tr>
+                <td>Redeemed</td>
+                <td>{{ .ReadMarkers.Redeemed }} <i>(64 KB blocks)</i></td>
+                <td>{{ read_size .ReadMarkers.Redeemed }}</td>
+              </tr>
+            {{ else }}
+              <tr><th>No read markers yet.</th></tr>
+            {{ end }}
+          </table>
+        </td>
+        <td colspan=6>
+          <table>
+            {{ if .WriteMarkers }}
+              <tr><th colspan="3">Write markers</th></tr>
+              <tr>
+                <td>Accepted</td>
+                <td>{{ .WriteMarkers.Accepted.Count }} markers</td>
+                <td>{{ write_size .WriteMarkers.Accepted.Size }}</td>
+              </tr>
+              <tr>
+                <td>Committed</td>
+                <td>{{ .WriteMarkers.Committed.Count }} markers</td>
+                <td>{{ write_size .WriteMarkers.Committed.Size }}</td>
+              </tr>
+              <tr>
+                <td>Failed</td>
+                <td>{{ .WriteMarkers.Failed.Count }} markers</td>
+                <td>{{ write_size .WriteMarkers.Failed.Size }}</td>
+              </tr>
+            {{ else }}
+              <tr><th>No write markers yet</th></tr>
+            {{ end }}
+          </table>
+        </td>
       </tr>
       {{end}}
     </table>

@@ -2,17 +2,42 @@ package stats
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"time"
 
 	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/filestore"
 	"0chain.net/core/common"
-	. "0chain.net/core/logging"
+
 	"0chain.net/core/node"
 
+	. "0chain.net/core/logging"
 	"go.uber.org/zap"
+
+	"github.com/jinzhu/gorm/dialects/postgres"
 )
+
+// ReadMarkersStat represents read markers redeeming
+// statistics for a blobber or for an allocation.
+type ReadMarkersStat struct {
+	Redeemed int64 `gorm:"redeemed" json:"redeemed"`
+	Pending  int64 `gorm:"pending" json:"pending"`
+}
+
+type WriteMarkers struct {
+	Size  int64 `gorm:"size" json:"size"`
+	Count int64 `gorm:"count" json:"count"`
+}
+
+// WriteMarkersStat represents write markers redeeming
+// statistic for a blobber or for an allocation.
+type WriteMarkersStat struct {
+	Accepted  WriteMarkers `gorm:"accepted" json:"accepted"`
+	Committed WriteMarkers `gorm:"committed" json:"committed"`
+	Failed    WriteMarkers `gorm:"failed" json:"failed"`
+}
 
 type Stats struct {
 	UsedSize           int64 `json:"used_size"`
@@ -52,6 +77,10 @@ type BlobberStats struct {
 	WriteLockTimeout        Duration      `json:"write_lock_timeout"`
 
 	AllocationStats []*AllocationStats `json:"-"`
+
+	// total for all allocations
+	ReadMarkers  ReadMarkersStat  `json:"read_markers"`
+	WriteMarkers WriteMarkersStat `json:"write_markers"`
 }
 
 type AllocationId struct {
@@ -91,6 +120,40 @@ func (bs *BlobberStats) loadDetailedStats(ctx context.Context) {
 	bs.loadAllocationStats(ctx)
 	bs.loadChallengeStats(ctx)
 	bs.loadAllocationChallengeStats(ctx)
+
+	// load read/write markers stat
+	var (
+		given = make(map[string]struct{})
+		err   error
+	)
+	for _, as := range bs.AllocationStats {
+		if _, ok := given[as.AllocationID]; ok {
+			continue
+		}
+		given[as.AllocationID] = struct{}{}
+		as.ReadMarkers, err = loadAllocReadMarkersStat(ctx, as.AllocationID)
+		if err != nil {
+			Logger.Error("getting read_maker stat",
+				zap.String("allocation_id", as.AllocationID),
+				zap.Error(err))
+		} else {
+			bs.ReadMarkers.Pending += as.ReadMarkers.Pending
+			bs.ReadMarkers.Redeemed += as.ReadMarkers.Redeemed
+		}
+		as.WriteMarkers, err = loadAllocWriteMarkerStat(ctx, as.AllocationID)
+		if err != nil {
+			Logger.Error("getting write_maker stat",
+				zap.String("allocation_id", as.AllocationID),
+				zap.Error(err))
+		} else {
+			bs.WriteMarkers.Accepted.Count += as.WriteMarkers.Accepted.Count
+			bs.WriteMarkers.Accepted.Size += as.WriteMarkers.Accepted.Size
+			bs.WriteMarkers.Committed.Count += as.WriteMarkers.Committed.Count
+			bs.WriteMarkers.Committed.Size += as.WriteMarkers.Committed.Size
+			bs.WriteMarkers.Failed.Count += as.WriteMarkers.Failed.Count
+			bs.WriteMarkers.Failed.Size += as.WriteMarkers.Failed.Size
+		}
+	}
 }
 
 func (bs *BlobberStats) loadStats(ctx context.Context) {
@@ -194,9 +257,16 @@ func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
 
 func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
 	db := datastore.GetStore().GetTransaction(ctx)
-	rows, err := db.Table("challenges").Select("challenges.allocation_id, COUNT(*) as total_challenges, challenges.status, challenges.result").Group("challenges.allocation_id, challenges.status, challenges.result").Rows()
+	rows, err := db.Table("challenges").Select(`
+        challenges.allocation_id,
+        COUNT(*) as total_challenges,
+        challenges.status,
+        challenges.result`).
+		Group(`challenges.allocation_id, challenges.status, challenges.result`).
+		Rows()
 	if err != nil {
-		Logger.Error("Error in getting the allocation challenge stats", zap.Error(err))
+		Logger.Error("Error in getting the allocation challenge stats",
+			zap.Error(err))
 	}
 
 	allocationStatsMap := make(map[string]*AllocationStats)
@@ -255,4 +325,114 @@ func loadAllocationList(ctx context.Context) (interface{}, error) {
 	}
 	rows.Close()
 	return allocations, nil
+}
+
+type ReadMarkerEntity struct {
+	ReadCounter          int64          `gorm:"column:counter" json:"counter"`
+	LatestRedeemedRMBlob postgres.Jsonb `gorm:"column:latest_redeemed_rm"`
+	RedeemRequired       bool           `gorm:"column:redeem_required"`
+}
+
+func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (
+	rms *ReadMarkersStat, err error) {
+
+	var (
+		db  = datastore.GetStore().GetTransaction(ctx)
+		rme ReadMarkerEntity
+	)
+	err = db.Table("read_markers").
+		Select("counter, latest_redeemed_rm, redeem_required").
+		Where("allocation_id = ?", allocationID).
+		Limit(1).
+		Row().
+		Scan(&rme.ReadCounter, &rme.LatestRedeemedRMBlob, &rme.RedeemRequired)
+
+	if err != nil && err != sql.ErrNoRows {
+		return
+	}
+
+	if err == sql.ErrNoRows {
+		return &ReadMarkersStat{}, nil // empty
+	}
+
+	var prev, current = new(ReadMarkerEntity), &rme
+	if len(rme.LatestRedeemedRMBlob.RawMessage) > 0 {
+		err = json.Unmarshal([]byte(rme.LatestRedeemedRMBlob.RawMessage), prev)
+		if err != nil {
+			return
+		}
+	}
+
+	rms = new(ReadMarkersStat)
+	if current.RedeemRequired {
+		rms.Pending = current.ReadCounter - prev.ReadCounter // pending
+		rms.Redeemed = prev.ReadCounter                      // already redeemed
+	} else {
+		rms.Redeemed = current.ReadCounter // already redeemed
+	}
+
+	return
+}
+
+// copy pasted from writemarker package because of import cycle
+type WriteMarkerStatus int
+
+const (
+	Accepted  WriteMarkerStatus = iota // 0
+	Committed                          // 1
+	Failed                             // 2
+)
+
+func loadAllocWriteMarkerStat(ctx context.Context, allocationID string) (
+	wms *WriteMarkersStat, err error) {
+
+	var (
+		db   = datastore.GetStore().GetTransaction(ctx)
+		rows *sql.Rows
+	)
+
+	rows, err = db.Table("write_markers").
+		Select(`status, SUM(size) AS size, COUNT(size) as count`).
+		Where("allocation_id = ?", allocationID).
+		Group("status").
+		Rows()
+
+	if err != nil {
+		return
+	}
+
+	defer rows.Close()
+
+	type writeMarkerRow struct {
+		Status WriteMarkerStatus
+		Size   int64
+		Count  int64
+	}
+
+	wms = new(WriteMarkersStat)
+
+	for rows.Next() {
+		var wmr writeMarkerRow
+		err = rows.Scan(&wmr.Status, &wmr.Size, &wmr.Count)
+		if err != nil {
+			return nil, err
+		}
+		switch wmr.Status {
+		case Accepted:
+			wms.Accepted.Count += wmr.Count
+			wms.Accepted.Size += wmr.Size
+		case Committed:
+			wms.Committed.Count += wmr.Count
+			wms.Committed.Size += wmr.Size
+		case Failed:
+			wms.Failed.Count += wmr.Count
+			wms.Failed.Size += wmr.Size
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return
 }

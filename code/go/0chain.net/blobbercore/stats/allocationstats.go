@@ -19,6 +19,9 @@ type AllocationStats struct {
 	TempFolderSize int64  `json:"-"`
 	Stats
 	Expiration Timestamp `json:"expiration_date" gorm:"column:expiration_date"`
+
+	ReadMarkers  *ReadMarkersStat  `json:"read_markers"`
+	WriteMarkers *WriteMarkersStat `json:"write_markers"`
 }
 
 func (fs *AllocationStats) loadAllocationDiskUsageStats() error {
