@@ -38,6 +38,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("min_stake", 1.0)
 	viper.SetDefault("max_stake", 100.0)
 	viper.SetDefault("num_delegates", 100)
+	viper.SetDefault("service_charge", 0.3)
 
 	viper.SetDefault("update_allocations_interval", time.Duration(-1))
 }
@@ -113,6 +114,8 @@ type Config struct {
 	MaxStake int64 `json:"max_stake"`
 	// NumDelegates maximum allowed.
 	NumDelegates int `json:"num_delegates"`
+	// ServiceCharge for blobber.
+	ServiceCharge float64 `json:"service_charge"`
 }
 
 /*Configuration of the system */

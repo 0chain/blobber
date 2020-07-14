@@ -70,6 +70,7 @@ func main() {
 	config.Configuration.MinStake = int64(viper.GetFloat64("min_stake") * 1e10)
 	config.Configuration.MaxStake = int64(viper.GetFloat64("max_stake") * 1e10)
 	config.Configuration.NumDelegates = viper.GetInt("num_delegates")
+	config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
 
 	if *hostname == "" {
 		panic("Please specify --hostname which is the public hostname")

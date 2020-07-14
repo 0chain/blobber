@@ -153,6 +153,7 @@ func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (string,
 	sn.StakePoolSettings.MinStake = config.Configuration.MinStake
 	sn.StakePoolSettings.MaxStake = config.Configuration.MaxStake
 	sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
+	sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
 
 	snBytes, err := json.Marshal(sn)
 	if err != nil {

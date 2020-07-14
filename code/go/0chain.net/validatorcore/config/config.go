@@ -43,6 +43,8 @@ type Config struct {
 	MaxStake int64 `json:"max_stake"`
 	// NumDelegates maximum allowed.
 	NumDelegates int `json:"num_delegates"`
+	// ServiceCharge of related blobber.
+	ServiceCharge float64 `json:"service_charge"`
 }
 
 /*Configuration of the system */
