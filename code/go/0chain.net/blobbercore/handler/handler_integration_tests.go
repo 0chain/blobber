@@ -26,7 +26,6 @@ import (
 
 	// integration tests RPC control
 	crpc "0chain.net/conductor/conductrpc"
-	crpcutils "0chain.net/conductor/utils"
 )
 
 var storageHandler StorageHandler
@@ -161,9 +160,10 @@ func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, er
 			Msg string `json:"msg"`
 		})
 		x.Msg = "Failure" // replace message
+		return x, nil
 	}
 
-	return x, nil
+	return response, nil
 }
 
 func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {

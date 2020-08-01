@@ -101,68 +101,6 @@ func (e *Entity) isMonitor() bool {
 }
 
 //
-// RPC methods (events notification)
-//
-
-func (e *Entity) Phase(phase *PhaseEvent) (err error) {
-	if !e.isMonitor() {
-		return // not a monitor
-	}
-	return e.client.phase(phase)
-}
-
-func (e *Entity) ViewChange(viewChange *ViewChangeEvent) (err error) {
-	if !e.isMonitor() {
-		return // not a monitor
-	}
-	return e.client.viewChange(viewChange)
-}
-
-func (e *Entity) AddMiner(add *AddMinerEvent) (err error) {
-	if !e.isMonitor() {
-		return // not a monitor
-	}
-	return e.client.addMiner(add)
-}
-
-func (e *Entity) AddSharder(add *AddSharderEvent) (err error) {
-	if !e.isMonitor() {
-		return // not a monitor
-	}
-	return e.client.addSharder(add)
-}
-
-func (e *Entity) AddBlobber(add *AddBlobberEvent) (err error) {
-	if !e.isMonitor() {
-		return // not a monitor
-	}
-	return e.client.addBlobber(add)
-}
-
-func (e *Entity) Round(re *RoundEvent) (err error) {
-	if !e.isMonitor() {
-		return // not a monitor
-	}
-	return e.client.round(re)
-}
-
-func (e *Entity) ContributeMPK(cmpke *ContributeMPKEvent) (err error) {
-	if !e.isMonitor() {
-		return // not a monitor
-	}
-	return e.client.contributeMPK(cmpke)
-}
-
-func (e *Entity) ShareOrSignsShares(sosse *ShareOrSignsSharesEvent) (
-	err error) {
-
-	if !e.isMonitor() {
-		return // not a monitor
-	}
-	return e.client.shareOrSignsShares(sosse)
-}
-
-//
 // global
 //
 
