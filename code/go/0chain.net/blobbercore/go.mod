@@ -2,6 +2,8 @@ module 0chain.net/blobbercore
 
 replace 0chain.net/core => ../core
 
+replace 0chain.net/conductor => ../conductor
+
 require (
 	0chain.net/core v0.0.0
 	github.com/0chain/gosdk v1.0.85

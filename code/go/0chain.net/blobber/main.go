@@ -306,6 +306,8 @@ func main() {
 		Logger.Info("self identity", zap.Any("id", node.Self.ID))
 	}
 
+	initIntegrationsTests(node.Self.ID)
+
 	//address := publicIP + ":" + portString
 	address := ":" + *portString
 

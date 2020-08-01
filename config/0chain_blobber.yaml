@@ -97,3 +97,11 @@ cold_storage:
   delete_local_copy: true
   # Delete cloud copy if the file is deleted from the blobber by user/other process
   delete_cloud_copy: true
+
+# integration tests related configurations
+integration_tests:
+  # address of the server
+  address: host.docker.internal:15210
+  # lock_interval used by nodes to request server to connect to blockchain
+  # after start
+  lock_interval: 1s

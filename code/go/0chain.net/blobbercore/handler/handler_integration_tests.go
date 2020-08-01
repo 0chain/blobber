@@ -1,5 +1,10 @@
-// +build !integration_tests
+// +build integration_tests
 
+//
+// the bad blobber behavior
+//
+
+//
 package handler
 
 import (
@@ -13,9 +18,15 @@ import (
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/stats"
 	"0chain.net/core/common"
+	"0chain.net/core/node"
+
 	. "0chain.net/core/logging"
 
 	"github.com/gorilla/mux"
+
+	// integration tests RPC control
+	crpc "0chain.net/conductor/conductrpc"
+	crpcutils "0chain.net/conductor/utils"
 )
 
 var storageHandler StorageHandler
@@ -107,12 +118,30 @@ func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error
 	return response, nil
 }
 
+func revertString(s string) string {
+	r := []rune(s)
+	for i, j := 0, len(r)-1; i < len(r)/2; i, j = i+1, j-1 {
+		r[i], r[j] = r[j], r[i]
+	}
+	return string(r)
+}
+
 func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetFileMeta(ctx, r)
 	if err != nil {
 		return nil, err
+	}
+
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		x := response.(map[string]interface{})
+		if hash, ok := x["hash"]; ok {
+			if str, ok := hash.(string); ok {
+				x["hash"] = revertString(str) // provide wrong hash
+			}
+		}
 	}
 
 	return response, nil
@@ -126,7 +155,15 @@ func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, er
 		return nil, err
 	}
 
-	return response, nil
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		x := response.(struct {
+			Msg string `json:"msg"`
+		})
+		x.Msg = "Failure" // replace message
+	}
+
+	return x, nil
 }
 
 func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -149,6 +186,12 @@ func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 		return nil, err
 	}
 
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		dr := response.(*DownloadResponse)
+		dr.Path = "/injection/" + dr.Path
+	}
+
 	return response, nil
 }
 
@@ -161,6 +204,10 @@ func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		response.AllocationRoot = revertString(response.AllocationRoot)
+	}
 	return response, nil
 }
 
@@ -173,6 +220,10 @@ func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		response.AllocationRoot = revertString(response.AllocationRoot)
+	}
 	return response, nil
 }
 
@@ -182,6 +233,14 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 	response, err := storageHandler.GetReferencePath(ctx, r)
 	if err != nil {
 		return nil, err
+	}
+
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		if response.ReferencePath != nil && response.ReferencePath.Meta != nil {
+			response.ReferencePath.Meta["hash"] =
+				revertString(response.ReferencePath.Meta["hash"].(string))
+		}
 	}
 
 	return response, nil
@@ -195,6 +254,13 @@ func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error
 		return nil, err
 	}
 
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		response.FileBlockNum += 20
+		response.RootHash = revertString(response.RootHash)
+		response.RefID += 12
+	}
+
 	return response, nil
 }
 
@@ -204,6 +270,13 @@ func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, error
 	response, err := storageHandler.GetObjectTree(ctx, r)
 	if err != nil {
 		return nil, err
+	}
+
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		if len(response.List) > 0 {
+			response.List = append(response.List, response.List[0])
+		}
 	}
 
 	return response, nil
@@ -216,6 +289,12 @@ func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		ur := response.(*UploadResult)
+		ur.Filename = "/injected/" + ur.Filename
+	}
+
 	return response, nil
 }
 
@@ -224,6 +303,12 @@ func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	response, err := storageHandler.CopyObject(ctx, r)
 	if err != nil {
 		return nil, err
+	}
+
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		ur := response.(*UploadResult)
+		ur.Filename = "/injected/" + ur.Filename
 	}
 
 	return response, nil
@@ -235,6 +320,11 @@ func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	response, err := storageHandler.WriteFile(ctx, r)
 	if err != nil {
 		return nil, err
+	}
+
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		response.Filename = "/injected/" + response.Filename
 	}
 
 	return response, nil
