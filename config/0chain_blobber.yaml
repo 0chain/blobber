@@ -91,8 +91,8 @@ cold_storage:
   file_time_limit_in_hours: 720 #in hours
   # Number of files to be queried and processed at once
   job_query_limit: 100
-  # Capacity in percentage after which the cloud backup should start work
-  max_capacity_percentage: 50
+  # Capacity filled in bytes after which the cloud backup should start work
+  start_capacity_size: 536870912 # 500MB
   # Delete local copy once the file is moved to cloud
   delete_local_copy: true
   # Delete cloud copy if the file is deleted from the blobber by user/other process

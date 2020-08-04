@@ -84,12 +84,12 @@ type Config struct {
 	TempFilesCleanupFreq          int64
 	TempFilesCleanupNumWorkers    int
 
-	ColdStorageMinimumFileSize  int64
-	ColdStorageTimeLimitInHours int64
-	ColdStorageJobQueryLimit    int64
-	MaxCapacityPercentage       float64
-	ColdStorageDeleteLocalCopy  bool
-	ColdStorageDeleteCloudCopy  bool
+	ColdStorageMinimumFileSize   int64
+	ColdStorageTimeLimitInHours  int64
+	ColdStorageJobQueryLimit     int64
+	ColdStorageStartCapacitySize int64
+	ColdStorageDeleteLocalCopy   bool
+	ColdStorageDeleteCloudCopy   bool
 
 	MinioStart      bool
 	MinioWorkerFreq int64

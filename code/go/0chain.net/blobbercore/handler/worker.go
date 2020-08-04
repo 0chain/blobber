@@ -107,8 +107,8 @@ func MoveColdDataToCloud(ctx context.Context) {
 					return
 				}
 
-				// Check if capacity exceded the max capacity percentage
-				if float64(totalDiskSizeUsed) > ((config.Configuration.MaxCapacityPercentage / 100) * float64(config.Configuration.Capacity)) {
+				// Check if capacity exceded the start capacity size
+				if totalDiskSizeUsed > config.Configuration.ColdStorageStartCapacitySize {
 					rctx := datastore.GetStore().CreateTransaction(ctx)
 					db := datastore.GetStore().GetTransaction(rctx)
 					// Get total number of fileRefs with size greater than limit and on_cloud = false
