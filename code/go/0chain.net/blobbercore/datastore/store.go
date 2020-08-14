@@ -26,13 +26,17 @@ func GetStore() *Store {
 }
 
 func (store *Store) Open() error {
-	db, err := gorm.Open("postgres", fmt.Sprintf("host=%v port=%v user=%v dbname=%v password=%v sslmode=disable", config.Configuration.DBHost, config.Configuration.DBPort, config.Configuration.DBUserName, config.Configuration.DBName, config.Configuration.DBPassword))
+	db, err := gorm.Open("postgres",
+		fmt.Sprintf("host=%v port=%v user=%v dbname=%v password=%v sslmode=disable",
+			config.Configuration.DBHost, config.Configuration.DBPort,
+			config.Configuration.DBUserName, config.Configuration.DBName,
+			config.Configuration.DBPassword))
 	if err != nil {
 		return errors.DBOpenError
 	}
 	db.DB().SetMaxIdleConns(100)
 	db.DB().SetMaxOpenConns(200)
-	db.DB().SetConnMaxLifetime(30*time.Second)
+	db.DB().SetConnMaxLifetime(30 * time.Second)
 	// Enable Logger, show detailed log
 	//db.LogMode(true)
 	store.db = db

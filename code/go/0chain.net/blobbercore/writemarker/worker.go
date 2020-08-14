@@ -58,47 +58,46 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationObj *allocation.A
 		}
 	}
 	if allocationObj.LatestRedeemedWM == allocationObj.AllocationRoot {
-		db.Model(allocationObj).Where("allocation_root = ? AND allocation_root = latest_redeemed_write_marker", allocationObj.AllocationRoot).Update("is_redeem_required", false)
+		db.Model(allocationObj).
+			Where("allocation_root = ? AND allocation_root = latest_redeemed_write_marker", allocationObj.AllocationRoot).
+			Update("is_redeem_required", false)
 	}
 	//Logger.Info("Returning from redeem", zap.Any("wm", latestWmEntity), zap.Any("allocation", allocationID))
 	return nil
 }
 
-var iterInprogress = false
-
 func RedeemWriteMarkers(ctx context.Context) {
-	ticker := time.NewTicker(time.Duration(config.Configuration.WMRedeemFreq) * time.Second)
+	var ticker = time.NewTicker(
+		time.Duration(config.Configuration.WMRedeemFreq) * time.Second,
+	)
 	for true {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			//Logger.Info("Trying to redeem writemarkers.", zap.Any("iterInprogress", iterInprogress), zap.Any("numOfWorkers", numOfWorkers))
-			if !iterInprogress {
-				iterInprogress = true
-				rctx := datastore.GetStore().CreateTransaction(ctx)
-				db := datastore.GetStore().GetTransaction(rctx)
-				allocations := make([]*allocation.Allocation, 0)
-				alloc := &allocation.Allocation{IsRedeemRequired: true}
-				db.Where(alloc).Find(&allocations)
-				if len(allocations) > 0 {
-					swg := sizedwaitgroup.New(config.Configuration.WMRedeemNumWorkers)
-					for _, allocationObj := range allocations {
-						swg.Add()
-						go func(redeemCtx context.Context, allocationObj *allocation.Allocation) {
-							err := RedeemMarkersForAllocation(redeemCtx, allocationObj)
-							if err != nil {
-								Logger.Error("Error redeeming the write marker for allocation.", zap.Any("allocation", allocationObj.ID), zap.Error(err))
-							}
-							swg.Done()
-						}(ctx, allocationObj)
-					}
-					swg.Wait()
+			// Logger.Info("Trying to redeem writemarkers.",
+			//	zap.Any("numOfWorkers", numOfWorkers))
+			rctx := datastore.GetStore().CreateTransaction(ctx)
+			db := datastore.GetStore().GetTransaction(rctx)
+			allocations := make([]*allocation.Allocation, 0)
+			alloc := &allocation.Allocation{IsRedeemRequired: true}
+			db.Where(alloc).Find(&allocations)
+			if len(allocations) > 0 {
+				swg := sizedwaitgroup.New(config.Configuration.WMRedeemNumWorkers)
+				for _, allocationObj := range allocations {
+					swg.Add()
+					go func(redeemCtx context.Context, allocationObj *allocation.Allocation) {
+						err := RedeemMarkersForAllocation(redeemCtx, allocationObj)
+						if err != nil {
+							Logger.Error("Error redeeming the write marker for allocation.", zap.Any("allocation", allocationObj.ID), zap.Error(err))
+						}
+						swg.Done()
+					}(ctx, allocationObj)
 				}
-				db.Rollback()
-				rctx.Done()
-				iterInprogress = false
+				swg.Wait()
 			}
+			db.Rollback()
+			rctx.Done()
 		}
 	}
 

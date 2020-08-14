@@ -141,6 +141,11 @@ func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context, status_message str
 	if err != nil {
 		return fmt.Errorf("can't get pending RM records: %v", err)
 	}
+
+	if len(rs) == 0 {
+		return nil
+	}
+
 	var pend *allocation.Pending
 	pend, err = allocation.GetPending(db, rm.LatestRM.ClientID,
 		rm.LatestRM.AllocationID, rm.LatestRM.BlobberID)

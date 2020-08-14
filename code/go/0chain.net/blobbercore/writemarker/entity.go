@@ -79,19 +79,28 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarke
 		return
 	}
 
-	if status != Committed {
-		return
+	if status != Committed || wm.WM.Size <= 0 {
+		return // not committed or a deleting marker
 	}
 
 	// WM has committed
 
-	// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+	//
+	// work on pre-redeemd tokens and write-pools balances tracking
+	//
+
 	var wr *allocation.WriteRedeem
 	wr, err = allocation.GetWriteRedeem(db, wm.WM.Signature, wm.WM.ClientID,
 		wm.WM.AllocationID, wm.WM.BlobberID)
 	if err != nil {
 		return fmt.Errorf("can't get pending WM record: %v", err)
 	}
+
+	// for delete and zero-cost operations
+	if wr.Size == 0 {
+		return
+	}
+
 	var pend *allocation.Pending
 	pend, err = allocation.GetPending(db, wm.WM.ClientID, wm.WM.AllocationID,
 		wm.WM.BlobberID)

@@ -129,7 +129,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	)
 
 	if writeMarker.Size <= 0 || want <= 0 {
-		return // skip if write price is zero
+		return // skip if write price is zero or it's about deleting
 	}
 
 	pend, err = allocation.GetPending(db, writeMarker.ClientID,

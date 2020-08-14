@@ -1,24 +1,22 @@
 package challenge
 
 import (
-	
-	"context"
 	"bytes"
+	"context"
 	"encoding/json"
 	"time"
 
+	"0chain.net/blobbercore/config"
+	"0chain.net/blobbercore/datastore"
+	"0chain.net/core/chain"
 	"0chain.net/core/lock"
+	. "0chain.net/core/logging"
 	"0chain.net/core/node"
 	"0chain.net/core/transaction"
-	"0chain.net/core/chain"
-	."0chain.net/core/logging"
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/blobbercore/config"
 
+	"github.com/jinzhu/gorm"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/zap"
-	"github.com/jinzhu/gorm"
-	
 )
 
 type BCChallengeResponse struct {
@@ -30,7 +28,6 @@ func SetupWorkers(ctx context.Context) {
 	go FindChallenges(ctx)
 	go SubmitProcessedChallenges(ctx)
 }
-
 
 func GetValidationTickets(ctx context.Context, challengeObj *ChallengeEntity) error {
 	mutex := lock.GetMutex(challengeObj.TableName(), challengeObj.ChallengeID)
@@ -52,16 +49,25 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 			rctx := datastore.GetStore().CreateTransaction(ctx)
 			db := datastore.GetStore().GetTransaction(rctx)
 			//lastChallengeRedeemed := &ChallengeEntity{}
-			rows, err := db.Table("challenges").Select("commit_txn_id, sequence"). Where(ChallengeEntity{Status: Committed}).Order("sequence desc").Limit(1).Rows()
+			rows, err := db.Table("challenges").
+				Select("commit_txn_id, sequence").
+				Where(ChallengeEntity{Status: Committed}).
+				Order("sequence desc").Limit(1).Rows()
+
 			if rows != nil && err == nil {
 				lastSeq := 0
 				lastCommitTxn := ""
 				for rows.Next() {
 					rows.Scan(&lastCommitTxn, &lastSeq)
 				}
-				
+
 				openchallenges := make([]*ChallengeEntity, 0)
-				db.Where(ChallengeEntity{Status: Processed}).Where("sequence > ?", lastSeq).Order("sequence").Find(&openchallenges)
+
+				db.Where(ChallengeEntity{Status: Processed}).
+					Where("sequence > ?", lastSeq).
+					Order("sequence").
+					Find(&openchallenges)
+
 				if len(openchallenges) > 0 {
 					for _, openchallenge := range openchallenges {
 						openchallenge.UnmarshalFields()
@@ -70,13 +76,17 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 						redeemCtx := datastore.GetStore().CreateTransaction(ctx)
 						err := openchallenge.CommitChallenge(redeemCtx, false)
 						if err != nil {
-							Logger.Error("Error committing to blockchain", zap.Error(err), zap.String("challenge_id", openchallenge.ChallengeID))
+							Logger.Error("Error committing to blockchain",
+								zap.Error(err),
+								zap.String("challenge_id", openchallenge.ChallengeID))
 						}
 						mutex.Unlock()
 						db := datastore.GetStore().GetTransaction(redeemCtx)
 						db.Commit()
 						if err == nil && openchallenge.Status == Committed {
-							Logger.Info("Challenge has been submitted to blockchain", zap.Any("id", openchallenge.ChallengeID), zap.String("txn", openchallenge.CommitTxnID))
+							Logger.Info("Challenge has been submitted to blockchain",
+								zap.Any("id", openchallenge.ChallengeID),
+								zap.String("txn", openchallenge.CommitTxnID))
 						} else {
 							break
 						}
@@ -84,12 +94,16 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 				}
 				db.Rollback()
 				rctx.Done()
-	
+
 				rctx = datastore.GetStore().CreateTransaction(ctx)
 				db = datastore.GetStore().GetTransaction(rctx)
 				toBeVerifiedChallenges := make([]*ChallengeEntity, 0)
-				//commit challenges on local state for all challenges that have missed the commit txn from blockchain
-				db.Where(ChallengeEntity{Status: Processed}).Where("sequence < ?", lastSeq).Find(&toBeVerifiedChallenges)
+				// commit challenges on local state for all challenges that
+				// have missed the commit txn from blockchain
+				db.Where(ChallengeEntity{Status: Processed}).
+					Where("sequence < ?", lastSeq).
+					Find(&toBeVerifiedChallenges)
+
 				for _, toBeVerifiedChallenge := range toBeVerifiedChallenges {
 					toBeVerifiedChallenge.UnmarshalFields()
 					mutex := lock.GetMutex(toBeVerifiedChallenge.TableName(), toBeVerifiedChallenge.ChallengeID)
@@ -97,24 +111,29 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 					redeemCtx := datastore.GetStore().CreateTransaction(ctx)
 					err := toBeVerifiedChallenge.CommitChallenge(redeemCtx, true)
 					if err != nil {
-						Logger.Error("Error committing to blockchain", zap.Error(err), zap.String("challenge_id", toBeVerifiedChallenge.ChallengeID))
+						Logger.Error("Error committing to blockchain",
+							zap.Error(err),
+							zap.String("challenge_id", toBeVerifiedChallenge.ChallengeID))
 					}
 					mutex.Unlock()
 					db := datastore.GetStore().GetTransaction(redeemCtx)
 					db.Commit()
 					if err == nil && toBeVerifiedChallenge.Status == Committed {
-						Logger.Info("Challenge has been submitted to blockchain", zap.Any("id", toBeVerifiedChallenge.ChallengeID), zap.String("txn", toBeVerifiedChallenge.CommitTxnID))
+						Logger.Info("Challenge has been submitted to blockchain",
+							zap.Any("id", toBeVerifiedChallenge.ChallengeID),
+							zap.String("txn", toBeVerifiedChallenge.CommitTxnID))
 					}
 				}
+
 				db.Rollback()
 				rctx.Done()
 			} else {
-				Logger.Error("Error in getting the challenges for blockchain processing.", zap.Error(err))
-			}	
+				Logger.Error("Error in getting the challenges for blockchain processing.",
+					zap.Error(err))
+			}
 		}
 		time.Sleep(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
 	}
-	
 
 	// if challengeObj.ObjectPath != nil && challengeObj.Status == Committed && challengeObj.ObjectPath.FileBlockNum > 0 {
 	// 	//stats.FileChallenged(challengeObj.AllocationID, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
@@ -131,7 +150,7 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 	// 		go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.FAILED, stats.REDEEMERROR, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
 	// 	}
 	// }
-	
+
 	return nil
 }
 
@@ -204,7 +223,7 @@ func FindChallenges(ctx context.Context) {
 							if gorm.IsRecordNotFoundError(err) {
 								latestChallenge, err := GetLastChallengeEntity(tCtx)
 								if err == nil || gorm.IsRecordNotFoundError(err) {
-									if (latestChallenge == nil && len(challengeObj.PrevChallengeID) == 0) ||  latestChallenge.ChallengeID == challengeObj.PrevChallengeID {
+									if (latestChallenge == nil && len(challengeObj.PrevChallengeID) == 0) || latestChallenge.ChallengeID == challengeObj.PrevChallengeID {
 										Logger.Info("Adding new challenge found from blockchain", zap.String("challenge", v.ChallengeID))
 										challengeObj.Status = Accepted
 										challengeObj.Save(tCtx)

@@ -241,27 +241,26 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 			}
 			Logger.Error("Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID))
 		}
-		if verifyOnly {
-			return nil
-		}
 	}
-	if !verifyOnly {
-		t, err := cr.SubmitChallengeToBC(ctx)
-		if err != nil {
-			if t != nil {
-				cr.CommitTxnID = t.Hash
-				cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
-			}
-			cr.ErrorChallenge(ctx, err)
-		} else {
-			cr.Status = Committed
-			cr.StatusMessage = t.TransactionOutput
+
+	if verifyOnly {
+		return nil
+	}
+
+	t, err := cr.SubmitChallengeToBC(ctx)
+	if err != nil {
+		if t != nil {
 			cr.CommitTxnID = t.Hash
 			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
 		}
-		err = cr.Save(ctx)
-		FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
-		return err
+		cr.ErrorChallenge(ctx, err)
+	} else {
+		cr.Status = Committed
+		cr.StatusMessage = t.TransactionOutput
+		cr.CommitTxnID = t.Hash
+		cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
 	}
-	return nil
+	err = cr.Save(ctx)
+	FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
+	return err
 }

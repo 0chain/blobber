@@ -307,6 +307,10 @@ func GetReadRedeems(db *gorm.DB, rc int64, cid, aid, bid string) (
 	err = db.Model(&ReadRedeem{}).
 		Where(query, cid, aid, bid, rc).
 		First(&rs).Error
+
+	if gorm.IsRecordNotFoundError(err) {
+		return nil, nil // for a zero-cost reads
+	}
 	return
 }
 
@@ -352,5 +356,11 @@ func GetWriteRedeem(db *gorm.DB, sign, cid, aid, bid string) (wr *WriteRedeem,
 	err = db.Model(&WriteRedeem{}).
 		Where(query, cid, aid, bid, sign).
 		First(wr).Error
-	return
+
+	// for delete and zero-cost write operations
+	if gorm.IsRecordNotFoundError(err) {
+		return &WriteRedeem{Size: 0}, nil
+	}
+
+	return // error or result
 }
