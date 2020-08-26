@@ -66,6 +66,30 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 }
 
 func (rmEntity *ReadMarkerEntity) RedeemReadMarker(ctx context.Context) error {
+	rps, err := allocation.RequestReadPools(rmEntity.LatestRM.ClientID,
+		rmEntity.LatestRM.AllocationID)
+	if err != nil {
+		Logger.Error("requesting read pools before executing read redeem",
+			zap.String("client_id", rmEntity.LatestRM.ClientID),
+			zap.String("allocation_id", rmEntity.LatestRM.AllocationID),
+			zap.String("blobber_id", rmEntity.LatestRM.BlobberID),
+			zap.Error(err))
+		return err
+	}
+
+	var readPoolAvailable bool
+	for _, rp := range rps {
+		if rp.ExpireAt > common.Now()+common.Timestamp(60) {
+			readPoolAvailable = true
+			break
+		}
+	}
+
+	if !readPoolAvailable {
+		Logger.Error("Stopping submission of read redeem marker due to non availability of any read pool")
+		return common.NewError("read_redeem_failed", "Failed to submit because there is no read pool available to redeem")
+	}
+
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		return err
