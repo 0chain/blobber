@@ -545,3 +545,47 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	}
 	return &refPathResult, nil
 }
+
+func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method != "POST" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+	}
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+	allocationID := allocationObj.ID
+
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	var paths []string
+	pathsString := r.FormValue("paths")
+	if len(pathsString) == 0 {
+		path := r.FormValue("path")
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		paths = append(paths, path)
+	} else {
+		err = json.Unmarshal([]byte(pathsString), &paths)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid path array json")
+		}
+	}
+
+	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
+	if err != nil {
+		return nil, err
+	}
+
+	rootRef.CalculateHash(ctx, true)
+
+	result := make(map[string]interface{})
+	result["msg"] = "Hash recalculated for the given paths"
+	return result, nil
+}
