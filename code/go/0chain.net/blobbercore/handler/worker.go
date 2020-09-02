@@ -127,63 +127,20 @@ func MoveColdDataToCloud(ctx context.Context) {
 							Find(&fileRefs)
 
 						for _, fileRef := range fileRefs {
-
 							if fileRef.Type == reference.DIRECTORY {
 								continue
 							}
 
-							// Get file stats for the given fileRef
 							fileStat, err := stats.GetFileStats(rctx, fileRef.ID)
 							if err != nil {
 								Logger.Error("Unable to find filestats for fileRef with", zap.Any("reID", fileRef.ID))
 								continue
 							}
-							Logger.Info("Moving file to cloud", zap.Any("path", fileRef.Path), zap.Any("allocation", fileRef.AllocationID))
 
-							// Check if last updatedAt is older then than the given limit
 							timeToAdd := time.Duration(config.Configuration.ColdStorageTimeLimitInHours) * time.Hour
 							if fileStat.UpdatedAt.Before(time.Now().Add(-1 * timeToAdd)) {
-
-								// Setup allocation for the filrRef
-								allocation, err := fs.SetupAllocation(fileRef.AllocationID, true)
-								if err != nil {
-									Logger.Error("Unable to fetch allocation with error", zap.Any("allocationID", fileRef.AllocationID), zap.Error(err))
-									continue
-								}
-
-								// Parse file object path
-								dirPath, destFile := filestore.GetFilePathFromHash(fileRef.ContentHash)
-								fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
-								fileObjectPath = filepath.Join(fileObjectPath, destFile)
-
-								err = fs.UploadToCloud(fileRef.ContentHash, fileObjectPath)
-								if err != nil {
-									Logger.Error("Error uploading cold data to cloud", zap.Error(err), zap.Any("file_name", fileRef.Name), zap.Any("file_path", fileObjectPath))
-									continue
-								}
-
-								fileRef.OnCloud = true
-								nctx := datastore.GetStore().CreateTransaction(ctx)
-								ndb := datastore.GetStore().GetTransaction(nctx)
-								err = ndb.Save(fileRef).Error
-								if err != nil {
-									Logger.Error("Failed to update reference_object for on cloud true", zap.Error(err))
-									ndb.Rollback()
-									nctx.Done()
-									continue
-								}
-								ndb.Commit()
-								nctx.Done()
-
-								if config.Configuration.ColdStorageDeleteLocalCopy {
-									err = os.Remove(fileObjectPath)
-									if err != nil {
-										Logger.Error("Error deleting file after upload to cold storage", zap.Error(err))
-										continue
-									}
-								}
-
-								Logger.Info("Successfully uploaded file to cloud", zap.Any("file_name", fileRef.Name), zap.Any("allocation", fileRef.AllocationID))
+								Logger.Info("Moving file to cloud", zap.Any("path", fileRef.Path), zap.Any("allocation", fileRef.AllocationID))
+								moveFileToCloud(ctx, fileRef)
 							}
 						}
 						offset = offset + limit
@@ -192,8 +149,52 @@ func MoveColdDataToCloud(ctx context.Context) {
 					rctx.Done()
 				}
 				iterInprogress = false
+				stats.LastMinioScan = time.Now()
 				Logger.Info("Move cold data to cloud worker running successfully")
 			}
 		}
+	}
+}
+
+func moveFileToCloud(ctx context.Context, fileRef *reference.Ref) {
+	fs := filestore.GetFileStore()
+	allocation, err := fs.SetupAllocation(fileRef.AllocationID, true)
+	if err != nil {
+		Logger.Error("Unable to fetch allocation with error", zap.Any("allocationID", fileRef.AllocationID), zap.Error(err))
+		return
+	}
+
+	dirPath, destFile := filestore.GetFilePathFromHash(fileRef.ContentHash)
+	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
+	fileObjectPath = filepath.Join(fileObjectPath, destFile)
+
+	err = fs.UploadToCloud(fileRef.ContentHash, fileObjectPath)
+	if err != nil {
+		Logger.Error("Error uploading cold data to cloud", zap.Error(err), zap.Any("file_name", fileRef.Name), zap.Any("file_path", fileObjectPath))
+		return
+	}
+
+	fileRef.OnCloud = true
+	ctx = datastore.GetStore().CreateTransaction(ctx)
+	db := datastore.GetStore().GetTransaction(ctx)
+	err = db.Save(fileRef).Error
+	if err != nil {
+		Logger.Error("Failed to update reference_object for on cloud true", zap.Error(err))
+		db.Rollback()
+		ctx.Done()
+		return
+	}
+
+	db.Commit()
+	ctx.Done()
+	Logger.Info("Successfully uploaded file to cloud", zap.Any("file_name", fileRef.Name), zap.Any("allocation", fileRef.AllocationID))
+
+	if config.Configuration.ColdStorageDeleteLocalCopy {
+		err = os.Remove(fileObjectPath)
+		if err != nil {
+			Logger.Error("Error deleting file after upload to cold storage", zap.Error(err))
+			return
+		}
+		Logger.Info("Successfully deleted file's local copy", zap.Any("file_name", fileRef.Name), zap.Any("allocation", fileRef.AllocationID))
 	}
 }

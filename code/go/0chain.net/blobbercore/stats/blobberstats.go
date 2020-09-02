@@ -19,6 +19,8 @@ import (
 	"github.com/jinzhu/gorm/dialects/postgres"
 )
 
+const DateTimeFormat = "2006-01-02T15:04:05"
+
 // ReadMarkersStat represents read markers redeeming
 // statistics for a blobber or for an allocation.
 type ReadMarkersStat struct {
@@ -54,6 +56,14 @@ type Stats struct {
 	RedeemedChallenges int64 `json:"num_redeemed_challenges"`
 }
 
+var LastMinioScan time.Time
+
+type MinioStats struct {
+	CloudFilesSize  int64  `json:"cloud_files_size"`
+	CloudTotalFiles int    `json:"cloud_total_files"`
+	LastMinioScan   string `json:"last_minio_scan"`
+}
+
 type Duration int64
 
 func (d Duration) String() string {
@@ -62,6 +72,7 @@ func (d Duration) String() string {
 
 type BlobberStats struct {
 	Stats
+	MinioStats
 	NumAllocation int64  `json:"num_of_allocations"`
 	ClientID      string `json:"-"`
 	PublicKey     string `json:"-"`
@@ -114,6 +125,7 @@ func (bs *BlobberStats) loadBasicStats(ctx context.Context) {
 	}
 	bs.DiskSizeUsed = du
 	bs.loadStats(ctx)
+	bs.loadMinioStats(ctx)
 }
 
 func (bs *BlobberStats) loadDetailedStats(ctx context.Context) {
@@ -175,6 +187,25 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 	rows.Close()
 	bs.UsedSize = bs.FilesSize + bs.ThumbnailsSize
 	db.Table("allocations").Count(&bs.NumAllocation)
+}
+
+func (bs *BlobberStats) loadMinioStats(ctx context.Context) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	rows, err := db.Table("reference_objects").
+		Select("SUM(size) as cloud_files_size,COUNT(*) as cloud_total_files").
+		Where("on_cloud = 'TRUE' and type = 'f' and deleted_at IS NULL").Rows()
+	if err != nil {
+		Logger.Error("Error in getting the minio stats", zap.Error(err))
+	}
+	for rows.Next() {
+		err = rows.Scan(&bs.CloudFilesSize, &bs.CloudTotalFiles)
+		if err != nil {
+			Logger.Error("Error in scanning record for minio stats", zap.Error(err))
+		}
+		break
+	}
+	rows.Close()
+	bs.LastMinioScan = LastMinioScan.Format(DateTimeFormat)
 }
 
 func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {

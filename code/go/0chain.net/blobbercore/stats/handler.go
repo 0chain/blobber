@@ -72,6 +72,18 @@ const tpl = `<!DOCTYPE html>
         <td>{{ .DiskSizeUsed }}</td>
       </tr>
       <tr>
+        <td>Cloud Files Size (bytes)</td>
+        <td>{{ .CloudFilesSize }}</td>
+      </tr>
+      <tr>
+        <td>Cloud Files Count</td>
+        <td>{{ .CloudTotalFiles }}</td>
+      </tr>
+      <tr>
+        <td>Last Minio Scan</td>
+        <td>{{ .LastMinioScan }}</td>
+      </tr>
+      <tr>
         <td>Num of files</td>
         <td>{{ .NumWrites }}</td>
       </tr>
