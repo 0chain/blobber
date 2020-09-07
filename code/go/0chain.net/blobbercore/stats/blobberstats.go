@@ -169,49 +169,98 @@ func (bs *BlobberStats) loadDetailedStats(ctx context.Context) {
 }
 
 func (bs *BlobberStats) loadStats(ctx context.Context) {
-	db := datastore.GetStore().GetTransaction(ctx)
-	rows, err := db.Table("reference_objects").Select(
-		"SUM(reference_objects.size) as files_size, SUM(reference_objects.thumbnail_size) as thumbnails_size, SUM(file_stats.num_of_block_downloads) as num_of_reads, SUM(reference_objects.num_of_blocks) as num_of_block_writes, COUNT(*) as num_of_writes",
-	).Joins("inner join file_stats on reference_objects.id = file_stats.ref_id where reference_objects.type = 'f' and reference_objects.deleted_at IS NULL").Rows()
+
+	var (
+		db   = datastore.GetStore().GetTransaction(ctx)
+		rows *sql.Rows
+		err  error
+	)
+
+	rows, err = db.Table("reference_objects").
+		Select(`
+			COALESCE (SUM (reference_objects.size), 0) AS files_size,
+			COALESCE (SUM (reference_objects.thumbnail_size), 0) AS thumbnails_size,
+			COALESCE (SUM (file_stats.num_of_block_downloads), 0) AS num_of_reads,
+			COALESCE (SUM (reference_objects.num_of_blocks), 0) AS num_of_block_writes,
+			COUNT (*) AS num_of_writes`).
+		Joins(`INNER JOIN file_stats ON reference_objects.id = file_stats.ref_id
+			WHERE reference_objects.type = 'f'
+			AND reference_objects.deleted_at IS NULL`).
+		Rows()
 
 	if err != nil {
 		Logger.Error("Error in getting the blobber stats", zap.Error(err))
+		return
 	}
-	for rows.Next() {
-		err = rows.Scan(&bs.FilesSize, &bs.ThumbnailsSize, &bs.NumReads, &bs.BlockWrites, &bs.NumWrites)
+	defer rows.Close()
+
+	if rows.Next() {
+		err = rows.Scan(&bs.FilesSize, &bs.ThumbnailsSize, &bs.NumReads,
+			&bs.BlockWrites, &bs.NumWrites)
 		if err != nil {
-			Logger.Error("Error in scanning record for blobber stats", zap.Error(err))
+			Logger.Error("Error in scanning record for blobber stats",
+				zap.Error(err))
+			return
 		}
-		break
 	}
-	rows.Close()
+
+	if err = rows.Err(); err != nil {
+		Logger.Error("Error in getting the blobber stats", zap.Error(err))
+		return
+	}
+
 	bs.UsedSize = bs.FilesSize + bs.ThumbnailsSize
 	db.Table("allocations").Count(&bs.NumAllocation)
 }
 
 func (bs *BlobberStats) loadMinioStats(ctx context.Context) {
-	db := datastore.GetStore().GetTransaction(ctx)
-	rows, err := db.Table("reference_objects").
-		Select("SUM(size) as cloud_files_size,COUNT(*) as cloud_total_files").
-		Where("on_cloud = 'TRUE' and type = 'f' and deleted_at IS NULL").Rows()
+
+	var (
+		db   = datastore.GetStore().GetTransaction(ctx)
+		rows *sql.Rows
+		err  error
+	)
+
+	rows, err = db.Table("reference_objects").
+		Select(`
+			COALESCE (SUM (size), 0) AS cloud_files_size,
+			COUNT (*) AS cloud_total_files`).
+		Where("on_cloud = 'TRUE' and type = 'f' and deleted_at IS NULL").
+		Rows()
+
 	if err != nil {
 		Logger.Error("Error in getting the minio stats", zap.Error(err))
+		return
 	}
-	for rows.Next() {
+	defer rows.Close()
+
+	if rows.Next() {
 		err = rows.Scan(&bs.CloudFilesSize, &bs.CloudTotalFiles)
 		if err != nil {
-			Logger.Error("Error in scanning record for minio stats", zap.Error(err))
+			Logger.Error("Error in scanning record for minio stats",
+				zap.Error(err))
+			return
 		}
-		break
 	}
-	rows.Close()
+
+	if err = rows.Err(); err != nil {
+		Logger.Error("Error in getting the minio stats", zap.Error(err))
+		return
+	}
+
 	bs.LastMinioScan = LastMinioScan.Format(DateTimeFormat)
 }
 
 func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 	bs.AllocationStats = make([]*AllocationStats, 0)
-	db := datastore.GetStore().GetTransaction(ctx)
-	rows, err := db.Table("reference_objects").
+
+	var (
+		db   = datastore.GetStore().GetTransaction(ctx)
+		rows *sql.Rows
+		err  error
+	)
+
+	rows, err = db.Table("reference_objects").
 		Select(`
             reference_objects.allocation_id,
             SUM(reference_objects.size) as files_size,
@@ -232,44 +281,66 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 
 	if err != nil {
 		Logger.Error("Error in getting the allocation stats", zap.Error(err))
+		return
 	}
+	defer rows.Close()
 
 	for rows.Next() {
-		as := &AllocationStats{}
+		var as = &AllocationStats{}
 		err = rows.Scan(&as.AllocationID, &as.FilesSize, &as.ThumbnailsSize,
 			&as.NumReads, &as.BlockWrites, &as.NumWrites, &as.Expiration)
 		if err != nil {
-			Logger.Error("Error in scanning record for blobber stats", zap.Error(err))
+			Logger.Error("Error in scanning record for blobber stats",
+				zap.Error(err))
+			return
 		}
 		as.UsedSize = as.FilesSize + as.ThumbnailsSize
 		as.loadAllocationDiskUsageStats()
 		bs.AllocationStats = append(bs.AllocationStats, as)
 	}
-	rows.Close()
 
+	if err = rows.Err(); err != nil {
+		Logger.Error("Error in scanning record for blobber stats",
+			zap.Error(err))
+		return
+	}
 }
 
 func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
-	db := datastore.GetStore().GetTransaction(ctx)
-	rows, err := db.Table("challenges").
-		Select(`COUNT(*) as total_challenges,
+
+	var (
+		db   = datastore.GetStore().GetTransaction(ctx)
+		rows *sql.Rows
+		err  error
+	)
+
+	rows, err = db.Table("challenges").
+		Select(`COUNT(*) AS total_challenges,
 		challenges.status,
 		challenges.result`).
 		Group(`challenges.status, challenges.result`).
 		Rows()
+
 	if err != nil {
-		Logger.Error("Error in getting the blobber challenge stats", zap.Error(err))
+		Logger.Error("Error in getting the blobber challenge stats",
+			zap.Error(err))
+		return
 	}
+	defer rows.Close()
 
 	for rows.Next() {
-		total := int64(0)
-		status := 0
-		result := 0
+		var (
+			total  = int64(0)
+			status = 0
+			result = 0
+		)
 
-		err = rows.Scan(&total, &status, &result)
-		if err != nil {
-			Logger.Error("Error in scanning record for blobber stats", zap.Error(err))
+		if err = rows.Scan(&total, &status, &result); err != nil {
+			Logger.Error("Error in scanning record for blobber stats",
+				zap.Error(err))
+			return
 		}
+
 		bs.TotalChallenges += total
 		if status == 3 {
 			bs.RedeemedChallenges += total
@@ -283,42 +354,63 @@ func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
 			bs.FailedChallenges += total
 		}
 	}
-	rows.Close()
+
+	if err = rows.Err(); err != nil {
+		Logger.Error("Error in scanning record for blobber stats",
+			zap.Error(err))
+		return
+	}
+
 }
 
 func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
-	db := datastore.GetStore().GetTransaction(ctx)
-	rows, err := db.Table("challenges").Select(`
+	var (
+		db   = datastore.GetStore().GetTransaction(ctx)
+		rows *sql.Rows
+		err  error
+	)
+
+	rows, err = db.Table("challenges").Select(`
         challenges.allocation_id,
-        COUNT(*) as total_challenges,
+        COUNT(*) AS total_challenges,
         challenges.status,
         challenges.result`).
 		Group(`challenges.allocation_id, challenges.status, challenges.result`).
 		Rows()
+
 	if err != nil {
 		Logger.Error("Error in getting the allocation challenge stats",
 			zap.Error(err))
+		return
 	}
+	defer rows.Close()
 
-	allocationStatsMap := make(map[string]*AllocationStats)
+	var allocationStatsMap = make(map[string]*AllocationStats)
 
 	for _, as := range bs.AllocationStats {
 		allocationStatsMap[as.AllocationID] = as
 	}
 
 	for rows.Next() {
-		total := int64(0)
-		status := 0
-		result := 0
-		allocationID := ""
+		var (
+			total        = int64(0)
+			status       = 0
+			result       = 0
+			allocationID = ""
+		)
+
 		err = rows.Scan(&allocationID, &total, &status, &result)
 		if err != nil {
-			Logger.Error("Error in scanning record for blobber stats", zap.Error(err))
+			Logger.Error("Error in scanning record for blobber stats",
+				zap.Error(err))
+			return
 		}
-		as := allocationStatsMap[allocationID]
+
+		var as = allocationStatsMap[allocationID]
 		if as == nil {
 			continue
 		}
+
 		as.TotalChallenges += total
 		if status == 3 {
 			as.RedeemedChallenges += total
@@ -332,29 +424,54 @@ func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
 			as.FailedChallenges += total
 		}
 	}
-	rows.Close()
+
+	if err = rows.Err(); err != nil {
+		Logger.Error("Error in scanning record for blobber stats",
+			zap.Error(err))
+		return
+	}
+
 }
 
 func loadAllocationList(ctx context.Context) (interface{}, error) {
-	allocations := make([]AllocationId, 0)
-	db := datastore.GetStore().GetTransaction(ctx)
-	rows, err := db.Table("reference_objects").Select(
-		"reference_objects.allocation_id").Group("reference_objects.allocation_id").Rows()
+
+	var (
+		allocations = make([]AllocationId, 0)
+		db          = datastore.GetStore().GetTransaction(ctx)
+		rows        *sql.Rows
+		err         error
+	)
+
+	rows, err = db.Table("reference_objects").
+		Select("reference_objects.allocation_id").
+		Group("reference_objects.allocation_id").
+		Rows()
 
 	if err != nil {
 		Logger.Error("Error in getting the allocation list", zap.Error(err))
-		return nil, common.NewError("get_allocations_list_failed", "Failed to get allocation list from DB")
+		return nil, common.NewError("get_allocations_list_failed",
+			"Failed to get allocation list from DB")
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var allocationId AllocationId
-		err = rows.Scan(&allocationId.Id)
-		if err != nil {
-			Logger.Error("Error in scanning record for blobber allocations", zap.Error(err))
+		if err = rows.Scan(&allocationId.Id); err != nil {
+			Logger.Error("Error in scanning record for blobber allocations",
+				zap.Error(err))
+			return nil, common.NewError("get_allocations_list_failed",
+				"Failed to scan allocation from DB")
 		}
 		allocations = append(allocations, allocationId)
 	}
-	rows.Close()
+
+	if err = rows.Err(); err != nil {
+		Logger.Error("Error in scanning record for blobber allocations",
+			zap.Error(err))
+		return nil, common.NewError("get_allocations_list_failed",
+			"Failed to scan allocations from DB")
+	}
+
 	return allocations, nil
 }
 
@@ -371,6 +488,7 @@ func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (
 		db  = datastore.GetStore().GetTransaction(ctx)
 		rme ReadMarkerEntity
 	)
+
 	err = db.Table("read_markers").
 		Select("counter, latest_redeemed_rm, redeem_required").
 		Where("allocation_id = ?", allocationID).
@@ -431,7 +549,6 @@ func loadAllocWriteMarkerStat(ctx context.Context, allocationID string) (
 	if err != nil {
 		return
 	}
-
 	defer rows.Close()
 
 	type writeMarkerRow struct {
