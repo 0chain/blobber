@@ -20,29 +20,35 @@ import (
 	. "0chain.net/core/logging"
 )
 
-const FORM_FILE_PARSE_MAX_MEMORY = 10 * 1024 * 1024
 const (
+	FORM_FILE_PARSE_MAX_MEMORY = 10 * 1024 * 1024
+
 	DOWNLOAD_CONTENT_FULL  = "full"
 	DOWNLOAD_CONTENT_THUMB = "thumbnail"
 )
 
-type StorageHandler struct {
-}
+type StorageHandler struct{}
 
-func (fsh *StorageHandler) verifyAllocation(ctx context.Context,
-	allocationTx string, readonly bool) (*allocation.Allocation, error) {
+func (fsh *StorageHandler) verifyAllocation(ctx context.Context, tx string,
+	readonly bool) (alloc *allocation.Allocation, err error) {
 
-	if len(allocationTx) == 0 {
-		return nil, common.NewError("invalid_allocation", "Invalid allocation id")
+	if len(tx) == 0 {
+		return nil, common.NewError("verify_allocation",
+			"invalid allocation id")
 	}
-	allocationObj, err := allocation.VerifyAllocationTransaction(ctx, allocationTx, readonly)
+
+	alloc, err = allocation.VerifyAllocationTransaction(ctx, tx, readonly)
 	if err != nil {
-		return nil, err
+		return nil, common.NewErrorf("verify_allocation",
+			"verifying allocation transaction error: %v", err)
 	}
-	if allocationObj.Expiration < common.Now() {
-		return nil, common.NewError("expired_allocation", "use of expired allocation")
+
+	if alloc.Expiration < common.Now() {
+		return nil, common.NewError("verify_allocation",
+			"use of expired allocation")
 	}
-	return allocationObj, nil
+
+	return
 }
 
 func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (bool, error) {

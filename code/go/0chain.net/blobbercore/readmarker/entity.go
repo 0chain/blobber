@@ -69,6 +69,7 @@ type ReadMarker struct {
 	Timestamp       common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
 	ReadCounter     int64            `gorm:"column:counter" json:"counter"`
 	Signature       string           `gorm:"column:signature" json:"signature"`
+	Suspend         int64            `gorm:"column:suspend" json:"suspend"`
 }
 
 func (rm *ReadMarker) GetHashData() string {
@@ -103,78 +104,133 @@ func GetLatestReadMarker(ctx context.Context, clientID string) (*ReadMarker, err
 
 func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, isCreate bool) error {
 
-	db := datastore.GetStore().GetTransaction(ctx)
-	rmEntity := &ReadMarkerEntity{}
+	var (
+		db       = datastore.GetStore().GetTransaction(ctx)
+		rmEntity = &ReadMarkerEntity{}
+	)
+
 	rmEntity.LatestRM = rm
 	rmEntity.RedeemRequired = true
-	if isCreate {
-		err := db.Create(rmEntity).Error
-		return err
-	}
-	err := db.Model(rmEntity).Updates(rmEntity).Error
-	return err
 
+	if isCreate {
+		return db.Create(rmEntity).Error
+	}
+
+	return db.Model(rmEntity).Updates(rmEntity).Error
 }
 
-func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context, status_message string, redeemTxn string) error {
+// Sync read marker with 0chain to be sure its correct.
+func (rm *ReadMarkerEntity) Sync(ctx context.Context) (err error) {
 
-	db := datastore.GetStore().GetTransaction(ctx)
+	var db = datastore.GetStore().GetTransaction(ctx)
 
-	rmUpdates := make(map[string]interface{})
-	rmUpdates["latest_redeem_txn_id"] = redeemTxn
-	rmUpdates["status_message"] = status_message
+	var rmUpdates = make(map[string]interface{})
+	rmUpdates["latest_redeem_txn_id"] = "Synced from SC REST API"
+	rmUpdates["status_message"] = "sync"
 	rmUpdates["redeem_required"] = false
-	latestRMBytes, err := json.Marshal(rm.LatestRM)
-	if err != nil {
-		return err
+
+	var latestRMBytes []byte
+	if latestRMBytes, err = json.Marshal(rm.LatestRM); err != nil {
+		return common.NewErrorf("rme_sync", "marshaling latest RM: %v", err)
 	}
 	rmUpdates["latest_redeemed_rm"] = latestRMBytes
 
-	err = db.Model(rm).
-		Where("counter = ?", rm.LatestRM.ReadCounter).
-		Updates(rmUpdates).Error
-
-	// update related pending
-	var rs []*allocation.ReadRedeem
-	rs, err = allocation.GetReadRedeems(db, rm.LatestRM.ReadCounter,
-		rm.LatestRM.ClientID, rm.LatestRM.AllocationID, rm.LatestRM.BlobberID)
-	if err != nil {
-		return fmt.Errorf("can't get pending RM records: %v", err)
-	}
-
-	if len(rs) == 0 {
-		return nil
-	}
+	// we have to reset pending reads, since a recode can be lost in some
+	// rare cases; it produces errors in read markers redeeming but this
+	// errors will never have unresolvable snowball character
 
 	var pend *allocation.Pending
 	pend, err = allocation.GetPending(db, rm.LatestRM.ClientID,
 		rm.LatestRM.AllocationID, rm.LatestRM.BlobberID)
 	if err != nil {
-		return fmt.Errorf("can't get allocation pending values: %v", err)
+		return common.NewErrorf("rme_sync",
+			"can't get pending read redeems record: %v", err)
 	}
-	for _, r := range rs {
-		pend.SubPendingRead(r.Value) // released
-	}
-	if err = pend.Save(db); err != nil {
-		return fmt.Errorf("can't save allocation pending value: %v", err)
-	}
-	if err = db.Model(rs).Delete(rs).Error; err != nil {
-		return fmt.Errorf("can't delete pending RM records: %v", err)
-	}
-	// update read pools
+	// reset to avoid SC/blobber difference increasing on a sync
+	pend.PendingRead = 0
+
+	// update local read pools cache from sharders
 	var rps []*allocation.ReadPool
 	rps, err = allocation.RequestReadPools(rm.LatestRM.ClientID,
 		rm.LatestRM.AllocationID)
 	if err != nil {
-		Logger.Error("requesting read pools",
-			zap.String("client_id", rm.LatestRM.ClientID),
-			zap.String("allocation_id", rm.LatestRM.AllocationID),
-			zap.String("blobber_id", rm.LatestRM.BlobberID),
-			zap.Error(err))
-		// don't return
+		return common.NewErrorf("rme_sync",
+			"can't get read pools from sharders: %v", err)
 	}
-	// set or reset read pools
+
+	// save the fresh read pools information
 	err = allocation.SetReadPools(db, rm.LatestRM.ClientID,
 		rm.LatestRM.AllocationID, rm.LatestRM.BlobberID, rps)
-	return err
+	if err != nil {
+		return common.NewErrorf("rme_sync",
+			"can't update read pools from sharders: %v", err)
+	}
+
+	return
+}
+
+// UpdateStatus updates read marker status and all related on successful
+// redeeming.
+func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context,
+	rps []*allocation.ReadPool, txOutput, redeemTxn string) (err error) {
+
+	var redeems []allocation.ReadPoolRedeem
+	if err = json.Unmarshal([]byte(txOutput), &redeems); err != nil {
+		Logger.Error("update read redeeming status: can't decode transaction"+
+			" output", zap.Error(err))
+		return common.NewErrorf("rme_update_status",
+			"can't decode transaction output: %v", err)
+	}
+
+	var db = datastore.GetStore().GetTransaction(ctx)
+
+	var rmUpdates = make(map[string]interface{})
+	rmUpdates["latest_redeem_txn_id"] = redeemTxn
+	rmUpdates["status_message"] = "success"
+	rmUpdates["redeem_required"] = false
+
+	var latestRMBytes []byte
+	if latestRMBytes, err = json.Marshal(rm.LatestRM); err != nil {
+		return common.NewErrorf("rme_update_status",
+			"marshaling latest RM: %v", err)
+	}
+	rmUpdates["latest_redeemed_rm"] = latestRMBytes
+
+	// get numBlocks first
+	var numBlcoks int64
+	if numBlcoks, err = rm.getNumBlocks(); err != nil {
+		return common.NewErrorf("rme_update_status",
+			"getting number of blocks: %v", err)
+	}
+
+	// saving looses the numBlocks information
+	err = db.Model(rm).
+		Where("counter = ?", rm.LatestRM.ReadCounter).
+		Updates(rmUpdates).Error
+
+	var pend *allocation.Pending
+	pend, err = allocation.GetPending(db, rm.LatestRM.ClientID,
+		rm.LatestRM.AllocationID, rm.LatestRM.BlobberID)
+	if err != nil {
+		return common.NewErrorf("rme_update_status",
+			"can't get allocation pending values: %v", err)
+	}
+
+	// subtract number of blocks redeemed
+	pend.SubPendingRead(numBlcoks)
+	if err = pend.Save(db); err != nil {
+		return common.NewErrorf("rme_update_status",
+			"can't save allocation pending value: %v", err)
+	}
+
+	// update cache using the transaction output
+	allocation.SubReadRedeemed(rps, redeems)
+	err = allocation.SetReadPools(db, rm.LatestRM.ClientID,
+		rm.LatestRM.AllocationID, rm.LatestRM.BlobberID, rps)
+	if err != nil {
+		return common.NewErrorf("rme_update_status",
+			"can't update local read pools cache: %v", err)
+	}
+
+	return
 }

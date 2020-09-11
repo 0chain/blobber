@@ -8,10 +8,6 @@ import (
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/core/common"
-
-	. "0chain.net/core/logging"
-
-	"go.uber.org/zap"
 )
 
 type WriteMarker struct {
@@ -79,27 +75,12 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarke
 		return
 	}
 
+	// TODO (sfxdx): what about failed write markers ?
 	if status != Committed || wm.WM.Size <= 0 {
 		return // not committed or a deleting marker
 	}
 
-	// WM has committed
-
-	//
 	// work on pre-redeemd tokens and write-pools balances tracking
-	//
-
-	var wr *allocation.WriteRedeem
-	wr, err = allocation.GetWriteRedeem(db, wm.WM.Signature, wm.WM.ClientID,
-		wm.WM.AllocationID, wm.WM.BlobberID)
-	if err != nil {
-		return fmt.Errorf("can't get pending WM record: %v", err)
-	}
-
-	// for delete and zero-cost operations
-	if wr.Size == 0 {
-		return
-	}
 
 	var pend *allocation.Pending
 	pend, err = allocation.GetPending(db, wm.WM.ClientID, wm.WM.AllocationID,
@@ -107,27 +88,10 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarke
 	if err != nil {
 		return fmt.Errorf("can't get allocation pending values: %v", err)
 	}
-	pend.SubPendingWrite(wr.Value)
+	pend.SubPendingWrite(wm.WM.Size)
 	if err = pend.Save(db); err != nil {
 		return fmt.Errorf("can't save allocation pending value: %v", err)
 	}
-	if err = db.Model(wr).Delete(wr).Error; err != nil {
-		return fmt.Errorf("can't delete pending WM records: %v", err)
-	}
-	// update write pools
-	var wps []*allocation.WritePool
-	wps, err = allocation.RequestWritePools(wm.WM.ClientID, wm.WM.AllocationID)
-	if err != nil {
-		Logger.Error("requesting write pools",
-			zap.String("client_id", wm.WM.ClientID),
-			zap.String("allocation_id", wm.WM.AllocationID),
-			zap.String("blobber_id", wm.WM.BlobberID),
-			zap.Error(err))
-		// don't return
-	}
-	// set or reset write pools
-	err = allocation.SetWritePools(db, wm.WM.ClientID, wm.WM.AllocationID,
-		wm.WM.BlobberID, wps)
 	return
 }
 

@@ -56,57 +56,51 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	pend, err = allocation.GetPending(db, clientID, alloc.ID,
 		blobberID)
 	if err != nil {
-		return common.NewError("internal_error",
-			"can't get pending payments: "+err.Error())
+		return common.NewErrorf("read_pre_redeem",
+			"can't get pending payments: %v", err)
 	}
 
 	rps, err = pend.ReadPools(db, blobberID, until)
 	if err != nil {
-		return common.NewError("internal_error",
-			"can't get read pools from DB: "+err.Error())
+		return common.NewErrorf("read_pre_redeem",
+			"can't get read pools from DB: %v", err)
 	}
 
-	var have = pend.HaveRead(rps)
+	var have = pend.HaveRead(rps, alloc)
 
 	if have < want {
 		rps, err = allocation.RequestReadPools(clientID,
 			alloc.ID)
 		if err != nil {
-			return common.NewError("request_error",
-				"can't request read pools from sharders: "+err.Error())
+			return common.NewErrorf("read_pre_redeem",
+				"can't request read pools from sharders: %v", err)
 		}
 		err = allocation.SetReadPools(db, clientID,
 			alloc.ID, blobberID, rps)
 		if err != nil {
-			return common.NewError("internal_error",
-				"can't save requested read pools: "+err.Error())
+			return common.NewErrorf("read_pre_redeem",
+				"can't save requested read pools: %v", err)
 		}
 		rps, err = pend.ReadPools(db, blobberID, until)
 		if err != nil {
-			return common.NewError("internal_error",
-				"can't get read pools from DB: "+err.Error())
+			return common.NewErrorf("read_pre_redeem",
+				"can't get read pools from DB: %v", err)
 		}
-		have = pend.HaveRead(rps)
+		have = pend.HaveRead(rps, alloc)
 	}
 
 	if have < want {
-		return common.NewError("not_enough_tokens", "not enough "+
+		return common.NewError("read_pre_redeem", "not enough "+
 			"tokens in client's read pools associated with the"+
 			" allocation->blobber")
 	}
 
-	// update pending reads
-	pend.AddPendingRead(want)
+	// update pending reads: add number or pending blocks waiting redeeming
+	// (not tokens)
+	pend.AddPendingRead(numBlocks)
 	if err = pend.Save(db); err != nil {
-		return common.NewError("internal_error",
-			"can't save pending reads in DB: "+err.Error())
-	}
-
-	err = allocation.AddReadRedeem(db, readCounter, want,
-		clientID, alloc.ID, blobberID)
-	if err != nil {
-		return common.NewError("internal_error",
-			"can't save pending RM value in DB: "+err.Error())
+		return common.NewErrorf("read_pre_redeem",
+			"can't save pending reads in DB: %v", err)
 	}
 
 	return
@@ -135,209 +129,255 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	pend, err = allocation.GetPending(db, writeMarker.ClientID,
 		alloc.ID, blobberID)
 	if err != nil {
-		return common.NewError("internal_error",
-			"can't get pending payments: "+err.Error())
+		return common.NewErrorf("write_pre_redeem",
+			"can't get pending payments: %v", err)
 	}
 
 	wps, err = pend.WritePools(db, blobberID, until)
 	if err != nil {
-		return common.NewError("internal_error",
-			"can't get read pools from DB: "+err.Error())
+		return common.NewErrorf("write_pre_redeem",
+			"can't get read pools from DB: %v", err)
 	}
 
-	var have = pend.HaveWrite(wps)
+	var have = pend.HaveWrite(wps, alloc)
 	if have < want {
 		wps, err = allocation.RequestWritePools(writeMarker.ClientID,
 			alloc.ID)
 		if err != nil {
-			return common.NewError("request_error",
-				"can't request write pools from sharders: "+err.Error())
+			return common.NewErrorf("write_pre_redeem",
+				"can't request write pools from sharders: %v", err)
 		}
 		err = allocation.SetWritePools(db, writeMarker.ClientID,
 			alloc.ID, blobberID, wps)
 		if err != nil {
-			return common.NewError("internal_error",
-				"can't save requested write pools: "+err.Error())
+			return common.NewErrorf("write_pre_redeem",
+				"can't save requested write pools: %v", err)
 		}
 		wps, err = pend.WritePools(db, blobberID, until)
 		if err != nil {
-			return common.NewError("internal_error",
-				"can't get write pools from DB: "+err.Error())
+			return common.NewErrorf("write_pre_redeem",
+				"can't get write pools from DB: %v", err)
 		}
-		have = pend.HaveWrite(wps)
+		have = pend.HaveWrite(wps, alloc)
 	}
 
 	if have < want {
-		return common.NewError("not_enough_tokens", "not enough "+
-			"tokens in client's write pools associated with the"+
-			" allocation->blobber")
+		return common.NewErrorf("write_pre_redeem", "not enough "+
+			"tokens in write pools (client -> allocation ->  blobber)"+
+			"(%s -> %s -> %s), have %d, want %d", writeMarker.ClientID,
+			alloc.ID, writeMarker.BlobberID, have, want)
 	}
 
-	// update pending writes
-	pend.AddPendingWrite(want)
+	// update pending writes: add size to redeem to (not tokens)
+	pend.AddPendingWrite(writeMarker.Size)
 	if err = pend.Save(db); err != nil {
-		return common.NewError("internal_error",
-			"can't save pending writes in DB: "+err.Error())
-	}
-	err = allocation.AddWriteRedeem(db, writeMarker.Signature,
-		writeMarker.Size, want, writeMarker.ClientID, alloc.ID, blobberID)
-	if err != nil {
-		return common.NewError("internal_error",
-			"can't save pending WM value in DB: "+err.Error())
+		return common.NewErrorf("write_pre_redeem",
+			"can't save pending writes in DB: %v", err)
 	}
 
 	return
 }
 
-func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (interface{}, error) {
+func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
+	resp interface{}, err error) {
+
 	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
-	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
-
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, common.NewError("download_file",
+			"invalid method used (GET), use POST instead")
 	}
 
-	allocationID := allocationObj.ID
+	var (
+		allocationTx = ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+		clientID     = ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+
+		allocationObj *allocation.Allocation
+	)
 
 	if len(clientID) == 0 {
-		return nil, common.NewError("invalid_operation", "Invalid client")
+		return nil, common.NewError("download_file", "invalid client")
 	}
+
+	// runtime type check
+	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+
+	// verify or update allocation
+	allocationObj, err = fsh.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		return nil, common.NewErrorf("download_file",
+			"invalid allocation id passed: %v", err)
+	}
+
+	var allocationID = allocationObj.ID
 
 	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
-		Logger.Info("Error Parsing the request", zap.Any("error", err))
-		return nil, common.NewError("request_parse_error", err.Error())
+		Logger.Info("download_file - request_parse_error", zap.Error(err))
+		return nil, common.NewErrorf("download_file",
+			"request_parse_error: %v", err)
 	}
 
-	path_hash := r.FormValue("path_hash")
-	path := r.FormValue("path")
-	if len(path_hash) == 0 {
+	var (
+		pathHash = r.FormValue("path_hash")
+		path     = r.FormValue("path")
+	)
+
+	if len(pathHash) == 0 {
 		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
+			return nil, common.NewError("download_file", "invalid path")
 		}
-		path_hash = reference.GetReferenceLookup(allocationID, path)
+		pathHash = reference.GetReferenceLookup(allocationID, path)
 	}
 
-	blockNumStr := r.FormValue("block_num")
+	var blockNumStr = r.FormValue("block_num")
 	if len(blockNumStr) == 0 {
-		return nil, common.NewError("invalid_parameters", "No block number")
+		return nil, common.NewError("download_file", "no block number")
 	}
 
-	blockNum, err := strconv.ParseInt(blockNumStr, 10, 64)
+	var blockNum int64
+	blockNum, err = strconv.ParseInt(blockNumStr, 10, 64)
 	if err != nil || blockNum < 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid block number")
+		return nil, common.NewError("download_file", "invalid block number")
 	}
 
-	numBlocksStr := r.FormValue("num_blocks")
+	var numBlocksStr = r.FormValue("num_blocks")
 	if len(numBlocksStr) == 0 {
 		numBlocksStr = "1"
 	}
 
-	numBlocks, err := strconv.ParseInt(numBlocksStr, 10, 64)
+	var numBlocks int64
+	numBlocks, err = strconv.ParseInt(numBlocksStr, 10, 64)
 	if err != nil || numBlocks < 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid number of blocks")
+		return nil, common.NewError("download_file",
+			"invalid number of blocks")
 	}
 
-	readMarkerString := r.FormValue("read_marker")
-	readMarker := &readmarker.ReadMarker{}
+	var (
+		readMarkerString = r.FormValue("read_marker")
+		readMarker       = &readmarker.ReadMarker{}
+	)
 	err = json.Unmarshal([]byte(readMarkerString), &readMarker)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid parameters. Error parsing the readmarker for download."+err.Error())
+		return nil, common.NewErrorf("download_file", "invalid parameters, "+
+			"error parsing the readmarker for download: %v", err)
 	}
 
-	rmObj := &readmarker.ReadMarkerEntity{}
+	var rmObj = &readmarker.ReadMarkerEntity{}
 	rmObj.LatestRM = readMarker
 
-	err = rmObj.VerifyMarker(ctx, allocationObj)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid read marker. Failed to verify the read marker. "+err.Error())
+	if err = rmObj.VerifyMarker(ctx, allocationObj); err != nil {
+		return nil, common.NewErrorf("download_file", "invalid read marker, "+
+			"failed to verify the read marker: %v", err)
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
-
+	var fileref *reference.Ref
+	fileref, err = reference.GetReferenceFromLookupHash(ctx, allocationID,
+		pathHash)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+		return nil, common.NewErrorf("download_file",
+			"invalid file path: %v", err)
 	}
 
 	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file. "+err.Error())
+		return nil, common.NewErrorf("download_file",
+			"path is not a file: %v", err)
 	}
 
-	authTokenString := r.FormValue("auth_token")
-	clientIDForReadRedeem := readMarker.ClientID
-	if (allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID) || len(authTokenString) > 0 {
-		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
+	var (
+		authTokenString       = r.FormValue("auth_token")
+		clientIDForReadRedeem = readMarker.ClientID
+	)
+
+	if (allocationObj.OwnerID != clientID &&
+		allocationObj.PayerID != clientID) || len(authTokenString) > 0 {
+
+		var authTicketVerified bool
+		authTicketVerified, err = fsh.verifyAuthTicket(ctx, r, allocationObj,
+			fileref, clientID)
 		if err != nil {
-			return nil, err
-		}
-		if !authTicketVerified {
-			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
+			return nil, common.NewErrorf("download_file",
+				"verifying auth ticket: %v", err)
 		}
 
-		authToken := &readmarker.AuthTicket{}
+		if !authTicketVerified {
+			return nil, common.NewErrorf("download_file",
+				"could not verify the auth ticket")
+		}
+
+		var authToken = &readmarker.AuthTicket{}
 		err = json.Unmarshal([]byte(authTokenString), &authToken)
 		if err != nil {
-			return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
+			return nil, common.NewErrorf("download_file",
+				"error parsing the auth ticket for download: %v", err)
 		}
 
 		clientIDForReadRedeem = authToken.OwnerID
 	}
 
-	latestRM, err := readmarker.GetLatestReadMarker(ctx, clientID)
+	var latestRM *readmarker.ReadMarker
+	latestRM, err = readmarker.GetLatestReadMarker(ctx, clientID)
 	if err != nil && !gorm.IsRecordNotFoundError(err) {
-		return nil, common.NewError("read_marker_db_error", "Could not read from DB. "+err.Error())
+		return nil, common.NewErrorf("download_file",
+			"couldn't get read marker from DB: %v", err)
 	}
 
-	if latestRM != nil && latestRM.ReadCounter+(numBlocks) != readMarker.ReadCounter {
-		//return nil, common.NewError("invalid_parameters", "Invalid read marker. Read counter was not for one block")
-		response := &DownloadResponse{}
-		response.Success = false
-		response.LatestRM = latestRM
-		response.Path = fileref.Path
-		response.AllocationID = fileref.AllocationID
+	if latestRM != nil &&
+		latestRM.ReadCounter+(numBlocks) != readMarker.ReadCounter {
+
+		var response = &DownloadResponse{
+			Success:      false,
+			LatestRM:     latestRM,
+			Path:         fileref.Path,
+			AllocationID: fileref.AllocationID,
+		}
 		return response, nil
 	}
 
 	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, allocationObj, numBlocks, readMarker.ReadCounter, clientIDForReadRedeem)
+	err = readPreRedeem(ctx, allocationObj, numBlocks, readMarker.ReadCounter,
+		clientIDForReadRedeem)
 	if err != nil {
-		return nil, err
+		return nil, common.NewErrorf("download_file",
+			"pre-redeeming read marker: %v", err)
 	}
+
 	// reading allowed
 
-	download_mode := r.FormValue("content")
-	var respData []byte
-	if len(download_mode) > 0 && download_mode == DOWNLOAD_CONTENT_THUMB {
-		fileData := &filestore.FileInputData{}
+	var (
+		downloadMode = r.FormValue("content")
+		respData     []byte
+	)
+	if len(downloadMode) > 0 && downloadMode == DOWNLOAD_CONTENT_THUMB {
+		var fileData = &filestore.FileInputData{}
 		fileData.Name = fileref.Name
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ThumbnailHash
 		fileData.OnCloud = fileref.OnCloud
-		respData, err = filestore.GetFileStore().GetFileBlock(allocationID, fileData, blockNum, numBlocks)
+		respData, err = filestore.GetFileStore().GetFileBlock(allocationID,
+			fileData, blockNum, numBlocks)
 		if err != nil {
-			return nil, err
+			return nil, common.NewErrorf("download_file",
+				"couldn't get thumbnail block: %v", err)
 		}
 	} else {
-		fileData := &filestore.FileInputData{}
+		var fileData = &filestore.FileInputData{}
 		fileData.Name = fileref.Name
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ContentHash
 		fileData.OnCloud = fileref.OnCloud
-		respData, err = filestore.GetFileStore().GetFileBlock(allocationID, fileData, blockNum, numBlocks)
+		respData, err = filestore.GetFileStore().GetFileBlock(allocationID,
+			fileData, blockNum, numBlocks)
 		if err != nil {
-			return nil, err
+			return nil, common.NewErrorf("download_file",
+				"couldn't get file block: %v", err)
 		}
 	}
 
 	err = readmarker.SaveLatestReadMarker(ctx, readMarker, latestRM == nil)
 	if err != nil {
-		return nil, err
+		return nil, common.NewErrorf("download_file",
+			"couldn't save latest read marker: %v", err)
 	}
-	response := &DownloadResponse{}
+
+	var response = &DownloadResponse{}
 	response.Success = true
 	response.LatestRM = readMarker
 	response.Data = respData

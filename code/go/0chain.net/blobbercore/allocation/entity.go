@@ -45,6 +45,15 @@ func sizeInGB(size int64) float64 {
 	return float64(size) / GB
 }
 
+// WantReader implements WantRead that returns cost of given numBlocks
+// for given blobber.
+type WantReader interface {
+	WantRead(blobberID string, numBlocks int64) (value int64) // the want read
+}
+
+// WantRead returns amount of tokens (by current terms of the allocations that
+// should be loaded) by given number of blocks for given blobber. E.g. want is
+// tokens wanted.
 func (a *Allocation) WantRead(blobberID string, numBlocks int64) (value int64) {
 	for _, d := range a.Terms {
 		if d.BlobberID == blobberID {
@@ -55,9 +64,18 @@ func (a *Allocation) WantRead(blobberID string, numBlocks int64) (value int64) {
 	return
 }
 
+// WantWriter implements WantWrite that returns cost of given size in bytes
+// for given blobber.
+type WantWriter interface {
+	WantWrite(blobberID string, size int64) (value int64)
+}
+
+// WantWrite returns amount of tokens (by current terms of the allocations that
+// should be loaded) by given size for given blobber. E.g. want is tokens
+// wanted.
 func (a *Allocation) WantWrite(blobberID string, size int64) (value int64) {
 	if size < 0 {
-		return // deleting
+		return // deleting, ignore
 	}
 	for _, d := range a.Terms {
 		if d.BlobberID == blobberID {
@@ -75,8 +93,8 @@ type Pending struct {
 	AllocationID string `gorm:"column:allocation_id"`
 	BlobberID    string `gorm:"column:blobber_id"`
 
-	PendingRead  int64 `gorm:"column:pending_read"`
-	PendingWrite int64 `gorm:"column:pending_write"`
+	PendingRead  int64 `gorm:"column:pending_read"`  // number of blocks
+	PendingWrite int64 `gorm:"column:pending_write"` // size
 }
 
 func (*Pending) TableName() string {
@@ -103,20 +121,20 @@ func GetPending(tx *gorm.DB, clientID, allocationID, blobberID string) (
 	return
 }
 
-func (p *Pending) AddPendingRead(balance int64) {
-	p.PendingRead += balance
+func (p *Pending) AddPendingRead(numBlocks int64) {
+	p.PendingRead += numBlocks
 }
 
-func (p *Pending) AddPendingWrite(balance int64) {
-	p.PendingWrite += balance
+func (p *Pending) AddPendingWrite(size int64) {
+	p.PendingWrite += size
 }
 
-func (p *Pending) SubPendingRead(balance int64) {
-	p.PendingRead -= balance
+func (p *Pending) SubPendingRead(numBlocks int64) {
+	p.PendingRead -= numBlocks
 }
 
-func (p *Pending) SubPendingWrite(balance int64) {
-	p.PendingWrite -= balance
+func (p *Pending) SubPendingWrite(size int64) {
+	p.PendingWrite -= size
 }
 
 func (p *Pending) ReadPools(tx *gorm.DB, blobberID string,
@@ -153,18 +171,18 @@ func (p *Pending) WritePools(tx *gorm.DB, blobberID string,
 	return
 }
 
-func (p *Pending) HaveRead(rps []*ReadPool) (have int64) {
+func (p *Pending) HaveRead(rps []*ReadPool, wr WantReader) (have int64) {
 	for _, rp := range rps {
 		have += rp.Balance
 	}
-	return have - p.PendingRead
+	return have - wr.WantRead(p.BlobberID, p.PendingRead)
 }
 
-func (p *Pending) HaveWrite(wps []*WritePool) (have int64) {
+func (p *Pending) HaveWrite(wps []*WritePool, ww WantWriter) (have int64) {
 	for _, wp := range wps {
 		have += wp.Balance
 	}
-	return have - p.PendingWrite
+	return have - ww.WantWrite(p.BlobberID, p.PendingWrite)
 }
 
 func (p *Pending) Save(tx *gorm.DB) error {
@@ -270,97 +288,27 @@ func SetWritePools(db *gorm.DB, clientID, allocationID, blobberID string,
 	return
 }
 
-// pending read marker (value in ZCN)
-type ReadRedeem struct {
-	ID int64 `gorm:"column:id;primary_key"`
-
-	ReadCounter int64 `gorm:"column:read_counter"`
-	Value       int64 `gorm:"column:value"`
-
-	ClientID     string `gorm:"column:client_id"`
-	BlobberID    string `gorm:"column:blobber_id"`
-	AllocationID string `gorm:"column:allocation_id"`
+// ReadPoolRedeem represents read marker redeeming transaction response with
+// reductions of read pools. It allows to not refresh read pools from 0chain
+// REST API every time and use cache in DB. The transaction returns list of
+// the ReadPoolRedeems as JSON (e.g. [{...}, ..]).
+type ReadPoolRedeem struct {
+	PoolID  string `json:"pool_id"` // read pool ID
+	Balance int64  `json:"balance"` // balance reduction
 }
 
-func AddReadRedeem(db *gorm.DB, rc, val int64, cid, aid, bid string) (
-	err error) {
+// SubReadRedeemed subtracts tokens redeemed from read pools.
+func SubReadRedeemed(rps []*ReadPool, redeems []ReadPoolRedeem) {
 
-	var rr ReadRedeem
-	rr.ReadCounter = rc
-	rr.Value = val
+	var rm = make(map[string]int64)
 
-	rr.ClientID = cid
-	rr.AllocationID = aid
-	rr.BlobberID = bid
-
-	return db.Model(&rr).Create(&rr).Error
-}
-
-func GetReadRedeems(db *gorm.DB, rc int64, cid, aid, bid string) (
-	rs []*ReadRedeem, err error) {
-
-	const query = `client_id = ? AND
-        allocation_id = ? AND
-        blobber_id = ? AND
-        read_counter <= ?`
-
-	err = db.Model(&ReadRedeem{}).
-		Where(query, cid, aid, bid, rc).
-		First(&rs).Error
-
-	if gorm.IsRecordNotFoundError(err) {
-		return nil, nil // for a zero-cost reads
-	}
-	return
-}
-
-// pending write marker (value in ZCN)
-type WriteRedeem struct {
-	ID int64 `gorm:"column:id;primary_key"`
-
-	Signature string `gorm:"column:signature"`
-
-	Size  int64 `gorm:"column:size"`
-	Value int64 `gorm:"column:value"`
-
-	ClientID     string `gorm:"column:client_id"`
-	BlobberID    string `gorm:"column:blobber_id"`
-	AllocationID string `gorm:"column:allocation_id"`
-}
-
-func AddWriteRedeem(db *gorm.DB, sign string, size, value int64,
-	cid, aid, bid string) (err error) {
-
-	var wr WriteRedeem
-	wr.Signature = sign
-
-	wr.Size = size
-	wr.Value = value
-
-	wr.ClientID = cid
-	wr.AllocationID = aid
-	wr.BlobberID = bid
-
-	return db.Model(&wr).Create(&wr).Error
-}
-
-func GetWriteRedeem(db *gorm.DB, sign, cid, aid, bid string) (wr *WriteRedeem,
-	err error) {
-
-	const query = `client_id = ? AND
-        allocation_id = ? AND
-        blobber_id = ? AND
-        signature <= ?`
-
-	wr = new(WriteRedeem)
-	err = db.Model(&WriteRedeem{}).
-		Where(query, cid, aid, bid, sign).
-		First(wr).Error
-
-	// for delete and zero-cost write operations
-	if gorm.IsRecordNotFoundError(err) {
-		return &WriteRedeem{Size: 0}, nil
+	for _, rd := range redeems {
+		rm[rd.PoolID] += rd.Balance
 	}
 
-	return // error or result
+	for _, rp := range rps {
+		if sub, ok := rm[rp.PoolID]; ok {
+			rp.Balance -= sub
+		}
+	}
 }

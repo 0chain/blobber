@@ -28,6 +28,26 @@ func GetAllocationByID(ctx context.Context, allocID string) (
 	return
 }
 
+// LoadTerms loads corresponding terms from DB. Since, the GetAllocationByID
+// doesn't loads up related Terms (isn't needed in most cases) this method
+// loads the Terms for an allocation.
+func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
+	// get transaction
+	var tx = datastore.GetStore().GetTransaction(ctx)
+	// load related terms
+	var terms []*Terms
+	err = tx.Model(terms).
+		Where("allocation_id = ?", a.ID).
+		Find(&terms).Error
+	if err != nil {
+		// unexpected DB error, including a RecordNotFoundError, since
+		// an allocation can't be without its terms (the terms must exist)
+		return
+	}
+	a.Terms = terms // set field
+	return          // found in DB
+}
+
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	readonly bool) (a *Allocation, err error) {
 

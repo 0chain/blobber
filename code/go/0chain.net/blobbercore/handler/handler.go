@@ -13,7 +13,9 @@ import (
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/stats"
 	"0chain.net/core/common"
+
 	. "0chain.net/core/logging"
+	"go.uber.org/zap"
 
 	"github.com/gorilla/mux"
 )
@@ -66,23 +68,32 @@ func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF
 }
 
 func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
-	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (
+		resp interface{}, err error) {
+
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
-		res, err := handler(ctx, r)
+		resp, err = handler(ctx, r)
+
 		defer func() {
 			if err != nil {
-				GetMetaDataStore().GetTransaction(ctx).Rollback()
+				var rollErr = GetMetaDataStore().GetTransaction(ctx).
+					Rollback().Error
+				if rollErr != nil {
+					Logger.Error("couldn't rollback", zap.Error(err))
+				}
 			}
 		}()
+
 		if err != nil {
 			Logger.Error("Error in handling the request." + err.Error())
-			return res, err
+			return
 		}
 		err = GetMetaDataStore().GetTransaction(ctx).Commit().Error
 		if err != nil {
-			return res, common.NewError("commit_error", "Error committing to meta store")
+			return resp, common.NewErrorf("commit_error",
+				"error committing to meta store: %v", err)
 		}
-		return res, err
+		return
 	}
 }
 
