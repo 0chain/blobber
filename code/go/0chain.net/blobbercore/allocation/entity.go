@@ -101,9 +101,6 @@ func ReadPools(tx *gorm.DB, clientID, allocID, blobberID string,
 	err = tx.Model(&ReadPool{}).
 		Where(query, clientID, allocID, blobberID, until).
 		Find(&rps).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil // no read pools
-	}
 	return
 }
 
@@ -142,8 +139,8 @@ func GetPending(tx *gorm.DB, clientID, allocationID, blobberID string) (
 	p = new(Pending)
 	err = tx.Model(&Pending{}).
 		Where(query, clientID, allocationID, blobberID).
-		Find(&p).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		First(&p).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		p.ClientID = clientID
 		p.AllocationID = allocationID
 		p.BlobberID = blobberID
@@ -173,9 +170,6 @@ func (p *Pending) WritePools(tx *gorm.DB, blobberID string,
 	err = tx.Model(&WritePool{}).
 		Where(query, p.ClientID, p.AllocationID, blobberID, until).
 		Find(&wps).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil // no write pools
-	}
 	return
 }
 
@@ -250,11 +244,11 @@ func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string,
 	err = db.Model(&ReadPool{}).
 		Where(query, clientID, allocationID, blobberID).
 		Delete(&stub).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil {
 		return
 	}
 
-	err = db.Clauses(clause.OnConflict{
+	err = db.Model(&ReadPool{}).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "pool_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"balance"}),
 	}).Create(rps).Error
@@ -272,18 +266,14 @@ func SetWritePools(db *gorm.DB, clientID, allocationID, blobberID string,
 	err = db.Model(&WritePool{}).
 		Where(query, clientID, allocationID, blobberID).
 		Delete(&stub).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil {
 		return
 	}
 
-	// GORM doesn't have bulk inserting (\0/)
-
-	for _, wp := range wps {
-		if err = db.Create(wp).Error; err != nil {
-			return
-		}
-	}
-
+	err = db.Model(&WritePool{}).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "pool_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"balance"}),
+	}).Create(wps).Error
 	return
 }
 

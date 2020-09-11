@@ -2,13 +2,10 @@ package reference
 
 import (
 	"context"
-	"errors"
 	"path/filepath"
 
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/core/common"
-
-	"gorm.io/gorm"
 )
 
 func GetReferencePath(ctx context.Context, allocationID string, path string) (*Ref, error) {
@@ -37,11 +34,11 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 
 	db = db.Or("parent_path = ? AND allocation_id = ?", "", allocationID)
 	err := db.Order("level, lookup_hash").Find(&refs).Error
-	if (err != nil && errors.Is(err, gorm.ErrRecordNotFound)) || len(refs) == 0 {
-		return &Ref{Type: DIRECTORY, AllocationID: allocationID, Name: "/", Path: "/", ParentPath: "", PathLevel: 1}, nil
-	}
 	if err != nil {
 		return nil, err
+	}
+	if len(refs) == 0 {
+		return &Ref{Type: DIRECTORY, AllocationID: allocationID, Name: "/", Path: "/", ParentPath: "", PathLevel: 1}, nil
 	}
 
 	rootRef := &refs[0]

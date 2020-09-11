@@ -59,22 +59,21 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		Where(&Allocation{Tx: allocationTx}).
 		First(a).Error
 
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err // unexpected DB error
+	}
+
 	if err == nil {
 		// load related terms
 		var terms []*Terms
 		err = tx.Model(terms).
 			Where("allocation_id = ?", a.ID).
 			Find(&terms).Error
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		if err != nil {
 			return // unexpected DB error
 		}
 		a.Terms = terms // set field
-		err = nil       // reset the error
 		return          // found in DB
-	}
-
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err // unexpected DB error
 	}
 
 	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())

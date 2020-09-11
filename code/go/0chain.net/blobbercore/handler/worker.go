@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"time"
@@ -11,7 +10,6 @@ import (
 	"0chain.net/blobbercore/reference"
 	"0chain.net/blobbercore/stats"
 	"0chain.net/core/lock"
-	"gorm.io/gorm"
 
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/config"
@@ -38,7 +36,7 @@ func CleanupDiskFiles(ctx context.Context) error {
 		filestore.GetFileStore().IterateObjects(allocationObj.ID, func(contentHash string, contentSize int64) {
 			var refs []reference.Ref
 			err := db.Table((reference.Ref{}).TableName()).Where(reference.Ref{ContentHash: contentHash, Type: reference.FILE}).Or(reference.Ref{ThumbnailHash: contentHash, Type: reference.FILE}).Find(&refs).Error
-			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			if err != nil {
 				Logger.Error("Error in cleanup of disk files.", zap.Error(err))
 				return
 			}

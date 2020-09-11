@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -346,10 +345,9 @@ func deleteFiles(ctx context.Context, allocID string,
 		Type:         reference.FILE,
 		AllocationID: allocID,
 	}).Find(&refs).Error
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil {
 		return
 	}
-	err = nil // reset the record not found error
 
 	for _, ref := range refs {
 		if err = deleteFile(ctx, ref.Path, conn); err != nil {
