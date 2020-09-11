@@ -31,6 +31,8 @@ RUN go mod download
 #Add the source code
 ADD ./code/go/0chain.net $SRC_DIR/go/0chain.net
 
+ARG GIT_COMMIT
+ENV GIT_COMMIT=$GIT_COMMIT
 RUN go build -v -tags "bn256 development" -ldflags "-X 0chain.net/core/build.BuildTag=$GIT_COMMIT"
 
 # Copy the build artifact into a minimal runtime image:
