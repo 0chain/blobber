@@ -92,7 +92,9 @@ func RedeemMarkers(ctx context.Context) {
 				db := datastore.GetStore().GetTransaction(rctx)
 				readMarkers := make([]*ReadMarkerEntity, 0)
 				rm := &ReadMarkerEntity{RedeemRequired: true}
-				db.Where(rm).Order("created_at ASC").Find(&readMarkers)
+				db.Where(rm). // redeem_required = true
+						Where("counter <> suspend"). // and not suspended
+						Order("created_at ASC").Find(&readMarkers)
 				if len(readMarkers) > 0 {
 					swg := sizedwaitgroup.New(config.Configuration.RMRedeemNumWorkers)
 					for _, rmEntity := range readMarkers {

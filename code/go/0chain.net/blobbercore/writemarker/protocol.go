@@ -135,31 +135,33 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 	return err
 }
 
-func GetWritePool(ctx context.Context, allocID string) (
-	value int64, err error) {
+// TODO (sfxdx): REMOVE, UNUSED FUNCITON
 
-	type writePoolStat struct {
-		Balance int64 `json:"balance"`
-	}
+// func GetWritePool(ctx context.Context, allocID string) (
+// 	value int64, err error) {
 
-	var resp []byte
-	resp, err = transaction.MakeSCRestAPICall(
-		transaction.STORAGE_CONTRACT_ADDRESS, "/getWritePoolStat",
-		map[string]string{"allocation_id": allocID}, chain.GetServerChain(),
-		nil)
+// 	type writePoolStat struct {
+// 		Balance int64 `json:"balance"`
+// 	}
 
-	if err != nil {
-		Logger.Error("can't get write pool stat from sharders",
-			zap.String("allocation_id", allocID), zap.Error(err))
-		return
-	}
+// 	var resp []byte
+// 	resp, err = transaction.MakeSCRestAPICall(
+// 		transaction.STORAGE_CONTRACT_ADDRESS, "/getWritePoolStat",
+// 		map[string]string{"allocation_id": allocID}, chain.GetServerChain(),
+// 		nil)
 
-	var stat writePoolStat
-	if err = json.Unmarshal(resp, &stat); err != nil {
-		Logger.Error("can't decode write pool stat from sharders",
-			zap.String("allocation_id", allocID), zap.Error(err))
-		return
-	}
+// 	if err != nil {
+// 		Logger.Error("can't get write pool stat from sharders",
+// 			zap.String("allocation_id", allocID), zap.Error(err))
+// 		return
+// 	}
 
-	return stat.Balance, nil
-}
+// 	var stat writePoolStat
+// 	if err = json.Unmarshal(resp, &stat); err != nil {
+// 		Logger.Error("can't decode write pool stat from sharders",
+// 			zap.String("allocation_id", allocID), zap.Error(err))
+// 		return
+// 	}
+
+// 	return stat.Balance, nil
+// }

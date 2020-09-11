@@ -130,11 +130,15 @@ func (p *Pending) AddPendingWrite(size int64) {
 }
 
 func (p *Pending) SubPendingRead(numBlocks int64) {
-	p.PendingRead -= numBlocks
+	if p.PendingRead -= numBlocks; p.PendingRead < 0 {
+		p.PendingRead = 0
+	}
 }
 
 func (p *Pending) SubPendingWrite(size int64) {
-	p.PendingWrite -= size
+	if p.PendingWrite -= size; p.PendingWrite < 0 {
+		p.PendingWrite = 0
+	}
 }
 
 func (p *Pending) ReadPools(tx *gorm.DB, blobberID string,

@@ -80,19 +80,15 @@ func (rme *ReadMarkerEntity) getNumBlocks() (numBlocks int64, err error) {
 	}
 
 	// then decode previous read marker
-	var prev = new(ReadMarkerEntity)
+	var prev = new(ReadMarker)
+	println("PREVIOUS RME", string(rme.LatestRedeemedRMBlob.RawMessage))
 	err = json.Unmarshal(rme.LatestRedeemedRMBlob.RawMessage, prev)
 	if err != nil {
 		return 0, common.NewErrorf("rme_get_num_blocks",
 			"decoding previous read marker: %v", err)
 	}
 
-	if prev.LatestRM == nil {
-		return 0, common.NewError("rme_get_num_blocks", "invalid previous "+
-			"read marker entity: missing latest read marker (nil)")
-	}
-
-	numBlocks = rme.LatestRM.ReadCounter - prev.LatestRM.ReadCounter
+	numBlocks = rme.LatestRM.ReadCounter - prev.ReadCounter
 	return
 }
 
@@ -122,9 +118,10 @@ func (rme *ReadMarkerEntity) preRedeem(ctx context.Context,
 	}
 
 	// create fake pending instance
-	pend = &allocation.Pending{
-		ClientID:     rme.LatestRM.ClientID,
-		AllocationID: alloc.ID,
+	pend, err = allocation.GetPending(db, clientID, alloc.ID, blobberID)
+	if err != nil {
+		return nil, common.NewErrorf("rme_pre_redeem",
+			"can't get pending reads from DB: %v", err)
 	}
 
 	rps, err = pend.ReadPools(db, blobberID, until)
@@ -168,6 +165,17 @@ func (rme *ReadMarkerEntity) preRedeem(ctx context.Context,
 			return nil, common.NewErrorf("rme_pre_redeem",
 				"saving suspended read marker: %v", err)
 		}
+
+		// also, if the pending has reseted for a reason, make sure its pending
+		// reads >= numBlocks of this read marker
+		if pend.PendingRead < numBlocks {
+			pend.PendingRead = numBlocks
+			if err = pend.Save(db); err != nil {
+				return nil, common.NewErrorf("rme_pre_redeem",
+					"saving pending reads: %v", err)
+			}
+		}
+
 		return nil, common.NewErrorf("rme_pre_redeem", "not enough tokens "+
 			"client -> allocation -> blobber (%s->%s->%s), have: %d, want: %d",
 			rme.LatestRM.ClientID, rme.LatestRM.AllocationID,
@@ -182,11 +190,12 @@ func (rme *ReadMarkerEntity) RedeemReadMarker(ctx context.Context) (
 	err error) {
 
 	if rme.LatestRM.Suspend == rme.LatestRM.ReadCounter {
-		// suspended read marker, not tokens in related read pools
+		// suspended read marker, no tokens in related read pools
 		// don't request 0chain to refresh the read pools; let user
 		// download more (he is unable to download for now) and the
 		// downloading forces the read pools cache refreshing
-		return
+		return common.NewError("redeem_read_marker",
+			"read marker redeeming suspended until next successful download")
 	}
 
 	var alloc *allocation.Allocation

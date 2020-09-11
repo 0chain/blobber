@@ -148,6 +148,10 @@ func (rm *ReadMarkerEntity) Sync(ctx context.Context) (err error) {
 	}
 	// reset to avoid SC/blobber difference increasing on a sync
 	pend.PendingRead = 0
+	if err = pend.Save(db); err != nil {
+		return common.NewErrorf("rme_sync",
+			"can't save pending read redeems record: %v", err)
+	}
 
 	// update local read pools cache from sharders
 	var rps []*allocation.ReadPool
@@ -180,6 +184,14 @@ func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context,
 			" output", zap.Error(err))
 		return common.NewErrorf("rme_update_status",
 			"can't decode transaction output: %v", err)
+	}
+
+	// TODO (sfxdx): REMOVE THE INSPECTION
+	{
+		println("TX OUT GOT", len(redeems), "REDEEMS")
+		for _, rd := range redeems {
+			println("  - ", rd.PoolID, rd.Balance)
+		}
 	}
 
 	var db = datastore.GetStore().GetTransaction(ctx)

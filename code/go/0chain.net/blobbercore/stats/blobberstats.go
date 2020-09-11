@@ -204,7 +204,7 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 		}
 	}
 
-	if err = rows.Err(); err != nil {
+	if err = rows.Err(); err != nil && err != sql.ErrNoRows {
 		Logger.Error("Error in getting the blobber stats", zap.Error(err))
 		return
 	}
@@ -243,7 +243,7 @@ func (bs *BlobberStats) loadMinioStats(ctx context.Context) {
 		}
 	}
 
-	if err = rows.Err(); err != nil {
+	if err = rows.Err(); err != nil && err != sql.ErrNoRows {
 		Logger.Error("Error in getting the minio stats", zap.Error(err))
 		return
 	}
@@ -299,7 +299,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 		bs.AllocationStats = append(bs.AllocationStats, as)
 	}
 
-	if err = rows.Err(); err != nil {
+	if err = rows.Err(); err != nil && err != sql.ErrNoRows {
 		Logger.Error("Error in scanning record for blobber stats",
 			zap.Error(err))
 		return
@@ -355,7 +355,7 @@ func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
 		}
 	}
 
-	if err = rows.Err(); err != nil {
+	if err = rows.Err(); err != nil && err != sql.ErrNoRows {
 		Logger.Error("Error in scanning record for blobber stats",
 			zap.Error(err))
 		return
@@ -425,7 +425,7 @@ func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
 		}
 	}
 
-	if err = rows.Err(); err != nil {
+	if err = rows.Err(); err != nil && err != sql.ErrNoRows {
 		Logger.Error("Error in scanning record for blobber stats",
 			zap.Error(err))
 		return
@@ -465,7 +465,7 @@ func loadAllocationList(ctx context.Context) (interface{}, error) {
 		allocations = append(allocations, allocationId)
 	}
 
-	if err = rows.Err(); err != nil {
+	if err = rows.Err(); err != nil && err != sql.ErrNoRows {
 		Logger.Error("Error in scanning record for blobber allocations",
 			zap.Error(err))
 		return nil, common.NewError("get_allocations_list_failed",
@@ -578,7 +578,7 @@ func loadAllocWriteMarkerStat(ctx context.Context, allocationID string) (
 		}
 	}
 
-	if err = rows.Err(); err != nil {
+	if err = rows.Err(); err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 

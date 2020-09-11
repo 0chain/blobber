@@ -22,7 +22,9 @@ type WriteMarker struct {
 }
 
 func (wm *WriteMarker) GetHashData() string {
-	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", wm.AllocationRoot, wm.PreviousAllocationRoot, wm.AllocationID, wm.BlobberID, wm.ClientID, wm.Size, wm.Timestamp)
+	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", wm.AllocationRoot,
+		wm.PreviousAllocationRoot, wm.AllocationID, wm.BlobberID, wm.ClientID,
+		wm.Size, wm.Timestamp)
 	return hashData
 }
 
@@ -49,11 +51,12 @@ func (WriteMarkerEntity) TableName() string {
 	return "write_markers"
 }
 
-func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarkerStatus,
-	status_message string, redeemTxn string) (err error) {
+func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context,
+	status WriteMarkerStatus, statusMessage string, redeemTxn string) (
+	err error) {
 
 	db := datastore.GetStore().GetTransaction(ctx)
-	statusBytes, _ := json.Marshal(status_message)
+	statusBytes, _ := json.Marshal(statusMessage)
 	fmt.Println(string(statusBytes))
 	if status == Failed {
 		wm.ReedeemRetries++
