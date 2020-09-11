@@ -22,15 +22,16 @@ import (
 	"0chain.net/core/common"
 	"0chain.net/core/encryption"
 	"0chain.net/core/lock"
-	. "0chain.net/core/logging"
 	"0chain.net/core/node"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
+
+	. "0chain.net/core/logging"
 	"go.uber.org/zap"
 )
 
 func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
-	numBlocks int64, readCounter int64, clientID string) (err error) {
+	numBlocks, pendNumBlocks int64, clientID string) (err error) {
 
 	if numBlocks == 0 {
 		return
@@ -45,28 +46,21 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 
 		want = alloc.WantRead(blobberID, numBlocks)
 
-		pend *allocation.Pending
-		rps  []*allocation.ReadPool
+		rps []*allocation.ReadPool
 	)
 
 	if want == 0 {
 		return // skip if read price is zero
 	}
 
-	pend, err = allocation.GetPending(db, clientID, alloc.ID,
-		blobberID)
-	if err != nil {
-		return common.NewErrorf("read_pre_redeem",
-			"can't get pending payments: %v", err)
-	}
-
-	rps, err = pend.ReadPools(db, blobberID, until)
+	rps, err = allocation.ReadPools(db, clientID, alloc.ID,
+		blobberID, until)
 	if err != nil {
 		return common.NewErrorf("read_pre_redeem",
 			"can't get read pools from DB: %v", err)
 	}
 
-	var have = pend.HaveRead(rps, alloc)
+	var have = alloc.HaveRead(rps, blobberID, pendNumBlocks)
 
 	if have < want {
 		rps, err = allocation.RequestReadPools(clientID,
@@ -75,32 +69,28 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 			return common.NewErrorf("read_pre_redeem",
 				"can't request read pools from sharders: %v", err)
 		}
+
 		err = allocation.SetReadPools(db, clientID,
 			alloc.ID, blobberID, rps)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem",
 				"can't save requested read pools: %v", err)
 		}
-		rps, err = pend.ReadPools(db, blobberID, until)
+
+		rps, err = allocation.ReadPools(db, clientID, alloc.ID, blobberID,
+			until)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem",
 				"can't get read pools from DB: %v", err)
 		}
-		have = pend.HaveRead(rps, alloc)
+
+		have = alloc.HaveRead(rps, blobberID, pendNumBlocks)
 	}
 
 	if have < want {
 		return common.NewError("read_pre_redeem", "not enough "+
 			"tokens in client's read pools associated with the"+
 			" allocation->blobber")
-	}
-
-	// update pending reads: add number or pending blocks waiting redeeming
-	// (not tokens)
-	pend.AddPendingRead(numBlocks)
-	if err = pend.Save(db); err != nil {
-		return common.NewErrorf("read_pre_redeem",
-			"can't save pending reads in DB: %v", err)
 	}
 
 	return
@@ -312,11 +302,23 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		clientIDForReadRedeem = authToken.OwnerID
 	}
 
-	var latestRM *readmarker.ReadMarker
-	latestRM, err = readmarker.GetLatestReadMarker(ctx, clientID)
+	var (
+		rme           *readmarker.ReadMarkerEntity
+		latestRM      *readmarker.ReadMarker
+		pendNumBlocks int64
+	)
+	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID)
 	if err != nil && !gorm.IsRecordNotFoundError(err) {
 		return nil, common.NewErrorf("download_file",
 			"couldn't get read marker from DB: %v", err)
+	}
+
+	if rme != nil {
+		latestRM = rme.LatestRM
+		if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
+			return nil, common.NewErrorf("download_file",
+				"couldn't get number of blocks pending redeeming: %v", err)
+		}
 	}
 
 	if latestRM != nil &&
@@ -332,7 +334,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	}
 
 	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, allocationObj, numBlocks, readMarker.ReadCounter,
+	err = readPreRedeem(ctx, allocationObj, numBlocks, pendNumBlocks,
 		clientIDForReadRedeem)
 	if err != nil {
 		return nil, common.NewErrorf("download_file",

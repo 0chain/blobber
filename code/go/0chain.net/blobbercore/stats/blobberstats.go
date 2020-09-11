@@ -16,7 +16,7 @@ import (
 	. "0chain.net/core/logging"
 	"go.uber.org/zap"
 
-	"github.com/jinzhu/gorm/dialects/postgres"
+	"gorm.io/datatypes"
 )
 
 const DateTimeFormat = "2006-01-02T15:04:05"
@@ -477,7 +477,7 @@ func loadAllocationList(ctx context.Context) (interface{}, error) {
 
 type ReadMarkerEntity struct {
 	ReadCounter          int64          `gorm:"column:counter" json:"counter"`
-	LatestRedeemedRMBlob postgres.Jsonb `gorm:"column:latest_redeemed_rm"`
+	LatestRedeemedRMBlob datatypes.JSON `gorm:"column:latest_redeemed_rm"`
 	RedeemRequired       bool           `gorm:"column:redeem_required"`
 }
 

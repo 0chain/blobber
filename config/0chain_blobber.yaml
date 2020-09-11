@@ -27,8 +27,8 @@ max_offer_duration: 744h # 31 day
 challenge_completion_time: 2m # duration to complete a challenge
 # these timeouts required by blobber to check client pools, perform
 # a task and redeem tokens, it should be big enough
-read_lock_timeout: 12m
-write_lock_timeout: 12m
+read_lock_timeout: 1m
+write_lock_timeout: 1m
 
 # update_allocations_interval used to refresh known allocation objects from SC
 update_allocations_interval: 1m

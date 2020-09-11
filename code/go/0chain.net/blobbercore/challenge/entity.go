@@ -10,13 +10,13 @@ import (
 	"0chain.net/core/common"
 	"0chain.net/core/encryption"
 
-	//. "0chain.net/core/logging"
-
-	"github.com/jinzhu/gorm/dialects/postgres"
+	"gorm.io/datatypes"
 )
 
-type ChallengeStatus int
-type ChallengeResult int
+type (
+	ChallengeStatus int
+	ChallengeResult int
+)
 
 const (
 	Accepted ChallengeStatus = iota + 1
@@ -66,14 +66,14 @@ type ChallengeEntity struct {
 	StatusMessage           string                `json:"status_message" gorm:"column:status_message"`
 	CommitTxnID             string                `json:"commit_txn_id" gorm:"column:commit_txn_id"`
 	BlockNum                int64                 `json:"block_num" gorm:"column:block_num"`
-	ValidationTicketsString postgres.Jsonb        `json:"-" gorm:"column:validation_tickets"`
-	ValidatorsString        postgres.Jsonb        `json:"-" gorm:"column:validators"`
-	LastCommitTxnList       postgres.Jsonb        `json:"-" gorm:"column:last_commit_txn_ids"`
+	ValidationTicketsString datatypes.JSON        `json:"-" gorm:"column:validation_tickets"`
+	ValidatorsString        datatypes.JSON        `json:"-" gorm:"column:validators"`
+	LastCommitTxnList       datatypes.JSON        `json:"-" gorm:"column:last_commit_txn_ids"`
 	RefID                   int64                 `json:"-" gorm:"column:ref_id"`
 	Validators              []ValidationNode      `json:"validators" gorm:"-"`
 	LastCommitTxnIDs        []string              `json:"last_commit_txn_ids" gorm:"-"`
 	ValidationTickets       []*ValidationTicket   `json:"validation_tickets" gorm:"-"`
-	ObjectPathString        postgres.Jsonb        `json:"-" gorm:"column:object_path"`
+	ObjectPathString        datatypes.JSON        `json:"-" gorm:"column:object_path"`
 	ObjectPath              *reference.ObjectPath `json:"object_path" gorm:"-"`
 }
 
@@ -81,16 +81,16 @@ func (ChallengeEntity) TableName() string {
 	return "challenges"
 }
 
-func marshalField(obj interface{}, dest *postgres.Jsonb) error {
+func marshalField(obj interface{}, dest *datatypes.JSON) error {
 	mbytes, err := json.Marshal(obj)
 	if err != nil {
 		return err
 	}
-	(*dest).RawMessage = json.RawMessage(string(mbytes))
+	(*dest) = json.RawMessage(string(mbytes))
 	return nil
 }
 
-func unMarshalField(stringObj postgres.Jsonb, dest interface{}) error {
+func unMarshalField(stringObj datatypes.JSON, dest interface{}) error {
 	retBytes, err := stringObj.Value()
 	if err != nil {
 		return err

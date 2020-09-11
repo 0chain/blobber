@@ -5,7 +5,7 @@ import (
 
 	"0chain.net/blobbercore/datastore"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 type FileStats struct {

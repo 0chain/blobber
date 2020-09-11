@@ -10,7 +10,7 @@ import (
 	"0chain.net/blobbercore/reference"
 	"0chain.net/blobbercore/stats"
 	"0chain.net/core/lock"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/config"

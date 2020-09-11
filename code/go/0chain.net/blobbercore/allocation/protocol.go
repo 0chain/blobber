@@ -12,7 +12,7 @@ import (
 	"0chain.net/core/node"
 	"0chain.net/core/transaction"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // GetAllocationByID from DB. This function doesn't load related terms.

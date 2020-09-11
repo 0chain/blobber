@@ -66,6 +66,37 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 	return nil
 }
 
+// PendNumBlocks return zero, if redeem_required is false. If its true, it
+// returns difference between latest redeemed read marker and current one
+// (till not redeemed).
+func (rme *ReadMarkerEntity) PendNumBlocks() (pendNumBlocks int64, err error) {
+
+	if !rme.RedeemRequired {
+		return // (0, nil), everything is already redeemed
+	}
+
+	if rme.LatestRM == nil {
+		return 0, common.NewErrorf("rme_pend_num_blocks",
+			"missing latest read marker (nil)")
+	}
+
+	if len(rme.LatestRedeemedRMBlob.RawMessage) == 0 {
+		return rme.LatestRM.ReadCounter, nil // the number of blocks read
+	}
+
+	// then decode previous read marker
+	var prev = new(ReadMarker)
+	err = json.Unmarshal(rme.LatestRedeemedRMBlob.RawMessage, prev)
+	if err != nil {
+		return 0, common.NewErrorf("rme_pend_num_blocks",
+			"decoding previous read marker: %v", err)
+	}
+
+	pendNumBlocks = rme.LatestRM.ReadCounter - prev.ReadCounter
+	return
+
+}
+
 // getNumBlocks to redeem (difference between the previous RM and the
 // current one)
 func (rme *ReadMarkerEntity) getNumBlocks() (numBlocks int64, err error) {
@@ -109,8 +140,6 @@ func (rme *ReadMarkerEntity) preRedeem(ctx context.Context,
 
 		want = alloc.WantRead(blobberID, numBlocks)
 		have int64
-
-		pend *allocation.Pending
 	)
 
 	if want == 0 {
@@ -118,13 +147,7 @@ func (rme *ReadMarkerEntity) preRedeem(ctx context.Context,
 	}
 
 	// create fake pending instance
-	pend, err = allocation.GetPending(db, clientID, alloc.ID, blobberID)
-	if err != nil {
-		return nil, common.NewErrorf("rme_pre_redeem",
-			"can't get pending reads from DB: %v", err)
-	}
-
-	rps, err = pend.ReadPools(db, blobberID, until)
+	rps, err = allocation.ReadPools(db, clientID, alloc.ID, blobberID, until)
 	if err != nil {
 		return nil, common.NewErrorf("rme_pre_redeem",
 			"can't get read pools from DB: %v", err)
@@ -164,16 +187,6 @@ func (rme *ReadMarkerEntity) preRedeem(ctx context.Context,
 		if err != nil {
 			return nil, common.NewErrorf("rme_pre_redeem",
 				"saving suspended read marker: %v", err)
-		}
-
-		// also, if the pending has reseted for a reason, make sure its pending
-		// reads >= numBlocks of this read marker
-		if pend.PendingRead < numBlocks {
-			pend.PendingRead = numBlocks
-			if err = pend.Save(db); err != nil {
-				return nil, common.NewErrorf("rme_pre_redeem",
-					"saving pending reads: %v", err)
-			}
 		}
 
 		return nil, common.NewErrorf("rme_pre_redeem", "not enough tokens "+

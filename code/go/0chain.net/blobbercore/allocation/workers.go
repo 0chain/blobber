@@ -15,9 +15,9 @@ import (
 	"0chain.net/core/lock"
 	"0chain.net/core/transaction"
 
-	. "0chain.net/core/logging"
+	"gorm.io/gorm"
 
-	"github.com/jinzhu/gorm"
+	. "0chain.net/core/logging"
 	"go.uber.org/zap"
 )
 

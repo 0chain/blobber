@@ -6,7 +6,7 @@ import (
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/stats"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 func FileChallenged(ctx context.Context, refID int64, result ChallengeResult, challengeTxn string) {

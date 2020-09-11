@@ -9,9 +9,10 @@ import (
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/core/common"
 	"0chain.net/core/encryption"
-	. "0chain.net/core/logging"
 
-	"github.com/jinzhu/gorm/dialects/postgres"
+	"gorm.io/datatypes"
+
+	. "0chain.net/core/logging"
 	"go.uber.org/zap"
 )
 
@@ -81,7 +82,7 @@ func (rm *ReadMarker) GetHashData() string {
 
 type ReadMarkerEntity struct {
 	LatestRM             *ReadMarker    `gorm:"embedded" json:"latest_read_marker,omitempty"`
-	LatestRedeemedRMBlob postgres.Jsonb `gorm:"column:latest_redeemed_rm"`
+	LatestRedeemedRMBlob datatypes.JSON `gorm:"column:latest_redeemed_rm"`
 	RedeemRequired       bool           `gorm:"column:redeem_required"`
 	LastRedeemTxnID      string         `gorm:"column:latest_redeem_txn_id" json:"last_redeem_txn_id"`
 	StatusMessage        string         `gorm:"column:status_message" json:"status_message"`
@@ -92,14 +93,14 @@ func (ReadMarkerEntity) TableName() string {
 	return "read_markers"
 }
 
-func GetLatestReadMarker(ctx context.Context, clientID string) (*ReadMarker, error) {
+func GetLatestReadMarkerEntity(ctx context.Context, clientID string) (*ReadMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	rm := &ReadMarkerEntity{}
 	err := db.First(rm, "client_id = ?", clientID).Error
 	if err != nil {
 		return nil, err
 	}
-	return rm.LatestRM, nil
+	return rm, nil
 }
 
 func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, isCreate bool) error {
@@ -134,24 +135,6 @@ func (rm *ReadMarkerEntity) Sync(ctx context.Context) (err error) {
 		return common.NewErrorf("rme_sync", "marshaling latest RM: %v", err)
 	}
 	rmUpdates["latest_redeemed_rm"] = latestRMBytes
-
-	// we have to reset pending reads, since a recode can be lost in some
-	// rare cases; it produces errors in read markers redeeming but this
-	// errors will never have unresolvable snowball character
-
-	var pend *allocation.Pending
-	pend, err = allocation.GetPending(db, rm.LatestRM.ClientID,
-		rm.LatestRM.AllocationID, rm.LatestRM.BlobberID)
-	if err != nil {
-		return common.NewErrorf("rme_sync",
-			"can't get pending read redeems record: %v", err)
-	}
-	// reset to avoid SC/blobber difference increasing on a sync
-	pend.PendingRead = 0
-	if err = pend.Save(db); err != nil {
-		return common.NewErrorf("rme_sync",
-			"can't save pending read redeems record: %v", err)
-	}
 
 	// update local read pools cache from sharders
 	var rps []*allocation.ReadPool
@@ -208,32 +191,10 @@ func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context,
 	}
 	rmUpdates["latest_redeemed_rm"] = latestRMBytes
 
-	// get numBlocks first
-	var numBlcoks int64
-	if numBlcoks, err = rm.getNumBlocks(); err != nil {
-		return common.NewErrorf("rme_update_status",
-			"getting number of blocks: %v", err)
-	}
-
-	// saving looses the numBlocks information
+	// the saving looses the numBlocks information
 	err = db.Model(rm).
 		Where("counter = ?", rm.LatestRM.ReadCounter).
 		Updates(rmUpdates).Error
-
-	var pend *allocation.Pending
-	pend, err = allocation.GetPending(db, rm.LatestRM.ClientID,
-		rm.LatestRM.AllocationID, rm.LatestRM.BlobberID)
-	if err != nil {
-		return common.NewErrorf("rme_update_status",
-			"can't get allocation pending values: %v", err)
-	}
-
-	// subtract number of blocks redeemed
-	pend.SubPendingRead(numBlcoks)
-	if err = pend.Save(db); err != nil {
-		return common.NewErrorf("rme_update_status",
-			"can't save allocation pending value: %v", err)
-	}
 
 	// update cache using the transaction output
 	allocation.SubReadRedeemed(rps, redeems)

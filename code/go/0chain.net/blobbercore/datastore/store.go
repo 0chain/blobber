@@ -7,10 +7,11 @@ import (
 
 	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/errors"
-	. "0chain.net/core/logging"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+
+	. "0chain.net/core/logging"
 )
 
 const CONNECTION_CONTEXT_KEY = "connection"

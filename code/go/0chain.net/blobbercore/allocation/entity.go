@@ -3,7 +3,7 @@ package allocation
 import (
 	"0chain.net/core/common"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 const (
@@ -86,6 +86,35 @@ func (a *Allocation) WantWrite(blobberID string, size int64) (value int64) {
 	return
 }
 
+// ReadPools from DB cache.
+func ReadPools(tx *gorm.DB, clientID, allocID, blobberID string,
+	until common.Timestamp) (rps []*ReadPool, err error) {
+
+	const query = `client_id = ? AND
+        allocation_id = ? AND
+        blobber_id = ? AND
+        expire_at > ?`
+
+	err = tx.Model(&ReadPool{}).
+		Where(query, clientID, allocID, blobberID, until).
+		Find(&rps).Error
+	if err != nil && gorm.IsRecordNotFoundError(err) {
+		return nil, nil // no read pools
+	}
+	return
+}
+
+// HaveRead is sum of read pools (the list should be filtered by query
+// excluding pools expired and pools going to expired soon) minus pending reads.
+func (a *Allocation) HaveRead(rps []*ReadPool, blobberID string,
+	pendNumBlocks int64) (have int64) {
+
+	for _, rp := range rps {
+		have += rp.Balance
+	}
+	return have - a.WantRead(blobberID, pendNumBlocks)
+}
+
 type Pending struct {
 	ID int64 `gorm:"column:id;primary_key"`
 
@@ -93,7 +122,6 @@ type Pending struct {
 	AllocationID string `gorm:"column:allocation_id"`
 	BlobberID    string `gorm:"column:blobber_id"`
 
-	PendingRead  int64 `gorm:"column:pending_read"`  // number of blocks
 	PendingWrite int64 `gorm:"column:pending_write"` // size
 }
 
@@ -121,41 +149,14 @@ func GetPending(tx *gorm.DB, clientID, allocationID, blobberID string) (
 	return
 }
 
-func (p *Pending) AddPendingRead(numBlocks int64) {
-	p.PendingRead += numBlocks
-}
-
 func (p *Pending) AddPendingWrite(size int64) {
 	p.PendingWrite += size
-}
-
-func (p *Pending) SubPendingRead(numBlocks int64) {
-	if p.PendingRead -= numBlocks; p.PendingRead < 0 {
-		p.PendingRead = 0
-	}
 }
 
 func (p *Pending) SubPendingWrite(size int64) {
 	if p.PendingWrite -= size; p.PendingWrite < 0 {
 		p.PendingWrite = 0
 	}
-}
-
-func (p *Pending) ReadPools(tx *gorm.DB, blobberID string,
-	until common.Timestamp) (rps []*ReadPool, err error) {
-
-	const query = `client_id = ? AND
-        allocation_id = ? AND
-        blobber_id = ? AND
-        expire_at > ?`
-
-	err = tx.Model(&ReadPool{}).
-		Where(query, p.ClientID, p.AllocationID, blobberID, until).
-		Find(&rps).Error
-	if err != nil && gorm.IsRecordNotFoundError(err) {
-		return nil, nil // no read pools
-	}
-	return
 }
 
 func (p *Pending) WritePools(tx *gorm.DB, blobberID string,
@@ -173,13 +174,6 @@ func (p *Pending) WritePools(tx *gorm.DB, blobberID string,
 		return nil, nil // no write pools
 	}
 	return
-}
-
-func (p *Pending) HaveRead(rps []*ReadPool, wr WantReader) (have int64) {
-	for _, rp := range rps {
-		have += rp.Balance
-	}
-	return have - wr.WantRead(p.BlobberID, p.PendingRead)
 }
 
 func (p *Pending) HaveWrite(wps []*WritePool, ww WantWriter) (have int64) {
@@ -243,6 +237,28 @@ func (*WritePool) TableName() string {
 func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string,
 	rps []*ReadPool) (err error) {
 
+	db.Clauses()
+
+	DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"name", "age"}),
+	}).Create(&users)
+
+	// INSPECT READ POOLS
+	println("INSPECT READ POOLS (SET RPS THE BEGINING)", "ARGS", "C", clientID[:5], "A", allocationID[:5], "B", blobberID[:5])
+	{
+		var rps []*ReadPool
+		err = db.Model(&ReadPool{}).Find(&rps).Error
+		if err != nil {
+			panic(err)
+		}
+		println("  BEFORE SET DB CONTAINS")
+		for _, rp := range rps {
+			println("    - RP", "C", rp.ClientID[:5], "A", rp.AllocationID[:5], "B", rp.BlobberID[:5], float64(rp.Balance)/1e10)
+		}
+	}
+	// ----
+
 	const query = `client_id = ? AND
         allocation_id = ? AND
         blobber_id = ?`
@@ -255,10 +271,30 @@ func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string,
 		return
 	}
 
+	// INSPECT READ POOLS
+	println("INSPECT READ POOLS (DB AFTER DELETING)", "ARGS", "C", clientID[:5], "A", allocationID[:5], "B", blobberID[:5])
+	{
+		var rps []*ReadPool
+		err = db.Model(&ReadPool{}).Find(&rps).Error
+		if err != nil {
+			panic(err)
+		}
+		println("  BEFORE SET DB CONTAINS")
+		for _, rp := range rps {
+			println("    - RP", "C", rp.ClientID[:5], "A", rp.AllocationID[:5], "B", rp.BlobberID[:5], float64(rp.Balance)/1e10)
+		}
+	}
+	// ----
+
 	// GORM doesn't have bulk inserting (\0/)
 
 	for _, rp := range rps {
+		if rp.ClientID != clientID || rp.AllocationID != allocationID ||
+			rp.BlobberID != blobberID {
+			continue //
+		}
 		if err = db.Create(rp).Error; err != nil {
+			println("YO, IT'S REALLY CREATE ERROR (HELL DAMN FUCKING GORM)")
 			return
 		}
 	}

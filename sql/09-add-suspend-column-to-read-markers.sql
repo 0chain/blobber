@@ -21,6 +21,13 @@ BEGIN;
         ADD COLUMN suspend BIGINT NOT NULL DEFAULT -1;
 
     --
+    -- we don't need to track pending reads anymore
+    --
+
+    ALTER TABLE pendings
+        DROP COLUMN pending_read;
+
+    --
     -- pending values has changed from tokens to number of block for read markers
     -- and size in bytes for write markers; we have to reset all of them to zero
     -- to avoid 'tokens * tokens' multiplication in pending tokens calculations
@@ -32,7 +39,7 @@ BEGIN;
     -- the transaction; thus the pending will not be reset next time, that's
     -- expected)
 
-    UPDATE pendings SET pending_read = 0, pending_write = 0;
+    UPDATE pendings SET pending_write = 0;
 
     --
     -- don't track every redeem, since update allocation or slow redeeming can

@@ -7,7 +7,7 @@ import (
 	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 const (

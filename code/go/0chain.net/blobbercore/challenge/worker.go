@@ -10,12 +10,13 @@ import (
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/core/chain"
 	"0chain.net/core/lock"
-	. "0chain.net/core/logging"
 	"0chain.net/core/node"
 	"0chain.net/core/transaction"
 
-	"github.com/jinzhu/gorm"
 	"github.com/remeh/sizedwaitgroup"
+	"gorm.io/gorm"
+
+	. "0chain.net/core/logging"
 	"go.uber.org/zap"
 )
 

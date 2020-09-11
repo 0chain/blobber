@@ -7,7 +7,7 @@ import (
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/core/common"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 func GetReferencePath(ctx context.Context, allocationID string, path string) (*Ref, error) {
