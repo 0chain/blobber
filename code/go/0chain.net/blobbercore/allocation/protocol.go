@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"0chain.net/blobbercore/datastore"
@@ -64,7 +65,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		err = tx.Model(terms).
 			Where("allocation_id = ?", a.ID).
 			Find(&terms).Error
-		if err != nil && !gorm.IsRecordNotFoundError(err) {
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return // unexpected DB error
 		}
 		a.Terms = terms // set field
@@ -72,7 +73,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		return          // found in DB
 	}
 
-	if !gorm.IsRecordNotFoundError(err) {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err // unexpected DB error
 	}
 
@@ -92,7 +93,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	err = tx.Model(&Allocation{}).
 		Where("id = ?", sa.ID).
 		First(a).Error
-	if err != nil && !gorm.IsRecordNotFoundError(err) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err // unexpected
 	}
 

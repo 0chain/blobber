@@ -86,7 +86,7 @@ func marshalField(obj interface{}, dest *datatypes.JSON) error {
 	if err != nil {
 		return err
 	}
-	(*dest) = json.RawMessage(string(mbytes))
+	(*dest) = datatypes.JSON(string(mbytes))
 	return nil
 }
 

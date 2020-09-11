@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"context"
+	"errors"
 
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/reference"
@@ -79,7 +80,7 @@ func GetAllocationChanges(ctx context.Context, connectionID string, allocationID
 		return cc, nil
 	}
 
-	if err != nil && gorm.IsRecordNotFoundError(err) {
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		cc.ConnectionID = connectionID
 		cc.AllocationID = allocationID
 		cc.ClientID = clientID

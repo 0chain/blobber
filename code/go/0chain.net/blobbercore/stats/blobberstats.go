@@ -505,8 +505,8 @@ func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (
 	}
 
 	var prev, current = new(ReadMarkerEntity), &rme
-	if len(rme.LatestRedeemedRMBlob.RawMessage) > 0 {
-		err = json.Unmarshal([]byte(rme.LatestRedeemedRMBlob.RawMessage), prev)
+	if len(rme.LatestRedeemedRMBlob) > 0 {
+		err = json.Unmarshal([]byte(rme.LatestRedeemedRMBlob), prev)
 		if err != nil {
 			return
 		}

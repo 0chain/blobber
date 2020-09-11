@@ -80,13 +80,13 @@ func (rme *ReadMarkerEntity) PendNumBlocks() (pendNumBlocks int64, err error) {
 			"missing latest read marker (nil)")
 	}
 
-	if len(rme.LatestRedeemedRMBlob.RawMessage) == 0 {
+	if len(rme.LatestRedeemedRMBlob) == 0 {
 		return rme.LatestRM.ReadCounter, nil // the number of blocks read
 	}
 
 	// then decode previous read marker
 	var prev = new(ReadMarker)
-	err = json.Unmarshal(rme.LatestRedeemedRMBlob.RawMessage, prev)
+	err = json.Unmarshal(rme.LatestRedeemedRMBlob, prev)
 	if err != nil {
 		return 0, common.NewErrorf("rme_pend_num_blocks",
 			"decoding previous read marker: %v", err)
@@ -106,14 +106,14 @@ func (rme *ReadMarkerEntity) getNumBlocks() (numBlocks int64, err error) {
 			"missing latest read marker (nil)")
 	}
 
-	if len(rme.LatestRedeemedRMBlob.RawMessage) == 0 {
+	if len(rme.LatestRedeemedRMBlob) == 0 {
 		return rme.LatestRM.ReadCounter, nil // the number of blocks read
 	}
 
 	// then decode previous read marker
 	var prev = new(ReadMarker)
-	println("PREVIOUS RME", string(rme.LatestRedeemedRMBlob.RawMessage))
-	err = json.Unmarshal(rme.LatestRedeemedRMBlob.RawMessage, prev)
+	println("PREVIOUS RME", string(rme.LatestRedeemedRMBlob))
+	err = json.Unmarshal(rme.LatestRedeemedRMBlob, prev)
 	if err != nil {
 		return 0, common.NewErrorf("rme_get_num_blocks",
 			"decoding previous read marker: %v", err)

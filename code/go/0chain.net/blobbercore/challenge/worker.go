@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"0chain.net/blobbercore/config"
@@ -221,9 +222,9 @@ func FindChallenges(ctx context.Context) {
 							}
 							challengeObj := v
 							_, err := GetChallengeEntity(tCtx, challengeObj.ChallengeID)
-							if gorm.IsRecordNotFoundError(err) {
+							if errors.Is(err, gorm.ErrRecordNotFound) {
 								latestChallenge, err := GetLastChallengeEntity(tCtx)
-								if err == nil || gorm.IsRecordNotFoundError(err) {
+								if err == nil || errors.Is(err, gorm.ErrRecordNotFound) {
 									if (latestChallenge == nil && len(challengeObj.PrevChallengeID) == 0) || latestChallenge.ChallengeID == challengeObj.PrevChallengeID {
 										Logger.Info("Adding new challenge found from blockchain", zap.String("challenge", v.ChallengeID))
 										challengeObj.Status = Accepted

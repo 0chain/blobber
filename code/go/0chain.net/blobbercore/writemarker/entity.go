@@ -60,7 +60,7 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context,
 	fmt.Println(string(statusBytes))
 	if status == Failed {
 		wm.ReedeemRetries++
-		err = db.Model(wm).Update(WriteMarkerEntity{
+		err = db.Model(wm).Updates(WriteMarkerEntity{
 			Status:         status,
 			StatusMessage:  string(statusBytes),
 			CloseTxnID:     redeemTxn,
@@ -69,7 +69,7 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context,
 		return
 	}
 
-	err = db.Model(wm).Update(WriteMarkerEntity{
+	err = db.Model(wm).Updates(WriteMarkerEntity{
 		Status:        status,
 		StatusMessage: string(statusBytes),
 		CloseTxnID:    redeemTxn,

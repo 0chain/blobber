@@ -48,7 +48,7 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationObj *allocation.A
 				Logger.Error("Error redeeming the write marker.", zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
 				continue
 			}
-			err = db.Model(allocationObj).Update(allocation.Allocation{LatestRedeemedWM: wm.WM.AllocationRoot}).Error
+			err = db.Model(allocationObj).Updates(allocation.Allocation{LatestRedeemedWM: wm.WM.AllocationRoot}).Error
 			if err != nil {
 				Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed", zap.Any("wm", wm.WM.AllocationRoot), zap.Any("error", err))
 				return err

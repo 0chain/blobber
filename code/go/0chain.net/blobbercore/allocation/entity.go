@@ -1,9 +1,12 @@
 package allocation
 
 import (
+	"errors"
+
 	"0chain.net/core/common"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -98,7 +101,7 @@ func ReadPools(tx *gorm.DB, clientID, allocID, blobberID string,
 	err = tx.Model(&ReadPool{}).
 		Where(query, clientID, allocID, blobberID, until).
 		Find(&rps).Error
-	if err != nil && gorm.IsRecordNotFoundError(err) {
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil // no read pools
 	}
 	return
@@ -140,7 +143,7 @@ func GetPending(tx *gorm.DB, clientID, allocationID, blobberID string) (
 	err = tx.Model(&Pending{}).
 		Where(query, clientID, allocationID, blobberID).
 		Find(&p).Error
-	if err != nil && gorm.IsRecordNotFoundError(err) {
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		p.ClientID = clientID
 		p.AllocationID = allocationID
 		p.BlobberID = blobberID
@@ -170,7 +173,7 @@ func (p *Pending) WritePools(tx *gorm.DB, blobberID string,
 	err = tx.Model(&WritePool{}).
 		Where(query, p.ClientID, p.AllocationID, blobberID, until).
 		Find(&wps).Error
-	if err != nil && gorm.IsRecordNotFoundError(err) {
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil // no write pools
 	}
 	return
@@ -237,27 +240,7 @@ func (*WritePool) TableName() string {
 func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string,
 	rps []*ReadPool) (err error) {
 
-	db.Clauses()
-
-	DB.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"name", "age"}),
-	}).Create(&users)
-
-	// INSPECT READ POOLS
-	println("INSPECT READ POOLS (SET RPS THE BEGINING)", "ARGS", "C", clientID[:5], "A", allocationID[:5], "B", blobberID[:5])
-	{
-		var rps []*ReadPool
-		err = db.Model(&ReadPool{}).Find(&rps).Error
-		if err != nil {
-			panic(err)
-		}
-		println("  BEFORE SET DB CONTAINS")
-		for _, rp := range rps {
-			println("    - RP", "C", rp.ClientID[:5], "A", rp.AllocationID[:5], "B", rp.BlobberID[:5], float64(rp.Balance)/1e10)
-		}
-	}
-	// ----
+	// cleanup and batch insert (remove old pools, add / update new)
 
 	const query = `client_id = ? AND
         allocation_id = ? AND
@@ -267,38 +250,14 @@ func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string,
 	err = db.Model(&ReadPool{}).
 		Where(query, clientID, allocationID, blobberID).
 		Delete(&stub).Error
-	if err != nil && gorm.IsRecordNotFoundError(err) {
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return
 	}
 
-	// INSPECT READ POOLS
-	println("INSPECT READ POOLS (DB AFTER DELETING)", "ARGS", "C", clientID[:5], "A", allocationID[:5], "B", blobberID[:5])
-	{
-		var rps []*ReadPool
-		err = db.Model(&ReadPool{}).Find(&rps).Error
-		if err != nil {
-			panic(err)
-		}
-		println("  BEFORE SET DB CONTAINS")
-		for _, rp := range rps {
-			println("    - RP", "C", rp.ClientID[:5], "A", rp.AllocationID[:5], "B", rp.BlobberID[:5], float64(rp.Balance)/1e10)
-		}
-	}
-	// ----
-
-	// GORM doesn't have bulk inserting (\0/)
-
-	for _, rp := range rps {
-		if rp.ClientID != clientID || rp.AllocationID != allocationID ||
-			rp.BlobberID != blobberID {
-			continue //
-		}
-		if err = db.Create(rp).Error; err != nil {
-			println("YO, IT'S REALLY CREATE ERROR (HELL DAMN FUCKING GORM)")
-			return
-		}
-	}
-
+	err = db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "pool_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"balance"}),
+	}).Create(rps).Error
 	return
 }
 
@@ -313,7 +272,7 @@ func SetWritePools(db *gorm.DB, clientID, allocationID, blobberID string,
 	err = db.Model(&WritePool{}).
 		Where(query, clientID, allocationID, blobberID).
 		Delete(&stub).Error
-	if err != nil && gorm.IsRecordNotFoundError(err) {
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return
 	}
 

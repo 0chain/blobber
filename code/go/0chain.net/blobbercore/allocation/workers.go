@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -77,8 +78,8 @@ func updateWork(ctx context.Context) {
 
 	var (
 		allocs []*Allocation
-		count  int
-		offset int
+		count  int64
+		offset int64
 
 		err error
 	)
@@ -96,7 +97,7 @@ func updateWork(ctx context.Context) {
 			continue
 		}
 
-		offset += len(allocs)
+		offset += int64(len(allocs))
 
 		for _, a := range allocs {
 			updateAllocation(ctx, a)
@@ -108,8 +109,8 @@ func updateWork(ctx context.Context) {
 }
 
 // not finalized, not cleaned up
-func findAllocations(ctx context.Context, offset int) (
-	allocs []*Allocation, count int, err error) {
+func findAllocations(ctx context.Context, offset int64) (
+	allocs []*Allocation, count int64, err error) {
 
 	const query = `finalized = false AND cleaned_up = false`
 
@@ -127,7 +128,7 @@ func findAllocations(ctx context.Context, offset int) (
 	err = tx.Model(&Allocation{}).
 		Where(query).
 		Limit(UPDATE_LIMIT).
-		Offset(offset).
+		Offset(int(offset)).
 		Order("id ASC").
 		Find(&allocs).Error
 	return
@@ -294,7 +295,7 @@ func cleanupAllocation(ctx context.Context, a *Allocation) {
 	defer commit(tx, &err)
 
 	a.CleanedUp = true
-	if err = tx.Model(a).Update(a).Error; err != nil {
+	if err = tx.Model(a).Updates(a).Error; err != nil {
 		Logger.Error("updating allocation 'cleaned_up'", zap.Error(err))
 	}
 }
@@ -345,7 +346,7 @@ func deleteFiles(ctx context.Context, allocID string,
 		Type:         reference.FILE,
 		AllocationID: allocID,
 	}).Find(&refs).Error
-	if err != nil && !gorm.IsRecordNotFoundError(err) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return
 	}
 	err = nil // reset the record not found error

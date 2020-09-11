@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"time"
@@ -37,7 +38,7 @@ func CleanupDiskFiles(ctx context.Context) error {
 		filestore.GetFileStore().IterateObjects(allocationObj.ID, func(contentHash string, contentSize int64) {
 			var refs []reference.Ref
 			err := db.Table((reference.Ref{}).TableName()).Where(reference.Ref{ContentHash: contentHash, Type: reference.FILE}).Or(reference.Ref{ThumbnailHash: contentHash, Type: reference.FILE}).Find(&refs).Error
-			if err != nil && !gorm.IsRecordNotFoundError(err) {
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				Logger.Error("Error in cleanup of disk files.", zap.Error(err))
 				return
 			}
@@ -122,7 +123,7 @@ func MoveColdDataToCloud(ctx context.Context) {
 					for offset < totalRecords {
 						// Get all fileRefs with size greater than limit and on_cloud false
 						var fileRefs []*reference.Ref
-						db.Offset(offset).Limit(limit).
+						db.Offset(int(offset)).Limit(int(limit)).
 							Table((&reference.Ref{}).TableName()).
 							Where("size > ? AND on_cloud = ?", coldStorageMinFileSize, false).
 							Find(&fileRefs)

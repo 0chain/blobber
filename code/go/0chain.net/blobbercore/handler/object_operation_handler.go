@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 
 	"net/http"
 	"path/filepath"
@@ -308,7 +309,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		pendNumBlocks int64
 	)
 	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID)
-	if err != nil && !gorm.IsRecordNotFoundError(err) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, common.NewErrorf("download_file",
 			"couldn't get read marker from DB: %v", err)
 	}
