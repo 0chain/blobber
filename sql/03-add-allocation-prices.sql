@@ -24,8 +24,8 @@ CREATE TABLE pendings (
     allocation_id  varchar(64) NOT NULL,
     blobber_id     varchar(64) NOT NULL,
 
-    pending_read   bigint NOT NULL DEFAULT 0,
-    pending_write  bigint NOT NULL DEFAULT 0,
+    pending_read   bigint NOT NULL DEFAULT 0, -- number of pending blocks
+    pending_write  bigint NOT NULL DEFAULT 0, -- number of pending bytes
 
     PRIMARY KEY (id)
 );
