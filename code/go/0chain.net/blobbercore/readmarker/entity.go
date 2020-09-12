@@ -169,14 +169,6 @@ func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context,
 			"can't decode transaction output: %v", err)
 	}
 
-	// TODO (sfxdx): REMOVE THE INSPECTION
-	{
-		println("TX OUT GOT", len(redeems), "REDEEMS")
-		for _, rd := range redeems {
-			println("  - ", rd.PoolID, rd.Balance)
-		}
-	}
-
 	var db = datastore.GetStore().GetTransaction(ctx)
 
 	var rmUpdates = make(map[string]interface{})

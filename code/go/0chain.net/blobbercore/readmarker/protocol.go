@@ -112,7 +112,6 @@ func (rme *ReadMarkerEntity) getNumBlocks() (numBlocks int64, err error) {
 
 	// then decode previous read marker
 	var prev = new(ReadMarker)
-	println("PREVIOUS RME", string(rme.LatestRedeemedRMBlob))
 	err = json.Unmarshal(rme.LatestRedeemedRMBlob, prev)
 	if err != nil {
 		return 0, common.NewErrorf("rme_get_num_blocks",
