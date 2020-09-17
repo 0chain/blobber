@@ -248,6 +248,10 @@ func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string,
 		return
 	}
 
+	if len(rps) == 0 {
+		return
+	}
+
 	err = db.Model(&ReadPool{}).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "pool_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"balance"}),
@@ -267,6 +271,10 @@ func SetWritePools(db *gorm.DB, clientID, allocationID, blobberID string,
 		Where(query, clientID, allocationID, blobberID).
 		Delete(&stub).Error
 	if err != nil {
+		return
+	}
+
+	if len(wps) == 0 {
 		return
 	}
 

@@ -300,7 +300,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 				"error parsing the auth ticket for download: %v", err)
 		}
 
-		clientIDForReadRedeem = authToken.OwnerID
+		// clientIDForReadRedeem = authToken.OwnerID
 	}
 
 	var (
