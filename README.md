@@ -3,7 +3,7 @@
 ## Table of Contents
 
 - [Initial Setup](#initial-setup) - [Directory Setup for Blobbers](#directory-setup-for-blobbers)
-- [Building and Starting the Blobber](#building-and-starting-the-nodes)
+- [Building and Starting the Blobber](#building-and-starting-the-nodes) - [Setup Network](#setup-network)
 - [Troubleshooting](#troubleshooting)
 - [Connect to other network](#connect-to-other-network)
 - [Miscellaneous](#miscellaneous) - [Cleanup](#cleanup) - [Minio Setup](#minio)
@@ -58,6 +58,15 @@ block_worker: http://one.testnet-0chain.net/dns
 ```
 
 ## Miscellaneous
+### Setup Network
+
+Setup a network called testnet0 for each of these node containers to talk to each other.
+
+**_Note: The config file should be providing the IP address of the nodes as per the IP addresses in this network._**
+
+```
+$ docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
+```
 
 ### Cleanup
 
