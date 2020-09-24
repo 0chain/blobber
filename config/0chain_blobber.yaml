@@ -46,6 +46,9 @@ service_charge: 0.30
 
 block_worker: http://198.18.0.98:9091
 
+handlers:
+  rate_limit: 10 # 10 per second
+
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
   owner: "edb90b850f2e7e7cbd0a1fa370fdcc5cd378ffbec95363a7bc0e5a98b8ba5759"

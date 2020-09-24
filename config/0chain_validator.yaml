@@ -13,6 +13,9 @@ service_charge: 0.30
 
 block_worker: http://198.18.0.98:9091
 
+handlers:
+  rate_limit: 10 # 10 per second
+
 logging:
   level: "info"
   console: false # printing log to console is only supported in development mode
