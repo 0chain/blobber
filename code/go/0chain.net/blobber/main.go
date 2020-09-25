@@ -340,6 +340,7 @@ func main() {
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT",
 		"DELETE", "OPTIONS"})
 
+	common.ConfigRateLimits()
 	initHandlers(r)
 	initServer()
 
