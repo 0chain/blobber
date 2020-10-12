@@ -159,7 +159,7 @@ func (cr *ChallengeEntity) UnmarshalFields() error {
 func GetChallengeEntity(ctx context.Context, challengeID string) (*ChallengeEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	cr := &ChallengeEntity{}
-	err := db.Where(ChallengeEntity{ChallengeID: challengeID}).Find(cr).Error
+	err := db.Where(ChallengeEntity{ChallengeID: challengeID}).Take(cr).Error
 	if err != nil {
 		return nil, err
 	}
