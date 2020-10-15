@@ -11,8 +11,6 @@ services:
       - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
     networks:
       default:
-    ports:
-      - "543${BLOBBER}:5432"
   postgres-post:
     image: postgres:11
     environment:
