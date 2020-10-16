@@ -29,12 +29,13 @@ challenge_completion_time: 2m # duration to complete a challenge
 # a task and redeem tokens, it should be big enough
 read_lock_timeout: 1m
 write_lock_timeout: 1m
+max_file_size: 10485760 #10MB
 
 # update_allocations_interval used to refresh known allocation objects from SC
 update_allocations_interval: 1m
 
 # delegate wallet (must be set)
-delegate_wallet: '86b147de5be951a5ab0c6b1732596686185c5e11c3bdf76a112183f828f39ba1'
+delegate_wallet: '8b87739cd6c966c150a8a6e7b327435d4a581d9d9cc1d86a88c8a13ae1ad7a96'
 # min stake allowed, tokens
 min_stake: 1.0
 # max stake allowed, tokens
