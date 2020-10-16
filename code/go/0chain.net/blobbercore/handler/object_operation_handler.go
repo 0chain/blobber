@@ -843,6 +843,9 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		if len(formData.MerkleRoot) > 0 && formData.MerkleRoot != fileOutputData.MerkleRoot {
 			return nil, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
 		}
+		if fileOutputData.Size > config.Configuration.MaxFileSize {
+			return nil, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
+		}
 
 		formData.Hash = fileOutputData.ContentHash
 		formData.MerkleRoot = fileOutputData.MerkleRoot

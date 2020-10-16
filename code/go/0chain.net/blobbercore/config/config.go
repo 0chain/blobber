@@ -83,6 +83,7 @@ type Config struct {
 	ChallengeMaxRetires           int
 	TempFilesCleanupFreq          int64
 	TempFilesCleanupNumWorkers    int
+	MaxFileSize                   int64
 
 	ColdStorageMinimumFileSize   int64
 	ColdStorageTimeLimitInHours  int64
