@@ -94,6 +94,7 @@ type StorageAllocation struct {
 	BlobberDetails []*BlobberAllocation `json:"blobber_details"`
 	Finalized      bool                 `json:"finalized"`
 	CCT            time.Duration        `json:"challenge_completion_time"`
+	TimeUnit       time.Duration        `json:"time_unit"`
 }
 
 func (sa *StorageAllocation) Until() common.Timestamp {

@@ -126,6 +126,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	a.UsedSize = sa.UsedSize
 	a.Finalized = sa.Finalized
 	a.PayerID = t.ClientID
+	a.TimeUnit = sa.TimeUnit
 
 	// related terms
 	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))
