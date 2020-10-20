@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"errors"
+	"time"
 
 	"0chain.net/core/common"
 
@@ -30,6 +31,7 @@ type Allocation struct {
 	BlobberSizeUsed  int64            `gorm:"column:blobber_size_used"`
 	LatestRedeemedWM string           `gorm:"column:latest_redeemed_write_marker"`
 	IsRedeemRequired bool             `gorm:"column:is_redeem_required"`
+	TimeUnit         time.Duration    `gorm:"column:time_unit"`
 	// ending and cleaning
 	CleanedUp bool `gorm:"column:cleaned_up"`
 	Finalized bool `gorm:"column:finalized"`
@@ -42,6 +44,19 @@ type Allocation struct {
 
 func (Allocation) TableName() string {
 	return "allocations"
+}
+
+// RestDurationInTimeUnits returns number (float point) of time units until
+// allocation ends.
+func (a *Allocation) RestDurationInTimeUnits(wmt common.Timestamp) (
+	rdtu float64) {
+
+	var (
+		wmtt = time.Unix(int64(wmt), 0)
+		expt = time.Unix(int64(a.Expiration), 0)
+	)
+
+	return float64(expt.Sub(wmtt)) / float64(a.TimeUnit)
 }
 
 func sizeInGB(size int64) float64 {
@@ -70,22 +85,29 @@ func (a *Allocation) WantRead(blobberID string, numBlocks int64) (value int64) {
 // WantWriter implements WantWrite that returns cost of given size in bytes
 // for given blobber.
 type WantWriter interface {
-	WantWrite(blobberID string, size int64) (value int64)
+	WantWrite(blobberID string, size int64, wmt common.Timestamp) (value int64)
 }
 
 // WantWrite returns amount of tokens (by current terms of the allocations that
 // should be loaded) by given size for given blobber. E.g. want is tokens
 // wanted.
-func (a *Allocation) WantWrite(blobberID string, size int64) (value int64) {
+func (a *Allocation) WantWrite(blobberID string, size int64,
+	wmt common.Timestamp) (value int64) {
+
 	if size < 0 {
 		return // deleting, ignore
 	}
+
 	for _, d := range a.Terms {
 		if d.BlobberID == blobberID {
-			value = int64(sizeInGB(size) * float64(d.WritePrice))
+			value = int64(
+				(sizeInGB(size) * float64(d.WritePrice)) /
+					a.RestDurationInTimeUnits(wmt),
+			)
 			break
 		}
 	}
+
 	return
 }
 
@@ -173,11 +195,13 @@ func (p *Pending) WritePools(tx *gorm.DB, blobberID string,
 	return
 }
 
-func (p *Pending) HaveWrite(wps []*WritePool, ww WantWriter) (have int64) {
+func (p *Pending) HaveWrite(wps []*WritePool, ww WantWriter,
+	wmt common.Timestamp) (have int64) {
+
 	for _, wp := range wps {
 		have += wp.Balance
 	}
-	return have - ww.WantWrite(p.BlobberID, p.PendingWrite)
+	return have - ww.WantWrite(p.BlobberID, p.PendingWrite, wmt)
 }
 
 func (p *Pending) Save(tx *gorm.DB) error {

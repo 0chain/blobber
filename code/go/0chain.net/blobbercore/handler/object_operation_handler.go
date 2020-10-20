@@ -107,7 +107,8 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
 		until     = common.Now() +
 			common.Timestamp(config.Configuration.WriteLockTimeout)
 
-		want = alloc.WantWrite(blobberID, writeMarker.Size)
+		want = alloc.WantWrite(blobberID, writeMarker.Size,
+			writeMarker.Timestamp)
 
 		pend *allocation.Pending
 		wps  []*allocation.WritePool
@@ -130,7 +131,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
 			"can't get read pools from DB: %v", err)
 	}
 
-	var have = pend.HaveWrite(wps, alloc)
+	var have = pend.HaveWrite(wps, alloc, writeMarker.Timestamp)
 	if have < want {
 		wps, err = allocation.RequestWritePools(writeMarker.ClientID,
 			alloc.ID)
@@ -149,7 +150,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
 			return common.NewErrorf("write_pre_redeem",
 				"can't get write pools from DB: %v", err)
 		}
-		have = pend.HaveWrite(wps, alloc)
+		have = pend.HaveWrite(wps, alloc, writeMarker.Timestamp)
 	}
 
 	if have < want {
