@@ -100,10 +100,8 @@ func (a *Allocation) WantWrite(blobberID string, size int64,
 
 	for _, d := range a.Terms {
 		if d.BlobberID == blobberID {
-			value = int64(
-				(sizeInGB(size) * float64(d.WritePrice)) /
-					a.RestDurationInTimeUnits(wmt),
-			)
+			value = int64(sizeInGB(size) * float64(d.WritePrice) *
+				a.RestDurationInTimeUnits(wmt))
 			break
 		}
 	}

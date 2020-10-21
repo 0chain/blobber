@@ -268,10 +268,11 @@ func (rme *ReadMarkerEntity) RedeemReadMarker(ctx context.Context) (
 
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
+	var logHash = tx.Hash // keep transaction hash for error logs
 	tx, err = transaction.VerifyTransaction(tx.Hash, chain.GetServerChain())
 	if err != nil {
 		Logger.Error("Error verifying the read redeem transaction",
-			zap.Error(err), zap.String("txn", tx.Hash))
+			zap.Error(err), zap.String("txn", logHash))
 		return common.NewErrorf("redeem_read_marker",
 			"verifying transaction: %v", err)
 	}
