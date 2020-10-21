@@ -20,12 +20,12 @@ import (
 const (
 	FILE      = "f"
 	DIRECTORY = "d"
+
+	CHUNK_SIZE = 64 * 1024
+
+	DIR_LIST_TAG  = "dirlist"
+	FILE_LIST_TAG = "filelist"
 )
-
-const CHUNK_SIZE = 64 * 1024
-
-const DIR_LIST_TAG = "dirlist"
-const FILE_LIST_TAG = "filelist"
 
 type Ref struct {
 	ID                  int64  `gorm:column:id;primary_key`
@@ -60,7 +60,7 @@ type Ref struct {
 	CreatedAt      time.Time       `gorm:"column:created_at" dirlist:"created_at" filelist:"created_at"`
 	UpdatedAt      time.Time       `gorm:"column:updated_at" dirlist:"updated_at" filelist:"updated_at"`
 
-	gorm.DeletedAt // soft deletion
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
 }
 
 func (Ref) TableName() string {
