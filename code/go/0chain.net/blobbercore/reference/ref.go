@@ -13,6 +13,8 @@ import (
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/core/common"
 	"0chain.net/core/encryption"
+
+	"gorm.io/gorm"
 )
 
 const (
@@ -52,11 +54,13 @@ type Ref struct {
 	EncryptedKey        string `gorm:"column:encrypted_key" filelist:"encrypted_key"`
 	Children            []*Ref `gorm:"-"`
 	childrenLoaded      bool
-	DeletedAt           *time.Time      `gorm:"column:deleted_at"`
-	OnCloud             bool            `gorm:"column:on_cloud" filelist:"on_cloud"`
-	CommitMetaTxns      []CommitMetaTxn `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
-	CreatedAt           time.Time       `gorm:"column:created_at" dirlist:"created_at" filelist:"created_at"`
-	UpdatedAt           time.Time       `gorm:"column:updated_at" dirlist:"updated_at" filelist:"updated_at"`
+
+	OnCloud        bool            `gorm:"column:on_cloud" filelist:"on_cloud"`
+	CommitMetaTxns []CommitMetaTxn `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
+	CreatedAt      time.Time       `gorm:"column:created_at" dirlist:"created_at" filelist:"created_at"`
+	UpdatedAt      time.Time       `gorm:"column:updated_at" dirlist:"updated_at" filelist:"updated_at"`
+
+	gorm.DeletedAt // soft deletion
 }
 
 func (Ref) TableName() string {

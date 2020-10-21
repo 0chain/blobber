@@ -24,7 +24,7 @@ require (
 	gopkg.in/ini.v1 v1.61.0 // indirect
 	gorm.io/datatypes v0.0.0-20200806042100-bc394008dd0d
 	gorm.io/driver/postgres v1.0.0
-	gorm.io/gorm v1.20.1
+	gorm.io/gorm v1.20.4
 )
 
 go 1.13
