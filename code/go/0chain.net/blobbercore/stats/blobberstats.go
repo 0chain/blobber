@@ -170,42 +170,34 @@ func (bs *BlobberStats) loadDetailedStats(ctx context.Context) {
 
 func (bs *BlobberStats) loadStats(ctx context.Context) {
 
+	const sel = `
+	COALESCE (SUM (reference_objects.size), 0) AS files_size,
+	COALESCE (SUM (reference_objects.thumbnail_size), 0) AS thumbnails_size,
+	COALESCE (SUM (file_stats.num_of_block_downloads), 0) AS num_of_reads,
+	COALESCE (SUM (reference_objects.num_of_blocks), 0) AS num_of_block_writes,
+	COUNT (*) AS num_of_writes`
+
+	const join = `
+	INNER JOIN file_stats ON reference_objects.id = file_stats.ref_id
+	WHERE reference_objects.type = 'f'
+	AND reference_objects.deleted_at IS NULL`
+
 	var (
-		db   = datastore.GetStore().GetTransaction(ctx)
-		rows *sql.Rows
-		err  error
+		db  = datastore.GetStore().GetTransaction(ctx)
+		row *sql.Row
+		err error
 	)
 
-	rows, err = db.Table("reference_objects").
-		Select(`
-			COALESCE (SUM (reference_objects.size), 0) AS files_size,
-			COALESCE (SUM (reference_objects.thumbnail_size), 0) AS thumbnails_size,
-			COALESCE (SUM (file_stats.num_of_block_downloads), 0) AS num_of_reads,
-			COALESCE (SUM (reference_objects.num_of_blocks), 0) AS num_of_block_writes,
-			COUNT (*) AS num_of_writes`).
-		Joins(`INNER JOIN file_stats ON reference_objects.id = file_stats.ref_id
-			WHERE reference_objects.type = 'f'
-			AND reference_objects.deleted_at IS NULL`).
-		Rows()
+	row = db.Table("reference_objects").
+		Select(sel).
+		Joins(join).
+		Row()
 
-	if err != nil {
-		Logger.Error("Error in getting the blobber stats", zap.Error(err))
-		return
-	}
-	defer rows.Close()
-
-	if rows.Next() {
-		err = rows.Scan(&bs.FilesSize, &bs.ThumbnailsSize, &bs.NumReads,
-			&bs.BlockWrites, &bs.NumWrites)
-		if err != nil {
-			Logger.Error("Error in scanning record for blobber stats",
-				zap.Error(err))
-			return
-		}
-	}
-
-	if err = rows.Err(); err != nil && err != sql.ErrNoRows {
-		Logger.Error("Error in getting the blobber stats", zap.Error(err))
+	err = row.Scan(&bs.FilesSize, &bs.ThumbnailsSize, &bs.NumReads,
+		&bs.BlockWrites, &bs.NumWrites)
+	if err != nil && err != sql.ErrNoRows {
+		Logger.Error("Error in scanning record for blobber stats",
+			zap.Error(err))
 		return
 	}
 
@@ -216,35 +208,22 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 func (bs *BlobberStats) loadMinioStats(ctx context.Context) {
 
 	var (
-		db   = datastore.GetStore().GetTransaction(ctx)
-		rows *sql.Rows
-		err  error
+		db  = datastore.GetStore().GetTransaction(ctx)
+		row *sql.Row
+		err error
 	)
 
-	rows, err = db.Table("reference_objects").
+	row = db.Table("reference_objects").
 		Select(`
 			COALESCE (SUM (size), 0) AS cloud_files_size,
 			COUNT (*) AS cloud_total_files`).
 		Where("on_cloud = 'TRUE' and type = 'f' and deleted_at IS NULL").
-		Rows()
+		Row()
 
-	if err != nil {
-		Logger.Error("Error in getting the minio stats", zap.Error(err))
-		return
-	}
-	defer rows.Close()
-
-	if rows.Next() {
-		err = rows.Scan(&bs.CloudFilesSize, &bs.CloudTotalFiles)
-		if err != nil {
-			Logger.Error("Error in scanning record for minio stats",
-				zap.Error(err))
-			return
-		}
-	}
-
-	if err = rows.Err(); err != nil && err != sql.ErrNoRows {
-		Logger.Error("Error in getting the minio stats", zap.Error(err))
+	err = row.Scan(&bs.CloudFilesSize, &bs.CloudTotalFiles)
+	if err != nil && err != sql.ErrNoRows {
+		Logger.Error("Error in scanning record for minio stats",
+			zap.Error(err))
 		return
 	}
 
