@@ -25,6 +25,7 @@ import (
 	"0chain.net/core/lock"
 	"0chain.net/core/node"
 
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	. "0chain.net/core/logging"
@@ -32,7 +33,7 @@ import (
 )
 
 func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
-	numBlocks, pendNumBlocks int64, clientID string) (err error) {
+	numBlocks, pendNumBlocks int64, payerID string) (err error) {
 
 	if numBlocks == 0 {
 		return
@@ -54,7 +55,7 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 		return // skip if read price is zero
 	}
 
-	rps, err = allocation.ReadPools(db, clientID, alloc.ID,
+	rps, err = allocation.ReadPools(db, payerID, alloc.ID,
 		blobberID, until)
 	if err != nil {
 		return common.NewErrorf("read_pre_redeem",
@@ -64,21 +65,21 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	var have = alloc.HaveRead(rps, blobberID, pendNumBlocks)
 
 	if have < want {
-		rps, err = allocation.RequestReadPools(clientID,
+		rps, err = allocation.RequestReadPools(payerID,
 			alloc.ID)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem",
 				"can't request read pools from sharders: %v", err)
 		}
 
-		err = allocation.SetReadPools(db, clientID,
+		err = allocation.SetReadPools(db, payerID,
 			alloc.ID, blobberID, rps)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem",
 				"can't save requested read pools: %v", err)
 		}
 
-		rps, err = allocation.ReadPools(db, clientID, alloc.ID, blobberID,
+		rps, err = allocation.ReadPools(db, payerID, alloc.ID, blobberID,
 			until)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem",
@@ -210,6 +211,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	var (
 		pathHash = r.FormValue("path_hash")
 		path     = r.FormValue("path")
+		rxPay    = r.FormValue("rx_pay") == "true"
 	)
 
 	if len(pathHash) == 0 {
@@ -275,7 +277,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 
 	var (
 		authTokenString       = r.FormValue("auth_token")
-		clientIDForReadRedeem = readMarker.ClientID
+		clientIDForReadRedeem = allocationObj.OwnerID
 	)
 
 	if (allocationObj.OwnerID != clientID &&
@@ -301,7 +303,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 				"error parsing the auth ticket for download: %v", err)
 		}
 
-		// clientIDForReadRedeem = authToken.OwnerID
+		if rxPay {
+			clientIDForReadRedeem = clientID
+		}
+
+		readMarker.AuthTicket = datatypes.JSON(authTokenString)
 	}
 
 	var (
@@ -375,6 +381,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		}
 	}
 
+	readMarker.PayerID = clientIDForReadRedeem
 	err = readmarker.SaveLatestReadMarker(ctx, readMarker, latestRM == nil)
 	if err != nil {
 		return nil, common.NewErrorf("download_file",

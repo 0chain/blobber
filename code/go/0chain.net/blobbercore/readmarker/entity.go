@@ -71,6 +71,8 @@ type ReadMarker struct {
 	ReadCounter     int64            `gorm:"column:counter" json:"counter"`
 	Signature       string           `gorm:"column:signature" json:"signature"`
 	Suspend         int64            `gorm:"column:suspend" json:"suspend"`
+	PayerID         string           `gorm:"column:payer_id" json:"payer_id"`
+	AuthTicket      datatypes.JSON   `gorm:"column:auth_ticket" json:"auth_ticket"`
 }
 
 func (rm *ReadMarker) GetHashData() string {
