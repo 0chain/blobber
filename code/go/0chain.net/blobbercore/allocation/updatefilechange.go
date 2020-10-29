@@ -10,7 +10,7 @@ import (
 
 	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
-	."0chain.net/core/logging"
+	. "0chain.net/core/logging"
 
 	"go.uber.org/zap"
 )
@@ -20,6 +20,7 @@ type UpdateFileChange struct {
 }
 
 func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+
 	path, _ := filepath.Split(nf.Path)
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
@@ -56,7 +57,7 @@ func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *Allocatio
 		}
 	}
 	if idx < 0 {
-		Logger.Error("error in file update", zap.Any("change",nf))
+		Logger.Error("error in file update", zap.Any("change", nf))
 		return nil, common.NewError("file_not_found", "File to update not found in blobber")
 	}
 	existingRef := dirRef.Children[idx]
@@ -73,7 +74,12 @@ func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	existingRef.ActualThumbnailHash = nf.ActualThumbnailHash
 	existingRef.ActualThumbnailSize = nf.ActualThumbnailSize
 	existingRef.EncryptedKey = nf.EncryptedKey
-	
+
+	if err = existingRef.SetAttributes(nf.Attributes); err != nil {
+		return nil, common.NewErrorf("process_update_file_change",
+			"setting file attributes: %v", err)
+	}
+
 	_, err = rootRef.CalculateHash(ctx, true)
 	stats.FileUpdated(ctx, existingRef.ID)
 	return rootRef, err

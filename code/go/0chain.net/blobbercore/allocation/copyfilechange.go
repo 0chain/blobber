@@ -116,6 +116,7 @@ func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef *refe
 		newFile.ActualThumbnailHash = affectedRef.ActualThumbnailHash
 		newFile.ActualThumbnailSize = affectedRef.ActualThumbnailSize
 		newFile.EncryptedKey = affectedRef.EncryptedKey
+		newFile.Attributes = affectedRef.Attributes
 
 		destRef.AddChild(newFile)
 	}
