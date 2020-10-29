@@ -2,7 +2,9 @@ module 0chain.net/core
 
 require (
 	github.com/0chain/gosdk v1.0.85
+	github.com/didip/tollbooth v4.0.2+incompatible
 	github.com/koding/cache v0.0.0-20161222233015-e8a81b0b3f20
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/spf13/viper v1.4.0
 	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
