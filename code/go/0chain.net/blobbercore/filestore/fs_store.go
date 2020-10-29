@@ -468,7 +468,9 @@ func (fs *FileFSStore) GetMerkleTreeForFile(allocationID string, fileData *FileI
 	return mt, nil
 }
 
-func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
+func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
+	infile multipart.File, connectionID string) (*FileOutputData, error) {
+
 	allocation, err := fs.SetupAllocation(allocationID, false)
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
