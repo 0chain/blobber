@@ -739,12 +739,6 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 			"error writing the connection meta data")
 	}
 
-	// var result = &UploadResult{}
-	// result.Filename = ref.Name
-	// result.Hash = ref.Hash
-	// result.MerkleRoot = ref.MerkleRoot
-	// result.Size = ref.Size
-
 	// return new attributes as result
 	return attrs, nil
 }
