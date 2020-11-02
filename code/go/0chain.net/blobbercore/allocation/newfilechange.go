@@ -13,24 +13,24 @@ import (
 )
 
 type NewFileChange struct {
-	ConnectionID        string                `json:"connection_id"`
-	AllocationID        string                `json:"allocation_id"`
-	Filename            string                `json:"filename"`
-	ThumbnailFilename   string                `json:"thumbnail_filename"`
-	Path                string                `json:"filepath"`
-	Size                int64                 `json:"size"`
-	Hash                string                `json:"content_hash,omitempty"`
-	ThumbnailSize       int64                 `json:"thumbnail_size"`
-	ThumbnailHash       string                `json:"thumbnail_content_hash,omitempty"`
-	MerkleRoot          string                `json:"merkle_root,omitempty"`
-	ActualHash          string                `json:"actual_hash,omitempty"`
-	ActualSize          int64                 `json:"actual_size,omitempty"`
-	ActualThumbnailSize int64                 `json:"actual_thumb_size"`
-	ActualThumbnailHash string                `json:"actual_thumb_hash"`
-	MimeType            string                `json:"mimetype,omitempty"`
-	EncryptedKey        string                `json:"encrypted_key,omitempty"`
-	CustomMeta          string                `json:"custom_meta,omitempty"`
-	Attributes          *reference.Attributes `json:"attributes,omitempty"`
+	ConnectionID        string               `json:"connection_id"`
+	AllocationID        string               `json:"allocation_id"`
+	Filename            string               `json:"filename"`
+	ThumbnailFilename   string               `json:"thumbnail_filename"`
+	Path                string               `json:"filepath"`
+	Size                int64                `json:"size"`
+	Hash                string               `json:"content_hash,omitempty"`
+	ThumbnailSize       int64                `json:"thumbnail_size"`
+	ThumbnailHash       string               `json:"thumbnail_content_hash,omitempty"`
+	MerkleRoot          string               `json:"merkle_root,omitempty"`
+	ActualHash          string               `json:"actual_hash,omitempty"`
+	ActualSize          int64                `json:"actual_size,omitempty"`
+	ActualThumbnailSize int64                `json:"actual_thumb_size"`
+	ActualThumbnailHash string               `json:"actual_thumb_hash"`
+	MimeType            string               `json:"mimetype,omitempty"`
+	EncryptedKey        string               `json:"encrypted_key,omitempty"`
+	CustomMeta          string               `json:"custom_meta,omitempty"`
+	Attributes          reference.Attributes `json:"attributes,omitempty"`
 }
 
 func (nf *NewFileChange) ProcessChange(ctx context.Context,
@@ -98,7 +98,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context,
 	newFile.ActualThumbnailSize = nf.ActualThumbnailSize
 	newFile.EncryptedKey = nf.EncryptedKey
 
-	if err = newFile.SetAttributes(nf.Attributes); err != nil {
+	if err = newFile.SetAttributes(&nf.Attributes); err != nil {
 		return nil, common.NewErrorf("process_new_file_change",
 			"setting file attributes: %v", err)
 	}

@@ -7,6 +7,7 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_USER: postgres
       POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_PASSWORD: secret
     volumes:
       - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
     networks:
@@ -17,6 +18,7 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_HOST: postgres
       POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
     volumes:
       - ../bin:/blobber/bin
       - ../sql:/blobber/sql
@@ -38,7 +40,7 @@ services:
       - ./keys_config:/blobber/keysconfig
     ports:
       - "506${BLOBBER}:506${BLOBBER}"
-    command: ./bin/validator --port 506${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --log_dir /blobber/log
+    command: ./bin/validator --port 506${BLOBBER} --hostname 198.18.0.6${BLOBBER} --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --log_dir /blobber/log
     networks:
       default:
       testnet0:

@@ -41,21 +41,29 @@ func SendMultiPostRequest(urls []string, data []byte) {
 	wg.Wait()
 }
 
-func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) ([]byte, error) {
+func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) (
+	body []byte, err error) {
+
 	if wg != nil {
 		defer wg.Done()
 	}
 	var resp *http.Response
-	var err error
 	for i := 0; i < MAX_RETRIES; i++ {
-		req, ctx, cncl, err := NewHTTPRequest(http.MethodPost, url, data)
+		var (
+			req  *http.Request
+			ctx  context.Context
+			cncl context.CancelFunc
+		)
+
+		req, ctx, cncl, err = NewHTTPRequest(http.MethodPost, url, data)
 		defer cncl()
+
 		resp, err = http.DefaultClient.Do(req.WithContext(ctx))
 		if err == nil {
 			if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
 				break
 			}
-			body, _ := ioutil.ReadAll(resp.Body)
+			body, _ = ioutil.ReadAll(resp.Body)
 			if resp.Body != nil {
 				resp.Body.Close()
 			}
@@ -65,7 +73,7 @@ func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) ([]byte, error
 		time.Sleep(SLEEP_BETWEEN_RETRIES * time.Second)
 	}
 	if resp == nil || err != nil {
-		Logger.Error("Failed after multiple retries", zap.Any("url", url), zap.Int("retried", MAX_RETRIES))
+		Logger.Error("Failed after multiple retries", zap.Any("url", url), zap.Int("retried", MAX_RETRIES), zap.Error(err))
 		return nil, err
 	}
 	if resp.Body == nil {
@@ -75,6 +83,6 @@ func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) ([]byte, error
 		defer resp.Body.Close()
 	}
 
-	body, _ := ioutil.ReadAll(resp.Body)
-	return body, nil
+	body, err = ioutil.ReadAll(resp.Body)
+	return body, err
 }

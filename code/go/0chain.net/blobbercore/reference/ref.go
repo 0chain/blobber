@@ -121,7 +121,7 @@ func (r *Ref) GetAttributes() (attr *Attributes, err error) {
 }
 
 func (r *Ref) SetAttributes(attr *Attributes) (err error) {
-	if attr == nil {
+	if attr == nil || (*attr) == (Attributes{}) {
 		r.Attributes = datatypes.JSON("{}") // use zero value
 		return
 	}
