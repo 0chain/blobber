@@ -84,6 +84,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 	retObj.Path = result
 	retObj.FileBlockNum = remainingBlocks
 	retObj.RefID = curRef.ID
+
 	//rootRef.CalculateHash(ctx, false)
 	return &retObj, nil
 }

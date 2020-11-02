@@ -1,20 +1,22 @@
 package storage
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"reflect"
 	"strconv"
 	"strings"
-	
+
 	"0chain.net/core/common"
 	"0chain.net/core/encryption"
-	. "0chain.net/core/logging"
 	"0chain.net/core/node"
-	"0chain.net/validatorcore/storage/writemarker"
 	"0chain.net/core/util"
+	"0chain.net/validatorcore/storage/writemarker"
 
 	"github.com/mitchellh/mapstructure"
+
+	. "0chain.net/core/logging"
 	"go.uber.org/zap"
 )
 
@@ -31,6 +33,21 @@ type ObjectEntity interface {
 	GetHash() string
 	CalculateHash() string
 	GetType() string
+}
+
+type Attributes struct {
+	WhoPaysForReads common.WhoPays `json:"who_pays_for_reads,omitempty" mapstructure:"who_pays_for_reads"`
+}
+
+func (a *Attributes) String() string {
+	if a == nil || (*a) == (Attributes{}) {
+		return "{}"
+	}
+	var b, err = json.Marshal(a)
+	if err != nil {
+		return "{}"
+	}
+	return string(b)
 }
 
 type DirMetaData struct {
@@ -68,12 +85,13 @@ func (r *DirMetaData) GetType() string {
 
 type FileMetaData struct {
 	DirMetaData    `mapstructure:",squash"`
-	CustomMeta     string `json:"custom_meta" mapstructure:"custom_meta"`
-	ContentHash    string `json:"content_hash" mapstructure:"content_hash"`
-	Size           int64  `json:"size" mapstructure:"size"`
-	MerkleRoot     string `json:"merkle_root" mapstructure:"merkle_root"`
-	ActualFileSize int64  `json:"actual_file_size" mapstructure:"actual_file_size"`
-	ActualFileHash string `json:"actual_file_hash" mapstructure:"actual_file_hash"`
+	CustomMeta     string     `json:"custom_meta" mapstructure:"custom_meta"`
+	ContentHash    string     `json:"content_hash" mapstructure:"content_hash"`
+	Size           int64      `json:"size" mapstructure:"size"`
+	MerkleRoot     string     `json:"merkle_root" mapstructure:"merkle_root"`
+	ActualFileSize int64      `json:"actual_file_size" mapstructure:"actual_file_size"`
+	ActualFileHash string     `json:"actual_file_hash" mapstructure:"actual_file_hash"`
+	Attributes     Attributes `json:"attributes" mapstructure:"attributes" `
 }
 
 func (fr *FileMetaData) GetHashData() string {
@@ -87,6 +105,7 @@ func (fr *FileMetaData) GetHashData() string {
 	hashArray = append(hashArray, fr.MerkleRoot)
 	hashArray = append(hashArray, strconv.FormatInt(fr.ActualFileSize, 10))
 	hashArray = append(hashArray, fr.ActualFileHash)
+	hashArray = append(hashArray, fr.Attributes.String())
 	return strings.Join(hashArray, ":")
 }
 
@@ -95,8 +114,7 @@ func (fr *FileMetaData) GetHash() string {
 }
 
 func (fr *FileMetaData) CalculateHash() string {
-	hashData := fr.GetHashData()
-	return encryption.Hash(hashData)
+	return encryption.Hash(fr.GetHashData())
 }
 
 func (fr *FileMetaData) GetNumBlocks() int64 {
@@ -317,12 +335,12 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 }
 
 type Challenge struct {
-	ID             string             `json:"id"`
+	ID             string         `json:"id"`
 	Validators     []*StorageNode `json:"validators"`
-	RandomNumber   int64              `json:"seed"`
-	AllocationID   string             `json:"allocation_id"`
+	RandomNumber   int64          `json:"seed"`
+	AllocationID   string         `json:"allocation_id"`
 	Blobber        *StorageNode   `json:"blobber"`
-	AllocationRoot string             `json:"allocation_root"`
+	AllocationRoot string         `json:"allocation_root"`
 }
 
 type ValidationTicket struct {

@@ -12,11 +12,12 @@ import (
 )
 
 const (
-	INSERT_OPERATION = "insert"
-	DELETE_OPERATION = "delete"
-	UPDATE_OPERATION = "update"
-	RENAME_OPERATION = "rename"
-	COPY_OPERATION   = "copy"
+	INSERT_OPERATION       = "insert"
+	DELETE_OPERATION       = "delete"
+	UPDATE_OPERATION       = "update"
+	RENAME_OPERATION       = "rename"
+	COPY_OPERATION         = "copy"
+	UPDATE_ATTRS_OPERATION = "update_attrs"
 )
 
 const (
@@ -110,29 +111,30 @@ func (cc *AllocationChangeCollector) Save(ctx context.Context) error {
 }
 
 func (cc *AllocationChangeCollector) ComputeProperties() {
-	cc.AllocationChanges = make([]AllocationChangeProcessor, len(cc.Changes))
-	for idx, change := range cc.Changes {
-		if change.Operation == INSERT_OPERATION {
-			nfc := &NewFileChange{}
-			nfc.Unmarshal(change.Input)
-			cc.AllocationChanges[idx] = nfc
-		} else if change.Operation == UPDATE_OPERATION {
-			ufc := &UpdateFileChange{}
-			ufc.Unmarshal(change.Input)
-			cc.AllocationChanges[idx] = ufc
-		} else if change.Operation == DELETE_OPERATION {
-			dfc := &DeleteFileChange{}
-			dfc.Unmarshal(change.Input)
-			cc.AllocationChanges[idx] = dfc
-		} else if change.Operation == RENAME_OPERATION {
-			rfc := &RenameFileChange{}
-			rfc.Unmarshal(change.Input)
-			cc.AllocationChanges[idx] = rfc
-		} else if change.Operation == COPY_OPERATION {
-			rfc := &CopyFileChange{}
-			rfc.Unmarshal(change.Input)
-			cc.AllocationChanges[idx] = rfc
+	cc.AllocationChanges = make([]AllocationChangeProcessor, 0, len(cc.Changes))
+	for _, change := range cc.Changes {
+		var acp AllocationChangeProcessor
+		switch change.Operation {
+		case INSERT_OPERATION:
+			acp = new(NewFileChange)
+		case UPDATE_OPERATION:
+			acp = new(UpdateFileChange)
+		case DELETE_OPERATION:
+			acp = new(DeleteFileChange)
+		case RENAME_OPERATION:
+			acp = new(RenameFileChange)
+		case COPY_OPERATION:
+			acp = new(CopyFileChange)
+		case UPDATE_ATTRS_OPERATION:
+			acp = new(AttributesChange)
 		}
+
+		if acp == nil {
+			continue // unknown operation (impossible case?)
+		}
+
+		acp.Unmarshal(change.Input) // error is not handled
+		cc.AllocationChanges = append(cc.AllocationChanges, acp)
 	}
 }
 

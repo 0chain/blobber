@@ -134,34 +134,3 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 	err = wm.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
 	return err
 }
-
-// TODO (sfxdx): REMOVE, UNUSED FUNCITON
-
-// func GetWritePool(ctx context.Context, allocID string) (
-// 	value int64, err error) {
-
-// 	type writePoolStat struct {
-// 		Balance int64 `json:"balance"`
-// 	}
-
-// 	var resp []byte
-// 	resp, err = transaction.MakeSCRestAPICall(
-// 		transaction.STORAGE_CONTRACT_ADDRESS, "/getWritePoolStat",
-// 		map[string]string{"allocation_id": allocID}, chain.GetServerChain(),
-// 		nil)
-
-// 	if err != nil {
-// 		Logger.Error("can't get write pool stat from sharders",
-// 			zap.String("allocation_id", allocID), zap.Error(err))
-// 		return
-// 	}
-
-// 	var stat writePoolStat
-// 	if err = json.Unmarshal(resp, &stat); err != nil {
-// 		Logger.Error("can't decode write pool stat from sharders",
-// 			zap.String("allocation_id", allocID), zap.Error(err))
-// 		return
-// 	}
-
-// 	return stat.Balance, nil
-// }
