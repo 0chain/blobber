@@ -65,6 +65,9 @@ func SetupFSStore(rootDir string) FileStore {
 }
 
 func intializeMinio() *minio.Client {
+	if !config.Configuration.MinioStart {
+		return nil
+	}
 	minioClient, err := minio.New(
 		MinioConfig.StorageServiceURL,
 		MinioConfig.AccessKeyID,

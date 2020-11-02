@@ -8,5 +8,5 @@
 -- in a transaction
 BEGIN;
     ALTER TABLE reference_objects
-        ADD COLUMN attributes JSON NOT NULL DEFAULT '{}';
+        ADD COLUMN attributes JSON DEFAULT '{}'::jsonb;
 COMMIT;

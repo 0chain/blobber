@@ -122,13 +122,14 @@ func (r *Ref) GetAttributes() (attr *Attributes, err error) {
 
 func (r *Ref) SetAttributes(attr *Attributes) (err error) {
 	if attr == nil {
-		attr = new(Attributes) // use zero instead
+		r.Attributes = datatypes.JSON("{}") // use zero value
+		return
 	}
 	var b []byte
 	if b, err = json.Marshal(attr); err != nil {
 		return common.NewError("encoding file attributes", err.Error())
 	}
-	r.Attributes = datatypes.JSON(b)
+	r.Attributes = datatypes.JSON(b) // or a real value, can be {} too
 	return
 }
 
@@ -216,6 +217,9 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID string, path str
 }
 
 func (fr *Ref) GetFileHashData() string {
+	if len(fr.Attributes) == 0 {
+		fr.Attributes = datatypes.JSON("{}")
+	}
 	hashArray := make([]string, 0)
 	hashArray = append(hashArray, fr.AllocationID)
 	hashArray = append(hashArray, fr.Type)
