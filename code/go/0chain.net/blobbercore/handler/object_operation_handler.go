@@ -211,6 +211,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	var (
 		pathHash = r.FormValue("path_hash")
 		path     = r.FormValue("path")
+		rxPay    = r.FormValue("rx_pay") == "true"
 	)
 
 	if len(pathHash) == 0 {
@@ -308,8 +309,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 				"error getting file attributes: %v", err)
 		}
 
-		// if marked that 3rd party user pays for the downloading
-		if attrs.WhoPaysForReads == common.WhoPaysOwner {
+		// if --rx_pay used 3rd_party pays
+		if rxPay {
+			clientIDForReadRedeem = clientID
+		} else if attrs.WhoPaysForReads == common.WhoPaysOwner {
 			clientIDForReadRedeem = allocationObj.OwnerID // owner pays
 		}
 
