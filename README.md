@@ -17,6 +17,8 @@
 
 - [Miscellaneous](#miscellaneous) - [Cleanup](#cleanup) - [Minio Setup](#minio)
 
+- [Run blobber on ec2 instance](https://github.com/0chain/blobber/blob/master/docker.aws/README.md)
+
   
 
 ## Initial Setup
