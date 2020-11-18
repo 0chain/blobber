@@ -56,7 +56,9 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 	var validationTicket ValidationTicket
 	challengeObj, err := GetProtocolImpl().VerifyChallengeTransaction(ctx, &challengeRequest)
 	if err != nil {
-		Logger.Error("Error verifying the challenge from BC", zap.Any("challenge_id", challengeRequest.ChallengeID))
+		Logger.Error("Error verifying the challenge from BC",
+			zap.Any("challenge_id", challengeRequest.ChallengeID),
+			zap.Error(err))
 		return nil, common.NewError("invalid_parameters", "Challenge could not be verified. "+err.Error())
 	}
 
