@@ -77,8 +77,21 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 	sn.ID = node.Self.ID
 	sn.BaseURL = node.Self.GetURLBase()
 	sn.Capacity = config.Configuration.Capacity
-	sn.Terms.ReadPrice = zcncore.ConvertToValue(config.Configuration.ReadPrice)
-	sn.Terms.WritePrice = zcncore.ConvertToValue(config.Configuration.WritePrice)
+	readPrice := config.Configuration.ReadPrice
+	writePrice := config.Configuration.WritePrice
+	if config.Configuration.PriceInUSD {
+		readPrice, err = zcncore.ConvertUSDToToken(readPrice)
+		if err != nil {
+			return "", err
+		}
+
+		writePrice, err = zcncore.ConvertUSDToToken(writePrice)
+		if err != nil {
+			return "", err
+		}
+	}
+	sn.Terms.ReadPrice = zcncore.ConvertToValue(readPrice)
+	sn.Terms.WritePrice = zcncore.ConvertToValue(writePrice)
 	sn.Terms.MinLockDemand = config.Configuration.MinLockDemand
 	sn.Terms.MaxOfferDuration = config.Configuration.MaxOfferDuration
 	sn.Terms.ChallengeCompletionTime = config.Configuration.ChallengeCompletionTime

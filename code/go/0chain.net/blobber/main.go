@@ -91,6 +91,7 @@ func SetupWorkerConfig() {
 	config.Configuration.Capacity = viper.GetInt64("capacity")
 	config.Configuration.ReadPrice = viper.GetFloat64("read_price")
 	config.Configuration.WritePrice = viper.GetFloat64("write_price")
+	config.Configuration.PriceInUSD = viper.GetBool("price_in_usd")
 	config.Configuration.MinLockDemand = viper.GetFloat64("min_lock_demand")
 	config.Configuration.MaxOfferDuration = viper.GetDuration("max_offer_duration")
 	config.Configuration.ChallengeCompletionTime = viper.GetDuration("challenge_completion_time")

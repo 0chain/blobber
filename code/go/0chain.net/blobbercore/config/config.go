@@ -98,6 +98,7 @@ type Config struct {
 
 	ReadPrice               float64
 	WritePrice              float64
+	PriceInUSD              bool
 	MinLockDemand           float64
 	MaxOfferDuration        time.Duration
 	ChallengeCompletionTime time.Duration

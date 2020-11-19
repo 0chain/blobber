@@ -13,6 +13,7 @@ logging:
 capacity: 1073741824 # 1 GB bytes total blobber capacity
 read_price: 0.01     # token / GB for reading
 write_price: 0.10    # token / GB / time_unit for writing
+price_in_usd: false
 # the time_unit configured in Storage SC and can be given using
 #
 #     ./zbox sc-config
