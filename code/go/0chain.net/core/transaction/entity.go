@@ -115,6 +115,7 @@ const (
 	READ_REDEEM              = "read_redeem"
 	CHALLENGE_RESPONSE       = "challenge_response"
 	BLOBBER_HEALTH_CHECK     = "blobber_health_check"
+	UPDATE_BLOBBER_SETTINGS  = "update_blobber_settings"
 	FINALIZE_ALLOCATION      = "finalize_allocation"
 )
 

@@ -392,6 +392,9 @@ func RegisterBlobber() {
 				//badgerdbstore.GetStorageProvider().Commit(ctx)
 				SetupWorkers()
 				go BlobberHealthCheck()
+				if config.Configuration.PriceInUSD {
+					go UpdateBlobberSettings()
+				}
 				return
 			}
 			verifyRetries++
@@ -429,6 +432,36 @@ func BlobberHealthCheck() {
 			Logger.Error("Blobber health check transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txnHash))
 		}
 		time.Sleep(HEALTH_CHECK_TIMER * time.Second)
+	}
+}
+
+func UpdateBlobberSettings() {
+	var UPDATE_SETTINGS_TIMER = 60 * time.Duration(viper.GetInt("price_worker_in_hours"))
+	time.Sleep(UPDATE_SETTINGS_TIMER * time.Second)
+	for {
+		txnHash, err := handler.UpdateBlobberSettings(common.GetRootContext())
+		if err != nil {
+			time.Sleep(UPDATE_SETTINGS_TIMER * time.Second)
+			continue
+		}
+		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+		txnVerified := false
+		verifyRetries := 0
+		for verifyRetries < util.MAX_RETRIES {
+			time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
+			if err == nil {
+				txnVerified = true
+				Logger.Info("Transaction for blobber update settings verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+				break
+			}
+			verifyRetries++
+		}
+
+		if !txnVerified {
+			Logger.Error("Blobber update settings transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txnHash))
+		}
+		time.Sleep(UPDATE_SETTINGS_TIMER * time.Second)
 	}
 }
 

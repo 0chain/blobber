@@ -143,3 +143,44 @@ func BlobberHealthCheck(ctx context.Context) (string, error) {
 
 	return txn.Hash, nil
 }
+
+func UpdateBlobberSettings(ctx context.Context) (string, error) {
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return "", err
+	}
+
+	sn := &transaction.StorageNode{}
+	sn.ID = node.Self.ID
+	sn.BaseURL = node.Self.GetURLBase()
+	readPrice := config.Configuration.ReadPrice
+	writePrice := config.Configuration.WritePrice
+	if config.Configuration.PriceInUSD {
+		readPrice, err = zcncore.ConvertUSDToToken(readPrice)
+		if err != nil {
+			return "", err
+		}
+
+		writePrice, err = zcncore.ConvertUSDToToken(writePrice)
+		if err != nil {
+			return "", err
+		}
+	}
+	sn.Terms.ReadPrice = zcncore.ConvertToValue(readPrice)
+	sn.Terms.WritePrice = zcncore.ConvertToValue(writePrice)
+	snBytes, err := json.Marshal(sn)
+	if err != nil {
+		return "", err
+	}
+
+	Logger.Info("Updating settings to the blockchain.")
+	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
+		transaction.UPDATE_BLOBBER_SETTINGS, string(snBytes), 0)
+	if err != nil {
+		Logger.Info("Failed during updating settings to the mining network",
+			zap.String("err:", err.Error()))
+		return "", err
+	}
+
+	return txn.Hash, nil
+}
