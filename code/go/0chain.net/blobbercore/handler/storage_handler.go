@@ -164,6 +164,13 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 
 	result["commit_meta_txns"] = commitMetaTxns
 
+	collaborators, err := reference.GetCollaborators(ctx, fileref.ID)
+	if err != nil {
+		Logger.Error("Failed to get collaborators from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
+	}
+
+	result["collaborators"] = collaborators
+
 	authTokenString := r.FormValue("auth_token")
 
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
@@ -243,6 +250,62 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 		Msg string `json:"msg"`
 	}{
 		Msg: "Added commitMetaTxn successfully",
+	}
+
+	return result, nil
+}
+
+func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method == "GET" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+	}
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+	allocationID := allocationObj.ID
+
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 || clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+
+	path_hash := r.FormValue("path_hash")
+	path := r.FormValue("path")
+	if len(path_hash) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		path_hash = reference.GetReferenceLookup(allocationID, path)
+	}
+
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	if fileref.Type != reference.FILE {
+		return nil, common.NewError("invalid_parameters", "Path is not a file.")
+	}
+
+	collabClientID := r.FormValue("collab_id")
+	if len(collabClientID) == 0 {
+		return nil, common.NewError("invalid_parameter", "collab_id not present in the params")
+	}
+
+	err = reference.AddCollaborator(ctx, fileref.ID, collabClientID)
+	if err != nil {
+		return nil, common.NewError("add_collaborator_failed", "Failed to add collaborator with err :"+err.Error())
+	}
+
+	result := struct {
+		Msg string `json:"msg"`
+	}{
+		Msg: "Added collaborator successfully",
 	}
 
 	return result, nil
@@ -336,7 +399,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
 	authTokenString := r.FormValue("auth_token")
-	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
+	if (clientID != allocationObj.OwnerID && !reference.IsACollaborator(ctx, fileref.ID, clientID)) || len(authTokenString) > 0 {
 		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err
