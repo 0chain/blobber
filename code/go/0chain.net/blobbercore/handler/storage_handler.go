@@ -256,22 +256,14 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 }
 
 func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
-
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+
 	allocationID := allocationObj.ID
-
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	if len(clientID) == 0 || clientID != allocationObj.OwnerID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
 	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 
 	path_hash := r.FormValue("path_hash")
@@ -297,15 +289,48 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 		return nil, common.NewError("invalid_parameter", "collab_id not present in the params")
 	}
 
-	err = reference.AddCollaborator(ctx, fileref.ID, collabClientID)
-	if err != nil {
-		return nil, common.NewError("add_collaborator_failed", "Failed to add collaborator with err :"+err.Error())
+	var result struct {
+		Msg string `json:"msg"`
 	}
 
-	result := struct {
-		Msg string `json:"msg"`
-	}{
-		Msg: "Added collaborator successfully",
+	switch r.Method {
+	case http.MethodPost:
+		if len(clientID) == 0 || clientID != allocationObj.OwnerID {
+			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+		}
+
+		if reference.IsACollaborator(ctx, fileref.ID, collabClientID) {
+			result.Msg = "Given client ID is already a collaborator"
+			return result, nil
+		}
+
+		err = reference.AddCollaborator(ctx, fileref.ID, collabClientID)
+		if err != nil {
+			return nil, common.NewError("add_collaborator_failed", "Failed to add collaborator with err :"+err.Error())
+		}
+		result.Msg = "Added collaborator successfully"
+
+	case http.MethodGet:
+		collaborators, err := reference.GetCollaborators(ctx, fileref.ID)
+		if err != nil {
+			return nil, common.NewError("get_collaborator_failed", "Failed to get collaborators from refID with err:"+err.Error())
+		}
+
+		return collaborators, nil
+
+	case http.MethodDelete:
+		if len(clientID) == 0 || clientID != allocationObj.OwnerID {
+			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+		}
+
+		err = reference.RemoveCollaborator(ctx, fileref.ID, collabClientID)
+		if err != nil {
+			return nil, common.NewError("delete_collaborator_failed", "Failed to delete collaborator from refID with err:"+err.Error())
+		}
+		result.Msg = "Removed collaborator successfully"
+
+	default:
+		return nil, common.NewError("invalid_method", "Invalid method used. Use POST/GET/DELETE instead")
 	}
 
 	return result, nil
@@ -399,7 +424,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
 	authTokenString := r.FormValue("auth_token")
-	if (clientID != allocationObj.OwnerID && !reference.IsACollaborator(ctx, fileref.ID, clientID)) || len(authTokenString) > 0 {
+	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
 		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err

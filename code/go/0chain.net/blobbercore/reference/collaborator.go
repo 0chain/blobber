@@ -25,6 +25,13 @@ func AddCollaborator(ctx context.Context, refID int64, clientID string) error {
 	}).Error
 }
 
+func RemoveCollaborator(ctx context.Context, refID int64, clientID string) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	return db.Table((&Collaborator{}).TableName()).
+		Where(&Collaborator{RefID: refID}).
+		Delete(&Collaborator{}).Error
+}
+
 func GetCollaborators(ctx context.Context, refID int64) ([]Collaborator, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	collaborators := []Collaborator{}
