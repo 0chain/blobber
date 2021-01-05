@@ -173,7 +173,9 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 
 	authTokenString := r.FormValue("auth_token")
 
-	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
+	if (allocationObj.OwnerID != clientID &&
+		allocationObj.PayerID != clientID &&
+		!reference.IsACollaborator(ctx, fileref.ID, clientID)) || len(authTokenString) > 0 {
 		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err

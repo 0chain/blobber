@@ -278,10 +278,17 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	var (
 		authTokenString       = r.FormValue("auth_token")
 		clientIDForReadRedeem = clientID // default payer is client
+		isACollaborator       = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
+	// Owner will pay for colla
+	if isACollaborator {
+		clientIDForReadRedeem = allocationObj.OwnerID
+	}
+
 	if (allocationObj.OwnerID != clientID &&
-		allocationObj.PayerID != clientID) || len(authTokenString) > 0 {
+		allocationObj.PayerID != clientID &&
+		!isACollaborator) || len(authTokenString) > 0 {
 
 		var authTicketVerified bool
 		authTicketVerified, err = fsh.verifyAuthTicket(ctx, r, allocationObj,
