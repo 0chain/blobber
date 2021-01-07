@@ -471,8 +471,8 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 	allocationID := allocationObj.ID
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	if len(clientID) == 0 {
+		return nil, common.NewError("invalid_operation", "Please pass clientID in the header")
 	}
 
 	var paths []string
