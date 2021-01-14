@@ -57,7 +57,6 @@ func (ar *apiResp) err() error {
 }
 
 func RegisterBlobber(ctx context.Context) (string, error) {
-
 	wcb := &WalletCallback{}
 	wcb.wg = &sync.WaitGroup{}
 	wcb.wg.Add(1)
@@ -72,35 +71,10 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	sn := &transaction.StorageNode{}
-	sn.ID = node.Self.ID
-	sn.BaseURL = node.Self.GetURLBase()
-	sn.Capacity = config.Configuration.Capacity
-	readPrice := config.Configuration.ReadPrice
-	writePrice := config.Configuration.WritePrice
-	if config.Configuration.PriceInUSD {
-		readPrice, err = zcncore.ConvertUSDToToken(readPrice)
-		if err != nil {
-			return "", err
-		}
-
-		writePrice, err = zcncore.ConvertUSDToToken(writePrice)
-		if err != nil {
-			return "", err
-		}
+	sn, err := getStorageNode()
+	if err != nil {
+		return "", err
 	}
-	sn.Terms.ReadPrice = zcncore.ConvertToValue(readPrice)
-	sn.Terms.WritePrice = zcncore.ConvertToValue(writePrice)
-	sn.Terms.MinLockDemand = config.Configuration.MinLockDemand
-	sn.Terms.MaxOfferDuration = config.Configuration.MaxOfferDuration
-	sn.Terms.ChallengeCompletionTime = config.Configuration.ChallengeCompletionTime
-
-	sn.StakePoolSettings.DelegateWallet = config.Configuration.DelegateWallet
-	sn.StakePoolSettings.MinStake = config.Configuration.MinStake
-	sn.StakePoolSettings.MaxStake = config.Configuration.MaxStake
-	sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
-	sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
 
 	snBytes, err := json.Marshal(sn)
 	if err != nil {
@@ -150,24 +124,11 @@ func UpdateBlobberSettings(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	sn := &transaction.StorageNode{}
-	sn.ID = node.Self.ID
-	sn.BaseURL = node.Self.GetURLBase()
-	readPrice := config.Configuration.ReadPrice
-	writePrice := config.Configuration.WritePrice
-	if config.Configuration.PriceInUSD {
-		readPrice, err = zcncore.ConvertUSDToToken(readPrice)
-		if err != nil {
-			return "", err
-		}
-
-		writePrice, err = zcncore.ConvertUSDToToken(writePrice)
-		if err != nil {
-			return "", err
-		}
+	sn, err := getStorageNode()
+	if err != nil {
+		return "", err
 	}
-	sn.Terms.ReadPrice = zcncore.ConvertToValue(readPrice)
-	sn.Terms.WritePrice = zcncore.ConvertToValue(writePrice)
+
 	snBytes, err := json.Marshal(sn)
 	if err != nil {
 		return "", err
@@ -183,4 +144,37 @@ func UpdateBlobberSettings(ctx context.Context) (string, error) {
 	}
 
 	return txn.Hash, nil
+}
+
+func getStorageNode() (*transaction.StorageNode, error) {
+	var err error
+	sn := &transaction.StorageNode{}
+	sn.ID = node.Self.ID
+	sn.BaseURL = node.Self.GetURLBase()
+	sn.Capacity = config.Configuration.Capacity
+	readPrice := config.Configuration.ReadPrice
+	writePrice := config.Configuration.WritePrice
+	if config.Configuration.PriceInUSD {
+		readPrice, err = zcncore.ConvertUSDToToken(readPrice)
+		if err != nil {
+			return nil, err
+		}
+
+		writePrice, err = zcncore.ConvertUSDToToken(writePrice)
+		if err != nil {
+			return nil, err
+		}
+	}
+	sn.Terms.ReadPrice = zcncore.ConvertToValue(readPrice)
+	sn.Terms.WritePrice = zcncore.ConvertToValue(writePrice)
+	sn.Terms.MinLockDemand = config.Configuration.MinLockDemand
+	sn.Terms.MaxOfferDuration = config.Configuration.MaxOfferDuration
+	sn.Terms.ChallengeCompletionTime = config.Configuration.ChallengeCompletionTime
+
+	sn.StakePoolSettings.DelegateWallet = config.Configuration.DelegateWallet
+	sn.StakePoolSettings.MinStake = config.Configuration.MinStake
+	sn.StakePoolSettings.MaxStake = config.Configuration.MaxStake
+	sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
+	sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
+	return sn, nil
 }

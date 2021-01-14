@@ -436,7 +436,7 @@ func BlobberHealthCheck() {
 }
 
 func UpdateBlobberSettings() {
-	var UPDATE_SETTINGS_TIMER = 60 * time.Duration(viper.GetInt("price_worker_in_hours"))
+	var UPDATE_SETTINGS_TIMER = 60 * 60 * time.Duration(viper.GetInt("price_worker_in_hours"))
 	time.Sleep(UPDATE_SETTINGS_TIMER * time.Second)
 	for {
 		txnHash, err := handler.UpdateBlobberSettings(common.GetRootContext())
