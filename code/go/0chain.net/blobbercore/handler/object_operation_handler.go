@@ -99,7 +99,7 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 }
 
 func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
-	writeMarker *writemarker.WriteMarker) (err error) {
+	writeMarker *writemarker.WriteMarker, payerID string) (err error) {
 
 	// check out read pool tokens if read_price > 0
 	var (
@@ -119,7 +119,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
 		return // skip if write price is zero or it's about deleting
 	}
 
-	pend, err = allocation.GetPending(db, writeMarker.ClientID,
+	pend, err = allocation.GetPending(db, payerID,
 		alloc.ID, blobberID)
 	if err != nil {
 		return common.NewErrorf("write_pre_redeem",
@@ -134,13 +134,13 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
 
 	var have = pend.HaveWrite(wps, alloc, writeMarker.Timestamp)
 	if have < want {
-		wps, err = allocation.RequestWritePools(writeMarker.ClientID,
+		wps, err = allocation.RequestWritePools(payerID,
 			alloc.ID)
 		if err != nil {
 			return common.NewErrorf("write_pre_redeem",
 				"can't request write pools from sharders: %v", err)
 		}
-		err = allocation.SetWritePools(db, writeMarker.ClientID,
+		err = allocation.SetWritePools(db, payerID,
 			alloc.ID, blobberID, wps)
 		if err != nil {
 			return common.NewErrorf("write_pre_redeem",
@@ -157,7 +157,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	if have < want {
 		return common.NewErrorf("write_pre_redeem", "not enough "+
 			"tokens in write pools (client -> allocation ->  blobber)"+
-			"(%s -> %s -> %s), have %d, want %d", writeMarker.ClientID,
+			"(%s -> %s -> %s), have %d, want %d", payerID,
 			alloc.ID, writeMarker.BlobberID, have, want)
 	}
 
@@ -278,10 +278,17 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	var (
 		authTokenString       = r.FormValue("auth_token")
 		clientIDForReadRedeem = clientID // default payer is client
+		isACollaborator       = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
+	// Owner will pay for collaborator
+	if isACollaborator {
+		clientIDForReadRedeem = allocationObj.OwnerID
+	}
+
 	if (allocationObj.OwnerID != clientID &&
-		allocationObj.PayerID != clientID) || len(authTokenString) > 0 {
+		allocationObj.PayerID != clientID &&
+		!isACollaborator) || len(authTokenString) > 0 {
 
 		var authTicketVerified bool
 		authTicketVerified, err = fsh.verifyAuthTicket(ctx, r, allocationObj,
@@ -425,18 +432,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 
 	allocationID := allocationObj.ID
 
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID ||
-		len(clientKey) == 0 || encryption.Hash(clientKeyBytes) != clientID {
-
-		return nil, common.NewError("invalid_operation",
-			"Operation needs to be performed by the owner of the allocation")
-	}
-
-	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
-		Logger.Info("Error Parsing the request", zap.Any("error", err))
-		return nil, common.NewError("request_parse_error", err.Error())
-	}
-
 	connectionID := r.FormValue("connection_id")
 	if len(connectionID) == 0 {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
@@ -454,6 +449,33 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 	if len(connectionObj.Changes) == 0 {
 		return nil, common.NewError("invalid_parameters",
 			"Invalid connection id. Connection does not have any changes.")
+	}
+
+	var isACollaborator bool
+	for _, change := range connectionObj.Changes {
+		if change.Operation == allocation.UPDATE_OPERATION {
+			updateFileChange := new(allocation.UpdateFileChange)
+			updateFileChange.Unmarshal(change.Input)
+			fileRef, err := reference.GetReference(ctx, allocationID, updateFileChange.Path)
+			if err != nil {
+				return nil, err
+			}
+			isACollaborator = reference.IsACollaborator(ctx, fileRef.ID, clientID)
+			break
+		}
+	}
+
+	if len(clientID) == 0 || len(clientKey) == 0 {
+		return nil, common.NewError("invalid_params", "Please provide clientID and clientKey")
+	}
+
+	if (allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID) && !isACollaborator {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
+		Logger.Info("Error Parsing the request", zap.Any("error", err))
+		return nil, common.NewError("request_parse_error", err.Error())
 	}
 
 	if allocationObj.BlobberSizeUsed+connectionObj.Size > allocationObj.BlobberSize {
@@ -497,7 +519,12 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
 	}
 
-	if err = writePreRedeem(ctx, allocationObj, &writeMarker); err != nil {
+	var clientIDForWriteRedeem = writeMarker.ClientID
+	if isACollaborator {
+		clientIDForWriteRedeem = allocationObj.OwnerID
+	}
+
+	if err = writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
 		return nil, err
 	}
 
@@ -887,7 +914,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 
 	allocationID := allocationObj.ID
 
-	if len(clientID) == 0 || (allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID) {
+	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
@@ -901,7 +928,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, allocationObj.OwnerID)
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
@@ -917,7 +944,11 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 	} else if r.Method == "DELETE" {
 		mode = allocation.DELETE_OPERATION
 	}
+
 	if mode == allocation.DELETE_OPERATION {
+		if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
+			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+		}
 		result, err = fsh.DeleteFile(ctx, r, connectionObj)
 		if err != nil {
 			return nil, err
@@ -937,10 +968,24 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		exisitingFileRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
 		existingFileRefSize := int64(0)
 		exisitingFileOnCloud := false
-		if mode == allocation.INSERT_OPERATION && exisitingFileRef != nil {
-			return nil, common.NewError("duplicate_file", "File at path already exists")
-		} else if mode == allocation.UPDATE_OPERATION && exisitingFileRef == nil {
-			return nil, common.NewError("invalid_file_update", "File at path does not exist for update")
+		if mode == allocation.INSERT_OPERATION {
+			if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
+				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+			}
+
+			if exisitingFileRef != nil {
+				return nil, common.NewError("duplicate_file", "File at path already exists")
+			}
+		} else if mode == allocation.UPDATE_OPERATION {
+			if exisitingFileRef == nil {
+				return nil, common.NewError("invalid_file_update", "File at path does not exist for update")
+			}
+
+			if allocationObj.OwnerID != clientID &&
+				allocationObj.PayerID != clientID &&
+				!reference.IsACollaborator(ctx, exisitingFileRef.ID, clientID) {
+				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner, collaborator or the payer of the allocation")
+			}
 		}
 
 		if exisitingFileRef != nil {
