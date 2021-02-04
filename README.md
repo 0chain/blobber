@@ -94,7 +94,27 @@ $ docker ps
 
 This should display a container image blobber_blobber and should have the ports mapped like "0.0.0.0:5050->5050/tcp"
 
+2. When starting multiple blobbers, it could happen that blobbers are not being registered properly (not returned on `zbox ls-blobbers`). 
+   
+Blobber registration takes sometime and adding at least 5 second wait before starting the next blobber usually avoids the issue.
   
+3. If unable to create new allocations as shown below.
+
+zbox example
+
+```
+zbox newallocation --lock 0.5
+Error creating allocation: transaction_not_found: Transaction was not found on any of the sharders
+```
+
+To fix this issue, the `delegate_wallet` configured on `config/0chain_blober.yaml` and `config/0chain_validator.yaml` must lock some tokens on the blobber. 
+Through zbox, it can be done like the example below.
+
+```
+zbox sp-lock --blobber_id f65af5d64000c7cd2883f4910eb69086f9d6e6635c744e62afcfab58b938ee25 --tokens 0.5
+```
+
+    
 
 ## Connect to other network
 
