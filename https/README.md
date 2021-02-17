@@ -79,7 +79,7 @@ docker-compose up -d
 docker logs -f https_certbot_1 
 ```
 
-4. Edit /conf.d/nginx.conf to uncomment required locations in config for port 80. Uncomment all lines in server config for port 443 and comment locations which are not required.
+4. Edit /conf.d/nginx.conf to uncomment required locations in config for port 80. Uncomment all lines in server config for port 443 and comment locations which are not required. Don't forget to reploce <your_domain> with your domain. 
 
 5. Restart docker compose and you will be able to access blobbers over https.
 
