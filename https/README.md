@@ -42,7 +42,7 @@ For example: If you want to connect to five network, set
 block_worker: https://five.devnet-0chain.net/dns
 ```
 
-3. Modify `docker.local/p0docker-compose.yml` and replace `< localhost >` in command with your domain. 
+3. Edit `docker.local/p0docker-compose.yml` and replace `< localhost >` in command with your domain. 
   
 
 4. Go to blobber1 directory (git/blobber/docker.local/blobber1) and run the container using:
@@ -65,7 +65,7 @@ This will join blobber1 to the network. You can repeat step 4 for other blobbers
 cd /blobber/https
 ```
 
-2. Modify docker-compose.yml and replace <your_email>, <your_domain> with your email and domain. Make sure to add route53 A type record for your domain and ip address
+2. Edit docker-compose.yml and replace <your_email>, <your_domain> with your email and domain. Make sure to add route53 A type record for your domain and ip address
 
 
 3. Deploy nginx and certbot using the following command
