@@ -48,6 +48,7 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
+			Logger.Info("Attempting to commit processed challenges...")
 			rctx := datastore.GetStore().CreateTransaction(ctx)
 			db := datastore.GetStore().GetTransaction(rctx)
 			//lastChallengeRedeemed := &ChallengeEntity{}
@@ -72,6 +73,7 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 
 				if len(openchallenges) > 0 {
 					for _, openchallenge := range openchallenges {
+						Logger.Info("Attempting to commit challenge", zap.Any("challenge_id", openchallenge.ChallengeID), zap.Any("openchallenge", openchallenge))
 						openchallenge.UnmarshalFields()
 						mutex := lock.GetMutex(openchallenge.TableName(), openchallenge.ChallengeID)
 						mutex.Lock()
@@ -108,6 +110,7 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 					Find(&toBeVerifiedChallenges)
 
 				for _, toBeVerifiedChallenge := range toBeVerifiedChallenges {
+					Logger.Info("Attempting to commit challenge through verification", zap.Any("challenge_id", toBeVerifiedChallenge.ChallengeID), zap.Any("openchallenge", toBeVerifiedChallenge))
 					toBeVerifiedChallenge.UnmarshalFields()
 					mutex := lock.GetMutex(toBeVerifiedChallenge.TableName(), toBeVerifiedChallenge.ChallengeID)
 					mutex.Lock()
@@ -189,7 +192,7 @@ func FindChallenges(ctx context.Context) {
 							defer redeemCtx.Done()
 							err := GetValidationTickets(redeemCtx, challengeEntity)
 							if err != nil {
-								Logger.Error("Getting validation tickets failed", zap.Error(err))
+								Logger.Error("Getting validation tickets failed", zap.Any("challenge", challengeEntity), zap.Error(err))
 							}
 							db := datastore.GetStore().GetTransaction(redeemCtx)
 							err = db.Commit().Error

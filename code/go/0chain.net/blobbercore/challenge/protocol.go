@@ -142,7 +142,7 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 
 		if err != nil {
 			cr.ErrorChallenge(ctx, err)
-			return err
+			return common.NewError("blockdata_not_found", err.Error())
 		}
 		postData["data"] = []byte(blockData)
 		postData["merkle_path"] = mt.GetPathByIndex(blockoffset)
