@@ -184,7 +184,10 @@ func FindChallenges(ctx context.Context) {
 						go func(redeemCtx context.Context, challengeEntity *ChallengeEntity) {
 							redeemCtx = datastore.GetStore().CreateTransaction(redeemCtx)
 							defer redeemCtx.Done()
-							GetValidationTickets(redeemCtx, challengeEntity)
+							err := GetValidationTickets(redeemCtx, challengeEntity)
+							if err != nil {
+								Logger.Error("Getting validation tickets failed", zap.Error(err))
+							}
 							db := datastore.GetStore().GetTransaction(redeemCtx)
 							err = db.Commit().Error
 							if err != nil {
