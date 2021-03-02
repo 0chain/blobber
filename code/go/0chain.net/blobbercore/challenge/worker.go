@@ -90,6 +90,7 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 								zap.Any("id", openchallenge.ChallengeID),
 								zap.String("txn", openchallenge.CommitTxnID))
 						} else {
+							Logger.Info("Challenge was not committed", zap.Any("challenge_id", openchallenge.ChallengeID), zap.Any("openchallenge", openchallenge))
 							break
 						}
 					}
@@ -124,6 +125,8 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 						Logger.Info("Challenge has been submitted to blockchain",
 							zap.Any("id", toBeVerifiedChallenge.ChallengeID),
 							zap.String("txn", toBeVerifiedChallenge.CommitTxnID))
+					} else {
+						Logger.Info("Challenge was not committed after verification", zap.Any("challenge_id", toBeVerifiedChallenge.ChallengeID), zap.Any("openchallenge", toBeVerifiedChallenge))
 					}
 				}
 
