@@ -239,7 +239,7 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 				FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
 				return nil
 			}
-			Logger.Error("Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID))
+			Logger.Error("Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 		}
 	}
 
@@ -254,6 +254,7 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
 		}
 		cr.ErrorChallenge(ctx, err)
+		Logger.Error("Error while submitting challenge to BC.", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 	} else {
 		cr.Status = Committed
 		cr.StatusMessage = t.TransactionOutput
