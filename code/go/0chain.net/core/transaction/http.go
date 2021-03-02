@@ -205,6 +205,8 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			numSharders--
 		} else {
 			if response.StatusCode != 200 {
+				responseBody, _ := ioutil.ReadAll(response.Body)
+				Logger.Error("Got error response from sc rest api", zap.Any("response", string(responseBody)))
 				response.Body.Close()
 				continue
 			}
