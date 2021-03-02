@@ -208,6 +208,7 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 		}
 	}
 
+	Logger.Info("validator response stats", zap.Any("challenge", cr), zap.Any("validator_responses", responses))
 	if numSuccess > (len(cr.Validators)/2) || numFailure > (len(cr.Validators)/2) || numValidatorsResponded == len(cr.Validators) {
 		if numSuccess > (len(cr.Validators) / 2) {
 			cr.Result = ChallengeSuccess
