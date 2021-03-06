@@ -35,8 +35,8 @@ func ChallengeWorker(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			wg.Add(2)
 			clearExpiredChallenges(ctx)
+			wg.Add(2)
 			go SubmitProcessedChallenges(ctx, wg)
 			go FindChallenges(ctx, wg)
 			wg.Wait()
@@ -48,7 +48,7 @@ func clearExpiredChallenges(ctx context.Context) {
 	rctx := datastore.GetStore().CreateTransaction(ctx)
 	db := datastore.GetStore().GetTransaction(rctx)
 	//lastChallengeRedeemed := &ChallengeEntity{}
-	db.Exec("update challenges set status = ? where created + cct > ?", Committed, time.Now().Second())
+	db.Exec("update challenges set status = ? where created + cct < ?", Committed, time.Now().Second())
 
 	db.Commit()
 	rctx.Done()
@@ -70,6 +70,8 @@ func GetValidationTickets(ctx context.Context, challengeObj *ChallengeEntity) er
 }
 
 func SubmitProcessedChallenges(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	Logger.Info("Attempting to commit processed challenges...")
 	rctx := datastore.GetStore().CreateTransaction(ctx)
 	db := datastore.GetStore().GetTransaction(rctx)
@@ -162,8 +164,6 @@ func SubmitProcessedChallenges(ctx context.Context, wg *sync.WaitGroup) {
 			zap.Error(err))
 	}
 
-	wg.Done()
-
 	// if challengeObj.ObjectPath != nil && challengeObj.Status == Committed && challengeObj.ObjectPath.FileBlockNum > 0 {
 	// 	//stats.FileChallenged(challengeObj.AllocationID, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
 	// 	if challengeObj.Result == ChallengeSuccess {
@@ -184,6 +184,8 @@ func SubmitProcessedChallenges(ctx context.Context, wg *sync.WaitGroup) {
 var iterInprogress = false
 
 func FindChallenges(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	if !iterInprogress {
 		iterInprogress = true
 		rctx := datastore.GetStore().CreateTransaction(ctx)
@@ -264,6 +266,4 @@ func FindChallenges(ctx context.Context, wg *sync.WaitGroup) {
 		}
 		iterInprogress = false
 	}
-
-	wg.Done()
 }
