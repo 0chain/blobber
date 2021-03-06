@@ -75,6 +75,8 @@ type ChallengeEntity struct {
 	ValidationTickets       []*ValidationTicket   `json:"validation_tickets" gorm:"-"`
 	ObjectPathString        datatypes.JSON        `json:"-" gorm:"column:object_path"`
 	ObjectPath              *reference.ObjectPath `json:"object_path" gorm:"-"`
+	Created                 common.Timestamp      `json:"created" gorm:"column:created_at"`
+	ChallengeCompletionTime common.Timestamp      `json:"cct" gorm:"column:cct"`
 }
 
 func (ChallengeEntity) TableName() string {
