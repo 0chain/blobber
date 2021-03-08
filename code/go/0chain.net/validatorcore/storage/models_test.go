@@ -1,0 +1,879 @@
+package storage_test
+
+import (
+	"testing"
+
+	"0chain.net/core/common"
+	"0chain.net/core/config"
+	"0chain.net/core/logging"
+	"0chain.net/core/node"
+	"0chain.net/validatorcore/storage"
+
+	"github.com/0chain/gosdk/core/zcncrypto"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+)
+
+func TestAttributes_String(t *testing.T) {
+	tests := []struct {
+		name  string
+		attrs *storage.Attributes
+		want  string
+	}{
+		{
+			name: "owner",
+			attrs: &storage.Attributes{
+				WhoPaysForReads: common.WhoPaysOwner,
+			},
+			want: "{}",
+			// want: "{\"who_pays_for_reads\":0}",
+		},
+		{
+			name: "",
+			attrs: &storage.Attributes{
+				WhoPaysForReads: common.WhoPays3rdParty,
+			},
+			want: "{\"who_pays_for_reads\":1}",
+		},
+		{
+			name:  "nil",
+			attrs: nil,
+			want:  "{}",
+		},
+		{
+			name:  "empty",
+			attrs: &storage.Attributes{},
+			want:  "{}",
+		},
+		{
+			name: "invalid",
+			attrs: &storage.Attributes{
+				WhoPaysForReads: 2,
+			},
+			want: "{\"who_pays_for_reads\":2}",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.attrs.String()
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestDirMetaData_GetNumBlocks(t *testing.T) {
+	t.Skip("covered in TestObjectPath_VerifyBlockNum")
+	/*
+		dmd := storage.DirMetaData{
+			NumBlocks: int64(1),
+		}
+		want := int64(1)
+		got := dmd.GetNumBlocks()
+		assert.Equal(t, want, got)
+	*/
+}
+
+func TestDirMetaData_GetHash(t *testing.T) {
+	t.Skip("covered in TestObjectPath_Parse")
+	/*
+		dmd := storage.DirMetaData{
+			Hash: "hash",
+		}
+		want := "hash"
+		got := dmd.GetHash()
+		assert.Equal(t, want, got)
+	*/
+}
+
+func TestDirMetaData_CalculateHash(t *testing.T) {
+	tests := []struct {
+		name string
+		dmd  storage.DirMetaData
+		want string
+	}{
+		{
+			name: "without children",
+			dmd: storage.DirMetaData{
+				Hash: "hash0",
+			},
+			want: "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+		},
+		{
+			name: "with children",
+			dmd: storage.DirMetaData{
+				Hash: "hash0",
+				Children: []storage.ObjectEntity{
+					&storage.DirMetaData{
+						Hash: "hash1",
+					},
+				},
+			},
+			want: "5f2ec2d6c64c3e0bed5af21673e7e824d1f91f484ebcfe7a4758949e6d9eb6e0",
+		},
+		{
+			name: "with nested children",
+			dmd: storage.DirMetaData{
+				Hash: "hash0",
+				Children: []storage.ObjectEntity{
+					&storage.DirMetaData{
+						Hash: "hash1",
+						Children: []storage.ObjectEntity{
+							&storage.DirMetaData{
+								Hash: "hash2",
+							},
+						},
+					},
+				},
+			},
+			want: "5f2ec2d6c64c3e0bed5af21673e7e824d1f91f484ebcfe7a4758949e6d9eb6e0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.dmd.CalculateHash()
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestDirMetaData_GetType(t *testing.T) {
+	t.Skip("covered in TestObjectPath_VerifyBlockNum")
+	/*
+		dmd := storage.DirMetaData{
+			Type: storage.DIRECTORY,
+		}
+		want := storage.DIRECTORY
+		got := dmd.GetType()
+		assert.Equal(t, want, got)
+	*/
+}
+
+func TestFileMetaData_GetHashData(t *testing.T) {
+	tests := []struct {
+		name string
+		fmd  storage.FileMetaData
+		want string
+	}{
+		{
+			name: "with Attributes.WhoPays = WhoPaysOwner",
+			fmd: storage.FileMetaData{
+				DirMetaData: storage.DirMetaData{},
+				Attributes: storage.Attributes{
+					WhoPaysForReads: common.WhoPaysOwner,
+				},
+			},
+			want: "::::0:::0::{}",
+			// want: "::::0:::0::{\"who_pays_for_reads\":0}",
+		},
+		{
+			name: "with Attributes.WhoPays = WhoPays3rdParty",
+			fmd: storage.FileMetaData{
+				DirMetaData: storage.DirMetaData{},
+				Attributes: storage.Attributes{
+					WhoPaysForReads: common.WhoPays3rdParty,
+				},
+			},
+			want: "::::0:::0::{\"who_pays_for_reads\":1}",
+		},
+		{
+			name: "with Attributes.WhoPays = nil",
+			fmd: storage.FileMetaData{
+				DirMetaData: storage.DirMetaData{},
+			},
+			want: "::::0:::0::{}",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.fmd.GetHashData()
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestFileMetaData_NumBlocks(t *testing.T) {
+	t.Skip("covered in TestObjectPath_VerifyBlockNum")
+	/*
+		fmd := storage.FileMetaData{
+			DirMetaData: storage.DirMetaData{
+				NumBlocks: int64(1),
+			},
+		}
+		want := int64(1)
+		got := fmd.GetNumBlocks()
+		assert.Equal(t, want, got)
+	*/
+}
+
+func TestFileMetaData_GetHash(t *testing.T) {
+	t.Skip("covered in TestObjectPath_Parse")
+	/*
+		fmd := storage.FileMetaData{
+			DirMetaData: storage.DirMetaData{
+				Hash: "hash",
+			},
+		}
+		want := "hash"
+		got := fmd.GetHash()
+		assert.Equal(t, want, got)
+	*/
+}
+
+func TestFileMetaData_CalculateHash(t *testing.T) {
+	tests := []struct {
+		name string
+		fmd  storage.FileMetaData
+		want string
+	}{
+		{
+			name: "with Attributes.WhoPays = WhoPaysOwner",
+			fmd: storage.FileMetaData{
+				Attributes: storage.Attributes{
+					WhoPaysForReads: common.WhoPaysOwner,
+				},
+			},
+			want: "f78718c8ad33d8b97fe902dabc36df401f82c88bde608ab85005d332ac24de43",
+			// want: "a9862b25db264157a540dc3ecf7aae331f377aeb3c2ef9c59951e1c8c3e3bc15",
+		},
+		{
+			name: "with Attributes.WhoPays = WhoPays3rdParty",
+			fmd: storage.FileMetaData{
+				Attributes: storage.Attributes{
+					WhoPaysForReads: common.WhoPays3rdParty,
+				},
+			},
+			want: "2cc4e60833e5bf1e018910ce256d12374f1d8e87beade0f5c2a63770e6b8a445",
+		},
+		{
+			name: "with Attributes.WhoPays = nil",
+			fmd:  storage.FileMetaData{},
+			want: "f78718c8ad33d8b97fe902dabc36df401f82c88bde608ab85005d332ac24de43",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.fmd.CalculateHash()
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestFileMetaData_GetType(t *testing.T) {
+	t.Skip("covered in TestObjectPath_VerifyBlockNum")
+	/*
+		fmd := storage.FileMetaData{
+			DirMetaData: storage.DirMetaData{
+				Type: storage.FILE,
+			},
+		}
+		want := storage.FILE
+		got := fmd.GetType()
+		assert.Equal(t, want, got)
+	*/
+}
+
+func TestObjectPath_Parse(t *testing.T) {
+	// t.Skip("covered int TestObjectPath_VerifyPath")
+	logging.Logger = zap.New(nil) // FIXME to avoid complains
+	tests := []struct {
+		name    string
+		objPath *storage.ObjectPath
+		input   map[string]interface{}
+		allocID string
+		want    *storage.DirMetaData
+		wantErr bool
+	}{
+		/*
+			{
+				name:    "invalid input",
+				objPath: &storage.ObjectPath{},
+				allocID: "1",
+				wantErr: true,
+			},
+			{
+				name:    "empty path",
+				objPath: &storage.ObjectPath{},
+				input: map[string]interface{}{
+					"hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+				},
+				allocID: "1",
+				want: &storage.DirMetaData{
+					CreationDate: common.Timestamp(0),
+					Type:         "",
+					Name:         "",
+					Path:         "",
+					Hash:         "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					PathHash:     "",
+					NumBlocks:    int64(0),
+					AllocationID: "",
+					Children:     nil,
+				},
+			},
+			{
+				name:    "root path",
+				objPath: &storage.ObjectPath{},
+				input: map[string]interface{}{
+					"path": "file.txt",
+					"hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					"type": "f",
+				},
+				allocID: "1",
+				want: &storage.DirMetaData{
+					CreationDate: common.Timestamp(0),
+					Type:         storage.FILE,
+					Name:         "",
+					Path:         "file.txt",
+					Hash:         "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					PathHash:     "",
+					NumBlocks:    int64(0),
+					AllocationID: "",
+					Children:     nil,
+				},
+			},
+		*/
+		{
+			name:    "dir/file path: hash mismatch",
+			objPath: &storage.ObjectPath{},
+			input: map[string]interface{}{
+				"path": "dir1",
+				"hash": "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
+				"type": "d",
+				"list": []map[string]interface{}{
+					map[string]interface{}{
+						"path": "file.txt",
+						"hash": "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
+						"type": "f",
+					},
+				},
+			},
+			allocID: "1",
+			wantErr: true,
+		},
+		{
+			name:    "dir/dir/file path: hash mismatch",
+			objPath: &storage.ObjectPath{},
+			input: map[string]interface{}{
+				"path": "dir1",
+				"hash": "a02b02080606e78e165fe5a42f8b0087ff82617a1f9c26cc95e269fd653c5a72",
+				"type": "d",
+				"list": []map[string]interface{}{
+					map[string]interface{}{
+						"path": "dir2",
+						"hash": "a02b02080606e78e165fe5a42f8b0087ff82617a1f9c26cc95e269fd653c5a72",
+						"type": "d",
+						"list": []map[string]interface{}{
+							map[string]interface{}{
+								"path": "file.txt",
+								"hash": "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+								"type": "f",
+							},
+						},
+					},
+				},
+			},
+			allocID: "1",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.objPath.Parse(tt.input, tt.allocID)
+			if !tt.wantErr {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestObjectPath_VerifyBlockNum(t *testing.T) {
+	logging.Logger = zap.New(nil) // FIXME to avoid complains
+	tests := []struct {
+		name    string
+		objPath *storage.ObjectPath
+		rand    int64
+		wantErr bool
+	}{
+		{
+			name: "0",
+			objPath: &storage.ObjectPath{
+				RootObject: &storage.DirMetaData{
+					NumBlocks: int64(0),
+				},
+			},
+			rand: 1,
+		},
+		{
+			name: "not found",
+			objPath: &storage.ObjectPath{
+				RootObject: &storage.DirMetaData{
+					NumBlocks: int64(1),
+				},
+			},
+			rand:    1,
+			wantErr: true,
+		},
+		{
+			name: "not found with children",
+			objPath: &storage.ObjectPath{
+				RootObject: &storage.DirMetaData{
+					NumBlocks: int64(1),
+					Children: []storage.ObjectEntity{
+						&storage.DirMetaData{
+							Type:      storage.DIRECTORY,
+							NumBlocks: int64(1),
+						},
+					},
+				},
+			},
+			rand:    1,
+			wantErr: true,
+		},
+		{
+			name: "found wrong hash",
+			objPath: &storage.ObjectPath{
+				RootObject: &storage.DirMetaData{
+					NumBlocks: int64(1),
+					Children: []storage.ObjectEntity{
+						&storage.FileMetaData{
+							DirMetaData: storage.DirMetaData{
+								Type:      storage.FILE,
+								NumBlocks: int64(1),
+							},
+						},
+					},
+				},
+				Meta: &storage.FileMetaData{
+					DirMetaData: storage.DirMetaData{
+						Hash: "hash",
+					},
+				},
+			},
+			rand:    1,
+			wantErr: true,
+		},
+		{
+			name: "found wrong hash",
+			objPath: &storage.ObjectPath{
+				RootObject: &storage.DirMetaData{
+					NumBlocks: int64(1),
+					Children: []storage.ObjectEntity{
+						&storage.FileMetaData{
+							DirMetaData: storage.DirMetaData{
+								Type:      storage.FILE,
+								Hash:      "hash",
+								NumBlocks: int64(1),
+							},
+						},
+					},
+				},
+				Meta: &storage.FileMetaData{
+					DirMetaData: storage.DirMetaData{
+						Hash: "hash",
+					},
+				},
+			},
+			rand:    1,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.objPath.VerifyBlockNum(tt.rand)
+			if !tt.wantErr {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestObjectPath_VerifyPath(t *testing.T) {
+	logging.Logger = zap.New(nil) // FIXME to avoid complains
+	tests := []struct {
+		name    string
+		objPath *storage.ObjectPath
+		allocID string
+		wantErr bool
+	}{
+		{
+			name:    "invalid input",
+			objPath: &storage.ObjectPath{},
+			allocID: "1",
+			wantErr: true,
+		},
+		{
+			name: "empty",
+			objPath: &storage.ObjectPath{
+				RootHash: "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+				Path: map[string]interface{}{
+					"hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+				},
+				RootObject: &storage.DirMetaData{
+					CreationDate: common.Timestamp(0),
+					Type:         "",
+					Name:         "",
+					Path:         "",
+					Hash:         "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					PathHash:     "",
+					NumBlocks:    int64(0),
+					AllocationID: "",
+					Children:     nil,
+				},
+			},
+			allocID: "1",
+		},
+		{
+			name: "root",
+			objPath: &storage.ObjectPath{
+				RootHash: "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+				Path: map[string]interface{}{
+					"path": "file.txt",
+					"hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					"type": "f",
+				},
+				RootObject: &storage.DirMetaData{
+					CreationDate: common.Timestamp(0),
+					Type:         storage.FILE,
+					Name:         "",
+					Path:         "file.txt",
+					Hash:         "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					PathHash:     "",
+					NumBlocks:    int64(0),
+					AllocationID: "",
+					Children:     nil,
+				},
+			},
+			allocID: "1",
+		},
+		{
+			name: "root: wrong allocation ID",
+			objPath: &storage.ObjectPath{
+				RootHash: "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+				Path: map[string]interface{}{
+					"path": "file.txt",
+					"hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					"type": "f",
+				},
+				RootObject: &storage.DirMetaData{
+					CreationDate: common.Timestamp(0),
+					Type:         storage.FILE,
+					Name:         "",
+					Path:         "file.txt",
+					Hash:         "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					PathHash:     "",
+					NumBlocks:    int64(0),
+					AllocationID: "",
+					Children:     nil,
+				},
+			},
+			allocID: "2",
+			wantErr: true,
+		},
+		{
+			name: "dir/file",
+			objPath: &storage.ObjectPath{
+				RootHash: "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
+				Path: map[string]interface{}{
+					"path": "dir1",
+					"hash": "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
+					"type": "d",
+					"list": []map[string]interface{}{
+						map[string]interface{}{
+							"path": "file.txt",
+							"hash": "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+							"type": "f",
+						},
+					},
+				},
+				RootObject: &storage.DirMetaData{
+					CreationDate: common.Timestamp(0),
+					Type:         storage.DIRECTORY,
+					Name:         "",
+					Path:         "dir1",
+					Hash:         "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
+					PathHash:     "",
+					NumBlocks:    int64(0),
+					AllocationID: "",
+					Children: []storage.ObjectEntity{
+						&storage.FileMetaData{
+							DirMetaData: storage.DirMetaData{
+								CreationDate: common.Timestamp(0),
+								Type:         storage.FILE,
+								Name:         "",
+								Path:         "file.txt",
+								Hash:         "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+								PathHash:     "",
+								NumBlocks:    int64(0),
+								AllocationID: "1",
+								Children:     nil,
+							},
+							CustomMeta:     "",
+							ContentHash:    "",
+							Size:           int64(0),
+							MerkleRoot:     "",
+							ActualFileSize: int64(0),
+							ActualFileHash: "",
+							Attributes:     storage.Attributes{},
+						},
+					},
+				},
+			},
+			allocID: "1",
+		},
+		{
+			name: "dir/file path: hash mismatch",
+			objPath: &storage.ObjectPath{
+				RootHash: "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+				Path: map[string]interface{}{
+					"path": "dir1",
+					"hash": "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
+					"type": "d",
+					"list": []map[string]interface{}{
+						map[string]interface{}{
+							"path": "file.txt",
+							"hash": "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+							"type": "f",
+						},
+					},
+				},
+				RootObject: &storage.DirMetaData{
+					CreationDate: common.Timestamp(0),
+					Type:         storage.DIRECTORY,
+					Name:         "",
+					Path:         "dir1",
+					Hash:         "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
+					PathHash:     "",
+					NumBlocks:    int64(0),
+					AllocationID: "",
+					Children: []storage.ObjectEntity{
+						&storage.FileMetaData{
+							DirMetaData: storage.DirMetaData{
+								CreationDate: common.Timestamp(0),
+								Type:         storage.FILE,
+								Name:         "",
+								Path:         "file.txt",
+								Hash:         "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+								PathHash:     "",
+								NumBlocks:    int64(0),
+								AllocationID: "1",
+								Children:     nil,
+							},
+							CustomMeta:     "",
+							ContentHash:    "",
+							Size:           int64(0),
+							MerkleRoot:     "",
+							ActualFileSize: int64(0),
+							ActualFileHash: "",
+							Attributes:     storage.Attributes{},
+						},
+					},
+				},
+			},
+			allocID: "1",
+			wantErr: true,
+		},
+		{
+			name: "dir/dir/file",
+			objPath: &storage.ObjectPath{
+				RootHash: "a02b02080606e78e165fe5a42f8b0087ff82617a1f9c26cc95e269fd653c5a72",
+				Path: map[string]interface{}{
+					"path": "dir1",
+					"hash": "a02b02080606e78e165fe5a42f8b0087ff82617a1f9c26cc95e269fd653c5a72",
+					"type": "d",
+					"list": []map[string]interface{}{
+						map[string]interface{}{
+							"path": "dir2",
+							"hash": "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
+							"type": "d",
+							"list": []map[string]interface{}{
+								map[string]interface{}{
+									"path": "file.txt",
+									"hash": "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+									"type": "f",
+								},
+							},
+						},
+					},
+				},
+				RootObject: &storage.DirMetaData{
+					CreationDate: common.Timestamp(0),
+					Type:         storage.DIRECTORY,
+					Name:         "",
+					Path:         "dir1",
+					Hash:         "a02b02080606e78e165fe5a42f8b0087ff82617a1f9c26cc95e269fd653c5a72",
+					PathHash:     "",
+					NumBlocks:    int64(0),
+					AllocationID: "",
+					Children: []storage.ObjectEntity{
+						&storage.DirMetaData{
+							CreationDate: common.Timestamp(0),
+							Type:         storage.DIRECTORY,
+							Name:         "",
+							Path:         "dir2",
+							Hash:         "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
+							PathHash:     "",
+							NumBlocks:    int64(0),
+							AllocationID: "1",
+							Children: []storage.ObjectEntity{
+								&storage.FileMetaData{
+									DirMetaData: storage.DirMetaData{
+										CreationDate: common.Timestamp(0),
+										Type:         storage.FILE,
+										Name:         "",
+										Path:         "file.txt",
+										Hash:         "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+										PathHash:     "",
+										NumBlocks:    int64(0),
+										AllocationID: "1",
+										Children:     nil,
+									},
+									CustomMeta:     "",
+									ContentHash:    "",
+									Size:           int64(0),
+									MerkleRoot:     "",
+									ActualFileSize: int64(0),
+									ActualFileHash: "",
+									Attributes:     storage.Attributes{},
+								},
+							},
+						},
+					},
+				},
+			},
+			allocID: "1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.objPath.VerifyPath(tt.allocID)
+			if !tt.wantErr {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestObjectPath_Verify(t *testing.T) {
+	t.Skip("covered")
+}
+
+func TestChallengeRequest_VerifyChallenge(t *testing.T) {
+	logging.Logger = zap.New(nil) // FIXME to avoid complains
+	tests := []struct {
+		name    string
+		chReq   *storage.ChallengeRequest
+		ch      *storage.Challenge
+		alloc   *storage.Allocation
+		wantErr bool
+	}{
+		{
+			name: "verify object path fails",
+			chReq: &storage.ChallengeRequest{
+				ObjPath: &storage.ObjectPath{
+					RootHash: "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					Path: map[string]interface{}{
+						"path": "file.txt",
+						"hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+						"type": "f",
+					},
+					RootObject: &storage.DirMetaData{
+						CreationDate: common.Timestamp(0),
+						Type:         storage.FILE,
+						Name:         "",
+						Path:         "file.txt",
+						Hash:         "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+						PathHash:     "",
+						NumBlocks:    int64(0),
+						AllocationID: "",
+						Children:     nil,
+					},
+				},
+			},
+			ch: &storage.Challenge{
+				RandomNumber: int64(1),
+				AllocationID: "2",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid write marker",
+			chReq: &storage.ChallengeRequest{
+				ObjPath: &storage.ObjectPath{
+					RootHash: "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					Path: map[string]interface{}{
+						"path": "file.txt",
+						"hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+						"type": "f",
+					},
+					RootObject: &storage.DirMetaData{
+						CreationDate: common.Timestamp(0),
+						Type:         storage.FILE,
+						Name:         "",
+						Path:         "file.txt",
+						Hash:         "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+						PathHash:     "",
+						NumBlocks:    int64(0),
+						AllocationID: "",
+						Children:     nil,
+					},
+				},
+			},
+			ch: &storage.Challenge{
+				RandomNumber: int64(1),
+				AllocationID: "1",
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.chReq.VerifyChallenge(tt.ch, tt.alloc)
+			if !tt.wantErr {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidationTicket_Sign(t *testing.T) {
+	err := setupModelsTest(t)
+	require.NoError(t, err)
+
+	vt := storage.ValidationTicket{
+		ChallengeID:  "challenge_id",
+		BlobberID:    "blobber_id",
+		ValidatorID:  "validator_id",
+		ValidatorKey: "validator_key",
+		Result:       true,
+		Timestamp:    common.Now(),
+	}
+
+	err = vt.Sign()
+	require.NoError(t, err)
+}
+
+func setupModelsTest(t *testing.T) error {
+	t.Helper()
+
+	config.Configuration = config.Config{
+		SignatureScheme: "bls0chain",
+	}
+
+	sigSch := zcncrypto.NewSignatureScheme("bls0chain")
+	wallet, err := sigSch.GenerateKeys()
+	if err != nil {
+		return err
+	}
+
+	node.Self.SetKeys(wallet.Keys[0].PublicKey, wallet.Keys[0].PrivateKey)
+	return nil
+}
