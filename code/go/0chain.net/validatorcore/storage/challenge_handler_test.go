@@ -17,11 +17,12 @@ import (
 func TestChallengeHandler(t *testing.T) {
 	logging.Logger = zap.New(nil) // FIXME to avoid complains
 	tests := []struct {
-		name    string
-		ctx     context.Context
-		req     *http.Request
-		want    interface{}
-		wantErr bool
+		name       string
+		ctx        context.Context
+		req        *http.Request
+		want       interface{}
+		wantErr    bool
+		wantErrMsg string
 	}{
 		{
 			name: "wrong request method",
@@ -29,7 +30,8 @@ func TestChallengeHandler(t *testing.T) {
 				req, _ := http.NewRequest("GET", "url", bytes.NewBuffer([]byte("{}")))
 				return req
 			}(),
-			wantErr: true,
+			wantErr:    true,
+			wantErrMsg: "Invalid method used for the upload URL. Use multi-part form POST instead",
 		},
 		{
 			name: "invalid body",
@@ -37,7 +39,8 @@ func TestChallengeHandler(t *testing.T) {
 				req, _ := http.NewRequest("POST", "url", bytes.NewBuffer([]byte("body")))
 				return req
 			}(),
-			wantErr: true,
+			wantErr:    true,
+			wantErrMsg: "Error in decoding the input.",
 		},
 		{
 			name: "hash mismatch",
@@ -46,7 +49,8 @@ func TestChallengeHandler(t *testing.T) {
 				req.Header.Set("X-App-Request-Hash", "840eb7aa2a9935de63366bacbe9d97e978a859e93dc792a0334de60ed52f8e90")
 				return req
 			}(),
-			wantErr: true,
+			wantErr:    true,
+			wantErrMsg: "Header hash and request hash do not match",
 		},
 		{
 			name: "nil object path",
@@ -55,7 +59,8 @@ func TestChallengeHandler(t *testing.T) {
 				req.Header.Set("X-App-Request-Hash", "840eb7aa2a9935de63366bacbe9d97e978a859e93dc792a0334de60ed52f8e99")
 				return req
 			}(),
-			wantErr: true,
+			wantErr:    true,
+			wantErrMsg: "Empty object path or merkle path",
 		},
 	}
 
@@ -68,6 +73,8 @@ func TestChallengeHandler(t *testing.T) {
 			got, err := storage.ChallengeHandler(ctx, tt.req)
 			if !tt.wantErr {
 				require.NoError(t, err)
+			} else {
+				assert.Contains(t, err.Error(), tt.wantErrMsg)
 			}
 			assert.Equal(t, tt.want, got)
 		})

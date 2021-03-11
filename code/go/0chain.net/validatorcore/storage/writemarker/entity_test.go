@@ -20,9 +20,7 @@ func TestWriteMarker_GetHashData(t *testing.T) {
 
 	want := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", "alloc_root", "prev_alloc_root", "alloc_id", "blobber_id", wallet.ClientID, 1, common.Now())
 	got := wm.GetHashData()
-	if got != want {
-		t.Errorf("want %s, got %s", want, got)
-	}
+	assert.Equal(t, want, got)
 }
 
 func TestWriteMarker_VerifySignature(t *testing.T) {
@@ -58,39 +56,42 @@ func TestWriteMarker_Verify(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name      string
-		allocID   string
-		allocRoot string
-		publicKey string
-		wantErr   bool
+		name       string
+		allocID    string
+		allocRoot  string
+		publicKey  string
+		wantErr    bool
+		wantErrMsg string
 	}{
 		{
 			name:      "valid",
 			allocID:   "alloc_id",
 			allocRoot: "alloc_root",
 			publicKey: wallet.Keys[0].PublicKey,
-			wantErr:   false,
 		},
 		{
-			name:      "invalid: wrong Allocation ID",
-			allocID:   "id",
-			allocRoot: "alloc_root",
-			publicKey: wallet.Keys[0].PublicKey,
-			wantErr:   true,
+			name:       "invalid: wrong Allocation ID",
+			allocID:    "id",
+			allocRoot:  "alloc_root",
+			publicKey:  wallet.Keys[0].PublicKey,
+			wantErr:    true,
+			wantErrMsg: "Invalid write marker. Allocation ID mismatch",
 		},
 		{
-			name:      "invalid: wrong Allocation Root",
-			allocID:   "alloc_id",
-			allocRoot: "root",
-			publicKey: wallet.Keys[0].PublicKey,
-			wantErr:   true,
+			name:       "invalid: wrong Allocation Root",
+			allocID:    "alloc_id",
+			allocRoot:  "root",
+			publicKey:  wallet.Keys[0].PublicKey,
+			wantErr:    true,
+			wantErrMsg: "Invalid write marker. Allocation root mismatch.",
 		},
 		{
-			name:      "invalid: wrong Public Key",
-			allocID:   "alloc_id",
-			allocRoot: "alloc_root",
-			publicKey: "1",
-			wantErr:   true,
+			name:       "invalid: wrong Public Key",
+			allocID:    "alloc_id",
+			allocRoot:  "alloc_root",
+			publicKey:  "1",
+			wantErr:    true,
+			wantErrMsg: "Invalid write marker. Write marker is not from owner",
 		},
 	}
 	for _, tt := range tests {
@@ -98,6 +99,8 @@ func TestWriteMarker_Verify(t *testing.T) {
 			err := wm.Verify(tt.allocID, tt.allocRoot, tt.publicKey)
 			if !tt.wantErr {
 				require.NoError(t, err)
+			} else {
+				assert.Contains(t, err.Error(), tt.wantErrMsg)
 			}
 		})
 	}

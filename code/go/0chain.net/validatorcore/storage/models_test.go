@@ -65,26 +65,10 @@ func TestAttributes_String(t *testing.T) {
 
 func TestDirMetaData_GetNumBlocks(t *testing.T) {
 	t.Skip("covered in TestObjectPath_VerifyBlockNum")
-	/*
-		dmd := storage.DirMetaData{
-			NumBlocks: int64(1),
-		}
-		want := int64(1)
-		got := dmd.GetNumBlocks()
-		assert.Equal(t, want, got)
-	*/
 }
 
 func TestDirMetaData_GetHash(t *testing.T) {
 	t.Skip("covered in TestObjectPath_Parse")
-	/*
-		dmd := storage.DirMetaData{
-			Hash: "hash",
-		}
-		want := "hash"
-		got := dmd.GetHash()
-		assert.Equal(t, want, got)
-	*/
 }
 
 func TestDirMetaData_CalculateHash(t *testing.T) {
@@ -141,14 +125,6 @@ func TestDirMetaData_CalculateHash(t *testing.T) {
 
 func TestDirMetaData_GetType(t *testing.T) {
 	t.Skip("covered in TestObjectPath_VerifyBlockNum")
-	/*
-		dmd := storage.DirMetaData{
-			Type: storage.DIRECTORY,
-		}
-		want := storage.DIRECTORY
-		got := dmd.GetType()
-		assert.Equal(t, want, got)
-	*/
 }
 
 func TestFileMetaData_GetHashData(t *testing.T) {
@@ -197,30 +173,10 @@ func TestFileMetaData_GetHashData(t *testing.T) {
 
 func TestFileMetaData_NumBlocks(t *testing.T) {
 	t.Skip("covered in TestObjectPath_VerifyBlockNum")
-	/*
-		fmd := storage.FileMetaData{
-			DirMetaData: storage.DirMetaData{
-				NumBlocks: int64(1),
-			},
-		}
-		want := int64(1)
-		got := fmd.GetNumBlocks()
-		assert.Equal(t, want, got)
-	*/
 }
 
 func TestFileMetaData_GetHash(t *testing.T) {
 	t.Skip("covered in TestObjectPath_Parse")
-	/*
-		fmd := storage.FileMetaData{
-			DirMetaData: storage.DirMetaData{
-				Hash: "hash",
-			},
-		}
-		want := "hash"
-		got := fmd.GetHash()
-		assert.Equal(t, want, got)
-	*/
 }
 
 func TestFileMetaData_CalculateHash(t *testing.T) {
@@ -265,77 +221,20 @@ func TestFileMetaData_CalculateHash(t *testing.T) {
 
 func TestFileMetaData_GetType(t *testing.T) {
 	t.Skip("covered in TestObjectPath_VerifyBlockNum")
-	/*
-		fmd := storage.FileMetaData{
-			DirMetaData: storage.DirMetaData{
-				Type: storage.FILE,
-			},
-		}
-		want := storage.FILE
-		got := fmd.GetType()
-		assert.Equal(t, want, got)
-	*/
 }
 
 func TestObjectPath_Parse(t *testing.T) {
-	// t.Skip("covered int TestObjectPath_VerifyPath")
 	logging.Logger = zap.New(nil) // FIXME to avoid complains
+
 	tests := []struct {
-		name    string
-		objPath *storage.ObjectPath
-		input   map[string]interface{}
-		allocID string
-		want    *storage.DirMetaData
-		wantErr bool
+		name       string
+		objPath    *storage.ObjectPath
+		input      map[string]interface{}
+		allocID    string
+		want       *storage.DirMetaData
+		wantErr    bool
+		wantErrMsg string
 	}{
-		/*
-			{
-				name:    "invalid input",
-				objPath: &storage.ObjectPath{},
-				allocID: "1",
-				wantErr: true,
-			},
-			{
-				name:    "empty path",
-				objPath: &storage.ObjectPath{},
-				input: map[string]interface{}{
-					"hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
-				},
-				allocID: "1",
-				want: &storage.DirMetaData{
-					CreationDate: common.Timestamp(0),
-					Type:         "",
-					Name:         "",
-					Path:         "",
-					Hash:         "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
-					PathHash:     "",
-					NumBlocks:    int64(0),
-					AllocationID: "",
-					Children:     nil,
-				},
-			},
-			{
-				name:    "root path",
-				objPath: &storage.ObjectPath{},
-				input: map[string]interface{}{
-					"path": "file.txt",
-					"hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
-					"type": "f",
-				},
-				allocID: "1",
-				want: &storage.DirMetaData{
-					CreationDate: common.Timestamp(0),
-					Type:         storage.FILE,
-					Name:         "",
-					Path:         "file.txt",
-					Hash:         "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
-					PathHash:     "",
-					NumBlocks:    int64(0),
-					AllocationID: "",
-					Children:     nil,
-				},
-			},
-		*/
 		{
 			name:    "dir/file path: hash mismatch",
 			objPath: &storage.ObjectPath{},
@@ -351,8 +250,9 @@ func TestObjectPath_Parse(t *testing.T) {
 					},
 				},
 			},
-			allocID: "1",
-			wantErr: true,
+			allocID:    "1",
+			wantErr:    true,
+			wantErrMsg: "Object path error since there is a mismatch in the file hashes.",
 		},
 		{
 			name:    "dir/dir/file path: hash mismatch",
@@ -376,8 +276,9 @@ func TestObjectPath_Parse(t *testing.T) {
 					},
 				},
 			},
-			allocID: "1",
-			wantErr: true,
+			allocID:    "1",
+			wantErr:    true,
+			wantErrMsg: "Object path error since there is a mismatch in the dir hashes.",
 		},
 	}
 
@@ -386,6 +287,8 @@ func TestObjectPath_Parse(t *testing.T) {
 			got, err := tt.objPath.Parse(tt.input, tt.allocID)
 			if !tt.wantErr {
 				require.NoError(t, err)
+			} else {
+				assert.Contains(t, err.Error(), tt.wantErrMsg)
 			}
 			assert.Equal(t, tt.want, got)
 		})
@@ -395,10 +298,11 @@ func TestObjectPath_Parse(t *testing.T) {
 func TestObjectPath_VerifyBlockNum(t *testing.T) {
 	logging.Logger = zap.New(nil) // FIXME to avoid complains
 	tests := []struct {
-		name    string
-		objPath *storage.ObjectPath
-		rand    int64
-		wantErr bool
+		name       string
+		objPath    *storage.ObjectPath
+		rand       int64
+		wantErr    bool
+		wantErrMsg string
 	}{
 		{
 			name: "0",
@@ -416,8 +320,9 @@ func TestObjectPath_VerifyBlockNum(t *testing.T) {
 					NumBlocks: int64(1),
 				},
 			},
-			rand:    1,
-			wantErr: true,
+			rand:       1,
+			wantErr:    true,
+			wantErrMsg: "File for Block num was not found in object path",
 		},
 		{
 			name: "not found with children",
@@ -432,8 +337,9 @@ func TestObjectPath_VerifyBlockNum(t *testing.T) {
 					},
 				},
 			},
-			rand:    1,
-			wantErr: true,
+			rand:       1,
+			wantErr:    true,
+			wantErrMsg: "File for Block num was not found in object path",
 		},
 		{
 			name: "found wrong hash",
@@ -455,32 +361,9 @@ func TestObjectPath_VerifyBlockNum(t *testing.T) {
 					},
 				},
 			},
-			rand:    1,
-			wantErr: true,
-		},
-		{
-			name: "found wrong hash",
-			objPath: &storage.ObjectPath{
-				RootObject: &storage.DirMetaData{
-					NumBlocks: int64(1),
-					Children: []storage.ObjectEntity{
-						&storage.FileMetaData{
-							DirMetaData: storage.DirMetaData{
-								Type:      storage.FILE,
-								Hash:      "hash",
-								NumBlocks: int64(1),
-							},
-						},
-					},
-				},
-				Meta: &storage.FileMetaData{
-					DirMetaData: storage.DirMetaData{
-						Hash: "hash",
-					},
-				},
-			},
-			rand:    1,
-			wantErr: true,
+			rand:       1,
+			wantErr:    true,
+			wantErrMsg: "Block num was not for the same file as object path",
 		},
 	}
 
@@ -489,6 +372,8 @@ func TestObjectPath_VerifyBlockNum(t *testing.T) {
 			err := tt.objPath.VerifyBlockNum(tt.rand)
 			if !tt.wantErr {
 				require.NoError(t, err)
+			} else {
+				assert.Contains(t, err.Error(), tt.wantErrMsg)
 			}
 		})
 	}
@@ -496,17 +381,20 @@ func TestObjectPath_VerifyBlockNum(t *testing.T) {
 
 func TestObjectPath_VerifyPath(t *testing.T) {
 	logging.Logger = zap.New(nil) // FIXME to avoid complains
+
 	tests := []struct {
-		name    string
-		objPath *storage.ObjectPath
-		allocID string
-		wantErr bool
+		name       string
+		objPath    *storage.ObjectPath
+		allocID    string
+		wantErr    bool
+		wantErrMsg string
 	}{
 		{
-			name:    "invalid input",
-			objPath: &storage.ObjectPath{},
-			allocID: "1",
-			wantErr: true,
+			name:       "invalid input",
+			objPath:    &storage.ObjectPath{},
+			allocID:    "1",
+			wantErr:    true,
+			wantErrMsg: "Object path error since there is a mismatch in the dir hashes.",
 		},
 		{
 			name: "empty",
@@ -551,30 +439,6 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 				},
 			},
 			allocID: "1",
-		},
-		{
-			name: "root: wrong allocation ID",
-			objPath: &storage.ObjectPath{
-				RootHash: "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
-				Path: map[string]interface{}{
-					"path": "file.txt",
-					"hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
-					"type": "f",
-				},
-				RootObject: &storage.DirMetaData{
-					CreationDate: common.Timestamp(0),
-					Type:         storage.FILE,
-					Name:         "",
-					Path:         "file.txt",
-					Hash:         "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
-					PathHash:     "",
-					NumBlocks:    int64(0),
-					AllocationID: "",
-					Children:     nil,
-				},
-			},
-			allocID: "2",
-			wantErr: true,
 		},
 		{
 			name: "dir/file",
@@ -676,8 +540,9 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 					},
 				},
 			},
-			allocID: "1",
-			wantErr: true,
+			allocID:    "1",
+			wantErr:    true,
+			wantErrMsg: " Root Hash does not match with object path",
 		},
 		{
 			name: "dir/dir/file",
@@ -756,6 +621,9 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 			err := tt.objPath.VerifyPath(tt.allocID)
 			if !tt.wantErr {
 				require.NoError(t, err)
+			} else {
+				t.Log(err)
+				assert.Contains(t, err.Error(), tt.wantErrMsg)
 			}
 		})
 	}
@@ -767,12 +635,14 @@ func TestObjectPath_Verify(t *testing.T) {
 
 func TestChallengeRequest_VerifyChallenge(t *testing.T) {
 	logging.Logger = zap.New(nil) // FIXME to avoid complains
+
 	tests := []struct {
-		name    string
-		chReq   *storage.ChallengeRequest
-		ch      *storage.Challenge
-		alloc   *storage.Allocation
-		wantErr bool
+		name       string
+		chReq      *storage.ChallengeRequest
+		ch         *storage.Challenge
+		alloc      *storage.Allocation
+		wantErr    bool
+		wantErrMsg string
 	}{
 		{
 			name: "verify object path fails",
@@ -801,7 +671,8 @@ func TestChallengeRequest_VerifyChallenge(t *testing.T) {
 				RandomNumber: int64(1),
 				AllocationID: "2",
 			},
-			wantErr: true,
+			wantErr:    true,
+			wantErrMsg: "Invalid write marker",
 		},
 		{
 			name: "invalid write marker",
@@ -830,7 +701,8 @@ func TestChallengeRequest_VerifyChallenge(t *testing.T) {
 				RandomNumber: int64(1),
 				AllocationID: "1",
 			},
-			wantErr: true,
+			wantErr:    true,
+			wantErrMsg: "Invalid write marker",
 		},
 	}
 
@@ -839,6 +711,8 @@ func TestChallengeRequest_VerifyChallenge(t *testing.T) {
 			err := tt.chReq.VerifyChallenge(tt.ch, tt.alloc)
 			if !tt.wantErr {
 				require.NoError(t, err)
+			} else {
+				assert.Contains(t, err.Error(), tt.wantErrMsg)
 			}
 		})
 	}
@@ -863,11 +737,9 @@ func TestValidationTicket_Sign(t *testing.T) {
 
 func setupModelsTest(t *testing.T) error {
 	t.Helper()
-
 	config.Configuration = config.Config{
 		SignatureScheme: "bls0chain",
 	}
-
 	sigSch := zcncrypto.NewSignatureScheme("bls0chain")
 	wallet, err := sigSch.GenerateKeys()
 	if err != nil {
