@@ -92,7 +92,7 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 								zap.Any("id", openchallenge.ChallengeID),
 								zap.String("txn", openchallenge.CommitTxnID))
 						} else {
-							Logger.Info("Challenge was not committed", zap.Any("challenge_id", openchallenge.ChallengeID), zap.Any("openchallenge", openchallenge))
+							Logger.Info("Challenge was not committed", zap.Any("challenge_id", openchallenge.ChallengeID))
 							break
 						}
 					}
@@ -129,7 +129,7 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 							zap.Any("id", toBeVerifiedChallenge.ChallengeID),
 							zap.String("txn", toBeVerifiedChallenge.CommitTxnID))
 					} else {
-						Logger.Info("Challenge was not committed after verification", zap.Any("challenge_id", toBeVerifiedChallenge.ChallengeID), zap.Any("openchallenge", toBeVerifiedChallenge))
+						Logger.Info("Challenge was not committed after verification", zap.Any("challenge_id", toBeVerifiedChallenge.ChallengeID))
 					}
 				}
 
@@ -192,7 +192,7 @@ func FindChallenges(ctx context.Context) {
 							defer redeemCtx.Done()
 							err := GetValidationTickets(redeemCtx, challengeEntity)
 							if err != nil {
-								Logger.Error("Getting validation tickets failed", zap.Any("challenge", challengeEntity), zap.Error(err))
+								Logger.Error("Getting validation tickets failed", zap.Any("challenge_id", challengeEntity.ChallengeID), zap.Error(err))
 							}
 							db := datastore.GetStore().GetTransaction(redeemCtx)
 							err = db.Commit().Error
