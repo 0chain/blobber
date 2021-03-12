@@ -60,6 +60,8 @@ This will join blobber1 to the network. You can repeat step 4 for other blobbers
 
 ## Configuring Https
 
+Note: You can skip this step if you have nginx/haproxy already setup with ssl in place. Just add paths in the config file and restart the service. 
+
 1. Go to https directory in blobber repo.
 ```
 cd /blobber/https
