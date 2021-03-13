@@ -207,7 +207,7 @@ func (op *ObjectPath) VerifyBlockNum(challengeRand int64) error {
 	blockNum = blockNum + 1
 
 	if op.RootObject.NumBlocks < blockNum {
-		return common.NewError("invalid_block_num", "Invalid block number"+string(op.RootObject.NumBlocks)+" / "+string(blockNum))
+		return common.NewError("invalid_block_num", fmt.Sprintf("Invalid block number %d/%d", op.RootObject.NumBlocks, blockNum))
 	}
 
 	found := false
