@@ -1,9 +1,8 @@
-# Blobber Setup on EC2 instance 
-
+# Blobber Setup on ec2 / vm / bare metal
 
 ## Prerequisite
 
-- Ec2 instance with docker installed
+- ec2 / vm / bare metal  with docker installed
 
 ## Initial Setup
 
@@ -45,9 +44,9 @@ For example: If you want to connect to one network, set
 block_worker: http://one.devnet-0chain.net/dns
 
 ```
-3. Modify `docker.local/keys_config/b0bnode1_keys.txt` and replace `localhost` with public ip of your instance.
+3. Modify `docker.local/keys_config/b0bnode1_keys.txt` and replace `localhost` with public ip of your instance / vm.
 
-4. Modify `docker.local/b0docker-compose.yml` and replace `< public ip here >` with public ip of your instance in 
+4. Modify `docker.local/b0docker-compose.yml` and replace `< public ip here >` with public ip of your instance / vm.
 
 
 ` command: ./bin/blobber --port 505${BLOBBER} --hostname < public ip here > --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keysconfig/minio_config.txt `

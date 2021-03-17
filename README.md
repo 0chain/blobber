@@ -17,9 +17,9 @@
 
 - [Miscellaneous](#miscellaneous) - [Cleanup](#cleanup) - [Minio Setup](#minio)
 
-- [Run blobber on ec2 instance](https://github.com/0chain/blobber/blob/master/docker.aws/README.md)
+- [Run blobber on ec2 / vm / bare metal](https://github.com/0chain/blobber/blob/master/docker.aws/README.md)
 
-- [Run blobber on ec2 over https](https://github.com/0chain/blobber/blob/master/https/README.md)
+- [Run blobber on ec2 / vm / bare metal over https](https://github.com/0chain/blobber/blob/master/https/README.md)
 
 ## Initial Setup
 

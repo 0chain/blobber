@@ -1,9 +1,9 @@
-# Blobber on EC2 instance over https
+# Blobber on ec2 / vm / bare metal over https
 
 
 ## Prerequisite
 
-- Ec2 instance with docker installed
+- ec2 / vm / bare metal with docker installed
 
 ## Initial Setup
 
@@ -67,7 +67,7 @@ Note: You can skip this step if you have nginx/haproxy already setup with ssl in
 cd /blobber/https
 ```
 
-2. Edit docker-compose.yml and replace <your_email>, <your_domain> with your email and domain. Make sure to add route53 A type record for your domain and ip address
+2. Edit docker-compose.yml and replace <your_email>, <your_domain> with your email and domain. Make sure to add 'A' type record for your domain and ip address with your domain provider.
 
 
 3. Deploy nginx and certbot using the following command
