@@ -1,7 +1,6 @@
 name: CI
 
-on:
-  [push]
+on: [push, release]
 
 env:
   BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY }}
