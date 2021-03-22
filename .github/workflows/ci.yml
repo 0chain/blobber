@@ -1,6 +1,10 @@
 name: CI
 
-on: [push, release]
+on:
+  push:
+  release:
+    types:
+      - published
 
 env:
   BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY }}
@@ -50,7 +54,7 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-    - name: Build miner
+    - name: Build
       run: |
         docker build -t $BLOBBER_REGISTRY:$TAG -f docker.local/Dockerfile .
         docker push $BLOBBER_REGISTRY:$TAG
@@ -74,7 +78,7 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-    - name: Build sharder
+    - name: Build
       run: |
         docker build -t $VALIDATOR_REGISTRY:$TAG -f docker.local/ValidatorDockerfile .
         docker push $VALIDATOR_REGISTRY:$TAG
