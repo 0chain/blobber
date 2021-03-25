@@ -171,7 +171,7 @@ func RegisterValidator() {
 			time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
 			if err == nil {
-				txnVerified = true
+				txnVerified = true //nolint:ineffassign // probably has something to do with goroutines
 				Logger.Info("Transaction for adding validator accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
 				return
 			}
@@ -188,8 +188,8 @@ func SetupValidatorOnBC(logDir string) {
 	var logName = logDir + "/validator.log"
 	zcncore.SetLogFile(logName, false)
 	zcncore.SetLogLevel(3)
-	zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme)
-	zcncore.SetWalletInfo(node.Self.GetWalletString(), false)
+	zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme) //nolint:errcheck // error would be detected later as SDK not initialized
+	zcncore.SetWalletInfo(node.Self.GetWalletString(), false)                         //nolint:errcheck // error would be detected later as SDK not initialized
 	go RegisterValidator()
 }
 
