@@ -153,7 +153,7 @@ func (t *Transaction) ExecuteSmartContract(address, methodName, input string, va
 }
 
 func (t *Transaction) Verify() error {
-	t.zcntxn.SetTransactionHash(t.Hash)
+	t.zcntxn.SetTransactionHash(t.Hash) //nolint:errcheck // checked in the next step
 	t.wg.Add(1)
 	err := t.zcntxn.Verify()
 	if err != nil {

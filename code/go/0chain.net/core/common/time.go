@@ -19,4 +19,4 @@ func Within(ts int64, seconds int64) bool {
 	return now > ts-seconds && now < ts+seconds
 }
 
-var randGenerator = rand.New(rand.NewSource(time.Now().UnixNano()))
+var randGenerator = rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:unused,deadcode,varcheck // might be used later?
