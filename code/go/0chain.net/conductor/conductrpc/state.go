@@ -56,14 +56,14 @@ func (s *State) Name(id NodeID) NodeName {
 	return s.Nodes[id] // id -> name (or empty string)
 }
 
-func (s *State) copy() (cp *State) {
+func (s *State) copy() (cp *State) { //nolint:unused,deadcode // might be used later?
 	cp = new(State)
 	(*cp) = (*s)
 	return
 
 }
 
-func (s *State) send(poll chan *State) {
+func (s *State) send(poll chan *State) { //nolint:unused,deadcode // might be used later?
 	go func(state *State) {
 		poll <- state
 	}(s.copy())
