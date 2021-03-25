@@ -87,7 +87,9 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 		validationTicket.ValidatorID = node.Self.ID
 		validationTicket.ValidatorKey = node.Self.PublicKey
 		validationTicket.Timestamp = common.Now()
-		validationTicket.Sign()
+		if err := validationTicket.Sign(); err != nil {
+			Logger.Error("ValidationTicket_Sign", zap.String("challenge_id", validationTicket.ChallengeID), zap.Error(err))
+		}
 		return &validationTicket, nil
 	}
 
@@ -99,10 +101,12 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 	validationTicket.ValidatorID = node.Self.ID
 	validationTicket.ValidatorKey = node.Self.PublicKey
 	validationTicket.Timestamp = common.Now()
-	validationTicket.Sign()
+	if err := validationTicket.Sign(); err != nil {
+		Logger.Error("ValidationTicket_Sign", zap.String("challenge_id", validationTicket.ChallengeID), zap.Error(err))
+	}
 	Logger.Info("Validation passed.", zap.Any("challenge_id", challengeRequest.ChallengeID))
 
-	lru.Add(challengeHash, &validationTicket)
+	lru.Add(challengeHash, &validationTicket) //nolint:errcheck // never returns an error anyway
 	return &validationTicket, nil
 
 }

@@ -127,7 +127,10 @@ func setupEntityTest(t *testing.T) (*writemarker.WriteMarker, *zcncrypto.Wallet,
 	}
 	wm.ClientID = wallet.ClientID
 
-	sigSch.SetPrivateKey(wallet.Keys[0].PrivateKey)
+	err = sigSch.SetPrivateKey(wallet.Keys[0].PrivateKey)
+	if err != nil {
+		return wm, wallet, err
+	}
 	sig, err := sigSch.Sign(encryption.Hash(wm.GetHashData()))
 	if err != nil {
 		return wm, wallet, err
