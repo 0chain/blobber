@@ -56,7 +56,7 @@ func (a *Attributes) Validate() (err error) {
 }
 
 type Ref struct {
-	ID                  int64          `gorm:column:id;primary_key`
+	ID                  int64          `gorm:"column:id;primary_key"`
 	Type                string         `gorm:"column:type" dirlist:"type" filelist:"type"`
 	AllocationID        string         `gorm:"column:allocation_id"`
 	LookupHash          string         `gorm:"column:lookup_hash" dirlist:"lookup_hash" filelist:"lookup_hash"`

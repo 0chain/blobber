@@ -60,7 +60,7 @@ func (store *Store) Close() {
 
 func (store *Store) CreateTransaction(ctx context.Context) context.Context {
 	db := store.db.Begin()
-	return context.WithValue(ctx, CONNECTION_CONTEXT_KEY, db)
+	return context.WithValue(ctx, CONNECTION_CONTEXT_KEY, db) //nolint:staticcheck // changing type might require further refactor
 }
 
 func (store *Store) GetTransaction(ctx context.Context) *gorm.DB {

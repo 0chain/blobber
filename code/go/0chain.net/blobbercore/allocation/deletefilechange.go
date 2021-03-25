@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"path/filepath"
 
-	"0chain.net/blobbercore/reference"
-	"0chain.net/core/common"
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/filestore"
+	"0chain.net/blobbercore/reference"
+	"0chain.net/core/common"
 	. "0chain.net/core/logging"
 
 	"go.uber.org/zap"
@@ -62,7 +62,9 @@ func (nf *DeleteFileChange) ProcessChange(ctx context.Context, change *Allocatio
 		if child.Hash == nf.Hash && child.Hash == affectedRef.Hash {
 			idx = i
 			nf.ContentHash = make(map[string]bool)
-			reference.DeleteReference(ctx, child.ID, child.PathHash)
+			if err := reference.DeleteReference(ctx, child.ID, child.PathHash); err != nil {
+				Logger.Error("DeleteReference", zap.Int64("ref_id", child.ID), zap.Error(err))
+			}
 			if child.Type == reference.FILE {
 				nf.ContentHash[child.ThumbnailHash] = true
 				nf.ContentHash[child.ContentHash] = true
@@ -75,16 +77,20 @@ func (nf *DeleteFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	if idx < 0 {
 		return nil, common.NewError("file_not_found", "Object to delete not found in blobber")
 	}
-	
+
 	dirRef.RemoveChild(idx)
-	rootRef.CalculateHash(ctx, true)
-	
+	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
+		Logger.Error("Ref_CalculateHash", zap.Int64("ref_id", rootRef.ID), zap.Error(err))
+	}
+
 	return nil, nil
 }
 
 func (nf *DeleteFileChange) processChildren(ctx context.Context, curRef *reference.Ref) {
 	for _, childRef := range curRef.Children {
-		reference.DeleteReference(ctx, childRef.ID, childRef.PathHash)
+		if err := reference.DeleteReference(ctx, childRef.ID, childRef.PathHash); err != nil {
+			Logger.Error("DeleteReference", zap.Int64("ref_id", childRef.ID), zap.Error(err))
+		}
 		if childRef.Type == reference.FILE {
 			nf.ContentHash[childRef.ThumbnailHash] = true
 			nf.ContentHash[childRef.ContentHash] = true
@@ -118,7 +124,9 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 		err := db.Table((&reference.Ref{}).TableName()).Where(&reference.Ref{ThumbnailHash: contenthash}).Or(&reference.Ref{ContentHash: contenthash}).Count(&count).Error
 		if err == nil && count == 0 {
 			Logger.Info("Deleting content file", zap.String("content_hash", contenthash))
-			filestore.GetFileStore().DeleteFile(nf.AllocationID, contenthash)
+			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, contenthash); err != nil {
+				Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
+			}
 		}
 	}
 	return nil

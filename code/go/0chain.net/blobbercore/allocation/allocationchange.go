@@ -7,7 +7,9 @@ import (
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
+	"0chain.net/core/logging"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -133,7 +135,9 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 			continue // unknown operation (impossible case?)
 		}
 
-		acp.Unmarshal(change.Input) // error is not handled
+		if err := acp.Unmarshal(change.Input); err != nil { // error is not handled
+			logging.Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+		}
 		cc.AllocationChanges = append(cc.AllocationChanges, acp)
 	}
 }
@@ -161,7 +165,9 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 
 func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) error {
 	for _, change := range a.AllocationChanges {
-		change.DeleteTempFile()
+		if err := change.DeleteTempFile(); err != nil {
+			logging.Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
+		}
 	}
 
 	return nil

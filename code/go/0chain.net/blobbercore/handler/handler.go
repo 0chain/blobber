@@ -286,6 +286,7 @@ func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, er
 	return response, nil
 }
 
+//nolint:gosimple // need more time to verify
 func HandleShutdown(ctx context.Context) {
 	go func() {
 		select {
@@ -297,7 +298,7 @@ func HandleShutdown(ctx context.Context) {
 }
 
 func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
-	pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+	_ = pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 	return "success", nil
 }
 

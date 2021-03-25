@@ -10,6 +10,9 @@ import (
 	"0chain.net/blobbercore/reference"
 	"0chain.net/blobbercore/stats"
 	"0chain.net/core/common"
+	"0chain.net/core/logging"
+
+	"go.uber.org/zap"
 )
 
 type NewFileChange struct {
@@ -47,7 +50,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context,
 
 	dirRef := rootRef
 	treelevel := 0
-	for true {
+	for {
 		found := false
 		for _, child := range dirRef.Children {
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
@@ -104,7 +107,9 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context,
 	}
 
 	dirRef.AddChild(newFile)
-	rootRef.CalculateHash(ctx, true)
+	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
+		logging.Logger.Error("Ref_CalculateHash", zap.Int64("ref_id", rootRef.ID), zap.Error(err))
+	}
 	stats.NewFileCreated(ctx, newFile.ID)
 	return rootRef, nil
 }

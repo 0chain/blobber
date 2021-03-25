@@ -56,7 +56,9 @@ type StoreAllocation struct {
 }
 
 func SetupFSStore(rootDir string) FileStore {
-	createDirs(rootDir)
+	if err := createDirs(rootDir); err != nil {
+		Logger.Error("SetupFSStore", zap.String("root_dir", rootDir), zap.Error(err))
+	}
 	fsStore = &FileFSStore{
 		RootDirectory: rootDir,
 		Minio:         intializeMinio(),
@@ -240,7 +242,7 @@ func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *F
 		merkleHashes[idx] = sha3.New256()
 	}
 	bytesBuf := bytes.NewBuffer(make([]byte, 0))
-	for true {
+	for {
 		_, err := io.CopyN(bytesBuf, file, CHUNK_SIZE)
 		if err != io.EOF && err != nil {
 			return nil, nil, common.NewError("file_write_error", err.Error())
@@ -339,7 +341,7 @@ func (fs *FileFSStore) generateTempPath(allocation *StoreAllocation, fileData *F
 	return filepath.Join(allocation.TempObjectsPath, fileData.Name+"."+encryption.Hash(fileData.Path)+"."+connectionID)
 }
 
-func (fs *FileFSStore) fileCopy(src, dst string) error {
+func (fs *FileFSStore) fileCopy(src, dst string) error { //nolint:unused,deadcode // might be used later?
 	in, err := os.Open(src)
 	if err != nil {
 		return err
@@ -439,7 +441,7 @@ func (fs *FileFSStore) GetMerkleTreeForFile(allocationID string, fileData *FileI
 		merkleHashes[idx] = sha3.New256()
 	}
 	bytesBuf := bytes.NewBuffer(make([]byte, 0))
-	for true {
+	for {
 		_, err := io.CopyN(bytesBuf, tReader, CHUNK_SIZE)
 		if err != io.EOF && err != nil {
 			return nil, common.NewError("file_write_error", err.Error())
@@ -500,7 +502,7 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 		merkleHashes[idx] = sha3.New256()
 	}
 	fileSize := int64(0)
-	for true {
+	for {
 		written, err := io.CopyN(dest, tReader, CHUNK_SIZE)
 		if err != io.EOF && err != nil {
 			return nil, common.NewError("file_write_error", err.Error())
@@ -546,7 +548,7 @@ func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHan
 	if err != nil {
 		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
-	filepath.Walk(allocation.ObjectsPath, func(path string, info os.FileInfo, err error) error {
+	_ = filepath.Walk(allocation.ObjectsPath, func(path string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() && !strings.HasPrefix(path, allocation.TempObjectsPath) {
 			f, err := os.Open(path)
 			if err != nil {

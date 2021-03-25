@@ -189,6 +189,9 @@ func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context,
 	err = db.Model(rm).
 		Where("counter = ?", rm.LatestRM.ReadCounter).
 		Updates(rmUpdates).Error
+	if err != nil {
+		Logger.Error("LatestReadMarkerEntity", zap.Error(err))
+	}
 
 	// update cache using the transaction output
 	allocation.SubReadRedeemed(rps, redeems)
