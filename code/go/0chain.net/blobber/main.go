@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -13,6 +14,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"google.golang.org/grpc"
+
+	"0chain.net/blobbercore/blobbergrpc"
 
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/challenge"
@@ -232,6 +237,7 @@ func main() {
 	metadataDB = flag.String("db_dir", "", "db_dir")
 	logDir := flag.String("log_dir", "", "log_dir")
 	portString := flag.String("port", "", "port")
+	grpcPortString := flag.String("grpc_port", "", "grpcport")
 	hostname := flag.String("hostname", "", "hostname")
 
 	flag.Parse()
@@ -264,6 +270,10 @@ func main() {
 
 	if *portString == "" {
 		panic("Please specify --port which is the port on which requests are accepted")
+	}
+
+	if *grpcPortString == "" {
+		panic("Please specify --grpc_port which is the grpc port on which requests are accepted")
 	}
 
 	reader, err := os.Open(*keysFile)
@@ -368,8 +378,17 @@ func main() {
 	common.HandleShutdown(server)
 	handler.HandleShutdown(common.GetRootContext())
 
+	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *grpcPortString))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	grpcServer := grpc.NewServer()
+	blobberGRPCService := handler.NewGRPCServer()
+	blobbergrpc.RegisterBlobberServer(grpcServer, blobberGRPCService)
+
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()
+	go log.Fatal(grpcServer.Serve(lis))
 	log.Fatal(server.ListenAndServe())
 }
 
