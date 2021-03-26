@@ -17,8 +17,6 @@ import (
 
 	"google.golang.org/grpc"
 
-	"0chain.net/blobbercore/blobbergrpc"
-
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/challenge"
 	"0chain.net/blobbercore/config"
@@ -356,6 +354,13 @@ func main() {
 	initHandlers(r)
 	initServer()
 
+	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *grpcPortString))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	grpcServer := grpc.NewServer()
+	handler.RegisterGRPCServices(r, grpcServer)
+
 	rHandler := handlers.CORS(originsOk, headersOk, methodsOk)(r)
 	if config.Development() {
 		// No WriteTimeout setup to enable pprof
@@ -377,14 +382,6 @@ func main() {
 	}
 	common.HandleShutdown(server)
 	handler.HandleShutdown(common.GetRootContext())
-
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *grpcPortString))
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	grpcServer := grpc.NewServer()
-	blobberGRPCService := handler.NewGRPCServer()
-	blobbergrpc.RegisterBlobberServer(grpcServer, blobberGRPCService)
 
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()

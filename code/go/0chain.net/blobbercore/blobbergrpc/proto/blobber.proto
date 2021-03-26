@@ -3,12 +3,18 @@ package blobber.service.v1;
 
 option go_package = "./blobbergrpc";
 
+import "google/api/annotations.proto";
+
 
 service Blobber {
-  rpc GetAllocation(GetAllocationRequest) returns (GetAllocationResponse) {}
+  rpc GetAllocation(GetAllocationRequest) returns (GetAllocationResponse) {
+    option (google.api.http) = {
+      get: "/v1/allocation"
+    };
+  }
 }
 
-message RequestContext{
+message RequestContext {
   string client = 1;
   string client_key = 2;
   string allocation = 3;
@@ -28,25 +34,25 @@ message Allocation {
   string Tx = 2;
   int64  TotalSize = 3;
   int64 UsedSize = 4;
-  string OwnerID      = 5;
-  string OwnerPublicKey   = 6;
-  int64 Expiration        = 7;
-  string AllocationRoot    = 8;
-  int64 BlobberSize       = 9;
-  int64 BlobberSizeUsed   = 10;
-  string LatestRedeemedWM  = 11;
-  bool IsRedeemRequired  = 12;
-  int64 TimeUnit          = 13;
-  bool CleanedUp         = 14;
-  bool Finalized         = 15;
-  repeated Term Terms     = 16;
-  string PayerID           = 17;
+  string OwnerID = 5;
+  string OwnerPublicKey = 6;
+  int64 Expiration = 7;
+  string AllocationRoot = 8;
+  int64 BlobberSize = 9;
+  int64 BlobberSizeUsed = 10;
+  string LatestRedeemedWM = 11;
+  bool IsRedeemRequired = 12;
+  int64 TimeUnit = 13;
+  bool CleanedUp = 14;
+  bool Finalized = 15;
+  repeated Term Terms = 16;
+  string PayerID = 17;
 }
 
 message Term {
-  int64 ID     = 1;
-  string BlobberID  = 2;
-  string AllocationID  = 3;
-  int64 ReadPrice    = 4;
-  int64 WritePrice   = 5;
+  int64 ID = 1;
+  string BlobberID = 2;
+  string AllocationID = 3;
+  int64 ReadPrice = 4;
+  int64 WritePrice = 5;
 }
