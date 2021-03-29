@@ -9,7 +9,7 @@ import "google/api/annotations.proto";
 service Blobber {
   rpc GetAllocation(GetAllocationRequest) returns (GetAllocationResponse) {
     option (google.api.http) = {
-      get: "/v1/allocation"
+      get: "/allocation"
     };
   }
 }

@@ -163,7 +163,7 @@ func RegisterBlobberHandlerClient(ctx context.Context, mux *runtime.ServeMux, cl
 }
 
 var (
-	pattern_Blobber_GetAllocation_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "allocation"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Blobber_GetAllocation_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"allocation"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (

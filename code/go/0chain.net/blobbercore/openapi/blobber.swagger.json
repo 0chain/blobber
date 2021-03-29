@@ -16,7 +16,7 @@
     "application/json"
   ],
   "paths": {
-    "/v1/allocation": {
+    "/allocation": {
       "get": {
         "operationId": "Blobber_GetAllocation",
         "responses": {
