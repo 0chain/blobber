@@ -22,7 +22,7 @@ func RegisterGRPCServices(r *mux.Router, server *grpc.Server) {
 	mux := runtime.NewServeMux()
 	blobbergrpc.RegisterBlobberServer(server, blobberService)
 	blobbergrpc.RegisterBlobberHandlerServer(context.Background(), mux, blobberService)
-	r.PathPrefix("/v1").Handler(mux)
+	r.PathPrefix("/v2").Handler(mux)
 }
 
 func newGRPCBlobberService() *blobberGRPCService {

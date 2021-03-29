@@ -235,7 +235,7 @@ func main() {
 	metadataDB = flag.String("db_dir", "", "db_dir")
 	logDir := flag.String("log_dir", "", "log_dir")
 	portString := flag.String("port", "", "port")
-	grpcPortString := flag.String("grpc_port", "", "grpcport")
+	grpcPortString := flag.String("grpc_port", "", "grpc_port")
 	hostname := flag.String("hostname", "", "hostname")
 
 	flag.Parse()
@@ -354,10 +354,6 @@ func main() {
 	initHandlers(r)
 	initServer()
 
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *grpcPortString))
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
 	grpcServer := grpc.NewServer()
 	handler.RegisterGRPCServices(r, grpcServer)
 
@@ -385,7 +381,13 @@ func main() {
 
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()
-	go log.Fatal(grpcServer.Serve(lis))
+	go func(grpcPort string) {
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+		if err != nil {
+			log.Fatalf("failed to listen: %v", err)
+		}
+		log.Fatal(grpcServer.Serve(lis))
+	}(*grpcPortString)
 	log.Fatal(server.ListenAndServe())
 }
 
