@@ -22,6 +22,10 @@ type Store struct {
 
 var store Store
 
+func SetDB(db *gorm.DB) {
+	store.db = db
+}
+
 func GetStore() *Store {
 	return &store
 }
