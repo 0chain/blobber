@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"0chain.net/core/encryption"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -120,6 +121,17 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
+	signature := r.FormValue("signature")
+	authTokenString := r.FormValue("auth_token")
+	path_hash := r.FormValue("path_hash")
+	path := r.FormValue("path")
+	clientPublicKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+
+	hashValid, err := verifySignature(signature, clientPublicKey, authTokenString, path, path_hash)
+	if err != nil || !hashValid {
+		return nil, common.NewError("invalid_parameters", "Invalid Signature")
+	}
+
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
 
@@ -133,10 +145,6 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
-
-	path_hash := r.FormValue("path_hash")
-	path := r.FormValue("path")
 	if len(path_hash) == 0 {
 		if len(path) == 0 {
 			return nil, common.NewError("invalid_parameters", "Invalid path")
@@ -170,8 +178,6 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	}
 
 	result["collaborators"] = collaborators
-
-	authTokenString := r.FormValue("auth_token")
 
 	if (allocationObj.OwnerID != clientID &&
 		allocationObj.PayerID != clientID &&
@@ -684,4 +690,10 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 	result := make(map[string]interface{})
 	result["msg"] = "Hash recalculated for the given paths"
 	return result, nil
+}
+
+func verifySignature(signature string, publicKey string, hashParts ...string) (bool, error) {
+	hashData := strings.Join(hashParts, ":")
+	signatureHash := encryption.Hash(hashData)
+	return encryption.Verify(publicKey, signature, signatureHash)
 }
