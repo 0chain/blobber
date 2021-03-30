@@ -15,8 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/grpc"
-
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/challenge"
 	"0chain.net/blobbercore/config"
@@ -354,7 +352,7 @@ func main() {
 	initHandlers(r)
 	initServer()
 
-	grpcServer := grpc.NewServer()
+	grpcServer := handler.NewServerWithMiddlewares()
 	handler.RegisterGRPCServices(r, grpcServer)
 
 	rHandler := handlers.CORS(originsOk, headersOk, methodsOk)(r)
