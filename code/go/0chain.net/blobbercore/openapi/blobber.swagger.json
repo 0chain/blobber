@@ -63,72 +63,6 @@
           "Blobber"
         ]
       }
-    },
-    "/file/meta/{allocation}": {
-      "get": {
-        "operationId": "Blobber_GetFileMetaData",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1GetFileMetaDataResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "allocation",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "context.client",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.clientKey",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.allocation",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "path",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "pathHash",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "authToken",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "Blobber"
-        ]
-      }
     }
   },
   "definitions": {
@@ -234,9 +168,6 @@
           "$ref": "#/definitions/v1Allocation"
         }
       }
-    },
-    "v1GetFileMetaDataResponse": {
-      "type": "object"
     },
     "v1RequestContext": {
       "type": "object",

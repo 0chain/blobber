@@ -12,11 +12,6 @@ service Blobber {
       get: "/allocation"
     };
   }
-  rpc GetFileMetaData(GetFileMetaDataRequest) returns (GetFileMetaDataResponse) {
-    option (google.api.http) = {
-      get: "/file/meta/{allocation}"
-    };
-  }
 }
 
 message RequestContext {
@@ -32,18 +27,6 @@ message GetAllocationRequest {
 
 message GetAllocationResponse {
   Allocation allocation = 1;
-}
-
-message GetFileMetaDataRequest {
-  RequestContext context = 1;
-  string path = 2;
-  string path_hash = 3;
-  string auth_token = 4;
-  string allocation = 5;
-}
-
-message GetFileMetaDataResponse {
-
 }
 
 message Allocation {
