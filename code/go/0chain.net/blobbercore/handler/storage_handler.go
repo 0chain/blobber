@@ -127,8 +127,8 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	path := r.FormValue("path")
 	clientPublicKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 
-	hashValid, err := verifySignature(signature, clientPublicKey, authTokenString, path, path_hash)
-	if err != nil || !hashValid {
+	signatureValid, err := verifySignature(signature, clientPublicKey, authTokenString, path, path_hash)
+	if err != nil || !signatureValid {
 		return nil, common.NewError("invalid_parameters", "Invalid Signature")
 	}
 
@@ -471,6 +471,16 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 
+	signature := r.FormValue("signature")
+	path := r.FormValue("path")
+	pathsString := r.FormValue("paths")
+	clientPublicKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+
+	signatureValid, err := verifySignature(signature, clientPublicKey, path, pathsString)
+	if err != nil || !signatureValid {
+		return nil, common.NewError("invalid_parameters", "Invalid Signature")
+	}
+
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -482,7 +492,6 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 	}
 
 	var paths []string
-	pathsString := r.FormValue("paths")
 	if len(pathsString) == 0 {
 		path := r.FormValue("path")
 		if len(path) == 0 {
