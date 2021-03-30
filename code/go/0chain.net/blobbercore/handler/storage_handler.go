@@ -122,10 +122,10 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
 	signature := r.FormValue("signature")
-	authTokenString := r.FormValue("auth_token")
-	path_hash := r.FormValue("path_hash")
-	path := r.FormValue("path")
 	clientPublicKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+	authTokenString := r.FormValue("auth_token")
+	path := r.FormValue("path")
+	path_hash := r.FormValue("path_hash")
 
 	signatureValid, err := verifySignature(signature, clientPublicKey, authTokenString, path, path_hash)
 	if err != nil || !signatureValid {
