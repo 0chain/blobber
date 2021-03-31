@@ -62,7 +62,7 @@ $ ./docker.local/bin/build.blobber.sh
 ```
   
 
-3. After building the container for blobber, name the blobber by creating a directory with the given name eg. blobber1: (git/blobber/docker.local/blobber1). The blobber name must end in an integer. Then run the container using
+3. After building the container for blobber, name the blobber by creating a directory with the given name eg. blobber1: (git/blobber/docker.local/blobber1). The blobber name must end in an integer. Then cd into this directory and run the container using
 
   
 
