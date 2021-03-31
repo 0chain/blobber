@@ -9,9 +9,62 @@ import "google/api/annotations.proto";
 service Blobber {
   rpc GetAllocation(GetAllocationRequest) returns (GetAllocationResponse) {
     option (google.api.http) = {
-      get: "/allocation"
+      get: "/v2/allocation"
     };
   }
+  rpc GetFileMetaData(GetFileMetaDataRequest) returns (GetFileMetaDataResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/meta/{allocation}"
+    };
+  }
+}
+
+message GetFileMetaDataRequest {
+  RequestContext context = 1;
+  string path = 2;
+  string path_hash = 3;
+  string auth_token = 4;
+  string allocation = 5;
+}
+
+message GetFileMetaDataResponse {
+  string Type = 1;
+  string LookupHash = 2;
+  string Name = 3;
+  string Path = 4;
+  string Hash = 5;
+  int64 NumBlocks = 6;
+  string PathHash = 7;
+  string CustomMeta = 8;
+  string ContentHash = 9;
+  int64 Size = 10;
+  string MerkleRoot = 11;
+  int64 ActualFileSize = 12;
+  string ActualFileHash = 13;
+  string MimeType = 14;
+  int64 ThumbnailSize = 15;
+  string ThumbnailHash = 16;
+  int64 ActualThumbnailSize = 17;
+  string ActualThumbnailHash = 18;
+  string EncryptedKey = 19;
+  bytes Attributes = 20;
+  bool OnCloud = 21;
+  repeated CommitMetaTxn CommitMetaTxns = 22;
+  int64 CreatedAt = 23;
+  int64 UpdatedAt = 24;
+  repeated Collaborator Collaborators = 25;
+}
+
+message CommitMetaTxn {
+  int64 RefId = 1;
+  string TxnId = 2;
+  int64 CreatedAt = 3;
+}
+
+message Collaborator {
+  int64 RefId = 1;
+  string ClientId = 2;
+  int64 CreatedAt = 3;
 }
 
 message RequestContext {
