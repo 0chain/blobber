@@ -128,6 +128,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	path_hash := r.FormValue("path_hash")
 
 	signatureValid, err := verifySignature(signature, clientPublicKey, authTokenString, path, path_hash)
+
 	if err != nil || !signatureValid {
 		return nil, common.NewError("invalid_parameters", "Invalid Signature")
 	}
@@ -702,7 +703,9 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 }
 
 func verifySignature(signature string, publicKey string, hashParts ...string) (bool, error) {
-	hashData := strings.Join(hashParts, ":")
-	signatureHash := encryption.Hash(hashData)
-	return encryption.Verify(publicKey, signature, signatureHash)
+	if len(signature) < 64 {
+		return false, nil
+	}
+	hashData := encryption.Hash(strings.Join(hashParts, ":"))
+	return encryption.Verify(publicKey, signature, hashData)
 }
