@@ -196,6 +196,66 @@
         ]
       }
     },
+    "/v2/file/objectpath/{allocation}": {
+      "get": {
+        "operationId": "Blobber_GetObjectPath",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetObjectPathResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "context.client",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.clientKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Path",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "BlockNum",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
     "/v2/file/stats/{allocation}": {
       "get": {
         "operationId": "Blobber_GetFileStats",
@@ -421,6 +481,12 @@
         "UpdatedAt": {
           "type": "string",
           "format": "int64"
+        },
+        "Children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1FileRef"
+          }
         }
       }
     },
@@ -512,6 +578,20 @@
         }
       }
     },
+    "v1FileRef": {
+      "type": "object",
+      "properties": {
+        "Type": {
+          "type": "string"
+        },
+        "FileMetaData": {
+          "$ref": "#/definitions/v1FileMetaData"
+        },
+        "DirMetaData": {
+          "$ref": "#/definitions/v1DirMetaData"
+        }
+      }
+    },
     "v1FileStats": {
       "type": "object",
       "properties": {
@@ -567,7 +647,7 @@
       "type": "object",
       "properties": {
         "MetaData": {
-          "$ref": "#/definitions/v1FileMetaData"
+          "$ref": "#/definitions/v1FileRef"
         },
         "Collaborators": {
           "type": "array",
@@ -581,10 +661,21 @@
       "type": "object",
       "properties": {
         "MetaData": {
-          "$ref": "#/definitions/v1FileMetaData"
+          "$ref": "#/definitions/v1FileRef"
         },
         "Stats": {
           "$ref": "#/definitions/v1FileStats"
+        }
+      }
+    },
+    "v1GetObjectPathResponse": {
+      "type": "object",
+      "properties": {
+        "ObjectPath": {
+          "$ref": "#/definitions/v1ObjectPath"
+        },
+        "LatestWriteMarker": {
+          "$ref": "#/definitions/v1WriteMarker"
         }
       }
     },
@@ -594,20 +685,26 @@
         "AllocationRoot": {
           "type": "string"
         },
-        "DirMetaData": {
-          "$ref": "#/definitions/v1DirMetaData"
+        "MetaData": {
+          "$ref": "#/definitions/v1FileRef"
+        }
+      }
+    },
+    "v1ObjectPath": {
+      "type": "object",
+      "properties": {
+        "RootHash": {
+          "type": "string"
         },
-        "FileEntities": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1FileMetaData"
-          }
+        "Meta": {
+          "$ref": "#/definitions/v1FileRef"
         },
-        "DirEntities": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1DirMetaData"
-          }
+        "Path": {
+          "$ref": "#/definitions/v1FileRef"
+        },
+        "FileBlockNum": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },
@@ -645,6 +742,37 @@
         "WritePrice": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "v1WriteMarker": {
+      "type": "object",
+      "properties": {
+        "AllocationRoot": {
+          "type": "string"
+        },
+        "PreviousAllocationRoot": {
+          "type": "string"
+        },
+        "AllocationID": {
+          "type": "string"
+        },
+        "Size": {
+          "type": "string",
+          "format": "int64"
+        },
+        "BlobberID": {
+          "type": "string"
+        },
+        "Timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "ClientID": {
+          "type": "string"
+        },
+        "Signature": {
+          "type": "string"
         }
       }
     }

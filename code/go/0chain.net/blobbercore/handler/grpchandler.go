@@ -2,6 +2,9 @@ package handler
 
 import (
 	"context"
+	"strconv"
+
+	"0chain.net/blobbercore/blobbergrpc/converter"
 
 	"0chain.net/blobbercore/stats"
 	"0chain.net/blobbercore/writemarker"
@@ -48,7 +51,7 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 		return nil, err
 	}
 
-	return &blobbergrpc.GetAllocationResponse{Allocation: convertAllocationToGRPCAllocation(allocation)}, nil
+	return &blobbergrpc.GetAllocationResponse{Allocation: converter.AllocationToGRPCAllocation(allocation)}, nil
 }
 
 func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {
@@ -86,6 +89,7 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 	if err != nil {
 		logger.Error("Failed to get commitMetaTxns from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
 	}
+	fileref.CommitMetaTxns = commitMetaTxns
 
 	collaborators, err := reference.GetCollaborators(ctx, fileref.ID)
 	if err != nil {
@@ -107,15 +111,6 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 		fileref.Path = ""
 	}
 
-	var commitMetaTxnsGRPC []*blobbergrpc.CommitMetaTxn
-	for _, c := range commitMetaTxns {
-		commitMetaTxnsGRPC = append(commitMetaTxnsGRPC, &blobbergrpc.CommitMetaTxn{
-			RefId:     c.RefID,
-			TxnId:     c.TxnID,
-			CreatedAt: c.CreatedAt.UnixNano(),
-		})
-	}
-
 	var collaboratorsGRPC []*blobbergrpc.Collaborator
 	for _, c := range collaborators {
 		collaboratorsGRPC = append(collaboratorsGRPC, &blobbergrpc.Collaborator{
@@ -125,11 +120,8 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 		})
 	}
 
-	fileMetaDataGRPC := convertFileRefToFileMetaDataGRPC(fileref)
-	fileMetaDataGRPC.CommitMetaTxns = commitMetaTxnsGRPC
-
 	return &blobbergrpc.GetFileMetaDataResponse{
-		MetaData:      fileMetaDataGRPC,
+		MetaData:      converter.FileRefToFileRefGRPC(fileref),
 		Collaborators: collaboratorsGRPC,
 	}, nil
 }
@@ -174,8 +166,8 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 	}
 
 	return &blobbergrpc.GetFileStatsResponse{
-		MetaData: convertFileRefToFileMetaDataGRPC(fileref),
-		Stats:    convertFileStatsToFileStatsGRPC(stats),
+		MetaData: converter.FileRefToFileRefGRPC(fileref),
+		Stats:    converter.FileStatsToFileStatsGRPC(stats),
 	}, nil
 }
 
@@ -226,28 +218,74 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
 
-	dirMetaDataGRPC := convertDirRefToDirMetaDataGRPC(dirref)
 	if clientID != allocationObj.OwnerID {
-		dirMetaDataGRPC.Path = ""
+		dirref.Path = ""
 	}
 
-	var fileEntities []*blobbergrpc.FileMetaData
-	var dirEntities []*blobbergrpc.DirMetaData
+	var entities []*blobbergrpc.FileRef
 	for _, entity := range dirref.Children {
 		if clientID != allocationObj.OwnerID {
 			entity.Path = ""
 		}
-		if entity.Type == reference.FILE {
-			fileEntities = append(fileEntities, convertFileRefToFileMetaDataGRPC(entity))
-		} else if entity.Type == reference.DIRECTORY {
-			dirEntities = append(dirEntities, convertDirRefToDirMetaDataGRPC(dirref))
-		}
+		entities = append(entities, converter.FileRefToFileRefGRPC(entity))
 	}
+	refGRPC := converter.FileRefToFileRefGRPC(dirref)
+	refGRPC.DirMetaData.Children = entities
 
 	return &blobbergrpc.ListEntitiesResponse{
 		AllocationRoot: allocationObj.AllocationRoot,
-		DirMetaData:    dirMetaDataGRPC,
-		FileEntities:   fileEntities,
-		DirEntities:    dirEntities,
+		MetaData:       refGRPC,
+	}, nil
+}
+
+func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc.GetObjectPathRequest) (*blobbergrpc.GetObjectPathResponse, error) {
+	allocationTx := req.Context.Allocation
+	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+	allocationID := allocationObj.ID
+
+	clientID := req.Context.Client
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+	path := req.Path
+	if len(path) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path")
+	}
+
+	blockNumStr := req.BlockNum
+	if len(blockNumStr) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path")
+	}
+
+	blockNum, err := strconv.ParseInt(blockNumStr, 10, 64)
+	if err != nil || blockNum < 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid block number")
+	}
+
+	objectPath, err := reference.GetObjectPathGRPC(ctx, allocationID, blockNum)
+	if err != nil {
+		return nil, err
+	}
+
+	var latestWM *writemarker.WriteMarkerEntity
+	if len(allocationObj.AllocationRoot) == 0 {
+		latestWM = nil
+	} else {
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+		if err != nil {
+			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
+		}
+	}
+	var latestWriteMarketGRPC *blobbergrpc.WriteMarker
+	if latestWM != nil {
+		latestWriteMarketGRPC = converter.WriteMarkerToWriteMarkerGRPC(latestWM.WM)
+	}
+	return &blobbergrpc.GetObjectPathResponse{
+		ObjectPath:        objectPath,
+		LatestWriteMarker: latestWriteMarketGRPC,
 	}, nil
 }
