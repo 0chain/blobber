@@ -64,6 +64,72 @@
         ]
       }
     },
+    "/v2/file/list/{allocation}": {
+      "get": {
+        "operationId": "Blobber_ListEntities",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListEntitiesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "context.client",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.clientKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pathHash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "authToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
     "/v2/file/meta/{allocation}": {
       "get": {
         "operationId": "Blobber_GetFileMetaData",
@@ -319,6 +385,45 @@
         }
       }
     },
+    "v1DirMetaData": {
+      "type": "object",
+      "properties": {
+        "Type": {
+          "type": "string"
+        },
+        "LookupHash": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "Path": {
+          "type": "string"
+        },
+        "Hash": {
+          "type": "string"
+        },
+        "NumBlocks": {
+          "type": "string",
+          "format": "int64"
+        },
+        "PathHash": {
+          "type": "string"
+        },
+        "Size": {
+          "type": "string",
+          "format": "int64"
+        },
+        "CreatedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "UpdatedAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "v1FileMetaData": {
       "type": "object",
       "properties": {
@@ -480,6 +585,29 @@
         },
         "Stats": {
           "$ref": "#/definitions/v1FileStats"
+        }
+      }
+    },
+    "v1ListEntitiesResponse": {
+      "type": "object",
+      "properties": {
+        "AllocationRoot": {
+          "type": "string"
+        },
+        "DirMetaData": {
+          "$ref": "#/definitions/v1DirMetaData"
+        },
+        "FileEntities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1FileMetaData"
+          }
+        },
+        "DirEntities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1DirMetaData"
+          }
         }
       }
     },

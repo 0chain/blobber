@@ -22,6 +22,39 @@ service Blobber {
       get: "/v2/file/stats/{allocation}"
     };
   }
+  rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/list/{allocation}"
+    };
+  }
+}
+
+message ListEntitiesRequest {
+  RequestContext context = 1;
+  string path = 2;
+  string path_hash = 3;
+  string auth_token = 4;
+  string allocation = 5;
+}
+
+message ListEntitiesResponse {
+  string AllocationRoot = 1;
+  DirMetaData DirMetaData = 2;
+  repeated FileMetaData FileEntities = 3;
+  repeated DirMetaData DirEntities = 4;
+}
+
+message DirMetaData {
+  string Type = 1;
+  string LookupHash = 2;
+  string Name = 3;
+  string Path = 4;
+  string Hash = 5;
+  int64 NumBlocks = 6;
+  string PathHash = 7;
+  int64 Size = 8;
+  int64 CreatedAt = 9;
+  int64 UpdatedAt = 10;
 }
 
 message GetFileStatsRequest {

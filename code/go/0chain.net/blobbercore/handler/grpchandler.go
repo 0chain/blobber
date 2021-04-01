@@ -178,3 +178,76 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 		Stats:    convertFileStatsToFileStatsGRPC(stats),
 	}, nil
 }
+
+func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.ListEntitiesRequest) (*blobbergrpc.ListEntitiesResponse, error) {
+	logger := ctxzap.Extract(ctx)
+
+	clientID := req.Context.Client
+	allocationTx := req.Context.Allocation
+	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, true)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+	allocationID := allocationObj.ID
+
+	if len(clientID) == 0 {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	path_hash := req.PathHash
+	path := req.Path
+	if len(path_hash) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		path_hash = reference.GetReferenceLookup(allocationID, path)
+	}
+
+	logger.Info("Path Hash for list dir :" + path_hash)
+
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
+	}
+	authTokenString := req.AuthToken
+	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
+		authTicketVerified, err := b.storageHandler.verifyAuthTicket(ctx, authTokenString, allocationObj, fileref, clientID)
+		if err != nil {
+			return nil, err
+		}
+		if !authTicketVerified {
+			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
+		}
+	}
+
+	dirref, err := reference.GetRefWithChildren(ctx, allocationID, fileref.Path)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
+	}
+
+	dirMetaDataGRPC := convertDirRefToDirMetaDataGRPC(dirref)
+	if clientID != allocationObj.OwnerID {
+		dirMetaDataGRPC.Path = ""
+	}
+
+	var fileEntities []*blobbergrpc.FileMetaData
+	var dirEntities []*blobbergrpc.DirMetaData
+	for _, entity := range dirref.Children {
+		if clientID != allocationObj.OwnerID {
+			entity.Path = ""
+		}
+		if entity.Type == reference.FILE {
+			fileEntities = append(fileEntities, convertFileRefToFileMetaDataGRPC(entity))
+		} else if entity.Type == reference.DIRECTORY {
+			dirEntities = append(dirEntities, convertDirRefToDirMetaDataGRPC(dirref))
+		}
+	}
+
+	return &blobbergrpc.ListEntitiesResponse{
+		AllocationRoot: allocationObj.AllocationRoot,
+		DirMetaData:    dirMetaDataGRPC,
+		FileEntities:   fileEntities,
+		DirEntities:    dirEntities,
+	}, nil
+}

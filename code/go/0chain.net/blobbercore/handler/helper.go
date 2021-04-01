@@ -104,3 +104,18 @@ func convertFileRefToFileMetaDataGRPC(fileref *reference.Ref) *blobbergrpc.FileM
 		UpdatedAt:           fileref.UpdatedAt.UnixNano(),
 	}
 }
+
+func convertDirRefToDirMetaDataGRPC(dirref *reference.Ref) *blobbergrpc.DirMetaData {
+	return &blobbergrpc.DirMetaData{
+		Type:       dirref.Type,
+		LookupHash: dirref.LookupHash,
+		Name:       dirref.Name,
+		Path:       dirref.Path,
+		Hash:       dirref.Hash,
+		NumBlocks:  dirref.NumBlocks,
+		PathHash:   dirref.PathHash,
+		Size:       dirref.Size,
+		CreatedAt:  dirref.CreatedAt.UnixNano(),
+		UpdatedAt:  dirref.UpdatedAt.UnixNano(),
+	}
+}

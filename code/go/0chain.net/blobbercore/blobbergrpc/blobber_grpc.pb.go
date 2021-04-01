@@ -21,6 +21,7 @@ type BlobberClient interface {
 	GetAllocation(ctx context.Context, in *GetAllocationRequest, opts ...grpc.CallOption) (*GetAllocationResponse, error)
 	GetFileMetaData(ctx context.Context, in *GetFileMetaDataRequest, opts ...grpc.CallOption) (*GetFileMetaDataResponse, error)
 	GetFileStats(ctx context.Context, in *GetFileStatsRequest, opts ...grpc.CallOption) (*GetFileStatsResponse, error)
+	ListEntities(ctx context.Context, in *ListEntitiesRequest, opts ...grpc.CallOption) (*ListEntitiesResponse, error)
 }
 
 type blobberClient struct {
@@ -58,6 +59,15 @@ func (c *blobberClient) GetFileStats(ctx context.Context, in *GetFileStatsReques
 	return out, nil
 }
 
+func (c *blobberClient) ListEntities(ctx context.Context, in *ListEntitiesRequest, opts ...grpc.CallOption) (*ListEntitiesResponse, error) {
+	out := new(ListEntitiesResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/ListEntities", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BlobberServer is the server API for Blobber service.
 // All implementations must embed UnimplementedBlobberServer
 // for forward compatibility
@@ -65,6 +75,7 @@ type BlobberServer interface {
 	GetAllocation(context.Context, *GetAllocationRequest) (*GetAllocationResponse, error)
 	GetFileMetaData(context.Context, *GetFileMetaDataRequest) (*GetFileMetaDataResponse, error)
 	GetFileStats(context.Context, *GetFileStatsRequest) (*GetFileStatsResponse, error)
+	ListEntities(context.Context, *ListEntitiesRequest) (*ListEntitiesResponse, error)
 	mustEmbedUnimplementedBlobberServer()
 }
 
@@ -80,6 +91,9 @@ func (UnimplementedBlobberServer) GetFileMetaData(context.Context, *GetFileMetaD
 }
 func (UnimplementedBlobberServer) GetFileStats(context.Context, *GetFileStatsRequest) (*GetFileStatsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFileStats not implemented")
+}
+func (UnimplementedBlobberServer) ListEntities(context.Context, *ListEntitiesRequest) (*ListEntitiesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListEntities not implemented")
 }
 func (UnimplementedBlobberServer) mustEmbedUnimplementedBlobberServer() {}
 
@@ -148,6 +162,24 @@ func _Blobber_GetFileStats_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Blobber_ListEntities_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListEntitiesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).ListEntities(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/ListEntities",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).ListEntities(ctx, req.(*ListEntitiesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Blobber_ServiceDesc is the grpc.ServiceDesc for Blobber service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -166,6 +198,10 @@ var Blobber_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetFileStats",
 			Handler:    _Blobber_GetFileStats_Handler,
+		},
+		{
+			MethodName: "ListEntities",
+			Handler:    _Blobber_ListEntities_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
