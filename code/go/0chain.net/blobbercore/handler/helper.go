@@ -3,6 +3,9 @@ package handler
 import (
 	"context"
 
+	"0chain.net/blobbercore/reference"
+	"0chain.net/blobbercore/stats"
+
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/blobbergrpc"
 	"0chain.net/blobbercore/constants"
@@ -47,5 +50,57 @@ func convertAllocationToGRPCAllocation(alloc *allocation.Allocation) *blobbergrp
 		Finalized:        alloc.Finalized,
 		Terms:            terms,
 		PayerID:          alloc.PayerID,
+	}
+}
+
+func convertFileStatsToFileStatsGRPC(fileStats *stats.FileStats) *blobbergrpc.FileStats {
+	return &blobbergrpc.FileStats{
+		ID:                       fileStats.ID,
+		RefID:                    fileStats.RefID,
+		NumUpdates:               fileStats.NumUpdates,
+		NumBlockDownloads:        fileStats.NumBlockDownloads,
+		SuccessChallenges:        fileStats.SuccessChallenges,
+		FailedChallenges:         fileStats.FailedChallenges,
+		LastChallengeResponseTxn: fileStats.LastChallengeResponseTxn,
+		WriteMarkerRedeemTxn:     fileStats.WriteMarkerRedeemTxn,
+		CreatedAt:                fileStats.CreatedAt.UnixNano(),
+		UpdatedAt:                fileStats.UpdatedAt.UnixNano(),
+	}
+}
+
+func convertFileRefToFileMetaDataGRPC(fileref *reference.Ref) *blobbergrpc.FileMetaData {
+	var commitMetaTxnsGRPC []*blobbergrpc.CommitMetaTxn
+	for _, c := range fileref.CommitMetaTxns {
+		commitMetaTxnsGRPC = append(commitMetaTxnsGRPC, &blobbergrpc.CommitMetaTxn{
+			RefId:     c.RefID,
+			TxnId:     c.TxnID,
+			CreatedAt: c.CreatedAt.UnixNano(),
+		})
+	}
+	return &blobbergrpc.FileMetaData{
+		Type:                fileref.Type,
+		LookupHash:          fileref.LookupHash,
+		Name:                fileref.Name,
+		Path:                fileref.Path,
+		Hash:                fileref.Hash,
+		NumBlocks:           fileref.NumBlocks,
+		PathHash:            fileref.PathHash,
+		CustomMeta:          fileref.CustomMeta,
+		ContentHash:         fileref.ContentHash,
+		Size:                fileref.Size,
+		MerkleRoot:          fileref.MerkleRoot,
+		ActualFileSize:      fileref.ActualFileSize,
+		ActualFileHash:      fileref.ActualFileHash,
+		MimeType:            fileref.MimeType,
+		ThumbnailSize:       fileref.ThumbnailSize,
+		ThumbnailHash:       fileref.ThumbnailHash,
+		ActualThumbnailSize: fileref.ActualThumbnailSize,
+		ActualThumbnailHash: fileref.ActualThumbnailHash,
+		EncryptedKey:        fileref.EncryptedKey,
+		Attributes:          fileref.Attributes,
+		OnCloud:             fileref.OnCloud,
+		CommitMetaTxns:      commitMetaTxnsGRPC,
+		CreatedAt:           fileref.CreatedAt.UnixNano(),
+		UpdatedAt:           fileref.UpdatedAt.UnixNano(),
 	}
 }

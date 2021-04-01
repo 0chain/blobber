@@ -129,6 +129,66 @@
           "Blobber"
         ]
       }
+    },
+    "/v2/file/stats/{allocation}": {
+      "get": {
+        "operationId": "Blobber_GetFileStats",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetFileStatsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "context.client",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.clientKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pathHash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
     }
   },
   "definitions": {
@@ -259,15 +319,7 @@
         }
       }
     },
-    "v1GetAllocationResponse": {
-      "type": "object",
-      "properties": {
-        "allocation": {
-          "$ref": "#/definitions/v1Allocation"
-        }
-      }
-    },
-    "v1GetFileMetaDataResponse": {
+    "v1FileMetaData": {
       "type": "object",
       "properties": {
         "Type": {
@@ -352,12 +404,82 @@
         "UpdatedAt": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "v1FileStats": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "int64"
+        },
+        "RefID": {
+          "type": "string",
+          "format": "int64"
+        },
+        "NumUpdates": {
+          "type": "string",
+          "format": "int64"
+        },
+        "NumBlockDownloads": {
+          "type": "string",
+          "format": "int64"
+        },
+        "SuccessChallenges": {
+          "type": "string",
+          "format": "int64"
+        },
+        "FailedChallenges": {
+          "type": "string",
+          "format": "int64"
+        },
+        "LastChallengeResponseTxn": {
+          "type": "string"
+        },
+        "WriteMarkerRedeemTxn": {
+          "type": "string"
+        },
+        "CreatedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "UpdatedAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1GetAllocationResponse": {
+      "type": "object",
+      "properties": {
+        "allocation": {
+          "$ref": "#/definitions/v1Allocation"
+        }
+      }
+    },
+    "v1GetFileMetaDataResponse": {
+      "type": "object",
+      "properties": {
+        "MetaData": {
+          "$ref": "#/definitions/v1FileMetaData"
         },
         "Collaborators": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1Collaborator"
           }
+        }
+      }
+    },
+    "v1GetFileStatsResponse": {
+      "type": "object",
+      "properties": {
+        "MetaData": {
+          "$ref": "#/definitions/v1FileMetaData"
+        },
+        "Stats": {
+          "$ref": "#/definitions/v1FileStats"
         }
       }
     },

@@ -17,6 +17,36 @@ service Blobber {
       get: "/v2/file/meta/{allocation}"
     };
   }
+  rpc GetFileStats(GetFileStatsRequest) returns (GetFileStatsResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/stats/{allocation}"
+    };
+  }
+}
+
+message GetFileStatsRequest {
+  RequestContext context = 1;
+  string path = 2;
+  string path_hash = 3;
+  string allocation = 4;
+}
+
+message GetFileStatsResponse {
+  FileMetaData MetaData = 1;
+  FileStats Stats = 2;
+}
+
+message FileStats {
+  int64 ID = 1;
+  int64 RefID = 2;
+  int64 NumUpdates = 3;
+  int64 NumBlockDownloads = 4;
+  int64 SuccessChallenges = 5;
+  int64 FailedChallenges = 6;
+  string LastChallengeResponseTxn = 7;
+  string WriteMarkerRedeemTxn = 8;
+  int64 CreatedAt = 9;
+  int64 UpdatedAt = 10;
 }
 
 message GetFileMetaDataRequest {
@@ -27,7 +57,7 @@ message GetFileMetaDataRequest {
   string allocation = 5;
 }
 
-message GetFileMetaDataResponse {
+message FileMetaData {
   string Type = 1;
   string LookupHash = 2;
   string Name = 3;
@@ -52,7 +82,11 @@ message GetFileMetaDataResponse {
   repeated CommitMetaTxn CommitMetaTxns = 22;
   int64 CreatedAt = 23;
   int64 UpdatedAt = 24;
-  repeated Collaborator Collaborators = 25;
+}
+
+message GetFileMetaDataResponse {
+  FileMetaData MetaData = 1;
+  repeated Collaborator Collaborators = 2;
 }
 
 message CommitMetaTxn {

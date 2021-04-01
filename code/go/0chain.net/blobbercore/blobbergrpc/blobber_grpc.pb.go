@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 type BlobberClient interface {
 	GetAllocation(ctx context.Context, in *GetAllocationRequest, opts ...grpc.CallOption) (*GetAllocationResponse, error)
 	GetFileMetaData(ctx context.Context, in *GetFileMetaDataRequest, opts ...grpc.CallOption) (*GetFileMetaDataResponse, error)
+	GetFileStats(ctx context.Context, in *GetFileStatsRequest, opts ...grpc.CallOption) (*GetFileStatsResponse, error)
 }
 
 type blobberClient struct {
@@ -48,12 +49,22 @@ func (c *blobberClient) GetFileMetaData(ctx context.Context, in *GetFileMetaData
 	return out, nil
 }
 
+func (c *blobberClient) GetFileStats(ctx context.Context, in *GetFileStatsRequest, opts ...grpc.CallOption) (*GetFileStatsResponse, error) {
+	out := new(GetFileStatsResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/GetFileStats", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BlobberServer is the server API for Blobber service.
 // All implementations must embed UnimplementedBlobberServer
 // for forward compatibility
 type BlobberServer interface {
 	GetAllocation(context.Context, *GetAllocationRequest) (*GetAllocationResponse, error)
 	GetFileMetaData(context.Context, *GetFileMetaDataRequest) (*GetFileMetaDataResponse, error)
+	GetFileStats(context.Context, *GetFileStatsRequest) (*GetFileStatsResponse, error)
 	mustEmbedUnimplementedBlobberServer()
 }
 
@@ -66,6 +77,9 @@ func (UnimplementedBlobberServer) GetAllocation(context.Context, *GetAllocationR
 }
 func (UnimplementedBlobberServer) GetFileMetaData(context.Context, *GetFileMetaDataRequest) (*GetFileMetaDataResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFileMetaData not implemented")
+}
+func (UnimplementedBlobberServer) GetFileStats(context.Context, *GetFileStatsRequest) (*GetFileStatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFileStats not implemented")
 }
 func (UnimplementedBlobberServer) mustEmbedUnimplementedBlobberServer() {}
 
@@ -116,6 +130,24 @@ func _Blobber_GetFileMetaData_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Blobber_GetFileStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFileStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).GetFileStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/GetFileStats",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).GetFileStats(ctx, req.(*GetFileStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Blobber_ServiceDesc is the grpc.ServiceDesc for Blobber service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -130,6 +162,10 @@ var Blobber_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetFileMetaData",
 			Handler:    _Blobber_GetFileMetaData_Handler,
+		},
+		{
+			MethodName: "GetFileStats",
+			Handler:    _Blobber_GetFileStats_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
