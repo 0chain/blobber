@@ -12,8 +12,5 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: build blobber
-        run: ./docker.local/bin/build.blobber.sh
-
       - name: run unit tests
         run: ./docker.local/bin/unit_test_check.sh

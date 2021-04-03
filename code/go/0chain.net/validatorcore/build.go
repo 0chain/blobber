@@ -1,0 +1,4 @@
+package validatorcore
+
+func init() {
+}

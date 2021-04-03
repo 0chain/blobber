@@ -1,0 +1,4 @@
+package blobbercore
+
+func init() {
+}
