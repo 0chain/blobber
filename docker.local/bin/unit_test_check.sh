@@ -5,9 +5,9 @@
 # and 1 if any one of the tests fail.
 # Should be updated as more unit tests are written.
 
-docker build -f docker.local/build.unit_test/Dockerfile . -t zchain_unit_test
+docker build -f docker.local/build.unit_test/Dockerfile . -t blobber_unit_test
 
-docker run zchain_unit_test sh -c '
+docker run blobber_unit_test sh -c '
   echo running unit tests
   (cd 0chain.net/core; go test -tags bn256 0chain.net/core/...)
   if [ $? -ne 0 ]; then

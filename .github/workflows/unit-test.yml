@@ -12,5 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: build unit test
+        run: ./docker.local/bin/build.unit_test.sh
+
       - name: run unit tests
         run: ./docker.local/bin/unit_test_check.sh
