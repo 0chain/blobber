@@ -459,20 +459,40 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 }
 
 func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request) (*ReferencePathResult, error) {
+	resCh := make(chan *ReferencePathResult)
+	errCh := make(chan error)
+	go fsh.getReferencePath(ctx, r, resCh, errCh)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, common.NewError("timeout", "timeout reached")
+		case result := <-resCh:
+			return result, nil
+		case err := <-errCh:
+			return nil, err
+		}
+	}
+}
+
+func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request, resCh chan<- *ReferencePathResult, errCh chan<- error) {
 	if r.Method == "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
+		errCh <- common.NewError("invalid_method", "Invalid method used. Use GET instead")
+		return
 	}
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		errCh <- common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return
 	}
 	allocationID := allocationObj.ID
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 {
-		return nil, common.NewError("invalid_operation", "Please pass clientID in the header")
+		errCh <- common.NewError("invalid_operation", "Please pass clientID in the header")
+		return
 	}
 
 	var paths []string
@@ -480,19 +500,22 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 	if len(pathsString) == 0 {
 		path := r.FormValue("path")
 		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
+			errCh <- common.NewError("invalid_parameters", "Invalid path")
+			return
 		}
 		paths = append(paths, path)
 	} else {
 		err = json.Unmarshal([]byte(pathsString), &paths)
 		if err != nil {
-			return nil, common.NewError("invalid_parameters", "Invalid path array json")
+			errCh <- common.NewError("invalid_parameters", "Invalid path array json")
+			return
 		}
 	}
 
 	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
 	if err != nil {
-		return nil, err
+		errCh <- err
+		return
 	}
 
 	refPath := &ReferencePath{ref: rootRef}
@@ -518,7 +541,8 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 	} else {
 		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
 		if err != nil {
-			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
+			errCh <- common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
+			return
 		}
 	}
 	var refPathResult ReferencePathResult
@@ -526,7 +550,9 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 	if latestWM != nil {
 		refPathResult.LatestWM = &latestWM.WM
 	}
-	return &refPathResult, nil
+
+	resCh <- &refPathResult
+	return
 }
 
 func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (*ObjectPathResult, error) {
