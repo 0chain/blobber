@@ -31,10 +31,10 @@ jobs:
         with:
           go-version: 1.14.x
       - uses: actions/checkout@v2
-      - name: Goto blobbercore directory
-        run: cd code/go/0chain.net/blobbercore
       - name: Install generate dependencies
-        run: go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
+        run: |
+          cd code/go/0chain.net/blobbercore
+          go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
           github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 \
           google.golang.org/protobuf/cmd/protoc-gen-go \
           google.golang.org/grpc/cmd/protoc-gen-go-grpc
