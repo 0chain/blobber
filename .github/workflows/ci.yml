@@ -34,7 +34,8 @@ jobs:
       - name: Install dependencies
         run: |
           cd code/go/0chain.net/blobbercore
-          apt install -y protobuf-compiler
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
           go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
           github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 \
           google.golang.org/protobuf/cmd/protoc-gen-go \
