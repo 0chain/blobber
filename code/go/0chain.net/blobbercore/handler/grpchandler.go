@@ -4,7 +4,7 @@ import (
 	"context"
 	"strconv"
 
-	"0chain.net/blobbercore/blobbergrpc/converter"
+	"0chain.net/blobbercore/allocation"
 
 	"0chain.net/blobbercore/stats"
 	"0chain.net/blobbercore/writemarker"
@@ -26,21 +26,28 @@ import (
 	"0chain.net/blobbercore/blobbergrpc"
 )
 
+type StorageHandlerI interface {
+	verifyAllocation(ctx context.Context, tx string, readonly bool) (alloc *allocation.Allocation, err error)
+	verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (bool, error)
+}
+
 type blobberGRPCService struct {
-	storageHandler StorageHandler
+	storageHandler StorageHandlerI
 	blobbergrpc.UnimplementedBlobberServer
 }
 
 func RegisterGRPCServices(r *mux.Router, server *grpc.Server) {
-	blobberService := newGRPCBlobberService()
+	blobberService := newGRPCBlobberService(&storageHandler)
 	mux := runtime.NewServeMux()
 	blobbergrpc.RegisterBlobberServer(server, blobberService)
 	blobbergrpc.RegisterBlobberHandlerServer(context.Background(), mux, blobberService)
 	r.PathPrefix("/").Handler(mux)
 }
 
-func newGRPCBlobberService() *blobberGRPCService {
-	return &blobberGRPCService{}
+func newGRPCBlobberService(sh StorageHandlerI) *blobberGRPCService {
+	return &blobberGRPCService{
+		storageHandler: sh,
+	}
 }
 
 func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobbergrpc.GetAllocationRequest) (*blobbergrpc.GetAllocationResponse, error) {
@@ -51,7 +58,7 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 		return nil, err
 	}
 
-	return &blobbergrpc.GetAllocationResponse{Allocation: converter.AllocationToGRPCAllocation(allocation)}, nil
+	return &blobbergrpc.GetAllocationResponse{Allocation: AllocationToGRPCAllocation(allocation)}, nil
 }
 
 func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {
@@ -121,7 +128,7 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 	}
 
 	return &blobbergrpc.GetFileMetaDataResponse{
-		MetaData:      converter.FileRefToFileRefGRPC(fileref),
+		MetaData:      reference.FileRefToFileRefGRPC(fileref),
 		Collaborators: collaboratorsGRPC,
 	}, nil
 }
@@ -166,8 +173,8 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 	}
 
 	return &blobbergrpc.GetFileStatsResponse{
-		MetaData: converter.FileRefToFileRefGRPC(fileref),
-		Stats:    converter.FileStatsToFileStatsGRPC(stats),
+		MetaData: reference.FileRefToFileRefGRPC(fileref),
+		Stats:    FileStatsToFileStatsGRPC(stats),
 	}, nil
 }
 
@@ -227,9 +234,9 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.
 		if clientID != allocationObj.OwnerID {
 			entity.Path = ""
 		}
-		entities = append(entities, converter.FileRefToFileRefGRPC(entity))
+		entities = append(entities, reference.FileRefToFileRefGRPC(entity))
 	}
-	refGRPC := converter.FileRefToFileRefGRPC(dirref)
+	refGRPC := reference.FileRefToFileRefGRPC(dirref)
 	refGRPC.DirMetaData.Children = entities
 
 	return &blobbergrpc.ListEntitiesResponse{
@@ -282,7 +289,7 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 	}
 	var latestWriteMarketGRPC *blobbergrpc.WriteMarker
 	if latestWM != nil {
-		latestWriteMarketGRPC = converter.WriteMarkerToWriteMarkerGRPC(latestWM.WM)
+		latestWriteMarketGRPC = WriteMarkerToWriteMarkerGRPC(latestWM.WM)
 	}
 	return &blobbergrpc.GetObjectPathResponse{
 		ObjectPath:        objectPath,
