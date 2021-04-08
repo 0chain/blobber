@@ -18,8 +18,7 @@ func NewLRUCache(size int) *LRU {
 
 //Add - add a key and a value
 func (c *LRU) Add(key string, value interface{}) error {
-	c.Cache.Set(key, value) //nolint:errcheck // need more time to verify: might want to return this instead of nil?
-	return nil
+	return c.Cache.Set(key, value)
 }
 
 //Get - get the value associated with the key

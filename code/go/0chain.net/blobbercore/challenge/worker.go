@@ -149,22 +149,6 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 		time.Sleep(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
 	}
 
-	// if challengeObj.ObjectPath != nil && challengeObj.Status == Committed && challengeObj.ObjectPath.FileBlockNum > 0 {
-	// 	//stats.FileChallenged(challengeObj.AllocationID, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	if challengeObj.Result == ChallengeSuccess {
-	// 		go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.SUCCESS, stats.REDEEMSUCCESS, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	} else if challengeObj.Result == ChallengeFailure {
-	// 		go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.FAILED, stats.REDEEMSUCCESS, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	}
-
-	// } else if challengeObj.ObjectPath != nil && challengeObj.Status != Committed && challengeObj.ObjectPath.FileBlockNum > 0 && challengeObj.Retries >= config.Configuration.ChallengeMaxRetires {
-	// 	if challengeObj.Result == ChallengeSuccess {
-	// 		go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.SUCCESS, stats.REDEEMERROR, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	} else if challengeObj.Result == ChallengeFailure {
-	// 		go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.FAILED, stats.REDEEMERROR, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	}
-	// }
-
 	return nil //nolint:govet // need more time to verify
 }
 

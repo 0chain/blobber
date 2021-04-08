@@ -383,7 +383,9 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 	var statsMap map[string]interface{}
 	statsBytes, _ := json.Marshal(stats)
-	_ = json.Unmarshal(statsBytes, &statsMap)
+	if err = json.Unmarshal(statsBytes, &statsMap); err != nil {
+		return nil, err
+	}
 	for k, v := range statsMap {
 		result[k] = v
 	}
@@ -678,7 +680,7 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 	}
 
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-		Logger.Error("Ref_CalculateHash", zap.Int64("ref_id", rootRef.ID), zap.Error(err))
+		return nil, err
 	}
 
 	result := make(map[string]interface{})

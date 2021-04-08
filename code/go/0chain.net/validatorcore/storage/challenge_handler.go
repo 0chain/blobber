@@ -88,7 +88,7 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 		validationTicket.ValidatorKey = node.Self.PublicKey
 		validationTicket.Timestamp = common.Now()
 		if err := validationTicket.Sign(); err != nil {
-			Logger.Error("ValidationTicket_Sign", zap.String("challenge_id", validationTicket.ChallengeID), zap.Error(err))
+			return nil, common.NewError("invalid_parameters", err.Error())
 		}
 		return &validationTicket, nil
 	}
@@ -102,7 +102,7 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 	validationTicket.ValidatorKey = node.Self.PublicKey
 	validationTicket.Timestamp = common.Now()
 	if err := validationTicket.Sign(); err != nil {
-		Logger.Error("ValidationTicket_Sign", zap.String("challenge_id", validationTicket.ChallengeID), zap.Error(err))
+		return nil, common.NewError("invalid_parameters", err.Error())
 	}
 	Logger.Info("Validation passed.", zap.Any("challenge_id", challengeRequest.ChallengeID))
 

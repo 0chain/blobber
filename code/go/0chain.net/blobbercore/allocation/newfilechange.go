@@ -10,9 +10,6 @@ import (
 	"0chain.net/blobbercore/reference"
 	"0chain.net/blobbercore/stats"
 	"0chain.net/core/common"
-	"0chain.net/core/logging"
-
-	"go.uber.org/zap"
 )
 
 type NewFileChange struct {
@@ -108,7 +105,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context,
 
 	dirRef.AddChild(newFile)
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-		logging.Logger.Error("Ref_CalculateHash", zap.Int64("ref_id", rootRef.ID), zap.Error(err))
+		return nil, err
 	}
 	stats.NewFileCreated(ctx, newFile.ID)
 	return rootRef, nil

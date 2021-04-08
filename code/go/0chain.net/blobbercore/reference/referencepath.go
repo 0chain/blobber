@@ -6,9 +6,6 @@ import (
 
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/core/common"
-	"0chain.net/core/logging"
-
-	"go.uber.org/zap"
 )
 
 func GetReferencePath(ctx context.Context, allocationID string, path string) (*Ref, error) {
@@ -61,28 +58,8 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 		}
 	}
 
-	// curLevel := 2
-	// subDirs := GetSubDirsFromPath(path)
-	// var foundRef *Ref
-	// for i := 1; i < len(refs); i++ {
-	// 	if refs[i].ParentPath != curRef.Path && foundRef != nil {
-	// 		curLevel++
-	// 		curRef = foundRef
-	// 		foundRef = nil
-	// 	}
-
-	// 	if refs[i].ParentPath == curRef.Path {
-	// 		if len(subDirs) > (curLevel-2) && subDirs[curLevel-2] == refs[i].Name {
-	// 			//curRef = &refs[i]
-	// 			foundRef = &refs[i]
-	// 		}
-	// 		curRef.AddChild(&refs[i])
-	// 	} else {
-	// 		return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
-	// 	}
-	// }
 	if _, err := refs[0].CalculateHash(ctx, false); err != nil {
-		logging.Logger.Error("Ref_CalculateHash", zap.Int64("ref_id", refs[0].ID), zap.Error(err))
+		return nil, common.NewError("Ref_CalculateHash", err.Error())
 	}
 	return &refs[0], nil
 }

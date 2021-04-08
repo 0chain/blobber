@@ -163,12 +163,11 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 	return nil
 }
 
-func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) error {
+func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) {
 	for _, change := range a.AllocationChanges {
 		if err := change.DeleteTempFile(); err != nil {
 			logging.Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
 		}
 	}
-
-	return nil
+	return
 }

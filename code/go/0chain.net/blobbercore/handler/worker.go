@@ -102,7 +102,6 @@ func MoveColdDataToCloud(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if !iterInprogress {
-				iterInprogress = true //nolint:ineffassign // probably has something to do with goroutines
 				fs := filestore.GetFileStore()
 				totalDiskSizeUsed, err := fs.GetTotalDiskSizeUsed()
 				if err != nil {

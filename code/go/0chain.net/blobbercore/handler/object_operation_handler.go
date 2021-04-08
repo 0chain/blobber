@@ -456,7 +456,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 		if change.Operation == allocation.UPDATE_OPERATION {
 			updateFileChange := new(allocation.UpdateFileChange)
 			if err := updateFileChange.Unmarshal(change.Input); err != nil {
-				Logger.Error("UpdateFileChange_Unmarshal", zap.Any("change_input", change.Input), zap.Error(err))
+				return nil, err
 			}
 			fileRef, err := reference.GetReference(ctx, allocationID, updateFileChange.Path)
 			if err != nil {

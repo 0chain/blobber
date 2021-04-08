@@ -80,7 +80,7 @@ func (nf *DeleteFileChange) ProcessChange(ctx context.Context, change *Allocatio
 
 	dirRef.RemoveChild(idx)
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-		Logger.Error("Ref_CalculateHash", zap.Int64("ref_id", rootRef.ID), zap.Error(err))
+		return nil, err
 	}
 
 	return nil, nil

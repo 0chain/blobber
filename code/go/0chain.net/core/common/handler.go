@@ -75,7 +75,6 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 
 		} else {
 			if data != nil {
-				//json.NewEncoder(w).Encode(data)
 				rawdata, ok := data.([]byte)
 				if ok {
 					w.Header().Set("Content-Type", "application/octet-stream")

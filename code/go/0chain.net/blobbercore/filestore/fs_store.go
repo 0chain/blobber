@@ -55,15 +55,15 @@ type StoreAllocation struct {
 	TempObjectsPath string
 }
 
-func SetupFSStore(rootDir string) FileStore {
+func SetupFSStore(rootDir string) (FileStore, error) {
 	if err := createDirs(rootDir); err != nil {
-		Logger.Error("SetupFSStore", zap.String("root_dir", rootDir), zap.Error(err))
+		return nil, err
 	}
 	fsStore = &FileFSStore{
 		RootDirectory: rootDir,
 		Minio:         intializeMinio(),
 	}
-	return fsStore
+	return fsStore, nil
 }
 
 func intializeMinio() *minio.Client {
@@ -548,7 +548,7 @@ func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHan
 	if err != nil {
 		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
-	_ = filepath.Walk(allocation.ObjectsPath, func(path string, info os.FileInfo, err error) error {
+	return filepath.Walk(allocation.ObjectsPath, func(path string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() && !strings.HasPrefix(path, allocation.TempObjectsPath) {
 			f, err := os.Open(path)
 			if err != nil {
@@ -563,7 +563,6 @@ func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHan
 		}
 		return nil
 	})
-	return nil
 }
 
 func (fs *FileFSStore) UploadToCloud(fileHash, filePath string) error {

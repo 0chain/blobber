@@ -14,7 +14,9 @@ import (
 	. "0chain.net/core/logging"
 )
 
-const CONNECTION_CONTEXT_KEY = "connection"
+type contextKey int
+
+const CONNECTION_CONTEXT_KEY contextKey = iota
 
 type Store struct {
 	db *gorm.DB

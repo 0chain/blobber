@@ -190,7 +190,7 @@ func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context,
 		Where("counter = ?", rm.LatestRM.ReadCounter).
 		Updates(rmUpdates).Error
 	if err != nil {
-		Logger.Error("LatestReadMarkerEntity", zap.Error(err))
+		return common.NewError("rme_update_status", err.Error())
 	}
 
 	// update cache using the transaction output
