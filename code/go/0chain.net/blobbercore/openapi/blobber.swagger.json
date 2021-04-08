@@ -1,0 +1,210 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "blobber.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "Blobber"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/allocation": {
+      "get": {
+        "operationId": "Blobber_GetAllocation",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetAllocationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "context.client",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.clientKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1Allocation": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string"
+        },
+        "Tx": {
+          "type": "string"
+        },
+        "TotalSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "UsedSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "OwnerID": {
+          "type": "string"
+        },
+        "OwnerPublicKey": {
+          "type": "string"
+        },
+        "Expiration": {
+          "type": "string",
+          "format": "int64"
+        },
+        "AllocationRoot": {
+          "type": "string"
+        },
+        "BlobberSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "BlobberSizeUsed": {
+          "type": "string",
+          "format": "int64"
+        },
+        "LatestRedeemedWM": {
+          "type": "string"
+        },
+        "IsRedeemRequired": {
+          "type": "boolean"
+        },
+        "TimeUnit": {
+          "type": "string",
+          "format": "int64"
+        },
+        "CleanedUp": {
+          "type": "boolean"
+        },
+        "Finalized": {
+          "type": "boolean"
+        },
+        "Terms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Term"
+          }
+        },
+        "PayerID": {
+          "type": "string"
+        }
+      }
+    },
+    "v1GetAllocationResponse": {
+      "type": "object",
+      "properties": {
+        "allocation": {
+          "$ref": "#/definitions/v1Allocation"
+        }
+      }
+    },
+    "v1RequestContext": {
+      "type": "object",
+      "properties": {
+        "client": {
+          "type": "string"
+        },
+        "clientKey": {
+          "type": "string"
+        },
+        "allocation": {
+          "type": "string"
+        }
+      }
+    },
+    "v1Term": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "int64"
+        },
+        "BlobberID": {
+          "type": "string"
+        },
+        "AllocationID": {
+          "type": "string"
+        },
+        "ReadPrice": {
+          "type": "string",
+          "format": "int64"
+        },
+        "WritePrice": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    }
+  }
+}

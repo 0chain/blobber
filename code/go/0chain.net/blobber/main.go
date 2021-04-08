@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -232,6 +233,7 @@ func main() {
 	metadataDB = flag.String("db_dir", "", "db_dir")
 	logDir := flag.String("log_dir", "", "log_dir")
 	portString := flag.String("port", "", "port")
+	grpcPortString := flag.String("grpc_port", "", "grpc_port")
 	hostname := flag.String("hostname", "", "hostname")
 
 	flag.Parse()
@@ -264,6 +266,10 @@ func main() {
 
 	if *portString == "" {
 		panic("Please specify --port which is the port on which requests are accepted")
+	}
+
+	if *grpcPortString == "" {
+		panic("Please specify --grpc_port which is the grpc port on which requests are accepted")
 	}
 
 	reader, err := os.Open(*keysFile)
@@ -346,6 +352,9 @@ func main() {
 	initHandlers(r)
 	initServer()
 
+	grpcServer := handler.NewServerWithMiddlewares()
+	handler.RegisterGRPCServices(r, grpcServer)
+
 	rHandler := handlers.CORS(originsOk, headersOk, methodsOk)(r)
 	if config.Development() {
 		// No WriteTimeout setup to enable pprof
@@ -370,6 +379,13 @@ func main() {
 
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()
+	go func(grpcPort string) {
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+		if err != nil {
+			log.Fatalf("failed to listen: %v", err)
+		}
+		log.Fatal(grpcServer.Serve(lis))
+	}(*grpcPortString)
 	log.Fatal(server.ListenAndServe())
 }
 
