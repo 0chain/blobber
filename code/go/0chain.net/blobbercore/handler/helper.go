@@ -19,7 +19,7 @@ func setupGRPCHandlerContext(ctx context.Context, r *blobbergrpc.RequestContext)
 }
 
 func convertAllocationToGRPCAllocation(alloc *allocation.Allocation) *blobbergrpc.Allocation {
-	terms := make([]*blobbergrpc.Term, len(alloc.Terms))
+	terms := make([]*blobbergrpc.Term, 0, len(alloc.Terms))
 	for _, t := range alloc.Terms {
 		terms = append(terms, &blobbergrpc.Term{
 			ID:           t.ID,
