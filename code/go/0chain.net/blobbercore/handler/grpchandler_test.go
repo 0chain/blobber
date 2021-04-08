@@ -394,3 +394,69 @@ func TestBlobberGRPCService_GetObjectPath_InvalidAllocation(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+func TestBlobberGRPCService_GetReferencePath_Success(t *testing.T) {
+	req := &blobbergrpc.GetReferencePathRequest{
+		Context: &blobbergrpc.RequestContext{
+			Client:     "client",
+			ClientKey:  "",
+			Allocation: "",
+		},
+		Paths:      `["something"]`,
+		Path:       "",
+		Allocation: "",
+	}
+
+	mockStorageHandler := &storageHandlerI{}
+	mockReferencePackage := &mocks.PackageHandler{}
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).Return(&allocation.Allocation{
+		ID:      "allocationId",
+		Tx:      req.Allocation,
+		OwnerID: "owner",
+	}, nil)
+	mockReferencePackage.On("GetReferencePathFromPaths", mock.Anything, mock.Anything, mock.Anything).Return(&reference.Ref{
+		Name:     "test",
+		Type:     reference.DIRECTORY,
+		Children: []*reference.Ref{{Name: "test1", Type: reference.FILE}},
+	}, nil)
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	resp, err := svc.GetReferencePath(context.Background(), req)
+	if err != nil {
+		t.Fatal("unexpected error")
+	}
+
+	assert.Equal(t, resp.ReferencePath.MetaData.DirMetaData.Name, "test")
+
+}
+
+func TestBlobberGRPCService_GetReferencePath_InvalidPaths(t *testing.T) {
+	req := &blobbergrpc.GetReferencePathRequest{
+		Context: &blobbergrpc.RequestContext{
+			Client:     "client",
+			ClientKey:  "",
+			Allocation: "",
+		},
+		Paths:      `["something"]`,
+		Path:       "",
+		Allocation: "",
+	}
+
+	mockStorageHandler := &storageHandlerI{}
+	mockReferencePackage := &mocks.PackageHandler{}
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).Return(&allocation.Allocation{
+		ID:      "allocationId",
+		Tx:      req.Allocation,
+		OwnerID: "owner",
+	}, nil)
+	mockReferencePackage.On("GetReferencePathFromPaths", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("invalid paths"))
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	_, err := svc.GetReferencePath(context.Background(), req)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	assert.Equal(t, err.Error(), "invalid paths")
+
+}

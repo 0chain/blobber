@@ -159,6 +159,29 @@ func (_m *PackageHandler) GetReferenceFromLookupHash(ctx context.Context, alloca
 	return r0, r1
 }
 
+// GetReferencePathFromPaths provides a mock function with given fields: ctx, allocationID, paths
+func (_m *PackageHandler) GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*reference.Ref, error) {
+	ret := _m.Called(ctx, allocationID, paths)
+
+	var r0 *reference.Ref
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string) *reference.Ref); ok {
+		r0 = rf(ctx, allocationID, paths)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*reference.Ref)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, []string) error); ok {
+		r1 = rf(ctx, allocationID, paths)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetWriteMarkerEntity provides a mock function with given fields: ctx, allocation_root
 func (_m *PackageHandler) GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*writemarker.WriteMarkerEntity, error) {
 	ret := _m.Called(ctx, allocation_root)

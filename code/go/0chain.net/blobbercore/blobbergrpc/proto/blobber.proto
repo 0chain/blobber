@@ -32,7 +32,29 @@ service Blobber {
       get: "/v2/file/objectpath/{allocation}"
     };
   }
+  rpc GetReferencePath(GetReferencePathRequest) returns (GetReferencePathResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/referencepath/{allocation}"
+    };
+  }
 }
+
+message GetReferencePathRequest {
+  RequestContext Context = 1;
+  string Paths = 2;
+  string Path = 3;
+  string allocation = 4;
+}
+message GetReferencePathResponse {
+  ReferencePath ReferencePath = 1;
+  WriteMarker LatestWM = 2;
+}
+
+message ReferencePath {
+  FileRef MetaData = 1;
+  repeated ReferencePath List = 2;
+}
+
 message GetObjectPathRequest {
   RequestContext context = 1;
   string allocation = 2;

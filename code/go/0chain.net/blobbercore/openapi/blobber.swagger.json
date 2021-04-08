@@ -256,6 +256,66 @@
         ]
       }
     },
+    "/v2/file/referencepath/{allocation}": {
+      "get": {
+        "operationId": "Blobber_GetReferencePath",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetReferencePathResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "Context.client",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Context.clientKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Paths",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Path",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
     "/v2/file/stats/{allocation}": {
       "get": {
         "operationId": "Blobber_GetFileStats",
@@ -679,6 +739,17 @@
         }
       }
     },
+    "v1GetReferencePathResponse": {
+      "type": "object",
+      "properties": {
+        "ReferencePath": {
+          "$ref": "#/definitions/v1ReferencePath"
+        },
+        "LatestWM": {
+          "$ref": "#/definitions/v1WriteMarker"
+        }
+      }
+    },
     "v1ListEntitiesResponse": {
       "type": "object",
       "properties": {
@@ -705,6 +776,20 @@
         "FileBlockNum": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "v1ReferencePath": {
+      "type": "object",
+      "properties": {
+        "MetaData": {
+          "$ref": "#/definitions/v1FileRef"
+        },
+        "List": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ReferencePath"
+          }
         }
       }
     },
