@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	"0chain.net/blobbercore/stats"
+
 	"0chain.net/blobbercore/reference"
 
 	"0chain.net/blobbercore/mocks"
@@ -74,7 +76,7 @@ func TestBlobberGRPCService_GetAllocation_Success(t *testing.T) {
 	}
 
 	mockStorageHandler := &storageHandlerI{}
-	mockReferencePackage := &mocks.ReferencePackage{}
+	mockReferencePackage := &mocks.PackageHandler{}
 	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Id, false).Return(&allocation.Allocation{
 		Tx: req.Id,
 	}, nil)
@@ -85,14 +87,14 @@ func TestBlobberGRPCService_GetAllocation_Success(t *testing.T) {
 	assert.Equal(t, allocation.Allocation.Tx, req.Id)
 }
 
-func TestBlobberGRPCService_GetAllocation_verifyAllocation_Error(t *testing.T) {
+func TestBlobberGRPCService_GetAllocation_invalidAllocation(t *testing.T) {
 	req := &blobbergrpc.GetAllocationRequest{
 		Context: &blobbergrpc.RequestContext{},
-		Id:      "something",
+		Id:      "invalid_allocation",
 	}
 
 	mockStorageHandler := &storageHandlerI{}
-	mockReferencePackage := &mocks.ReferencePackage{}
+	mockReferencePackage := &mocks.PackageHandler{}
 	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Id, false).Return(nil, errors.New("some error"))
 
 	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
@@ -113,23 +115,29 @@ func TestBlobberGRPCService_GetFileMetaData_Success(t *testing.T) {
 		},
 		Path:       "path",
 		PathHash:   "path_hash",
-		AuthToken:  "",
+		AuthToken:  "testval",
 		Allocation: "something",
 	}
 
 	mockStorageHandler := &storageHandlerI{}
-	mockReferencePackage := &mocks.ReferencePackage{}
+	mockReferencePackage := &mocks.PackageHandler{}
 	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, true).Return(&allocation.Allocation{
 		ID: "allocationId",
 		Tx: req.Allocation,
 	}, nil)
 	mockReferencePackage.On("GetReferenceFromLookupHash", mock.Anything, mock.Anything, mock.Anything).Return(&reference.Ref{
-		Size: 123,
+		Name: "test",
 		Type: reference.FILE,
 	}, nil)
 	mockReferencePackage.On("GetCommitMetaTxns", mock.Anything, mock.Anything).Return(nil, nil)
-	mockReferencePackage.On("GetCollaborators", mock.Anything, mock.Anything).Return(nil, nil)
+	mockReferencePackage.On("GetCollaborators", mock.Anything, mock.Anything).Return([]reference.Collaborator{
+		reference.Collaborator{
+			RefID:    1,
+			ClientID: "test",
+		},
+	}, nil)
 	mockReferencePackage.On("IsACollaborator", mock.Anything, mock.Anything, mock.Anything).Return(true)
+	mockStorageHandler.On("verifyAuthTicket", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil)
 
 	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
 	resp, err := svc.GetFileMetaData(context.Background(), req)
@@ -137,5 +145,113 @@ func TestBlobberGRPCService_GetFileMetaData_Success(t *testing.T) {
 		t.Fatal("unexpected error")
 	}
 
-	assert.Equal(t, resp.MetaData.FileMetaData.Size, int64(123))
+	assert.Equal(t, resp.MetaData.FileMetaData.Name, "test")
+}
+
+func TestBlobberGRPCService_GetFileMetaData_FileNotExist(t *testing.T) {
+	req := &blobbergrpc.GetFileMetaDataRequest{
+		Context: &blobbergrpc.RequestContext{
+			Client:     "client",
+			ClientKey:  "",
+			Allocation: "",
+		},
+		Path:       "path",
+		PathHash:   "path_hash",
+		AuthToken:  "testval",
+		Allocation: "something",
+	}
+
+	mockStorageHandler := &storageHandlerI{}
+	mockReferencePackage := &mocks.PackageHandler{}
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, true).Return(&allocation.Allocation{
+		ID: "allocationId",
+		Tx: req.Allocation,
+	}, nil)
+	mockReferencePackage.On("GetReferenceFromLookupHash", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("file doesnt exist"))
+	mockReferencePackage.On("GetCommitMetaTxns", mock.Anything, mock.Anything).Return(nil, nil)
+	mockReferencePackage.On("GetCollaborators", mock.Anything, mock.Anything).Return([]reference.Collaborator{
+		reference.Collaborator{
+			RefID:    1,
+			ClientID: "test",
+		},
+	}, nil)
+	mockReferencePackage.On("IsACollaborator", mock.Anything, mock.Anything, mock.Anything).Return(true)
+	mockStorageHandler.On("verifyAuthTicket", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil)
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	_, err := svc.GetFileMetaData(context.Background(), req)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestBlobberGRPCService_GetFileStats_Success(t *testing.T) {
+	req := &blobbergrpc.GetFileStatsRequest{
+		Context: &blobbergrpc.RequestContext{
+			Client:     "owner",
+			ClientKey:  "",
+			Allocation: "",
+		},
+		Path:       "path",
+		PathHash:   "path_hash",
+		Allocation: "",
+	}
+
+	mockStorageHandler := &storageHandlerI{}
+	mockReferencePackage := &mocks.PackageHandler{}
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, true).Return(&allocation.Allocation{
+		ID:      "allocationId",
+		Tx:      req.Allocation,
+		OwnerID: "owner",
+	}, nil)
+	mockReferencePackage.On("GetReferenceFromLookupHash", mock.Anything, mock.Anything, mock.Anything).Return(&reference.Ref{
+		ID:   123,
+		Name: "test",
+		Type: reference.FILE,
+	}, nil)
+	mockReferencePackage.On("GetFileStats", mock.Anything, int64(123)).Return(&stats.FileStats{
+		NumBlockDownloads: 10,
+	}, nil)
+	mockReferencePackage.On("GetWriteMarkerEntity", mock.Anything, mock.Anything).Return(nil, nil)
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	resp, err := svc.GetFileStats(context.Background(), req)
+	if err != nil {
+		t.Fatal("unexpected error")
+	}
+
+	assert.Equal(t, resp.MetaData.FileMetaData.Name, "test")
+	assert.Equal(t, resp.Stats.NumBlockDownloads, int64(10))
+}
+
+func TestBlobberGRPCService_GetFileStats_FileNotExist(t *testing.T) {
+	req := &blobbergrpc.GetFileStatsRequest{
+		Context: &blobbergrpc.RequestContext{
+			Client:     "owner",
+			ClientKey:  "",
+			Allocation: "",
+		},
+		Path:       "path",
+		PathHash:   "path_hash",
+		Allocation: "",
+	}
+
+	mockStorageHandler := &storageHandlerI{}
+	mockReferencePackage := &mocks.PackageHandler{}
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, true).Return(&allocation.Allocation{
+		ID:      "allocationId",
+		Tx:      req.Allocation,
+		OwnerID: "owner",
+	}, nil)
+	mockReferencePackage.On("GetReferenceFromLookupHash", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("file does not exist"))
+	mockReferencePackage.On("GetFileStats", mock.Anything, int64(123)).Return(&stats.FileStats{
+		NumBlockDownloads: 10,
+	}, nil)
+	mockReferencePackage.On("GetWriteMarkerEntity", mock.Anything, mock.Anything).Return(nil, nil)
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	_, err := svc.GetFileStats(context.Background(), req)
+	if err == nil {
+		t.Fatal("expected error")
+	}
 }

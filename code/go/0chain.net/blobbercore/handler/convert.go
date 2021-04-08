@@ -40,6 +40,10 @@ func AllocationToGRPCAllocation(alloc *allocation.Allocation) *blobbergrpc.Alloc
 }
 
 func FileStatsToFileStatsGRPC(fileStats *stats.FileStats) *blobbergrpc.FileStats {
+	if fileStats == nil {
+		return &blobbergrpc.FileStats{}
+	}
+
 	return &blobbergrpc.FileStats{
 		ID:                       fileStats.ID,
 		RefID:                    fileStats.RefID,

@@ -31,50 +31,71 @@ type StorageHandlerI interface {
 	verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (bool, error)
 }
 
-type ReferencePackage interface {
+// PackageHandler is an interface for all static functions that may need to be mocked
+type PackageHandler interface {
 	GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*reference.Ref, error)
 	GetCommitMetaTxns(ctx context.Context, refID int64) ([]reference.CommitMetaTxn, error)
 	GetCollaborators(ctx context.Context, refID int64) ([]reference.Collaborator, error)
 	IsACollaborator(ctx context.Context, refID int64, clientID string) bool
+	GetFileStats(ctx context.Context, refID int64) (*stats.FileStats, error)
+	GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*writemarker.WriteMarkerEntity, error)
+	GetRefWithChildren(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
+	GetObjectPathGRPC(ctx context.Context, allocationID string, blockNum int64) (*blobbergrpc.ObjectPath, error)
 }
 
-type referencePackage struct{}
+type packageHandler struct{}
 
-func (r *referencePackage) GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*reference.Ref, error) {
+func (r *packageHandler) GetRefWithChildren(ctx context.Context, allocationID string, path string) (*reference.Ref, error) {
+	return reference.GetRefWithChildren(ctx, allocationID, path)
+}
+
+func (r *packageHandler) GetObjectPathGRPC(ctx context.Context, allocationID string, blockNum int64) (*blobbergrpc.ObjectPath, error) {
+	return reference.GetObjectPathGRPC(ctx, allocationID, blockNum)
+}
+
+func (r *packageHandler) GetFileStats(ctx context.Context, refID int64) (*stats.FileStats, error) {
+	return stats.GetFileStats(ctx, refID)
+}
+
+func (r *packageHandler) GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*writemarker.WriteMarkerEntity, error) {
+	return writemarker.GetWriteMarkerEntity(ctx, allocation_root)
+}
+
+func (r *packageHandler) GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*reference.Ref, error) {
 	return reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
 }
 
-func (r *referencePackage) GetCommitMetaTxns(ctx context.Context, refID int64) ([]reference.CommitMetaTxn, error) {
+func (r *packageHandler) GetCommitMetaTxns(ctx context.Context, refID int64) ([]reference.CommitMetaTxn, error) {
 	return reference.GetCommitMetaTxns(ctx, refID)
 }
 
-func (r *referencePackage) GetCollaborators(ctx context.Context, refID int64) ([]reference.Collaborator, error) {
+func (r *packageHandler) GetCollaborators(ctx context.Context, refID int64) ([]reference.Collaborator, error) {
 	return reference.GetCollaborators(ctx, refID)
 }
 
-func (r *referencePackage) IsACollaborator(ctx context.Context, refID int64, clientID string) bool {
+func (r *packageHandler) IsACollaborator(ctx context.Context, refID int64, clientID string) bool {
 	return reference.IsACollaborator(ctx, refID, clientID)
 }
 
 type blobberGRPCService struct {
-	storageHandler   StorageHandlerI
-	referenceHandler ReferencePackage
+	storageHandler StorageHandlerI
+	packageHandler PackageHandler
 	blobbergrpc.UnimplementedBlobberServer
 }
 
 func RegisterGRPCServices(r *mux.Router, server *grpc.Server) {
-	refPack := &referencePackage{}
-	blobberService := newGRPCBlobberService(&storageHandler, refPack)
+	packHandler := &packageHandler{}
+	blobberService := newGRPCBlobberService(&storageHandler, packHandler)
 	mux := runtime.NewServeMux()
 	blobbergrpc.RegisterBlobberServer(server, blobberService)
 	blobbergrpc.RegisterBlobberHandlerServer(context.Background(), mux, blobberService)
 	r.PathPrefix("/").Handler(mux)
 }
 
-func newGRPCBlobberService(sh StorageHandlerI, r ReferencePackage) *blobberGRPCService {
+func newGRPCBlobberService(sh StorageHandlerI, r PackageHandler) *blobberGRPCService {
 	return &blobberGRPCService{
-		storageHandler:   sh,
-		referenceHandler: r,
+		storageHandler: sh,
+		packageHandler: r,
 	}
 }
 
@@ -111,7 +132,7 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 		path_hash = reference.GetReferenceLookup(allocationID, path)
 	}
 
-	fileref, err := b.referenceHandler.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	fileref, err := b.packageHandler.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -120,13 +141,13 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 		return nil, common.NewError("invalid_parameters", "Path is not a file.")
 	}
 
-	commitMetaTxns, err := b.referenceHandler.GetCommitMetaTxns(ctx, fileref.ID)
+	commitMetaTxns, err := b.packageHandler.GetCommitMetaTxns(ctx, fileref.ID)
 	if err != nil {
 		logger.Error("Failed to get commitMetaTxns from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
 	}
 	fileref.CommitMetaTxns = commitMetaTxns
 
-	collaborators, err := b.referenceHandler.GetCollaborators(ctx, fileref.ID)
+	collaborators, err := b.packageHandler.GetCollaborators(ctx, fileref.ID)
 	if err != nil {
 		logger.Error("Failed to get collaborators from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
 	}
@@ -135,7 +156,7 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 
 	if (allocationObj.OwnerID != clientID &&
 		allocationObj.PayerID != clientID &&
-		!b.referenceHandler.IsACollaborator(ctx, fileref.ID, clientID)) || len(authTokenString) > 0 {
+		!b.packageHandler.IsACollaborator(ctx, fileref.ID, clientID)) || len(authTokenString) > 0 {
 		authTicketVerified, err := b.storageHandler.verifyAuthTicket(ctx, req.AuthToken, allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err
@@ -184,7 +205,7 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 		path_hash = reference.GetReferenceLookup(allocationID, path)
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	fileref, err := b.packageHandler.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -194,8 +215,8 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 		return nil, common.NewError("invalid_parameters", "Path is not a file.")
 	}
 
-	stats, _ := stats.GetFileStats(ctx, fileref.ID)
-	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
+	stats, _ := b.packageHandler.GetFileStats(ctx, fileref.ID)
+	wm, _ := b.packageHandler.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
 	if wm != nil && stats != nil {
 		stats.WriteMarkerRedeemTxn = wm.CloseTxnID
 	}
