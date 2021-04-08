@@ -254,7 +254,7 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.
 
 	logger.Info("Path Hash for list dir :" + path_hash)
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	fileref, err := b.packageHandler.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
@@ -269,7 +269,7 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.
 		}
 	}
 
-	dirref, err := reference.GetRefWithChildren(ctx, allocationID, fileref.Path)
+	dirref, err := b.packageHandler.GetRefWithChildren(ctx, allocationID, fileref.Path)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
@@ -322,7 +322,7 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 		return nil, common.NewError("invalid_parameters", "Invalid block number")
 	}
 
-	objectPath, err := reference.GetObjectPathGRPC(ctx, allocationID, blockNum)
+	objectPath, err := b.packageHandler.GetObjectPathGRPC(ctx, allocationID, blockNum)
 	if err != nil {
 		return nil, err
 	}
@@ -331,7 +331,7 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 	if len(allocationObj.AllocationRoot) == 0 {
 		latestWM = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+		latestWM, err = b.packageHandler.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
 		if err != nil {
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
