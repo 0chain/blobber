@@ -62,13 +62,17 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 
 func (cr *ChallengeEntity) ErrorChallenge(ctx context.Context, err error) {
 	cr.StatusMessage = err.Error()
-	cr.Save(ctx)
+	if err := cr.Save(ctx); err != nil {
+		Logger.Error("ChallengeEntity_Save", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+	}
 }
 
 func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 	if len(cr.Validators) == 0 {
 		cr.StatusMessage = "No validators assigned to the challange"
-		cr.Save(ctx)
+		if err := cr.Save(ctx); err != nil {
+			Logger.Error("ChallengeEntity_Save", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+		}
 		return common.NewError("no_validators", "No validators assigned to the challange")
 	}
 
@@ -236,7 +240,9 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 				cr.Status = Committed
 				cr.StatusMessage = t.TransactionOutput
 				cr.CommitTxnID = t.Hash
-				cr.Save(ctx)
+				if err := cr.Save(ctx); err != nil {
+					Logger.Error("ChallengeEntity_Save", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+				}
 				FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
 				return nil
 			}

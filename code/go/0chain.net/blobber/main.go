@@ -128,23 +128,11 @@ func SetupWorkers() {
 	// stats.StartEventDispatcher(2)
 }
 
-var fsStore filestore.FileStore
+var fsStore filestore.FileStore //nolint:unused // global which might be needed somewhere
 
-func initEntities() {
-	// badgerdbstore.SetupStorageProvider(*badgerDir)
-	fsStore = filestore.SetupFSStore(*filesDir + "/files")
-	// blobber.SetupObjectStorageHandler(fsStore, badgerdbstore.GetStorageProvider())
-
-	// allocation.SetupAllocationChangeCollectorEntity(badgerdbstore.GetStorageProvider())
-	// allocation.SetupAllocationEntity(badgerdbstore.GetStorageProvider())
-	// allocation.SetupDeleteTokenEntity(badgerdbstore.GetStorageProvider())
-	// reference.SetupFileRefEntity(badgerdbstore.GetStorageProvider())
-	// reference.SetupRefEntity(badgerdbstore.GetStorageProvider())
-	// reference.SetupContentReferenceEntity(badgerdbstore.GetStorageProvider())
-	// writemarker.SetupEntity(badgerdbstore.GetStorageProvider())
-	// readmarker.SetupEntity(badgerdbstore.GetStorageProvider())
-	// challenge.SetupEntity(badgerdbstore.GetStorageProvider())
-	// stats.SetupStatsEntity(badgerdbstore.GetStorageProvider())
+func initEntities() (err error) {
+	fsStore, err = filestore.SetupFSStore(*filesDir + "/files")
+	return err
 }
 
 func initServer() {
@@ -173,31 +161,31 @@ func checkForDBConnection() {
 func processMinioConfig(reader io.Reader) error {
 	scanner := bufio.NewScanner(reader)
 	more := scanner.Scan()
-	if more == false {
+	if !more {
 		return common.NewError("process_minio_config_failed", "Unable to read minio config from minio config file")
 	}
 
 	filestore.MinioConfig.StorageServiceURL = scanner.Text()
 	more = scanner.Scan()
-	if more == false {
+	if !more {
 		return common.NewError("process_minio_config_failed", "Unable to read minio config from minio config file")
 	}
 
 	filestore.MinioConfig.AccessKeyID = scanner.Text()
 	more = scanner.Scan()
-	if more == false {
+	if !more {
 		return common.NewError("process_minio_config_failed", "Unable to read minio config from minio config file")
 	}
 
 	filestore.MinioConfig.SecretAccessKey = scanner.Text()
 	more = scanner.Scan()
-	if more == false {
+	if !more {
 		return common.NewError("process_minio_config_failed", "Unable to read minio config from minio config file")
 	}
 
 	filestore.MinioConfig.BucketName = scanner.Text()
 	more = scanner.Scan()
-	if more == false {
+	if !more {
 		return common.NewError("process_minio_config_failed", "Unable to read minio config from minio config file")
 	}
 
@@ -323,10 +311,15 @@ func main() {
 
 	checkForDBConnection()
 
-	// Initializa after serverchain is setup.
-	initEntities()
-	//miner.GetMinerChain().SetupGenesisBlock(viper.GetString("server_chain.genesis_block.id"))
-	SetupBlobberOnBC(*logDir)
+	// Initialize after server chain is setup.
+	if err := initEntities(); err != nil {
+		Logger.Panic("Error setting up blobber on blockchian" + err.Error())
+		return
+	}
+	if err := SetupBlobberOnBC(*logDir); err != nil {
+		Logger.Panic("Error setting up blobber on blockchian" + err.Error())
+		return
+	}
 	mode := "main net"
 	if config.Development() {
 		mode = "development"
@@ -402,7 +395,6 @@ func RegisterBlobber() {
 			time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
 			if err == nil {
-				txnVerified = true
 				Logger.Info("Transaction for adding blobber accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
 				//badgerdbstore.GetStorageProvider().WriteBytes(ctx, BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
 				//badgerdbstore.GetStorageProvider().Commit(ctx)
@@ -481,18 +473,18 @@ func UpdateBlobberSettings() {
 	}
 }
 
-func SetupBlobberOnBC(logDir string) {
+func SetupBlobberOnBC(logDir string) error {
 	var logName = logDir + "/0chainBlobber.log"
 	zcncore.SetLogFile(logName, false)
 	zcncore.SetLogLevel(3)
-	zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme)
-	zcncore.SetWalletInfo(node.Self.GetWalletString(), false)
-	//txnHash, err := badgerdbstore.GetStorageProvider().ReadBytes(common.GetRootContext(), BLOBBER_REGISTERED_LOOKUP_KEY)
-	//if err != nil {
-	// Now register blobber to chain
+	if err := zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme); err != nil {
+		return err
+	}
+	if err := zcncore.SetWalletInfo(node.Self.GetWalletString(), false); err != nil {
+		return err
+	}
 	go RegisterBlobber()
-	//}
-	//Logger.Info("Blobber already registered", zap.Any("blobberTxn", string(txnHash)))
+	return nil
 }
 
 /*HomePageHandler - provides basic info when accessing the home page of the server */

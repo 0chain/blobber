@@ -9,7 +9,7 @@ import (
 )
 
 type FileStats struct {
-	ID                       int64  `gorm:column:id;primary_key json:"-"`
+	ID                       int64  `gorm:"column:id;primary_key" json:"-"`
 	RefID                    int64  `gorm:"column:ref_id" json:"-"`
 	NumUpdates               int64  `gorm:"column:num_of_updates" json:"num_of_updates"`
 	NumBlockDownloads        int64  `gorm:"column:num_of_block_downloads" json:"num_of_block_downloads"`

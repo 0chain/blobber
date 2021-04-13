@@ -33,23 +33,23 @@ func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet string, err 
 }
 
 // size in gigabytes
-func sizeInGB(size int64) float64 {
+func sizeInGB(size int64) float64 { //nolint:unused,deadcode // might be used later?
 	return float64(size) / GB
 }
 
-type apiResp struct {
+type apiResp struct { //nolint:unused,deadcode // might be used later?
 	ok   bool
 	resp string
 }
 
-func (ar *apiResp) decode(val interface{}) (err error) {
+func (ar *apiResp) decode(val interface{}) (err error) { //nolint:unused,deadcode // might be used later?
 	if err = ar.err(); err != nil {
 		return
 	}
 	return json.Unmarshal([]byte(ar.resp), val)
 }
 
-func (ar *apiResp) err() error {
+func (ar *apiResp) err() error { //nolint:unused,deadcode // might be used later?
 	if !ar.ok {
 		return errors.New(ar.resp)
 	}

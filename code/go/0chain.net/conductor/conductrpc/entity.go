@@ -95,7 +95,7 @@ func (e *Entity) Shutdown() {
 	})
 }
 
-func (e *Entity) isMonitor() bool {
+func (e *Entity) isMonitor() bool { //nolint:unused,deadcode // might be used later?
 	var state = e.State()
 	return state != nil && state.IsMonitor
 }

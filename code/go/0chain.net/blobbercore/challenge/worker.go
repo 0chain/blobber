@@ -28,7 +28,7 @@ type BCChallengeResponse struct {
 
 func SetupWorkers(ctx context.Context) {
 	go FindChallenges(ctx)
-	go SubmitProcessedChallenges(ctx)
+	go SubmitProcessedChallenges(ctx) //nolint:errcheck // goroutines
 }
 
 func GetValidationTickets(ctx context.Context, challengeObj *ChallengeEntity) error {
@@ -43,7 +43,7 @@ func GetValidationTickets(ctx context.Context, challengeObj *ChallengeEntity) er
 }
 
 func SubmitProcessedChallenges(ctx context.Context) error {
-	for true {
+	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -61,7 +61,9 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 				lastSeq := 0
 				lastCommitTxn := ""
 				for rows.Next() {
-					rows.Scan(&lastCommitTxn, &lastSeq)
+					if err := rows.Scan(&lastCommitTxn, &lastSeq); err != nil {
+						Logger.Error("Rows_Scan", zap.Error(err))
+					}
 				}
 
 				openchallenges := make([]*ChallengeEntity, 0)
@@ -74,7 +76,9 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 				if len(openchallenges) > 0 {
 					for _, openchallenge := range openchallenges {
 						Logger.Info("Attempting to commit challenge", zap.Any("challenge_id", openchallenge.ChallengeID), zap.Any("openchallenge", openchallenge))
-						openchallenge.UnmarshalFields()
+						if err := openchallenge.UnmarshalFields(); err != nil {
+							Logger.Error("ChallengeEntity_UnmarshalFields", zap.String("challenge_id", openchallenge.ChallengeID), zap.Error(err))
+						}
 						mutex := lock.GetMutex(openchallenge.TableName(), openchallenge.ChallengeID)
 						mutex.Lock()
 						redeemCtx := datastore.GetStore().CreateTransaction(ctx)
@@ -111,7 +115,9 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 
 				for _, toBeVerifiedChallenge := range toBeVerifiedChallenges {
 					Logger.Info("Attempting to commit challenge through verification", zap.Any("challenge_id", toBeVerifiedChallenge.ChallengeID), zap.Any("openchallenge", toBeVerifiedChallenge))
-					toBeVerifiedChallenge.UnmarshalFields()
+					if err := toBeVerifiedChallenge.UnmarshalFields(); err != nil {
+						Logger.Error("ChallengeEntity_UnmarshalFields", zap.String("challenge_id", toBeVerifiedChallenge.ChallengeID), zap.Error(err))
+					}
 					mutex := lock.GetMutex(toBeVerifiedChallenge.TableName(), toBeVerifiedChallenge.ChallengeID)
 					mutex.Lock()
 					redeemCtx := datastore.GetStore().CreateTransaction(ctx)
@@ -143,30 +149,14 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 		time.Sleep(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
 	}
 
-	// if challengeObj.ObjectPath != nil && challengeObj.Status == Committed && challengeObj.ObjectPath.FileBlockNum > 0 {
-	// 	//stats.FileChallenged(challengeObj.AllocationID, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	if challengeObj.Result == ChallengeSuccess {
-	// 		go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.SUCCESS, stats.REDEEMSUCCESS, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	} else if challengeObj.Result == ChallengeFailure {
-	// 		go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.FAILED, stats.REDEEMSUCCESS, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	}
-
-	// } else if challengeObj.ObjectPath != nil && challengeObj.Status != Committed && challengeObj.ObjectPath.FileBlockNum > 0 && challengeObj.Retries >= config.Configuration.ChallengeMaxRetires {
-	// 	if challengeObj.Result == ChallengeSuccess {
-	// 		go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.SUCCESS, stats.REDEEMERROR, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	} else if challengeObj.Result == ChallengeFailure {
-	// 		go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.FAILED, stats.REDEEMERROR, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	}
-	// }
-
-	return nil
+	return nil //nolint:govet // need more time to verify
 }
 
 var iterInprogress = false
 
 func FindChallenges(ctx context.Context) {
 	ticker := time.NewTicker(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
-	for true {
+	for {
 		select {
 		case <-ctx.Done():
 			return
@@ -237,7 +227,9 @@ func FindChallenges(ctx context.Context) {
 									if (latestChallenge == nil && len(challengeObj.PrevChallengeID) == 0) || latestChallenge.ChallengeID == challengeObj.PrevChallengeID {
 										Logger.Info("Adding new challenge found from blockchain", zap.String("challenge", v.ChallengeID))
 										challengeObj.Status = Accepted
-										challengeObj.Save(tCtx)
+										if err := challengeObj.Save(tCtx); err != nil {
+											Logger.Error("ChallengeEntity_Save", zap.String("challenge_id", challengeObj.ChallengeID), zap.Error(err))
+										}
 									} else {
 										Logger.Error("Challenge chain is not valid")
 									}

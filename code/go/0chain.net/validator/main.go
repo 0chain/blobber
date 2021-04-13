@@ -115,7 +115,9 @@ func main() {
 
 	chain.SetServerChain(serverChain)
 
-	SetupValidatorOnBC(*logDir)
+	if err := SetupValidatorOnBC(*logDir); err != nil {
+		Logger.Info("error setting up validator on blockchain", zap.Any("err", err))
+	}
 
 	mode := "main net"
 	if config.Development() {
@@ -171,7 +173,6 @@ func RegisterValidator() {
 			time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
 			if err == nil {
-				txnVerified = true
 				Logger.Info("Transaction for adding validator accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
 				return
 			}
@@ -184,13 +185,18 @@ func RegisterValidator() {
 	}
 }
 
-func SetupValidatorOnBC(logDir string) {
+func SetupValidatorOnBC(logDir string) error {
 	var logName = logDir + "/validator.log"
 	zcncore.SetLogFile(logName, false)
 	zcncore.SetLogLevel(3)
-	zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme)
-	zcncore.SetWalletInfo(node.Self.GetWalletString(), false)
+	if err := zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme); err != nil {
+		return err
+	}
+	if err := zcncore.SetWalletInfo(node.Self.GetWalletString(), false); err != nil {
+		return err
+	}
 	go RegisterValidator()
+	return nil
 }
 
 /*HomePageHandler - provides basic info when accessing the home page of the server */
