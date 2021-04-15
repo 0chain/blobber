@@ -43,9 +43,14 @@ type PackageHandler interface {
 	GetRefWithChildren(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 	GetObjectPathGRPC(ctx context.Context, allocationID string, blockNum int64) (*blobbergrpc.ObjectPath, error)
 	GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*reference.Ref, error)
+	GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 }
 
 type packageHandler struct{}
+
+func (r *packageHandler) GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error) {
+	return reference.GetObjectTree(ctx, allocationID, path)
+}
 
 func (r *packageHandler) GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*reference.Ref, error) {
 	return reference.GetReferencePathFromPaths(ctx, allocationID, paths)
@@ -418,5 +423,61 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 		refPathResult.LatestWM = WriteMarkerToWriteMarkerGRPC(latestWM.WM)
 	}
 
+	return &refPathResult, nil
+}
+
+func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc.GetObjectTreeRequest) (*blobbergrpc.GetObjectTreeResponse, error) {
+	allocationTx := req.Context.Allocation
+	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+	allocationID := allocationObj.ID
+
+	clientID := req.Context.Client
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+	path := req.Path
+	if len(path) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path")
+	}
+
+	rootRef, err := b.packageHandler.GetObjectTree(ctx, allocationID, path)
+	if err != nil {
+		return nil, err
+	}
+
+	refPath := &blobbergrpc.ReferencePath{MetaData: reference.FileRefToFileRefGRPC(rootRef)}
+	refsToProcess := make([]*blobbergrpc.ReferencePath, 0)
+	refsToProcess = append(refsToProcess, refPath)
+	for len(refsToProcess) > 0 {
+		refToProcess := refsToProcess[0]
+		if len(refToProcess.MetaData.DirMetaData.Children) > 0 {
+			refToProcess.List = make([]*blobbergrpc.ReferencePath, len(refToProcess.MetaData.DirMetaData.Children))
+		}
+		for idx, child := range refToProcess.MetaData.DirMetaData.Children {
+			childRefPath := &blobbergrpc.ReferencePath{MetaData: child}
+			refToProcess.List[idx] = childRefPath
+			refsToProcess = append(refsToProcess, childRefPath)
+		}
+		refsToProcess = refsToProcess[1:]
+	}
+
+	var latestWM *writemarker.WriteMarkerEntity
+	if len(allocationObj.AllocationRoot) == 0 {
+		latestWM = nil
+	} else {
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+		if err != nil {
+			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
+		}
+	}
+	var refPathResult blobbergrpc.GetObjectTreeResponse
+	refPathResult.ReferencePath = refPath
+	if latestWM != nil {
+		refPathResult.LatestWM = WriteMarkerToWriteMarkerGRPC(latestWM.WM)
+	}
 	return &refPathResult, nil
 }

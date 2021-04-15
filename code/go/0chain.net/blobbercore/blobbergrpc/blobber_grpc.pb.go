@@ -11,7 +11,6 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // BlobberClient is the client API for Blobber service.
@@ -24,6 +23,7 @@ type BlobberClient interface {
 	ListEntities(ctx context.Context, in *ListEntitiesRequest, opts ...grpc.CallOption) (*ListEntitiesResponse, error)
 	GetObjectPath(ctx context.Context, in *GetObjectPathRequest, opts ...grpc.CallOption) (*GetObjectPathResponse, error)
 	GetReferencePath(ctx context.Context, in *GetReferencePathRequest, opts ...grpc.CallOption) (*GetReferencePathResponse, error)
+	GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error)
 }
 
 type blobberClient struct {
@@ -88,6 +88,15 @@ func (c *blobberClient) GetReferencePath(ctx context.Context, in *GetReferencePa
 	return out, nil
 }
 
+func (c *blobberClient) GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error) {
+	out := new(GetObjectTreeResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/GetObjectTree", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BlobberServer is the server API for Blobber service.
 // All implementations must embed UnimplementedBlobberServer
 // for forward compatibility
@@ -98,6 +107,7 @@ type BlobberServer interface {
 	ListEntities(context.Context, *ListEntitiesRequest) (*ListEntitiesResponse, error)
 	GetObjectPath(context.Context, *GetObjectPathRequest) (*GetObjectPathResponse, error)
 	GetReferencePath(context.Context, *GetReferencePathRequest) (*GetReferencePathResponse, error)
+	GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error)
 	mustEmbedUnimplementedBlobberServer()
 }
 
@@ -123,6 +133,9 @@ func (UnimplementedBlobberServer) GetObjectPath(context.Context, *GetObjectPathR
 func (UnimplementedBlobberServer) GetReferencePath(context.Context, *GetReferencePathRequest) (*GetReferencePathResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetReferencePath not implemented")
 }
+func (UnimplementedBlobberServer) GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetObjectTree not implemented")
+}
 func (UnimplementedBlobberServer) mustEmbedUnimplementedBlobberServer() {}
 
 // UnsafeBlobberServer may be embedded to opt out of forward compatibility for this service.
@@ -132,8 +145,8 @@ type UnsafeBlobberServer interface {
 	mustEmbedUnimplementedBlobberServer()
 }
 
-func RegisterBlobberServer(s grpc.ServiceRegistrar, srv BlobberServer) {
-	s.RegisterService(&Blobber_ServiceDesc, srv)
+func RegisterBlobberServer(s *grpc.Server, srv BlobberServer) {
+	s.RegisterService(&_Blobber_serviceDesc, srv)
 }
 
 func _Blobber_GetAllocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -244,10 +257,25 @@ func _Blobber_GetReferencePath_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-// Blobber_ServiceDesc is the grpc.ServiceDesc for Blobber service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var Blobber_ServiceDesc = grpc.ServiceDesc{
+func _Blobber_GetObjectTree_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetObjectTreeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).GetObjectTree(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/GetObjectTree",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).GetObjectTree(ctx, req.(*GetObjectTreeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _Blobber_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "blobber.service.v1.Blobber",
 	HandlerType: (*BlobberServer)(nil),
 	Methods: []grpc.MethodDesc{
@@ -274,6 +302,10 @@ var Blobber_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetReferencePath",
 			Handler:    _Blobber_GetReferencePath_Handler,
+		},
+		{
+			MethodName: "GetObjectTree",
+			Handler:    _Blobber_GetObjectTree_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

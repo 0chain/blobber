@@ -113,6 +113,29 @@ func (_m *PackageHandler) GetObjectPathGRPC(ctx context.Context, allocationID st
 	return r0, r1
 }
 
+// GetObjectTree provides a mock function with given fields: ctx, allocationID, path
+func (_m *PackageHandler) GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error) {
+	ret := _m.Called(ctx, allocationID, path)
+
+	var r0 *reference.Ref
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *reference.Ref); ok {
+		r0 = rf(ctx, allocationID, path)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*reference.Ref)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, allocationID, path)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetRefWithChildren provides a mock function with given fields: ctx, allocationID, path
 func (_m *PackageHandler) GetRefWithChildren(ctx context.Context, allocationID string, path string) (*reference.Ref, error) {
 	ret := _m.Called(ctx, allocationID, path)

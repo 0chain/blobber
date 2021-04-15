@@ -37,6 +37,21 @@ service Blobber {
       get: "/v2/file/referencepath/{allocation}"
     };
   }
+  rpc GetObjectTree(GetObjectTreeRequest) returns (GetObjectTreeResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/objecttree/{allocation}"
+    };
+  }
+}
+
+message GetObjectTreeRequest {
+  RequestContext context = 1;
+  string path = 2;
+  string allocation = 3;
+}
+message GetObjectTreeResponse {
+  ReferencePath ReferencePath = 1;
+  WriteMarker LatestWM = 2;
 }
 
 message GetReferencePathRequest {

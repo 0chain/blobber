@@ -460,3 +460,64 @@ func TestBlobberGRPCService_GetReferencePath_InvalidPaths(t *testing.T) {
 	assert.Equal(t, err.Error(), "invalid paths")
 
 }
+
+func TestBlobberGRPCService_GetObjectTree_Success(t *testing.T) {
+	req := &blobbergrpc.GetObjectTreeRequest{
+		Context: &blobbergrpc.RequestContext{
+			Client:     "owner",
+			ClientKey:  "",
+			Allocation: "",
+		},
+		Path:       "something",
+		Allocation: "",
+	}
+
+	mockStorageHandler := &storageHandlerI{}
+	mockReferencePackage := &mocks.PackageHandler{}
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).Return(&allocation.Allocation{
+		ID:      "allocationId",
+		Tx:      req.Allocation,
+		OwnerID: "owner",
+	}, nil)
+	mockReferencePackage.On("GetObjectTree", mock.Anything, mock.Anything, mock.Anything).Return(&reference.Ref{
+		Name:     "test",
+		Type:     reference.DIRECTORY,
+		Children: []*reference.Ref{{Name: "test1", Type: reference.FILE}},
+	}, nil)
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	resp, err := svc.GetObjectTree(context.Background(), req)
+	if err != nil {
+		t.Fatal("unexpected error - " + err.Error())
+	}
+
+	assert.Equal(t, resp.ReferencePath.MetaData.DirMetaData.Name, "test")
+
+}
+
+func TestBlobberGRPCService_GetObjectTree_NotOwner(t *testing.T) {
+	req := &blobbergrpc.GetObjectTreeRequest{
+		Context: &blobbergrpc.RequestContext{
+			Client:     "hacker",
+			ClientKey:  "",
+			Allocation: "",
+		},
+		Path:       "something",
+		Allocation: "",
+	}
+
+	mockStorageHandler := &storageHandlerI{}
+	mockReferencePackage := &mocks.PackageHandler{}
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).Return(&allocation.Allocation{
+		ID:      "allocationId",
+		Tx:      req.Allocation,
+		OwnerID: "owner",
+	}, nil)
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	_, err := svc.GetObjectTree(context.Background(), req)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+}

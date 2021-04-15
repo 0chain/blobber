@@ -256,6 +256,60 @@
         ]
       }
     },
+    "/v2/file/objecttree/{allocation}": {
+      "get": {
+        "operationId": "Blobber_GetObjectTree",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetObjectTreeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "context.client",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.clientKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
     "/v2/file/referencepath/{allocation}": {
       "get": {
         "operationId": "Blobber_GetReferencePath",
@@ -735,6 +789,17 @@
           "$ref": "#/definitions/v1ObjectPath"
         },
         "LatestWriteMarker": {
+          "$ref": "#/definitions/v1WriteMarker"
+        }
+      }
+    },
+    "v1GetObjectTreeResponse": {
+      "type": "object",
+      "properties": {
+        "ReferencePath": {
+          "$ref": "#/definitions/v1ReferencePath"
+        },
+        "LatestWM": {
           "$ref": "#/definitions/v1WriteMarker"
         }
       }
