@@ -313,12 +313,10 @@ func main() {
 
 	// Initialize after server chain is setup.
 	if err := initEntities(); err != nil {
-		Logger.Panic("Error setting up blobber on blockchian" + err.Error())
-		return
+		Logger.Error("Error setting up blobber on blockchian" + err.Error())
 	}
 	if err := SetupBlobberOnBC(*logDir); err != nil {
-		Logger.Panic("Error setting up blobber on blockchian" + err.Error())
-		return
+		Logger.Error("Error setting up blobber on blockchian" + err.Error())
 	}
 	mode := "main net"
 	if config.Development() {
