@@ -18,19 +18,19 @@ func (CommitMetaTxn) TableName() string {
 }
 
 func AddCommitMetaTxn(ctx context.Context, refID int64, txnID string) error {
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	return db.Create(&CommitMetaTxn{
 		RefID: refID,
 		TxnID: txnID,
-	}).Error
+	}).Error()
 }
 
 func GetCommitMetaTxns(ctx context.Context, refID int64) ([]CommitMetaTxn, error) {
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	commitMetaTxns := []CommitMetaTxn{}
 	err := db.Table((&CommitMetaTxn{}).TableName()).
 		Where("ref_id = ?", refID).
 		Order("created_at desc").
-		Find(&commitMetaTxns).Error
+		Find(&commitMetaTxns).Error()
 	return commitMetaTxns, err
 }

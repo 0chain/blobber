@@ -259,8 +259,8 @@ const tpl = `<!DOCTYPE html>
 
 func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	t := template.Must(template.New("diagnostics").Funcs(funcMap).Parse(tpl))
-	ctx := datastore.GetStore().CreateTransaction(r.Context())
-	db := datastore.GetStore().GetTransaction(ctx)
+	ctx := datastore.CreateTransaction(r.Context())
+	db := datastore.GetTransaction(ctx)
 	defer db.Rollback()
 	bs := LoadBlobberStats(ctx)
 	err := t.Execute(w, bs)
@@ -270,8 +270,8 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func StatsJSONHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-	db := datastore.GetStore().GetTransaction(ctx)
+	ctx = datastore.CreateTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	defer db.Rollback()
 	bs := LoadBlobberStats(ctx)
 	return bs, nil
@@ -280,8 +280,8 @@ func StatsJSONHandler(ctx context.Context, r *http.Request) (interface{}, error)
 func GetStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	q := r.URL.Query()
 	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, q.Get("allocation_id"))
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-	db := datastore.GetStore().GetTransaction(ctx)
+	ctx = datastore.CreateTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	defer db.Rollback()
 	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	bs := &BlobberStats{}

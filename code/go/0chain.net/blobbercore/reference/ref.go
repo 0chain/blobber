@@ -135,8 +135,8 @@ func (r *Ref) SetAttributes(attr *Attributes) (err error) {
 
 func GetReference(ctx context.Context, allocationID string, path string) (*Ref, error) {
 	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
+	db := datastore.GetTransaction(ctx)
+	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error()
 	if err == nil {
 		return ref, nil
 	}
@@ -145,8 +145,8 @@ func GetReference(ctx context.Context, allocationID string, path string) (*Ref, 
 
 func GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*Ref, error) {
 	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
+	db := datastore.GetTransaction(ctx)
+	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error()
 	if err == nil {
 		return ref, nil
 	}
@@ -168,9 +168,9 @@ func GetSubDirsFromPath(p string) []string {
 
 func GetRefWithChildren(ctx context.Context, allocationID string, path string) (*Ref, error) {
 	var refs []Ref
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
-	err := db.Order("level, created_at").Find(&refs).Error
+	err := db.Order("level, created_at").Find(&refs).Error()
 	if err != nil {
 		return nil, err
 	}
@@ -193,9 +193,9 @@ func GetRefWithChildren(ctx context.Context, allocationID string, path string) (
 
 func GetRefWithSortedChildren(ctx context.Context, allocationID string, path string) (*Ref, error) {
 	var refs []*Ref
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
-	err := db.Order("level, lookup_hash").Find(&refs).Error
+	err := db.Order("level, lookup_hash").Find(&refs).Error()
 	if err != nil {
 		return nil, err
 	}
@@ -332,13 +332,13 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 	if refID <= 0 {
 		return common.NewError("invalid_ref_id", "Invalid reference ID to delete")
 	}
-	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Where("path_hash = ?", pathHash).Delete(&Ref{ID: refID}).Error
+	db := datastore.GetTransaction(ctx)
+	return db.Where("path_hash = ?", pathHash).Delete(&Ref{ID: refID}).Error()
 }
 
 func (r *Ref) Save(ctx context.Context) error {
-	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Save(r).Error
+	db := datastore.GetTransaction(ctx)
+	return db.Save(r).Error()
 }
 
 func (r *Ref) GetListingData(ctx context.Context) map[string]interface{} {

@@ -27,7 +27,7 @@ func (FileStats) TableName() string {
 }
 
 func NewFileCreated(ctx context.Context, refID int64) {
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
 	stats.NumBlockDownloads = 0
 	stats.NumUpdates = 1
@@ -35,21 +35,21 @@ func NewFileCreated(ctx context.Context, refID int64) {
 }
 
 func FileUpdated(ctx context.Context, refID int64) {
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
 	db.Model(stats).Where(stats).Update("num_of_updates", gorm.Expr("num_of_updates + ?", 1))
 }
 
 func FileBlockDownloaded(ctx context.Context, refID int64) {
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
 	db.Model(stats).Where(FileStats{RefID: refID}).Update("num_of_block_downloads", gorm.Expr("num_of_block_downloads + ?", 1))
 }
 
 func GetFileStats(ctx context.Context, refID int64) (*FileStats, error) {
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
-	err := db.Model(stats).Where(FileStats{RefID: refID}).First(stats).Error
+	err := db.Model(stats).Where(FileStats{RefID: refID}).First(stats).Error()
 	if err != nil {
 		return nil, err
 	}

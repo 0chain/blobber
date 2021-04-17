@@ -30,8 +30,8 @@ import (
 
 var storageHandler StorageHandler
 
-func GetMetaDataStore() *datastore.Store {
-	return datastore.GetStore()
+func GetMetaDataStore() datastore.Store {
+	return datastore.TheStore
 }
 
 /*SetupHandlers sets up the necessary API end points */
@@ -336,7 +336,7 @@ func HandleShutdown(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			Logger.Info("Shutting down server")
-			datastore.GetStore().Close()
+			datastore.TheStore.Close()
 		}
 	}()
 }

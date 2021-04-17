@@ -27,7 +27,7 @@ func SetupWorkers(ctx context.Context) {
 }
 
 func CleanupDiskFiles(ctx context.Context) error {
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	var allocations []allocation.Allocation
 	db.Find(&allocations)
 	for _, allocationObj := range allocations {
@@ -35,7 +35,7 @@ func CleanupDiskFiles(ctx context.Context) error {
 		mutex.Lock()
 		filestore.GetFileStore().IterateObjects(allocationObj.ID, func(contentHash string, contentSize int64) {
 			var refs []reference.Ref
-			err := db.Table((reference.Ref{}).TableName()).Where(reference.Ref{ContentHash: contentHash, Type: reference.FILE}).Or(reference.Ref{ThumbnailHash: contentHash, Type: reference.FILE}).Find(&refs).Error
+			err := db.Table((reference.Ref{}).TableName()).Where(reference.Ref{ContentHash: contentHash, Type: reference.FILE}).Or(reference.Ref{ThumbnailHash: contentHash, Type: reference.FILE}).Find(&refs).Error()
 			if err != nil {
 				Logger.Error("Error in cleanup of disk files.", zap.Error(err))
 				return
@@ -62,8 +62,8 @@ func CleanupTempFiles(ctx context.Context) {
 			//Logger.Info("Trying to redeem writemarkers.", zap.Any("iterInprogress", iterInprogress), zap.Any("numOfWorkers", numOfWorkers))
 			if !iterInprogress {
 				iterInprogress = true
-				rctx := datastore.GetStore().CreateTransaction(ctx)
-				db := datastore.GetStore().GetTransaction(rctx)
+				rctx := datastore.CreateTransaction(ctx)
+				db := datastore.GetTransaction(rctx)
 				now := time.Now()
 				then := now.Add(time.Duration(-config.Configuration.OpenConnectionWorkerTolerance) * time.Second)
 				var openConnectionsToDelete []allocation.AllocationChangeCollector
@@ -71,8 +71,8 @@ func CleanupTempFiles(ctx context.Context) {
 				for _, connection := range openConnectionsToDelete {
 					Logger.Info("Deleting temp files for the connection", zap.Any("connection", connection.ConnectionID))
 					connection.ComputeProperties()
-					nctx := datastore.GetStore().CreateTransaction(ctx)
-					ndb := datastore.GetStore().GetTransaction(nctx)
+					nctx := datastore.CreateTransaction(ctx)
+					ndb := datastore.GetTransaction(nctx)
 					for _, changeProcessor := range connection.AllocationChanges {
 						changeProcessor.DeleteTempFile()
 					}
@@ -109,8 +109,8 @@ func MoveColdDataToCloud(ctx context.Context) {
 
 				// Check if capacity exceded the start capacity size
 				if totalDiskSizeUsed > config.Configuration.ColdStorageStartCapacitySize {
-					rctx := datastore.GetStore().CreateTransaction(ctx)
-					db := datastore.GetStore().GetTransaction(rctx)
+					rctx := datastore.CreateTransaction(ctx)
+					db := datastore.GetTransaction(rctx)
 					// Get total number of fileRefs with size greater than limit and on_cloud = false
 					var totalRecords int64
 					db.Table((&reference.Ref{}).TableName()).
@@ -175,9 +175,9 @@ func moveFileToCloud(ctx context.Context, fileRef *reference.Ref) {
 	}
 
 	fileRef.OnCloud = true
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-	db := datastore.GetStore().GetTransaction(ctx)
-	err = db.Save(fileRef).Error
+	ctx = datastore.CreateTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
+	err = db.Save(fileRef).Error()
 	if err != nil {
 		Logger.Error("Failed to update reference_object for on cloud true", zap.Error(err))
 		db.Rollback()

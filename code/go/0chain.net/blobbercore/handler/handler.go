@@ -22,8 +22,8 @@ import (
 
 var storageHandler StorageHandler
 
-func GetMetaDataStore() *datastore.Store {
-	return datastore.GetStore()
+func GetMetaDataStore() datastore.Store {
+	return datastore.TheStore
 }
 
 /*SetupHandlers sets up the necessary API end points */
@@ -90,7 +90,7 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 			Logger.Error("Error in handling the request." + err.Error())
 			return
 		}
-		err = GetMetaDataStore().GetTransaction(ctx).Commit().Error
+		err = GetMetaDataStore().GetTransaction(ctx).Commit().Error()
 		if err != nil {
 			return resp, common.NewErrorf("commit_error",
 				"error committing to meta store: %v", err)
@@ -291,7 +291,7 @@ func HandleShutdown(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			Logger.Info("Shutting down server")
-			datastore.GetStore().Close()
+			datastore.TheStore.Close()
 		}
 	}()
 }

@@ -10,7 +10,7 @@ import (
 )
 
 func FileChallenged(ctx context.Context, refID int64, result ChallengeResult, challengeTxn string) {
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	stats := &stats.FileStats{RefID: refID}
 	if result == ChallengeSuccess {
 		db.Table(stats.TableName()).Where(stats).Updates(map[string]interface{}{"num_of_challenges": gorm.Expr("num_of_challenges + ?", 1), "last_challenge_txn": challengeTxn})

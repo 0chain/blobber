@@ -96,9 +96,9 @@ func (ReadMarkerEntity) TableName() string {
 }
 
 func GetLatestReadMarkerEntity(ctx context.Context, clientID string) (*ReadMarkerEntity, error) {
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	rm := &ReadMarkerEntity{}
-	err := db.First(rm, "client_id = ?", clientID).Error
+	err := db.First(rm, "client_id = ?", clientID).Error()
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func GetLatestReadMarkerEntity(ctx context.Context, clientID string) (*ReadMarke
 func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, isCreate bool) error {
 
 	var (
-		db       = datastore.GetStore().GetTransaction(ctx)
+		db       = datastore.GetTransaction(ctx)
 		rmEntity = &ReadMarkerEntity{}
 	)
 
@@ -116,16 +116,16 @@ func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, isCreate bool) er
 	rmEntity.RedeemRequired = true
 
 	if isCreate {
-		return db.Create(rmEntity).Error
+		return db.Create(rmEntity).Error()
 	}
 
-	return db.Model(rmEntity).Updates(rmEntity).Error
+	return db.Model(rmEntity).Updates(rmEntity).Error()
 }
 
 // Sync read marker with 0chain to be sure its correct.
 func (rm *ReadMarkerEntity) Sync(ctx context.Context) (err error) {
 
-	var db = datastore.GetStore().GetTransaction(ctx)
+	var db = datastore.GetTransaction(ctx)
 
 	var rmUpdates = make(map[string]interface{})
 	rmUpdates["latest_redeem_txn_id"] = "Synced from SC REST API"
@@ -171,7 +171,7 @@ func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context,
 			"can't decode transaction output: %v", err)
 	}
 
-	var db = datastore.GetStore().GetTransaction(ctx)
+	var db = datastore.GetTransaction(ctx)
 
 	var rmUpdates = make(map[string]interface{})
 	rmUpdates["latest_redeem_txn_id"] = redeemTxn
@@ -188,7 +188,7 @@ func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context,
 	// the saving looses the numBlocks information
 	err = db.Model(rm).
 		Where("counter = ?", rm.LatestRM.ReadCounter).
-		Updates(rmUpdates).Error
+		Updates(rmUpdates).Error()
 
 	// update cache using the transaction output
 	allocation.SubReadRedeemed(rps, redeems)

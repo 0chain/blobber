@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"path/filepath"
 
-	"0chain.net/blobbercore/reference"
-	"0chain.net/core/common"
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/filestore"
+	"0chain.net/blobbercore/reference"
+	"0chain.net/core/common"
 	. "0chain.net/core/logging"
 
 	"go.uber.org/zap"
@@ -75,10 +75,10 @@ func (nf *DeleteFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	if idx < 0 {
 		return nil, common.NewError("file_not_found", "Object to delete not found in blobber")
 	}
-	
+
 	dirRef.RemoveChild(idx)
 	rootRef.CalculateHash(ctx, true)
-	
+
 	return nil, nil
 }
 
@@ -112,7 +112,7 @@ func (nf *DeleteFileChange) DeleteTempFile() error {
 }
 
 func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	for contenthash := range nf.ContentHash {
 		var count int64
 		err := db.Table((&reference.Ref{}).TableName()).Where(&reference.Ref{ThumbnailHash: contenthash}).Or(&reference.Ref{ContentHash: contenthash}).Count(&count).Error

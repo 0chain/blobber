@@ -132,7 +132,7 @@ func (rme *ReadMarkerEntity) preRedeem(ctx context.Context,
 
 	// check out read pool tokens if read_price > 0
 	var (
-		db        = datastore.GetStore().GetTransaction(ctx)
+		db        = datastore.GetTransaction(ctx)
 		blobberID = rme.LatestRM.BlobberID //
 		clientID  = rme.LatestRM.ClientID  //
 		until     = common.Now()           // all pools until now
@@ -182,7 +182,7 @@ func (rme *ReadMarkerEntity) preRedeem(ctx context.Context,
 
 	if have < want {
 		// so, not enough tokens, let's freeze the read marker
-		err = db.Model(rme).Update("suspend", rme.LatestRM.ReadCounter).Error
+		err = db.Model(rme).Update("suspend", rme.LatestRM.ReadCounter).Error()
 		if err != nil {
 			return nil, common.NewErrorf("rme_pre_redeem",
 				"saving suspended read marker: %v", err)

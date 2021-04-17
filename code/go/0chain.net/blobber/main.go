@@ -154,7 +154,7 @@ func checkForDBConnection() {
 	retries := 0
 	var err error
 	for retries < 600 {
-		err = datastore.GetStore().Open()
+		err = datastore.TheStore.Open()
 		if err != nil {
 			time.Sleep(1 * time.Second)
 			retries++

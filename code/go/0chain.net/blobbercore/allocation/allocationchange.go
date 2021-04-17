@@ -67,14 +67,14 @@ func (AllocationChange) TableName() string {
 
 func GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*AllocationChangeCollector, error) {
 	cc := &AllocationChangeCollector{}
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	err := db.Where(&AllocationChangeCollector{
 		ConnectionID: connectionID,
 		AllocationID: allocationID,
 		ClientID:     clientID,
 	}).Not(&AllocationChangeCollector{
 		Status: DeletedConnection,
-	}).Preload("Changes").First(cc).Error
+	}).Preload("Changes").First(cc).Error()
 
 	if err == nil {
 		cc.ComputeProperties()
@@ -99,13 +99,13 @@ func (cc *AllocationChangeCollector) AddChange(allocationChange *AllocationChang
 
 func (cc *AllocationChangeCollector) Save(ctx context.Context) error {
 
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	if cc.Status == NewConnection {
 		cc.Status = InProgressConnection
-		err := db.Create(cc).Error
+		err := db.Create(cc).Error()
 		return err
 	} else {
-		err := db.Save(cc).Error
+		err := db.Save(cc).Error()
 		return err
 	}
 }

@@ -41,7 +41,7 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 
 	// check out read pool tokens if read_price > 0
 	var (
-		db        = datastore.GetStore().GetTransaction(ctx)
+		db        = datastore.GetTransaction(ctx)
 		blobberID = node.Self.ID
 		until     = common.Now() +
 			common.Timestamp(config.Configuration.ReadLockTimeout)
@@ -103,7 +103,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
 
 	// check out read pool tokens if read_price > 0
 	var (
-		db        = datastore.GetStore().GetTransaction(ctx)
+		db        = datastore.GetTransaction(ctx)
 		blobberID = node.Self.ID
 		until     = common.Now() +
 			common.Timestamp(config.Configuration.WriteLockTimeout)
@@ -554,14 +554,14 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
 	}
 
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	allocationUpdates := make(map[string]interface{})
 	allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
 	allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
 	allocationUpdates["allocation_root"] = allocationRoot
 	allocationUpdates["is_redeem_required"] = true
 
-	err = db.Model(allocationObj).Updates(allocationUpdates).Error
+	err = db.Model(allocationObj).Updates(allocationUpdates).Error()
 	if err != nil {
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}

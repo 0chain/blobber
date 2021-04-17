@@ -1,6 +1,7 @@
 package allocation
 
 import (
+	"0chain.net/blobbercore/datastore"
 	"errors"
 	"time"
 
@@ -110,7 +111,7 @@ func (a *Allocation) WantWrite(blobberID string, size int64,
 }
 
 // ReadPools from DB cache.
-func ReadPools(tx *gorm.DB, clientID, allocID, blobberID string,
+func ReadPools(tx datastore.Transaction, clientID, allocID, blobberID string,
 	until common.Timestamp) (rps []*ReadPool, err error) {
 
 	const query = `client_id = ? AND
@@ -120,7 +121,7 @@ func ReadPools(tx *gorm.DB, clientID, allocID, blobberID string,
 
 	err = tx.Model(&ReadPool{}).
 		Where(query, clientID, allocID, blobberID, until).
-		Find(&rps).Error
+		Find(&rps).Error()
 	return
 }
 
@@ -149,7 +150,7 @@ func (*Pending) TableName() string {
 	return "pendings"
 }
 
-func GetPending(tx *gorm.DB, clientID, allocationID, blobberID string) (
+func GetPending(tx datastore.Transaction, clientID, allocationID, blobberID string) (
 	p *Pending, err error) {
 
 	const query = `client_id = ? AND
@@ -159,12 +160,12 @@ func GetPending(tx *gorm.DB, clientID, allocationID, blobberID string) (
 	p = new(Pending)
 	err = tx.Model(&Pending{}).
 		Where(query, clientID, allocationID, blobberID).
-		First(&p).Error
+		First(&p).Error()
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		p.ClientID = clientID
 		p.AllocationID = allocationID
 		p.BlobberID = blobberID
-		err = tx.Create(p).Error
+		err = tx.Create(p).Error()
 	}
 	return
 }
@@ -179,7 +180,7 @@ func (p *Pending) SubPendingWrite(size int64) {
 	}
 }
 
-func (p *Pending) WritePools(tx *gorm.DB, blobberID string,
+func (p *Pending) WritePools(tx datastore.Transaction, blobberID string,
 	until common.Timestamp) (wps []*WritePool, err error) {
 
 	const query = `client_id = ? AND
@@ -189,7 +190,7 @@ func (p *Pending) WritePools(tx *gorm.DB, blobberID string,
 
 	err = tx.Model(&WritePool{}).
 		Where(query, p.ClientID, p.AllocationID, blobberID, until).
-		Find(&wps).Error
+		Find(&wps).Error()
 	return
 }
 
@@ -202,11 +203,11 @@ func (p *Pending) HaveWrite(wps []*WritePool, ww WantWriter,
 	return have - ww.WantWrite(p.BlobberID, p.PendingWrite, wmt)
 }
 
-func (p *Pending) Save(tx *gorm.DB) error {
+func (p *Pending) Save(tx datastore.Transaction) error {
 	if p.ID == 0 {
-		return tx.Create(p).Error
+		return tx.Create(p).Error()
 	}
-	return tx.Save(p).Error
+	return tx.Save(p).Error()
 }
 
 // Terms for allocation by its Tx.
@@ -253,7 +254,7 @@ func (*WritePool) TableName() string {
 	return "write_pools"
 }
 
-func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string,
+func SetReadPools(db datastore.Transaction, clientID, allocationID, blobberID string,
 	rps []*ReadPool) (err error) {
 
 	// cleanup and batch insert (remove old pools, add / update new)
@@ -265,7 +266,7 @@ func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string,
 	var stub []*ReadPool
 	err = db.Model(&ReadPool{}).
 		Where(query, clientID, allocationID, blobberID).
-		Delete(&stub).Error
+		Delete(&stub).Error()
 	if err != nil {
 		return
 	}
@@ -277,11 +278,11 @@ func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string,
 	err = db.Model(&ReadPool{}).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "pool_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"balance"}),
-	}).Create(rps).Error
+	}).Create(rps).Error()
 	return
 }
 
-func SetWritePools(db *gorm.DB, clientID, allocationID, blobberID string,
+func SetWritePools(db datastore.Transaction, clientID, allocationID, blobberID string,
 	wps []*WritePool) (err error) {
 
 	const query = `client_id = ? AND
@@ -291,7 +292,7 @@ func SetWritePools(db *gorm.DB, clientID, allocationID, blobberID string,
 	var stub []*WritePool
 	err = db.Model(&WritePool{}).
 		Where(query, clientID, allocationID, blobberID).
-		Delete(&stub).Error
+		Delete(&stub).Error()
 	if err != nil {
 		return
 	}
@@ -303,7 +304,7 @@ func SetWritePools(db *gorm.DB, clientID, allocationID, blobberID string,
 	err = db.Model(&WritePool{}).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "pool_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"balance"}),
-	}).Create(wps).Error
+	}).Create(wps).Error()
 	return
 }
 

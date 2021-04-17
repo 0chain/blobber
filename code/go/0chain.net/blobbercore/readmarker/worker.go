@@ -88,8 +88,8 @@ func RedeemMarkers(ctx context.Context) {
 		case <-ticker.C:
 			if !iterInprogress {
 				iterInprogress = true
-				rctx := datastore.GetStore().CreateTransaction(ctx)
-				db := datastore.GetStore().GetTransaction(rctx)
+				rctx := datastore.CreateTransaction(ctx)
+				db := datastore.GetTransaction(rctx)
 				readMarkers := make([]*ReadMarkerEntity, 0)
 				rm := &ReadMarkerEntity{RedeemRequired: true}
 				db.Where(rm). // redeem_required = true
@@ -100,14 +100,14 @@ func RedeemMarkers(ctx context.Context) {
 					for _, rmEntity := range readMarkers {
 						swg.Add()
 						go func(redeemCtx context.Context, rmEntity *ReadMarkerEntity) {
-							redeemCtx = datastore.GetStore().CreateTransaction(redeemCtx)
+							redeemCtx = datastore.CreateTransaction(redeemCtx)
 							defer redeemCtx.Done()
 							err := RedeemReadMarker(redeemCtx, rmEntity)
 							if err != nil {
 								Logger.Error("Error redeeming the read marker.", zap.Error(err))
 							}
-							db := datastore.GetStore().GetTransaction(redeemCtx)
-							err = db.Commit().Error
+							db := datastore.GetTransaction(redeemCtx)
+							err = db.Commit().Error()
 							if err != nil {
 								Logger.Error("Error commiting the readmarker redeem", zap.Error(err))
 							}

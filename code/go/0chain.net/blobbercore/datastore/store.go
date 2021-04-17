@@ -16,17 +16,20 @@ import (
 
 const CONNECTION_CONTEXT_KEY = "connection"
 
-type Store struct {
+type Store interface {
+	Open() error
+	Close()
+	CreateTransaction(ctx context.Context) context.Context
+	GetTransaction(ctx context.Context) Transaction
+}
+
+var TheStore Store = &store{}
+
+type store struct {
 	db *gorm.DB
 }
 
-var store Store
-
-func GetStore() *Store {
-	return &store
-}
-
-func (store *Store) Open() error {
+func (store *store) Open() error {
 	db, err := gorm.Open(postgres.Open(fmt.Sprintf(
 		"host=%v port=%v user=%v dbname=%v password=%v sslmode=disable",
 		config.Configuration.DBHost, config.Configuration.DBPort,
@@ -50,7 +53,7 @@ func (store *Store) Open() error {
 	return nil
 }
 
-func (store *Store) Close() {
+func (store *store) Close() {
 	if store.db != nil {
 		if sqldb, _ := store.db.DB(); sqldb != nil {
 			sqldb.Close()
@@ -58,20 +61,16 @@ func (store *Store) Close() {
 	}
 }
 
-func (store *Store) CreateTransaction(ctx context.Context) context.Context {
+func (store *store) CreateTransaction(ctx context.Context) context.Context {
 	db := store.db.Begin()
 	return context.WithValue(ctx, CONNECTION_CONTEXT_KEY, db)
 }
 
-func (store *Store) GetTransaction(ctx context.Context) *gorm.DB {
+func (store *store) GetTransaction(ctx context.Context) Transaction {
 	conn := ctx.Value(CONNECTION_CONTEXT_KEY)
 	if conn != nil {
-		return conn.(*gorm.DB)
+		return &transaction{conn.(*gorm.DB)}
 	}
 	Logger.Error("No connection in the context.")
 	return nil
-}
-
-func (store *Store) GetDB() *gorm.DB {
-	return store.db
 }

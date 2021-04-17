@@ -49,8 +49,8 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 			return ctx.Err()
 		default:
 			Logger.Info("Attempting to commit processed challenges...")
-			rctx := datastore.GetStore().CreateTransaction(ctx)
-			db := datastore.GetStore().GetTransaction(rctx)
+			rctx := datastore.CreateTransaction(ctx)
+			db := datastore.GetTransaction(rctx)
 			//lastChallengeRedeemed := &ChallengeEntity{}
 			rows, err := db.Table("challenges").
 				Select("commit_txn_id, sequence").
@@ -77,7 +77,7 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 						openchallenge.UnmarshalFields()
 						mutex := lock.GetMutex(openchallenge.TableName(), openchallenge.ChallengeID)
 						mutex.Lock()
-						redeemCtx := datastore.GetStore().CreateTransaction(ctx)
+						redeemCtx := datastore.CreateTransaction(ctx)
 						err := openchallenge.CommitChallenge(redeemCtx, false)
 						if err != nil {
 							Logger.Error("Error committing to blockchain",
@@ -85,7 +85,7 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 								zap.String("challenge_id", openchallenge.ChallengeID))
 						}
 						mutex.Unlock()
-						db := datastore.GetStore().GetTransaction(redeemCtx)
+						db := datastore.GetTransaction(redeemCtx)
 						db.Commit()
 						if err == nil && openchallenge.Status == Committed {
 							Logger.Info("Challenge has been submitted to blockchain",
@@ -100,8 +100,8 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 				db.Rollback()
 				rctx.Done()
 
-				rctx = datastore.GetStore().CreateTransaction(ctx)
-				db = datastore.GetStore().GetTransaction(rctx)
+				rctx = datastore.CreateTransaction(ctx)
+				db = datastore.GetTransaction(rctx)
 				toBeVerifiedChallenges := make([]*ChallengeEntity, 0)
 				// commit challenges on local state for all challenges that
 				// have missed the commit txn from blockchain
@@ -114,7 +114,7 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 					toBeVerifiedChallenge.UnmarshalFields()
 					mutex := lock.GetMutex(toBeVerifiedChallenge.TableName(), toBeVerifiedChallenge.ChallengeID)
 					mutex.Lock()
-					redeemCtx := datastore.GetStore().CreateTransaction(ctx)
+					redeemCtx := datastore.CreateTransaction(ctx)
 					err := toBeVerifiedChallenge.CommitChallenge(redeemCtx, true)
 					if err != nil {
 						Logger.Error("Error committing to blockchain",
@@ -122,7 +122,7 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 							zap.String("challenge_id", toBeVerifiedChallenge.ChallengeID))
 					}
 					mutex.Unlock()
-					db := datastore.GetStore().GetTransaction(redeemCtx)
+					db := datastore.GetTransaction(redeemCtx)
 					db.Commit()
 					if err == nil && toBeVerifiedChallenge.Status == Committed {
 						Logger.Info("Challenge has been submitted to blockchain",
@@ -143,22 +143,6 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 		time.Sleep(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
 	}
 
-	// if challengeObj.ObjectPath != nil && challengeObj.Status == Committed && challengeObj.ObjectPath.FileBlockNum > 0 {
-	// 	//stats.FileChallenged(challengeObj.AllocationID, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	if challengeObj.Result == ChallengeSuccess {
-	// 		go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.SUCCESS, stats.REDEEMSUCCESS, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	} else if challengeObj.Result == ChallengeFailure {
-	// 		go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.FAILED, stats.REDEEMSUCCESS, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	}
-
-	// } else if challengeObj.ObjectPath != nil && challengeObj.Status != Committed && challengeObj.ObjectPath.FileBlockNum > 0 && challengeObj.Retries >= config.Configuration.ChallengeMaxRetires {
-	// 	if challengeObj.Result == ChallengeSuccess {
-	// 		go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.SUCCESS, stats.REDEEMERROR, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	} else if challengeObj.Result == ChallengeFailure {
-	// 		go stats.AddChallengeRedeemedEvent(challengeObj.AllocationID, challengeObj.ID, stats.FAILED, stats.REDEEMERROR, challengeObj.ObjectPath.Meta["path"].(string), challengeObj.CommitTxnID)
-	// 	}
-	// }
-
 	return nil
 }
 
@@ -173,8 +157,8 @@ func FindChallenges(ctx context.Context) {
 		case <-ticker.C:
 			if !iterInprogress {
 				iterInprogress = true
-				rctx := datastore.GetStore().CreateTransaction(ctx)
-				db := datastore.GetStore().GetTransaction(rctx)
+				rctx := datastore.CreateTransaction(ctx)
+				db := datastore.GetTransaction(rctx)
 				openchallenges := make([]*ChallengeEntity, 0)
 				db.Where(ChallengeEntity{Status: Accepted}).Find(&openchallenges)
 				if len(openchallenges) > 0 {
@@ -188,14 +172,14 @@ func FindChallenges(ctx context.Context) {
 						}
 						swg.Add()
 						go func(redeemCtx context.Context, challengeEntity *ChallengeEntity) {
-							redeemCtx = datastore.GetStore().CreateTransaction(redeemCtx)
+							redeemCtx = datastore.CreateTransaction(redeemCtx)
 							defer redeemCtx.Done()
 							err := GetValidationTickets(redeemCtx, challengeEntity)
 							if err != nil {
 								Logger.Error("Getting validation tickets failed", zap.Any("challenge_id", challengeEntity.ChallengeID), zap.Error(err))
 							}
-							db := datastore.GetStore().GetTransaction(redeemCtx)
-							err = db.Commit().Error
+							db := datastore.GetTransaction(redeemCtx)
+							err = db.Commit().Error()
 							if err != nil {
 								Logger.Error("Error commiting the readmarker redeem", zap.Error(err))
 							}
@@ -215,8 +199,8 @@ func FindChallenges(ctx context.Context) {
 				if err != nil {
 					Logger.Error("Error getting the open challenges from the blockchain", zap.Error(err))
 				} else {
-					tCtx := datastore.GetStore().CreateTransaction(ctx)
-					db := datastore.GetStore().GetTransaction(tCtx)
+					tCtx := datastore.CreateTransaction(ctx)
+					db := datastore.GetTransaction(tCtx)
 					bytesReader := bytes.NewBuffer(retBytes)
 					d := json.NewDecoder(bytesReader)
 					d.UseNumber()

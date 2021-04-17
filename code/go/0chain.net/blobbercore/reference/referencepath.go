@@ -14,7 +14,7 @@ func GetReferencePath(ctx context.Context, allocationID string, path string) (*R
 
 func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
 	var refs []Ref
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	pathsAdded := make(map[string]bool)
 	for _, path := range paths {
 		if _, ok := pathsAdded[path]; !ok {
@@ -33,7 +33,7 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 	}
 
 	db = db.Or("parent_path = ? AND allocation_id = ?", "", allocationID)
-	err := db.Order("level, lookup_hash").Find(&refs).Error
+	err := db.Order("level, lookup_hash").Find(&refs).Error()
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 func GetObjectTree(ctx context.Context, allocationID string, path string) (*Ref, error) {
 	path = filepath.Clean(path)
 	var refs []Ref
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	db = db.Where(Ref{Path: path, AllocationID: allocationID})
 	if path != "/" {
 		db = db.Or("path LIKE ? AND allocation_id = ?", (path + "/%"), allocationID)
@@ -93,7 +93,7 @@ func GetObjectTree(ctx context.Context, allocationID string, path string) (*Ref,
 		db = db.Or("path LIKE ? AND allocation_id = ?", (path + "%"), allocationID)
 	}
 
-	err := db.Order("level, lookup_hash").Find(&refs).Error
+	err := db.Order("level, lookup_hash").Find(&refs).Error()
 	if err != nil {
 		return nil, err
 	}

@@ -13,11 +13,8 @@ import (
 	"0chain.net/core/chain"
 	"0chain.net/core/common"
 	"0chain.net/core/lock"
-	"0chain.net/core/transaction"
-
-	"gorm.io/gorm"
-
 	. "0chain.net/core/logging"
+	"0chain.net/core/transaction"
 	"go.uber.org/zap"
 )
 
@@ -113,12 +110,12 @@ func findAllocations(ctx context.Context, offset int64) (
 
 	const query = `finalized = false AND cleaned_up = false`
 
-	ctx = datastore.GetStore().CreateTransaction(ctx)
+	ctx = datastore.CreateTransaction(ctx)
 
-	var tx = datastore.GetStore().GetTransaction(ctx)
+	var tx = datastore.GetTransaction(ctx)
 	defer tx.Rollback()
 
-	err = tx.Model(&Allocation{}).Where(query).Count(&count).Error
+	err = tx.Model(&Allocation{}).Where(query).Count(&count).Error()
 	if err != nil {
 		return
 	}
@@ -129,7 +126,7 @@ func findAllocations(ctx context.Context, offset int64) (
 		Limit(UPDATE_LIMIT).
 		Offset(int(offset)).
 		Order("id ASC").
-		Find(&allocs).Error
+		Find(&allocs).Error()
 	return
 }
 
@@ -190,20 +187,20 @@ func requestAllocation(allocID string) (
 	return
 }
 
-func commit(tx *gorm.DB, err *error) {
+func commit(tx datastore.Transaction, err *error) {
 	if (*err) != nil {
 		tx.Rollback()
 		return
 	}
-	(*err) = tx.Commit().Error
+	(*err) = tx.Commit().Error()
 }
 
 func updateAllocationInDB(ctx context.Context, a *Allocation,
 	sa *transaction.StorageAllocation) (ua *Allocation, err error) {
 
-	ctx = datastore.GetStore().CreateTransaction(ctx)
+	ctx = datastore.CreateTransaction(ctx)
 
-	var tx = datastore.GetStore().GetTransaction(ctx)
+	var tx = datastore.GetTransaction(ctx)
 	defer commit(tx, &err)
 
 	var changed bool
@@ -230,7 +227,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 	}
 
 	// save allocations
-	if err = tx.Save(a).Error; err != nil {
+	if err = tx.Save(a).Error(); err != nil {
 		return nil, err
 	}
 
@@ -240,7 +237,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 
 	// save allocation terms
 	for _, t := range a.Terms {
-		if err = tx.Save(t).Error; err != nil {
+		if err = tx.Save(t).Error(); err != nil {
 			return nil, err
 		}
 	}
@@ -289,12 +286,12 @@ func cleanupAllocation(ctx context.Context, a *Allocation) {
 		Logger.Error("cleaning finalized allocation", zap.Error(err))
 	}
 
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-	var tx = datastore.GetStore().GetTransaction(ctx)
+	ctx = datastore.CreateTransaction(ctx)
+	var tx = datastore.GetTransaction(ctx)
 	defer commit(tx, &err)
 
 	a.CleanedUp = true
-	if err = tx.Model(a).Updates(a).Error; err != nil {
+	if err = tx.Model(a).Updates(a).Error(); err != nil {
 		Logger.Error("updating allocation 'cleaned_up'", zap.Error(err))
 	}
 }
@@ -308,8 +305,8 @@ func newConnectionID() string {
 }
 
 func deleteInFakeConnection(ctx context.Context, a *Allocation) (err error) {
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-	var tx = datastore.GetStore().GetTransaction(ctx)
+	ctx = datastore.CreateTransaction(ctx)
+	var tx = datastore.GetTransaction(ctx)
 	defer commit(tx, &err)
 
 	var (
@@ -338,13 +335,13 @@ func deleteFiles(ctx context.Context, allocID string,
 	conn *AllocationChangeCollector) (err error) {
 
 	var (
-		tx   = datastore.GetStore().GetTransaction(ctx)
+		tx   = datastore.GetTransaction(ctx)
 		refs = make([]*reference.Ref, 0)
 	)
 	err = tx.Where(&reference.Ref{
 		Type:         reference.FILE,
 		AllocationID: allocID,
-	}).Find(&refs).Error
+	}).Find(&refs).Error()
 	if err != nil {
 		return
 	}

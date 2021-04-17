@@ -183,7 +183,7 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 	AND reference_objects.deleted_at IS NULL`
 
 	var (
-		db  = datastore.GetStore().GetTransaction(ctx)
+		db  = datastore.GetTransaction(ctx)
 		row *sql.Row
 		err error
 	)
@@ -208,7 +208,7 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 func (bs *BlobberStats) loadMinioStats(ctx context.Context) {
 
 	var (
-		db  = datastore.GetStore().GetTransaction(ctx)
+		db  = datastore.GetTransaction(ctx)
 		row *sql.Row
 		err error
 	)
@@ -234,7 +234,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 	bs.AllocationStats = make([]*AllocationStats, 0)
 
 	var (
-		db   = datastore.GetStore().GetTransaction(ctx)
+		db   = datastore.GetTransaction(ctx)
 		rows *sql.Rows
 		err  error
 	)
@@ -288,7 +288,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
 
 	var (
-		db   = datastore.GetStore().GetTransaction(ctx)
+		db   = datastore.GetTransaction(ctx)
 		rows *sql.Rows
 		err  error
 	)
@@ -344,7 +344,7 @@ func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
 
 func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
 	var (
-		db   = datastore.GetStore().GetTransaction(ctx)
+		db   = datastore.GetTransaction(ctx)
 		rows *sql.Rows
 		err  error
 	)
@@ -416,7 +416,7 @@ func loadAllocationList(ctx context.Context) (interface{}, error) {
 
 	var (
 		allocations = make([]AllocationId, 0)
-		db          = datastore.GetStore().GetTransaction(ctx)
+		db          = datastore.GetTransaction(ctx)
 		rows        *sql.Rows
 		err         error
 	)
@@ -464,7 +464,7 @@ func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (
 	rms *ReadMarkersStat, err error) {
 
 	var (
-		db  = datastore.GetStore().GetTransaction(ctx)
+		db  = datastore.GetTransaction(ctx)
 		rme ReadMarkerEntity
 	)
 
@@ -515,7 +515,7 @@ func loadAllocWriteMarkerStat(ctx context.Context, allocationID string) (
 	wms *WriteMarkersStat, err error) {
 
 	var (
-		db   = datastore.GetStore().GetTransaction(ctx)
+		db   = datastore.GetTransaction(ctx)
 		rows *sql.Rows
 	)
 

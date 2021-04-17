@@ -20,12 +20,12 @@ import (
 func GetAllocationByID(ctx context.Context, allocID string) (
 	a *Allocation, err error) {
 
-	var tx = datastore.GetStore().GetTransaction(ctx)
+	var tx = datastore.GetTransaction(ctx)
 
 	a = new(Allocation)
 	err = tx.Model(&Allocation{}).
 		Where(&Allocation{ID: allocID}).
-		First(a).Error
+		First(a).Error()
 	return
 }
 
@@ -34,12 +34,12 @@ func GetAllocationByID(ctx context.Context, allocID string) (
 // loads the Terms for an allocation.
 func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 	// get transaction
-	var tx = datastore.GetStore().GetTransaction(ctx)
+	var tx = datastore.GetTransaction(ctx)
 	// load related terms
 	var terms []*Terms
 	err = tx.Model(terms).
 		Where("allocation_id = ?", a.ID).
-		Find(&terms).Error
+		Find(&terms).Error()
 	if err != nil {
 		// unexpected DB error, including a RecordNotFoundError, since
 		// an allocation can't be without its terms (the terms must exist)
@@ -52,12 +52,12 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	readonly bool) (a *Allocation, err error) {
 
-	var tx = datastore.GetStore().GetTransaction(ctx)
+	var tx = datastore.GetTransaction(ctx)
 
 	a = new(Allocation)
 	err = tx.Model(&Allocation{}).
 		Where(&Allocation{Tx: allocationTx}).
-		First(a).Error
+		First(a).Error()
 
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err // unexpected DB error
@@ -68,7 +68,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		var terms []*Terms
 		err = tx.Model(terms).
 			Where("allocation_id = ?", a.ID).
-			Find(&terms).Error
+			Find(&terms).Error()
 		if err != nil {
 			return // unexpected DB error
 		}
@@ -91,7 +91,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	var isExist bool
 	err = tx.Model(&Allocation{}).
 		Where("id = ?", sa.ID).
-		First(a).Error
+		First(a).Error()
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err // unexpected
 	}
@@ -146,9 +146,9 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	Logger.Info("Saving the allocation to DB")
 
 	if isExist {
-		err = tx.Save(a).Error
+		err = tx.Save(a).Error()
 	} else {
-		err = tx.Create(a).Error
+		err = tx.Create(a).Error()
 	}
 
 	if err != nil {
@@ -158,9 +158,9 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	// save/update related terms
 	for _, t := range a.Terms {
 		if isExist {
-			err = tx.Save(t).Error
+			err = tx.Save(t).Error()
 		} else {
-			err = tx.Create(t).Error
+			err = tx.Create(t).Error()
 		}
 		if err != nil {
 			return nil, err

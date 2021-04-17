@@ -121,8 +121,8 @@ func (cr *ChallengeEntity) Save(ctx context.Context) error {
 	//j, _ := json.Marshal(&cr.ObjectPathString)
 	// Logger.Info("Object path", zap.Any("objectpath", string(j)))
 	// Logger.Info("Object path object", zap.Any("object_path", cr.ObjectPath))
-	db := datastore.GetStore().GetTransaction(ctx)
-	err = db.Save(cr).Error
+	db := datastore.GetTransaction(ctx)
+	err = db.Save(cr).Error()
 	return err
 }
 
@@ -157,9 +157,9 @@ func (cr *ChallengeEntity) UnmarshalFields() error {
 }
 
 func GetChallengeEntity(ctx context.Context, challengeID string) (*ChallengeEntity, error) {
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	cr := &ChallengeEntity{}
-	err := db.Where(ChallengeEntity{ChallengeID: challengeID}).Take(cr).Error
+	err := db.Where(ChallengeEntity{ChallengeID: challengeID}).Take(cr).Error()
 	if err != nil {
 		return nil, err
 	}
@@ -171,9 +171,9 @@ func GetChallengeEntity(ctx context.Context, challengeID string) (*ChallengeEnti
 }
 
 func GetLastChallengeEntity(ctx context.Context) (*ChallengeEntity, error) {
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	cr := &ChallengeEntity{}
-	err := db.Order("sequence desc").First(cr).Error
+	err := db.Order("sequence desc").First(cr).Error()
 	if err != nil {
 		return nil, err
 	}

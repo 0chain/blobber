@@ -18,10 +18,10 @@ func SetupWorkers(ctx context.Context) {
 }
 
 func RedeemMarkersForAllocation(ctx context.Context, allocationObj *allocation.Allocation) error {
-	rctx := datastore.GetStore().CreateTransaction(ctx)
-	db := datastore.GetStore().GetTransaction(rctx)
+	rctx := datastore.CreateTransaction(ctx)
+	db := datastore.GetTransaction(rctx)
 	defer func() {
-		err := db.Commit().Error
+		err := db.Commit().Error()
 		if err != nil {
 			Logger.Error("Error committing the writemarker redeem", zap.Error(err))
 		}
@@ -33,7 +33,7 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationObj *allocation.A
 	err := db.Not(WriteMarkerEntity{Status: Committed}).
 		Where(WriteMarker{AllocationID: allocationObj.ID}).
 		Order("sequence").
-		Find(&writemarkers).Error
+		Find(&writemarkers).Error()
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationObj *allocation.A
 				Logger.Error("Error redeeming the write marker.", zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
 				continue
 			}
-			err = db.Model(allocationObj).Updates(allocation.Allocation{LatestRedeemedWM: wm.WM.AllocationRoot}).Error
+			err = db.Model(allocationObj).Updates(allocation.Allocation{LatestRedeemedWM: wm.WM.AllocationRoot}).Error()
 			if err != nil {
 				Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed", zap.Any("wm", wm.WM.AllocationRoot), zap.Any("error", err))
 				return err
@@ -77,8 +77,8 @@ func RedeemWriteMarkers(ctx context.Context) {
 		case <-ticker.C:
 			// Logger.Info("Trying to redeem writemarkers.",
 			//	zap.Any("numOfWorkers", numOfWorkers))
-			rctx := datastore.GetStore().CreateTransaction(ctx)
-			db := datastore.GetStore().GetTransaction(rctx)
+			rctx := datastore.CreateTransaction(ctx)
+			db := datastore.GetTransaction(rctx)
 			allocations := make([]*allocation.Allocation, 0)
 			alloc := &allocation.Allocation{IsRedeemRequired: true}
 			db.Where(alloc).Find(&allocations)

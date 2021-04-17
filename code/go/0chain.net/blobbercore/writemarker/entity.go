@@ -55,7 +55,7 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context,
 	status WriteMarkerStatus, statusMessage string, redeemTxn string) (
 	err error) {
 
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	statusBytes, _ := json.Marshal(statusMessage)
 	fmt.Println(string(statusBytes))
 	if status == Failed {
@@ -65,7 +65,7 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context,
 			StatusMessage:  string(statusBytes),
 			CloseTxnID:     redeemTxn,
 			ReedeemRetries: wm.ReedeemRetries,
-		}).Error
+		}).Error()
 		return
 	}
 
@@ -73,7 +73,7 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context,
 		Status:        status,
 		StatusMessage: string(statusBytes),
 		CloseTxnID:    redeemTxn,
-	}).Error
+	}).Error()
 	if err != nil {
 		return
 	}
@@ -99,9 +99,9 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context,
 }
 
 func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMarkerEntity, error) {
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	wm := &WriteMarkerEntity{}
-	err := db.First(wm, "allocation_root = ?", allocation_root).Error
+	err := db.First(wm, "allocation_root = ?", allocation_root).Error()
 	if err != nil {
 		return nil, err
 	}
@@ -109,13 +109,13 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMa
 }
 
 func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAllocationRoot string, endAllocationRoot string) ([]*WriteMarkerEntity, error) {
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetTransaction(ctx)
 	var seqRange []int64
 	err := db.Table((WriteMarkerEntity{}).TableName()).
 		Where(WriteMarker{AllocationRoot: startAllocationRoot, AllocationID: allocationID}).
 		Or(WriteMarker{AllocationRoot: endAllocationRoot, AllocationID: allocationID}).
 		Order("sequence").
-		Pluck("sequence", &seqRange).Error
+		Pluck("sequence", &seqRange).Error()
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAlloc
 	}
 	if len(seqRange) == 2 {
 		retMarkers := make([]*WriteMarkerEntity, 0)
-		err = db.Where("sequence BETWEEN ? AND ?", seqRange[0], seqRange[1]).Order("sequence").Find(&retMarkers).Error
+		err = db.Where("sequence BETWEEN ? AND ?", seqRange[0], seqRange[1]).Order("sequence").Find(&retMarkers).Error()
 		if err != nil {
 			return nil, err
 		}
@@ -137,7 +137,7 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAlloc
 }
 
 func (wm *WriteMarkerEntity) Save(ctx context.Context) error {
-	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Save(wm).Error
+	db := datastore.GetTransaction(ctx)
+	err := db.Save(wm).Error()
 	return err
 }
