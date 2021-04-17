@@ -184,16 +184,6 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 	sharders := util.GetRandom(network.Sharders, numSharders)
 
 	for _, sharder := range sharders {
-		hash := sha1.New()
-
-		urlString := fmt.Sprintf("%v/%v%v%v", sharder, SC_REST_API_URL, scAddress, relativePath)
-		url, _ := url.Parse(urlString)
-		q := url.Query()
-		for k, v := range params {
-			q.Add(k, v)
-		}
-		url.RawQuery = q.Encode()
-
 		// Make one or more requests (in case of unavailability, see 503/504 errors)
 		var err error
 		var res *http.Response
@@ -211,8 +201,16 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			Transport: netTransport,
 		}
 
+		uString := fmt.Sprintf("%v/%v%v%v", sharder, SC_REST_API_URL, scAddress, relativePath)
+		u, _ := url.Parse(uString)
+		q := u.Query()
+		for k, v := range params {
+			q.Add(k, v)
+		}
+		u.RawQuery = q.Encode()
+
 		for counter > 0 {
-			res, err := netClient.Get(url.String())
+			res, err := netClient.Get(u.String())
 			if err != nil { break }
 
 			// TODO: better create an utility function as isAvailable or so
@@ -237,6 +235,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 
 			defer res.Body.Close() // TODO: is it really needed here? or put it above and drop other "Body.Close"s
 
+			hash := sha1.New()
 			teeReader := io.TeeReader(res.Body, hash)
 			resBody, err := ioutil.ReadAll(teeReader)
 
