@@ -194,18 +194,35 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		}
 		url.RawQuery = q.Encode()
 
-		var netTransport = &http.Transport{
+		// Make one or more requests (in case of unavailability, see 503/504 errors)
+		var err error
+		var res *http.Response
+		var counter int = 3 // TODO: better create a const
+
+		netTransport := &http.Transport{
 			Dial: (&net.Dialer{
-				Timeout: 5 * time.Second,
+				Timeout: 5 * time.Second, // TODO: better create a const
 			}).Dial,
-			TLSHandshakeTimeout: 5 * time.Second,
+			TLSHandshakeTimeout: 5 * time.Second, // TODO: better create a const
 		}
-		var netClient = &http.Client{
-			Timeout:   time.Second * 10,
+
+		netClient := &http.Client{
+			Timeout:   time.Second * 10, // TODO: create a const
 			Transport: netTransport,
 		}
 
-		res, err := netClient.Get(url.String())
+		for counter > 0 {
+			res, err := netClient.Get(url.String())
+			if err != nil { break }
+
+			// TODO: better create an utility function as isAvailable or so
+			if (res.StatusCode == 503 || res.StatusCode == 504) {
+				res.Body.Close()
+				counter--
+			} else {
+				break
+			}
+		}
 
 		if err != nil {
 			Logger.Error("Error getting response for sc rest api", zap.Any("error", err), zap.Any("sharder_url", sharder))
