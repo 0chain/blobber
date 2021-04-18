@@ -42,7 +42,7 @@ func unaryDatabaseTransactionInjector() grpc.UnaryServerInterceptor {
 			return nil, err
 		}
 
-		err = GetMetaDataStore().GetTransaction(ctx).Commit().Error
+		err = GetMetaDataStore().GetTransaction(ctx).Commit().Error()
 		if err != nil {
 			return nil, common.NewErrorf("commit_error",
 				"error committing to meta store: %v", err)
