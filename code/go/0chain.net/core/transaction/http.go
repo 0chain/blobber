@@ -31,7 +31,10 @@ const TXN_VERIFY_URL = "v1/transaction/get/confirmation?hash="
 const SC_REST_API_URL = "v1/screst/"
 const REGISTER_CLIENT = "v1/client/put"
 
-const SLEEP_FOR_TXN_CONFIRMATION = 5
+const (
+	SLEEP_FOR_TXN_CONFIRMATION = 5
+	SC_REST_API_ATTEMPTS = 3
+)
 
 var ErrNoTxnDetail = common.NewError("missing_transaction_detail", "No transaction detail was found on any of the sharders")
 
@@ -122,16 +125,16 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 	// 		Timeout:   time.Second * 10,
 	// 		Transport: netTransport,
 	// 	}
-	// 	response, err := netClient.Get(url)
+	// 	resp, err := netClient.Get(url)
 	// 	if err != nil {
 	// 		Logger.Error("Error getting transaction confirmation", zap.Any("error", err))
 	// 		numSharders--
 	// 	} else {
-	// 		if res.StatusCode != 200 {
+	// 		if resp.StatusCode != 200 {
 	// 			continue
 	// 		}
-	// 		defer res.Body.Close()
-	// 		contents, err := ioutil.ReadAll(res.Body)
+	// 		defer resp.Body.Close()
+	// 		contents, err := ioutil.ReadAll(resp.Body)
 	// 		if err != nil {
 	// 			Logger.Error("Error reading response from transaction confirmation", zap.Any("error", err))
 	// 			continue
@@ -186,18 +189,18 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 	for _, sharder := range sharders {
 		// Make one or more requests (in case of unavailability, see 503/504 errors)
 		var err error
-		var res *http.Response
-		var counter int = 3 // TODO: better create a const
+		var resp *http.Response
+		var counter int = SC_REST_API_ATTEMPTS
 
 		netTransport := &http.Transport{
 			Dial: (&net.Dialer{
-				Timeout: 5 * time.Second, // TODO: better create a const
+				Timeout: 5 * time.Second,
 			}).Dial,
-			TLSHandshakeTimeout: 5 * time.Second, // TODO: better create a const
+			TLSHandshakeTimeout: 5 * time.Second,
 		}
 
 		netClient := &http.Client{
-			Timeout:   time.Second * 10, // TODO: create a const
+			Timeout:   10 * time.Second,
 			Transport: netTransport,
 		}
 
@@ -210,12 +213,12 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		u.RawQuery = q.Encode()
 
 		for counter > 0 {
-			res, err := netClient.Get(u.String())
+			resp, err = netClient.Get(u.String())
 			if err != nil { break }
 
-			// TODO: better create an utility function as isAvailable or so
-			if (res.StatusCode == 503 || res.StatusCode == 504) {
-				res.Body.Close()
+			// if it's not available, retry if there are any retry attempts
+			if (resp.StatusCode == 503 || resp.StatusCode == 504) {
+				resp.Body.Close()
 				counter--
 			} else {
 				break
@@ -226,22 +229,22 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			Logger.Error("Error getting response for sc rest api", zap.Any("error", err), zap.Any("sharder_url", sharder))
 			numSharders--
 		} else {
-			if res.StatusCode != 200 {
-				resBody, _ := ioutil.ReadAll(res.Body)
+			if resp.StatusCode != 200 {
+				resBody, _ := ioutil.ReadAll(resp.Body)
 				Logger.Error("Got error response from sc rest api", zap.Any("response", string(resBody)))
-				res.Body.Close()
+				resp.Body.Close()
 				continue
 			}
 
-			defer res.Body.Close() // TODO: is it really needed here? or put it above and drop other "Body.Close"s
+			defer resp.Body.Close() // TODO: is it really needed here? or put it above and drop other "Body.Close"s
 
 			hash := sha1.New()
-			teeReader := io.TeeReader(res.Body, hash)
+			teeReader := io.TeeReader(resp.Body, hash)
 			resBody, err := ioutil.ReadAll(teeReader)
 
 			if err != nil {
 				Logger.Error("Error reading response", zap.Any("error", err))
-				res.Body.Close()
+				resp.Body.Close()
 				continue
 			}
 
@@ -254,7 +257,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			}
 
 			resBodies[sharder] = resMaxCounterBody // TODO: check it! looks suspicious. assigned value is not set for some interations. maybe should be = resBody?
-			res.Body.Close()
+			resp.Body.Close()
 		}
 	}
 
