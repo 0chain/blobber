@@ -3,16 +3,16 @@
 package handler
 
 import (
-	"context"
-	"net/http"
-	"os"
-	"runtime/pprof"
-
 	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/constants"
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/stats"
 	"0chain.net/core/common"
+	"context"
+	"net/http"
+	"os"
+	"runtime/pprof"
+	"time"
 
 	. "0chain.net/core/logging"
 	"go.uber.org/zap"
@@ -202,6 +202,7 @@ func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 }
 
 func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx, _ = context.WithTimeout(ctx, time.Second*10)
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetReferencePath(ctx, r)
@@ -286,6 +287,7 @@ func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, er
 	return response, nil
 }
 
+//nolint:gosimple // need more time to verify
 func HandleShutdown(ctx context.Context) {
 	go func() {
 		select {
@@ -297,7 +299,7 @@ func HandleShutdown(ctx context.Context) {
 }
 
 func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
-	pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+	_ = pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 	return "success", nil
 }
 

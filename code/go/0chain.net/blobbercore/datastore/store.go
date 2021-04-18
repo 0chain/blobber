@@ -14,7 +14,9 @@ import (
 	. "0chain.net/core/logging"
 )
 
-const CONNECTION_CONTEXT_KEY = "connection"
+type contextKey int
+
+const CONNECTION_CONTEXT_KEY contextKey = iota
 
 type Store interface {
 	Open() error
@@ -28,6 +30,14 @@ var TheStore Store = &store{}
 type store struct {
 	db *gorm.DB
 }
+
+//func SetDB(db *gorm.DB) {
+//	store.db = db
+//}
+
+//func GetStore() *Store {
+//	return &store
+//}
 
 func (store *store) Open() error {
 	db, err := gorm.Open(postgres.Open(fmt.Sprintf(

@@ -20,8 +20,6 @@ import (
 	"0chain.net/core/common"
 	"0chain.net/core/node"
 
-	. "0chain.net/core/logging"
-
 	"github.com/gorilla/mux"
 
 	// integration tests RPC control
@@ -342,7 +340,7 @@ func HandleShutdown(ctx context.Context) {
 }
 
 func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
-	pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+	_ = pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 	return "success", nil
 }
 

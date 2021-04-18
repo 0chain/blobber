@@ -455,7 +455,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 	for _, change := range connectionObj.Changes {
 		if change.Operation == allocation.UPDATE_OPERATION {
 			updateFileChange := new(allocation.UpdateFileChange)
-			updateFileChange.Unmarshal(change.Input)
+			if err := updateFileChange.Unmarshal(change.Input); err != nil {
+				return nil, err
+			}
 			fileRef, err := reference.GetReference(ctx, allocationID, updateFileChange.Path)
 			if err != nil {
 				return nil, err
@@ -572,7 +574,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 
 	result.Changes = connectionObj.Changes
 
-	connectionObj.DeleteChanges(ctx)
+	connectionObj.DeleteChanges(ctx) //nolint:errcheck // never returns an error anyway
 
 	db.Model(connectionObj).Updates(allocation.AllocationChangeCollector{Status: allocation.CommittedConnection})
 

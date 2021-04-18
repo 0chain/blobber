@@ -58,27 +58,9 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 		}
 	}
 
-	// curLevel := 2
-	// subDirs := GetSubDirsFromPath(path)
-	// var foundRef *Ref
-	// for i := 1; i < len(refs); i++ {
-	// 	if refs[i].ParentPath != curRef.Path && foundRef != nil {
-	// 		curLevel++
-	// 		curRef = foundRef
-	// 		foundRef = nil
-	// 	}
-
-	// 	if refs[i].ParentPath == curRef.Path {
-	// 		if len(subDirs) > (curLevel-2) && subDirs[curLevel-2] == refs[i].Name {
-	// 			//curRef = &refs[i]
-	// 			foundRef = &refs[i]
-	// 		}
-	// 		curRef.AddChild(&refs[i])
-	// 	} else {
-	// 		return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
-	// 	}
-	// }
-	refs[0].CalculateHash(ctx, false)
+	if _, err := refs[0].CalculateHash(ctx, false); err != nil {
+		return nil, common.NewError("Ref_CalculateHash", err.Error())
+	}
 	return &refs[0], nil
 }
 

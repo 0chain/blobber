@@ -24,7 +24,7 @@ func newClient(address string) (c *client, err error) {
 	return
 }
 
-func (c *client) dial() (err error) {
+func (c *client) dial() (err error) { //nolint:unused,deadcode // might be used later?
 	c.client, err = rpc.Dial("tcp", c.address)
 	return
 }

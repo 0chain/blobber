@@ -274,7 +274,9 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 			return
 		}
 		as.UsedSize = as.FilesSize + as.ThumbnailsSize
-		as.loadAllocationDiskUsageStats()
+		if err := as.loadAllocationDiskUsageStats(); err != nil {
+			Logger.Error("AllocationStats_loadAllocationDiskUsageStats", zap.String("allocation_id", as.AllocationID), zap.Error(err))
+		}
 		bs.AllocationStats = append(bs.AllocationStats, as)
 	}
 

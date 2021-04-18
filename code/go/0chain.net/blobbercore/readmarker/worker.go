@@ -81,7 +81,7 @@ var iterInprogress = false
 
 func RedeemMarkers(ctx context.Context) {
 	ticker := time.NewTicker(time.Duration(config.Configuration.RMRedeemFreq) * time.Second)
-	for true {
+	for {
 		select {
 		case <-ctx.Done():
 			return

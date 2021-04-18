@@ -36,7 +36,7 @@ func SendMultiPostRequest(urls []string, data []byte) {
 	wg.Add(len(urls))
 
 	for _, url := range urls {
-		go SendPostRequest(url, data, &wg)
+		go SendPostRequest(url, data, &wg) //nolint:errcheck // goroutines
 	}
 	wg.Wait()
 }

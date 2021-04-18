@@ -70,7 +70,7 @@ func RedeemWriteMarkers(ctx context.Context) {
 	var ticker = time.NewTicker(
 		time.Duration(config.Configuration.WMRedeemFreq) * time.Second,
 	)
-	for true {
+	for {
 		select {
 		case <-ctx.Done():
 			return

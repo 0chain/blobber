@@ -33,7 +33,7 @@ func CleanupDiskFiles(ctx context.Context) error {
 	for _, allocationObj := range allocations {
 		mutex := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
 		mutex.Lock()
-		filestore.GetFileStore().IterateObjects(allocationObj.ID, func(contentHash string, contentSize int64) {
+		_ = filestore.GetFileStore().IterateObjects(allocationObj.ID, func(contentHash string, contentSize int64) {
 			var refs []reference.Ref
 			err := db.Table((reference.Ref{}).TableName()).Where(reference.Ref{ContentHash: contentHash, Type: reference.FILE}).Or(reference.Ref{ThumbnailHash: contentHash, Type: reference.FILE}).Find(&refs).Error()
 			if err != nil {
@@ -42,7 +42,9 @@ func CleanupDiskFiles(ctx context.Context) error {
 			}
 			if len(refs) == 0 {
 				Logger.Info("hash has no references. Deleting from disk", zap.Any("count", len(refs)), zap.String("hash", contentHash))
-				filestore.GetFileStore().DeleteFile(allocationObj.ID, contentHash)
+				if err := filestore.GetFileStore().DeleteFile(allocationObj.ID, contentHash); err != nil {
+					Logger.Error("FileStore_DeleteFile", zap.String("content_hash", contentHash), zap.Error(err))
+				}
 			}
 			return
 		})
@@ -54,14 +56,14 @@ func CleanupDiskFiles(ctx context.Context) error {
 func CleanupTempFiles(ctx context.Context) {
 	var iterInprogress = false
 	ticker := time.NewTicker(time.Duration(config.Configuration.OpenConnectionWorkerFreq) * time.Second)
-	for true {
+	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			//Logger.Info("Trying to redeem writemarkers.", zap.Any("iterInprogress", iterInprogress), zap.Any("numOfWorkers", numOfWorkers))
 			if !iterInprogress {
-				iterInprogress = true
+				iterInprogress = true //nolint:ineffassign // probably has something to do with goroutines
 				rctx := datastore.CreateTransaction(ctx)
 				db := datastore.GetTransaction(rctx)
 				now := time.Now()
@@ -74,7 +76,9 @@ func CleanupTempFiles(ctx context.Context) {
 					nctx := datastore.CreateTransaction(ctx)
 					ndb := datastore.GetTransaction(nctx)
 					for _, changeProcessor := range connection.AllocationChanges {
-						changeProcessor.DeleteTempFile()
+						if err := changeProcessor.DeleteTempFile(); err != nil {
+							Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
+						}
 					}
 					ndb.Model(connection).Updates(allocation.AllocationChangeCollector{Status: allocation.DeletedConnection})
 					ndb.Commit()
@@ -93,13 +97,12 @@ func MoveColdDataToCloud(ctx context.Context) {
 	var coldStorageMinFileSize = config.Configuration.ColdStorageMinimumFileSize
 	var limit = config.Configuration.ColdStorageJobQueryLimit
 	ticker := time.NewTicker(time.Duration(config.Configuration.MinioWorkerFreq) * time.Second)
-	for true {
+	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			if !iterInprogress {
-				iterInprogress = true
 				fs := filestore.GetFileStore()
 				totalDiskSizeUsed, err := fs.GetTotalDiskSizeUsed()
 				if err != nil {
