@@ -88,7 +88,9 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 	if err != nil {
 		wm.StatusMessage = "Error creating transaction entity. " + err.Error()
 		wm.ReedeemRetries++
-		wm.UpdateStatus(ctx, Failed, "Error creating transaction entity. "+err.Error(), "")
+		if err := wm.UpdateStatus(ctx, Failed, "Error creating transaction entity. "+err.Error(), ""); err != nil {
+			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
+		}
 		return err
 	}
 
@@ -103,7 +105,9 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 		wm.Status = Failed
 		wm.StatusMessage = "Error encoding sc input. " + err.Error()
 		wm.ReedeemRetries++
-		wm.UpdateStatus(ctx, Failed, "Error encoding sc input. "+err.Error(), "")
+		if err := wm.UpdateStatus(ctx, Failed, "Error encoding sc input. "+err.Error(), ""); err != nil {
+			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
+		}
 		return err
 	}
 
@@ -113,7 +117,9 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 		wm.Status = Failed
 		wm.StatusMessage = "Failed during sending close connection to the miner. " + err.Error()
 		wm.ReedeemRetries++
-		wm.UpdateStatus(ctx, Failed, "Failed during sending close connection to the miner. "+err.Error(), "")
+		if err := wm.UpdateStatus(ctx, Failed, "Failed during sending close connection to the miner. "+err.Error(), ""); err != nil {
+			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
+		}
 		return err
 	}
 
@@ -125,7 +131,9 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 		wm.StatusMessage = "Error verifying the close connection transaction." + err.Error()
 		wm.ReedeemRetries++
 		wm.CloseTxnID = txn.Hash
-		wm.UpdateStatus(ctx, Failed, "Error verifying the close connection transaction."+err.Error(), txn.Hash)
+		if err := wm.UpdateStatus(ctx, Failed, "Error verifying the close connection transaction."+err.Error(), txn.Hash); err != nil {
+			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
+		}
 		return err
 	}
 	wm.Status = Committed

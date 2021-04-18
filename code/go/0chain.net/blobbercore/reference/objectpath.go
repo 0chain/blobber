@@ -2,6 +2,7 @@ package reference
 
 import (
 	"context"
+	"fmt"
 
 	"0chain.net/blobbercore/blobbergrpc"
 
@@ -26,7 +27,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 	}
 
 	if rootRef.NumBlocks < blockNum {
-		return nil, common.NewError("invalid_block_num", "Invalid block number"+string(rootRef.NumBlocks)+" / "+string(blockNum))
+		return nil, common.NewError("invalid_block_num", fmt.Sprintf("Invalid block number %d/%d", rootRef.NumBlocks, blockNum))
 	}
 
 	if rootRef.NumBlocks == 0 {

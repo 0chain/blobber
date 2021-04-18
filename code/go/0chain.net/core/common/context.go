@@ -7,6 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"0chain.net/core/logging"
+
+	"go.uber.org/zap"
 )
 
 var ErrStop = NewError("stop_error", "Stop signal error")
@@ -20,7 +24,7 @@ func SetupRootContext(nodectx context.Context) {
 	// TODO: This go routine is not needed. Workaround for the "vet" error
 	done := make(chan bool)
 	go func() {
-		select {
+		select { //nolint:gosimple // need more time to verify
 		case <-done:
 			//Logger.Info("Shutting down all workers...")
 			rootCancel()
@@ -53,12 +57,16 @@ func HandleShutdown(server *http.Server) {
 			case syscall.SIGINT:
 				Done()
 				ctx, cancelf := context.WithTimeout(context.Background(), 5*time.Second)
-				server.Shutdown(ctx)
+				if err := server.Shutdown(ctx); err != nil {
+					logging.Logger.Error("server failed to gracefully shuts down", zap.Error(err))
+				}
 				cancelf()
 			case syscall.SIGQUIT:
 				Done()
 				ctx, cancelf := context.WithTimeout(context.Background(), 5*time.Second)
-				server.Shutdown(ctx)
+				if err := server.Shutdown(ctx); err != nil {
+					logging.Logger.Error("server failed to gracefully shuts down", zap.Error(err))
+				}
 				cancelf()
 			default:
 				//Logger.Debug("unhandled signal", zap.Any("signal", sig))

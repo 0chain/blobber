@@ -14,13 +14,19 @@ import (
 	. "0chain.net/core/logging"
 )
 
-const CONNECTION_CONTEXT_KEY = "connection"
+type contextKey int
+
+const CONNECTION_CONTEXT_KEY contextKey = iota
 
 type Store struct {
 	db *gorm.DB
 }
 
 var store Store
+
+func SetDB(db *gorm.DB) {
+	store.db = db
+}
 
 func GetStore() *Store {
 	return &store
@@ -60,7 +66,7 @@ func (store *Store) Close() {
 
 func (store *Store) CreateTransaction(ctx context.Context) context.Context {
 	db := store.db.Begin()
-	return context.WithValue(ctx, CONNECTION_CONTEXT_KEY, db)
+	return context.WithValue(ctx, CONNECTION_CONTEXT_KEY, db) //nolint:staticcheck // changing type might require further refactor
 }
 
 func (store *Store) GetTransaction(ctx context.Context) *gorm.DB {

@@ -2,7 +2,7 @@ package lock
 
 import "sync"
 
-var lockPool = make(map[string]*sync.Mutex, 0)
+var lockPool = make(map[string]*sync.Mutex, 0) //nolint:gosimple // need more time to verify: declaring capacity is probably necessary?
 var lockMutex = &sync.Mutex{}
 
 func GetMutex(tablename string, key string) *sync.Mutex {

@@ -47,7 +47,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context,
 
 	dirRef := rootRef
 	treelevel := 0
-	for true {
+	for {
 		found := false
 		for _, child := range dirRef.Children {
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
@@ -104,7 +104,9 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context,
 	}
 
 	dirRef.AddChild(newFile)
-	rootRef.CalculateHash(ctx, true)
+	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
+		return nil, err
+	}
 	stats.NewFileCreated(ctx, newFile.ID)
 	return rootRef, nil
 }

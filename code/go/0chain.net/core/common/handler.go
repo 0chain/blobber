@@ -42,21 +42,21 @@ func Respond(w http.ResponseWriter, data interface{}, err error) {
 			data["code"] = cerr.Code
 		}
 		buf := bytes.NewBuffer(nil)
-		json.NewEncoder(buf).Encode(data)
+		json.NewEncoder(buf).Encode(data) //nolint:errcheck // checked in previous step
 		http.Error(w, buf.String(), 400)
 	} else {
 		if data != nil {
-			json.NewEncoder(w).Encode(data)
+			json.NewEncoder(w).Encode(data) //nolint:errcheck // checked in previous step
 		}
 	}
 }
 
-func getContext(r *http.Request) (context.Context, error) {
+func getContext(r *http.Request) (context.Context, error) { //nolint:unused,deadcode // might be used later?
 	ctx := r.Context()
 	return ctx, nil
 }
 
-var domainRE = regexp.MustCompile(`^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)`)
+var domainRE = regexp.MustCompile(`^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)`) //nolint:unused,deadcode,varcheck // might be used later?
 
 func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -75,14 +75,13 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 
 		} else {
 			if data != nil {
-				//json.NewEncoder(w).Encode(data)
 				rawdata, ok := data.([]byte)
 				if ok {
 					w.Header().Set("Content-Type", "application/octet-stream")
-					w.Write(rawdata)
+					w.Write(rawdata) //nolint:errcheck
 				} else {
 					w.Header().Set("Content-Type", "application/json")
-					json.NewEncoder(w).Encode(data)
+					json.NewEncoder(w).Encode(data) //nolint:errcheck
 				}
 			}
 		}
