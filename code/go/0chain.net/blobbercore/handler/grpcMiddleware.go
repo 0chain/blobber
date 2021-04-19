@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	"0chain.net/core/common"
 	"0chain.net/core/logging"
@@ -10,6 +11,10 @@ import (
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+)
+
+const (
+	TIMEOUT_SECONDS = 10 // to set deadline for requests
 )
 
 func unaryDatabaseTransactionInjector() grpc.UnaryServerInterceptor {
@@ -36,6 +41,14 @@ func unaryDatabaseTransactionInjector() grpc.UnaryServerInterceptor {
 	}
 }
 
+func unaryTimeoutInterceptor() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		deadline := time.Now().Add(time.Duration(TIMEOUT_SECONDS * time.Second))
+		ctx, _ = context.WithDeadline(ctx, deadline)
+		return handler(ctx, req)
+	}
+}
+
 func NewServerWithMiddlewares() *grpc.Server {
 	return grpc.NewServer(
 		grpc.ChainStreamInterceptor(
@@ -46,6 +59,7 @@ func NewServerWithMiddlewares() *grpc.Server {
 			grpc_zap.UnaryServerInterceptor(logging.Logger),
 			grpc_recovery.UnaryServerInterceptor(),
 			unaryDatabaseTransactionInjector(),
+			unaryTimeoutInterceptor(), // should always be the lastest, to be "innermost"
 		),
 	)
 }
