@@ -17,7 +17,7 @@ type ObjectPath struct {
 	RefID        int64                  `json:"-"`
 }
 
-// TODO needs to be refactored
+// TODO needs to be refactored, current implementation can probably be heavily simplified
 func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*ObjectPath, error) {
 
 	rootRef, err := GetRefWithSortedChildren(ctx, allocationID, "/")
@@ -90,7 +90,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 	return &retObj, nil
 }
 
-// TODO needs to be refactored
+// TODO needs to be refactored, current implementation can probably be heavily simplified
 func GetObjectPathGRPC(ctx context.Context, allocationID string, blockNum int64) (*blobbergrpc.ObjectPath, error) {
 
 	rootRef, err := GetRefWithSortedChildren(ctx, allocationID, "/")
