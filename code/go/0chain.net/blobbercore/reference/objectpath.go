@@ -21,7 +21,6 @@ type ObjectPath struct {
 func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*ObjectPath, error) {
 
 	rootRef, err := GetRefWithSortedChildren(ctx, allocationID, "/")
-	//fmt.Println("Root ref found with hash : " + rootRef.Hash)
 	if err != nil {
 		return nil, common.NewError("invalid_dir_struct", "Allocation root corresponds to an invalid directory structure")
 	}
@@ -59,7 +58,6 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 		}
 		curResult["list"] = list
 		for idx, child := range curRef.Children {
-			//result.Entities[idx] = child.GetListingData(ctx)
 
 			if child.NumBlocks < remainingBlocks {
 				remainingBlocks = remainingBlocks - child.NumBlocks
@@ -89,7 +87,6 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 	retObj.FileBlockNum = remainingBlocks
 	retObj.RefID = curRef.ID
 
-	//rootRef.CalculateHash(ctx, false)
 	return &retObj, nil
 }
 
@@ -97,7 +94,6 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 func GetObjectPathGRPC(ctx context.Context, allocationID string, blockNum int64) (*blobbergrpc.ObjectPath, error) {
 
 	rootRef, err := GetRefWithSortedChildren(ctx, allocationID, "/")
-	//fmt.Println("Root ref found with hash : " + rootRef.Hash)
 	if err != nil {
 		return nil, common.NewError("invalid_dir_struct", "Allocation root corresponds to an invalid directory structure")
 	}
@@ -135,7 +131,6 @@ func GetObjectPathGRPC(ctx context.Context, allocationID string, blockNum int64)
 		}
 		curResult["list"] = list
 		for idx, child := range curRef.Children {
-			//result.Entities[idx] = child.GetListingData(ctx)
 
 			if child.NumBlocks < remainingBlocks {
 				remainingBlocks = remainingBlocks - child.NumBlocks
@@ -164,7 +159,6 @@ func GetObjectPathGRPC(ctx context.Context, allocationID string, blockNum int64)
 	}
 	path := FileRefToFileRefGRPC(rootRef)
 	path.DirMetaData.Children = children
-	//rootRef.CalculateHash(ctx, false)
 	return &blobbergrpc.ObjectPath{
 		RootHash:     rootRef.Hash,
 		Meta:         FileRefToFileRefGRPC(curRef),
