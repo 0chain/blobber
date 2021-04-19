@@ -16,7 +16,7 @@
     "application/json"
   ],
   "paths": {
-    "/allocation": {
+    "/v2/allocation": {
       "get": {
         "operationId": "Blobber_GetAllocation",
         "responses": {
@@ -54,6 +54,372 @@
           },
           {
             "name": "id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
+    "/v2/file/list/{allocation}": {
+      "get": {
+        "operationId": "Blobber_ListEntities",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListEntitiesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "context.client",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.clientKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pathHash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "authToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
+    "/v2/file/meta/{allocation}": {
+      "get": {
+        "operationId": "Blobber_GetFileMetaData",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetFileMetaDataResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "context.client",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.clientKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pathHash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "authToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
+    "/v2/file/objectpath/{allocation}": {
+      "get": {
+        "operationId": "Blobber_GetObjectPath",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetObjectPathResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "context.client",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.clientKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Path",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "BlockNum",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
+    "/v2/file/objecttree/{allocation}": {
+      "get": {
+        "operationId": "Blobber_GetObjectTree",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetObjectTreeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "context.client",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.clientKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
+    "/v2/file/referencepath/{allocation}": {
+      "get": {
+        "operationId": "Blobber_GetReferencePath",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetReferencePathResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "Context.client",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Context.clientKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Paths",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Path",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
+    "/v2/file/stats/{allocation}": {
+      "get": {
+        "operationId": "Blobber_GetFileStats",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetFileStatsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "context.client",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.clientKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pathHash",
             "in": "query",
             "required": false,
             "type": "string"
@@ -161,11 +527,334 @@
         }
       }
     },
+    "v1Collaborator": {
+      "type": "object",
+      "properties": {
+        "RefId": {
+          "type": "string",
+          "format": "int64"
+        },
+        "ClientId": {
+          "type": "string"
+        },
+        "CreatedAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1CommitMetaTxn": {
+      "type": "object",
+      "properties": {
+        "RefId": {
+          "type": "string",
+          "format": "int64"
+        },
+        "TxnId": {
+          "type": "string"
+        },
+        "CreatedAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1DirMetaData": {
+      "type": "object",
+      "properties": {
+        "Type": {
+          "type": "string"
+        },
+        "LookupHash": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "Path": {
+          "type": "string"
+        },
+        "Hash": {
+          "type": "string"
+        },
+        "NumBlocks": {
+          "type": "string",
+          "format": "int64"
+        },
+        "PathHash": {
+          "type": "string"
+        },
+        "Size": {
+          "type": "string",
+          "format": "int64"
+        },
+        "CreatedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "UpdatedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "Children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1FileRef"
+          }
+        }
+      }
+    },
+    "v1FileMetaData": {
+      "type": "object",
+      "properties": {
+        "Type": {
+          "type": "string"
+        },
+        "LookupHash": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "Path": {
+          "type": "string"
+        },
+        "Hash": {
+          "type": "string"
+        },
+        "NumBlocks": {
+          "type": "string",
+          "format": "int64"
+        },
+        "PathHash": {
+          "type": "string"
+        },
+        "CustomMeta": {
+          "type": "string"
+        },
+        "ContentHash": {
+          "type": "string"
+        },
+        "Size": {
+          "type": "string",
+          "format": "int64"
+        },
+        "MerkleRoot": {
+          "type": "string"
+        },
+        "ActualFileSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "ActualFileHash": {
+          "type": "string"
+        },
+        "MimeType": {
+          "type": "string"
+        },
+        "ThumbnailSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "ThumbnailHash": {
+          "type": "string"
+        },
+        "ActualThumbnailSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "ActualThumbnailHash": {
+          "type": "string"
+        },
+        "EncryptedKey": {
+          "type": "string"
+        },
+        "Attributes": {
+          "type": "string",
+          "format": "byte"
+        },
+        "OnCloud": {
+          "type": "boolean"
+        },
+        "CommitMetaTxns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1CommitMetaTxn"
+          }
+        },
+        "CreatedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "UpdatedAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1FileRef": {
+      "type": "object",
+      "properties": {
+        "Type": {
+          "type": "string"
+        },
+        "FileMetaData": {
+          "$ref": "#/definitions/v1FileMetaData"
+        },
+        "DirMetaData": {
+          "$ref": "#/definitions/v1DirMetaData"
+        }
+      }
+    },
+    "v1FileStats": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "int64"
+        },
+        "RefID": {
+          "type": "string",
+          "format": "int64"
+        },
+        "NumUpdates": {
+          "type": "string",
+          "format": "int64"
+        },
+        "NumBlockDownloads": {
+          "type": "string",
+          "format": "int64"
+        },
+        "SuccessChallenges": {
+          "type": "string",
+          "format": "int64"
+        },
+        "FailedChallenges": {
+          "type": "string",
+          "format": "int64"
+        },
+        "LastChallengeResponseTxn": {
+          "type": "string"
+        },
+        "WriteMarkerRedeemTxn": {
+          "type": "string"
+        },
+        "CreatedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "UpdatedAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "v1GetAllocationResponse": {
       "type": "object",
       "properties": {
         "allocation": {
           "$ref": "#/definitions/v1Allocation"
+        }
+      }
+    },
+    "v1GetFileMetaDataResponse": {
+      "type": "object",
+      "properties": {
+        "MetaData": {
+          "$ref": "#/definitions/v1FileRef"
+        },
+        "Collaborators": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Collaborator"
+          }
+        }
+      }
+    },
+    "v1GetFileStatsResponse": {
+      "type": "object",
+      "properties": {
+        "MetaData": {
+          "$ref": "#/definitions/v1FileRef"
+        },
+        "Stats": {
+          "$ref": "#/definitions/v1FileStats"
+        }
+      }
+    },
+    "v1GetObjectPathResponse": {
+      "type": "object",
+      "properties": {
+        "ObjectPath": {
+          "$ref": "#/definitions/v1ObjectPath"
+        },
+        "LatestWriteMarker": {
+          "$ref": "#/definitions/v1WriteMarker"
+        }
+      }
+    },
+    "v1GetObjectTreeResponse": {
+      "type": "object",
+      "properties": {
+        "ReferencePath": {
+          "$ref": "#/definitions/v1ReferencePath"
+        },
+        "LatestWM": {
+          "$ref": "#/definitions/v1WriteMarker"
+        }
+      }
+    },
+    "v1GetReferencePathResponse": {
+      "type": "object",
+      "properties": {
+        "ReferencePath": {
+          "$ref": "#/definitions/v1ReferencePath"
+        },
+        "LatestWM": {
+          "$ref": "#/definitions/v1WriteMarker"
+        }
+      }
+    },
+    "v1ListEntitiesResponse": {
+      "type": "object",
+      "properties": {
+        "AllocationRoot": {
+          "type": "string"
+        },
+        "MetaData": {
+          "$ref": "#/definitions/v1FileRef"
+        }
+      }
+    },
+    "v1ObjectPath": {
+      "type": "object",
+      "properties": {
+        "RootHash": {
+          "type": "string"
+        },
+        "Meta": {
+          "$ref": "#/definitions/v1FileRef"
+        },
+        "Path": {
+          "$ref": "#/definitions/v1FileRef"
+        },
+        "FileBlockNum": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1ReferencePath": {
+      "type": "object",
+      "properties": {
+        "MetaData": {
+          "$ref": "#/definitions/v1FileRef"
+        },
+        "List": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ReferencePath"
+          }
         }
       }
     },
@@ -203,6 +892,37 @@
         "WritePrice": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "v1WriteMarker": {
+      "type": "object",
+      "properties": {
+        "AllocationRoot": {
+          "type": "string"
+        },
+        "PreviousAllocationRoot": {
+          "type": "string"
+        },
+        "AllocationID": {
+          "type": "string"
+        },
+        "Size": {
+          "type": "string",
+          "format": "int64"
+        },
+        "BlobberID": {
+          "type": "string"
+        },
+        "Timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "ClientID": {
+          "type": "string"
+        },
+        "Signature": {
+          "type": "string"
         }
       }
     }

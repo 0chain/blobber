@@ -1,15 +1,22 @@
 package handler
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"regexp"
+	"testing"
+	"time"
+
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/blobbergrpc"
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/core/chain"
 	"0chain.net/core/common"
 	"0chain.net/core/logging"
-	"context"
-	"encoding/json"
-	"errors"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/DATA-DOG/go-sqlmock"
@@ -22,12 +29,6 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"net"
-	"net/http"
-	"net/http/httptest"
-	"regexp"
-	"testing"
-	"time"
 )
 
 var (
@@ -213,7 +214,7 @@ func Test_GetAllocation(t *testing.T) {
 			},
 			expectCommit: true,
 			wantCode:     codes.OK.String(),
-			wantAlloc:    convertAllocationToGRPCAllocation(alloc),
+			wantAlloc:    AllocationToGRPCAllocation(alloc),
 		},
 		{
 			name: "Commiting_Transaction_ERR",
@@ -245,7 +246,7 @@ func Test_GetAllocation(t *testing.T) {
 			},
 			expectCommit: true,
 			wantCode:     codes.OK.String(),
-			wantAlloc:    convertAllocationToGRPCAllocation(alloc),
+			wantAlloc:    AllocationToGRPCAllocation(alloc),
 		},
 		{
 			name: "Expired_Allocation_ERR",

@@ -18,6 +18,12 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type BlobberClient interface {
 	GetAllocation(ctx context.Context, in *GetAllocationRequest, opts ...grpc.CallOption) (*GetAllocationResponse, error)
+	GetFileMetaData(ctx context.Context, in *GetFileMetaDataRequest, opts ...grpc.CallOption) (*GetFileMetaDataResponse, error)
+	GetFileStats(ctx context.Context, in *GetFileStatsRequest, opts ...grpc.CallOption) (*GetFileStatsResponse, error)
+	ListEntities(ctx context.Context, in *ListEntitiesRequest, opts ...grpc.CallOption) (*ListEntitiesResponse, error)
+	GetObjectPath(ctx context.Context, in *GetObjectPathRequest, opts ...grpc.CallOption) (*GetObjectPathResponse, error)
+	GetReferencePath(ctx context.Context, in *GetReferencePathRequest, opts ...grpc.CallOption) (*GetReferencePathResponse, error)
+	GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error)
 }
 
 type blobberClient struct {
@@ -37,11 +43,71 @@ func (c *blobberClient) GetAllocation(ctx context.Context, in *GetAllocationRequ
 	return out, nil
 }
 
+func (c *blobberClient) GetFileMetaData(ctx context.Context, in *GetFileMetaDataRequest, opts ...grpc.CallOption) (*GetFileMetaDataResponse, error) {
+	out := new(GetFileMetaDataResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/GetFileMetaData", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *blobberClient) GetFileStats(ctx context.Context, in *GetFileStatsRequest, opts ...grpc.CallOption) (*GetFileStatsResponse, error) {
+	out := new(GetFileStatsResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/GetFileStats", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *blobberClient) ListEntities(ctx context.Context, in *ListEntitiesRequest, opts ...grpc.CallOption) (*ListEntitiesResponse, error) {
+	out := new(ListEntitiesResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/ListEntities", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *blobberClient) GetObjectPath(ctx context.Context, in *GetObjectPathRequest, opts ...grpc.CallOption) (*GetObjectPathResponse, error) {
+	out := new(GetObjectPathResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/GetObjectPath", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *blobberClient) GetReferencePath(ctx context.Context, in *GetReferencePathRequest, opts ...grpc.CallOption) (*GetReferencePathResponse, error) {
+	out := new(GetReferencePathResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/GetReferencePath", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *blobberClient) GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error) {
+	out := new(GetObjectTreeResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/GetObjectTree", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BlobberServer is the server API for Blobber service.
 // All implementations must embed UnimplementedBlobberServer
 // for forward compatibility
 type BlobberServer interface {
 	GetAllocation(context.Context, *GetAllocationRequest) (*GetAllocationResponse, error)
+	GetFileMetaData(context.Context, *GetFileMetaDataRequest) (*GetFileMetaDataResponse, error)
+	GetFileStats(context.Context, *GetFileStatsRequest) (*GetFileStatsResponse, error)
+	ListEntities(context.Context, *ListEntitiesRequest) (*ListEntitiesResponse, error)
+	GetObjectPath(context.Context, *GetObjectPathRequest) (*GetObjectPathResponse, error)
+	GetReferencePath(context.Context, *GetReferencePathRequest) (*GetReferencePathResponse, error)
+	GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error)
 	mustEmbedUnimplementedBlobberServer()
 }
 
@@ -51,6 +117,24 @@ type UnimplementedBlobberServer struct {
 
 func (UnimplementedBlobberServer) GetAllocation(context.Context, *GetAllocationRequest) (*GetAllocationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAllocation not implemented")
+}
+func (UnimplementedBlobberServer) GetFileMetaData(context.Context, *GetFileMetaDataRequest) (*GetFileMetaDataResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFileMetaData not implemented")
+}
+func (UnimplementedBlobberServer) GetFileStats(context.Context, *GetFileStatsRequest) (*GetFileStatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFileStats not implemented")
+}
+func (UnimplementedBlobberServer) ListEntities(context.Context, *ListEntitiesRequest) (*ListEntitiesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListEntities not implemented")
+}
+func (UnimplementedBlobberServer) GetObjectPath(context.Context, *GetObjectPathRequest) (*GetObjectPathResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetObjectPath not implemented")
+}
+func (UnimplementedBlobberServer) GetReferencePath(context.Context, *GetReferencePathRequest) (*GetReferencePathResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetReferencePath not implemented")
+}
+func (UnimplementedBlobberServer) GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetObjectTree not implemented")
 }
 func (UnimplementedBlobberServer) mustEmbedUnimplementedBlobberServer() {}
 
@@ -83,6 +167,114 @@ func _Blobber_GetAllocation_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Blobber_GetFileMetaData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFileMetaDataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).GetFileMetaData(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/GetFileMetaData",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).GetFileMetaData(ctx, req.(*GetFileMetaDataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Blobber_GetFileStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFileStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).GetFileStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/GetFileStats",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).GetFileStats(ctx, req.(*GetFileStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Blobber_ListEntities_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListEntitiesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).ListEntities(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/ListEntities",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).ListEntities(ctx, req.(*ListEntitiesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Blobber_GetObjectPath_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetObjectPathRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).GetObjectPath(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/GetObjectPath",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).GetObjectPath(ctx, req.(*GetObjectPathRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Blobber_GetReferencePath_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetReferencePathRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).GetReferencePath(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/GetReferencePath",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).GetReferencePath(ctx, req.(*GetReferencePathRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Blobber_GetObjectTree_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetObjectTreeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).GetObjectTree(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/GetObjectTree",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).GetObjectTree(ctx, req.(*GetObjectTreeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Blobber_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "blobber.service.v1.Blobber",
 	HandlerType: (*BlobberServer)(nil),
@@ -90,6 +282,30 @@ var _Blobber_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAllocation",
 			Handler:    _Blobber_GetAllocation_Handler,
+		},
+		{
+			MethodName: "GetFileMetaData",
+			Handler:    _Blobber_GetFileMetaData_Handler,
+		},
+		{
+			MethodName: "GetFileStats",
+			Handler:    _Blobber_GetFileStats_Handler,
+		},
+		{
+			MethodName: "ListEntities",
+			Handler:    _Blobber_ListEntities_Handler,
+		},
+		{
+			MethodName: "GetObjectPath",
+			Handler:    _Blobber_GetObjectPath_Handler,
+		},
+		{
+			MethodName: "GetReferencePath",
+			Handler:    _Blobber_GetReferencePath_Handler,
+		},
+		{
+			MethodName: "GetObjectTree",
+			Handler:    _Blobber_GetObjectTree_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

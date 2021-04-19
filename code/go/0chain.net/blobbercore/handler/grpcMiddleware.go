@@ -1,33 +1,17 @@
 package handler
 
 import (
-	"time"
 	"context"
-
-	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"time"
 
 	"0chain.net/core/common"
-
-	"go.uber.org/zap"
-
-	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
-
-	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
-
-	"github.com/gorilla/mux"
-
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-
-	"google.golang.org/grpc"
-
-	"0chain.net/blobbercore/blobbergrpc"
 	"0chain.net/core/logging"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
-
-type blobberGRPCService struct {
-	storageHandler StorageHandler
-	blobbergrpc.UnimplementedBlobberServer
-}
 
 const (
 	TIMEOUT_SECONDS = 10 // to set deadline for requests
@@ -78,27 +62,4 @@ func NewServerWithMiddlewares() *grpc.Server {
 			unaryTimeoutInterceptor(), // should always be the lastest, to be "innermost"
 		),
 	)
-}
-
-func RegisterGRPCServices(r *mux.Router, server *grpc.Server) {
-	blobberService := newGRPCBlobberService()
-	mux := runtime.NewServeMux()
-	blobbergrpc.RegisterBlobberServer(server, blobberService)
-	blobbergrpc.RegisterBlobberHandlerServer(context.Background(), mux, blobberService)
-	r.PathPrefix("/v2").Handler(mux)
-}
-
-func newGRPCBlobberService() *blobberGRPCService {
-	return &blobberGRPCService{}
-}
-
-func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobbergrpc.GetAllocationRequest) (*blobbergrpc.GetAllocationResponse, error) {
-	ctx = setupGRPCHandlerContext(ctx, request.Context)
-
-	allocation, err := b.storageHandler.verifyAllocation(ctx, request.Id, false)
-	if err != nil {
-		return nil, err
-	}
-
-	return &blobbergrpc.GetAllocationResponse{Allocation: convertAllocationToGRPCAllocation(allocation)}, nil
 }

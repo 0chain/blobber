@@ -9,9 +9,157 @@ import "google/api/annotations.proto";
 service Blobber {
   rpc GetAllocation(GetAllocationRequest) returns (GetAllocationResponse) {
     option (google.api.http) = {
-      get: "/allocation"
+      get: "/v2/allocation"
     };
   }
+  rpc GetFileMetaData(GetFileMetaDataRequest) returns (GetFileMetaDataResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/meta/{allocation}"
+    };
+  }
+  rpc GetFileStats(GetFileStatsRequest) returns (GetFileStatsResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/stats/{allocation}"
+    };
+  }
+  rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/list/{allocation}"
+    };
+  }
+  rpc GetObjectPath(GetObjectPathRequest) returns (GetObjectPathResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/objectpath/{allocation}"
+    };
+  }
+  rpc GetReferencePath(GetReferencePathRequest) returns (GetReferencePathResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/referencepath/{allocation}"
+    };
+  }
+  rpc GetObjectTree(GetObjectTreeRequest) returns (GetObjectTreeResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/objecttree/{allocation}"
+    };
+  }
+}
+
+message GetObjectTreeRequest {
+  RequestContext context = 1;
+  string path = 2;
+  string allocation = 3;
+}
+message GetObjectTreeResponse {
+  ReferencePath ReferencePath = 1;
+  WriteMarker LatestWM = 2;
+}
+
+message GetReferencePathRequest {
+  RequestContext Context = 1;
+  string Paths = 2;
+  string Path = 3;
+  string allocation = 4;
+}
+message GetReferencePathResponse {
+  ReferencePath ReferencePath = 1;
+  WriteMarker LatestWM = 2;
+}
+
+message ReferencePath {
+  FileRef MetaData = 1;
+  repeated ReferencePath List = 2;
+}
+
+message GetObjectPathRequest {
+  RequestContext context = 1;
+  string allocation = 2;
+  string Path = 3;
+  string BlockNum = 4;
+}
+message GetObjectPathResponse {
+  ObjectPath ObjectPath = 1;
+  WriteMarker LatestWriteMarker = 2;
+}
+
+message ObjectPath {
+  string RootHash = 1;
+  FileRef Meta = 2;
+  FileRef Path = 3;
+  int64 FileBlockNum = 4;
+}
+
+message WriteMarker {
+  string AllocationRoot = 1;
+  string PreviousAllocationRoot = 2;
+  string AllocationID = 3;
+  int64 Size = 4;
+  string BlobberID = 5;
+  int64 Timestamp = 6;
+  string ClientID = 7;
+  string Signature = 8;
+}
+
+message ListEntitiesRequest {
+  RequestContext context = 1;
+  string path = 2;
+  string path_hash = 3;
+  string auth_token = 4;
+  string allocation = 5;
+}
+
+message ListEntitiesResponse {
+  string AllocationRoot = 1;
+  FileRef MetaData = 2;
+}
+
+message GetFileStatsRequest {
+  RequestContext context = 1;
+  string path = 2;
+  string path_hash = 3;
+  string allocation = 4;
+}
+
+message GetFileStatsResponse {
+  FileRef MetaData = 1;
+  FileStats Stats = 2;
+}
+
+message FileStats {
+  int64 ID = 1;
+  int64 RefID = 2;
+  int64 NumUpdates = 3;
+  int64 NumBlockDownloads = 4;
+  int64 SuccessChallenges = 5;
+  int64 FailedChallenges = 6;
+  string LastChallengeResponseTxn = 7;
+  string WriteMarkerRedeemTxn = 8;
+  int64 CreatedAt = 9;
+  int64 UpdatedAt = 10;
+}
+
+message GetFileMetaDataRequest {
+  RequestContext context = 1;
+  string path = 2;
+  string path_hash = 3;
+  string auth_token = 4;
+  string allocation = 5;
+}
+
+message GetFileMetaDataResponse {
+  FileRef MetaData = 1;
+  repeated Collaborator Collaborators = 2;
+}
+
+message CommitMetaTxn {
+  int64 RefId = 1;
+  string TxnId = 2;
+  int64 CreatedAt = 3;
+}
+
+message Collaborator {
+  int64 RefId = 1;
+  string ClientId = 2;
+  int64 CreatedAt = 3;
 }
 
 message RequestContext {
@@ -55,4 +203,51 @@ message Term {
   string AllocationID = 3;
   int64 ReadPrice = 4;
   int64 WritePrice = 5;
+}
+
+message FileRef {
+  string Type = 1;
+  FileMetaData FileMetaData = 2;
+  DirMetaData DirMetaData = 3;
+}
+
+message FileMetaData {
+  string Type = 1;
+  string LookupHash = 2;
+  string Name = 3;
+  string Path = 4;
+  string Hash = 5;
+  int64 NumBlocks = 6;
+  string PathHash = 7;
+  string CustomMeta = 8;
+  string ContentHash = 9;
+  int64 Size = 10;
+  string MerkleRoot = 11;
+  int64 ActualFileSize = 12;
+  string ActualFileHash = 13;
+  string MimeType = 14;
+  int64 ThumbnailSize = 15;
+  string ThumbnailHash = 16;
+  int64 ActualThumbnailSize = 17;
+  string ActualThumbnailHash = 18;
+  string EncryptedKey = 19;
+  bytes Attributes = 20;
+  bool OnCloud = 21;
+  repeated CommitMetaTxn CommitMetaTxns = 22;
+  int64 CreatedAt = 23;
+  int64 UpdatedAt = 24;
+}
+
+message DirMetaData {
+  string Type = 1;
+  string LookupHash = 2;
+  string Name = 3;
+  string Path = 4;
+  string Hash = 5;
+  int64 NumBlocks = 6;
+  string PathHash = 7;
+  int64 Size = 8;
+  int64 CreatedAt = 9;
+  int64 UpdatedAt = 10;
+  repeated FileRef Children = 11;
 }

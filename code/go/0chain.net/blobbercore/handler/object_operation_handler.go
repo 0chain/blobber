@@ -291,7 +291,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		!isACollaborator) || len(authTokenString) > 0 {
 
 		var authTicketVerified bool
-		authTicketVerified, err = fsh.verifyAuthTicket(ctx, r, allocationObj,
+		authTicketVerified, err = fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj,
 			fileref, clientID)
 		if err != nil {
 			return nil, common.NewErrorf("download_file",
