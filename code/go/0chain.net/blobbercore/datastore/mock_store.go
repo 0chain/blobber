@@ -26,7 +26,7 @@ func MockTheStore(t *testing.T) sqlmock.Sqlmock {
 	gdb, err = gorm.Open(dialector, &gorm.Config{})
 	require.NoError(t, err)
 
-	SetDB(gdb)
+	setDB(gdb)
 
 	return mock
 }

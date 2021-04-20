@@ -27,7 +27,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -101,23 +100,6 @@ func setupServers(t *testing.T) (serverUr string) {
 	)
 
 	return server.URL
-}
-
-func setupDB() sqlmock.Sqlmock {
-	mDB, mock, _ := sqlmock.New()
-	dialector := postgres.New(postgres.Config{
-		DSN:                  "sqlmock_db_0",
-		DriverName:           "postgres",
-		Conn:                 mDB,
-		PreferSimpleProtocol: true,
-	})
-	db, err := gorm.Open(dialector, &gorm.Config{})
-	if err != nil {
-		panic(err)
-	}
-	datastore.SetDB(db)
-
-	return mock
 }
 
 func makeTestClient() (blobbergrpc.BlobberClient, *grpc.ClientConn, error) {
@@ -316,7 +298,7 @@ func Test_GetAllocation(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name,
 			func(t *testing.T) {
-				mock := setupDB()
+				var mock = datastore.MockTheStore(t)
 				test.mockSetup(mock)
 				if test.expectCommit {
 					mock.ExpectCommit()
