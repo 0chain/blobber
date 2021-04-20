@@ -20,7 +20,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"io"
 	"mime/multipart"
@@ -39,7 +38,9 @@ func init() {
 	logging.Logger = zap.NewNop()
 
 	dir, _ := os.Getwd()
-	filestore.SetupFSStore(dir + "/tmp")
+	if _, err := filestore.SetupFSStore(dir + "/tmp"); err != nil {
+		panic(err)
+	}
 	bconfig.Configuration.MaxFileSize = int64(1 << 30)
 }
 
@@ -85,40 +86,7 @@ func setup(t *testing.T) {
 	}
 }
 
-func makeTestAllocation() *allocation.Allocation {
-	allocID := "allocation id"
-	alloc := allocation.Allocation{
-		Tx: encryption.Hash("allocation tx"),
-		ID: allocID,
-		Terms: []*allocation.Terms{
-			{
-				ID:           1,
-				AllocationID: allocID,
-			},
-		},
-		Expiration: common.Timestamp(time.Now().Add(time.Hour).Unix()),
-	}
-	return &alloc
-}
-
-func setupDB(t *testing.T) sqlmock.Sqlmock {
-	mDB, mock, _ := sqlmock.New()
-	dialector := postgres.New(postgres.Config{
-		DSN:                  "sqlmock_db_0",
-		DriverName:           "postgres",
-		Conn:                 mDB,
-		PreferSimpleProtocol: true,
-	})
-	db, err := gorm.Open(dialector, &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	datastore.SetDB(db)
-
-	return mock
-}
-
-func setupHandlers(t *testing.T) (*mux.Router, map[string]string) {
+func setupHandlers() (*mux.Router, map[string]string) {
 	router := mux.NewRouter()
 
 	opPath := "/v1/file/objectpath/{allocation}"
@@ -228,14 +196,15 @@ func isEndpointAllowGetReq(name string) bool {
 func TestHandlers_Requiring_Signature(t *testing.T) {
 	setup(t)
 
-	router, handlers := setupHandlers(t)
+	router, handlers := setupHandlers()
 
 	sch := zcncrypto.NewBLS0ChainScheme()
 	_, err := sch.GenerateKeys()
 	if err != nil {
 		t.Fatal(err)
 	}
-	alloc := makeTestAllocation()
+	ts := time.Now().Add(time.Hour)
+	alloc := makeTestAllocation(common.Timestamp(ts.Unix()))
 	alloc.OwnerPublicKey = sch.GetPublicKey()
 	alloc.OwnerID = sch.GetPublicKey()
 
@@ -961,8 +930,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					fileB, err := io.ReadAll(file)
-					if err != nil {
+					fileB := make([]byte, 0)
+					if _, err := io.ReadFull(file, fileB); err != nil {
 						t.Fatal(err)
 					}
 					if _, err := fileField.Write(fileB); err != nil {
@@ -1042,7 +1011,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	tests := append(positiveTests, negativeTests...)
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			mock := setupDB(t)
+			mock := datastore.MockTheStore(t)
 			test.setupDbMock(mock)
 
 			router.ServeHTTP(test.args.w, test.args.r)
