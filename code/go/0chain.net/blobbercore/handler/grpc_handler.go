@@ -32,7 +32,7 @@ func newGRPCBlobberService(sh StorageHandlerI, r PackageHandler) *blobberGRPCSer
 }
 
 func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobbergrpc.GetAllocationRequest) (*blobbergrpc.GetAllocationResponse, error) {
-	ctx = setupGRPCHandlerContext(ctx, request.Context)
+	ctx, _, _ = setupGRPCHandlerContext(ctx, "")
 
 	allocation, err := b.storageHandler.verifyAllocation(ctx, request.Id, false)
 	if err != nil {
@@ -43,6 +43,8 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 }
 
 func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {
+	ctx, clientID, _ := setupGRPCHandlerContext(ctx, req.Allocation)
+
 	logger := ctxzap.Extract(ctx)
 	allocationObj, err := b.storageHandler.verifyAllocation(ctx, req.Allocation, true)
 	if err != nil {
@@ -50,7 +52,6 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 	}
 	allocationID := allocationObj.ID
 
-	clientID := req.Context.Client
 	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}

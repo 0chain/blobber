@@ -138,11 +138,10 @@ message FileStats {
 }
 
 message GetFileMetaDataRequest {
-  RequestContext context = 1;
-  string path = 2;
-  string path_hash = 3;
-  string auth_token = 4;
-  string allocation = 5;
+  string path = 1;
+  string path_hash = 2;
+  string auth_token = 3;
+  string allocation = 4;
 }
 
 message GetFileMetaDataResponse {
@@ -169,8 +168,7 @@ message RequestContext {
 }
 
 message GetAllocationRequest {
-  RequestContext context = 1;
-  string id = 2;
+  string id = 1;
 }
 
 message GetAllocationResponse {

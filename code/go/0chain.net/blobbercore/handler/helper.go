@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"0chain.net/core/common"
 	"context"
+	"google.golang.org/grpc/metadata"
+	"net/textproto"
 
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/reference"
@@ -15,20 +18,57 @@ import (
 	"0chain.net/blobbercore/constants"
 )
 
-func setupGRPCHandlerContext(ctx context.Context, r *blobbergrpc.RequestContext) context.Context {
-	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY,
-		r.Client)
-	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY,
-		r.ClientKey)
-	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY,
-		r.Allocation)
-	return ctx
+// setupGRPCHandlerContext will add client context keys in request context.Context
+// and return new context with client and client key values
+func setupGRPCHandlerContext(ctx context.Context, _allocation string) (context.Context, string, string) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok || md == nil {
+		md = metadata.MD{}
+	}
+	getValue := func(key string) string {
+		list := md.Get(key)
+		if len(list) > 0 {
+			return list[0]
+		}
+		return ""
+	}
+
+	client := getValue(common.ClientHeader)
+	clientKey := getValue(common.ClientKeyHeader)
+	// adding to context for future reference and calls
+	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY, client)
+	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY, clientKey)
+	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, _allocation)
+	return ctx, client, clientKey
+}
+
+func GrpcGatewayHeaderMatcher(key string) (string, bool) {
+	// check for default allowed headers
+	res, ok := runtime.DefaultHeaderMatcher(key)
+	if ok {
+		return res, ok
+	}
+	// allow header if one of our common header
+	allowed := map[string]struct{}{
+		common.ClientHeader: {},
+		common.ClientKeyHeader: {},
+		common.TimestampHeader: {},
+	}
+	key = textproto.CanonicalMIMEHeaderKey(key)
+	if _, ok := allowed[key]; ok {
+		return key, ok
+	}
+	return "", false
 }
 
 func RegisterGRPCServices(r *mux.Router, server *grpc.Server) {
 	packHandler := &packageHandler{}
 	blobberService := newGRPCBlobberService(&storageHandler, packHandler)
-	mux := runtime.NewServeMux()
+
+	mux := runtime.NewServeMux(
+		runtime.WithIncomingHeaderMatcher(GrpcGatewayHeaderMatcher),
+	)
+
 	blobbergrpc.RegisterBlobberServer(server, blobberService)
 	blobbergrpc.RegisterBlobberHandlerServer(context.Background(), mux, blobberService)
 	r.PathPrefix("/").Handler(mux)
