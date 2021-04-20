@@ -53,8 +53,7 @@ func (fsh *StorageHandler) verifyAllocation(ctx context.Context, tx string,
 	return
 }
 
-func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (bool, error) {
-	authTokenString := r.FormValue("auth_token")
+func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (bool, error) {
 	if len(authTokenString) == 0 {
 		return false, common.NewError("invalid_parameters", "Auth ticket required if data read by anyone other than owner.")
 	}
@@ -152,8 +151,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		return nil, common.NewError("invalid_parameters", "Path is not a file.")
 	}
 
-	result := make(map[string]interface{})
-	result = fileref.GetListingData(ctx)
+	result := fileref.GetListingData(ctx)
 
 	commitMetaTxns, err := reference.GetCommitMetaTxns(ctx, fileref.ID)
 	if err != nil {
@@ -174,7 +172,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	if (allocationObj.OwnerID != clientID &&
 		allocationObj.PayerID != clientID &&
 		!reference.IsACollaborator(ctx, fileref.ID, clientID)) || len(authTokenString) > 0 {
-		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
+		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err
 		}
@@ -223,7 +221,7 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 	authTokenString := r.FormValue("auth_token")
 
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
+		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err
 		}
@@ -371,16 +369,17 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_parameters", "Path is not a file.")
 	}
 
-	result := make(map[string]interface{})
-	result = fileref.GetListingData(ctx)
+	result := fileref.GetListingData(ctx)
 	stats, _ := stats.GetFileStats(ctx, fileref.ID)
 	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
 	if wm != nil && stats != nil {
 		stats.WriteMarkerRedeemTxn = wm.CloseTxnID
 	}
 	var statsMap map[string]interface{}
-	statsBytes, err := json.Marshal(stats)
-	err = json.Unmarshal(statsBytes, &statsMap)
+	statsBytes, _ := json.Marshal(stats)
+	if err = json.Unmarshal(statsBytes, &statsMap); err != nil {
+		return nil, err
+	}
 	for k, v := range statsMap {
 		result[k] = v
 	}
@@ -418,7 +417,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	}
 	authTokenString := r.FormValue("auth_token")
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r, allocationObj, fileref, clientID)
+		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err
 		}
@@ -690,7 +689,9 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 		return nil, err
 	}
 
-	rootRef.CalculateHash(ctx, true)
+	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
+		return nil, err
+	}
 
 	result := make(map[string]interface{})
 	result["msg"] = "Hash recalculated for the given paths"

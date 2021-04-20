@@ -52,7 +52,7 @@ func CheckBalance() (float64, error) {
 		return 0, common.NewError("check_balance_failed", "Call to GetBalance failed with err: "+err.Error())
 	}
 	wg.Wait()
-	if statusBar.success == false {
+	if !statusBar.success {
 		return 0, nil
 	}
 	return zcncore.ConvertToToken(statusBar.balance), nil
@@ -71,7 +71,7 @@ func CallFaucet() error {
 		return common.NewError("call_faucet_failed", "Failed to execute smart contract with err: "+err.Error())
 	}
 	wg.Wait()
-	if statusBar.success == false {
+	if !statusBar.success {
 		return common.NewError("call_faucet_failed", "Failed to execute smart contract with statusBar success failed")
 	}
 	statusBar.success = false
@@ -81,7 +81,7 @@ func CallFaucet() error {
 		return common.NewError("call_faucet_failed", "Failed to verify smart contract with err: "+err.Error())
 	}
 	wg.Wait()
-	if statusBar.success == false {
+	if !statusBar.success {
 		return common.NewError("call_faucet_failed", "Failed to verify smart contract with statusBar success failed")
 	}
 	return nil
@@ -100,7 +100,7 @@ func Transfer(token float64, clientID string) error {
 		return common.NewError("call_transfer_failed", "Failed to send tokens with err: "+err.Error())
 	}
 	wg.Wait()
-	if statusBar.success == false {
+	if !statusBar.success {
 		return common.NewError("call_transfer_failed", "Failed to send tokens with statusBar success failed")
 	}
 	statusBar.success = false
@@ -110,7 +110,7 @@ func Transfer(token float64, clientID string) error {
 		return common.NewError("call_transfer_failed", "Failed to verify send transaction with err: "+err.Error())
 	}
 	wg.Wait()
-	if statusBar.success == false {
+	if !statusBar.success {
 		return common.NewError("call_transfer_failed", "Failed to verify send transaction with statusBar success failed")
 	}
 	return nil

@@ -206,9 +206,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 	var tx = datastore.GetStore().GetTransaction(ctx)
 	defer commit(tx, &err)
 
-	var changed bool
-
-	changed = a.Tx != sa.Tx
+	var changed bool = a.Tx != sa.Tx
 
 	// transaction
 	a.Tx = sa.Tx

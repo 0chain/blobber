@@ -120,18 +120,19 @@ func setupEntityTest(t *testing.T) (*writemarker.WriteMarker, *zcncrypto.Wallet,
 		Timestamp:              common.Now(),
 	}
 
+	// TODO: why the config param is not used here?
 	sigSch := zcncrypto.NewSignatureScheme("bls0chain")
 	wallet, err := sigSch.GenerateKeys()
 	if err != nil {
 		return wm, wallet, err
 	}
-	wm.ClientID = wallet.ClientID
 
-	sigSch.SetPrivateKey(wallet.Keys[0].PrivateKey)
+	wm.ClientID = wallet.ClientID
 	sig, err := sigSch.Sign(encryption.Hash(wm.GetHashData()))
 	if err != nil {
 		return wm, wallet, err
 	}
+
 	wm.Signature = sig
 	return wm, wallet, nil
 }

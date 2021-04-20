@@ -31,7 +31,10 @@ const TXN_VERIFY_URL = "v1/transaction/get/confirmation?hash="
 const SC_REST_API_URL = "v1/screst/"
 const REGISTER_CLIENT = "v1/client/put"
 
-const SLEEP_FOR_TXN_CONFIRMATION = 5
+const (
+	SLEEP_FOR_TXN_CONFIRMATION = 5
+	SC_REST_API_ATTEMPTS = 3
+)
 
 var ErrNoTxnDetail = common.NewError("missing_transaction_detail", "No transaction detail was found on any of the sharders")
 
@@ -122,16 +125,16 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 	// 		Timeout:   time.Second * 10,
 	// 		Transport: netTransport,
 	// 	}
-	// 	response, err := netClient.Get(url)
+	// 	resp, err := netClient.Get(url)
 	// 	if err != nil {
 	// 		Logger.Error("Error getting transaction confirmation", zap.Any("error", err))
 	// 		numSharders--
 	// 	} else {
-	// 		if response.StatusCode != 200 {
+	// 		if resp.StatusCode != 200 {
 	// 			continue
 	// 		}
-	// 		defer response.Body.Close()
-	// 		contents, err := ioutil.ReadAll(response.Body)
+	// 		defer resp.Body.Close()
+	// 		contents, err := ioutil.ReadAll(resp.Body)
 	// 		if err != nil {
 	// 			Logger.Error("Error reading response from transaction confirmation", zap.Any("error", err))
 	// 			continue
@@ -173,72 +176,106 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 }
 
 func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]string, chain *chain.Chain, handler SCRestAPIHandler) ([]byte, error) {
+	var resMaxCounterBody []byte
+	resBodies := make(map[string][]byte)
+
+	var hashMaxCounter int
+	hashCounters := make(map[string]int)
+
 	network := zcncore.GetNetwork()
 	numSharders := len(network.Sharders)
 	sharders := util.GetRandom(network.Sharders, numSharders)
-	responses := make(map[string]int)
-	entityResult := make(map[string][]byte)
-	var retObj []byte
-	maxCount := 0
+
 	for _, sharder := range sharders {
-		urlString := fmt.Sprintf("%v/%v%v%v", sharder, SC_REST_API_URL, scAddress, relativePath)
-		urlObj, _ := url.Parse(urlString)
-		q := urlObj.Query()
-		for k, v := range params {
-			q.Add(k, v)
-		}
-		urlObj.RawQuery = q.Encode()
-		h := sha1.New()
-		var netTransport = &http.Transport{
+		// Make one or more requests (in case of unavailability, see 503/504 errors)
+		var err error
+		var resp *http.Response
+		var counter int = SC_REST_API_ATTEMPTS
+
+		netTransport := &http.Transport{
 			Dial: (&net.Dialer{
 				Timeout: 5 * time.Second,
 			}).Dial,
 			TLSHandshakeTimeout: 5 * time.Second,
 		}
-		var netClient = &http.Client{
-			Timeout:   time.Second * 10,
+
+		netClient := &http.Client{
+			Timeout:   10 * time.Second,
 			Transport: netTransport,
 		}
-		response, err := netClient.Get(urlObj.String())
+
+		uString := fmt.Sprintf("%v/%v%v%v", sharder, SC_REST_API_URL, scAddress, relativePath)
+		u, _ := url.Parse(uString)
+		q := u.Query()
+		for k, v := range params {
+			q.Add(k, v)
+		}
+		u.RawQuery = q.Encode()
+
+		for counter > 0 {
+			resp, err = netClient.Get(u.String())
+			if err != nil { break }
+
+			// if it's not available, retry if there are any retry attempts
+			if (resp.StatusCode == 503 || resp.StatusCode == 504) {
+				resp.Body.Close()
+				counter--
+			} else {
+				break
+			}
+		}
+
 		if err != nil {
 			Logger.Error("Error getting response for sc rest api", zap.Any("error", err), zap.Any("sharder_url", sharder))
 			numSharders--
 		} else {
-			if response.StatusCode != 200 {
-				responseBody, _ := ioutil.ReadAll(response.Body)
-				Logger.Error("Got error response from sc rest api", zap.Any("response", string(responseBody)))
-				response.Body.Close()
+			if resp.StatusCode != 200 {
+				resBody, _ := ioutil.ReadAll(resp.Body)
+				Logger.Error("Got error response from sc rest api", zap.Any("response", string(resBody)))
+				resp.Body.Close()
 				continue
 			}
-			defer response.Body.Close()
-			tReader := io.TeeReader(response.Body, h)
-			entityBytes, err := ioutil.ReadAll(tReader)
+
+			defer resp.Body.Close() // TODO: is it really needed here? or put it above and drop other "Body.Close"s
+
+			hash := sha1.New()
+			teeReader := io.TeeReader(resp.Body, hash)
+			resBody, err := ioutil.ReadAll(teeReader)
+
 			if err != nil {
 				Logger.Error("Error reading response", zap.Any("error", err))
-				response.Body.Close()
+				resp.Body.Close()
 				continue
 			}
-			hashBytes := h.Sum(nil)
-			hash := hex.EncodeToString(hashBytes)
-			responses[hash]++
-			if responses[hash] > maxCount {
-				maxCount = responses[hash]
-				retObj = entityBytes
+
+			hashString := hex.EncodeToString(hash.Sum(nil))
+			hashCounters[hashString]++
+
+			if hashCounters[hashString] > hashMaxCounter {
+				hashMaxCounter = hashCounters[hashString]
+				resMaxCounterBody = resBody
 			}
-			entityResult[sharder] = retObj
-			response.Body.Close()
+
+			resBodies[sharder] = resMaxCounterBody // TODO: check it! looks suspicious. assigned value is not set for some interations. maybe should be = resBody?
+			resp.Body.Close()
 		}
 	}
+
 	var err error
 
-	if maxCount <= (numSharders / 2) {
+	// is it less than or equal to 50%
+	if hashMaxCounter <= (numSharders / 2) {
 		err = common.NewError("invalid_response", "Sharder responses were invalid. Hash mismatch")
 	}
+
 	if handler != nil {
-		handler(entityResult, numSharders, err)
+		handler(resBodies, numSharders, err)
 	}
-	if maxCount > (numSharders / 2) {
-		return retObj, nil
+
+	// is it more than 50%
+	if hashMaxCounter > (numSharders / 2) {
+		return resMaxCounterBody, nil
 	}
+
 	return nil, err
 }

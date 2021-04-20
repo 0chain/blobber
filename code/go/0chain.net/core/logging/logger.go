@@ -33,7 +33,7 @@ func InitLogging(mode string, logDir string, logFile string) {
 		logWriter = zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), logWriter)
 
 	}
-	cfg.Level.UnmarshalText([]byte(viper.GetString("logging.level")))
+	_ = cfg.Level.UnmarshalText([]byte(viper.GetString("logging.level")))
 	cfg.Encoding = "console"
 	cfg.EncoderConfig.TimeKey = "timestamp"
 	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
@@ -72,6 +72,6 @@ func getWriteSyncer(logName string) zapcore.WriteSyncer {
 		LocalTime:  true,
 		Compress:   false, // disabled by default
 	}
-	ioWriter.Rotate()
+	_ = ioWriter.Rotate()
 	return zapcore.AddSync(ioWriter)
 }

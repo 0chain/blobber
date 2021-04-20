@@ -18,6 +18,6 @@ func SetupHandlers(r *mux.Router) {
 }
 
 func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
-	pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+	_ = pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 	return "success", nil
 }
