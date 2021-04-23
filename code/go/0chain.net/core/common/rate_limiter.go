@@ -7,6 +7,7 @@ import (
 	"github.com/didip/tollbooth"
 	"github.com/didip/tollbooth/limiter"
 	"github.com/spf13/viper"
+	rl "go.uber.org/ratelimit"
 )
 
 type ratelimit struct {
@@ -29,10 +30,21 @@ func (rl *ratelimit) init() {
 }
 
 //ConfigRateLimits - configure the rate limits
-func ConfigRateLimits() {
+func ConfigRateLimits() *GRPCRateLimiter {
 	userRl := viper.GetFloat64("handlers.rate_limit")
 	userRateLimit = &ratelimit{RequestsPerSecond: userRl}
 	userRateLimit.init()
+
+	return &GRPCRateLimiter{rl.New(int(userRl))}
+}
+
+type GRPCRateLimiter struct {
+	rl.Limiter
+}
+
+func (r *GRPCRateLimiter) Limit() bool {
+	r.Take()
+	return false
 }
 
 //UserRateLimit - rate limiting for end user handlers

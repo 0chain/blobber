@@ -12,7 +12,7 @@ require (
 	github.com/go-ini/ini v1.55.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2
-	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
 	github.com/jackc/pgproto3/v2 v2.0.4 // indirect
 	github.com/minio/minio-go v6.0.14+incompatible

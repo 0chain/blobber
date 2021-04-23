@@ -8,6 +8,7 @@ import (
 	"0chain.net/core/logging"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	grpc_ratelimit "github.com/grpc-ecosystem/go-grpc-middleware/ratelimit"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -49,7 +50,7 @@ func unaryTimeoutInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
-func NewServerWithMiddlewares() *grpc.Server {
+func NewServerWithMiddlewares(limiter grpc_ratelimit.Limiter) *grpc.Server {
 	return grpc.NewServer(
 		grpc.ChainStreamInterceptor(
 			grpc_zap.StreamServerInterceptor(logging.Logger),
@@ -59,6 +60,7 @@ func NewServerWithMiddlewares() *grpc.Server {
 			grpc_zap.UnaryServerInterceptor(logging.Logger),
 			grpc_recovery.UnaryServerInterceptor(),
 			unaryDatabaseTransactionInjector(),
+			grpc_ratelimit.UnaryServerInterceptor(limiter),
 			unaryTimeoutInterceptor(), // should always be the lastest, to be "innermost"
 		),
 	)
