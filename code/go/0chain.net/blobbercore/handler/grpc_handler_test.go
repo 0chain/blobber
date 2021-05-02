@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	rl "go.uber.org/ratelimit"
+
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/blobbergrpc"
 	"0chain.net/blobbercore/datastore"
@@ -36,7 +38,7 @@ var (
 
 func startGRPCServer(t *testing.T) {
 	lis = bufconn.Listen(1024 * 1024)
-	grpcS := NewServerWithMiddlewares()
+	grpcS := NewServerWithMiddlewares(&common.GRPCRateLimiter{Limiter: rl.New(1000)})
 	RegisterGRPCServices(mux.NewRouter(), grpcS)
 	go func() {
 		if err := grpcS.Serve(lis); err != nil {
