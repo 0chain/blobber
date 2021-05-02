@@ -63,6 +63,12 @@ const (
 	DeploymentMainNet     = 2
 )
 
+type GeolocationConfig struct {
+	Latitude float64 `mapstructure:"latitude"`
+	Longitude float64 `mapstructure:"longitude"`
+	// reserved / Accuracy float64 `mapstructure:"accuracy"`
+}
+
 type Config struct {
 	*config.Config
 	DBHost                        string
@@ -118,6 +124,8 @@ type Config struct {
 	NumDelegates int `json:"num_delegates"`
 	// ServiceCharge for blobber.
 	ServiceCharge float64 `json:"service_charge"`
+
+	Geolocation GeolocationConfig `mapstructure:"geolocation"`
 }
 
 /*Configuration of the system */
