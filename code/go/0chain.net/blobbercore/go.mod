@@ -19,6 +19,7 @@ require (
 	github.com/remeh/sizedwaitgroup v0.0.0-20180822144253-5e7302b12cce
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.7.0
+	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	google.golang.org/genproto v0.0.0-20210224155714-063164c882e6
