@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"reflect"
 
 	"0chain.net/blobbercore/filestore"
 	"0chain.net/blobbercore/stats"
-
 	"0chain.net/blobbercore/reference"
+	"0chain.net/blobbercore/util"
 	"0chain.net/core/common"
 	. "0chain.net/core/logging"
 
@@ -94,8 +95,11 @@ func (nf *UpdateFileChange) Marshal() (string, error) {
 }
 
 func (nf *UpdateFileChange) Unmarshal(input string) error {
-	err := json.Unmarshal([]byte(input), nf)
-	return err
+	if err := json.Unmarshal([]byte(input), nf); err != nil {
+		return err
+	}
+
+	return util.UnmarshalValidation(reflect.ValueOf(nf).Elem())
 }
 
 func (nf *UpdateFileChange) DeleteTempFile() error {

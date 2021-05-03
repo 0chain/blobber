@@ -5,26 +5,28 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"strings"
+	"reflect"
 
 	"0chain.net/blobbercore/filestore"
 	"0chain.net/blobbercore/reference"
 	"0chain.net/blobbercore/stats"
+	"0chain.net/blobbercore/util"
 	"0chain.net/core/common"
 )
 
 type NewFileChange struct {
-	ConnectionID        string               `json:"connection_id"`
+	ConnectionID        string               `json:"connection_id" validation:"required"`
 	AllocationID        string               `json:"allocation_id"`
-	Filename            string               `json:"filename"`
+	Filename            string               `json:"filename" validation:"required"`
 	ThumbnailFilename   string               `json:"thumbnail_filename"`
-	Path                string               `json:"filepath"`
+	Path                string               `json:"filepath" validation:"required"`
 	Size                int64                `json:"size"`
 	Hash                string               `json:"content_hash,omitempty"`
 	ThumbnailSize       int64                `json:"thumbnail_size"`
 	ThumbnailHash       string               `json:"thumbnail_content_hash,omitempty"`
 	MerkleRoot          string               `json:"merkle_root,omitempty"`
-	ActualHash          string               `json:"actual_hash,omitempty"`
-	ActualSize          int64                `json:"actual_size,omitempty"`
+	ActualHash          string               `json:"actual_hash,omitempty" validation:"required"`
+	ActualSize          int64                `json:"actual_size,omitempty" validation:"required"`
 	ActualThumbnailSize int64                `json:"actual_thumb_size"`
 	ActualThumbnailHash string               `json:"actual_thumb_hash"`
 	MimeType            string               `json:"mimetype,omitempty"`
@@ -120,8 +122,11 @@ func (nf *NewFileChange) Marshal() (string, error) {
 }
 
 func (nf *NewFileChange) Unmarshal(input string) error {
-	err := json.Unmarshal([]byte(input), nf)
-	return err
+	if err := json.Unmarshal([]byte(input), nf); err != nil {
+		return err
+	}
+
+	return util.UnmarshalValidation(reflect.ValueOf(nf).Elem())
 }
 
 func (nf *NewFileChange) DeleteTempFile() error {
