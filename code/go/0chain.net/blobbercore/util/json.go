@@ -12,7 +12,9 @@ import (
 // struct {
 //	Name string `json:"name" validation:"required"`
 // }
-func UnmarshalValidation(fields reflect.Value) error {
+func UnmarshalValidation(v interface{}) error {
+	fields := reflect.ValueOf(v).Elem()
+
 	for i := 0; i < fields.NumField(); i++ {
 		validation := fields.Type().Field(i).Tag.Get("validation")
 		if strings.Contains(validation, "required") && fields.Field(i).IsZero() {

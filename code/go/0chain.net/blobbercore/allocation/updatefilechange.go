@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
-	"reflect"
 
 	"0chain.net/blobbercore/filestore"
 	"0chain.net/blobbercore/stats"
@@ -99,7 +98,7 @@ func (nf *UpdateFileChange) Unmarshal(input string) error {
 		return err
 	}
 
-	return util.UnmarshalValidation(reflect.ValueOf(nf).Elem())
+	return util.UnmarshalValidation(nf)
 }
 
 func (nf *UpdateFileChange) DeleteTempFile() error {
