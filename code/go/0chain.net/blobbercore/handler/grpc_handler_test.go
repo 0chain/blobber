@@ -2,11 +2,8 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net"
-	"net/http"
-	"net/http/httptest"
 	"regexp"
 	"testing"
 	"time"
@@ -16,15 +13,10 @@ import (
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/blobbergrpc"
 	"0chain.net/blobbercore/datastore"
-	"0chain.net/core/chain"
 	"0chain.net/core/common"
-	"0chain.net/core/logging"
-	"github.com/0chain/gosdk/core/zcncrypto"
-	"github.com/0chain/gosdk/zcncore"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -45,63 +37,6 @@ func startGRPCServer(t *testing.T) {
 			t.Errorf("Server exited with error: %v", err)
 		}
 	}()
-}
-
-func initChain(t *testing.T) error {
-	chain.SetServerChain(&chain.Chain{})
-	logging.Logger = zap.NewNop()
-
-	setupWallet()
-
-	sUrl := setupServers(t)
-
-	if err := zcncore.InitZCNSDK(sUrl, "ed25519"); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func setupWallet() error {
-	w, err := zcncrypto.NewBLS0ChainScheme().GenerateKeys()
-	if err != nil {
-		return err
-	}
-	wBlob, err := json.Marshal(w)
-	if err != nil {
-		return err
-	}
-	if err := zcncore.SetWalletInfo(string(wBlob), true); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func setupServers(t *testing.T) (serverUr string) {
-	sharderServ := httptest.NewServer(
-		http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-			},
-		),
-	)
-	server := httptest.NewServer(
-		http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-				n := zcncore.Network{Miners: []string{"miner 1"}, Sharders: []string{sharderServ.URL}}
-				blob, err := json.Marshal(n)
-				if err != nil {
-					t.Error(err)
-				}
-
-				if _, err := w.Write(blob); err != nil {
-					t.Error(err)
-				}
-			},
-		),
-	)
-
-	return server.URL
 }
 
 func makeTestClient() (blobbergrpc.BlobberClient, *grpc.ClientConn, error) {
@@ -136,9 +71,7 @@ func makeTestAllocation(exp common.Timestamp) *allocation.Allocation {
 }
 
 func Test_GetAllocation(t *testing.T) {
-	if err := initChain(t); err != nil {
-		t.Fatal(err)
-	}
+	setup(t)
 
 	startGRPCServer(t)
 

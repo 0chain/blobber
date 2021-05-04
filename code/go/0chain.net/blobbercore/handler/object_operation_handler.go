@@ -208,17 +208,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			"request_parse_error: %v", err)
 	}
 
-	var (
-		pathHash = r.FormValue("path_hash")
-		path     = r.FormValue("path")
-		rxPay    = r.FormValue("rx_pay") == "true"
-	)
+	rxPay := r.FormValue("rx_pay") == "true"
 
-	if len(pathHash) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("download_file", "invalid path")
-		}
-		pathHash = reference.GetReferenceLookup(allocationID, path)
+	pathHash, err := pathHashFromReq(r, allocationID)
+	if err != nil {
+		return nil, common.NewError("download_file", "invalid path")
 	}
 
 	var blockNumStr = r.FormValue("block_num")
@@ -593,13 +587,18 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	}
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
-	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-
 	allocationID := allocationObj.ID
+
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+
+	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
 
 	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Invalid client")
@@ -610,14 +609,11 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_parameters", "Invalid name")
 	}
 
-	path_hash := r.FormValue("path_hash")
-	path := r.FormValue("path")
-	if len(path_hash) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		path_hash = reference.GetReferenceLookup(allocationID, path)
+	pathHash, err := pathHashFromReq(r, allocationID)
+	if err != nil {
+		return nil, err
 	}
+
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
@@ -636,7 +632,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -687,6 +683,11 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 			"Invalid allocation ID passed: %v", err)
 	}
 
+	valid, err := verifySignatureFromRequest(r, alloc.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
 	// runtime type check
 	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 
@@ -707,17 +708,10 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 			"decoding given attributes: %v", err)
 	}
 
-	var (
-		pathHash = r.FormValue("path_hash")
-		path     = r.FormValue("path")
-	)
-
-	if pathHash == "" {
-		if path == "" {
-			return nil, common.NewError("update_object_attributes",
-				"missing path and path_hash")
-		}
-		pathHash = reference.GetReferenceLookup(alloc.ID, path)
+	pathHash, err := pathHashFromReq(r, alloc.ID)
+	if err != nil {
+		return nil, common.NewError("update_object_attributes",
+			"missing path and path_hash")
 	}
 
 	if alloc.OwnerID != clientID {
@@ -781,11 +775,17 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	}
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
-	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+
+	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 
 	allocationID := allocationObj.ID
 
@@ -798,14 +798,11 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
 	}
 
-	path_hash := r.FormValue("path_hash")
-	path := r.FormValue("path")
-	if len(path_hash) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		path_hash = reference.GetReferenceLookup(allocationID, path)
+	pathHash, err := pathHashFromReq(r, allocationID)
+	if err != nil {
+		return nil, err
 	}
+
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
@@ -824,7 +821,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -914,13 +911,18 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
+	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
 	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
+	if err := r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); err != nil {
 		Logger.Info("Error Parsing the request", zap.Any("error", err))
 		return nil, common.NewError("request_parse_error", err.Error())
 	}

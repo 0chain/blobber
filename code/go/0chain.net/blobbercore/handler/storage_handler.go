@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"0chain.net/core/encryption"
 	"context"
 	"encoding/json"
+	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"strings"
@@ -134,16 +136,12 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 
 	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 
-	path_hash := r.FormValue("path_hash")
-	path := r.FormValue("path")
-	if len(path_hash) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		path_hash = reference.GetReferenceLookup(allocationID, path)
+	pathHash, err := pathHashFromReq(r, allocationID)
+	if err != nil {
+		return nil, err
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -206,16 +204,12 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 
 	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 
-	path_hash := r.FormValue("path_hash")
-	path := r.FormValue("path")
-	if len(path_hash) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		path_hash = reference.GetReferenceLookup(allocationID, path)
+	pathHash, err := pathHashFromReq(r, allocationID)
+	if err != nil {
+		return nil, err
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -262,20 +256,21 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
+	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
 	allocationID := allocationObj.ID
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 
-	path_hash := r.FormValue("path_hash")
-	path := r.FormValue("path")
-	if len(path_hash) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		path_hash = reference.GetReferenceLookup(allocationID, path)
+	pathHash, err := pathHashFromReq(r, allocationID)
+	if err != nil {
+		return nil, err
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -342,11 +337,15 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
-
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 	allocationID := allocationObj.ID
+
+	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
@@ -355,16 +354,12 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 
 	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 
-	path_hash := r.FormValue("path_hash")
-	path := r.FormValue("path")
-	if len(path_hash) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		path_hash = reference.GetReferenceLookup(allocationID, path)
+	pathHash, err := pathHashFromReq(r, allocationID)
+	if err != nil {
+		return nil, err
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -409,18 +404,14 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	path_hash := r.FormValue("path_hash")
-	path := r.FormValue("path")
-	if len(path_hash) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		path_hash = reference.GetReferenceLookup(allocationID, path)
+	pathHash, err := pathHashFromReq(r, allocationID)
+	if err != nil {
+		return nil, err
 	}
 
-	Logger.Info("Path Hash for list dir :" + path_hash)
+	Logger.Info("Path Hash for list dir :" + pathHash)
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
@@ -479,14 +470,20 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 		errCh <- common.NewError("invalid_method", "Invalid method used. Use GET instead")
 		return
 	}
+
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
-
 	if err != nil {
 		errCh <- common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 		return
 	}
 	allocationID := allocationObj.ID
+
+	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		errCh <- common.NewError("invalid_signature", "Invalid signature")
+		return
+	}
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 {
@@ -494,21 +491,10 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 		return
 	}
 
-	var paths []string
-	pathsString := r.FormValue("paths")
-	if len(pathsString) == 0 {
-		path := r.FormValue("path")
-		if len(path) == 0 {
-			errCh <- common.NewError("invalid_parameters", "Invalid path")
-			return
-		}
-		paths = append(paths, path)
-	} else {
-		err = json.Unmarshal([]byte(pathsString), &paths)
-		if err != nil {
-			errCh <- common.NewError("invalid_parameters", "Invalid path array json")
-			return
-		}
+	paths, err := pathsFromReq(r)
+	if err != nil {
+		errCh <- err
+		return
 	}
 
 	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
@@ -560,11 +546,15 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (
 	}
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
-
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 	allocationID := allocationObj.ID
+
+	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
@@ -618,6 +608,11 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 	allocationID := allocationObj.ID
+
+	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
@@ -684,19 +679,9 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	var paths []string
-	pathsString := r.FormValue("paths")
-	if len(pathsString) == 0 {
-		path := r.FormValue("path")
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		paths = append(paths, path)
-	} else {
-		err = json.Unmarshal([]byte(pathsString), &paths)
-		if err != nil {
-			return nil, common.NewError("invalid_parameters", "Invalid path array json")
-		}
+	paths, err := pathsFromReq(r)
+	if err != nil {
+		return nil, err
 	}
 
 	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
@@ -711,4 +696,60 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 	result := make(map[string]interface{})
 	result["msg"] = "Hash recalculated for the given paths"
 	return result, nil
+}
+
+// verifySignatureFromRequest verifyes signature passed as common.ClientSignatureHeader header.
+func verifySignatureFromRequest(r *http.Request, pbK string) (bool, error) {
+	sign := r.Header.Get(common.ClientSignatureHeader)
+	if len(sign) < 64 {
+		return false, nil
+	}
+
+	vars := mux.Vars(r)
+	data, ok := vars["allocation"]
+	if !ok {
+		return false, common.NewError("invalid_params", "Missing allocation tx")
+	}
+
+	hash := encryption.Hash(data)
+	return encryption.Verify(pbK, sign, hash)
+}
+
+// pathsFromReq retrieves paths value from request which can be represented as single "path" value or "paths" values,
+// marshalled to json.
+func pathsFromReq(r *http.Request) ([]string, error) {
+	var (
+		pathsStr = r.FormValue("paths")
+		path     = r.FormValue("path")
+		paths    = make([]string, 0)
+	)
+
+	if len(pathsStr) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+
+		return append(paths, path), nil
+	}
+
+	if err := json.Unmarshal([]byte(pathsStr), &paths); err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid path array json")
+	}
+
+	return paths, nil
+}
+
+func pathHashFromReq(r *http.Request, allocationID string) (string, error) {
+	var (
+		pathHash = r.FormValue("path_hash")
+		path     = r.FormValue("path")
+	)
+	if len(pathHash) == 0 {
+		if len(path) == 0 {
+			return "", common.NewError("invalid_parameters", "Invalid path")
+		}
+		pathHash = reference.GetReferenceLookup(allocationID, path)
+	}
+
+	return pathHash, nil
 }
