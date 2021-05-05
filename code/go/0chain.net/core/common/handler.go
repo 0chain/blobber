@@ -10,12 +10,17 @@ import (
 	"strings"
 )
 
-/*AppErrorHeader - a http response header to send an application error code */
-const AppErrorHeader = "X-App-Error-Code"
+const (
+	// AppErrorHeader - a http response header to send an application error code.
+	AppErrorHeader = "X-App-Error-Code"
 
-const ClientHeader = "X-App-Client-ID"
-const ClientKeyHeader = "X-App-Client-Key"
-const TimestampHeader = "X-App-Timestamp"
+	ClientHeader    = "X-App-Client-ID"
+	ClientKeyHeader = "X-App-Client-Key"
+	TimestampHeader = "X-App-Timestamp"
+
+	// ClientSignatureHeader represents http request header contains signature.
+	ClientSignatureHeader = "X-App-Client-Signature"
+)
 
 /*ReqRespHandlerf - a type for the default hanlder signature */
 type ReqRespHandlerf func(w http.ResponseWriter, r *http.Request)

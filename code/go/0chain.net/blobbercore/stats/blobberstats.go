@@ -42,6 +42,7 @@ type WriteMarkersStat struct {
 }
 
 type Stats struct {
+	TotalSize          int64 `json:"total_size"` // the total allocated size
 	UsedSize           int64 `json:"used_size"`
 	FilesSize          int64 `json:"files_size"`
 	ThumbnailsSize     int64 `json:"thumbnails_size"`
@@ -142,7 +143,10 @@ func (bs *BlobberStats) loadDetailedStats(ctx context.Context) {
 		if _, ok := given[as.AllocationID]; ok {
 			continue
 		}
+
 		given[as.AllocationID] = struct{}{}
+		bs.TotalSize += as.TotalSize
+
 		as.ReadMarkers, err = loadAllocReadMarkersStat(ctx, as.AllocationID)
 		if err != nil {
 			Logger.Error("getting read_maker stat",
@@ -152,6 +156,7 @@ func (bs *BlobberStats) loadDetailedStats(ctx context.Context) {
 			bs.ReadMarkers.Pending += as.ReadMarkers.Pending
 			bs.ReadMarkers.Redeemed += as.ReadMarkers.Redeemed
 		}
+
 		as.WriteMarkers, err = loadAllocWriteMarkerStat(ctx, as.AllocationID)
 		if err != nil {
 			Logger.Error("getting write_maker stat",
@@ -247,6 +252,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
             SUM(file_stats.num_of_block_downloads) as num_of_reads,
             SUM(reference_objects.num_of_blocks) as num_of_block_writes,
             COUNT(*) as num_of_writes,
+            allocations.size AS total_size,
             allocations.expiration_date AS expiration_date`).
 		Joins(`INNER JOIN file_stats
             ON reference_objects.id = file_stats.ref_id`).
@@ -266,7 +272,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 
 	for rows.Next() {
 		var as = &AllocationStats{}
-		err = rows.Scan(&as.AllocationID, &as.FilesSize, &as.ThumbnailsSize,
+		err = rows.Scan(&as.AllocationID, &as.TotalSize, &as.FilesSize, &as.ThumbnailsSize,
 			&as.NumReads, &as.BlockWrites, &as.NumWrites, &as.Expiration)
 		if err != nil {
 			Logger.Error("Error in scanning record for blobber stats",
