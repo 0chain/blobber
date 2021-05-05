@@ -29,9 +29,16 @@ func (rl *ratelimit) init() {
 		SetMethods([]string{"GET", "POST", "PUT", "DELETE"})
 }
 
+const DefaultRequestPerSecond = 100000
+
 //ConfigRateLimits - configure the rate limits
 func ConfigRateLimits() *GRPCRateLimiter {
 	userRl := viper.GetFloat64("handlers.rate_limit")
+
+	if userRl == 0 {
+		userRl = DefaultRequestPerSecond
+	}
+
 	userRateLimit = &ratelimit{RequestsPerSecond: userRl}
 	userRateLimit.init()
 
