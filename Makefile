@@ -1,7 +1,7 @@
 .PHONY: test lint
 
 test:
-	@for mod_file in $$(find * -name go.mod); do mod_dir=$$(dirname $$mod_file); (cd $$mod_dir; go test ./...); done
+	cd code/go/0chain.net; go test ./...;
 
 lint:
-	@for mod_file in $$(find * -name go.mod); do mod_dir=$$(dirname $$mod_file); (cd $$mod_dir; go mod download; golangci-lint run); done
+	cd code/go/0chain.net; golangci-lint run;

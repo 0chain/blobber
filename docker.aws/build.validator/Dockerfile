@@ -21,16 +21,13 @@ ENV GO111MODULE=on
 
 # Download the dependencies:
 # Will be cached if we don't change mod/sum files
-COPY ./code/go/0chain.net/core/go.mod          ./code/go/0chain.net/core/go.sum          $SRC_DIR/go/0chain.net/core/
-COPY ./code/go/0chain.net/validatorcore/go.mod     ./code/go/0chain.net/validatorcore/go.sum     $SRC_DIR/go/0chain.net/validatorcore/
-COPY ./code/go/0chain.net/validator/go.mod     ./code/go/0chain.net/validator/go.sum     $SRC_DIR/go/0chain.net/validator/
-
-WORKDIR $SRC_DIR/go/0chain.net/validator
-RUN go mod download
-
+COPY ./code/go/0chain.net/go.mod          ./code/go/0chain.net/go.sum          $SRC_DIR/go/0chain.net/
+RUN cd $SRC_DIR/go/0chain.net && go mod download
 
 #Add the source code
 ADD ./code/go/0chain.net $SRC_DIR/go/0chain.net
+
+WORKDIR $SRC_DIR/go/0chain.net/validator
 
 ARG image_tag
 ARG go_build_mode
