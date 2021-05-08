@@ -970,7 +970,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 				"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 		}
 		exisitingFileRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
-		existingFileRefSize := int64(0)
+		exisitingFileRefSize := int64(0)
 		exisitingFileOnCloud := false
 		if mode == allocation.INSERT_OPERATION {
 			if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
@@ -993,7 +993,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		}
 
 		if exisitingFileRef != nil {
-			existingFileRefSize = exisitingFileRef.Size
+			exisitingFileRefSize = exisitingFileRef.Size
 			exisitingFileOnCloud = exisitingFileRef.OnCloud
 		}
 
@@ -1051,13 +1051,13 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 			formData.ThumbnailFilename = thumbInputData.Name
 		}
 
-		if allocationObj.BlobberSizeUsed+(allocationSize-existingFileRefSize) > allocationObj.BlobberSize {
+		if allocationObj.BlobberSizeUsed+(allocationSize-exisitingFileRefSize) > allocationObj.BlobberSize {
 			return nil, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 		}
 
 		allocationChange := &allocation.AllocationChange{}
 		allocationChange.ConnectionID = connectionObj.ConnectionID
-		allocationChange.Size = allocationSize - existingFileRefSize
+		allocationChange.Size = allocationSize - exisitingFileRefSize
 		allocationChange.Operation = mode
 
 		connectionObj.Size += allocationChange.Size
