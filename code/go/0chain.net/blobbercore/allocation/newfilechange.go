@@ -14,20 +14,20 @@ import (
 )
 
 type NewFileChange struct {
-	ConnectionID        string               `json:"connection_id,omitempty" validation:"required"`
-	AllocationID        string               `json:"allocation_id,omitempty"`
-	Filename            string               `json:"filename,omitempty" validation:"required"`
-	ThumbnailFilename   string               `json:"thumbnail_filename,omitempty"`
-	Path                string               `json:"filepath,omitempty" validation:"required"`
-	Size                int64                `json:"size,omitempty"`
+	ConnectionID        string               `json:"connection_id" validation:"required"`
+	AllocationID        string               `json:"allocation_id"`
+	Filename            string               `json:"filename" validation:"required"`
+	ThumbnailFilename   string               `json:"thumbnail_filename"`
+	Path                string               `json:"filepath" validation:"required"`
+	Size                int64                `json:"size"`
 	Hash                string               `json:"content_hash,omitempty"`
-	ThumbnailSize       int64                `json:"thumbnail_size,omitempty"`
+	ThumbnailSize       int64                `json:"thumbnail_size"`
 	ThumbnailHash       string               `json:"thumbnail_content_hash,omitempty"`
 	MerkleRoot          string               `json:"merkle_root,omitempty"`
 	ActualHash          string               `json:"actual_hash,omitempty" validation:"required"`
 	ActualSize          int64                `json:"actual_size,omitempty" validation:"required"`
-	ActualThumbnailSize int64                `json:"actual_thumb_size,omitempty"`
-	ActualThumbnailHash string               `json:"actual_thumb_hash,omitempty"`
+	ActualThumbnailSize int64                `json:"actual_thumb_size"`
+	ActualThumbnailHash string               `json:"actual_thumb_hash"`
 	MimeType            string               `json:"mimetype,omitempty"`
 	EncryptedKey        string               `json:"encrypted_key,omitempty"`
 	CustomMeta          string               `json:"custom_meta,omitempty"`
