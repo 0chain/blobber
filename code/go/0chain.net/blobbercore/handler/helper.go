@@ -30,7 +30,7 @@ func RegisterGRPCServices(r *mux.Router, server *grpc.Server) {
 	blobberService := newGRPCBlobberService(&storageHandler, packHandler)
 	mux := runtime.NewServeMux()
 	blobbergrpc.RegisterBlobberServer(server, blobberService)
-	blobbergrpc.RegisterBlobberHandlerServer(context.Background(), mux, blobberService)
+	_ = blobbergrpc.RegisterBlobberHandlerServer(context.Background(), mux, blobberService)
 	r.PathPrefix("/").Handler(mux)
 }
 
