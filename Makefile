@@ -1,4 +1,4 @@
-.PHONY: test lint
+.PHONY: test lint integration-tests
 
 test:
 	cd code/go/0chain.net; go test ./...;
