@@ -221,4 +221,34 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		}
 	})
 
+	t.Run("TestGetReferencePath", func(t *testing.T) {
+		err := tdController.ClearDatabase()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = tdController.AddGetReferencePathTestData()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := &blobbergrpc.GetReferencePathRequest{
+			Context: &blobbergrpc.RequestContext{
+				Client:     "exampleOwnerId",
+				ClientKey:  "",
+				Allocation: "exampleTransaction",
+			},
+			Paths:      "",
+			Path:       "/",
+			Allocation: "",
+		}
+		getReferencePathResp, err := blobberClient.GetReferencePath(ctx, req)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if getReferencePathResp.ReferencePath.MetaData.DirMetaData.Path != "/" {
+			t.Fatal("unexpected path from GetReferencePath rpc")
+		}
+	})
+
 }
