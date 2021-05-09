@@ -124,7 +124,37 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		}
 
 		if getFileMetaDataResp.MetaData.FileMetaData.Name != "filename" {
-			t.Fatal("unexpected path from GetFileMetaData rpc")
+			t.Fatal("unexpected file name from GetFileMetaData rpc")
+		}
+	})
+
+	t.Run("TestGetFileStats", func(t *testing.T) {
+		err := tdController.ClearDatabase()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = tdController.AddGetFileStatsTestData()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := &blobbergrpc.GetFileStatsRequest{
+			Context: &blobbergrpc.RequestContext{
+				Client:     "exampleOwnerId",
+				ClientKey:  "",
+				Allocation: "exampleTransaction",
+			},
+			Path:     "examplePath",
+			PathHash: "exampleId:examplePath",
+		}
+
+		getFileStatsResp, err := blobberClient.GetFileStats(ctx, req)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if getFileStatsResp.MetaData.FileMetaData.Name != "filename" {
+			t.Fatal("unexpected file name from GetFileStats rpc")
 		}
 	})
 
