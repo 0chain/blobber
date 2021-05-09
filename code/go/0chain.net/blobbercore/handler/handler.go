@@ -3,16 +3,17 @@
 package handler
 
 import (
-	"0chain.net/blobbercore/config"
-	"0chain.net/blobbercore/constants"
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/blobbercore/stats"
-	"0chain.net/core/common"
 	"context"
 	"net/http"
 	"os"
 	"runtime/pprof"
 	"time"
+
+	"0chain.net/blobbercore/config"
+	"0chain.net/blobbercore/constants"
+	"0chain.net/blobbercore/datastore"
+	"0chain.net/blobbercore/stats"
+	"0chain.net/core/common"
 
 	. "0chain.net/core/logging"
 	"go.uber.org/zap"
@@ -204,7 +205,9 @@ func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 }
 
 func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx, _ = context.WithTimeout(ctx, time.Second*10)
+	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
+	defer canceler()
+
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetReferencePath(ctx, r)
