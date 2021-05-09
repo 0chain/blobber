@@ -1,13 +1,14 @@
 package handler
 
 import (
-	"0chain.net/core/encryption"
 	"context"
 	"encoding/json"
-	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"0chain.net/core/encryption"
+	"github.com/gorilla/mux"
 
 	"0chain.net/blobbercore/stats"
 	"go.uber.org/zap"
@@ -537,7 +538,6 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	}
 
 	resCh <- &refPathResult
-	return
 }
 
 func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (*ObjectPathResult, error) {
