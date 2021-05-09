@@ -91,13 +91,27 @@ func (c *TestDataController) ClearDatabase() error {
 		return err
 	}
 
-	ctx := context.Background()
-	tx, err = db.BeginTx(ctx, &sql.TxOptions{})
+	tx, err = db.BeginTx(context.Background(), &sql.TxOptions{})
 	if err != nil {
 		return err
 	}
 
 	_, err = tx.Exec("truncate allocations cascade")
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("truncate reference_objects cascade")
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("truncate commit_meta_txns cascade")
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("truncate collaborators cascade")
 	if err != nil {
 		return err
 	}
@@ -129,8 +143,7 @@ func (c *TestDataController) AddGetAllocationTestData() error {
 		return err
 	}
 
-	ctx := context.Background()
-	tx, err = db.BeginTx(ctx, &sql.TxOptions{})
+	tx, err = db.BeginTx(context.Background(), &sql.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -140,6 +153,72 @@ func (c *TestDataController) AddGetAllocationTestData() error {
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id)
 VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKey',` + fmt.Sprint(expTime) + `,'examplePayerId');
+`)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *TestDataController) AddGetFileMetaDataTestData() error {
+	var err error
+	var tx *sql.Tx
+	defer func() {
+		if err != nil {
+			if tx != nil {
+				errRollback := tx.Rollback()
+				if errRollback != nil {
+					log.Println(errRollback)
+				}
+			}
+		}
+	}()
+
+	db, err := c.db.DB()
+	if err != nil {
+		return err
+	}
+
+	tx, err = db.BeginTx(context.Background(), &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
+
+	_, err = tx.Exec(`
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id)
+VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKey',` + fmt.Sprint(expTime) + `,'examplePayerId');
+`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+INSERT INTO reference_objects (id, allocation_id, path_hash,lookup_hash,type,name,path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
+VALUES (1234,'exampleId','exampleId:examplePath','exampleId:examplePath','f','filename','examplePath','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
+`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+INSERT INTO commit_meta_txns (ref_id,txn_id)
+VALUES (1234,'someTxn');
+`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+INSERT INTO collaborators (ref_id, client_id)
+VALUES (1234, 'someClient');
 `)
 	if err != nil {
 		return err

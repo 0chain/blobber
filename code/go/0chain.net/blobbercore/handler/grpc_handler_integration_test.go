@@ -29,9 +29,9 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 	for _, arg := range os.Args {
 		args[arg] = true
 	}
-	if !args["integration"] {
-		t.Skip()
-	}
+	//if !args["integration"] {
+	//	t.Skip()
+	//}
 
 	ctx := context.Background()
 
@@ -97,6 +97,34 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 
 		if getAllocationResp.Allocation.Tx != getAllocationReq.Id {
 			t.Fatal("unexpected allocation id from GetAllocation rpc")
+		}
+	})
+
+	t.Run("TestGetFileMetaData", func(t *testing.T) {
+		err := tdController.ClearDatabase()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = tdController.AddGetFileMetaDataTestData()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := &blobbergrpc.GetFileMetaDataRequest{
+			Context: &blobbergrpc.RequestContext{
+				Client: "exampleOwnerId",
+			},
+			Path:       "examplePath",
+			PathHash:   "exampleId:examplePath",
+			Allocation: "exampleTransaction",
+		}
+		getFileMetaDataResp, err := blobberClient.GetFileMetaData(ctx, req)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if getFileMetaDataResp.MetaData.FileMetaData.Name != "filename" {
+			t.Fatal("unexpected path from GetFileMetaData rpc")
 		}
 	})
 
