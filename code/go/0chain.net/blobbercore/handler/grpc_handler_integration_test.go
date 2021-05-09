@@ -29,9 +29,9 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 	for _, arg := range os.Args {
 		args[arg] = true
 	}
-	//if !args["integration"] {
-	//	t.Skip()
-	//}
+	if !args["integration"] {
+		t.Skip()
+	}
 
 	ctx := context.Background()
 
@@ -248,6 +248,35 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 
 		if getReferencePathResp.ReferencePath.MetaData.DirMetaData.Path != "/" {
 			t.Fatal("unexpected path from GetReferencePath rpc")
+		}
+	})
+
+	t.Run("TestGetObjectTree", func(t *testing.T) {
+		err := tdController.ClearDatabase()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = tdController.AddGetObjectTreeTestData()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := &blobbergrpc.GetObjectTreeRequest{
+			Context: &blobbergrpc.RequestContext{
+				Client:     "exampleOwnerId",
+				ClientKey:  "",
+				Allocation: "exampleTransaction",
+			},
+			Path:       "/",
+			Allocation: "",
+		}
+		getObjectTreeResp, err := blobberClient.GetObjectTree(ctx, req)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if getObjectTreeResp.ReferencePath.MetaData.DirMetaData.Name != "root" {
+			t.Fatal("unexpected root name from GetObject")
 		}
 	})
 
