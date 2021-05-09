@@ -158,6 +158,38 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		}
 	})
 
+	t.Run("TestListEntities", func(t *testing.T) {
+		err := tdController.ClearDatabase()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = tdController.AddListEntitiesTestData()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := &blobbergrpc.ListEntitiesRequest{
+			Context: &blobbergrpc.RequestContext{
+				Client:     "exampleOwnerId",
+				ClientKey:  "",
+				Allocation: "exampleTransaction",
+			},
+			Path:       "examplePath",
+			PathHash:   "exampleId:examplePath",
+			AuthToken:  "",
+			Allocation: "",
+		}
+
+		listEntitiesResp, err := blobberClient.ListEntities(ctx, req)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if listEntitiesResp.MetaData.DirMetaData.Path != "examplePath" {
+			t.Fatal("unexpected path from ListEntities rpc")
+		}
+	})
+
 	t.Run("TestGetObjectPath", func(t *testing.T) {
 		err := tdController.ClearDatabase()
 		if err != nil {
