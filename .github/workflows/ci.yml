@@ -31,8 +31,7 @@ jobs:
           docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
           ./docker.local/bin/build.blobber.sh
           cd docker.local/blobber1; ../bin/blobber.start_bls.sh </dev/null &>/dev/null &
-          cd code/go/0chain.net
-          go test blobbercore/handler/grpc_handler_integration_test.go --args integration
+          make integration-tests
 
   test:
     runs-on: ubuntu-20.04
