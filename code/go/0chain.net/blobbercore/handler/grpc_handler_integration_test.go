@@ -158,4 +158,35 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		}
 	})
 
+	t.Run("TestGetObjectPath", func(t *testing.T) {
+		err := tdController.ClearDatabase()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = tdController.AddGetObjectPathTestData()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := &blobbergrpc.GetObjectPathRequest{
+			Context: &blobbergrpc.RequestContext{
+				Client:     "exampleOwnerId",
+				ClientKey:  "",
+				Allocation: "exampleTransaction",
+			},
+			Allocation: "",
+			Path:       "examplePath",
+			BlockNum:   "0",
+		}
+
+		getObjectPathResp, err := blobberClient.GetObjectPath(ctx, req)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if getObjectPathResp.ObjectPath.Path.DirMetaData.Path != "/" {
+			t.Fatal("unexpected root hash from GetObjectPath rpc")
+		}
+	})
+
 }
