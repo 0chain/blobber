@@ -5,9 +5,16 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/spf13/viper"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+
+	"0chain.net/blobbercore/config"
 	"google.golang.org/grpc"
 
 	"0chain.net/blobbercore/blobbergrpc"
@@ -22,7 +29,6 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 	for _, arg := range os.Args {
 		args[arg] = true
 	}
-
 	if !args["integration"] {
 		t.Skip()
 	}
@@ -39,33 +45,57 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			<-time.After(time.Second * RetryTimeout)
 			continue
 		}
-
 		break
 	}
-
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	defer conn.Close()
-	client := blobbergrpc.NewBlobberClient(conn)
+	blobberClient := blobbergrpc.NewBlobberClient(conn)
+
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	configDir := strings.Split(pwd, "/code/go")[0] + "/config"
+	config.SetupDefaultConfig()
+	config.SetupConfig(configDir)
+	config.Configuration.DBHost = "localhost"
+	config.Configuration.DBName = viper.GetString("db.name")
+	config.Configuration.DBPort = viper.GetString("db.port")
+	config.Configuration.DBUserName = viper.GetString("db.user")
+	config.Configuration.DBPassword = viper.GetString("db.password")
+	db, err := gorm.Open(postgres.Open(fmt.Sprintf(
+		"host=%v port=%v user=%v dbname=%v password=%v sslmode=disable",
+		config.Configuration.DBHost, config.Configuration.DBPort,
+		config.Configuration.DBUserName, config.Configuration.DBName,
+		config.Configuration.DBPassword)), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tdController := NewTestDataController(db)
 
 	t.Run("TestGetAllocation", func(t *testing.T) {
-		getAllocationReq := &blobbergrpc.GetAllocationRequest{
-			Context: &blobbergrpc.RequestContext{
-				Client:     "",
-				ClientKey:  "",
-				Allocation: "",
-			},
-			Id: "",
+		err := tdController.ClearDatabase()
+		if err != nil {
+			t.Fatal(err)
 		}
-
-		getAllocationResp, err := client.GetAllocation(ctx, getAllocationReq)
+		err = tdController.AddGetAllocationTestData()
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if getAllocationResp.Allocation.ID != getAllocationReq.Id {
+		getAllocationReq := &blobbergrpc.GetAllocationRequest{
+			Context: &blobbergrpc.RequestContext{},
+			Id:      "exampleTransaction",
+		}
+
+		getAllocationResp, err := blobberClient.GetAllocation(ctx, getAllocationReq)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if getAllocationResp.Allocation.Tx != getAllocationReq.Id {
 			t.Fatal("unexpected allocation id from GetAllocation rpc")
 		}
 	})

@@ -227,7 +227,7 @@ func main() {
 	flag.Parse()
 
 	config.SetupDefaultConfig()
-	config.SetupConfig()
+	config.SetupConfig("./config")
 
 	config.Configuration.DeploymentMode = byte(*deploymentMode)
 

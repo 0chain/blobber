@@ -25,7 +25,7 @@ jobs:
       - uses: satackey/action-docker-layer-caching@v0.0.11
         # Ignore the failure of a step and avoid terminating the job.
         continue-on-error: true
-      - name: Build environment and run tests
+      - name: Build test environment and run tests
         run: |
           ./docker.local/bin/blobber.init.setup.sh
           docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0

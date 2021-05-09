@@ -2,6 +2,12 @@ package handler
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
+	"log"
+	"time"
+
+	"gorm.io/gorm"
 
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/reference"
@@ -55,4 +61,94 @@ func (_m *storageHandlerI) verifyAuthTicket(ctx context.Context, authTokenString
 	}
 
 	return r0, r1
+}
+
+type TestDataController struct {
+	db *gorm.DB
+}
+
+func NewTestDataController(db *gorm.DB) *TestDataController {
+	return &TestDataController{db: db}
+}
+
+// ClearDatabase deletes all data from all tables
+func (c *TestDataController) ClearDatabase() error {
+	var err error
+	var tx *sql.Tx
+	defer func() {
+		if err != nil {
+			if tx != nil {
+				errRollback := tx.Rollback()
+				if errRollback != nil {
+					log.Println(errRollback)
+				}
+			}
+		}
+	}()
+
+	db, err := c.db.DB()
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	tx, err = db.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("truncate allocations cascade")
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *TestDataController) AddGetAllocationTestData() error {
+	var err error
+	var tx *sql.Tx
+	defer func() {
+		if err != nil {
+			if tx != nil {
+				errRollback := tx.Rollback()
+				if errRollback != nil {
+					log.Println(errRollback)
+				}
+			}
+		}
+	}()
+
+	db, err := c.db.DB()
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	tx, err = db.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
+
+	_, err = tx.Exec(`
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id)
+VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKey',` + fmt.Sprint(expTime) + `,'examplePayerId');
+`)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
