@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

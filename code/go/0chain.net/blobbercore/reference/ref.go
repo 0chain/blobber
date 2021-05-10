@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/core/common"
-	"0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"

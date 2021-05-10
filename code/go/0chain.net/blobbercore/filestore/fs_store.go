@@ -13,15 +13,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "0chain.net/core/logging"
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 
-	"0chain.net/core/common"
-	"0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 
-	"0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
-	"0chain.net/core/util"
+	"github.com/0chain/blobber/code/go/0chain.net/core/util"
 	"github.com/minio/minio-go"
 	"golang.org/x/crypto/sha3"
 )
