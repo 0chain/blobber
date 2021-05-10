@@ -1,7 +1,7 @@
 .PHONY: test lint
 
 test:
-	go test ./...;
+	cd code/go/0chain.net; go test ./...;
 
 lint:
-	golangci-lint run;
+	cd code/go/0chain.net; golangci-lint run;
