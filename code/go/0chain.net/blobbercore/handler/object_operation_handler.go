@@ -1010,7 +1010,16 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 			defer thumbfile.Close()
 		}
 
-		fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path, OnCloud: exisitingFileOnCloud}
+		fileInputData := &filestore.FileInputData{
+			Name:    formData.Filename,
+			Path:    formData.Path,
+			OnCloud: exisitingFileOnCloud,
+
+			IsResumable:  formData.IsResumable,
+			UploadOffset: formData.UploadOffset,
+			UploadLength: formData.UploadLength,
+			IsFinal:      formData.IsFinal,
+		}
 		fileOutputData, err := filestore.GetFileStore().WriteFile(allocationID, fileInputData, origfile, connectionObj.ConnectionID)
 		if err != nil {
 			return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
