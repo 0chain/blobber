@@ -574,8 +574,8 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	mt.ComputeTree(merkleLeaves)
 	//Logger.Info("Calculated Merkle root", zap.String("merkle_root", mt.GetRoot()), zap.Int("merkle_leaf_count", len(merkleLeaves)))
 
-	//only update hash for whole file when it is not a resumable upload.
-	if !fileData.IsResumable {
+	//only update hash for whole file when it is not a resumable upload or is final chunk.
+	if !fileData.IsResumable || fileData.IsFinal {
 		fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
 	}
 
