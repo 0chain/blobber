@@ -30,6 +30,8 @@ const (
 	ChallengeFailure
 )
 
+const CHALLENGE_EXPIRATION_PERIOD_SECONDS = 3600
+
 type ValidationTicket struct {
 	ChallengeID  string           `json:"challenge_id"`
 	BlobberID    string           `json:"blobber_id"`
@@ -75,6 +77,7 @@ type ChallengeEntity struct {
 	ValidationTickets       []*ValidationTicket   `json:"validation_tickets" gorm:"-"`
 	ObjectPathString        datatypes.JSON        `json:"-" gorm:"column:object_path"`
 	ObjectPath              *reference.ObjectPath `json:"object_path" gorm:"-"`
+	Created                 common.Timestamp      `json:"created" gorm:"-"`
 }
 
 func (ChallengeEntity) TableName() string {
