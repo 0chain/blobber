@@ -484,7 +484,6 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	}
 
 	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
-
 	dest, err := NewChunkWriter(tempFilePath)
 	if err != nil {
 		return nil, common.NewError("file_creation_error", err.Error())
@@ -492,7 +491,6 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	defer dest.Close()
 
 	fileRef := &FileOutputData{}
-
 	var fileReader io.Reader = infile
 
 	if fileData.IsResumable {
@@ -519,9 +517,7 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	}
 
 	h := sha1.New()
-
 	bytesBuffer := bytes.NewBuffer(nil)
-
 	multiHashWriter := io.MultiWriter(h, bytesBuffer)
 	tReader := io.TeeReader(fileReader, multiHashWriter)
 	merkleHashes := make([]hash.Hash, 1024)
@@ -576,7 +572,6 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	fileRef.Name = fileData.Name
 	fileRef.Path = fileData.Path
 	fileRef.MerkleRoot = mt.GetRoot()
-
 	fileRef.UploadOffset = fileSize
 	fileRef.UploadLength = fileData.UploadLength
 
