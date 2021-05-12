@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWrite(t *testing.T) {
@@ -21,14 +22,14 @@ func TestWrite(t *testing.T) {
 
 	w, err := NewChunkWriter(fileName)
 	if err != nil {
-		assert.Fail(t, "failed to create ChunkWriter", err)
+		require.Error(t, err, "failed to create ChunkWriter")
 		return
 	}
 
 	_, err = w.Write([]byte(content))
 
 	if err != nil {
-		assert.Fail(t, "failed to ChunkWriter.WriteChunk")
+		require.Error(t, err, "failed to ChunkWriter.WriteChunk")
 		return
 	}
 
@@ -37,7 +38,7 @@ func TestWrite(t *testing.T) {
 	//read all lines from file
 	_, err = w.Read(buf)
 	if err != nil {
-		assert.Fail(t, "failed to ChunkWriter.Read", err)
+		require.Error(t, err, "failed to ChunkWriter.Read")
 		return
 	}
 
@@ -51,12 +52,12 @@ func TestWriteChunk(t *testing.T) {
 	tempFile, err := ioutil.TempFile("", "")
 
 	if err != nil {
-		assert.Fail(t, "failed to create tempfile")
+		require.Error(t, err, "failed to create tempfile")
 		return
 	}
 	offset, err := tempFile.Write([]byte(chunk1))
 	if err != nil {
-		assert.Fail(t, "failed to write first chunk to tempfile")
+		require.Error(t, err, "failed to write first chunk to tempfile")
 		return
 	}
 
@@ -65,7 +66,7 @@ func TestWriteChunk(t *testing.T) {
 
 	w, err := NewChunkWriter(fileName)
 	if err != nil {
-		assert.Fail(t, "failed to create ChunkWriter")
+		require.Error(t, err, "failed to create ChunkWriter")
 		return
 	}
 	defer w.Close()
@@ -75,7 +76,7 @@ func TestWriteChunk(t *testing.T) {
 	_, err = w.WriteChunk(context.TODO(), int64(offset), strings.NewReader(chunk2))
 
 	if err != nil {
-		assert.Fail(t, "failed to ChunkWriter.WriteChunk")
+		require.Error(t, err, "failed to ChunkWriter.WriteChunk")
 		return
 	}
 
@@ -84,7 +85,7 @@ func TestWriteChunk(t *testing.T) {
 	//read all lines from file
 	_, err = w.Read(buf)
 	if err != nil {
-		assert.Fail(t, "failed to ChunkWriter.Read", err)
+		require.Error(t, err, "failed to ChunkWriter.Read")
 		return
 	}
 

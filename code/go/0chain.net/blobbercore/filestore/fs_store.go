@@ -484,17 +484,12 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	}
 
 	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
-	//dest, err := os.Create(tempFilePath)
+
 	dest, err := NewChunkWriter(tempFilePath)
 	if err != nil {
 		return nil, common.NewError("file_creation_error", err.Error())
 	}
 	defer dest.Close()
-
-	// infile, err := hdr.Open()
-	// if err != nil {
-	// 	return nil, common.NewError("file_reading_error", err.Error())
-	// }
 
 	fileRef := &FileOutputData{}
 
@@ -526,7 +521,7 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	h := sha1.New()
 
 	bytesBuffer := bytes.NewBuffer(nil)
-	//merkleHash := sha3.New256()
+
 	multiHashWriter := io.MultiWriter(h, bytesBuffer)
 	tReader := io.TeeReader(fileReader, multiHashWriter)
 	merkleHashes := make([]hash.Hash, 1024)
@@ -560,7 +555,6 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 			merkleHashes[offset].Write(dataBytes[i:end])
 		}
 
-		// merkleLeaves = append(merkleLeaves, util.NewStringHashable(hex.EncodeToString(merkleHash.Sum(nil))))
 		bytesBuffer.Reset()
 		if err != nil && err == io.EOF {
 			break
@@ -569,10 +563,9 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	for idx := range merkleHashes {
 		merkleLeaves[idx] = util.NewStringHashable(hex.EncodeToString(merkleHashes[idx].Sum(nil)))
 	}
-	//Logger.Info("File size", zap.Int64("file_size", fileSize))
+
 	var mt util.MerkleTreeI = &util.MerkleTree{}
 	mt.ComputeTree(merkleLeaves)
-	//Logger.Info("Calculated Merkle root", zap.String("merkle_root", mt.GetRoot()), zap.Int("merkle_leaf_count", len(merkleLeaves)))
 
 	//only update hash for whole file when it is not a resumable upload or is final chunk.
 	if !fileData.IsResumable || fileData.IsFinal {

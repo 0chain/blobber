@@ -33,13 +33,13 @@ type NewFileChange struct {
 	CustomMeta          string               `json:"custom_meta,omitempty"`
 	Attributes          reference.Attributes `json:"attributes,omitempty"`
 
-	//IsResumable the request is resumable upload
+	// IsResumable the request is resumable upload
 	IsResumable bool `json:"is_resumable,omitempty"`
-	//UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
+	// UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
 	UploadLength int64 `json:"upload_length,omitempty"`
-	//Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
+	// Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
 	UploadOffset int64 `json:"upload_offset,omitempty"`
-	//IsFinal  the request is final chunk
+	// IsFinal  the request is final chunk
 	IsFinal bool `json:"is_final,omitempty"`
 }
 
