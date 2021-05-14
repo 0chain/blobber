@@ -30,8 +30,6 @@ const (
 	ChallengeFailure
 )
 
-const CHALLENGE_EXPIRATION_PERIOD_SECONDS = 3600
-
 type ValidationTicket struct {
 	ChallengeID  string           `json:"challenge_id"`
 	BlobberID    string           `json:"blobber_id"`
