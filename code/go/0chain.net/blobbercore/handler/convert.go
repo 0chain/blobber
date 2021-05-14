@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"time"
+
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/blobbergrpc"
 	"0chain.net/blobbercore/stats"
 	"0chain.net/blobbercore/writemarker"
+	"0chain.net/core/common"
 )
 
 func AllocationToGRPCAllocation(alloc *allocation.Allocation) *blobbergrpc.Allocation {
@@ -32,6 +35,38 @@ func AllocationToGRPCAllocation(alloc *allocation.Allocation) *blobbergrpc.Alloc
 		LatestRedeemedWM: alloc.LatestRedeemedWM,
 		IsRedeemRequired: alloc.IsRedeemRequired,
 		TimeUnit:         int64(alloc.TimeUnit),
+		CleanedUp:        alloc.CleanedUp,
+		Finalized:        alloc.Finalized,
+		Terms:            terms,
+		PayerID:          alloc.PayerID,
+	}
+}
+
+func GRPCAllocationToAllocation(alloc *blobbergrpc.Allocation) *allocation.Allocation {
+	terms := make([]*allocation.Terms, 0, len(alloc.Terms))
+	for _, t := range alloc.Terms {
+		terms = append(terms, &allocation.Terms{
+			ID:           t.ID,
+			BlobberID:    t.BlobberID,
+			AllocationID: t.AllocationID,
+			ReadPrice:    t.ReadPrice,
+			WritePrice:   t.WritePrice,
+		})
+	}
+	return &allocation.Allocation{
+		ID:               alloc.ID,
+		Tx:               alloc.Tx,
+		TotalSize:        alloc.TotalSize,
+		UsedSize:         alloc.UsedSize,
+		OwnerID:          alloc.OwnerID,
+		OwnerPublicKey:   alloc.OwnerPublicKey,
+		Expiration:       common.Timestamp(alloc.Expiration),
+		AllocationRoot:   alloc.AllocationRoot,
+		BlobberSize:      alloc.BlobberSize,
+		BlobberSizeUsed:  alloc.BlobberSizeUsed,
+		LatestRedeemedWM: alloc.LatestRedeemedWM,
+		IsRedeemRequired: alloc.IsRedeemRequired,
+		TimeUnit:         time.Duration(alloc.TimeUnit),
 		CleanedUp:        alloc.CleanedUp,
 		Finalized:        alloc.Finalized,
 		Terms:            terms,

@@ -9,6 +9,8 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"0chain.net/blobbercore/blobbergrpc"
+
 	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/constants"
 	"0chain.net/blobbercore/datastore"
@@ -29,6 +31,8 @@ func GetMetaDataStore() *datastore.Store {
 
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
+	svc := newGRPCBlobberService(&storageHandler, &packageHandler{})
+
 	//object operations
 	r.HandleFunc("/v1/file/upload/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler))))
 	r.HandleFunc("/v1/file/download/{allocation}", common.UserRateLimit(common.ToByteStream(WithConnection(DownloadHandler))))
@@ -42,7 +46,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CalculateHashHandler))))
 
 	//object info related apis
-	r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler))))
+	r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler(svc))))).Methods("GET")
 	r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
 	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
 	r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler))))
@@ -113,15 +117,29 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	return ctx
 }
 
-func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.GetAllocationDetails(ctx, r)
-	if err != nil {
-		return nil, err
+func setupHandlerGRPCContext(r *http.Request) *blobbergrpc.RequestContext {
+	var vars = mux.Vars(r)
+	return &blobbergrpc.RequestContext{
+		Client:     r.Header.Get(common.ClientHeader),
+		ClientKey:  r.Header.Get(common.ClientKeyHeader),
+		Allocation: vars["allocation"],
 	}
+}
 
-	return response, nil
+func AllocationHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		reqCtx := setupHandlerGRPCContext(r)
+
+		getAllocationResp, err := svc.GetAllocation(ctx, &blobbergrpc.GetAllocationRequest{
+			Context: reqCtx,
+			Id:      r.FormValue("id"),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return GRPCAllocationToAllocation(getAllocationResp.Allocation), nil
+	}
 }
 
 func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
