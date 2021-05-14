@@ -969,32 +969,32 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 			return nil, common.NewError("invalid_parameters",
 				"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 		}
-		existingFileRefSize := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
-		exisitingFileRefSize := int64(0)
+		exisitingFileRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
+		existingFileRefSize := int64(0)
 		exisitingFileOnCloud := false
 		if mode == allocation.INSERT_OPERATION {
 			if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
 				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 			}
 
-			if existingFileRefSize != nil {
+			if exisitingFileRef != nil {
 				return nil, common.NewError("duplicate_file", "File at path already exists")
 			}
 		} else if mode == allocation.UPDATE_OPERATION {
-			if existingFileRefSize == nil {
+			if exisitingFileRef == nil {
 				return nil, common.NewError("invalid_file_update", "File at path does not exist for update")
 			}
 
 			if allocationObj.OwnerID != clientID &&
 				allocationObj.PayerID != clientID &&
-				!reference.IsACollaborator(ctx, existingFileRefSize.ID, clientID) {
+				!reference.IsACollaborator(ctx, exisitingFileRef.ID, clientID) {
 				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner, collaborator or the payer of the allocation")
 			}
 		}
 
-		if existingFileRefSize != nil {
-			exisitingFileRefSize = existingFileRefSize.Size
-			exisitingFileOnCloud = existingFileRefSize.OnCloud
+		if exisitingFileRef != nil {
+			existingFileRefSize = exisitingFileRef.Size
+			exisitingFileOnCloud = exisitingFileRef.OnCloud
 		}
 
 		origfile, _, err := r.FormFile("uploadFile")
@@ -1010,16 +1010,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 			defer thumbfile.Close()
 		}
 
-		fileInputData := &filestore.FileInputData{
-			Name:    formData.Filename,
-			Path:    formData.Path,
-			OnCloud: exisitingFileOnCloud,
-
-			IsResumable:  formData.IsResumable,
-			UploadOffset: formData.UploadOffset,
-			UploadLength: formData.UploadLength,
-			IsFinal:      formData.IsFinal,
-		}
+		fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path, OnCloud: exisitingFileOnCloud}
 		fileOutputData, err := filestore.GetFileStore().WriteFile(allocationID, fileInputData, origfile, connectionObj.ConnectionID)
 		if err != nil {
 			return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
@@ -1060,13 +1051,13 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 			formData.ThumbnailFilename = thumbInputData.Name
 		}
 
-		if allocationObj.BlobberSizeUsed+(allocationSize-exisitingFileRefSize) > allocationObj.BlobberSize {
+		if allocationObj.BlobberSizeUsed+(allocationSize-existingFileRefSize) > allocationObj.BlobberSize {
 			return nil, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 		}
 
 		allocationChange := &allocation.AllocationChange{}
 		allocationChange.ConnectionID = connectionObj.ConnectionID
-		allocationChange.Size = allocationSize - exisitingFileRefSize
+		allocationChange.Size = allocationSize - existingFileRefSize
 		allocationChange.Operation = mode
 
 		connectionObj.Size += allocationChange.Size
