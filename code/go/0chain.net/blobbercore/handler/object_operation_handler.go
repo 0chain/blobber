@@ -969,7 +969,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 			return nil, common.NewError("invalid_parameters",
 				"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 		}
-		exisitingFileRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
+		existingFileRefSize := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
 		exisitingFileRefSize := int64(0)
 		exisitingFileOnCloud := false
 		if mode == allocation.INSERT_OPERATION {
@@ -977,24 +977,24 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 			}
 
-			if exisitingFileRef != nil {
+			if existingFileRefSize != nil {
 				return nil, common.NewError("duplicate_file", "File at path already exists")
 			}
 		} else if mode == allocation.UPDATE_OPERATION {
-			if exisitingFileRef == nil {
+			if existingFileRefSize == nil {
 				return nil, common.NewError("invalid_file_update", "File at path does not exist for update")
 			}
 
 			if allocationObj.OwnerID != clientID &&
 				allocationObj.PayerID != clientID &&
-				!reference.IsACollaborator(ctx, exisitingFileRef.ID, clientID) {
+				!reference.IsACollaborator(ctx, existingFileRefSize.ID, clientID) {
 				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner, collaborator or the payer of the allocation")
 			}
 		}
 
-		if exisitingFileRef != nil {
-			exisitingFileRefSize = exisitingFileRef.Size
-			exisitingFileOnCloud = exisitingFileRef.OnCloud
+		if existingFileRefSize != nil {
+			exisitingFileRefSize = existingFileRefSize.Size
+			exisitingFileOnCloud = existingFileRefSize.OnCloud
 		}
 
 		origfile, _, err := r.FormFile("uploadFile")
