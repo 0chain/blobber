@@ -44,7 +44,7 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 
 func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {
 	logger := ctxzap.Extract(ctx)
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, req.Allocation, true)
+	allocationObj, err := b.storageHandler.verifyAllocation(ctx, req.Context.Allocation, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}

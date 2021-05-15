@@ -3,6 +3,7 @@ package reference
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"0chain.net/blobbercore/blobbergrpc"
 
@@ -234,5 +235,68 @@ func convertDirRefToDirMetaDataGRPC(dirref *Ref) *blobbergrpc.DirMetaData {
 		Size:       dirref.Size,
 		CreatedAt:  dirref.CreatedAt.UnixNano(),
 		UpdatedAt:  dirref.UpdatedAt.UnixNano(),
+	}
+}
+
+func FileRefGRPCToFileRef(ref *blobbergrpc.FileRef) *Ref {
+	switch ref.Type {
+	case FILE:
+		return convertFileMetaDataGRPCToFileRef(ref.FileMetaData)
+	case DIRECTORY:
+		return convertDirMetaDataGRPCToDirRef(ref.DirMetaData)
+	}
+
+	return nil
+}
+
+func convertFileMetaDataGRPCToFileRef(metaData *blobbergrpc.FileMetaData) *Ref {
+	var commitMetaTxnsGRPC []CommitMetaTxn
+	for _, c := range metaData.CommitMetaTxns {
+		commitMetaTxnsGRPC = append(commitMetaTxnsGRPC, CommitMetaTxn{
+			RefID:     c.RefId,
+			TxnID:     c.TxnId,
+			CreatedAt: time.Unix(0, c.CreatedAt),
+		})
+	}
+	return &Ref{
+		Type:                metaData.Type,
+		LookupHash:          metaData.LookupHash,
+		Name:                metaData.Name,
+		Path:                metaData.Path,
+		Hash:                metaData.Hash,
+		NumBlocks:           metaData.NumBlocks,
+		PathHash:            metaData.PathHash,
+		CustomMeta:          metaData.CustomMeta,
+		ContentHash:         metaData.ContentHash,
+		Size:                metaData.Size,
+		MerkleRoot:          metaData.MerkleRoot,
+		ActualFileSize:      metaData.ActualFileSize,
+		ActualFileHash:      metaData.ActualFileHash,
+		MimeType:            metaData.MimeType,
+		ThumbnailSize:       metaData.ThumbnailSize,
+		ThumbnailHash:       metaData.ThumbnailHash,
+		ActualThumbnailSize: metaData.ActualThumbnailSize,
+		ActualThumbnailHash: metaData.ActualThumbnailHash,
+		EncryptedKey:        metaData.EncryptedKey,
+		Attributes:          metaData.Attributes,
+		OnCloud:             metaData.OnCloud,
+		CommitMetaTxns:      commitMetaTxnsGRPC,
+		CreatedAt:           time.Unix(0, metaData.CreatedAt),
+		UpdatedAt:           time.Unix(0, metaData.UpdatedAt),
+	}
+}
+
+func convertDirMetaDataGRPCToDirRef(dirref *blobbergrpc.DirMetaData) *Ref {
+	return &Ref{
+		Type:       dirref.Type,
+		LookupHash: dirref.LookupHash,
+		Name:       dirref.Name,
+		Path:       dirref.Path,
+		Hash:       dirref.Hash,
+		NumBlocks:  dirref.NumBlocks,
+		PathHash:   dirref.PathHash,
+		Size:       dirref.Size,
+		CreatedAt:  time.Unix(0, dirref.CreatedAt),
+		UpdatedAt:  time.Unix(0, dirref.UpdatedAt),
 	}
 }

@@ -4,10 +4,13 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"runtime/pprof"
 	"time"
+
+	"0chain.net/blobbercore/reference"
 
 	"0chain.net/blobbercore/blobbergrpc"
 
@@ -47,8 +50,8 @@ func SetupHandlers(r *mux.Router) {
 
 	//object info related apis
 	r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler(svc))))).Methods("GET")
-	r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
-	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
+	r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler(svc))))).Methods("GET")
+	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler(svc))))).Methods("GET")
 	r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler))))
 	r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler))))
 	r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
@@ -142,15 +145,31 @@ func AllocationHandler(svc *blobberGRPCService) func(ctx context.Context, r *htt
 	}
 }
 
-func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
+func FileMetaHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		reqCtx := setupHandlerGRPCContext(r)
 
-	response, err := storageHandler.GetFileMeta(ctx, r)
-	if err != nil {
-		return nil, err
+		getFileMetaDataResp, err := svc.GetFileMetaData(ctx, &blobbergrpc.GetFileMetaDataRequest{
+			Context:    reqCtx,
+			Path:       r.FormValue("path"),
+			PathHash:   r.FormValue("path_hash"),
+			AuthToken:  r.FormValue("auth_token"),
+			Allocation: reqCtx.Allocation,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		var collaborators []reference.Collaborator
+		for _, c := range getFileMetaDataResp.Collaborators {
+			collaborators = append(collaborators, GRPCCollaboratorToCollaborator(c))
+		}
+
+		result := reference.FileRefGRPCToFileRef(getFileMetaDataResp.MetaData).GetListingData(ctx)
+		result["collaborators"] = collaborators
+
+		return result, nil
 	}
-
-	return response, nil
 }
 
 func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -175,15 +194,33 @@ func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, err
 	return response, nil
 }
 
-func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
+func FileStatsHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		reqCtx := setupHandlerGRPCContext(r)
 
-	response, err := storageHandler.GetFileStats(ctx, r)
-	if err != nil {
-		return nil, err
+		getFileStatsResponse, err := svc.GetFileStats(ctx, &blobbergrpc.GetFileStatsRequest{
+			Context:    reqCtx,
+			Path:       r.FormValue("path"),
+			PathHash:   r.FormValue("path_hash"),
+			Allocation: reqCtx.Allocation,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		result := reference.FileRefGRPCToFileRef(getFileStatsResponse.MetaData).GetListingData(ctx)
+
+		statsMap := make(map[string]interface{})
+		statsBytes, _ := json.Marshal(FileStatsGRPCToFileStats(getFileStatsResponse.Stats))
+		if err = json.Unmarshal(statsBytes, &statsMap); err != nil {
+			return nil, err
+		}
+		for k, v := range statsMap {
+			result[k] = v
+		}
+
+		return result, nil
 	}
-
-	return response, nil
 }
 
 /*DownloadHandler is the handler to respond to download requests from clients*/
