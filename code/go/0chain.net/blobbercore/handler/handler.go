@@ -162,7 +162,7 @@ func FileMetaHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.
 
 		var collaborators []reference.Collaborator
 		for _, c := range getFileMetaDataResp.Collaborators {
-			collaborators = append(collaborators, GRPCCollaboratorToCollaborator(c))
+			collaborators = append(collaborators, *GRPCCollaboratorToCollaborator(c))
 		}
 
 		result := reference.FileRefGRPCToFileRef(getFileMetaDataResp.MetaData).GetListingData(ctx)

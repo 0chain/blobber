@@ -72,8 +72,8 @@ func GeneratePubPrivateKey(t *testing.T) (string, string, zcncrypto.SignatureSch
 	}
 	keyPair := wallet.Keys[0]
 
-	signScheme.SetPrivateKey(keyPair.PrivateKey)
-	signScheme.SetPublicKey(keyPair.PublicKey)
+	_ = signScheme.SetPrivateKey(keyPair.PrivateKey)
+	_ = signScheme.SetPublicKey(keyPair.PublicKey)
 
 	return keyPair.PublicKey, keyPair.PrivateKey, signScheme
 }

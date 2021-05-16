@@ -16,6 +16,10 @@ import (
 )
 
 func AllocationToGRPCAllocation(alloc *allocation.Allocation) *blobbergrpc.Allocation {
+	if alloc == nil {
+		return nil
+	}
+
 	terms := make([]*blobbergrpc.Term, 0, len(alloc.Terms))
 	for _, t := range alloc.Terms {
 		terms = append(terms, &blobbergrpc.Term{
@@ -48,6 +52,10 @@ func AllocationToGRPCAllocation(alloc *allocation.Allocation) *blobbergrpc.Alloc
 }
 
 func GRPCAllocationToAllocation(alloc *blobbergrpc.Allocation) *allocation.Allocation {
+	if alloc == nil {
+		return nil
+	}
+
 	terms := make([]*allocation.Terms, 0, len(alloc.Terms))
 	for _, t := range alloc.Terms {
 		terms = append(terms, &allocation.Terms{
@@ -81,7 +89,7 @@ func GRPCAllocationToAllocation(alloc *blobbergrpc.Allocation) *allocation.Alloc
 
 func FileStatsToFileStatsGRPC(fileStats *stats.FileStats) *blobbergrpc.FileStats {
 	if fileStats == nil {
-		return &blobbergrpc.FileStats{}
+		return nil
 	}
 
 	return &blobbergrpc.FileStats{
@@ -98,7 +106,11 @@ func FileStatsToFileStatsGRPC(fileStats *stats.FileStats) *blobbergrpc.FileStats
 	}
 }
 
-func WriteMarkerToWriteMarkerGRPC(wm writemarker.WriteMarker) *blobbergrpc.WriteMarker {
+func WriteMarkerToWriteMarkerGRPC(wm *writemarker.WriteMarker) *blobbergrpc.WriteMarker {
+	if wm == nil {
+		return nil
+	}
+
 	return &blobbergrpc.WriteMarker{
 		AllocationRoot:         wm.AllocationRoot,
 		PreviousAllocationRoot: wm.PreviousAllocationRoot,
@@ -112,6 +124,10 @@ func WriteMarkerToWriteMarkerGRPC(wm writemarker.WriteMarker) *blobbergrpc.Write
 }
 
 func WriteMarkerGRPCToWriteMarker(wm *blobbergrpc.WriteMarker) *writemarker.WriteMarker {
+	if wm == nil {
+		return nil
+	}
+
 	return &writemarker.WriteMarker{
 		AllocationRoot:         wm.AllocationRoot,
 		PreviousAllocationRoot: wm.PreviousAllocationRoot,
@@ -126,7 +142,7 @@ func WriteMarkerGRPCToWriteMarker(wm *blobbergrpc.WriteMarker) *writemarker.Writ
 
 func FileStatsGRPCToFileStats(fileStats *blobbergrpc.FileStats) *stats.FileStats {
 	if fileStats == nil {
-		return &stats.FileStats{}
+		return nil
 	}
 
 	return &stats.FileStats{
@@ -145,7 +161,11 @@ func FileStatsGRPCToFileStats(fileStats *blobbergrpc.FileStats) *stats.FileStats
 	}
 }
 
-func CollaboratorToGRPCCollaborator(c reference.Collaborator) *blobbergrpc.Collaborator {
+func CollaboratorToGRPCCollaborator(c *reference.Collaborator) *blobbergrpc.Collaborator {
+	if c == nil {
+		return nil
+	}
+
 	return &blobbergrpc.Collaborator{
 		RefId:     c.RefID,
 		ClientId:  c.ClientID,
@@ -153,8 +173,12 @@ func CollaboratorToGRPCCollaborator(c reference.Collaborator) *blobbergrpc.Colla
 	}
 }
 
-func GRPCCollaboratorToCollaborator(c *blobbergrpc.Collaborator) reference.Collaborator {
-	return reference.Collaborator{
+func GRPCCollaboratorToCollaborator(c *blobbergrpc.Collaborator) *reference.Collaborator {
+	if c == nil {
+		return nil
+	}
+
+	return &reference.Collaborator{
 		RefID:     c.RefId,
 		ClientID:  c.ClientId,
 		CreatedAt: time.Unix(0, c.CreatedAt),
@@ -162,6 +186,9 @@ func GRPCCollaboratorToCollaborator(c *blobbergrpc.Collaborator) reference.Colla
 }
 
 func ReferencePathToReferencePathGRPC(recursionCount *int, refPath *ReferencePath) *blobbergrpc.ReferencePath {
+	if refPath == nil {
+		return nil
+	}
 	// Accounting for bad reference paths where child path points to parent path and causes this algorithm to never end
 	*recursionCount += 1
 	defer func() {
@@ -187,6 +214,9 @@ func ReferencePathToReferencePathGRPC(recursionCount *int, refPath *ReferencePat
 }
 
 func ReferencePathGRPCToReferencePath(recursionCount *int, refPath *blobbergrpc.ReferencePath) *ReferencePath {
+	if refPath == nil {
+		return nil
+	}
 	// Accounting for bad reference paths where child path points to parent path and causes this algorithm to never end
 	*recursionCount += 1
 	defer func() {

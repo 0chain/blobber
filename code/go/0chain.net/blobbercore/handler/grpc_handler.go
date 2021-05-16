@@ -101,7 +101,7 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 
 	var collaboratorsGRPC []*blobbergrpc.Collaborator
 	for _, c := range collaborators {
-		collaboratorsGRPC = append(collaboratorsGRPC, CollaboratorToGRPCCollaborator(c))
+		collaboratorsGRPC = append(collaboratorsGRPC, CollaboratorToGRPCCollaborator(&c))
 	}
 
 	return &blobbergrpc.GetFileMetaDataResponse{
@@ -276,7 +276,7 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 	}
 	var latestWriteMarketGRPC *blobbergrpc.WriteMarker
 	if latestWM != nil {
-		latestWriteMarketGRPC = WriteMarkerToWriteMarkerGRPC(latestWM.WM)
+		latestWriteMarketGRPC = WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
 	}
 
 	pathList := make([]*blobbergrpc.FileRef, 0)
@@ -370,7 +370,7 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 	var recursionCount int
 	refPathResult.ReferencePath = ReferencePathToReferencePathGRPC(&recursionCount, refPath)
 	if latestWM != nil {
-		refPathResult.LatestWM = WriteMarkerToWriteMarkerGRPC(latestWM.WM)
+		refPathResult.LatestWM = WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
 	}
 
 	return &refPathResult, nil
@@ -434,7 +434,7 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 	var recursionCount int
 	refPathResult.ReferencePath = ReferencePathToReferencePathGRPC(&recursionCount, refPath)
 	if latestWM != nil {
-		refPathResult.LatestWM = WriteMarkerToWriteMarkerGRPC(latestWM.WM)
+		refPathResult.LatestWM = WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
 	}
 	return &refPathResult, nil
 }
