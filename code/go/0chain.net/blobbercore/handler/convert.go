@@ -111,18 +111,6 @@ func WriteMarkerToWriteMarkerGRPC(wm writemarker.WriteMarker) *blobbergrpc.Write
 	}
 }
 
-func WriteMarkerToWriteMarkerGRPC(wm writemarker.WriteMarker) *blobbergrpc.WriteMarker {
-	return &blobbergrpc.WriteMarker{
-		AllocationRoot:         wm.AllocationRoot,
-		PreviousAllocationRoot: wm.PreviousAllocationRoot,
-		AllocationID:           wm.AllocationID,
-		Size:                   wm.Size,
-		BlobberID:              wm.BlobberID,
-		Timestamp:              int64(wm.Timestamp),
-		ClientID:               wm.ClientID,
-		Signature:              wm.Signature,
-	}
-}
 func WriteMarkerGRPCToWriteMarker(wm *blobbergrpc.WriteMarker) *writemarker.WriteMarker {
 	return &writemarker.WriteMarker{
 		AllocationRoot:         wm.AllocationRoot,

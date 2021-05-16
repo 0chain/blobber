@@ -119,6 +119,11 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 	}
 	allocationID := allocationObj.ID
 
+	valid, err := verifySignatureFromRequest(allocationTx, req.Context.ClientSignature, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
 	clientID := req.Context.Client
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
@@ -231,6 +236,11 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 	}
 	allocationID := allocationObj.ID
 
+	valid, err := verifySignatureFromRequest(allocationTx, req.Context.ClientSignature, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
 	clientID := req.Context.Client
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
@@ -298,6 +308,11 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 	allocationID := allocationObj.ID
+
+	valid, err := verifySignatureFromRequest(allocationTx, req.Context.ClientSignature, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
 
 	clientID := req.Context.Client
 	if len(clientID) == 0 {
@@ -369,6 +384,11 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 	allocationID := allocationObj.ID
+
+	valid, err := verifySignatureFromRequest(allocationTx, req.Context.ClientSignature, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
 
 	clientID := req.Context.Client
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {

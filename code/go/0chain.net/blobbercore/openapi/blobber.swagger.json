@@ -53,6 +53,12 @@
             "type": "string"
           },
           {
+            "name": "context.clientSignature",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
             "name": "id",
             "in": "query",
             "required": false,
@@ -102,6 +108,12 @@
           },
           {
             "name": "context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.clientSignature",
             "in": "query",
             "required": false,
             "type": "string"
@@ -173,6 +185,12 @@
             "type": "string"
           },
           {
+            "name": "context.clientSignature",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
             "name": "path",
             "in": "query",
             "required": false,
@@ -239,6 +257,12 @@
             "type": "string"
           },
           {
+            "name": "context.clientSignature",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
             "name": "Path",
             "in": "query",
             "required": false,
@@ -299,6 +323,12 @@
             "type": "string"
           },
           {
+            "name": "context.clientSignature",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
             "name": "path",
             "in": "query",
             "required": false,
@@ -348,6 +378,12 @@
           },
           {
             "name": "Context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Context.clientSignature",
             "in": "query",
             "required": false,
             "type": "string"
@@ -408,6 +444,12 @@
           },
           {
             "name": "context.allocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "context.clientSignature",
             "in": "query",
             "required": false,
             "type": "string"
@@ -874,6 +916,9 @@
           "type": "string"
         },
         "allocation": {
+          "type": "string"
+        },
+        "clientSignature": {
           "type": "string"
         }
       }

@@ -122,9 +122,10 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 func setupHandlerGRPCContext(r *http.Request) *blobbergrpc.RequestContext {
 	var vars = mux.Vars(r)
 	return &blobbergrpc.RequestContext{
-		Client:     r.Header.Get(common.ClientHeader),
-		ClientKey:  r.Header.Get(common.ClientKeyHeader),
-		Allocation: vars["allocation"],
+		Client:          r.Header.Get(common.ClientHeader),
+		ClientKey:       r.Header.Get(common.ClientKeyHeader),
+		Allocation:      vars["allocation"],
+		ClientSignature: r.Header.Get(common.ClientSignatureHeader),
 	}
 }
 

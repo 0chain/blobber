@@ -168,6 +168,7 @@ message RequestContext {
   string client = 1;
   string client_key = 2;
   string allocation = 3;
+  string client_signature = 4;
 }
 
 message GetAllocationRequest {
