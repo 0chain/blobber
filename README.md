@@ -90,7 +90,6 @@ $ docker ps
 
 ```
 
-  
 
 This should display a container image blobber_blobber and should have the ports mapped like "0.0.0.0:5050->5050/tcp"
 
@@ -126,7 +125,7 @@ zbox sp-lock --blobber_id f65af5d64000c7cd2883f4910eb69086f9d6e6635c744e62afcfab
 
 ```
 
-block_worker: http://198.18.0.98:9091
+block_worker: http://192.168.1.100:9091
 
 ```
 
