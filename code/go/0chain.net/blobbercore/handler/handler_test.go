@@ -1,6 +1,18 @@
 package handler
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"regexp"
+	"testing"
+	"time"
+
 	"0chain.net/blobbercore/allocation"
 	bconfig "0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/datastore"
@@ -11,9 +23,6 @@ import (
 	"0chain.net/core/config"
 	"0chain.net/core/encryption"
 	"0chain.net/core/logging"
-	"bytes"
-	"encoding/json"
-	"errors"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/DATA-DOG/go-sqlmock"
@@ -21,14 +30,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"io"
-	"mime/multipart"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"regexp"
-	"testing"
-	"time"
 )
 
 func init() {
@@ -88,12 +89,13 @@ func setup(t *testing.T) {
 
 func setupHandlers() (*mux.Router, map[string]string) {
 	router := mux.NewRouter()
+	svc := newGRPCBlobberService(&storageHandler, &packageHandler{})
 
 	opPath := "/v1/file/objectpath/{allocation}"
 	opName := "Object_Path"
 	router.HandleFunc(opPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(ObjectPathHandler),
+			WithReadOnlyConnection(ObjectPathHandler(svc)),
 		),
 	),
 	).Name(opName)
@@ -102,7 +104,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	rpName := "Reference_Path"
 	router.HandleFunc(rpPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(ReferencePathHandler),
+			WithReadOnlyConnection(ReferencePathHandler(svc)),
 		),
 	),
 	).Name(rpName)
@@ -111,7 +113,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	sName := "Stats"
 	router.HandleFunc(sPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(FileStatsHandler),
+			WithReadOnlyConnection(FileStatsHandler(svc)),
 		),
 	),
 	).Name(sName)
@@ -120,7 +122,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	otName := "Object_Tree"
 	router.HandleFunc(otPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(ObjectTreeHandler),
+			WithReadOnlyConnection(ObjectTreeHandler(svc)),
 		),
 	),
 	).Name(otName)

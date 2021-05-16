@@ -92,6 +92,9 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 }
 
 func FileRefToFileRefGRPC(ref *Ref) *blobbergrpc.FileRef {
+	if ref == nil {
+		return nil
+	}
 
 	var fileMetaData *blobbergrpc.FileMetaData
 	var dirMetaData *blobbergrpc.DirMetaData
@@ -162,6 +165,10 @@ func convertDirRefToDirMetaDataGRPC(dirref *Ref) *blobbergrpc.DirMetaData {
 }
 
 func FileRefGRPCToFileRef(ref *blobbergrpc.FileRef) *Ref {
+	if ref == nil {
+		return nil
+	}
+
 	switch ref.Type {
 	case FILE:
 		return convertFileMetaDataGRPCToFileRef(ref.FileMetaData)

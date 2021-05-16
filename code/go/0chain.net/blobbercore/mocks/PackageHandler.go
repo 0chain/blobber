@@ -5,8 +5,6 @@ package mocks
 import (
 	context "context"
 
-	blobbergrpc "0chain.net/blobbercore/blobbergrpc"
-
 	mock "github.com/stretchr/testify/mock"
 
 	reference "0chain.net/blobbercore/reference"
@@ -90,16 +88,16 @@ func (_m *PackageHandler) GetFileStats(ctx context.Context, refID int64) (*stats
 	return r0, r1
 }
 
-// GetObjectPathGRPC provides a mock function with given fields: ctx, allocationID, blockNum
-func (_m *PackageHandler) GetObjectPathGRPC(ctx context.Context, allocationID string, blockNum int64) (*blobbergrpc.ObjectPath, error) {
+// GetObjectPath provides a mock function with given fields: ctx, allocationID, blockNum
+func (_m *PackageHandler) GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*reference.ObjectPath, error) {
 	ret := _m.Called(ctx, allocationID, blockNum)
 
-	var r0 *blobbergrpc.ObjectPath
-	if rf, ok := ret.Get(0).(func(context.Context, string, int64) *blobbergrpc.ObjectPath); ok {
+	var r0 *reference.ObjectPath
+	if rf, ok := ret.Get(0).(func(context.Context, string, int64) *reference.ObjectPath); ok {
 		r0 = rf(ctx, allocationID, blockNum)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*blobbergrpc.ObjectPath)
+			r0 = ret.Get(0).(*reference.ObjectPath)
 		}
 	}
 
