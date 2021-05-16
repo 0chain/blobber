@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"time"
 
 	"0chain.net/blobbercore/reference"
@@ -110,6 +111,31 @@ func WriteMarkerToWriteMarkerGRPC(wm writemarker.WriteMarker) *blobbergrpc.Write
 	}
 }
 
+func WriteMarkerToWriteMarkerGRPC(wm writemarker.WriteMarker) *blobbergrpc.WriteMarker {
+	return &blobbergrpc.WriteMarker{
+		AllocationRoot:         wm.AllocationRoot,
+		PreviousAllocationRoot: wm.PreviousAllocationRoot,
+		AllocationID:           wm.AllocationID,
+		Size:                   wm.Size,
+		BlobberID:              wm.BlobberID,
+		Timestamp:              int64(wm.Timestamp),
+		ClientID:               wm.ClientID,
+		Signature:              wm.Signature,
+	}
+}
+func WriteMarkerGRPCToWriteMarker(wm *blobbergrpc.WriteMarker) *writemarker.WriteMarker {
+	return &writemarker.WriteMarker{
+		AllocationRoot:         wm.AllocationRoot,
+		PreviousAllocationRoot: wm.PreviousAllocationRoot,
+		AllocationID:           wm.AllocationID,
+		Size:                   wm.Size,
+		BlobberID:              wm.BlobberID,
+		Timestamp:              common.Timestamp(wm.Timestamp),
+		ClientID:               wm.ClientID,
+		Signature:              wm.Signature,
+	}
+}
+
 func FileStatsGRPCToFileStats(fileStats *blobbergrpc.FileStats) *stats.FileStats {
 	if fileStats == nil {
 		return &stats.FileStats{}
@@ -144,5 +170,55 @@ func GRPCCollaboratorToCollaborator(c *blobbergrpc.Collaborator) reference.Colla
 		RefID:     c.RefId,
 		ClientID:  c.ClientId,
 		CreatedAt: time.Unix(0, c.CreatedAt),
+	}
+}
+
+func ReferencePathToReferencePathGRPC(recursionCount *int, refPath *ReferencePath) *blobbergrpc.ReferencePath {
+	// Accounting for bad reference paths where child path points to parent path and causes this algorithm to never end
+	*recursionCount += 1
+	defer func() {
+		*recursionCount -= 1
+	}()
+
+	if *recursionCount > 150 {
+		return &blobbergrpc.ReferencePath{
+			MetaData: reference.FileRefToFileRefGRPC(reference.ListingDataToRef(refPath.Meta)),
+			List:     nil,
+		}
+	}
+
+	var list []*blobbergrpc.ReferencePath
+	for i := range refPath.List {
+		list = append(list, ReferencePathToReferencePathGRPC(recursionCount, refPath.List[i]))
+	}
+
+	return &blobbergrpc.ReferencePath{
+		MetaData: reference.FileRefToFileRefGRPC(reference.ListingDataToRef(refPath.Meta)),
+		List:     list,
+	}
+}
+
+func ReferencePathGRPCToReferencePath(recursionCount *int, refPath *blobbergrpc.ReferencePath) *ReferencePath {
+	// Accounting for bad reference paths where child path points to parent path and causes this algorithm to never end
+	*recursionCount += 1
+	defer func() {
+		*recursionCount -= 1
+	}()
+
+	if *recursionCount > 150 {
+		return &ReferencePath{
+			Meta: reference.FileRefGRPCToFileRef(refPath.MetaData).GetListingData(context.Background()),
+			List: nil,
+		}
+	}
+
+	var list []*ReferencePath
+	for i := range refPath.List {
+		list = append(list, ReferencePathGRPCToReferencePath(recursionCount, refPath.List[i]))
+	}
+
+	return &ReferencePath{
+		Meta: reference.FileRefGRPCToFileRef(refPath.MetaData).GetListingData(context.Background()),
+		List: list,
 	}
 }

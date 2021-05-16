@@ -595,12 +595,6 @@
         "UpdatedAt": {
           "type": "string",
           "format": "int64"
-        },
-        "Children": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1FileRef"
-          }
         }
       }
     },
@@ -823,6 +817,12 @@
         },
         "MetaData": {
           "$ref": "#/definitions/v1FileRef"
+        },
+        "Entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1FileRef"
+          }
         }
       }
     },
@@ -837,6 +837,12 @@
         },
         "Path": {
           "$ref": "#/definitions/v1FileRef"
+        },
+        "PathList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1FileRef"
+          }
         },
         "FileBlockNum": {
           "type": "string",

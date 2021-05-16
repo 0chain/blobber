@@ -348,6 +348,10 @@ func (r *Ref) GetListingData(ctx context.Context) map[string]interface{} {
 	return GetListingFieldsMap(*r, DIR_LIST_TAG)
 }
 
+func ListingDataToRef(map[string]interface{}) *Ref {
+	return nil
+}
+
 func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]interface{} {
 	result := make(map[string]interface{})
 	t := reflect.TypeOf(refEntity)
