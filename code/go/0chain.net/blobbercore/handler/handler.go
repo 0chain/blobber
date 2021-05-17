@@ -9,6 +9,8 @@ import (
 	"os"
 	"runtime/pprof"
 
+	"0chain.net/blobbercore/allocation"
+
 	"0chain.net/blobbercore/reference"
 
 	"0chain.net/blobbercore/blobbergrpc"
@@ -141,8 +143,12 @@ func AllocationHandler(svc *blobberGRPCService) func(ctx context.Context, r *htt
 			return nil, err
 		}
 
-		return GRPCAllocationToAllocation(getAllocationResp.Allocation), nil
+		return GetAllocationResponseHandler(getAllocationResp), nil
 	}
+}
+
+func GetAllocationResponseHandler(resp *blobbergrpc.GetAllocationResponse) *allocation.Allocation {
+	return GRPCAllocationToAllocation(resp.Allocation)
 }
 
 func FileMetaHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -160,16 +166,19 @@ func FileMetaHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.
 			return nil, err
 		}
 
-		var collaborators []reference.Collaborator
-		for _, c := range getFileMetaDataResp.Collaborators {
-			collaborators = append(collaborators, *GRPCCollaboratorToCollaborator(c))
-		}
-
-		result := reference.FileRefGRPCToFileRef(getFileMetaDataResp.MetaData).GetListingData(ctx)
-		result["collaborators"] = collaborators
-
-		return result, nil
+		return GetFileMetaDataResponseHandler(getFileMetaDataResp), nil
 	}
+}
+
+func GetFileMetaDataResponseHandler(resp *blobbergrpc.GetFileMetaDataResponse) map[string]interface{} {
+	var collaborators []reference.Collaborator
+	for _, c := range resp.Collaborators {
+		collaborators = append(collaborators, *GRPCCollaboratorToCollaborator(c))
+	}
+
+	result := reference.FileRefGRPCToFileRef(resp.MetaData).GetListingData(context.Background())
+	result["collaborators"] = collaborators
+	return result
 }
 
 func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -208,19 +217,23 @@ func FileStatsHandler(svc *blobberGRPCService) func(ctx context.Context, r *http
 			return nil, err
 		}
 
-		result := reference.FileRefGRPCToFileRef(getFileStatsResponse.MetaData).GetListingData(ctx)
-
-		statsMap := make(map[string]interface{})
-		statsBytes, _ := json.Marshal(FileStatsGRPCToFileStats(getFileStatsResponse.Stats))
-		if err = json.Unmarshal(statsBytes, &statsMap); err != nil {
-			return nil, err
-		}
-		for k, v := range statsMap {
-			result[k] = v
-		}
-
-		return result, nil
+		return GetFileStatsResponseHandler(getFileStatsResponse), nil
 	}
+}
+
+func GetFileStatsResponseHandler(resp *blobbergrpc.GetFileStatsResponse) map[string]interface{} {
+	ctx := context.Background()
+	result := reference.FileRefGRPCToFileRef(resp.MetaData).GetListingData(ctx)
+
+	statsMap := make(map[string]interface{})
+	statsBytes, _ := json.Marshal(FileStatsGRPCToFileStats(resp.Stats))
+	_ = json.Unmarshal(statsBytes, &statsMap)
+
+	for k, v := range statsMap {
+		result[k] = v
+	}
+
+	return result
 }
 
 /*DownloadHandler is the handler to respond to download requests from clients*/
@@ -251,16 +264,21 @@ func ListHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Requ
 			return nil, err
 		}
 
-		var entities []map[string]interface{}
-		for i := range listEntitiesResponse.Entities {
-			entities = append(entities, reference.FileRefGRPCToFileRef(listEntitiesResponse.Entities[i]).GetListingData(ctx))
-		}
+		return ListEntitesResponseHandler(listEntitiesResponse), nil
+	}
+}
 
-		return &ListResult{
-			AllocationRoot: listEntitiesResponse.AllocationRoot,
-			Meta:           reference.FileRefGRPCToFileRef(listEntitiesResponse.MetaData).GetListingData(ctx),
-			Entities:       entities,
-		}, nil
+func ListEntitesResponseHandler(resp *blobbergrpc.ListEntitiesResponse) *ListResult {
+	ctx := context.Background()
+	var entities []map[string]interface{}
+	for i := range resp.Entities {
+		entities = append(entities, reference.FileRefGRPCToFileRef(resp.Entities[i]).GetListingData(ctx))
+	}
+
+	return &ListResult{
+		AllocationRoot: resp.AllocationRoot,
+		Meta:           reference.FileRefGRPCToFileRef(resp.MetaData).GetListingData(ctx),
+		Entities:       entities,
 	}
 }
 
@@ -290,11 +308,15 @@ func ReferencePathHandler(svc *blobberGRPCService) func(ctx context.Context, r *
 			return nil, err
 		}
 
-		var recursionCount int
-		return &ReferencePathResult{
-			ReferencePath: ReferencePathGRPCToReferencePath(&recursionCount, getReferencePathResponse.ReferencePath),
-			LatestWM:      WriteMarkerGRPCToWriteMarker(getReferencePathResponse.LatestWM),
-		}, nil
+		return GetReferencePathResponseHandler(getReferencePathResponse), nil
+	}
+}
+
+func GetReferencePathResponseHandler(getReferencePathResponse *blobbergrpc.GetReferencePathResponse) *ReferencePathResult {
+	var recursionCount int
+	return &ReferencePathResult{
+		ReferencePath: ReferencePathGRPCToReferencePath(&recursionCount, getReferencePathResponse.ReferencePath),
+		LatestWM:      WriteMarkerGRPCToWriteMarker(getReferencePathResponse.LatestWM),
 	}
 }
 
@@ -312,22 +334,27 @@ func ObjectPathHandler(svc *blobberGRPCService) func(ctx context.Context, r *htt
 			return nil, err
 		}
 
-		path := reference.FileRefGRPCToFileRef(getObjectPathResponse.ObjectPath.Path).GetListingData(ctx)
-		var pathList []map[string]interface{}
-		for _, pl := range getObjectPathResponse.ObjectPath.PathList {
-			pathList = append(pathList, reference.FileRefGRPCToFileRef(pl).GetListingData(ctx))
-		}
-		path["list"] = pathList
+		return GetObjectPathResponseHandler(getObjectPathResponse), nil
+	}
+}
 
-		return &ObjectPathResult{
-			ObjectPath: &reference.ObjectPath{
-				RootHash:     getObjectPathResponse.ObjectPath.RootHash,
-				Meta:         reference.FileRefGRPCToFileRef(getObjectPathResponse.ObjectPath.Meta).GetListingData(ctx),
-				Path:         path,
-				FileBlockNum: getObjectPathResponse.ObjectPath.FileBlockNum,
-			},
-			LatestWM: WriteMarkerGRPCToWriteMarker(getObjectPathResponse.LatestWriteMarker),
-		}, nil
+func GetObjectPathResponseHandler(getObjectPathResponse *blobbergrpc.GetObjectPathResponse) *ObjectPathResult {
+	ctx := context.Background()
+	path := reference.FileRefGRPCToFileRef(getObjectPathResponse.ObjectPath.Path).GetListingData(ctx)
+	var pathList []map[string]interface{}
+	for _, pl := range getObjectPathResponse.ObjectPath.PathList {
+		pathList = append(pathList, reference.FileRefGRPCToFileRef(pl).GetListingData(ctx))
+	}
+	path["list"] = pathList
+
+	return &ObjectPathResult{
+		ObjectPath: &reference.ObjectPath{
+			RootHash:     getObjectPathResponse.ObjectPath.RootHash,
+			Meta:         reference.FileRefGRPCToFileRef(getObjectPathResponse.ObjectPath.Meta).GetListingData(ctx),
+			Path:         path,
+			FileBlockNum: getObjectPathResponse.ObjectPath.FileBlockNum,
+		},
+		LatestWM: WriteMarkerGRPCToWriteMarker(getObjectPathResponse.LatestWriteMarker),
 	}
 }
 
@@ -344,11 +371,15 @@ func ObjectTreeHandler(svc *blobberGRPCService) func(ctx context.Context, r *htt
 			return nil, err
 		}
 
-		var recursionCount int
-		return &ReferencePathResult{
-			ReferencePath: ReferencePathGRPCToReferencePath(&recursionCount, getObjectTreeResponse.ReferencePath),
-			LatestWM:      WriteMarkerGRPCToWriteMarker(getObjectTreeResponse.LatestWM),
-		}, nil
+		return GetObjectTreeResponseHandler(getObjectTreeResponse), nil
+	}
+}
+
+func GetObjectTreeResponseHandler(getObjectTreeResponse *blobbergrpc.GetObjectTreeResponse) *ReferencePathResult {
+	var recursionCount int
+	return &ReferencePathResult{
+		ReferencePath: ReferencePathGRPCToReferencePath(&recursionCount, getObjectTreeResponse.ReferencePath),
+		LatestWM:      WriteMarkerGRPCToWriteMarker(getObjectTreeResponse.LatestWM),
 	}
 }
 
