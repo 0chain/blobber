@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"0chain.net/blobbercore/datastore"
+	"0chain.net/blobbercore/reference"
+	"0chain.net/core/common"
+	"0chain.net/core/logging"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"

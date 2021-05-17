@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"0chain.net/blobbercore/allocation"
+	"0chain.net/blobbercore/config"
+	"0chain.net/blobbercore/datastore"
+	. "0chain.net/core/logging"
 	"github.com/remeh/sizedwaitgroup"
 
 	"go.uber.org/zap"

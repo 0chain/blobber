@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
+	"0chain.net/blobbercore/blobbergrpc"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"0chain.net/core/common"
 )
 
 type ObjectPath struct {

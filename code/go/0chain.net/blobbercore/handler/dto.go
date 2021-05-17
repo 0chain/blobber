@@ -1,10 +1,10 @@
 package handler
 
 import (
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
+	"0chain.net/blobbercore/allocation"
+	"0chain.net/blobbercore/readmarker"
+	"0chain.net/blobbercore/reference"
+	"0chain.net/blobbercore/writemarker"
 )
 
 type UploadResult struct {

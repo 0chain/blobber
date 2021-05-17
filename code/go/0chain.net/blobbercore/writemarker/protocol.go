@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	"0chain.net/blobbercore/allocation"
+	"0chain.net/blobbercore/constants"
+	"0chain.net/core/chain"
+	"0chain.net/core/common"
+	"0chain.net/core/encryption"
+	. "0chain.net/core/logging"
+	"0chain.net/core/node"
+	"0chain.net/core/transaction"
 
 	"go.uber.org/zap"
 )

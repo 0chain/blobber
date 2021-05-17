@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"0chain.net/blobbercore/datastore"
 )
 
 type CommitMetaTxn struct {

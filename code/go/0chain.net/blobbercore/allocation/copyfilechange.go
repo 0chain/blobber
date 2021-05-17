@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"path/filepath"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"0chain.net/blobbercore/reference"
+	"0chain.net/core/common"
 
 	"gorm.io/datatypes"
 )

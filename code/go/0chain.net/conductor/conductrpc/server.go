@@ -3,7 +3,7 @@ package conductrpc
 import (
 	"errors"
 
-	"github.com/0chain/blobber/code/go/0chain.net/conductor/config"
+	"0chain.net/conductor/config"
 )
 
 var ErrShutdown = errors.New("server shutdown")

@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"0chain.net/blobbercore/allocation"
+	"0chain.net/blobbercore/reference"
 	"github.com/stretchr/testify/mock"
 )
 
