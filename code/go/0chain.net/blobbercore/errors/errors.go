@@ -1,7 +1,7 @@
 package errors
 
 import (
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"0chain.net/core/common"
 )
 
 var (

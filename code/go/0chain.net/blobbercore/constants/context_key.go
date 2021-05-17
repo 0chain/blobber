@@ -1,6 +1,6 @@
 package constants
 
-import "github.com/0chain/blobber/code/go/0chain.net/core/common"
+import "0chain.net/core/common"
 
 const (
 	ALLOCATION_CONTEXT_KEY common.ContextKey = "allocation"

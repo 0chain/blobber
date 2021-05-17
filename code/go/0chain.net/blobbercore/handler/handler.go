@@ -9,19 +9,19 @@ import (
 	"os"
 	"runtime/pprof"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"0chain.net/blobbercore/allocation"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"0chain.net/blobbercore/reference"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
+	"0chain.net/blobbercore/blobbergrpc"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"0chain.net/blobbercore/config"
+	"0chain.net/blobbercore/constants"
+	"0chain.net/blobbercore/datastore"
+	"0chain.net/blobbercore/stats"
+	"0chain.net/core/common"
 
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	. "0chain.net/core/logging"
 	"go.uber.org/zap"
 
 	"github.com/gorilla/mux"

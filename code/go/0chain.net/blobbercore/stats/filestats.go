@@ -3,7 +3,7 @@ package stats
 import (
 	"context"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"0chain.net/blobbercore/datastore"
 
 	"gorm.io/gorm"
 )

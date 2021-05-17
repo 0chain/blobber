@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/cache"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"0chain.net/core/cache"
+	"0chain.net/core/common"
+	. "0chain.net/core/logging"
+	"0chain.net/core/node"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/sha3"

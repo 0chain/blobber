@@ -1,7 +1,7 @@
 package conductrpc
 
 import (
-	"github.com/0chain/blobber/code/go/0chain.net/conductor/config"
+	"0chain.net/conductor/config"
 )
 
 //

@@ -3,11 +3,11 @@ package storage_test
 import (
 	"testing"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/config"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/storage"
+	"0chain.net/core/common"
+	"0chain.net/core/config"
+	"0chain.net/core/logging"
+	"0chain.net/core/node"
+	"0chain.net/validatorcore/storage"
 
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/stretchr/testify/assert"

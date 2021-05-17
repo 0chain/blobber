@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"sync"
 
 	"github.com/0chain/gosdk/core/common"
@@ -12,7 +11,6 @@ type ZCNStatus struct {
 	wg      *sync.WaitGroup
 	success bool
 	balance int64
-	info    string
 }
 
 func (zcn *ZCNStatus) OnBalanceAvailable(status int, value int64, info string) {
@@ -23,16 +21,6 @@ func (zcn *ZCNStatus) OnBalanceAvailable(status int, value int64, info string) {
 		zcn.success = false
 	}
 	zcn.balance = value
-}
-
-func (zcn *ZCNStatus) OnInfoAvailable(op int, status int, info string, err string) {
-	defer zcn.wg.Done()
-	if status == zcncore.StatusSuccess {
-		zcn.success = true
-	} else {
-		zcn.success = false
-	}
-	zcn.info = info
 }
 
 func (zcn *ZCNStatus) OnTransactionComplete(t *zcncore.Transaction, status int) {
@@ -68,32 +56,6 @@ func CheckBalance() (float64, error) {
 		return 0, nil
 	}
 	return zcncore.ConvertToToken(statusBar.balance), nil
-}
-
-func GetBlobbers() ([]*zcncore.Blobber, error) {
-	var info struct {
-		Nodes []*zcncore.Blobber
-	}
-
-	wg := &sync.WaitGroup{}
-	statusBar := &ZCNStatus{wg: wg}
-	wg.Add(1)
-
-	err := zcncore.GetBlobbers(statusBar)
-	if err != nil {
-		return info.Nodes, common.NewError("get_blobbers_failed", "Call to GetBlobbers failed with err: "+err.Error())
-	}
-	wg.Wait()
-
-	if !statusBar.success {
-		return info.Nodes, nil
-	}
-
-	if err = json.Unmarshal([]byte(statusBar.info), &info); err != nil {
-		return info.Nodes, common.NewError("get_blobbers_failed", "Decoding response to GetBlobbers failed with err: "+err.Error())
-	}
-
-	return info.Nodes, nil
 }
 
 func CallFaucet() error {

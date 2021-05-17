@@ -4,15 +4,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"0chain.net/blobbercore/reference"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"0chain.net/blobbercore/datastore"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"0chain.net/blobbercore/allocation"
+	"0chain.net/blobbercore/blobbergrpc"
+	"0chain.net/blobbercore/stats"
+	"0chain.net/blobbercore/writemarker"
+	"0chain.net/core/common"
 )
 
 func AllocationToGRPCAllocation(alloc *allocation.Allocation) *blobbergrpc.Allocation {

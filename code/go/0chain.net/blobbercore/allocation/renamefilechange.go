@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"path/filepath"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"0chain.net/blobbercore/reference"
+	"0chain.net/blobbercore/stats"
+	"0chain.net/core/common"
+	."0chain.net/core/logging"
 
 	"go.uber.org/zap"
 )
@@ -76,7 +76,7 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 		}
 	}
 	if idx < 0 {
-		Logger.Error("error in file rename", zap.Any("change", rf))
+		Logger.Error("error in file rename", zap.Any("change",rf))
 		return nil, common.NewError("file_not_found", "File to rename not found in blobber")
 	}
 	//dirRef.Children[idx] = affectedRef

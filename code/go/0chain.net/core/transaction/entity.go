@@ -7,9 +7,9 @@ import (
 
 	"github.com/0chain/gosdk/zcncore"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"0chain.net/core/chain"
+	"0chain.net/core/common"
+	"0chain.net/core/node"
 )
 
 //Transaction entity that encapsulates the transaction related data and meta data

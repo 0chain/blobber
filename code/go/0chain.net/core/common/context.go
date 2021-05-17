@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"0chain.net/core/logging"
 
 	"go.uber.org/zap"
 )

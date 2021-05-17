@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/config"
+	"0chain.net/core/config"
 	"github.com/spf13/viper"
 )
 

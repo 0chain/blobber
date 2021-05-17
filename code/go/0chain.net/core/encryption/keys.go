@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"io"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/config"
+	"0chain.net/core/common"
+	"0chain.net/core/config"
 
 	"github.com/0chain/gosdk/core/zcncrypto"
 )
