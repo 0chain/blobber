@@ -67,6 +67,7 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
+	// initialize storage node (ie blobber)
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		return "", err
@@ -76,10 +77,21 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 		return "", err
 	}
 
+	// check storage node (ie blobber): is it already registered?
+	sRegisteredNodes, _ := GetBlobbers()
+
+	for _, sRegisteredNode := range sRegisteredNodes {
+		if sn.ID == string(sRegisteredNode.ID) || sn.BaseURL == sRegisteredNode.BaseURL {
+			Logger.Info("Failed during registering blobber to the mining network, it's duplicated")
+			return "", errors.New("Duplicated")
+		}
+	}
+
 	snBytes, err := json.Marshal(sn)
 	if err != nil {
 		return "", err
 	}
+
 	Logger.Info("Adding blobber to the blockchain.")
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
 		transaction.ADD_BLOBBER_SC_NAME, string(snBytes), 0)
