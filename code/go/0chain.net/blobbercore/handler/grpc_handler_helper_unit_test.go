@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"0chain.net/blobbercore/config"
-	coreConfig "0chain.net/core/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	coreConfig "github.com/0chain/blobber/code/go/0chain.net/core/config"
 	"github.com/0chain/gosdk/core/zcncrypto"
 
-	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/stretchr/testify/mock"
 )
 

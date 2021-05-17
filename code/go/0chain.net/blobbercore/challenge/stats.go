@@ -3,8 +3,8 @@ package challenge
 import (
 	"context"
 
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
 	"gorm.io/gorm"
 )

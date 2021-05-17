@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"strings"
 
-	"0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 )
 
 /*Hashable - anything that can provide it's hash */

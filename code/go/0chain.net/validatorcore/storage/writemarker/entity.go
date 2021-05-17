@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"0chain.net/core/common"
-	"0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 )
 
 type WriteMarkerEntity struct {
