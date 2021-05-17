@@ -753,3 +753,11 @@ func pathHashFromReq(r *http.Request, allocationID string) (string, error) {
 
 	return pathHash, nil
 }
+
+func GetOrCreateMarketplaceEncryptionKeyPair(r *http.Request, ) (string, error) {
+	data := map[string]string{
+		"public_key": "abcd",
+	}
+	response, _ := json.Marshal(data)
+	return response, nil
+}
