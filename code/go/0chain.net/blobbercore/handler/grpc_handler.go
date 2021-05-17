@@ -5,17 +5,17 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"0chain.net/blobbercore/writemarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 
-	"0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 
-	"0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"go.uber.org/zap"
 
-	"0chain.net/blobbercore/blobbergrpc"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 )
 
 type blobberGRPCService struct {
