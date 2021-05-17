@@ -15,12 +15,13 @@ import (
 	// "go.uber.org/zap"
 
 	// "github.com/gorilla/mux"
+
+	"0chain.net/blobbercore/reference"
 )
 
 
 func GetOrCreateMarketplaceEncryptionKeyPair(r *http.Request) (interface{}, error) {
-	data := map[string]string{
-		"public_key": "abcd",
-	}
-	return data, nil
+	info, err := reference.GetOrCreateMarketplaceInfo(ctx)
+
+	return info, err
 }
