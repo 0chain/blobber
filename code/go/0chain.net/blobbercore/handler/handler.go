@@ -321,7 +321,7 @@ func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, erro
 }
 
 func MarketPlacePublicKeyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	response, err := storageHandler.GetOrCreateMarketplaceEncryptionKeyPair(ctx, r)
+	response, err := GetOrCreateMarketplaceEncryptionKeyPair(r)
 	if err != nil {
 		return nil, err
 	}
