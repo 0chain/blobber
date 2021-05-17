@@ -353,6 +353,10 @@ func (r *Ref) GetListingData(ctx context.Context) map[string]interface{} {
 }
 
 func ListingDataToRef(refMap map[string]interface{}) *Ref {
+	if len(refMap) < 1 {
+		return nil
+	}
+
 	ref := &Ref{}
 
 	refType, _ := refMap["type"].(string)
