@@ -1,10 +1,10 @@
 package handler
 
 import (
-	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/readmarker"
-	"0chain.net/blobbercore/reference"
-	"0chain.net/blobbercore/writemarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 )
 
 type UploadResult struct {
@@ -12,6 +12,11 @@ type UploadResult struct {
 	Size       int64  `json:"size"`
 	Hash       string `json:"content_hash"`
 	MerkleRoot string `json:"merkle_root"`
+
+	//UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
+	UploadLength int64 `json:"upload_length"`
+	//Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
+	UploadOffset int64 `json:"upload_offset"`
 }
 
 type CommitResult struct {
