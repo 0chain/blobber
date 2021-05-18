@@ -3,6 +3,7 @@ package blobber.service.v1;
 
 option go_package = "./blobbergrpc";
 
+//import "blobbercore/blobbergrpc/proto/google/api/annotations.proto";
 import "google/api/annotations.proto";
 
 
@@ -40,6 +41,13 @@ service Blobber {
   rpc GetObjectTree(GetObjectTreeRequest) returns (GetObjectTreeResponse) {
     option (google.api.http) = {
       get: "/v2/file/objecttree/{allocation}"
+    };
+  }
+
+  rpc UpdateObjectAttributes(UpdateObjectAttributesRequest) returns (UpdateObjectAttributesResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/attributes/{allocation}"
+      body: "*"
     };
   }
 }
@@ -177,6 +185,19 @@ message GetAllocationResponse {
   Allocation allocation = 1;
 }
 
+message UpdateObjectAttributesRequest {
+  RequestContext context = 1;
+  string path = 2;
+  string path_hash = 3;
+  string attributes = 4;
+  string connection_id = 5;
+  string allocation = 6;
+}
+
+message UpdateObjectAttributesResponse {
+  int64 who_pays_for_reads = 1;
+}
+
 message Allocation {
   string ID = 1;
   string Tx = 2;
@@ -251,3 +272,4 @@ message DirMetaData {
   int64 UpdatedAt = 10;
   repeated FileRef Children = 11;
 }
+
