@@ -2,9 +2,11 @@ package reference
 
 import (
 	"context"
-	"0chain.net/blobbercore/config"
+	"0chain.net/core/config"
 	"0chain.net/blobbercore/datastore"
 	"github.com/0chain/gosdk/core/zcncrypto"
+	. "0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
 type MarketplaceInfo struct {
@@ -32,7 +34,9 @@ func GetMarketplaceInfo(ctx context.Context) (MarketplaceInfo, error) {
 }
 
 func GetSecretKeyPair() (*zcncrypto.KeyPair, error) {
-	sigScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
+	//sigScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
+	// TODO: bls0chain scheme crashes
+	sigScheme := zcncrypto.NewSignatureScheme("ed25519")
 	wallet, err := sigScheme.GenerateKeys()
 	if err != nil {
 		return nil, err
@@ -46,7 +50,10 @@ func GetOrCreateMarketplaceInfo(ctx context.Context) (*MarketplaceInfo, error) {
 		return &row, err
 	}
 
+	Logger.Info("Creating key pair", zap.String("signature_scheme", config.Configuration.SignatureScheme))
 	keyPair, err := GetSecretKeyPair()
+	Logger.Info("Secret key pair created")
+
 	if err != nil {
 		return nil, err
 	}

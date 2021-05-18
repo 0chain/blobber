@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/DATA-DOG/go-sqlmock"
@@ -42,7 +43,6 @@ func init() {
 		panic(err)
 	}
 	bconfig.Configuration.MaxFileSize = int64(1 << 30)
-	bconfig.Configuration.SignatureScheme = "bls0chain"
 }
 
 func setup(t *testing.T) {
@@ -172,7 +172,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	).Name(uName)
 
 	marketplacePath := "/v1/marketplace/public_key"
-	mName := "Marketplace"
+	mName := "MarketplaceInfo"
 	router.HandleFunc(marketplacePath, common.UserRateLimit(
 		common.ToJSONResponse(
 			WithReadOnlyConnection(MarketPlacePublicKeyHandler),
@@ -205,6 +205,7 @@ func isEndpointAllowGetReq(name string) bool {
 }
 
 func TestMarketplaceApi(t *testing.T) {
+	setup(t)
 	router, handlers := setupHandlers()
 
 	t.Run("marketplace_key_existing", func(t *testing.T) {
@@ -281,8 +282,12 @@ func TestMarketplaceApi(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		router.ServeHTTP(recorder, httprequest)
 		assert.Equal(t, 200, 200)
-		// wantBody := `{"public_key":"pub","private_key":"prv"}` + "\n"
-		// assert.Equal(t, wantBody, recorder.Body.String())
+		marketplaceInfo := reference.MarketplaceInfo {}
+		json.Unmarshal([]byte(recorder.Body.String()), &marketplaceInfo)
+		assert.NotEmpty(t, marketplaceInfo)
+		assert.NotEmpty(t, marketplaceInfo.PublicKey)
+		assert.NotEmpty(t, marketplaceInfo.PrivateKey)
+		fmt.Println(marketplaceInfo)
 	})
 
 }

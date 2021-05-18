@@ -41,7 +41,6 @@ func SetupDefaultConfig() {
 	viper.SetDefault("service_charge", 0.3)
 
 	viper.SetDefault("update_allocations_interval", time.Duration(-1))
-	viper.SetDefault("signature_scheme", "ed25519")
 }
 
 /*SetupConfig - setup the configuration system */
@@ -119,8 +118,6 @@ type Config struct {
 	NumDelegates int `json:"num_delegates"`
 	// ServiceCharge for blobber.
 	ServiceCharge float64 `json:"service_charge"`
-
-	SignatureScheme string `json:"signature_scheme"`
 }
 
 /*Configuration of the system */
