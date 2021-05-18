@@ -5,19 +5,19 @@ import (
 	"errors"
 	"testing"
 
-	"0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
-	"0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 
-	"0chain.net/blobbercore/mocks"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/mocks"
 
 	"github.com/stretchr/testify/assert"
 
-	"0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 
 	"github.com/stretchr/testify/mock"
 
-	"0chain.net/blobbercore/blobbergrpc"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 )
 
 func TestBlobberGRPCService_GetAllocation_Success(t *testing.T) {

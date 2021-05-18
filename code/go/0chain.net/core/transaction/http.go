@@ -15,13 +15,13 @@ import (
 	//"sync"
 	"time"
 
-	"0chain.net/core/chain"
-	"0chain.net/core/common"
-	. "0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/zcncore"
 
-	//"0chain.net/core/util"
+	//"github.com/0chain/blobber/code/go/0chain.net/core/util"
 
 	"go.uber.org/zap"
 )
