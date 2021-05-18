@@ -3,6 +3,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	// "0chain.net/blobbercore/config"
@@ -20,7 +21,7 @@ import (
 )
 
 
-func GetOrCreateMarketplaceEncryptionKeyPair(r *http.Request) (interface{}, error) {
+func GetOrCreateMarketplaceEncryptionKeyPair(ctx context.Context, r *http.Request) (interface{}, error) {
 	info, err := reference.GetOrCreateMarketplaceInfo(ctx)
 
 	return info, err

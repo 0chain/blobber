@@ -2,7 +2,6 @@ package reference
 
 import (
 	"context"
-
 	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/datastore"
 	"github.com/0chain/gosdk/core/zcncrypto"
@@ -28,7 +27,7 @@ func AddEncryptionKeyPair(ctx context.Context, privateKey string, publicKey stri
 func GetMarketplaceInfo(ctx context.Context) (MarketplaceInfo, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	marketplaceInfo := MarketplaceInfo{}
-	err := db.Table(TableName()).First(&MarketplaceInfo{}).Error
+	err := db.Table(TableName()).First(&marketplaceInfo).Error
 	return marketplaceInfo, err
 }
 

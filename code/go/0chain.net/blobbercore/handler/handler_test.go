@@ -170,6 +170,15 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	),
 	).Name(uName)
 
+	marketplacePath := "/v1/marketplace/public_key"
+	mName := "Marketplace"
+	router.HandleFunc(marketplacePath, common.UserRateLimit(
+		common.ToJSONResponse(
+			WithReadOnlyConnection(MarketPlacePublicKeyHandler),
+		),
+	),
+	).Name(mName)
+
 	return router,
 		map[string]string{
 			opPath:   opName,
@@ -181,6 +190,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 			cPath:    cName,
 			aPath:    aName,
 			uPath:    uName,
+			marketplacePath: mName,
 		}
 }
 
@@ -191,6 +201,50 @@ func isEndpointAllowGetReq(name string) bool {
 	default:
 		return true
 	}
+}
+
+func TestMarketplaceApi(t *testing.T) {
+	router, handlers := setupHandlers()
+
+	t.Run("marketplace_key_existing", func(t *testing.T) {
+		mock := datastore.MockTheStore(t)
+		setupDbMock := func(mock sqlmock.Sqlmock) {
+			mock.ExpectBegin()
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace" ORDER BY "marketplace"."public_key" LIMIT 1`)).
+				WillReturnRows(
+					sqlmock.NewRows([]string{"public_key", "private_key"}).
+						AddRow("pub", "prv"),
+				)
+
+			mock.ExpectCommit()
+		}
+		setupDbMock(mock)
+		httprequest := func() *http.Request {
+			handlerName := handlers["/v1/marketplace/public_key"]
+
+			url, err := router.Get(handlerName).URL()
+			logging.Logger.Info(url.String())
+			if err != nil {
+				t.Fatal()
+			}
+
+			r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			return r
+		}()
+
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, httprequest)
+		assert.Equal(t, 200, 200)
+		wantBody := `{"public_key":"pub","private_key":"prv"}` + "\n"
+		assert.Equal(t, wantBody, recorder.Body.String())
+	})
+
+
 }
 
 func TestHandlers_Requiring_Signature(t *testing.T) {
