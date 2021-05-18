@@ -321,11 +321,13 @@ func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, erro
 }
 
 func MarketPlacePublicKeyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	response, err := GetOrCreateMarketplaceEncryptionKeyPair(ctx, r)
+	marketplaceInfo, err := GetOrCreateMarketplaceEncryptionKeyPair(ctx, r)
 	if err != nil {
 		return nil, err
 	}
 
-	return response, nil
+	return map[string]string {
+		"public_key": marketplaceInfo.PublicKey,
+	}, nil
 }
 

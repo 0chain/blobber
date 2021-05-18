@@ -241,7 +241,7 @@ func TestMarketplaceApi(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		router.ServeHTTP(recorder, httprequest)
 		assert.Equal(t, 200, 200)
-		wantBody := `{"public_key":"pub","private_key":"prv"}` + "\n"
+		wantBody := `{"public_key":"pub"}` + "\n"
 		assert.Equal(t, wantBody, recorder.Body.String())
 	})
 
@@ -286,7 +286,7 @@ func TestMarketplaceApi(t *testing.T) {
 		json.Unmarshal([]byte(recorder.Body.String()), &marketplaceInfo)
 		assert.NotEmpty(t, marketplaceInfo)
 		assert.NotEmpty(t, marketplaceInfo.PublicKey)
-		assert.NotEmpty(t, marketplaceInfo.PrivateKey)
+		assert.Empty(t, marketplaceInfo.PrivateKey)
 		fmt.Println(marketplaceInfo)
 	})
 

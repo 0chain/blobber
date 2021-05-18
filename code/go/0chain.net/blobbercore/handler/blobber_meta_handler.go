@@ -21,7 +21,7 @@ import (
 )
 
 
-func GetOrCreateMarketplaceEncryptionKeyPair(ctx context.Context, r *http.Request) (interface{}, error) {
+func GetOrCreateMarketplaceEncryptionKeyPair(ctx context.Context, r *http.Request) (*reference.MarketplaceInfo, error) {
 	info, err := reference.GetOrCreateMarketplaceInfo(ctx)
 
 	return info, err
