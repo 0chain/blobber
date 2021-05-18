@@ -42,6 +42,7 @@ func init() {
 		panic(err)
 	}
 	bconfig.Configuration.MaxFileSize = int64(1 << 30)
+	bconfig.Configuration.SignatureScheme = "bls0chain"
 }
 
 func setup(t *testing.T) {
@@ -224,7 +225,6 @@ func TestMarketplaceApi(t *testing.T) {
 			handlerName := handlers["/v1/marketplace/public_key"]
 
 			url, err := router.Get(handlerName).URL()
-			logging.Logger.Info(url.String())
 			if err != nil {
 				t.Fatal()
 			}
@@ -244,6 +244,46 @@ func TestMarketplaceApi(t *testing.T) {
 		assert.Equal(t, wantBody, recorder.Body.String())
 	})
 
+	t.Run("marketplace_create_new_key_and_return", func(t *testing.T) {
+		mock := datastore.MockTheStore(t)
+		setupDbMock := func(mock sqlmock.Sqlmock) {
+			mock.ExpectBegin()
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace" ORDER BY "marketplace"."public_key" LIMIT 1`)).
+				WillReturnRows(
+					sqlmock.NewRows([]string{"public_key", "private_key"}),
+				)
+
+			mock.ExpectExec(`INSERT INTO "marketplace"`).
+				WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg()).
+				WillReturnResult(sqlmock.NewResult(0, 0))
+
+
+			mock.ExpectCommit()
+		}
+		setupDbMock(mock)
+		httprequest := func() *http.Request {
+			handlerName := handlers["/v1/marketplace/public_key"]
+
+			url, err := router.Get(handlerName).URL()
+			if err != nil {
+				t.Fatal()
+			}
+
+			r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			return r
+		}()
+
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, httprequest)
+		assert.Equal(t, 200, 200)
+		// wantBody := `{"public_key":"pub","private_key":"prv"}` + "\n"
+		// assert.Equal(t, wantBody, recorder.Body.String())
+	})
 
 }
 

@@ -18,7 +18,7 @@ func TableName() string {
 
 func AddEncryptionKeyPair(ctx context.Context, privateKey string, publicKey string) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Create(&MarketplaceInfo{
+	return db.Table(TableName()).Create(&MarketplaceInfo{
 		PrivateKey: privateKey,
 		PublicKey: publicKey,
 	}).Error
