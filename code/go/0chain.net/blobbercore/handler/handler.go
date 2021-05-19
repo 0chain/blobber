@@ -59,7 +59,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/getstats", common.UserRateLimit(common.ToJSONResponse(stats.GetStatsHandler)))
 
 	//marketplace related
-	r.HandleFunc("/v1/marketplace/public_key", common.UserRateLimit(common.ToJSONResponse(WithConnection(MarketPlacePublicKeyHandler))))
+	r.HandleFunc("/v1/marketplace/secret", common.UserRateLimit(common.ToJSONResponse(WithConnection(MarketPlaceSecretHandler))))
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
@@ -320,14 +320,14 @@ func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, erro
 	return "cleanup", err
 }
 
-func MarketPlacePublicKeyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+func MarketPlaceSecretHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	marketplaceInfo, err := GetOrCreateMarketplaceEncryptionKeyPair(ctx, r)
 	if err != nil {
 		return nil, err
 	}
 
 	return map[string]string {
-		"public_key": marketplaceInfo.PublicKey,
+		"mnemonic": marketplaceInfo.Mnemonic,
 	}, nil
 }
 

@@ -171,11 +171,11 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	),
 	).Name(uName)
 
-	marketplacePath := "/v1/marketplace/public_key"
+	marketplacePath := "/v1/marketplace/secret"
 	mName := "MarketplaceInfo"
 	router.HandleFunc(marketplacePath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(MarketPlacePublicKeyHandler),
+			WithReadOnlyConnection(MarketPlaceSecretHandler),
 		),
 	),
 	).Name(mName)
@@ -213,17 +213,17 @@ func TestMarketplaceApi(t *testing.T) {
 		setupDbMock := func(mock sqlmock.Sqlmock) {
 			mock.ExpectBegin()
 
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace" ORDER BY "marketplace"."public_key" LIMIT 1`)).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace" ORDER BY "marketplace"."mnemonic" LIMIT 1`)).
 				WillReturnRows(
-					sqlmock.NewRows([]string{"public_key", "private_key"}).
-						AddRow("pub", "prv"),
+					sqlmock.NewRows([]string{"public_key", "private_key", "mnemonic"}).
+						AddRow("pub", "prv", "a b c d"),
 				)
 
 			mock.ExpectCommit()
 		}
 		setupDbMock(mock)
 		httprequest := func() *http.Request {
-			handlerName := handlers["/v1/marketplace/public_key"]
+			handlerName := handlers["/v1/marketplace/secret"]
 
 			url, err := router.Get(handlerName).URL()
 			if err != nil {
@@ -241,7 +241,7 @@ func TestMarketplaceApi(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		router.ServeHTTP(recorder, httprequest)
 		assert.Equal(t, 200, 200)
-		wantBody := `{"public_key":"pub"}` + "\n"
+		wantBody := `{"mnemonic":"a b c d"}` + "\n"
 		assert.Equal(t, wantBody, recorder.Body.String())
 	})
 
@@ -250,9 +250,9 @@ func TestMarketplaceApi(t *testing.T) {
 		setupDbMock := func(mock sqlmock.Sqlmock) {
 			mock.ExpectBegin()
 
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace" ORDER BY "marketplace"."public_key" LIMIT 1`)).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace" ORDER BY "marketplace"."mnemonic" LIMIT 1`)).
 				WillReturnRows(
-					sqlmock.NewRows([]string{"public_key", "private_key"}),
+					sqlmock.NewRows([]string{"public_key", "private_key", "mnemonic"}),
 				)
 
 			mock.ExpectExec(`INSERT INTO "marketplace"`).
@@ -264,7 +264,7 @@ func TestMarketplaceApi(t *testing.T) {
 		}
 		setupDbMock(mock)
 		httprequest := func() *http.Request {
-			handlerName := handlers["/v1/marketplace/public_key"]
+			handlerName := handlers["/v1/marketplace/secret"]
 
 			url, err := router.Get(handlerName).URL()
 			if err != nil {
@@ -285,8 +285,9 @@ func TestMarketplaceApi(t *testing.T) {
 		marketplaceInfo := reference.MarketplaceInfo {}
 		json.Unmarshal([]byte(recorder.Body.String()), &marketplaceInfo)
 		assert.NotEmpty(t, marketplaceInfo)
-		assert.NotEmpty(t, marketplaceInfo.PublicKey)
+		assert.Empty(t, marketplaceInfo.PublicKey)
 		assert.Empty(t, marketplaceInfo.PrivateKey)
+		assert.NotEmpty(t, marketplaceInfo.Mnemonic)
 		fmt.Println(marketplaceInfo)
 	})
 

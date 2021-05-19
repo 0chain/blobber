@@ -3,5 +3,6 @@
 
 CREATE TABLE marketplace (
     private_key VARCHAR(512) NOT NULL,
-    public_key VARCHAR(512) NOT NULL
+    public_key VARCHAR(512) NOT NULL,
+    mnemonic VARCHAR(512) NOT NULL,
 );

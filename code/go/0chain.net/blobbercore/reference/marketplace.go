@@ -1,28 +1,36 @@
 package reference
 
 import (
-	"context"
-	"0chain.net/core/config"
 	"0chain.net/blobbercore/datastore"
-	"github.com/0chain/gosdk/core/zcncrypto"
+	"0chain.net/core/config"
 	. "0chain.net/core/logging"
+	"context"
+	"github.com/0chain/gosdk/core/zcncrypto"
 	"go.uber.org/zap"
 )
 
 type MarketplaceInfo struct {
+	Mnemonic   string    `gorm:"mnemonic" json:"mnemonic,omitempty"`
 	PublicKey   string    `gorm:"public_key" json:"public_key"`
 	PrivateKey  string    `gorm:"private_key" json:"private_key,omitempty"`
+}
+
+type KeyPairInfo struct {
+	PublicKey string
+	PrivateKey string
+	Mnemonic string
 }
 
 func TableName() string {
 	return "marketplace"
 }
 
-func AddEncryptionKeyPair(ctx context.Context, privateKey string, publicKey string) error {
+func AddEncryptionKeyPairInfo(ctx context.Context, keyPairInfo KeyPairInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Table(TableName()).Create(&MarketplaceInfo{
-		PrivateKey: privateKey,
-		PublicKey: publicKey,
+		PrivateKey: keyPairInfo.PrivateKey,
+		PublicKey: keyPairInfo.PublicKey,
+		Mnemonic: keyPairInfo.Mnemonic,
 	}).Error
 }
 
@@ -33,7 +41,7 @@ func GetMarketplaceInfo(ctx context.Context) (MarketplaceInfo, error) {
 	return marketplaceInfo, err
 }
 
-func GetSecretKeyPair() (*zcncrypto.KeyPair, error) {
+func GetSecretKeyPair() (*KeyPairInfo, error) {
 	//sigScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
 	// TODO: bls0chain scheme crashes
 	sigScheme := zcncrypto.NewSignatureScheme("ed25519")
@@ -41,7 +49,11 @@ func GetSecretKeyPair() (*zcncrypto.KeyPair, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &wallet.Keys[0], nil
+	return &KeyPairInfo {
+		PublicKey: wallet.Keys[0].PublicKey,
+		PrivateKey: wallet.Keys[0].PrivateKey,
+		Mnemonic: wallet.Mnemonic,
+	}, nil
 }
 
 func GetOrCreateMarketplaceInfo(ctx context.Context) (*MarketplaceInfo, error) {
@@ -51,17 +63,18 @@ func GetOrCreateMarketplaceInfo(ctx context.Context) (*MarketplaceInfo, error) {
 	}
 
 	Logger.Info("Creating key pair", zap.String("signature_scheme", config.Configuration.SignatureScheme))
-	keyPair, err := GetSecretKeyPair()
+	keyPairInfo, err := GetSecretKeyPair()
 	Logger.Info("Secret key pair created")
 
 	if err != nil {
 		return nil, err
 	}
 
-	AddEncryptionKeyPair(ctx, keyPair.PrivateKey, keyPair.PublicKey)
+	AddEncryptionKeyPairInfo(ctx, *keyPairInfo)
 
 	return &MarketplaceInfo{
-		PublicKey: keyPair.PublicKey,
-		PrivateKey: keyPair.PrivateKey,
+		PrivateKey: keyPairInfo.PrivateKey,
+		PublicKey: keyPairInfo.PublicKey,
+		Mnemonic: keyPairInfo.Mnemonic,
 	}, nil
 }
