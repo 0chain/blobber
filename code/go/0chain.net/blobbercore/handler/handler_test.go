@@ -89,12 +89,13 @@ func setup(t *testing.T) {
 
 func setupHandlers() (*mux.Router, map[string]string) {
 	router := mux.NewRouter()
+	svc := newGRPCBlobberService(&storageHandler, &packageHandler{})
 
 	opPath := "/v1/file/objectpath/{allocation}"
 	opName := "Object_Path"
 	router.HandleFunc(opPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(ObjectPathHandler),
+			WithReadOnlyConnection(ObjectPathHandler(svc)),
 		),
 	),
 	).Name(opName)
@@ -103,7 +104,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	rpName := "Reference_Path"
 	router.HandleFunc(rpPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(ReferencePathHandler),
+			WithReadOnlyConnection(ReferencePathHandler(svc)),
 		),
 	),
 	).Name(rpName)
@@ -112,7 +113,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	sName := "Stats"
 	router.HandleFunc(sPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(FileStatsHandler),
+			WithReadOnlyConnection(FileStatsHandler(svc)),
 		),
 	),
 	).Name(sName)
@@ -121,7 +122,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	otName := "Object_Tree"
 	router.HandleFunc(otPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(ObjectTreeHandler),
+			WithReadOnlyConnection(ObjectTreeHandler(svc)),
 		),
 	),
 	).Name(otName)

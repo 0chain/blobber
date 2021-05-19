@@ -3,7 +3,11 @@ package handler
 import (
 	"context"
 	"errors"
+	"math/rand"
+	"strings"
 	"testing"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
@@ -62,17 +66,17 @@ func TestBlobberGRPCService_GetFileMetaData_Success(t *testing.T) {
 		Context: &blobbergrpc.RequestContext{
 			Client:     "client",
 			ClientKey:  "",
-			Allocation: "",
+			Allocation: "something",
 		},
 		Path:       "path",
 		PathHash:   "path_hash",
 		AuthToken:  "testval",
-		Allocation: "something",
+		Allocation: "",
 	}
 
 	mockStorageHandler := &storageHandlerI{}
 	mockReferencePackage := &mocks.PackageHandler{}
-	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, true).Return(&allocation.Allocation{
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Context.Allocation, true).Return(&allocation.Allocation{
 		ID: "allocationId",
 		Tx: req.Allocation,
 	}, nil)
@@ -104,17 +108,17 @@ func TestBlobberGRPCService_GetFileMetaData_FileNotExist(t *testing.T) {
 		Context: &blobbergrpc.RequestContext{
 			Client:     "client",
 			ClientKey:  "",
-			Allocation: "",
+			Allocation: "something",
 		},
 		Path:       "path",
 		PathHash:   "path_hash",
 		AuthToken:  "testval",
-		Allocation: "something",
+		Allocation: "",
 	}
 
 	mockStorageHandler := &storageHandlerI{}
 	mockReferencePackage := &mocks.PackageHandler{}
-	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, true).Return(&allocation.Allocation{
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Context.Allocation, true).Return(&allocation.Allocation{
 		ID: "allocationId",
 		Tx: req.Allocation,
 	}, nil)
@@ -136,12 +140,29 @@ func TestBlobberGRPCService_GetFileMetaData_FileNotExist(t *testing.T) {
 	}
 }
 
+func randString(n int) string {
+
+	const hexLetters = "abcdef0123456789"
+
+	var sb strings.Builder
+	for i := 0; i < n; i++ {
+		sb.WriteByte(hexLetters[rand.Intn(len(hexLetters))])
+	}
+	return sb.String()
+}
+
 func TestBlobberGRPCService_GetFileStats_Success(t *testing.T) {
+	allocationTx := randString(32)
+
+	pubKey, _, signScheme := GeneratePubPrivateKey(t)
+	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
 	req := &blobbergrpc.GetFileStatsRequest{
 		Context: &blobbergrpc.RequestContext{
-			Client:     "owner",
-			ClientKey:  "",
-			Allocation: "",
+			Client:          "owner",
+			ClientKey:       "",
+			Allocation:      allocationTx,
+			ClientSignature: clientSignature,
 		},
 		Path:       "path",
 		PathHash:   "path_hash",
@@ -150,10 +171,11 @@ func TestBlobberGRPCService_GetFileStats_Success(t *testing.T) {
 
 	mockStorageHandler := &storageHandlerI{}
 	mockReferencePackage := &mocks.PackageHandler{}
-	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, true).Return(&allocation.Allocation{
-		ID:      "allocationId",
-		Tx:      req.Allocation,
-		OwnerID: "owner",
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Context.Allocation, true).Return(&allocation.Allocation{
+		ID:             "allocationId",
+		Tx:             req.Context.Allocation,
+		OwnerID:        "owner",
+		OwnerPublicKey: pubKey,
 	}, nil)
 	mockReferencePackage.On("GetReferenceFromLookupHash", mock.Anything, mock.Anything, mock.Anything).Return(&reference.Ref{
 		ID:   123,
@@ -285,11 +307,17 @@ func TestBlobberGRPCService_ListEntities_InvalidAuthTicket(t *testing.T) {
 }
 
 func TestBlobberGRPCService_GetObjectPath_Success(t *testing.T) {
+	allocationTx := randString(32)
+
+	pubKey, _, signScheme := GeneratePubPrivateKey(t)
+	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
 	req := &blobbergrpc.GetObjectPathRequest{
 		Context: &blobbergrpc.RequestContext{
-			Client:     "owner",
-			ClientKey:  "",
-			Allocation: "",
+			Client:          "owner",
+			ClientKey:       "",
+			Allocation:      allocationTx,
+			ClientSignature: clientSignature,
 		},
 		Allocation: "",
 		Path:       "path",
@@ -298,12 +326,13 @@ func TestBlobberGRPCService_GetObjectPath_Success(t *testing.T) {
 
 	mockStorageHandler := &storageHandlerI{}
 	mockReferencePackage := &mocks.PackageHandler{}
-	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).Return(&allocation.Allocation{
-		ID:      "allocationId",
-		Tx:      req.Allocation,
-		OwnerID: "owner",
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Context.Allocation, false).Return(&allocation.Allocation{
+		ID:             "allocationId",
+		Tx:             req.Context.Allocation,
+		OwnerID:        "owner",
+		OwnerPublicKey: pubKey,
 	}, nil)
-	mockReferencePackage.On("GetObjectPathGRPC", mock.Anything, mock.Anything, mock.Anything).Return(&blobbergrpc.ObjectPath{
+	mockReferencePackage.On("GetObjectPath", mock.Anything, mock.Anything, mock.Anything).Return(&reference.ObjectPath{
 		RootHash:     "hash",
 		FileBlockNum: 120,
 	}, nil)
@@ -347,11 +376,17 @@ func TestBlobberGRPCService_GetObjectPath_InvalidAllocation(t *testing.T) {
 }
 
 func TestBlobberGRPCService_GetReferencePath_Success(t *testing.T) {
+	allocationTx := randString(32)
+
+	pubKey, _, signScheme := GeneratePubPrivateKey(t)
+	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
 	req := &blobbergrpc.GetReferencePathRequest{
 		Context: &blobbergrpc.RequestContext{
-			Client:     "client",
-			ClientKey:  "",
-			Allocation: "",
+			Client:          "client",
+			ClientKey:       "",
+			Allocation:      allocationTx,
+			ClientSignature: clientSignature,
 		},
 		Paths:      `["something"]`,
 		Path:       "",
@@ -360,10 +395,11 @@ func TestBlobberGRPCService_GetReferencePath_Success(t *testing.T) {
 
 	mockStorageHandler := &storageHandlerI{}
 	mockReferencePackage := &mocks.PackageHandler{}
-	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).Return(&allocation.Allocation{
-		ID:      "allocationId",
-		Tx:      req.Allocation,
-		OwnerID: "owner",
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Context.Allocation, false).Return(&allocation.Allocation{
+		ID:             "allocationId",
+		Tx:             req.Context.Allocation,
+		OwnerID:        "owner",
+		OwnerPublicKey: pubKey,
 	}, nil)
 	mockReferencePackage.On("GetReferencePathFromPaths", mock.Anything, mock.Anything, mock.Anything).Return(&reference.Ref{
 		Name:     "test",
@@ -382,11 +418,17 @@ func TestBlobberGRPCService_GetReferencePath_Success(t *testing.T) {
 }
 
 func TestBlobberGRPCService_GetReferencePath_InvalidPaths(t *testing.T) {
+	allocationTx := randString(32)
+
+	pubKey, _, signScheme := GeneratePubPrivateKey(t)
+	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
 	req := &blobbergrpc.GetReferencePathRequest{
 		Context: &blobbergrpc.RequestContext{
-			Client:     "client",
-			ClientKey:  "",
-			Allocation: "",
+			Client:          "client",
+			ClientKey:       "",
+			Allocation:      allocationTx,
+			ClientSignature: clientSignature,
 		},
 		Paths:      `["something"]`,
 		Path:       "",
@@ -395,10 +437,11 @@ func TestBlobberGRPCService_GetReferencePath_InvalidPaths(t *testing.T) {
 
 	mockStorageHandler := &storageHandlerI{}
 	mockReferencePackage := &mocks.PackageHandler{}
-	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).Return(&allocation.Allocation{
-		ID:      "allocationId",
-		Tx:      req.Allocation,
-		OwnerID: "owner",
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Context.Allocation, false).Return(&allocation.Allocation{
+		ID:             "allocationId",
+		Tx:             req.Context.Allocation,
+		OwnerID:        "owner",
+		OwnerPublicKey: pubKey,
 	}, nil)
 	mockReferencePackage.On("GetReferencePathFromPaths", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("invalid paths"))
 
@@ -413,11 +456,17 @@ func TestBlobberGRPCService_GetReferencePath_InvalidPaths(t *testing.T) {
 }
 
 func TestBlobberGRPCService_GetObjectTree_Success(t *testing.T) {
+	allocationTx := randString(32)
+
+	pubKey, _, signScheme := GeneratePubPrivateKey(t)
+	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
 	req := &blobbergrpc.GetObjectTreeRequest{
 		Context: &blobbergrpc.RequestContext{
-			Client:     "owner",
-			ClientKey:  "",
-			Allocation: "",
+			Client:          "owner",
+			ClientKey:       "",
+			Allocation:      allocationTx,
+			ClientSignature: clientSignature,
 		},
 		Path:       "something",
 		Allocation: "",
@@ -425,10 +474,11 @@ func TestBlobberGRPCService_GetObjectTree_Success(t *testing.T) {
 
 	mockStorageHandler := &storageHandlerI{}
 	mockReferencePackage := &mocks.PackageHandler{}
-	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).Return(&allocation.Allocation{
-		ID:      "allocationId",
-		Tx:      req.Allocation,
-		OwnerID: "owner",
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Context.Allocation, false).Return(&allocation.Allocation{
+		ID:             "allocationId",
+		Tx:             req.Context.Allocation,
+		OwnerID:        "owner",
+		OwnerPublicKey: pubKey,
 	}, nil)
 	mockReferencePackage.On("GetObjectTree", mock.Anything, mock.Anything, mock.Anything).Return(&reference.Ref{
 		Name:     "test",

@@ -4,10 +4,16 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"runtime/pprof"
-	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
@@ -29,6 +35,8 @@ func GetMetaDataStore() *datastore.Store {
 
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
+	svc := newGRPCBlobberService(&storageHandler, &packageHandler{})
+
 	//object operations
 	r.HandleFunc("/v1/file/upload/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler))))
 	r.HandleFunc("/v1/file/download/{allocation}", common.UserRateLimit(common.ToByteStream(WithConnection(DownloadHandler))))
@@ -42,13 +50,13 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CalculateHashHandler))))
 
 	//object info related apis
-	r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler))))
-	r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
-	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
-	r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler))))
-	r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler))))
-	r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
-	r.HandleFunc("/v1/file/objecttree/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectTreeHandler))))
+	r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler(svc))))).Methods("GET")
+	r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler(svc))))).Methods("POST")
+	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler(svc))))).Methods("POST")
+	r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler(svc))))).Methods("GET")
+	r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler(svc))))).Methods("GET")
+	r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler(svc))))).Methods("GET")
+	r.HandleFunc("/v1/file/objecttree/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectTreeHandler(svc))))).Methods("GET")
 
 	//admin related
 	r.HandleFunc("/_debug", common.UserRateLimit(common.ToJSONResponse(DumpGoRoutines)))
@@ -113,26 +121,64 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	return ctx
 }
 
-func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.GetAllocationDetails(ctx, r)
-	if err != nil {
-		return nil, err
+func setupHandlerGRPCContext(r *http.Request) *blobbergrpc.RequestContext {
+	var vars = mux.Vars(r)
+	return &blobbergrpc.RequestContext{
+		Client:          r.Header.Get(common.ClientHeader),
+		ClientKey:       r.Header.Get(common.ClientKeyHeader),
+		Allocation:      vars["allocation"],
+		ClientSignature: r.Header.Get(common.ClientSignatureHeader),
 	}
-
-	return response, nil
 }
 
-func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
+func AllocationHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		reqCtx := setupHandlerGRPCContext(r)
 
-	response, err := storageHandler.GetFileMeta(ctx, r)
-	if err != nil {
-		return nil, err
+		getAllocationResp, err := svc.GetAllocation(ctx, &blobbergrpc.GetAllocationRequest{
+			Context: reqCtx,
+			Id:      r.FormValue("id"),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return GetAllocationResponseHandler(getAllocationResp), nil
+	}
+}
+
+func GetAllocationResponseHandler(resp *blobbergrpc.GetAllocationResponse) *allocation.Allocation {
+	return GRPCAllocationToAllocation(resp.Allocation)
+}
+
+func FileMetaHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		reqCtx := setupHandlerGRPCContext(r)
+
+		getFileMetaDataResp, err := svc.GetFileMetaData(ctx, &blobbergrpc.GetFileMetaDataRequest{
+			Context:    reqCtx,
+			Path:       r.FormValue("path"),
+			PathHash:   r.FormValue("path_hash"),
+			AuthToken:  r.FormValue("auth_token"),
+			Allocation: reqCtx.Allocation,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return GetFileMetaDataResponseHandler(getFileMetaDataResp), nil
+	}
+}
+
+func GetFileMetaDataResponseHandler(resp *blobbergrpc.GetFileMetaDataResponse) map[string]interface{} {
+	var collaborators []reference.Collaborator
+	for _, c := range resp.Collaborators {
+		collaborators = append(collaborators, *GRPCCollaboratorToCollaborator(c))
 	}
 
-	return response, nil
+	result := reference.FileRefGRPCToFileRef(resp.MetaData).GetListingData(context.Background())
+	result["collaborators"] = collaborators
+	return result
 }
 
 func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -157,15 +203,37 @@ func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, err
 	return response, nil
 }
 
-func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
+func FileStatsHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		reqCtx := setupHandlerGRPCContext(r)
 
-	response, err := storageHandler.GetFileStats(ctx, r)
-	if err != nil {
-		return nil, err
+		getFileStatsResponse, err := svc.GetFileStats(ctx, &blobbergrpc.GetFileStatsRequest{
+			Context:    reqCtx,
+			Path:       r.FormValue("path"),
+			PathHash:   r.FormValue("path_hash"),
+			Allocation: reqCtx.Allocation,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return GetFileStatsResponseHandler(getFileStatsResponse), nil
+	}
+}
+
+func GetFileStatsResponseHandler(resp *blobbergrpc.GetFileStatsResponse) map[string]interface{} {
+	ctx := context.Background()
+	result := reference.FileRefGRPCToFileRef(resp.MetaData).GetListingData(ctx)
+
+	statsMap := make(map[string]interface{})
+	statsBytes, _ := json.Marshal(FileStatsGRPCToFileStats(resp.Stats))
+	_ = json.Unmarshal(statsBytes, &statsMap)
+
+	for k, v := range statsMap {
+		result[k] = v
 	}
 
-	return response, nil
+	return result
 }
 
 /*DownloadHandler is the handler to respond to download requests from clients*/
@@ -181,15 +249,37 @@ func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 }
 
 /*ListHandler is the handler to respond to upload requests fro clients*/
-func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
+func ListHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		reqCtx := setupHandlerGRPCContext(r)
 
-	response, err := storageHandler.ListEntities(ctx, r)
-	if err != nil {
-		return nil, err
+		listEntitiesResponse, err := svc.ListEntities(ctx, &blobbergrpc.ListEntitiesRequest{
+			Context:    reqCtx,
+			Path:       r.FormValue("path"),
+			PathHash:   r.FormValue("path_hash"),
+			AuthToken:  r.FormValue("auth_token"),
+			Allocation: reqCtx.Allocation,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return ListEntitesResponseHandler(listEntitiesResponse), nil
+	}
+}
+
+func ListEntitesResponseHandler(resp *blobbergrpc.ListEntitiesResponse) *ListResult {
+	ctx := context.Background()
+	var entities []map[string]interface{}
+	for i := range resp.Entities {
+		entities = append(entities, reference.FileRefGRPCToFileRef(resp.Entities[i]).GetListingData(ctx))
 	}
 
-	return response, nil
+	return &ListResult{
+		AllocationRoot: resp.AllocationRoot,
+		Meta:           reference.FileRefGRPCToFileRef(resp.MetaData).GetListingData(ctx),
+		Entities:       entities,
+	}
 }
 
 /*CommitHandler is the handler to respond to upload requests fro clients*/
@@ -204,40 +294,93 @@ func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
-	defer canceler()
+func ReferencePathHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		reqCtx := setupHandlerGRPCContext(r)
 
-	ctx = setupHandlerContext(ctx, r)
+		getReferencePathResponse, err := svc.GetReferencePath(ctx, &blobbergrpc.GetReferencePathRequest{
+			Context:    reqCtx,
+			Paths:      r.FormValue("paths"),
+			Path:       r.FormValue("path"),
+			Allocation: reqCtx.Allocation,
+		})
+		if err != nil {
+			return nil, err
+		}
 
-	response, err := storageHandler.GetReferencePath(ctx, r)
-	if err != nil {
-		return nil, err
+		return GetReferencePathResponseHandler(getReferencePathResponse), nil
 	}
-
-	return response, nil
 }
 
-func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.GetObjectPath(ctx, r)
-	if err != nil {
-		return nil, err
+func GetReferencePathResponseHandler(getReferencePathResponse *blobbergrpc.GetReferencePathResponse) *ReferencePathResult {
+	var recursionCount int
+	return &ReferencePathResult{
+		ReferencePath: ReferencePathGRPCToReferencePath(&recursionCount, getReferencePathResponse.ReferencePath),
+		LatestWM:      WriteMarkerGRPCToWriteMarker(getReferencePathResponse.LatestWM),
 	}
-
-	return response, nil
 }
 
-func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
+func ObjectPathHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		reqCtx := setupHandlerGRPCContext(r)
 
-	response, err := storageHandler.GetObjectTree(ctx, r)
-	if err != nil {
-		return nil, err
+		getObjectPathResponse, err := svc.GetObjectPath(ctx, &blobbergrpc.GetObjectPathRequest{
+			Context:    reqCtx,
+			Allocation: reqCtx.Allocation,
+			Path:       r.FormValue("path"),
+			BlockNum:   r.FormValue("block_num"),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return GetObjectPathResponseHandler(getObjectPathResponse), nil
 	}
+}
 
-	return response, nil
+func GetObjectPathResponseHandler(getObjectPathResponse *blobbergrpc.GetObjectPathResponse) *ObjectPathResult {
+	ctx := context.Background()
+	path := reference.FileRefGRPCToFileRef(getObjectPathResponse.ObjectPath.Path).GetListingData(ctx)
+	var pathList []map[string]interface{}
+	for _, pl := range getObjectPathResponse.ObjectPath.PathList {
+		pathList = append(pathList, reference.FileRefGRPCToFileRef(pl).GetListingData(ctx))
+	}
+	path["list"] = pathList
+
+	return &ObjectPathResult{
+		ObjectPath: &reference.ObjectPath{
+			RootHash:     getObjectPathResponse.ObjectPath.RootHash,
+			Meta:         reference.FileRefGRPCToFileRef(getObjectPathResponse.ObjectPath.Meta).GetListingData(ctx),
+			Path:         path,
+			FileBlockNum: getObjectPathResponse.ObjectPath.FileBlockNum,
+		},
+		LatestWM: WriteMarkerGRPCToWriteMarker(getObjectPathResponse.LatestWriteMarker),
+	}
+}
+
+func ObjectTreeHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		reqCtx := setupHandlerGRPCContext(r)
+
+		getObjectTreeResponse, err := svc.GetObjectTree(ctx, &blobbergrpc.GetObjectTreeRequest{
+			Context:    reqCtx,
+			Path:       r.FormValue("path"),
+			Allocation: reqCtx.Allocation,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return GetObjectTreeResponseHandler(getObjectTreeResponse), nil
+	}
+}
+
+func GetObjectTreeResponseHandler(getObjectTreeResponse *blobbergrpc.GetObjectTreeResponse) *ReferencePathResult {
+	var recursionCount int
+	return &ReferencePathResult{
+		ReferencePath: ReferencePathGRPCToReferencePath(&recursionCount, getObjectTreeResponse.ReferencePath),
+		LatestWM:      WriteMarkerGRPCToWriteMarker(getObjectTreeResponse.LatestWM),
+	}
 }
 
 func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {

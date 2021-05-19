@@ -3,6 +3,7 @@ package reference
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 
@@ -90,84 +91,10 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 	return &retObj, nil
 }
 
-// TODO needs to be refactored, current implementation can probably be heavily simplified
-func GetObjectPathGRPC(ctx context.Context, allocationID string, blockNum int64) (*blobbergrpc.ObjectPath, error) {
-
-	rootRef, err := GetRefWithSortedChildren(ctx, allocationID, "/")
-	if err != nil {
-		return nil, common.NewError("invalid_dir_struct", "Allocation root corresponds to an invalid directory structure")
-	}
-
-	if rootRef.NumBlocks < blockNum {
-		return nil, common.NewError("invalid_block_num", fmt.Sprintf("Invalid block number %d/%d", rootRef.NumBlocks, blockNum))
-	}
-
-	if rootRef.NumBlocks == 0 {
-		children := make([]*blobbergrpc.FileRef, len(rootRef.Children))
-		for idx, child := range rootRef.Children {
-			children[idx] = FileRefToFileRefGRPC(child)
-		}
-		path := FileRefToFileRefGRPC(rootRef)
-		path.DirMetaData.Children = children
-		return &blobbergrpc.ObjectPath{
-			RootHash:     rootRef.Hash,
-			Path:         path,
-			FileBlockNum: 0,
-		}, nil
-	}
-
-	found := false
-	var curRef *Ref
-	curRef = rootRef
-	remainingBlocks := blockNum
-
-	result := curRef.GetListingData(ctx)
-	curResult := result
-
-	for !found {
-		list := make([]map[string]interface{}, len(curRef.Children))
-		for idx, child := range curRef.Children {
-			list[idx] = child.GetListingData(ctx)
-		}
-		curResult["list"] = list
-		for idx, child := range curRef.Children {
-
-			if child.NumBlocks < remainingBlocks {
-				remainingBlocks = remainingBlocks - child.NumBlocks
-				continue
-			}
-			if child.Type == FILE {
-				found = true
-				curRef = child
-				break
-			}
-			curRef, err = GetRefWithSortedChildren(ctx, allocationID, child.Path)
-			if err != nil || len(curRef.Hash) == 0 {
-				return nil, common.NewError("failed_object_path", "Failed to get the object path")
-			}
-			curResult = list[idx]
-			break
-		}
-	}
-	if !found {
-		return nil, common.NewError("invalid_parameters", "Block num was not found")
-	}
-
-	var children []*blobbergrpc.FileRef
-	for _, child := range rootRef.Children {
-		children = append(children, FileRefToFileRefGRPC(child))
-	}
-	path := FileRefToFileRefGRPC(rootRef)
-	path.DirMetaData.Children = children
-	return &blobbergrpc.ObjectPath{
-		RootHash:     rootRef.Hash,
-		Meta:         FileRefToFileRefGRPC(curRef),
-		Path:         path,
-		FileBlockNum: remainingBlocks,
-	}, nil
-}
-
 func FileRefToFileRefGRPC(ref *Ref) *blobbergrpc.FileRef {
+	if ref == nil {
+		return nil
+	}
 
 	var fileMetaData *blobbergrpc.FileMetaData
 	var dirMetaData *blobbergrpc.DirMetaData
@@ -234,5 +161,72 @@ func convertDirRefToDirMetaDataGRPC(dirref *Ref) *blobbergrpc.DirMetaData {
 		Size:       dirref.Size,
 		CreatedAt:  dirref.CreatedAt.UnixNano(),
 		UpdatedAt:  dirref.UpdatedAt.UnixNano(),
+	}
+}
+
+func FileRefGRPCToFileRef(ref *blobbergrpc.FileRef) *Ref {
+	if ref == nil {
+		return nil
+	}
+
+	switch ref.Type {
+	case FILE:
+		return convertFileMetaDataGRPCToFileRef(ref.FileMetaData)
+	case DIRECTORY:
+		return convertDirMetaDataGRPCToDirRef(ref.DirMetaData)
+	}
+
+	return nil
+}
+
+func convertFileMetaDataGRPCToFileRef(metaData *blobbergrpc.FileMetaData) *Ref {
+	var commitMetaTxnsGRPC []CommitMetaTxn
+	for _, c := range metaData.CommitMetaTxns {
+		commitMetaTxnsGRPC = append(commitMetaTxnsGRPC, CommitMetaTxn{
+			RefID:     c.RefId,
+			TxnID:     c.TxnId,
+			CreatedAt: time.Unix(0, c.CreatedAt),
+		})
+	}
+	return &Ref{
+		Type:                metaData.Type,
+		LookupHash:          metaData.LookupHash,
+		Name:                metaData.Name,
+		Path:                metaData.Path,
+		Hash:                metaData.Hash,
+		NumBlocks:           metaData.NumBlocks,
+		PathHash:            metaData.PathHash,
+		CustomMeta:          metaData.CustomMeta,
+		ContentHash:         metaData.ContentHash,
+		Size:                metaData.Size,
+		MerkleRoot:          metaData.MerkleRoot,
+		ActualFileSize:      metaData.ActualFileSize,
+		ActualFileHash:      metaData.ActualFileHash,
+		MimeType:            metaData.MimeType,
+		ThumbnailSize:       metaData.ThumbnailSize,
+		ThumbnailHash:       metaData.ThumbnailHash,
+		ActualThumbnailSize: metaData.ActualThumbnailSize,
+		ActualThumbnailHash: metaData.ActualThumbnailHash,
+		EncryptedKey:        metaData.EncryptedKey,
+		Attributes:          metaData.Attributes,
+		OnCloud:             metaData.OnCloud,
+		CommitMetaTxns:      commitMetaTxnsGRPC,
+		CreatedAt:           time.Unix(0, metaData.CreatedAt),
+		UpdatedAt:           time.Unix(0, metaData.UpdatedAt),
+	}
+}
+
+func convertDirMetaDataGRPCToDirRef(dirref *blobbergrpc.DirMetaData) *Ref {
+	return &Ref{
+		Type:       dirref.Type,
+		LookupHash: dirref.LookupHash,
+		Name:       dirref.Name,
+		Path:       dirref.Path,
+		Hash:       dirref.Hash,
+		NumBlocks:  dirref.NumBlocks,
+		PathHash:   dirref.PathHash,
+		Size:       dirref.Size,
+		CreatedAt:  time.Unix(0, dirref.CreatedAt),
+		UpdatedAt:  time.Unix(0, dirref.UpdatedAt),
 	}
 }

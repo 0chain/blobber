@@ -339,11 +339,10 @@ func main() {
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT",
 		"DELETE", "OPTIONS"})
 
-	rl := common.ConfigRateLimits()
 	initHandlers(r)
 	initServer()
 
-	grpcServer := handler.NewServerWithMiddlewares(rl)
+	grpcServer := handler.NewServerWithMiddlewares(common.ConfigRateLimits())
 	handler.RegisterGRPCServices(r, grpcServer)
 
 	rHandler := handlers.CORS(originsOk, headersOk, methodsOk)(r)
