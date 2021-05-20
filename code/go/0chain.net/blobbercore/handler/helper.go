@@ -12,26 +12,15 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 )
 
-func setupGRPCHandlerContext(ctx context.Context, r *blobbergrpc.RequestContext) context.Context {
-	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY,
-		r.Client)
-	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY,
-		r.ClientKey)
-	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY,
-		r.Allocation)
-	return ctx
-}
-
 func RegisterGRPCServices(r *mux.Router, server *grpc.Server) {
-	packHandler := &packageHandler{}
-	blobberService := newGRPCBlobberService(&storageHandler, packHandler)
-	mux := runtime.NewServeMux()
+	blobberService := newGRPCBlobberService(&storageHandler, &packageHandler{})
+	grpcGatewayHandler := runtime.NewServeMux()
+
 	blobbergrpc.RegisterBlobberServer(server, blobberService)
-	_ = blobbergrpc.RegisterBlobberHandlerServer(context.Background(), mux, blobberService)
-	r.PathPrefix("/").Handler(mux)
+	_ = blobbergrpc.RegisterBlobberHandlerServer(context.Background(), grpcGatewayHandler, blobberService)
+	r.PathPrefix("/").Handler(grpcGatewayHandler)
 }
 
 type StorageHandlerI interface {

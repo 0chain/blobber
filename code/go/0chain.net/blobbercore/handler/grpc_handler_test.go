@@ -125,8 +125,7 @@ func Test_GetAllocation(t *testing.T) {
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
-					Id:      alloc.Tx,
-					Context: &blobbergrpc.RequestContext{},
+					Id: alloc.Tx,
 				},
 			},
 			expectCommit: true,
@@ -157,8 +156,7 @@ func Test_GetAllocation(t *testing.T) {
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
-					Id:      alloc.Tx,
-					Context: &blobbergrpc.RequestContext{},
+					Id: alloc.Tx,
 				},
 			},
 			expectCommit: true,
@@ -189,8 +187,7 @@ func Test_GetAllocation(t *testing.T) {
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
-					Id:      expiredAlloc.Tx,
-					Context: &blobbergrpc.RequestContext{},
+					Id: expiredAlloc.Tx,
 				},
 			},
 			wantCode: codes.Unknown.String(),
@@ -206,8 +203,7 @@ func Test_GetAllocation(t *testing.T) {
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
-					Id:      "",
-					Context: &blobbergrpc.RequestContext{},
+					Id: "",
 				},
 			},
 			wantCode: codes.Unknown.String(),
@@ -223,8 +219,7 @@ func Test_GetAllocation(t *testing.T) {
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
-					Id:      "id",
-					Context: &blobbergrpc.RequestContext{},
+					Id: "id",
 				},
 			},
 			wantCode: codes.Unknown.String(),
