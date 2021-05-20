@@ -42,6 +42,7 @@ type StorageHandlerI interface {
 // PackageHandler is an interface for all static functions that may need to be mocked
 type PackageHandler interface {
 	GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*reference.Ref, error)
+	GetReferenceLookup(ctx context.Context, allocationID string, path string) string
 	GetCommitMetaTxns(ctx context.Context, refID int64) ([]reference.CommitMetaTxn, error)
 	GetCollaborators(ctx context.Context, refID int64) ([]reference.Collaborator, error)
 	IsACollaborator(ctx context.Context, refID int64, clientID string) bool
@@ -51,6 +52,8 @@ type PackageHandler interface {
 	GetObjectPathGRPC(ctx context.Context, allocationID string, blockNum int64) (*blobbergrpc.ObjectPath, error)
 	GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*reference.Ref, error)
 	GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
+	GetAllocationChanges(ctx context.Context, connectionID string,
+		allocationID string, clientID string) (*allocation.AllocationChangeCollector, error)
 }
 
 type packageHandler struct{}
@@ -83,6 +86,10 @@ func (r *packageHandler) GetReferenceFromLookupHash(ctx context.Context, allocat
 	return reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
 }
 
+func (r *packageHandler) GetReferenceLookup(ctx context.Context, allocationID string, path string) string {
+	return reference.GetReferenceLookup(allocationID, path)
+}
+
 func (r *packageHandler) GetCommitMetaTxns(ctx context.Context, refID int64) ([]reference.CommitMetaTxn, error) {
 	return reference.GetCommitMetaTxns(ctx, refID)
 }
@@ -93,4 +100,10 @@ func (r *packageHandler) GetCollaborators(ctx context.Context, refID int64) ([]r
 
 func (r *packageHandler) IsACollaborator(ctx context.Context, refID int64, clientID string) bool {
 	return reference.IsACollaborator(ctx, refID, clientID)
+}
+
+func (r *packageHandler) GetAllocationChanges(ctx context.Context, connectionID string,
+	allocationID string, clientID string) (*allocation.AllocationChangeCollector, error) {
+
+	return allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 }

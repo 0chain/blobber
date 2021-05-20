@@ -61,7 +61,7 @@ func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, r *blob
 		if len(path) == 0 {
 			return nil, common.NewError("invalid_parameters", "Invalid path")
 		}
-		pathHash = reference.GetReferenceLookup(alloc.ID, path)
+		pathHash = b.packageHandler.GetReferenceLookup(ctx, alloc.ID, path)
 	}
 
 	if alloc.OwnerID != clientID {
@@ -76,7 +76,7 @@ func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, r *blob
 	}
 
 	var conn *allocation.AllocationChangeCollector
-	conn, err = allocation.GetAllocationChanges(ctx, connID, alloc.ID, clientID)
+	conn, err = b.packageHandler.GetAllocationChanges(ctx, connID, alloc.ID, clientID)
 	if err != nil {
 		return nil, common.NewErrorf("update_object_attributes",
 			"reading metadata for connection: %v", err)
@@ -88,7 +88,7 @@ func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, r *blob
 	defer mutex.Unlock()
 
 	var ref *reference.Ref
-	ref, err = reference.GetReferenceFromLookupHash(ctx, alloc.ID, pathHash)
+	ref, err = b.packageHandler.GetReferenceFromLookupHash(ctx, alloc.ID, pathHash)
 	if err != nil {
 		return nil, common.NewErrorf("update_object_attributes",
 			"invalid file path: %v", err)
