@@ -32,7 +32,7 @@ func newGRPCBlobberService(sh StorageHandlerI, r PackageHandler) *blobberGRPCSer
 }
 
 func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobbergrpc.GetAllocationRequest) (*blobbergrpc.GetAllocationResponse, error) {
-	ctx = setupGRPCHandlerContext(ctx, request.Context)
+	ctx = setupGRPCHandlerContext(ctx, GetGRPCMetaDataFromCtx(ctx), "")
 
 	allocation, err := b.storageHandler.verifyAllocation(ctx, request.Id, false)
 	if err != nil {
@@ -44,13 +44,15 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 
 func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {
 	logger := ctxzap.Extract(ctx)
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, req.Context.Allocation, true)
+	md := GetGRPCMetaDataFromCtx(ctx)
+
+	allocationObj, err := b.storageHandler.verifyAllocation(ctx, req.Allocation, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 	allocationID := allocationObj.ID
 
-	clientID := req.Context.Client
+	clientID := md.Client
 	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
@@ -111,20 +113,21 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 }
 
 func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.GetFileStatsRequest) (*blobbergrpc.GetFileStatsResponse, error) {
-	allocationTx := req.Context.Allocation
+	allocationTx := req.Allocation
 	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, true)
+	md := GetGRPCMetaDataFromCtx(ctx)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 	allocationID := allocationObj.ID
 
-	valid, err := verifySignatureFromRequest(allocationTx, req.Context.ClientSignature, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, md.ClientSignature, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	clientID := req.Context.Client
+	clientID := md.Client
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
@@ -162,9 +165,10 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 
 func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.ListEntitiesRequest) (*blobbergrpc.ListEntitiesResponse, error) {
 	logger := ctxzap.Extract(ctx)
+	md := GetGRPCMetaDataFromCtx(ctx)
 
-	clientID := req.Context.Client
-	allocationTx := req.Context.Allocation
+	clientID := md.Client
+	allocationTx := req.Allocation
 	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, true)
 
 	if err != nil {
@@ -228,20 +232,21 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.
 }
 
 func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc.GetObjectPathRequest) (*blobbergrpc.GetObjectPathResponse, error) {
-	allocationTx := req.Context.Allocation
+	allocationTx := req.Allocation
 	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
+	md := GetGRPCMetaDataFromCtx(ctx)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 	allocationID := allocationObj.ID
 
-	valid, err := verifySignatureFromRequest(allocationTx, req.Context.ClientSignature, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, md.ClientSignature, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	clientID := req.Context.Client
+	clientID := md.Client
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
@@ -300,8 +305,8 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 }
 
 func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobbergrpc.GetReferencePathRequest) (*blobbergrpc.GetReferencePathResponse, error) {
-
-	allocationTx := req.Context.Allocation
+	md := GetGRPCMetaDataFromCtx(ctx)
+	allocationTx := req.Allocation
 	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
 
 	if err != nil {
@@ -309,12 +314,12 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 	}
 	allocationID := allocationObj.ID
 
-	valid, err := verifySignatureFromRequest(allocationTx, req.Context.ClientSignature, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, md.ClientSignature, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	clientID := req.Context.Client
+	clientID := md.Client
 	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Please pass clientID in the header")
 	}
@@ -377,20 +382,21 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 }
 
 func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc.GetObjectTreeRequest) (*blobbergrpc.GetObjectTreeResponse, error) {
-	allocationTx := req.Context.Allocation
+	allocationTx := req.Allocation
 	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
+	md := GetGRPCMetaDataFromCtx(ctx)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 	allocationID := allocationObj.ID
 
-	valid, err := verifySignatureFromRequest(allocationTx, req.Context.ClientSignature, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, md.ClientSignature, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	clientID := req.Context.Client
+	clientID := md.Client
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}

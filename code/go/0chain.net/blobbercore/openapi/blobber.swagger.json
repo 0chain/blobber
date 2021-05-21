@@ -35,30 +35,6 @@
         },
         "parameters": [
           {
-            "name": "context.client",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.clientKey",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.allocation",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.clientSignature",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
             "name": "id",
             "in": "query",
             "required": false,
@@ -92,30 +68,6 @@
             "name": "allocation",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "context.client",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.clientKey",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.allocation",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.clientSignature",
-            "in": "query",
-            "required": false,
             "type": "string"
           },
           {
@@ -167,30 +119,6 @@
             "type": "string"
           },
           {
-            "name": "context.client",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.clientKey",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.allocation",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.clientSignature",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
             "name": "path",
             "in": "query",
             "required": false,
@@ -239,30 +167,6 @@
             "type": "string"
           },
           {
-            "name": "context.client",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.clientKey",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.allocation",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.clientSignature",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
             "name": "Path",
             "in": "query",
             "required": false,
@@ -305,30 +209,6 @@
             "type": "string"
           },
           {
-            "name": "context.client",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.clientKey",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.allocation",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.clientSignature",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
             "name": "path",
             "in": "query",
             "required": false,
@@ -362,30 +242,6 @@
             "name": "allocation",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "Context.client",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "Context.clientKey",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "Context.allocation",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "Context.clientSignature",
-            "in": "query",
-            "required": false,
             "type": "string"
           },
           {
@@ -428,30 +284,6 @@
             "name": "allocation",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "context.client",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.clientKey",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.allocation",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "context.clientSignature",
-            "in": "query",
-            "required": false,
             "type": "string"
           },
           {
@@ -903,23 +735,6 @@
           "items": {
             "$ref": "#/definitions/v1ReferencePath"
           }
-        }
-      }
-    },
-    "v1RequestContext": {
-      "type": "object",
-      "properties": {
-        "client": {
-          "type": "string"
-        },
-        "clientKey": {
-          "type": "string"
-        },
-        "allocation": {
-          "type": "string"
-        },
-        "clientSignature": {
-          "type": "string"
         }
       }
     },
