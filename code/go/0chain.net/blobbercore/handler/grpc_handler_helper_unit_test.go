@@ -8,9 +8,14 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"testing"
 
-	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	coreConfig "github.com/0chain/blobber/code/go/0chain.net/core/config"
+	"github.com/0chain/gosdk/core/zcncrypto"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -464,4 +469,20 @@ VALUES (1234,'exampleId','exampleId:examplePath','exampleId:examplePath','d','ro
 	}
 
 	return nil
+}
+
+func GeneratePubPrivateKey(t *testing.T) (string, string, zcncrypto.SignatureScheme) {
+
+	config.Configuration.Config = &coreConfig.Config{SignatureScheme: "bls0chain"}
+	signScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
+	wallet, err := signScheme.GenerateKeys()
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyPair := wallet.Keys[0]
+
+	_ = signScheme.SetPrivateKey(keyPair.PrivateKey)
+	_ = signScheme.SetPublicKey(keyPair.PublicKey)
+
+	return keyPair.PublicKey, keyPair.PrivateKey, signScheme
 }

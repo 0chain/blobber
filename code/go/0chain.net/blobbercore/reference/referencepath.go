@@ -4,8 +4,8 @@ import (
 	"context"
 	"path/filepath"
 
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
 func GetReferencePath(ctx context.Context, allocationID string, path string) (*Ref, error) {

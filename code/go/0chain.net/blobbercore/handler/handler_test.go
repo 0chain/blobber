@@ -1,26 +1,9 @@
 package handler
 
 import (
-	"0chain.net/blobbercore/allocation"
-	bconfig "0chain.net/blobbercore/config"
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/blobbercore/filestore"
-	"0chain.net/blobbercore/reference"
-	"0chain.net/core/chain"
-	"0chain.net/core/common"
-	"0chain.net/core/config"
-	"0chain.net/core/encryption"
-	"0chain.net/core/logging"
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/0chain/gosdk/core/zcncrypto"
-	"github.com/0chain/gosdk/zcncore"
-	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/gorilla/mux"
-	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
-	"gorm.io/gorm"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -29,6 +12,24 @@ import (
 	"regexp"
 	"testing"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	bconfig "github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/config"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/core/zcncrypto"
+	"github.com/0chain/gosdk/zcncore"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 func init() {
@@ -88,12 +89,13 @@ func setup(t *testing.T) {
 
 func setupHandlers() (*mux.Router, map[string]string) {
 	router := mux.NewRouter()
+	svc := newGRPCBlobberService(&storageHandler, &packageHandler{})
 
 	opPath := "/v1/file/objectpath/{allocation}"
 	opName := "Object_Path"
 	router.HandleFunc(opPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(ObjectPathHandler),
+			WithReadOnlyConnection(ObjectPathHandler(svc)),
 		),
 	),
 	).Name(opName)
@@ -102,7 +104,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	rpName := "Reference_Path"
 	router.HandleFunc(rpPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(ReferencePathHandler),
+			WithReadOnlyConnection(ReferencePathHandler(svc)),
 		),
 	),
 	).Name(rpName)
@@ -111,7 +113,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	sName := "Stats"
 	router.HandleFunc(sPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(FileStatsHandler),
+			WithReadOnlyConnection(FileStatsHandler(svc)),
 		),
 	),
 	).Name(sName)
@@ -120,7 +122,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	otName := "Object_Tree"
 	router.HandleFunc(otPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(ObjectTreeHandler),
+			WithReadOnlyConnection(ObjectTreeHandler(svc)),
 		),
 	),
 	).Name(otName)

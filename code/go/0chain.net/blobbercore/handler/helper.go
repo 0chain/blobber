@@ -3,16 +3,16 @@ package handler
 import (
 	"context"
 
-	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/reference"
-	"0chain.net/blobbercore/stats"
-	"0chain.net/blobbercore/writemarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/gorilla/mux"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 
-	"0chain.net/blobbercore/blobbergrpc"
-	"0chain.net/blobbercore/constants"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 )
 
 func setupGRPCHandlerContext(ctx context.Context, r *blobbergrpc.RequestContext) context.Context {
@@ -48,7 +48,7 @@ type PackageHandler interface {
 	GetFileStats(ctx context.Context, refID int64) (*stats.FileStats, error)
 	GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*writemarker.WriteMarkerEntity, error)
 	GetRefWithChildren(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
-	GetObjectPathGRPC(ctx context.Context, allocationID string, blockNum int64) (*blobbergrpc.ObjectPath, error)
+	GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*reference.ObjectPath, error)
 	GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*reference.Ref, error)
 	GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 }
@@ -67,8 +67,8 @@ func (r *packageHandler) GetRefWithChildren(ctx context.Context, allocationID st
 	return reference.GetRefWithChildren(ctx, allocationID, path)
 }
 
-func (r *packageHandler) GetObjectPathGRPC(ctx context.Context, allocationID string, blockNum int64) (*blobbergrpc.ObjectPath, error) {
-	return reference.GetObjectPathGRPC(ctx, allocationID, blockNum)
+func (r *packageHandler) GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*reference.ObjectPath, error) {
+	return reference.GetObjectPath(ctx, allocationID, blockNum)
 }
 
 func (r *packageHandler) GetFileStats(ctx context.Context, refID int64) (*stats.FileStats, error) {

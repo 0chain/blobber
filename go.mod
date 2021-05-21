@@ -1,4 +1,4 @@
-module 0chain.net
+module github.com/0chain/blobber
 
 require (
 	github.com/0chain/gosdk v1.1.6

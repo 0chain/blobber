@@ -85,7 +85,8 @@ message ObjectPath {
   string RootHash = 1;
   FileRef Meta = 2;
   FileRef Path = 3;
-  int64 FileBlockNum = 4;
+  repeated FileRef PathList = 4;
+  int64 FileBlockNum = 5;
 }
 
 message WriteMarker {
@@ -110,6 +111,7 @@ message ListEntitiesRequest {
 message ListEntitiesResponse {
   string AllocationRoot = 1;
   FileRef MetaData = 2;
+  repeated FileRef Entities = 3;
 }
 
 message GetFileStatsRequest {
@@ -166,6 +168,7 @@ message RequestContext {
   string client = 1;
   string client_key = 2;
   string allocation = 3;
+  string client_signature = 4;
 }
 
 message GetAllocationRequest {
@@ -249,5 +252,4 @@ message DirMetaData {
   int64 Size = 8;
   int64 CreatedAt = 9;
   int64 UpdatedAt = 10;
-  repeated FileRef Children = 11;
 }

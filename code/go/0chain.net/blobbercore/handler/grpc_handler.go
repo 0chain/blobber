@@ -5,17 +5,17 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"0chain.net/blobbercore/writemarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 
-	"0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 
-	"0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"go.uber.org/zap"
 
-	"0chain.net/blobbercore/blobbergrpc"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 )
 
 type blobberGRPCService struct {
@@ -44,7 +44,7 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 
 func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {
 	logger := ctxzap.Extract(ctx)
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, req.Allocation, true)
+	allocationObj, err := b.storageHandler.verifyAllocation(ctx, req.Context.Allocation, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -101,11 +101,7 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 
 	var collaboratorsGRPC []*blobbergrpc.Collaborator
 	for _, c := range collaborators {
-		collaboratorsGRPC = append(collaboratorsGRPC, &blobbergrpc.Collaborator{
-			RefId:     c.RefID,
-			ClientId:  c.ClientID,
-			CreatedAt: c.CreatedAt.UnixNano(),
-		})
+		collaboratorsGRPC = append(collaboratorsGRPC, CollaboratorToGRPCCollaborator(&c))
 	}
 
 	return &blobbergrpc.GetFileMetaDataResponse{
@@ -122,6 +118,11 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 	allocationID := allocationObj.ID
+
+	valid, err := verifySignatureFromRequest(allocationTx, req.Context.ClientSignature, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
 
 	clientID := req.Context.Client
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
@@ -218,11 +219,11 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.
 		entities = append(entities, reference.FileRefToFileRefGRPC(entity))
 	}
 	refGRPC := reference.FileRefToFileRefGRPC(dirref)
-	refGRPC.DirMetaData.Children = entities
 
 	return &blobbergrpc.ListEntitiesResponse{
 		AllocationRoot: allocationObj.AllocationRoot,
 		MetaData:       refGRPC,
+		Entities:       entities,
 	}, nil
 }
 
@@ -234,6 +235,11 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 	allocationID := allocationObj.ID
+
+	valid, err := verifySignatureFromRequest(allocationTx, req.Context.ClientSignature, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
 
 	clientID := req.Context.Client
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
@@ -254,7 +260,7 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 		return nil, common.NewError("invalid_parameters", "Invalid block number")
 	}
 
-	objectPath, err := b.packageHandler.GetObjectPathGRPC(ctx, allocationID, blockNum)
+	objectPath, err := b.packageHandler.GetObjectPath(ctx, allocationID, blockNum)
 	if err != nil {
 		return nil, err
 	}
@@ -270,10 +276,25 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 	}
 	var latestWriteMarketGRPC *blobbergrpc.WriteMarker
 	if latestWM != nil {
-		latestWriteMarketGRPC = WriteMarkerToWriteMarkerGRPC(latestWM.WM)
+		latestWriteMarketGRPC = WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
 	}
+
+	pathList := make([]*blobbergrpc.FileRef, 0)
+	list, _ := objectPath.Path["list"].([]map[string]interface{})
+	if len(list) > 0 {
+		for _, pl := range list {
+			pathList = append(pathList, reference.FileRefToFileRefGRPC(reference.ListingDataToRef(pl)))
+		}
+	}
+
 	return &blobbergrpc.GetObjectPathResponse{
-		ObjectPath:        objectPath,
+		ObjectPath: &blobbergrpc.ObjectPath{
+			RootHash:     objectPath.RootHash,
+			Meta:         reference.FileRefToFileRefGRPC(reference.ListingDataToRef(objectPath.Meta)),
+			Path:         reference.FileRefToFileRefGRPC(reference.ListingDataToRef(objectPath.Path)),
+			PathList:     pathList,
+			FileBlockNum: objectPath.FileBlockNum,
+		},
 		LatestWriteMarker: latestWriteMarketGRPC,
 	}, nil
 }
@@ -287,6 +308,11 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 	allocationID := allocationObj.ID
+
+	valid, err := verifySignatureFromRequest(allocationTx, req.Context.ClientSignature, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
 
 	clientID := req.Context.Client
 	if len(clientID) == 0 {
@@ -313,16 +339,17 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 		return nil, err
 	}
 
-	refPath := &blobbergrpc.ReferencePath{MetaData: reference.FileRefToFileRefGRPC(rootRef)}
-	refsToProcess := make([]*blobbergrpc.ReferencePath, 0)
+	refPath := &ReferencePath{ref: rootRef}
+	refsToProcess := make([]*ReferencePath, 0)
 	refsToProcess = append(refsToProcess, refPath)
 	for len(refsToProcess) > 0 {
 		refToProcess := refsToProcess[0]
-		if len(refToProcess.MetaData.DirMetaData.Children) > 0 {
-			refToProcess.List = make([]*blobbergrpc.ReferencePath, len(refToProcess.MetaData.DirMetaData.Children))
+		refToProcess.Meta = refToProcess.ref.GetListingData(ctx)
+		if len(refToProcess.ref.Children) > 0 {
+			refToProcess.List = make([]*ReferencePath, len(refToProcess.ref.Children))
 		}
-		for idx, child := range refToProcess.MetaData.DirMetaData.Children {
-			childRefPath := &blobbergrpc.ReferencePath{MetaData: child}
+		for idx, child := range refToProcess.ref.Children {
+			childRefPath := &ReferencePath{ref: child}
 			refToProcess.List[idx] = childRefPath
 			refsToProcess = append(refsToProcess, childRefPath)
 		}
@@ -338,10 +365,12 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
 	}
+
 	var refPathResult blobbergrpc.GetReferencePathResponse
-	refPathResult.ReferencePath = refPath
+	var recursionCount int
+	refPathResult.ReferencePath = ReferencePathToReferencePathGRPC(&recursionCount, refPath)
 	if latestWM != nil {
-		refPathResult.LatestWM = WriteMarkerToWriteMarkerGRPC(latestWM.WM)
+		refPathResult.LatestWM = WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
 	}
 
 	return &refPathResult, nil
@@ -355,6 +384,11 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 	allocationID := allocationObj.ID
+
+	valid, err := verifySignatureFromRequest(allocationTx, req.Context.ClientSignature, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
 
 	clientID := req.Context.Client
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
@@ -370,16 +404,17 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 		return nil, err
 	}
 
-	refPath := &blobbergrpc.ReferencePath{MetaData: reference.FileRefToFileRefGRPC(rootRef)}
-	refsToProcess := make([]*blobbergrpc.ReferencePath, 0)
+	refPath := &ReferencePath{ref: rootRef}
+	refsToProcess := make([]*ReferencePath, 0)
 	refsToProcess = append(refsToProcess, refPath)
 	for len(refsToProcess) > 0 {
 		refToProcess := refsToProcess[0]
-		if len(refToProcess.MetaData.DirMetaData.Children) > 0 {
-			refToProcess.List = make([]*blobbergrpc.ReferencePath, len(refToProcess.MetaData.DirMetaData.Children))
+		refToProcess.Meta = refToProcess.ref.GetListingData(ctx)
+		if len(refToProcess.ref.Children) > 0 {
+			refToProcess.List = make([]*ReferencePath, len(refToProcess.ref.Children))
 		}
-		for idx, child := range refToProcess.MetaData.DirMetaData.Children {
-			childRefPath := &blobbergrpc.ReferencePath{MetaData: child}
+		for idx, child := range refToProcess.ref.Children {
+			childRefPath := &ReferencePath{ref: child}
 			refToProcess.List[idx] = childRefPath
 			refsToProcess = append(refsToProcess, childRefPath)
 		}
@@ -396,9 +431,10 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 		}
 	}
 	var refPathResult blobbergrpc.GetObjectTreeResponse
-	refPathResult.ReferencePath = refPath
+	var recursionCount int
+	refPathResult.ReferencePath = ReferencePathToReferencePathGRPC(&recursionCount, refPath)
 	if latestWM != nil {
-		refPathResult.LatestWM = WriteMarkerToWriteMarkerGRPC(latestWM.WM)
+		refPathResult.LatestWM = WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
 	}
 	return &refPathResult, nil
 }

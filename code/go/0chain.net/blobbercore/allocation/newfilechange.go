@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"0chain.net/blobbercore/filestore"
-	"0chain.net/blobbercore/reference"
-	"0chain.net/blobbercore/stats"
-	"0chain.net/blobbercore/util"
-	"0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
 type NewFileChange struct {
@@ -32,6 +32,15 @@ type NewFileChange struct {
 	EncryptedKey        string               `json:"encrypted_key,omitempty"`
 	CustomMeta          string               `json:"custom_meta,omitempty"`
 	Attributes          reference.Attributes `json:"attributes,omitempty"`
+
+	// IsResumable the request is resumable upload
+	IsResumable bool `json:"is_resumable,omitempty"`
+	// UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
+	UploadLength int64 `json:"upload_length,omitempty"`
+	// Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
+	UploadOffset int64 `json:"upload_offset,omitempty"`
+	// IsFinal  the request is final chunk
+	IsFinal bool `json:"is_final,omitempty"`
 }
 
 func (nf *NewFileChange) ProcessChange(ctx context.Context,

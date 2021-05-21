@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	"0chain.net/core/logging"
-	"0chain.net/validatorcore/storage"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/storage"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

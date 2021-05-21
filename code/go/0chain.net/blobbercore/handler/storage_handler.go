@@ -7,20 +7,19 @@ import (
 	"strconv"
 	"strings"
 
-	"0chain.net/core/encryption"
-	"github.com/gorilla/mux"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 
-	"0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"go.uber.org/zap"
 
-	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/constants"
-	"0chain.net/blobbercore/readmarker"
-	"0chain.net/blobbercore/reference"
-	"0chain.net/blobbercore/writemarker"
-	"0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
-	. "0chain.net/core/logging"
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 const (
@@ -257,7 +256,8 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -343,7 +343,8 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 	allocationID := allocationObj.ID
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -480,7 +481,8 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	}
 	allocationID := allocationObj.ID
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		errCh <- common.NewError("invalid_signature", "Invalid signature")
 		return
@@ -551,7 +553,8 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (
 	}
 	allocationID := allocationObj.ID
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -609,7 +612,8 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	}
 	allocationID := allocationObj.ID
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -699,19 +703,12 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 }
 
 // verifySignatureFromRequest verifyes signature passed as common.ClientSignatureHeader header.
-func verifySignatureFromRequest(r *http.Request, pbK string) (bool, error) {
-	sign := r.Header.Get(common.ClientSignatureHeader)
+func verifySignatureFromRequest(allocation, sign, pbK string) (bool, error) {
 	if len(sign) < 64 {
 		return false, nil
 	}
 
-	vars := mux.Vars(r)
-	data, ok := vars["allocation"]
-	if !ok {
-		return false, common.NewError("invalid_params", "Missing allocation tx")
-	}
-
-	hash := encryption.Hash(data)
+	hash := encryption.Hash(allocation)
 	return encryption.Verify(pbK, sign, hash)
 }
 

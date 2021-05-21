@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"0chain.net/core/config"
+	"github.com/0chain/blobber/code/go/0chain.net/core/config"
 	"github.com/spf13/viper"
 )
 

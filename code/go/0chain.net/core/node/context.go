@@ -3,7 +3,7 @@ package node
 import (
 	"context"
 
-	"0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
 const SELF_NODE common.ContextKey = "SELF_NODE"
