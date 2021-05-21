@@ -7,8 +7,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/mocks"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"reflect"
 	"testing"
 )
 
@@ -23,8 +23,6 @@ func Test_blobberGRPCService_UpdateObjectAttributes(t *testing.T) {
 		r   *blobbergrpc.UpdateObjectAttributesRequest
 	}
 
-	datastore.MockTheStore(t)
-
 	req := &blobbergrpc.UpdateObjectAttributesRequest{
 		Context: &blobbergrpc.RequestContext{
 			Client:     `client`,
@@ -32,11 +30,11 @@ func Test_blobberGRPCService_UpdateObjectAttributes(t *testing.T) {
 			Allocation: `1`,
 		},
 		Allocation:   `1`,
-		Attributes:   `{"who_pays_for_reads,omitempty" : 1}`,
+		Attributes:   `{"who_pays_for_reads" : 1}`,
 		Path:         `path`,
 		ConnectionId: `connection_id`,
 	}
-	res := &blobbergrpc.UpdateObjectAttributesResponse{WhoPaysForReads: int64(1)}
+	resOk := &blobbergrpc.UpdateObjectAttributesResponse{WhoPaysForReads: int64(1)}
 
 	_ = datastore.MockTheStore(t).ExpectBegin()
 	mockStorageHandler := &storageHandlerI{}
@@ -47,15 +45,16 @@ func Test_blobberGRPCService_UpdateObjectAttributes(t *testing.T) {
 			OwnerID: req.Context.Client,
 		}, nil)
 
+	mockAllocCollector := &mocks.IAllocationChangeCollector{}
+	mockAllocCollector.On(`GetConnectionID`).Return(req.ConnectionId)
+	mockAllocCollector.On(`GetAllocationID`).Return(req.Allocation)
+	mockAllocCollector.On(`AddChange`, mock.Anything, mock.Anything).Return()
+	mockAllocCollector.On(`Save`, mock.Anything).Return(nil)
+	mockAllocCollector.On(`TableName`).Return(`allocation_connections`)
+
 	mockReferencePackage := &mocks.PackageHandler{}
 	mockReferencePackage.On(`GetAllocationChanges`, mock.Anything,
-		req.ConnectionId, req.Context.Allocation, req.Context.Client).Return(
-		&allocation.AllocationChangeCollector{
-			ConnectionID: req.ConnectionId,
-			AllocationID: req.Context.Allocation,
-			ClientID:     req.Context.Client,
-			Status:       allocation.NewConnection,
-		}, nil)
+		req.ConnectionId, req.Context.Allocation, req.Context.Client).Return(mockAllocCollector, nil)
 
 	pathHash := req.Context.Allocation + `:` + req.Path
 	mockReferencePackage.On(`GetReferenceLookup`, mock.Anything, req.Context.Allocation, req.Path).
@@ -85,7 +84,7 @@ func Test_blobberGRPCService_UpdateObjectAttributes(t *testing.T) {
 				ctx: context.Background(),
 				r:   req,
 			},
-			wantResponse: res,
+			wantResponse: resOk,
 			wantErr:      false,
 		},
 	}
@@ -101,7 +100,7 @@ func Test_blobberGRPCService_UpdateObjectAttributes(t *testing.T) {
 				t.Errorf("UpdateObjectAttributes() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(gotResponse, tt.wantResponse) {
+			if !assert.Equal(t, gotResponse, tt.wantResponse) {
 				t.Errorf("UpdateObjectAttributes() gotResponse = %v, want %v", gotResponse, tt.wantResponse)
 			}
 		})

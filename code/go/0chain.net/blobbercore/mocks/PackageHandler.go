@@ -23,15 +23,15 @@ type PackageHandler struct {
 }
 
 // GetAllocationChanges provides a mock function with given fields: ctx, connectionID, allocationID, clientID
-func (_m *PackageHandler) GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*allocation.AllocationChangeCollector, error) {
+func (_m *PackageHandler) GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (allocation.IAllocationChangeCollector, error) {
 	ret := _m.Called(ctx, connectionID, allocationID, clientID)
 
-	var r0 *allocation.AllocationChangeCollector
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) *allocation.AllocationChangeCollector); ok {
+	var r0 allocation.IAllocationChangeCollector
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) allocation.IAllocationChangeCollector); ok {
 		r0 = rf(ctx, connectionID, allocationID, clientID)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*allocation.AllocationChangeCollector)
+			r0 = ret.Get(0).(allocation.IAllocationChangeCollector)
 		}
 	}
 
