@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+
+	"google.golang.org/grpc/metadata"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 
 	"github.com/spf13/viper"
@@ -31,10 +35,8 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		args[arg] = true
 	}
 	if !args["integration"] {
-		t.Skip()
+		//t.Skip()
 	}
-
-	ctx := context.Background()
 
 	var conn *grpc.ClientConn
 	var err error
@@ -95,8 +97,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			{
 				name: "Success",
 				input: &blobbergrpc.GetAllocationRequest{
-					Context: &blobbergrpc.RequestContext{},
-					Id:      "exampleTransaction",
+					Id: "exampleTransaction",
 				},
 				expectedTx:     "exampleTransaction",
 				expectingError: false,
@@ -104,8 +105,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			{
 				name: "UnknownAllocation",
 				input: &blobbergrpc.GetAllocationRequest{
-					Context: &blobbergrpc.RequestContext{},
-					Id:      "exampleTransaction1",
+					Id: "exampleTransaction1",
 				},
 				expectedTx:     "",
 				expectingError: true,
@@ -113,7 +113,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		}
 
 		for _, tc := range testCases {
-			getAllocationResp, err := blobberClient.GetAllocation(ctx, tc.input)
+			getAllocationResp, err := blobberClient.GetAllocation(context.Background(), tc.input)
 			if err != nil {
 				if !tc.expectingError {
 					t.Fatal(err)
@@ -143,17 +143,17 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 
 		testCases := []struct {
 			name             string
+			context          metadata.MD
 			input            *blobbergrpc.GetFileMetaDataRequest
 			expectedFileName string
 			expectingError   bool
 		}{
 			{
 				name: "Success",
+				context: metadata.New(map[string]string{
+					common.ClientHeader: "exampleOwnerId",
+				}),
 				input: &blobbergrpc.GetFileMetaDataRequest{
-					Context: &blobbergrpc.RequestContext{
-						Client:     "exampleOwnerId",
-						Allocation: "exampleTransaction",
-					},
 					Path:       "examplePath",
 					PathHash:   "exampleId:examplePath",
 					Allocation: "exampleTransaction",
@@ -163,11 +163,10 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			},
 			{
 				name: "Unknown file path",
+				context: metadata.New(map[string]string{
+					common.ClientHeader: "exampleOwnerId",
+				}),
 				input: &blobbergrpc.GetFileMetaDataRequest{
-					Context: &blobbergrpc.RequestContext{
-						Client:     "exampleOwnerId",
-						Allocation: "exampleTransaction",
-					},
 					Path:       "examplePath",
 					PathHash:   "exampleId:examplePath123",
 					Allocation: "exampleTransaction",
@@ -178,6 +177,8 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		}
 
 		for _, tc := range testCases {
+			ctx := context.Background()
+			ctx = metadata.NewOutgoingContext(ctx, tc.context)
 			getFileMetaDataResp, err := blobberClient.GetFileMetaData(ctx, tc.input)
 			if err != nil {
 				if !tc.expectingError {
@@ -214,36 +215,35 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 
 		testCases := []struct {
 			name             string
+			context          metadata.MD
 			input            *blobbergrpc.GetFileStatsRequest
 			expectedFileName string
 			expectingError   bool
 		}{
 			{
 				name: "Success",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          "exampleOwnerId",
+					common.ClientSignatureHeader: clientSignature,
+				}),
 				input: &blobbergrpc.GetFileStatsRequest{
-					Context: &blobbergrpc.RequestContext{
-						Client:          "exampleOwnerId",
-						ClientKey:       "",
-						Allocation:      allocationTx,
-						ClientSignature: clientSignature,
-					},
-					Path:     "examplePath",
-					PathHash: "exampleId:examplePath",
+					Path:       "examplePath",
+					PathHash:   "exampleId:examplePath",
+					Allocation: allocationTx,
 				},
 				expectedFileName: "filename",
 				expectingError:   false,
 			},
 			{
 				name: "Unknown Path",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          "exampleOwnerId",
+					common.ClientSignatureHeader: clientSignature,
+				}),
 				input: &blobbergrpc.GetFileStatsRequest{
-					Context: &blobbergrpc.RequestContext{
-						Client:          "exampleOwnerId",
-						ClientKey:       "",
-						Allocation:      allocationTx,
-						ClientSignature: clientSignature,
-					},
-					Path:     "examplePath",
-					PathHash: "exampleId:examplePath123",
+					Path:       "examplePath",
+					PathHash:   "exampleId:examplePath123",
+					Allocation: allocationTx,
 				},
 				expectedFileName: "",
 				expectingError:   true,
@@ -251,6 +251,8 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		}
 
 		for _, tc := range testCases {
+			ctx := context.Background()
+			ctx = metadata.NewOutgoingContext(ctx, tc.context)
 			getFileStatsResp, err := blobberClient.GetFileStats(ctx, tc.input)
 			if err != nil {
 				if !tc.expectingError {
@@ -287,40 +289,37 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 
 		testCases := []struct {
 			name           string
+			context        metadata.MD
 			input          *blobbergrpc.ListEntitiesRequest
 			expectedPath   string
 			expectingError bool
 		}{
 			{
 				name: "Success",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          "exampleOwnerId",
+					common.ClientSignatureHeader: clientSignature,
+				}),
 				input: &blobbergrpc.ListEntitiesRequest{
-					Context: &blobbergrpc.RequestContext{
-						Client:          "exampleOwnerId",
-						ClientKey:       "",
-						Allocation:      allocationTx,
-						ClientSignature: clientSignature,
-					},
 					Path:       "examplePath",
 					PathHash:   "exampleId:examplePath",
 					AuthToken:  "",
-					Allocation: "",
+					Allocation: allocationTx,
 				},
 				expectedPath:   "examplePath",
 				expectingError: false,
 			},
 			{
 				name: "bad path",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          "exampleOwnerId",
+					common.ClientSignatureHeader: clientSignature,
+				}),
 				input: &blobbergrpc.ListEntitiesRequest{
-					Context: &blobbergrpc.RequestContext{
-						Client:          "exampleOwnerId",
-						ClientKey:       "",
-						Allocation:      allocationTx,
-						ClientSignature: clientSignature,
-					},
 					Path:       "examplePath",
 					PathHash:   "exampleId:examplePath123",
 					AuthToken:  "",
-					Allocation: "",
+					Allocation: allocationTx,
 				},
 				expectedPath:   "",
 				expectingError: true,
@@ -328,6 +327,8 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		}
 
 		for _, tc := range testCases {
+			ctx := context.Background()
+			ctx = metadata.NewOutgoingContext(ctx, tc.context)
 			listEntitiesResp, err := blobberClient.ListEntities(ctx, tc.input)
 			if err != nil {
 				if !tc.expectingError {
@@ -364,20 +365,19 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 
 		testCases := []struct {
 			name           string
+			context        metadata.MD
 			input          *blobbergrpc.GetObjectPathRequest
 			expectedPath   string
 			expectingError bool
 		}{
 			{
 				name: "Success",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          "exampleOwnerId",
+					common.ClientSignatureHeader: clientSignature,
+				}),
 				input: &blobbergrpc.GetObjectPathRequest{
-					Context: &blobbergrpc.RequestContext{
-						Client:          "exampleOwnerId",
-						ClientKey:       "",
-						Allocation:      allocationTx,
-						ClientSignature: clientSignature,
-					},
-					Allocation: "",
+					Allocation: allocationTx,
 					Path:       "examplePath",
 					BlockNum:   "0",
 				},
@@ -387,6 +387,8 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		}
 
 		for _, tc := range testCases {
+			ctx := context.Background()
+			ctx = metadata.NewOutgoingContext(ctx, tc.context)
 			getObjectPathResp, err := blobberClient.GetObjectPath(ctx, tc.input)
 			if err != nil {
 				if !tc.expectingError {
@@ -422,22 +424,21 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 
 		testCases := []struct {
 			name           string
+			context        metadata.MD
 			input          *blobbergrpc.GetReferencePathRequest
 			expectedPath   string
 			expectingError bool
 		}{
 			{
 				name: "Success",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          "exampleOwnerId",
+					common.ClientSignatureHeader: clientSignature,
+				}),
 				input: &blobbergrpc.GetReferencePathRequest{
-					Context: &blobbergrpc.RequestContext{
-						Client:          "exampleOwnerId",
-						ClientKey:       "",
-						Allocation:      allocationTx,
-						ClientSignature: clientSignature,
-					},
 					Paths:      "",
 					Path:       "/",
-					Allocation: "",
+					Allocation: allocationTx,
 				},
 				expectedPath:   "/",
 				expectingError: false,
@@ -445,6 +446,8 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		}
 
 		for _, tc := range testCases {
+			ctx := context.Background()
+			ctx = metadata.NewOutgoingContext(ctx, tc.context)
 			getReferencePathResp, err := blobberClient.GetReferencePath(ctx, tc.input)
 			if err != nil {
 				if !tc.expectingError {
@@ -480,34 +483,31 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 
 		testCases := []struct {
 			name             string
+			context          metadata.MD
 			input            *blobbergrpc.GetObjectTreeRequest
 			expectedFileName string
 			expectingError   bool
 		}{
 			{
 				name: "Success",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          "exampleOwnerId",
+					common.ClientSignatureHeader: clientSignature,
+				}),
 				input: &blobbergrpc.GetObjectTreeRequest{
-					Context: &blobbergrpc.RequestContext{
-						Client:          "exampleOwnerId",
-						ClientKey:       "",
-						Allocation:      allocationTx,
-						ClientSignature: clientSignature,
-					},
 					Path:       "/",
-					Allocation: "",
+					Allocation: allocationTx,
 				},
 				expectedFileName: "root",
 				expectingError:   false,
 			},
 			{
 				name: "bad path",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          "exampleOwnerId",
+					common.ClientSignatureHeader: clientSignature,
+				}),
 				input: &blobbergrpc.GetObjectTreeRequest{
-					Context: &blobbergrpc.RequestContext{
-						Client:          "exampleOwnerId",
-						ClientKey:       "",
-						Allocation:      allocationTx,
-						ClientSignature: clientSignature,
-					},
 					Path:       "/2",
 					Allocation: "",
 				},
@@ -517,7 +517,8 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		}
 
 		for _, tc := range testCases {
-
+			ctx := context.Background()
+			ctx = metadata.NewOutgoingContext(ctx, tc.context)
 			getObjectTreeResp, err := blobberClient.GetObjectTree(ctx, tc.input)
 			if err != nil {
 				if !tc.expectingError {
