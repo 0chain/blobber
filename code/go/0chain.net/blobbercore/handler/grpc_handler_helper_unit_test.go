@@ -11,8 +11,6 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	coreConfig "github.com/0chain/blobber/code/go/0chain.net/core/config"
 	"github.com/0chain/gosdk/core/zcncrypto"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -474,8 +472,7 @@ VALUES (1234,'exampleId','exampleId:examplePath','exampleId:examplePath','d','ro
 
 func GeneratePubPrivateKey(t *testing.T) (string, string, zcncrypto.SignatureScheme) {
 
-	config.Configuration.Config = &coreConfig.Config{SignatureScheme: "bls0chain"}
-	signScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
+	signScheme := zcncrypto.NewSignatureScheme("bls0chain")
 	wallet, err := signScheme.GenerateKeys()
 	if err != nil {
 		t.Fatal(err)
