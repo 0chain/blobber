@@ -1,16 +1,12 @@
 package reference
 
 import (
-	"0chain.net/blobbercore/config"
-	"github.com/stretchr/testify/require"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestSecretKeys(t *testing.T) {
-	config.Configuration = config.Config{
-		SignatureScheme: "ed25519",
-	}
 	result, err := GetSecretKeyPair()
 
 	require.NoError(t, err)
