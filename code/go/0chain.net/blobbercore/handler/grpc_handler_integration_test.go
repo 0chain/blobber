@@ -35,7 +35,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		args[arg] = true
 	}
 	if !args["integration"] {
-		//t.Skip()
+		t.Skip()
 	}
 
 	var conn *grpc.ClientConn
