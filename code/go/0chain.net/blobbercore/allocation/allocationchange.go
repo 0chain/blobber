@@ -3,14 +3,13 @@ package allocation
 import (
 	"context"
 	"errors"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"gorm.io/gorm"
 
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 const (
@@ -39,21 +38,6 @@ type AllocationChangeProcessor interface {
 	Unmarshal(string) error
 }
 
-type AllocationChangeCollector struct {
-	ConnectionID      string                      `gorm:"column:connection_id;primary_key"`
-	AllocationID      string                      `gorm:"column:allocation_id"`
-	ClientID          string                      `gorm:"column:client_id"`
-	Size              int64                       `gorm:"column:size"`
-	Changes           []*AllocationChange         `gorm:"ForeignKey:connection_id;AssociationForeignKey:connection_id"`
-	AllocationChanges []AllocationChangeProcessor `gorm:"-"`
-	Status            int                         `gorm:"column:status"`
-	datastore.ModelWithTS
-}
-
-func (AllocationChangeCollector) TableName() string {
-	return "allocation_connections"
-}
-
 type AllocationChange struct {
 	ChangeID     int64  `gorm:"column:id;primary_key"`
 	Size         int64  `gorm:"column:size"`
@@ -65,6 +49,32 @@ type AllocationChange struct {
 
 func (AllocationChange) TableName() string {
 	return "allocation_changes"
+}
+
+type IAllocationChangeCollector interface {
+	TableName() string
+	AddChange(allocationChange *AllocationChange, changeProcessor AllocationChangeProcessor)
+	Save(ctx context.Context) error
+	ComputeProperties()
+	ApplyChanges(ctx context.Context, allocationRoot string) error
+	CommitToFileStore(ctx context.Context) error
+	DeleteChanges(ctx context.Context)
+	GetAllocationID() string
+	GetConnectionID() string
+	//GetClientID() string
+	//GetSize() int64
+	//SetSize(size int64)
+}
+
+type AllocationChangeCollector struct {
+	ConnectionID      string                      `gorm:"column:connection_id;primary_key"`
+	AllocationID      string                      `gorm:"column:allocation_id"`
+	ClientID          string                      `gorm:"column:client_id"`
+	Size              int64                       `gorm:"column:size"`
+	Changes           []*AllocationChange         `gorm:"ForeignKey:connection_id;AssociationForeignKey:connection_id"`
+	AllocationChanges []AllocationChangeProcessor `gorm:"-"`
+	Status            int                         `gorm:"column:status"`
+	datastore.ModelWithTS
 }
 
 func GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*AllocationChangeCollector, error) {
@@ -91,6 +101,10 @@ func GetAllocationChanges(ctx context.Context, connectionID string, allocationID
 		return cc, nil
 	}
 	return nil, err
+}
+
+func (cc *AllocationChangeCollector) TableName() string {
+	return "allocation_connections"
 }
 
 func (cc *AllocationChangeCollector) AddChange(allocationChange *AllocationChange, changeProcessor AllocationChangeProcessor) {
@@ -153,8 +167,8 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 	return nil
 }
 
-func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error {
-	for _, change := range a.AllocationChanges {
+func (cc *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error {
+	for _, change := range cc.AllocationChanges {
 		err := change.CommitToFileStore(ctx)
 		if err != nil {
 			return err
@@ -163,10 +177,31 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 	return nil
 }
 
-func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) {
-	for _, change := range a.AllocationChanges {
+func (cc *AllocationChangeCollector) DeleteChanges(ctx context.Context) {
+	for _, change := range cc.AllocationChanges {
 		if err := change.DeleteTempFile(); err != nil {
 			logging.Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
 		}
 	}
 }
+
+func (cc *AllocationChangeCollector) GetAllocationID() string {
+	return cc.AllocationID
+}
+
+func (cc *AllocationChangeCollector) GetConnectionID() string {
+	return cc.ConnectionID
+}
+
+//
+//func (cc *AllocationChangeCollector) GetClientID() string {
+//	return cc.ClientID
+//}
+//
+//func (cc *AllocationChangeCollector) GetSize() int64 {
+//	return cc.Size
+//}
+//
+//func (cc *AllocationChangeCollector) SetSize(size int64) {
+//	cc.Size = size
+//}
