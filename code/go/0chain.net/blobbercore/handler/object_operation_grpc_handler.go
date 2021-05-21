@@ -75,7 +75,7 @@ func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, r *blob
 			"invalid connection id passed: %s", connID)
 	}
 
-	var conn *allocation.AllocationChangeCollector
+	var conn allocation.IAllocationChangeCollector
 	conn, err = b.packageHandler.GetAllocationChanges(ctx, connID, alloc.ID, clientID)
 	if err != nil {
 		return nil, common.NewErrorf("update_object_attributes",
@@ -95,12 +95,12 @@ func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, r *blob
 	}
 
 	var change = new(allocation.AllocationChange)
-	change.ConnectionID = conn.ConnectionID
+	change.ConnectionID = conn.GetConnectionID()
 	change.Operation = allocation.UPDATE_ATTRS_OPERATION
 
 	var uafc = &allocation.AttributesChange{
-		ConnectionID: conn.ConnectionID,
-		AllocationID: conn.AllocationID,
+		ConnectionID: conn.GetConnectionID(),
+		AllocationID: conn.GetAllocationID(),
 		Path:         ref.Path,
 		Attributes:   attrs,
 	}

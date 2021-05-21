@@ -53,7 +53,7 @@ type PackageHandler interface {
 	GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*reference.Ref, error)
 	GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 	GetAllocationChanges(ctx context.Context, connectionID string,
-		allocationID string, clientID string) (*allocation.AllocationChangeCollector, error)
+		allocationID string, clientID string) (allocation.IAllocationChangeCollector, error)
 }
 
 type packageHandler struct{}
@@ -103,7 +103,7 @@ func (r *packageHandler) IsACollaborator(ctx context.Context, refID int64, clien
 }
 
 func (r *packageHandler) GetAllocationChanges(ctx context.Context, connectionID string,
-	allocationID string, clientID string) (*allocation.AllocationChangeCollector, error) {
+	allocationID string, clientID string) (allocation.IAllocationChangeCollector, error) {
 
 	return allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 }
