@@ -5,6 +5,3 @@ test:
 
 lint:
 	golangci-lint run;
-
-integration-tests:
-	go test ./... --args integration;

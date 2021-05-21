@@ -9,15 +9,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+
 	"github.com/spf13/viper"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"google.golang.org/grpc"
-
-	"0chain.net/blobbercore/blobbergrpc"
 )
 
 const BlobberAddr = "localhost:7031"
@@ -30,7 +31,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		args[arg] = true
 	}
 	if !args["integration"] {
-		t.Skip()
+		//t.Skip()
 	}
 
 	ctx := context.Background()
@@ -85,18 +86,48 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		getAllocationReq := &blobbergrpc.GetAllocationRequest{
-			Context: &blobbergrpc.RequestContext{},
-			Id:      "exampleTransaction",
+		testCases := []struct {
+			name           string
+			input          *blobbergrpc.GetAllocationRequest
+			expectedTx     string
+			expectingError bool
+		}{
+			{
+				name: "Success",
+				input: &blobbergrpc.GetAllocationRequest{
+					Context: &blobbergrpc.RequestContext{},
+					Id:      "exampleTransaction",
+				},
+				expectedTx:     "exampleTransaction",
+				expectingError: false,
+			},
+			{
+				name: "UnknownAllocation",
+				input: &blobbergrpc.GetAllocationRequest{
+					Context: &blobbergrpc.RequestContext{},
+					Id:      "exampleTransaction1",
+				},
+				expectedTx:     "",
+				expectingError: true,
+			},
 		}
 
-		getAllocationResp, err := blobberClient.GetAllocation(ctx, getAllocationReq)
-		if err != nil {
-			t.Fatal(err)
-		}
+		for _, tc := range testCases {
+			getAllocationResp, err := blobberClient.GetAllocation(ctx, tc.input)
+			if err != nil {
+				if !tc.expectingError {
+					t.Fatal(err)
+				}
+				continue
+			}
 
-		if getAllocationResp.Allocation.Tx != getAllocationReq.Id {
-			t.Fatal("unexpected allocation id from GetAllocation rpc")
+			if tc.expectingError {
+				t.Fatal("expected error")
+			}
+
+			if getAllocationResp.Allocation.Tx != tc.expectedTx {
+				t.Fatal("response with wrong allocation transaction")
+			}
 		}
 	})
 
@@ -110,174 +141,400 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		req := &blobbergrpc.GetFileMetaDataRequest{
-			Context: &blobbergrpc.RequestContext{
-				Client: "exampleOwnerId",
+		testCases := []struct {
+			name             string
+			input            *blobbergrpc.GetFileMetaDataRequest
+			expectedFileName string
+			expectingError   bool
+		}{
+			{
+				name: "Success",
+				input: &blobbergrpc.GetFileMetaDataRequest{
+					Context: &blobbergrpc.RequestContext{
+						Client:     "exampleOwnerId",
+						Allocation: "exampleTransaction",
+					},
+					Path:       "examplePath",
+					PathHash:   "exampleId:examplePath",
+					Allocation: "exampleTransaction",
+				},
+				expectedFileName: "filename",
+				expectingError:   false,
 			},
-			Path:       "examplePath",
-			PathHash:   "exampleId:examplePath",
-			Allocation: "exampleTransaction",
-		}
-		getFileMetaDataResp, err := blobberClient.GetFileMetaData(ctx, req)
-		if err != nil {
-			t.Fatal(err)
+			{
+				name: "Unknown file path",
+				input: &blobbergrpc.GetFileMetaDataRequest{
+					Context: &blobbergrpc.RequestContext{
+						Client:     "exampleOwnerId",
+						Allocation: "exampleTransaction",
+					},
+					Path:       "examplePath",
+					PathHash:   "exampleId:examplePath123",
+					Allocation: "exampleTransaction",
+				},
+				expectedFileName: "",
+				expectingError:   true,
+			},
 		}
 
-		if getFileMetaDataResp.MetaData.FileMetaData.Name != "filename" {
-			t.Fatal("unexpected file name from GetFileMetaData rpc")
+		for _, tc := range testCases {
+			getFileMetaDataResp, err := blobberClient.GetFileMetaData(ctx, tc.input)
+			if err != nil {
+				if !tc.expectingError {
+					t.Fatal(err)
+				}
+				continue
+			}
+
+			if tc.expectingError {
+				t.Fatal("expected error")
+			}
+
+			if getFileMetaDataResp.MetaData.FileMetaData.Name != tc.expectedFileName {
+				t.Fatal("unexpected file name from GetFileMetaData rpc")
+			}
 		}
 	})
 
 	t.Run("TestGetFileStats", func(t *testing.T) {
+
+		allocationTx := randString(32)
+
+		pubKey, _, signScheme := GeneratePubPrivateKey(t)
+		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
 		err := tdController.ClearDatabase()
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = tdController.AddGetFileStatsTestData()
+		err = tdController.AddGetFileStatsTestData(allocationTx, pubKey)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		req := &blobbergrpc.GetFileStatsRequest{
-			Context: &blobbergrpc.RequestContext{
-				Client:     "exampleOwnerId",
-				ClientKey:  "",
-				Allocation: "exampleTransaction",
+		testCases := []struct {
+			name             string
+			input            *blobbergrpc.GetFileStatsRequest
+			expectedFileName string
+			expectingError   bool
+		}{
+			{
+				name: "Success",
+				input: &blobbergrpc.GetFileStatsRequest{
+					Context: &blobbergrpc.RequestContext{
+						Client:          "exampleOwnerId",
+						ClientKey:       "",
+						Allocation:      allocationTx,
+						ClientSignature: clientSignature,
+					},
+					Path:     "examplePath",
+					PathHash: "exampleId:examplePath",
+				},
+				expectedFileName: "filename",
+				expectingError:   false,
 			},
-			Path:     "examplePath",
-			PathHash: "exampleId:examplePath",
+			{
+				name: "Unknown Path",
+				input: &blobbergrpc.GetFileStatsRequest{
+					Context: &blobbergrpc.RequestContext{
+						Client:          "exampleOwnerId",
+						ClientKey:       "",
+						Allocation:      allocationTx,
+						ClientSignature: clientSignature,
+					},
+					Path:     "examplePath",
+					PathHash: "exampleId:examplePath123",
+				},
+				expectedFileName: "",
+				expectingError:   true,
+			},
 		}
 
-		getFileStatsResp, err := blobberClient.GetFileStats(ctx, req)
-		if err != nil {
-			t.Fatal(err)
+		for _, tc := range testCases {
+			getFileStatsResp, err := blobberClient.GetFileStats(ctx, tc.input)
+			if err != nil {
+				if !tc.expectingError {
+					t.Fatal(err)
+				}
+				continue
+			}
+
+			if tc.expectingError {
+				t.Fatal("expected error")
+			}
+
+			if getFileStatsResp.MetaData.FileMetaData.Name != tc.expectedFileName {
+				t.Fatal("unexpected file name from GetFileStats rpc")
+			}
 		}
 
-		if getFileStatsResp.MetaData.FileMetaData.Name != "filename" {
-			t.Fatal("unexpected file name from GetFileStats rpc")
-		}
 	})
 
 	t.Run("TestListEntities", func(t *testing.T) {
+		allocationTx := randString(32)
+
+		pubKey, _, signScheme := GeneratePubPrivateKey(t)
+		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
 		err := tdController.ClearDatabase()
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = tdController.AddListEntitiesTestData()
+		err = tdController.AddListEntitiesTestData(allocationTx, pubKey)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		req := &blobbergrpc.ListEntitiesRequest{
-			Context: &blobbergrpc.RequestContext{
-				Client:     "exampleOwnerId",
-				ClientKey:  "",
-				Allocation: "exampleTransaction",
+		testCases := []struct {
+			name           string
+			input          *blobbergrpc.ListEntitiesRequest
+			expectedPath   string
+			expectingError bool
+		}{
+			{
+				name: "Success",
+				input: &blobbergrpc.ListEntitiesRequest{
+					Context: &blobbergrpc.RequestContext{
+						Client:          "exampleOwnerId",
+						ClientKey:       "",
+						Allocation:      allocationTx,
+						ClientSignature: clientSignature,
+					},
+					Path:       "examplePath",
+					PathHash:   "exampleId:examplePath",
+					AuthToken:  "",
+					Allocation: "",
+				},
+				expectedPath:   "examplePath",
+				expectingError: false,
 			},
-			Path:       "examplePath",
-			PathHash:   "exampleId:examplePath",
-			AuthToken:  "",
-			Allocation: "",
+			{
+				name: "bad path",
+				input: &blobbergrpc.ListEntitiesRequest{
+					Context: &blobbergrpc.RequestContext{
+						Client:          "exampleOwnerId",
+						ClientKey:       "",
+						Allocation:      allocationTx,
+						ClientSignature: clientSignature,
+					},
+					Path:       "examplePath",
+					PathHash:   "exampleId:examplePath123",
+					AuthToken:  "",
+					Allocation: "",
+				},
+				expectedPath:   "",
+				expectingError: true,
+			},
 		}
 
-		listEntitiesResp, err := blobberClient.ListEntities(ctx, req)
-		if err != nil {
-			t.Fatal(err)
+		for _, tc := range testCases {
+			listEntitiesResp, err := blobberClient.ListEntities(ctx, tc.input)
+			if err != nil {
+				if !tc.expectingError {
+					t.Fatal(err)
+				}
+				continue
+			}
+
+			if tc.expectingError {
+				t.Fatal("expected error")
+			}
+
+			if listEntitiesResp.MetaData.DirMetaData.Path != tc.expectedPath {
+				t.Fatal("unexpected path from ListEntities rpc")
+			}
 		}
 
-		if listEntitiesResp.MetaData.DirMetaData.Path != "examplePath" {
-			t.Fatal("unexpected path from ListEntities rpc")
-		}
 	})
 
 	t.Run("TestGetObjectPath", func(t *testing.T) {
+		allocationTx := randString(32)
+
+		pubKey, _, signScheme := GeneratePubPrivateKey(t)
+		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
 		err := tdController.ClearDatabase()
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = tdController.AddGetObjectPathTestData()
+		err = tdController.AddGetObjectPathTestData(allocationTx, pubKey)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		req := &blobbergrpc.GetObjectPathRequest{
-			Context: &blobbergrpc.RequestContext{
-				Client:     "exampleOwnerId",
-				ClientKey:  "",
-				Allocation: "exampleTransaction",
+		testCases := []struct {
+			name           string
+			input          *blobbergrpc.GetObjectPathRequest
+			expectedPath   string
+			expectingError bool
+		}{
+			{
+				name: "Success",
+				input: &blobbergrpc.GetObjectPathRequest{
+					Context: &blobbergrpc.RequestContext{
+						Client:          "exampleOwnerId",
+						ClientKey:       "",
+						Allocation:      allocationTx,
+						ClientSignature: clientSignature,
+					},
+					Allocation: "",
+					Path:       "examplePath",
+					BlockNum:   "0",
+				},
+				expectedPath:   "/",
+				expectingError: false,
 			},
-			Allocation: "",
-			Path:       "examplePath",
-			BlockNum:   "0",
 		}
 
-		getObjectPathResp, err := blobberClient.GetObjectPath(ctx, req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		for _, tc := range testCases {
+			getObjectPathResp, err := blobberClient.GetObjectPath(ctx, tc.input)
+			if err != nil {
+				if !tc.expectingError {
+					t.Fatal(err)
+				}
+				continue
+			}
 
-		if getObjectPathResp.ObjectPath.Path.DirMetaData.Path != "/" {
-			t.Fatal("unexpected root hash from GetObjectPath rpc")
+			if tc.expectingError {
+				t.Fatal("expected error")
+			}
+
+			if getObjectPathResp.ObjectPath.Path.DirMetaData.Path != tc.expectedPath {
+				t.Fatal("unexpected root hash from GetObjectPath rpc")
+			}
 		}
 	})
 
 	t.Run("TestGetReferencePath", func(t *testing.T) {
+		allocationTx := randString(32)
+
+		pubKey, _, signScheme := GeneratePubPrivateKey(t)
+		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
 		err := tdController.ClearDatabase()
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = tdController.AddGetReferencePathTestData()
+		err = tdController.AddGetReferencePathTestData(allocationTx, pubKey)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		req := &blobbergrpc.GetReferencePathRequest{
-			Context: &blobbergrpc.RequestContext{
-				Client:     "exampleOwnerId",
-				ClientKey:  "",
-				Allocation: "exampleTransaction",
+		testCases := []struct {
+			name           string
+			input          *blobbergrpc.GetReferencePathRequest
+			expectedPath   string
+			expectingError bool
+		}{
+			{
+				name: "Success",
+				input: &blobbergrpc.GetReferencePathRequest{
+					Context: &blobbergrpc.RequestContext{
+						Client:          "exampleOwnerId",
+						ClientKey:       "",
+						Allocation:      allocationTx,
+						ClientSignature: clientSignature,
+					},
+					Paths:      "",
+					Path:       "/",
+					Allocation: "",
+				},
+				expectedPath:   "/",
+				expectingError: false,
 			},
-			Paths:      "",
-			Path:       "/",
-			Allocation: "",
-		}
-		getReferencePathResp, err := blobberClient.GetReferencePath(ctx, req)
-		if err != nil {
-			t.Fatal(err)
 		}
 
-		if getReferencePathResp.ReferencePath.MetaData.DirMetaData.Path != "/" {
-			t.Fatal("unexpected path from GetReferencePath rpc")
+		for _, tc := range testCases {
+			getReferencePathResp, err := blobberClient.GetReferencePath(ctx, tc.input)
+			if err != nil {
+				if !tc.expectingError {
+					t.Fatal(err)
+				}
+				continue
+			}
+
+			if tc.expectingError {
+				t.Fatal("expected error")
+			}
+
+			if getReferencePathResp.ReferencePath.MetaData.DirMetaData.Path != tc.expectedPath {
+				t.Fatal("unexpected path from GetReferencePath rpc")
+			}
 		}
 	})
 
 	t.Run("TestGetObjectTree", func(t *testing.T) {
+		allocationTx := randString(32)
+
+		pubKey, _, signScheme := GeneratePubPrivateKey(t)
+		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
 		err := tdController.ClearDatabase()
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = tdController.AddGetObjectTreeTestData()
+		err = tdController.AddGetObjectTreeTestData(allocationTx, pubKey)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		req := &blobbergrpc.GetObjectTreeRequest{
-			Context: &blobbergrpc.RequestContext{
-				Client:     "exampleOwnerId",
-				ClientKey:  "",
-				Allocation: "exampleTransaction",
+		testCases := []struct {
+			name             string
+			input            *blobbergrpc.GetObjectTreeRequest
+			expectedFileName string
+			expectingError   bool
+		}{
+			{
+				name: "Success",
+				input: &blobbergrpc.GetObjectTreeRequest{
+					Context: &blobbergrpc.RequestContext{
+						Client:          "exampleOwnerId",
+						ClientKey:       "",
+						Allocation:      allocationTx,
+						ClientSignature: clientSignature,
+					},
+					Path:       "/",
+					Allocation: "",
+				},
+				expectedFileName: "root",
+				expectingError:   false,
 			},
-			Path:       "/",
-			Allocation: "",
-		}
-		getObjectTreeResp, err := blobberClient.GetObjectTree(ctx, req)
-		if err != nil {
-			t.Fatal(err)
+			{
+				name: "bad path",
+				input: &blobbergrpc.GetObjectTreeRequest{
+					Context: &blobbergrpc.RequestContext{
+						Client:          "exampleOwnerId",
+						ClientKey:       "",
+						Allocation:      allocationTx,
+						ClientSignature: clientSignature,
+					},
+					Path:       "/2",
+					Allocation: "",
+				},
+				expectedFileName: "root",
+				expectingError:   true,
+			},
 		}
 
-		if getObjectTreeResp.ReferencePath.MetaData.DirMetaData.Name != "root" {
-			t.Fatal("unexpected root name from GetObject")
+		for _, tc := range testCases {
+
+			getObjectTreeResp, err := blobberClient.GetObjectTree(ctx, tc.input)
+			if err != nil {
+				if !tc.expectingError {
+					t.Fatal(err)
+				}
+				continue
+			}
+
+			if tc.expectingError {
+				t.Fatal("expected error")
+			}
+
+			if getObjectTreeResp.ReferencePath.MetaData.DirMetaData.Name != tc.expectedFileName {
+				t.Fatal("unexpected root name from GetObject")
+			}
 		}
+
 	})
 
 }

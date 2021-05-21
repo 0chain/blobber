@@ -7,8 +7,9 @@ import (
 	"log"
 	"time"
 
-	"gorm.io/gorm"
 	"testing"
+
+	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	coreConfig "github.com/0chain/blobber/code/go/0chain.net/core/config"
@@ -237,7 +238,7 @@ VALUES (1234, 'someClient');
 	return nil
 }
 
-func (c *TestDataController) AddGetFileStatsTestData() error {
+func (c *TestDataController) AddGetFileStatsTestData(allocationTx, pubKey string) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -265,7 +266,7 @@ func (c *TestDataController) AddGetFileStatsTestData() error {
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id)
-VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKey',` + fmt.Sprint(expTime) + `,'examplePayerId');
+VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubKey + `',` + fmt.Sprint(expTime) + `,'examplePayerId');
 `)
 	if err != nil {
 		return err
@@ -287,7 +288,7 @@ VALUES (1234,'exampleId','exampleId:examplePath','exampleId:examplePath','f','fi
 	return nil
 }
 
-func (c *TestDataController) AddListEntitiesTestData() error {
+func (c *TestDataController) AddListEntitiesTestData(allocationTx, pubkey string) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -315,7 +316,7 @@ func (c *TestDataController) AddListEntitiesTestData() error {
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id)
-VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKey',` + fmt.Sprint(expTime) + `,'examplePayerId');
+VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId');
 `)
 	if err != nil {
 		return err
@@ -337,7 +338,7 @@ VALUES (1234,'exampleId','exampleId:examplePath','exampleId:examplePath','f','fi
 	return nil
 }
 
-func (c *TestDataController) AddGetObjectPathTestData() error {
+func (c *TestDataController) AddGetObjectPathTestData(allocationTx, pubKey string) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -365,7 +366,7 @@ func (c *TestDataController) AddGetObjectPathTestData() error {
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id)
-VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKey',` + fmt.Sprint(expTime) + `,'examplePayerId');
+VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubKey + `',` + fmt.Sprint(expTime) + `,'examplePayerId');
 `)
 	if err != nil {
 		return err
@@ -379,7 +380,7 @@ VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKe
 	return nil
 }
 
-func (c *TestDataController) AddGetReferencePathTestData() error {
+func (c *TestDataController) AddGetReferencePathTestData(allocationTx, pubkey string) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -407,7 +408,7 @@ func (c *TestDataController) AddGetReferencePathTestData() error {
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id)
-VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKey',` + fmt.Sprint(expTime) + `,'examplePayerId');
+VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId');
 `)
 	if err != nil {
 		return err
@@ -421,7 +422,7 @@ VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKe
 	return nil
 }
 
-func (c *TestDataController) AddGetObjectTreeTestData() error {
+func (c *TestDataController) AddGetObjectTreeTestData(allocationTx, pubkey string) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -449,7 +450,7 @@ func (c *TestDataController) AddGetObjectTreeTestData() error {
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id)
-VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKey',` + fmt.Sprint(expTime) + `,'examplePayerId');
+VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId');
 `)
 	if err != nil {
 		return err
