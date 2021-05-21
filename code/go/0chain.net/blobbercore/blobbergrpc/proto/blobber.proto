@@ -1,7 +1,7 @@
 syntax = "proto3";
 package blobber.service.v1;
 
-option go_package = "./blobbergrpc";
+option go_package = "code/go/0chain.net/blobbercore/blobbergrpc";
 
 import "google/api/annotations.proto";
 
@@ -45,9 +45,8 @@ service Blobber {
 }
 
 message GetObjectTreeRequest {
-  RequestContext context = 1;
-  string path = 2;
-  string allocation = 3;
+  string path = 1;
+  string allocation = 2;
 }
 message GetObjectTreeResponse {
   ReferencePath ReferencePath = 1;
@@ -55,10 +54,9 @@ message GetObjectTreeResponse {
 }
 
 message GetReferencePathRequest {
-  RequestContext Context = 1;
-  string Paths = 2;
-  string Path = 3;
-  string allocation = 4;
+  string Paths = 1;
+  string Path = 2;
+  string allocation = 3;
 }
 message GetReferencePathResponse {
   ReferencePath ReferencePath = 1;
@@ -71,10 +69,9 @@ message ReferencePath {
 }
 
 message GetObjectPathRequest {
-  RequestContext context = 1;
-  string allocation = 2;
-  string Path = 3;
-  string BlockNum = 4;
+  string allocation = 1;
+  string Path = 2;
+  string BlockNum = 3;
 }
 message GetObjectPathResponse {
   ObjectPath ObjectPath = 1;
@@ -101,11 +98,10 @@ message WriteMarker {
 }
 
 message ListEntitiesRequest {
-  RequestContext context = 1;
-  string path = 2;
-  string path_hash = 3;
-  string auth_token = 4;
-  string allocation = 5;
+  string path = 1;
+  string path_hash = 2;
+  string auth_token = 3;
+  string allocation = 4;
 }
 
 message ListEntitiesResponse {
@@ -115,10 +111,9 @@ message ListEntitiesResponse {
 }
 
 message GetFileStatsRequest {
-  RequestContext context = 1;
-  string path = 2;
-  string path_hash = 3;
-  string allocation = 4;
+  string path = 1;
+  string path_hash = 2;
+  string allocation = 3;
 }
 
 message GetFileStatsResponse {
@@ -140,11 +135,10 @@ message FileStats {
 }
 
 message GetFileMetaDataRequest {
-  RequestContext context = 1;
-  string path = 2;
-  string path_hash = 3;
-  string auth_token = 4;
-  string allocation = 5;
+  string path = 1;
+  string path_hash = 2;
+  string auth_token = 3;
+  string allocation = 4;
 }
 
 message GetFileMetaDataResponse {
@@ -164,16 +158,8 @@ message Collaborator {
   int64 CreatedAt = 3;
 }
 
-message RequestContext {
-  string client = 1;
-  string client_key = 2;
-  string allocation = 3;
-  string client_signature = 4;
-}
-
 message GetAllocationRequest {
-  RequestContext context = 1;
-  string id = 2;
+  string id = 1;
 }
 
 message GetAllocationResponse {

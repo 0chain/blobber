@@ -9,6 +9,8 @@ import (
 	"os"
 	"runtime/pprof"
 
+	"google.golang.org/grpc/metadata"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -121,23 +123,20 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	return ctx
 }
 
-func setupHandlerGRPCContext(r *http.Request) *blobbergrpc.RequestContext {
-	var vars = mux.Vars(r)
-	return &blobbergrpc.RequestContext{
-		Client:          r.Header.Get(common.ClientHeader),
-		ClientKey:       r.Header.Get(common.ClientKeyHeader),
-		Allocation:      vars["allocation"],
-		ClientSignature: r.Header.Get(common.ClientSignatureHeader),
-	}
+func setupHandlerGRPCContext(ctx context.Context, r *http.Request) context.Context {
+	return metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+		common.ClientHeader:          r.Header.Get(common.ClientHeader),
+		common.ClientKeyHeader:       r.Header.Get(common.ClientKeyHeader),
+		common.ClientSignatureHeader: r.Header.Get(common.ClientSignatureHeader),
+	}))
 }
 
 func AllocationHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
-		reqCtx := setupHandlerGRPCContext(r)
+		ctx = setupHandlerGRPCContext(ctx, r)
 
 		getAllocationResp, err := svc.GetAllocation(ctx, &blobbergrpc.GetAllocationRequest{
-			Context: reqCtx,
-			Id:      r.FormValue("id"),
+			Id: r.FormValue("id"),
 		})
 		if err != nil {
 			return nil, err
@@ -153,14 +152,13 @@ func GetAllocationResponseHandler(resp *blobbergrpc.GetAllocationResponse) *allo
 
 func FileMetaHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
-		reqCtx := setupHandlerGRPCContext(r)
+		ctx = setupHandlerGRPCContext(ctx, r)
 
 		getFileMetaDataResp, err := svc.GetFileMetaData(ctx, &blobbergrpc.GetFileMetaDataRequest{
-			Context:    reqCtx,
 			Path:       r.FormValue("path"),
 			PathHash:   r.FormValue("path_hash"),
 			AuthToken:  r.FormValue("auth_token"),
-			Allocation: reqCtx.Allocation,
+			Allocation: mux.Vars(r)["allocation"],
 		})
 		if err != nil {
 			return nil, err
@@ -205,13 +203,12 @@ func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, err
 
 func FileStatsHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
-		reqCtx := setupHandlerGRPCContext(r)
+		ctx = setupHandlerGRPCContext(ctx, r)
 
 		getFileStatsResponse, err := svc.GetFileStats(ctx, &blobbergrpc.GetFileStatsRequest{
-			Context:    reqCtx,
 			Path:       r.FormValue("path"),
 			PathHash:   r.FormValue("path_hash"),
-			Allocation: reqCtx.Allocation,
+			Allocation: mux.Vars(r)["allocation"],
 		})
 		if err != nil {
 			return nil, err
@@ -251,14 +248,12 @@ func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 /*ListHandler is the handler to respond to upload requests fro clients*/
 func ListHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
-		reqCtx := setupHandlerGRPCContext(r)
-
+		ctx = setupHandlerGRPCContext(ctx, r)
 		listEntitiesResponse, err := svc.ListEntities(ctx, &blobbergrpc.ListEntitiesRequest{
-			Context:    reqCtx,
 			Path:       r.FormValue("path"),
 			PathHash:   r.FormValue("path_hash"),
 			AuthToken:  r.FormValue("auth_token"),
-			Allocation: reqCtx.Allocation,
+			Allocation: mux.Vars(r)["allocation"],
 		})
 		if err != nil {
 			return nil, err
@@ -296,13 +291,11 @@ func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 func ReferencePathHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
-		reqCtx := setupHandlerGRPCContext(r)
-
+		ctx = setupHandlerGRPCContext(ctx, r)
 		getReferencePathResponse, err := svc.GetReferencePath(ctx, &blobbergrpc.GetReferencePathRequest{
-			Context:    reqCtx,
 			Paths:      r.FormValue("paths"),
 			Path:       r.FormValue("path"),
-			Allocation: reqCtx.Allocation,
+			Allocation: mux.Vars(r)["allocation"],
 		})
 		if err != nil {
 			return nil, err
@@ -322,11 +315,9 @@ func GetReferencePathResponseHandler(getReferencePathResponse *blobbergrpc.GetRe
 
 func ObjectPathHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
-		reqCtx := setupHandlerGRPCContext(r)
-
+		ctx = setupHandlerGRPCContext(ctx, r)
 		getObjectPathResponse, err := svc.GetObjectPath(ctx, &blobbergrpc.GetObjectPathRequest{
-			Context:    reqCtx,
-			Allocation: reqCtx.Allocation,
+			Allocation: mux.Vars(r)["allocation"],
 			Path:       r.FormValue("path"),
 			BlockNum:   r.FormValue("block_num"),
 		})
@@ -360,12 +351,10 @@ func GetObjectPathResponseHandler(getObjectPathResponse *blobbergrpc.GetObjectPa
 
 func ObjectTreeHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
-		reqCtx := setupHandlerGRPCContext(r)
-
+		ctx = setupHandlerGRPCContext(ctx, r)
 		getObjectTreeResponse, err := svc.GetObjectTree(ctx, &blobbergrpc.GetObjectTreeRequest{
-			Context:    reqCtx,
 			Path:       r.FormValue("path"),
-			Allocation: reqCtx.Allocation,
+			Allocation: mux.Vars(r)["allocation"],
 		})
 		if err != nil {
 			return nil, err
