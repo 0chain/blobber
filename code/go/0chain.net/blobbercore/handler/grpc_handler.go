@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -39,7 +41,7 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 		return nil, err
 	}
 
-	return &blobbergrpc.GetAllocationResponse{Allocation: AllocationToGRPCAllocation(allocation)}, nil
+	return &blobbergrpc.GetAllocationResponse{Allocation: convert.AllocationToGRPCAllocation(allocation)}, nil
 }
 
 func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {
@@ -103,11 +105,11 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 
 	var collaboratorsGRPC []*blobbergrpc.Collaborator
 	for _, c := range collaborators {
-		collaboratorsGRPC = append(collaboratorsGRPC, CollaboratorToGRPCCollaborator(&c))
+		collaboratorsGRPC = append(collaboratorsGRPC, convert.CollaboratorToGRPCCollaborator(&c))
 	}
 
 	return &blobbergrpc.GetFileMetaDataResponse{
-		MetaData:      reference.FileRefToFileRefGRPC(fileref),
+		MetaData:      convert.FileRefToFileRefGRPC(fileref),
 		Collaborators: collaboratorsGRPC,
 	}, nil
 }
@@ -158,8 +160,8 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 	}
 
 	return &blobbergrpc.GetFileStatsResponse{
-		MetaData: reference.FileRefToFileRefGRPC(fileref),
-		Stats:    FileStatsToFileStatsGRPC(stats),
+		MetaData: convert.FileRefToFileRefGRPC(fileref),
+		Stats:    convert.FileStatsToFileStatsGRPC(stats),
 	}, nil
 }
 
@@ -220,9 +222,9 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.
 		if clientID != allocationObj.OwnerID {
 			entity.Path = ""
 		}
-		entities = append(entities, reference.FileRefToFileRefGRPC(entity))
+		entities = append(entities, convert.FileRefToFileRefGRPC(entity))
 	}
-	refGRPC := reference.FileRefToFileRefGRPC(dirref)
+	refGRPC := convert.FileRefToFileRefGRPC(dirref)
 
 	return &blobbergrpc.ListEntitiesResponse{
 		AllocationRoot: allocationObj.AllocationRoot,
@@ -281,22 +283,22 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 	}
 	var latestWriteMarketGRPC *blobbergrpc.WriteMarker
 	if latestWM != nil {
-		latestWriteMarketGRPC = WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
+		latestWriteMarketGRPC = convert.WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
 	}
 
 	pathList := make([]*blobbergrpc.FileRef, 0)
 	list, _ := objectPath.Path["list"].([]map[string]interface{})
 	if len(list) > 0 {
 		for _, pl := range list {
-			pathList = append(pathList, reference.FileRefToFileRefGRPC(reference.ListingDataToRef(pl)))
+			pathList = append(pathList, convert.FileRefToFileRefGRPC(reference.ListingDataToRef(pl)))
 		}
 	}
 
 	return &blobbergrpc.GetObjectPathResponse{
 		ObjectPath: &blobbergrpc.ObjectPath{
 			RootHash:     objectPath.RootHash,
-			Meta:         reference.FileRefToFileRefGRPC(reference.ListingDataToRef(objectPath.Meta)),
-			Path:         reference.FileRefToFileRefGRPC(reference.ListingDataToRef(objectPath.Path)),
+			Meta:         convert.FileRefToFileRefGRPC(reference.ListingDataToRef(objectPath.Meta)),
+			Path:         convert.FileRefToFileRefGRPC(reference.ListingDataToRef(objectPath.Path)),
 			PathList:     pathList,
 			FileBlockNum: objectPath.FileBlockNum,
 		},
@@ -344,17 +346,17 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 		return nil, err
 	}
 
-	refPath := &ReferencePath{ref: rootRef}
-	refsToProcess := make([]*ReferencePath, 0)
+	refPath := &reference.ReferencePath{Ref: rootRef}
+	refsToProcess := make([]*reference.ReferencePath, 0)
 	refsToProcess = append(refsToProcess, refPath)
 	for len(refsToProcess) > 0 {
 		refToProcess := refsToProcess[0]
-		refToProcess.Meta = refToProcess.ref.GetListingData(ctx)
-		if len(refToProcess.ref.Children) > 0 {
-			refToProcess.List = make([]*ReferencePath, len(refToProcess.ref.Children))
+		refToProcess.Meta = refToProcess.Ref.GetListingData(ctx)
+		if len(refToProcess.Ref.Children) > 0 {
+			refToProcess.List = make([]*reference.ReferencePath, len(refToProcess.Ref.Children))
 		}
-		for idx, child := range refToProcess.ref.Children {
-			childRefPath := &ReferencePath{ref: child}
+		for idx, child := range refToProcess.Ref.Children {
+			childRefPath := &reference.ReferencePath{Ref: child}
 			refToProcess.List[idx] = childRefPath
 			refsToProcess = append(refsToProcess, childRefPath)
 		}
@@ -373,9 +375,9 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 
 	var refPathResult blobbergrpc.GetReferencePathResponse
 	var recursionCount int
-	refPathResult.ReferencePath = ReferencePathToReferencePathGRPC(&recursionCount, refPath)
+	refPathResult.ReferencePath = convert.ReferencePathToReferencePathGRPC(&recursionCount, refPath)
 	if latestWM != nil {
-		refPathResult.LatestWM = WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
+		refPathResult.LatestWM = convert.WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
 	}
 
 	return &refPathResult, nil
@@ -410,17 +412,17 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 		return nil, err
 	}
 
-	refPath := &ReferencePath{ref: rootRef}
-	refsToProcess := make([]*ReferencePath, 0)
+	refPath := &reference.ReferencePath{Ref: rootRef}
+	refsToProcess := make([]*reference.ReferencePath, 0)
 	refsToProcess = append(refsToProcess, refPath)
 	for len(refsToProcess) > 0 {
 		refToProcess := refsToProcess[0]
-		refToProcess.Meta = refToProcess.ref.GetListingData(ctx)
-		if len(refToProcess.ref.Children) > 0 {
-			refToProcess.List = make([]*ReferencePath, len(refToProcess.ref.Children))
+		refToProcess.Meta = refToProcess.Ref.GetListingData(ctx)
+		if len(refToProcess.Ref.Children) > 0 {
+			refToProcess.List = make([]*reference.ReferencePath, len(refToProcess.Ref.Children))
 		}
-		for idx, child := range refToProcess.ref.Children {
-			childRefPath := &ReferencePath{ref: child}
+		for idx, child := range refToProcess.Ref.Children {
+			childRefPath := &reference.ReferencePath{Ref: child}
 			refToProcess.List[idx] = childRefPath
 			refsToProcess = append(refsToProcess, childRefPath)
 		}
@@ -438,9 +440,9 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 	}
 	var refPathResult blobbergrpc.GetObjectTreeResponse
 	var recursionCount int
-	refPathResult.ReferencePath = ReferencePathToReferencePathGRPC(&recursionCount, refPath)
+	refPathResult.ReferencePath = convert.ReferencePathToReferencePathGRPC(&recursionCount, refPath)
 	if latestWM != nil {
-		refPathResult.LatestWM = WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
+		refPathResult.LatestWM = convert.WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
 	}
 	return &refPathResult, nil
 }
