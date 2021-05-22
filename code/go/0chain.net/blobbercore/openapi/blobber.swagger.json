@@ -16,6 +16,44 @@
     "application/json"
   ],
   "paths": {
+    "/v1/file/copy/{allocation}": {
+      "post": {
+        "operationId": "Blobber_CopyObject",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CopyObjectResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CopyObjectRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
     "/v2/allocation": {
       "get": {
         "operationId": "Blobber_GetAllocation",
@@ -594,6 +632,57 @@
         "CreatedAt": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "v1CopyObjectRequest": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "$ref": "#/definitions/v1RequestContext"
+        },
+        "path": {
+          "type": "string"
+        },
+        "pathHash": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        },
+        "dest": {
+          "type": "string"
+        },
+        "allocation": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CopyObjectResponse": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "format": "int64"
+        },
+        "contentHash": {
+          "type": "string"
+        },
+        "merkleRoot": {
+          "type": "string"
+        },
+        "uploadLength": {
+          "type": "string",
+          "format": "int64",
+          "description": "UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer."
+        },
+        "uploadOffset": {
+          "type": "string",
+          "format": "int64",
+          "description": "Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer."
         }
       }
     },

@@ -54,6 +54,8 @@ type PackageHandler interface {
 	GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 	GetAllocationChanges(ctx context.Context, connectionID string,
 		allocationID string, clientID string) (allocation.IAllocationChangeCollector, error)
+	GetReference(ctx context.Context, allocationID string, newPath string) (
+		*reference.Ref, error)
 }
 
 type packageHandler struct{}
@@ -88,6 +90,11 @@ func (r *packageHandler) GetReferenceFromLookupHash(ctx context.Context, allocat
 
 func (r *packageHandler) GetReferenceLookup(ctx context.Context, allocationID string, path string) string {
 	return reference.GetReferenceLookup(allocationID, path)
+}
+
+func (r *packageHandler) GetReference(ctx context.Context, allocationID string, newPath string) (
+	*reference.Ref, error) {
+	return reference.GetReference(ctx, allocationID, newPath)
 }
 
 func (r *packageHandler) GetCommitMetaTxns(ctx context.Context, refID int64) ([]reference.CommitMetaTxn, error) {

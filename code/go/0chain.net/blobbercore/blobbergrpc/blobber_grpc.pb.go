@@ -26,6 +26,7 @@ type BlobberClient interface {
 	GetReferencePath(ctx context.Context, in *GetReferencePathRequest, opts ...grpc.CallOption) (*GetReferencePathResponse, error)
 	GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error)
 	UpdateObjectAttributes(ctx context.Context, in *UpdateObjectAttributesRequest, opts ...grpc.CallOption) (*UpdateObjectAttributesResponse, error)
+	CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CopyObjectResponse, error)
 }
 
 type blobberClient struct {
@@ -108,6 +109,15 @@ func (c *blobberClient) UpdateObjectAttributes(ctx context.Context, in *UpdateOb
 	return out, nil
 }
 
+func (c *blobberClient) CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CopyObjectResponse, error) {
+	out := new(CopyObjectResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/CopyObject", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BlobberServer is the server API for Blobber service.
 // All implementations must embed UnimplementedBlobberServer
 // for forward compatibility
@@ -120,6 +130,7 @@ type BlobberServer interface {
 	GetReferencePath(context.Context, *GetReferencePathRequest) (*GetReferencePathResponse, error)
 	GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error)
 	UpdateObjectAttributes(context.Context, *UpdateObjectAttributesRequest) (*UpdateObjectAttributesResponse, error)
+	CopyObject(context.Context, *CopyObjectRequest) (*CopyObjectResponse, error)
 	mustEmbedUnimplementedBlobberServer()
 }
 
@@ -150,6 +161,9 @@ func (UnimplementedBlobberServer) GetObjectTree(context.Context, *GetObjectTreeR
 }
 func (UnimplementedBlobberServer) UpdateObjectAttributes(context.Context, *UpdateObjectAttributesRequest) (*UpdateObjectAttributesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateObjectAttributes not implemented")
+}
+func (UnimplementedBlobberServer) CopyObject(context.Context, *CopyObjectRequest) (*CopyObjectResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CopyObject not implemented")
 }
 func (UnimplementedBlobberServer) mustEmbedUnimplementedBlobberServer() {}
 
@@ -308,6 +322,24 @@ func _Blobber_UpdateObjectAttributes_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Blobber_CopyObject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CopyObjectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).CopyObject(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/CopyObject",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).CopyObject(ctx, req.(*CopyObjectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Blobber_ServiceDesc is the grpc.ServiceDesc for Blobber service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -346,6 +378,10 @@ var Blobber_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateObjectAttributes",
 			Handler:    _Blobber_UpdateObjectAttributes_Handler,
+		},
+		{
+			MethodName: "CopyObject",
+			Handler:    _Blobber_CopyObject_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -62,8 +62,8 @@ type IAllocationChangeCollector interface {
 	GetAllocationID() string
 	GetConnectionID() string
 	//GetClientID() string
-	//GetSize() int64
-	//SetSize(size int64)
+	GetSize() int64
+	SetSize(size int64)
 }
 
 type AllocationChangeCollector struct {
@@ -198,10 +198,10 @@ func (cc *AllocationChangeCollector) GetConnectionID() string {
 //	return cc.ClientID
 //}
 //
-//func (cc *AllocationChangeCollector) GetSize() int64 {
-//	return cc.Size
-//}
-//
-//func (cc *AllocationChangeCollector) SetSize(size int64) {
-//	cc.Size = size
-//}
+func (cc *AllocationChangeCollector) GetSize() int64 {
+	return cc.Size
+}
+
+func (cc *AllocationChangeCollector) SetSize(size int64) {
+	cc.Size = size
+}
