@@ -220,3 +220,91 @@ func (b *blobberGRPCService) CopyObject(ctx context.Context, r *blobbergrpc.Copy
 
 	return result, nil
 }
+
+func (b *blobberGRPCService) RenameObject(ctx context.Context, r *blobbergrpc.RenameObjectRequest) (
+	*blobbergrpc.RenameObjectResponse, error) {
+
+	ctx = setupGRPCHandlerContext(ctx, r.Context)
+
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	//valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	//if !valid || err != nil {
+	//	return nil, common.NewError("invalid_signature", "Invalid signature")
+	//}
+	allocationID := allocationObj.ID
+
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+
+	if len(clientID) == 0 {
+		return nil, common.NewError("invalid_operation", "Invalid client")
+	}
+
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.
+			NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	new_name := r.NewName
+	if len(new_name) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid name")
+	}
+
+	pathHash := r.PathHash
+	path := r.Path
+	if len(pathHash) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		pathHash = b.packageHandler.GetReferenceLookup(ctx, allocationObj.ID, path)
+	}
+
+	connectionID := r.ConnectionId
+	if len(connectionID) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+
+	connectionObj, err := b.packageHandler.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	if err != nil {
+		return nil, common.NewError("meta_error", "Error reading metadata for connection")
+	}
+
+	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	objectRef, err := b.packageHandler.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	allocationChange := &allocation.AllocationChange{}
+	allocationChange.ConnectionID = connectionObj.GetConnectionID()
+	allocationChange.Size = 0
+	allocationChange.Operation = allocation.RENAME_OPERATION
+	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.GetConnectionID(),
+		AllocationID: connectionObj.GetAllocationID(), Path: objectRef.Path}
+	dfc.NewName = new_name
+	connectionObj.SetSize(connectionObj.GetSize() + allocationChange.Size)
+	connectionObj.AddChange(allocationChange, dfc)
+
+	err = connectionObj.Save(ctx)
+	if err != nil {
+		Logger.Error("Error in writing the connection meta data", zap.Error(err))
+		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+	}
+
+	result := &blobbergrpc.RenameObjectResponse{}
+	result.Filename = new_name
+	result.ContentHash = objectRef.Hash
+	result.MerkleRoot = objectRef.MerkleRoot
+	result.Size = objectRef.Size
+
+	return result, nil
+}

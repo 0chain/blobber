@@ -57,6 +57,13 @@ service Blobber {
       body: "*"
     };
   }
+
+  rpc RenameObject(RenameObjectRequest) returns (RenameObjectResponse) {
+    option (google.api.http) = {
+      post: "/v1/file/rename/{allocation}"
+      body: "*"
+    };
+  }
 }
 
 message GetObjectTreeRequest {
@@ -210,11 +217,32 @@ message CopyObjectRequest {
   string path = 2;
   string path_hash = 3;
   string connection_id = 4;
-  string dest = 5;
-  string allocation = 6;
+  string allocation = 5;
+  string dest = 6;
 }
 
 message CopyObjectResponse {
+  string filename = 1;
+  int64  size = 2;
+  string content_hash = 3;
+  string merkle_root = 4;
+
+  //UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
+  int64 upload_length = 5;
+  //Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
+  int64 upload_offset = 6;
+}
+
+message RenameObjectRequest {
+  RequestContext context = 1;
+  string path = 2;
+  string path_hash = 3;
+  string connection_id = 4;
+  string allocation = 5;
+  string new_name = 6;
+}
+
+message RenameObjectResponse {
   string filename = 1;
   int64  size = 2;
   string content_hash = 3;

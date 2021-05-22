@@ -27,6 +27,7 @@ type BlobberClient interface {
 	GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error)
 	UpdateObjectAttributes(ctx context.Context, in *UpdateObjectAttributesRequest, opts ...grpc.CallOption) (*UpdateObjectAttributesResponse, error)
 	CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CopyObjectResponse, error)
+	RenameObject(ctx context.Context, in *RenameObjectRequest, opts ...grpc.CallOption) (*RenameObjectResponse, error)
 }
 
 type blobberClient struct {
@@ -118,6 +119,15 @@ func (c *blobberClient) CopyObject(ctx context.Context, in *CopyObjectRequest, o
 	return out, nil
 }
 
+func (c *blobberClient) RenameObject(ctx context.Context, in *RenameObjectRequest, opts ...grpc.CallOption) (*RenameObjectResponse, error) {
+	out := new(RenameObjectResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/RenameObject", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BlobberServer is the server API for Blobber service.
 // All implementations must embed UnimplementedBlobberServer
 // for forward compatibility
@@ -131,6 +141,7 @@ type BlobberServer interface {
 	GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error)
 	UpdateObjectAttributes(context.Context, *UpdateObjectAttributesRequest) (*UpdateObjectAttributesResponse, error)
 	CopyObject(context.Context, *CopyObjectRequest) (*CopyObjectResponse, error)
+	RenameObject(context.Context, *RenameObjectRequest) (*RenameObjectResponse, error)
 	mustEmbedUnimplementedBlobberServer()
 }
 
@@ -164,6 +175,9 @@ func (UnimplementedBlobberServer) UpdateObjectAttributes(context.Context, *Updat
 }
 func (UnimplementedBlobberServer) CopyObject(context.Context, *CopyObjectRequest) (*CopyObjectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CopyObject not implemented")
+}
+func (UnimplementedBlobberServer) RenameObject(context.Context, *RenameObjectRequest) (*RenameObjectResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RenameObject not implemented")
 }
 func (UnimplementedBlobberServer) mustEmbedUnimplementedBlobberServer() {}
 
@@ -340,6 +354,24 @@ func _Blobber_CopyObject_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Blobber_RenameObject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenameObjectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).RenameObject(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/RenameObject",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).RenameObject(ctx, req.(*RenameObjectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Blobber_ServiceDesc is the grpc.ServiceDesc for Blobber service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -382,6 +414,10 @@ var Blobber_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CopyObject",
 			Handler:    _Blobber_CopyObject_Handler,
+		},
+		{
+			MethodName: "RenameObject",
+			Handler:    _Blobber_RenameObject_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
