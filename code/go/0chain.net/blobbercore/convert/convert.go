@@ -1,4 +1,4 @@
-package handler
+package convert
 
 import (
 	"context"
@@ -183,7 +183,7 @@ func GRPCCollaboratorToCollaborator(c *blobbergrpc.Collaborator) *reference.Coll
 	}
 }
 
-func ReferencePathToReferencePathGRPC(recursionCount *int, refPath *ReferencePath) *blobbergrpc.ReferencePath {
+func ReferencePathToReferencePathGRPC(recursionCount *int, refPath *reference.ReferencePath) *blobbergrpc.ReferencePath {
 	if refPath == nil {
 		return nil
 	}
@@ -195,7 +195,7 @@ func ReferencePathToReferencePathGRPC(recursionCount *int, refPath *ReferencePat
 
 	if *recursionCount > 150 {
 		return &blobbergrpc.ReferencePath{
-			MetaData: reference.FileRefToFileRefGRPC(reference.ListingDataToRef(refPath.Meta)),
+			MetaData: FileRefToFileRefGRPC(reference.ListingDataToRef(refPath.Meta)),
 			List:     nil,
 		}
 	}
@@ -206,12 +206,12 @@ func ReferencePathToReferencePathGRPC(recursionCount *int, refPath *ReferencePat
 	}
 
 	return &blobbergrpc.ReferencePath{
-		MetaData: reference.FileRefToFileRefGRPC(reference.ListingDataToRef(refPath.Meta)),
+		MetaData: FileRefToFileRefGRPC(reference.ListingDataToRef(refPath.Meta)),
 		List:     list,
 	}
 }
 
-func ReferencePathGRPCToReferencePath(recursionCount *int, refPath *blobbergrpc.ReferencePath) *ReferencePath {
+func ReferencePathGRPCToReferencePath(recursionCount *int, refPath *blobbergrpc.ReferencePath) *reference.ReferencePath {
 	if refPath == nil {
 		return nil
 	}
@@ -222,19 +222,159 @@ func ReferencePathGRPCToReferencePath(recursionCount *int, refPath *blobbergrpc.
 	}()
 
 	if *recursionCount > 150 {
-		return &ReferencePath{
-			Meta: reference.FileRefGRPCToFileRef(refPath.MetaData).GetListingData(context.Background()),
+		return &reference.ReferencePath{
+			Meta: FileRefGRPCToFileRef(refPath.MetaData).GetListingData(context.Background()),
 			List: nil,
 		}
 	}
 
-	var list []*ReferencePath
+	var list []*reference.ReferencePath
 	for i := range refPath.List {
 		list = append(list, ReferencePathGRPCToReferencePath(recursionCount, refPath.List[i]))
 	}
 
-	return &ReferencePath{
-		Meta: reference.FileRefGRPCToFileRef(refPath.MetaData).GetListingData(context.Background()),
+	return &reference.ReferencePath{
+		Meta: FileRefGRPCToFileRef(refPath.MetaData).GetListingData(context.Background()),
 		List: list,
+	}
+}
+
+func FileRefToFileRefGRPC(ref *reference.Ref) *blobbergrpc.FileRef {
+	if ref == nil {
+		return nil
+	}
+
+	var fileMetaData *blobbergrpc.FileMetaData
+	var dirMetaData *blobbergrpc.DirMetaData
+	switch ref.Type {
+	case reference.FILE:
+		fileMetaData = convertFileRefToFileMetaDataGRPC(ref)
+	case reference.DIRECTORY:
+		dirMetaData = convertDirRefToDirMetaDataGRPC(ref)
+	}
+
+	return &blobbergrpc.FileRef{
+		Type:         ref.Type,
+		FileMetaData: fileMetaData,
+		DirMetaData:  dirMetaData,
+	}
+}
+
+func convertFileRefToFileMetaDataGRPC(fileref *reference.Ref) *blobbergrpc.FileMetaData {
+	var commitMetaTxnsGRPC []*blobbergrpc.CommitMetaTxn
+	for _, c := range fileref.CommitMetaTxns {
+		commitMetaTxnsGRPC = append(commitMetaTxnsGRPC, &blobbergrpc.CommitMetaTxn{
+			RefId:     c.RefID,
+			TxnId:     c.TxnID,
+			CreatedAt: c.CreatedAt.UnixNano(),
+		})
+	}
+	return &blobbergrpc.FileMetaData{
+		Type:                fileref.Type,
+		LookupHash:          fileref.LookupHash,
+		Name:                fileref.Name,
+		Path:                fileref.Path,
+		Hash:                fileref.Hash,
+		NumBlocks:           fileref.NumBlocks,
+		PathHash:            fileref.PathHash,
+		CustomMeta:          fileref.CustomMeta,
+		ContentHash:         fileref.ContentHash,
+		Size:                fileref.Size,
+		MerkleRoot:          fileref.MerkleRoot,
+		ActualFileSize:      fileref.ActualFileSize,
+		ActualFileHash:      fileref.ActualFileHash,
+		MimeType:            fileref.MimeType,
+		ThumbnailSize:       fileref.ThumbnailSize,
+		ThumbnailHash:       fileref.ThumbnailHash,
+		ActualThumbnailSize: fileref.ActualThumbnailSize,
+		ActualThumbnailHash: fileref.ActualThumbnailHash,
+		EncryptedKey:        fileref.EncryptedKey,
+		Attributes:          fileref.Attributes,
+		OnCloud:             fileref.OnCloud,
+		CommitMetaTxns:      commitMetaTxnsGRPC,
+		CreatedAt:           fileref.CreatedAt.UnixNano(),
+		UpdatedAt:           fileref.UpdatedAt.UnixNano(),
+	}
+}
+
+func convertDirRefToDirMetaDataGRPC(dirref *reference.Ref) *blobbergrpc.DirMetaData {
+	return &blobbergrpc.DirMetaData{
+		Type:       dirref.Type,
+		LookupHash: dirref.LookupHash,
+		Name:       dirref.Name,
+		Path:       dirref.Path,
+		Hash:       dirref.Hash,
+		NumBlocks:  dirref.NumBlocks,
+		PathHash:   dirref.PathHash,
+		Size:       dirref.Size,
+		CreatedAt:  dirref.CreatedAt.UnixNano(),
+		UpdatedAt:  dirref.UpdatedAt.UnixNano(),
+	}
+}
+
+func FileRefGRPCToFileRef(ref *blobbergrpc.FileRef) *reference.Ref {
+	if ref == nil {
+		return nil
+	}
+
+	switch ref.Type {
+	case reference.FILE:
+		return convertFileMetaDataGRPCToFileRef(ref.FileMetaData)
+	case reference.DIRECTORY:
+		return convertDirMetaDataGRPCToDirRef(ref.DirMetaData)
+	}
+
+	return nil
+}
+
+func convertFileMetaDataGRPCToFileRef(metaData *blobbergrpc.FileMetaData) *reference.Ref {
+	var commitMetaTxnsGRPC []reference.CommitMetaTxn
+	for _, c := range metaData.CommitMetaTxns {
+		commitMetaTxnsGRPC = append(commitMetaTxnsGRPC, reference.CommitMetaTxn{
+			RefID:     c.RefId,
+			TxnID:     c.TxnId,
+			CreatedAt: time.Unix(0, c.CreatedAt),
+		})
+	}
+	return &reference.Ref{
+		Type:                metaData.Type,
+		LookupHash:          metaData.LookupHash,
+		Name:                metaData.Name,
+		Path:                metaData.Path,
+		Hash:                metaData.Hash,
+		NumBlocks:           metaData.NumBlocks,
+		PathHash:            metaData.PathHash,
+		CustomMeta:          metaData.CustomMeta,
+		ContentHash:         metaData.ContentHash,
+		Size:                metaData.Size,
+		MerkleRoot:          metaData.MerkleRoot,
+		ActualFileSize:      metaData.ActualFileSize,
+		ActualFileHash:      metaData.ActualFileHash,
+		MimeType:            metaData.MimeType,
+		ThumbnailSize:       metaData.ThumbnailSize,
+		ThumbnailHash:       metaData.ThumbnailHash,
+		ActualThumbnailSize: metaData.ActualThumbnailSize,
+		ActualThumbnailHash: metaData.ActualThumbnailHash,
+		EncryptedKey:        metaData.EncryptedKey,
+		Attributes:          metaData.Attributes,
+		OnCloud:             metaData.OnCloud,
+		CommitMetaTxns:      commitMetaTxnsGRPC,
+		CreatedAt:           time.Unix(0, metaData.CreatedAt),
+		UpdatedAt:           time.Unix(0, metaData.UpdatedAt),
+	}
+}
+
+func convertDirMetaDataGRPCToDirRef(dirref *blobbergrpc.DirMetaData) *reference.Ref {
+	return &reference.Ref{
+		Type:       dirref.Type,
+		LookupHash: dirref.LookupHash,
+		Name:       dirref.Name,
+		Path:       dirref.Path,
+		Hash:       dirref.Hash,
+		NumBlocks:  dirref.NumBlocks,
+		PathHash:   dirref.PathHash,
+		Size:       dirref.Size,
+		CreatedAt:  time.Unix(0, dirref.CreatedAt),
+		UpdatedAt:  time.Unix(0, dirref.UpdatedAt),
 	}
 }

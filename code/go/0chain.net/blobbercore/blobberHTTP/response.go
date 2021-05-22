@@ -1,4 +1,4 @@
-package handler
+package blobberHTTP
 
 import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -28,14 +28,8 @@ type CommitResult struct {
 	//Result         []*UploadResult         `json:"result"`
 }
 
-type ReferencePath struct {
-	Meta map[string]interface{} `json:"meta_data"`
-	List []*ReferencePath       `json:"list,omitempty"`
-	ref  *reference.Ref
-}
-
 type ReferencePathResult struct {
-	*ReferencePath
+	*reference.ReferencePath
 	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
 }
 
