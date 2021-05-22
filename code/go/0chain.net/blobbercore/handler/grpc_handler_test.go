@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
+
 	rl "go.uber.org/ratelimit"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -130,7 +132,7 @@ func Test_GetAllocation(t *testing.T) {
 			},
 			expectCommit: true,
 			wantCode:     codes.OK.String(),
-			wantAlloc:    AllocationToGRPCAllocation(alloc),
+			wantAlloc:    convert.AllocationToGRPCAllocation(alloc),
 		},
 		{
 			name: "Commiting_Transaction_ERR",
@@ -161,7 +163,7 @@ func Test_GetAllocation(t *testing.T) {
 			},
 			expectCommit: true,
 			wantCode:     codes.OK.String(),
-			wantAlloc:    AllocationToGRPCAllocation(alloc),
+			wantAlloc:    convert.AllocationToGRPCAllocation(alloc),
 		},
 		{
 			name: "Expired_Allocation_ERR",

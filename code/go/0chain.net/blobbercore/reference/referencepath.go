@@ -8,6 +8,12 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
+type ReferencePath struct {
+	Meta map[string]interface{} `json:"meta_data"`
+	List []*ReferencePath       `json:"list,omitempty"`
+	Ref  *Ref
+}
+
 func GetReferencePath(ctx context.Context, allocationID string, path string) (*Ref, error) {
 	return GetReferencePathFromPaths(ctx, allocationID, []string{path})
 }
