@@ -8,11 +8,9 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"runtime"
 	"strconv"
-	"strings"
 	"time"
 
 	"0chain.net/blobbercore/allocation"
