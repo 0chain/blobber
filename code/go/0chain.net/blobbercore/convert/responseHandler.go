@@ -89,3 +89,12 @@ func GetObjectTreeResponseHandler(getObjectTreeResponse *blobbergrpc.GetObjectTr
 		LatestWM:      WriteMarkerGRPCToWriteMarker(getObjectTreeResponse.LatestWM),
 	}
 }
+
+func CommitWriteResponseHandler(resp *blobbergrpc.CommitResponse) *blobberHTTP.CommitResult {
+	return &blobberHTTP.CommitResult{
+		AllocationRoot: resp.AllocationRoot,
+		WriteMarker:    WriteMarkerGRPCToWriteMarker(resp.WriteMarker),
+		Success:        resp.Success,
+		ErrorMessage:   resp.ErrorMessage,
+	}
+}

@@ -46,6 +46,48 @@
         ]
       }
     },
+    "/v2/connection/commit/{allocation}": {
+      "get": {
+        "operationId": "Blobber_Commit",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CommitResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "connectionId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "writeMarker",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
     "/v2/file/list/{allocation}": {
       "get": {
         "operationId": "Blobber_ListEntities",
@@ -430,6 +472,23 @@
         "CreatedAt": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "v1CommitResponse": {
+      "type": "object",
+      "properties": {
+        "allocationRoot": {
+          "type": "string"
+        },
+        "writeMarker": {
+          "$ref": "#/definitions/v1WriteMarker"
+        },
+        "errorMessage": {
+          "type": "string"
+        },
+        "success": {
+          "type": "boolean"
         }
       }
     },
