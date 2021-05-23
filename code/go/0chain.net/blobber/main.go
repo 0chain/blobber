@@ -227,7 +227,7 @@ func main() {
 	flag.Parse()
 
 	config.SetupDefaultConfig()
-	config.SetupConfig()
+	config.SetupConfig("./config")
 
 	config.Configuration.DeploymentMode = byte(*deploymentMode)
 
@@ -339,10 +339,11 @@ func main() {
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT",
 		"DELETE", "OPTIONS"})
 
+	common.ConfigRateLimits()
 	initHandlers(r)
 	initServer()
 
-	grpcServer := handler.NewServerWithMiddlewares(common.ConfigRateLimits())
+	grpcServer := handler.NewServerWithMiddlewares(common.NewGRPCRateLimiter())
 	handler.RegisterGRPCServices(r, grpcServer)
 
 	rHandler := handlers.CORS(originsOk, headersOk, methodsOk)(r)
