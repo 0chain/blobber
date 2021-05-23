@@ -5,6 +5,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/mocks"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -321,6 +322,120 @@ func Test_blobberGRPCService_RenameObject(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("RenameObject() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_blobberGRPCService_DownloadFile(t *testing.T) {
+	type fields struct {
+		storageHandler             StorageHandlerI
+		packageHandler             PackageHandler
+		UnimplementedBlobberServer blobbergrpc.UnimplementedBlobberServer
+	}
+	type args struct {
+		ctx context.Context
+		r   *blobbergrpc.DownloadFileRequest
+	}
+
+	req := &blobbergrpc.DownloadFileRequest{
+		Context: &blobbergrpc.RequestContext{
+			Client:     `client`,
+			ClientKey:  `client_key`,
+			Allocation: `1`,
+		},
+		Allocation: `1`,
+		Path:       `path`,
+		RxPay:      "false",
+		NumBlocks:  "5",
+		BlockNum:   "5",
+		ReadMarker: `{}`,
+		AuthToken:  "",
+		Content:    "",
+	}
+
+	alloc := &allocation.Allocation{
+		Tx:      req.Context.Allocation,
+		ID:      req.Allocation,
+		OwnerID: req.Context.Client,
+	}
+	mockStorageHandler := &storageHandlerI{}
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Context.Allocation, false).
+		Return(alloc, nil)
+	mockStorageHandler.On(`readPreRedeem`, mock.Anything, alloc, 5, req.Context.Client).Return(
+		nil)
+
+	mockFileStore := &mocks.FileStore{}
+	mockFileStore.On(`GetFileBlock`, req.Allocation, mock.Anything, req.BlockNum, req.NumBlocks).Return(
+		[]byte{}, nil)
+
+	mockReferencePackage := &mocks.PackageHandler{}
+	pathHash := req.Context.Allocation + `:` + req.Path
+	mockReferencePackage.On(`GetReferenceLookup`, mock.Anything, req.Context.Allocation, req.Path).
+		Return(pathHash)
+
+	objectRef := &reference.Ref{
+		Name:        "test",
+		ID:          123,
+		ContentHash: `hash`,
+		MerkleRoot:  `root`,
+		Size:        1,
+	}
+	mockReferencePackage.On(`GetReferenceFromLookupHash`, mock.Anything, req.Context.Allocation, pathHash).
+		Return(objectRef, nil)
+	mockReferencePackage.On(`IsACollaborator`, mock.Anything, objectRef.ID, req.Context.Client).
+		Return(true)
+	mockReferencePackage.On(`GetLatestReadMarkerEntity`, mock.Anything, req.Context.Client).
+		Return(&readmarker.ReadMarkerEntity{}, nil)
+	mockReferencePackage.On(`GetFileStore`).
+		Return(mockFileStore)
+	mockReferencePackage.On(`SaveLatestReadMarker`, mock.Anything, mock.Anything, false).
+		Return(nil)
+	mockReferencePackage.On(`FileBlockDownloaded`, mock.Anything, objectRef.ID).
+		Return()
+
+	resOk := &blobbergrpc.DownloadFileResponse{
+		Success:  true,
+		Data:     []byte{},
+		LatestRm: ReadMarkerToReadMarkerGRPC(readmarker.ReadMarker{}),
+	}
+
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    *blobbergrpc.DownloadFileResponse
+		wantErr bool
+	}{
+		{
+			name: `OK`,
+			fields: fields{
+				storageHandler:             mockStorageHandler,
+				packageHandler:             mockReferencePackage,
+				UnimplementedBlobberServer: blobbergrpc.UnimplementedBlobberServer{},
+			},
+			args: args{
+				ctx: context.Background(),
+				r:   req,
+			},
+			want:    resOk,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := &blobberGRPCService{
+				storageHandler:             tt.fields.storageHandler,
+				packageHandler:             tt.fields.packageHandler,
+				UnimplementedBlobberServer: tt.fields.UnimplementedBlobberServer,
+			}
+			got, err := b.DownloadFile(tt.args.ctx, tt.args.r)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DownloadFile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("DownloadFile() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
