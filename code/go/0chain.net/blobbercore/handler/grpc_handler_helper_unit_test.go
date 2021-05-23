@@ -5,7 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
+	"strings"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/spf13/viper"
 
 	"testing"
 
@@ -483,4 +488,21 @@ func GeneratePubPrivateKey(t *testing.T) (string, string, zcncrypto.SignatureSch
 	_ = signScheme.SetPublicKey(keyPair.PublicKey)
 
 	return keyPair.PublicKey, keyPair.PrivateKey, signScheme
+}
+
+func setupIntegrationTestConfig(t *testing.T) {
+
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	configDir := strings.Split(pwd, "/code/go")[0] + "/config"
+	config.SetupDefaultConfig()
+	config.SetupConfig(configDir)
+
+	config.Configuration.DBHost = "localhost"
+	config.Configuration.DBName = viper.GetString("db.name")
+	config.Configuration.DBPort = viper.GetString("db.port")
+	config.Configuration.DBUserName = viper.GetString("db.user")
+	config.Configuration.DBPassword = viper.GetString("db.password")
 }

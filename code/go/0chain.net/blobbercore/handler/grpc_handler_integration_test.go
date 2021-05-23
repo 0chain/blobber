@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -15,8 +14,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 
-	"github.com/spf13/viper"
-
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
@@ -25,7 +22,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-const BlobberAddr = "localhost:7031"
+const BlobberTestAddr = "localhost:7031"
 const RetryAttempts = 8
 const RetryTimeout = 3
 
@@ -42,7 +39,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 	var err error
 	for i := 0; i < RetryAttempts; i++ {
 		log.Println("Connection attempt - " + fmt.Sprint(i+1))
-		conn, err = grpc.Dial(BlobberAddr, grpc.WithInsecure())
+		conn, err = grpc.Dial(BlobberTestAddr, grpc.WithInsecure())
 		if err != nil {
 			log.Println(err)
 			<-time.After(time.Second * RetryTimeout)
@@ -56,18 +53,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 	defer conn.Close()
 	blobberClient := blobbergrpc.NewBlobberClient(conn)
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	configDir := strings.Split(pwd, "/code/go")[0] + "/config"
-	config.SetupDefaultConfig()
-	config.SetupConfig(configDir)
-	config.Configuration.DBHost = "localhost"
-	config.Configuration.DBName = viper.GetString("db.name")
-	config.Configuration.DBPort = viper.GetString("db.port")
-	config.Configuration.DBUserName = viper.GetString("db.user")
-	config.Configuration.DBPassword = viper.GetString("db.password")
+	setupIntegrationTestConfig(t)
 	db, err := gorm.Open(postgres.Open(fmt.Sprintf(
 		"host=%v port=%v user=%v dbname=%v password=%v sslmode=disable",
 		config.Configuration.DBHost, config.Configuration.DBPort,
