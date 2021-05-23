@@ -335,7 +335,11 @@ func main() {
 		"X-Requested-With", "X-App-Client-ID",
 		"X-App-Client-Key", "Content-Type",
 	})
-	originsOk := handlers.AllowedOriginValidator(isValidOrigin)
+
+	// Allow anybody to access API.
+	// originsOk := handlers.AllowedOriginValidator(isValidOrigin)
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT",
 		"DELETE", "OPTIONS"})
 
