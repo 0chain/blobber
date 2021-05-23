@@ -54,6 +54,44 @@
         ]
       }
     },
+    "/v1/file/download/{allocation}": {
+      "post": {
+        "operationId": "Blobber_DownloadFile",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DownloadFileResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1DownloadFileRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
     "/v1/file/rename/{allocation}": {
       "post": {
         "operationId": "Blobber_RenameObject",
@@ -769,6 +807,56 @@
         }
       }
     },
+    "v1DownloadFileRequest": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "$ref": "#/definitions/v1RequestContext"
+        },
+        "allocation": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "pathHash": {
+          "type": "string"
+        },
+        "rxPay": {
+          "type": "string"
+        },
+        "blockNum": {
+          "type": "string"
+        },
+        "numBlocks": {
+          "type": "string"
+        },
+        "readMarker": {
+          "type": "string"
+        },
+        "authToken": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        }
+      }
+    },
+    "v1DownloadFileResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "latestRm": {
+          "$ref": "#/definitions/v1ReadMaker"
+        }
+      }
+    },
     "v1FileMetaData": {
       "type": "object",
       "properties": {
@@ -1006,6 +1094,48 @@
         "FileBlockNum": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "v1ReadMaker": {
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "type": "string"
+        },
+        "clientPublicKey": {
+          "type": "string"
+        },
+        "blobberId": {
+          "type": "string"
+        },
+        "allocationId": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "counter": {
+          "type": "string",
+          "format": "int64"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "suspend": {
+          "type": "string",
+          "format": "int64"
+        },
+        "payerId": {
+          "type": "string"
+        },
+        "authTicket": {
+          "type": "string",
+          "format": "byte"
         }
       }
     },

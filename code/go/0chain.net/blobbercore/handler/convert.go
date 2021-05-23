@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 )
@@ -68,5 +69,21 @@ func WriteMarkerToWriteMarkerGRPC(wm writemarker.WriteMarker) *blobbergrpc.Write
 		Timestamp:              int64(wm.Timestamp),
 		ClientID:               wm.ClientID,
 		Signature:              wm.Signature,
+	}
+}
+
+func ReadMarkerToReadMarkerGRPC(rm readmarker.ReadMarker) *blobbergrpc.ReadMaker {
+	return &blobbergrpc.ReadMaker{
+		ClientId:        rm.ClientID,
+		ClientPublicKey: rm.ClientPublicKey,
+		BlobberId:       rm.BlobberID,
+		AllocationId:    rm.AllocationID,
+		OwnerId:         rm.OwnerID,
+		Timestamp:       int64(rm.Timestamp),
+		Counter:         rm.ReadCounter,
+		Signature:       rm.Signature,
+		Suspend:         rm.Suspend,
+		PayerId:         rm.PayerID,
+		AuthTicket:      rm.AuthTicket,
 	}
 }

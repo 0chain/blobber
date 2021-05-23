@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -37,6 +39,8 @@ func RegisterGRPCServices(r *mux.Router, server *grpc.Server) {
 type StorageHandlerI interface {
 	verifyAllocation(ctx context.Context, tx string, readonly bool) (alloc *allocation.Allocation, err error)
 	verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (bool, error)
+	readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
+		numBlocks, pendNumBlocks int64, payerID string) (err error)
 }
 
 // PackageHandler is an interface for all static functions that may need to be mocked
@@ -56,6 +60,12 @@ type PackageHandler interface {
 		allocationID string, clientID string) (allocation.IAllocationChangeCollector, error)
 	GetReference(ctx context.Context, allocationID string, newPath string) (
 		*reference.Ref, error)
+	// write readmeker interface separately and add these two methods
+	GetLatestReadMarkerEntity(ctx context.Context, clientID string) (*readmarker.ReadMarkerEntity, error)
+	SaveLatestReadMarker(ctx context.Context, rm *readmarker.ReadMarker, isCreate bool) error
+	// write FileStat related methods in a different interface
+	GetFileStore() filestore.FileStore
+	FileBlockDownloaded(ctx context.Context, refID int64)
 }
 
 type packageHandler struct{}
@@ -113,4 +123,22 @@ func (r *packageHandler) GetAllocationChanges(ctx context.Context, connectionID 
 	allocationID string, clientID string) (allocation.IAllocationChangeCollector, error) {
 
 	return allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+}
+
+func (r *packageHandler) GetLatestReadMarkerEntity(ctx context.Context, clientID string) (
+	*readmarker.ReadMarkerEntity, error) {
+
+	return readmarker.GetLatestReadMarkerEntity(ctx, clientID)
+}
+
+func (r *packageHandler) SaveLatestReadMarker(ctx context.Context, rm *readmarker.ReadMarker, isCreate bool) error {
+	return readmarker.SaveLatestReadMarker(ctx, rm, isCreate)
+}
+
+func (r *packageHandler) GetFileStore() filestore.FileStore {
+	return filestore.GetFileStore()
+}
+
+func (r *packageHandler) FileBlockDownloaded(ctx context.Context, refID int64) {
+	stats.FileBlockDownloaded(ctx, refID)
 }

@@ -80,6 +80,12 @@ func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString
 	return true, nil
 }
 
+func (fsh *StorageHandler) readPreRedeem(
+	ctx context.Context, alloc *allocation.Allocation, numBlocks, pendNumBlocks int64, payerID string) (err error) {
+
+	return readPreRedeem(ctx, alloc, numBlocks, pendNumBlocks, payerID)
+}
+
 func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Request) (interface{}, error) {
 	if r.Method != "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
