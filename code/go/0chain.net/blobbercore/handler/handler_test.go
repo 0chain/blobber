@@ -14,7 +14,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/DATA-DOG/go-sqlmock"
@@ -172,15 +171,6 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	),
 	).Name(uName)
 
-	marketplacePath := "/v1/marketplace/secret"
-	mName := "MarketplaceInfo"
-	router.HandleFunc(marketplacePath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithReadOnlyConnection(MarketPlaceSecretHandler),
-		),
-	),
-	).Name(mName)
-
 	return router,
 		map[string]string{
 			opPath:   opName,
@@ -192,7 +182,6 @@ func setupHandlers() (*mux.Router, map[string]string) {
 			cPath:    cName,
 			aPath:    aName,
 			uPath:    uName,
-			marketplacePath: mName,
 		}
 }
 
@@ -203,123 +192,6 @@ func isEndpointAllowGetReq(name string) bool {
 	default:
 		return true
 	}
-}
-
-func TestMarketplaceApi(t *testing.T) {
-	setup(t)
-	router, handlers := setupHandlers()
-
-	t.Run("marketplace_key_existing", func(t *testing.T) {
-		mock := datastore.MockTheStore(t)
-		setupDbMock := func(mock sqlmock.Sqlmock) {
-			mock.ExpectBegin()
-
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace" ORDER BY "marketplace"."mnemonic" LIMIT 1`)).
-				WillReturnRows(
-					sqlmock.NewRows([]string{"public_key", "private_key", "mnemonic"}).
-						AddRow("pub", "prv", "a b c d"),
-				)
-
-			mock.ExpectCommit()
-		}
-		setupDbMock(mock)
-		httprequest := func() *http.Request {
-			handlerName := handlers["/v1/marketplace/secret"]
-
-			url, err := router.Get(handlerName).URL()
-			if err != nil {
-				t.Fatal()
-			}
-
-			r, err := http.NewRequest(http.MethodGet, url.String(), nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			return r
-		}()
-
-		recorder := httptest.NewRecorder()
-		router.ServeHTTP(recorder, httprequest)
-		assert.Equal(t, 200, 200)
-		wantBody := `{"mnemonic":"a b c d"}` + "\n"
-		assert.Equal(t, wantBody, recorder.Body.String())
-	})
-
-	t.Run("marketplace_key_existing_same_for_all_blobbers_read_from_config", func(t *testing.T) {
-		datastore.MockTheStore(t)
-		bconfig.Configuration.PreEncryption.AutoGenerate = false
-		bconfig.Configuration.PreEncryption.Mnemonic =
-			"inside february piece turkey offer merry select combine tissue wave wet shift room afraid december gown mean brick speak grant gain become toy clown"
-		httprequest := func() *http.Request {
-			handlerName := handlers["/v1/marketplace/secret"]
-
-			url, err := router.Get(handlerName).URL()
-			if err != nil {
-				t.Fatal()
-			}
-
-			r, err := http.NewRequest(http.MethodGet, url.String(), nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			return r
-		}()
-
-		recorder := httptest.NewRecorder()
-		router.ServeHTTP(recorder, httprequest)
-		assert.Equal(t, 200, 200)
-		wantBody := `{"mnemonic":"inside february piece turkey offer merry select combine tissue wave wet shift room afraid december gown mean brick speak grant gain become toy clown"}` + "\n"
-		assert.Equal(t, wantBody, recorder.Body.String())
-	})
-
-	t.Run("marketplace_create_new_key_and_return", func(t *testing.T) {
-		mock := datastore.MockTheStore(t)
-		setupDbMock := func(mock sqlmock.Sqlmock) {
-			mock.ExpectBegin()
-
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace" ORDER BY "marketplace"."mnemonic" LIMIT 1`)).
-				WillReturnRows(
-					sqlmock.NewRows([]string{"public_key", "private_key", "mnemonic"}),
-				)
-
-			mock.ExpectExec(`INSERT INTO "marketplace"`).
-				WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
-				WillReturnResult(sqlmock.NewResult(0, 0))
-
-
-			mock.ExpectCommit()
-		}
-		setupDbMock(mock)
-		httprequest := func() *http.Request {
-			handlerName := handlers["/v1/marketplace/secret"]
-
-			url, err := router.Get(handlerName).URL()
-			if err != nil {
-				t.Fatal()
-			}
-
-			r, err := http.NewRequest(http.MethodGet, url.String(), nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			return r
-		}()
-
-		recorder := httptest.NewRecorder()
-		router.ServeHTTP(recorder, httprequest)
-		assert.Equal(t, 200, 200)
-		marketplaceInfo := reference.MarketplaceInfo {}
-		json.Unmarshal([]byte(recorder.Body.String()), &marketplaceInfo)
-		assert.NotEmpty(t, marketplaceInfo)
-		assert.Empty(t, marketplaceInfo.PublicKey)
-		assert.Empty(t, marketplaceInfo.PrivateKey)
-		assert.NotEmpty(t, marketplaceInfo.Mnemonic)
-		fmt.Println(marketplaceInfo)
-	})
-
 }
 
 func TestHandlers_Requiring_Signature(t *testing.T) {

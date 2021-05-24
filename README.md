@@ -60,7 +60,14 @@ $ docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.
 $ ./docker.local/bin/build.blobber.sh
 
 ```
-  
+
+To link to local gosdk so that the changes are reflected on the blobber build please use the below command
+
+```
+
+$ ./docker.local/bin/build.blobber.dev.sh
+
+```
 
 3. After building the container for blobber, go to Blobber1 directory (git/blobber/docker.local/blobber1) and run the container using
 
