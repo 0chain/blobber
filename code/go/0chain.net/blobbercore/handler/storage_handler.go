@@ -711,8 +711,7 @@ func verifySignatureFromRequest(r *http.Request, pbK string) (bool, error) {
 		return false, common.NewError("invalid_params", "Missing allocation tx")
 	}
 
-	hash := encryption.Hash(data)
-	return encryption.Verify(pbK, sign, hash)
+	return encryption.Verify(pbK, sign, data)
 }
 
 // pathsFromReq retrieves paths value from request which can be represented as single "path" value or "paths" values,
