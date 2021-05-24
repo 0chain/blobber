@@ -42,7 +42,7 @@ max_file_size: 10485760 #10MB
 update_allocations_interval: 1m
 
 # delegate wallet (must be set)
-delegate_wallet: '8b87739cd6c966c150a8a6e7b327435d4a581d9d9cc1d86a88c8a13ae1ad7a96'
+delegate_wallet: '9a566aa4f8e8c342fed97c8928040a21f21b8f574e5782c28568635ba9c75a85'
 # min stake allowed, tokens
 min_stake: 1.0
 # max stake allowed, tokens
@@ -116,3 +116,8 @@ integration_tests:
   # lock_interval used by nodes to request server to connect to blockchain
   # after start
   lock_interval: 1s
+
+pre_encryption:
+  auto_generate: false
+  mnemonic: 'inside february piece turkey offer merry select combine tissue wave wet shift room afraid december gown mean brick speak grant gain become toy clown'
+

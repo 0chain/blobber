@@ -41,6 +41,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("service_charge", 0.3)
 
 	viper.SetDefault("update_allocations_interval", time.Duration(-1))
+	viper.SetDefault("pre_encryption.autogenerate", true)
 }
 
 /*SetupConfig - setup the configuration system */
@@ -62,6 +63,11 @@ const (
 	DeploymentTestNet     = 1
 	DeploymentMainNet     = 2
 )
+
+type PreEncryptionConfig struct {
+	AutoGenerate   bool      `json:"autogenerate,omitempty"`
+	Mnemonic       string    `json:"mnemonic,omitempty"`
+}
 
 type Config struct {
 	*config.Config
@@ -118,6 +124,7 @@ type Config struct {
 	NumDelegates int `json:"num_delegates"`
 	// ServiceCharge for blobber.
 	ServiceCharge float64 `json:"service_charge"`
+	PreEncryption PreEncryptionConfig
 }
 
 /*Configuration of the system */

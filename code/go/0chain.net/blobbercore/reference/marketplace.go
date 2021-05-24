@@ -6,6 +6,7 @@ import (
 	. "0chain.net/core/logging"
 	"context"
 	"github.com/0chain/gosdk/core/zcncrypto"
+	zboxenc "github.com/0chain/gosdk/zboxcore/encryption"
 	"go.uber.org/zap"
 )
 
@@ -41,11 +42,28 @@ func GetMarketplaceInfo(ctx context.Context) (MarketplaceInfo, error) {
 	return marketplaceInfo, err
 }
 
+func GetSignatureScheme() zcncrypto.SignatureScheme {
+	// TODO: bls0chain scheme crashes
+	return zcncrypto.NewSignatureScheme("ed25519")
+}
+
+func GetMarketplaceInfoFromMnemonic(mnemonic string) *MarketplaceInfo {
+	encscheme := zboxenc.NewEncryptionScheme()
+	encscheme.Initialize(mnemonic)
+
+	PrivateKey, _ := encscheme.GetPrivateKey()
+	PublicKey, _ := encscheme.GetPublicKey()
+
+	return &MarketplaceInfo{
+		PrivateKey: PrivateKey,
+		PublicKey: PublicKey,
+		Mnemonic: mnemonic,
+	}
+}
+
 func GetSecretKeyPair() (*KeyPairInfo, error) {
 	//sigScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
-	// TODO: bls0chain scheme crashes
-	sigScheme := zcncrypto.NewSignatureScheme("ed25519")
-	wallet, err := sigScheme.GenerateKeys()
+	wallet, err := zcncrypto.NewSignatureScheme("ed25519").GenerateKeys()
 	if err != nil {
 		return nil, err
 	}
