@@ -43,6 +43,7 @@ func init() {
 		panic(err)
 	}
 	bconfig.Configuration.MaxFileSize = int64(1 << 30)
+	bconfig.Configuration.PreEncryption.AutoGenerate = true
 }
 
 func setup(t *testing.T) {
@@ -245,6 +246,34 @@ func TestMarketplaceApi(t *testing.T) {
 		assert.Equal(t, wantBody, recorder.Body.String())
 	})
 
+	t.Run("marketplace_key_existing_same_for_all_blobbers_read_from_config", func(t *testing.T) {
+		datastore.MockTheStore(t)
+		bconfig.Configuration.PreEncryption.AutoGenerate = false
+		bconfig.Configuration.PreEncryption.Mnemonic =
+			"inside february piece turkey offer merry select combine tissue wave wet shift room afraid december gown mean brick speak grant gain become toy clown"
+		httprequest := func() *http.Request {
+			handlerName := handlers["/v1/marketplace/secret"]
+
+			url, err := router.Get(handlerName).URL()
+			if err != nil {
+				t.Fatal()
+			}
+
+			r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			return r
+		}()
+
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, httprequest)
+		assert.Equal(t, 200, 200)
+		wantBody := `{"mnemonic":"inside february piece turkey offer merry select combine tissue wave wet shift room afraid december gown mean brick speak grant gain become toy clown"}` + "\n"
+		assert.Equal(t, wantBody, recorder.Body.String())
+	})
+
 	t.Run("marketplace_create_new_key_and_return", func(t *testing.T) {
 		mock := datastore.MockTheStore(t)
 		setupDbMock := func(mock sqlmock.Sqlmock) {
@@ -256,7 +285,7 @@ func TestMarketplaceApi(t *testing.T) {
 				)
 
 			mock.ExpectExec(`INSERT INTO "marketplace"`).
-				WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg()).
+				WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 				WillReturnResult(sqlmock.NewResult(0, 0))
 
 
