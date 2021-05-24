@@ -65,7 +65,7 @@ const (
 )
 
 type PreEncryptionConfig struct {
-	AutoGenerate   bool      `json:"autogenerate,omitempty"`
+	AutoGenerate   bool      `json:"auto_generate,omitempty"`
 	Mnemonic       string    `json:"mnemonic,omitempty"`
 }
 
