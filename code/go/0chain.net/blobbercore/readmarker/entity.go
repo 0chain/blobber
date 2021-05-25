@@ -106,7 +106,6 @@ func GetLatestReadMarkerEntity(ctx context.Context, clientID string) (*ReadMarke
 }
 
 func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, isCreate bool) error {
-
 	var (
 		db       = datastore.GetStore().GetTransaction(ctx)
 		rmEntity = &ReadMarkerEntity{}
