@@ -15,29 +15,12 @@ import (
 	"testing"
 )
 
-func Test_blobberGRPCService_UpdateObjectAttributes(t *testing.T) {
-	type fields struct {
-		storageHandler             StorageHandlerI
-		packageHandler             PackageHandler
-		UnimplementedBlobberServer blobbergrpc.UnimplementedBlobberServer
-	}
-	type args struct {
-		ctx context.Context
-		r   *blobbergrpc.UpdateObjectAttributesRequest
-	}
-
+func TestBlobberGRPCService_UpdateObjectAttributes_Success(t *testing.T) {
 	allocationTx := randString(32)
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 	req := &blobbergrpc.UpdateObjectAttributesRequest{
 		Allocation:   allocationTx,
-		Attributes:   `{"who_pays_for_reads" : 1}`,
-		Path:         `path`,
-		ConnectionId: `connection_id`,
-	}
-
-	reqInvalid := &blobbergrpc.UpdateObjectAttributesRequest{
-		Allocation:   `invalid_id`,
 		Attributes:   `{"who_pays_for_reads" : 1}`,
 		Path:         `path`,
 		ConnectionId: `connection_id`,
@@ -60,8 +43,6 @@ func Test_blobberGRPCService_UpdateObjectAttributes(t *testing.T) {
 	}
 	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).
 		Return(alloc, nil)
-	mockStorageHandler.On("verifyAllocation", mock.Anything, reqInvalid.Allocation, false).
-		Return(nil, errors.New("some error"))
 
 	mockAllocCollector := &mocks.IAllocationChangeCollector{}
 	mockAllocCollector.On(`GetConnectionID`).Return(req.ConnectionId)
@@ -78,62 +59,43 @@ func Test_blobberGRPCService_UpdateObjectAttributes(t *testing.T) {
 	mockReferencePackage.On(`GetReferenceLookup`, mock.Anything, alloc.ID, req.Path).
 		Return(pathHash)
 
-	mockReferencePackage.On(`GetReferenceFromLookupHash`, mock.Anything, alloc.ID, pathHash).
-		Return(
-			&reference.Ref{
-				Name: "test",
-				Type: reference.FILE,
-			}, nil)
+	mockReferencePackage.On(`GetReferenceFromLookupHash`, mock.Anything, alloc.ID, pathHash).Return(
+		&reference.Ref{
+			Name: "test",
+			Type: reference.FILE,
+		}, nil)
 
-	tests := []struct {
-		name         string
-		fields       fields
-		args         args
-		wantResponse *blobbergrpc.UpdateObjectAttributesResponse
-		wantErr      bool
-	}{
-		{
-			name: `OK`,
-			fields: fields{
-				storageHandler: mockStorageHandler,
-				packageHandler: mockReferencePackage,
-			},
-			args: args{
-				ctx: ctx,
-				r:   req,
-			},
-			wantResponse: resOk,
-			wantErr:      false,
-		},
-		{
-			name: `Invalid_Allocation`,
-			fields: fields{
-				storageHandler: mockStorageHandler,
-				packageHandler: mockReferencePackage,
-			},
-			args: args{
-				ctx: ctx,
-				r:   reqInvalid,
-			},
-			wantResponse: nil,
-			wantErr:      true,
-		},
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	gotResponse, err := svc.UpdateObjectAttributes(ctx, req)
+	if err != nil {
+		t.Fatal("unexpected error - " + err.Error())
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			b := &blobberGRPCService{
-				storageHandler:             tt.fields.storageHandler,
-				packageHandler:             tt.fields.packageHandler,
-				UnimplementedBlobberServer: tt.fields.UnimplementedBlobberServer,
-			}
-			gotResponse, err := b.UpdateObjectAttributes(tt.args.ctx, tt.args.r)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("UpdateObjectAttributes() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !assert.Equal(t, gotResponse, tt.wantResponse) {
-				t.Errorf("UpdateObjectAttributes() gotResponse = %v, want %v", gotResponse, tt.wantResponse)
-			}
-		})
+
+	assert.Equal(t, gotResponse, resOk)
+}
+
+func TestBlobberGRPCService_UpdateObjectAttributes_InvalidAllocation(t *testing.T) {
+	req := &blobbergrpc.UpdateObjectAttributesRequest{
+		Allocation: `invalid_allocation`,
+	}
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+		common.ClientHeader:          "client",
+		common.ClientKeyHeader:       "client_key",
+		common.ClientSignatureHeader: "clientSignature",
+	}))
+
+	mockStorageHandler := &storageHandlerI{}
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).
+		Return(nil, errors.New("some error"))
+
+	mockReferencePackage := &mocks.PackageHandler{}
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	_, err := svc.UpdateObjectAttributes(ctx, req)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if err.Error() != "invalid_parameters: Invalid allocation id passed.some error" {
+		t.Fatal(`unexpected error - `, err)
 	}
 }
