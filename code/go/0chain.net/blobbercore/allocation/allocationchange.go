@@ -49,6 +49,9 @@ type IAllocationChangeCollector interface {
 	DeleteChanges(ctx context.Context)
 	GetAllocationID() string
 	GetConnectionID() string
+	GetClientID() string
+	GetSize() int64
+	SetSize(size int64)
 }
 
 type AllocationChangeCollector struct {
@@ -183,10 +186,22 @@ func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) {
 	}
 }
 
-func (a *AllocationChangeCollector) GetAllocationID() string {
-	return a.AllocationID
+func (cc *AllocationChangeCollector) GetAllocationID() string {
+	return cc.AllocationID
 }
 
-func (a *AllocationChangeCollector) GetConnectionID() string {
-	return a.ConnectionID
+func (cc *AllocationChangeCollector) GetConnectionID() string {
+	return cc.ConnectionID
+}
+
+func (cc *AllocationChangeCollector) GetClientID() string {
+	return cc.ClientID
+}
+
+func (cc *AllocationChangeCollector) GetSize() int64 {
+	return cc.Size
+}
+
+func (cc *AllocationChangeCollector) SetSize(size int64) {
+	cc.Size = size
 }

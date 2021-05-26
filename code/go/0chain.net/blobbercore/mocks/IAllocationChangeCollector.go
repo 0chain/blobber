@@ -72,6 +72,20 @@ func (_m *IAllocationChangeCollector) GetAllocationID() string {
 	return r0
 }
 
+// GetClientID provides a mock function with given fields:
+func (_m *IAllocationChangeCollector) GetClientID() string {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
 // GetConnectionID provides a mock function with given fields:
 func (_m *IAllocationChangeCollector) GetConnectionID() string {
 	ret := _m.Called()
@@ -81,6 +95,20 @@ func (_m *IAllocationChangeCollector) GetConnectionID() string {
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// GetSize provides a mock function with given fields:
+func (_m *IAllocationChangeCollector) GetSize() int64 {
+	ret := _m.Called()
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func() int64); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(int64)
 	}
 
 	return r0
@@ -98,6 +126,11 @@ func (_m *IAllocationChangeCollector) Save(ctx context.Context) error {
 	}
 
 	return r0
+}
+
+// SetSize provides a mock function with given fields: size
+func (_m *IAllocationChangeCollector) SetSize(size int64) {
+	_m.Called(size)
 }
 
 // TableName provides a mock function with given fields:
