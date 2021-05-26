@@ -2,6 +2,7 @@ package convert
 
 import (
 	"context"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -135,6 +136,46 @@ func WriteMarkerGRPCToWriteMarker(wm *blobbergrpc.WriteMarker) *writemarker.Writ
 		Timestamp:              common.Timestamp(wm.Timestamp),
 		ClientID:               wm.ClientID,
 		Signature:              wm.Signature,
+	}
+}
+
+func ReadMarkerToReadMarkerGRPC(rm *readmarker.ReadMarker) *blobbergrpc.ReadMaker {
+	if rm == nil {
+		return nil
+	}
+
+	return &blobbergrpc.ReadMaker{
+		ClientId:        rm.ClientID,
+		ClientPublicKey: rm.ClientPublicKey,
+		BlobberId:       rm.BlobberID,
+		AllocationId:    rm.AllocationID,
+		OwnerId:         rm.OwnerID,
+		Timestamp:       int64(rm.Timestamp),
+		Counter:         rm.ReadCounter,
+		Signature:       rm.Signature,
+		Suspend:         rm.Suspend,
+		PayerId:         rm.PayerID,
+		AuthTicket:      rm.AuthTicket,
+	}
+}
+
+func ReadMakerGRPCToReadMaker(rm *blobbergrpc.ReadMaker) *readmarker.ReadMarker {
+	if rm == nil {
+		return nil
+	}
+
+	return &readmarker.ReadMarker{
+		ClientID:        rm.ClientId,
+		ClientPublicKey: rm.ClientPublicKey,
+		BlobberID:       rm.BlobberId,
+		AllocationID:    rm.AllocationId,
+		OwnerID:         rm.OwnerId,
+		Timestamp:       common.Timestamp(rm.Timestamp),
+		ReadCounter:     rm.Counter,
+		Signature:       rm.Signature,
+		Suspend:         rm.Suspend,
+		PayerID:         rm.PayerId,
+		AuthTicket:      rm.AuthTicket,
 	}
 }
 

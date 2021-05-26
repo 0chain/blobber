@@ -38,7 +38,8 @@ func SetupHandlers(r *mux.Router) {
 
 	//object operations
 	r.HandleFunc("/v1/file/upload/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler))))
-	r.HandleFunc("/v1/file/download/{allocation}", common.UserRateLimit(common.ToByteStream(WithConnection(DownloadHandler))))
+	r.HandleFunc("/v1/file/download/{allocation}", common.UserRateLimit(common.
+		ToByteStream(WithConnection(DownloadHandler(svc))))).Methods(http.MethodPost)
 	r.HandleFunc("/v1/file/rename/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(RenameHandler))))
 	r.HandleFunc("/v1/file/copy/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CopyHandler))))
 	r.HandleFunc("/v1/file/attributes/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UpdateAttributesHandler))))
@@ -201,15 +202,23 @@ func FileStatsHandler(svc *blobberGRPCService) func(ctx context.Context, r *http
 }
 
 /*DownloadHandler is the handler to respond to download requests from clients*/
-func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
+func DownloadHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		ctx = setupHandlerGRPCContext(ctx, r)
 
-	response, err := storageHandler.DownloadFile(ctx, r)
-	if err != nil {
-		return nil, err
+		downloadFileResponse, err := svc.DownloadFile(ctx, &blobbergrpc.DownloadFileRequest{
+			Path:       r.FormValue("path"),
+			PathHash:   r.FormValue("path_hash"),
+			AuthToken:  r.FormValue("auth_token"),
+			Allocation: mux.Vars(r)["allocation"],
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		//handle if there are two response type from handler
+		return convert.DownloadFileResponseHandler(downloadFileResponse), nil
 	}
-
-	return response, nil
 }
 
 /*ListHandler is the handler to respond to upload requests fro clients*/

@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -24,12 +26,15 @@ func RegisterGRPCServices(r *mux.Router, server *grpc.Server) {
 }
 
 type StorageHandlerI interface {
+	readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
+		numBlocks, pendNumBlocks int64, payerID string) (err error)
 	verifyAllocation(ctx context.Context, tx string, readonly bool) (alloc *allocation.Allocation, err error)
 	verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (bool, error)
 }
 
 // PackageHandler is an interface for all static functions that may need to be mocked
 type PackageHandler interface {
+	GetReferenceLookup(ctx context.Context, allocationID string, path string) string
 	GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*reference.Ref, error)
 	GetCommitMetaTxns(ctx context.Context, refID int64) ([]reference.CommitMetaTxn, error)
 	GetCollaborators(ctx context.Context, refID int64) ([]reference.Collaborator, error)
@@ -39,6 +44,12 @@ type PackageHandler interface {
 	GetRefWithChildren(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 	GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*reference.ObjectPath, error)
 	GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*reference.Ref, error)
+	// write readmeker interface separately and add these two methods
+	GetLatestReadMarkerEntity(ctx context.Context, clientID string) (*readmarker.ReadMarkerEntity, error)
+	SaveLatestReadMarker(ctx context.Context, rm *readmarker.ReadMarker, isCreate bool) error
+	// write FileStat related methods in a different interface
+	GetFileStore() filestore.FileStore
+	FileBlockDownloaded(ctx context.Context, refID int64)
 	GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 }
 
@@ -68,6 +79,10 @@ func (r *packageHandler) GetWriteMarkerEntity(ctx context.Context, allocation_ro
 	return writemarker.GetWriteMarkerEntity(ctx, allocation_root)
 }
 
+func (r *packageHandler) GetReferenceLookup(ctx context.Context, allocationID string, path string) string {
+	return reference.GetReferenceLookup(allocationID, path)
+}
+
 func (r *packageHandler) GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*reference.Ref, error) {
 	return reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
 }
@@ -82,4 +97,22 @@ func (r *packageHandler) GetCollaborators(ctx context.Context, refID int64) ([]r
 
 func (r *packageHandler) IsACollaborator(ctx context.Context, refID int64, clientID string) bool {
 	return reference.IsACollaborator(ctx, refID, clientID)
+}
+
+func (r *packageHandler) GetLatestReadMarkerEntity(ctx context.Context, clientID string) (
+	*readmarker.ReadMarkerEntity, error) {
+
+	return readmarker.GetLatestReadMarkerEntity(ctx, clientID)
+}
+
+func (r *packageHandler) SaveLatestReadMarker(ctx context.Context, rm *readmarker.ReadMarker, isCreate bool) error {
+	return readmarker.SaveLatestReadMarker(ctx, rm, isCreate)
+}
+
+func (r *packageHandler) GetFileStore() filestore.FileStore {
+	return filestore.GetFileStore()
+}
+
+func (r *packageHandler) FileBlockDownloaded(ctx context.Context, refID int64) {
+	stats.FileBlockDownloaded(ctx, refID)
 }

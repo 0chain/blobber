@@ -89,3 +89,13 @@ func GetObjectTreeResponseHandler(getObjectTreeResponse *blobbergrpc.GetObjectTr
 		LatestWM:      WriteMarkerGRPCToWriteMarker(getObjectTreeResponse.LatestWM),
 	}
 }
+
+func DownloadFileResponseHandler(downloadFileResponse *blobbergrpc.DownloadFileResponse) *blobberHTTP.DownloadResponse {
+	return &blobberHTTP.DownloadResponse{
+		Success:      downloadFileResponse.Success,
+		Data:         downloadFileResponse.Data,
+		AllocationID: downloadFileResponse.AllocationId,
+		Path:         downloadFileResponse.Path,
+		LatestRM:     ReadMakerGRPCToReadMaker(downloadFileResponse.LatestRm),
+	}
+}
