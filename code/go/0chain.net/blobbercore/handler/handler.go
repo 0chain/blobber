@@ -41,7 +41,8 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/download/{allocation}", common.UserRateLimit(common.ToByteStream(WithConnection(DownloadHandler))))
 	r.HandleFunc("/v1/file/rename/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(RenameHandler))))
 	r.HandleFunc("/v1/file/copy/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CopyHandler))))
-	r.HandleFunc("/v1/file/attributes/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UpdateAttributesHandler))))
+	r.HandleFunc("/v1/file/attributes/{allocation}", common.UserRateLimit(common.ToJSONResponse(
+		WithConnection(UpdateAttributesHandler(svc))))).Methods(http.MethodPost)
 
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitHandler))))
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
@@ -49,13 +50,20 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CalculateHashHandler))))
 
 	//object info related apis
-	r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler(svc))))).Methods("GET")
-	r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler(svc))))).Methods("POST")
-	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler(svc))))).Methods("POST")
-	r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler(svc))))).Methods("GET")
-	r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler(svc))))).Methods("GET")
-	r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler(svc))))).Methods("GET")
-	r.HandleFunc("/v1/file/objecttree/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectTreeHandler(svc))))).Methods("GET")
+	r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(
+		WithConnection(AllocationHandler(svc))))).Methods(http.MethodGet)
+	r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(
+		WithReadOnlyConnection(FileMetaHandler(svc))))).Methods(http.MethodPost)
+	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(
+		WithReadOnlyConnection(FileStatsHandler(svc))))).Methods(http.MethodPost)
+	r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(
+		WithReadOnlyConnection(ListHandler(svc))))).Methods(http.MethodGet)
+	r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(
+		WithReadOnlyConnection(ObjectPathHandler(svc))))).Methods(http.MethodGet)
+	r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(
+		WithReadOnlyConnection(ReferencePathHandler(svc))))).Methods(http.MethodGet)
+	r.HandleFunc("/v1/file/objecttree/{allocation}", common.UserRateLimit(common.ToJSONResponse(
+		WithReadOnlyConnection(ObjectTreeHandler(svc))))).Methods(http.MethodGet)
 
 	//admin related
 	r.HandleFunc("/_debug", common.UserRateLimit(common.ToJSONResponse(DumpGoRoutines)))
@@ -320,14 +328,23 @@ func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-	response, err := storageHandler.UpdateObjectAttributes(ctx, r)
-	if err != nil {
-		return nil, err
-	}
+func UpdateAttributesHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		ctx = setupHandlerGRPCContext(ctx, r)
 
-	return response, nil
+		updateAttrResp, err := svc.UpdateObjectAttributes(ctx, &blobbergrpc.UpdateObjectAttributesRequest{
+			Path:         r.FormValue("path"),
+			PathHash:     r.FormValue("path_hash"),
+			Allocation:   mux.Vars(r)["allocation"],
+			ConnectionId: r.FormValue("connection_id"),
+			Attributes:   r.FormValue("attributes"),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return convert.UpdateObjectAttributesResponseHandler(updateAttrResp), nil
+	}
 }
 
 func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, error) {

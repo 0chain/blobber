@@ -42,6 +42,13 @@ service Blobber {
       get: "/v2/file/objecttree/{allocation}"
     };
   }
+
+  rpc UpdateObjectAttributes(UpdateObjectAttributesRequest) returns (UpdateObjectAttributesResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/attributes/{allocation}"
+      body: "*"
+    };
+  }
 }
 
 message GetObjectTreeRequest {
@@ -103,7 +110,6 @@ message ListEntitiesRequest {
   string auth_token = 3;
   string allocation = 4;
 }
-
 message ListEntitiesResponse {
   string AllocationRoot = 1;
   FileRef MetaData = 2;
@@ -115,7 +121,6 @@ message GetFileStatsRequest {
   string path_hash = 2;
   string allocation = 3;
 }
-
 message GetFileStatsResponse {
   FileRef MetaData = 1;
   FileStats Stats = 2;
@@ -140,7 +145,6 @@ message GetFileMetaDataRequest {
   string auth_token = 3;
   string allocation = 4;
 }
-
 message GetFileMetaDataResponse {
   FileRef MetaData = 1;
   repeated Collaborator Collaborators = 2;
@@ -161,9 +165,19 @@ message Collaborator {
 message GetAllocationRequest {
   string id = 1;
 }
-
 message GetAllocationResponse {
   Allocation allocation = 1;
+}
+
+message UpdateObjectAttributesRequest {
+  string allocation = 1;
+  string path = 2;
+  string path_hash = 3;
+  string connection_id = 4;
+  string attributes = 5;
+}
+message UpdateObjectAttributesResponse {
+  int64 who_pays_for_reads = 1;
 }
 
 message Allocation {
