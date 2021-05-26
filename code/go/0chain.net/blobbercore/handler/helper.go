@@ -45,7 +45,8 @@ type PackageHandler interface {
 	GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*reference.ObjectPath, error)
 	GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*reference.Ref, error)
 	// write readmeker interface separately and add these two methods
-	GetLatestReadMarkerEntity(ctx context.Context, clientID string) (*readmarker.ReadMarkerEntity, error)
+	GetNewReadMaker(rm *readmarker.ReadMarker) readmarker.ReadMakerI
+	GetLatestReadMarkerEntity(ctx context.Context, clientID string) (readmarker.ReadMakerI, error)
 	SaveLatestReadMarker(ctx context.Context, rm *readmarker.ReadMarker, isCreate bool) error
 	// write FileStat related methods in a different interface
 	GetFileStore() filestore.FileStore
@@ -100,7 +101,7 @@ func (r *packageHandler) IsACollaborator(ctx context.Context, refID int64, clien
 }
 
 func (r *packageHandler) GetLatestReadMarkerEntity(ctx context.Context, clientID string) (
-	*readmarker.ReadMarkerEntity, error) {
+	readmarker.ReadMakerI, error) {
 
 	return readmarker.GetLatestReadMarkerEntity(ctx, clientID)
 }
@@ -115,4 +116,8 @@ func (r *packageHandler) GetFileStore() filestore.FileStore {
 
 func (r *packageHandler) FileBlockDownloaded(ctx context.Context, refID int64) {
 	stats.FileBlockDownloaded(ctx, refID)
+}
+
+func (r *packageHandler) GetNewReadMaker(rm *readmarker.ReadMarker) readmarker.ReadMakerI {
+	return readmarker.NewReadMakerEntity(rm)
 }

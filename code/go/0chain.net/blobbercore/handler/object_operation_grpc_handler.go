@@ -81,8 +81,7 @@ func (b *blobberGRPCService) DownloadFile(ctx context.Context, r *blobbergrpc.Do
 			"error parsing the readmarker for download: %v", err)
 	}
 
-	var rmObj = &readmarker.ReadMarkerEntity{}
-	rmObj.LatestRM = readMarker
+	var rmObj = b.packageHandler.GetNewReadMaker(readMarker)
 
 	if err = rmObj.VerifyMarker(ctx, allocationObj); err != nil {
 		return nil, common.NewErrorf("download_file", "invalid read marker, "+
@@ -150,7 +149,7 @@ func (b *blobberGRPCService) DownloadFile(ctx context.Context, r *blobbergrpc.Do
 	}
 
 	var (
-		rme           *readmarker.ReadMarkerEntity
+		rme           readmarker.ReadMakerI
 		latestRM      *readmarker.ReadMarker
 		pendNumBlocks int64
 	)
@@ -161,7 +160,7 @@ func (b *blobberGRPCService) DownloadFile(ctx context.Context, r *blobbergrpc.Do
 	}
 
 	if rme != nil {
-		latestRM = rme.LatestRM
+		latestRM = rme.GetLatestRM()
 		if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
 			return nil, common.NewErrorf("download_file",
 				"couldn't get number of blocks pending redeeming: %v", err)
