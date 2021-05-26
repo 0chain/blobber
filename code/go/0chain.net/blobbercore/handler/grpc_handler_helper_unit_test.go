@@ -28,6 +28,19 @@ type storageHandlerI struct {
 	mock.Mock
 }
 
+func (_m *storageHandlerI) readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks, pendNumBlocks int64, payerID string) (err error) {
+	ret := _m.Called(ctx, alloc, numBlocks, pendNumBlocks, payerID)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *allocation.Allocation, int64, int64, string) error); ok {
+		r0 = rf(ctx, alloc, numBlocks, pendNumBlocks, payerID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // verifyAllocation provides a mock function with given fields: ctx, tx, readonly
 func (_m *storageHandlerI) verifyAllocation(ctx context.Context, tx string, readonly bool) (*allocation.Allocation, error) {
 	ret := _m.Called(ctx, tx, readonly)
