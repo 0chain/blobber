@@ -149,7 +149,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	cName := "Copy"
 	router.HandleFunc(cPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(CopyHandler),
+			WithReadOnlyConnection(CopyHandler(svc)),
 		),
 	),
 	).Name(cName)

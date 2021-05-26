@@ -40,7 +40,8 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/upload/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler))))
 	r.HandleFunc("/v1/file/download/{allocation}", common.UserRateLimit(common.ToByteStream(WithConnection(DownloadHandler))))
 	r.HandleFunc("/v1/file/rename/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(RenameHandler))))
-	r.HandleFunc("/v1/file/copy/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CopyHandler))))
+	r.HandleFunc("/v1/file/copy/{allocation}", common.UserRateLimit(common.
+		ToJSONResponse(WithConnection(CopyHandler(svc))))).Methods(http.MethodPost)
 	r.HandleFunc("/v1/file/attributes/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UpdateAttributesHandler))))
 
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitHandler))))
@@ -299,14 +300,23 @@ func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-	response, err := storageHandler.CopyObject(ctx, r)
-	if err != nil {
-		return nil, err
-	}
+func CopyHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		ctx = setupHandlerGRPCContext(ctx, r)
 
-	return response, nil
+		copyObjResponse, err := svc.CopyObject(ctx, &blobbergrpc.CopyObjectRequest{
+			Allocation:   mux.Vars(r)["allocation"],
+			Path:         r.FormValue("path"),
+			PathHash:     r.FormValue("path_hash"),
+			ConnectionId: r.FormValue("connection_id"),
+			Dest:         r.FormValue("dest"),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return convert.CopyObjectResponseHandler(copyObjResponse), nil
+	}
 }
 
 /*UploadHandler is the handler to respond to upload requests fro clients*/
