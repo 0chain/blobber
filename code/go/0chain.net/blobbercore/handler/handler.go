@@ -50,20 +50,13 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CalculateHashHandler))))
 
 	//object info related apis
-	r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(
-		WithConnection(AllocationHandler(svc))))).Methods(http.MethodGet)
-	r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(
-		WithReadOnlyConnection(FileMetaHandler(svc))))).Methods(http.MethodPost)
-	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(
-		WithReadOnlyConnection(FileStatsHandler(svc))))).Methods(http.MethodPost)
-	r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(
-		WithReadOnlyConnection(ListHandler(svc))))).Methods(http.MethodGet)
-	r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(
-		WithReadOnlyConnection(ObjectPathHandler(svc))))).Methods(http.MethodGet)
-	r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(
-		WithReadOnlyConnection(ReferencePathHandler(svc))))).Methods(http.MethodGet)
-	r.HandleFunc("/v1/file/objecttree/{allocation}", common.UserRateLimit(common.ToJSONResponse(
-		WithReadOnlyConnection(ObjectTreeHandler(svc))))).Methods(http.MethodGet)
+	r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler(svc))))).Methods(http.MethodGet)
+	r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler(svc))))).Methods(http.MethodPost)
+	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler(svc))))).Methods(http.MethodPost)
+	r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler(svc))))).Methods(http.MethodGet)
+	r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler(svc))))).Methods(http.MethodGet)
+	r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler(svc))))).Methods(http.MethodGet)
+	r.HandleFunc("/v1/file/objecttree/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectTreeHandler(svc))))).Methods(http.MethodGet)
 
 	//admin related
 	r.HandleFunc("/_debug", common.UserRateLimit(common.ToJSONResponse(DumpGoRoutines)))

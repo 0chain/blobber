@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
@@ -30,8 +29,8 @@ func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, r *blob
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	// runtime type check
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+	//// runtime type check
+	//_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string) //why this removed?
 
 	clientID := md.Client
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {

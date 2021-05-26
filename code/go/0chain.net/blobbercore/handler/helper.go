@@ -40,9 +40,9 @@ type PackageHandler interface {
 	GetRefWithChildren(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 	GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*reference.ObjectPath, error)
 	GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*reference.Ref, error)
-	GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 	GetAllocationChanges(ctx context.Context, connectionID string,
 		allocationID string, clientID string) (allocation.IAllocationChangeCollector, error)
+	GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 }
 
 type packageHandler struct{}
