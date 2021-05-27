@@ -179,33 +179,32 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			"invalid method used (GET), use POST instead")
 	}
 
+	// get client and allocation ids
 	var (
 		clientID     = ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 		allocationTx = ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-		alloc *allocation.Allocation
+		_            = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string) // runtime type check
+		alloc        *allocation.Allocation
 	)
 
-	// check client id
+	// check client
 	if len(clientID) == 0 {
 		return nil, common.NewError("download_file", "invalid client")
 	}
 
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string) // runtime type check
-
-	// get allocation
+	// get and check allocation
 	alloc, err = fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewErrorf("download_file",
 			"invalid allocation id passed: %v", err)
 	}
 
+	// get and parse file params
 	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
 		Logger.Info("download_file - request_parse_error", zap.Error(err))
 		return nil, common.NewErrorf("download_file",
 			"request_parse_error: %v", err)
 	}
-
-	rxPay := r.FormValue("rx_pay") == "true"
 
 	pathHash, err := pathHashFromReq(r, alloc.ID)
 	if err != nil {
@@ -235,6 +234,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			"invalid number of blocks")
 	}
 
+	// get read marker
 	var (
 		readMarkerString = r.FormValue("read_marker")
 		readMarker       = &readmarker.ReadMarker{}
@@ -253,6 +253,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			"failed to verify the read marker: %v", err)
 	}
 
+	// get file reference
 	var fileref *reference.Ref
 	fileref, err = reference.GetReferenceFromLookupHash(ctx, alloc.ID, pathHash)
 	if err != nil {
@@ -265,29 +266,34 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			"path is not a file: %v", err)
 	}
 
-	var (
-		payerID          = clientID // default payer is client
-		isOwner          = clientID == alloc.OwnerID
-		isCollaborator   = reference.IsACollaborator(ctx, fileref.ID, clientID)
-		authTokenString  = r.FormValue("auth_token")
-	)
+	// set payer: default
+	var payerID =  payerID = alloc.OwnerID
 
-	if isCollaborator {
-		payerID = alloc.OwnerID
+	// set payer: check for explicit allocation payer value
+	if len(alloc.PayerID) > 0 {
+		payerID = alloc.PayerID
 	}
 
-	if (!isOwner && !isCollaborator) || len(authTokenString) > 0 {
-		var authTicketVerified bool
-		authTicketVerified, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc,
-			fileref, clientID)
-		if err != nil {
-			return nil, common.NewErrorf("download_file",
-				"verifying auth ticket: %v", err)
-		}
+	// set payer: check for command line payer flag (--rx_pay)
+	if r.FormValue("rx_pay") == "true" {
+		payerID = clientID
+	}
 
-		if !authTicketVerified {
+	// authorize file access
+	var (
+		isOwner          = clientID == alloc.OwnerID
+		isCollaborator   = reference.IsACollaborator(ctx, fileref.ID, clientID)
+	)
+
+	if !isOwner && !isCollaborator {
+		authTokenString  = r.FormValue("auth_token")
+		// isAuthToken      = len(authTokenString) > 0
+
+		if _, err := fsh.verifyAuthTicket(ctx,
+			authTokenString, alloc, fileref, clientID
+		); err != nil {
 			return nil, common.NewErrorf("download_file",
-				"could not verify the auth ticket")
+				"cannot verifying auth ticket: %v", err)
 		}
 
 		var authToken = &readmarker.AuthTicket{}
@@ -300,24 +306,17 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		readMarker.AuthTicket = datatypes.JSON(authTokenString)
 
 		// check for file payer flag
-		var fileAttrs *reference.Attributes
-		if fileAttrs, err = fileref.GetAttributes(); err != nil {
+		if fileAttrs, err := fileref.GetAttributes(); err != nil {
 			return nil, common.NewErrorf("download_file",
 				"error getting file attributes: %v", err)
+		} else {
+			if fileAttrs.WhoPaysForReads == common.WhoPays3rdParty {
+				payerID = clientID
+			}
 		}
-
-		if fileAttrs.WhoPaysForReads == common.WhoPaysOwner {
-			payerID = alloc.OwnerID
-		}
-
-		// check for command line payer flag
-		// todo: refactor and uncomment
-		// --rx_pay flag
-		// if rxPay {
-		// 	payerID = clientID
-		// }
 	}
 
+	// create read marker
 	var (
 		rme           *readmarker.ReadMarkerEntity
 		latestRM      *readmarker.ReadMarker
