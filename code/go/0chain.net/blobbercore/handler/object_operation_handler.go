@@ -404,8 +404,13 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	response.Success = true
 	response.LatestRM = readMarker
 	if attrs.PreAtBlobber {
-		buyerPublicKey := "read from 0box"
-		blobberMnemonic := "read from table"
+		buyerPublicKey := r.FormValue("public_key")
+		encInfo, err := GetOrCreateMarketplaceEncryptionKeyPair(ctx, r)
+		blobberMnemonic := encInfo.Mnemonic
+
+		if err != nil {
+			return nil, err
+		}
 
 		var encscheme zencryption.EncryptionScheme
 		encscheme.Initialize(blobberMnemonic)
