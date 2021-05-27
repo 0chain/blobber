@@ -338,7 +338,6 @@ func CalculateHashHandler(svc *blobberGRPCService) func(ctx context.Context, r *
 			Allocation: mux.Vars(r)["allocation"],
 			Paths:      r.FormValue("paths"),
 			Path:       r.FormValue("path"),
-			PathHash:   r.FormValue("path_hash"),
 		})
 		if err != nil {
 			return nil, err

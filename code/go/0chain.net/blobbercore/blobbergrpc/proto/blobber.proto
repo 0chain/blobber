@@ -55,7 +55,6 @@ message CalculateHashRequest {
   string allocation = 1;
   string path = 2;
   string paths = 3;
-  string path_hash = 4;
 }
 
 message CalculateHashResponse {
