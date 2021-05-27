@@ -53,6 +53,7 @@ func initHandlers(r *mux.Router) {
 }
 
 func SetupWorkerConfig() {
+	//TODO: [dayi]contentref_cleaner should be removed? there seems is no any references in code
 	config.Configuration.ContentRefWorkerFreq = viper.GetInt64("contentref_cleaner.frequency")
 	config.Configuration.ContentRefWorkerTolerance = viper.GetInt64("contentref_cleaner.tolerance")
 

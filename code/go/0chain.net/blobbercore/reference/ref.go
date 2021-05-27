@@ -133,6 +133,7 @@ func (r *Ref) SetAttributes(attr *Attributes) (err error) {
 	return
 }
 
+// GetReference get FileRef with allcationID and path from postgres
 func GetReference(ctx context.Context, allocationID string, path string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)

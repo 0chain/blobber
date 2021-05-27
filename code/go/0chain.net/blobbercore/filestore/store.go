@@ -31,11 +31,6 @@ type FileOutputData struct {
 	MerkleRoot  string
 	ContentHash string
 	Size        int64
-
-	//UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
-	UploadLength int64
-	//Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
-	UploadOffset int64
 }
 
 type FileObjectHandler func(contentHash string, contentSize int64)

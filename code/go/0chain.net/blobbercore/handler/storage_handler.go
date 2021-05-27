@@ -110,14 +110,6 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 	return allocationObj, nil
 }
 
-func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID string, path string) *reference.Ref {
-	fileReference, err := reference.GetReference(ctx, allocationID, path)
-	if err != nil {
-		return nil
-	}
-	return fileReference
-}
-
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")

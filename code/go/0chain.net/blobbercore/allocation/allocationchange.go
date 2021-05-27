@@ -20,6 +20,9 @@ const (
 	RENAME_OPERATION       = "rename"
 	COPY_OPERATION         = "copy"
 	UPDATE_ATTRS_OPERATION = "update_attrs"
+
+	// RESUME_OPERATION upload operation for INIT/APPEND/FINALIZE
+	RESUME_OPERATION = "resume"
 )
 
 const (
@@ -31,6 +34,7 @@ const (
 
 var OperationNotApplicable = common.NewError("operation_not_valid", "Not an applicable operation")
 
+// AllocationChangeProcessor request transaction of file operation. it is president in postgres, and can be rebuilt for next http reqeust(eg CommitHandler)
 type AllocationChangeProcessor interface {
 	CommitToFileStore(ctx context.Context) error
 	DeleteTempFile() error
@@ -67,6 +71,9 @@ func (AllocationChange) TableName() string {
 	return "allocation_changes"
 }
 
+// GetAllocationChanges reload connection's changes in allocation from postgres.
+//	1. update connection's status with NewConnection if connection_id is not found in postgres
+//  2. mark as NewConnection if connection_id is marked as DeleteConnection
 func GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*AllocationChangeCollector, error) {
 	cc := &AllocationChangeCollector{}
 	db := datastore.GetStore().GetTransaction(ctx)
@@ -112,6 +119,7 @@ func (cc *AllocationChangeCollector) Save(ctx context.Context) error {
 	}
 }
 
+// ComputeProperties unmarshal all ChangeProcesses from postgres
 func (cc *AllocationChangeCollector) ComputeProperties() {
 	cc.AllocationChanges = make([]AllocationChangeProcessor, 0, len(cc.Changes))
 	for _, change := range cc.Changes {
@@ -129,6 +137,8 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 			acp = new(CopyFileChange)
 		case UPDATE_ATTRS_OPERATION:
 			acp = new(AttributesChange)
+		case RESUME_OPERATION:
+			acp = new(ResumeFileChange)
 		}
 
 		if acp == nil {
