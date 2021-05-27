@@ -4,7 +4,6 @@ package blobber.service.v1;
 option go_package = "code/go/0chain.net/blobbercore/blobbergrpc";
 
 import "google/api/annotations.proto";
-import "google/protobuf/any.proto";
 
 
 service Blobber {
@@ -59,7 +58,7 @@ message CalculateHashRequest {
 }
 
 message CalculateHashResponse {
-  google.protobuf.Any message = 1;
+  string message = 1;
 }
 
 message GetObjectTreeRequest {
