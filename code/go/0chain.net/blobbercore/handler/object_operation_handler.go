@@ -286,9 +286,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	)
 
 	if !isOwner && !isCollaborator {
-		authTokenString  = r.FormValue("auth_token")
-		// isAuthToken      = len(authTokenString) > 0
+		var authTokenString = r.FormValue("auth_token")
 
+		// check auth token
 		if _, err := fsh.verifyAuthTicket(ctx,
 			authTokenString, alloc, fileref, clientID
 		); err != nil {
@@ -296,9 +296,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 				"cannot verifying auth ticket: %v", err)
 		}
 
-		var authToken = &readmarker.AuthTicket{}
-		err = json.Unmarshal([]byte(authTokenString), &authToken)
-		if err != nil {
+		if json.Unmarshal([]byte(authTokenString), &readmarker.AuthTicket{}) != nil {
 			return nil, common.NewErrorf("download_file",
 				"error parsing the auth ticket for download: %v", err)
 		}
@@ -350,15 +348,13 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	}
 
 	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, alloc, numBlocks, pendNumBlocks,
-		payerID)
+	err = readPreRedeem(ctx, alloc, numBlocks, pendNumBlocks, payerID)
 	if err != nil {
 		return nil, common.NewErrorf("download_file",
 			"pre-redeeming read marker: %v", err)
 	}
 
-	// reading allowed
-
+	// reading is allowed
 	var (
 		downloadMode = r.FormValue("content")
 		respData     []byte
