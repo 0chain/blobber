@@ -42,7 +42,7 @@ max_file_size: 10485760 #10MB
 update_allocations_interval: 1m
 
 # delegate wallet (must be set)
-delegate_wallet: '9a566aa4f8e8c342fed97c8928040a21f21b8f574e5782c28568635ba9c75a85'
+delegate_wallet: '34d7afcf6b1477d7099845eda897e2d341ad5672ee33f14ddde80eb3f789c58a'
 # min stake allowed, tokens
 min_stake: 1.0
 # max stake allowed, tokens
@@ -53,6 +53,7 @@ num_delegates: 50
 service_charge: 0.30
 
 block_worker: http://198.18.0.98:9091
+0box: http://198.18.0.98:9081
 
 handlers:
   rate_limit: 10 # 10 per second
