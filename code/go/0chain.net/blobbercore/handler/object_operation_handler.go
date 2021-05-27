@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"net/http"
 	"path/filepath"
@@ -19,11 +21,11 @@ import (
 	"0chain.net/blobbercore/reference"
 	"0chain.net/blobbercore/stats"
 	"0chain.net/blobbercore/writemarker"
-
 	"0chain.net/core/common"
 	"0chain.net/core/encryption"
 	"0chain.net/core/lock"
 	"0chain.net/core/node"
+	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -280,6 +282,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		clientIDForReadRedeem = allocationObj.OwnerID
 	}
 
+	var attrs *reference.Attributes
+	if attrs, err = fileref.GetAttributes(); err != nil {
+		return nil, common.NewErrorf("download_file",
+			"error getting file attributes: %v", err)
+	}
+
 	if (allocationObj.OwnerID != clientID &&
 		allocationObj.PayerID != clientID &&
 		!isACollaborator) || len(authTokenString) > 0 {
@@ -302,12 +310,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		if err != nil {
 			return nil, common.NewErrorf("download_file",
 				"error parsing the auth ticket for download: %v", err)
-		}
-
-		var attrs *reference.Attributes
-		if attrs, err = fileref.GetAttributes(); err != nil {
-			return nil, common.NewErrorf("download_file",
-				"error getting file attributes: %v", err)
 		}
 
 		// if --rx_pay used 3rd_party pays
@@ -401,6 +403,40 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	var response = &DownloadResponse{}
 	response.Success = true
 	response.LatestRM = readMarker
+	if attrs.PreAtBlobber {
+		buyerPublicKey := "read from 0box"
+		blobberMnemonic := "read from table"
+
+		var encscheme zencryption.EncryptionScheme
+		encscheme.Initialize(blobberMnemonic)
+		encscheme.InitForDecryption("filetype:audio", fileref.EncryptedKey)
+
+		encMsg := &zencryption.EncryptedMessage{}
+
+		encMsg.EncryptedData = respData[(2 * 1024):]
+
+		headerBytes := respData[:(2 * 1024)]
+		headerBytes = bytes.Trim(headerBytes, "\x00")
+		headerString := string(headerBytes)
+
+		headerChecksums := strings.Split(headerString, ",")
+		if len(headerChecksums) != 2 {
+			Logger.Error("Block has invalid header", zap.String("request Url", r.URL.String()))
+			return nil, errors.New("Block has invalid header for request " + r.URL.String())
+		}
+
+		encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
+		encMsg.EncryptedKey = encscheme.GetEncryptedKey()
+
+		regenKey, _ := encscheme.GetReGenKey(buyerPublicKey, "filetype:audio")
+		reEncMsg, _ := encscheme.ReEncrypt(encMsg, regenKey)
+
+		encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
+		respData, err = reEncMsg.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+	}
 	response.Data = respData
 	response.Path = fileref.Path
 	response.AllocationID = fileref.AllocationID
