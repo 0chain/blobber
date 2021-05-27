@@ -336,6 +336,7 @@ func CalculateHashHandler(svc *blobberGRPCService) func(ctx context.Context, r *
 
 		response, err := svc.CalculateHash(ctx, &blobbergrpc.CalculateHashRequest{
 			Allocation: mux.Vars(r)["allocation"],
+			Paths:      r.FormValue("paths"),
 			Path:       r.FormValue("path"),
 			PathHash:   r.FormValue("path_hash"),
 		})

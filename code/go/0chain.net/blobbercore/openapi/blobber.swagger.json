@@ -448,6 +448,9 @@
         "path": {
           "type": "string"
         },
+        "paths": {
+          "type": "string"
+        },
         "pathHash": {
           "type": "string"
         }
