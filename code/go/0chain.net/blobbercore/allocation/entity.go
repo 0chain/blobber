@@ -38,8 +38,7 @@ type Allocation struct {
 	// Has many terms.
 	Terms []*Terms `gorm:"-"`
 
-	// Used for 3rd party/payer operations
-	PayerID string `gorm:"column:payer_id"`
+	PayerID string `gorm:"column:payer_id"` // optional / default paying for all r/w ops client
 }
 
 func (Allocation) TableName() string {
