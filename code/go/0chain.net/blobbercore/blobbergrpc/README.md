@@ -1,4 +1,18 @@
-# GRPC Migration
+# GRPC Endpoints
+
+## Installation
+
+```
+go install \
+github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
+github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 \
+google.golang.org/protobuf/cmd/protoc-gen-go \
+google.golang.org/grpc/cmd/protoc-gen-go-grpc
+```
+
+Run this command to install all the grpc related binaries required to generate files using grpc.
+
+## Development
 
 Modify the '.proto' file in `code/go/0chain.net/blobbercore/blobbergrpc/proto/blobber.proto` and run 
 `scripts/generate-grpc.sh` to add new api's.
@@ -6,14 +20,23 @@ Modify the '.proto' file in `code/go/0chain.net/blobbercore/blobbergrpc/proto/bl
 GRPC API is implemented in `code/go/0chain.net/blobbercore/handler/grpc_handler.go`.
 
 ## Plugins
+
 * [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) 
 plugin is being used to expose a REST api for grpc incompatible clients.
 
-## Interacting with the api
+## Testing
+
 The current grpc implementation supports server reflection in development environment.
 You can interact with the api using https://github.com/gusaul/grpcox.
 
 Make sure the server is running on `--deployment_mode 0` to use server reflection.
 
-## Dealing with paths
-Refer to - https://developers.google.com/protocol-buffers/docs/reference/go-generated
+You can use https://github.com/vektra/mockery to generate mocks for tests.
+
+## Documentation
+
+Basic documentation can be found here - https://grpc.io/docs/languages/go/basics/
+
+Advanced documentation can be found here - https://github.com/grpc/grpc-go/tree/master/Documentation
+
+
