@@ -185,17 +185,17 @@ message Allocation {
   string OwnerID = 5;
   string OwnerPublicKey = 6;
   string RepairerID = 7;
-  string PayerID = 5;
-  int64 Expiration = 7;
-  string AllocationRoot = 8;
-  int64 BlobberSize = 9;
-  int64 BlobberSizeUsed = 10;
-  string LatestRedeemedWM = 11;
-  bool IsRedeemRequired = 12;
-  int64 TimeUnit = 13;
-  bool CleanedUp = 14;
-  bool Finalized = 15;
-  repeated Term Terms = 16;
+  string PayerID = 8;
+  int64 Expiration = 9;
+  string AllocationRoot = 10;
+  int64 BlobberSize = 11;
+  int64 BlobberSizeUsed = 12;
+  string LatestRedeemedWM = 13;
+  bool IsRedeemRequired = 14;
+  int64 TimeUnit = 15;
+  bool CleanedUp = 16;
+  bool Finalized = 17;
+  repeated Term Terms = 18;
 }
 
 message Term {
