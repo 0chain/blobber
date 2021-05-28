@@ -32,6 +32,6 @@ require (
 )
 
 //for development only
-//replace github.com/0chain/gosdk => ../../../../gosdk
+replace github.com/0chain/gosdk => ../../../../gosdk
 
 go 1.13
