@@ -404,15 +404,16 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	response.Success = true
 	response.LatestRM = readMarker
 	if attrs.PreAtBlobber {
-		buyerPublicKey := r.FormValue("public_key")
+		// buyerPublicKey := r.FormValue("public_key")
+		buyerPublicKey := "48a620624d143a2b49fa50ccd5068eb85931d2d3e68ccd365cc380b88003e424dbc30346965dfbcda045a801c40e36aa3df2de6af530768767ba704eb54c7e05"
 		encInfo, err := GetOrCreateMarketplaceEncryptionKeyPair(ctx, r)
-		blobberMnemonic := encInfo.Mnemonic
-
 		if err != nil {
 			return nil, err
 		}
 
-		var encscheme zencryption.EncryptionScheme
+		blobberMnemonic := encInfo.Mnemonic
+
+		encscheme := zencryption.NewEncryptionScheme()
 		encscheme.Initialize(blobberMnemonic)
 		encscheme.InitForDecryption("filetype:audio", fileref.EncryptedKey)
 
@@ -436,7 +437,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		regenKey, _ := encscheme.GetReGenKey(buyerPublicKey, "filetype:audio")
 		reEncMsg, _ := encscheme.ReEncrypt(encMsg, regenKey)
 
-		encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
 		respData, err = reEncMsg.MarshalJSON()
 		if err != nil {
 			return nil, err
