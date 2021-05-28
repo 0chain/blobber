@@ -184,6 +184,8 @@ message Allocation {
   int64 UsedSize = 4;
   string OwnerID = 5;
   string OwnerPublicKey = 6;
+  string RepairerID = 7;
+  string PayerID = 5;
   int64 Expiration = 7;
   string AllocationRoot = 8;
   int64 BlobberSize = 9;
@@ -194,7 +196,6 @@ message Allocation {
   bool CleanedUp = 14;
   bool Finalized = 15;
   repeated Term Terms = 16;
-  string PayerID = 17;
 }
 
 message Term {

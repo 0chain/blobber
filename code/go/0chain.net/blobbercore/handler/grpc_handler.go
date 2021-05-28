@@ -84,18 +84,22 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 		logger.Error("Failed to get collaborators from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
 	}
 
-	authTokenString := req.AuthToken
+	// authorize file access
+	var (
+		isOwner          = clientID == alloc.OwnerID
+		isRepairer       = clientID == alloc.RepairerID
+		isCollaborator   = b.packageHandler.IsACollaborator(ctx, fileref.ID, clientID))
+	)
 
-	if (allocationObj.OwnerID != clientID &&
-		allocationObj.PayerID != clientID &&
-		!b.packageHandler.IsACollaborator(ctx, fileref.ID, clientID)) || len(authTokenString) > 0 {
-		authTicketVerified, err := b.storageHandler.verifyAuthTicket(ctx, req.AuthToken, allocationObj, fileref, clientID)
-		if err != nil {
-			return nil, err
+	if !isOwner && !isRepairer && !isCollaborator {
+		// check auth token
+		if isAuthorized, err := b.storageHandler.verifyAuthTicket(ctx,
+			req.AuthToken, allocationObj, fileref, clientID
+		); !isAuthorized {
+			return nil, common.NewErrorf("download_file",
+				"cannot verifying auth ticket: %v", err)
 		}
-		if !authTicketVerified {
-			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
-		}
+
 		fileref.Path = ""
 	}
 

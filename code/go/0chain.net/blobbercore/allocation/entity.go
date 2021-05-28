@@ -25,6 +25,7 @@ type Allocation struct {
 	UsedSize         int64            `gorm:"column:used_size"`
 	OwnerID          string           `gorm:"column:owner_id"`
 	OwnerPublicKey   string           `gorm:"column:owner_public_key"`
+	RepairerID       string           `gorm:"column:repairer_id"`// experimental / blobber node id
 	PayerID          string           `gorm:"column:payer_id"` // optional / client paying for all r/w ops
 	Expiration       common.Timestamp `gorm:"column:expiration_date"`
 	AllocationRoot   string           `gorm:"column:allocation_root"`

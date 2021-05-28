@@ -282,16 +282,17 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	// authorize file access
 	var (
 		isOwner          = clientID == alloc.OwnerID
+		isRepairer       = clientID == alloc.RepairerID
 		isCollaborator   = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
-	if !isOwner && !isCollaborator {
+	if !isOwner && !isRepairer && !isCollaborator {
 		var authTokenString = r.FormValue("auth_token")
 
 		// check auth token
-		if _, err := fsh.verifyAuthTicket(ctx,
+		if isAuthorized, err := fsh.verifyAuthTicket(ctx,
 			authTokenString, alloc, fileref, clientID
-		); err != nil {
+		); !isAuthorized {
 			return nil, common.NewErrorf("download_file",
 				"cannot verifying auth ticket: %v", err)
 		}
@@ -944,7 +945,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 	}
 
 	if mode == allocation.DELETE_OPERATION {
-		if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
+		if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 		}
 		result, err = fsh.DeleteFile(ctx, r, connectionObj)
@@ -967,7 +968,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		existingFileRefSize := int64(0)
 		exisitingFileOnCloud := false
 		if mode == allocation.INSERT_OPERATION {
-			if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
+			if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 			}
 
@@ -980,7 +981,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 			}
 
 			if allocationObj.OwnerID != clientID &&
-				allocationObj.PayerID != clientID &&
+				allocationObj.RepairerID != clientID &&
 				!reference.IsACollaborator(ctx, exisitingFileRef.ID, clientID) {
 				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner, collaborator or the payer of the allocation")
 			}
