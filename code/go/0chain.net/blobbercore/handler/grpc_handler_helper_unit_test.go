@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/spf13/viper"
 
@@ -121,6 +123,21 @@ func (c *TestDataController) ClearDatabase() error {
 	}
 
 	_, err = tx.Exec("truncate collaborators cascade")
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("truncate allocation_changes cascade")
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("truncate allocation_connections cascade")
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("truncate write_markers cascade")
 	if err != nil {
 		return err
 	}
@@ -485,8 +502,6 @@ func GeneratePubPrivateKey(t *testing.T) (string, string, zcncrypto.SignatureSch
 	keyPair := wallet.Keys[0]
 
 	_ = signScheme.SetPrivateKey(keyPair.PrivateKey)
-	_ = signScheme.SetPublicKey(keyPair.PublicKey)
-
 	return keyPair.PublicKey, keyPair.PrivateKey, signScheme
 }
 
@@ -505,4 +520,70 @@ func setupIntegrationTestConfig(t *testing.T) {
 	config.Configuration.DBPort = viper.GetString("db.port")
 	config.Configuration.DBUserName = viper.GetString("db.user")
 	config.Configuration.DBPassword = viper.GetString("db.password")
+}
+
+func (c *TestDataController) AddCommitTestData(allocationTx, pubkey, clientId, wmSig string, now common.Timestamp) error {
+	var err error
+	var tx *sql.Tx
+	defer func() {
+		if err != nil {
+			if tx != nil {
+				errRollback := tx.Rollback()
+				if errRollback != nil {
+					log.Println(errRollback)
+				}
+			}
+		}
+	}()
+
+	db, err := c.db.DB()
+	if err != nil {
+		return err
+	}
+
+	tx, err = db.BeginTx(context.Background(), &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
+
+	_, err = tx.Exec(`
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, blobber_size, allocation_root)
+VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/root');
+`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
+VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
+`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+INSERT INTO allocation_changes (id, connection_id, operation, size, input)
+VALUES (1 ,'connection_id','rename', 1200, '{"new_name":"new_name"}');
+`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+INSERT INTO write_markers(prev_allocation_root, allocation_root, status, allocation_id, size, client_id, signature, blobber_id, timestamp, connection_id, client_key)
+VALUES ('/root', '/root', 2,'exampleId', 1337, '` + clientId + `','` + wmSig + `','blobber_id', ` + fmt.Sprint(now) + `, 'connection_id', '` + pubkey + `');
+`)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

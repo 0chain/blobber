@@ -6,23 +6,23 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"gorm.io/gorm"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
-	"gorm.io/gorm"
-
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 )
 
-// TODO parse request from gateway as form data instead of json
 func (b *blobberGRPCService) Commit(ctx context.Context, req *blobbergrpc.CommitRequest) (*blobbergrpc.CommitResponse, error) {
 	md := GetGRPCMetaDataFromCtx(ctx)
+	ctx = setupGRPCHandlerContext(ctx, md, req.Allocation)
 
 	allocationTx := req.Allocation
 	clientID := md.Client
@@ -45,7 +45,7 @@ func (b *blobberGRPCService) Commit(ctx context.Context, req *blobbergrpc.Commit
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	connectionObj, err := b.packageHandler.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewErrorf("invalid_parameters",
 			"Invalid connection id. Connection id was not found: %v", err)
@@ -98,7 +98,7 @@ func (b *blobberGRPCService) Commit(ctx context.Context, req *blobbergrpc.Commit
 	if len(allocationObj.AllocationRoot) == 0 {
 		latestWM = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx,
+		latestWM, err = b.packageHandler.GetWriteMarkerEntity(ctx,
 			allocationObj.AllocationRoot)
 		if err != nil {
 			return nil, common.NewErrorf("latest_write_marker_read_error",
@@ -109,7 +109,7 @@ func (b *blobberGRPCService) Commit(ctx context.Context, req *blobbergrpc.Commit
 	writemarkerObj := &writemarker.WriteMarkerEntity{}
 	writemarkerObj.WM = writeMarker
 
-	err = writemarkerObj.VerifyMarker(ctx, allocationObj, connectionObj)
+	err = b.packageHandler.VerifyMarker(writemarkerObj, ctx, allocationObj, connectionObj)
 	if err != nil {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		result.ErrorMessage = "Verification of write marker failed: " + err.Error()
@@ -129,11 +129,11 @@ func (b *blobberGRPCService) Commit(ctx context.Context, req *blobbergrpc.Commit
 		return nil, err
 	}
 
-	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot)
+	err = b.packageHandler.ApplyChanges(connectionObj, ctx, writeMarker.AllocationRoot)
 	if err != nil {
 		return nil, err
 	}
-	rootRef, err := reference.GetReference(ctx, allocationID, "/")
+	rootRef, err := b.packageHandler.GetReference(ctx, allocationID, "/")
 	if err != nil {
 		return nil, err
 	}
@@ -150,9 +150,24 @@ func (b *blobberGRPCService) Commit(ctx context.Context, req *blobbergrpc.Commit
 	}
 	writemarkerObj.ConnectionID = connectionObj.ConnectionID
 	writemarkerObj.ClientPublicKey = clientKey
-	err = writemarkerObj.Save(ctx)
+
+	err = b.packageHandler.UpdateAllocationAndCommitChanges(ctx, writemarkerObj, connectionObj, allocationObj, allocationRoot)
 	if err != nil {
-		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
+		return nil, err
+	}
+
+	result.AllocationRoot = allocationObj.AllocationRoot
+	result.WriteMarker = convert.WriteMarkerToWriteMarkerGRPC(&writeMarker)
+	result.Success = true
+	result.ErrorMessage = ""
+
+	return &result, nil
+}
+
+func UpdateAllocationAndCommitChanges(ctx context.Context, writemarkerObj *writemarker.WriteMarkerEntity, connectionObj *allocation.AllocationChangeCollector, allocationObj *allocation.Allocation, allocationRoot string) error {
+	err := writemarkerObj.Save(ctx)
+	if err != nil {
+		return common.NewError("write_marker_error", "Error persisting the write marker")
 	}
 
 	db := datastore.GetStore().GetTransaction(ctx)
@@ -164,24 +179,15 @@ func (b *blobberGRPCService) Commit(ctx context.Context, req *blobbergrpc.Commit
 
 	err = db.Model(allocationObj).Updates(allocationUpdates).Error
 	if err != nil {
-		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
+		return common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
-		return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 	}
-
-	// TODO maybe delete 'changes' field altogether, its not being used anywhere - its not even being sent as json back as response
-	//result.Changes = connectionObj.Changes
 
 	connectionObj.DeleteChanges(ctx) //nolint:errcheck // never returns an error anyway
 
 	db.Model(connectionObj).Updates(allocation.AllocationChangeCollector{Status: allocation.CommittedConnection})
-
-	result.AllocationRoot = allocationObj.AllocationRoot
-	result.WriteMarker = convert.WriteMarkerToWriteMarkerGRPC(&writeMarker)
-	result.Success = true
-	result.ErrorMessage = ""
-
-	return &result, nil
+	return nil
 }
