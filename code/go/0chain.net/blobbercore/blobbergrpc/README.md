@@ -2,6 +2,8 @@
 
 ## Installation
 
+Install the [protoc](https://grpc.io/docs/protoc-installation/) command line interface
+
 ```
 go install \
 github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
@@ -10,7 +12,9 @@ google.golang.org/protobuf/cmd/protoc-gen-go \
 google.golang.org/grpc/cmd/protoc-gen-go-grpc
 ```
 
-Run this command to install all the grpc related binaries required to generate files using grpc.
+Run this command to install all the GRPC related binaries required to generate GRPC related files using `protoc` CLI.
+
+Now you can run the script in `scripts/generate-grpc.sh`
 
 ## Development
 
