@@ -434,8 +434,14 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
 		encMsg.EncryptedKey = encscheme.GetEncryptedKey()
 
-		regenKey, _ := encscheme.GetReGenKey(buyerPublicKey, "filetype:audio")
-		reEncMsg, _ := encscheme.ReEncrypt(encMsg, regenKey)
+		regenKey, err := encscheme.GetReGenKey(buyerEncryptionPublicKey, "filetype:audio")
+		if err != nil {
+			return nil, err
+		}
+		reEncMsg, err := encscheme.ReEncrypt(encMsg, regenKey)
+		if err != nil {
+			return nil, err
+		}
 
 		respData, err = reEncMsg.MarshalJSON()
 		if err != nil {
