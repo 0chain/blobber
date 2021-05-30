@@ -9,7 +9,7 @@ GRPC API is implemented in `code/go/0chain.net/blobbercore/handler/grpc_handler.
 
 ## Installation
 
-Install the [protoc](https://grpc.io/docs/protoc-installation/) command line interface
+Install the [protoc](https://grpc.io/docs/protoc-installation/) command line interface.
 
 ```
 go install \
@@ -21,7 +21,7 @@ google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
 Run this command to install all the GRPC related binaries required to generate GRPC related files using `protoc` CLI.
 
-Now you can run the script in `scripts/generate-grpc.sh`
+Now you can run the script in `scripts/generate-grpc.sh`.
 
 ## Plugins
 
@@ -39,8 +39,8 @@ You can use https://github.com/vektra/mockery to generate mocks for tests.
 
 ## Documentation
 
-Basic documentation can be found here - https://grpc.io/docs/languages/go/basics/
+Basic documentation can be found here - https://grpc.io/docs/languages/go/basics/.
 
-Advanced documentation can be found here - https://github.com/grpc/grpc-go/tree/master/Documentation
+Advanced documentation can be found here - https://github.com/grpc/grpc-go/tree/master/Documentation.
 
 
