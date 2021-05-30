@@ -578,6 +578,109 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	return fileRef, nil
 }
 
+func (fs *FileFSStore) WriteFileGRPC(allocationID string, fileData *FileInputData,
+	fileReader io.Reader, connectionID string) (*FileOutputData, error) {
+
+	allocation, err := fs.SetupAllocation(allocationID, false)
+	if err != nil {
+		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
+	}
+
+	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
+	dest, err := NewChunkWriter(tempFilePath)
+	if err != nil {
+		return nil, common.NewError("file_creation_error", err.Error())
+	}
+	defer dest.Close()
+
+	fileRef := &FileOutputData{}
+	//var fileReader io.Reader = infile
+
+	if fileData.IsResumable {
+		h := sha1.New()
+		offset, err := dest.WriteChunk(context.TODO(), fileData.UploadOffset, io.TeeReader(fileReader, h))
+
+		if err != nil {
+			return nil, common.NewError("file_write_error", err.Error())
+		}
+
+		fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
+		fileRef.Size = dest.Size()
+		fileRef.Name = fileData.Name
+		fileRef.Path = fileData.Path
+		fileRef.UploadOffset = fileData.UploadOffset + offset
+		fileRef.UploadLength = fileData.UploadLength
+
+		if !fileData.IsFinal {
+			//skip to compute hash until the last chunk is uploaded
+			return fileRef, nil
+		}
+
+		fileReader = dest
+	}
+
+	h := sha1.New()
+	bytesBuffer := bytes.NewBuffer(nil)
+	multiHashWriter := io.MultiWriter(h, bytesBuffer)
+	tReader := io.TeeReader(fileReader, multiHashWriter)
+	merkleHashes := make([]hash.Hash, 1024)
+	merkleLeaves := make([]util.Hashable, 1024)
+	for idx := range merkleHashes {
+		merkleHashes[idx] = sha3.New256()
+	}
+	fileSize := int64(0)
+	for {
+		var written int64
+
+		if fileData.IsResumable {
+			//all chunks have been written, only read bytes from local file , and compute hash
+			written, err = io.CopyN(ioutil.Discard, tReader, CHUNK_SIZE)
+		} else {
+			written, err = io.CopyN(dest, tReader, CHUNK_SIZE)
+		}
+
+		if err != io.EOF && err != nil {
+			return nil, common.NewError("file_write_error", err.Error())
+		}
+		fileSize += written
+		dataBytes := bytesBuffer.Bytes()
+		merkleChunkSize := 64
+		for i := 0; i < len(dataBytes); i += merkleChunkSize {
+			end := i + merkleChunkSize
+			if end > len(dataBytes) {
+				end = len(dataBytes)
+			}
+			offset := i / merkleChunkSize
+			merkleHashes[offset].Write(dataBytes[i:end])
+		}
+
+		bytesBuffer.Reset()
+		if err != nil && err == io.EOF {
+			break
+		}
+	}
+	for idx := range merkleHashes {
+		merkleLeaves[idx] = util.NewStringHashable(hex.EncodeToString(merkleHashes[idx].Sum(nil)))
+	}
+
+	var mt util.MerkleTreeI = &util.MerkleTree{}
+	mt.ComputeTree(merkleLeaves)
+
+	//only update hash for whole file when it is not a resumable upload or is final chunk.
+	if !fileData.IsResumable || fileData.IsFinal {
+		fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
+	}
+
+	fileRef.Size = fileSize
+	fileRef.Name = fileData.Name
+	fileRef.Path = fileData.Path
+	fileRef.MerkleRoot = mt.GetRoot()
+	fileRef.UploadOffset = fileSize
+	fileRef.UploadLength = fileData.UploadLength
+
+	return fileRef, nil
+}
+
 func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHandler) error {
 	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {

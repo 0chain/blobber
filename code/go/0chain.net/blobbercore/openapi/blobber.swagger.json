@@ -761,6 +761,34 @@
         }
       }
     },
+    "v1UploadFileResponse": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "format": "int64"
+        },
+        "contentHash": {
+          "type": "string"
+        },
+        "merkleRoot": {
+          "type": "string"
+        },
+        "uploadLength": {
+          "type": "string",
+          "format": "int64",
+          "description": "UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer."
+        },
+        "uploadOffset": {
+          "type": "string",
+          "format": "int64",
+          "description": "Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer."
+        }
+      }
+    },
     "v1WriteMarker": {
       "type": "object",
       "properties": {

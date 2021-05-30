@@ -167,7 +167,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	uName := "Upload"
 	router.HandleFunc(uPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(UploadHandler),
+			WithReadOnlyConnection(UploadHandler(svc)),
 		),
 	),
 	).Name(uName)

@@ -89,3 +89,14 @@ func GetObjectTreeResponseHandler(getObjectTreeResponse *blobbergrpc.GetObjectTr
 		LatestWM:      WriteMarkerGRPCToWriteMarker(getObjectTreeResponse.LatestWM),
 	}
 }
+
+func UploadFileResponseHandler(renameObjectResponse *blobbergrpc.UploadFileResponse) *blobberHTTP.UploadResult {
+	return &blobberHTTP.UploadResult{
+		Filename:     renameObjectResponse.Filename,
+		Size:         renameObjectResponse.Size,
+		Hash:         renameObjectResponse.ContentHash,
+		MerkleRoot:   renameObjectResponse.MerkleRoot,
+		UploadLength: renameObjectResponse.UploadLength,
+		UploadOffset: renameObjectResponse.UploadOffset,
+	}
+}

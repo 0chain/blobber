@@ -42,6 +42,7 @@ service Blobber {
       get: "/v2/file/objecttree/{allocation}"
     };
   }
+  rpc WriteFile(UploadFileRequest) returns (UploadFileResponse) {}
 }
 
 message GetObjectTreeRequest {
@@ -164,6 +165,27 @@ message GetAllocationRequest {
 
 message GetAllocationResponse {
   Allocation allocation = 1;
+}
+
+message UploadFileRequest {
+  string allocation = 1;
+  string path = 2;
+  string connection_id = 3;
+  string method = 4;
+  string upload_meta = 5;
+  string update_meta = 6;
+  bytes  upload_file = 7;
+  bytes  upload_thumbnail_file = 8;
+}
+message UploadFileResponse {
+  string filename = 1;
+  int64 size = 2;
+  string content_hash = 3;
+  string merkle_root = 4;
+  //UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
+  int64 upload_length = 5;
+  //Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
+  int64 upload_offset = 6;
 }
 
 message Allocation {
