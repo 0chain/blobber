@@ -1,5 +1,12 @@
 # GRPC Endpoints
 
+## Development
+
+Modify the '.proto' file in `code/go/0chain.net/blobbercore/blobbergrpc/proto/blobber.proto` and run 
+`scripts/generate-grpc.sh` to add new api's.
+
+GRPC API is implemented in `code/go/0chain.net/blobbercore/handler/grpc_handler.go`.
+
 ## Installation
 
 Install the [protoc](https://grpc.io/docs/protoc-installation/) command line interface
@@ -15,13 +22,6 @@ google.golang.org/grpc/cmd/protoc-gen-go-grpc
 Run this command to install all the GRPC related binaries required to generate GRPC related files using `protoc` CLI.
 
 Now you can run the script in `scripts/generate-grpc.sh`
-
-## Development
-
-Modify the '.proto' file in `code/go/0chain.net/blobbercore/blobbergrpc/proto/blobber.proto` and run 
-`scripts/generate-grpc.sh` to add new api's.
-
-GRPC API is implemented in `code/go/0chain.net/blobbercore/handler/grpc_handler.go`.
 
 ## Plugins
 
