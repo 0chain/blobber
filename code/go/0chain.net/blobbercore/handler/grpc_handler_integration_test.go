@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"testing"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 
@@ -540,9 +543,21 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		blobberPubKey := "de52c0a51872d5d2ec04dbc15a6f0696cba22657b80520e1d070e72de64c9b04e19ce3223cae3c743a20184158457582ffe9c369ca9218c04bfe83a26a62d88d"
 		blobberPubKeyBytes, _ := hex.DecodeString(blobberPubKey)
 
+		fr := reference.Ref{
+			AllocationID:   "exampleId",
+			Type:           "f",
+			Name:           "new_name",
+			Path:           "/new_name",
+			ContentHash:    "contentHash",
+			MerkleRoot:     "merkleRoot",
+			ActualFileHash: "actualFileHash",
+		}
+
+		rootRefHash := encryption.Hash(encryption.Hash(fr.GetFileHashData()))
+
 		wm := writemarker.WriteMarker{
-			AllocationRoot:         "/root",
-			PreviousAllocationRoot: "/root",
+			AllocationRoot:         encryption.Hash(rootRefHash + ":" + strconv.FormatInt(int64(now), 10)),
+			PreviousAllocationRoot: "/",
 			AllocationID:           "exampleId",
 			Size:                   1337,
 			BlobberID:              encryption.Hash(blobberPubKeyBytes),
@@ -554,6 +569,8 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		wm.Signature = wmSig
 
 		wmRaw, err := json.Marshal(wm)
 		if err != nil {

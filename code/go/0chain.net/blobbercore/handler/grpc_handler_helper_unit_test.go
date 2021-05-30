@@ -550,7 +550,7 @@ func (c *TestDataController) AddCommitTestData(allocationTx, pubkey, clientId, w
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, blobber_size, allocation_root)
-VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/root');
+VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/');
 `)
 	if err != nil {
 		return err
@@ -566,7 +566,7 @@ VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
 
 	_, err = tx.Exec(`
 INSERT INTO allocation_changes (id, connection_id, operation, size, input)
-VALUES (1 ,'connection_id','rename', 1200, '{"new_name":"new_name"}');
+VALUES (1 ,'connection_id','rename', 1200, '{"allocation_id":"exampleId","path":"/some_file","new_name":"new_name"}');
 `)
 	if err != nil {
 		return err
@@ -574,7 +574,17 @@ VALUES (1 ,'connection_id','rename', 1200, '{"new_name":"new_name"}');
 
 	_, err = tx.Exec(`
 INSERT INTO write_markers(prev_allocation_root, allocation_root, status, allocation_id, size, client_id, signature, blobber_id, timestamp, connection_id, client_key)
-VALUES ('/root', '/root', 2,'exampleId', 1337, '` + clientId + `','` + wmSig + `','blobber_id', ` + fmt.Sprint(now) + `, 'connection_id', '` + pubkey + `');
+VALUES ('/', '/', 2,'exampleId', 1337, '` + clientId + `','` + wmSig + `','blobber_id', ` + fmt.Sprint(now) + `, 'connection_id', '` + pubkey + `');
+`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+INSERT INTO reference_objects (id, allocation_id, path_hash,lookup_hash,type,name,path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash, parent_path)
+VALUES 
+(1234,'exampleId','exampleId:examplePath','exampleId:examplePath','d','root','/','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash','/'),
+(123,'exampleId','exampleId:examplePath','exampleId:examplePath','f','some_file','/some_file','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash','/');
 `)
 	if err != nil {
 		return err
