@@ -46,6 +46,44 @@
         ]
       }
     },
+    "/v2/file/calculatehash/{allocation}": {
+      "post": {
+        "operationId": "Blobber_CalculateHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CalculateHashResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CalculateHashRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
     "/v2/file/list/{allocation}": {
       "get": {
         "operationId": "Blobber_ListEntities",
@@ -397,6 +435,28 @@
           }
         },
         "PayerID": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CalculateHashRequest": {
+      "type": "object",
+      "properties": {
+        "allocation": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "paths": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CalculateHashResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
           "type": "string"
         }
       }
