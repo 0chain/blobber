@@ -40,9 +40,34 @@ type PackageHandler interface {
 	GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*reference.ObjectPath, error)
 	GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*reference.Ref, error)
 	GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
+	GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*allocation.AllocationChangeCollector, error)
+	VerifyMarker(wm *writemarker.WriteMarkerEntity, ctx context.Context, sa *allocation.Allocation, co *allocation.AllocationChangeCollector) error
+	ApplyChanges(connectionObj *allocation.AllocationChangeCollector, ctx context.Context, allocationRoot string) error
+	GetReference(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
+	UpdateAllocationAndCommitChanges(ctx context.Context, writemarkerObj *writemarker.WriteMarkerEntity, connectionObj *allocation.AllocationChangeCollector, allocationObj *allocation.Allocation, allocationRoot string) error
 }
 
 type packageHandler struct{}
+
+func (r *packageHandler) UpdateAllocationAndCommitChanges(ctx context.Context, writemarkerObj *writemarker.WriteMarkerEntity, connectionObj *allocation.AllocationChangeCollector, allocationObj *allocation.Allocation, allocationRoot string) error {
+	return UpdateAllocationAndCommitChanges(ctx, writemarkerObj, connectionObj, allocationObj, allocationRoot)
+}
+
+func (r *packageHandler) GetReference(ctx context.Context, allocationID string, path string) (*reference.Ref, error) {
+	return reference.GetReference(ctx, allocationID, path)
+}
+
+func (r *packageHandler) ApplyChanges(connectionObj *allocation.AllocationChangeCollector, ctx context.Context, allocationRoot string) error {
+	return connectionObj.ApplyChanges(ctx, allocationRoot)
+}
+
+func (r *packageHandler) VerifyMarker(wm *writemarker.WriteMarkerEntity, ctx context.Context, sa *allocation.Allocation, co *allocation.AllocationChangeCollector) error {
+	return wm.VerifyMarker(ctx, sa, co)
+}
+
+func (r *packageHandler) GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*allocation.AllocationChangeCollector, error) {
+	return allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+}
 
 func (r *packageHandler) GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error) {
 	return reference.GetObjectTree(ctx, allocationID, path)
