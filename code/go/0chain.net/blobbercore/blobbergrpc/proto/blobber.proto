@@ -42,7 +42,26 @@ service Blobber {
       get: "/v2/file/objecttree/{allocation}"
     };
   }
-}
+
+  rpc CommitMetaTxn(CommitMetaTxnRequest) returns (CommitMetaTxnResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/commitmetatxn/{allocation}"
+      body: "*"
+    };
+  }
+ }
+
+  message CommitMetaTxnRequest {
+    string path = 1;
+    string path_hash = 2;
+    string auth_token = 3;
+    string allocation = 4;
+    string txn_id = 5;
+  }
+
+  message CommitMetaTxnResponse {
+    string message = 1;
+  }
 
 message GetObjectTreeRequest {
   string path = 1;

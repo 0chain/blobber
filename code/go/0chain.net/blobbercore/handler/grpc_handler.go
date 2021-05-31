@@ -446,3 +446,62 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 	}
 	return &refPathResult, nil
 }
+
+func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, req *blobbergrpc.CommitMetaTxnRequest) (*blobbergrpc.CommitMetaTxnResponse, error) {
+	allocationTx := req.GetAllocation()
+	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, true)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+	allocationID := allocationObj.ID
+
+	md := GetGRPCMetaDataFromCtx(ctx)
+	clientID := md.Client
+	if len(clientID) == 0 {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	pathHash := req.PathHash
+	path := req.Path
+	if len(pathHash) == 0 {
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		pathHash = reference.GetReferenceLookup(allocationID, path)
+	}
+
+	fileRef, err := b.packageHandler.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	if fileRef.Type != reference.FILE {
+		return nil, common.NewError("invalid_parameters", "Path is not a file.")
+	}
+
+	auhToken := req.GetAuthToken()
+
+	if clientID != allocationObj.OwnerID || len(auhToken) > 0 {
+		authTicketVerified, err := b.storageHandler.verifyAuthTicket(ctx, auhToken, allocationObj, fileRef, clientID)
+		if err != nil {
+			return nil, err
+		}
+
+		if !authTicketVerified {
+			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
+		}
+	}
+
+	txnID := req.GetTxnId()
+	if len(txnID) == 0 {
+		return nil, common.NewError("invalid_parameter", "TxnID not present in the params")
+	}
+
+	if err := reference.AddCommitMetaTxn(ctx, fileRef.ID, txnID); err != nil {
+		return nil, common.NewError("add_commit_meta_txn_failed", "Failed to add commitMetaTxn with err :"+err.Error())
+	}
+
+	return &blobbergrpc.CommitMetaTxnResponse{
+		Message: "Added commitMetaTxn successfully",
+	}, nil
+}

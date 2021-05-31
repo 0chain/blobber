@@ -24,6 +24,7 @@ type BlobberClient interface {
 	GetObjectPath(ctx context.Context, in *GetObjectPathRequest, opts ...grpc.CallOption) (*GetObjectPathResponse, error)
 	GetReferencePath(ctx context.Context, in *GetReferencePathRequest, opts ...grpc.CallOption) (*GetReferencePathResponse, error)
 	GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error)
+	CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequest, opts ...grpc.CallOption) (*CommitMetaTxnResponse, error)
 }
 
 type blobberClient struct {
@@ -97,6 +98,15 @@ func (c *blobberClient) GetObjectTree(ctx context.Context, in *GetObjectTreeRequ
 	return out, nil
 }
 
+func (c *blobberClient) CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequest, opts ...grpc.CallOption) (*CommitMetaTxnResponse, error) {
+	out := new(CommitMetaTxnResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/CommitMetaTxn", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BlobberServer is the server API for Blobber service.
 // All implementations must embed UnimplementedBlobberServer
 // for forward compatibility
@@ -108,6 +118,7 @@ type BlobberServer interface {
 	GetObjectPath(context.Context, *GetObjectPathRequest) (*GetObjectPathResponse, error)
 	GetReferencePath(context.Context, *GetReferencePathRequest) (*GetReferencePathResponse, error)
 	GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error)
+	CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error)
 	mustEmbedUnimplementedBlobberServer()
 }
 
@@ -135,6 +146,9 @@ func (UnimplementedBlobberServer) GetReferencePath(context.Context, *GetReferenc
 }
 func (UnimplementedBlobberServer) GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetObjectTree not implemented")
+}
+func (UnimplementedBlobberServer) CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CommitMetaTxn not implemented")
 }
 func (UnimplementedBlobberServer) mustEmbedUnimplementedBlobberServer() {}
 
@@ -275,6 +289,24 @@ func _Blobber_GetObjectTree_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Blobber_CommitMetaTxn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommitMetaTxnRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).CommitMetaTxn(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/CommitMetaTxn",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).CommitMetaTxn(ctx, req.(*CommitMetaTxnRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Blobber_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "blobber.service.v1.Blobber",
 	HandlerType: (*BlobberServer)(nil),
@@ -306,6 +338,10 @@ var _Blobber_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetObjectTree",
 			Handler:    _Blobber_GetObjectTree_Handler,
+		},
+		{
+			MethodName: "CommitMetaTxn",
+			Handler:    _Blobber_CommitMetaTxn_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -89,3 +89,18 @@ func GetObjectTreeResponseHandler(getObjectTreeResponse *blobbergrpc.GetObjectTr
 		LatestWM:      WriteMarkerGRPCToWriteMarker(getObjectTreeResponse.LatestWM),
 	}
 }
+
+func GetCommitMetaTxnHandlerResponse(response *blobbergrpc.CommitMetaTxnResponse) interface{} {
+	msg := response.GetMessage()
+	if msg == "" {
+		return nil
+	}
+
+	result := struct {
+		Msg string `json:"msg"`
+	}{
+		Msg: msg,
+	}
+
+	return result
+}
