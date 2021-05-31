@@ -45,7 +45,8 @@ service Blobber {
 
   rpc Commit(CommitRequest) returns (CommitResponse) {
     option (google.api.http) = {
-      get: "/v2/connection/commit/{allocation}"
+      post: "/v2/connection/commit/{allocation}"
+      body: "*"
     };
   }
 
