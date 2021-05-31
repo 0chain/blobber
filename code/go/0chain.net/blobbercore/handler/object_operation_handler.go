@@ -405,7 +405,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	response.LatestRM = readMarker
 	if attrs.PreAtBlobber {
 		// buyerPublicKey := r.FormValue("public_key")
-		buyerPublicKey := "48a620624d143a2b49fa50ccd5068eb85931d2d3e68ccd365cc380b88003e424dbc30346965dfbcda045a801c40e36aa3df2de6af530768767ba704eb54c7e05"
+		buyerEncryptionPublicKey := "qCj3sXXeXUAByi1ERIbcfXzWN75dyocYzyRXnkStXio="
 		encInfo, err := GetOrCreateMarketplaceEncryptionKeyPair(ctx, r)
 		if err != nil {
 			return nil, err
@@ -417,37 +417,42 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		encscheme.Initialize(blobberMnemonic)
 		encscheme.InitForDecryption("filetype:audio", fileref.EncryptedKey)
 
-		encMsg := &zencryption.EncryptedMessage{}
+		totalSize := len(respData)
+		result := []byte {}
+		for i := 0; i < totalSize; i += reference.CHUNK_SIZE - 16 {
+			encMsg := &zencryption.EncryptedMessage{}
 
-		encMsg.EncryptedData = respData[(2 * 1024):]
+			encMsg.EncryptedData = respData[(2 * 1024):]
 
-		headerBytes := respData[:(2 * 1024)]
-		headerBytes = bytes.Trim(headerBytes, "\x00")
-		headerString := string(headerBytes)
+			headerBytes := respData[:(2 * 1024)]
+			headerBytes = bytes.Trim(headerBytes, "\x00")
+			headerString := string(headerBytes)
 
-		headerChecksums := strings.Split(headerString, ",")
-		if len(headerChecksums) != 2 {
-			Logger.Error("Block has invalid header", zap.String("request Url", r.URL.String()))
-			return nil, errors.New("Block has invalid header for request " + r.URL.String())
+			headerChecksums := strings.Split(headerString, ",")
+			if len(headerChecksums) != 2 {
+				Logger.Error("Block has invalid header", zap.String("request Url", r.URL.String()))
+				return nil, errors.New("Block has invalid header for request " + r.URL.String())
+			}
+
+			encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
+			encMsg.EncryptedKey = encscheme.GetEncryptedKey()
+
+			regenKey, err := encscheme.GetReGenKey(buyerEncryptionPublicKey, "filetype:audio")
+			if err != nil {
+				return nil, err
+			}
+			reEncMsg, err := encscheme.ReEncrypt(encMsg, regenKey, buyerEncryptionPublicKey)
+			if err != nil {
+				return nil, err
+			}
+
+			encData, err := reEncMsg.Marshal()
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, encData...)
 		}
-
-		encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
-		encMsg.EncryptedKey = encscheme.GetEncryptedKey()
-
-		regenKey, err := encscheme.GetReGenKey(buyerEncryptionPublicKey, "filetype:audio")
-		if err != nil {
-			return nil, err
-		}
-		reEncMsg, err := encscheme.ReEncrypt(encMsg, regenKey, buyerEncryptionPublicKey)
-		if err != nil {
-			return nil, err
-		}
-
-		respData, err = reEncMsg.Marshal()
-		respData = append([]byte("PRE_AT_BLOBBER"), respData...)
-		if err != nil {
-			return nil, err
-		}
+		respData = result
 	}
 	response.Data = respData
 	response.Path = fileref.Path
