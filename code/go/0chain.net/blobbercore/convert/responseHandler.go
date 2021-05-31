@@ -98,3 +98,12 @@ func CommitWriteResponseHandler(resp *blobbergrpc.CommitResponse) *blobberHTTP.C
 		ErrorMessage:   resp.ErrorMessage,
 	}
 }
+
+func GetCalculateHashResponseHandler(response *blobbergrpc.CalculateHashResponse) interface{} {
+	result := make(map[string]interface{})
+	if msg := response.GetMessage(); msg != "" {
+		result["msg"] = msg
+	}
+
+	return result
+}

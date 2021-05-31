@@ -42,11 +42,29 @@ service Blobber {
       get: "/v2/file/objecttree/{allocation}"
     };
   }
+
   rpc Commit(CommitRequest) returns (CommitResponse) {
     option (google.api.http) = {
       get: "/v2/connection/commit/{allocation}"
     };
   }
+
+  rpc CalculateHash(CalculateHashRequest) returns (CalculateHashResponse) {
+      option (google.api.http) = {
+        post: "/v2/file/calculatehash/{allocation}"
+        body: "*"
+      };
+    }
+}
+
+message CalculateHashRequest {
+  string allocation = 1;
+  string path = 2;
+  string paths = 3;
+}
+
+message CalculateHashResponse {
+  string message = 1;
 }
 
 message CommitRequest {
