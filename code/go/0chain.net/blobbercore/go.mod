@@ -10,6 +10,7 @@ require (
 	github.com/0chain/gosdk v1.1.6
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/go-ini/ini v1.55.0 // indirect
+	github.com/golang/mock v1.4.4
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0

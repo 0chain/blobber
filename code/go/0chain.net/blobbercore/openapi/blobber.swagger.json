@@ -485,7 +485,7 @@
         "OwnerPublicKey": {
           "type": "string"
         },
-        "RepairID": {
+        "RepairerID": {
           "type": "string"
         },
         "PayerID": {
