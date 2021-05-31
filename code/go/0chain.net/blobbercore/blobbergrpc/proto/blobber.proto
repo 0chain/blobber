@@ -45,7 +45,7 @@ service Blobber {
 
   rpc CopyObject(CopyObjectRequest) returns (CopyObjectResponse) {
     option (google.api.http) = {
-      post: "/v1/file/copy/{allocation}"
+      post: "/v2/file/copy/{allocation}"
       body: "*"
     };
   }

@@ -16,7 +16,37 @@
     "application/json"
   ],
   "paths": {
-    "/v1/file/copy/{allocation}": {
+    "/v2/allocation": {
+      "get": {
+        "operationId": "Blobber_GetAllocation",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetAllocationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
+    "/v2/file/copy/{allocation}": {
       "post": {
         "operationId": "Blobber_CopyObject",
         "responses": {
@@ -47,36 +77,6 @@
             "schema": {
               "$ref": "#/definitions/v1CopyObjectRequest"
             }
-          }
-        ],
-        "tags": [
-          "Blobber"
-        ]
-      }
-    },
-    "/v2/allocation": {
-      "get": {
-        "operationId": "Blobber_GetAllocation",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1GetAllocationResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
