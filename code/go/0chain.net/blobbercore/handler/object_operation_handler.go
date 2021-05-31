@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"math"
 	"strings"
 
 	"net/http"
@@ -419,12 +420,13 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 
 		totalSize := len(respData)
 		result := []byte {}
-		for i := 0; i < totalSize; i += reference.CHUNK_SIZE - 16 {
+		for i := 0; i < totalSize; i += reference.CHUNK_SIZE {
 			encMsg := &zencryption.EncryptedMessage{}
+			chunkData := respData[i : int64(math.Min(float64(i + reference.CHUNK_SIZE), float64(totalSize)))]
 
-			encMsg.EncryptedData = respData[(2 * 1024):]
+			encMsg.EncryptedData = chunkData[(2 * 1024):]
 
-			headerBytes := respData[:(2 * 1024)]
+			headerBytes := chunkData[:(2 * 1024)]
 			headerBytes = bytes.Trim(headerBytes, "\x00")
 			headerString := string(headerBytes)
 
