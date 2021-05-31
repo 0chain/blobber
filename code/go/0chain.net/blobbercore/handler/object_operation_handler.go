@@ -443,7 +443,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			return nil, err
 		}
 
-		respData, err = reEncMsg.MarshalJSON()
+		respData, err = reEncMsg.Marshal()
 		respData = append([]byte("PRE_AT_BLOBBER"), respData...)
 		if err != nil {
 			return nil, err
