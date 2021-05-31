@@ -964,7 +964,7 @@ var (
 
 	pattern_Blobber_GetObjectTree_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "objecttree", "allocation"}, ""))
 
-	pattern_Blobber_CalculateHash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "calculatehash", "allocation"}, ""))
+	pattern_Blobber_CalculateHash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "calculatehash", "allocation"}, ""))
 )
 
 var (

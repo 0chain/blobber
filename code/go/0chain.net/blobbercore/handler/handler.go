@@ -343,7 +343,7 @@ func CalculateHashHandler(svc *blobberGRPCService) func(ctx context.Context, r *
 			return nil, err
 		}
 
-		return response, nil
+		return convert.GetCalculateHashResponseHandler(response), nil
 	}
 }
 

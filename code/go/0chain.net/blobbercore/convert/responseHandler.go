@@ -89,3 +89,12 @@ func GetObjectTreeResponseHandler(getObjectTreeResponse *blobbergrpc.GetObjectTr
 		LatestWM:      WriteMarkerGRPCToWriteMarker(getObjectTreeResponse.LatestWM),
 	}
 }
+
+func GetCalculateHashResponseHandler(response *blobbergrpc.CalculateHashResponse) interface{} {
+	result := make(map[string]interface{})
+	if msg := response.GetMessage(); msg != "" {
+		result["msg"] = msg
+	}
+
+	return result
+}

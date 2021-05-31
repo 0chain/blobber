@@ -45,7 +45,7 @@ service Blobber {
 
   rpc CalculateHash(CalculateHashRequest) returns (CalculateHashResponse) {
       option (google.api.http) = {
-        post: "/v1/file/calculatehash/{allocation}"
+        post: "/v2/file/calculatehash/{allocation}"
         body: "*"
       };
     }
