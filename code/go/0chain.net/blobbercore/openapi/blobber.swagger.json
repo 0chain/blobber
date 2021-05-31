@@ -47,7 +47,7 @@
       }
     },
     "/v2/connection/commit/{allocation}": {
-      "get": {
+      "post": {
         "operationId": "Blobber_Commit",
         "responses": {
           "200": {
@@ -71,16 +71,12 @@
             "type": "string"
           },
           {
-            "name": "connectionId",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "writeMarker",
-            "in": "query",
-            "required": false,
-            "type": "string"
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CommitRequest"
+            }
           }
         ],
         "tags": [
@@ -532,6 +528,20 @@
         "CreatedAt": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "v1CommitRequest": {
+      "type": "object",
+      "properties": {
+        "allocation": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        },
+        "writeMarker": {
+          "type": "string"
         }
       }
     },
