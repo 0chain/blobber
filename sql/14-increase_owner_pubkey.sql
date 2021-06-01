@@ -8,5 +8,5 @@
 -- in a transaction
 BEGIN;
     ALTER TABLE allocations
-        MODIFY COLUMN owner_public_key varchar(512) NOT NULL;
+        ALTER COLUMN owner_public_key varchar(512) NOT NULL;
 COMMIT;
