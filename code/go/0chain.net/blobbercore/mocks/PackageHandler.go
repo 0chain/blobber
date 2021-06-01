@@ -22,15 +22,15 @@ type PackageHandler struct {
 }
 
 // GetAllocationChanges provides a mock function with given fields: ctx, connectionID, allocationID, clientID
-func (_m *PackageHandler) GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (allocation.IAllocationChangeCollector, error) {
+func (_m *PackageHandler) GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*allocation.AllocationChangeCollector, error) {
 	ret := _m.Called(ctx, connectionID, allocationID, clientID)
 
-	var r0 allocation.IAllocationChangeCollector
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) allocation.IAllocationChangeCollector); ok {
+	var r0 *allocation.AllocationChangeCollector
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) *allocation.AllocationChangeCollector); ok {
 		r0 = rf(ctx, connectionID, allocationID, clientID)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(allocation.IAllocationChangeCollector)
+			r0 = ret.Get(0).(*allocation.AllocationChangeCollector)
 		}
 	}
 
@@ -297,6 +297,20 @@ func (_m *PackageHandler) IsACollaborator(ctx context.Context, refID int64, clie
 		r0 = rf(ctx, refID, clientID)
 	} else {
 		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// SaveAllocationChanges provides a mock function with given fields: ctx, alloc
+func (_m *PackageHandler) SaveAllocationChanges(ctx context.Context, alloc *allocation.AllocationChangeCollector) error {
+	ret := _m.Called(ctx, alloc)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *allocation.AllocationChangeCollector) error); ok {
+		r0 = rf(ctx, alloc)
+	} else {
+		r0 = ret.Error(0)
 	}
 
 	return r0

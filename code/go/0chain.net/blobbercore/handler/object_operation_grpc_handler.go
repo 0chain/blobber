@@ -12,10 +12,9 @@ import (
 	"path/filepath"
 )
 
-func (b *blobberGRPCService) CopyObject(ctx context.Context, r *blobbergrpc.CopyObjectRequest) (
-	*blobbergrpc.CopyObjectResponse, error) {
-
+func (b *blobberGRPCService) CopyObject(ctx context.Context, r *blobbergrpc.CopyObjectRequest) (*blobbergrpc.CopyObjectResponse, error) {
 	logger := ctxzap.Extract(ctx)
+	md := GetGRPCMetaDataFromCtx(ctx)
 
 	allocationTx := r.Allocation
 	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
@@ -23,22 +22,16 @@ func (b *blobberGRPCService) CopyObject(ctx context.Context, r *blobbergrpc.Copy
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	md := GetGRPCMetaDataFromCtx(ctx)
 	valid, err := verifySignatureFromRequest(allocationTx, md.ClientSignature, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	clientID := md.Client
 	allocationID := allocationObj.ID
 
+	clientID := md.Client
 	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Invalid client")
-	}
-
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID { //already checked clientId ?
-		return nil, common.
-			NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	if len(r.Dest) == 0 {
@@ -52,6 +45,11 @@ func (b *blobberGRPCService) CopyObject(ctx context.Context, r *blobbergrpc.Copy
 			return nil, common.NewError("invalid_parameters", "Invalid path")
 		}
 		pathHash = b.packageHandler.GetReferenceLookup(ctx, allocationObj.ID, path)
+	}
+
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID { //already checked clientId ?
+		return nil, common.
+			NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	connectionID := r.ConnectionId
@@ -87,18 +85,17 @@ func (b *blobberGRPCService) CopyObject(ctx context.Context, r *blobbergrpc.Copy
 	}
 
 	allocationChange := &allocation.AllocationChange{}
-	allocationChange.ConnectionID = connectionObj.GetConnectionID()
+	allocationChange.ConnectionID = connectionObj.ConnectionID
 	allocationChange.Size = objectRef.Size
 	allocationChange.Operation = allocation.COPY_OPERATION
 
-	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.GetConnectionID(),
-		AllocationID: connectionObj.GetAllocationID(), DestPath: r.Dest}
+	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ConnectionID,
+		AllocationID: connectionObj.AllocationID, DestPath: r.Dest}
 	dfc.SrcPath = objectRef.Path
-
-	connectionObj.SetSize(connectionObj.GetSize() + allocationChange.Size)
+	connectionObj.Size += allocationChange.Size
 	connectionObj.AddChange(allocationChange, dfc)
 
-	err = connectionObj.Save(ctx)
+	err = b.packageHandler.SaveAllocationChanges(ctx, connectionObj)
 	if err != nil {
 		logger.Error("Error in writing the connection meta data", zap.Error(err))
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")

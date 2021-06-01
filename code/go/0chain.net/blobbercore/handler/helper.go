@@ -41,8 +41,8 @@ type PackageHandler interface {
 	GetRefWithChildren(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 	GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*reference.ObjectPath, error)
 	GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*reference.Ref, error)
-	GetAllocationChanges(ctx context.Context, connectionID string,
-		allocationID string, clientID string) (allocation.IAllocationChangeCollector, error)
+	GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*allocation.AllocationChangeCollector, error)
+	SaveAllocationChanges(ctx context.Context, alloc *allocation.AllocationChangeCollector) error
 	GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 }
 
@@ -97,8 +97,11 @@ func (r *packageHandler) IsACollaborator(ctx context.Context, refID int64, clien
 	return reference.IsACollaborator(ctx, refID, clientID)
 }
 
-func (r *packageHandler) GetAllocationChanges(ctx context.Context, connectionID string,
-	allocationID string, clientID string) (allocation.IAllocationChangeCollector, error) {
+func (r *packageHandler) GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*allocation.AllocationChangeCollector, error) {
 
 	return allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+}
+
+func (r packageHandler) SaveAllocationChanges(ctx context.Context, alloc *allocation.AllocationChangeCollector) error {
+	return alloc.Save(ctx)
 }
