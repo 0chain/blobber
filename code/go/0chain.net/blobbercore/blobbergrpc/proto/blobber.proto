@@ -44,7 +44,7 @@ service Blobber {
   }
   rpc RenameObject(RenameObjectRequest) returns (RenameObjectResponse) {
     option (google.api.http) = {
-      post: "/v1/file/rename/{allocation}"
+      post: "/v2/file/rename/{allocation}"
       body: "*"
     };
   }

@@ -16,44 +16,6 @@
     "application/json"
   ],
   "paths": {
-    "/v1/file/rename/{allocation}": {
-      "post": {
-        "operationId": "Blobber_RenameObject",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1RenameObjectResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "allocation",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v1RenameObjectRequest"
-            }
-          }
-        ],
-        "tags": [
-          "Blobber"
-        ]
-      }
-    },
     "/v2/allocation": {
       "get": {
         "operationId": "Blobber_GetAllocation",
@@ -293,6 +255,44 @@
             "in": "query",
             "required": false,
             "type": "string"
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
+    "/v2/file/rename/{allocation}": {
+      "post": {
+        "operationId": "Blobber_RenameObject",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1RenameObjectResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1RenameObjectRequest"
+            }
           }
         ],
         "tags": [
