@@ -447,6 +447,48 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 	return &refPathResult, nil
 }
 
+func (b *blobberGRPCService) CalculateHash(ctx context.Context, req *blobbergrpc.CalculateHashRequest) (*blobbergrpc.CalculateHashResponse, error) {
+	allocationTx := req.Allocation
+	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	md := GetGRPCMetaDataFromCtx(ctx)
+	allocationID := allocationObj.ID
+
+	clientID := md.Client
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	var paths []string
+	pathsString := req.Paths
+	if len(pathsString) == 0 {
+		path := req.Path
+		if len(path) == 0 {
+			return nil, common.NewError("invalid_parameters", "Invalid path")
+		}
+		paths = append(paths, path)
+	} else {
+		err = json.Unmarshal([]byte(pathsString), &paths)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid path array json")
+		}
+	}
+
+	rootRef, err := b.packageHandler.GetReferencePathFromPaths(ctx, allocationID, paths)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
+		return nil, err
+	}
+
+	return &blobbergrpc.CalculateHashResponse{Message: "Hash recalculated for the given paths"}, nil
+}
+
 func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, req *blobbergrpc.CommitMetaTxnRequest) (*blobbergrpc.CommitMetaTxnResponse, error) {
 	allocationTx := req.GetAllocation()
 	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, true)

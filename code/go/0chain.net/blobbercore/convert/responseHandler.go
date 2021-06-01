@@ -90,6 +90,24 @@ func GetObjectTreeResponseHandler(getObjectTreeResponse *blobbergrpc.GetObjectTr
 	}
 }
 
+func CommitWriteResponseHandler(resp *blobbergrpc.CommitResponse) *blobberHTTP.CommitResult {
+	return &blobberHTTP.CommitResult{
+		AllocationRoot: resp.AllocationRoot,
+		WriteMarker:    WriteMarkerGRPCToWriteMarker(resp.WriteMarker),
+		Success:        resp.Success,
+		ErrorMessage:   resp.ErrorMessage,
+	}
+}
+
+func GetCalculateHashResponseHandler(response *blobbergrpc.CalculateHashResponse) interface{} {
+	result := make(map[string]interface{})
+	if msg := response.GetMessage(); msg != "" {
+		result["msg"] = msg
+	}
+
+	return result
+}
+
 func GetCommitMetaTxnHandlerResponse(response *blobbergrpc.CommitMetaTxnResponse) interface{} {
 	msg := response.GetMessage()
 	if msg == "" {

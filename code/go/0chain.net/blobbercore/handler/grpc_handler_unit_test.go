@@ -529,5 +529,68 @@ func TestBlobberGRPCService_GetObjectTree_NotOwner(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
+}
 
+func TestBlobberGRPCService_CalculateHashSuccess(t *testing.T) {
+	allocationTx := randString(32)
+
+	pubKey, _, signScheme := GeneratePubPrivateKey(t)
+	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
+	req := &blobbergrpc.CalculateHashRequest{
+		Allocation: allocationTx,
+		Path:       "some-path",
+	}
+
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+		common.ClientHeader:          "owner",
+		common.ClientSignatureHeader: clientSignature,
+	}))
+
+	mockStorageHandler := new(storageHandlerI)
+	mockReferencePackage := new(mocks.PackageHandler)
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).Return(&allocation.Allocation{
+		ID:             "allocationId",
+		Tx:             req.Allocation,
+		OwnerID:        "owner",
+		OwnerPublicKey: pubKey,
+	}, nil)
+	mockReferencePackage.On("GetReferencePathFromPaths", mock.Anything, mock.Anything, mock.Anything).Return(&reference.Ref{
+		Name: "test",
+		Type: reference.DIRECTORY,
+	}, nil)
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	resp, err := svc.CalculateHash(ctx, req)
+	if err != nil {
+		t.Fatal("unexpected error: ", err)
+	}
+
+	assert.Equal(t, resp.GetMessage(), "Hash recalculated for the given paths")
+}
+
+func TestBlobberGRPCService_CalculateHashNotOwner(t *testing.T) {
+	req := &blobbergrpc.CalculateHashRequest{
+		Allocation: "",
+		Path:       "some-path",
+	}
+
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+		common.ClientHeader:          "hacker",
+		common.ClientSignatureHeader: "",
+	}))
+
+	mockStorageHandler := new(storageHandlerI)
+	mockReferencePackage := new(mocks.PackageHandler)
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).Return(&allocation.Allocation{
+		ID:      "allocationId",
+		Tx:      req.Allocation,
+		OwnerID: "owner",
+	}, nil)
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	_, err := svc.CalculateHash(ctx, req)
+	if err == nil {
+		t.Fatal("expected error: ", err)
+	}
 }

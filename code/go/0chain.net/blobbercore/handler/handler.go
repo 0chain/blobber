@@ -43,10 +43,10 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/copy/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CopyHandler))))
 	r.HandleFunc("/v1/file/attributes/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UpdateAttributesHandler))))
 
-	r.HandleFunc("/v1/connection/commit/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitHandler))))
-	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler(svc))))).Methods(http.MethodGet)
+	r.HandleFunc("/v1/connection/commit/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitHandler(svc))))).Methods("POST")
+	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler(svc))))).Methods(http.MethodPost)
 	r.HandleFunc("/v1/file/collaborator/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CollaboratorHandler))))
-	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CalculateHashHandler))))
+	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CalculateHashHandler(svc))))).Methods(http.MethodPost)
 
 	//object info related apis
 	r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler(svc))))).Methods("GET")
@@ -239,15 +239,21 @@ func ListHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Requ
 }
 
 /*CommitHandler is the handler to respond to upload requests fro clients*/
-func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
+func CommitHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		ctx = setupHandlerGRPCContext(ctx, r)
 
-	response, err := storageHandler.CommitWrite(ctx, r)
-	if err != nil {
-		return nil, err
+		response, err := svc.Commit(ctx, &blobbergrpc.CommitRequest{
+			Allocation:   mux.Vars(r)["allocation"],
+			ConnectionId: r.FormValue("connection_id"),
+			WriteMarker:  r.FormValue("write_marker"),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return convert.CommitWriteResponseHandler(response), nil
 	}
-
-	return response, nil
 }
 
 func ReferencePathHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -338,15 +344,21 @@ func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{},
 	return response, nil
 }
 
-func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
+func CalculateHashHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		ctx = setupHandlerGRPCContext(ctx, r)
 
-	response, err := storageHandler.CalculateHash(ctx, r)
-	if err != nil {
-		return nil, err
+		response, err := svc.CalculateHash(ctx, &blobbergrpc.CalculateHashRequest{
+			Allocation: mux.Vars(r)["allocation"],
+			Paths:      r.FormValue("paths"),
+			Path:       r.FormValue("path"),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return convert.GetCalculateHashResponseHandler(response), nil
 	}
-
-	return response, nil
 }
 
 //nolint:gosimple // need more time to verify
