@@ -12,9 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, r *blobbergrpc.UpdateObjectAttributesRequest) (
-	response *blobbergrpc.UpdateObjectAttributesResponse, err error) {
-
+func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, r *blobbergrpc.UpdateObjectAttributesRequest) (*blobbergrpc.UpdateObjectAttributesResponse, error) {
 	logger := ctxzap.Extract(ctx)
 
 	allocationTx := r.Allocation
@@ -33,9 +31,9 @@ func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, r *blob
 	//_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string) //why this removed?
 
 	clientID := md.Client
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError(
-			"invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	if clientID == "" {
+		return nil, common.NewError("update_object_attributes",
+			"missing client ID")
 	}
 
 	var attributes = r.Attributes // new attributes as string
@@ -59,13 +57,18 @@ func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, r *blob
 		pathHash = b.packageHandler.GetReferenceLookup(ctx, allocationObj.ID, path)
 	}
 
+	if allocationObj.OwnerID != clientID {
+		return nil, common.NewError(
+			"invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
 	var connID = r.ConnectionId
 	if connID == "" {
 		return nil, common.NewErrorf("update_object_attributes",
 			"invalid connection id passed: %s", connID)
 	}
 
-	var conn allocation.IAllocationChangeCollector
+	var conn *allocation.AllocationChangeCollector
 	conn, err = b.packageHandler.GetAllocationChanges(ctx, connID, allocationObj.ID, clientID)
 	if err != nil {
 		return nil, common.NewErrorf("update_object_attributes",
@@ -85,19 +88,19 @@ func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, r *blob
 	}
 
 	var change = new(allocation.AllocationChange)
-	change.ConnectionID = conn.GetConnectionID()
+	change.ConnectionID = conn.ConnectionID
 	change.Operation = allocation.UPDATE_ATTRS_OPERATION
 
 	var uafc = &allocation.AttributesChange{
-		ConnectionID: conn.GetConnectionID(),
-		AllocationID: conn.GetAllocationID(),
+		ConnectionID: conn.ConnectionID,
+		AllocationID: conn.AllocationID,
 		Path:         ref.Path,
 		Attributes:   attrs,
 	}
 
 	conn.AddChange(change, uafc)
 
-	err = conn.Save(ctx)
+	err = b.packageHandler.SaveAllocationChanges(ctx, conn)
 	if err != nil {
 		logger.Error("update_object_attributes: "+
 			"error in writing the connection meta data", zap.Error(err))
