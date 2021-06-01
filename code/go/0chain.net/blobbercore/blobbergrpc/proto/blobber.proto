@@ -44,7 +44,7 @@ service Blobber {
   }
   rpc DownloadFile(DownloadFileRequest) returns (DownloadFileResponse) {
     option (google.api.http) = {
-      post: "/v1/file/download/{allocation}"
+      post: "/v2/file/download/{allocation}"
       body: "*"
     };
   }
@@ -69,6 +69,11 @@ message GetReferencePathResponse {
   WriteMarker LatestWM = 2;
 }
 
+message ReferencePath {
+  FileRef MetaData = 1;
+  repeated ReferencePath List = 2;
+}
+
 message GetObjectPathRequest {
   string allocation = 1;
   string Path = 2;
@@ -79,12 +84,32 @@ message GetObjectPathResponse {
   WriteMarker LatestWriteMarker = 2;
 }
 
+message ObjectPath {
+  string RootHash = 1;
+  FileRef Meta = 2;
+  FileRef Path = 3;
+  repeated FileRef PathList = 4;
+  int64 FileBlockNum = 5;
+}
+
+message WriteMarker {
+  string AllocationRoot = 1;
+  string PreviousAllocationRoot = 2;
+  string AllocationID = 3;
+  int64 Size = 4;
+  string BlobberID = 5;
+  int64 Timestamp = 6;
+  string ClientID = 7;
+  string Signature = 8;
+}
+
 message ListEntitiesRequest {
   string path = 1;
   string path_hash = 2;
   string auth_token = 3;
   string allocation = 4;
 }
+
 message ListEntitiesResponse {
   string AllocationRoot = 1;
   FileRef MetaData = 2;
@@ -96,9 +121,23 @@ message GetFileStatsRequest {
   string path_hash = 2;
   string allocation = 3;
 }
+
 message GetFileStatsResponse {
   FileRef MetaData = 1;
   FileStats Stats = 2;
+}
+
+message FileStats {
+  int64 ID = 1;
+  int64 RefID = 2;
+  int64 NumUpdates = 3;
+  int64 NumBlockDownloads = 4;
+  int64 SuccessChallenges = 5;
+  int64 FailedChallenges = 6;
+  string LastChallengeResponseTxn = 7;
+  string WriteMarkerRedeemTxn = 8;
+  int64 CreatedAt = 9;
+  int64 UpdatedAt = 10;
 }
 
 message GetFileMetaDataRequest {
@@ -107,14 +146,28 @@ message GetFileMetaDataRequest {
   string auth_token = 3;
   string allocation = 4;
 }
+
 message GetFileMetaDataResponse {
   FileRef MetaData = 1;
   repeated Collaborator Collaborators = 2;
 }
 
+message CommitMetaTxn {
+  int64 RefId = 1;
+  string TxnId = 2;
+  int64 CreatedAt = 3;
+}
+
+message Collaborator {
+  int64 RefId = 1;
+  string ClientId = 2;
+  int64 CreatedAt = 3;
+}
+
 message GetAllocationRequest {
   string id = 1;
 }
+
 message GetAllocationResponse {
   Allocation allocation = 1;
 }
@@ -136,55 +189,6 @@ message DownloadFileResponse {
   string allocation_id = 3;
   string path = 4;
   ReadMaker latest_rm = 5;
-}
-
-message ReferencePath {
-  FileRef MetaData = 1;
-  repeated ReferencePath List = 2;
-}
-
-message ObjectPath {
-  string RootHash = 1;
-  FileRef Meta = 2;
-  FileRef Path = 3;
-  repeated FileRef PathList = 4;
-  int64 FileBlockNum = 5;
-}
-
-message FileStats {
-  int64 ID = 1;
-  int64 RefID = 2;
-  int64 NumUpdates = 3;
-  int64 NumBlockDownloads = 4;
-  int64 SuccessChallenges = 5;
-  int64 FailedChallenges = 6;
-  string LastChallengeResponseTxn = 7;
-  string WriteMarkerRedeemTxn = 8;
-  int64 CreatedAt = 9;
-  int64 UpdatedAt = 10;
-}
-
-message CommitMetaTxn {
-  int64 RefId = 1;
-  string TxnId = 2;
-  int64 CreatedAt = 3;
-}
-
-message Collaborator {
-  int64 RefId = 1;
-  string ClientId = 2;
-  int64 CreatedAt = 3;
-}
-
-message WriteMarker {
-  string AllocationRoot = 1;
-  string PreviousAllocationRoot = 2;
-  string AllocationID = 3;
-  int64 Size = 4;
-  string BlobberID = 5;
-  int64 Timestamp = 6;
-  string ClientID = 7;
-  string Signature = 8;
 }
 
 message ReadMaker {

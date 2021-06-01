@@ -38,22 +38,6 @@ type AllocationChangeProcessor interface {
 	Marshal() (string, error)
 	Unmarshal(string) error
 }
-
-type IAllocationChangeCollector interface {
-	TableName() string
-	AddChange(allocationChange *AllocationChange, changeProcessor AllocationChangeProcessor)
-	Save(ctx context.Context) error
-	ComputeProperties()
-	ApplyChanges(ctx context.Context, allocationRoot string) error
-	CommitToFileStore(ctx context.Context) error
-	DeleteChanges(ctx context.Context)
-	GetAllocationID() string
-	GetConnectionID() string
-	GetClientID() string
-	GetSize() int64
-	SetSize(size int64)
-}
-
 type AllocationChangeCollector struct {
 	ConnectionID      string                      `gorm:"column:connection_id;primary_key"`
 	AllocationID      string                      `gorm:"column:allocation_id"`
@@ -184,24 +168,4 @@ func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) {
 			logging.Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
 		}
 	}
-}
-
-func (cc *AllocationChangeCollector) GetAllocationID() string {
-	return cc.AllocationID
-}
-
-func (cc *AllocationChangeCollector) GetConnectionID() string {
-	return cc.ConnectionID
-}
-
-func (cc *AllocationChangeCollector) GetClientID() string {
-	return cc.ClientID
-}
-
-func (cc *AllocationChangeCollector) GetSize() int64 {
-	return cc.Size
-}
-
-func (cc *AllocationChangeCollector) SetSize(size int64) {
-	cc.Size = size
 }

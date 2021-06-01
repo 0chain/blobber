@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
@@ -21,6 +22,7 @@ func TestBlobberGRPCService_DownloadFile_Success(t *testing.T) {
 	allocationTx := randString(32)
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
 	req := &blobbergrpc.DownloadFileRequest{
 		Allocation: allocationTx,
 		Path:       `path`,
@@ -37,6 +39,7 @@ func TestBlobberGRPCService_DownloadFile_Success(t *testing.T) {
 		common.ClientKeyHeader:       "client_key",
 		common.ClientSignatureHeader: clientSignature,
 	}))
+	ctx = setupGRPCHandlerContext(ctx, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
 
 	alloc := &allocation.Allocation{
 		Tx:             req.Allocation,
@@ -45,27 +48,34 @@ func TestBlobberGRPCService_DownloadFile_Success(t *testing.T) {
 		OwnerPublicKey: pubKey,
 	}
 
-	mockReadMaker := &mocks.ReadMakerI{}
-	mockReadMaker.On(`VerifyMarker`, mock.Anything, alloc).Return(nil)
-	var pentBlocksNum = int64(10)
+	rm := &readmarker.ReadMarker{
+		AllocationID:    alloc.ID,
+		ClientPublicKey: `client_key`,
+		ClientID:        `client`,
+		Signature:       clientSignature,
+		OwnerID:         alloc.OwnerID,
+	}
+	rmStr, _ := json.Marshal(rm)
+	req.ReadMarker = string(rmStr)
+
+	//var pentBlocksNum = int64(10)
 	var latestRm = &readmarker.ReadMarker{}
-	mockReadMaker.On(`PendNumBlocks`).Return(pentBlocksNum, nil)
-	mockReadMaker.On(`GetLatestRM`).Return(latestRm, nil)
 
 	mockStorageHandler := &storageHandlerI{}
 	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).
 		Return(alloc, nil)
-	mockStorageHandler.On(`readPreRedeem`, mock.Anything, alloc, 5, pentBlocksNum, alloc.OwnerID).Return(
+	mockStorageHandler.On(`readPreRedeem`, mock.Anything, alloc, int64(5), int64(0), alloc.OwnerID).Return(
 		nil)
 
 	mockFileStore := &mocks.FileStore{}
-	mockFileStore.On(`GetFileBlock`, req.Allocation, mock.Anything, req.BlockNum, req.NumBlocks).Return(
+	mockFileStore.On(`GetFileBlock`, alloc.ID, mock.Anything, int64(5), int64(5)).Return(
 		[]byte{}, nil)
-
 	mockReferencePackage := &mocks.PackageHandler{}
 	pathHash := req.Allocation + `:` + req.Path
 	mockReferencePackage.On(`GetReferenceLookup`, mock.Anything, alloc.ID, req.Path).
 		Return(pathHash)
+	mockReferencePackage.On(`VerifyReadMarker`, mock.Anything, mock.Anything, alloc).
+		Return(nil)
 
 	objectRef := &reference.Ref{
 		Name:        "test",
@@ -76,19 +86,24 @@ func TestBlobberGRPCService_DownloadFile_Success(t *testing.T) {
 		Type:        reference.FILE,
 	}
 
+	rme := &readmarker.ReadMarkerEntity{
+		RedeemRequired: false,
+		LatestRM:       latestRm,
+	}
+
 	mockReferencePackage.On(`GetReferenceFromLookupHash`, mock.Anything, alloc.ID, pathHash).
 		Return(objectRef, nil)
 	mockReferencePackage.On(`IsACollaborator`, mock.Anything, objectRef.ID, alloc.OwnerID).
 		Return(true)
 	mockReferencePackage.On(`GetLatestReadMarkerEntity`, mock.Anything, alloc.OwnerID).
-		Return(mockReadMaker, nil)
+		Return(rme, nil)
 	mockReferencePackage.On(`GetFileStore`).
 		Return(mockFileStore)
 	mockReferencePackage.On(`SaveLatestReadMarker`, mock.Anything, mock.Anything, false).
 		Return(nil)
 	mockReferencePackage.On(`FileBlockDownloaded`, mock.Anything, objectRef.ID).
 		Return()
-	mockReferencePackage.On(`GetNewReadMaker`, mock.Anything).Return(mockReadMaker)
+	mockReferencePackage.On(`GetNewReadMaker`, mock.Anything).Return(rme)
 
 	resOk := &blobbergrpc.DownloadFileResponse{
 		Success:  false,

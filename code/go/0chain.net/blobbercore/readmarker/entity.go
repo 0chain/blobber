@@ -204,7 +204,3 @@ func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context,
 
 	return
 }
-
-func (rm *ReadMarkerEntity) GetLatestRM() *ReadMarker {
-	return rm.LatestRM
-}

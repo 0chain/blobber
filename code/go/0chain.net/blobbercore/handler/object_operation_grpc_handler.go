@@ -15,23 +15,22 @@ import (
 	"strconv"
 )
 
-func (b *blobberGRPCService) DownloadFile(ctx context.Context, r *blobbergrpc.DownloadFileRequest) (
-	*blobbergrpc.DownloadFileResponse, error) {
+func (b *blobberGRPCService) DownloadFile(ctx context.Context, r *blobbergrpc.DownloadFileRequest) (*blobbergrpc.DownloadFileResponse, error) {
+	md := GetGRPCMetaDataFromCtx(ctx)
+	ctx = setupGRPCHandlerContext(ctx, md, r.Allocation)
+
+	clientID := md.Client
+	if len(clientID) == 0 {
+		return nil, common.NewError("download_file", "invalid client")
+	}
 
 	allocationTx := r.Allocation
 	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-
-	md := GetGRPCMetaDataFromCtx(ctx)
-	valid, err := verifySignatureFromRequest(allocationTx, md.ClientSignature, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
 	var allocationID = allocationObj.ID
 
-	clientID := md.Client
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
 		return nil, common.NewError(
 			"invalid_operation", "Operation needs to be performed by the owner of the allocation")
@@ -81,9 +80,10 @@ func (b *blobberGRPCService) DownloadFile(ctx context.Context, r *blobbergrpc.Do
 			"error parsing the readmarker for download: %v", err)
 	}
 
-	var rmObj = b.packageHandler.GetNewReadMaker(readMarker)
+	var rmObj = &readmarker.ReadMarkerEntity{}
+	rmObj.LatestRM = readMarker
 
-	if err = rmObj.VerifyMarker(ctx, allocationObj); err != nil {
+	if err = b.packageHandler.VerifyReadMarker(ctx, rmObj, allocationObj); err != nil {
 		return nil, common.NewErrorf("download_file", "invalid read marker, "+
 			"failed to verify the read marker: %v", err)
 	}
@@ -149,7 +149,7 @@ func (b *blobberGRPCService) DownloadFile(ctx context.Context, r *blobbergrpc.Do
 	}
 
 	var (
-		rme           readmarker.ReadMakerI
+		rme           *readmarker.ReadMarkerEntity
 		latestRM      *readmarker.ReadMarker
 		pendNumBlocks int64
 	)
@@ -160,7 +160,7 @@ func (b *blobberGRPCService) DownloadFile(ctx context.Context, r *blobbergrpc.Do
 	}
 
 	if rme != nil {
-		latestRM = rme.GetLatestRM()
+		latestRM = rme.LatestRM
 		if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
 			return nil, common.NewErrorf("download_file",
 				"couldn't get number of blocks pending redeeming: %v", err)
