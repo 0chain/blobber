@@ -42,18 +42,12 @@ func TestBlobberGRPCService_RenameObject_Success(t *testing.T) {
 	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).
 		Return(alloc, nil)
 
-	mockAllocCollector := &mocks.IAllocationChangeCollector{}
-	mockAllocCollector.On(`GetConnectionID`).Return(req.ConnectionId)
-	mockAllocCollector.On(`GetAllocationID`).Return(req.Allocation)
-	mockAllocCollector.On(`SetSize`, mock.Anything).Return()
-	mockAllocCollector.On(`GetSize`).Return(int64(1))
-	mockAllocCollector.On(`AddChange`, mock.Anything, mock.Anything).Return()
-	mockAllocCollector.On(`Save`, mock.Anything).Return(nil)
-	mockAllocCollector.On(`TableName`).Return(`allocation_connections`)
-
 	mockReferencePackage := &mocks.PackageHandler{}
+	allocChange := &allocation.AllocationChangeCollector{}
 	mockReferencePackage.On(`GetAllocationChanges`, mock.Anything,
-		req.ConnectionId, alloc.ID, `client`).Return(mockAllocCollector, nil)
+		req.ConnectionId, alloc.ID, `client`).Return(allocChange, nil)
+	mockReferencePackage.On(`SaveAllocationChanges`, mock.Anything, allocChange).
+		Return(nil)
 
 	pathHash := req.Allocation + `:` + req.Path
 	mockReferencePackage.On(`GetReferenceLookup`, mock.Anything, alloc.ID, req.Path).

@@ -10,9 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (b *blobberGRPCService) RenameObject(ctx context.Context, r *blobbergrpc.RenameObjectRequest) (
-	*blobbergrpc.RenameObjectResponse, error) {
-
+func (b *blobberGRPCService) RenameObject(ctx context.Context, r *blobbergrpc.RenameObjectRequest) (*blobbergrpc.RenameObjectResponse, error) {
 	logger := ctxzap.Extract(ctx)
 
 	allocationTx := r.Allocation
@@ -34,11 +32,6 @@ func (b *blobberGRPCService) RenameObject(ctx context.Context, r *blobbergrpc.Re
 		return nil, common.NewError("invalid_operation", "Invalid client")
 	}
 
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.
-			NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
 	newName := r.NewName
 	if len(newName) == 0 {
 		return nil, common.NewError("invalid_parameters", "Invalid name")
@@ -51,6 +44,11 @@ func (b *blobberGRPCService) RenameObject(ctx context.Context, r *blobbergrpc.Re
 			return nil, common.NewError("invalid_parameters", "Invalid path")
 		}
 		pathHash = b.packageHandler.GetReferenceLookup(ctx, allocationObj.ID, path)
+	}
+
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.
+			NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	connectionID := r.ConnectionId
@@ -74,16 +72,16 @@ func (b *blobberGRPCService) RenameObject(ctx context.Context, r *blobbergrpc.Re
 	}
 
 	allocationChange := &allocation.AllocationChange{}
-	allocationChange.ConnectionID = connectionObj.GetConnectionID()
+	allocationChange.ConnectionID = connectionObj.ConnectionID
 	allocationChange.Size = 0
 	allocationChange.Operation = allocation.RENAME_OPERATION
-	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.GetConnectionID(),
-		AllocationID: connectionObj.GetAllocationID(), Path: objectRef.Path}
+	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ConnectionID,
+		AllocationID: connectionObj.AllocationID, Path: objectRef.Path}
 	dfc.NewName = newName
-	connectionObj.SetSize(connectionObj.GetSize() + allocationChange.Size)
+	connectionObj.Size += allocationChange.Size
 	connectionObj.AddChange(allocationChange, dfc)
 
-	err = connectionObj.Save(ctx)
+	err = b.packageHandler.SaveAllocationChanges(ctx, connectionObj)
 	if err != nil {
 		logger.Error("Error in writing the connection meta data", zap.Error(err))
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
