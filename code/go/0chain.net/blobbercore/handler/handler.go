@@ -3,7 +3,11 @@
 package handler
 
 import (
+	"0chain.net/blobbercore/readmarker"
+	"0chain.net/blobbercore/reference"
 	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"runtime/pprof"
@@ -59,7 +63,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/getstats", common.UserRateLimit(common.ToJSONResponse(stats.GetStatsHandler)))
 
 	//marketplace related
-	r.HandleFunc("/v1/marketplace/secret", common.UserRateLimit(common.ToJSONResponse(WithConnection(MarketPlaceSecretHandler))))
+	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(MarketPlaceShareInfoHandler))))
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
@@ -320,14 +324,48 @@ func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, erro
 	return "cleanup", err
 }
 
-func MarketPlaceSecretHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	marketplaceInfo, err := GetOrCreateMarketplaceEncryptionKeyPair(ctx, r)
+func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed." + err.Error())
+	}
+
+	if r.Method != "POST" {
+		return nil, errors.New("invalid request method, only POST is allowed")
+	}
+
+	encryptionPublicKey := r.FormValue("encryption_public_key")
+	authTicketString := r.FormValue("auth_ticket")
+	authTicket := &readmarker.AuthTicket{}
+
+	err = json.Unmarshal([]byte(authTicketString), &authTicket)
+	if err != nil {
+		return false, common.NewError("invalid_parameters", "Error parsing the auth ticket for download." + err.Error())
+	}
+
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, authTicket.FilePathHash)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. " + err.Error())
+	}
+
+	authTicketVerified, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileref, authTicket.ClientID)
+	if !authTicketVerified {
+		return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	return map[string]string {
-		"mnemonic": marketplaceInfo.Mnemonic,
-	}, nil
+	shareInfo := reference.ShareInfo{
+		OwnerID: authTicket.OwnerID,
+		ClientID: authTicket.ClientID,
+		FileName: authTicket.FileName,
+		ReEncryptionKey: authTicket.ReEncryptionKey,
+		ClientEncryptionPublicKey: encryptionPublicKey,
+		ExpiryAt: common.ToTime(authTicket.Expiration),
+	}
+	reference.AddShareInfo(ctx, shareInfo)
 }
 

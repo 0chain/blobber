@@ -405,18 +405,22 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	response.Success = true
 	response.LatestRM = readMarker
 	if attrs.PreAtBlobber {
-		// buyerPublicKey := r.FormValue("public_key")
-		buyerEncryptionPublicKey := "qCj3sXXeXUAByi1ERIbcfXzWN75dyocYzyRXnkStXio="
-		encInfo, err := GetOrCreateMarketplaceEncryptionKeyPair(ctx, r)
+		// check if client is authorized to download
+		shareInfo, err := reference.GetShareInfo(ctx, readMarker.ClientID, fileref.Path)
 		if err != nil {
 			return nil, err
 		}
 
-		blobberMnemonic := encInfo.Mnemonic
-
+		buyerEncryptionPublicKey := shareInfo.ClientEncryptionPublicKey
 		encscheme := zencryption.NewEncryptionScheme()
-		encscheme.Initialize(blobberMnemonic)
+		// reEncrypt does not require pub / private key,
+		// we could probably make it a classless function
+
+		encscheme.Initialize("")
 		encscheme.InitForDecryption("filetype:audio", fileref.EncryptedKey)
+		if err != nil {
+			return nil, err
+		}
 
 		totalSize := len(respData)
 		result := []byte {}
@@ -439,11 +443,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
 			encMsg.EncryptedKey = encscheme.GetEncryptedKey()
 
-			regenKey, err := encscheme.GetReGenKey(buyerEncryptionPublicKey, "filetype:audio")
-			if err != nil {
-				return nil, err
-			}
-			reEncMsg, err := encscheme.ReEncrypt(encMsg, regenKey, buyerEncryptionPublicKey)
+			reEncMsg, err := encscheme.ReEncrypt(encMsg, shareInfo.ReEncryptionKey, buyerEncryptionPublicKey)
 			if err != nil {
 				return nil, err
 			}

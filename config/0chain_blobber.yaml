@@ -53,7 +53,6 @@ num_delegates: 50
 service_charge: 0.30
 
 block_worker: http://198.18.0.98:9091
-0box: http://198.18.0.98:9081
 
 handlers:
   rate_limit: 10 # 10 per second
