@@ -83,7 +83,9 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 	for _, sRegisteredNode := range sRegisteredNodes {
 		if sn.ID == string(sRegisteredNode.ID) || sn.BaseURL == sRegisteredNode.BaseURL {
 			Logger.Info("Failed during registering blobber to the mining network, it's duplicated")
-			return "", errors.New("Duplicated")
+			// should return valid transcation hash, notan error
+			// (see: "restarted blobbers" case)
+			return UpdateBlobberSettings(ctx)
 		}
 	}
 
