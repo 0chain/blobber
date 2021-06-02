@@ -539,7 +539,7 @@ func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, req *blobbergrpc
 		return nil, common.NewError("invalid_parameter", "TxnID not present in the params")
 	}
 
-	if err := reference.AddCommitMetaTxn(ctx, fileRef.ID, txnID); err != nil {
+	if err := b.packageHandler.AddCommitMetaTxn(ctx, fileRef.ID, txnID); err != nil {
 		return nil, common.NewError("add_commit_meta_txn_failed", "Failed to add commitMetaTxn with err :"+err.Error())
 	}
 
