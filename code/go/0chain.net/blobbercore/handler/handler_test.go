@@ -131,7 +131,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	collName := "Collaborator"
 	router.HandleFunc(collPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(CollaboratorHandler),
+			WithReadOnlyConnection(CollaboratorHandler(svc)),
 		),
 	),
 	).Name(collName)

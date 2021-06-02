@@ -45,7 +45,7 @@ func SetupHandlers(r *mux.Router) {
 
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitHandler(svc))))).Methods("POST")
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
-	r.HandleFunc("/v1/file/collaborator/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CollaboratorHandler))))
+	r.HandleFunc("/v1/file/collaborator/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CollaboratorHandler(svc)))))
 	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CalculateHashHandler(svc))))).Methods(http.MethodPost)
 
 	//object info related apis
@@ -172,15 +172,23 @@ func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, er
 	return response, nil
 }
 
-func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
+func CollaboratorHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		ctx = setupHandlerGRPCContext(ctx, r)
 
-	response, err := storageHandler.AddCollaborator(ctx, r)
-	if err != nil {
-		return nil, err
+		response, err := svc.Collaborator(ctx, &blobbergrpc.CollaboratorRequest{
+			Allocation: mux.Vars(r)["allocation"],
+			CollabId:   r.FormValue("collab_id"),
+			Method:     r.Method,
+			Path:       r.FormValue("path"),
+			PathHash:   r.FormValue("path_hash"),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return convert.CollaboratorResponse(response), nil
 	}
-
-	return response, nil
 }
 
 func FileStatsHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {

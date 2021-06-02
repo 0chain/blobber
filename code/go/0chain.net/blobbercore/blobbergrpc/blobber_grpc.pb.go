@@ -26,6 +26,7 @@ type BlobberClient interface {
 	GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error)
 	Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error)
 	CalculateHash(ctx context.Context, in *CalculateHashRequest, opts ...grpc.CallOption) (*CalculateHashResponse, error)
+	Collaborator(ctx context.Context, in *CollaboratorRequest, opts ...grpc.CallOption) (*CollaboratorResponse, error)
 }
 
 type blobberClient struct {
@@ -117,6 +118,15 @@ func (c *blobberClient) CalculateHash(ctx context.Context, in *CalculateHashRequ
 	return out, nil
 }
 
+func (c *blobberClient) Collaborator(ctx context.Context, in *CollaboratorRequest, opts ...grpc.CallOption) (*CollaboratorResponse, error) {
+	out := new(CollaboratorResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/Collaborator", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BlobberServer is the server API for Blobber service.
 // All implementations must embed UnimplementedBlobberServer
 // for forward compatibility
@@ -130,6 +140,7 @@ type BlobberServer interface {
 	GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error)
 	Commit(context.Context, *CommitRequest) (*CommitResponse, error)
 	CalculateHash(context.Context, *CalculateHashRequest) (*CalculateHashResponse, error)
+	Collaborator(context.Context, *CollaboratorRequest) (*CollaboratorResponse, error)
 	mustEmbedUnimplementedBlobberServer()
 }
 
@@ -163,6 +174,9 @@ func (UnimplementedBlobberServer) Commit(context.Context, *CommitRequest) (*Comm
 }
 func (UnimplementedBlobberServer) CalculateHash(context.Context, *CalculateHashRequest) (*CalculateHashResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CalculateHash not implemented")
+}
+func (UnimplementedBlobberServer) Collaborator(context.Context, *CollaboratorRequest) (*CollaboratorResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Collaborator not implemented")
 }
 func (UnimplementedBlobberServer) mustEmbedUnimplementedBlobberServer() {}
 
@@ -339,6 +353,24 @@ func _Blobber_CalculateHash_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Blobber_Collaborator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CollaboratorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).Collaborator(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/Collaborator",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).Collaborator(ctx, req.(*CollaboratorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Blobber_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "blobber.service.v1.Blobber",
 	HandlerType: (*BlobberServer)(nil),
@@ -378,6 +410,10 @@ var _Blobber_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CalculateHash",
 			Handler:    _Blobber_CalculateHash_Handler,
+		},
+		{
+			MethodName: "Collaborator",
+			Handler:    _Blobber_Collaborator_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

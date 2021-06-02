@@ -107,3 +107,22 @@ func GetCalculateHashResponseHandler(response *blobbergrpc.CalculateHashResponse
 
 	return result
 }
+
+func CollaboratorResponse(response *blobbergrpc.CollaboratorResponse) interface{} {
+	if msg := response.GetMessage(); msg != "" {
+		return struct {
+			Msg string `json:"msg"`
+		}{Msg: msg}
+	}
+
+	if collaborators := response.GetCollaborators(); collaborators != nil {
+		collabs := make([]reference.Collaborator, 0, len(collaborators))
+		for _, c := range collaborators {
+			collabs = append(collabs, *GRPCCollaboratorToCollaborator(c))
+		}
+
+		return collabs
+	}
+
+	return nil
+}

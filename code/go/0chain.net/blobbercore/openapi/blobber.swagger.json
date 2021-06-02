@@ -122,6 +122,44 @@
         ]
       }
     },
+    "/v2/file/collaborator/{allocation}": {
+      "post": {
+        "operationId": "Blobber_Collaborator",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CollaboratorResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CollaboratorRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
     "/v2/file/list/{allocation}": {
       "get": {
         "operationId": "Blobber_ListEntities",
@@ -512,6 +550,40 @@
         "CreatedAt": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "v1CollaboratorRequest": {
+      "type": "object",
+      "properties": {
+        "allocation": {
+          "type": "string"
+        },
+        "collabId": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "pathHash": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CollaboratorResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "Collaborators": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Collaborator"
+          }
         }
       }
     },
