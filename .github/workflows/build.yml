@@ -1,11 +1,12 @@
 name: Dockerize
 
 on:
-  [push]
-# on:
-  # release:
-    # types:
-      # - published
+  workflow_dispatch:
+    inputs:
+      latest_tag:
+        description: 'type yes for building latest tag'
+        default: 'no'
+        required: true
 
 env:
   ZCHAIN_BUILDBASE: zchain_build_base
@@ -21,20 +22,34 @@ jobs:
 
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=VERSION::$(echo $GITHUB_REF | cut -d / -f 3)
-
-    # - name: Login to Docker Hub
-      # uses: docker/login-action@v1
-      # with:
-        # username: ${{ secrets.DOCKERHUB_USERNAME }}
-        # password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
-    - name: Build miner
       run: |
-        docker build -t $BLOBBER_REGISTRY:$TAG -f docker.local/Dockerfile .
-        # docker push $BLOBBER_REGISTRY:$TAG
+        BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')
+        SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
+        echo ::set-output name=BRANCH::${BRANCH}
+        echo ::set-output name=VERSION::${BRANCH}-${SHORT_SHA} 
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    - name: Build blobber
+      run: |
+        docker build -t $BLOBBER_REGISTRY:$TAG -f "$DOCKERFILE_BLOB" .
+        docker tag $BLOBBER_REGISTRY:$TAG $BLOBBER_REGISTRY:latest
+        ocker push $BLOBBER_REGISTRY:$TAG
       env:
         TAG: ${{ steps.get_version.outputs.VERSION }}
+        DOCKERFILE_BLOB: "docker.local/Dockerfile"
+
+    - name: Push blobber
+      run: |
+        if [[ "$PUSH_LATEST" == "yes" ]]; then
+          docker push $BLOBBER_REGISTRY:latest
+        fi
+      env:
+        PUSH_LATEST: ${{ github.event.inputs.latest_tag }}
 
   dockerize_validator:
     runs-on: ubuntu-20.04
@@ -43,17 +58,31 @@ jobs:
 
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=VERSION::$(echo $GITHUB_REF | cut -d / -f 3)
-
-    # - name: Login to Docker Hub
-      # uses: docker/login-action@v1
-      # with:
-        # username: ${{ secrets.DOCKERHUB_USERNAME }}
-        # password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
-    - name: Build sharder
       run: |
-        docker build -t $VALIDATOR_REGISTRY:$TAG -f docker.local/ValidatorDockerfile .
-        # docker push $VALIDATOR_REGISTRY:$TAG
+        BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')
+        SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
+        echo ::set-output name=BRANCH::${BRANCH}
+        echo ::set-output name=VERSION::${BRANCH}-${SHORT_SHA}    
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    - name: Build validator
+      run: |
+        docker build -t $VALIDATOR_REGISTRY:$TAG -f "$DOCKERFILE_PROXY" .
+        docker tag $VALIDATOR_REGISTRY:$TAG $VALIDATOR_REGISTRY:latest
+        docker push $VALIDATOR_REGISTRY:$TAG
       env:
         TAG: ${{ steps.get_version.outputs.VERSION }}
+        DOCKERFILE_PROXY: "docker.local/ValidatorDockerfile"
+    
+    - name: Push validator
+      run: |
+        if [[ "$PUSH_LATEST" == "yes" ]]; then
+          docker push $VALIDATOR_REGISTRY:latest
+        fi
+      env:
+        PUSH_LATEST: ${{ github.event.inputs.latest_tag }}
