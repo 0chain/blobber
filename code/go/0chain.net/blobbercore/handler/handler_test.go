@@ -14,7 +14,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/0chain/gosdk/core/zcncrypto"
+	"github.com/0chain/gosdk/zboxcore/client"
+	"github.com/0chain/gosdk/zboxcore/fileref"
+	"github.com/0chain/gosdk/zboxcore/marker"
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gorilla/mux"
@@ -27,6 +31,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 )
@@ -171,6 +176,16 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	),
 	).Name(uName)
 
+	sharePath := "/v1/marketplace/shareinfo/{allocation}"
+	shareName := "Share"
+	router.HandleFunc(sharePath, common.UserRateLimit(
+		common.ToJSONResponse(
+			WithReadOnlyConnection(MarketPlaceShareInfoHandler),
+		),
+	),
+	).Name(shareName)
+
+
 	return router,
 		map[string]string{
 			opPath:   opName,
@@ -182,24 +197,51 @@ func setupHandlers() (*mux.Router, map[string]string) {
 			cPath:    cName,
 			aPath:    aName,
 			uPath:    uName,
+			sharePath: shareName,
 		}
 }
 
 func isEndpointAllowGetReq(name string) bool {
 	switch name {
-	case "Stats", "Rename", "Copy", "Attributes", "Upload":
+	case "Stats", "Rename", "Copy", "Attributes", "Upload", "Share":
 		return false
 	default:
 		return true
 	}
 }
 
+func GetAuthTicketForEncryptedFile(allocationID string, remotePath string, fileHash string, clientID string, encPublicKey string) (string, error) {
+	at := &marker.AuthTicket{}
+	at.AllocationID = allocationID
+	at.OwnerID = client.GetClientID()
+	at.ClientID = clientID
+	at.FileName = remotePath
+	at.FilePathHash = fileHash
+	at.RefType = fileref.FILE
+	timestamp := int64(common.Now())
+	at.Expiration = timestamp + 7776000
+	at.Timestamp = timestamp
+	err := at.Sign()
+	if err != nil {
+		return "", err
+	}
+	atBytes, err := json.Marshal(at)
+	if err != nil {
+		return "", err
+	}
+	return string(atBytes), nil
+}
+
+
 func TestHandlers_Requiring_Signature(t *testing.T) {
 	setup(t)
 
+	clientJson := "{\"client_id\":\"2f34516ed8c567089b7b5572b12950db34a62a07e16770da14b15b170d0d60a9\",\"client_key\":\"bc94452950dd733de3b4498afdab30ff72741beae0b82de12b80a14430018a09ba119ff0bfe69b2a872bded33d560b58c89e071cef6ec8388268d4c3e2865083\",\"keys\":[{\"public_key\":\"bc94452950dd733de3b4498afdab30ff72741beae0b82de12b80a14430018a09ba119ff0bfe69b2a872bded33d560b58c89e071cef6ec8388268d4c3e2865083\",\"private_key\":\"9fef6ff5edc39a79c1d8e5eb7ca7e5ac14d34615ee49e6d8ca12ecec136f5907\"}],\"mnemonics\":\"expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe\",\"version\":\"1.0\",\"date_created\":\"2021-05-30 17:45:06.492093 +0545 +0545 m=+0.139083805\"}"
+	client.PopulateClient(clientJson, "bls0chain")
 	router, handlers := setupHandlers()
 
 	sch := zcncrypto.NewBLS0ChainScheme()
+	sch.Mnemonic = "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
 	_, err := sch.GenerateKeys()
 	if err != nil {
 		t.Fatal(err)
@@ -207,7 +249,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	ts := time.Now().Add(time.Hour)
 	alloc := makeTestAllocation(common.Timestamp(ts.Unix()))
 	alloc.OwnerPublicKey = sch.GetPublicKey()
-	alloc.OwnerID = sch.GetPublicKey()
+	alloc.OwnerID = client.GetClientID()
 
 	const (
 		path         = "/path"
@@ -1008,9 +1050,105 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			},
 			wantCode: http.StatusOK,
 		},
+		{
+			name: "InsertShareInfo_OK",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: func() *http.Request {
+					handlerName := handlers["/v1/marketplace/shareinfo/{allocation}"]
+					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
+					if err != nil {
+						t.Fatal()
+					}
+
+					body := bytes.NewBuffer(nil)
+					formWriter := multipart.NewWriter(body)
+					shareClientEncryptionPublicKey := "kkk"
+					shareClientID := "abcdefgh"
+					formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey)
+					remotePath := "/file.txt"
+					filePathHash := "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"
+					// _, fileName := filepath.Split(remotePath)
+					// allocationObj, err := sdk.GetAllocation(alloc.ID)
+					// if err != nil {
+					// 	t.Fatal("Error fetching the allocation", err)
+					// }
+
+					// shareClientID := "1234568"
+					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, filePathHash, shareClientID, sch.GetPublicKey())
+					if err != nil {
+						t.Fatal(err)
+					}
+					formWriter.WriteField("auth_ticket", authTicket)
+					// allocationObj.GetAuthTicket(remotePath, fileName, fileref.FILE, shareClientID, shareClientEncryptionPublicKey)
+					if err := formWriter.Close(); err != nil {
+						t.Fatal(err)
+					}
+					r, err := http.NewRequest(http.MethodPost, url.String(), body)
+					t.Log(err)
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					hash := encryption.Hash(alloc.Tx)
+					sign, err := sch.Sign(hash)
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					r.Header.Set(common.ClientSignatureHeader, sign)
+					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+
+					return r
+				}(),
+			},
+			alloc: alloc,
+			setupDbMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
+					WithArgs(alloc.Tx).
+					WillReturnRows(
+						sqlmock.NewRows(
+							[]string{
+								"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
+							},
+						).
+							AddRow(
+								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
+							),
+					)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
+					WithArgs(alloc.ID).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"id", "allocation_id"}).
+							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
+					)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					WithArgs(alloc.Tx, "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
+					WillReturnRows(
+						sqlmock.NewRows([]string{"path", "lookup_hash"}).
+							AddRow("/file.txt", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"),
+					)
+
+				aa := sqlmock.AnyArg()
+
+				mock.ExpectExec(`INSERT INTO "marketplace_share_info"`).
+					WithArgs(client.GetClientID(), "abcdefgh", "/file.txt", "", aa, aa).
+					WillReturnResult(sqlmock.NewResult(0, 0))
+			},
+			wantCode: http.StatusOK,
+			wantBody:    "{\"message\":\"Share info added successfully\"}\n\n",
+		},
 	}
 	tests := append(positiveTests, negativeTests...)
 	for _, test := range tests {
+		if false && !strings.Contains(test.name, "Share") {
+			continue
+		}
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)
 			test.setupDbMock(mock)

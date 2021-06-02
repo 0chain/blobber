@@ -3,8 +3,6 @@ package reference
 import (
 	"0chain.net/blobbercore/datastore"
 	"context"
-	"github.com/0chain/gosdk/core/zcncrypto"
-	zboxenc "github.com/0chain/gosdk/zboxcore/encryption"
 	"time"
 )
 
@@ -39,18 +37,3 @@ func GetShareInfo(ctx context.Context, clientID string, fileName string) (ShareI
 
 	return shareInfo, err
 }
-
-func GetSignatureScheme() zcncrypto.SignatureScheme {
-	// TODO: bls0chain scheme crashes
-	return zcncrypto.NewSignatureScheme("ed25519")
-}
-
-func CreateRegenKey(clientEncryptionPublicKey string, tag string) (string, error) {
-	encscheme := GetSignatureScheme()
-	key, err := encscheme.GetReGenKey(clientEncryptionPublicKey, tag)
-	if err != nil {
-		return "", err
-	}
-	return key, nil
-}
-

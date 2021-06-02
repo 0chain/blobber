@@ -325,14 +325,20 @@ func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, erro
 }
 
 func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method != "POST" {
+		return nil, errors.New("invalid request method, only POST is allowed")
+	}
+
+	ctx = setupHandlerContext(ctx, r)
 	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed." + err.Error())
 	}
 
-	if r.Method != "POST" {
-		return nil, errors.New("invalid request method, only POST is allowed")
+	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
 	encryptionPublicKey := r.FormValue("encryption_public_key")
@@ -351,7 +357,7 @@ func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interfac
 
 	authTicketVerified, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileref, authTicket.ClientID)
 	if !authTicketVerified {
-		return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
+		return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket. " + err.Error())
 	}
 
 	if err != nil {
@@ -366,6 +372,16 @@ func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interfac
 		ClientEncryptionPublicKey: encryptionPublicKey,
 		ExpiryAt: common.ToTime(authTicket.Expiration),
 	}
-	reference.AddShareInfo(ctx, shareInfo)
+
+	err = reference.AddShareInfo(ctx, shareInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := map[string]string  {
+		"message": "Share info added successfully",
+	}
+
+	return resp, nil
 }
 
