@@ -15,14 +15,14 @@ import (
 	"go.uber.org/zap"
 )
 
-func (b *blobberGRPCService) WriteFile(ctx context.Context, r *blobbergrpc.UploadFileRequest) (
-	*blobbergrpc.UploadFileResponse, error) {
-
+func (b *blobberGRPCService) WriteFile(ctx context.Context, r *blobbergrpc.UploadFileRequest) (*blobbergrpc.UploadFileResponse, error) {
 	logger := ctxzap.Extract(ctx)
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method",
 			"Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE instead")
 	}
+
+	md := GetGRPCMetaDataFromCtx(ctx)
 
 	allocationTx := r.Allocation
 	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
@@ -30,7 +30,6 @@ func (b *blobberGRPCService) WriteFile(ctx context.Context, r *blobbergrpc.Uploa
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	md := GetGRPCMetaDataFromCtx(ctx)
 	valid, err := verifySignatureFromRequest(allocationTx, md.ClientSignature, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
@@ -56,6 +55,7 @@ func (b *blobberGRPCService) WriteFile(ctx context.Context, r *blobbergrpc.Uploa
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	result := &blobbergrpc.UploadFileResponse{}
 	mode := allocation.INSERT_OPERATION
 	if r.Method == "PUT" {
 		mode = allocation.UPDATE_OPERATION
@@ -63,7 +63,6 @@ func (b *blobberGRPCService) WriteFile(ctx context.Context, r *blobbergrpc.Uploa
 		mode = allocation.DELETE_OPERATION
 	}
 
-	result := &blobbergrpc.UploadFileResponse{}
 	if mode == allocation.DELETE_OPERATION {
 		if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
 			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
@@ -118,7 +117,7 @@ func (b *blobberGRPCService) WriteFile(ctx context.Context, r *blobbergrpc.Uploa
 		thumbnailPresent := thumb != nil
 
 		fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path, OnCloud: exisitingFileOnCloud}
-		fileOutputData, err := b.packageHandler.GetFileStore().WriteFileGRPC(allocationID, fileInputData, grpcOrgFile, connectionObj.GetConnectionID())
+		fileOutputData, err := b.packageHandler.GetFileStore().WriteFileGRPC(allocationID, fileInputData, grpcOrgFile, connectionObj.ConnectionID)
 		if err != nil {
 			return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 		}
@@ -147,7 +146,7 @@ func (b *blobberGRPCService) WriteFile(ctx context.Context, r *blobbergrpc.Uploa
 		if thumbnailPresent {
 			thumbFile := bytes.NewReader(thumb)
 			thumbInputData := &filestore.FileInputData{Name: formData.ThumbnailFilename, Path: formData.Path}
-			thumbOutputData, err := b.packageHandler.GetFileStore().WriteFileGRPC(allocationID, thumbInputData, thumbFile, connectionObj.GetConnectionID())
+			thumbOutputData, err := b.packageHandler.GetFileStore().WriteFileGRPC(allocationID, thumbInputData, thumbFile, connectionObj.ConnectionID)
 			if err != nil {
 				return nil, common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 			}
@@ -164,11 +163,11 @@ func (b *blobberGRPCService) WriteFile(ctx context.Context, r *blobbergrpc.Uploa
 		}
 
 		allocationChange := &allocation.AllocationChange{}
-		allocationChange.ConnectionID = connectionObj.GetConnectionID()
+		allocationChange.ConnectionID = connectionObj.ConnectionID
 		allocationChange.Size = allocationSize - existingFileRefSize
 		allocationChange.Operation = mode
 
-		connectionObj.SetSize(connectionObj.GetSize() + allocationChange.Size)
+		connectionObj.Size += allocationChange.Size
 		if mode == allocation.INSERT_OPERATION {
 			connectionObj.AddChange(allocationChange, &formData.NewFileChange)
 		} else if mode == allocation.UPDATE_OPERATION {
@@ -176,7 +175,7 @@ func (b *blobberGRPCService) WriteFile(ctx context.Context, r *blobbergrpc.Uploa
 		}
 	}
 
-	err = connectionObj.Save(ctx)
+	err = b.packageHandler.SaveAllocationChanges(ctx, connectionObj)
 	if err != nil {
 		logger.Error("Error in writing the connection meta data", zap.Error(err))
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
@@ -185,27 +184,25 @@ func (b *blobberGRPCService) WriteFile(ctx context.Context, r *blobbergrpc.Uploa
 	return result, nil
 }
 
-func (b *blobberGRPCService) DeleteFile(ctx context.Context, r *blobbergrpc.UploadFileRequest,
-	connectionObj allocation.IAllocationChangeCollector) (*blobbergrpc.UploadFileResponse, error) {
-
+func (b *blobberGRPCService) DeleteFile(ctx context.Context, r *blobbergrpc.UploadFileRequest, connectionObj *allocation.AllocationChangeCollector) (*blobbergrpc.UploadFileResponse, error) {
 	path := r.Path
 	if len(path) == 0 {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 
-	fileRef, _ := b.packageHandler.GetReference(ctx, connectionObj.GetAllocationID(), path)
+	fileRef, _ := b.packageHandler.GetReference(ctx, connectionObj.AllocationID, path)
 	if fileRef != nil {
 		deleteSize := fileRef.Size
 
 		allocationChange := &allocation.AllocationChange{}
-		allocationChange.ConnectionID = connectionObj.GetConnectionID()
+		allocationChange.ConnectionID = connectionObj.ConnectionID
 		allocationChange.Size = 0 - deleteSize
 		allocationChange.Operation = allocation.DELETE_OPERATION
-		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.GetConnectionID(),
-			AllocationID: connectionObj.GetAllocationID(), Name: fileRef.Name,
+		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ConnectionID,
+			AllocationID: connectionObj.AllocationID, Name: fileRef.Name,
 			Hash: fileRef.Hash, Path: fileRef.Path, Size: deleteSize}
 
-		connectionObj.SetSize(connectionObj.GetSize() + allocationChange.Size)
+		connectionObj.Size += allocationChange.Size
 		connectionObj.AddChange(allocationChange, dfc)
 
 		result := &blobbergrpc.UploadFileResponse{}

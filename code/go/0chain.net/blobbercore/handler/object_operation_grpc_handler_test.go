@@ -44,15 +44,6 @@ func TestBlobberGRPCService_WriteFile_Success_POST(t *testing.T) {
 	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).
 		Return(alloc, nil)
 
-	mockAllocCollector := &mocks.IAllocationChangeCollector{}
-	mockAllocCollector.On(`GetConnectionID`).Return(req.ConnectionId)
-	mockAllocCollector.On(`GetAllocationID`).Return(req.Allocation)
-	mockAllocCollector.On(`SetSize`, mock.Anything).Return()
-	mockAllocCollector.On(`GetSize`).Return(int64(1))
-	mockAllocCollector.On(`AddChange`, mock.Anything, mock.Anything).Return()
-	mockAllocCollector.On(`Save`, mock.Anything).Return(nil)
-	mockAllocCollector.On(`TableName`).Return(`allocation_connections`)
-
 	mockFileStore := &mocks.FileStore{}
 	fileOutput := &filestore.FileOutputData{
 		Name:        "test_file",
@@ -64,8 +55,13 @@ func TestBlobberGRPCService_WriteFile_Success_POST(t *testing.T) {
 		fileOutput, nil)
 
 	mockReferencePackage := &mocks.PackageHandler{}
+	allocChange := &allocation.AllocationChangeCollector{
+		ConnectionID: req.ConnectionId,
+	}
 	mockReferencePackage.On(`GetAllocationChanges`, mock.Anything,
-		req.ConnectionId, alloc.ID, alloc.OwnerID).Return(mockAllocCollector, nil)
+		req.ConnectionId, alloc.ID, alloc.OwnerID).Return(allocChange, nil)
+	mockReferencePackage.On(`SaveAllocationChanges`, mock.Anything, allocChange).
+		Return(nil)
 	mockReferencePackage.On(`GetReference`, mock.Anything, alloc.ID, `path`).
 		Return(nil, nil)
 	mockReferencePackage.On(`GetFileStore`).
@@ -117,15 +113,6 @@ func TestBlobberGRPCService_WriteFile_Success_PUT(t *testing.T) {
 	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).
 		Return(alloc, nil)
 
-	mockAllocCollector := &mocks.IAllocationChangeCollector{}
-	mockAllocCollector.On(`GetConnectionID`).Return(req.ConnectionId)
-	mockAllocCollector.On(`GetAllocationID`).Return(req.Allocation)
-	mockAllocCollector.On(`SetSize`, mock.Anything).Return()
-	mockAllocCollector.On(`GetSize`).Return(int64(1))
-	mockAllocCollector.On(`AddChange`, mock.Anything, mock.Anything).Return()
-	mockAllocCollector.On(`Save`, mock.Anything).Return(nil)
-	mockAllocCollector.On(`TableName`).Return(`allocation_connections`)
-
 	mockFileStore := &mocks.FileStore{}
 	fileOutput := &filestore.FileOutputData{
 		Name:        "test_file",
@@ -137,8 +124,13 @@ func TestBlobberGRPCService_WriteFile_Success_PUT(t *testing.T) {
 		fileOutput, nil)
 
 	mockReferencePackage := &mocks.PackageHandler{}
+	allocChange := &allocation.AllocationChangeCollector{
+		ConnectionID: req.ConnectionId,
+	}
 	mockReferencePackage.On(`GetAllocationChanges`, mock.Anything,
-		req.ConnectionId, alloc.ID, alloc.OwnerID).Return(mockAllocCollector, nil)
+		req.ConnectionId, alloc.ID, alloc.OwnerID).Return(allocChange, nil)
+	mockReferencePackage.On(`SaveAllocationChanges`, mock.Anything, allocChange).
+		Return(nil)
 	mockReferencePackage.On(`GetReference`, mock.Anything, alloc.ID, `path`).
 		Return(&reference.Ref{}, nil)
 	mockReferencePackage.On(`GetFileStore`).
@@ -189,15 +181,6 @@ func TestBlobberGRPCService_WriteFile_Success_DELETE(t *testing.T) {
 	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).
 		Return(alloc, nil)
 
-	mockAllocCollector := &mocks.IAllocationChangeCollector{}
-	mockAllocCollector.On(`GetConnectionID`).Return(req.ConnectionId)
-	mockAllocCollector.On(`GetAllocationID`).Return(alloc.ID)
-	mockAllocCollector.On(`SetSize`, mock.Anything).Return()
-	mockAllocCollector.On(`GetSize`).Return(int64(1))
-	mockAllocCollector.On(`AddChange`, mock.Anything, mock.Anything).Return()
-	mockAllocCollector.On(`Save`, mock.Anything).Return(nil)
-	mockAllocCollector.On(`TableName`).Return(`allocation_connections`)
-
 	mockFileStore := &mocks.FileStore{}
 	fileRef := &reference.Ref{
 		Name:       "test_file",
@@ -207,8 +190,13 @@ func TestBlobberGRPCService_WriteFile_Success_DELETE(t *testing.T) {
 	}
 
 	mockReferencePackage := &mocks.PackageHandler{}
+	allocChange := &allocation.AllocationChangeCollector{
+		AllocationID: alloc.ID,
+	}
 	mockReferencePackage.On(`GetAllocationChanges`, mock.Anything,
-		req.ConnectionId, alloc.ID, alloc.OwnerID).Return(mockAllocCollector, nil)
+		req.ConnectionId, alloc.ID, alloc.OwnerID).Return(allocChange, nil)
+	mockReferencePackage.On(`SaveAllocationChanges`, mock.Anything, allocChange).
+		Return(nil)
 	mockReferencePackage.On(`GetReference`, mock.Anything, alloc.ID, `path`).
 		Return(fileRef, nil)
 	mockReferencePackage.On(`GetFileStore`).
