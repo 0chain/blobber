@@ -44,7 +44,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/attributes/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UpdateAttributesHandler))))
 
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitHandler(svc))))).Methods("POST")
-	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
+	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler(svc))))).Methods(http.MethodPost)
 	r.HandleFunc("/v1/file/collaborator/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CollaboratorHandler))))
 	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CalculateHashHandler(svc))))).Methods(http.MethodPost)
 
@@ -161,15 +161,23 @@ func FileMetaHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.
 	}
 }
 
-func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
+func CommitMetaTxnHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		ctx = setupHandlerGRPCContext(ctx, r)
 
-	response, err := storageHandler.AddCommitMetaTxn(ctx, r)
-	if err != nil {
-		return nil, err
+		response, err := svc.CommitMetaTxn(ctx, &blobbergrpc.CommitMetaTxnRequest{
+			Path:       r.FormValue("path"),
+			PathHash:   r.FormValue("path_hash"),
+			AuthToken:  r.FormValue("auth_token"),
+			Allocation: mux.Vars(r)["allocation"],
+			TxnId:      r.FormValue("txn_id"),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return convert.GetCommitMetaTxnHandlerResponse(response), nil
 	}
-
-	return response, nil
 }
 
 func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {

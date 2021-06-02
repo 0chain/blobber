@@ -32,6 +32,7 @@ type StorageHandlerI interface {
 type PackageHandler interface {
 	GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*reference.Ref, error)
 	GetCommitMetaTxns(ctx context.Context, refID int64) ([]reference.CommitMetaTxn, error)
+	AddCommitMetaTxn(ctx context.Context, refID int64, txnID string) error
 	GetCollaborators(ctx context.Context, refID int64) ([]reference.Collaborator, error)
 	IsACollaborator(ctx context.Context, refID int64, clientID string) bool
 	GetFileStats(ctx context.Context, refID int64) (*stats.FileStats, error)
@@ -99,6 +100,10 @@ func (r *packageHandler) GetReferenceFromLookupHash(ctx context.Context, allocat
 
 func (r *packageHandler) GetCommitMetaTxns(ctx context.Context, refID int64) ([]reference.CommitMetaTxn, error) {
 	return reference.GetCommitMetaTxns(ctx, refID)
+}
+
+func (r *packageHandler) AddCommitMetaTxn(ctx context.Context, refID int64, txnID string) error {
+	return reference.AddCommitMetaTxn(ctx, refID, txnID)
 }
 
 func (r *packageHandler) GetCollaborators(ctx context.Context, refID int64) ([]reference.Collaborator, error) {

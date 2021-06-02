@@ -107,3 +107,18 @@ func GetCalculateHashResponseHandler(response *blobbergrpc.CalculateHashResponse
 
 	return result
 }
+
+func GetCommitMetaTxnHandlerResponse(response *blobbergrpc.CommitMetaTxnResponse) interface{} {
+	msg := response.GetMessage()
+	if msg == "" {
+		return nil
+	}
+
+	result := struct {
+		Msg string `json:"msg"`
+	}{
+		Msg: msg,
+	}
+
+	return result
+}
