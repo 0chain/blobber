@@ -57,21 +57,6 @@ func (ar *apiResp) err() error { //nolint:unused,deadcode // might be used later
 }
 
 func RegisterBlobber(ctx context.Context) (string, error) {
-	wcb := &WalletCallback{}
-	wcb.wg = &sync.WaitGroup{}
-	wcb.wg.Add(1)
-	err := zcncore.RegisterToMiners(node.Self.GetWallet(), wcb)
-	if err != nil {
-		return "", err
-	}
-
-	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-
-	// initialize storage node (ie blobber)
-	txn, err := transaction.NewTransactionEntity()
-	if err != nil {
-		return "", err
-	}
 	sn, err := getStorageNode()
 	if err != nil {
 		return "", err
@@ -87,6 +72,22 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 			// (see: "restarted blobbers" case)
 			return UpdateBlobberSettings(ctx)
 		}
+	}
+
+	wcb := &WalletCallback{}
+	wcb.wg = &sync.WaitGroup{}
+	wcb.wg.Add(1)
+	err := zcncore.RegisterToMiners(node.Self.GetWallet(), wcb)
+	if err != nil {
+		return "", err
+	}
+
+	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+
+	// initialize storage node (ie blobber)
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return "", err
 	}
 
 	snBytes, err := json.Marshal(sn)
