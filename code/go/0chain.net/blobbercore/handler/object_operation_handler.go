@@ -408,7 +408,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		// check if client is authorized to download
 		shareInfo, err := reference.GetShareInfo(ctx, readMarker.ClientID, fileref.Path)
 		if err != nil {
-			return nil, err
+			return nil, errors.New("Client does not have permission to download the file")
 		}
 
 		buyerEncryptionPublicKey := shareInfo.ClientEncryptionPublicKey
