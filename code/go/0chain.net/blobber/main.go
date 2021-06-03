@@ -406,6 +406,8 @@ func RegisterBlobber() {
 					go UpdateBlobberSettings()
 				}
 				return
+			} else {
+				Logger.Error("Failed attempt. Add blobber transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txnHash))
 			}
 			verifyRetries++
 		}
