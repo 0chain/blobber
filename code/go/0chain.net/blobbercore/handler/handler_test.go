@@ -14,7 +14,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
 	"github.com/0chain/gosdk/zboxcore/fileref"
@@ -1068,24 +1067,16 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey)
 					remotePath := "/file.txt"
 					filePathHash := "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"
-					// _, fileName := filepath.Split(remotePath)
-					// allocationObj, err := sdk.GetAllocation(alloc.ID)
-					// if err != nil {
-					// 	t.Fatal("Error fetching the allocation", err)
-					// }
-
-					// shareClientID := "1234568"
 					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, filePathHash, shareClientID, sch.GetPublicKey())
 					if err != nil {
 						t.Fatal(err)
 					}
 					formWriter.WriteField("auth_ticket", authTicket)
-					// allocationObj.GetAuthTicket(remotePath, fileName, fileref.FILE, shareClientID, shareClientEncryptionPublicKey)
 					if err := formWriter.Close(); err != nil {
 						t.Fatal(err)
 					}
 					r, err := http.NewRequest(http.MethodPost, url.String(), body)
-					t.Log(err)
+					r.Header.Add("Content-Type", formWriter.FormDataContentType())
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1146,7 +1137,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	}
 	tests := append(positiveTests, negativeTests...)
 	for _, test := range tests {
-		if false && !strings.Contains(test.name, "Share") {
+		if !strings.Contains(test.name, "Share") {
 			continue
 		}
 		t.Run(test.name, func(t *testing.T) {
