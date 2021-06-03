@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/rand"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -682,7 +683,7 @@ func TestBlobberGRPCService_AddCollaboratorSuccess(t *testing.T) {
 		Allocation: allocationTx,
 		Path:       "some-path",
 		CollabId:   "12",
-		Method:     "POST",
+		Method:     http.MethodPost,
 		PathHash:   "exampleId:examplePath",
 	}
 
@@ -727,7 +728,7 @@ func TestBlobberGRPCService_AddCollaboratorError(t *testing.T) {
 		Allocation: allocationTx,
 		Path:       "some-path",
 		CollabId:   "12",
-		Method:     "POST",
+		Method:     http.MethodPost,
 		PathHash:   "exampleId:examplePath",
 	}
 
