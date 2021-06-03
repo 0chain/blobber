@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
 	"0chain.net/core/encryption"
+	"github.com/0chain/gosdk/core/util"
 )
 
 // ResumeFileCommand command for resuming file
@@ -57,22 +59,19 @@ func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 	defer origfile.Close()
 
-	fileInputData := &filestore.FileInputData{Name: cmd.changeProcessor.Filename, Path: cmd.changeProcessor.Path, OnCloud: false, IsResumable: true, IsFinal: cmd.changeProcessor.IsFinal}
+	fileInputData := &filestore.FileInputData{Name: cmd.changeProcessor.Name, Path: cmd.changeProcessor.Path, OnCloud: false, IsResumable: true, IsFinal: cmd.changeProcessor.IsFinal}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
 
-	result.Filename = cmd.changeProcessor.Filename
+	result.Filename = cmd.changeProcessor.Name
 	result.Hash = fileOutputData.ContentHash
 	result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
 
-	if len(cmd.changeProcessor.Hash) > 0 && cmd.changeProcessor.ChunkHash != fileOutputData.ContentHash {
+	if len(cmd.changeProcessor.Hash) > 0 && cmd.changeProcessor.Hash != fileOutputData.ContentHash {
 		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
-	}
-	if len(cmd.changeProcessor.MerkleRoot) > 0 && cmd.changeProcessor.MerkleRoot != fileOutputData.MerkleRoot {
-		return result, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
 	}
 
 	allocationSize := cmd.changeProcessor.Size + fileOutputData.Size
@@ -86,22 +85,26 @@ func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}
 
-	cmd.changeProcessor.ChunkHash = fileOutputData.ContentHash
-	cmd.changeProcessor.ChunkSize = fileOutputData.Size
+	cmd.changeProcessor.Hash = fileOutputData.ContentHash
+	cmd.changeProcessor.UploadOffset += fileOutputData.Size
 
-	cmd.changeProcessor.Hasher.Hash = func(left string, right string) string {
+	cmd.changeProcessor.MerkleHasher.Hash = func(left string, right string) string {
 		return encryption.Hash(left + right)
 	}
 
 	//push leaf to merkle hasher for computing, save state in db
-	err = cmd.changeProcessor.Hasher.Push(cmd.changeProcessor.ChunkHash, cmd.changeProcessor.ChunkIndex)
-	if err != nil {
+	err = cmd.changeProcessor.MerkleHasher.Push(cmd.changeProcessor.Hash, cmd.changeProcessor.ChunkIndex)
+	if errors.Is(err, util.ErrLeafNoSequenced) {
 
-		return result, common.NewError("invalid_chunk_index", "Next chunk index should be "+strconv.Itoa(cmd.changeProcessor.Hasher.Count))
+		return result, common.NewError("invalid_chunk_index", "Next chunk index should be "+strconv.Itoa(cmd.changeProcessor.MerkleHasher.Count))
 	}
 
 	if cmd.changeProcessor.IsFinal {
-		cmd.changeProcessor.MerkleRoot = cmd.changeProcessor.Hasher.GetMerkleRoot()
+		cmd.changeProcessor.ActualHash = cmd.changeProcessor.MerkleHasher.GetMerkleRoot()
+
+		// if len(cmd.changeProcessor.MerkleRoot) > 0 && cmd.changeProcessor.ActualHash != fileOutputData.MerkleRoot {
+		// 	return result, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
+		// }
 	}
 
 	cmd.changeProcessor.Hash = fileOutputData.ContentHash
@@ -132,13 +135,13 @@ func (cmd *ResumeFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 		}
-		if cmd.changeProcessor.ActualThumbnailHash != thumbOutputData.ContentHash {
+		if cmd.changeProcessor.ThumbnailHash != thumbOutputData.ContentHash {
 			return common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the thumbnail content")
 		}
 
 		cmd.changeProcessor.ThumbnailHash = thumbOutputData.ContentHash
-		cmd.changeProcessor.ThumbnailSize = thumbOutputData.Size
-		cmd.changeProcessor.ThumbnailFilename = thumbInputData.Name
+		cmd.changeProcessor.ThumbnailSize = int(thumbOutputData.Size)
+		cmd.changeProcessor.ThumbnailFileName = thumbInputData.Name
 	}
 
 	return nil
