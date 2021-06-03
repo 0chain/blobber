@@ -57,27 +57,10 @@ func (ar *apiResp) err() error { //nolint:unused,deadcode // might be used later
 }
 
 func RegisterBlobber(ctx context.Context) (string, error) {
-	sn, err := getStorageNode()
-	if err != nil {
-		return "", err
-	}
-
-	// check storage node (ie blobber): is it already registered?
-	sRegisteredNodes, _ := GetBlobbers()
-
-	for _, sRegisteredNode := range sRegisteredNodes {
-		if sn.ID == string(sRegisteredNode.ID) || sn.BaseURL == sRegisteredNode.BaseURL {
-			Logger.Info("Warning: blobber already registered to the mining network. Updating blobber settings.")
-			// should return valid transcation hash, not an error
-			// (see: "restarted blobbers" case)
-			return UpdateBlobberSettings(ctx)
-		}
-	}
-
 	wcb := &WalletCallback{}
 	wcb.wg = &sync.WaitGroup{}
 	wcb.wg.Add(1)
-	err = zcncore.RegisterToMiners(node.Self.GetWallet(), wcb)
+	err := zcncore.RegisterToMiners(node.Self.GetWallet(), wcb)
 	if err != nil {
 		return "", err
 	}
@@ -88,6 +71,22 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		return "", err
+	}
+
+	sn, err := getStorageNode()
+	if err != nil {
+		return "", err
+	}
+
+	// check storage node (ie blobber): is it already registered?
+	sRegisteredNodes, _ := GetBlobbers()
+
+	for _, sRegisteredNode := range sRegisteredNodes {
+		if sn.ID == string(sRegisteredNode.ID) || sn.BaseURL == sRegisteredNode.BaseURL {
+			// experimental
+			// todo: return specific error to be checked, for example, handler.DuplicateBlobber
+			return "", nil
+		}
 	}
 
 	snBytes, err := json.Marshal(sn)
