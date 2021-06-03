@@ -594,3 +594,87 @@ func TestBlobberGRPCService_CalculateHashNotOwner(t *testing.T) {
 		t.Fatal("expected error: ", err)
 	}
 }
+
+func TestBlobberGRPCService_AddCollaboratorSuccess(t *testing.T) {
+	allocationTx := randString(32)
+
+	pubKey, _, signScheme := GeneratePubPrivateKey(t)
+	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
+	req := &blobbergrpc.CollaboratorRequest{
+		Allocation: allocationTx,
+		Path:       "some-path",
+		CollabId:   "12",
+		Method:     "POST",
+		PathHash:   "exampleId:examplePath",
+	}
+
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+		common.ClientHeader:          "12",
+		common.ClientSignatureHeader: clientSignature,
+	}))
+
+	mockStorageHandler := new(storageHandlerI)
+	mockReferencePackage := new(mocks.PackageHandler)
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, true).Return(&allocation.Allocation{
+		ID:             "allocationId",
+		Tx:             req.Allocation,
+		OwnerID:        "12",
+		OwnerPublicKey: pubKey,
+	}, nil)
+	mockReferencePackage.On("GetReferenceFromLookupHash", mock.Anything, mock.Anything, mock.Anything).Return(&reference.Ref{
+		Name: "test",
+		Type: reference.FILE,
+	}, nil)
+	mockReferencePackage.On("IsACollaborator", mock.Anything, mock.Anything, mock.Anything).
+		Return(false)
+	mockReferencePackage.On("AddCollaborator", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil)
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	resp, err := svc.Collaborator(ctx, req)
+	if err != nil {
+		t.Fatal("unexpected error: ", err)
+	}
+
+	assert.Equal(t, resp.GetMessage(), "Added collaborator successfully")
+}
+
+func TestBlobberGRPCService_AddCollaboratorError(t *testing.T) {
+	allocationTx := randString(32)
+
+	pubKey, _, signScheme := GeneratePubPrivateKey(t)
+	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
+	req := &blobbergrpc.CollaboratorRequest{
+		Allocation: allocationTx,
+		Path:       "some-path",
+		CollabId:   "12",
+		Method:     "POST",
+		PathHash:   "exampleId:examplePath",
+	}
+
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+		common.ClientHeader:          "1",
+		common.ClientSignatureHeader: clientSignature,
+	}))
+
+	mockStorageHandler := new(storageHandlerI)
+	mockReferencePackage := new(mocks.PackageHandler)
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, true).Return(&allocation.Allocation{
+		ID:             "allocationId",
+		Tx:             req.Allocation,
+		OwnerID:        "12",
+		OwnerPublicKey: pubKey,
+	}, nil)
+	mockReferencePackage.On("GetReferenceFromLookupHash", mock.Anything, mock.Anything, mock.Anything).Return(&reference.Ref{
+		Name: "test",
+		Type: reference.FILE,
+	}, nil)
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	_, err := svc.Collaborator(ctx, req)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
