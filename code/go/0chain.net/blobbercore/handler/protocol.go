@@ -77,7 +77,7 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 	wcb := &WalletCallback{}
 	wcb.wg = &sync.WaitGroup{}
 	wcb.wg.Add(1)
-	err := zcncore.RegisterToMiners(node.Self.GetWallet(), wcb)
+	err = zcncore.RegisterToMiners(node.Self.GetWallet(), wcb)
 	if err != nil {
 		return "", err
 	}
