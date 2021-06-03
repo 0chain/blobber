@@ -330,6 +330,7 @@ func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interfac
 	}
 
 	ctx = setupHandlerContext(ctx, r)
+
 	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
 	if err != nil {
@@ -367,19 +368,29 @@ func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interfac
 	shareInfo := reference.ShareInfo{
 		OwnerID: authTicket.OwnerID,
 		ClientID: authTicket.ClientID,
-		FileName: authTicket.FileName,
+		FilePathHash: authTicket.FilePathHash,
 		ReEncryptionKey: authTicket.ReEncryptionKey,
 		ClientEncryptionPublicKey: encryptionPublicKey,
 		ExpiryAt: common.ToTime(authTicket.Expiration),
 	}
 
-	err = reference.AddShareInfo(ctx, shareInfo)
+	existing, err := reference.GetShareInfo(ctx, authTicket.ClientID, authTicket.FilePathHash)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := map[string]string  {
+	if existing != nil {
+		err = reference.UpdateShareInfo(ctx, shareInfo)
+	} else {
+		err = reference.AddShareInfo(ctx, shareInfo)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	resp := map[string]interface{} {
 		"message": "Share info added successfully",
+		"existing": existing,
 	}
 
 	return resp, nil

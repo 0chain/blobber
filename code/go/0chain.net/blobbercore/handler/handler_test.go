@@ -1125,14 +1125,17 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow("/file.txt", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"),
 					)
 
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
+					WithArgs("abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
+					WillReturnRows(sqlmock.NewRows([]string{}))
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`INSERT INTO "marketplace_share_info"`).
-					WithArgs(client.GetClientID(), "abcdefgh", "/file.txt", "", aa, aa).
+					WithArgs(client.GetClientID(), "abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c", "", aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 			},
 			wantCode: http.StatusOK,
-			wantBody:    "{\"message\":\"Share info added successfully\"}\n\n",
+			wantBody:    "{\"message\":\"Share info added successfully\",\"existing\":false}\n\n",
 		},
 	}
 	tests := append(positiveTests, negativeTests...)

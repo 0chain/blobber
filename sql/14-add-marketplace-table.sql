@@ -5,7 +5,7 @@ CREATE TABLE marketplace_share_info (
     id BIGSERIAL PRIMARY KEY,
     owner_id VARCHAR(64) NOT NULL,
     client_id VARCHAR(64) NOT NULL,
-    file_name TEXT NOT NULL,
+    file_path_hash TEXT NOT NULL,
     re_encryption_key TEXT NOT NULL,
     client_encryption_public_key TEXT NOT NULL,
     expiry_at TIMESTAMP NULL,

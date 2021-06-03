@@ -406,9 +406,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	response.LatestRM = readMarker
 	if attrs.PreAtBlobber {
 		// check if client is authorized to download
-		shareInfo, err := reference.GetShareInfo(ctx, readMarker.ClientID, fileref.Path)
+		shareInfo, err := reference.GetShareInfo(ctx, readMarker.ClientID, fileref.PathHash)
 		if err != nil {
-			return nil, errors.New("Client does not have permission to download the file")
+			return nil, errors.New("client does not have permission to download the file, " + err.Error())
+		} else if shareInfo == nil {
+			return nil, errors.New("client does not have permission to download the file. share does not exist")
 		}
 
 		buyerEncryptionPublicKey := shareInfo.ClientEncryptionPublicKey

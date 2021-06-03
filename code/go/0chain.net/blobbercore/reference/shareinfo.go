@@ -3,6 +3,7 @@ package reference
 import (
 	"0chain.net/blobbercore/datastore"
 	"context"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -10,7 +11,7 @@ import (
 type ShareInfo struct {
 	OwnerID                       string          `gorm:"owner_id" json:"owner_id,omitempty"`
 	ClientID                      string          `gorm:"client_id" json:"client_id"`
-	FileName                      string          `gorm:"file_name" json:"file_name,omitempty"`
+	FilePathHash                  string          `gorm:"file_path_hash" json:"file_path_hash,omitempty"`
 	ReEncryptionKey               string          `gorm:"re_encryption_key" json:"re_encryption_key,omitempty"`
 	ClientEncryptionPublicKey     string          `gorm:"client_encryption_public_key" json:"client_encryption_public_key,omitempty"`
 	ExpiryAt                      time.Time       `gorm:"expiry_at" json:"expiry_at,omitempty"`
@@ -25,15 +26,31 @@ func AddShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 	return db.Table(TableName()).Create(shareInfo).Error
 }
 
-func GetShareInfo(ctx context.Context, clientID string, fileName string) (ShareInfo, error) {
+func UpdateShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	shareInfo := ShareInfo{}
+	return db.Table(TableName()).
+		Where(&ShareInfo{
+			ClientID:    shareInfo.ClientID,
+			FilePathHash: shareInfo.FilePathHash,
+		}).
+		Updates(shareInfo).Error
+}
+
+func GetShareInfo(ctx context.Context, clientID string, filePathHash string) (*ShareInfo, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	shareInfo := &ShareInfo{}
 	err := db.Table(TableName()).
 		Where(&ShareInfo{
 			ClientID:    clientID,
-			FileName: fileName,
+			FilePathHash: filePathHash,
 		}).
-		First(&shareInfo).Error
+		First(shareInfo).Error
 
-	return shareInfo, err
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return shareInfo, nil
 }
