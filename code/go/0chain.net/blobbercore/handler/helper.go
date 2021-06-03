@@ -4,14 +4,13 @@ import (
 	"context"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/gorilla/mux"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
-
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 )
 
 func RegisterGRPCServices(r *mux.Router, server *grpc.Server) {
@@ -32,6 +31,7 @@ type StorageHandlerI interface {
 type PackageHandler interface {
 	GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*reference.Ref, error)
 	GetCommitMetaTxns(ctx context.Context, refID int64) ([]reference.CommitMetaTxn, error)
+	AddCommitMetaTxn(ctx context.Context, refID int64, txnID string) error
 	GetCollaborators(ctx context.Context, refID int64) ([]reference.Collaborator, error)
 	IsACollaborator(ctx context.Context, refID int64, clientID string) bool
 	AddCollaborator(ctx context.Context, refID int64, clientID string) error
@@ -101,6 +101,10 @@ func (r *packageHandler) GetReferenceFromLookupHash(ctx context.Context, allocat
 
 func (r *packageHandler) GetCommitMetaTxns(ctx context.Context, refID int64) ([]reference.CommitMetaTxn, error) {
 	return reference.GetCommitMetaTxns(ctx, refID)
+}
+
+func (r *packageHandler) AddCommitMetaTxn(ctx context.Context, refID int64, txnID string) error {
+	return reference.AddCommitMetaTxn(ctx, refID, txnID)
 }
 
 func (r *packageHandler) GetCollaborators(ctx context.Context, refID int64) ([]reference.Collaborator, error) {

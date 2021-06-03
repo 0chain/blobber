@@ -160,6 +160,44 @@
         ]
       }
     },
+    "/v2/file/commitmetatxn/{allocation}": {
+      "post": {
+        "operationId": "Blobber_CommitMetaTxn",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CommitMetaTxnResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CommitMetaTxnRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
     "/v2/file/list/{allocation}": {
       "get": {
         "operationId": "Blobber_ListEntities",
@@ -600,6 +638,34 @@
         "CreatedAt": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "v1CommitMetaTxnRequest": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "pathHash": {
+          "type": "string"
+        },
+        "authToken": {
+          "type": "string"
+        },
+        "allocation": {
+          "type": "string"
+        },
+        "txnId": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CommitMetaTxnResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
         }
       }
     },
