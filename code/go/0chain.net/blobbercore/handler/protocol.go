@@ -112,6 +112,11 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 // transactions.
 var ErrBlobberHasRemoved = errors.New("blobber has removed")
 
+// ErrBlobberHasRegistered represents double registration check error, where the
+// blobber has already registered and shouldn't be passed through the registration flow again.
+// To prevent duplicate instances.
+var ErrBlobberHasRegistered = errors.New("blobber has registered")
+
 func BlobberHealthCheck(ctx context.Context) (string, error) {
 	if config.Configuration.Capacity == 0 {
 		return "", ErrBlobberHasRemoved
