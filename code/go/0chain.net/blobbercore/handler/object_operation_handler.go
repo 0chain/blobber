@@ -313,6 +313,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 				"error parsing the auth ticket for download: %v", err)
 		}
 
+		if authToken.ContentHash != fileref.ContentHash {
+			return nil, errors.New("content hash does not match the requested file content hash")
+		}
+
 		// if --rx_pay used 3rd_party pays
 		if rxPay {
 			clientIDForReadRedeem = clientID

@@ -21,6 +21,7 @@ type AuthTicket struct {
 	OwnerID         string           `json:"owner_id"`
 	AllocationID    string           `json:"allocation_id"`
 	FilePathHash    string           `json:"file_path_hash"`
+	ContentHash     string           `json:"content_hash"`
 	FileName        string           `json:"file_name"`
 	RefType         string           `json:"reference_type"`
 	Expiration      common.Timestamp `json:"expiration"`
