@@ -31,6 +31,7 @@ import (
 	"0chain.net/core/transaction"
 	"0chain.net/core/util"
 
+	sdk "github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -224,6 +225,7 @@ func main() {
 	portString := flag.String("port", "", "port")
 	grpcPortString := flag.String("grpc_port", "", "grpc_port")
 	hostname := flag.String("hostname", "", "hostname")
+	devserver := flag.Bool("devserver", false, "start devserver")
 
 	flag.Parse()
 
@@ -231,6 +233,10 @@ func main() {
 	config.SetupConfig()
 
 	config.Configuration.DeploymentMode = byte(*deploymentMode)
+
+	if *devserver {
+		sdk.Use(sdk.StartDevServer("/blobber/config/devserver.yml"))
+	}
 
 	if config.Development() {
 		logging.InitLogging("development", *logDir, "0chainBlobber.log")
