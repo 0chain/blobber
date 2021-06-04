@@ -96,11 +96,6 @@ func SetupWorkerConfig() {
 	config.Configuration.MinLockDemand = viper.GetFloat64("min_lock_demand")
 	config.Configuration.MaxOfferDuration = viper.GetDuration("max_offer_duration")
 	config.Configuration.ChallengeCompletionTime = viper.GetDuration("challenge_completion_time")
-	config.Configuration.PreEncryption.AutoGenerate = viper.GetBool("pre_encryption.auto_generate")
-	config.Configuration.PreEncryption.Mnemonic = viper.GetString("pre_encryption.mnemonic")
-	if !config.Configuration.PreEncryption.AutoGenerate && len(config.Configuration.PreEncryption.Mnemonic) == 0 {
-		log.Fatal("mnemonic missing for pre_encryption for auto_generate: false")
-	}
 
 	config.Configuration.ReadLockTimeout = int64(
 		viper.GetDuration("read_lock_timeout") / time.Second,
