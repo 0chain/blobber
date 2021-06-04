@@ -385,11 +385,26 @@ func main() {
 }
 
 func RegisterBlobber() {
+	setup := func() {
+		// badgerdbstore.GetStorageProvider().WriteBytes(ctx, BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
+		// badgerdbstore.GetStorageProvider().Commit(ctx)
+		SetupWorkers()
+		go BlobberHealthCheck()
+		if config.Configuration.PriceInUSD {
+			go UpdateBlobberSettings()
+		}
+	}
 
 	registrationRetries := 0
-	//ctx := badgerdbstore.GetStorageProvider().WithConnection(common.GetRootContext())
+	// ctx := badgerdbstore.GetStorageProvider().WithConnection(common.GetRootContext())
 	for registrationRetries < 10 {
 		txnHash, err := handler.RegisterBlobber(common.GetRootContext())
+		if err == handler.ErrBlobberHasRegistered {
+			Logger.Debug("Blobber already registered to the mining network")
+			setup()
+			return
+		}
+
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 		txnVerified := false
 		verifyRetries := 0
@@ -398,13 +413,7 @@ func RegisterBlobber() {
 			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
 			if err == nil {
 				Logger.Info("Transaction for adding blobber accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-				//badgerdbstore.GetStorageProvider().WriteBytes(ctx, BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
-				//badgerdbstore.GetStorageProvider().Commit(ctx)
-				SetupWorkers()
-				go BlobberHealthCheck()
-				if config.Configuration.PriceInUSD {
-					go UpdateBlobberSettings()
-				}
+				setup()
 				return
 			}
 			verifyRetries++
