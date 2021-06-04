@@ -218,6 +218,7 @@ func GetAuthTicketForEncryptedFile(allocationID string, remotePath string, fileH
 	timestamp := int64(common.Now())
 	at.Expiration = timestamp + 7776000
 	at.Timestamp = timestamp
+	at.ReEncryptionKey = "regenkey"
 	err := at.Sign()
 	if err != nil {
 		return "", err
@@ -1048,7 +1049,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			wantCode: http.StatusOK,
 		},
 		{
-			name: "InsertShareInfo_OK",
+			name: "InsertShareInfo_OK_New_Share",
 			args: args{
 				w: httptest.NewRecorder(),
 				r: func() *http.Request {
@@ -1129,11 +1130,102 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`INSERT INTO "marketplace_share_info"`).
-					WithArgs(client.GetClientID(), "abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c", "", aa, aa).
+					WithArgs(client.GetClientID(), "abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c", "regenkey", aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 			},
 			wantCode: http.StatusOK,
 			wantBody:    "{\"message\":\"Share info added successfully\",\"existing\":false}\n\n",
+		},
+		{
+			name: "UpdateShareInfo",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: func() *http.Request {
+					handlerName := handlers["/v1/marketplace/shareinfo/{allocation}"]
+					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
+					if err != nil {
+						t.Fatal()
+					}
+
+					body := bytes.NewBuffer(nil)
+					formWriter := multipart.NewWriter(body)
+					shareClientEncryptionPublicKey := "kkk"
+					shareClientID := "abcdefgh"
+					formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey)
+					remotePath := "/file.txt"
+					filePathHash := "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"
+					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, filePathHash, shareClientID, sch.GetPublicKey())
+					if err != nil {
+						t.Fatal(err)
+					}
+					formWriter.WriteField("auth_ticket", authTicket)
+					if err := formWriter.Close(); err != nil {
+						t.Fatal(err)
+					}
+					r, err := http.NewRequest(http.MethodPost, url.String(), body)
+					r.Header.Add("Content-Type", formWriter.FormDataContentType())
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					hash := encryption.Hash(alloc.Tx)
+					sign, err := sch.Sign(hash)
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					r.Header.Set(common.ClientSignatureHeader, sign)
+					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+
+					return r
+				}(),
+			},
+			alloc: alloc,
+			setupDbMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
+					WithArgs(alloc.Tx).
+					WillReturnRows(
+						sqlmock.NewRows(
+							[]string{
+								"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
+							},
+						).
+							AddRow(
+								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
+							),
+					)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
+					WithArgs(alloc.ID).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"id", "allocation_id"}).
+							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
+					)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					WithArgs(alloc.Tx, "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
+					WillReturnRows(
+						sqlmock.NewRows([]string{"path", "lookup_hash"}).
+							AddRow("/file.txt", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"),
+					)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
+					WithArgs("abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
+					WillReturnRows(
+						sqlmock.NewRows([]string{"client_id"}).
+							AddRow("abcdefgh"),
+					)
+				aa := sqlmock.AnyArg()
+
+				mock.ExpectExec(`UPDATE "marketplace_share_info"`).
+					WithArgs(client.GetClientID(), "abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c", "regenkey", aa, aa, "abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
+					WillReturnResult(sqlmock.NewResult(0, 0))
+			},
+			wantCode: http.StatusOK,
+			wantBody:    "{\"message\":\"Share info added successfully\",\"existing\":true}\n\n",
 		},
 	}
 	tests := append(positiveTests, negativeTests...)
