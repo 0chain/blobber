@@ -9,4 +9,6 @@
 BEGIN;
     ALTER TABLE allocations
         ALTER COLUMN owner_public_key TYPE varchar(512);
+    ALTER TABLE read_markers
+        ALTER COLUMN client_public_key TYPE varchar(512);
 COMMIT;
