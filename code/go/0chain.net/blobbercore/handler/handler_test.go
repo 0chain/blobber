@@ -45,7 +45,6 @@ func init() {
 		panic(err)
 	}
 	bconfig.Configuration.MaxFileSize = int64(1 << 30)
-	bconfig.Configuration.PreEncryption.AutoGenerate = true
 }
 
 func setup(t *testing.T) {
