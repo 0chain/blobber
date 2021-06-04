@@ -13,8 +13,8 @@ CREATE TABLE marketplace_share_info (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_marketplace_share_info_for_owner ON marketplace_share_info(owner_id, file_name);
-CREATE INDEX idx_marketplace_share_info_for_client ON marketplace_share_info(client_id, file_name);
+CREATE INDEX idx_marketplace_share_info_for_owner ON marketplace_share_info(owner_id, file_path_hash);
+CREATE INDEX idx_marketplace_share_info_for_client ON marketplace_share_info(client_id, file_path_hash);
 
 CREATE TRIGGER share_info_modtime BEFORE UPDATE ON marketplace_share_info FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();
 

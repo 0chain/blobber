@@ -1140,9 +1140,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	}
 	tests := append(positiveTests, negativeTests...)
 	for _, test := range tests {
-		if !strings.Contains(test.name, "Share") {
-			continue
-		}
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)
 			test.setupDbMock(mock)

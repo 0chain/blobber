@@ -408,7 +408,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		// check if client is authorized to download
 		shareInfo, err := reference.GetShareInfo(ctx, readMarker.ClientID, fileref.PathHash)
 		if err != nil {
-			return nil, errors.New("client does not have permission to download the file, " + err.Error())
+			return nil, errors.New("error during share info lookup in database" + err.Error())
 		} else if shareInfo == nil {
 			return nil, errors.New("client does not have permission to download the file. share does not exist")
 		}
