@@ -11,7 +11,6 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // BlobberClient is the client API for Blobber service.
@@ -25,10 +24,10 @@ type BlobberClient interface {
 	GetObjectPath(ctx context.Context, in *GetObjectPathRequest, opts ...grpc.CallOption) (*GetObjectPathResponse, error)
 	GetReferencePath(ctx context.Context, in *GetReferencePathRequest, opts ...grpc.CallOption) (*GetReferencePathResponse, error)
 	GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error)
+	WriteFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error)
 	Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error)
 	CalculateHash(ctx context.Context, in *CalculateHashRequest, opts ...grpc.CallOption) (*CalculateHashResponse, error)
 	CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequest, opts ...grpc.CallOption) (*CommitMetaTxnResponse, error)
-	WriteFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error)
 }
 
 type blobberClient struct {
@@ -102,6 +101,15 @@ func (c *blobberClient) GetObjectTree(ctx context.Context, in *GetObjectTreeRequ
 	return out, nil
 }
 
+func (c *blobberClient) WriteFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error) {
+	out := new(UploadFileResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/WriteFile", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *blobberClient) Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error) {
 	out := new(CommitResponse)
 	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/Commit", in, out, opts...)
@@ -129,15 +137,6 @@ func (c *blobberClient) CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequ
 	return out, nil
 }
 
-func (c *blobberClient) WriteFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error) {
-	out := new(UploadFileResponse)
-	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/WriteFile", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // BlobberServer is the server API for Blobber service.
 // All implementations must embed UnimplementedBlobberServer
 // for forward compatibility
@@ -149,10 +148,10 @@ type BlobberServer interface {
 	GetObjectPath(context.Context, *GetObjectPathRequest) (*GetObjectPathResponse, error)
 	GetReferencePath(context.Context, *GetReferencePathRequest) (*GetReferencePathResponse, error)
 	GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error)
+	WriteFile(context.Context, *UploadFileRequest) (*UploadFileResponse, error)
 	Commit(context.Context, *CommitRequest) (*CommitResponse, error)
 	CalculateHash(context.Context, *CalculateHashRequest) (*CalculateHashResponse, error)
 	CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error)
-	WriteFile(context.Context, *UploadFileRequest) (*UploadFileResponse, error)
 	mustEmbedUnimplementedBlobberServer()
 }
 
@@ -181,6 +180,9 @@ func (UnimplementedBlobberServer) GetReferencePath(context.Context, *GetReferenc
 func (UnimplementedBlobberServer) GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetObjectTree not implemented")
 }
+func (UnimplementedBlobberServer) WriteFile(context.Context, *UploadFileRequest) (*UploadFileResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method WriteFile not implemented")
+}
 func (UnimplementedBlobberServer) Commit(context.Context, *CommitRequest) (*CommitResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Commit not implemented")
 }
@@ -189,9 +191,6 @@ func (UnimplementedBlobberServer) CalculateHash(context.Context, *CalculateHashR
 }
 func (UnimplementedBlobberServer) CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CommitMetaTxn not implemented")
-}
-func (UnimplementedBlobberServer) WriteFile(context.Context, *UploadFileRequest) (*UploadFileResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method WriteFile not implemented")
 }
 func (UnimplementedBlobberServer) mustEmbedUnimplementedBlobberServer() {}
 
@@ -202,8 +201,8 @@ type UnsafeBlobberServer interface {
 	mustEmbedUnimplementedBlobberServer()
 }
 
-func RegisterBlobberServer(s grpc.ServiceRegistrar, srv BlobberServer) {
-	s.RegisterService(&Blobber_ServiceDesc, srv)
+func RegisterBlobberServer(s *grpc.Server, srv BlobberServer) {
+	s.RegisterService(&_Blobber_serviceDesc, srv)
 }
 
 func _Blobber_GetAllocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -332,6 +331,24 @@ func _Blobber_GetObjectTree_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Blobber_WriteFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UploadFileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).WriteFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/WriteFile",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).WriteFile(ctx, req.(*UploadFileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Blobber_Commit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CommitRequest)
 	if err := dec(in); err != nil {
@@ -387,28 +404,6 @@ func _Blobber_CommitMetaTxn_Handler(srv interface{}, ctx context.Context, dec fu
 }
 
 var _Blobber_serviceDesc = grpc.ServiceDesc{
-func _Blobber_WriteFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UploadFileRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(BlobberServer).WriteFile(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/blobber.service.v1.Blobber/WriteFile",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BlobberServer).WriteFile(ctx, req.(*UploadFileRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// Blobber_ServiceDesc is the grpc.ServiceDesc for Blobber service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var Blobber_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "blobber.service.v1.Blobber",
 	HandlerType: (*BlobberServer)(nil),
 	Methods: []grpc.MethodDesc{
@@ -439,6 +434,10 @@ var Blobber_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetObjectTree",
 			Handler:    _Blobber_GetObjectTree_Handler,
+		},
+		{
+			MethodName: "WriteFile",
+			Handler:    _Blobber_WriteFile_Handler,
 		},
 		{
 			MethodName: "Commit",
