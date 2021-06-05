@@ -24,10 +24,10 @@ type BlobberClient interface {
 	GetObjectPath(ctx context.Context, in *GetObjectPathRequest, opts ...grpc.CallOption) (*GetObjectPathResponse, error)
 	GetReferencePath(ctx context.Context, in *GetReferencePathRequest, opts ...grpc.CallOption) (*GetReferencePathResponse, error)
 	GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error)
+	RenameObject(ctx context.Context, in *RenameObjectRequest, opts ...grpc.CallOption) (*RenameObjectResponse, error)
 	Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error)
 	CalculateHash(ctx context.Context, in *CalculateHashRequest, opts ...grpc.CallOption) (*CalculateHashResponse, error)
 	CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequest, opts ...grpc.CallOption) (*CommitMetaTxnResponse, error)
-	RenameObject(ctx context.Context, in *RenameObjectRequest, opts ...grpc.CallOption) (*RenameObjectResponse, error)
 }
 
 type blobberClient struct {
@@ -101,6 +101,15 @@ func (c *blobberClient) GetObjectTree(ctx context.Context, in *GetObjectTreeRequ
 	return out, nil
 }
 
+func (c *blobberClient) RenameObject(ctx context.Context, in *RenameObjectRequest, opts ...grpc.CallOption) (*RenameObjectResponse, error) {
+	out := new(RenameObjectResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/RenameObject", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *blobberClient) Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error) {
 	out := new(CommitResponse)
 	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/Commit", in, out, opts...)
@@ -128,15 +137,6 @@ func (c *blobberClient) CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequ
 	return out, nil
 }
 
-func (c *blobberClient) RenameObject(ctx context.Context, in *RenameObjectRequest, opts ...grpc.CallOption) (*RenameObjectResponse, error) {
-	out := new(RenameObjectResponse)
-	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/RenameObject", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // BlobberServer is the server API for Blobber service.
 // All implementations must embed UnimplementedBlobberServer
 // for forward compatibility
@@ -148,10 +148,10 @@ type BlobberServer interface {
 	GetObjectPath(context.Context, *GetObjectPathRequest) (*GetObjectPathResponse, error)
 	GetReferencePath(context.Context, *GetReferencePathRequest) (*GetReferencePathResponse, error)
 	GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error)
+	RenameObject(context.Context, *RenameObjectRequest) (*RenameObjectResponse, error)
 	Commit(context.Context, *CommitRequest) (*CommitResponse, error)
 	CalculateHash(context.Context, *CalculateHashRequest) (*CalculateHashResponse, error)
 	CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error)
-	RenameObject(context.Context, *RenameObjectRequest) (*RenameObjectResponse, error)
 	mustEmbedUnimplementedBlobberServer()
 }
 
@@ -180,6 +180,9 @@ func (UnimplementedBlobberServer) GetReferencePath(context.Context, *GetReferenc
 func (UnimplementedBlobberServer) GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetObjectTree not implemented")
 }
+func (UnimplementedBlobberServer) RenameObject(context.Context, *RenameObjectRequest) (*RenameObjectResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RenameObject not implemented")
+}
 func (UnimplementedBlobberServer) Commit(context.Context, *CommitRequest) (*CommitResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Commit not implemented")
 }
@@ -188,9 +191,6 @@ func (UnimplementedBlobberServer) CalculateHash(context.Context, *CalculateHashR
 }
 func (UnimplementedBlobberServer) CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CommitMetaTxn not implemented")
-}
-func (UnimplementedBlobberServer) RenameObject(context.Context, *RenameObjectRequest) (*RenameObjectResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RenameObject not implemented")
 }
 func (UnimplementedBlobberServer) mustEmbedUnimplementedBlobberServer() {}
 
@@ -436,6 +436,10 @@ var _Blobber_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Blobber_GetObjectTree_Handler,
 		},
 		{
+			MethodName: "RenameObject",
+			Handler:    _Blobber_RenameObject_Handler,
+		},
+		{
 			MethodName: "Commit",
 			Handler:    _Blobber_Commit_Handler,
 		},
@@ -446,10 +450,6 @@ var _Blobber_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CommitMetaTxn",
 			Handler:    _Blobber_CommitMetaTxn_Handler,
-		},
-		{
-			MethodName: "RenameObject",
-			Handler:    _Blobber_RenameObject_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

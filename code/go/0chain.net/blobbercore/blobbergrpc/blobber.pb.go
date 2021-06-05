@@ -1706,7 +1706,7 @@ type RenameObjectRequest struct {
 func (x *RenameObjectRequest) Reset() {
 	*x = RenameObjectRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[20]
+		mi := &file_blobber_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1719,7 +1719,7 @@ func (x *RenameObjectRequest) String() string {
 func (*RenameObjectRequest) ProtoMessage() {}
 
 func (x *RenameObjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[20]
+	mi := &file_blobber_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1732,7 +1732,7 @@ func (x *RenameObjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameObjectRequest.ProtoReflect.Descriptor instead.
 func (*RenameObjectRequest) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{20}
+	return file_blobber_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *RenameObjectRequest) GetAllocation() string {
@@ -1788,7 +1788,7 @@ type RenameObjectResponse struct {
 func (x *RenameObjectResponse) Reset() {
 	*x = RenameObjectResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[21]
+		mi := &file_blobber_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1801,7 +1801,7 @@ func (x *RenameObjectResponse) String() string {
 func (*RenameObjectResponse) ProtoMessage() {}
 
 func (x *RenameObjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[21]
+	mi := &file_blobber_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1814,7 +1814,7 @@ func (x *RenameObjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameObjectResponse.ProtoReflect.Descriptor instead.
 func (*RenameObjectResponse) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{21}
+	return file_blobber_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *RenameObjectResponse) GetFilename() string {
@@ -1886,7 +1886,7 @@ type Allocation struct {
 func (x *Allocation) Reset() {
 	*x = Allocation{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[26]
+		mi := &file_blobber_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1899,7 +1899,7 @@ func (x *Allocation) String() string {
 func (*Allocation) ProtoMessage() {}
 
 func (x *Allocation) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[26]
+	mi := &file_blobber_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1912,7 +1912,7 @@ func (x *Allocation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Allocation.ProtoReflect.Descriptor instead.
 func (*Allocation) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{26}
+	return file_blobber_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *Allocation) GetID() string {
@@ -2049,7 +2049,7 @@ type Term struct {
 func (x *Term) Reset() {
 	*x = Term{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[27]
+		mi := &file_blobber_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2062,7 +2062,7 @@ func (x *Term) String() string {
 func (*Term) ProtoMessage() {}
 
 func (x *Term) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[27]
+	mi := &file_blobber_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2075,7 +2075,7 @@ func (x *Term) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Term.ProtoReflect.Descriptor instead.
 func (*Term) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{27}
+	return file_blobber_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *Term) GetID() int64 {
@@ -2126,7 +2126,7 @@ type FileRef struct {
 func (x *FileRef) Reset() {
 	*x = FileRef{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[28]
+		mi := &file_blobber_proto_msgTypes[30]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2139,7 +2139,7 @@ func (x *FileRef) String() string {
 func (*FileRef) ProtoMessage() {}
 
 func (x *FileRef) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[28]
+	mi := &file_blobber_proto_msgTypes[30]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2152,7 +2152,7 @@ func (x *FileRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileRef.ProtoReflect.Descriptor instead.
 func (*FileRef) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{28}
+	return file_blobber_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *FileRef) GetType() string {
@@ -2210,7 +2210,7 @@ type FileMetaData struct {
 func (x *FileMetaData) Reset() {
 	*x = FileMetaData{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[29]
+		mi := &file_blobber_proto_msgTypes[31]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2223,7 +2223,7 @@ func (x *FileMetaData) String() string {
 func (*FileMetaData) ProtoMessage() {}
 
 func (x *FileMetaData) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[29]
+	mi := &file_blobber_proto_msgTypes[31]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2236,7 +2236,7 @@ func (x *FileMetaData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileMetaData.ProtoReflect.Descriptor instead.
 func (*FileMetaData) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{29}
+	return file_blobber_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *FileMetaData) GetType() string {
@@ -2427,7 +2427,7 @@ type DirMetaData struct {
 func (x *DirMetaData) Reset() {
 	*x = DirMetaData{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[30]
+		mi := &file_blobber_proto_msgTypes[32]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2440,7 +2440,7 @@ func (x *DirMetaData) String() string {
 func (*DirMetaData) ProtoMessage() {}
 
 func (x *DirMetaData) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[30]
+	mi := &file_blobber_proto_msgTypes[32]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2453,7 +2453,7 @@ func (x *DirMetaData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirMetaData.ProtoReflect.Descriptor instead.
 func (*DirMetaData) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{30}
+	return file_blobber_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *DirMetaData) GetType() string {
@@ -2908,7 +2908,7 @@ var file_blobber_proto_rawDesc = []byte{
 	0x12, 0x1c, 0x0a, 0x09, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x18, 0x09, 0x20,
 	0x01, 0x28, 0x03, 0x52, 0x09, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x12, 0x1c,
 	0x0a, 0x09, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x18, 0x0a, 0x20, 0x01, 0x28,
-	0x03, 0x52, 0x09, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x32, 0x96, 0x0b, 0x0a,
+	0x03, 0x52, 0x09, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x32, 0xa3, 0x0c, 0x0a,
 	0x07, 0x42, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x12, 0x7c, 0x0a, 0x0d, 0x47, 0x65, 0x74, 0x41,
 	0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x28, 0x2e, 0x62, 0x6c, 0x6f, 0x62,
 	0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47,
@@ -2971,37 +2971,46 @@ var file_blobber_proto_rawDesc = []byte{
 	0x74, 0x54, 0x72, 0x65, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x28, 0x82,
 	0xd3, 0xe4, 0x93, 0x02, 0x22, 0x12, 0x20, 0x2f, 0x76, 0x32, 0x2f, 0x66, 0x69, 0x6c, 0x65, 0x2f,
 	0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x74, 0x72, 0x65, 0x65, 0x2f, 0x7b, 0x61, 0x6c, 0x6c, 0x6f,
-	0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x7d, 0x12, 0x7e, 0x0a, 0x06, 0x43, 0x6f, 0x6d, 0x6d, 0x69,
-	0x74, 0x12, 0x21, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76,
-	0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x1a, 0x22, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73,
-	0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2d, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x27,
-	0x22, 0x22, 0x2f, 0x76, 0x32, 0x2f, 0x63, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e,
-	0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x2f, 0x7b, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74,
-	0x69, 0x6f, 0x6e, 0x7d, 0x3a, 0x01, 0x2a, 0x12, 0x94, 0x01, 0x0a, 0x0d, 0x43, 0x61, 0x6c, 0x63,
-	0x75, 0x6c, 0x61, 0x74, 0x65, 0x48, 0x61, 0x73, 0x68, 0x12, 0x28, 0x2e, 0x62, 0x6c, 0x6f, 0x62,
-	0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43,
-	0x61, 0x6c, 0x63, 0x75, 0x6c, 0x61, 0x74, 0x65, 0x48, 0x61, 0x73, 0x68, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x29, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65,
-	0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x61, 0x6c, 0x63, 0x75, 0x6c, 0x61,
-	0x74, 0x65, 0x48, 0x61, 0x73, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2e,
-	0x82, 0xd3, 0xe4, 0x93, 0x02, 0x28, 0x22, 0x23, 0x2f, 0x76, 0x32, 0x2f, 0x66, 0x69, 0x6c, 0x65,
-	0x2f, 0x63, 0x61, 0x6c, 0x63, 0x75, 0x6c, 0x61, 0x74, 0x65, 0x68, 0x61, 0x73, 0x68, 0x2f, 0x7b,
-	0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x7d, 0x3a, 0x01, 0x2a, 0x12, 0x94,
-	0x01, 0x0a, 0x0d, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x4d, 0x65, 0x74, 0x61, 0x54, 0x78, 0x6e,
-	0x12, 0x28, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69,
-	0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x4d, 0x65, 0x74, 0x61,
-	0x54, 0x78, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x29, 0x2e, 0x62, 0x6c, 0x6f,
-	0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e,
-	0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x4d, 0x65, 0x74, 0x61, 0x54, 0x78, 0x6e, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2e, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x28, 0x22, 0x23, 0x2f,
-	0x76, 0x32, 0x2f, 0x66, 0x69, 0x6c, 0x65, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65,
-	0x74, 0x61, 0x74, 0x78, 0x6e, 0x2f, 0x7b, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x7d, 0x3a, 0x01, 0x2a, 0x42, 0x2c, 0x5a, 0x2a, 0x63, 0x6f, 0x64, 0x65, 0x2f, 0x67, 0x6f,
-	0x2f, 0x30, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x2e, 0x6e, 0x65, 0x74, 0x2f, 0x62, 0x6c, 0x6f, 0x62,
-	0x62, 0x65, 0x72, 0x63, 0x6f, 0x72, 0x65, 0x2f, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x67,
-	0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x7d, 0x12, 0x8a, 0x01, 0x0a, 0x0c, 0x52, 0x65, 0x6e, 0x61,
+	0x6d, 0x65, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x12, 0x27, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62,
+	0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65,
+	0x6e, 0x61, 0x6d, 0x65, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x1a, 0x28, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76,
+	0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x4f, 0x62, 0x6a,
+	0x65, 0x63, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x27, 0x82, 0xd3, 0xe4,
+	0x93, 0x02, 0x21, 0x22, 0x1c, 0x2f, 0x76, 0x32, 0x2f, 0x66, 0x69, 0x6c, 0x65, 0x2f, 0x72, 0x65,
+	0x6e, 0x61, 0x6d, 0x65, 0x2f, 0x7b, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x7d, 0x3a, 0x01, 0x2a, 0x12, 0x7e, 0x0a, 0x06, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x12, 0x21,
+	0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65,
+	0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x1a, 0x22, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76,
+	0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2d, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x27, 0x22, 0x22, 0x2f,
+	0x76, 0x32, 0x2f, 0x63, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x63, 0x6f,
+	0x6d, 0x6d, 0x69, 0x74, 0x2f, 0x7b, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x7d, 0x3a, 0x01, 0x2a, 0x12, 0x94, 0x01, 0x0a, 0x0d, 0x43, 0x61, 0x6c, 0x63, 0x75, 0x6c, 0x61,
+	0x74, 0x65, 0x48, 0x61, 0x73, 0x68, 0x12, 0x28, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72,
+	0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x61, 0x6c, 0x63,
+	0x75, 0x6c, 0x61, 0x74, 0x65, 0x48, 0x61, 0x73, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x1a, 0x29, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69,
+	0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x61, 0x6c, 0x63, 0x75, 0x6c, 0x61, 0x74, 0x65, 0x48,
+	0x61, 0x73, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2e, 0x82, 0xd3, 0xe4,
+	0x93, 0x02, 0x28, 0x22, 0x23, 0x2f, 0x76, 0x32, 0x2f, 0x66, 0x69, 0x6c, 0x65, 0x2f, 0x63, 0x61,
+	0x6c, 0x63, 0x75, 0x6c, 0x61, 0x74, 0x65, 0x68, 0x61, 0x73, 0x68, 0x2f, 0x7b, 0x61, 0x6c, 0x6c,
+	0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x7d, 0x3a, 0x01, 0x2a, 0x12, 0x94, 0x01, 0x0a, 0x0d,
+	0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x4d, 0x65, 0x74, 0x61, 0x54, 0x78, 0x6e, 0x12, 0x28, 0x2e,
+	0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e,
+	0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x4d, 0x65, 0x74, 0x61, 0x54, 0x78, 0x6e,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x29, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65,
+	0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6d,
+	0x6d, 0x69, 0x74, 0x4d, 0x65, 0x74, 0x61, 0x54, 0x78, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x22, 0x2e, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x28, 0x22, 0x23, 0x2f, 0x76, 0x32, 0x2f,
+	0x66, 0x69, 0x6c, 0x65, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x74, 0x61, 0x74,
+	0x78, 0x6e, 0x2f, 0x7b, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x7d, 0x3a,
+	0x01, 0x2a, 0x42, 0x2c, 0x5a, 0x2a, 0x63, 0x6f, 0x64, 0x65, 0x2f, 0x67, 0x6f, 0x2f, 0x30, 0x63,
+	0x68, 0x61, 0x69, 0x6e, 0x2e, 0x6e, 0x65, 0x74, 0x2f, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72,
+	0x63, 0x6f, 0x72, 0x65, 0x2f, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x67, 0x72, 0x70, 0x63,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -3016,7 +3025,7 @@ func file_blobber_proto_rawDescGZIP() []byte {
 	return file_blobber_proto_rawDescData
 }
 
-var file_blobber_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_blobber_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_blobber_proto_goTypes = []interface{}{
 	(*CalculateHashRequest)(nil),     // 0: blobber.service.v1.CalculateHashRequest
 	(*CalculateHashResponse)(nil),    // 1: blobber.service.v1.CalculateHashResponse
@@ -3044,11 +3053,13 @@ var file_blobber_proto_goTypes = []interface{}{
 	(*Collaborator)(nil),             // 23: blobber.service.v1.Collaborator
 	(*GetAllocationRequest)(nil),     // 24: blobber.service.v1.GetAllocationRequest
 	(*GetAllocationResponse)(nil),    // 25: blobber.service.v1.GetAllocationResponse
-	(*Allocation)(nil),               // 26: blobber.service.v1.Allocation
-	(*Term)(nil),                     // 27: blobber.service.v1.Term
-	(*FileRef)(nil),                  // 28: blobber.service.v1.FileRef
-	(*FileMetaData)(nil),             // 29: blobber.service.v1.FileMetaData
-	(*DirMetaData)(nil),              // 30: blobber.service.v1.DirMetaData
+	(*RenameObjectRequest)(nil),      // 26: blobber.service.v1.RenameObjectRequest
+	(*RenameObjectResponse)(nil),     // 27: blobber.service.v1.RenameObjectResponse
+	(*Allocation)(nil),               // 28: blobber.service.v1.Allocation
+	(*Term)(nil),                     // 29: blobber.service.v1.Term
+	(*FileRef)(nil),                  // 30: blobber.service.v1.FileRef
+	(*FileMetaData)(nil),             // 31: blobber.service.v1.FileMetaData
+	(*DirMetaData)(nil),              // 32: blobber.service.v1.DirMetaData
 }
 var file_blobber_proto_depIdxs = []int32{
 	14, // 0: blobber.service.v1.CommitResponse.write_marker:type_name -> blobber.service.v1.WriteMarker
@@ -3056,23 +3067,23 @@ var file_blobber_proto_depIdxs = []int32{
 	14, // 2: blobber.service.v1.GetObjectTreeResponse.LatestWM:type_name -> blobber.service.v1.WriteMarker
 	10, // 3: blobber.service.v1.GetReferencePathResponse.ReferencePath:type_name -> blobber.service.v1.ReferencePath
 	14, // 4: blobber.service.v1.GetReferencePathResponse.LatestWM:type_name -> blobber.service.v1.WriteMarker
-	28, // 5: blobber.service.v1.ReferencePath.MetaData:type_name -> blobber.service.v1.FileRef
+	30, // 5: blobber.service.v1.ReferencePath.MetaData:type_name -> blobber.service.v1.FileRef
 	10, // 6: blobber.service.v1.ReferencePath.List:type_name -> blobber.service.v1.ReferencePath
 	13, // 7: blobber.service.v1.GetObjectPathResponse.ObjectPath:type_name -> blobber.service.v1.ObjectPath
 	14, // 8: blobber.service.v1.GetObjectPathResponse.LatestWriteMarker:type_name -> blobber.service.v1.WriteMarker
-	28, // 9: blobber.service.v1.ObjectPath.Meta:type_name -> blobber.service.v1.FileRef
-	28, // 10: blobber.service.v1.ObjectPath.Path:type_name -> blobber.service.v1.FileRef
-	28, // 11: blobber.service.v1.ObjectPath.PathList:type_name -> blobber.service.v1.FileRef
-	28, // 12: blobber.service.v1.ListEntitiesResponse.MetaData:type_name -> blobber.service.v1.FileRef
-	28, // 13: blobber.service.v1.ListEntitiesResponse.Entities:type_name -> blobber.service.v1.FileRef
-	28, // 14: blobber.service.v1.GetFileStatsResponse.MetaData:type_name -> blobber.service.v1.FileRef
+	30, // 9: blobber.service.v1.ObjectPath.Meta:type_name -> blobber.service.v1.FileRef
+	30, // 10: blobber.service.v1.ObjectPath.Path:type_name -> blobber.service.v1.FileRef
+	30, // 11: blobber.service.v1.ObjectPath.PathList:type_name -> blobber.service.v1.FileRef
+	30, // 12: blobber.service.v1.ListEntitiesResponse.MetaData:type_name -> blobber.service.v1.FileRef
+	30, // 13: blobber.service.v1.ListEntitiesResponse.Entities:type_name -> blobber.service.v1.FileRef
+	30, // 14: blobber.service.v1.GetFileStatsResponse.MetaData:type_name -> blobber.service.v1.FileRef
 	19, // 15: blobber.service.v1.GetFileStatsResponse.Stats:type_name -> blobber.service.v1.FileStats
-	28, // 16: blobber.service.v1.GetFileMetaDataResponse.MetaData:type_name -> blobber.service.v1.FileRef
+	30, // 16: blobber.service.v1.GetFileMetaDataResponse.MetaData:type_name -> blobber.service.v1.FileRef
 	23, // 17: blobber.service.v1.GetFileMetaDataResponse.Collaborators:type_name -> blobber.service.v1.Collaborator
-	26, // 18: blobber.service.v1.GetAllocationResponse.allocation:type_name -> blobber.service.v1.Allocation
-	27, // 19: blobber.service.v1.Allocation.Terms:type_name -> blobber.service.v1.Term
-	29, // 20: blobber.service.v1.FileRef.FileMetaData:type_name -> blobber.service.v1.FileMetaData
-	30, // 21: blobber.service.v1.FileRef.DirMetaData:type_name -> blobber.service.v1.DirMetaData
+	28, // 18: blobber.service.v1.GetAllocationResponse.allocation:type_name -> blobber.service.v1.Allocation
+	29, // 19: blobber.service.v1.Allocation.Terms:type_name -> blobber.service.v1.Term
+	31, // 20: blobber.service.v1.FileRef.FileMetaData:type_name -> blobber.service.v1.FileMetaData
+	32, // 21: blobber.service.v1.FileRef.DirMetaData:type_name -> blobber.service.v1.DirMetaData
 	22, // 22: blobber.service.v1.FileMetaData.CommitMetaTxns:type_name -> blobber.service.v1.CommitMetaTxn
 	24, // 23: blobber.service.v1.Blobber.GetAllocation:input_type -> blobber.service.v1.GetAllocationRequest
 	20, // 24: blobber.service.v1.Blobber.GetFileMetaData:input_type -> blobber.service.v1.GetFileMetaDataRequest
@@ -3081,21 +3092,23 @@ var file_blobber_proto_depIdxs = []int32{
 	11, // 27: blobber.service.v1.Blobber.GetObjectPath:input_type -> blobber.service.v1.GetObjectPathRequest
 	8,  // 28: blobber.service.v1.Blobber.GetReferencePath:input_type -> blobber.service.v1.GetReferencePathRequest
 	6,  // 29: blobber.service.v1.Blobber.GetObjectTree:input_type -> blobber.service.v1.GetObjectTreeRequest
-	2,  // 30: blobber.service.v1.Blobber.Commit:input_type -> blobber.service.v1.CommitRequest
-	0,  // 31: blobber.service.v1.Blobber.CalculateHash:input_type -> blobber.service.v1.CalculateHashRequest
-	4,  // 32: blobber.service.v1.Blobber.CommitMetaTxn:input_type -> blobber.service.v1.CommitMetaTxnRequest
-	25, // 33: blobber.service.v1.Blobber.GetAllocation:output_type -> blobber.service.v1.GetAllocationResponse
-	21, // 34: blobber.service.v1.Blobber.GetFileMetaData:output_type -> blobber.service.v1.GetFileMetaDataResponse
-	18, // 35: blobber.service.v1.Blobber.GetFileStats:output_type -> blobber.service.v1.GetFileStatsResponse
-	16, // 36: blobber.service.v1.Blobber.ListEntities:output_type -> blobber.service.v1.ListEntitiesResponse
-	12, // 37: blobber.service.v1.Blobber.GetObjectPath:output_type -> blobber.service.v1.GetObjectPathResponse
-	9,  // 38: blobber.service.v1.Blobber.GetReferencePath:output_type -> blobber.service.v1.GetReferencePathResponse
-	7,  // 39: blobber.service.v1.Blobber.GetObjectTree:output_type -> blobber.service.v1.GetObjectTreeResponse
-	3,  // 40: blobber.service.v1.Blobber.Commit:output_type -> blobber.service.v1.CommitResponse
-	1,  // 41: blobber.service.v1.Blobber.CalculateHash:output_type -> blobber.service.v1.CalculateHashResponse
-	5,  // 42: blobber.service.v1.Blobber.CommitMetaTxn:output_type -> blobber.service.v1.CommitMetaTxnResponse
-	33, // [33:43] is the sub-list for method output_type
-	23, // [23:33] is the sub-list for method input_type
+	26, // 30: blobber.service.v1.Blobber.RenameObject:input_type -> blobber.service.v1.RenameObjectRequest
+	2,  // 31: blobber.service.v1.Blobber.Commit:input_type -> blobber.service.v1.CommitRequest
+	0,  // 32: blobber.service.v1.Blobber.CalculateHash:input_type -> blobber.service.v1.CalculateHashRequest
+	4,  // 33: blobber.service.v1.Blobber.CommitMetaTxn:input_type -> blobber.service.v1.CommitMetaTxnRequest
+	25, // 34: blobber.service.v1.Blobber.GetAllocation:output_type -> blobber.service.v1.GetAllocationResponse
+	21, // 35: blobber.service.v1.Blobber.GetFileMetaData:output_type -> blobber.service.v1.GetFileMetaDataResponse
+	18, // 36: blobber.service.v1.Blobber.GetFileStats:output_type -> blobber.service.v1.GetFileStatsResponse
+	16, // 37: blobber.service.v1.Blobber.ListEntities:output_type -> blobber.service.v1.ListEntitiesResponse
+	12, // 38: blobber.service.v1.Blobber.GetObjectPath:output_type -> blobber.service.v1.GetObjectPathResponse
+	9,  // 39: blobber.service.v1.Blobber.GetReferencePath:output_type -> blobber.service.v1.GetReferencePathResponse
+	7,  // 40: blobber.service.v1.Blobber.GetObjectTree:output_type -> blobber.service.v1.GetObjectTreeResponse
+	27, // 41: blobber.service.v1.Blobber.RenameObject:output_type -> blobber.service.v1.RenameObjectResponse
+	3,  // 42: blobber.service.v1.Blobber.Commit:output_type -> blobber.service.v1.CommitResponse
+	1,  // 43: blobber.service.v1.Blobber.CalculateHash:output_type -> blobber.service.v1.CalculateHashResponse
+	5,  // 44: blobber.service.v1.Blobber.CommitMetaTxn:output_type -> blobber.service.v1.CommitMetaTxnResponse
+	34, // [34:45] is the sub-list for method output_type
+	23, // [23:34] is the sub-list for method input_type
 	23, // [23:23] is the sub-list for extension type_name
 	23, // [23:23] is the sub-list for extension extendee
 	0,  // [0:23] is the sub-list for field type_name
@@ -3420,7 +3433,6 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
-		file_blobber_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*RenameObjectRequest); i {
 			case 0:
 				return &v.state
@@ -3432,7 +3444,7 @@ func file_blobber_proto_init() {
 				return nil
 			}
 		}
-		file_blobber_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
+		file_blobber_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*RenameObjectResponse); i {
 			case 0:
 				return &v.state
@@ -3444,7 +3456,7 @@ func file_blobber_proto_init() {
 				return nil
 			}
 		}
-		file_blobber_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
+		file_blobber_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Allocation); i {
 			case 0:
 				return &v.state
@@ -3456,7 +3468,7 @@ func file_blobber_proto_init() {
 				return nil
 			}
 		}
-		file_blobber_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
+		file_blobber_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Term); i {
 			case 0:
 				return &v.state
@@ -3468,7 +3480,7 @@ func file_blobber_proto_init() {
 				return nil
 			}
 		}
-		file_blobber_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
+		file_blobber_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*FileRef); i {
 			case 0:
 				return &v.state
@@ -3480,7 +3492,7 @@ func file_blobber_proto_init() {
 				return nil
 			}
 		}
-		file_blobber_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
+		file_blobber_proto_msgTypes[31].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*FileMetaData); i {
 			case 0:
 				return &v.state
@@ -3492,7 +3504,7 @@ func file_blobber_proto_init() {
 				return nil
 			}
 		}
-		file_blobber_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
+		file_blobber_proto_msgTypes[32].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DirMetaData); i {
 			case 0:
 				return &v.state
@@ -3511,7 +3523,7 @@ func file_blobber_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_blobber_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   31,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
