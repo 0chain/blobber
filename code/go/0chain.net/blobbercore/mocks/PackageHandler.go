@@ -344,20 +344,6 @@ func (_m *PackageHandler) IsACollaborator(ctx context.Context, refID int64, clie
 	return r0
 }
 
-// SaveAllocationChanges provides a mock function with given fields: ctx, alloc
-func (_m *PackageHandler) SaveAllocationChanges(ctx context.Context, alloc *allocation.AllocationChangeCollector) error {
-	ret := _m.Called(ctx, alloc)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *allocation.AllocationChangeCollector) error); ok {
-		r0 = rf(ctx, alloc)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // RemoveCollaborator provides a mock function with given fields: ctx, refID, clientID
 func (_m *PackageHandler) RemoveCollaborator(ctx context.Context, refID int64, clientID string) error {
 	ret := _m.Called(ctx, refID, clientID)
@@ -365,6 +351,20 @@ func (_m *PackageHandler) RemoveCollaborator(ctx context.Context, refID int64, c
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, int64, string) error); ok {
 		r0 = rf(ctx, refID, clientID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SaveAllocationChanges provides a mock function with given fields: ctx, alloc
+func (_m *PackageHandler) SaveAllocationChanges(ctx context.Context, alloc *allocation.AllocationChangeCollector) error {
+	ret := _m.Called(ctx, alloc)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *allocation.AllocationChangeCollector) error); ok {
+		r0 = rf(ctx, alloc)
 	} else {
 		r0 = ret.Error(0)
 	}
