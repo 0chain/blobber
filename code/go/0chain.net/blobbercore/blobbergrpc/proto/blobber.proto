@@ -43,12 +43,69 @@ service Blobber {
     };
   }
 
+  rpc Commit(CommitRequest) returns (CommitResponse) {
+    option (google.api.http) = {
+      post: "/v2/connection/commit/{allocation}"
+      body: "*"
+    };
+  }
+
+  rpc CalculateHash(CalculateHashRequest) returns (CalculateHashResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/calculatehash/{allocation}"
+      body: "*"
+    };
+  }
+
+  rpc CommitMetaTxn(CommitMetaTxnRequest) returns (CommitMetaTxnResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/commitmetatxn/{allocation}"
+      body: "*"
+    };
+  }
+
   rpc UpdateObjectAttributes(UpdateObjectAttributesRequest) returns (UpdateObjectAttributesResponse) {
     option (google.api.http) = {
       post: "/v2/file/attributes/{allocation}"
       body: "*"
     };
   }
+}
+
+message CalculateHashRequest {
+  string allocation = 1;
+  string path = 2;
+  string paths = 3;
+}
+
+message CalculateHashResponse {
+  string message = 1;
+}
+
+message CommitRequest {
+  string allocation = 1;
+  string connection_id = 2;
+  string write_marker = 3;
+}
+
+
+message CommitResponse {
+  string allocation_root = 1;
+  WriteMarker write_marker = 2;
+  string error_message = 3;
+  bool success = 4;
+}
+
+message CommitMetaTxnRequest {
+  string path = 1;
+  string path_hash = 2;
+  string auth_token = 3;
+  string allocation = 4;
+  string txn_id = 5;
+}
+
+message CommitMetaTxnResponse {
+  string message = 1;
 }
 
 message GetObjectTreeRequest {
@@ -110,6 +167,7 @@ message ListEntitiesRequest {
   string auth_token = 3;
   string allocation = 4;
 }
+
 message ListEntitiesResponse {
   string AllocationRoot = 1;
   FileRef MetaData = 2;
@@ -121,6 +179,7 @@ message GetFileStatsRequest {
   string path_hash = 2;
   string allocation = 3;
 }
+
 message GetFileStatsResponse {
   FileRef MetaData = 1;
   FileStats Stats = 2;
@@ -145,6 +204,7 @@ message GetFileMetaDataRequest {
   string auth_token = 3;
   string allocation = 4;
 }
+
 message GetFileMetaDataResponse {
   FileRef MetaData = 1;
   repeated Collaborator Collaborators = 2;
@@ -165,6 +225,7 @@ message Collaborator {
 message GetAllocationRequest {
   string id = 1;
 }
+
 message GetAllocationResponse {
   Allocation allocation = 1;
 }
