@@ -45,10 +45,8 @@ type PackageHandler interface {
 	GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*allocation.AllocationChangeCollector, error)
 	SaveAllocationChanges(ctx context.Context, alloc *allocation.AllocationChangeCollector) error
 	GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
-	GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*allocation.AllocationChangeCollector, error)
 	VerifyMarker(wm *writemarker.WriteMarkerEntity, ctx context.Context, sa *allocation.Allocation, co *allocation.AllocationChangeCollector) error
 	ApplyChanges(connectionObj *allocation.AllocationChangeCollector, ctx context.Context, allocationRoot string) error
-	GetReference(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 	UpdateAllocationAndCommitChanges(ctx context.Context, writemarkerObj *writemarker.WriteMarkerEntity, connectionObj *allocation.AllocationChangeCollector, allocationObj *allocation.Allocation, allocationRoot string) error
 }
 
@@ -98,11 +96,6 @@ func (r *packageHandler) GetWriteMarkerEntity(ctx context.Context, allocation_ro
 	return writemarker.GetWriteMarkerEntity(ctx, allocation_root)
 }
 
-func (r *packageHandler) GetReference(ctx context.Context, allocationID string, newPath string) (
-	*reference.Ref, error) {
-	return reference.GetReference(ctx, allocationID, newPath)
-}
-
 func (r *packageHandler) GetReferenceLookup(ctx context.Context, allocationID string, path string) string {
 	return reference.GetReferenceLookup(allocationID, path)
 }
@@ -125,11 +118,6 @@ func (r *packageHandler) GetCollaborators(ctx context.Context, refID int64) ([]r
 
 func (r *packageHandler) IsACollaborator(ctx context.Context, refID int64, clientID string) bool {
 	return reference.IsACollaborator(ctx, refID, clientID)
-}
-
-func (r *packageHandler) GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*allocation.AllocationChangeCollector, error) {
-
-	return allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 }
 
 func (r packageHandler) SaveAllocationChanges(ctx context.Context, alloc *allocation.AllocationChangeCollector) error {
