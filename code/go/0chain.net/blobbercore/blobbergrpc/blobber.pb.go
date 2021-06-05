@@ -21,6 +21,376 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type CalculateHashRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Allocation string `protobuf:"bytes,1,opt,name=allocation,proto3" json:"allocation,omitempty"`
+	Path       string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	Paths      string `protobuf:"bytes,3,opt,name=paths,proto3" json:"paths,omitempty"`
+}
+
+func (x *CalculateHashRequest) Reset() {
+	*x = CalculateHashRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_blobber_proto_msgTypes[0]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *CalculateHashRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CalculateHashRequest) ProtoMessage() {}
+
+func (x *CalculateHashRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_blobber_proto_msgTypes[0]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CalculateHashRequest.ProtoReflect.Descriptor instead.
+func (*CalculateHashRequest) Descriptor() ([]byte, []int) {
+	return file_blobber_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *CalculateHashRequest) GetAllocation() string {
+	if x != nil {
+		return x.Allocation
+	}
+	return ""
+}
+
+func (x *CalculateHashRequest) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *CalculateHashRequest) GetPaths() string {
+	if x != nil {
+		return x.Paths
+	}
+	return ""
+}
+
+type CalculateHashResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+}
+
+func (x *CalculateHashResponse) Reset() {
+	*x = CalculateHashResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_blobber_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *CalculateHashResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CalculateHashResponse) ProtoMessage() {}
+
+func (x *CalculateHashResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_blobber_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CalculateHashResponse.ProtoReflect.Descriptor instead.
+func (*CalculateHashResponse) Descriptor() ([]byte, []int) {
+	return file_blobber_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CalculateHashResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type CommitRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Allocation   string `protobuf:"bytes,1,opt,name=allocation,proto3" json:"allocation,omitempty"`
+	ConnectionId string `protobuf:"bytes,2,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	WriteMarker  string `protobuf:"bytes,3,opt,name=write_marker,json=writeMarker,proto3" json:"write_marker,omitempty"`
+}
+
+func (x *CommitRequest) Reset() {
+	*x = CommitRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_blobber_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *CommitRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommitRequest) ProtoMessage() {}
+
+func (x *CommitRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_blobber_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommitRequest.ProtoReflect.Descriptor instead.
+func (*CommitRequest) Descriptor() ([]byte, []int) {
+	return file_blobber_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CommitRequest) GetAllocation() string {
+	if x != nil {
+		return x.Allocation
+	}
+	return ""
+}
+
+func (x *CommitRequest) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
+}
+
+func (x *CommitRequest) GetWriteMarker() string {
+	if x != nil {
+		return x.WriteMarker
+	}
+	return ""
+}
+
+type CommitResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AllocationRoot string       `protobuf:"bytes,1,opt,name=allocation_root,json=allocationRoot,proto3" json:"allocation_root,omitempty"`
+	WriteMarker    *WriteMarker `protobuf:"bytes,2,opt,name=write_marker,json=writeMarker,proto3" json:"write_marker,omitempty"`
+	ErrorMessage   string       `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	Success        bool         `protobuf:"varint,4,opt,name=success,proto3" json:"success,omitempty"`
+}
+
+func (x *CommitResponse) Reset() {
+	*x = CommitResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_blobber_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *CommitResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommitResponse) ProtoMessage() {}
+
+func (x *CommitResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_blobber_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommitResponse.ProtoReflect.Descriptor instead.
+func (*CommitResponse) Descriptor() ([]byte, []int) {
+	return file_blobber_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CommitResponse) GetAllocationRoot() string {
+	if x != nil {
+		return x.AllocationRoot
+	}
+	return ""
+}
+
+func (x *CommitResponse) GetWriteMarker() *WriteMarker {
+	if x != nil {
+		return x.WriteMarker
+	}
+	return nil
+}
+
+func (x *CommitResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *CommitResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+type CommitMetaTxnRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Path       string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	PathHash   string `protobuf:"bytes,2,opt,name=path_hash,json=pathHash,proto3" json:"path_hash,omitempty"`
+	AuthToken  string `protobuf:"bytes,3,opt,name=auth_token,json=authToken,proto3" json:"auth_token,omitempty"`
+	Allocation string `protobuf:"bytes,4,opt,name=allocation,proto3" json:"allocation,omitempty"`
+	TxnId      string `protobuf:"bytes,5,opt,name=txn_id,json=txnId,proto3" json:"txn_id,omitempty"`
+}
+
+func (x *CommitMetaTxnRequest) Reset() {
+	*x = CommitMetaTxnRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_blobber_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *CommitMetaTxnRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommitMetaTxnRequest) ProtoMessage() {}
+
+func (x *CommitMetaTxnRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_blobber_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommitMetaTxnRequest.ProtoReflect.Descriptor instead.
+func (*CommitMetaTxnRequest) Descriptor() ([]byte, []int) {
+	return file_blobber_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *CommitMetaTxnRequest) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *CommitMetaTxnRequest) GetPathHash() string {
+	if x != nil {
+		return x.PathHash
+	}
+	return ""
+}
+
+func (x *CommitMetaTxnRequest) GetAuthToken() string {
+	if x != nil {
+		return x.AuthToken
+	}
+	return ""
+}
+
+func (x *CommitMetaTxnRequest) GetAllocation() string {
+	if x != nil {
+		return x.Allocation
+	}
+	return ""
+}
+
+func (x *CommitMetaTxnRequest) GetTxnId() string {
+	if x != nil {
+		return x.TxnId
+	}
+	return ""
+}
+
+type CommitMetaTxnResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+}
+
+func (x *CommitMetaTxnResponse) Reset() {
+	*x = CommitMetaTxnResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_blobber_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *CommitMetaTxnResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommitMetaTxnResponse) ProtoMessage() {}
+
+func (x *CommitMetaTxnResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_blobber_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommitMetaTxnResponse.ProtoReflect.Descriptor instead.
+func (*CommitMetaTxnResponse) Descriptor() ([]byte, []int) {
+	return file_blobber_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CommitMetaTxnResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 type GetObjectTreeRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -33,7 +403,7 @@ type GetObjectTreeRequest struct {
 func (x *GetObjectTreeRequest) Reset() {
 	*x = GetObjectTreeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[0]
+		mi := &file_blobber_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -46,7 +416,7 @@ func (x *GetObjectTreeRequest) String() string {
 func (*GetObjectTreeRequest) ProtoMessage() {}
 
 func (x *GetObjectTreeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[0]
+	mi := &file_blobber_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -59,7 +429,7 @@ func (x *GetObjectTreeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObjectTreeRequest.ProtoReflect.Descriptor instead.
 func (*GetObjectTreeRequest) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{0}
+	return file_blobber_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetObjectTreeRequest) GetPath() string {
@@ -88,7 +458,7 @@ type GetObjectTreeResponse struct {
 func (x *GetObjectTreeResponse) Reset() {
 	*x = GetObjectTreeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[1]
+		mi := &file_blobber_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -101,7 +471,7 @@ func (x *GetObjectTreeResponse) String() string {
 func (*GetObjectTreeResponse) ProtoMessage() {}
 
 func (x *GetObjectTreeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[1]
+	mi := &file_blobber_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -114,7 +484,7 @@ func (x *GetObjectTreeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObjectTreeResponse.ProtoReflect.Descriptor instead.
 func (*GetObjectTreeResponse) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{1}
+	return file_blobber_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetObjectTreeResponse) GetReferencePath() *ReferencePath {
@@ -144,7 +514,7 @@ type GetReferencePathRequest struct {
 func (x *GetReferencePathRequest) Reset() {
 	*x = GetReferencePathRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[2]
+		mi := &file_blobber_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -157,7 +527,7 @@ func (x *GetReferencePathRequest) String() string {
 func (*GetReferencePathRequest) ProtoMessage() {}
 
 func (x *GetReferencePathRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[2]
+	mi := &file_blobber_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -170,7 +540,7 @@ func (x *GetReferencePathRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetReferencePathRequest.ProtoReflect.Descriptor instead.
 func (*GetReferencePathRequest) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{2}
+	return file_blobber_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetReferencePathRequest) GetPaths() string {
@@ -206,7 +576,7 @@ type GetReferencePathResponse struct {
 func (x *GetReferencePathResponse) Reset() {
 	*x = GetReferencePathResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[3]
+		mi := &file_blobber_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -219,7 +589,7 @@ func (x *GetReferencePathResponse) String() string {
 func (*GetReferencePathResponse) ProtoMessage() {}
 
 func (x *GetReferencePathResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[3]
+	mi := &file_blobber_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -232,7 +602,7 @@ func (x *GetReferencePathResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetReferencePathResponse.ProtoReflect.Descriptor instead.
 func (*GetReferencePathResponse) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{3}
+	return file_blobber_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetReferencePathResponse) GetReferencePath() *ReferencePath {
@@ -261,7 +631,7 @@ type ReferencePath struct {
 func (x *ReferencePath) Reset() {
 	*x = ReferencePath{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[4]
+		mi := &file_blobber_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -274,7 +644,7 @@ func (x *ReferencePath) String() string {
 func (*ReferencePath) ProtoMessage() {}
 
 func (x *ReferencePath) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[4]
+	mi := &file_blobber_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -287,7 +657,7 @@ func (x *ReferencePath) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReferencePath.ProtoReflect.Descriptor instead.
 func (*ReferencePath) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{4}
+	return file_blobber_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ReferencePath) GetMetaData() *FileRef {
@@ -317,7 +687,7 @@ type GetObjectPathRequest struct {
 func (x *GetObjectPathRequest) Reset() {
 	*x = GetObjectPathRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[5]
+		mi := &file_blobber_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -330,7 +700,7 @@ func (x *GetObjectPathRequest) String() string {
 func (*GetObjectPathRequest) ProtoMessage() {}
 
 func (x *GetObjectPathRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[5]
+	mi := &file_blobber_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -343,7 +713,7 @@ func (x *GetObjectPathRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObjectPathRequest.ProtoReflect.Descriptor instead.
 func (*GetObjectPathRequest) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{5}
+	return file_blobber_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetObjectPathRequest) GetAllocation() string {
@@ -379,7 +749,7 @@ type GetObjectPathResponse struct {
 func (x *GetObjectPathResponse) Reset() {
 	*x = GetObjectPathResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[6]
+		mi := &file_blobber_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -392,7 +762,7 @@ func (x *GetObjectPathResponse) String() string {
 func (*GetObjectPathResponse) ProtoMessage() {}
 
 func (x *GetObjectPathResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[6]
+	mi := &file_blobber_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -405,7 +775,7 @@ func (x *GetObjectPathResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObjectPathResponse.ProtoReflect.Descriptor instead.
 func (*GetObjectPathResponse) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{6}
+	return file_blobber_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetObjectPathResponse) GetObjectPath() *ObjectPath {
@@ -437,7 +807,7 @@ type ObjectPath struct {
 func (x *ObjectPath) Reset() {
 	*x = ObjectPath{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[7]
+		mi := &file_blobber_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -450,7 +820,7 @@ func (x *ObjectPath) String() string {
 func (*ObjectPath) ProtoMessage() {}
 
 func (x *ObjectPath) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[7]
+	mi := &file_blobber_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -463,7 +833,7 @@ func (x *ObjectPath) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ObjectPath.ProtoReflect.Descriptor instead.
 func (*ObjectPath) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{7}
+	return file_blobber_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ObjectPath) GetRootHash() string {
@@ -519,7 +889,7 @@ type WriteMarker struct {
 func (x *WriteMarker) Reset() {
 	*x = WriteMarker{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[8]
+		mi := &file_blobber_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -532,7 +902,7 @@ func (x *WriteMarker) String() string {
 func (*WriteMarker) ProtoMessage() {}
 
 func (x *WriteMarker) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[8]
+	mi := &file_blobber_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -545,7 +915,7 @@ func (x *WriteMarker) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WriteMarker.ProtoReflect.Descriptor instead.
 func (*WriteMarker) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{8}
+	return file_blobber_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *WriteMarker) GetAllocationRoot() string {
@@ -618,7 +988,7 @@ type ListEntitiesRequest struct {
 func (x *ListEntitiesRequest) Reset() {
 	*x = ListEntitiesRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[9]
+		mi := &file_blobber_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -631,7 +1001,7 @@ func (x *ListEntitiesRequest) String() string {
 func (*ListEntitiesRequest) ProtoMessage() {}
 
 func (x *ListEntitiesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[9]
+	mi := &file_blobber_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -644,7 +1014,7 @@ func (x *ListEntitiesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEntitiesRequest.ProtoReflect.Descriptor instead.
 func (*ListEntitiesRequest) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{9}
+	return file_blobber_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListEntitiesRequest) GetPath() string {
@@ -688,7 +1058,7 @@ type ListEntitiesResponse struct {
 func (x *ListEntitiesResponse) Reset() {
 	*x = ListEntitiesResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[10]
+		mi := &file_blobber_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -701,7 +1071,7 @@ func (x *ListEntitiesResponse) String() string {
 func (*ListEntitiesResponse) ProtoMessage() {}
 
 func (x *ListEntitiesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[10]
+	mi := &file_blobber_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -714,7 +1084,7 @@ func (x *ListEntitiesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEntitiesResponse.ProtoReflect.Descriptor instead.
 func (*ListEntitiesResponse) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{10}
+	return file_blobber_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListEntitiesResponse) GetAllocationRoot() string {
@@ -751,7 +1121,7 @@ type GetFileStatsRequest struct {
 func (x *GetFileStatsRequest) Reset() {
 	*x = GetFileStatsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[11]
+		mi := &file_blobber_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -764,7 +1134,7 @@ func (x *GetFileStatsRequest) String() string {
 func (*GetFileStatsRequest) ProtoMessage() {}
 
 func (x *GetFileStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[11]
+	mi := &file_blobber_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -777,7 +1147,7 @@ func (x *GetFileStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFileStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetFileStatsRequest) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{11}
+	return file_blobber_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetFileStatsRequest) GetPath() string {
@@ -813,7 +1183,7 @@ type GetFileStatsResponse struct {
 func (x *GetFileStatsResponse) Reset() {
 	*x = GetFileStatsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[12]
+		mi := &file_blobber_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -826,7 +1196,7 @@ func (x *GetFileStatsResponse) String() string {
 func (*GetFileStatsResponse) ProtoMessage() {}
 
 func (x *GetFileStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[12]
+	mi := &file_blobber_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -839,7 +1209,7 @@ func (x *GetFileStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFileStatsResponse.ProtoReflect.Descriptor instead.
 func (*GetFileStatsResponse) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{12}
+	return file_blobber_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetFileStatsResponse) GetMetaData() *FileRef {
@@ -876,7 +1246,7 @@ type FileStats struct {
 func (x *FileStats) Reset() {
 	*x = FileStats{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[13]
+		mi := &file_blobber_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -889,7 +1259,7 @@ func (x *FileStats) String() string {
 func (*FileStats) ProtoMessage() {}
 
 func (x *FileStats) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[13]
+	mi := &file_blobber_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -902,7 +1272,7 @@ func (x *FileStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileStats.ProtoReflect.Descriptor instead.
 func (*FileStats) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{13}
+	return file_blobber_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *FileStats) GetID() int64 {
@@ -989,7 +1359,7 @@ type GetFileMetaDataRequest struct {
 func (x *GetFileMetaDataRequest) Reset() {
 	*x = GetFileMetaDataRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[14]
+		mi := &file_blobber_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1002,7 +1372,7 @@ func (x *GetFileMetaDataRequest) String() string {
 func (*GetFileMetaDataRequest) ProtoMessage() {}
 
 func (x *GetFileMetaDataRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[14]
+	mi := &file_blobber_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1015,7 +1385,7 @@ func (x *GetFileMetaDataRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFileMetaDataRequest.ProtoReflect.Descriptor instead.
 func (*GetFileMetaDataRequest) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{14}
+	return file_blobber_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GetFileMetaDataRequest) GetPath() string {
@@ -1058,7 +1428,7 @@ type GetFileMetaDataResponse struct {
 func (x *GetFileMetaDataResponse) Reset() {
 	*x = GetFileMetaDataResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[15]
+		mi := &file_blobber_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1071,7 +1441,7 @@ func (x *GetFileMetaDataResponse) String() string {
 func (*GetFileMetaDataResponse) ProtoMessage() {}
 
 func (x *GetFileMetaDataResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[15]
+	mi := &file_blobber_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1084,7 +1454,7 @@ func (x *GetFileMetaDataResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFileMetaDataResponse.ProtoReflect.Descriptor instead.
 func (*GetFileMetaDataResponse) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{15}
+	return file_blobber_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GetFileMetaDataResponse) GetMetaData() *FileRef {
@@ -1114,7 +1484,7 @@ type CommitMetaTxn struct {
 func (x *CommitMetaTxn) Reset() {
 	*x = CommitMetaTxn{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[16]
+		mi := &file_blobber_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1127,7 +1497,7 @@ func (x *CommitMetaTxn) String() string {
 func (*CommitMetaTxn) ProtoMessage() {}
 
 func (x *CommitMetaTxn) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[16]
+	mi := &file_blobber_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1140,7 +1510,7 @@ func (x *CommitMetaTxn) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitMetaTxn.ProtoReflect.Descriptor instead.
 func (*CommitMetaTxn) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{16}
+	return file_blobber_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CommitMetaTxn) GetRefId() int64 {
@@ -1177,7 +1547,7 @@ type Collaborator struct {
 func (x *Collaborator) Reset() {
 	*x = Collaborator{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[17]
+		mi := &file_blobber_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1190,7 +1560,7 @@ func (x *Collaborator) String() string {
 func (*Collaborator) ProtoMessage() {}
 
 func (x *Collaborator) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[17]
+	mi := &file_blobber_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1203,7 +1573,7 @@ func (x *Collaborator) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Collaborator.ProtoReflect.Descriptor instead.
 func (*Collaborator) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{17}
+	return file_blobber_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *Collaborator) GetRefId() int64 {
@@ -1238,7 +1608,7 @@ type GetAllocationRequest struct {
 func (x *GetAllocationRequest) Reset() {
 	*x = GetAllocationRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[18]
+		mi := &file_blobber_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1251,7 +1621,7 @@ func (x *GetAllocationRequest) String() string {
 func (*GetAllocationRequest) ProtoMessage() {}
 
 func (x *GetAllocationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[18]
+	mi := &file_blobber_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1264,7 +1634,7 @@ func (x *GetAllocationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAllocationRequest.ProtoReflect.Descriptor instead.
 func (*GetAllocationRequest) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{18}
+	return file_blobber_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GetAllocationRequest) GetId() string {
@@ -1285,7 +1655,7 @@ type GetAllocationResponse struct {
 func (x *GetAllocationResponse) Reset() {
 	*x = GetAllocationResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[19]
+		mi := &file_blobber_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1298,7 +1668,7 @@ func (x *GetAllocationResponse) String() string {
 func (*GetAllocationResponse) ProtoMessage() {}
 
 func (x *GetAllocationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[19]
+	mi := &file_blobber_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1311,7 +1681,7 @@ func (x *GetAllocationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAllocationResponse.ProtoReflect.Descriptor instead.
 func (*GetAllocationResponse) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{19}
+	return file_blobber_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *GetAllocationResponse) GetAllocation() *Allocation {
@@ -1540,7 +1910,7 @@ type Allocation struct {
 func (x *Allocation) Reset() {
 	*x = Allocation{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[22]
+		mi := &file_blobber_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1553,7 +1923,7 @@ func (x *Allocation) String() string {
 func (*Allocation) ProtoMessage() {}
 
 func (x *Allocation) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[22]
+	mi := &file_blobber_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1566,7 +1936,7 @@ func (x *Allocation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Allocation.ProtoReflect.Descriptor instead.
 func (*Allocation) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{22}
+	return file_blobber_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *Allocation) GetID() string {
@@ -1703,7 +2073,7 @@ type Term struct {
 func (x *Term) Reset() {
 	*x = Term{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[23]
+		mi := &file_blobber_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1716,7 +2086,7 @@ func (x *Term) String() string {
 func (*Term) ProtoMessage() {}
 
 func (x *Term) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[23]
+	mi := &file_blobber_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1729,7 +2099,7 @@ func (x *Term) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Term.ProtoReflect.Descriptor instead.
 func (*Term) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{23}
+	return file_blobber_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *Term) GetID() int64 {
@@ -1780,7 +2150,7 @@ type FileRef struct {
 func (x *FileRef) Reset() {
 	*x = FileRef{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[24]
+		mi := &file_blobber_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1793,7 +2163,7 @@ func (x *FileRef) String() string {
 func (*FileRef) ProtoMessage() {}
 
 func (x *FileRef) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[24]
+	mi := &file_blobber_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1806,7 +2176,7 @@ func (x *FileRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileRef.ProtoReflect.Descriptor instead.
 func (*FileRef) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{24}
+	return file_blobber_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *FileRef) GetType() string {
@@ -1864,7 +2234,7 @@ type FileMetaData struct {
 func (x *FileMetaData) Reset() {
 	*x = FileMetaData{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[25]
+		mi := &file_blobber_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1877,7 +2247,7 @@ func (x *FileMetaData) String() string {
 func (*FileMetaData) ProtoMessage() {}
 
 func (x *FileMetaData) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[25]
+	mi := &file_blobber_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1890,7 +2260,7 @@ func (x *FileMetaData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileMetaData.ProtoReflect.Descriptor instead.
 func (*FileMetaData) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{25}
+	return file_blobber_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *FileMetaData) GetType() string {
@@ -2081,7 +2451,7 @@ type DirMetaData struct {
 func (x *DirMetaData) Reset() {
 	*x = DirMetaData{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_blobber_proto_msgTypes[26]
+		mi := &file_blobber_proto_msgTypes[30]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2094,7 +2464,7 @@ func (x *DirMetaData) String() string {
 func (*DirMetaData) ProtoMessage() {}
 
 func (x *DirMetaData) ProtoReflect() protoreflect.Message {
-	mi := &file_blobber_proto_msgTypes[26]
+	mi := &file_blobber_proto_msgTypes[30]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2107,7 +2477,7 @@ func (x *DirMetaData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirMetaData.ProtoReflect.Descriptor instead.
 func (*DirMetaData) Descriptor() ([]byte, []int) {
-	return file_blobber_proto_rawDescGZIP(), []int{26}
+	return file_blobber_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *DirMetaData) GetType() string {
@@ -2187,7 +2557,49 @@ var file_blobber_proto_rawDesc = []byte{
 	0x12, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65,
 	0x2e, 0x76, 0x31, 0x1a, 0x1c, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x61, 0x70, 0x69, 0x2f,
 	0x61, 0x6e, 0x6e, 0x6f, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x22, 0x4a, 0x0a, 0x14, 0x47, 0x65, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x54, 0x72,
+	0x6f, 0x22, 0x60, 0x0a, 0x14, 0x43, 0x61, 0x6c, 0x63, 0x75, 0x6c, 0x61, 0x74, 0x65, 0x48, 0x61,
+	0x73, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1e, 0x0a, 0x0a, 0x61, 0x6c, 0x6c,
+	0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x61,
+	0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x61, 0x74,
+	0x68, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x61, 0x74, 0x68, 0x12, 0x14, 0x0a,
+	0x05, 0x70, 0x61, 0x74, 0x68, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x70, 0x61,
+	0x74, 0x68, 0x73, 0x22, 0x31, 0x0a, 0x15, 0x43, 0x61, 0x6c, 0x63, 0x75, 0x6c, 0x61, 0x74, 0x65,
+	0x48, 0x61, 0x73, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x18, 0x0a, 0x07,
+	0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6d,
+	0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x22, 0x77, 0x0a, 0x0d, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1e, 0x0a, 0x0a, 0x61, 0x6c, 0x6c, 0x6f, 0x63,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x61, 0x6c, 0x6c,
+	0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x23, 0x0a, 0x0d, 0x63, 0x6f, 0x6e, 0x6e, 0x65,
+	0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c,
+	0x63, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x21, 0x0a, 0x0c,
+	0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x6d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x18, 0x03, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x0b, 0x77, 0x72, 0x69, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x22,
+	0xbc, 0x01, 0x0a, 0x0e, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x27, 0x0a, 0x0f, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x5f, 0x72, 0x6f, 0x6f, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x61, 0x6c, 0x6c,
+	0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x6f, 0x6f, 0x74, 0x12, 0x42, 0x0a, 0x0c, 0x77,
+	0x72, 0x69, 0x74, 0x65, 0x5f, 0x6d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x1f, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76,
+	0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x57, 0x72, 0x69, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b,
+	0x65, 0x72, 0x52, 0x0b, 0x77, 0x72, 0x69, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x12,
+	0x23, 0x0a, 0x0d, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x5f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x4d, 0x65, 0x73,
+	0x73, 0x61, 0x67, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x18,
+	0x04, 0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x22, 0x9d,
+	0x01, 0x0a, 0x14, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x4d, 0x65, 0x74, 0x61, 0x54, 0x78, 0x6e,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x61, 0x74, 0x68, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x61, 0x74, 0x68, 0x12, 0x1b, 0x0a, 0x09, 0x70,
+	0x61, 0x74, 0x68, 0x5f, 0x68, 0x61, 0x73, 0x68, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08,
+	0x70, 0x61, 0x74, 0x68, 0x48, 0x61, 0x73, 0x68, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x74, 0x68,
+	0x5f, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x75,
+	0x74, 0x68, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x12, 0x1e, 0x0a, 0x0a, 0x61, 0x6c, 0x6c, 0x6f, 0x63,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x61, 0x6c, 0x6c,
+	0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x15, 0x0a, 0x06, 0x74, 0x78, 0x6e, 0x5f, 0x69,
+	0x64, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x74, 0x78, 0x6e, 0x49, 0x64, 0x22, 0x31,
+	0x0a, 0x15, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x4d, 0x65, 0x74, 0x61, 0x54, 0x78, 0x6e, 0x52,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61,
+	0x67, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67,
+	0x65, 0x22, 0x4a, 0x0a, 0x14, 0x47, 0x65, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x54, 0x72,
 	0x65, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x61, 0x74,
 	0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x61, 0x74, 0x68, 0x12, 0x1e, 0x0a,
 	0x0a, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28,
@@ -2539,6 +2951,82 @@ var file_blobber_proto_rawDesc = []byte{
 	0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x8e, 0x01, 0x0a, 0x0f, 0x47, 0x65,
 	0x74, 0x46, 0x69, 0x6c, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x44, 0x61, 0x74, 0x61, 0x12, 0x2a, 0x2e,
 	0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e,
+	0x76, 0x31, 0x2e, 0x46, 0x69, 0x6c, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x44, 0x61, 0x74, 0x61, 0x52,
+	0x0c, 0x46, 0x69, 0x6c, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x44, 0x61, 0x74, 0x61, 0x12, 0x41, 0x0a,
+	0x0b, 0x44, 0x69, 0x72, 0x4d, 0x65, 0x74, 0x61, 0x44, 0x61, 0x74, 0x61, 0x18, 0x03, 0x20, 0x01,
+	0x28, 0x0b, 0x32, 0x1f, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72,
+	0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x44, 0x69, 0x72, 0x4d, 0x65, 0x74, 0x61, 0x44,
+	0x61, 0x74, 0x61, 0x52, 0x0b, 0x44, 0x69, 0x72, 0x4d, 0x65, 0x74, 0x61, 0x44, 0x61, 0x74, 0x61,
+	0x22, 0xaf, 0x06, 0x0a, 0x0c, 0x46, 0x69, 0x6c, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x44, 0x61, 0x74,
+	0x61, 0x12, 0x12, 0x0a, 0x04, 0x54, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x04, 0x54, 0x79, 0x70, 0x65, 0x12, 0x1e, 0x0a, 0x0a, 0x4c, 0x6f, 0x6f, 0x6b, 0x75, 0x70, 0x48,
+	0x61, 0x73, 0x68, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x4c, 0x6f, 0x6f, 0x6b, 0x75,
+	0x70, 0x48, 0x61, 0x73, 0x68, 0x12, 0x12, 0x0a, 0x04, 0x4e, 0x61, 0x6d, 0x65, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x04, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x50, 0x61, 0x74,
+	0x68, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x50, 0x61, 0x74, 0x68, 0x12, 0x12, 0x0a,
+	0x04, 0x48, 0x61, 0x73, 0x68, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x48, 0x61, 0x73,
+	0x68, 0x12, 0x1c, 0x0a, 0x09, 0x4e, 0x75, 0x6d, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x18, 0x06,
+	0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x4e, 0x75, 0x6d, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x12,
+	0x1a, 0x0a, 0x08, 0x50, 0x61, 0x74, 0x68, 0x48, 0x61, 0x73, 0x68, 0x18, 0x07, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x08, 0x50, 0x61, 0x74, 0x68, 0x48, 0x61, 0x73, 0x68, 0x12, 0x1e, 0x0a, 0x0a, 0x43,
+	0x75, 0x73, 0x74, 0x6f, 0x6d, 0x4d, 0x65, 0x74, 0x61, 0x18, 0x08, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x0a, 0x43, 0x75, 0x73, 0x74, 0x6f, 0x6d, 0x4d, 0x65, 0x74, 0x61, 0x12, 0x20, 0x0a, 0x0b, 0x43,
+	0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x48, 0x61, 0x73, 0x68, 0x18, 0x09, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x0b, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x48, 0x61, 0x73, 0x68, 0x12, 0x12, 0x0a,
+	0x04, 0x53, 0x69, 0x7a, 0x65, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x03, 0x52, 0x04, 0x53, 0x69, 0x7a,
+	0x65, 0x12, 0x1e, 0x0a, 0x0a, 0x4d, 0x65, 0x72, 0x6b, 0x6c, 0x65, 0x52, 0x6f, 0x6f, 0x74, 0x18,
+	0x0b, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x4d, 0x65, 0x72, 0x6b, 0x6c, 0x65, 0x52, 0x6f, 0x6f,
+	0x74, 0x12, 0x26, 0x0a, 0x0e, 0x41, 0x63, 0x74, 0x75, 0x61, 0x6c, 0x46, 0x69, 0x6c, 0x65, 0x53,
+	0x69, 0x7a, 0x65, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0e, 0x41, 0x63, 0x74, 0x75, 0x61,
+	0x6c, 0x46, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x12, 0x26, 0x0a, 0x0e, 0x41, 0x63, 0x74,
+	0x75, 0x61, 0x6c, 0x46, 0x69, 0x6c, 0x65, 0x48, 0x61, 0x73, 0x68, 0x18, 0x0d, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x0e, 0x41, 0x63, 0x74, 0x75, 0x61, 0x6c, 0x46, 0x69, 0x6c, 0x65, 0x48, 0x61, 0x73,
+	0x68, 0x12, 0x1a, 0x0a, 0x08, 0x4d, 0x69, 0x6d, 0x65, 0x54, 0x79, 0x70, 0x65, 0x18, 0x0e, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x08, 0x4d, 0x69, 0x6d, 0x65, 0x54, 0x79, 0x70, 0x65, 0x12, 0x24, 0x0a,
+	0x0d, 0x54, 0x68, 0x75, 0x6d, 0x62, 0x6e, 0x61, 0x69, 0x6c, 0x53, 0x69, 0x7a, 0x65, 0x18, 0x0f,
+	0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x54, 0x68, 0x75, 0x6d, 0x62, 0x6e, 0x61, 0x69, 0x6c, 0x53,
+	0x69, 0x7a, 0x65, 0x12, 0x24, 0x0a, 0x0d, 0x54, 0x68, 0x75, 0x6d, 0x62, 0x6e, 0x61, 0x69, 0x6c,
+	0x48, 0x61, 0x73, 0x68, 0x18, 0x10, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x54, 0x68, 0x75, 0x6d,
+	0x62, 0x6e, 0x61, 0x69, 0x6c, 0x48, 0x61, 0x73, 0x68, 0x12, 0x30, 0x0a, 0x13, 0x41, 0x63, 0x74,
+	0x75, 0x61, 0x6c, 0x54, 0x68, 0x75, 0x6d, 0x62, 0x6e, 0x61, 0x69, 0x6c, 0x53, 0x69, 0x7a, 0x65,
+	0x18, 0x11, 0x20, 0x01, 0x28, 0x03, 0x52, 0x13, 0x41, 0x63, 0x74, 0x75, 0x61, 0x6c, 0x54, 0x68,
+	0x75, 0x6d, 0x62, 0x6e, 0x61, 0x69, 0x6c, 0x53, 0x69, 0x7a, 0x65, 0x12, 0x30, 0x0a, 0x13, 0x41,
+	0x63, 0x74, 0x75, 0x61, 0x6c, 0x54, 0x68, 0x75, 0x6d, 0x62, 0x6e, 0x61, 0x69, 0x6c, 0x48, 0x61,
+	0x73, 0x68, 0x18, 0x12, 0x20, 0x01, 0x28, 0x09, 0x52, 0x13, 0x41, 0x63, 0x74, 0x75, 0x61, 0x6c,
+	0x54, 0x68, 0x75, 0x6d, 0x62, 0x6e, 0x61, 0x69, 0x6c, 0x48, 0x61, 0x73, 0x68, 0x12, 0x22, 0x0a,
+	0x0c, 0x45, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x4b, 0x65, 0x79, 0x18, 0x13, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x0c, 0x45, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x4b, 0x65,
+	0x79, 0x12, 0x1e, 0x0a, 0x0a, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x18,
+	0x14, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0a, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65,
+	0x73, 0x12, 0x18, 0x0a, 0x07, 0x4f, 0x6e, 0x43, 0x6c, 0x6f, 0x75, 0x64, 0x18, 0x15, 0x20, 0x01,
+	0x28, 0x08, 0x52, 0x07, 0x4f, 0x6e, 0x43, 0x6c, 0x6f, 0x75, 0x64, 0x12, 0x49, 0x0a, 0x0e, 0x43,
+	0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x4d, 0x65, 0x74, 0x61, 0x54, 0x78, 0x6e, 0x73, 0x18, 0x16, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x21, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65,
+	0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x4d,
+	0x65, 0x74, 0x61, 0x54, 0x78, 0x6e, 0x52, 0x0e, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x4d, 0x65,
+	0x74, 0x61, 0x54, 0x78, 0x6e, 0x73, 0x12, 0x1c, 0x0a, 0x09, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65,
+	0x64, 0x41, 0x74, 0x18, 0x17, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x43, 0x72, 0x65, 0x61, 0x74,
+	0x65, 0x64, 0x41, 0x74, 0x12, 0x1c, 0x0a, 0x09, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x41,
+	0x74, 0x18, 0x18, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64,
+	0x41, 0x74, 0x22, 0x87, 0x02, 0x0a, 0x0b, 0x44, 0x69, 0x72, 0x4d, 0x65, 0x74, 0x61, 0x44, 0x61,
+	0x74, 0x61, 0x12, 0x12, 0x0a, 0x04, 0x54, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x04, 0x54, 0x79, 0x70, 0x65, 0x12, 0x1e, 0x0a, 0x0a, 0x4c, 0x6f, 0x6f, 0x6b, 0x75, 0x70,
+	0x48, 0x61, 0x73, 0x68, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x4c, 0x6f, 0x6f, 0x6b,
+	0x75, 0x70, 0x48, 0x61, 0x73, 0x68, 0x12, 0x12, 0x0a, 0x04, 0x4e, 0x61, 0x6d, 0x65, 0x18, 0x03,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x50, 0x61,
+	0x74, 0x68, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x50, 0x61, 0x74, 0x68, 0x12, 0x12,
+	0x0a, 0x04, 0x48, 0x61, 0x73, 0x68, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x48, 0x61,
+	0x73, 0x68, 0x12, 0x1c, 0x0a, 0x09, 0x4e, 0x75, 0x6d, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x18,
+	0x06, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x4e, 0x75, 0x6d, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73,
+	0x12, 0x1a, 0x0a, 0x08, 0x50, 0x61, 0x74, 0x68, 0x48, 0x61, 0x73, 0x68, 0x18, 0x07, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x08, 0x50, 0x61, 0x74, 0x68, 0x48, 0x61, 0x73, 0x68, 0x12, 0x12, 0x0a, 0x04,
+	0x53, 0x69, 0x7a, 0x65, 0x18, 0x08, 0x20, 0x01, 0x28, 0x03, 0x52, 0x04, 0x53, 0x69, 0x7a, 0x65,
+	0x12, 0x1c, 0x0a, 0x09, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x18, 0x09, 0x20,
+	0x01, 0x28, 0x03, 0x52, 0x09, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x12, 0x1c,
+	0x0a, 0x09, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x18, 0x0a, 0x20, 0x01, 0x28,
+	0x03, 0x52, 0x09, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x32, 0x96, 0x0b, 0x0a,
+	0x07, 0x42, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x12, 0x7c, 0x0a, 0x0d, 0x47, 0x65, 0x74, 0x41,
+	0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x28, 0x2e, 0x62, 0x6c, 0x6f, 0x62,
 	0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x46, 0x69, 0x6c, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x44, 0x61,
 	0x74, 0x61, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2b, 0x2e, 0x62, 0x6c, 0x6f, 0x62,
 	0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47,
@@ -2584,22 +3072,50 @@ var file_blobber_proto_rawDesc = []byte{
 	0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x7d, 0x12, 0x8e, 0x01, 0x0a, 0x0d, 0x47, 0x65,
 	0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x54, 0x72, 0x65, 0x65, 0x12, 0x28, 0x2e, 0x62, 0x6c,
 	0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31,
-	0x2e, 0x47, 0x65, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x54, 0x72, 0x65, 0x65, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x29, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e,
-	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x4f, 0x62,
-	0x6a, 0x65, 0x63, 0x74, 0x54, 0x72, 0x65, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x28, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x22, 0x12, 0x20, 0x2f, 0x76, 0x32, 0x2f, 0x66, 0x69,
-	0x6c, 0x65, 0x2f, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x74, 0x72, 0x65, 0x65, 0x2f, 0x7b, 0x61,
-	0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x7d, 0x12, 0x5c, 0x0a, 0x09, 0x57, 0x72,
-	0x69, 0x74, 0x65, 0x46, 0x69, 0x6c, 0x65, 0x12, 0x25, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65,
-	0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x55, 0x70, 0x6c,
-	0x6f, 0x61, 0x64, 0x46, 0x69, 0x6c, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x26,
-	0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65,
-	0x2e, 0x76, 0x31, 0x2e, 0x55, 0x70, 0x6c, 0x6f, 0x61, 0x64, 0x46, 0x69, 0x6c, 0x65, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0x2c, 0x5a, 0x2a, 0x63, 0x6f, 0x64, 0x65,
-	0x2f, 0x67, 0x6f, 0x2f, 0x30, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x2e, 0x6e, 0x65, 0x74, 0x2f, 0x62,
-	0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x63, 0x6f, 0x72, 0x65, 0x2f, 0x62, 0x6c, 0x6f, 0x62, 0x62,
-	0x65, 0x72, 0x67, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x2e, 0x47, 0x65, 0x74, 0x52, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x50, 0x61, 0x74,
+	0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2b, 0x82, 0xd3, 0xe4, 0x93, 0x02,
+	0x25, 0x12, 0x23, 0x2f, 0x76, 0x32, 0x2f, 0x66, 0x69, 0x6c, 0x65, 0x2f, 0x72, 0x65, 0x66, 0x65,
+	0x72, 0x65, 0x6e, 0x63, 0x65, 0x70, 0x61, 0x74, 0x68, 0x2f, 0x7b, 0x61, 0x6c, 0x6c, 0x6f, 0x63,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x7d, 0x12, 0x8e, 0x01, 0x0a, 0x0d, 0x47, 0x65, 0x74, 0x4f, 0x62,
+	0x6a, 0x65, 0x63, 0x74, 0x54, 0x72, 0x65, 0x65, 0x12, 0x28, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62,
+	0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65,
+	0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x54, 0x72, 0x65, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x29, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72,
+	0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63,
+	0x74, 0x54, 0x72, 0x65, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x28, 0x82,
+	0xd3, 0xe4, 0x93, 0x02, 0x22, 0x12, 0x20, 0x2f, 0x76, 0x32, 0x2f, 0x66, 0x69, 0x6c, 0x65, 0x2f,
+	0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x74, 0x72, 0x65, 0x65, 0x2f, 0x7b, 0x61, 0x6c, 0x6c, 0x6f,
+	0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x7d, 0x12, 0x7e, 0x0a, 0x06, 0x43, 0x6f, 0x6d, 0x6d, 0x69,
+	0x74, 0x12, 0x21, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76,
+	0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x22, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73,
+	0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2d, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x27,
+	0x22, 0x22, 0x2f, 0x76, 0x32, 0x2f, 0x63, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e,
+	0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x2f, 0x7b, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x7d, 0x3a, 0x01, 0x2a, 0x12, 0x94, 0x01, 0x0a, 0x0d, 0x43, 0x61, 0x6c, 0x63,
+	0x75, 0x6c, 0x61, 0x74, 0x65, 0x48, 0x61, 0x73, 0x68, 0x12, 0x28, 0x2e, 0x62, 0x6c, 0x6f, 0x62,
+	0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43,
+	0x61, 0x6c, 0x63, 0x75, 0x6c, 0x61, 0x74, 0x65, 0x48, 0x61, 0x73, 0x68, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x1a, 0x29, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65,
+	0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x61, 0x6c, 0x63, 0x75, 0x6c, 0x61,
+	0x74, 0x65, 0x48, 0x61, 0x73, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2e,
+	0x82, 0xd3, 0xe4, 0x93, 0x02, 0x28, 0x22, 0x23, 0x2f, 0x76, 0x32, 0x2f, 0x66, 0x69, 0x6c, 0x65,
+	0x2f, 0x63, 0x61, 0x6c, 0x63, 0x75, 0x6c, 0x61, 0x74, 0x65, 0x68, 0x61, 0x73, 0x68, 0x2f, 0x7b,
+	0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x7d, 0x3a, 0x01, 0x2a, 0x12, 0x94,
+	0x01, 0x0a, 0x0d, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x4d, 0x65, 0x74, 0x61, 0x54, 0x78, 0x6e,
+	0x12, 0x28, 0x2e, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69,
+	0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x4d, 0x65, 0x74, 0x61,
+	0x54, 0x78, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x29, 0x2e, 0x62, 0x6c, 0x6f,
+	0x62, 0x62, 0x65, 0x72, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x2e,
+	0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x4d, 0x65, 0x74, 0x61, 0x54, 0x78, 0x6e, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2e, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x28, 0x22, 0x23, 0x2f,
+	0x76, 0x32, 0x2f, 0x66, 0x69, 0x6c, 0x65, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65,
+	0x74, 0x61, 0x74, 0x78, 0x6e, 0x2f, 0x7b, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x7d, 0x3a, 0x01, 0x2a, 0x42, 0x2c, 0x5a, 0x2a, 0x63, 0x6f, 0x64, 0x65, 0x2f, 0x67, 0x6f,
+	0x2f, 0x30, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x2e, 0x6e, 0x65, 0x74, 0x2f, 0x62, 0x6c, 0x6f, 0x62,
+	0x62, 0x65, 0x72, 0x63, 0x6f, 0x72, 0x65, 0x2f, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x67,
+	0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -2614,80 +3130,89 @@ func file_blobber_proto_rawDescGZIP() []byte {
 	return file_blobber_proto_rawDescData
 }
 
-var file_blobber_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_blobber_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
 var file_blobber_proto_goTypes = []interface{}{
-	(*GetObjectTreeRequest)(nil),     // 0: blobber.service.v1.GetObjectTreeRequest
-	(*GetObjectTreeResponse)(nil),    // 1: blobber.service.v1.GetObjectTreeResponse
-	(*GetReferencePathRequest)(nil),  // 2: blobber.service.v1.GetReferencePathRequest
-	(*GetReferencePathResponse)(nil), // 3: blobber.service.v1.GetReferencePathResponse
-	(*ReferencePath)(nil),            // 4: blobber.service.v1.ReferencePath
-	(*GetObjectPathRequest)(nil),     // 5: blobber.service.v1.GetObjectPathRequest
-	(*GetObjectPathResponse)(nil),    // 6: blobber.service.v1.GetObjectPathResponse
-	(*ObjectPath)(nil),               // 7: blobber.service.v1.ObjectPath
-	(*WriteMarker)(nil),              // 8: blobber.service.v1.WriteMarker
-	(*ListEntitiesRequest)(nil),      // 9: blobber.service.v1.ListEntitiesRequest
-	(*ListEntitiesResponse)(nil),     // 10: blobber.service.v1.ListEntitiesResponse
-	(*GetFileStatsRequest)(nil),      // 11: blobber.service.v1.GetFileStatsRequest
-	(*GetFileStatsResponse)(nil),     // 12: blobber.service.v1.GetFileStatsResponse
-	(*FileStats)(nil),                // 13: blobber.service.v1.FileStats
-	(*GetFileMetaDataRequest)(nil),   // 14: blobber.service.v1.GetFileMetaDataRequest
-	(*GetFileMetaDataResponse)(nil),  // 15: blobber.service.v1.GetFileMetaDataResponse
-	(*CommitMetaTxn)(nil),            // 16: blobber.service.v1.CommitMetaTxn
-	(*Collaborator)(nil),             // 17: blobber.service.v1.Collaborator
-	(*GetAllocationRequest)(nil),     // 18: blobber.service.v1.GetAllocationRequest
-	(*GetAllocationResponse)(nil),    // 19: blobber.service.v1.GetAllocationResponse
-	(*UploadFileRequest)(nil),        // 20: blobber.service.v1.UploadFileRequest
-	(*UploadFileResponse)(nil),       // 21: blobber.service.v1.UploadFileResponse
-	(*Allocation)(nil),               // 22: blobber.service.v1.Allocation
-	(*Term)(nil),                     // 23: blobber.service.v1.Term
-	(*FileRef)(nil),                  // 24: blobber.service.v1.FileRef
-	(*FileMetaData)(nil),             // 25: blobber.service.v1.FileMetaData
-	(*DirMetaData)(nil),              // 26: blobber.service.v1.DirMetaData
+	(*CalculateHashRequest)(nil),     // 0: blobber.service.v1.CalculateHashRequest
+	(*CalculateHashResponse)(nil),    // 1: blobber.service.v1.CalculateHashResponse
+	(*CommitRequest)(nil),            // 2: blobber.service.v1.CommitRequest
+	(*CommitResponse)(nil),           // 3: blobber.service.v1.CommitResponse
+	(*CommitMetaTxnRequest)(nil),     // 4: blobber.service.v1.CommitMetaTxnRequest
+	(*CommitMetaTxnResponse)(nil),    // 5: blobber.service.v1.CommitMetaTxnResponse
+	(*GetObjectTreeRequest)(nil),     // 6: blobber.service.v1.GetObjectTreeRequest
+	(*GetObjectTreeResponse)(nil),    // 7: blobber.service.v1.GetObjectTreeResponse
+	(*GetReferencePathRequest)(nil),  // 8: blobber.service.v1.GetReferencePathRequest
+	(*GetReferencePathResponse)(nil), // 9: blobber.service.v1.GetReferencePathResponse
+	(*ReferencePath)(nil),            // 10: blobber.service.v1.ReferencePath
+	(*GetObjectPathRequest)(nil),     // 11: blobber.service.v1.GetObjectPathRequest
+	(*GetObjectPathResponse)(nil),    // 12: blobber.service.v1.GetObjectPathResponse
+	(*ObjectPath)(nil),               // 13: blobber.service.v1.ObjectPath
+	(*WriteMarker)(nil),              // 14: blobber.service.v1.WriteMarker
+	(*ListEntitiesRequest)(nil),      // 15: blobber.service.v1.ListEntitiesRequest
+	(*ListEntitiesResponse)(nil),     // 16: blobber.service.v1.ListEntitiesResponse
+	(*GetFileStatsRequest)(nil),      // 17: blobber.service.v1.GetFileStatsRequest
+	(*GetFileStatsResponse)(nil),     // 18: blobber.service.v1.GetFileStatsResponse
+	(*FileStats)(nil),                // 19: blobber.service.v1.FileStats
+	(*GetFileMetaDataRequest)(nil),   // 20: blobber.service.v1.GetFileMetaDataRequest
+	(*GetFileMetaDataResponse)(nil),  // 21: blobber.service.v1.GetFileMetaDataResponse
+	(*CommitMetaTxn)(nil),            // 22: blobber.service.v1.CommitMetaTxn
+	(*Collaborator)(nil),             // 23: blobber.service.v1.Collaborator
+	(*GetAllocationRequest)(nil),     // 24: blobber.service.v1.GetAllocationRequest
+	(*GetAllocationResponse)(nil),    // 25: blobber.service.v1.GetAllocationResponse
+	(*Allocation)(nil),               // 26: blobber.service.v1.Allocation
+	(*Term)(nil),                     // 27: blobber.service.v1.Term
+	(*FileRef)(nil),                  // 28: blobber.service.v1.FileRef
+	(*FileMetaData)(nil),             // 29: blobber.service.v1.FileMetaData
+	(*DirMetaData)(nil),              // 30: blobber.service.v1.DirMetaData
 }
 var file_blobber_proto_depIdxs = []int32{
-	4,  // 0: blobber.service.v1.GetObjectTreeResponse.ReferencePath:type_name -> blobber.service.v1.ReferencePath
-	8,  // 1: blobber.service.v1.GetObjectTreeResponse.LatestWM:type_name -> blobber.service.v1.WriteMarker
-	4,  // 2: blobber.service.v1.GetReferencePathResponse.ReferencePath:type_name -> blobber.service.v1.ReferencePath
-	8,  // 3: blobber.service.v1.GetReferencePathResponse.LatestWM:type_name -> blobber.service.v1.WriteMarker
-	24, // 4: blobber.service.v1.ReferencePath.MetaData:type_name -> blobber.service.v1.FileRef
-	4,  // 5: blobber.service.v1.ReferencePath.List:type_name -> blobber.service.v1.ReferencePath
-	7,  // 6: blobber.service.v1.GetObjectPathResponse.ObjectPath:type_name -> blobber.service.v1.ObjectPath
-	8,  // 7: blobber.service.v1.GetObjectPathResponse.LatestWriteMarker:type_name -> blobber.service.v1.WriteMarker
-	24, // 8: blobber.service.v1.ObjectPath.Meta:type_name -> blobber.service.v1.FileRef
-	24, // 9: blobber.service.v1.ObjectPath.Path:type_name -> blobber.service.v1.FileRef
-	24, // 10: blobber.service.v1.ObjectPath.PathList:type_name -> blobber.service.v1.FileRef
-	24, // 11: blobber.service.v1.ListEntitiesResponse.MetaData:type_name -> blobber.service.v1.FileRef
-	24, // 12: blobber.service.v1.ListEntitiesResponse.Entities:type_name -> blobber.service.v1.FileRef
-	24, // 13: blobber.service.v1.GetFileStatsResponse.MetaData:type_name -> blobber.service.v1.FileRef
-	13, // 14: blobber.service.v1.GetFileStatsResponse.Stats:type_name -> blobber.service.v1.FileStats
-	24, // 15: blobber.service.v1.GetFileMetaDataResponse.MetaData:type_name -> blobber.service.v1.FileRef
-	17, // 16: blobber.service.v1.GetFileMetaDataResponse.Collaborators:type_name -> blobber.service.v1.Collaborator
-	22, // 17: blobber.service.v1.GetAllocationResponse.allocation:type_name -> blobber.service.v1.Allocation
-	23, // 18: blobber.service.v1.Allocation.Terms:type_name -> blobber.service.v1.Term
-	25, // 19: blobber.service.v1.FileRef.FileMetaData:type_name -> blobber.service.v1.FileMetaData
-	26, // 20: blobber.service.v1.FileRef.DirMetaData:type_name -> blobber.service.v1.DirMetaData
-	16, // 21: blobber.service.v1.FileMetaData.CommitMetaTxns:type_name -> blobber.service.v1.CommitMetaTxn
-	18, // 22: blobber.service.v1.Blobber.GetAllocation:input_type -> blobber.service.v1.GetAllocationRequest
-	14, // 23: blobber.service.v1.Blobber.GetFileMetaData:input_type -> blobber.service.v1.GetFileMetaDataRequest
-	11, // 24: blobber.service.v1.Blobber.GetFileStats:input_type -> blobber.service.v1.GetFileStatsRequest
-	9,  // 25: blobber.service.v1.Blobber.ListEntities:input_type -> blobber.service.v1.ListEntitiesRequest
-	5,  // 26: blobber.service.v1.Blobber.GetObjectPath:input_type -> blobber.service.v1.GetObjectPathRequest
-	2,  // 27: blobber.service.v1.Blobber.GetReferencePath:input_type -> blobber.service.v1.GetReferencePathRequest
-	0,  // 28: blobber.service.v1.Blobber.GetObjectTree:input_type -> blobber.service.v1.GetObjectTreeRequest
-	20, // 29: blobber.service.v1.Blobber.WriteFile:input_type -> blobber.service.v1.UploadFileRequest
-	19, // 30: blobber.service.v1.Blobber.GetAllocation:output_type -> blobber.service.v1.GetAllocationResponse
-	15, // 31: blobber.service.v1.Blobber.GetFileMetaData:output_type -> blobber.service.v1.GetFileMetaDataResponse
-	12, // 32: blobber.service.v1.Blobber.GetFileStats:output_type -> blobber.service.v1.GetFileStatsResponse
-	10, // 33: blobber.service.v1.Blobber.ListEntities:output_type -> blobber.service.v1.ListEntitiesResponse
-	6,  // 34: blobber.service.v1.Blobber.GetObjectPath:output_type -> blobber.service.v1.GetObjectPathResponse
-	3,  // 35: blobber.service.v1.Blobber.GetReferencePath:output_type -> blobber.service.v1.GetReferencePathResponse
-	1,  // 36: blobber.service.v1.Blobber.GetObjectTree:output_type -> blobber.service.v1.GetObjectTreeResponse
-	21, // 37: blobber.service.v1.Blobber.WriteFile:output_type -> blobber.service.v1.UploadFileResponse
-	30, // [30:38] is the sub-list for method output_type
-	22, // [22:30] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	14, // 0: blobber.service.v1.CommitResponse.write_marker:type_name -> blobber.service.v1.WriteMarker
+	10, // 1: blobber.service.v1.GetObjectTreeResponse.ReferencePath:type_name -> blobber.service.v1.ReferencePath
+	14, // 2: blobber.service.v1.GetObjectTreeResponse.LatestWM:type_name -> blobber.service.v1.WriteMarker
+	10, // 3: blobber.service.v1.GetReferencePathResponse.ReferencePath:type_name -> blobber.service.v1.ReferencePath
+	14, // 4: blobber.service.v1.GetReferencePathResponse.LatestWM:type_name -> blobber.service.v1.WriteMarker
+	28, // 5: blobber.service.v1.ReferencePath.MetaData:type_name -> blobber.service.v1.FileRef
+	10, // 6: blobber.service.v1.ReferencePath.List:type_name -> blobber.service.v1.ReferencePath
+	13, // 7: blobber.service.v1.GetObjectPathResponse.ObjectPath:type_name -> blobber.service.v1.ObjectPath
+	14, // 8: blobber.service.v1.GetObjectPathResponse.LatestWriteMarker:type_name -> blobber.service.v1.WriteMarker
+	28, // 9: blobber.service.v1.ObjectPath.Meta:type_name -> blobber.service.v1.FileRef
+	28, // 10: blobber.service.v1.ObjectPath.Path:type_name -> blobber.service.v1.FileRef
+	28, // 11: blobber.service.v1.ObjectPath.PathList:type_name -> blobber.service.v1.FileRef
+	28, // 12: blobber.service.v1.ListEntitiesResponse.MetaData:type_name -> blobber.service.v1.FileRef
+	28, // 13: blobber.service.v1.ListEntitiesResponse.Entities:type_name -> blobber.service.v1.FileRef
+	28, // 14: blobber.service.v1.GetFileStatsResponse.MetaData:type_name -> blobber.service.v1.FileRef
+	19, // 15: blobber.service.v1.GetFileStatsResponse.Stats:type_name -> blobber.service.v1.FileStats
+	28, // 16: blobber.service.v1.GetFileMetaDataResponse.MetaData:type_name -> blobber.service.v1.FileRef
+	23, // 17: blobber.service.v1.GetFileMetaDataResponse.Collaborators:type_name -> blobber.service.v1.Collaborator
+	26, // 18: blobber.service.v1.GetAllocationResponse.allocation:type_name -> blobber.service.v1.Allocation
+	27, // 19: blobber.service.v1.Allocation.Terms:type_name -> blobber.service.v1.Term
+	29, // 20: blobber.service.v1.FileRef.FileMetaData:type_name -> blobber.service.v1.FileMetaData
+	30, // 21: blobber.service.v1.FileRef.DirMetaData:type_name -> blobber.service.v1.DirMetaData
+	22, // 22: blobber.service.v1.FileMetaData.CommitMetaTxns:type_name -> blobber.service.v1.CommitMetaTxn
+	24, // 23: blobber.service.v1.Blobber.GetAllocation:input_type -> blobber.service.v1.GetAllocationRequest
+	20, // 24: blobber.service.v1.Blobber.GetFileMetaData:input_type -> blobber.service.v1.GetFileMetaDataRequest
+	17, // 25: blobber.service.v1.Blobber.GetFileStats:input_type -> blobber.service.v1.GetFileStatsRequest
+	15, // 26: blobber.service.v1.Blobber.ListEntities:input_type -> blobber.service.v1.ListEntitiesRequest
+	11, // 27: blobber.service.v1.Blobber.GetObjectPath:input_type -> blobber.service.v1.GetObjectPathRequest
+	8,  // 28: blobber.service.v1.Blobber.GetReferencePath:input_type -> blobber.service.v1.GetReferencePathRequest
+	6,  // 29: blobber.service.v1.Blobber.GetObjectTree:input_type -> blobber.service.v1.GetObjectTreeRequest
+	2,  // 30: blobber.service.v1.Blobber.Commit:input_type -> blobber.service.v1.CommitRequest
+	0,  // 31: blobber.service.v1.Blobber.CalculateHash:input_type -> blobber.service.v1.CalculateHashRequest
+	4,  // 32: blobber.service.v1.Blobber.CommitMetaTxn:input_type -> blobber.service.v1.CommitMetaTxnRequest
+	25, // 33: blobber.service.v1.Blobber.GetAllocation:output_type -> blobber.service.v1.GetAllocationResponse
+	21, // 34: blobber.service.v1.Blobber.GetFileMetaData:output_type -> blobber.service.v1.GetFileMetaDataResponse
+	18, // 35: blobber.service.v1.Blobber.GetFileStats:output_type -> blobber.service.v1.GetFileStatsResponse
+	16, // 36: blobber.service.v1.Blobber.ListEntities:output_type -> blobber.service.v1.ListEntitiesResponse
+	12, // 37: blobber.service.v1.Blobber.GetObjectPath:output_type -> blobber.service.v1.GetObjectPathResponse
+	9,  // 38: blobber.service.v1.Blobber.GetReferencePath:output_type -> blobber.service.v1.GetReferencePathResponse
+	7,  // 39: blobber.service.v1.Blobber.GetObjectTree:output_type -> blobber.service.v1.GetObjectTreeResponse
+	3,  // 40: blobber.service.v1.Blobber.Commit:output_type -> blobber.service.v1.CommitResponse
+	1,  // 41: blobber.service.v1.Blobber.CalculateHash:output_type -> blobber.service.v1.CalculateHashResponse
+	5,  // 42: blobber.service.v1.Blobber.CommitMetaTxn:output_type -> blobber.service.v1.CommitMetaTxnResponse
+	33, // [33:43] is the sub-list for method output_type
+	23, // [23:33] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_blobber_proto_init() }
@@ -2697,7 +3222,7 @@ func file_blobber_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_blobber_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetObjectTreeRequest); i {
+			switch v := v.(*CalculateHashRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2709,7 +3234,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetObjectTreeResponse); i {
+			switch v := v.(*CalculateHashResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2721,7 +3246,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetReferencePathRequest); i {
+			switch v := v.(*CommitRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2733,7 +3258,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetReferencePathResponse); i {
+			switch v := v.(*CommitResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2745,7 +3270,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ReferencePath); i {
+			switch v := v.(*CommitMetaTxnRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2757,7 +3282,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetObjectPathRequest); i {
+			switch v := v.(*CommitMetaTxnResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2769,7 +3294,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetObjectPathResponse); i {
+			switch v := v.(*GetObjectTreeRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2781,7 +3306,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ObjectPath); i {
+			switch v := v.(*GetObjectTreeResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2793,7 +3318,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WriteMarker); i {
+			switch v := v.(*GetReferencePathRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2805,7 +3330,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListEntitiesRequest); i {
+			switch v := v.(*GetReferencePathResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2817,7 +3342,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListEntitiesResponse); i {
+			switch v := v.(*ReferencePath); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2829,7 +3354,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetFileStatsRequest); i {
+			switch v := v.(*GetObjectPathRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2841,7 +3366,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetFileStatsResponse); i {
+			switch v := v.(*GetObjectPathResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2853,7 +3378,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*FileStats); i {
+			switch v := v.(*ObjectPath); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2865,7 +3390,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetFileMetaDataRequest); i {
+			switch v := v.(*WriteMarker); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2877,7 +3402,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetFileMetaDataResponse); i {
+			switch v := v.(*ListEntitiesRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2889,7 +3414,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CommitMetaTxn); i {
+			switch v := v.(*ListEntitiesResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2901,7 +3426,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Collaborator); i {
+			switch v := v.(*GetFileStatsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2913,7 +3438,7 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetAllocationRequest); i {
+			switch v := v.(*GetFileStatsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2925,7 +3450,103 @@ func file_blobber_proto_init() {
 			}
 		}
 		file_blobber_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*FileStats); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_blobber_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetFileMetaDataRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_blobber_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetFileMetaDataResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_blobber_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*CommitMetaTxn); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_blobber_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Collaborator); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_blobber_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetAllocationRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_blobber_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GetAllocationResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_blobber_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Allocation); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_blobber_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Term); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2960,31 +3581,7 @@ func file_blobber_proto_init() {
 				return nil
 			}
 		}
-		file_blobber_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Allocation); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_blobber_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Term); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_blobber_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
+		file_blobber_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*FileRef); i {
 			case 0:
 				return &v.state
@@ -2996,7 +3593,7 @@ func file_blobber_proto_init() {
 				return nil
 			}
 		}
-		file_blobber_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
+		file_blobber_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*FileMetaData); i {
 			case 0:
 				return &v.state
@@ -3008,7 +3605,7 @@ func file_blobber_proto_init() {
 				return nil
 			}
 		}
-		file_blobber_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
+		file_blobber_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DirMetaData); i {
 			case 0:
 				return &v.state
@@ -3027,7 +3624,7 @@ func file_blobber_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_blobber_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   27,
+			NumMessages:   31,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -25,6 +25,9 @@ type BlobberClient interface {
 	GetObjectPath(ctx context.Context, in *GetObjectPathRequest, opts ...grpc.CallOption) (*GetObjectPathResponse, error)
 	GetReferencePath(ctx context.Context, in *GetReferencePathRequest, opts ...grpc.CallOption) (*GetReferencePathResponse, error)
 	GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error)
+	Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error)
+	CalculateHash(ctx context.Context, in *CalculateHashRequest, opts ...grpc.CallOption) (*CalculateHashResponse, error)
+	CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequest, opts ...grpc.CallOption) (*CommitMetaTxnResponse, error)
 	WriteFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error)
 }
 
@@ -99,6 +102,33 @@ func (c *blobberClient) GetObjectTree(ctx context.Context, in *GetObjectTreeRequ
 	return out, nil
 }
 
+func (c *blobberClient) Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error) {
+	out := new(CommitResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/Commit", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *blobberClient) CalculateHash(ctx context.Context, in *CalculateHashRequest, opts ...grpc.CallOption) (*CalculateHashResponse, error) {
+	out := new(CalculateHashResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/CalculateHash", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *blobberClient) CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequest, opts ...grpc.CallOption) (*CommitMetaTxnResponse, error) {
+	out := new(CommitMetaTxnResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/CommitMetaTxn", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *blobberClient) WriteFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error) {
 	out := new(UploadFileResponse)
 	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/WriteFile", in, out, opts...)
@@ -119,6 +149,9 @@ type BlobberServer interface {
 	GetObjectPath(context.Context, *GetObjectPathRequest) (*GetObjectPathResponse, error)
 	GetReferencePath(context.Context, *GetReferencePathRequest) (*GetReferencePathResponse, error)
 	GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error)
+	Commit(context.Context, *CommitRequest) (*CommitResponse, error)
+	CalculateHash(context.Context, *CalculateHashRequest) (*CalculateHashResponse, error)
+	CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error)
 	WriteFile(context.Context, *UploadFileRequest) (*UploadFileResponse, error)
 	mustEmbedUnimplementedBlobberServer()
 }
@@ -147,6 +180,15 @@ func (UnimplementedBlobberServer) GetReferencePath(context.Context, *GetReferenc
 }
 func (UnimplementedBlobberServer) GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetObjectTree not implemented")
+}
+func (UnimplementedBlobberServer) Commit(context.Context, *CommitRequest) (*CommitResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Commit not implemented")
+}
+func (UnimplementedBlobberServer) CalculateHash(context.Context, *CalculateHashRequest) (*CalculateHashResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CalculateHash not implemented")
+}
+func (UnimplementedBlobberServer) CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CommitMetaTxn not implemented")
 }
 func (UnimplementedBlobberServer) WriteFile(context.Context, *UploadFileRequest) (*UploadFileResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WriteFile not implemented")
@@ -290,6 +332,61 @@ func _Blobber_GetObjectTree_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Blobber_Commit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommitRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).Commit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/Commit",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).Commit(ctx, req.(*CommitRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Blobber_CalculateHash_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CalculateHashRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).CalculateHash(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/CalculateHash",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).CalculateHash(ctx, req.(*CalculateHashRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Blobber_CommitMetaTxn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommitMetaTxnRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).CommitMetaTxn(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/CommitMetaTxn",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).CommitMetaTxn(ctx, req.(*CommitMetaTxnRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _Blobber_serviceDesc = grpc.ServiceDesc{
 func _Blobber_WriteFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UploadFileRequest)
 	if err := dec(in); err != nil {
@@ -344,8 +441,16 @@ var Blobber_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Blobber_GetObjectTree_Handler,
 		},
 		{
-			MethodName: "WriteFile",
-			Handler:    _Blobber_WriteFile_Handler,
+			MethodName: "Commit",
+			Handler:    _Blobber_Commit_Handler,
+		},
+		{
+			MethodName: "CalculateHash",
+			Handler:    _Blobber_CalculateHash_Handler,
+		},
+		{
+			MethodName: "CommitMetaTxn",
+			Handler:    _Blobber_CommitMetaTxn_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
