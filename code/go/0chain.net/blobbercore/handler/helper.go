@@ -4,14 +4,13 @@ import (
 	"context"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/gorilla/mux"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
-
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 )
 
 func RegisterGRPCServices(r *mux.Router, server *grpc.Server) {
@@ -37,6 +36,8 @@ type PackageHandler interface {
 	AddCommitMetaTxn(ctx context.Context, refID int64, txnID string) error
 	GetCollaborators(ctx context.Context, refID int64) ([]reference.Collaborator, error)
 	IsACollaborator(ctx context.Context, refID int64, clientID string) bool
+	AddCollaborator(ctx context.Context, refID int64, clientID string) error
+	RemoveCollaborator(ctx context.Context, refID int64, clientID string) error
 	GetFileStats(ctx context.Context, refID int64) (*stats.FileStats, error)
 	GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*writemarker.WriteMarkerEntity, error)
 	GetRefWithChildren(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
@@ -118,6 +119,14 @@ func (r *packageHandler) GetCollaborators(ctx context.Context, refID int64) ([]r
 
 func (r *packageHandler) IsACollaborator(ctx context.Context, refID int64, clientID string) bool {
 	return reference.IsACollaborator(ctx, refID, clientID)
+}
+
+func (r *packageHandler) AddCollaborator(ctx context.Context, refID int64, clientID string) error {
+	return reference.AddCollaborator(ctx, refID, clientID)
+}
+
+func (r *packageHandler) RemoveCollaborator(ctx context.Context, refID int64, clientID string) error {
+	return reference.RemoveCollaborator(ctx, refID, clientID)
 }
 
 func (r packageHandler) SaveAllocationChanges(ctx context.Context, alloc *allocation.AllocationChangeCollector) error {

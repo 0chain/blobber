@@ -70,6 +70,26 @@ service Blobber {
       body: "*"
     };
   }
+
+  rpc Collaborator(CollaboratorRequest) returns (CollaboratorResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/collaborator/{allocation}"
+      body: "*"
+    };
+  }
+}
+
+message CollaboratorRequest {
+  string allocation = 1;
+  string collab_id = 2;
+  string method = 3;
+  string path = 4;
+  string path_hash = 5;
+}
+
+message CollaboratorResponse {
+  string message = 1;
+  repeated Collaborator Collaborators = 2;
 }
 
 message CalculateHashRequest {
