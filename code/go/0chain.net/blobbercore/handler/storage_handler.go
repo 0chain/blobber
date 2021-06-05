@@ -7,21 +7,17 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberHTTP"
-
-	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
-	"go.uber.org/zap"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberHTTP"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
 const (

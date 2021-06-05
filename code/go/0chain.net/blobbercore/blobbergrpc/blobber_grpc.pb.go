@@ -28,6 +28,7 @@ type BlobberClient interface {
 	CalculateHash(ctx context.Context, in *CalculateHashRequest, opts ...grpc.CallOption) (*CalculateHashResponse, error)
 	CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequest, opts ...grpc.CallOption) (*CommitMetaTxnResponse, error)
 	UpdateObjectAttributes(ctx context.Context, in *UpdateObjectAttributesRequest, opts ...grpc.CallOption) (*UpdateObjectAttributesResponse, error)
+	Collaborator(ctx context.Context, in *CollaboratorRequest, opts ...grpc.CallOption) (*CollaboratorResponse, error)
 }
 
 type blobberClient struct {
@@ -128,6 +129,15 @@ func (c *blobberClient) CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequ
 	return out, nil
 }
 
+func (c *blobberClient) Collaborator(ctx context.Context, in *CollaboratorRequest, opts ...grpc.CallOption) (*CollaboratorResponse, error) {
+	out := new(CollaboratorResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/Collaborator", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *blobberClient) UpdateObjectAttributes(ctx context.Context, in *UpdateObjectAttributesRequest, opts ...grpc.CallOption) (*UpdateObjectAttributesResponse, error) {
 	out := new(UpdateObjectAttributesResponse)
 	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/UpdateObjectAttributes", in, out, opts...)
@@ -151,6 +161,7 @@ type BlobberServer interface {
 	Commit(context.Context, *CommitRequest) (*CommitResponse, error)
 	CalculateHash(context.Context, *CalculateHashRequest) (*CalculateHashResponse, error)
 	CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error)
+	Collaborator(context.Context, *CollaboratorRequest) (*CollaboratorResponse, error)
 	UpdateObjectAttributes(context.Context, *UpdateObjectAttributesRequest) (*UpdateObjectAttributesResponse, error)
 	mustEmbedUnimplementedBlobberServer()
 }
@@ -188,6 +199,9 @@ func (UnimplementedBlobberServer) CalculateHash(context.Context, *CalculateHashR
 }
 func (UnimplementedBlobberServer) CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CommitMetaTxn not implemented")
+}
+func (UnimplementedBlobberServer) Collaborator(context.Context, *CollaboratorRequest) (*CollaboratorResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Collaborator not implemented")
 }
 func (UnimplementedBlobberServer) UpdateObjectAttributes(context.Context, *UpdateObjectAttributesRequest) (*UpdateObjectAttributesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateObjectAttributes not implemented")
@@ -385,6 +399,24 @@ func _Blobber_CommitMetaTxn_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Blobber_Collaborator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CollaboratorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).Collaborator(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/Collaborator",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).Collaborator(ctx, req.(*CollaboratorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Blobber_UpdateObjectAttributes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateObjectAttributesRequest)
 	if err := dec(in); err != nil {
@@ -446,6 +478,10 @@ var _Blobber_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CommitMetaTxn",
 			Handler:    _Blobber_CommitMetaTxn_Handler,
+		},
+		{
+			MethodName: "Collaborator",
+			Handler:    _Blobber_Collaborator_Handler,
 		},
 		{
 			MethodName: "UpdateObjectAttributes",
