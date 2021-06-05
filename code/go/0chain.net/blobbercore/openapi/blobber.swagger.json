@@ -46,44 +46,6 @@
         ]
       }
     },
-    "/v2/file/download/{allocation}": {
-      "post": {
-        "operationId": "Blobber_DownloadFile",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1DownloadFileResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "allocation",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v1DownloadFileRequest"
-            }
-          }
-        ],
-        "tags": [
-          "Blobber"
-        ]
-      }
-    },
     "/v2/connection/commit/{allocation}": {
       "post": {
         "operationId": "Blobber_Commit",
@@ -190,6 +152,44 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/v1CommitMetaTxnRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
+    "/v2/file/download/{allocation}": {
+      "post": {
+        "operationId": "Blobber_DownloadFile",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DownloadFileResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1DownloadFileRequest"
             }
           }
         ],

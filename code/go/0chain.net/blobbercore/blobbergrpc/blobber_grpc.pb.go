@@ -101,6 +101,15 @@ func (c *blobberClient) GetObjectTree(ctx context.Context, in *GetObjectTreeRequ
 	return out, nil
 }
 
+func (c *blobberClient) DownloadFile(ctx context.Context, in *DownloadFileRequest, opts ...grpc.CallOption) (*DownloadFileResponse, error) {
+	out := new(DownloadFileResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/DownloadFile", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *blobberClient) Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error) {
 	out := new(CommitResponse)
 	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/Commit", in, out, opts...)
@@ -122,15 +131,6 @@ func (c *blobberClient) CalculateHash(ctx context.Context, in *CalculateHashRequ
 func (c *blobberClient) CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequest, opts ...grpc.CallOption) (*CommitMetaTxnResponse, error) {
 	out := new(CommitMetaTxnResponse)
 	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/CommitMetaTxn", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *blobberClient) DownloadFile(ctx context.Context, in *DownloadFileRequest, opts ...grpc.CallOption) (*DownloadFileResponse, error) {
-	out := new(DownloadFileResponse)
-	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/DownloadFile", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -436,6 +436,10 @@ var _Blobber_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Blobber_GetObjectTree_Handler,
 		},
 		{
+			MethodName: "DownloadFile",
+			Handler:    _Blobber_DownloadFile_Handler,
+		},
+		{
 			MethodName: "Commit",
 			Handler:    _Blobber_Commit_Handler,
 		},
@@ -446,10 +450,6 @@ var _Blobber_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CommitMetaTxn",
 			Handler:    _Blobber_CommitMetaTxn_Handler,
-		},
-		{
-			MethodName: "DownloadFile",
-			Handler:    _Blobber_DownloadFile_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

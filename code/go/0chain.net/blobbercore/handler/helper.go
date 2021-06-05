@@ -151,8 +151,3 @@ func (r *packageHandler) FileBlockDownloaded(ctx context.Context, refID int64) {
 func (r *packageHandler) VerifyReadMarker(ctx context.Context, readMake *readmarker.ReadMarkerEntity, alloc *allocation.Allocation) error {
 	return readMake.VerifyMarker(ctx, alloc)
 }
-
-//
-//func (r *packageHandler) GetNewReadMaker(rm *readmarker.ReadMarker) readmarker.ReadMakerI {
-//	return readmarker.NewReadMakerEntity(rm)
-//}
