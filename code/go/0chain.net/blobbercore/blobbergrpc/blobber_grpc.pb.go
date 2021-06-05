@@ -331,24 +331,6 @@ func _Blobber_GetObjectTree_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Blobber_UpdateObjectAttributes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateObjectAttributesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(BlobberServer).UpdateObjectAttributes(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/blobber.service.v1.Blobber/UpdateObjectAttributes",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BlobberServer).UpdateObjectAttributes(ctx, req.(*UpdateObjectAttributesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Blobber_Commit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CommitRequest)
 	if err := dec(in); err != nil {
@@ -399,6 +381,24 @@ func _Blobber_CommitMetaTxn_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServer).CommitMetaTxn(ctx, req.(*CommitMetaTxnRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Blobber_UpdateObjectAttributes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateObjectAttributesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).UpdateObjectAttributes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/UpdateObjectAttributes",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).UpdateObjectAttributes(ctx, req.(*UpdateObjectAttributesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
