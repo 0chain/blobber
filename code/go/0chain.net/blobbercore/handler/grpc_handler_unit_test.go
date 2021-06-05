@@ -7,25 +7,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-
-	"google.golang.org/grpc/metadata"
-
-	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
-
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/mocks"
-
-	"github.com/stretchr/testify/assert"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-
-	"github.com/stretchr/testify/mock"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/mocks"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"google.golang.org/grpc/metadata"
 )
 
 func TestBlobberGRPCService_GetAllocation_Success(t *testing.T) {
@@ -529,5 +520,154 @@ func TestBlobberGRPCService_GetObjectTree_NotOwner(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
+}
 
+func TestBlobberGRPCService_CalculateHashSuccess(t *testing.T) {
+	allocationTx := randString(32)
+
+	pubKey, _, signScheme := GeneratePubPrivateKey(t)
+	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
+	req := &blobbergrpc.CalculateHashRequest{
+		Allocation: allocationTx,
+		Path:       "some-path",
+	}
+
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+		common.ClientHeader:          "owner",
+		common.ClientSignatureHeader: clientSignature,
+	}))
+
+	mockStorageHandler := new(storageHandlerI)
+	mockReferencePackage := new(mocks.PackageHandler)
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).Return(&allocation.Allocation{
+		ID:             "allocationId",
+		Tx:             req.Allocation,
+		OwnerID:        "owner",
+		OwnerPublicKey: pubKey,
+	}, nil)
+	mockReferencePackage.On("GetReferencePathFromPaths", mock.Anything, mock.Anything, mock.Anything).Return(&reference.Ref{
+		Name: "test",
+		Type: reference.DIRECTORY,
+	}, nil)
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	resp, err := svc.CalculateHash(ctx, req)
+	if err != nil {
+		t.Fatal("unexpected error: ", err)
+	}
+
+	assert.Equal(t, resp.GetMessage(), "Hash recalculated for the given paths")
+}
+
+func TestBlobberGRPCService_CalculateHashNotOwner(t *testing.T) {
+	req := &blobbergrpc.CalculateHashRequest{
+		Allocation: "",
+		Path:       "some-path",
+	}
+
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+		common.ClientHeader:          "hacker",
+		common.ClientSignatureHeader: "",
+	}))
+
+	mockStorageHandler := new(storageHandlerI)
+	mockReferencePackage := new(mocks.PackageHandler)
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, false).Return(&allocation.Allocation{
+		ID:      "allocationId",
+		Tx:      req.Allocation,
+		OwnerID: "owner",
+	}, nil)
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	_, err := svc.CalculateHash(ctx, req)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestBlobberGRPCService_CommitMetaTxnSuccess(t *testing.T) {
+	allocationTx := randString(32)
+
+	pubKey, _, signScheme := GeneratePubPrivateKey(t)
+	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
+	req := &blobbergrpc.CommitMetaTxnRequest{
+		Path:       "/some_file",
+		PathHash:   "exampleId:examplePath",
+		AuthToken:  "",
+		Allocation: allocationTx,
+		TxnId:      "8",
+	}
+
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+		common.ClientHeader:          "owner",
+		common.ClientSignatureHeader: clientSignature,
+	}))
+
+	mockStorageHandler := new(storageHandlerI)
+	mockReferencePackage := new(mocks.PackageHandler)
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, true).Return(&allocation.Allocation{
+		ID:             "8",
+		Tx:             req.Allocation,
+		OwnerID:        "owner",
+		OwnerPublicKey: pubKey,
+	}, nil)
+	mockReferencePackage.On("GetReferenceFromLookupHash", mock.Anything, mock.Anything, mock.Anything).Return(&reference.Ref{
+		Name: "test",
+		ID:   8,
+		Type: reference.FILE,
+	}, nil)
+	mockReferencePackage.On("AddCommitMetaTxn", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil)
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	resp, err := svc.CommitMetaTxn(ctx, req)
+	if err != nil {
+		t.Fatal("unexpected error: ", err)
+	}
+
+	assert.Equal(t, resp.GetMessage(), "Added commitMetaTxn successfully")
+}
+
+func TestBlobberGRPCService_CommitMetaTxnError(t *testing.T) {
+	allocationTx := randString(32)
+
+	pubKey, _, signScheme := GeneratePubPrivateKey(t)
+	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+
+	req := &blobbergrpc.CommitMetaTxnRequest{
+		Path:       "/some_file",
+		PathHash:   "exampleId:examplePath",
+		AuthToken:  "",
+		Allocation: allocationTx,
+		TxnId:      "", // TxnId not passed, expecting error
+	}
+
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+		common.ClientHeader:          "owner",
+		common.ClientSignatureHeader: clientSignature,
+	}))
+
+	mockStorageHandler := new(storageHandlerI)
+	mockReferencePackage := new(mocks.PackageHandler)
+	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, true).Return(&allocation.Allocation{
+		ID:             "8",
+		Tx:             req.Allocation,
+		OwnerID:        "owner",
+		OwnerPublicKey: pubKey,
+	}, nil)
+	mockReferencePackage.On("GetReferenceFromLookupHash", mock.Anything, mock.Anything, mock.Anything).Return(&reference.Ref{
+		Name: "test",
+		ID:   8,
+		Type: reference.FILE,
+	}, nil)
+	mockReferencePackage.On("AddCommitMetaTxn", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil)
+
+	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
+	_, err := svc.CommitMetaTxn(ctx, req)
+	if err == nil {
+		t.Fatal("expected error")
+	}
 }
