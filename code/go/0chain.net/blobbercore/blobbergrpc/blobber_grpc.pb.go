@@ -25,6 +25,9 @@ type BlobberClient interface {
 	GetReferencePath(ctx context.Context, in *GetReferencePathRequest, opts ...grpc.CallOption) (*GetReferencePathResponse, error)
 	GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error)
 	DownloadFile(ctx context.Context, in *DownloadFileRequest, opts ...grpc.CallOption) (*DownloadFileResponse, error)
+	Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error)
+	CalculateHash(ctx context.Context, in *CalculateHashRequest, opts ...grpc.CallOption) (*CalculateHashResponse, error)
+	CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequest, opts ...grpc.CallOption) (*CommitMetaTxnResponse, error)
 }
 
 type blobberClient struct {
@@ -98,6 +101,33 @@ func (c *blobberClient) GetObjectTree(ctx context.Context, in *GetObjectTreeRequ
 	return out, nil
 }
 
+func (c *blobberClient) Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error) {
+	out := new(CommitResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/Commit", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *blobberClient) CalculateHash(ctx context.Context, in *CalculateHashRequest, opts ...grpc.CallOption) (*CalculateHashResponse, error) {
+	out := new(CalculateHashResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/CalculateHash", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *blobberClient) CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequest, opts ...grpc.CallOption) (*CommitMetaTxnResponse, error) {
+	out := new(CommitMetaTxnResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/CommitMetaTxn", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *blobberClient) DownloadFile(ctx context.Context, in *DownloadFileRequest, opts ...grpc.CallOption) (*DownloadFileResponse, error) {
 	out := new(DownloadFileResponse)
 	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/DownloadFile", in, out, opts...)
@@ -119,6 +149,9 @@ type BlobberServer interface {
 	GetReferencePath(context.Context, *GetReferencePathRequest) (*GetReferencePathResponse, error)
 	GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error)
 	DownloadFile(context.Context, *DownloadFileRequest) (*DownloadFileResponse, error)
+	Commit(context.Context, *CommitRequest) (*CommitResponse, error)
+	CalculateHash(context.Context, *CalculateHashRequest) (*CalculateHashResponse, error)
+	CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error)
 	mustEmbedUnimplementedBlobberServer()
 }
 
@@ -149,6 +182,15 @@ func (UnimplementedBlobberServer) GetObjectTree(context.Context, *GetObjectTreeR
 }
 func (UnimplementedBlobberServer) DownloadFile(context.Context, *DownloadFileRequest) (*DownloadFileResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DownloadFile not implemented")
+}
+func (UnimplementedBlobberServer) Commit(context.Context, *CommitRequest) (*CommitResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Commit not implemented")
+}
+func (UnimplementedBlobberServer) CalculateHash(context.Context, *CalculateHashRequest) (*CalculateHashResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CalculateHash not implemented")
+}
+func (UnimplementedBlobberServer) CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CommitMetaTxn not implemented")
 }
 func (UnimplementedBlobberServer) mustEmbedUnimplementedBlobberServer() {}
 
@@ -307,6 +349,60 @@ func _Blobber_DownloadFile_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Blobber_Commit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommitRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).Commit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/Commit",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).Commit(ctx, req.(*CommitRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Blobber_CalculateHash_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CalculateHashRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).CalculateHash(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/CalculateHash",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).CalculateHash(ctx, req.(*CalculateHashRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Blobber_CommitMetaTxn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommitMetaTxnRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).CommitMetaTxn(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/CommitMetaTxn",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).CommitMetaTxn(ctx, req.(*CommitMetaTxnRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Blobber_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "blobber.service.v1.Blobber",
 	HandlerType: (*BlobberServer)(nil),
@@ -338,6 +434,18 @@ var _Blobber_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetObjectTree",
 			Handler:    _Blobber_GetObjectTree_Handler,
+		},
+		{
+			MethodName: "Commit",
+			Handler:    _Blobber_Commit_Handler,
+		},
+		{
+			MethodName: "CalculateHash",
+			Handler:    _Blobber_CalculateHash_Handler,
+		},
+		{
+			MethodName: "CommitMetaTxn",
+			Handler:    _Blobber_CommitMetaTxn_Handler,
 		},
 		{
 			MethodName: "DownloadFile",

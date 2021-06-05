@@ -84,6 +84,120 @@
         ]
       }
     },
+    "/v2/connection/commit/{allocation}": {
+      "post": {
+        "operationId": "Blobber_Commit",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CommitResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CommitRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
+    "/v2/file/calculatehash/{allocation}": {
+      "post": {
+        "operationId": "Blobber_CalculateHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CalculateHashResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CalculateHashRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
+    "/v2/file/commitmetatxn/{allocation}": {
+      "post": {
+        "operationId": "Blobber_CommitMetaTxn",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CommitMetaTxnResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CommitMetaTxnRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
     "/v2/file/list/{allocation}": {
       "get": {
         "operationId": "Blobber_ListEntities",
@@ -439,6 +553,28 @@
         }
       }
     },
+    "v1CalculateHashRequest": {
+      "type": "object",
+      "properties": {
+        "allocation": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "paths": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CalculateHashResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        }
+      }
+    },
     "v1Collaborator": {
       "type": "object",
       "properties": {
@@ -468,6 +604,65 @@
         "CreatedAt": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "v1CommitMetaTxnRequest": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "pathHash": {
+          "type": "string"
+        },
+        "authToken": {
+          "type": "string"
+        },
+        "allocation": {
+          "type": "string"
+        },
+        "txnId": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CommitMetaTxnResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CommitRequest": {
+      "type": "object",
+      "properties": {
+        "allocation": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        },
+        "writeMarker": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CommitResponse": {
+      "type": "object",
+      "properties": {
+        "allocationRoot": {
+          "type": "string"
+        },
+        "writeMarker": {
+          "$ref": "#/definitions/v1WriteMarker"
+        },
+        "errorMessage": {
+          "type": "string"
+        },
+        "success": {
+          "type": "boolean"
         }
       }
     },
