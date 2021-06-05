@@ -475,6 +475,66 @@ func (fs *FileFSStore) GetMerkleTreeForFile(allocationID string, fileData *FileI
 	return mt, nil
 }
 
+func (fs *FileFSStore) CreateDir(dirName string) error{
+//func (fs *FileFSStore) CreateDir(ctx context.Context, allocationID, dirName string) error{
+	/*allocation, err := fs.SetupAllocation(allocationID, false)
+	if err != nil {
+		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
+	}
+
+	path := filepath.Clean(dirName)
+	tSubDirs := reference.GetSubDirsFromPath(path)
+
+	rootRef, err := reference.GetReferencePath(ctx, allocationID, allocation.Path)
+	if err != nil {
+		return err
+	}
+
+	dirRef := rootRef
+	treelevel := 0
+	for {
+		found := false
+		for _, child := range dirRef.Children {
+			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
+				if child.Name == tSubDirs[treelevel] {
+					dirRef = child
+					found = true
+					break
+				}
+			}
+		}
+		if found {
+			treelevel++
+			continue
+		}
+		if len(tSubDirs) > treelevel {
+			newRef := reference.NewDirectoryRef()
+			newRef.AllocationID = dirRef.AllocationID
+			newRef.Path = "/" + strings.Join(tSubDirs[:treelevel+1], "/")
+			newRef.ParentPath = "/" + strings.Join(tSubDirs[:treelevel], "/")
+			newRef.Name = tSubDirs[treelevel]
+			newRef.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, newRef.Path)
+			dirRef.AddChild(newRef)
+			dirRef = newRef
+			treelevel++
+			continue
+		} else {
+			break
+		}
+	}
+
+	if _, err := dirRef.CalculateHash(ctx, true); err != nil {
+		return err
+	}
+	stats.NewDirCreated(ctx, dirRef.ID)
+	return nil*/
+	return createDirs(dirName)
+}
+
+func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) error{
+	return nil
+}
+
 func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	infile multipart.File, connectionID string) (*FileOutputData, error) {
 
