@@ -416,7 +416,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 	}
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	clientKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+	clientKey := encryption.MiraclToHerumiPK(
+		(ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string))
 	clientKeyBytes, _ := hex.DecodeString(clientKey)
 
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
