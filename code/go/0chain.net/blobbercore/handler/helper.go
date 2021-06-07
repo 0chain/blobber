@@ -29,6 +29,7 @@ type StorageHandlerI interface {
 
 // PackageHandler is an interface for all static functions that may need to be mocked
 type PackageHandler interface {
+	GetReferenceLookup(ctx context.Context, allocationID string, path string) string
 	GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*reference.Ref, error)
 	GetCommitMetaTxns(ctx context.Context, refID int64) ([]reference.CommitMetaTxn, error)
 	AddCommitMetaTxn(ctx context.Context, refID int64, txnID string) error
@@ -41,8 +42,9 @@ type PackageHandler interface {
 	GetRefWithChildren(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 	GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*reference.ObjectPath, error)
 	GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*reference.Ref, error)
-	GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 	GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*allocation.AllocationChangeCollector, error)
+	SaveAllocationChanges(ctx context.Context, alloc *allocation.AllocationChangeCollector) error
+	GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 	VerifyMarker(wm *writemarker.WriteMarkerEntity, ctx context.Context, sa *allocation.Allocation, co *allocation.AllocationChangeCollector) error
 	ApplyChanges(connectionObj *allocation.AllocationChangeCollector, ctx context.Context, allocationRoot string) error
 	GetReference(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
@@ -95,6 +97,10 @@ func (r *packageHandler) GetWriteMarkerEntity(ctx context.Context, allocation_ro
 	return writemarker.GetWriteMarkerEntity(ctx, allocation_root)
 }
 
+func (r *packageHandler) GetReferenceLookup(ctx context.Context, allocationID string, path string) string {
+	return reference.GetReferenceLookup(allocationID, path)
+}
+
 func (r *packageHandler) GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*reference.Ref, error) {
 	return reference.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
 }
@@ -121,4 +127,8 @@ func (r *packageHandler) AddCollaborator(ctx context.Context, refID int64, clien
 
 func (r *packageHandler) RemoveCollaborator(ctx context.Context, refID int64, clientID string) error {
 	return reference.RemoveCollaborator(ctx, refID, clientID)
+}
+
+func (r packageHandler) SaveAllocationChanges(ctx context.Context, alloc *allocation.AllocationChangeCollector) error {
+	return alloc.Save(ctx)
 }

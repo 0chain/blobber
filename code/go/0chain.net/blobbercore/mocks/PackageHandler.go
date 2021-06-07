@@ -270,6 +270,20 @@ func (_m *PackageHandler) GetReferenceFromLookupHash(ctx context.Context, alloca
 	return r0, r1
 }
 
+// GetReferenceLookup provides a mock function with given fields: ctx, allocationID, path
+func (_m *PackageHandler) GetReferenceLookup(ctx context.Context, allocationID string, path string) string {
+	ret := _m.Called(ctx, allocationID, path)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) string); ok {
+		r0 = rf(ctx, allocationID, path)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
 // GetReferencePathFromPaths provides a mock function with given fields: ctx, allocationID, paths
 func (_m *PackageHandler) GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*reference.Ref, error) {
 	ret := _m.Called(ctx, allocationID, paths)
@@ -337,6 +351,20 @@ func (_m *PackageHandler) RemoveCollaborator(ctx context.Context, refID int64, c
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, int64, string) error); ok {
 		r0 = rf(ctx, refID, clientID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SaveAllocationChanges provides a mock function with given fields: ctx, alloc
+func (_m *PackageHandler) SaveAllocationChanges(ctx context.Context, alloc *allocation.AllocationChangeCollector) error {
+	ret := _m.Called(ctx, alloc)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *allocation.AllocationChangeCollector) error); ok {
+		r0 = rf(ctx, alloc)
 	} else {
 		r0 = ret.Error(0)
 	}

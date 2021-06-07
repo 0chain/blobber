@@ -5,7 +5,9 @@ on:
   release:
     types:
       - published
-
+  pull_request:
+    paths-ignore:
+      - '**.md'
 env:
   BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY }}
   VALIDATOR_REGISTRY: ${{ secrets.VALIDATOR_REGISTRY }}

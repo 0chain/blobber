@@ -158,7 +158,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	aName := "Attributes"
 	router.HandleFunc(aPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(UpdateAttributesHandler),
+			WithReadOnlyConnection(UpdateAttributesHandler(svc)),
 		),
 	),
 	).Name(aName)

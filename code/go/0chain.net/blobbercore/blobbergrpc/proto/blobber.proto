@@ -64,6 +64,13 @@ service Blobber {
     };
   }
 
+  rpc UpdateObjectAttributes(UpdateObjectAttributesRequest) returns (UpdateObjectAttributesResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/attributes/{allocation}"
+      body: "*"
+    };
+  }
+
   rpc Collaborator(CollaboratorRequest) returns (CollaboratorResponse) {
     option (google.api.http) = {
       post: "/v2/file/collaborator/{allocation}"
@@ -241,6 +248,17 @@ message GetAllocationRequest {
 
 message GetAllocationResponse {
   Allocation allocation = 1;
+}
+
+message UpdateObjectAttributesRequest {
+  string allocation = 1;
+  string path = 2;
+  string path_hash = 3;
+  string connection_id = 4;
+  string attributes = 5;
+}
+message UpdateObjectAttributesResponse {
+  int64 who_pays_for_reads = 1;
 }
 
 message Allocation {

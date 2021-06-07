@@ -3,6 +3,7 @@ package convert
 import (
 	"context"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberHTTP"
@@ -140,4 +141,11 @@ func CollaboratorResponse(response *blobbergrpc.CollaboratorResponse) interface{
 	}
 
 	return nil
+}
+
+func UpdateObjectAttributesResponseHandler(
+	updateAttributesResponse *blobbergrpc.UpdateObjectAttributesResponse) *blobberHTTP.UpdateObjectAttributesResponse {
+	return &blobberHTTP.UpdateObjectAttributesResponse{
+		WhoPaysForReads: common.WhoPays(updateAttributesResponse.WhoPaysForReads),
+	}
 }
