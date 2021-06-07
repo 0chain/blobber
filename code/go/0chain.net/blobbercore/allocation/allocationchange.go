@@ -38,6 +38,7 @@ type AllocationChangeProcessor interface {
 	Marshal() (string, error)
 	Unmarshal(string) error
 }
+
 type AllocationChangeCollector struct {
 	ConnectionID      string                      `gorm:"column:connection_id;primary_key"`
 	AllocationID      string                      `gorm:"column:allocation_id"`
