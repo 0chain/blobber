@@ -10,6 +10,7 @@ for the client
 Blobber --> Blobber : Iterate through all chunks and \n\
 encrypt every chunk using re-encryption key
 Blobber --> Client : Return Re-encrypted message
+Client --> Client :  Re-decrypt the received message using private key
 end
 
 @enduml
