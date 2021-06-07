@@ -6,6 +6,7 @@ import (
 
 	"0chain.net/core/common"
 	"0chain.net/core/config"
+	. "0chain.net/core/logging"
 
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/herumi/bls-go-binary/bls"
@@ -61,7 +62,7 @@ func MiraclToHerumiPK(pk string) string {
 	var p bls.PublicKey
 	err := p.SetHexString("1 " + n2 + " " + n1 + " " + n4 + " " + n3)
 	if err != nil {
-		return err.Error()
+		Logger.Error("MiraclToHerumiPK: " + err.Error())
 	}
 	return p.SerializeToHexStr()
 }
