@@ -59,6 +59,9 @@ func MiraclToHerumiPK(pk string) string {
 	n3 := pk[(66+64):(66+64+64)]
 	n4 := pk[(66+64+64):(66+64+64+64)]
 	var p bls.PublicKey
-	p.SetHexString("1 " + n2 + " " + n1 + " " + n4 + " " + n3)
+	err := p.SetHexString("1 " + n2 + " " + n1 + " " + n4 + " " + n3)
+	if err != nil {
+		return err.Error()
+	}
 	return p.SerializeToHexStr()
 }
