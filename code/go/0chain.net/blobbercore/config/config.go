@@ -141,6 +141,17 @@ func Development() bool {
 	return Configuration.DeploymentMode == DeploymentDevelopment
 }
 
+// get validated geolocatiion
+func Geolocation() GeolocationConfig {
+	g := Configuration.Geolocation
+	if g.Latitude > 90.00 || g.Latitude < -90.00 ||
+		g.Longitude > 180.00 || g.Longitude < -180.00 {
+			g.Latitude = float64(0.00)
+			g.Longitude = float64(0.00)
+	}
+	return g
+}
+
 /*ErrSupportedChain error for indicating which chain is supported by the server */
 var ErrSupportedChain error
 
