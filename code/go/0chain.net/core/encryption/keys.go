@@ -87,7 +87,7 @@ func MiraclToHerumiSig(sig string) string {
 		return "00"
 	}
 	n1 := withoutParens[0:comma]
-	n2 := withoutParens[ (comma+1) : len(withoutParens)]
+	n2 := withoutParens[(comma+1):]
 	var sign bls.Sign
 	err := sign.SetHexString("1 " + n1 + " " + n2)
 	if err != nil {
