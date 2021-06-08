@@ -334,7 +334,7 @@ func main() {
 	headersOk := handlers.AllowedHeaders([]string{
 		"X-Requested-With", "X-App-Client-ID",
 		"X-App-Client-Key", "Content-Type",
-		"X-App-Client-Signature"
+		"X-App-Client-Signature",
 	})
 
 	// Allow anybody to access API.
