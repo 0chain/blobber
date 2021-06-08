@@ -182,7 +182,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 			authTokenString, allocationObj, fileref, clientID
 		); !isAuthorized {
 			return nil, common.NewErrorf("download_file",
-				"cannot verifying auth ticket: %v", err)
+				"cannot verify auth ticket: %v", err)
 		}
 
 		delete(result, "path")

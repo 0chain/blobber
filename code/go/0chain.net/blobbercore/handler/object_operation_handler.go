@@ -294,7 +294,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			authTokenString, alloc, fileref, clientID
 		); !isAuthorized {
 			return nil, common.NewErrorf("download_file",
-				"cannot verifying auth ticket: %v", err)
+				"cannot verify auth ticket: %v", err)
 		}
 
 		if json.Unmarshal([]byte(authTokenString), &readmarker.AuthTicket{}) != nil {

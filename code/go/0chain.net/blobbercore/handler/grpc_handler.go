@@ -96,7 +96,7 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 			req.AuthToken, alloc, fileref, clientID
 		); !isAuthorized {
 			return nil, common.NewErrorf("download_file",
-				"cannot verifying auth ticket: %v", err)
+				"cannot verify auth ticket: %v", err)
 		}
 
 		fileref.Path = ""
