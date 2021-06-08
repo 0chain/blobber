@@ -20,19 +20,19 @@ func TestMiraclToHerumiPK(t *testing.T) {
 }
 
 func TestMiraclToHerumiSig(t *testing.T) {
-  miraclsig1 := `(0d4dbad6d2586d5e01b6b7fbad77e4adfa81212c52b4a0b885e19c58e0944764,110061aa16d5ba36eef0ad4503be346908d3513c0a2aedfd0d2923411b420eca)`
-  sig1 := MiraclToHerumiSig(miraclsig1)
+	miraclsig1 := `(0d4dbad6d2586d5e01b6b7fbad77e4adfa81212c52b4a0b885e19c58e0944764,110061aa16d5ba36eef0ad4503be346908d3513c0a2aedfd0d2923411b420eca)`
+	sig1 := MiraclToHerumiSig(miraclsig1)
 
 	require.EqualValues(t, sig1, "644794e0589ce185b8a0b4522c2181faade477adfbb7b6015e6d58d2d6ba4d0d")
 
-  // Assert DeserializeHexStr works on the output of MiraclToHerumiSig
-  var sig bls.Sign
-  err := sig.DeserializeHexStr(sig1)
-  require.NoError(t, err)
+	// Assert DeserializeHexStr works on the output of MiraclToHerumiSig
+	var sig bls.Sign
+	err := sig.DeserializeHexStr(sig1)
+	require.NoError(t, err)
 
-  // Test that passing in normal herumi sig just gets back the original.
-  sig2 := MiraclToHerumiSig(sig1)
-  if sig1 != sig2 {
-    panic("Sigs should've been the same")
-  }
+	// Test that passing in normal herumi sig just gets back the original.
+	sig2 := MiraclToHerumiSig(sig1)
+	if sig1 != sig2 {
+		panic("Sigs should've been the same")
+	}
 }
