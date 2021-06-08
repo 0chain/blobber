@@ -44,11 +44,10 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 
 func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {
 	logger := ctxzap.Extract(ctx)
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, req.Allocation, true)
+	alloc, err := b.storageHandler.verifyAllocation(ctx, req.Allocation, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-	allocationID := allocationObj.ID
 
 	clientID := req.Context.Client
 	if len(clientID) == 0 {
@@ -61,10 +60,10 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 		if len(path) == 0 {
 			return nil, common.NewError("invalid_parameters", "Invalid path")
 		}
-		path_hash = reference.GetReferenceLookup(allocationID, path)
+		path_hash = reference.GetReferenceLookup(alloc.ID, path)
 	}
 
-	fileref, err := b.packageHandler.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	fileref, err := b.packageHandler.GetReferenceFromLookupHash(ctx, alloc.ID, path_hash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -94,7 +93,7 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 	if !isOwner && !isRepairer && !isCollaborator {
 		// check auth token
 		if isAuthorized, err := b.storageHandler.verifyAuthTicket(ctx,
-			req.AuthToken, allocationObj, fileref, clientID
+			req.AuthToken, alloc, fileref, clientID
 		); !isAuthorized {
 			return nil, common.NewErrorf("download_file",
 				"cannot verifying auth ticket: %v", err)
@@ -120,15 +119,14 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 
 func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.GetFileStatsRequest) (*blobbergrpc.GetFileStatsResponse, error) {
 	allocationTx := req.Context.Allocation
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, true)
+	alloc, err := b.storageHandler.verifyAllocation(ctx, allocationTx, true)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-	allocationID := allocationObj.ID
 
 	clientID := req.Context.Client
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+	if len(clientID) == 0 || alloc.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
@@ -138,10 +136,10 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 		if len(path) == 0 {
 			return nil, common.NewError("invalid_parameters", "Invalid path")
 		}
-		path_hash = reference.GetReferenceLookup(allocationID, path)
+		path_hash = reference.GetReferenceLookup(alloc.ID, path)
 	}
 
-	fileref, err := b.packageHandler.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	fileref, err := b.packageHandler.GetReferenceFromLookupHash(ctx, alloc.ID, path_hash)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -168,12 +166,11 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.
 
 	clientID := req.Context.Client
 	allocationTx := req.Context.Allocation
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, true)
+	alloc, err := b.storageHandler.verifyAllocation(ctx, allocationTx, true)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
@@ -185,18 +182,18 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.
 		if len(path) == 0 {
 			return nil, common.NewError("invalid_parameters", "Invalid path")
 		}
-		path_hash = reference.GetReferenceLookup(allocationID, path)
+		path_hash = reference.GetReferenceLookup(alloc.ID, path)
 	}
 
 	logger.Info("Path Hash for list dir :" + path_hash)
 
-	fileref, err := b.packageHandler.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	fileref, err := b.packageHandler.GetReferenceFromLookupHash(ctx, alloc.ID, path_hash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
 	authTokenString := req.AuthToken
-	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		authTicketVerified, err := b.storageHandler.verifyAuthTicket(ctx, authTokenString, allocationObj, fileref, clientID)
+	if clientID != alloc.OwnerID || len(authTokenString) > 0 {
+		authTicketVerified, err := b.storageHandler.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID)
 		if err != nil {
 			return nil, err
 		}
@@ -205,18 +202,18 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.
 		}
 	}
 
-	dirref, err := b.packageHandler.GetRefWithChildren(ctx, allocationID, fileref.Path)
+	dirref, err := b.packageHandler.GetRefWithChildren(ctx, alloc.ID, fileref.Path)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
 
-	if clientID != allocationObj.OwnerID {
+	if clientID != alloc.OwnerID {
 		dirref.Path = ""
 	}
 
 	var entities []*blobbergrpc.FileRef
 	for _, entity := range dirref.Children {
-		if clientID != allocationObj.OwnerID {
+		if clientID != alloc.OwnerID {
 			entity.Path = ""
 		}
 		entities = append(entities, reference.FileRefToFileRefGRPC(entity))
@@ -225,22 +222,21 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.
 	refGRPC.DirMetaData.Children = entities
 
 	return &blobbergrpc.ListEntitiesResponse{
-		AllocationRoot: allocationObj.AllocationRoot,
+		AllocationRoot: alloc.AllocationRoot,
 		MetaData:       refGRPC,
 	}, nil
 }
 
 func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc.GetObjectPathRequest) (*blobbergrpc.GetObjectPathResponse, error) {
 	allocationTx := req.Context.Allocation
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
+	alloc, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-	allocationID := allocationObj.ID
 
 	clientID := req.Context.Client
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+	if len(clientID) == 0 || alloc.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 	path := req.Path
@@ -258,16 +254,16 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 		return nil, common.NewError("invalid_parameters", "Invalid block number")
 	}
 
-	objectPath, err := b.packageHandler.GetObjectPathGRPC(ctx, allocationID, blockNum)
+	objectPath, err := b.packageHandler.GetObjectPathGRPC(ctx, alloc.ID, blockNum)
 	if err != nil {
 		return nil, err
 	}
 
 	var latestWM *writemarker.WriteMarkerEntity
-	if len(allocationObj.AllocationRoot) == 0 {
+	if len(alloc.AllocationRoot) == 0 {
 		latestWM = nil
 	} else {
-		latestWM, err = b.packageHandler.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+		latestWM, err = b.packageHandler.GetWriteMarkerEntity(ctx, alloc.AllocationRoot)
 		if err != nil {
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
@@ -285,12 +281,11 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobbergrpc.GetReferencePathRequest) (*blobbergrpc.GetReferencePathResponse, error) {
 
 	allocationTx := req.Context.Allocation
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
+	alloc, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-	allocationID := allocationObj.ID
 
 	clientID := req.Context.Client
 	if len(clientID) == 0 {
@@ -312,7 +307,7 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 		}
 	}
 
-	rootRef, err := b.packageHandler.GetReferencePathFromPaths(ctx, allocationID, paths)
+	rootRef, err := b.packageHandler.GetReferencePathFromPaths(ctx, alloc.ID, paths)
 	if err != nil {
 		return nil, err
 	}
@@ -334,10 +329,10 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 	}
 
 	var latestWM *writemarker.WriteMarkerEntity
-	if len(allocationObj.AllocationRoot) == 0 {
+	if len(alloc.AllocationRoot) == 0 {
 		latestWM = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, alloc.AllocationRoot)
 		if err != nil {
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
@@ -353,15 +348,14 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 
 func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc.GetObjectTreeRequest) (*blobbergrpc.GetObjectTreeResponse, error) {
 	allocationTx := req.Context.Allocation
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
+	alloc, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-	allocationID := allocationObj.ID
 
 	clientID := req.Context.Client
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+	if len(clientID) == 0 || alloc.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 	path := req.Path
@@ -369,7 +363,7 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 
-	rootRef, err := b.packageHandler.GetObjectTree(ctx, allocationID, path)
+	rootRef, err := b.packageHandler.GetObjectTree(ctx, alloc.ID, path)
 	if err != nil {
 		return nil, err
 	}
@@ -391,10 +385,10 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 	}
 
 	var latestWM *writemarker.WriteMarkerEntity
-	if len(allocationObj.AllocationRoot) == 0 {
+	if len(alloc.AllocationRoot) == 0 {
 		latestWM = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, alloc.AllocationRoot)
 		if err != nil {
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}

@@ -267,7 +267,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	}
 
 	// set payer: default
-	var payerID =  payerID = alloc.OwnerID
+	var payerID = alloc.OwnerID
 
 	// set payer: check for explicit allocation payer value
 	if len(alloc.PayerID) > 0 {
