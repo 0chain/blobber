@@ -408,7 +408,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	var response = &DownloadResponse{}
 	response.Success = true
 	response.LatestRM = readMarker
-	if attrs.PreAtBlobber {
+	if len(fileref.EncryptedKey) > 0 {
 		// check if client is authorized to download
 		shareInfo, err := reference.GetShareInfo(ctx, readMarker.ClientID, fileref.PathHash)
 		if err != nil {
