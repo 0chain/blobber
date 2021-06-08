@@ -224,8 +224,8 @@ func FindChallenges(ctx context.Context) {
 								Logger.Info("No challenge entity from the challenge map")
 								continue
 							}
-							if !common.Within(int64(v.Created), int64(time.Duration(config.Configuration.ChallengeResolveFreq).Seconds())) {
-								Logger.Info("Challenge is expired")
+							if !common.Within(int64(v.Created), int64(config.Configuration.ChallengeResolveFreq)) {
+								Logger.Info("Challenge is expired", zap.Any("created", v.Created))
 								continue
 							}
 
