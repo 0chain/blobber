@@ -51,10 +51,10 @@ type ResumeFileChange struct {
 	EncryptedKey string               `json:"encrypted_key,omitempty"`
 	Attributes   reference.Attributes `json:"attributes,omitempty"`
 
-	MerkleHasher gosdk.StreamMerkleHasher `json:"hasher,omitempty"`        // streaming merkle hasher to save current state of tree
-	IsFinal      bool                     `json:"is_final,omitempty"`      // current chunk is last or not
-	ChunkIndex   int                      `json:"chunk_index,omitempty"`   // the seq of current chunk. all chunks MUST be uploaded one by one because of streaming merkle hash
-	UploadOffset int64                    `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
+	MerkleHasher *gosdk.StreamMerkleHasher `json:"hasher,omitempty"`        // streaming merkle hasher to save current state of tree
+	IsFinal      bool                      `json:"is_final,omitempty"`      // current chunk is last or not
+	ChunkIndex   int                       `json:"chunk_index,omitempty"`   // the seq of current chunk. all chunks MUST be uploaded one by one because of streaming merkle hash
+	UploadOffset int64                     `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
 }
 
 // ProcessChange update references, and create a new FileRef

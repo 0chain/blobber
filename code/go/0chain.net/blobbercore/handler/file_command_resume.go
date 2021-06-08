@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -43,6 +44,10 @@ func (cmd *ResumeFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 		return common.NewError("duplicate_file", "File at path already exists")
 	}
 
+	changeProcessor.MerkleHasher = &util.StreamMerkleHasher{}
+	changeProcessor.MerkleHasher.Hash = func(left string, right string) string {
+		return encryption.Hash(left + right)
+	}
 	cmd.changeProcessor = changeProcessor
 
 	return nil
@@ -53,11 +58,23 @@ func (cmd *ResumeFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (UploadResult, error) {
 	result := UploadResult{}
 
+	allocationSize := connectionObj.Size + cmd.changeProcessor.Size
+
+	if allocationSize > config.Configuration.MaxFileSize {
+		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
+	}
+
+	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
+		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
+	}
+
 	origfile, _, err := req.FormFile("uploadFile")
 	if err != nil {
 		return result, common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
 	}
 	defer origfile.Close()
+
+	cmd.reloadChange(connectionObj)
 
 	fileInputData := &filestore.FileInputData{Name: cmd.changeProcessor.Name, Path: cmd.changeProcessor.Path, OnCloud: false, IsResumable: true, IsFinal: cmd.changeProcessor.IsFinal}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
@@ -74,30 +91,17 @@ func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
 	}
 
-	allocationSize := cmd.changeProcessor.Size + fileOutputData.Size
-	//totalSize := cmd.changeProcessor.Size + fileOutputData.Size
-
-	if allocationSize > config.Configuration.MaxFileSize {
-		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
-	}
-
-	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
-		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
-	}
-
-	cmd.changeProcessor.Hash = fileOutputData.ContentHash
-	cmd.changeProcessor.UploadOffset += fileOutputData.Size
-
-	cmd.changeProcessor.MerkleHasher.Hash = func(left string, right string) string {
-		return encryption.Hash(left + right)
+	if cmd.changeProcessor.Size != fileOutputData.Size {
+		return result, common.NewError("content_size_mismatch", "Size provided in the meta data does not match the file size")
 	}
 
 	//push leaf to merkle hasher for computing, save state in db
 	err = cmd.changeProcessor.MerkleHasher.Push(cmd.changeProcessor.Hash, cmd.changeProcessor.ChunkIndex)
 	if errors.Is(err, util.ErrLeafNoSequenced) {
 
-		return result, common.NewError("invalid_chunk_index", "Next chunk index should be "+strconv.Itoa(cmd.changeProcessor.MerkleHasher.Count))
+		return result, common.NewError("invalid_chunk_index", "Next chunk index should be "+strconv.Itoa(cmd.changeProcessor.MerkleHasher.Count)+" not "+strconv.Itoa(cmd.changeProcessor.ChunkIndex))
 	}
+	cmd.changeProcessor.Hash = fileOutputData.ContentHash
 
 	if cmd.changeProcessor.IsFinal {
 		cmd.changeProcessor.ActualHash = cmd.changeProcessor.MerkleHasher.GetMerkleRoot()
@@ -109,14 +113,13 @@ func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	cmd.changeProcessor.Hash = fileOutputData.ContentHash
 	cmd.changeProcessor.AllocationID = allocationObj.ID
-	cmd.changeProcessor.Size = allocationSize
 
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionObj.ConnectionID
 	cmd.allocationChange.Size = allocationSize
-	cmd.allocationChange.Operation = allocation.INSERT_OPERATION
+	cmd.allocationChange.Operation = allocation.RESUME_OPERATION
 
-	connectionObj.Size += allocationSize
+	connectionObj.Size = allocationSize
 
 	return result, nil
 }
@@ -147,12 +150,37 @@ func (cmd *ResumeFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 	return nil
 }
 
+func (cmd *ResumeFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
+	for _, c := range connectionObj.Changes {
+		if c.Operation == allocation.RESUME_OPERATION {
+
+			dbChangeProcessor := &allocation.ResumeFileChange{}
+
+			fmt.Println(c.Input)
+
+			dbChangeProcessor.Unmarshal(c.Input)
+
+			cmd.changeProcessor.Size = dbChangeProcessor.Size
+			//cmd.changeProcessor.UploadOffset = dbChangeProcessor.UploadOffset
+			cmd.changeProcessor.MerkleHasher = dbChangeProcessor.MerkleHasher
+			cmd.changeProcessor.MerkleHasher.Hash = func(left string, right string) string {
+				return encryption.Hash(left + right)
+			}
+
+			return
+		}
+	}
+}
+
 // UpdateChange replace ResumeFileChange in db
 func (cmd *ResumeFileCommand) UpdateChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
 		if c.Operation == allocation.RESUME_OPERATION {
-			c.Size = cmd.changeProcessor.Size
+			c.Size = connectionObj.Size
 			c.Input, _ = cmd.changeProcessor.Marshal()
+
+			fmt.Println(c.Input)
+
 			c.ModelWithTS.UpdatedAt = time.Now()
 			return
 		}
