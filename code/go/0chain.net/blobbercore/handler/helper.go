@@ -13,13 +13,14 @@ import (
 
 	"0chain.net/blobbercore/blobbergrpc"
 	"0chain.net/blobbercore/constants"
+	"0chain.net/core/encryption"
 )
 
 func setupGRPCHandlerContext(ctx context.Context, r *blobbergrpc.RequestContext) context.Context {
 	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY,
 		r.Client)
 	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY,
-		r.ClientKey)
+		encryption.MiraclToHerumiPK(r.ClientKey))
 	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY,
 		r.Allocation)
 	return ctx
