@@ -32,6 +32,6 @@ func TestMiraclToHerumiSig(t *testing.T) {
 	// Test that passing in normal herumi sig just gets back the original.
 	sig2 := MiraclToHerumiSig(sig1)
 	if sig1 != sig2 {
-		panic("Sigs should've been the same")
+		panic("Signatures should be the same.")
 	}
 }

@@ -73,7 +73,7 @@ func MiraclToHerumiPK(pk string) string {
 // lib.
 //
 // If the 'sig' was not in MIRACL format, we just return the original sig.
-var miraclExampleSig = `(0d4dbad6d2586d5e01b6b7fbad77e4adfa81212c52b4a0b885e19c58e0944764,110061aa16d5ba36eef0ad4503be346908d3513c0a2aedfd0d2923411b420eca)`
+const miraclExampleSig = `(0d4dbad6d2586d5e01b6b7fbad77e4adfa81212c52b4a0b885e19c58e0944764,110061aa16d5ba36eef0ad4503be346908d3513c0a2aedfd0d2923411b420eca)`
 func MiraclToHerumiSig(sig string) string {
 	if len(sig) <= 2 {
 		return sig
