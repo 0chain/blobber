@@ -1,30 +1,12 @@
-FROM golang:1.14.9-alpine3.12 as validator_build
+FROM blobber_base as validator_build
 
 LABEL zchain="validator"
-
-RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep
-
-# Install Herumi's cryptography
-RUN apk add gmp gmp-dev openssl-dev && \
-    cd /tmp && \
-    wget -O - https://github.com/herumi/mcl/archive/master.tar.gz | tar xz && \
-    mv mcl* mcl && \
-    make -C mcl -j $(nproc) lib/libmclbn256.so install && \
-    cp mcl/lib/libmclbn256.so /usr/local/lib && \
-    rm -R /tmp/mcl
-
-RUN git clone https://github.com/herumi/bls /tmp/bls && \
-    cd /tmp/bls && \
-    git submodule init && \
-    git submodule update && \
-    make -j $(nproc) install && \
-    cd - && \
-    rm -R /tmp/bls
-
 
 
 ENV SRC_DIR=/blobber
 ENV GO111MODULE=on
+ENV GOPROXY=https://goproxy.cn,direct 
+
 
 # Download the dependencies:
 # Will be cached if we don't change mod/sum files
@@ -32,7 +14,7 @@ COPY ./code/go/0chain.net/go.mod          ./code/go/0chain.net/go.sum          $
 
 COPY ./gosdk  /gosdk
 
-RUN cd $SRC_DIR/go/0chain.net && go mod download
+RUN cd $SRC_DIR/go/0chain.net && go mod download -x
 
 #Add the source code
 ADD ./code/go/0chain.net $SRC_DIR/go/0chain.net

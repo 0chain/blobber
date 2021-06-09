@@ -111,12 +111,10 @@ func (cc *AllocationChangeCollector) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	if cc.Status == NewConnection {
 		cc.Status = InProgressConnection
-		err := db.Create(cc).Error
-		return err
-	} else {
-		err := db.Save(cc).Error
-		return err
+		return db.Create(cc).Error
 	}
+
+	return db.Session(&gorm.Session{FullSaveAssociations: true}).Updates(cc).Error
 }
 
 // ComputeProperties unmarshal all ChangeProcesses from postgres

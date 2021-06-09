@@ -44,7 +44,7 @@ func (cmd *ResumeFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 		return common.NewError("duplicate_file", "File at path already exists")
 	}
 
-	changeProcessor.MerkleHasher = &util.StreamMerkleHasher{}
+	//changeProcessor.MerkleHasher = &util.StreamMerkleHasher{}
 	changeProcessor.MerkleHasher.Hash = func(left string, right string) string {
 		return encryption.Hash(left + right)
 	}
@@ -76,23 +76,19 @@ func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	cmd.reloadChange(connectionObj)
 
-	fileInputData := &filestore.FileInputData{Name: cmd.changeProcessor.Name, Path: cmd.changeProcessor.Path, OnCloud: false, IsResumable: true, IsFinal: cmd.changeProcessor.IsFinal}
+	fileInputData := &filestore.FileInputData{Name: cmd.changeProcessor.Filename, Path: cmd.changeProcessor.Path, OnCloud: false, IsResumable: true, IsFinal: cmd.changeProcessor.IsFinal}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
 
-	result.Filename = cmd.changeProcessor.Name
+	result.Filename = cmd.changeProcessor.Filename
 	result.Hash = fileOutputData.ContentHash
 	result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
 
 	if len(cmd.changeProcessor.Hash) > 0 && cmd.changeProcessor.Hash != fileOutputData.ContentHash {
 		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
-	}
-
-	if cmd.changeProcessor.Size != fileOutputData.Size {
-		return result, common.NewError("content_size_mismatch", "Size provided in the meta data does not match the file size")
 	}
 
 	//push leaf to merkle hasher for computing, save state in db
@@ -143,8 +139,8 @@ func (cmd *ResumeFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 		}
 
 		cmd.changeProcessor.ThumbnailHash = thumbOutputData.ContentHash
-		cmd.changeProcessor.ThumbnailSize = int(thumbOutputData.Size)
-		cmd.changeProcessor.ThumbnailFileName = thumbInputData.Name
+		cmd.changeProcessor.ThumbnailSize = thumbOutputData.Size
+		cmd.changeProcessor.ThumbnailFilename = thumbInputData.Name
 	}
 
 	return nil

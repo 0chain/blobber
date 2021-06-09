@@ -17,44 +17,12 @@ import (
 
 // ResumeFileChange file change processor for continuous upload in INIT/APPEND/FINALIZE
 type ResumeFileChange struct {
-	// Name remote file name
-	Name string `json:"name,omitempty"`
-	// Path remote path
-	Path string `json:"path,omitempty"`
-	// MimeType the mime type of source file
-	MimeType string `json:"mime_type,omitempty"`
+	NewFileChange
 
-	// Hash hash of current uploadFormFile
-	Hash string `json:"hash,omitempty"`
-	// Size total bytes of current uploadFormFile
-	Size int64 `json:"size,omitempty"`
-	// Hash hash of current uploadThumbnail
-	ThumbnailHash string `json:"thumbnail_hash,omitempty"`
-	// ThumbnailSize total bytes of current uploadThumbnail
-	ThumbnailSize int `json:"thumbnail_size,omitempty"`
-
-	// ThumbnailFileName file name of thumbnail on serverß
-	ThumbnailFileName string `json:"thumbnail_file_name,omitempty"`
-
-	// ActualHash merkle's root hash of a shard includes all chunks with encryption. it is only set in last chunk
-	ActualHash string `json:"actual_hash,omitempty"`
-	// ActualSize total bytes of a shard includes all chunks with encryption.
-	ActualSize int64 `json:"actual_size,omitempty"`
-
-	// AllocationID id of allocation
-	AllocationID string `json:"allocation_id,omitempty"`
-	// ConnectionID the connection_is used in resumable upload
-	ConnectionID string `json:"connection_id,omitempty"`
-	// CustomMeta custom meta in blockchain
-	CustomMeta string `json:"custom_meta,omitempty"`
-	//
-	EncryptedKey string               `json:"encrypted_key,omitempty"`
-	Attributes   reference.Attributes `json:"attributes,omitempty"`
-
-	MerkleHasher *gosdk.StreamMerkleHasher `json:"hasher,omitempty"`        // streaming merkle hasher to save current state of tree
-	IsFinal      bool                      `json:"is_final,omitempty"`      // current chunk is last or not
-	ChunkIndex   int                       `json:"chunk_index,omitempty"`   // the seq of current chunk. all chunks MUST be uploaded one by one because of streaming merkle hash
-	UploadOffset int64                     `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
+	MerkleHasher gosdk.StreamMerkleHasher `json:"hasher,omitempty"`        // streaming merkle hasher to save current state of tree
+	IsFinal      bool                     `json:"is_final,omitempty"`      // current chunk is last or not
+	ChunkIndex   int                      `json:"chunk_index,omitempty"`   // the seq of current chunk. all chunks MUST be uploaded one by one because of streaming merkle hash
+	UploadOffset int64                    `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
 }
 
 // ProcessChange update references, and create a new FileRef
@@ -109,8 +77,8 @@ func (nf *ResumeFileChange) ProcessChange(ctx context.Context,
 	newFile.AllocationID = dirRef.AllocationID
 	newFile.ContentHash = nf.Hash
 	newFile.CustomMeta = nf.CustomMeta
-	newFile.MerkleRoot = nf.ActualHash
-	newFile.Name = nf.Name
+	newFile.MerkleRoot = nf.MerkleRoot
+	newFile.Name = nf.Filename
 	newFile.ParentPath = dirRef.Path
 	newFile.Path = nf.Path
 	newFile.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, nf.Path)
@@ -118,9 +86,9 @@ func (nf *ResumeFileChange) ProcessChange(ctx context.Context,
 	newFile.MimeType = nf.MimeType
 	newFile.WriteMarker = allocationRoot
 	newFile.ThumbnailHash = nf.ThumbnailHash
-	newFile.ThumbnailSize = int64(nf.ThumbnailSize)
-	newFile.ActualThumbnailHash = nf.ThumbnailHash
-	newFile.ActualThumbnailSize = int64(nf.ThumbnailSize)
+	newFile.ThumbnailSize = nf.ThumbnailSize
+	newFile.ActualThumbnailHash = nf.ActualThumbnailHash
+	newFile.ActualThumbnailSize = nf.ActualThumbnailSize
 	newFile.EncryptedKey = nf.EncryptedKey
 
 	if err = newFile.SetAttributes(&nf.Attributes); err != nil {
@@ -157,13 +125,13 @@ func (nf *ResumeFileChange) Unmarshal(input string) error {
 // DeleteTempFile delete temp files from allocation's temp dir
 func (nf *ResumeFileChange) DeleteTempFile() error {
 	fileInputData := &filestore.FileInputData{}
-	fileInputData.Name = nf.Name
+	fileInputData.Name = nf.Filename
 	fileInputData.Path = nf.Path
 	fileInputData.Hash = nf.Hash
 	err := filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
 	if nf.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{}
-		fileInputData.Name = nf.ThumbnailFileName
+		fileInputData.Name = nf.ThumbnailFilename
 		fileInputData.Path = nf.Path
 		fileInputData.Hash = nf.ThumbnailHash
 		err = filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
@@ -174,7 +142,7 @@ func (nf *ResumeFileChange) DeleteTempFile() error {
 // CommitToFileStore move files from temp dir to object dir
 func (nf *ResumeFileChange) CommitToFileStore(ctx context.Context) error {
 	fileInputData := &filestore.FileInputData{}
-	fileInputData.Name = nf.Name
+	fileInputData.Name = nf.Filename
 	fileInputData.Path = nf.Path
 	fileInputData.Hash = nf.Hash
 	_, err := filestore.GetFileStore().CommitWrite(nf.AllocationID, fileInputData, nf.ConnectionID)
@@ -183,7 +151,7 @@ func (nf *ResumeFileChange) CommitToFileStore(ctx context.Context) error {
 	}
 	if nf.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{}
-		fileInputData.Name = nf.ThumbnailFileName
+		fileInputData.Name = nf.ThumbnailFilename
 		fileInputData.Path = nf.Path
 		fileInputData.Hash = nf.ThumbnailHash
 		_, err := filestore.GetFileStore().CommitWrite(nf.AllocationID, fileInputData, nf.ConnectionID)

@@ -17,8 +17,8 @@ handlers:
   rate_limit: 10 # 10 per second
 
 logging:
-  level: "info"
-  console: false # printing log to console is only supported in development mode
+  level: "error"
+  console: true # printing log to console is only supported in development mode
 
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
