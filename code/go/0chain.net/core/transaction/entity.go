@@ -68,11 +68,9 @@ type StakePoolSettings struct {
 	ServiceCharge float64 `json:"service_charge"`
 }
 
-// Move to the core one day
 type StorageNodeGeolocation struct {
 	Latitude float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
-	// reserved / Accuracy float64 `mapstructure:"accuracy"`
 }
 
 type StorageNode struct {
