@@ -35,7 +35,7 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 		return common.NewError("read_marker_validation_failed", "Read Marker is not for the blobber")
 	}
 
-	clientPublicKey := encryption.MiraclToHerumiPK(ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string))
+	clientPublicKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 	if len(clientPublicKey) == 0 || clientPublicKey != rm.LatestRM.ClientPublicKey {
 		return common.NewError("read_marker_validation_failed", "Could not get the public key of the client")
 	}

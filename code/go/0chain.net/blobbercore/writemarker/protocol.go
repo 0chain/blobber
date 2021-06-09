@@ -48,7 +48,7 @@ func (wm *WriteMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.Al
 		return common.NewError("write_marker_validation_failed", "Write Marker size does not match the connection size")
 	}
 
-	clientPublicKey := encryption.MiraclToHerumiPK(ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string))
+	clientPublicKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 	if len(clientPublicKey) == 0 {
 		return common.NewError("write_marker_validation_failed", "Could not get the public key of the client")
 	}
