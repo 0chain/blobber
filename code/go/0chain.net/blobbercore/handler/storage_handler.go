@@ -712,6 +712,7 @@ func verifySignatureFromRequest(r *http.Request, pbK string) (bool, error) {
 	}
 
 	hash := encryption.Hash(data)
+	pbK = encryption.MiraclToHerumiPK(pbK)
 	return encryption.Verify(pbK, sign, hash)
 }
 
