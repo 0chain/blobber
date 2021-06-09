@@ -700,7 +700,7 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 
 // verifySignatureFromRequest verifyes signature passed as common.ClientSignatureHeader header.
 func verifySignatureFromRequest(r *http.Request, pbK string) (bool, error) {
-	sign := r.Header.Get(common.ClientSignatureHeader)
+	sign := encryption.MiraclToHerumiSig(r.Header.Get(common.ClientSignatureHeader))
 	if len(sign) < 64 {
 		return false, nil
 	}
