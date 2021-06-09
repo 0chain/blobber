@@ -68,13 +68,19 @@ type StakePoolSettings struct {
 	ServiceCharge float64 `json:"service_charge"`
 }
 
+type StorageNodeGeolocation struct {
+	Latitude float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}
+
 type StorageNode struct {
-	ID                string            `json:"id"`
-	BaseURL           string            `json:"url"`
-	Terms             Terms             `json:"terms"`
-	Capacity          int64             `json:"capacity"`
-	PublicKey         string            `json:"-"`
-	StakePoolSettings StakePoolSettings `json:"stake_pool_settings"`
+	ID                string                 `json:"id"`
+	BaseURL           string                 `json:"url"`
+	Geolocation       StorageNodeGeolocation `json:"geolocation"`
+	Terms             Terms                  `json:"terms"`
+	Capacity          int64                  `json:"capacity"`
+	PublicKey         string                 `json:"-"`
+	StakePoolSettings StakePoolSettings      `json:"stake_pool_settings"`
 }
 
 type BlobberAllocation struct {
