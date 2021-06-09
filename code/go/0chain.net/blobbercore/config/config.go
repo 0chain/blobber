@@ -66,7 +66,6 @@ const (
 type GeolocationConfig struct {
 	Latitude float64 `mapstructure:"latitude"`
 	Longitude float64 `mapstructure:"longitude"`
-	// reserved / Accuracy float64 `mapstructure:"accuracy"`
 }
 
 type Config struct {
