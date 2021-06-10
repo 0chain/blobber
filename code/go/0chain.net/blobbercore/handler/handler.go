@@ -14,7 +14,6 @@ import (
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/stats"
 	"0chain.net/core/common"
-	"0chain.net/core/encryption"
 
 	. "0chain.net/core/logging"
 	"go.uber.org/zap"
@@ -106,7 +105,7 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY,
 		r.Header.Get(common.ClientHeader))
 	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY,
-		encryption.MiraclToHerumiPK(r.Header.Get(common.ClientKeyHeader)))
+		r.Header.Get(common.ClientKeyHeader))
 	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY,
 		vars["allocation"])
 	// signature is not requered for all requests, but if header is empty it won`t affect anything

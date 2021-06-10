@@ -31,6 +31,8 @@ func ReadKeys(reader io.Reader) (publicKey string, privateKey string, publicIp s
 
 //Verify - given a public key and a signature and the hash used to create the signature, verify the signature
 func Verify(publicKey string, signature string, hash string) (bool, error) {
+	publicKey = MiraclToHerumiPK(publicKey)
+	signature = MiraclToHerumiSig(signature)
 	signScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
 	if signScheme != nil {
 		err := signScheme.SetPublicKey(publicKey)
