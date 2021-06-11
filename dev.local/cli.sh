@@ -53,7 +53,7 @@ install_postgres () {
 
 
     docker run --name blobber_postgres_init \
-    --link ç:postgres \
+    --link blobber_postgres:postgres \
     -e  POSTGRES_PORT=5432 \
     -e  POSTGRES_HOST=postgres \
     -e  POSTGRES_USER=postgres  \
