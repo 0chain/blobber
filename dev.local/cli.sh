@@ -87,7 +87,7 @@ prepareRuntime() {
 start_blobber () {
     echo "Building blobber $i ..."
     cd ../code/go/0chain.net/blobber   
-    go build -v -o $root/data/bloober$i/blobber .
+    go build -v -tags "bn256 development" -gcflags="-N -l" -ldflags "-X 0chain.net/core/build.BuildTag=dev" -o $root/data/bloober$i/blobber .
 
     prepareRuntime;
 
@@ -108,7 +108,7 @@ start_validator () {
     echo "Building validator $i ..."
 
     cd ../code/go/0chain.net/validator   
-    go build -v -o $root/data/bloober$i/validator .
+    go build -v -tags "bn256 development" -gcflags="-N -l" -ldflags "-X 0chain.net/core/build.BuildTag=dev" -o $root/data/bloober$i/validator .
 
 
     prepareRuntime;
