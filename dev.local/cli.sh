@@ -100,8 +100,11 @@ start_blobber () {
     keys_file="../docker.local/keys_config/b0bnode${i}_keys.txt"
     minio_file="../docker.local/keys_config/minio_config.txt"
     config_dir="./data/bloober$i/config"
+    files_dir="./data/bloober$i/files"
+    log_dir="./data/bloober$i/log"
+    db_dir="./data/bloober$i/data"
 
-    ./data/bloober$i/blobber --port $port --grpc_port $grpc_port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --files_dir ../files --log_dir ../log --db_dir ./data --minio_file $minio_file --config_dir $config_dir --devserver
+    ./data/bloober$i/blobber --port $port --grpc_port $grpc_port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --files_dir $files_dir --log_dir $log_dir --db_dir $db_dir  --minio_file $minio_file --config_dir $config_dir --devserver
 }
 
 start_validator () {
@@ -121,8 +124,10 @@ start_validator () {
     hostname="localhost"
     keys_file="../docker.local/keys_config/b0bnode${i}_keys.txt"
     config_dir="./data/bloober$i/config"
+    log_dir="./data/bloober$i/log"
 
-    ./data/bloober$i/validator --port $port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --log_dir ../log --config_dir $config_dir --devserver
+
+    ./data/bloober$i/validator --port $port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --log_dir $log_dir --config_dir $config_dir --devserver
 }
 
 clean () {
