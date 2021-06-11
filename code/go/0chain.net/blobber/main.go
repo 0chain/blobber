@@ -31,7 +31,7 @@ import (
 	"0chain.net/core/transaction"
 	"0chain.net/core/util"
 
-	sdk "github.com/0chain/gosdk/core/util"
+	dev "github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -52,7 +52,7 @@ func initHandlers(r *mux.Router) {
 }
 
 func SetupWorkerConfig() {
-	//TODO: [dayi]contentref_cleaner should be removed? there seems is no any references in code
+
 	config.Configuration.ContentRefWorkerFreq = viper.GetInt64("contentref_cleaner.frequency")
 	config.Configuration.ContentRefWorkerTolerance = viper.GetInt64("contentref_cleaner.tolerance")
 
@@ -226,17 +226,19 @@ func main() {
 	grpcPortString := flag.String("grpc_port", "", "grpc_port")
 	hostname := flag.String("hostname", "", "hostname")
 	devserver := flag.Bool("devserver", false, "start devserver")
+	configDir := flag.String("config_dir", "./config", "config_dir")
 
 	flag.Parse()
 
+	if *devserver {
+		dev.Use(dev.StartDevServer(*configDir + "/devserver.yml"))
+	}
+
 	config.SetupDefaultConfig()
-	config.SetupConfig()
+
+	config.SetupConfig(*configDir)
 
 	config.Configuration.DeploymentMode = byte(*deploymentMode)
-
-	if *devserver {
-		sdk.Use(sdk.StartDevServer("/blobber/config/devserver.yml"))
-	}
 
 	if config.Development() {
 		logging.InitLogging("development", *logDir, "0chainBlobber.log")
@@ -487,9 +489,11 @@ func SetupBlobberOnBC(logDir string) error {
 	zcncore.SetLogFile(logName, false)
 	zcncore.SetLogLevel(3)
 	if err := zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme); err != nil {
+		log.Println("InitZCNSDK:", err)
 		return err
 	}
 	if err := zcncore.SetWalletInfo(node.Self.GetWalletString(), false); err != nil {
+		log.Println("SetWalletInfo:", err)
 		return err
 	}
 	go RegisterBlobber()

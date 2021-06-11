@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"fmt"
+
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/constants"
@@ -532,6 +534,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
 	allocationRoot := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
 
 	if allocationRoot != writeMarker.AllocationRoot {

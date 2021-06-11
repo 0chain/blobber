@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -37,7 +38,7 @@ type NewFileChange struct {
 
 	//server side: update them by ChangeProcessor
 	AllocationID string `json:"allocation_id"`
-	//server side:
+	//client side:
 	Hash string `json:"content_hash,omitempty"`
 	Size int64  `json:"size"`
 	//server side:
@@ -107,6 +108,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context,
 	newFile.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, nf.Path)
 	newFile.Size = nf.Size
 	newFile.MimeType = nf.MimeType
+	fmt.Println(allocationRoot)
 	newFile.WriteMarker = allocationRoot
 	newFile.ThumbnailHash = nf.ThumbnailHash
 	newFile.ThumbnailSize = nf.ThumbnailSize

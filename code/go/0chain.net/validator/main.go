@@ -46,15 +46,16 @@ func main() {
 	portString := flag.String("port", "", "port")
 	hostname := flag.String("hostname", "", "hostname")
 	devserver := flag.Bool("devserver", false, "start devserver")
+	configDir := flag.String("config_dir", "./config", "config_dir")
 
 	flag.Parse()
 
 	if *devserver {
-		sdk.Use(sdk.StartDevServer("/blobber/config/devserver.yml"))
+		sdk.Use(sdk.StartDevServer(*configDir + "/devserver.yml"))
 	}
 
 	config.SetupDefaultConfig()
-	config.SetupConfig()
+	config.SetupConfig(*configDir)
 
 	config.Configuration.DeploymentMode = byte(*deploymentMode)
 

@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -19,6 +20,7 @@ import (
 type ResumeFileChange struct {
 	NewFileChange
 
+	ShardHash    string                   `json:"shard_hash,omitempty"`
 	MerkleHasher gosdk.StreamMerkleHasher `json:"hasher,omitempty"`        // streaming merkle hasher to save current state of tree
 	IsFinal      bool                     `json:"is_final,omitempty"`      // current chunk is last or not
 	ChunkIndex   int                      `json:"chunk_index,omitempty"`   // the seq of current chunk. all chunks MUST be uploaded one by one because of streaming merkle hash
@@ -84,6 +86,7 @@ func (nf *ResumeFileChange) ProcessChange(ctx context.Context,
 	newFile.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, nf.Path)
 	newFile.Size = nf.Size
 	newFile.MimeType = nf.MimeType
+	fmt.Println(allocationRoot)
 	newFile.WriteMarker = allocationRoot
 	newFile.ThumbnailHash = nf.ThumbnailHash
 	newFile.ThumbnailSize = nf.ThumbnailSize

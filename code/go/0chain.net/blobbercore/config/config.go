@@ -44,12 +44,17 @@ func SetupDefaultConfig() {
 }
 
 /*SetupConfig - setup the configuration system */
-func SetupConfig() {
+func SetupConfig(configDir string) {
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
 	viper.AutomaticEnv()
 	viper.SetConfigName("0chain_blobber")
-	viper.AddConfigPath("./config")
+	if configDir == "" {
+		viper.AddConfigPath("./config")
+	} else {
+		viper.AddConfigPath(configDir)
+	}
+
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {             // Handle errors reading the config file
 		panic(fmt.Errorf("fatal error config file: %s", err))

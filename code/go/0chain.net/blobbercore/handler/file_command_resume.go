@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -58,16 +57,6 @@ func (cmd *ResumeFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (UploadResult, error) {
 	result := UploadResult{}
 
-	allocationSize := connectionObj.Size + cmd.changeProcessor.Size
-
-	if allocationSize > config.Configuration.MaxFileSize {
-		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
-	}
-
-	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
-		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
-	}
-
 	origfile, _, err := req.FormFile("uploadFile")
 	if err != nil {
 		return result, common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
@@ -87,6 +76,16 @@ func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
 
+	allocationSize := connectionObj.Size + fileOutputData.Size
+
+	if allocationSize > config.Configuration.MaxFileSize {
+		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
+	}
+
+	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
+		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
+	}
+
 	if len(cmd.changeProcessor.Hash) > 0 && cmd.changeProcessor.Hash != fileOutputData.ContentHash {
 		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
 	}
@@ -100,15 +99,12 @@ func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	cmd.changeProcessor.Hash = fileOutputData.ContentHash
 
 	if cmd.changeProcessor.IsFinal {
-		cmd.changeProcessor.ActualHash = cmd.changeProcessor.MerkleHasher.GetMerkleRoot()
-
-		// if len(cmd.changeProcessor.MerkleRoot) > 0 && cmd.changeProcessor.ActualHash != fileOutputData.MerkleRoot {
-		// 	return result, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
-		// }
+		//cmd.changeProcessor.ActualHash = cmd.changeProcessor.MerkleHasher.GetMerkleRoot()
+		//cmd.changeProcessor.Hash = fileOutputData.ContentHash
 	}
 
-	cmd.changeProcessor.Hash = fileOutputData.ContentHash
 	cmd.changeProcessor.AllocationID = allocationObj.ID
+	cmd.changeProcessor.Size = allocationSize
 
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionObj.ConnectionID
@@ -152,12 +148,9 @@ func (cmd *ResumeFileCommand) reloadChange(connectionObj *allocation.AllocationC
 
 			dbChangeProcessor := &allocation.ResumeFileChange{}
 
-			fmt.Println(c.Input)
-
 			dbChangeProcessor.Unmarshal(c.Input)
 
 			cmd.changeProcessor.Size = dbChangeProcessor.Size
-			//cmd.changeProcessor.UploadOffset = dbChangeProcessor.UploadOffset
 			cmd.changeProcessor.MerkleHasher = dbChangeProcessor.MerkleHasher
 			cmd.changeProcessor.MerkleHasher.Hash = func(left string, right string) string {
 				return encryption.Hash(left + right)
@@ -174,8 +167,6 @@ func (cmd *ResumeFileCommand) UpdateChange(connectionObj *allocation.AllocationC
 		if c.Operation == allocation.RESUME_OPERATION {
 			c.Size = connectionObj.Size
 			c.Input, _ = cmd.changeProcessor.Marshal()
-
-			fmt.Println(c.Input)
 
 			c.ModelWithTS.UpdatedAt = time.Now()
 			return
