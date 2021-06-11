@@ -18,7 +18,7 @@
                 "--minio_file" ,"../../../../docker.local/keys_config/minio_config.txt",
 
                 "--files_dir","../../../../dev.local/data/blobber1/files",
-                "--log_dir" ,".../../../../dev.local/data/blobber1/log",
+                "--log_dir" ,"../../../../dev.local/data/blobber1/log",
                 "--db_dir", "../../../../dev.local/data/blobber1/data", 
                 "--config_dir", "../../../../dev.local/data/blobber1/config",
                 "--devserver"]
@@ -37,7 +37,7 @@
                 "--minio_file" ,"../../../../docker.local/keys_config/minio_config.txt",
 
                 "--files_dir","../../../../dev.local/data/blobber2/files",
-                "--log_dir" ,".../../../../dev.local/data/blobber2/log",
+                "--log_dir" ,"../../../../dev.local/data/blobber2/log",
                 "--db_dir", "../../../../dev.local/data/blobber2/data", 
                 "--config_dir", "../../../../dev.local/data/blobber2/config",
                 "--devserver"]
@@ -56,10 +56,52 @@
                 "--minio_file" ,"../../../../docker.local/keys_config/minio_config.txt",
 
                 "--files_dir","../../../../dev.local/data/blobber3/files",
-                "--log_dir" ,".../../../../dev.local/data/blobber3/log",
+                "--log_dir" ,"../../../../dev.local/data/blobber3/log",
                 "--db_dir", "../../../../dev.local/data/blobber3/data", 
                 "--config_dir", "../../../../dev.local/data/blobber3/config",
                 "--devserver"]
         },
+        {
+            "name": "debug:validator1",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/validator",
+            "args": ["--port","5061", 
+                "--hostname","Hostname",
+                "--deployment_mode", "0" ,
+                "--keys_file", "../../../../docker.local/keys_config/b0bnode1_keys.txt",
+                "--log_dir" ,"../../../../dev.local/data/blobber1/log", 
+                "--config_dir", "../../../../dev.local/data/blobber1/config",
+                "--devserver"]
+        },
+        {
+            "name": "debug:validator2",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/validator",
+            "args": ["--port","5062", 
+                "--hostname","Hostname",
+                "--deployment_mode", "0" ,
+                "--keys_file", "../../../../docker.local/keys_config/b0bnode2_keys.txt",
+                "--log_dir" ,"../../../../dev.local/data/blobber2/log",
+                "--config_dir", "../../../../dev.local/data/blobber2/config",
+                "--devserver"]
+        },
+        {
+            "name": "debug:validator3",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/validator",
+            "args": ["--port","5063", 
+                "--hostname","Hostname",
+                "--deployment_mode", "0" ,
+                "--keys_file", "../../../../docker.local/keys_config/b0bnode3_keys.txt",
+                "--log_dir" ,"../../../../dev.local/data/blobber3/log",
+                "--config_dir", "../../../../dev.local/data/blobber3/config",
+                "--devserver"]
+        }
     ]
 }

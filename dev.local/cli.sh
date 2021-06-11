@@ -19,18 +19,25 @@ echo "Hostname: $hostname"
 install_debuggger() {
     [ -d ../code/go/0chain.net/.vscode ] || mkdir -p ../code/go/0chain.net/.vscode
     sed "s/Hostname/$hostname/g" launch.json > ../code/go/0chain.net/.vscode/launch.json
+    echo "debugbbers are installed"
+}
+
+cleanAll() {
+    
+    cd $root
+    rm -rf ./data && echo "data is removed"
 }
 
 
 echo " "
 echo "Please select which blobber/validator you will work on: "
 
-select i in "1" "2" "3" "clean all", "install debugers on .vscode/launch.json"; do
+select i in "1" "2" "3" "clean all" "install debugers on .vscode/launch.json"; do
     case $i in
         "1"             ) break;;
         "2"             ) break;;
         "3"             ) break;;
-        "clean all"     ) rm -rf ./data ;;
+        "clean all"     ) cleanAll ;;
         "install debugers on .vscode/launch.json" ) install_debuggger;;
     esac
 done
@@ -138,7 +145,6 @@ start_validator () {
     keys_file="../docker.local/keys_config/b0bnode${i}_keys.txt"
     config_dir="./data/blobber$i/config"
     log_dir="./data/blobber$i/log"
-
 
     ./data/blobber$i/validator --port $port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --log_dir $log_dir --config_dir $config_dir --devserver
 }
