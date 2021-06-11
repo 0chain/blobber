@@ -213,7 +213,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		u.RawQuery = q.Encode()
 
 		for counter > 0 {
-			resp, err = util.NewHTTPNetContext().Get(u.String(), netClient)
+			resp, err = netClient.Get(u.String())
 			if err != nil {
 				break
 			}

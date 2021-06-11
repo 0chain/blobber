@@ -31,7 +31,6 @@ import (
 	"0chain.net/core/transaction"
 	"0chain.net/core/util"
 
-	dev "github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -225,14 +224,9 @@ func main() {
 	portString := flag.String("port", "", "port")
 	grpcPortString := flag.String("grpc_port", "", "grpc_port")
 	hostname := flag.String("hostname", "", "hostname")
-	devserver := flag.Bool("devserver", false, "start devserver")
 	configDir := flag.String("config_dir", "./config", "config_dir")
 
 	flag.Parse()
-
-	if *devserver {
-		dev.Use(dev.StartDevServer(*configDir + "/devserver.yml"))
-	}
 
 	config.SetupDefaultConfig()
 

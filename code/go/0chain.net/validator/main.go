@@ -23,7 +23,6 @@ import (
 	"0chain.net/validatorcore/config"
 	"0chain.net/validatorcore/storage"
 
-	sdk "github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -45,14 +44,9 @@ func main() {
 	logDir := flag.String("log_dir", "", "log_dir")
 	portString := flag.String("port", "", "port")
 	hostname := flag.String("hostname", "", "hostname")
-	devserver := flag.Bool("devserver", false, "start devserver")
 	configDir := flag.String("config_dir", "./config", "config_dir")
 
 	flag.Parse()
-
-	if *devserver {
-		sdk.Use(sdk.StartDevServer(*configDir + "/devserver.yml"))
-	}
 
 	config.SetupDefaultConfig()
 	config.SetupConfig(*configDir)
