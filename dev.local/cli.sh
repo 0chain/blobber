@@ -124,7 +124,7 @@ start_blobber () {
     log_dir="./data/blobber$i/log"
     db_dir="./data/blobber$i/data"
 
-    ./data/blobber$i/blobber --port $port --grpc_port $grpc_port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --files_dir $files_dir --log_dir $log_dir --db_dir $db_dir  --minio_file $minio_file --config_dir $config_dir --devserver
+    ./data/blobber$i/blobber --port $port --grpc_port $grpc_port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --files_dir $files_dir --log_dir $log_dir --db_dir $db_dir  --minio_file $minio_file --config_dir $config_dir
 }
 
 start_validator () {
@@ -146,7 +146,7 @@ start_validator () {
     config_dir="./data/blobber$i/config"
     log_dir="./data/blobber$i/log"
 
-    ./data/blobber$i/validator --port $port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --log_dir $log_dir --config_dir $config_dir --devserver
+    ./data/blobber$i/validator --port $port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --log_dir $log_dir --config_dir $config_dir
 }
 
 clean () {
