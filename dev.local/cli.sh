@@ -80,17 +80,17 @@ install_postgres () {
 }
 
 prepareRuntime() {
-    echo "Prepare bloober $i: config,files, data, log .."
+    echo "Prepare blobber $i: config,files, data, log .."
     cd $root
-    [ -d ./data/bloober$i/config ] && rm -rf $root/data/bloober$i/config
-    cp -r ../config "./data/bloober$i/"
+    [ -d ./data/blobber$i/config ] && rm -rf $root/data/blobber$i/config
+    cp -r ../config "./data/blobber$i/"
 
-    cd  ./data/bloober$i/config/
+    cd  ./data/blobber$i/config/
 
     find . -name "*.yaml" -exec sed -i '' "s/blobber_user/blobber_user$i/g" {} \;
     find . -name "*.yaml" -exec sed -i '' "s/blobber_meta/blobber_meta$i/g" {} \;
     find . -name "*.yaml" -exec sed -i '' "s/postgres/127.0.0.1/g" {} \;
-    cd $root/data/bloober$i/
+    cd $root/data/blobber$i/
 
     [ -d files ] || mkdir files
     [ -d data ] || mkdir data
@@ -100,7 +100,7 @@ prepareRuntime() {
 start_blobber () {
     echo "Building blobber $i ..."
     cd ../code/go/0chain.net/blobber   
-    go build -v -tags "bn256 development" -gcflags="-N -l" -ldflags "-X 0chain.net/core/build.BuildTag=dev" -o $root/data/bloober$i/blobber .
+    go build -v -tags "bn256 development" -gcflags="-N -l" -ldflags "-X 0chain.net/core/build.BuildTag=dev" -o $root/data/blobber$i/blobber .
 
     prepareRuntime;
 
@@ -112,19 +112,19 @@ start_blobber () {
 
     keys_file="../docker.local/keys_config/b0bnode${i}_keys.txt"
     minio_file="../docker.local/keys_config/minio_config.txt"
-    config_dir="./data/bloober$i/config"
-    files_dir="./data/bloober$i/files"
-    log_dir="./data/bloober$i/log"
-    db_dir="./data/bloober$i/data"
+    config_dir="./data/blobber$i/config"
+    files_dir="./data/blobber$i/files"
+    log_dir="./data/blobber$i/log"
+    db_dir="./data/blobber$i/data"
 
-    ./data/bloober$i/blobber --port $port --grpc_port $grpc_port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --files_dir $files_dir --log_dir $log_dir --db_dir $db_dir  --minio_file $minio_file --config_dir $config_dir --devserver
+    ./data/blobber$i/blobber --port $port --grpc_port $grpc_port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --files_dir $files_dir --log_dir $log_dir --db_dir $db_dir  --minio_file $minio_file --config_dir $config_dir --devserver
 }
 
 start_validator () {
     echo "Building validator $i ..."
 
     cd ../code/go/0chain.net/validator   
-    go build -v -tags "bn256 development" -gcflags="-N -l" -ldflags "-X 0chain.net/core/build.BuildTag=dev" -o $root/data/bloober$i/validator .
+    go build -v -tags "bn256 development" -gcflags="-N -l" -ldflags "-X 0chain.net/core/build.BuildTag=dev" -o $root/data/blobber$i/validator .
 
 
     prepareRuntime;
@@ -136,11 +136,11 @@ start_validator () {
     port="506$i"
     hostname="localhost"
     keys_file="../docker.local/keys_config/b0bnode${i}_keys.txt"
-    config_dir="./data/bloober$i/config"
-    log_dir="./data/bloober$i/log"
+    config_dir="./data/blobber$i/config"
+    log_dir="./data/blobber$i/log"
 
 
-    ./data/bloober$i/validator --port $port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --log_dir $log_dir --config_dir $config_dir --devserver
+    ./data/blobber$i/validator --port $port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --log_dir $log_dir --config_dir $config_dir --devserver
 }
 
 clean () {
