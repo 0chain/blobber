@@ -262,6 +262,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 		Where(`reference_objects.type = 'f'
             AND reference_objects.deleted_at IS NULL`).
 		Group(`reference_objects.allocation_id, allocations.expiration_date`).
+		Group(`reference_objects.allocation_id, allocations.size`).
 		Rows()
 
 	if err != nil {
