@@ -535,7 +535,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 		return nil, err
 	}
 
-	fmt.Println(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
 	allocationRoot := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
 
 	if allocationRoot != writeMarker.AllocationRoot {

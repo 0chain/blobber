@@ -86,7 +86,6 @@ func (nf *ResumeFileChange) ProcessChange(ctx context.Context,
 	newFile.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, nf.Path)
 	newFile.Size = nf.Size
 	newFile.MimeType = nf.MimeType
-	fmt.Println(allocationRoot)
 	newFile.WriteMarker = allocationRoot
 	newFile.ThumbnailHash = nf.ThumbnailHash
 	newFile.ThumbnailSize = nf.ThumbnailSize
