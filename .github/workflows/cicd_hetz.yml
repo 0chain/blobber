@@ -1,4 +1,4 @@
-name: Dockerize
+name: CICD_Hetzner
 
 on:
   workflow_dispatch:
