@@ -8,11 +8,9 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"runtime"
 	"strconv"
-	"strings"
 	"time"
 
 	"0chain.net/blobbercore/allocation"
@@ -193,25 +191,27 @@ func processMinioConfig(reader io.Reader) error {
 	return nil
 }
 
-func isValidOrigin(origin string) bool {
-	var url, err = url.Parse(origin)
-	if err != nil {
-		return false
-	}
-	var host = url.Hostname()
-	if host == "localhost" {
-		return true
-	}
-	if host == "0chain.net" || host == "0box.io" ||
-		strings.HasSuffix(host, ".0chain.net") ||
-		strings.HasSuffix(host, ".alphanet-0chain.net") ||
-		strings.HasSuffix(host, ".testnet-0chain.net") ||
-		strings.HasSuffix(host, ".devnet-0chain.net") ||
-		strings.HasSuffix(host, ".mainnet-0chain.net") {
-		return true
-	}
-	return false
-}
+// // Comment out to pass lint. Still keep this function around in case we want to
+// // change how CORS validates origins.
+// func isValidOrigin(origin string) bool {
+// 	var url, err = url.Parse(origin)
+// 	if err != nil {
+// 		return false
+// 	}
+// 	var host = url.Hostname()
+// 	if host == "localhost" {
+// 		return true
+// 	}
+// 	if host == "0chain.net" || host == "0box.io" ||
+// 		strings.HasSuffix(host, ".0chain.net") ||
+// 		strings.HasSuffix(host, ".alphanet-0chain.net") ||
+// 		strings.HasSuffix(host, ".testnet-0chain.net") ||
+// 		strings.HasSuffix(host, ".devnet-0chain.net") ||
+// 		strings.HasSuffix(host, ".mainnet-0chain.net") {
+// 		return true
+// 	}
+// 	return false
+// }
 
 func main() {
 	deploymentMode := flag.Int("deployment_mode", 2, "deployment_mode")
@@ -334,8 +334,13 @@ func main() {
 	headersOk := handlers.AllowedHeaders([]string{
 		"X-Requested-With", "X-App-Client-ID",
 		"X-App-Client-Key", "Content-Type",
+		"X-App-Client-Signature",
 	})
-	originsOk := handlers.AllowedOriginValidator(isValidOrigin)
+
+	// Allow anybody to access API.
+	// originsOk := handlers.AllowedOriginValidator(isValidOrigin)
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT",
 		"DELETE", "OPTIONS"})
 
@@ -381,11 +386,26 @@ func main() {
 }
 
 func RegisterBlobber() {
+	setup := func() {
+		// badgerdbstore.GetStorageProvider().WriteBytes(ctx, BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
+		// badgerdbstore.GetStorageProvider().Commit(ctx)
+		SetupWorkers()
+		go BlobberHealthCheck()
+		if config.Configuration.PriceInUSD {
+			go UpdateBlobberSettings()
+		}
+	}
 
 	registrationRetries := 0
-	//ctx := badgerdbstore.GetStorageProvider().WithConnection(common.GetRootContext())
+	// ctx := badgerdbstore.GetStorageProvider().WithConnection(common.GetRootContext())
 	for registrationRetries < 10 {
 		txnHash, err := handler.RegisterBlobber(common.GetRootContext())
+		if err == handler.ErrBlobberHasRegistered {
+			Logger.Debug("Blobber already registered to the mining network")
+			setup()
+			return
+		}
+
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 		txnVerified := false
 		verifyRetries := 0
@@ -394,13 +414,7 @@ func RegisterBlobber() {
 			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
 			if err == nil {
 				Logger.Info("Transaction for adding blobber accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-				//badgerdbstore.GetStorageProvider().WriteBytes(ctx, BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
-				//badgerdbstore.GetStorageProvider().Commit(ctx)
-				SetupWorkers()
-				go BlobberHealthCheck()
-				if config.Configuration.PriceInUSD {
-					go UpdateBlobberSettings()
-				}
+				setup()
 				return
 			}
 			verifyRetries++

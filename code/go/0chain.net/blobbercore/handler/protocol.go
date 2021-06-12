@@ -56,6 +56,11 @@ func (ar *apiResp) err() error { //nolint:unused,deadcode // might be used later
 	return nil
 }
 
+// ErrBlobberHasRegistered represents double registration check error, where the
+// blobber has already registered and shouldn't be passed through the registration flow again.
+// To prevent duplicate instances.
+var ErrBlobberHasRegistered = errors.New("blobber has registered")
+
 func RegisterBlobber(ctx context.Context) (string, error) {
 	wcb := &WalletCallback{}
 	wcb.wg = &sync.WaitGroup{}
@@ -72,6 +77,7 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	sn, err := getStorageNode()
 	if err != nil {
 		return "", err
@@ -82,8 +88,7 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 
 	for _, sRegisteredNode := range sRegisteredNodes {
 		if sn.ID == string(sRegisteredNode.ID) || sn.BaseURL == sRegisteredNode.BaseURL {
-			Logger.Info("Failed during registering blobber to the mining network, it's duplicated")
-			return "", errors.New("Duplicated")
+			return "", ErrBlobberHasRegistered
 		}
 	}
 
@@ -163,6 +168,7 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn := &transaction.StorageNode{}
 	sn.ID = node.Self.ID
 	sn.BaseURL = node.Self.GetURLBase()
+	sn.Geolocation = transaction.StorageNodeGeolocation(config.Geolocation())
 	sn.Capacity = config.Configuration.Capacity
 	readPrice := config.Configuration.ReadPrice
 	writePrice := config.Configuration.WritePrice
