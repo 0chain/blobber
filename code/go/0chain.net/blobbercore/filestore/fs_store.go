@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -478,48 +477,28 @@ func (fs *FileFSStore) GetMerkleTreeForFile(allocationID string, fileData *FileI
 func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	infile multipart.File, connectionID string) (*FileOutputData, error) {
 
+	if fileData.IsResumable {
+		return fs.WriteChunk(allocationID, fileData, infile, connectionID)
+	}
+
 	allocation, err := fs.SetupAllocation(allocationID, false)
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
 
 	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
-	dest, err := NewChunkWriter(tempFilePath)
+	dest, err := os.Create(tempFilePath)
 	if err != nil {
 		return nil, common.NewError("file_creation_error", err.Error())
 	}
 	defer dest.Close()
 
 	fileRef := &FileOutputData{}
-	var fileReader io.Reader = infile
-
-	if fileData.IsResumable {
-		h := sha1.New()
-		offset, err := dest.WriteChunk(context.TODO(), fileData.UploadOffset, io.TeeReader(fileReader, h))
-
-		if err != nil {
-			return nil, common.NewError("file_write_error", err.Error())
-		}
-
-		fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
-		fileRef.Size = dest.Size()
-		fileRef.Name = fileData.Name
-		fileRef.Path = fileData.Path
-		fileRef.UploadOffset = fileData.UploadOffset + offset
-		fileRef.UploadLength = fileData.UploadLength
-
-		if !fileData.IsFinal {
-			//skip to compute hash until the last chunk is uploaded
-			return fileRef, nil
-		}
-
-		fileReader = dest
-	}
 
 	h := sha1.New()
 	bytesBuffer := bytes.NewBuffer(nil)
 	multiHashWriter := io.MultiWriter(h, bytesBuffer)
-	tReader := io.TeeReader(fileReader, multiHashWriter)
+	tReader := io.TeeReader(infile, multiHashWriter)
 	merkleHashes := make([]hash.Hash, 1024)
 	merkleLeaves := make([]util.Hashable, 1024)
 	for idx := range merkleHashes {
@@ -527,14 +506,8 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	}
 	fileSize := int64(0)
 	for {
-		var written int64
 
-		if fileData.IsResumable {
-			//all chunks have been written, only read bytes from local file , and compute hash
-			written, err = io.CopyN(ioutil.Discard, tReader, CHUNK_SIZE)
-		} else {
-			written, err = io.CopyN(dest, tReader, CHUNK_SIZE)
-		}
+		written, err := io.CopyN(dest, tReader, CHUNK_SIZE)
 
 		if err != io.EOF && err != nil {
 			return nil, common.NewError("file_write_error", err.Error())
@@ -563,17 +536,44 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	var mt util.MerkleTreeI = &util.MerkleTree{}
 	mt.ComputeTree(merkleLeaves)
 
-	//only update hash for whole file when it is not a resumable upload or is final chunk.
-	if !fileData.IsResumable || fileData.IsFinal {
-		fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
-	}
-
+	fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
 	fileRef.Size = fileSize
 	fileRef.Name = fileData.Name
 	fileRef.Path = fileData.Path
 	fileRef.MerkleRoot = mt.GetRoot()
-	fileRef.UploadOffset = fileSize
-	fileRef.UploadLength = fileData.UploadLength
+
+	return fileRef, nil
+}
+
+// WriteChunk append chunk to temp file
+func (fs *FileFSStore) WriteChunk(allocationID string, fileData *FileInputData,
+	infile multipart.File, connectionID string) (*FileOutputData, error) {
+
+	allocation, err := fs.SetupAllocation(allocationID, false)
+	if err != nil {
+		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
+	}
+
+	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
+	dest, err := NewChunkWriter(tempFilePath)
+	if err != nil {
+		return nil, common.NewError("file_creation_error", err.Error())
+	}
+	defer dest.Close()
+
+	fileRef := &FileOutputData{}
+
+	h := sha1.New()
+	size, err := dest.WriteChunk(context.TODO(), fileData.UploadOffset, io.TeeReader(infile, h))
+
+	if err != nil {
+		return nil, common.NewError("file_write_error", err.Error())
+	}
+
+	fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
+	fileRef.Size = size
+	fileRef.Name = fileData.Name
+	fileRef.Path = fileData.Path
 
 	return fileRef, nil
 }

@@ -1,5 +1,7 @@
 FROM golang:1.14.9-alpine3.12 as validator_build
 
+LABEL zchain="validator"
+
 RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep
 
 # Install Herumi's cryptography

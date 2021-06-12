@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	"0chain.net/blobbercore/filestore"
-	"0chain.net/blobbercore/stats"
 	"0chain.net/blobbercore/reference"
+	"0chain.net/blobbercore/stats"
 	"0chain.net/blobbercore/util"
 	"0chain.net/core/common"
 	. "0chain.net/core/logging"

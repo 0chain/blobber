@@ -33,7 +33,7 @@ const REGISTER_CLIENT = "v1/client/put"
 
 const (
 	SLEEP_FOR_TXN_CONFIRMATION = 5
-	SC_REST_API_ATTEMPTS = 3
+	SC_REST_API_ATTEMPTS       = 3
 )
 
 var ErrNoTxnDetail = common.NewError("missing_transaction_detail", "No transaction detail was found on any of the sharders")
@@ -214,10 +214,12 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 
 		for counter > 0 {
 			resp, err = netClient.Get(u.String())
-			if err != nil { break }
+			if err != nil {
+				break
+			}
 
 			// if it's not available, retry if there are any retry attempts
-			if (resp.StatusCode == 503 || resp.StatusCode == 504) {
+			if resp.StatusCode == 503 || resp.StatusCode == 504 {
 				resp.Body.Close()
 				counter--
 			} else {
