@@ -13,7 +13,7 @@ on:
         
 env:
   KUBE_NAMESPACE: ${{ github.event.inputs.kubedns }}
-  KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA_$KUBE_NAMESPACE }}
+  KUBE_CONFIG_DATA: ${{ secrets[env.KUBE_NAMESPACE] }}
 
 jobs:
   dockerize_blobber:
