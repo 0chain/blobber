@@ -13,7 +13,7 @@ on:
         
 env:
   KUBE_NAMESPACE: ${{ github.event.inputs.kubedns }}
-  KUBE_CONFIG: ${{ secrets[github.event.inputs.kubedns] }}
+  KUBE_CONFIGS: ${{ secrets[github.event.inputs.kubedns] }}
 
 jobs:
   dockerize_blobber:
@@ -32,6 +32,7 @@ jobs:
     - name: Update Blobber Image to Kubernetes Cluster
       uses: actions-hub/kubectl@master
       with:
-        args: get pods -n $KUBE_NAMESPACE
+        args: get pods -A
       env:
         TAG: ${{ steps.get_version.outputs.VERSION }}
+        KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_DATA_ }}
