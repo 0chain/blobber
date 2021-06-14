@@ -1,0 +1,37 @@
+name: CICD_Hetzner_Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      latest_tag:
+        description: 'Type yes for building latest tag'
+        default: 'no'
+        required: true
+      kube_ns:
+        description: 'Type namespace'
+        required: true
+        
+env:
+  KUBE_NAMESPACE: ${{ github.event.inputs.kubedns }}
+  KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA_$KUBE_NAMESPACE }}
+
+jobs:
+  dockerize_blobber:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Get the Version for Tagging
+      id: get_version
+      run: |
+        BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')
+        SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
+        echo ::set-output name=BRANCH::${BRANCH}
+        echo ::set-output name=VERSION::${BRANCH}-${SHORT_SHA} 
+
+    - name: Update Blobber Image to Kubernetes Cluster
+      uses: actions-hub/kubectl@master
+      with:
+        args: get pods -n $KUBE_NAMESPACE
+      env:
+        TAG: ${{ steps.get_version.outputs.VERSION }}
