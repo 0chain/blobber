@@ -35,6 +35,7 @@ jobs:
         echo ::set-output name=KUBE_CONFIG2::${KUBE_CONFIG1}_${KUBE_NAMESPACE} 
 
     - name: Check File Name
+      run: |
         echo $KUBE_NAMESPACE
         echo ${{ steps.get_kube_config.outputs.KUBE_CONFIG1 }}
         echo ${{ steps.get_kube_config.outputs.KUBE_CONFIG2 }}
