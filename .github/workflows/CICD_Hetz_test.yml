@@ -13,8 +13,6 @@ on:
         
 env:
   KUBE_NAMESPACE: ${{ github.event.inputs.kube_ns }}
-  KUBE_CONFIGS: KUBE_CONFIG_DATA_${KUBE_NAMESPACE}
-  KUBE_CONFIG: ${{ secrets[github.env.KUBE_CONFIGS] }}
 
 jobs:
   dockerize_blobber:
@@ -28,11 +26,17 @@ jobs:
         BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')
         SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
         echo ::set-output name=BRANCH::${BRANCH}
-        echo ::set-output name=VERSION::${BRANCH}-${SHORT_SHA} 
+        echo ::set-output name=VERSION::${BRANCH}-${SHORT_SHA}
+    
+    - name: Get Kube Config File
+      id: get_kube_config
+      run: |
+        echo ::set-output name=KUBE_CONFIGS::KUBE_CONFIG_DATA_
+        echo ::set-output name=KUBE_CONFIG::${KUBE_CONFIGS}-${KUBE_NAMESPACE} 
         echo $KUBE_NAMESPACE
         echo $KUBE_CONFIGS
         echo $KUBE_CONFIG
-        
+
     - name: Update Blobber Image to Kubernetes Cluster
       uses: actions-hub/kubectl@master
       with:
