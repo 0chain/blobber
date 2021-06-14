@@ -14,6 +14,7 @@ on:
 env:
   KUBE_NAMESPACE: ${{ github.event.inputs.kube_ns }}
   KUBE_CONFIGS: KUBE_CONFIG_DATA_$KUBE_NAMESPACE
+  KUBE_CONFIG: ${{ secrets[KUBE_CONFIGS] }}
 
 jobs:
   dockerize_blobber:
@@ -28,6 +29,9 @@ jobs:
         SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
         echo ::set-output name=BRANCH::${BRANCH}
         echo ::set-output name=VERSION::${BRANCH}-${SHORT_SHA} 
+        echo $KUBE_NAMESPACE
+        echo $KUBE_CONFIGS
+        echo $KUBE_CONFIG
         
     - name: Update Blobber Image to Kubernetes Cluster
       uses: actions-hub/kubectl@master
@@ -35,4 +39,3 @@ jobs:
         args: get pods -A
       env:
         TAG: ${{ steps.get_version.outputs.VERSION }}
-        KUBE_CONFIG: ${{ secrets[github.env.KUBE_CONFIGS] }}
