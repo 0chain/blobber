@@ -84,6 +84,44 @@
         ]
       }
     },
+    "/v2/file/attributes/{allocation}": {
+      "post": {
+        "operationId": "Blobber_UpdateObjectAttributes",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateObjectAttributesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1UpdateObjectAttributesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
     "/v2/file/calculatehash/{allocation}": {
       "post": {
         "operationId": "Blobber_CalculateHash",
@@ -122,6 +160,44 @@
         ]
       }
     },
+    "/v2/file/collaborator/{allocation}": {
+      "post": {
+        "operationId": "Blobber_Collaborator",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CollaboratorResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CollaboratorRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
     "/v2/file/commitmetatxn/{allocation}": {
       "post": {
         "operationId": "Blobber_CommitMetaTxn",
@@ -152,6 +228,44 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/v1CommitMetaTxnRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
+    },
+    "/v2/file/copy/{allocation}": {
+      "post": {
+        "operationId": "Blobber_CopyObject",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CopyObjectResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CopyObjectRequest"
             }
           }
         ],
@@ -591,6 +705,40 @@
         }
       }
     },
+    "v1CollaboratorRequest": {
+      "type": "object",
+      "properties": {
+        "allocation": {
+          "type": "string"
+        },
+        "collabId": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "pathHash": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CollaboratorResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "Collaborators": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Collaborator"
+          }
+        }
+      }
+    },
     "v1CommitMetaTxn": {
       "type": "object",
       "properties": {
@@ -663,6 +811,54 @@
         },
         "success": {
           "type": "boolean"
+        }
+      }
+    },
+    "v1CopyObjectRequest": {
+      "type": "object",
+      "properties": {
+        "allocation": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "pathHash": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        },
+        "dest": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CopyObjectResponse": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "format": "int64"
+        },
+        "contentHash": {
+          "type": "string"
+        },
+        "merkleRoot": {
+          "type": "string"
+        },
+        "uploadLength": {
+          "type": "string",
+          "format": "int64",
+          "description": "UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer."
+        },
+        "uploadOffset": {
+          "type": "string",
+          "format": "int64",
+          "description": "Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer."
         }
       }
     },
@@ -1037,6 +1233,35 @@
           "format": "int64"
         },
         "WritePrice": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1UpdateObjectAttributesRequest": {
+      "type": "object",
+      "properties": {
+        "allocation": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "pathHash": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        },
+        "attributes": {
+          "type": "string"
+        }
+      }
+    },
+    "v1UpdateObjectAttributesResponse": {
+      "type": "object",
+      "properties": {
+        "whoPaysForReads": {
           "type": "string",
           "format": "int64"
         }

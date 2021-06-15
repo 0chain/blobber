@@ -2,8 +2,10 @@ package handler
 
 import (
 	"context"
+	"net/http"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
+	"github.com/gorilla/mux"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"google.golang.org/grpc/metadata"
 )
@@ -36,10 +38,9 @@ func GetGRPCMetaDataFromCtx(ctx context.Context) *GRPCMetaData {
 	return metaData
 }
 
-func setupGRPCHandlerContext(ctx context.Context, md *GRPCMetaData, alloc string) context.Context {
-	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY, md.Client)
-	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY, md.ClientKey)
-	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, alloc)
-	ctx = context.WithValue(ctx, constants.CLIENT_SIGNATURE_HEADER_KEY, md.ClientSignature)
-	return ctx
+func httpRequestWithMetaData(r *http.Request, md *GRPCMetaData, alloc string) {
+	r.Header.Set(common.ClientHeader, md.Client)
+	r.Header.Set(common.ClientKeyHeader, md.ClientKey)
+	r.Header.Set(common.ClientSignatureHeader, md.ClientSignature)
+	*r = *mux.SetURLVars(r, map[string]string{"allocation": alloc})
 }
