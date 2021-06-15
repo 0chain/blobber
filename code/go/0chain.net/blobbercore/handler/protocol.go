@@ -168,6 +168,7 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn := &transaction.StorageNode{}
 	sn.ID = node.Self.ID
 	sn.BaseURL = node.Self.GetURLBase()
+	sn.Geolocation = transaction.StorageNodeGeolocation(config.Geolocation())
 	sn.Capacity = config.Configuration.Capacity
 	readPrice := config.Configuration.ReadPrice
 	writePrice := config.Configuration.WritePrice
