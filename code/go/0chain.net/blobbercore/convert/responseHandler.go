@@ -126,7 +126,7 @@ func GetObjectPathResponseCreator(r interface{}) *blobbergrpc.GetObjectPathRespo
 	return &resp
 }
 
-func CommitWriteResponseHandler(r interface{}) *blobbergrpc.CommitResponse {
+func CommitWriteResponseCreator(r interface{}) *blobbergrpc.CommitResponse {
 	if r == nil {
 		return nil
 	}
@@ -141,14 +141,14 @@ func CommitWriteResponseHandler(r interface{}) *blobbergrpc.CommitResponse {
 	}
 }
 
-func GetCalculateHashResponseHandler(r interface{}) *blobbergrpc.CalculateHashResponse {
+func GetCalculateHashResponseCreator(r interface{}) *blobbergrpc.CalculateHashResponse {
 	httpResp, _ := r.(map[string]interface{})
 	msg, _ := httpResp["msg"].(string)
 
 	return &blobbergrpc.CalculateHashResponse{Message: msg}
 }
 
-func GetCommitMetaTxnHandlerResponse(r interface{}) *blobbergrpc.CommitMetaTxnResponse {
+func GetCommitMetaTxnResponseCreator(r interface{}) *blobbergrpc.CommitMetaTxnResponse {
 	msg, _ := r.(struct {
 		Msg string `json:"msg"`
 	})
@@ -156,7 +156,7 @@ func GetCommitMetaTxnHandlerResponse(r interface{}) *blobbergrpc.CommitMetaTxnRe
 	return &blobbergrpc.CommitMetaTxnResponse{Message: msg.Msg}
 }
 
-func CollaboratorResponse(r interface{}) *blobbergrpc.CollaboratorResponse {
+func CollaboratorResponseCreator(r interface{}) *blobbergrpc.CollaboratorResponse {
 	if r == nil {
 		return nil
 	}
