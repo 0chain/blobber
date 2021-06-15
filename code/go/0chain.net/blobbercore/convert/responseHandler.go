@@ -3,6 +3,7 @@ package convert
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -11,8 +12,10 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 )
 
-func GetAllocationResponseHandler(resp *blobbergrpc.GetAllocationResponse) *allocation.Allocation {
-	return GRPCAllocationToAllocation(resp.Allocation)
+func GetAllocationResponseCreator(resp interface{}) *blobbergrpc.GetAllocationResponse {
+	alloc, _ := resp.(*allocation.Allocation)
+
+	return &blobbergrpc.GetAllocationResponse{Allocation: AllocationToGRPCAllocation(alloc)}
 }
 
 func GetFileMetaDataResponseHandler(resp *blobbergrpc.GetFileMetaDataResponse) map[string]interface{} {

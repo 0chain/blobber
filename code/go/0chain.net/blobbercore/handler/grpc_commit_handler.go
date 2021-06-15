@@ -20,7 +20,7 @@ import (
 
 func (b *blobberGRPCService) Commit(ctx context.Context, req *blobbergrpc.CommitRequest) (*blobbergrpc.CommitResponse, error) {
 	md := GetGRPCMetaDataFromCtx(ctx)
-	ctx = setupGRPCHandlerContext(ctx, md, req.Allocation)
+	//ctx = httpRequestWithMetaData(ctx, md, req.Allocation)
 
 	allocationTx := req.Allocation
 	clientID := md.Client

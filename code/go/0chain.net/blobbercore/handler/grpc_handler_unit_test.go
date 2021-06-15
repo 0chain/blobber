@@ -20,41 +20,6 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func TestBlobberGRPCService_GetAllocation_Success(t *testing.T) {
-	req := &blobbergrpc.GetAllocationRequest{
-		Id: "something",
-	}
-
-	mockStorageHandler := &storageHandlerI{}
-	mockReferencePackage := &mocks.PackageHandler{}
-	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Id, false).Return(&allocation.Allocation{
-		Tx: req.Id,
-	}, nil)
-
-	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
-	allocation, err := svc.GetAllocation(context.Background(), req)
-	assert.NoError(t, err)
-	assert.Equal(t, allocation.Allocation.Tx, req.Id)
-}
-
-func TestBlobberGRPCService_GetAllocation_invalidAllocation(t *testing.T) {
-	req := &blobbergrpc.GetAllocationRequest{
-		Id: "invalid_allocation",
-	}
-
-	mockStorageHandler := &storageHandlerI{}
-	mockReferencePackage := &mocks.PackageHandler{}
-	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Id, false).Return(nil, errors.New("some error"))
-
-	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
-	_, err := svc.GetAllocation(context.Background(), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
-
-	assert.Equal(t, err.Error(), "some error")
-}
-
 func TestBlobberGRPCService_GetFileMetaData_Success(t *testing.T) {
 	req := &blobbergrpc.GetFileMetaDataRequest{
 		Path:       "path",

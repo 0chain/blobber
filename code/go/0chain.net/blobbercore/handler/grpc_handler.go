@@ -29,14 +29,19 @@ func newGRPCBlobberService(sh StorageHandlerI, r PackageHandler) *blobberGRPCSer
 }
 
 func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobbergrpc.GetAllocationRequest) (*blobbergrpc.GetAllocationResponse, error) {
-	ctx = setupGRPCHandlerContext(ctx, GetGRPCMetaDataFromCtx(ctx), "")
+	r, err := http.NewRequest("GET", "", nil)
+	if err != nil {
+		return nil, err
+	}
+	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), "")
+	r.Form = map[string][]string{"id": {request.Id}}
 
-	allocation, err := b.storageHandler.verifyAllocation(ctx, request.Id, false)
+	resp, err := AllocationHandler(ctx, r)
 	if err != nil {
 		return nil, err
 	}
 
-	return &blobbergrpc.GetAllocationResponse{Allocation: convert.AllocationToGRPCAllocation(allocation)}, nil
+	return convert.GetAllocationResponseCreator(resp), nil
 }
 
 func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {
