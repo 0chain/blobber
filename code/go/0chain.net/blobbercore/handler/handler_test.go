@@ -30,6 +30,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 )
@@ -1227,9 +1228,171 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			wantCode: http.StatusOK,
 			wantBody:    "{\"message\":\"Share info added successfully\",\"existing\":true}\n\n",
 		},
+		{
+			name: "RevokeShareInfo_OK_Existing_Share",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: func() *http.Request {
+					handlerName := handlers["/v1/marketplace/shareinfo/{allocation}"]
+					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
+					if err != nil {
+						t.Fatal()
+					}
+
+					body := bytes.NewBuffer(nil)
+					formWriter := multipart.NewWriter(body)
+					shareClientID := "abcdefgh"
+					remotePath := "/file.txt"
+
+					formWriter.WriteField("refereeClientID", shareClientID)
+					formWriter.WriteField("path", remotePath)
+					if err := formWriter.Close(); err != nil {
+						t.Fatal(err)
+					}
+					r, err := http.NewRequest(http.MethodDelete, url.String(), body)
+					r.Header.Add("Content-Type", formWriter.FormDataContentType())
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					hash := encryption.Hash(alloc.Tx)
+					sign, err := sch.Sign(hash)
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					r.Header.Set(common.ClientSignatureHeader, sign)
+					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+
+					return r
+				}(),
+			},
+			alloc: alloc,
+			setupDbMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
+					WithArgs(alloc.Tx).
+					WillReturnRows(
+						sqlmock.NewRows(
+							[]string{
+								"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
+							},
+						).
+							AddRow(
+								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
+							),
+					)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
+					WithArgs(alloc.ID).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"id", "allocation_id"}).
+							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
+					)
+
+				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					WithArgs(alloc.Tx, filePathHash).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"path", "lookup_hash"}).
+							AddRow("/file.txt", filePathHash),
+					)
+
+				mock.ExpectExec(regexp.QuoteMeta(`DELETE FROM "marketplace_share_info" WHERE`)).
+					WithArgs("abcdefgh", filePathHash).
+					WillReturnResult(sqlmock.NewResult(0, 1))
+
+			},
+			wantCode: http.StatusOK,
+			wantBody: "{\"message\":\"Path successfully removed from allocation\",\"status\":204}\n",
+		},
+		{
+			name: "RevokeShareInfo_NotOK_For_Non_Existing_Share",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: func() *http.Request {
+					handlerName := handlers["/v1/marketplace/shareinfo/{allocation}"]
+					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
+					if err != nil {
+						t.Fatal()
+					}
+
+					body := bytes.NewBuffer(nil)
+					formWriter := multipart.NewWriter(body)
+					shareClientID := "abcdefgh"
+					remotePath := "/file.txt"
+
+					formWriter.WriteField("refereeClientID", shareClientID)
+					formWriter.WriteField("path", remotePath)
+					if err := formWriter.Close(); err != nil {
+						t.Fatal(err)
+					}
+					r, err := http.NewRequest(http.MethodDelete, url.String(), body)
+					r.Header.Add("Content-Type", formWriter.FormDataContentType())
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					hash := encryption.Hash(alloc.Tx)
+					sign, err := sch.Sign(hash)
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					r.Header.Set(common.ClientSignatureHeader, sign)
+					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+
+					return r
+				}(),
+			},
+			alloc: alloc,
+			setupDbMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
+					WithArgs(alloc.Tx).
+					WillReturnRows(
+						sqlmock.NewRows(
+							[]string{
+								"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
+							},
+						).
+							AddRow(
+								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
+							),
+					)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
+					WithArgs(alloc.ID).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"id", "allocation_id"}).
+							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
+					)
+
+				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					WithArgs(alloc.Tx, filePathHash).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"path", "lookup_hash"}).
+							AddRow("/file.txt", filePathHash),
+					)
+
+				mock.ExpectExec(regexp.QuoteMeta(`DELETE FROM "marketplace_share_info" WHERE`)).
+					WithArgs("abcdefgh", filePathHash).WillReturnError(gorm.ErrRecordNotFound)
+
+			},
+			wantCode: http.StatusOK,
+			wantBody: "{\"message\":\"Path not found\",\"status\":404}\n",
+		},
 	}
 	tests := append(positiveTests, negativeTests...)
 	for _, test := range tests {
+		if !strings.Contains(test.name, "Revoke") {
+			continue
+		}
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)
 			test.setupDbMock(mock)
@@ -1237,7 +1400,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			router.ServeHTTP(test.args.w, test.args.r)
 
 			assert.Equal(t, test.wantCode, test.args.w.Result().StatusCode)
-			if test.wantCode != http.StatusOK {
+			if test.wantCode != http.StatusOK || test.wantBody != "" {
 				assert.Equal(t, test.wantBody, test.args.w.Body.String())
 			}
 		})

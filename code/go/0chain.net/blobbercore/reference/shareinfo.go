@@ -29,10 +29,10 @@ func AddShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 func DeleteShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Table(TableName()).
-		Delete(&ShareInfo{
-			ClientID:    shareInfo.ClientID,
-			FilePathHash: shareInfo.FilePathHash,
-		}).Error
+		Where("client_id = ?", shareInfo.ClientID).
+		Where("file_path_hash = ?", shareInfo.FilePathHash).
+		Delete(&ShareInfo{}).
+		Error
 }
 
 func UpdateShareInfo(ctx context.Context, shareInfo ShareInfo) error {
