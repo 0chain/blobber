@@ -46,18 +46,17 @@ func GetFileStatsResponseCreator(r interface{}) *blobbergrpc.GetFileStatsRespons
 	return &resp
 }
 
-func ListEntitesResponseHandler(resp *blobbergrpc.ListEntitiesResponse) *blobberHTTP.ListResult {
-	ctx := context.Background()
-	var entities []map[string]interface{}
-	for i := range resp.Entities {
-		entities = append(entities, FileRefGRPCToFileRef(resp.Entities[i]).GetListingData(ctx))
+func ListEntitesResponseCreator(r interface{}) *blobbergrpc.ListEntitiesResponse {
+	httpResp, _ := r.(*blobberHTTP.ListResult)
+
+	var resp blobbergrpc.ListEntitiesResponse
+	for i := range httpResp.Entities {
+		resp.Entities = append(resp.Entities, FileRefToFileRefGRPC(reference.ListingDataToRef(httpResp.Entities[i])))
 	}
 
-	return &blobberHTTP.ListResult{
-		AllocationRoot: resp.AllocationRoot,
-		Meta:           FileRefGRPCToFileRef(resp.MetaData).GetListingData(ctx),
-		Entities:       entities,
-	}
+	resp.MetaData = FileRefToFileRefGRPC(reference.ListingDataToRef(httpResp.Meta))
+	resp.AllocationRoot = httpResp.AllocationRoot
+	return &resp
 }
 
 func GetReferencePathResponseHandler(getReferencePathResponse *blobbergrpc.GetReferencePathResponse) *blobberHTTP.ReferencePathResult {

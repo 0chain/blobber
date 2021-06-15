@@ -11,7 +11,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 )
 
 type blobberGRPCService struct {
@@ -83,71 +82,23 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 }
 
 func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.ListEntitiesRequest) (*blobbergrpc.ListEntitiesResponse, error) {
-	logger := ctxzap.Extract(ctx)
-	md := GetGRPCMetaDataFromCtx(ctx)
-
-	clientID := md.Client
-	allocationTx := req.Allocation
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, true)
-
+	r, err := http.NewRequest("", "", nil)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, err
 	}
-	allocationID := allocationObj.ID
-
-	if len(clientID) == 0 {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
-	path_hash := req.PathHash
-	path := req.Path
-	if len(path_hash) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		path_hash = reference.GetReferenceLookup(allocationID, path)
+	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	r.Form = map[string][]string{
+		"path":       {req.Path},
+		"path_hash":  {req.PathHash},
+		"auth_token": {req.AuthToken},
 	}
 
-	logger.Info("Path Hash for list dir :" + path_hash)
-
-	fileref, err := b.packageHandler.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	resp, err := ListHandler(ctx, r)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
-	}
-	authTokenString := req.AuthToken
-	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		authTicketVerified, err := b.storageHandler.verifyAuthTicket(ctx, authTokenString, allocationObj, fileref, clientID)
-		if err != nil {
-			return nil, err
-		}
-		if !authTicketVerified {
-			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
-		}
+		return nil, err
 	}
 
-	dirref, err := b.packageHandler.GetRefWithChildren(ctx, allocationID, fileref.Path)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
-	}
-
-	if clientID != allocationObj.OwnerID {
-		dirref.Path = ""
-	}
-
-	var entities []*blobbergrpc.FileRef
-	for _, entity := range dirref.Children {
-		if clientID != allocationObj.OwnerID {
-			entity.Path = ""
-		}
-		entities = append(entities, convert.FileRefToFileRefGRPC(entity))
-	}
-	refGRPC := convert.FileRefToFileRefGRPC(dirref)
-
-	return &blobbergrpc.ListEntitiesResponse{
-		AllocationRoot: allocationObj.AllocationRoot,
-		MetaData:       refGRPC,
-		Entities:       entities,
-	}, nil
+	return convert.ListEntitesResponseCreator(resp), nil
 }
 
 func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc.GetObjectPathRequest) (*blobbergrpc.GetObjectPathResponse, error) {
