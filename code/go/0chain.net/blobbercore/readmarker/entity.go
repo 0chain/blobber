@@ -28,10 +28,11 @@ type AuthTicket struct {
 	Timestamp       common.Timestamp `json:"timestamp"`
 	ReEncryptionKey string           `json:"re_encryption_key"`
 	Signature       string           `json:"signature"`
+	Encrypted       bool   `json:"encrypted"`
 }
 
 func (rm *AuthTicket) GetHashData() string {
-	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.ClientID, rm.OwnerID, rm.FilePathHash, rm.FileName, rm.RefType, rm.ReEncryptionKey, rm.Expiration, rm.Timestamp)
+	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.ClientID, rm.OwnerID, rm.FilePathHash, rm.FileName, rm.RefType, rm.ReEncryptionKey, rm.Expiration, rm.Timestamp, rm.ContentHash, rm.Encrypted)
 	return hashData
 }
 
