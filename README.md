@@ -21,6 +21,8 @@
 
 - [Run blobber on ec2 / vm / bare metal over https](https://github.com/0chain/blobber/blob/master/https/README.md)
 
+- [Blobber local development guideline](dev.local/README.md)
+
 ## Initial Setup
 
   

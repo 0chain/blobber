@@ -1,5 +1,7 @@
 FROM golang:1.14.9-alpine3.12 as blobber_build
 
+LABEL zchain="blobber"
+
 RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep
 
 # Install Herumi's cryptography

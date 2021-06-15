@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
-	github.com/herumi/bls-go-binary v0.0.0-20191119080710-898950e1a520 // indirect
+	github.com/herumi/bls-go-binary v0.0.0-20191119080710-898950e1a520
 	github.com/jackc/pgproto3/v2 v2.0.4 // indirect
 	github.com/koding/cache v0.0.0-20161222233015-e8a81b0b3f20
 	github.com/minio/minio-go v6.0.14+incompatible
@@ -31,5 +31,8 @@ require (
 	gorm.io/driver/postgres v1.0.0
 	gorm.io/gorm v1.20.4
 )
+
+//for development only
+//replace github.com/0chain/gosdk => ../../../../gosdk
 
 go 1.13
