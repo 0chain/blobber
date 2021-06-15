@@ -14,19 +14,20 @@ import (
 
 func GetAllocationResponseCreator(resp interface{}) *blobbergrpc.GetAllocationResponse {
 	alloc, _ := resp.(*allocation.Allocation)
-
 	return &blobbergrpc.GetAllocationResponse{Allocation: AllocationToGRPCAllocation(alloc)}
 }
 
-func GetFileMetaDataResponseHandler(resp *blobbergrpc.GetFileMetaDataResponse) map[string]interface{} {
-	var collaborators []reference.Collaborator
-	for _, c := range resp.Collaborators {
-		collaborators = append(collaborators, *GRPCCollaboratorToCollaborator(c))
+func GetFileMetaDataResponseCreator(httpResp interface{}) *blobbergrpc.GetFileMetaDataResponse {
+	r, _ := httpResp.(map[string]interface{})
+
+	var resp blobbergrpc.GetFileMetaDataResponse
+	collaborators, _ := r["collaborators"].([]reference.Collaborator)
+	for _, c := range collaborators {
+		resp.Collaborators = append(resp.Collaborators, CollaboratorToGRPCCollaborator(&c))
 	}
 
-	result := FileRefGRPCToFileRef(resp.MetaData).GetListingData(context.Background())
-	result["collaborators"] = collaborators
-	return result
+	resp.MetaData = FileRefToFileRefGRPC(reference.ListingDataToRef(r))
+	return &resp
 }
 
 func GetFileStatsResponseHandler(resp *blobbergrpc.GetFileStatsResponse) map[string]interface{} {

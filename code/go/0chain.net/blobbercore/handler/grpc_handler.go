@@ -12,7 +12,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
-	"go.uber.org/zap"
 )
 
 type blobberGRPCService struct {
@@ -45,73 +44,23 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 }
 
 func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {
-	logger := ctxzap.Extract(ctx)
-	md := GetGRPCMetaDataFromCtx(ctx)
-
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, req.Allocation, true)
+	r, err := http.NewRequest("POST", "", nil)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, err
 	}
-	allocationID := allocationObj.ID
-
-	clientID := md.Client
-	if len(clientID) == 0 {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
-	path_hash := req.PathHash
-	path := req.Path
-	if len(path_hash) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		path_hash = reference.GetReferenceLookup(allocationID, path)
+	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	r.Form = map[string][]string{
+		"path_hash":  {req.PathHash},
+		"path":       {req.Path},
+		"auth_token": {req.AuthToken},
 	}
 
-	fileref, err := b.packageHandler.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
+	resp, err := FileMetaHandler(ctx, r)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+		return nil, err
 	}
 
-	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
-	}
-
-	commitMetaTxns, err := b.packageHandler.GetCommitMetaTxns(ctx, fileref.ID)
-	if err != nil {
-		logger.Error("Failed to get commitMetaTxns from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
-	}
-	fileref.CommitMetaTxns = commitMetaTxns
-
-	collaborators, err := b.packageHandler.GetCollaborators(ctx, fileref.ID)
-	if err != nil {
-		logger.Error("Failed to get collaborators from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
-	}
-
-	authTokenString := req.AuthToken
-
-	if (allocationObj.OwnerID != clientID &&
-		allocationObj.PayerID != clientID &&
-		!b.packageHandler.IsACollaborator(ctx, fileref.ID, clientID)) || len(authTokenString) > 0 {
-		authTicketVerified, err := b.storageHandler.verifyAuthTicket(ctx, req.AuthToken, allocationObj, fileref, clientID)
-		if err != nil {
-			return nil, err
-		}
-		if !authTicketVerified {
-			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
-		}
-		fileref.Path = ""
-	}
-
-	var collaboratorsGRPC []*blobbergrpc.Collaborator
-	for _, c := range collaborators {
-		collaboratorsGRPC = append(collaboratorsGRPC, convert.CollaboratorToGRPCCollaborator(&c))
-	}
-
-	return &blobbergrpc.GetFileMetaDataResponse{
-		MetaData:      convert.FileRefToFileRefGRPC(fileref),
-		Collaborators: collaboratorsGRPC,
-	}, nil
+	return convert.GetFileMetaDataResponseCreator(resp), nil
 }
 
 func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.GetFileStatsRequest) (*blobbergrpc.GetFileStatsResponse, error) {
