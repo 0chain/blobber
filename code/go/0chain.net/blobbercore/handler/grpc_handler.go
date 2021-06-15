@@ -164,7 +164,7 @@ func (b *blobberGRPCService) CalculateHash(ctx context.Context, req *blobbergrpc
 		return nil, err
 	}
 
-	return convert.GetCalculateHashResponseHandler(resp), nil
+	return convert.GetCalculateHashResponseCreator(resp), nil
 }
 
 func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, req *blobbergrpc.CommitMetaTxnRequest) (*blobbergrpc.CommitMetaTxnResponse, error) {
@@ -185,7 +185,7 @@ func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, req *blobbergrpc
 		return nil, err
 	}
 
-	return convert.GetCommitMetaTxnHandlerResponse(resp), nil
+	return convert.GetCommitMetaTxnResponseCreator(resp), nil
 }
 
 func (b *blobberGRPCService) Collaborator(ctx context.Context, req *blobbergrpc.CollaboratorRequest) (*blobbergrpc.CollaboratorResponse, error) {
@@ -205,5 +205,5 @@ func (b *blobberGRPCService) Collaborator(ctx context.Context, req *blobbergrpc.
 		return nil, err
 	}
 
-	return convert.CollaboratorResponse(resp), nil
+	return convert.CollaboratorResponseCreator(resp), nil
 }

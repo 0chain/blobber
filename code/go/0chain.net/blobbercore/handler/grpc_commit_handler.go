@@ -36,5 +36,5 @@ func (b *blobberGRPCService) Commit(ctx context.Context, req *blobbergrpc.Commit
 		return nil, err
 	}
 
-	return convert.CommitWriteResponseHandler(resp), nil
+	return convert.CommitWriteResponseCreator(resp), nil
 }
