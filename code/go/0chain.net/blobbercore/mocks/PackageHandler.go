@@ -224,13 +224,13 @@ func (_m *PackageHandler) GetRefWithChildren(ctx context.Context, allocationID s
 	return r0, r1
 }
 
-// GetReference provides a mock function with given fields: ctx, allocationID, path
-func (_m *PackageHandler) GetReference(ctx context.Context, allocationID string, path string) (*reference.Ref, error) {
-	ret := _m.Called(ctx, allocationID, path)
+// GetReference provides a mock function with given fields: ctx, allocationID, newPath
+func (_m *PackageHandler) GetReference(ctx context.Context, allocationID string, newPath string) (*reference.Ref, error) {
+	ret := _m.Called(ctx, allocationID, newPath)
 
 	var r0 *reference.Ref
 	if rf, ok := ret.Get(0).(func(context.Context, string, string) *reference.Ref); ok {
-		r0 = rf(ctx, allocationID, path)
+		r0 = rf(ctx, allocationID, newPath)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*reference.Ref)
@@ -239,7 +239,7 @@ func (_m *PackageHandler) GetReference(ctx context.Context, allocationID string,
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
-		r1 = rf(ctx, allocationID, path)
+		r1 = rf(ctx, allocationID, newPath)
 	} else {
 		r1 = ret.Error(1)
 	}

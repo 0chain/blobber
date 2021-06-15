@@ -29,6 +29,7 @@ type StorageHandlerI interface {
 
 // PackageHandler is an interface for all static functions that may need to be mocked
 type PackageHandler interface {
+	GetReference(ctx context.Context, allocationID string, newPath string) (*reference.Ref, error)
 	GetReferenceLookup(ctx context.Context, allocationID string, path string) string
 	GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*reference.Ref, error)
 	GetCommitMetaTxns(ctx context.Context, refID int64) ([]reference.CommitMetaTxn, error)
@@ -47,7 +48,6 @@ type PackageHandler interface {
 	GetObjectTree(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 	VerifyMarker(wm *writemarker.WriteMarkerEntity, ctx context.Context, sa *allocation.Allocation, co *allocation.AllocationChangeCollector) error
 	ApplyChanges(connectionObj *allocation.AllocationChangeCollector, ctx context.Context, allocationRoot string) error
-	GetReference(ctx context.Context, allocationID string, path string) (*reference.Ref, error)
 	UpdateAllocationAndCommitChanges(ctx context.Context, writemarkerObj *writemarker.WriteMarkerEntity, connectionObj *allocation.AllocationChangeCollector, allocationObj *allocation.Allocation, allocationRoot string) error
 }
 

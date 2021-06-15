@@ -143,9 +143,19 @@ func CollaboratorResponse(response *blobbergrpc.CollaboratorResponse) interface{
 	return nil
 }
 
-func UpdateObjectAttributesResponseHandler(
-	updateAttributesResponse *blobbergrpc.UpdateObjectAttributesResponse) *blobberHTTP.UpdateObjectAttributesResponse {
+func UpdateObjectAttributesResponseHandler(updateAttributesResponse *blobbergrpc.UpdateObjectAttributesResponse) *blobberHTTP.UpdateObjectAttributesResponse {
 	return &blobberHTTP.UpdateObjectAttributesResponse{
 		WhoPaysForReads: common.WhoPays(updateAttributesResponse.WhoPaysForReads),
+	}
+}
+
+func CopyObjectResponseHandler(copyObjectResponse *blobbergrpc.CopyObjectResponse) *blobberHTTP.UploadResult {
+	return &blobberHTTP.UploadResult{
+		Filename:     copyObjectResponse.Filename,
+		Size:         copyObjectResponse.Size,
+		Hash:         copyObjectResponse.ContentHash,
+		MerkleRoot:   copyObjectResponse.MerkleRoot,
+		UploadLength: copyObjectResponse.UploadLength,
+		UploadOffset: copyObjectResponse.UploadOffset,
 	}
 }
