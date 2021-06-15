@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
+	stats2 "github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -30,19 +32,18 @@ func GetFileMetaDataResponseCreator(httpResp interface{}) *blobbergrpc.GetFileMe
 	return &resp
 }
 
-func GetFileStatsResponseHandler(resp *blobbergrpc.GetFileStatsResponse) map[string]interface{} {
-	ctx := context.Background()
-	result := FileRefGRPCToFileRef(resp.MetaData).GetListingData(ctx)
+func GetFileStatsResponseCreator(r interface{}) *blobbergrpc.GetFileStatsResponse {
+	httpResp, _ := r.(map[string]interface{})
 
-	statsMap := make(map[string]interface{})
-	statsBytes, _ := json.Marshal(FileStatsGRPCToFileStats(resp.Stats))
-	_ = json.Unmarshal(statsBytes, &statsMap)
+	var resp blobbergrpc.GetFileStatsResponse
+	resp.MetaData = FileRefToFileRefGRPC(reference.ListingDataToRef(httpResp))
 
-	for k, v := range statsMap {
-		result[k] = v
-	}
+	respRaw, _ := json.Marshal(httpResp)
+	var stats stats2.FileStats
+	_ = json.Unmarshal(respRaw, &stats)
+	resp.Stats = FileStatsToFileStatsGRPC(&stats)
 
-	return result
+	return &resp
 }
 
 func ListEntitesResponseHandler(resp *blobbergrpc.ListEntitiesResponse) *blobberHTTP.ListResult {

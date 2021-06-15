@@ -12,7 +12,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/mocks"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/stretchr/testify/assert"
@@ -29,85 +28,6 @@ func randString(n int) string {
 		sb.WriteByte(hexLetters[rand.Intn(len(hexLetters))])
 	}
 	return sb.String()
-}
-
-func TestBlobberGRPCService_GetFileStats_Success(t *testing.T) {
-	allocationTx := randString(32)
-
-	pubKey, _, signScheme := GeneratePubPrivateKey(t)
-	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
-
-	req := &blobbergrpc.GetFileStatsRequest{
-		Path:       "path",
-		PathHash:   "path_hash",
-		Allocation: allocationTx,
-	}
-
-	ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-		common.ClientHeader:          "owner",
-		common.ClientKeyHeader:       "",
-		common.ClientSignatureHeader: clientSignature,
-	}))
-
-	mockStorageHandler := &storageHandlerI{}
-	mockReferencePackage := &mocks.PackageHandler{}
-	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, true).Return(&allocation.Allocation{
-		ID:             "allocationId",
-		Tx:             req.Allocation,
-		OwnerID:        "owner",
-		OwnerPublicKey: pubKey,
-	}, nil)
-	mockReferencePackage.On("GetReferenceFromLookupHash", mock.Anything, mock.Anything, mock.Anything).Return(&reference.Ref{
-		ID:   123,
-		Name: "test",
-		Type: reference.FILE,
-	}, nil)
-	mockReferencePackage.On("GetFileStats", mock.Anything, int64(123)).Return(&stats.FileStats{
-		NumBlockDownloads: 10,
-	}, nil)
-	mockReferencePackage.On("GetWriteMarkerEntity", mock.Anything, mock.Anything).Return(nil, nil)
-
-	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
-	resp, err := svc.GetFileStats(ctx, req)
-	if err != nil {
-		t.Fatal("unexpected error")
-	}
-
-	assert.Equal(t, resp.MetaData.FileMetaData.Name, "test")
-	assert.Equal(t, resp.Stats.NumBlockDownloads, int64(10))
-}
-
-func TestBlobberGRPCService_GetFileStats_FileNotExist(t *testing.T) {
-	req := &blobbergrpc.GetFileStatsRequest{
-		Path:       "path",
-		PathHash:   "path_hash",
-		Allocation: "",
-	}
-
-	ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-		common.ClientHeader:          "owner",
-		common.ClientKeyHeader:       "",
-		common.ClientSignatureHeader: "",
-	}))
-
-	mockStorageHandler := &storageHandlerI{}
-	mockReferencePackage := &mocks.PackageHandler{}
-	mockStorageHandler.On("verifyAllocation", mock.Anything, req.Allocation, true).Return(&allocation.Allocation{
-		ID:      "allocationId",
-		Tx:      req.Allocation,
-		OwnerID: "owner",
-	}, nil)
-	mockReferencePackage.On("GetReferenceFromLookupHash", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("file does not exist"))
-	mockReferencePackage.On("GetFileStats", mock.Anything, int64(123)).Return(&stats.FileStats{
-		NumBlockDownloads: 10,
-	}, nil)
-	mockReferencePackage.On("GetWriteMarkerEntity", mock.Anything, mock.Anything).Return(nil, nil)
-
-	svc := newGRPCBlobberService(mockStorageHandler, mockReferencePackage)
-	_, err := svc.GetFileStats(ctx, req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
 }
 
 func TestBlobberGRPCService_ListEntities_Success(t *testing.T) {

@@ -64,54 +64,22 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 }
 
 func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.GetFileStatsRequest) (*blobbergrpc.GetFileStatsResponse, error) {
-	allocationTx := req.Allocation
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, true)
-	md := GetGRPCMetaDataFromCtx(ctx)
-
+	r, err := http.NewRequest("POST", "", nil)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, err
 	}
-	allocationID := allocationObj.ID
-
-	valid, err := verifySignatureFromRequest(allocationTx, md.ClientSignature, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	clientID := md.Client
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	r.Form = map[string][]string{
+		"path":      {req.Path},
+		"path_hash": {req.PathHash},
 	}
 
-	path_hash := req.PathHash
-	path := req.Path
-	if len(path_hash) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		path_hash = reference.GetReferenceLookup(allocationID, path)
-	}
-
-	fileref, err := b.packageHandler.GetReferenceFromLookupHash(ctx, allocationID, path_hash)
-
+	resp, err := FileStatsHandler(ctx, r)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+		return nil, err
 	}
 
-	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
-	}
-
-	stats, _ := b.packageHandler.GetFileStats(ctx, fileref.ID)
-	wm, _ := b.packageHandler.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
-	if wm != nil && stats != nil {
-		stats.WriteMarkerRedeemTxn = wm.CloseTxnID
-	}
-
-	return &blobbergrpc.GetFileStatsResponse{
-		MetaData: convert.FileRefToFileRefGRPC(fileref),
-		Stats:    convert.FileStatsToFileStatsGRPC(stats),
-	}, nil
+	return convert.GetFileStatsResponseCreator(resp), nil
 }
 
 func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.ListEntitiesRequest) (*blobbergrpc.ListEntitiesResponse, error) {
