@@ -3,11 +3,10 @@ package handler
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
 type blobberGRPCService struct {
@@ -174,154 +173,42 @@ func (b *blobberGRPCService) CalculateHash(ctx context.Context, req *blobbergrpc
 }
 
 func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, req *blobbergrpc.CommitMetaTxnRequest) (*blobbergrpc.CommitMetaTxnResponse, error) {
-	allocationTx := req.GetAllocation()
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, true)
+	r, err := http.NewRequest("POST", "", nil)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, err
 	}
-	allocationID := allocationObj.ID
-
-	md := GetGRPCMetaDataFromCtx(ctx)
-	clientID := md.Client
-	if len(clientID) == 0 {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
-	pathHash := req.PathHash
-	path := req.Path
-	if len(pathHash) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		pathHash = reference.GetReferenceLookup(allocationID, path)
+	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	r.Form = map[string][]string{
+		"path":       {req.Path},
+		"path_hash":  {req.PathHash},
+		"auth_token": {req.AuthToken},
+		"txn_id":     {req.TxnId},
 	}
 
-	fileRef, err := b.packageHandler.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	resp, err := CommitMetaTxnHandler(ctx, r)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+		return nil, err
 	}
 
-	if fileRef.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
-	}
-
-	auhToken := req.GetAuthToken()
-
-	if clientID != allocationObj.OwnerID || len(auhToken) > 0 {
-		authTicketVerified, err := b.storageHandler.verifyAuthTicket(ctx, auhToken, allocationObj, fileRef, clientID)
-		if err != nil {
-			return nil, err
-		}
-
-		if !authTicketVerified {
-			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
-		}
-	}
-
-	txnID := req.GetTxnId()
-	if len(txnID) == 0 {
-		return nil, common.NewError("invalid_parameter", "TxnID not present in the params")
-	}
-
-	if err := b.packageHandler.AddCommitMetaTxn(ctx, fileRef.ID, txnID); err != nil {
-		return nil, common.NewError("add_commit_meta_txn_failed", "Failed to add commitMetaTxn with err :"+err.Error())
-	}
-
-	return &blobbergrpc.CommitMetaTxnResponse{
-		Message: "Added commitMetaTxn successfully",
-	}, nil
+	return convert.GetCommitMetaTxnHandlerResponse(resp), nil
 }
 
 func (b *blobberGRPCService) Collaborator(ctx context.Context, req *blobbergrpc.CollaboratorRequest) (*blobbergrpc.CollaboratorResponse, error) {
-	allocationTx := req.Allocation
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, true)
+	r, err := http.NewRequest(strings.ToUpper(req.Method), "", nil)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, err
+	}
+	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	r.Form = map[string][]string{
+		"path":      {req.Path},
+		"path_hash": {req.PathHash},
+		"collab_id": {req.CollabId},
 	}
 
-	md := GetGRPCMetaDataFromCtx(ctx)
-	allocationID := allocationObj.ID
-
-	valid, err := verifySignatureFromRequest(allocationTx, md.ClientSignature, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	clientID := md.Client
-
-	pathHash := req.PathHash
-	path := req.Path
-	if len(pathHash) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		pathHash = reference.GetReferenceLookup(allocationID, path)
-	}
-
-	fileRef, err := b.packageHandler.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	resp, err := CollaboratorHandler(ctx, r)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+		return nil, err
 	}
 
-	if fileRef.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
-	}
-
-	collabClientID := req.CollabId
-	if len(collabClientID) == 0 {
-		return nil, common.NewError("invalid_parameter", "collab_id not present in the params")
-	}
-
-	var msg string
-
-	switch req.GetMethod() {
-	case http.MethodPost:
-		if len(clientID) == 0 || clientID != allocationObj.OwnerID {
-			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-		}
-
-		if b.packageHandler.IsACollaborator(ctx, fileRef.ID, collabClientID) {
-			msg = "Given client ID is already a collaborator"
-			return &blobbergrpc.CollaboratorResponse{Message: msg}, nil
-		}
-
-		if err := b.packageHandler.AddCollaborator(ctx, fileRef.ID, collabClientID); err != nil {
-			return nil, common.NewError("add_collaborator_failed", "Failed to add collaborator with err :"+err.Error())
-		}
-
-		msg = "Added collaborator successfully"
-
-	case http.MethodGet:
-		collaborators, err := b.packageHandler.GetCollaborators(ctx, fileRef.ID)
-		if err != nil {
-			return nil, common.NewError("get_collaborator_failed", "Failed to get collaborators from refID with err:"+err.Error())
-		}
-
-		var collaboratorsGRPC []*blobbergrpc.Collaborator
-		for _, c := range collaborators {
-			collaboratorsGRPC = append(collaboratorsGRPC, convert.CollaboratorToGRPCCollaborator(&c))
-		}
-
-		return &blobbergrpc.CollaboratorResponse{
-			Collaborators: collaboratorsGRPC,
-		}, nil
-
-	case http.MethodDelete:
-		if len(clientID) == 0 || clientID != allocationObj.OwnerID {
-			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-		}
-
-		if err := b.packageHandler.RemoveCollaborator(ctx, fileRef.ID, collabClientID); err != nil {
-			return nil, common.NewError("delete_collaborator_failed", "Failed to delete collaborator from refID with err:"+err.Error())
-		}
-
-		msg = "Removed collaborator successfully"
-
-	default:
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST/GET/DELETE instead")
-	}
-
-	return &blobbergrpc.CollaboratorResponse{
-		Message: msg,
-	}, nil
+	return convert.CollaboratorResponse(resp), nil
 }

@@ -144,38 +144,34 @@ func GetCalculateHashResponseHandler(r interface{}) *blobbergrpc.CalculateHashRe
 	return &blobbergrpc.CalculateHashResponse{Message: msg}
 }
 
-func GetCommitMetaTxnHandlerResponse(response *blobbergrpc.CommitMetaTxnResponse) interface{} {
-	msg := response.GetMessage()
-	if msg == "" {
+func GetCommitMetaTxnHandlerResponse(r interface{}) *blobbergrpc.CommitMetaTxnResponse {
+	msg, _ := r.(struct {
+		Msg string `json:"msg"`
+	})
+
+	return &blobbergrpc.CommitMetaTxnResponse{Message: msg.Msg}
+}
+
+func CollaboratorResponse(r interface{}) *blobbergrpc.CollaboratorResponse {
+	if r == nil {
 		return nil
 	}
 
-	result := struct {
+	msg, _ := r.(struct {
 		Msg string `json:"msg"`
-	}{
-		Msg: msg,
+	})
+	var resp blobbergrpc.CollaboratorResponse
+	if msg.Msg != "" {
+		resp.Message = msg.Msg
+		return &resp
 	}
 
-	return result
-}
-
-func CollaboratorResponse(response *blobbergrpc.CollaboratorResponse) interface{} {
-	if msg := response.GetMessage(); msg != "" {
-		return struct {
-			Msg string `json:"msg"`
-		}{Msg: msg}
+	collabs, _ := r.([]reference.Collaborator)
+	for _, c := range collabs {
+		resp.Collaborators = append(resp.Collaborators, CollaboratorToGRPCCollaborator(&c))
 	}
 
-	if collaborators := response.GetCollaborators(); collaborators != nil {
-		collabs := make([]reference.Collaborator, 0, len(collaborators))
-		for _, c := range collaborators {
-			collabs = append(collabs, *GRPCCollaboratorToCollaborator(c))
-		}
-
-		return collabs
-	}
-
-	return nil
+	return &resp
 }
 
 func UpdateObjectAttributesResponseHandler(updateAttributesResponse *blobbergrpc.UpdateObjectAttributesResponse) *blobberHTTP.UpdateObjectAttributesResponse {

@@ -5,9 +5,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -848,4 +850,15 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			}
 		}
 	})
+}
+
+func randString(n int) string {
+
+	const hexLetters = "abcdef0123456789"
+
+	var sb strings.Builder
+	for i := 0; i < n; i++ {
+		sb.WriteByte(hexLetters[rand.Intn(len(hexLetters))])
+	}
+	return sb.String()
 }
