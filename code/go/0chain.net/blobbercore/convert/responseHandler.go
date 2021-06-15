@@ -1,7 +1,6 @@
 package convert
 
 import (
-	"context"
 	"encoding/json"
 
 	stats2 "github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
@@ -15,11 +14,19 @@ import (
 )
 
 func GetAllocationResponseCreator(resp interface{}) *blobbergrpc.GetAllocationResponse {
+	if resp == nil {
+		return nil
+	}
+
 	alloc, _ := resp.(*allocation.Allocation)
 	return &blobbergrpc.GetAllocationResponse{Allocation: AllocationToGRPCAllocation(alloc)}
 }
 
 func GetFileMetaDataResponseCreator(httpResp interface{}) *blobbergrpc.GetFileMetaDataResponse {
+	if httpResp == nil {
+		return nil
+	}
+
 	r, _ := httpResp.(map[string]interface{})
 
 	var resp blobbergrpc.GetFileMetaDataResponse
@@ -33,6 +40,10 @@ func GetFileMetaDataResponseCreator(httpResp interface{}) *blobbergrpc.GetFileMe
 }
 
 func GetFileStatsResponseCreator(r interface{}) *blobbergrpc.GetFileStatsResponse {
+	if r == nil {
+		return nil
+	}
+
 	httpResp, _ := r.(map[string]interface{})
 
 	var resp blobbergrpc.GetFileStatsResponse
@@ -47,6 +58,10 @@ func GetFileStatsResponseCreator(r interface{}) *blobbergrpc.GetFileStatsRespons
 }
 
 func ListEntitesResponseCreator(r interface{}) *blobbergrpc.ListEntitiesResponse {
+	if r == nil {
+		return nil
+	}
+
 	httpResp, _ := r.(*blobberHTTP.ListResult)
 
 	var resp blobbergrpc.ListEntitiesResponse
@@ -67,24 +82,30 @@ func GetReferencePathResponseHandler(getReferencePathResponse *blobbergrpc.GetRe
 	}
 }
 
-func GetObjectPathResponseHandler(getObjectPathResponse *blobbergrpc.GetObjectPathResponse) *blobberHTTP.ObjectPathResult {
-	ctx := context.Background()
-	path := FileRefGRPCToFileRef(getObjectPathResponse.ObjectPath.Path).GetListingData(ctx)
-	var pathList []map[string]interface{}
-	for _, pl := range getObjectPathResponse.ObjectPath.PathList {
-		pathList = append(pathList, FileRefGRPCToFileRef(pl).GetListingData(ctx))
+func GetObjectPathResponseCreator(r interface{}) *blobbergrpc.GetObjectPathResponse {
+	if r == nil {
+		return nil
 	}
-	path["list"] = pathList
 
-	return &blobberHTTP.ObjectPathResult{
-		ObjectPath: &reference.ObjectPath{
-			RootHash:     getObjectPathResponse.ObjectPath.RootHash,
-			Meta:         FileRefGRPCToFileRef(getObjectPathResponse.ObjectPath.Meta).GetListingData(ctx),
-			Path:         path,
-			FileBlockNum: getObjectPathResponse.ObjectPath.FileBlockNum,
-		},
-		LatestWM: WriteMarkerGRPCToWriteMarker(getObjectPathResponse.LatestWriteMarker),
+	httpResp, _ := r.(*blobberHTTP.ObjectPathResult)
+	var resp blobbergrpc.GetObjectPathResponse
+
+	var pathList []*blobbergrpc.FileRef
+	pl, _ := httpResp.Path["list"].([]map[string]interface{})
+	for _, v := range pl {
+		pathList = append(pathList, FileRefToFileRefGRPC(reference.ListingDataToRef(v)))
 	}
+
+	resp.LatestWriteMarker = WriteMarkerToWriteMarkerGRPC(httpResp.LatestWM)
+	resp.ObjectPath = &blobbergrpc.ObjectPath{
+		RootHash:     httpResp.RootHash,
+		Meta:         FileRefToFileRefGRPC(reference.ListingDataToRef(httpResp.Meta)),
+		Path:         FileRefToFileRefGRPC(reference.ListingDataToRef(httpResp.Path)),
+		PathList:     pathList,
+		FileBlockNum: httpResp.FileBlockNum,
+	}
+
+	return &resp
 }
 
 func GetObjectTreeResponseHandler(getObjectTreeResponse *blobbergrpc.GetObjectTreeResponse) *blobberHTTP.ReferencePathResult {

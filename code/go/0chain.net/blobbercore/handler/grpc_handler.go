@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
@@ -102,76 +101,22 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.
 }
 
 func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc.GetObjectPathRequest) (*blobbergrpc.GetObjectPathResponse, error) {
-	allocationTx := req.Allocation
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
-	md := GetGRPCMetaDataFromCtx(ctx)
-
+	r, err := http.NewRequest("", "", nil)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, err
 	}
-	allocationID := allocationObj.ID
-
-	valid, err := verifySignatureFromRequest(allocationTx, md.ClientSignature, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	clientID := md.Client
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-	path := req.Path
-	if len(path) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
+	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	r.Form = map[string][]string{
+		"path":      {req.Path},
+		"block_num": {req.BlockNum},
 	}
 
-	blockNumStr := req.BlockNum
-	if len(blockNumStr) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
-	}
-
-	blockNum, err := strconv.ParseInt(blockNumStr, 10, 64)
-	if err != nil || blockNum < 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid block number")
-	}
-
-	objectPath, err := b.packageHandler.GetObjectPath(ctx, allocationID, blockNum)
+	resp, err := ObjectPathHandler(ctx, r)
 	if err != nil {
 		return nil, err
 	}
 
-	var latestWM *writemarker.WriteMarkerEntity
-	if len(allocationObj.AllocationRoot) == 0 {
-		latestWM = nil
-	} else {
-		latestWM, err = b.packageHandler.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
-		if err != nil {
-			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
-		}
-	}
-	var latestWriteMarketGRPC *blobbergrpc.WriteMarker
-	if latestWM != nil {
-		latestWriteMarketGRPC = convert.WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
-	}
-
-	pathList := make([]*blobbergrpc.FileRef, 0)
-	list, _ := objectPath.Path["list"].([]map[string]interface{})
-	if len(list) > 0 {
-		for _, pl := range list {
-			pathList = append(pathList, convert.FileRefToFileRefGRPC(reference.ListingDataToRef(pl)))
-		}
-	}
-
-	return &blobbergrpc.GetObjectPathResponse{
-		ObjectPath: &blobbergrpc.ObjectPath{
-			RootHash:     objectPath.RootHash,
-			Meta:         convert.FileRefToFileRefGRPC(reference.ListingDataToRef(objectPath.Meta)),
-			Path:         convert.FileRefToFileRefGRPC(reference.ListingDataToRef(objectPath.Path)),
-			PathList:     pathList,
-			FileBlockNum: objectPath.FileBlockNum,
-		},
-		LatestWriteMarker: latestWriteMarketGRPC,
-	}, nil
+	return convert.GetObjectPathResponseCreator(resp), nil
 }
 
 func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobbergrpc.GetReferencePathRequest) (*blobbergrpc.GetReferencePathResponse, error) {
