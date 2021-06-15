@@ -8,7 +8,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
@@ -139,67 +138,21 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 }
 
 func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc.GetObjectTreeRequest) (*blobbergrpc.GetObjectTreeResponse, error) {
-	allocationTx := req.Allocation
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
-	md := GetGRPCMetaDataFromCtx(ctx)
-
+	r, err := http.NewRequest("", "", nil)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, err
 	}
-	allocationID := allocationObj.ID
-
-	valid, err := verifySignatureFromRequest(allocationTx, md.ClientSignature, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	r.Form = map[string][]string{
+		"path": {req.Path},
 	}
 
-	clientID := md.Client
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-	path := req.Path
-	if len(path) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
-	}
-
-	rootRef, err := b.packageHandler.GetObjectTree(ctx, allocationID, path)
+	resp, err := ObjectTreeHandler(ctx, r)
 	if err != nil {
 		return nil, err
 	}
 
-	refPath := &reference.ReferencePath{Ref: rootRef}
-	refsToProcess := make([]*reference.ReferencePath, 0)
-	refsToProcess = append(refsToProcess, refPath)
-	for len(refsToProcess) > 0 {
-		refToProcess := refsToProcess[0]
-		refToProcess.Meta = refToProcess.Ref.GetListingData(ctx)
-		if len(refToProcess.Ref.Children) > 0 {
-			refToProcess.List = make([]*reference.ReferencePath, len(refToProcess.Ref.Children))
-		}
-		for idx, child := range refToProcess.Ref.Children {
-			childRefPath := &reference.ReferencePath{Ref: child}
-			refToProcess.List[idx] = childRefPath
-			refsToProcess = append(refsToProcess, childRefPath)
-		}
-		refsToProcess = refsToProcess[1:]
-	}
-
-	var latestWM *writemarker.WriteMarkerEntity
-	if len(allocationObj.AllocationRoot) == 0 {
-		latestWM = nil
-	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
-		if err != nil {
-			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
-		}
-	}
-	var refPathResult blobbergrpc.GetObjectTreeResponse
-	var recursionCount int
-	refPathResult.ReferencePath = convert.ReferencePathToReferencePathGRPC(&recursionCount, refPath)
-	if latestWM != nil {
-		refPathResult.LatestWM = convert.WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
-	}
-	return &refPathResult, nil
+	return convert.GetObjectTreeResponseCreator(resp), nil
 }
 
 func (b *blobberGRPCService) CalculateHash(ctx context.Context, req *blobbergrpc.CalculateHashRequest) (*blobbergrpc.CalculateHashResponse, error) {

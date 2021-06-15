@@ -88,6 +88,20 @@ func GetReferencePathResponseCreator(r interface{}) *blobbergrpc.GetReferencePat
 	return &resp
 }
 
+func GetObjectTreeResponseCreator(r interface{}) *blobbergrpc.GetObjectTreeResponse {
+	if r == nil {
+		return nil
+	}
+
+	httpResp, _ := r.(*blobberHTTP.ReferencePathResult)
+	var resp blobbergrpc.GetObjectTreeResponse
+
+	var recursionCount int
+	resp.LatestWM = WriteMarkerToWriteMarkerGRPC(httpResp.LatestWM)
+	resp.ReferencePath = ReferencePathToReferencePathGRPC(&recursionCount, httpResp.ReferencePath)
+	return &resp
+}
+
 func GetObjectPathResponseCreator(r interface{}) *blobbergrpc.GetObjectPathResponse {
 	if r == nil {
 		return nil
@@ -112,14 +126,6 @@ func GetObjectPathResponseCreator(r interface{}) *blobbergrpc.GetObjectPathRespo
 	}
 
 	return &resp
-}
-
-func GetObjectTreeResponseHandler(getObjectTreeResponse *blobbergrpc.GetObjectTreeResponse) *blobberHTTP.ReferencePathResult {
-	var recursionCount int
-	return &blobberHTTP.ReferencePathResult{
-		ReferencePath: ReferencePathGRPCToReferencePath(&recursionCount, getObjectTreeResponse.ReferencePath),
-		LatestWM:      WriteMarkerGRPCToWriteMarker(getObjectTreeResponse.LatestWM),
-	}
 }
 
 func CommitWriteResponseHandler(resp *blobbergrpc.CommitResponse) *blobberHTTP.CommitResult {
