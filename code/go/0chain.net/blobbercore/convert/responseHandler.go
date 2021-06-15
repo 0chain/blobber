@@ -5,8 +5,6 @@ import (
 
 	stats2 "github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberHTTP"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
@@ -180,19 +178,27 @@ func CollaboratorResponse(r interface{}) *blobbergrpc.CollaboratorResponse {
 	return &resp
 }
 
-func UpdateObjectAttributesResponseHandler(updateAttributesResponse *blobbergrpc.UpdateObjectAttributesResponse) *blobberHTTP.UpdateObjectAttributesResponse {
-	return &blobberHTTP.UpdateObjectAttributesResponse{
-		WhoPaysForReads: common.WhoPays(updateAttributesResponse.WhoPaysForReads),
+func UpdateObjectAttributesResponseCreator(r interface{}) *blobbergrpc.UpdateObjectAttributesResponse {
+	if r != nil {
+		return nil
 	}
+
+	httpResp, _ := r.(*reference.Attributes)
+	return &blobbergrpc.UpdateObjectAttributesResponse{WhoPaysForReads: int64(httpResp.WhoPaysForReads)}
 }
 
-func CopyObjectResponseHandler(copyObjectResponse *blobbergrpc.CopyObjectResponse) *blobberHTTP.UploadResult {
-	return &blobberHTTP.UploadResult{
-		Filename:     copyObjectResponse.Filename,
-		Size:         copyObjectResponse.Size,
-		Hash:         copyObjectResponse.ContentHash,
-		MerkleRoot:   copyObjectResponse.MerkleRoot,
-		UploadLength: copyObjectResponse.UploadLength,
-		UploadOffset: copyObjectResponse.UploadOffset,
+func CopyObjectResponseCreator(r interface{}) *blobbergrpc.CopyObjectResponse {
+	if r == nil {
+		return nil
+	}
+
+	httpResp, _ := r.(*blobberHTTP.UploadResult)
+	return &blobbergrpc.CopyObjectResponse{
+		Filename:     httpResp.Filename,
+		Size:         httpResp.Size,
+		ContentHash:  httpResp.Hash,
+		MerkleRoot:   httpResp.MerkleRoot,
+		UploadLength: httpResp.UploadLength,
+		UploadOffset: httpResp.UploadOffset,
 	}
 }

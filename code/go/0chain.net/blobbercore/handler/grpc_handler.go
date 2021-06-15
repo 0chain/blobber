@@ -10,16 +10,11 @@ import (
 )
 
 type blobberGRPCService struct {
-	storageHandler StorageHandlerI
-	packageHandler PackageHandler
 	blobbergrpc.UnimplementedBlobberServer
 }
 
-func newGRPCBlobberService(sh StorageHandlerI, r PackageHandler) *blobberGRPCService {
-	return &blobberGRPCService{
-		storageHandler: sh,
-		packageHandler: r,
-	}
+func newGRPCBlobberService() *blobberGRPCService {
+	return &blobberGRPCService{}
 }
 
 func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobbergrpc.GetAllocationRequest) (*blobbergrpc.GetAllocationResponse, error) {
