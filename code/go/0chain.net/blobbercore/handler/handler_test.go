@@ -89,13 +89,12 @@ func setup(t *testing.T) {
 
 func setupHandlers() (*mux.Router, map[string]string) {
 	router := mux.NewRouter()
-	svc := newGRPCBlobberService(&storageHandler, &packageHandler{})
 
 	opPath := "/v1/file/objectpath/{allocation}"
 	opName := "Object_Path"
 	router.HandleFunc(opPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(ObjectPathHandler(svc)),
+			WithReadOnlyConnection(ObjectPathHandler),
 		),
 	),
 	).Name(opName)
@@ -104,7 +103,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	rpName := "Reference_Path"
 	router.HandleFunc(rpPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(ReferencePathHandler(svc)),
+			WithReadOnlyConnection(ReferencePathHandler),
 		),
 	),
 	).Name(rpName)
@@ -113,7 +112,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	sName := "Stats"
 	router.HandleFunc(sPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(FileStatsHandler(svc)),
+			WithReadOnlyConnection(FileStatsHandler),
 		),
 	),
 	).Name(sName)
@@ -122,7 +121,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	otName := "Object_Tree"
 	router.HandleFunc(otPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(ObjectTreeHandler(svc)),
+			WithReadOnlyConnection(ObjectTreeHandler),
 		),
 	),
 	).Name(otName)
@@ -131,7 +130,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	collName := "Collaborator"
 	router.HandleFunc(collPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(CollaboratorHandler(svc)),
+			WithReadOnlyConnection(CollaboratorHandler),
 		),
 	),
 	).Name(collName)
@@ -149,7 +148,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	cName := "Copy"
 	router.HandleFunc(cPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(CopyHandler(svc)),
+			WithReadOnlyConnection(CopyHandler),
 		),
 	),
 	).Name(cName)
@@ -158,7 +157,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	aName := "Attributes"
 	router.HandleFunc(aPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(UpdateAttributesHandler(svc)),
+			WithReadOnlyConnection(UpdateAttributesHandler),
 		),
 	),
 	).Name(aName)
