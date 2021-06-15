@@ -50,6 +50,23 @@ func (b *blobberGRPCService) CopyObject(ctx context.Context, req *blobbergrpc.Co
 	return convert.CopyObjectResponseCreator(resp), nil
 }
 
-func (b *blobberGRPCService) RenameObject(ctx context.Context, r *blobbergrpc.RenameObjectRequest) (*blobbergrpc.RenameObjectResponse, error) {
-	return nil, nil
+func (b *blobberGRPCService) RenameObject(ctx context.Context, req *blobbergrpc.RenameObjectRequest) (*blobbergrpc.RenameObjectResponse, error) {
+	r, err := http.NewRequest("POST", "", nil)
+	if err != nil {
+		return nil, err
+	}
+	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	r.Form = map[string][]string{
+		"path":          {req.Path},
+		"path_hash":     {req.PathHash},
+		"connection_id": {req.ConnectionId},
+		"new_name":      {req.NewName},
+	}
+
+	resp, err := RenameHandler(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return convert.RenameObjectResponseCreator(resp), nil
 }

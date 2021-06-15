@@ -139,7 +139,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	rName := "Rename"
 	router.HandleFunc(rPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(RenameHandler(svc)),
+			WithReadOnlyConnection(RenameHandler),
 		),
 	),
 	).Name(rName)

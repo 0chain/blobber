@@ -31,7 +31,7 @@ func SetupHandlers(r *mux.Router) {
 	//object operations
 	r.HandleFunc("/v1/file/upload/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler))))
 	r.HandleFunc("/v1/file/download/{allocation}", common.UserRateLimit(common.ToByteStream(WithConnection(DownloadHandler))))
-	r.HandleFunc("/v1/file/rename/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(RenameHandler(svc))))).Methods(http.MethodPost)
+	r.HandleFunc("/v1/file/rename/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(RenameHandler))))
 	r.HandleFunc("/v1/file/copy/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CopyHandler))))
 	r.HandleFunc("/v1/file/attributes/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UpdateAttributesHandler))))
 
@@ -239,23 +239,14 @@ func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, error
 	return response, nil
 }
 
-func RenameHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
-	return func(ctx context.Context, r *http.Request) (interface{}, error) {
-		ctx = setupHandlerGRPCContext(ctx, r)
-
-		renameObjResponse, err := svc.RenameObject(ctx, &blobbergrpc.RenameObjectRequest{
-			Allocation:   mux.Vars(r)["allocation"],
-			Path:         r.FormValue("path"),
-			PathHash:     r.FormValue("path_hash"),
-			ConnectionId: r.FormValue("connection_id"),
-			NewName:      r.FormValue("new_name"),
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		return convert.RenameObjectResponseHandler(renameObjResponse), nil
+func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+	response, err := storageHandler.RenameObject(ctx, r)
+	if err != nil {
+		return nil, err
 	}
+
+	return response, nil
 }
 
 func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {

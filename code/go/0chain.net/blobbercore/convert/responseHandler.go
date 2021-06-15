@@ -203,13 +203,18 @@ func CopyObjectResponseCreator(r interface{}) *blobbergrpc.CopyObjectResponse {
 	}
 }
 
-func RenameObjectResponseHandler(renameObjectResponse *blobbergrpc.RenameObjectResponse) *blobberHTTP.UploadResult {
-	return &blobberHTTP.UploadResult{
-		Filename:     renameObjectResponse.Filename,
-		Size:         renameObjectResponse.Size,
-		Hash:         renameObjectResponse.ContentHash,
-		MerkleRoot:   renameObjectResponse.MerkleRoot,
-		UploadLength: renameObjectResponse.UploadLength,
-		UploadOffset: renameObjectResponse.UploadOffset,
+func RenameObjectResponseCreator(r interface{}) *blobbergrpc.RenameObjectResponse {
+	if r == nil {
+		return nil
+	}
+
+	httpResp, _ := r.(*blobberHTTP.UploadResult)
+	return &blobbergrpc.RenameObjectResponse{
+		Filename:     httpResp.Filename,
+		Size:         httpResp.Size,
+		ContentHash:  httpResp.Hash,
+		MerkleRoot:   httpResp.MerkleRoot,
+		UploadLength: httpResp.UploadLength,
+		UploadOffset: httpResp.UploadOffset,
 	}
 }
