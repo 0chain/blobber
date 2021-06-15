@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
@@ -156,45 +155,22 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 }
 
 func (b *blobberGRPCService) CalculateHash(ctx context.Context, req *blobbergrpc.CalculateHashRequest) (*blobbergrpc.CalculateHashResponse, error) {
-	allocationTx := req.Allocation
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
+	r, err := http.NewRequest("POST", "", nil)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, err
+	}
+	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	r.Form = map[string][]string{
+		"path":  {req.Path},
+		"paths": {req.Paths},
 	}
 
-	md := GetGRPCMetaDataFromCtx(ctx)
-	allocationID := allocationObj.ID
-
-	clientID := md.Client
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
-	var paths []string
-	pathsString := req.Paths
-	if len(pathsString) == 0 {
-		path := req.Path
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		paths = append(paths, path)
-	} else {
-		err = json.Unmarshal([]byte(pathsString), &paths)
-		if err != nil {
-			return nil, common.NewError("invalid_parameters", "Invalid path array json")
-		}
-	}
-
-	rootRef, err := b.packageHandler.GetReferencePathFromPaths(ctx, allocationID, paths)
+	resp, err := CalculateHashHandler(ctx, r)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-		return nil, err
-	}
-
-	return &blobbergrpc.CalculateHashResponse{Message: "Hash recalculated for the given paths"}, nil
+	return convert.GetCalculateHashResponseHandler(resp), nil
 }
 
 func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, req *blobbergrpc.CommitMetaTxnRequest) (*blobbergrpc.CommitMetaTxnResponse, error) {

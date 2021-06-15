@@ -42,5 +42,5 @@ func httpRequestWithMetaData(r *http.Request, md *GRPCMetaData, alloc string) {
 	r.Header.Set(common.ClientHeader, md.Client)
 	r.Header.Set(common.ClientKeyHeader, md.ClientKey)
 	r.Header.Set(common.ClientSignatureHeader, md.ClientSignature)
-	mux.SetURLVars(r, map[string]string{"allocation": alloc})
+	*r = *mux.SetURLVars(r, map[string]string{"allocation": alloc})
 }

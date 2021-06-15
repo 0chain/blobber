@@ -137,13 +137,11 @@ func CommitWriteResponseHandler(resp *blobbergrpc.CommitResponse) *blobberHTTP.C
 	}
 }
 
-func GetCalculateHashResponseHandler(response *blobbergrpc.CalculateHashResponse) interface{} {
-	result := make(map[string]interface{})
-	if msg := response.GetMessage(); msg != "" {
-		result["msg"] = msg
-	}
+func GetCalculateHashResponseHandler(r interface{}) *blobbergrpc.CalculateHashResponse {
+	httpResp, _ := r.(map[string]interface{})
+	msg, _ := httpResp["msg"].(string)
 
-	return result
+	return &blobbergrpc.CalculateHashResponse{Message: msg}
 }
 
 func GetCommitMetaTxnHandlerResponse(response *blobbergrpc.CommitMetaTxnResponse) interface{} {
