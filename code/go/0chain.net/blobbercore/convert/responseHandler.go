@@ -128,12 +128,18 @@ func GetObjectPathResponseCreator(r interface{}) *blobbergrpc.GetObjectPathRespo
 	return &resp
 }
 
-func CommitWriteResponseHandler(resp *blobbergrpc.CommitResponse) *blobberHTTP.CommitResult {
-	return &blobberHTTP.CommitResult{
-		AllocationRoot: resp.AllocationRoot,
-		WriteMarker:    WriteMarkerGRPCToWriteMarker(resp.WriteMarker),
-		Success:        resp.Success,
-		ErrorMessage:   resp.ErrorMessage,
+func CommitWriteResponseHandler(r interface{}) *blobbergrpc.CommitResponse {
+	if r == nil {
+		return nil
+	}
+
+	httpResp, _ := r.(*blobberHTTP.CommitResult)
+
+	return &blobbergrpc.CommitResponse{
+		AllocationRoot: httpResp.AllocationRoot,
+		WriteMarker:    WriteMarkerToWriteMarkerGRPC(httpResp.WriteMarker),
+		ErrorMessage:   httpResp.ErrorMessage,
+		Success:        httpResp.Success,
 	}
 }
 
