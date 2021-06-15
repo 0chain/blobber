@@ -74,12 +74,18 @@ func ListEntitesResponseCreator(r interface{}) *blobbergrpc.ListEntitiesResponse
 	return &resp
 }
 
-func GetReferencePathResponseHandler(getReferencePathResponse *blobbergrpc.GetReferencePathResponse) *blobberHTTP.ReferencePathResult {
-	var recursionCount int
-	return &blobberHTTP.ReferencePathResult{
-		ReferencePath: ReferencePathGRPCToReferencePath(&recursionCount, getReferencePathResponse.ReferencePath),
-		LatestWM:      WriteMarkerGRPCToWriteMarker(getReferencePathResponse.LatestWM),
+func GetReferencePathResponseCreator(r interface{}) *blobbergrpc.GetReferencePathResponse {
+	if r == nil {
+		return nil
 	}
+
+	httpResp, _ := r.(*blobberHTTP.ReferencePathResult)
+	var resp blobbergrpc.GetReferencePathResponse
+
+	var recursionCount int
+	resp.LatestWM = WriteMarkerToWriteMarkerGRPC(httpResp.LatestWM)
+	resp.ReferencePath = ReferencePathToReferencePathGRPC(&recursionCount, httpResp.ReferencePath)
+	return &resp
 }
 
 func GetObjectPathResponseCreator(r interface{}) *blobbergrpc.GetObjectPathResponse {

@@ -120,80 +120,22 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 }
 
 func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobbergrpc.GetReferencePathRequest) (*blobbergrpc.GetReferencePathResponse, error) {
-	md := GetGRPCMetaDataFromCtx(ctx)
-	allocationTx := req.Allocation
-	allocationObj, err := b.storageHandler.verifyAllocation(ctx, allocationTx, false)
-
+	r, err := http.NewRequest("", "", nil)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, err
 	}
-	allocationID := allocationObj.ID
-
-	valid, err := verifySignatureFromRequest(allocationTx, md.ClientSignature, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	clientID := md.Client
-	if len(clientID) == 0 {
-		return nil, common.NewError("invalid_operation", "Please pass clientID in the header")
+	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	r.Form = map[string][]string{
+		"path":  {req.Path},
+		"paths": {req.Paths},
 	}
 
-	var paths []string
-	pathsString := req.Paths
-	if len(pathsString) == 0 {
-		path := req.Path
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-		paths = append(paths, path)
-	} else {
-		err = json.Unmarshal([]byte(pathsString), &paths)
-		if err != nil {
-			return nil, common.NewError("invalid_parameters", "Invalid path array json")
-		}
-	}
-
-	rootRef, err := b.packageHandler.GetReferencePathFromPaths(ctx, allocationID, paths)
+	resp, err := ReferencePathHandler(ctx, r)
 	if err != nil {
 		return nil, err
 	}
 
-	refPath := &reference.ReferencePath{Ref: rootRef}
-	refsToProcess := make([]*reference.ReferencePath, 0)
-	refsToProcess = append(refsToProcess, refPath)
-	for len(refsToProcess) > 0 {
-		refToProcess := refsToProcess[0]
-		refToProcess.Meta = refToProcess.Ref.GetListingData(ctx)
-		if len(refToProcess.Ref.Children) > 0 {
-			refToProcess.List = make([]*reference.ReferencePath, len(refToProcess.Ref.Children))
-		}
-		for idx, child := range refToProcess.Ref.Children {
-			childRefPath := &reference.ReferencePath{Ref: child}
-			refToProcess.List[idx] = childRefPath
-			refsToProcess = append(refsToProcess, childRefPath)
-		}
-		refsToProcess = refsToProcess[1:]
-	}
-
-	var latestWM *writemarker.WriteMarkerEntity
-	if len(allocationObj.AllocationRoot) == 0 {
-		latestWM = nil
-	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
-		if err != nil {
-			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
-		}
-	}
-
-	var refPathResult blobbergrpc.GetReferencePathResponse
-	var recursionCount int
-	refPathResult.ReferencePath = convert.ReferencePathToReferencePathGRPC(&recursionCount, refPath)
-	if latestWM != nil {
-		refPathResult.LatestWM = convert.WriteMarkerToWriteMarkerGRPC(&latestWM.WM)
-	}
-
-	return &refPathResult, nil
+	return convert.GetReferencePathResponseCreator(resp), nil
 }
 
 func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc.GetObjectTreeRequest) (*blobbergrpc.GetObjectTreeResponse, error) {
