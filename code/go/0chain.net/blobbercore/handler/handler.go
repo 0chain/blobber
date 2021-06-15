@@ -8,6 +8,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/0chain/gosdk/zboxcore/fileref"
+	"gorm.io/gorm"
 	"net/http"
 	"os"
 	"runtime/pprof"
@@ -324,11 +326,53 @@ func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, erro
 	return "cleanup", err
 }
 
-func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method != "POST" {
-		return nil, errors.New("invalid request method, only POST is allowed")
+func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+
+	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed." + err.Error())
 	}
 
+	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	path := r.FormValue("path")
+	refereeClientID := r.FormValue("refereeClientID")
+	filePathHash := fileref.GetReferenceLookup(allocationID, path)
+	_, err = reference.GetReferenceFromLookupHash(ctx, allocationID, filePathHash)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. " + err.Error())
+	}
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+	err = reference.DeleteShareInfo(ctx, reference.ShareInfo {
+		ClientID: refereeClientID,
+		FilePathHash: filePathHash,
+	})
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		resp := map[string]interface{} {
+			"status": http.StatusNotFound,
+			"message": "Path not found",
+		}
+		return resp, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	resp := map[string]interface{} {
+		"status": http.StatusNoContent,
+		"message": "Path successfully removed from allocation",
+	}
+	return resp, nil
+}
+
+func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 
 	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
@@ -394,5 +438,17 @@ func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interfac
 	}
 
 	return resp, nil
+}
+
+func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method == "DELETE" {
+		return RevokeShare(ctx, r)
+	}
+
+	if r.Method == "POST" {
+		return InsertShare(ctx, r)
+	}
+
+	return nil, errors.New("invalid request method, only POST is allowed")
 }
 
