@@ -43,13 +43,13 @@ type NewFileChange struct {
 	IsFinal bool `json:"is_final,omitempty"`
 }
 
-func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName string) error{
+func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName string) (*reference.Ref, error){
 	path := filepath.Clean(dirName)
 	tSubDirs := reference.GetSubDirsFromPath(path)
 
 	rootRef, err := reference.GetReferencePath(ctx, allocationID, nf.Path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	dirRef := rootRef
@@ -86,14 +86,18 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName st
 	}
 
 	if _, err := dirRef.CalculateHash(ctx, true); err != nil {
-		return err
+		return nil, err
 	}
 	stats.NewDirCreated(ctx, dirRef.ID)
-	return nil
+	return rootRef, nil
 }
 
 func (nf *NewFileChange) ProcessChange(ctx context.Context,
 	change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+
+	if change.Operation == CREATEDIR_OPERATION{
+		return nf.CreateDir(ctx, nf.AllocationID, change.Input)
+	}
 
 	path, _ := filepath.Split(nf.Path)
 	path = filepath.Clean(path)

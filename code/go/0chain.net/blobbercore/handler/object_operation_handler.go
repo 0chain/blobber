@@ -948,6 +948,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*Upl
 	allocationChange.ConnectionID = connectionObj.ConnectionID
 	allocationChange.Size = 0
 	allocationChange.Operation = allocation.CREATEDIR_OPERATION
+	allocationChange.Input = dirPath
 	connectionObj.Size += allocationChange.Size
 	var formData allocation.NewFileChange
 
