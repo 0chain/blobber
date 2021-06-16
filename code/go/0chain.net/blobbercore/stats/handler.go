@@ -65,7 +65,7 @@ const tpl = `<!DOCTYPE html>
       </tr>
       <tr>
         <td>Allocated size (bytes)</td>
-        <td>{{ .TotalSize }}</td>
+        <td>{{ .AllocatedSize }}</td>
       </tr>
       <tr>
         <td>Used Size (bytes)</td>

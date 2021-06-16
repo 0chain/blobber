@@ -10,6 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
@@ -199,18 +200,22 @@ func FindChallenges(ctx context.Context) {
 
 				params := make(map[string]string)
 				params["blobber"] = node.Self.ID
+
 				var blobberChallenges BCChallengeResponse
 				blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
 				retBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain(), nil)
+
 				if err != nil {
 					Logger.Error("Error getting the open challenges from the blockchain", zap.Error(err))
 				} else {
 					tCtx := datastore.GetStore().CreateTransaction(ctx)
 					db := datastore.GetStore().GetTransaction(tCtx)
 					bytesReader := bytes.NewBuffer(retBytes)
+
 					d := json.NewDecoder(bytesReader)
 					d.UseNumber()
 					errd := d.Decode(&blobberChallenges)
+
 					if errd != nil {
 						Logger.Error("Error in unmarshal of the sharder response", zap.Error(errd))
 					} else {
@@ -219,8 +224,14 @@ func FindChallenges(ctx context.Context) {
 								Logger.Info("No challenge entity from the challenge map")
 								continue
 							}
+							if !common.Within(int64(v.Created), int64(config.Configuration.ChallengeResolveFreq)) {
+								Logger.Info("Challenge is expired", zap.Any("created", v.Created))
+								continue
+							}
+
 							challengeObj := v
 							_, err := GetChallengeEntity(tCtx, challengeObj.ChallengeID)
+
 							if errors.Is(err, gorm.ErrRecordNotFound) {
 								latestChallenge, err := GetLastChallengeEntity(tCtx)
 								if err == nil || errors.Is(err, gorm.ErrRecordNotFound) {
