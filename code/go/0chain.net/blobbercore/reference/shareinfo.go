@@ -28,11 +28,18 @@ func AddShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 
 func DeleteShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Table(TableName()).
+	result := db.Table(TableName()).
 		Where("client_id = ?", shareInfo.ClientID).
 		Where("file_path_hash = ?", shareInfo.FilePathHash).
-		Delete(&ShareInfo{}).
-		Error
+		Delete(&ShareInfo{})
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func UpdateShareInfo(ctx context.Context, shareInfo ShareInfo) error {
