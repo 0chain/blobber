@@ -31,6 +31,8 @@ jobs:
           [ -d $GOSDK ] && rm -rf $GOSDK
           git clone https://github.com/0chain/gosdk.git $GOSDK
           git checkout $BRANCH
+          tree -a  $GOSDK/core/util
+          cat $GOSDK/core/util/stream_merkle_hasher.go
       - name: Run tests
         run: |
           cd $GITHUB_WORKSPACE/code/go/0chain.net/ 
