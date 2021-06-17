@@ -2,9 +2,15 @@ name: CI
 
 on:
   push:
+    branches-ignore:
+      - dayi/main
+      - dayi/qa
+      - dayi/dev
+
   release:
     types:
       - published
+      
 
 env:
   BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY }}
