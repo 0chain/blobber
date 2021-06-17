@@ -32,7 +32,7 @@ jobs:
 
       - name: Clone gosdk
         run: |
-          git clone https://github.com/cnlangzi/gosdk.git $GOSDK
+          git clone https://github.com/0chain/gosdk.git $GOSDK
           git checkout $BRANCH
         
   
@@ -65,7 +65,7 @@ jobs:
 
       - name: Clone gosdk
         run: |
-          git clone https://github.com/cnlangzi/gosdk.git $GOSDK
+          git clone https://github.com/0chain/gosdk.git $GOSDK
           git checkout $BRANCH
 
       - name: Download blobber_base
@@ -143,7 +143,7 @@ jobs:
 
       - name: Clone gosdk
         run: |
-          git clone https://github.com/cnlangzi/gosdk.git $GOSDK
+          git clone https://github.com/0chain/gosdk.git $GOSDK
           git checkout $BRANCH
 
       - name: Download blobber_base

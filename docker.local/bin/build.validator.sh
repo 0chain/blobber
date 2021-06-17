@@ -9,5 +9,5 @@ echo $GIT_COMMIT
 cp -r ../gosdk ./
 
 
-docker build --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/blobber.Dockerfile . -t blobber
+docker build --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/validator.Dockerfile . -t validator
 
