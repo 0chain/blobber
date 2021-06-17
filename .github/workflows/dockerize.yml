@@ -34,6 +34,7 @@ jobs:
         run: |
           [ -d $GOSDK ] && rm -rf $GOSDK
           git clone https://github.com/0chain/gosdk.git $GOSDK
+          cd $GOSDK
           git checkout $BRANCH
         
   
@@ -68,6 +69,7 @@ jobs:
         run: |
           [ -d $GOSDK ] && rm -rf $GOSDK
           git clone https://github.com/0chain/gosdk.git $GOSDK
+          cd $GOSDK
           git checkout $BRANCH
 
       - name: Download blobber_base
@@ -147,6 +149,7 @@ jobs:
         run: |
           [ -d $GOSDK ] && rm -rf $GOSDK
           git clone https://github.com/0chain/gosdk.git $GOSDK
+          cd $GOSDK
           git checkout $BRANCH
 
       - name: Download blobber_base
