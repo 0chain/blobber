@@ -10,8 +10,8 @@ on:
       - dayi/main
       - dayi/qa
       - dayi/dev
-    tags: 
-      - '*'
+    # tags: 
+    #   - '*'
 
 jobs:
   unit_tests:

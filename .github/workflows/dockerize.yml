@@ -127,8 +127,10 @@ jobs:
         run: |
           docker tag blobber:latest ${BLOBBER_REGISTRY}:$TAG
           docker push ${BLOBBER_REGISTRY}:$TAG
-          docker tag blobber:latest ${BLOBBER_REGISTRY}:latest
-          docker push ${BLOBBER_REGISTRY}:latest  
+
+          SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
+          docker tag blobber:latest ${BLOBBER_REGISTRY}:$SHORT_SHA
+          docker push ${BLOBBER_REGISTRY}:$SHORT_SHA  
 
         
 
@@ -207,5 +209,7 @@ jobs:
         run: |
           docker tag validator:latest ${VALIDATOR_REGISTRY}:$TAG
           docker push ${VALIDATOR_REGISTRY}:$TAG
-          docker tag validator:latest ${VALIDATOR_REGISTRY}:latest
-          docker push ${VALIDATOR_REGISTRY}:latest
+
+          SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
+          docker tag validator:latest ${VALIDATOR_REGISTRY}:$SHORT_SHA
+          docker push ${VALIDATOR_REGISTRY}:$SHORT_SHA
