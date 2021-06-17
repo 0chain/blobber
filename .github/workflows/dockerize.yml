@@ -32,6 +32,7 @@ jobs:
 
       - name: Clone gosdk
         run: |
+          [ -d $GOSDK ] && rm -rf $GOSDK
           git clone https://github.com/0chain/gosdk.git $GOSDK
           git checkout $BRANCH
         
@@ -65,6 +66,7 @@ jobs:
 
       - name: Clone gosdk
         run: |
+          [ -d $GOSDK ] && rm -rf $GOSDK
           git clone https://github.com/0chain/gosdk.git $GOSDK
           git checkout $BRANCH
 
@@ -143,6 +145,7 @@ jobs:
 
       - name: Clone gosdk
         run: |
+          [ -d $GOSDK ] && rm -rf $GOSDK
           git clone https://github.com/0chain/gosdk.git $GOSDK
           git checkout $BRANCH
 
