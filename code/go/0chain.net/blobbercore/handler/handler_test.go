@@ -36,6 +36,20 @@ import (
 	"time"
 )
 
+type MockFileBlockGetter struct {
+	filestore.IFileBlockGetter
+}
+
+func (MockFileBlockGetter) GetFileBlock(
+	fsStore *filestore.FileFSStore,
+	allocationID string,
+	fileData *filestore.FileInputData,
+	blockNum int64,
+	numBlocks int64,
+) ([]byte, error) {
+	return []byte("mock"), nil
+}
+
 func init() {
 	common.ConfigRateLimits()
 	chain.SetServerChain(&chain.Chain{})
@@ -43,7 +57,7 @@ func init() {
 	logging.Logger = zap.NewNop()
 
 	dir, _ := os.Getwd()
-	if _, err := filestore.SetupFSStore(dir + "/tmp"); err != nil {
+	if _, err := filestore.SetupMockFSStore(dir + "/tmp", MockFileBlockGetter{}); err != nil {
 		panic(err)
 	}
 	bconfig.Configuration.MaxFileSize = int64(1 << 30)
@@ -1493,6 +1507,113 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			},
 			wantCode: http.StatusBadRequest,
 			wantBody: "{\"code\":\"download_file\",\"error\":\"download_file: invalid file path: record not found\"}\n\n",
+		},
+		{
+			name: "DownloadFile_Unencrypted_return_mock",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: func() *http.Request {
+					handlerName := handlers["/v1/file/download/{allocation}"]
+					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
+					if err != nil {
+						t.Fatal()
+					}
+
+					body := bytes.NewBuffer(nil)
+					formWriter := multipart.NewWriter(body)
+					remotePath := "/file.txt"
+
+					formWriter.WriteField("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
+					formWriter.WriteField("block_num", fmt.Sprintf("%d", 1))
+					rm := &marker.ReadMarker{}
+					rm.ClientID = client.GetClientID()
+					rm.ClientPublicKey = client.GetClientPublicKey()
+					rm.BlobberID = ""
+					rm.AllocationID = alloc.ID
+					rm.ReadCounter = 1
+					rm.OwnerID = client.GetClientID()
+					err = rm.Sign()
+					if err != nil {
+						t.Fatal(err)
+					}
+					rmData, err := json.Marshal(rm)
+					formWriter.WriteField("read_marker", string(rmData))
+					if err := formWriter.Close(); err != nil {
+						t.Fatal(err)
+					}
+					r, err := http.NewRequest(http.MethodPost, url.String(), body)
+					r.Header.Add("Content-Type", formWriter.FormDataContentType())
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					hash := encryption.Hash(alloc.Tx)
+					sign, err := sch.Sign(hash)
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					r.Header.Set(common.ClientSignatureHeader, sign)
+					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
+
+					return r
+				}(),
+			},
+			alloc: alloc,
+			setupDbMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
+					WithArgs(alloc.Tx).
+					WillReturnRows(
+						sqlmock.NewRows(
+							[]string{
+								"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
+							},
+						).
+							AddRow(
+								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
+							),
+					)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
+					WithArgs(alloc.ID).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"id", "allocation_id"}).
+							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
+					)
+
+				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					WithArgs(alloc.ID, filePathHash).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"path", "type", "lookup_hash", "content_hash"}).
+							AddRow("/file.txt", "f", filePathHash, "abcd"),
+					)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(1) FROM "collaborators" WHERE`)).
+					WithArgs(client.GetClientID()).
+					WillReturnError(gorm.ErrRecordNotFound)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
+					WithArgs(client.GetClientID()).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"client_id"}).
+							AddRow(client.GetClientID()),
+					)
+
+				aa := sqlmock.AnyArg()
+
+				mock.ExpectExec(`UPDATE "read_markers"`).
+					WithArgs(client.GetClientPublicKey(), alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa).
+					WillReturnResult(sqlmock.NewResult(0, 0))
+
+				mock.ExpectCommit()
+			},
+			wantCode: http.StatusOK,
+			wantBody: "\"bW9jaw==\"\n", //base64encoded for mock string
 		},
 	}
 	tests := append(positiveTests, negativeTests...)
