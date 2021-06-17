@@ -198,87 +198,58 @@ func setupDatabase() {
 	}
 }
 
-func registerToChain() error {
-	// register wallet
+func setupOnChain() {
+	// setup wallet
 	if err := handler.WalletRegister(); err != nil {
-		return err
+		panic(err)
 	}
 
-	// register blobber (add or update) to the blockchain (multiple attempts)
-	isAdded := false
+	// setup blobber (add or update) on the blockchain (multiple attempts)
 	for i := 10; i > 0; i-- {
-		if isAdded {
-			if err := updateToChain(); err != nil {
-				if i == 1 { // no more attempts
-					return err
-				}
-			} else {
-				break
+		if err := addOrUpdateOnChain(); err != nil {
+			if i == 1 { // no more attempts
+				panic(err)
 			}
 		} else {
-			if err := addToChain(); err != nil {
-				if i == 1 { // no more attempts
-					return err
-				}
-				if err == handler.ErrBlobberHasAdded {
-					isAdded = true
-				}
-			} else {
-				break
-			}
+			break
 		}
 	}
 
 	setupWorkers()
 
-	go healthCheckToChainWorker()
+	go healthCheckOnChainWorker()
 
 	if config.Configuration.PriceInUSD {
-		go updateToChainWorker()
+		go addOrUpdateOnChainWorker()
 	}
-
-	return nil
 }
 
-func addToChain() error {
+func addOrUpdateOnChain() error {
 	txnHash, err := handler.BlobberAdd(common.GetRootContext())
 	if err != nil {
 		return err
 	}
 
 	if t, err := handler.TransactionVerify(txnHash); err != nil {
-		Logger.Error("Failed to verify blobber add transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
+		Logger.Error("Failed to verify blobber add/update transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
 	} else {
-		Logger.Info("Verified blobber add transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+		Logger.Info("Verified blobber add/update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
 	}
 
 	return err
 }
 
-func updateToChain() error {
-	txnHash, err := handler.BlobberUpdate(common.GetRootContext())
-	if err != nil {
-		return err
-	}
-
-	if t, err := handler.TransactionVerify(txnHash); err != nil {
-		Logger.Error("Failed to verify blobber update transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
-	} else {
-		Logger.Info("Verified blobber update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-	}
-
-	return err
-}
-
-func updateToChainWorker() {
+func addOrUpdateOnChainWorker() {
 	var UPDATE_SETTINGS_TIMER = 60 * 60 * time.Duration(viper.GetInt("price_worker_in_hours")) // 12 hours with default settings
 	for {
 		time.Sleep(UPDATE_SETTINGS_TIMER * time.Second)
-		updateToChain()
+		if err := addOrUpdateOnChain(); err != nil {
+			// ignore // required by linting
+		}
 	}
 }
 
-func healthCheckToChain() error {
+func healthCheckOnChain() error {
 	txnHash, err := handler.BlobberHealthCheck(common.GetRootContext())
 	if err != nil {
 		if err == handler.ErrBlobberHasRemoved {
@@ -297,12 +268,14 @@ func healthCheckToChain() error {
 	return err
 }
 
-func healthCheckToChainWorker() {
-	const HEALTH_CHECK_TIMER = 60 * 15 // 15 Minutes
+func healthCheckOnChainWorker() {
+	const HEALTH_CHECK_TIMER = 60 * 15 // 15 inutes
 
 	for {
 		time.Sleep(HEALTH_CHECK_TIMER * time.Second)
-		healthCheckToChain()
+		if err := healthCheckOnChain(); err != nil {
+			// ignore // required by linting
+		}
 	}
 }
 
@@ -317,8 +290,8 @@ func setup(logDir string) error {
 		return err
 	}
 
-	// register on blockchain
-	go registerToChain()
+	// setup on blockchain
+	go setupOnChain()
 	return nil
 }
 

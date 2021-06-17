@@ -91,11 +91,7 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	return sn, nil
 }
 
-// ErrBlobberHasAdded represents double registration check error, where the
-// blobber has already registered and shouldn't be passed through the registration flow again.
-// To prevent duplicate instances.
-var ErrBlobberHasAdded = errors.New("blobber has added")
-
+// Add or update blobber on blockchain
 func BlobberAdd(ctx context.Context) (string, error) {
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
@@ -110,25 +106,16 @@ func BlobberAdd(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	// check storage node (ie blobber): is it already registered?
-	sRegisteredNodes, _ := GetBlobbers()
-
-	for _, sRegisteredNode := range sRegisteredNodes {
-		if sn.ID == string(sRegisteredNode.ID) || sn.BaseURL == sRegisteredNode.BaseURL {
-			return "", ErrBlobberHasAdded
-		}
-	}
-
 	snBytes, err := json.Marshal(sn)
 	if err != nil {
 		return "", err
 	}
 
-	Logger.Info("Add to the blockchain")
+	Logger.Info("Adding or updating on the blockchain")
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
 		transaction.ADD_BLOBBER_SC_NAME, string(snBytes), 0)
 	if err != nil {
-		Logger.Info("Failed to add to the blockchain",
+		Logger.Info("Failed to set blobber on the blockchain",
 			zap.String("err:", err.Error()))
 		return "", err
 	}
@@ -158,36 +145,6 @@ func BlobberHealthCheck(ctx context.Context) (string, error) {
 		transaction.BLOBBER_HEALTH_CHECK, "", 0)
 	if err != nil {
 		Logger.Info("Failed to health check on the blockchain",
-			zap.String("err:", err.Error()))
-		return "", err
-	}
-
-	return txn.Hash, nil
-}
-
-func BlobberUpdate(ctx context.Context) (string, error) {
-	txn, err := transaction.NewTransactionEntity()
-	if err != nil {
-		return "", err
-	}
-
-	sn, err := getStorageNode()
-	if err != nil {
-		return "", err
-	}
-
-	snBytes, err := json.Marshal(sn)
-	if err != nil {
-		return "", err
-	}
-
-	Logger.Info("Updating to the blockchain")
-
-	// todo: rename to UPDATE_BLOBBER on the both sides (sharder/blobber) later
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
-		transaction.UPDATE_BLOBBER_SETTINGS, string(snBytes), 0)
-	if err != nil {
-		Logger.Info("Failed to update to the blockchain",
 			zap.String("err:", err.Error()))
 		return "", err
 	}
