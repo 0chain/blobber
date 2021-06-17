@@ -244,7 +244,7 @@ func addOrUpdateOnChainWorker() {
 	for {
 		time.Sleep(UPDATE_SETTINGS_TIMER * time.Second)
 		if err := addOrUpdateOnChain(); err != nil {
-			// ignore // required by linting
+			continue // pass // required by linting
 		}
 	}
 }
@@ -274,7 +274,7 @@ func healthCheckOnChainWorker() {
 	for {
 		time.Sleep(HEALTH_CHECK_TIMER * time.Second)
 		if err := healthCheckOnChain(); err != nil {
-			// ignore // required by linting
+			continue // pass // required by linting
 		}
 	}
 }
