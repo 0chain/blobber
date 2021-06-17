@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"fmt"
-
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/constants"

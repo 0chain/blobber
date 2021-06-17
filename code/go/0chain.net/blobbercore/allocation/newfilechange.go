@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"strings"
 
