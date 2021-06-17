@@ -63,6 +63,11 @@ const (
 	DeploymentMainNet     = 2
 )
 
+type GeolocationConfig struct {
+	Latitude float64 `mapstructure:"latitude"`
+	Longitude float64 `mapstructure:"longitude"`
+}
+
 type Config struct {
 	*config.Config
 	DBHost                        string
@@ -118,6 +123,8 @@ type Config struct {
 	NumDelegates int `json:"num_delegates"`
 	// ServiceCharge for blobber.
 	ServiceCharge float64 `json:"service_charge"`
+
+	Geolocation GeolocationConfig `mapstructure:"geolocation"`
 }
 
 /*Configuration of the system */
@@ -131,6 +138,17 @@ func TestNet() bool {
 /*Development - is the programming running in development mode? */
 func Development() bool {
 	return Configuration.DeploymentMode == DeploymentDevelopment
+}
+
+// get validated geolocatiion
+func Geolocation() GeolocationConfig {
+	g := Configuration.Geolocation
+	if g.Latitude > 90.00 || g.Latitude < -90.00 ||
+		g.Longitude > 180.00 || g.Longitude < -180.00 {
+			panic("Fatal error in config file")
+
+	}
+	return g
 }
 
 /*ErrSupportedChain error for indicating which chain is supported by the server */
