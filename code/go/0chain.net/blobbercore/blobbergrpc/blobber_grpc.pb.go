@@ -224,11 +224,11 @@ func (UnimplementedBlobberServer) GetReferencePath(context.Context, *GetReferenc
 func (UnimplementedBlobberServer) GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetObjectTree not implemented")
 }
-func (UnimplementedBlobberServer) RenameObject(context.Context, *RenameObjectRequest) (*RenameObjectResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RenameObject not implemented")
-}
 func (UnimplementedBlobberServer) DownloadFile(context.Context, *DownloadFileRequest) (*DownloadFileResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DownloadFile not implemented")
+}
+func (UnimplementedBlobberServer) RenameObject(context.Context, *RenameObjectRequest) (*RenameObjectResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RenameObject not implemented")
 }
 func (UnimplementedBlobberServer) Commit(context.Context, *CommitRequest) (*CommitResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Commit not implemented")

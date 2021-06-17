@@ -1741,9 +1741,9 @@ var (
 
 	pattern_Blobber_GetObjectTree_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "objecttree", "allocation"}, ""))
 
-	pattern_Blobber_RenameObject_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "rename", "allocation"}, ""))
-
 	pattern_Blobber_DownloadFile_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "download", "allocation"}, ""))
+
+	pattern_Blobber_RenameObject_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "rename", "allocation"}, ""))
 
 	pattern_Blobber_Commit_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "connection", "commit", "allocation"}, ""))
 
@@ -1773,9 +1773,9 @@ var (
 
 	forward_Blobber_GetObjectTree_0 = runtime.ForwardResponseMessage
 
-	forward_Blobber_RenameObject_0 = runtime.ForwardResponseMessage
-
 	forward_Blobber_DownloadFile_0 = runtime.ForwardResponseMessage
+
+	forward_Blobber_RenameObject_0 = runtime.ForwardResponseMessage
 
 	forward_Blobber_Commit_0 = runtime.ForwardResponseMessage
 

@@ -319,16 +319,6 @@ func GetCommitMetaTxnHandlerResponse(response *blobbergrpc.CommitMetaTxnResponse
 	return result
 }
 
-func DownloadFileResponseHandler(downloadFileResponse *blobbergrpc.DownloadFileResponse) *blobberHTTP.DownloadResponse {
-	return &blobberHTTP.DownloadResponse{
-		Success:      downloadFileResponse.Success,
-		Data:         downloadFileResponse.Data,
-		AllocationID: downloadFileResponse.AllocationId,
-		Path:         downloadFileResponse.Path,
-		LatestRM:     ReadMakerGRPCToReadMaker(downloadFileResponse.LatestRm),
-	}
-}
-
 func CollaboratorResponse(response *blobbergrpc.CollaboratorResponse) interface{} {
 	if msg := response.GetMessage(); msg != "" {
 		return struct {
@@ -378,5 +368,20 @@ func RenameObjectResponseCreator(r interface{}) *blobbergrpc.RenameObjectRespons
 		MerkleRoot:   httpResp.MerkleRoot,
 		UploadLength: httpResp.UploadLength,
 		UploadOffset: httpResp.UploadOffset,
+	}
+}
+
+func DownloadFileResponseCreator(r interface{}) *blobbergrpc.DownloadFileResponse {
+	if r == nil {
+		return nil
+	}
+
+	httpResp, _ := r.(*blobberHTTP.DownloadResponse)
+	return &blobbergrpc.DownloadFileResponse{
+		Success:      httpResp.Success,
+		Data:         httpResp.Data,
+		AllocationId: httpResp.AllocationID,
+		Path:         httpResp.Path,
+		LatestRm:     ReadMarkerToReadMarkerGRPC(httpResp.LatestRM),
 	}
 }
