@@ -199,6 +199,8 @@ func setupDatabase() {
 }
 
 func setupOnChain() {
+	const ATTEMPT_DELAY = 60 * 1 // 1 minute
+
 	// setup wallet
 	if err := handler.WalletRegister(); err != nil {
 		panic(err)
@@ -213,6 +215,8 @@ func setupOnChain() {
 		} else {
 			break
 		}
+
+		time.Sleep(ATTEMPT_DELAY * time.Second)
 	}
 
 	setupWorkers()
@@ -240,9 +244,9 @@ func addOrUpdateOnChain() error {
 }
 
 func addOrUpdateOnChainWorker() {
-	var UPDATE_SETTINGS_TIMER = 60 * 60 * time.Duration(viper.GetInt("price_worker_in_hours")) // 12 hours with default settings
+	var REPEAT_DELAY = 60 * 60 * time.Duration(viper.GetInt("price_worker_in_hours")) // 12 hours with default settings
 	for {
-		time.Sleep(UPDATE_SETTINGS_TIMER * time.Second)
+		time.Sleep(REPEAT_DELAY * time.Second)
 		if err := addOrUpdateOnChain(); err != nil {
 			continue // pass // required by linting
 		}
@@ -269,10 +273,10 @@ func healthCheckOnChain() error {
 }
 
 func healthCheckOnChainWorker() {
-	const HEALTH_CHECK_TIMER = 60 * 15 // 15 inutes
+	const REPEAT_DELAY = 60 * 15 // 15 minutes
 
 	for {
-		time.Sleep(HEALTH_CHECK_TIMER * time.Second)
+		time.Sleep(REPEAT_DELAY * time.Second)
 		if err := healthCheckOnChain(); err != nil {
 			continue // pass // required by linting
 		}
