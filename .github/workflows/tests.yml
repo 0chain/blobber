@@ -1,0 +1,46 @@
+name: Tests
+
+on:
+  push: 
+    branches:
+      - dayi/main
+      - dayi/qa
+      - dayi/dev
+    pull_request:
+      - dayi/main
+      - dayi/qa
+      - dayi/dev
+    tags: 
+      - '*'
+
+jobs:
+  unit_tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Set GITHUB_ENV
+        run: |
+          echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+          echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
+          echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+         
+      - name: Clone blobber
+        uses: actions/checkout@v2
+
+      - name: Clone gosdk
+        run: |
+          git clone https://github.com/cnlangzi/gosdk.git $GOSDK
+          git checkout $BRANCH
+      - name: Run tests
+        run: |
+          cd $GITHUB_WORKSPACE/code/go/0chain.net/ 
+          go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+      - name: Codecov
+        run: |
+          cd $GITHUB_WORKSPACE/code/go/0chain.net/
+          bash <(curl -s https://codecov.io/bash)
+        # uses: codecov/codecov-action@v1
+        # with:
+        #   files: ${{ github.workspace }}/code/go/0chain.net/coverage.txt
+        #   flags: script
+        #   name: codecov-script
+   
