@@ -563,6 +563,11 @@ func (fs *FileFSStore) WriteChunk(allocationID string, fileData *FileInputData,
 
 	fileRef := &FileOutputData{}
 
+	// the chunk has been rewitten. but it is lost when network is broken, and it is not save in db
+	if dest.size > fileData.UploadOffset {
+		fileRef.ChunkUploaded = true
+	}
+
 	h := sha1.New()
 	size, err := dest.WriteChunk(context.TODO(), fileData.UploadOffset, io.TeeReader(infile, h))
 

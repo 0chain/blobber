@@ -205,6 +205,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		}
 
 		uString := fmt.Sprintf("%v/%v%v%v", sharder, SC_REST_API_URL, scAddress, relativePath)
+		fmt.Println(uString)
 		u, _ := url.Parse(uString)
 		q := u.Query()
 		for k, v := range params {

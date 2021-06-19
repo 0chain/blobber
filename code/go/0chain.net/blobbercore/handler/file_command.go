@@ -19,7 +19,7 @@ type FileCommand interface {
 	ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error
 
 	// UpdateChange update AllocationChangeProcessor. It will be president in db for commiting transcation
-	UpdateChange(connectionObj *allocation.AllocationChangeCollector)
+	UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error
 }
 
 // createFileCommand create file command for INSERT,UPDATE and RESUME

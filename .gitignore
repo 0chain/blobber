@@ -11,3 +11,4 @@ __debug_bin
 **/blobber/blobber/data
 **/pkg/
 dev.local/data
+out/

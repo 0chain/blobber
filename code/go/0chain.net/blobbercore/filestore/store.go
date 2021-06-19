@@ -31,6 +31,8 @@ type FileOutputData struct {
 	MerkleRoot  string
 	ContentHash string
 	Size        int64
+	// ChunkUploaded the chunk is uploaded or not.
+	ChunkUploaded bool
 }
 
 type FileObjectHandler func(contentHash string, contentSize int64)

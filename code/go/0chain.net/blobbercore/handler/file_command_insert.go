@@ -126,6 +126,7 @@ func (cmd *InsertFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 }
 
 // UpdateChange add NewFileChange in db
-func (cmd *InsertFileCommand) UpdateChange(connectionObj *allocation.AllocationChangeCollector) {
+func (cmd *InsertFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	connectionObj.AddChange(cmd.allocationChange, cmd.changeProcessor)
+	return connectionObj.Save(ctx)
 }

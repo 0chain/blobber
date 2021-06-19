@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/reference"
@@ -71,21 +72,37 @@ func (AllocationChange) TableName() string {
 	return "allocation_changes"
 }
 
+func (change *AllocationChange) Save(ctx context.Context) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	return db.Save(change).Error
+}
+
 // GetAllocationChanges reload connection's changes in allocation from postgres.
 //	1. update connection's status with NewConnection if connection_id is not found in postgres
 //  2. mark as NewConnection if connection_id is marked as DeleteConnection
 func GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*AllocationChangeCollector, error) {
 	cc := &AllocationChangeCollector{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where(&AllocationChangeCollector{
-		ConnectionID: connectionID,
-		AllocationID: allocationID,
-		ClientID:     clientID,
-	}).Not(&AllocationChangeCollector{
-		Status: DeletedConnection,
-	}).Preload("Changes").First(cc).Error
+	err := db.Where("connection_id = ? and allocation_id = ? and client_id = ? and status <> ?",
+		connectionID,
+		allocationID,
+		clientID,
+		DeletedConnection,
+	).First(cc).Error
 
 	if err == nil {
+
+		var changes []*AllocationChange
+
+		err = db.Where("connection_id = ?", connectionID).Find(&changes).Error
+
+		if err == nil {
+			cc.Changes = changes
+		} else {
+			fmt.Println(err)
+		}
+
 		cc.ComputeProperties()
 		return cc, nil
 	}
@@ -114,7 +131,7 @@ func (cc *AllocationChangeCollector) Save(ctx context.Context) error {
 		return db.Create(cc).Error
 	}
 
-	return db.Session(&gorm.Session{FullSaveAssociations: true}).Updates(cc).Error
+	return db.Save(cc).Error
 }
 
 // ComputeProperties unmarshal all ChangeProcesses from postgres

@@ -12,18 +12,16 @@ import (
 	"0chain.net/blobbercore/util"
 
 	"0chain.net/core/common"
-	gosdk "github.com/0chain/gosdk/core/util"
 )
 
 // ResumeFileChange file change processor for continuous upload in INIT/APPEND/FINALIZE
 type ResumeFileChange struct {
 	NewFileChange
 
-	ShardHash    string                   `json:"shard_hash,omitempty"`
-	MerkleHasher gosdk.StreamMerkleHasher `json:"hasher,omitempty"`        // streaming merkle hasher to save current state of tree
-	IsFinal      bool                     `json:"is_final,omitempty"`      // current chunk is last or not
-	ChunkIndex   int                      `json:"chunk_index,omitempty"`   // the seq of current chunk. all chunks MUST be uploaded one by one because of streaming merkle hash
-	UploadOffset int64                    `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
+	//TrustedConentHasher *gosdk.TrustedConentHasher `json:"trusted_conent_hasher,omitempty"` // streaming merkle hasher to save current state of tree
+	IsFinal      bool  `json:"is_final,omitempty"`      // current chunk is last or not
+	ChunkIndex   int   `json:"chunk_index,omitempty"`   // the seq of current chunk. all chunks MUST be uploaded one by one because of streaming merkle hash
+	UploadOffset int64 `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
 }
 
 // ProcessChange update references, and create a new FileRef

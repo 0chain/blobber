@@ -3,9 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
-	"strconv"
 	"time"
 
 	"0chain.net/blobbercore/allocation"
@@ -13,8 +11,6 @@ import (
 	"0chain.net/blobbercore/filestore"
 	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
-	"0chain.net/core/encryption"
-	"github.com/0chain/gosdk/core/util"
 )
 
 // ResumeFileCommand command for resuming file
@@ -43,10 +39,9 @@ func (cmd *ResumeFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 		return common.NewError("duplicate_file", "File at path already exists")
 	}
 
-	//changeProcessor.MerkleHasher = &util.StreamMerkleHasher{}
-	changeProcessor.MerkleHasher.Hash = func(left string, right string) string {
-		return encryption.Hash(left + right)
-	}
+	//create a TrustedConentHasher instance first, it will be reloaded from db in cmd.reloadChange if it is not first chunk
+	//cmd.changeProcessor.TrustedConentHasher = &util.TrustedConentHasher{}
+
 	cmd.changeProcessor = changeProcessor
 
 	return nil
@@ -65,7 +60,13 @@ func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	cmd.reloadChange(connectionObj)
 
-	fileInputData := &filestore.FileInputData{Name: cmd.changeProcessor.Filename, Path: cmd.changeProcessor.Path, OnCloud: false, IsResumable: true, IsFinal: cmd.changeProcessor.IsFinal}
+	fileInputData := &filestore.FileInputData{Name: cmd.changeProcessor.Filename,
+		Path:         cmd.changeProcessor.Path,
+		OnCloud:      false,
+		UploadOffset: cmd.changeProcessor.UploadOffset,
+		IsResumable:  true,
+		IsFinal:      cmd.changeProcessor.IsFinal,
+	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
@@ -76,7 +77,12 @@ func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
 
-	allocationSize := connectionObj.Size + fileOutputData.Size
+	allocationSize := connectionObj.Size
+
+	// only update connection size when the chunk is uploaded by first time.
+	if !fileOutputData.ChunkUploaded {
+		allocationSize += fileOutputData.Size
+	}
 
 	if allocationSize > config.Configuration.MaxFileSize {
 		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
@@ -91,14 +97,19 @@ func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 
 	//push leaf to merkle hasher for computing, save state in db
-	err = cmd.changeProcessor.MerkleHasher.Push(cmd.changeProcessor.Hash, cmd.changeProcessor.ChunkIndex)
-	if errors.Is(err, util.ErrLeafNoSequenced) {
 
-		return result, common.NewError("invalid_chunk_index", "Next chunk index should be "+strconv.Itoa(cmd.changeProcessor.MerkleHasher.Count)+" not "+strconv.Itoa(cmd.changeProcessor.ChunkIndex))
-	}
+	//cmd.changeProcessor.TrustedConentHasher.Write(origfile.Read(p []byte))
+
+	// err = cmd.changeProcessor.MerkleHasher.Push(cmd.changeProcessor.Hash, cmd.changeProcessor.ChunkIndex)
+	// if errors.Is(err, util.ErrLeafNoSequenced) {
+
+	// 	return result, common.NewError("invalid_chunk_index", "Next chunk index should be "+strconv.Itoa(cmd.changeProcessor.MerkleHasher.Count)+" not "+strconv.Itoa(cmd.changeProcessor.ChunkIndex))
+	// }
+
 	cmd.changeProcessor.Hash = fileOutputData.ContentHash
 
 	if cmd.changeProcessor.IsFinal {
+
 		//cmd.changeProcessor.ActualHash = cmd.changeProcessor.MerkleHasher.GetMerkleRoot()
 		//cmd.changeProcessor.Hash = fileOutputData.ContentHash
 	}
@@ -151,28 +162,30 @@ func (cmd *ResumeFileCommand) reloadChange(connectionObj *allocation.AllocationC
 			dbChangeProcessor.Unmarshal(c.Input)
 
 			cmd.changeProcessor.Size = dbChangeProcessor.Size
-			cmd.changeProcessor.MerkleHasher = dbChangeProcessor.MerkleHasher
-			cmd.changeProcessor.MerkleHasher.Hash = func(left string, right string) string {
-				return encryption.Hash(left + right)
-			}
-
 			return
 		}
 	}
 }
 
 // UpdateChange replace ResumeFileChange in db
-func (cmd *ResumeFileCommand) UpdateChange(connectionObj *allocation.AllocationChangeCollector) {
+func (cmd *ResumeFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	for _, c := range connectionObj.Changes {
 		if c.Operation == allocation.RESUME_OPERATION {
 			c.Size = connectionObj.Size
 			c.Input, _ = cmd.changeProcessor.Marshal()
 
 			c.ModelWithTS.UpdatedAt = time.Now()
-			return
+			err := connectionObj.Save(ctx)
+			if err != nil {
+				return err
+			}
+
+			return c.Save(ctx)
 		}
 	}
 
 	//NOT FOUND
 	connectionObj.AddChange(cmd.allocationChange, cmd.changeProcessor)
+
+	return connectionObj.Save(ctx)
 }

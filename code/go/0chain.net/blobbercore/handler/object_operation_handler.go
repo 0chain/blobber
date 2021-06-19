@@ -928,12 +928,11 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		return nil, err
 	}
 
-	cmd.UpdateChange(connectionObj)
+	err = cmd.UpdateChange(ctx, connectionObj)
 
-	err = connectionObj.Save(ctx)
 	if err != nil {
 		Logger.Error("Error in writing the connection meta data", zap.Error(err))
-		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+		return nil, common.NewError("connection_write_error", err.Error()) //"Error writing the connection meta data")
 	}
 
 	return &result, nil

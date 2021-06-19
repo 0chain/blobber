@@ -36,8 +36,10 @@ func (cmd *DeleteFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 }
 
 // UpdateChange add DeleteFileChange in db
-func (cmd *DeleteFileCommand) UpdateChange(connectionObj *allocation.AllocationChangeCollector) {
+func (cmd *DeleteFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	connectionObj.AddChange(cmd.allocationChange, cmd.changeProcessor)
+
+	return connectionObj.Save(ctx)
 }
 
 // ProcessContent flush file to FileStorage

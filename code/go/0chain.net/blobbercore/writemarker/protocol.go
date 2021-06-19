@@ -3,6 +3,7 @@ package writemarker
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"0chain.net/blobbercore/allocation"
@@ -45,7 +46,7 @@ func (wm *WriteMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.Al
 	}
 
 	if wm.WM.Size != co.Size {
-		return common.NewError("write_marker_validation_failed", "Write Marker size does not match the connection size")
+		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker size does not match the connection size %v <> %v", wm.WM.Size, co.Size))
 	}
 
 	clientPublicKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
