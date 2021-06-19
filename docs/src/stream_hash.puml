@@ -1,0 +1,157 @@
+@startuml Stream Hash (Current)
+
+actor Client
+
+title Stream Hash (Current)
+Client -> Blockchain : Make allocation request (erasure code, size, expiry)
+Blockchain -> Blockchain : Assigns the blobbers \ncreates the read/write pools for allocation
+Blockchain --> Client : Allocation status, if success, list of blobbers selected
+
+
+loop till end
+group upload chunk [ read bytes with (DataShards * chunk size)/renaming size ]
+    Client -> "FileHasher:SHA1" : Write bytes - original bytes has to be saved in memory (unencoded, unencrypted)
+    note right
+        1. it prevents stream upload
+        2. bytes copy +1
+    end note
+    group sharding [ 1.. DataShards+ParityShards  ]
+        Client -> "ChunkHasher:SHA1" : Write bytes - bytes can be released once it is uploaded (encoded, encrypted)
+        Client -> "ShardHasher:SHA1" : Write bytes - bytes has to be saved in memory (encoded, encrypted)
+        note right
+            1. it prevents stream upload
+            2. bytes copy +1
+        end note
+        
+        group outsourcing attack protection [ 1..1024 ]
+            Client -> "SivaHasher:Merkle+SHA3" : Write bytes to leaf node - MerkleLeaves[i/64].Write(bytes[i:i+64])
+            note right
+                1. it prevents stream upload. Because leaf is hashed with sha3.New256
+                2. bytes copy +1
+            end note
+        end
+    
+        alt first chunk
+            "ChunkHasher:SHA1" -> Client: compute chunk bytes hash
+            Client -> Blobber : PATCH request - Upload the shard bytes (path, metadata, connection id) and thumbnail shard bytes if it has
+            
+        else final chunk 
+            "ChunkHasher:SHA1" -> Client: compute chunk bytes hash
+            "FileHasher:SHA1" -> Client : compute sha1 hash for full original file content 
+            note right
+                Memory can be releaed now
+            end note
+            "ShardHasher:SHA1" -> Client : compute sha1 hash for all shard bytes that has been uploaded to this blobber
+            note right
+                Memory can be releaed now
+            end note
+            "SivaHasher:Merkle+SHA3" -> Client : compute merkel root wiht MarkelLeaves
+            note right
+                Memory can be releaed now
+            end note
+            Client -> Blobber : PATCH request - Upload the shard bytes (path, metadata, connection id) and final flag
+        else streaming chunk
+            "ChunkHasher:SHA1" -> Client: compute chunk bytes hash
+            Client -> Blobber : PATCH request - Upload the shard bytes (path, metadata, connection id) 
+        end
+    end
+    Blobber --> Client : Upload successful
+end
+
+end
+Client -> Blobber : commit the connection and pass the writemarker (allocation root, prev allocation root, upload size) 
+Blobber -> Blobber : validates the write marker, commits any delete tokens
+Blobber --> Client : commit success / failure
+
+
+
+Blobber -> Blockchain : redeem the write marker in the order received
+note right
+async redeemption
+not blocking uploads
+end note
+
+Blockchain -> Blockchain : Move tokens from write pool to challenge pool
+
+@enduml
+
+
+@startuml Stream Hash (New)
+
+actor Client
+
+title Stream Hash (New)
+Client -> Blockchain : Make allocation request (erasure code, size, expiry)
+Blockchain -> Blockchain : Assigns the blobbers \ncreates the read/write pools for allocation
+Blockchain --> Client : Allocation status, if success, list of blobbers selected
+
+
+loop till end
+group upload chunk [ read bytes with (DataShards * chunk size)/renaming size ]
+    Client -> "FileHasher:StreamMerkle+SHA1" : Compute chunk bytes instantly with sha1 as merkel leaf - bytes can be released after hashing (unencoded, unencrypted)
+    note right
+        Merkle tree is auto balanced as much as possible when a new leaf is pushed.Memory is took as less as possible. The tree is stateful, is easy to save and reload.
+    end note
+    group sharding [ 1.. DataShards+ParityShards  ]
+     
+        group outsourcing attack protection [ 1..1024 ]
+            Client -> "ShardHasher:SivaMerkle+(StreamMerkle+SHA1)" : Compute 1/1024 bytes instanty, and append to leaf's StreamMerkleHasher as leaf's leaf node
+            note right
+                SivaMerkle+(StreamMerkle+SHA1) is a merkle tree with 1024 leaves. A leaf is a StreamMerkleHasher tree with many leaves that is hashed with sha1
+            end note
+        end
+    
+        alt first chunk
+            "ChunkHasher:SHA1" -> Client: compute chunk bytes hash
+            Client -> Blobber : PATCH request - Upload the shard bytes (path, metadata, connection id) and thumbnail shard bytes if it has
+        else final chunk 
+            "ChunkHasher:SHA1" -> Client: compute chunk bytes hash
+            "FileHasher:StreamMerkle+SHA1" -> Client : compute merkel root with states
+            note right
+                States can be releaed now
+            end note
+    
+            "ShardHasher:SivaMerkle+(StreamMerkle+SHA1)" -> Client : compute 1024 leaf's merkel root first, and compute top merkel root based 1024 merkel roots
+            note right
+                States can be releaed now
+            end note
+            Client -> Blobber : PATCH request - Upload the shard bytes (path, metadata, connection id) and final flag
+        else streaming chunk
+            "ChunkHasher:SHA1" -> Client: compute chunk bytes hash
+            Client -> Blobber : PATCH request - Upload the shard bytes (path, metadata, connection id) 
+        end
+    end
+    Blobber --> Client : Upload successful
+end
+
+end
+Client -> Blobber : commit the connection and pass the writemarker (allocation root, prev allocation root, upload size) 
+Blobber -> Blobber : validates the write marker, commits any delete tokens
+Blobber --> Client : commit success / failure
+
+
+
+Blobber -> Blockchain : redeem the write marker in the order received
+note right
+async redeemption
+not blocking uploads
+end note
+
+Blockchain -> Blockchain : Move tokens from write pool to challenge pool
+
+@enduml
+
+@startuml StandardMerkleHahser
+
+title StandardMerkleHahser
+
+
+@enduml
+
+
+@startuml StreamMerkleHahser
+
+title StreamMerkleHahser
+
+
+@enduml
