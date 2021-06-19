@@ -370,3 +370,18 @@ func RenameObjectResponseCreator(r interface{}) *blobbergrpc.RenameObjectRespons
 		UploadOffset: httpResp.UploadOffset,
 	}
 }
+
+func DownloadFileResponseCreator(r interface{}) *blobbergrpc.DownloadFileResponse {
+	if r == nil {
+		return nil
+	}
+
+	httpResp, _ := r.(*blobberHTTP.DownloadResponse)
+	return &blobbergrpc.DownloadFileResponse{
+		Success:      httpResp.Success,
+		Data:         httpResp.Data,
+		AllocationId: httpResp.AllocationID,
+		Path:         httpResp.Path,
+		LatestRm:     ReadMarkerToReadMarkerGRPC(httpResp.LatestRM),
+	}
+}

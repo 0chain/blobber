@@ -42,6 +42,12 @@ service Blobber {
       get: "/v2/file/objecttree/{allocation}"
     };
   }
+  rpc DownloadFile(DownloadFileRequest) returns (DownloadFileResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/download/{allocation}"
+      body: "*"
+    };
+  }
   rpc RenameObject(RenameObjectRequest) returns (RenameObjectResponse) {
     option (google.api.http) = {
       post: "/v2/file/rename/{allocation}"
@@ -261,6 +267,39 @@ message GetAllocationRequest {
 
 message GetAllocationResponse {
   Allocation allocation = 1;
+}
+
+message DownloadFileRequest {
+  string allocation = 1;
+  string path = 2;
+  string path_hash = 3;
+  string rx_pay = 4;
+  string block_num = 5;
+  string num_blocks = 6;
+  string read_marker = 7;
+  string auth_token = 8;
+  string content = 9;
+}
+message DownloadFileResponse {
+  bool success = 1;
+  bytes data = 2;
+  string allocation_id = 3;
+  string path = 4;
+  ReadMaker latest_rm = 5;
+}
+
+message ReadMaker {
+  string           client_id = 1;
+  string           client_public_key = 2;
+  string           blobber_id = 3;
+  string           allocation_id = 4;
+  string           owner_id = 5;
+  int64            timestamp = 6;
+  int64            counter = 7;
+  string           signature = 8;
+  int64            suspend = 9;
+  string           payer_id = 10;
+  bytes            auth_ticket = 11;
 }
 
 message UpdateObjectAttributesRequest {
