@@ -4,9 +4,6 @@ set -e
 GIT_COMMIT=$(git rev-list -1 HEAD)
 echo $GIT_COMMIT
 
-<<<<<<< HEAD
-[ -d ./gosdk ] && rm -rf gosdk
-=======
 cmd="build"
 
 for arg in "$@"
@@ -20,12 +17,9 @@ do
     esac
 done
 
-docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/ValidatorDockerfile . -t validator
-docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/Dockerfile . -t blobber
->>>>>>> master
-
+[ -d ./gosdk ] && rm -rf gosdk
 cp -r ../gosdk ./
 
 
-docker build --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/blobber.Dockerfile . -t blobber
+docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/blobber.Dockerfile . -t blobber
 
