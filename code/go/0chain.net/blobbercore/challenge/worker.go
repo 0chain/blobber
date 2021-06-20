@@ -49,7 +49,6 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			Logger.Info("Attempting to commit processed challenges...")
 			rctx := datastore.GetStore().CreateTransaction(ctx)
 			db := datastore.GetStore().GetTransaction(rctx)
 			//lastChallengeRedeemed := &ChallengeEntity{}
