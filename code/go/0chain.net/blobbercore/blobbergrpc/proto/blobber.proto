@@ -42,6 +42,18 @@ service Blobber {
       get: "/v2/file/objecttree/{allocation}"
     };
   }
+  rpc DownloadFile(DownloadFileRequest) returns (DownloadFileResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/download/{allocation}"
+      body: "*"
+    };
+  }
+  rpc RenameObject(RenameObjectRequest) returns (RenameObjectResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/rename/{allocation}"
+      body: "*"
+    };
+  }
   rpc WriteFile(UploadFileRequest) returns (UploadFileResponse) {}
 
   rpc Commit(CommitRequest) returns (CommitResponse) {
@@ -64,6 +76,40 @@ service Blobber {
       body: "*"
     };
   }
+
+  rpc UpdateObjectAttributes(UpdateObjectAttributesRequest) returns (UpdateObjectAttributesResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/attributes/{allocation}"
+      body: "*"
+    };
+  }
+
+  rpc CopyObject(CopyObjectRequest) returns (CopyObjectResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/copy/{allocation}"
+      body: "*"
+    };
+  }
+
+  rpc Collaborator(CollaboratorRequest) returns (CollaboratorResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/collaborator/{allocation}"
+      body: "*"
+    };
+  }
+}
+
+message CollaboratorRequest {
+  string allocation = 1;
+  string collab_id = 2;
+  string method = 3;
+  string path = 4;
+  string path_hash = 5;
+}
+
+message CollaboratorResponse {
+  string message = 1;
+  repeated Collaborator Collaborators = 2;
 }
 
 message CalculateHashRequest {
@@ -222,6 +268,86 @@ message GetAllocationRequest {
 
 message GetAllocationResponse {
   Allocation allocation = 1;
+}
+
+message DownloadFileRequest {
+  string allocation = 1;
+  string path = 2;
+  string path_hash = 3;
+  string rx_pay = 4;
+  string block_num = 5;
+  string num_blocks = 6;
+  string read_marker = 7;
+  string auth_token = 8;
+  string content = 9;
+}
+message DownloadFileResponse {
+  bool success = 1;
+  bytes data = 2;
+  string allocation_id = 3;
+  string path = 4;
+  ReadMaker latest_rm = 5;
+}
+
+message ReadMaker {
+  string           client_id = 1;
+  string           client_public_key = 2;
+  string           blobber_id = 3;
+  string           allocation_id = 4;
+  string           owner_id = 5;
+  int64            timestamp = 6;
+  int64            counter = 7;
+  string           signature = 8;
+  int64            suspend = 9;
+  string           payer_id = 10;
+  bytes            auth_ticket = 11;
+}
+
+message UpdateObjectAttributesRequest {
+  string allocation = 1;
+  string path = 2;
+  string path_hash = 3;
+  string connection_id = 4;
+  string attributes = 5;
+}
+message UpdateObjectAttributesResponse {
+  int64 who_pays_for_reads = 1;
+}
+
+message CopyObjectRequest {
+  string allocation = 1;
+  string path = 2;
+  string path_hash = 3;
+  string connection_id = 4;
+  string dest = 5;
+}
+message CopyObjectResponse {
+  string filename = 1;
+  int64  size = 2;
+  string content_hash = 3;
+  string merkle_root = 4;
+  //UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
+  int64 upload_length = 5;
+  //Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
+  int64 upload_offset = 6;
+}
+
+message RenameObjectRequest {
+  string allocation = 1;
+  string path = 2;
+  string path_hash = 3;
+  string connection_id = 4;
+  string new_name = 5;
+}
+message RenameObjectResponse {
+  string filename = 1;
+  int64  size = 2;
+  string content_hash = 3;
+  string merkle_root = 4;
+  //UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
+  int64 upload_length = 5;
+  //Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
+  int64 upload_offset = 6;
 }
 
 message UploadFileRequest {

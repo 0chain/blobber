@@ -24,10 +24,15 @@ type BlobberClient interface {
 	GetObjectPath(ctx context.Context, in *GetObjectPathRequest, opts ...grpc.CallOption) (*GetObjectPathResponse, error)
 	GetReferencePath(ctx context.Context, in *GetReferencePathRequest, opts ...grpc.CallOption) (*GetReferencePathResponse, error)
 	GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error)
+	DownloadFile(ctx context.Context, in *DownloadFileRequest, opts ...grpc.CallOption) (*DownloadFileResponse, error)
+	RenameObject(ctx context.Context, in *RenameObjectRequest, opts ...grpc.CallOption) (*RenameObjectResponse, error)
 	WriteFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error)
 	Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error)
 	CalculateHash(ctx context.Context, in *CalculateHashRequest, opts ...grpc.CallOption) (*CalculateHashResponse, error)
 	CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequest, opts ...grpc.CallOption) (*CommitMetaTxnResponse, error)
+	UpdateObjectAttributes(ctx context.Context, in *UpdateObjectAttributesRequest, opts ...grpc.CallOption) (*UpdateObjectAttributesResponse, error)
+	CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CopyObjectResponse, error)
+	Collaborator(ctx context.Context, in *CollaboratorRequest, opts ...grpc.CallOption) (*CollaboratorResponse, error)
 }
 
 type blobberClient struct {
@@ -101,6 +106,24 @@ func (c *blobberClient) GetObjectTree(ctx context.Context, in *GetObjectTreeRequ
 	return out, nil
 }
 
+func (c *blobberClient) DownloadFile(ctx context.Context, in *DownloadFileRequest, opts ...grpc.CallOption) (*DownloadFileResponse, error) {
+	out := new(DownloadFileResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/DownloadFile", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *blobberClient) RenameObject(ctx context.Context, in *RenameObjectRequest, opts ...grpc.CallOption) (*RenameObjectResponse, error) {
+	out := new(RenameObjectResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/RenameObject", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *blobberClient) WriteFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error) {
 	out := new(UploadFileResponse)
 	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/WriteFile", in, out, opts...)
@@ -137,6 +160,33 @@ func (c *blobberClient) CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequ
 	return out, nil
 }
 
+func (c *blobberClient) UpdateObjectAttributes(ctx context.Context, in *UpdateObjectAttributesRequest, opts ...grpc.CallOption) (*UpdateObjectAttributesResponse, error) {
+	out := new(UpdateObjectAttributesResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/UpdateObjectAttributes", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *blobberClient) CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CopyObjectResponse, error) {
+	out := new(CopyObjectResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/CopyObject", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *blobberClient) Collaborator(ctx context.Context, in *CollaboratorRequest, opts ...grpc.CallOption) (*CollaboratorResponse, error) {
+	out := new(CollaboratorResponse)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/Collaborator", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BlobberServer is the server API for Blobber service.
 // All implementations must embed UnimplementedBlobberServer
 // for forward compatibility
@@ -149,9 +199,14 @@ type BlobberServer interface {
 	GetReferencePath(context.Context, *GetReferencePathRequest) (*GetReferencePathResponse, error)
 	GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error)
 	WriteFile(context.Context, *UploadFileRequest) (*UploadFileResponse, error)
+	DownloadFile(context.Context, *DownloadFileRequest) (*DownloadFileResponse, error)
+	RenameObject(context.Context, *RenameObjectRequest) (*RenameObjectResponse, error)
 	Commit(context.Context, *CommitRequest) (*CommitResponse, error)
 	CalculateHash(context.Context, *CalculateHashRequest) (*CalculateHashResponse, error)
 	CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error)
+	UpdateObjectAttributes(context.Context, *UpdateObjectAttributesRequest) (*UpdateObjectAttributesResponse, error)
+	CopyObject(context.Context, *CopyObjectRequest) (*CopyObjectResponse, error)
+	Collaborator(context.Context, *CollaboratorRequest) (*CollaboratorResponse, error)
 	mustEmbedUnimplementedBlobberServer()
 }
 
@@ -180,6 +235,12 @@ func (UnimplementedBlobberServer) GetReferencePath(context.Context, *GetReferenc
 func (UnimplementedBlobberServer) GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetObjectTree not implemented")
 }
+func (UnimplementedBlobberServer) DownloadFile(context.Context, *DownloadFileRequest) (*DownloadFileResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DownloadFile not implemented")
+}
+func (UnimplementedBlobberServer) RenameObject(context.Context, *RenameObjectRequest) (*RenameObjectResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RenameObject not implemented")
+}
 func (UnimplementedBlobberServer) WriteFile(context.Context, *UploadFileRequest) (*UploadFileResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WriteFile not implemented")
 }
@@ -191,6 +252,15 @@ func (UnimplementedBlobberServer) CalculateHash(context.Context, *CalculateHashR
 }
 func (UnimplementedBlobberServer) CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CommitMetaTxn not implemented")
+}
+func (UnimplementedBlobberServer) UpdateObjectAttributes(context.Context, *UpdateObjectAttributesRequest) (*UpdateObjectAttributesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateObjectAttributes not implemented")
+}
+func (UnimplementedBlobberServer) CopyObject(context.Context, *CopyObjectRequest) (*CopyObjectResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CopyObject not implemented")
+}
+func (UnimplementedBlobberServer) Collaborator(context.Context, *CollaboratorRequest) (*CollaboratorResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Collaborator not implemented")
 }
 func (UnimplementedBlobberServer) mustEmbedUnimplementedBlobberServer() {}
 
@@ -331,6 +401,42 @@ func _Blobber_GetObjectTree_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Blobber_DownloadFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DownloadFileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).DownloadFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/DownloadFile",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).DownloadFile(ctx, req.(*DownloadFileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Blobber_RenameObject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenameObjectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).RenameObject(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/RenameObject",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).RenameObject(ctx, req.(*RenameObjectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Blobber_WriteFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UploadFileRequest)
 	if err := dec(in); err != nil {
@@ -403,6 +509,60 @@ func _Blobber_CommitMetaTxn_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Blobber_UpdateObjectAttributes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateObjectAttributesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).UpdateObjectAttributes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/UpdateObjectAttributes",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).UpdateObjectAttributes(ctx, req.(*UpdateObjectAttributesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Blobber_CopyObject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CopyObjectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).CopyObject(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/CopyObject",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).CopyObject(ctx, req.(*CopyObjectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Blobber_Collaborator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CollaboratorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServer).Collaborator(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.service.v1.Blobber/Collaborator",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServer).Collaborator(ctx, req.(*CollaboratorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Blobber_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "blobber.service.v1.Blobber",
 	HandlerType: (*BlobberServer)(nil),
@@ -436,6 +596,14 @@ var _Blobber_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Blobber_GetObjectTree_Handler,
 		},
 		{
+			MethodName: "DownloadFile",
+			Handler:    _Blobber_DownloadFile_Handler,
+		},
+		{
+			MethodName: "RenameObject",
+			Handler:    _Blobber_RenameObject_Handler,
+		},
+		{
 			MethodName: "WriteFile",
 			Handler:    _Blobber_WriteFile_Handler,
 		},
@@ -450,6 +618,18 @@ var _Blobber_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CommitMetaTxn",
 			Handler:    _Blobber_CommitMetaTxn_Handler,
+		},
+		{
+			MethodName: "UpdateObjectAttributes",
+			Handler:    _Blobber_UpdateObjectAttributes_Handler,
+		},
+		{
+			MethodName: "CopyObject",
+			Handler:    _Blobber_CopyObject_Handler,
+		},
+		{
+			MethodName: "Collaborator",
+			Handler:    _Blobber_Collaborator_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
