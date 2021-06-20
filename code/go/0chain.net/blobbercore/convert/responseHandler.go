@@ -386,13 +386,18 @@ func DownloadFileResponseCreator(r interface{}) *blobbergrpc.DownloadFileRespons
 	}
 }
 
-func UploadFileResponseHandler(renameObjectResponse *blobbergrpc.UploadFileResponse) *blobberHTTP.UploadResult {
-	return &blobberHTTP.UploadResult{
-		Filename:     renameObjectResponse.Filename,
-		Size:         renameObjectResponse.Size,
-		Hash:         renameObjectResponse.ContentHash,
-		MerkleRoot:   renameObjectResponse.MerkleRoot,
-		UploadLength: renameObjectResponse.UploadLength,
-		UploadOffset: renameObjectResponse.UploadOffset,
+func UploadFileResponseCreator(r interface{}) *blobbergrpc.UploadFileResponse {
+	if r == nil {
+		return nil
+	}
+
+	httpResp, _ := r.(*blobberHTTP.UploadResult)
+	return &blobbergrpc.UploadFileResponse{
+		Filename:     httpResp.Filename,
+		Size:         httpResp.Size,
+		ContentHash:  httpResp.Hash,
+		MerkleRoot:   httpResp.MerkleRoot,
+		UploadLength: httpResp.UploadLength,
+		UploadOffset: httpResp.UploadOffset,
 	}
 }

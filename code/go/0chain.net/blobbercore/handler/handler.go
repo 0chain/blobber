@@ -3,9 +3,7 @@
 package handler
 
 import (
-	"bytes"
 	"context"
-	"io"
 	"net/http"
 	"os"
 	"runtime/pprof"
@@ -31,8 +29,7 @@ func GetMetaDataStore() *datastore.Store {
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
 	//object operations
-	r.HandleFunc("/v1/file/upload/{allocation}", common.UserRateLimit(common.
-		ToJSONResponse(WithConnection(UploadHandler(svc)))))
+	r.HandleFunc("/v1/file/upload/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler))))
 	r.HandleFunc("/v1/file/download/{allocation}", common.UserRateLimit(common.ToByteStream(WithConnection(DownloadHandler))))
 	r.HandleFunc("/v1/file/rename/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(RenameHandler))))
 	r.HandleFunc("/v1/file/copy/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CopyHandler))))
@@ -263,49 +260,14 @@ func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 }
 
 /*UploadHandler is the handler to respond to upload requests fro clients*/
-func UploadHandler(svc *blobberGRPCService) func(ctx context.Context, r *http.Request) (interface{}, error) {
-	return func(ctx context.Context, r *http.Request) (interface{}, error) {
-		ctx = setupHandlerGRPCContext(ctx, r)
-
-		req := &blobbergrpc.UploadFileRequest{
-			Allocation:          mux.Vars(r)["allocation"],
-			Path:                r.FormValue("path"),
-			ConnectionId:        r.FormValue("connection_id"),
-			Method:              r.Method,
-			UploadMeta:          r.FormValue("uploadMeta"),
-			UpdateMeta:          r.FormValue("updateMeta"),
-			UploadFile:          nil,
-			UploadThumbnailFile: nil,
-		}
-
-		//set original file as []bytes
-		origFile, _, err := r.FormFile("uploadFile")
-		if err != nil {
-			return nil, common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
-		}
-		buf := bytes.NewBuffer(nil)
-		if _, err := io.Copy(buf, origFile); err != nil {
-			return nil, err
-		}
-		req.UploadFile = buf.Bytes()
-
-		//set thumbnail file as []bytes
-		thumbFile, thumbHeader, _ := r.FormFile("uploadThumbnailFile")
-		if thumbHeader != nil {
-			buf := bytes.NewBuffer(nil)
-			if _, err := io.Copy(buf, thumbFile); err != nil {
-				return nil, err
-			}
-			req.UploadFile = buf.Bytes()
-		}
-
-		uploadFileResponse, err := svc.WriteFile(ctx, req)
-		if err != nil {
-			return nil, err
-		}
-
-		return convert.UploadFileResponseHandler(uploadFileResponse), nil
+func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+	response, err := storageHandler.WriteFile(ctx, r)
+	if err != nil {
+		return nil, err
 	}
+
+	return response, nil
 }
 
 func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{}, error) {

@@ -166,7 +166,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	uName := "Upload"
 	router.HandleFunc(uPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(UploadHandler(svc)),
+			WithReadOnlyConnection(UploadHandler),
 		),
 	),
 	).Name(uName)
@@ -270,10 +270,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					if name == `Upload` {
-						return uploadReq(t, router, alloc, handlers, sch)
-					}
-
 					return r
 				}(),
 			},
@@ -311,10 +307,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-
-					if name == `Upload` {
-						return uploadReq(t, router, alloc, handlers, sch)
-					}
 
 					return r
 				}(),
@@ -1039,61 +1031,4 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	if err := os.RemoveAll(curDir + "/tmp"); err != nil {
 		t.Fatal(err)
 	}
-}
-
-func uploadReq(t *testing.T, router *mux.Router, alloc *allocation.Allocation, handlers map[string]string, sch *zcncrypto.BLS0ChainScheme) *http.Request {
-	handlerName := handlers["/v1/file/upload/{allocation}"]
-	url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
-	if err != nil {
-		t.Fatal()
-	}
-
-	q := url.Query()
-	formFieldByt, err := json.Marshal(&allocation.UpdateFileChange{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	q.Set("uploadMeta", string(formFieldByt))
-	q.Set("path", `/path`)
-	q.Set("new_name", `new name`)
-	q.Set("connection_id", `connectionID`)
-	url.RawQuery = q.Encode()
-
-	body := bytes.NewBuffer(nil)
-	formWriter := multipart.NewWriter(body)
-	root, _ := os.Getwd()
-	file, err := os.Open(root + "/handler_test.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	fileField, err := formWriter.CreateFormFile("uploadFile", file.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	fileB := make([]byte, 0)
-	if _, err := io.ReadFull(file, fileB); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := fileField.Write(fileB); err != nil {
-		t.Fatal(err)
-	}
-	if err := formWriter.Close(); err != nil {
-		t.Fatal(err)
-	}
-	r, err := http.NewRequest(http.MethodPost, url.String(), body)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	hash := encryption.Hash("another data")
-	sign, err := sch.Sign(hash)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	r.Header.Set("Content-Type", formWriter.FormDataContentType())
-	r.Header.Set(common.ClientSignatureHeader, sign)
-	r.Header.Set(common.ClientHeader, alloc.OwnerID)
-
-	return r
 }
