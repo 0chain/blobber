@@ -54,7 +54,20 @@ service Blobber {
       body: "*"
     };
   }
-  rpc WriteFile(UploadFileRequest) returns (UploadFileResponse) {}
+  rpc WriteFile(UploadFileRequest) returns (UploadFileResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/upload/{allocation}"
+      body: "*"
+      additional_bindings: {
+        put: "/v2/file/upload/{allocation}"
+        body: "*"
+      }
+      additional_bindings: {
+        delete: "/v2/file/upload/{allocation}"
+        body: "*"
+      }
+    };
+  }
 
   rpc Commit(CommitRequest) returns (CommitResponse) {
     option (google.api.http) = {

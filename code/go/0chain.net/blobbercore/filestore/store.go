@@ -2,7 +2,6 @@ package filestore
 
 import (
 	"encoding/json"
-	"io"
 	"mime/multipart"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
@@ -56,7 +55,6 @@ type FileStore interface {
 	UploadToCloud(fileHash, filePath string) error
 	DownloadFromCloud(fileHash, filePath string) error
 	SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)
-	WriteFileGRPC(allocationID string, fileData *FileInputData, fileReader io.Reader, connectionID string) (*FileOutputData, error)
 }
 
 var fsStore FileStore

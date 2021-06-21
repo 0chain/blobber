@@ -607,6 +607,116 @@
           "Blobber"
         ]
       }
+    },
+    "/v2/file/upload/{allocation}": {
+      "delete": {
+        "operationId": "Blobber_WriteFile3",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UploadFileResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1UploadFileRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      },
+      "post": {
+        "operationId": "Blobber_WriteFile",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UploadFileResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1UploadFileRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      },
+      "put": {
+        "operationId": "Blobber_WriteFile2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UploadFileResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "allocation",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1UploadFileRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Blobber"
+        ]
+      }
     }
   },
   "definitions": {
@@ -1397,6 +1507,37 @@
         "whoPaysForReads": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "v1UploadFileRequest": {
+      "type": "object",
+      "properties": {
+        "allocation": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "uploadMeta": {
+          "type": "string"
+        },
+        "updateMeta": {
+          "type": "string"
+        },
+        "uploadFile": {
+          "type": "string",
+          "format": "byte"
+        },
+        "uploadThumbnailFile": {
+          "type": "string",
+          "format": "byte"
         }
       }
     },
