@@ -1,14 +1,14 @@
 #!/bin/bash
 
 root=$(pwd)
-hostname=`ifconfig | grep "inet " | grep -Fv 127.0.0.1 | grep -Fv 198.18.0 | awk '{print $2}'`
+hostname=`ifconfig | grep "inet " | grep -Fv 127.0.0.1 | grep broadcast | awk '{print $2}'`
 
 ips=`ifconfig | grep "inet " | grep 198.18.0 | wc -l`
 
-#fix docker network issue for Mac OS X platform
-if [ "$(uname)" == "Darwin" ] && [ "$(ips)" != "31" ]
-then
 
+#fix docker network issue for Mac OS X platform
+if [ "$(uname)" == "Darwin" ] && [ $ips != 31 ]
+then
     # 0dns
     sudo ifconfig lo0 alias 198.18.0.98
     # sharders
