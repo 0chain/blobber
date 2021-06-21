@@ -896,7 +896,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 	return nil, common.NewError("invalid_file", "File does not exist at path")
 }
 
-func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*UploadResult, error){
+func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*UploadResult, error) {
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 
@@ -959,7 +959,6 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*Upl
 		return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
 
-	// TODO - not working yet, need to change Apply logic
 	err = connectionObj.ApplyChanges(ctx, "/")
 	if err != nil {
 		return nil, err
