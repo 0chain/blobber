@@ -128,4 +128,53 @@ jobs:
         docker build -t $VALIDATOR_REGISTRY:$TAG -f docker.local/ValidatorDockerfile .
         docker push $VALIDATOR_REGISTRY:$TAG
       env:
-        TAG: ${{ steps.get_version.outputs.VERSION }}
+        TAG: ${{ steps.get_version.outputs.VERSION }} 
+ 
+  api_tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          repository: 0chain/0chainAPI
+          token: ${{ secrets.PERSONAL_SECRET }}
+      - name: Install Node
+        uses: actions/setup-node@v1
+        with: 
+          node-version: '12.x'
+
+      - name: Install newman
+        run: |
+         npm install -g newman
+         npm install -g newman-reporter-htmlextra
+         
+      - name: Set env BRANCH
+        run: echo "BRANCH=$(echo $GITHUB_REF | cut -d'/' -f 3)" >> $GITHUB_ENV    
+
+      - name: Make Directory for results
+        run: mkdir -p ./${BRANCH}
+
+      - name: Run POSTMAN collection
+        run: |
+           newman run "./Postman Collections/0chain-regressions.json" -e "./Postman Collections/Environments/Testnet.postman_environment.json" -r cli,htmlextra --reporter-htmlextra-export "./${BRANCH}/index.html" --reporter-htmlextra-darkTheme --color on  
+    
+      - name: Output the run Details
+        if: always()
+        uses: actions/upload-artifact@v2
+        with: 
+         name: RunReports
+         path: "./${{ env.BRANCH }}"
+         
+      - name: Deploy report page
+        if: always()
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.PERSONAL_SECRET }}
+          publish_dir: "./${{ env.BRANCH }}"
+          destination_dir: "./${{ env.BRANCH }}"
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'    
+          
+      - name: Report Link
+        if: always()
+        run: echo "https://stewartie4.github.io/blobber/${{ env.BRANCH }}" 
