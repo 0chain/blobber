@@ -152,14 +152,15 @@ jobs:
         run: echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')" >> $GITHUB_ENV
 
       - name: Make Directory for results
-        run: |
-         mkdir -p ./${BRANCH}/latest
-         ln -snf ./${BRANCH}/latest ./${BRANCH}/${GITHUB_SHA}
+        run: mkdir -p ./${BRANCH}/latest
          
 
       - name: Run POSTMAN collection
         run: |
-           newman run "./Postman Collections/0chain-regressions.json" -e "./Postman Collections/Environments/${{ secrets.TEMP_API_TESTNET_TARGET }}.postman_environment.json" -r cli,htmlextra --reporter-htmlextra-export "./${BRANCH}/latest/index.html" --reporter-htmlextra-darkTheme --color on  
+           newman run "./Postman Collections/0chain-regressions.json" -e "./Postman Collections/Environments/${{ secrets.TEMP_API_TESTNET_TARGET }}.postman_environment.json" -r cli,htmlextra --reporter-htmlextra-export "./${BRANCH}/latest/index.html" --reporter-htmlextra-darkTheme --color on; 
+           ret=$?; 
+           cp -R ./${BRANCH}/latest ./${BRANCH}/${GITHUB_SHA}; 
+           exit $ret  
     
       - name: Output the run Details
         if: always()
