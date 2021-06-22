@@ -151,7 +151,7 @@ jobs:
       - name: Set env BRANCH
         run: |
          echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')" >> $GITHUB_ENV
-         echo "BRANCH_UNSANITIZED=$(echo ${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+         echo "BRANCH_UNSANITIZED=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
 
       - name: Make Directory for results
         run: mkdir -p ./${BRANCH}/latest
