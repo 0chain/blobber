@@ -152,18 +152,18 @@ jobs:
         run: echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')" >> $GITHUB_ENV    
 
       - name: Make Directory for results
-        run: mkdir -p ./${BRANCH}
+        run: mkdir -p ./${BRANCH}/${{ github.run_number }}
 
       - name: Run POSTMAN collection
         run: |
-           newman run "./Postman Collections/0chain-regressions.json" -e "./Postman Collections/Environments/${{ secrets.TEMP_API_TESTNET_TARGET }}.postman_environment.json" -r cli,htmlextra --reporter-htmlextra-export "./${BRANCH}/index.html" --reporter-htmlextra-darkTheme --color on  
+           newman run "./Postman Collections/0chain-regressions.json" -e "./Postman Collections/Environments/${{ secrets.TEMP_API_TESTNET_TARGET }}.postman_environment.json" -r cli,htmlextra --reporter-htmlextra-export "./${BRANCH}/${{ github.run_number }}/index.html" --reporter-htmlextra-darkTheme --color on  
     
       - name: Output the run Details
         if: always()
         uses: actions/upload-artifact@v2
         with: 
          name: RunReports
-         path: "./${{ env.BRANCH }}"
+         path: "./${{ env.BRANCH }}/${{ github.run_number }}"
          
       - name: Deploy report page
         if: always()
@@ -177,4 +177,4 @@ jobs:
           
       - name: Report Link
         if: always()
-        run: echo "https://0chain.github.io/blobber/${{ env.BRANCH }}" 
+        run: echo "https://0chain.github.io/blobber/${{ env.BRANCH }}/${{ github.run_number }}" 
