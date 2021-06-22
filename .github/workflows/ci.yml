@@ -158,7 +158,7 @@ jobs:
       - name: Run POSTMAN collection
         run: |
            exit_code=0
-           newman run "./Postman Collections/0chain-regressions.json" -e "./Postman Collections/Environments/${{ secrets.TEMP_API_TESTNET_TARGET }}.postman_environment.json" -r cli,htmlextra --reporter-htmlextra-export "./${BRANCH}/latest/index.html" --reporter-htmlextra-darkTheme --reporter-htmlextra-showEnvironmentData --reporter-htmlextra-showGlobalData --reporter-htmlextra-browserTitle "0Chain regressions for ${GITHUB_SHA}" --reporter-htmlextra-title "0Chain API Regression Tests" --reporter-htmlextra-template "./Postman Collections/Data/0chain-dashboard-template.hbs" --env-var "commit-hash=${GITHUB_SHA}" --color on || exit_code=$? 
+           newman run "./Postman Collections/0chain-regressions.json" -e "./Postman Collections/Environments/${{ secrets.TEMP_API_TESTNET_TARGET }}.postman_environment.json" -r cli,htmlextra --reporter-htmlextra-export "./${BRANCH}/latest/index.html" --reporter-htmlextra-darkTheme --reporter-htmlextra-showEnvironmentData --reporter-htmlextra-showGlobalData --reporter-htmlextra-browserTitle "0Chain regressions for ${GITHUB_SHA}" --reporter-htmlextra-title "0Chain API Regression Tests" --reporter-htmlextra-template "./Postman Collections/Data/0chain-dashboard-template.hbs" --reporter-htmlextra-commit-hash ${GITHUB_SHA} --color on || exit_code=$? 
            cp -R ./${BRANCH}/latest ./${BRANCH}/${GITHUB_SHA}
            exit $exit_code
     
