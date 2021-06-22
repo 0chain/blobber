@@ -149,7 +149,7 @@ jobs:
          npm install -g newman-reporter-htmlextra
          
       - name: Set env BRANCH
-        run: echo "BRANCH=$(echo $GITHUB_REF | cut -d'/' -f 3)" >> $GITHUB_ENV    
+        run: echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')" >> $GITHUB_ENV    
 
       - name: Make Directory for results
         run: mkdir -p ./${BRANCH}
