@@ -13,7 +13,6 @@ import (
 	"0chain.net/core/lock"
 	"0chain.net/core/node"
 	"0chain.net/core/transaction"
-	"0chain.net/core/common"
 
 	"github.com/remeh/sizedwaitgroup"
 	"gorm.io/gorm"
