@@ -74,6 +74,7 @@ func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	existingRef.ActualThumbnailHash = nf.ActualThumbnailHash
 	existingRef.ActualThumbnailSize = nf.ActualThumbnailSize
 	existingRef.EncryptedKey = nf.EncryptedKey
+	existingRef.ChunkSize = nf.ChunkSize
 
 	if err = existingRef.SetAttributes(&nf.Attributes); err != nil {
 		return nil, common.NewErrorf("process_update_file_change",

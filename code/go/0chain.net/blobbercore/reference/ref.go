@@ -63,6 +63,7 @@ type Ref struct {
 	Name                string         `gorm:"column:name" dirlist:"name" filelist:"name"`
 	Path                string         `gorm:"column:path" dirlist:"path" filelist:"path"`
 	Hash                string         `gorm:"column:hash" dirlist:"hash" filelist:"hash"`
+	ChunkSize           int            `gorm:"column:chunk_size" dirlist:"chunk_size" filelist:"chunk_size"`
 	NumBlocks           int64          `gorm:"column:num_of_blocks" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
 	PathHash            string         `gorm:"column:path_hash" dirlist:"path_hash" filelist:"path_hash"`
 	ParentPath          string         `gorm:"column:parent_path"`
@@ -232,6 +233,7 @@ func (fr *Ref) GetFileHashData() string {
 	hashArray = append(hashArray, strconv.FormatInt(fr.ActualFileSize, 10))
 	hashArray = append(hashArray, fr.ActualFileHash)
 	hashArray = append(hashArray, string(fr.Attributes))
+	hashArray = append(hashArray, strconv.Itoa(fr.ChunkSize))
 	return strings.Join(hashArray, ":")
 }
 
@@ -240,7 +242,7 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 	// fmt.Println("Fileref hash data: " + fr.GetFileHashData())
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
 	// fmt.Println("Fileref hash : " + fr.Hash)
-	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / CHUNK_SIZE))
+	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
 	fr.PathHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	fr.PathLevel = len(GetSubDirsFromPath(fr.Path)) + 1 //strings.Count(fr.Path, "/")
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)

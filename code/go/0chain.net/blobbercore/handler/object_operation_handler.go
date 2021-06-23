@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"net/http"
 	"path/filepath"
@@ -352,13 +353,13 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	}
 
 	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, allocationObj, numBlocks, pendNumBlocks,
-		clientIDForReadRedeem)
-	if err != nil {
-		return nil, common.NewErrorf("download_file",
-			"pre-redeeming read marker: %v", err)
-	}
-
+	// err = readPreRedeem(ctx, allocationObj, numBlocks, pendNumBlocks,
+	// 	clientIDForReadRedeem)
+	// if err != nil {
+	// 	return nil, common.NewErrorf("download_file",
+	// 		"pre-redeeming read marker: %v", err)
+	// }
+	fmt.Println(pendNumBlocks)
 	// reading allowed
 
 	var (
@@ -372,7 +373,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		fileData.Hash = fileref.ThumbnailHash
 		fileData.OnCloud = fileref.OnCloud
 		respData, err = filestore.GetFileStore().GetFileBlock(allocationID,
-			fileData, blockNum, numBlocks)
+			fileData, blockNum, numBlocks, fileref.ChunkSize)
 		if err != nil {
 			return nil, common.NewErrorf("download_file",
 				"couldn't get thumbnail block: %v", err)
@@ -384,7 +385,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		fileData.Hash = fileref.ContentHash
 		fileData.OnCloud = fileref.OnCloud
 		respData, err = filestore.GetFileStore().GetFileBlock(allocationID,
-			fileData, blockNum, numBlocks)
+			fileData, blockNum, numBlocks, fileref.ChunkSize)
 		if err != nil {
 			return nil, common.NewErrorf("download_file",
 				"couldn't get file block: %v", err)

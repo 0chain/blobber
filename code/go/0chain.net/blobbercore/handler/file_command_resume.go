@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"0chain.net/blobbercore/allocation"
 	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/filestore"
 	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
+	"github.com/0chain/gosdk/zboxcore/fileref"
 )
 
 // ResumeFileCommand command for resuming file
@@ -41,6 +41,10 @@ func (cmd *ResumeFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 
 	//create a TrustedConentHasher instance first, it will be reloaded from db in cmd.reloadChange if it is not first chunk
 	//cmd.changeProcessor.TrustedConentHasher = &util.TrustedConentHasher{}
+
+	if changeProcessor.ChunkSize <= 0 {
+		changeProcessor.ChunkSize = fileref.CHUNK_SIZE
+	}
 
 	cmd.changeProcessor = changeProcessor
 
@@ -174,7 +178,7 @@ func (cmd *ResumeFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 			c.Size = connectionObj.Size
 			c.Input, _ = cmd.changeProcessor.Marshal()
 
-			c.ModelWithTS.UpdatedAt = time.Now()
+			//c.ModelWithTS.UpdatedAt = time.Now()
 			err := connectionObj.Save(ctx)
 			if err != nil {
 				return err

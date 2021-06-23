@@ -89,6 +89,7 @@ func (nf *ResumeFileChange) ProcessChange(ctx context.Context,
 	newFile.ActualThumbnailHash = nf.ActualThumbnailHash
 	newFile.ActualThumbnailSize = nf.ActualThumbnailSize
 	newFile.EncryptedKey = nf.EncryptedKey
+	newFile.ChunkSize = nf.ChunkSize
 
 	if err = newFile.SetAttributes(&nf.Attributes); err != nil {
 		return nil, common.NewErrorf("process_new_file_change",

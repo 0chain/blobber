@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"0chain.net/blobbercore/datastore"
 	"0chain.net/blobbercore/reference"
@@ -89,24 +88,14 @@ func GetAllocationChanges(ctx context.Context, connectionID string, allocationID
 		allocationID,
 		clientID,
 		DeletedConnection,
-	).First(cc).Error
+	).Preload("Changes").First(cc).Error
 
 	if err == nil {
-
-		var changes []*AllocationChange
-
-		err = db.Where("connection_id = ?", connectionID).Find(&changes).Error
-
-		if err == nil {
-			cc.Changes = changes
-		} else {
-			fmt.Println(err)
-		}
-
 		cc.ComputeProperties()
 		return cc, nil
 	}
 
+	// It is a bug when connetion_id was marked as DeletedConnection
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		cc.ConnectionID = connectionID
 		cc.AllocationID = allocationID

@@ -10,6 +10,7 @@ import (
 	"0chain.net/blobbercore/filestore"
 	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
+	"github.com/0chain/gosdk/zboxcore/fileref"
 )
 
 // UpdateFileCommand command for updating file
@@ -26,6 +27,10 @@ func (cmd *UpdateFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 	if err != nil {
 		return common.NewError("invalid_parameters",
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
+	}
+
+	if cmd.changeProcessor.ChunkSize <= 0 {
+		cmd.changeProcessor.ChunkSize = fileref.CHUNK_SIZE
 	}
 
 	cmd.exisitingFileRef, _ = reference.GetReference(ctx, allocationObj.ID, cmd.changeProcessor.Path)

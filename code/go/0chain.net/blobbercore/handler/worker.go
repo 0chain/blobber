@@ -65,11 +65,13 @@ func CleanupTempFiles(ctx context.Context) {
 				iterInprogress = true //nolint:ineffassign // probably has something to do with goroutines
 				rctx := datastore.GetStore().CreateTransaction(ctx)
 				db := datastore.GetStore().GetTransaction(rctx)
-				now := time.Now()
+				now := time.Now().UTC()
 				then := now.Add(time.Duration(-config.Configuration.OpenConnectionWorkerTolerance) * time.Second)
+
 				var openConnectionsToDelete []allocation.AllocationChangeCollector
 				db.Table((&allocation.AllocationChangeCollector{}).TableName()).Where("updated_at < ? AND status IN (?,?)", then, allocation.NewConnection, allocation.InProgressConnection).Preload("Changes").Find(&openConnectionsToDelete)
 				for _, connection := range openConnectionsToDelete {
+
 					Logger.Info("Deleting temp files for the connection", zap.Any("connection", connection.ConnectionID))
 					connection.ComputeProperties()
 					nctx := datastore.GetStore().CreateTransaction(ctx)

@@ -10,6 +10,7 @@ import (
 	"0chain.net/blobbercore/filestore"
 	"0chain.net/blobbercore/reference"
 	"0chain.net/core/common"
+	"github.com/0chain/gosdk/zboxcore/fileref"
 )
 
 // InsertFileCommand command for inserting file
@@ -37,6 +38,10 @@ func (cmd *InsertFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 
 	if exisitingFileRef != nil {
 		return common.NewError("duplicate_file", "File at path already exists")
+	}
+
+	if changeProcessor.ChunkSize <= 0 {
+		changeProcessor.ChunkSize = fileref.CHUNK_SIZE
 	}
 
 	cmd.changeProcessor = changeProcessor

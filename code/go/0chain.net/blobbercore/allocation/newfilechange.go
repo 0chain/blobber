@@ -47,6 +47,8 @@ type NewFileChange struct {
 
 	EncryptedKey string `json:"encrypted_key,omitempty"`
 	CustomMeta   string `json:"custom_meta,omitempty"`
+
+	ChunkSize int `json:"chunk_size,omitempty"` // the size of achunk. 64*1024 is default
 }
 
 func (nf *NewFileChange) ProcessChange(ctx context.Context,
@@ -113,6 +115,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context,
 	newFile.ActualThumbnailHash = nf.ActualThumbnailHash
 	newFile.ActualThumbnailSize = nf.ActualThumbnailSize
 	newFile.EncryptedKey = nf.EncryptedKey
+	newFile.ChunkSize = nf.ChunkSize
 
 	if err = newFile.SetAttributes(&nf.Attributes); err != nil {
 		return nil, common.NewErrorf("process_new_file_change",
