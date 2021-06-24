@@ -32,7 +32,7 @@ type Allocation struct {
 	LatestRedeemedWM string           `gorm:"column:latest_redeemed_write_marker"`
 	IsRedeemRequired bool             `gorm:"column:is_redeem_required"`
 	TimeUnit         time.Duration    `gorm:"column:time_unit"`
-	IsImmutable      bool             `gorm:"is_immutable"`
+	IsImmutable      bool             `gorm:"column:is_immutable"`
 	// ending and cleaning
 	CleanedUp bool `gorm:"column:cleaned_up"`
 	Finalized bool `gorm:"column:finalized"`
