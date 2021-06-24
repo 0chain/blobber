@@ -93,7 +93,7 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 	if !isOwner && !isRepairer && !isCollaborator {
 		// check auth token
 		if isAuthorized, err := b.storageHandler.verifyAuthTicket(ctx,
-			req.AuthToken, alloc, fileref, clientID
+			req.AuthToken, alloc, fileref, clientID,
 		); !isAuthorized {
 			return nil, common.NewErrorf("download_file",
 				"cannot verify auth ticket: %v", err)

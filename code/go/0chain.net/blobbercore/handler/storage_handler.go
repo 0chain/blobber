@@ -123,12 +123,12 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
+	alloc, err := fsh.verifyAllocation(ctx, allocationTx, true)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-	allocationID := allocationObj.ID
+	allocationID := alloc.ID
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 {
@@ -172,15 +172,15 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	var (
 		isOwner          = clientID == alloc.OwnerID
 		isRepairer       = clientID == alloc.RepairerID
-		isCollaborator   = b.packageHandler.IsACollaborator(ctx, fileref.ID, clientID))
+		isCollaborator   = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
 	if !isOwner && !isRepairer && !isCollaborator {
 		var authTokenString = r.FormValue("auth_token")
 
 		// check auth token
-		if isAuthorized, err := b.storageHandler.verifyAuthTicket(ctx,
-			authTokenString, allocationObj, fileref, clientID
+		if isAuthorized, err := fsh.verifyAuthTicket(ctx,
+			authTokenString, alloc, fileref, clientID,
 		); !isAuthorized {
 			return nil, common.NewErrorf("download_file",
 				"cannot verify auth ticket: %v", err)
