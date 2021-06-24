@@ -16,12 +16,9 @@ import (
 )
 
 func setupGRPCHandlerContext(ctx context.Context, r *blobbergrpc.RequestContext) context.Context {
-	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY,
-		r.Client)
-	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY,
-		r.ClientKey)
-	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY,
-		r.Allocation)
+	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY, r.Client)
+	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY, r.ClientKey)
+	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, r.Allocation)
 	return ctx
 }
 
@@ -30,7 +27,7 @@ func RegisterGRPCServices(r *mux.Router, server *grpc.Server) {
 	blobberService := newGRPCBlobberService(&storageHandler, packHandler)
 	mux := runtime.NewServeMux()
 	blobbergrpc.RegisterBlobberServer(server, blobberService)
-	blobbergrpc.RegisterBlobberHandlerServer(context.Background(), mux, blobberService)
+	_ = blobbergrpc.RegisterBlobberHandlerServer(context.Background(), mux, blobberService)
 	r.PathPrefix("/").Handler(mux)
 }
 

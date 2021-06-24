@@ -169,5 +169,4 @@ func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) {
 			logging.Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
 		}
 	}
-	return
 }

@@ -56,6 +56,11 @@ func (ar *apiResp) err() error { //nolint:unused,deadcode // might be used later
 	return nil
 }
 
+// ErrBlobberHasRegistered represents double registration check error, where the
+// blobber has already registered and shouldn't be passed through the registration flow again.
+// To prevent duplicate instances.
+var ErrBlobberHasRegistered = errors.New("blobber has registered")
+
 func RegisterBlobber(ctx context.Context) (string, error) {
 	wcb := &WalletCallback{}
 	wcb.wg = &sync.WaitGroup{}
@@ -67,19 +72,31 @@ func RegisterBlobber(ctx context.Context) (string, error) {
 
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
+	// initialize storage node (ie blobber)
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		return "", err
 	}
+
 	sn, err := getStorageNode()
 	if err != nil {
 		return "", err
+	}
+
+	// check storage node (ie blobber): is it already registered?
+	sRegisteredNodes, _ := GetBlobbers()
+
+	for _, sRegisteredNode := range sRegisteredNodes {
+		if sn.ID == string(sRegisteredNode.ID) || sn.BaseURL == sRegisteredNode.BaseURL {
+			return "", ErrBlobberHasRegistered
+		}
 	}
 
 	snBytes, err := json.Marshal(sn)
 	if err != nil {
 		return "", err
 	}
+
 	Logger.Info("Adding blobber to the blockchain.")
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
 		transaction.ADD_BLOBBER_SC_NAME, string(snBytes), 0)
@@ -151,6 +168,7 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn := &transaction.StorageNode{}
 	sn.ID = node.Self.ID
 	sn.BaseURL = node.Self.GetURLBase()
+	sn.Geolocation = transaction.StorageNodeGeolocation(config.Geolocation())
 	sn.Capacity = config.Configuration.Capacity
 	readPrice := config.Configuration.ReadPrice
 	writePrice := config.Configuration.WritePrice

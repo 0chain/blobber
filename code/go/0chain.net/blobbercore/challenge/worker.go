@@ -48,7 +48,6 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			Logger.Info("Attempting to commit processed challenges...")
 			rctx := datastore.GetStore().CreateTransaction(ctx)
 			db := datastore.GetStore().GetTransaction(rctx)
 			//lastChallengeRedeemed := &ChallengeEntity{}
@@ -199,18 +198,22 @@ func FindChallenges(ctx context.Context) {
 
 				params := make(map[string]string)
 				params["blobber"] = node.Self.ID
+
 				var blobberChallenges BCChallengeResponse
 				blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
 				retBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain(), nil)
+
 				if err != nil {
 					Logger.Error("Error getting the open challenges from the blockchain", zap.Error(err))
 				} else {
 					tCtx := datastore.GetStore().CreateTransaction(ctx)
 					db := datastore.GetStore().GetTransaction(tCtx)
 					bytesReader := bytes.NewBuffer(retBytes)
+
 					d := json.NewDecoder(bytesReader)
 					d.UseNumber()
 					errd := d.Decode(&blobberChallenges)
+
 					if errd != nil {
 						Logger.Error("Error in unmarshal of the sharder response", zap.Error(errd))
 					} else {
@@ -219,8 +222,10 @@ func FindChallenges(ctx context.Context) {
 								Logger.Info("No challenge entity from the challenge map")
 								continue
 							}
+
 							challengeObj := v
 							_, err := GetChallengeEntity(tCtx, challengeObj.ChallengeID)
+
 							if errors.Is(err, gorm.ErrRecordNotFound) {
 								latestChallenge, err := GetLastChallengeEntity(tCtx)
 								if err == nil || errors.Is(err, gorm.ErrRecordNotFound) {

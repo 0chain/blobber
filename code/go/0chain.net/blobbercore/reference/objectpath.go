@@ -99,7 +99,7 @@ func GetObjectPathGRPC(ctx context.Context, allocationID string, blockNum int64)
 	}
 
 	if rootRef.NumBlocks < blockNum {
-		return nil, common.NewError("invalid_block_num", "Invalid block number"+string(rootRef.NumBlocks)+" / "+string(blockNum))
+		return nil, common.NewError("invalid_block_num", fmt.Sprintf("Invalid block number %d/%d", rootRef.NumBlocks, blockNum))
 	}
 
 	if rootRef.NumBlocks == 0 {

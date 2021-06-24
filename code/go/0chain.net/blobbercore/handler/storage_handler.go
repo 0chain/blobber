@@ -1,13 +1,14 @@
 package handler
 
 import (
-	"0chain.net/core/encryption"
 	"context"
 	"encoding/json"
-	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"0chain.net/core/encryption"
+	"github.com/gorilla/mux"
 
 	"0chain.net/blobbercore/stats"
 	"go.uber.org/zap"
@@ -543,7 +544,6 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	}
 
 	resCh <- &refPathResult
-	return
 }
 
 func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (*ObjectPathResult, error) {
@@ -706,7 +706,7 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 
 // verifySignatureFromRequest verifyes signature passed as common.ClientSignatureHeader header.
 func verifySignatureFromRequest(r *http.Request, pbK string) (bool, error) {
-	sign := r.Header.Get(common.ClientSignatureHeader)
+	sign := encryption.MiraclToHerumiSig(r.Header.Get(common.ClientSignatureHeader))
 	if len(sign) < 64 {
 		return false, nil
 	}
@@ -718,6 +718,7 @@ func verifySignatureFromRequest(r *http.Request, pbK string) (bool, error) {
 	}
 
 	hash := encryption.Hash(data)
+	pbK = encryption.MiraclToHerumiPK(pbK)
 	return encryption.Verify(pbK, sign, hash)
 }
 
