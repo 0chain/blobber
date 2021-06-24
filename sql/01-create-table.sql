@@ -21,6 +21,7 @@ CREATE TABLE allocations(
     blobber_size_used BIGINT NOT NULL DEFAULT 0,
     latest_redeemed_write_marker VARCHAR(255),
     is_redeem_required BOOLEAN,
+    is_immutable BOOLEAN,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
