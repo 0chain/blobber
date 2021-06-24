@@ -112,6 +112,7 @@ func BlobberAdd(ctx context.Context) (string, error) {
 	}
 
 	Logger.Info("Adding or updating on the blockchain")
+
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
 		transaction.ADD_BLOBBER_SC_NAME, string(snBytes), 0)
 	if err != nil {
@@ -138,8 +139,6 @@ func BlobberHealthCheck(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	Logger.Info("Health check on the blockchain")
 
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
 		transaction.BLOBBER_HEALTH_CHECK, "", 0)
