@@ -1,17 +1,17 @@
 name: CICD_Hetzner
 
-on:
-  push:
-    branches:
-      - gitactionsfix
-
 # on:
-#   workflow_dispatch:
-#     inputs:
-#       latest_tag:
-#         description: 'type yes for building latest tag'
-#         default: 'no'
-#         required: true
+#   push:
+#     branches:
+#       - gitactionsfix
+
+on:
+  workflow_dispatch:
+    inputs:
+      latest_tag:
+        description: 'type yes for building latest tag'
+        default: 'no'
+        required: true
 
 env:
   ZCHAIN_BUILDBASE: zchain_build_base
