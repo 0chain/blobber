@@ -179,38 +179,34 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			"invalid method used (GET), use POST instead")
 	}
 
+	// get client and allocation ids
 	var (
-		allocationTx = ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 		clientID     = ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-
-		allocationObj *allocation.Allocation
+		allocationTx = ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+		_            = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string) // runtime type check
+		alloc        *allocation.Allocation
 	)
 
+	// check client
 	if len(clientID) == 0 {
 		return nil, common.NewError("download_file", "invalid client")
 	}
 
-	// runtime type check
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
-
-	// verify or update allocation
-	allocationObj, err = fsh.verifyAllocation(ctx, allocationTx, false)
+	// get and check allocation
+	alloc, err = fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewErrorf("download_file",
 			"invalid allocation id passed: %v", err)
 	}
 
-	var allocationID = allocationObj.ID
-
+	// get and parse file params
 	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
 		Logger.Info("download_file - request_parse_error", zap.Error(err))
 		return nil, common.NewErrorf("download_file",
 			"request_parse_error: %v", err)
 	}
 
-	rxPay := r.FormValue("rx_pay") == "true"
-
-	pathHash, err := pathHashFromReq(r, allocationID)
+	pathHash, err := pathHashFromReq(r, alloc.ID)
 	if err != nil {
 		return nil, common.NewError("download_file", "invalid path")
 	}
@@ -238,6 +234,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			"invalid number of blocks")
 	}
 
+	// get read marker
 	var (
 		readMarkerString = r.FormValue("read_marker")
 		readMarker       = &readmarker.ReadMarker{}
@@ -251,14 +248,14 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	var rmObj = &readmarker.ReadMarkerEntity{}
 	rmObj.LatestRM = readMarker
 
-	if err = rmObj.VerifyMarker(ctx, allocationObj); err != nil {
+	if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
 		return nil, common.NewErrorf("download_file", "invalid read marker, "+
 			"failed to verify the read marker: %v", err)
 	}
 
+	// get file reference
 	var fileref *reference.Ref
-	fileref, err = reference.GetReferenceFromLookupHash(ctx, allocationID,
-		pathHash)
+	fileref, err = reference.GetReferenceFromLookupHash(ctx, alloc.ID, pathHash)
 	if err != nil {
 		return nil, common.NewErrorf("download_file",
 			"invalid file path: %v", err)
@@ -269,62 +266,62 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			"path is not a file: %v", err)
 	}
 
-	var (
-		authTokenString       = r.FormValue("auth_token")
-		clientIDForReadRedeem = clientID // default payer is client
-		isACollaborator       = reference.IsACollaborator(ctx, fileref.ID, clientID)
-	)
+	// set payer: default
+	var payerID = alloc.OwnerID
 
-	// Owner will pay for collaborator
-	if isACollaborator {
-		clientIDForReadRedeem = allocationObj.OwnerID
+	// set payer: check for explicit allocation payer value
+	if len(alloc.PayerID) > 0 {
+		payerID = alloc.PayerID
 	}
 
-	if (allocationObj.OwnerID != clientID &&
-		allocationObj.PayerID != clientID &&
-		!isACollaborator) || len(authTokenString) > 0 {
+	// set payer: check for command line payer flag (--rx_pay)
+	if r.FormValue("rx_pay") == "true" {
+		payerID = clientID
+	}
 
-		var authTicketVerified bool
-		authTicketVerified, err = fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj,
-			fileref, clientID)
-		if err != nil {
+	// authorize file access
+	var (
+		isOwner          = clientID == alloc.OwnerID
+		isRepairer       = clientID == alloc.RepairerID
+		isCollaborator   = reference.IsACollaborator(ctx, fileref.ID, clientID)
+	)
+
+	if !isOwner && !isRepairer && !isCollaborator {
+		var authTokenString = r.FormValue("auth_token")
+
+		// check auth token
+		if isAuthorized, err := fsh.verifyAuthTicket(ctx,
+			authTokenString, alloc, fileref, clientID,
+		); !isAuthorized {
 			return nil, common.NewErrorf("download_file",
-				"verifying auth ticket: %v", err)
+				"cannot verify auth ticket: %v", err)
 		}
 
-		if !authTicketVerified {
-			return nil, common.NewErrorf("download_file",
-				"could not verify the auth ticket")
-		}
-
-		var authToken = &readmarker.AuthTicket{}
-		err = json.Unmarshal([]byte(authTokenString), &authToken)
-		if err != nil {
+		if json.Unmarshal([]byte(authTokenString), &readmarker.AuthTicket{}) != nil {
 			return nil, common.NewErrorf("download_file",
 				"error parsing the auth ticket for download: %v", err)
 		}
 
-		var attrs *reference.Attributes
-		if attrs, err = fileref.GetAttributes(); err != nil {
+		readMarker.AuthTicket = datatypes.JSON(authTokenString)
+
+		// check for file payer flag
+		if fileAttrs, err := fileref.GetAttributes(); err != nil {
 			return nil, common.NewErrorf("download_file",
 				"error getting file attributes: %v", err)
+		} else {
+			if fileAttrs.WhoPaysForReads == common.WhoPays3rdParty {
+				payerID = clientID
+			}
 		}
-
-		// if --rx_pay used 3rd_party pays
-		if rxPay {
-			clientIDForReadRedeem = clientID
-		} else if attrs.WhoPaysForReads == common.WhoPaysOwner {
-			clientIDForReadRedeem = allocationObj.OwnerID // owner pays
-		}
-
-		readMarker.AuthTicket = datatypes.JSON(authTokenString)
 	}
 
+	// create read marker
 	var (
 		rme           *readmarker.ReadMarkerEntity
 		latestRM      *readmarker.ReadMarker
 		pendNumBlocks int64
 	)
+
 	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, common.NewErrorf("download_file",
@@ -352,15 +349,13 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	}
 
 	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, allocationObj, numBlocks, pendNumBlocks,
-		clientIDForReadRedeem)
+	err = readPreRedeem(ctx, alloc, numBlocks, pendNumBlocks, payerID)
 	if err != nil {
 		return nil, common.NewErrorf("download_file",
 			"pre-redeeming read marker: %v", err)
 	}
 
-	// reading allowed
-
+	// reading is allowed
 	var (
 		downloadMode = r.FormValue("content")
 		respData     []byte
@@ -371,7 +366,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ThumbnailHash
 		fileData.OnCloud = fileref.OnCloud
-		respData, err = filestore.GetFileStore().GetFileBlock(allocationID,
+		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID,
 			fileData, blockNum, numBlocks)
 		if err != nil {
 			return nil, common.NewErrorf("download_file",
@@ -383,7 +378,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ContentHash
 		fileData.OnCloud = fileref.OnCloud
-		respData, err = filestore.GetFileStore().GetFileBlock(allocationID,
+		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID,
 			fileData, blockNum, numBlocks)
 		if err != nil {
 			return nil, common.NewErrorf("download_file",
@@ -391,7 +386,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		}
 	}
 
-	readMarker.PayerID = clientIDForReadRedeem
+	readMarker.PayerID = payerID
 	err = readmarker.SaveLatestReadMarker(ctx, readMarker, latestRM == nil)
 	if err != nil {
 		return nil, common.NewErrorf("download_file",
@@ -449,7 +444,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 			"Invalid connection id. Connection does not have any changes.")
 	}
 
-	var isACollaborator bool
+	var isCollaborator bool
 	for _, change := range connectionObj.Changes {
 		if change.Operation == allocation.UPDATE_OPERATION {
 			updateFileChange := new(allocation.UpdateFileChange)
@@ -460,7 +455,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 			if err != nil {
 				return nil, err
 			}
-			isACollaborator = reference.IsACollaborator(ctx, fileRef.ID, clientID)
+			isCollaborator = reference.IsACollaborator(ctx, fileRef.ID, clientID)
 			break
 		}
 	}
@@ -469,7 +464,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 		return nil, common.NewError("invalid_params", "Please provide clientID and clientKey")
 	}
 
-	if (allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID) && !isACollaborator {
+	if (allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID) && !isCollaborator {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
@@ -520,7 +515,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 	}
 
 	var clientIDForWriteRedeem = writeMarker.ClientID
-	if isACollaborator {
+	if isCollaborator {
 		clientIDForWriteRedeem = allocationObj.OwnerID
 	}
 
@@ -971,7 +966,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 	}
 
 	if mode == allocation.DELETE_OPERATION {
-		if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
+		if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 		}
 		result, err = fsh.DeleteFile(ctx, r, connectionObj)
@@ -994,7 +989,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		existingFileRefSize := int64(0)
 		exisitingFileOnCloud := false
 		if mode == allocation.INSERT_OPERATION {
-			if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
+			if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 			}
 
@@ -1007,7 +1002,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 			}
 
 			if allocationObj.OwnerID != clientID &&
-				allocationObj.PayerID != clientID &&
+				allocationObj.RepairerID != clientID &&
 				!reference.IsACollaborator(ctx, exisitingFileRef.ID, clientID) {
 				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner, collaborator or the payer of the allocation")
 			}

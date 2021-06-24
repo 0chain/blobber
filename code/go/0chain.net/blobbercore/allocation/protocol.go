@@ -122,10 +122,10 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	a.Expiration = sa.Expiration
 	a.OwnerID = sa.OwnerID
 	a.OwnerPublicKey = sa.OwnerPublicKey
+	a.RepairerID = t.ClientID // blobber node id
 	a.TotalSize = sa.Size
 	a.UsedSize = sa.UsedSize
 	a.Finalized = sa.Finalized
-	a.PayerID = t.ClientID
 	a.TimeUnit = sa.TimeUnit
 	a.IsImmutable = sa.IsImmutable
 
