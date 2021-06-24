@@ -138,6 +138,7 @@ jobs:
         with:
           repository: 0chain/0chainAPI
           token: ${{ secrets.SVC_ACCOUNT_SECRET }}
+          
       - name: Install Node
         uses: actions/setup-node@v1
         with: 
@@ -155,7 +156,6 @@ jobs:
 
       - name: Make Directory for results
         run: mkdir -p ./${BRANCH}/latest
-         
 
       - name: Run POSTMAN collection
         run: |
@@ -177,11 +177,11 @@ jobs:
         with:
           publish_branch: test_reports
           keep_files: true
-          github_token: ${{ secrets.SVC_ACCOUNT_SECRET }}
+          github_token: "${{ secrets.SVC_ACCOUNT_SECRET }}"
           publish_dir: "./${{ env.BRANCH }}"
           destination_dir: "./${{ env.BRANCH }}"
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'    
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"    
           
       - name: Report Link
         if: always()
