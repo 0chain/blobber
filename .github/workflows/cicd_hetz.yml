@@ -1,20 +1,25 @@
 name: CICD_Hetzner
 
 on:
-  workflow_dispatch:
-    inputs:
-      latest_tag:
-        description: 'type yes for building latest tag'
-        default: 'no'
-        required: true
+  push:
+    branches:
+      - gitactionsfix
+
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       latest_tag:
+#         description: 'type yes for building latest tag'
+#         default: 'no'
+#         required: true
 
 env:
   ZCHAIN_BUILDBASE: zchain_build_base
   ZCHAIN_BUILDRUN: zchain_run_base
-  BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY }}
-  VALIDATOR_REGISTRY: ${{ secrets.VALIDATOR_REGISTRY }}
-  KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
-  KUBE_NAMESPACE: nine
+  BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY_TEST }}
+  VALIDATOR_REGISTRY: ${{ secrets.VALIDATOR_REGISTRY_TEST }}
+  KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA_TEST }}
+  KUBE_NAMESPACE: test
 
 jobs:
   dockerize_blobber:
@@ -40,7 +45,7 @@ jobs:
       run: |
         docker build -t $BLOBBER_REGISTRY:$TAG -f "$DOCKERFILE_BLOB" .
         docker tag $BLOBBER_REGISTRY:$TAG $BLOBBER_REGISTRY:latest
-        docker push $BLOBBER_REGISTRY:$TAG
+        # docker push $BLOBBER_REGISTRY:$TAG
       env:
         TAG: ${{ steps.get_version.outputs.VERSION }}
         DOCKERFILE_BLOB: "docker.local/Dockerfile"
@@ -112,7 +117,7 @@ jobs:
       run: |
         docker build -t $VALIDATOR_REGISTRY:$TAG -f "$DOCKERFILE_PROXY" .
         docker tag $VALIDATOR_REGISTRY:$TAG $VALIDATOR_REGISTRY:latest
-        docker push $VALIDATOR_REGISTRY:$TAG
+        # docker push $VALIDATOR_REGISTRY:$TAG
       env:
         TAG: ${{ steps.get_version.outputs.VERSION }}
         DOCKERFILE_PROXY: "docker.local/ValidatorDockerfile"
