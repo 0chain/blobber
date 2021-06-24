@@ -26,12 +26,25 @@ on:
 #         default: latest
 
 jobs:
-  loadTest:
+  network-setup:
     runs-on: ubuntu-20.04
     env:
       HOST: testnet.load.testnet-0chain.net
     steps:
       - uses: actions/checkout@v2
+
+      # - name: Triggering build.yml for creating & pushing docker images.
+      #   uses: convictional/trigger-workflow-and-wait@v1.3.0
+      #   with:
+      #     owner: 0chain
+      #     repo: 0proxy
+      #     github_token: ${{ secrets.GOSDK }}
+      #     workflow_file_name: build.yml
+      #     ref: master
+      #     propagate_failure: true
+      #     trigger_workflow: true
+      #     wait_workflow: true
+
       - uses: azure/setup-helm@v1
         with:
           version: 'v3.2.2'
@@ -71,11 +84,25 @@ jobs:
             printf '.'
             sleep 2
           done
-      - name: Build
-        run: make build
-      # - name: Test
+
+      # - name: Triggering ci.yml to run Postman API tests
+      #   uses: convictional/trigger-workflow-and-wait@v1.3.0
+      #   with:
+      #     owner: 0chain
+      #     repo: 0proxy
+      #     github_token: ${{ secrets.GOSDK }}
+      #     workflow_file_name: build.yml
+      #     ref: master
+      #     propagate_failure: true
+      #     trigger_workflow: true
+      #     wait_workflow: true
+
+      # - name: Build
+      #   run: make build
+      # - name: Running Load Tests
       #   run: |
       #     make run config=loadTest-load-testnet.yaml
-      - name: Uninstall the release
-        if: ${{ always() }}
-        run: helm uninstall zerochain -n zerochain
+
+      # - name: Uninstall the release
+      #   if: ${{ always() }}
+      #   run: helm uninstall zerochain -n zerochain
