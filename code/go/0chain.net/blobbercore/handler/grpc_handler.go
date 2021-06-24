@@ -87,7 +87,7 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 	var (
 		isOwner          = clientID == alloc.OwnerID
 		isRepairer       = clientID == alloc.RepairerID
-		isCollaborator   = b.packageHandler.IsACollaborator(ctx, fileref.ID, clientID))
+		isCollaborator   = b.packageHandler.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
 	if !isOwner && !isRepairer && !isCollaborator {
