@@ -485,6 +485,12 @@
         "OwnerPublicKey": {
           "type": "string"
         },
+        "RepairerID": {
+          "type": "string"
+        },
+        "PayerID": {
+          "type": "string"
+        },
         "Expiration": {
           "type": "string",
           "format": "int64"
@@ -521,9 +527,6 @@
           "items": {
             "$ref": "#/definitions/v1Term"
           }
-        },
-        "PayerID": {
-          "type": "string"
         }
       }
     },
