@@ -1,6 +1,6 @@
 @startuml
 actor Client
-actor Payer
+actor Repairer
 
 group partial upload
 Client -> Blobber : List command on a directory
