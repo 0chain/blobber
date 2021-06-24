@@ -69,7 +69,7 @@ type StakePoolSettings struct {
 }
 
 type StorageNodeGeolocation struct {
-	Latitude float64 `json:"latitude"`
+	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
 }
 
@@ -101,6 +101,7 @@ type StorageAllocation struct {
 	Finalized      bool                 `json:"finalized"`
 	CCT            time.Duration        `json:"challenge_completion_time"`
 	TimeUnit       time.Duration        `json:"time_unit"`
+	IsImmutable    bool                 `json:"is_immutable"`
 }
 
 func (sa *StorageAllocation) Until() common.Timestamp {

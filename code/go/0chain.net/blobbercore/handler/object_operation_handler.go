@@ -424,6 +424,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
+	if allocationObj.IsImmutable {
+		return nil, common.NewError("immutable_allocation", "Cannot write to an immutable allocation")
+	}
+
 	allocationID := allocationObj.ID
 
 	connectionID := r.FormValue("connection_id")
@@ -590,6 +594,11 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+
+	if allocationObj.IsImmutable {
+		return nil, common.NewError("immutable_allocation", "Cannot rename data in an immutable allocation")
+	}
+
 	allocationID := allocationObj.ID
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
@@ -688,6 +697,10 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
+	if alloc.IsImmutable {
+		return nil, common.NewError("immutable_allocation", "Cannot update data in an immutable allocation")
+	}
+
 	// runtime type check
 	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 
@@ -782,6 +795,10 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	if allocationObj.IsImmutable {
+		return nil, common.NewError("immutable_allocation", "Cannot copy data in an immutable allocation")
 	}
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
@@ -914,6 +931,10 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	if allocationObj.IsImmutable {
+		return nil, common.NewError("immutable_allocation", "Cannot write to an immutable allocation")
 	}
 
 	allocationID := allocationObj.ID

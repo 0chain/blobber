@@ -127,6 +127,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	a.Finalized = sa.Finalized
 	a.PayerID = t.ClientID
 	a.TimeUnit = sa.TimeUnit
+	a.IsImmutable = sa.IsImmutable
 
 	// related terms
 	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))
