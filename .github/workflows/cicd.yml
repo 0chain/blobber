@@ -6,7 +6,7 @@ on:
       - gitactionsfix
 
 env:
-  GITHUB_TOKEN: ${{ secrets.CICD }}
+  GITHUB_TOKEN: ${{ secrets.GOSDK }}
 
 jobs:
   build-push-image:
