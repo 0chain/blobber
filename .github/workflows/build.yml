@@ -7,7 +7,6 @@ on:
         description: 'type yes for building latest tag'
         default: 'no'
         required: true
-  workflow_dispatch
 
 env:
   BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY }}
