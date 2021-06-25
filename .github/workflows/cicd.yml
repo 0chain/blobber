@@ -44,7 +44,6 @@ jobs:
       #     propagate_failure: true
       #     trigger_workflow: true
       #     wait_workflow: true
-
       - uses: azure/setup-helm@v1
         with:
           version: 'v3.2.2'
