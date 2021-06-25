@@ -26,7 +26,7 @@ jobs:
           owner: 0chain
           repo: blobber
           github_token: ${{ secrets.CICD }}
-          workflow_file_name: test.yml
+          workflow_file_name: build.yml
           ref: ${{ steps.get_branch.outputs.BRANCH }}
           inputs: '{"DOCKERHUB_REPO":"TEST"}'
           propagate_failure: true
