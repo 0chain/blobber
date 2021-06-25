@@ -27,7 +27,7 @@ jobs:
           repo: blobber
           github_token: $GITHUB_TOKEN
           workflow_file_name: build.yml
-          ref: ${{ steps.get_branch.outputs.Branch }}
+          ref: master
           inputs: '{"DOCKERHUB_REPO":"TEST"}'
           propagate_failure: true
           trigger_workflow: true
