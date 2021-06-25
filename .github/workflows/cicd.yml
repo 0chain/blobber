@@ -5,6 +5,9 @@ on:
     branches:
       - gitactionsfix
 
+env:
+  GITHUB_TOKEN: ${{ secrets.CICD }}
+
 jobs:
   build-push-image:
     runs-on: ubuntu-20.04
@@ -22,7 +25,7 @@ jobs:
         with:
           owner: 0chain
           repo: blobber
-          github_token: ${{ secrets.GOSDK }}
+          github_token: $GITHUB_TOKEN
           workflow_file_name: build.yml
           ref: ${{ steps.get_branch.outputs.Branch }}
           inputs: '{"DOCKERHUB_REPO":"TEST"}'
