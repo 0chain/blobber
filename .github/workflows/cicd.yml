@@ -25,7 +25,7 @@ jobs:
         with:
           owner: 0chain
           repo: blobber
-          github_token: $GITHUB_TOKEN
+          github_token: ${{ secrets.GOSDK }}
           workflow_file_name: test.yml
           ref: ${{ steps.get_branch.outputs.BRANCH }}
           inputs: '{"DOCKERHUB_REPO":"TEST"}'
