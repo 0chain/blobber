@@ -15,15 +15,12 @@ CREATE TABLE allocations(
     used_size BIGINT NOT NULL DEFAULT 0,
     owner_id VARCHAR(64) NOT NULL,
     owner_public_key VARCHAR(256) NOT NULL,
-    repairer_id VARCHAR (64),
-    payer_id VARCHAR(64),
     expiration_date BIGINT NOT NULL,
     allocation_root VARCHAR(255) NOT NULL DEFAULT '',
     blobber_size BIGINT NOT NULL DEFAULT 0,
     blobber_size_used BIGINT NOT NULL DEFAULT 0,
     latest_redeemed_write_marker VARCHAR(255),
     is_redeem_required BOOLEAN,
-    is_immutable BOOLEAN,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
