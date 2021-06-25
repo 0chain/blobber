@@ -10,17 +10,19 @@ jobs:
     runs-on: ubuntu-20.04
     steps: 
       - uses: actions/checkout@v2
+
       - name: Get Branch
         id: get_branch
         run: |
           BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')
           echo ::set-output name=BRANCH::${BRANCH}
+
       - name: Triggering build.yml for creating & pushing docker images.
         uses: convictional/trigger-workflow-and-wait@v1.3.0
         with:
           owner: 0chain
           repo: blobber
-          github_token: ${{ secrets.CICD }}
+          github_token: ${{ secrets.GOSDK }}
           workflow_file_name: build.yml
           ref: ${{ steps.get_branch.outputs.Branch }}
           inputs: '{"DOCKERHUB_REPO":"TEST"}'
