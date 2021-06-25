@@ -15,6 +15,8 @@ CREATE TABLE allocations(
     used_size BIGINT NOT NULL DEFAULT 0,
     owner_id VARCHAR(64) NOT NULL,
     owner_public_key VARCHAR(256) NOT NULL,
+    repairer_id VARCHAR (64),
+    payer_id VARCHAR(64),
     expiration_date BIGINT NOT NULL,
     allocation_root VARCHAR(255) NOT NULL DEFAULT '',
     blobber_size BIGINT NOT NULL DEFAULT 0,
