@@ -62,7 +62,7 @@ jobs:
           helm install zerochain -n zerochain \
           --set ingress.host=${HOST} \
           --set sharder.image.tag=latest \
-          --set miner.image.tag=latest} \
+          --set miner.image.tag=latest \
           --set blobber.image.tag=latest \
           --set validator.image.tag=latest \
           0chain/0chain
