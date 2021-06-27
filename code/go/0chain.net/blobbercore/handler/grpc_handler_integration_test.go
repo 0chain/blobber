@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"log"
 	"math/rand"
 	"net/http"
@@ -847,6 +848,126 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			}
 
 			if response.GetMessage() != tc.expectedMessage {
+				t.Fatal("failed!")
+			}
+		}
+	})
+
+	t.Run("TestUpload", func(t *testing.T) {
+		allocationTx := randString(32)
+
+		pubKey, _, signScheme := GeneratePubPrivateKey(t)
+		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+		pubKeyBytes, _ := hex.DecodeString(pubKey)
+		clientId := encryption.Hash(pubKeyBytes)
+		now := common.Timestamp(time.Now().UnixNano())
+
+		blobberPubKey := "de52c0a51872d5d2ec04dbc15a6f0696cba22657b80520e1d070e72de64c9b04e19ce3223cae3c743a20184158457582ffe9c369ca9218c04bfe83a26a62d88d"
+		blobberPubKeyBytes, _ := hex.DecodeString(blobberPubKey)
+
+		fr := reference.Ref{
+			AllocationID: "exampleId",
+		}
+
+		formFieldByt, err := json.Marshal(&allocation.UpdateFileChange{})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rootRefHash := encryption.Hash(encryption.Hash(fr.GetFileHashData()))
+
+		wm := writemarker.WriteMarker{
+			AllocationRoot:         encryption.Hash(rootRefHash + ":" + strconv.FormatInt(int64(now), 10)),
+			PreviousAllocationRoot: "/",
+			AllocationID:           "exampleId",
+			Size:                   1337,
+			BlobberID:              encryption.Hash(blobberPubKeyBytes),
+			Timestamp:              now,
+			ClientID:               clientId,
+		}
+
+		wmSig, err := signScheme.Sign(encryption.Hash(wm.GetHashData()))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wm.Signature = wmSig
+
+		if err := tdController.ClearDatabase(); err != nil {
+			t.Fatal(err)
+		}
+		if err := tdController.AddUploadTestData(allocationTx, pubKey, clientId, wmSig, now); err != nil {
+			t.Fatal(err)
+		}
+
+		testCases := []struct {
+			name             string
+			context          metadata.MD
+			input            *blobbergrpc.UploadFileRequest
+			expectedFileName string
+			expectingError   bool
+		}{
+			{
+				name: "Success",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          clientId,
+					common.ClientSignatureHeader: clientSignature,
+					common.ClientKeyHeader:       pubKey,
+				}),
+
+				input: &blobbergrpc.UploadFileRequest{
+					Allocation:          allocationTx,
+					Path:                "/some_file",
+					ConnectionId:        "connection_id",
+					Method:              "POST",
+					UploadMeta:          string(formFieldByt),
+					UpdateMeta:          "",
+					UploadFile:          []byte{},
+					UploadThumbnailFile: []byte{},
+				},
+				expectedFileName: "/some_file",
+				expectingError:   false,
+			},
+			{
+				name: "Fail",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          clientId,
+					common.ClientSignatureHeader: clientSignature,
+					common.ClientKeyHeader:       pubKey,
+				}),
+				input: &blobbergrpc.UploadFileRequest{
+					Allocation:          "",
+					Path:                "",
+					ConnectionId:        "",
+					Method:              "",
+					UploadMeta:          "",
+					UpdateMeta:          "",
+					UploadFile:          nil,
+					UploadThumbnailFile: nil,
+				},
+				expectedFileName: "",
+				expectingError:   true,
+			},
+		}
+
+		for _, tc := range testCases {
+			ctx := context.Background()
+			ctx = metadata.NewOutgoingContext(ctx, tc.context)
+			response, err := blobberClient.WriteFile(ctx, tc.input)
+			if err != nil {
+				if !tc.expectingError {
+					t.Log(err.Error())
+					t.Fatal(err)
+				}
+
+				continue
+			}
+
+			if tc.expectingError {
+				t.Fatal("expected error")
+			}
+
+			if response.GetFilename() != tc.expectedFileName {
 				t.Fatal("failed!")
 			}
 		}
