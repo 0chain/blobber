@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"time"
 
+	"google.golang.org/grpc/reflection"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/challenge"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -351,6 +353,10 @@ func main() {
 	grpcServer := handler.NewServerWithMiddlewares(common.NewGRPCRateLimiter())
 	handler.RegisterGRPCServices(r, grpcServer)
 
+	if config.Development() {
+		reflection.Register(grpcServer)
+	}
+
 	rHandler := handlers.CORS(originsOk, headersOk, methodsOk)(r)
 	if config.Development() {
 		// No WriteTimeout setup to enable pprof
@@ -376,6 +382,7 @@ func main() {
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()
 	go func(grpcPort string) {
+		Logger.Info("listening too grpc requests on port - " + grpcPort)
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
 		if err != nil {
 			log.Fatalf("failed to listen: %v", err)

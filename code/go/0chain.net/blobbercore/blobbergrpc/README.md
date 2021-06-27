@@ -31,7 +31,8 @@ plugin is being used to expose a REST api for grpc incompatible clients.
 ## Testing
 
 The current grpc implementation supports server reflection in development environment.
-You can interact with the api using https://github.com/gusaul/grpcox.
+You can interact with the api using https://github.com/gusaul/grpcox. While running locally make sure
+to use docker network ip and not localhost.
 
 Make sure the server is running on `--deployment_mode 0` to use server reflection.
 
