@@ -446,7 +446,7 @@ func WriteFileGRPCToHTTP(req *blobbergrpc.UploadFileRequest) (*http.Request, err
 	}
 
 	if req.Method != `DELETE` {
-		body := new(bytes.Buffer)
+		body := bytes.NewBuffer(nil)
 		writer := multipart.NewWriter(body)
 		part, err := writer.CreateFormFile(`uploadFile`, formData.Filename)
 		if err != nil {

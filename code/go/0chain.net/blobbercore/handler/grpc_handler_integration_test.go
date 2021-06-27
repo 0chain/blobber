@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -954,6 +955,16 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		root, _ := os.Getwd()
+		file, err := os.Open(root + "/grpc_handler_integration_test.go")
+		if err != nil {
+			t.Fatal(err)
+		}
+		fileB := make([]byte, 0)
+		if _, err := io.ReadFull(file, fileB); err != nil {
+			t.Fatal(err)
+		}
+
 		testCases := []struct {
 			name             string
 			context          metadata.MD
@@ -976,7 +987,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 					Method:              "POST",
 					UploadMeta:          string(formFieldByt),
 					UpdateMeta:          "",
-					UploadFile:          []byte{},
+					UploadFile:          fileB,
 					UploadThumbnailFile: []byte{},
 				},
 				expectedFileName: "/some_file",
