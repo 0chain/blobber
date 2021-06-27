@@ -915,43 +915,16 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 		pubKeyBytes, _ := hex.DecodeString(pubKey)
 		clientId := encryption.Hash(pubKeyBytes)
-		now := common.Timestamp(time.Now().UnixNano())
-
-		blobberPubKey := "de52c0a51872d5d2ec04dbc15a6f0696cba22657b80520e1d070e72de64c9b04e19ce3223cae3c743a20184158457582ffe9c369ca9218c04bfe83a26a62d88d"
-		blobberPubKeyBytes, _ := hex.DecodeString(blobberPubKey)
-
-		fr := reference.Ref{
-			AllocationID: "exampleId",
-		}
 
 		formFieldByt, err := json.Marshal(&allocation.UpdateFileChange{NewFileChange: allocation.NewFileChange{Filename: `grpc_handler_integration_test.go`}})
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		rootRefHash := encryption.Hash(encryption.Hash(fr.GetFileHashData()))
-
-		wm := writemarker.WriteMarker{
-			AllocationRoot:         encryption.Hash(rootRefHash + ":" + strconv.FormatInt(int64(now), 10)),
-			PreviousAllocationRoot: "/",
-			AllocationID:           "exampleId",
-			Size:                   1337,
-			BlobberID:              encryption.Hash(blobberPubKeyBytes),
-			Timestamp:              now,
-			ClientID:               clientId,
-		}
-
-		wmSig, err := signScheme.Sign(encryption.Hash(wm.GetHashData()))
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		wm.Signature = wmSig
-
 		if err := tdController.ClearDatabase(); err != nil {
 			t.Fatal(err)
 		}
-		if err := tdController.AddUploadTestData(allocationTx, pubKey, clientId, wmSig, now); err != nil {
+		if err := tdController.AddUploadTestData(allocationTx, pubKey, clientId); err != nil {
 			t.Fatal(err)
 		}
 
@@ -1025,7 +998,6 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			response, err := blobberClient.WriteFile(ctx, tc.input)
 			if err != nil {
 				if !tc.expectingError {
-					t.Log(err.Error())
 					t.Fatal(err)
 				}
 
