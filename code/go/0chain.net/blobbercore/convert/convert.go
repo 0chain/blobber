@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"mime/multipart"
 	"net/http"
@@ -476,8 +475,6 @@ func WriteFileGRPCToHTTP(req *blobbergrpc.UploadFileRequest) (*http.Request, err
 			return nil, err
 		}
 		r.Header.Set("Content-Type", writer.FormDataContentType())
-
-		fmt.Println(string(req.UploadFile))
 
 	}
 

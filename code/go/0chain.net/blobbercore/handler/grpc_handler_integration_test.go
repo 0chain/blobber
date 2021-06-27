@@ -924,7 +924,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			AllocationID: "exampleId",
 		}
 
-		formFieldByt, err := json.Marshal(&allocation.UpdateFileChange{})
+		formFieldByt, err := json.Marshal(&allocation.UpdateFileChange{NewFileChange: allocation.NewFileChange{Filename: `grpc_handler_integration_test.go`}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -960,11 +960,11 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		//stats, err := file.Stat()
-		//if err != nil {
-		//	panic(err)
-		//}
-		fileB := make([]byte, 1000)
+		stats, err := file.Stat()
+		if err != nil {
+			panic(err)
+		}
+		fileB := make([]byte, stats.Size())
 		if _, err := io.ReadFull(file, fileB); err != nil {
 			t.Fatal(err)
 		}
@@ -994,7 +994,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 					UploadFile:          fileB,
 					UploadThumbnailFile: []byte{},
 				},
-				expectedFileName: "/some_file",
+				expectedFileName: "grpc_handler_integration_test.go",
 				expectingError:   false,
 			},
 			{
