@@ -960,7 +960,11 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		fileB := make([]byte, 0)
+		//stats, err := file.Stat()
+		//if err != nil {
+		//	panic(err)
+		//}
+		fileB := make([]byte, 1000)
 		if _, err := io.ReadFull(file, fileB); err != nil {
 			t.Fatal(err)
 		}
