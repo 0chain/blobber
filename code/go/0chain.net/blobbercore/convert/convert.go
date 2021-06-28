@@ -468,6 +468,8 @@ func DownloadFileGRPCToHTTP(req *blobbergrpc.DownloadFileRequest) (*http.Request
 		return nil, err
 	}
 
+	writer.Close()
+
 	r, err := http.NewRequest("POST", "", strings.NewReader(body.String()))
 	if err != nil {
 		return nil, err
