@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberHTTP"
 
@@ -703,6 +704,8 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 		return nil, common.NewError("update_object_attributes",
 			"missing new attributes, pass at least {} for empty attributes")
 	}
+
+	fmt.Println(`attributes ---  `, attributes)
 
 	var attrs = new(reference.Attributes)
 	if err = json.Unmarshal([]byte(attributes), attrs); err != nil {

@@ -3,6 +3,7 @@ package convert
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
@@ -182,11 +183,17 @@ func CollaboratorResponseCreator(r interface{}) *blobbergrpc.CollaboratorRespons
 }
 
 func UpdateObjectAttributesResponseCreator(r interface{}) *blobbergrpc.UpdateObjectAttributesResponse {
+
+	fmt.Println(`response - `, r)
+
 	if r != nil {
 		return nil
 	}
 
-	httpResp, _ := r.(*reference.Attributes)
+	httpResp, ok := r.(*reference.Attributes)
+	if !ok {
+		fmt.Println(`response not okay - `, r)
+	}
 	return &blobbergrpc.UpdateObjectAttributesResponse{WhoPaysForReads: int64(httpResp.WhoPaysForReads)}
 }
 
