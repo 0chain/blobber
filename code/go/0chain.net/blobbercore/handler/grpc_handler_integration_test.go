@@ -921,7 +921,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		attr := &reference.Attributes{WhoPaysForReads: common.WhoPaysOwner}
+		attr := &reference.Attributes{WhoPaysForReads: common.WhoPays3rdParty}
 		attrBytes, err := json.Marshal(attr)
 		if err != nil {
 			t.Fatal(err)
