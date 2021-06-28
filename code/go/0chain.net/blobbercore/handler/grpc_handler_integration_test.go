@@ -1156,15 +1156,20 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 	t.Run("TestDownload", func(t *testing.T) {
 		allocationTx := randString(32)
 
+		_, err := os.Create(`example`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(`example`)
+
 		pubKey, _, signScheme := GeneratePubPrivateKey(t)
 		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 		pubKeyBytes, _ := hex.DecodeString(pubKey)
 		clientId := encryption.Hash(pubKeyBytes)
+		now := common.Timestamp(time.Now().Unix())
+		allocationId := `exampleId`
 
 		if err := tdController.ClearDatabase(); err != nil {
-			t.Fatal(err)
-		}
-		if err := tdController.AddRenameTestData(allocationTx, pubKey, clientId); err != nil {
 			t.Fatal(err)
 		}
 
@@ -1172,21 +1177,27 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		blobberPubKeyBytes, _ := hex.DecodeString(blobberPubKey)
 
 		rm := readmarker.ReadMarker{
-			ClientID:        "",
-			ClientPublicKey: "",
 			BlobberID:       encryption.Hash(blobberPubKeyBytes),
-			AllocationID:    "",
-			OwnerID:         "",
-			Timestamp:       0,
-			ReadCounter:     0,
-			Signature:       "",
-			Suspend:         0,
-			PayerID:         "",
-			AuthTicket:      nil,
+			AllocationID:    allocationId,
+			ClientPublicKey: pubKey,
+			ClientID:        clientId,
+			OwnerID:         clientId,
+			Timestamp:       now,
+			ReadCounter:     1337,
 		}
+
+		rmSig, err := signScheme.Sign(encryption.Hash(rm.GetHashData()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rm.Signature = rmSig
 
 		rmString, err := json.Marshal(rm)
 		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := tdController.AddDownloadTestData(allocationTx, pubKey, clientId, rmSig, now); err != nil {
 			t.Fatal(err)
 		}
 
@@ -1209,6 +1220,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 					Path:       "/some_file",
 					PathHash:   "exampleId:examplePath",
 					ReadMarker: string(rmString),
+					BlockNum:   "10",
 				},
 				expectedMessage: "some_new_file",
 				expectingError:  false,
