@@ -1,8 +1,12 @@
 package convert
 
 import (
+	"bytes"
 	"context"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
+	"mime/multipart"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -418,4 +422,58 @@ func convertDirMetaDataGRPCToDirRef(dirref *blobbergrpc.DirMetaData) *reference.
 		CreatedAt:  time.Unix(0, dirref.CreatedAt),
 		UpdatedAt:  time.Unix(0, dirref.UpdatedAt),
 	}
+}
+
+func DownloadFileGRPCToHTTP(req *blobbergrpc.DownloadFileRequest) (*http.Request, error) {
+	body := bytes.NewBuffer([]byte{})
+	writer := multipart.NewWriter(body)
+
+	err := writer.WriteField("path", req.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	err = writer.WriteField("path_hash", req.PathHash)
+	if err != nil {
+		return nil, err
+	}
+
+	err = writer.WriteField("rx_pay", req.RxPay)
+	if err != nil {
+		return nil, err
+	}
+
+	err = writer.WriteField("block_num", req.BlockNum)
+	if err != nil {
+		return nil, err
+	}
+
+	err = writer.WriteField("num_blocks", req.NumBlocks)
+	if err != nil {
+		return nil, err
+	}
+
+	err = writer.WriteField("read_marker", req.ReadMarker)
+	if err != nil {
+		return nil, err
+	}
+
+	err = writer.WriteField("auth_token", req.AuthToken)
+	if err != nil {
+		return nil, err
+	}
+
+	err = writer.WriteField("content", req.Content)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := http.NewRequest("POST", "", strings.NewReader(body.String()))
+	if err != nil {
+		return nil, err
+	}
+
+	r.Header.Set("Content-Type", writer.FormDataContentType())
+
+	return r, nil
 }

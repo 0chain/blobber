@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"log"
 	"math/rand"
 	"net/http"
@@ -1147,6 +1148,111 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			}
 
 			if response.GetFilename() != tc.expectedMessage {
+				t.Fatal("failed!")
+			}
+		}
+	})
+
+	t.Run("TestDownload", func(t *testing.T) {
+		allocationTx := randString(32)
+
+		pubKey, _, signScheme := GeneratePubPrivateKey(t)
+		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+		pubKeyBytes, _ := hex.DecodeString(pubKey)
+		clientId := encryption.Hash(pubKeyBytes)
+
+		if err := tdController.ClearDatabase(); err != nil {
+			t.Fatal(err)
+		}
+		if err := tdController.AddRenameTestData(allocationTx, pubKey, clientId); err != nil {
+			t.Fatal(err)
+		}
+
+		blobberPubKey := "de52c0a51872d5d2ec04dbc15a6f0696cba22657b80520e1d070e72de64c9b04e19ce3223cae3c743a20184158457582ffe9c369ca9218c04bfe83a26a62d88d"
+		blobberPubKeyBytes, _ := hex.DecodeString(blobberPubKey)
+
+		rm := readmarker.ReadMarker{
+			ClientID:        "",
+			ClientPublicKey: "",
+			BlobberID:       encryption.Hash(blobberPubKeyBytes),
+			AllocationID:    "",
+			OwnerID:         "",
+			Timestamp:       0,
+			ReadCounter:     0,
+			Signature:       "",
+			Suspend:         0,
+			PayerID:         "",
+			AuthTicket:      nil,
+		}
+
+		rmString, err := json.Marshal(rm)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		testCases := []struct {
+			name            string
+			context         metadata.MD
+			input           *blobbergrpc.DownloadFileRequest
+			expectedMessage string
+			expectingError  bool
+		}{
+			{
+				name: "Success",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          clientId,
+					common.ClientSignatureHeader: clientSignature,
+					common.ClientKeyHeader:       pubKey,
+				}),
+				input: &blobbergrpc.DownloadFileRequest{
+					Allocation: allocationTx,
+					Path:       "/some_file",
+					PathHash:   "exampleId:examplePath",
+					ReadMarker: string(rmString),
+				},
+				expectedMessage: "some_new_file",
+				expectingError:  false,
+			},
+			{
+				name: "Fail",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          clientId,
+					common.ClientSignatureHeader: clientSignature,
+					common.ClientKeyHeader:       pubKey,
+				}),
+				input: &blobbergrpc.DownloadFileRequest{
+					Allocation: "",
+					Path:       "",
+					PathHash:   "",
+					RxPay:      "",
+					BlockNum:   "",
+					NumBlocks:  "",
+					ReadMarker: "",
+					AuthToken:  "",
+					Content:    "",
+				},
+				expectedMessage: "",
+				expectingError:  true,
+			},
+		}
+
+		for _, tc := range testCases {
+			ctx := context.Background()
+			ctx = metadata.NewOutgoingContext(ctx, tc.context)
+			response, err := blobberClient.DownloadFile(ctx, tc.input)
+			if err != nil {
+				if !tc.expectingError {
+					t.Fatal(err)
+				}
+
+				continue
+			}
+
+			if tc.expectingError {
+				t.Fatal("expected error")
+			}
+
+			if response.GetPath() != tc.expectedMessage {
 				t.Fatal("failed!")
 			}
 		}

@@ -71,23 +71,12 @@ func (b *blobberGRPCService) RenameObject(ctx context.Context, req *blobbergrpc.
 }
 
 func (b *blobberGRPCService) DownloadFile(ctx context.Context, req *blobbergrpc.DownloadFileRequest) (*blobbergrpc.DownloadFileResponse, error) {
-
-	r, err := http.NewRequest("POST", "", nil)
+	r, err := convert.DownloadFileGRPCToHTTP(req)
 	if err != nil {
 		return nil, err
 	}
 
 	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":        {req.Path},
-		"path_hash":   {req.PathHash},
-		"rx_pay":      {req.RxPay},
-		"block_num":   {req.BlockNum},
-		"num_blocks":  {req.NumBlocks},
-		"read_marker": {req.ReadMarker},
-		"auth_token":  {req.AuthToken},
-		"content":     {req.AuthToken},
-	}
 
 	resp, err := DownloadHandler(ctx, r)
 	if err != nil {
