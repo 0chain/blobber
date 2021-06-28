@@ -376,12 +376,20 @@ func DownloadFileResponseCreator(r interface{}) *blobbergrpc.DownloadFileRespons
 		return nil
 	}
 
-	httpResp, _ := r.(*blobberHTTP.DownloadResponse)
-	return &blobbergrpc.DownloadFileResponse{
-		Success:      httpResp.Success,
-		Data:         httpResp.Data,
-		AllocationId: httpResp.AllocationID,
-		Path:         httpResp.Path,
-		LatestRm:     ReadMarkerToReadMarkerGRPC(httpResp.LatestRM),
+	switch httpResp := r.(type) {
+	case []byte:
+		return &blobbergrpc.DownloadFileResponse{
+			Data: httpResp,
+		}
+	case *blobberHTTP.DownloadResponse:
+		return &blobbergrpc.DownloadFileResponse{
+			Success:      httpResp.Success,
+			Data:         httpResp.Data,
+			AllocationId: httpResp.AllocationID,
+			Path:         httpResp.Path,
+			LatestRm:     ReadMarkerToReadMarkerGRPC(httpResp.LatestRM),
+		}
 	}
+
+	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -1156,11 +1157,52 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 	t.Run("TestDownload", func(t *testing.T) {
 		allocationTx := randString(32)
 
-		_, err := os.Create(`example`)
+		root, _ := os.Getwd()
+		path := strings.Split(root, `code`)
+		err := os.Mkdir(path[0]+`docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon`, 0700)
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer os.Remove(`example`)
+		err = os.Mkdir(path[0]+`docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen`, 0700)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f, err := os.Create(path[0] + `docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen/MyFile`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		file, err := os.Open(root + "/grpc_handler_integration_test.go")
+		if err != nil {
+			t.Fatal(err)
+		}
+		stat, err := file.Stat()
+		if err != nil {
+			t.Fatal(err)
+		}
+		fileB := make([]byte, stat.Size())
+		if _, err := io.ReadFull(file, fileB); err != nil {
+			t.Fatal(err)
+		}
+		_, err = f.Write(fileB)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = f.Write(fileB)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = f.Write(fileB)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Println(`file size`, stat.Size())
+		file.Close()
+		f.Close()
+		defer func() {
+			os.Remove(path[0] + `docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen/MyFile`)
+			os.Remove(path[0] + `docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen`)
+			os.Remove(path[0] + `docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon`)
+		}()
 
 		pubKey, _, signScheme := GeneratePubPrivateKey(t)
 		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
@@ -1183,7 +1225,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			ClientID:        clientId,
 			OwnerID:         clientId,
 			Timestamp:       now,
-			ReadCounter:     1337,
+			//ReadCounter:     1337,
 		}
 
 		rmSig, err := signScheme.Sign(encryption.Hash(rm.GetHashData()))
@@ -1220,7 +1262,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 					Path:       "/some_file",
 					PathHash:   "exampleId:examplePath",
 					ReadMarker: string(rmString),
-					BlockNum:   "10",
+					BlockNum:   "2",
 				},
 				expectedMessage: "some_new_file",
 				expectingError:  false,
@@ -1251,7 +1293,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		for _, tc := range testCases {
 			ctx := context.Background()
 			ctx = metadata.NewOutgoingContext(ctx, tc.context)
-			response, err := blobberClient.DownloadFile(ctx, tc.input)
+			_, err := blobberClient.DownloadFile(ctx, tc.input)
 			if err != nil {
 				if !tc.expectingError {
 					t.Fatal(err)
@@ -1262,10 +1304,6 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 
 			if tc.expectingError {
 				t.Fatal("expected error")
-			}
-
-			if response.GetPath() != tc.expectedMessage {
-				t.Fatal("failed!")
 			}
 		}
 	})
