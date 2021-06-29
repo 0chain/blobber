@@ -43,7 +43,7 @@ type NewFileChange struct {
 	IsFinal bool `json:"is_final,omitempty"`
 }
 
-func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName string) (*reference.Ref, error){
+func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, allocationRoot string) (*reference.Ref, error) {
 	path := filepath.Clean(dirName)
 	tSubDirs := reference.GetSubDirsFromPath(path)
 
@@ -85,9 +85,19 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName st
 		}
 	}
 
+	var newDir = reference.NewDirectoryRef()
+	newDir.ActualFileSize = 0
+	newDir.AllocationID = dirRef.AllocationID
+	newDir.MerkleRoot = nf.MerkleRoot
+	newDir.Name = dirName
+	newDir.ParentPath = dirRef.Path
+	newDir.WriteMarker = allocationRoot
+	dirRef.AddChild(newDir)
+
 	if _, err := dirRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}
+
 	stats.NewDirCreated(ctx, dirRef.ID)
 	return rootRef, nil
 }
@@ -95,8 +105,13 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName st
 func (nf *NewFileChange) ProcessChange(ctx context.Context,
 	change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 
-	if change.Operation == CREATEDIR_OPERATION{
-		return nf.CreateDir(ctx, nf.AllocationID, change.Input)
+	if change.Operation == CREATEDIR_OPERATION {
+		err := nf.Unmarshal(change.Input)
+		if err != nil {
+			return nil, err
+		}
+
+		return nf.CreateDir(ctx, nf.AllocationID, nf.Path, allocationRoot)
 	}
 
 	path, _ := filepath.Split(nf.Path)
@@ -170,6 +185,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context,
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}
+
 	stats.NewFileCreated(ctx, newFile.ID)
 	return rootRef, nil
 }

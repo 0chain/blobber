@@ -918,7 +918,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*Upl
 
 	dirPath := r.FormValue("dir_path")
 	if len(dirPath) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
 	}
 
 	exisitingRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
@@ -948,9 +948,14 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*Upl
 	allocationChange.ConnectionID = connectionObj.ConnectionID
 	allocationChange.Size = 0
 	allocationChange.Operation = allocation.CREATEDIR_OPERATION
-	allocationChange.Input = dirPath
 	connectionObj.Size += allocationChange.Size
 	var formData allocation.NewFileChange
+	formData.Filename = dirPath
+	formData.Path = dirPath
+	formData.AllocationID = allocationID
+	formData.ConnectionID = connectionID
+	formData.ActualHash = "-"
+	formData.ActualSize = 1
 
 	connectionObj.AddChange(allocationChange, &formData)
 
