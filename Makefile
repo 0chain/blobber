@@ -7,4 +7,4 @@ lint:
 	golangci-lint run --timeout 2m0s;
 
 integration-tests:
-	sudo go test ./... -args integration;
+	go test ./... -args integration;

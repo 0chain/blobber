@@ -1161,6 +1161,11 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		root, _ := os.Getwd()
 		path := strings.Split(root, `code`)
 
+		err = os.Chown(path[0]+`docker.local/blobber1/files/files`, os.Getuid(), os.Getgid())
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		err = os.Chmod(path[0]+`docker.local/blobber1/files/files`, 0777)
 		if err != nil {
 			t.Fatal(err)
