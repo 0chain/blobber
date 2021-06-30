@@ -151,19 +151,17 @@ func BlobberHealthCheck(ctx context.Context) (string, error) {
 	return txn.Hash, nil
 }
 
-func TransactionVerify(txnHash string) (*transaction.Transaction, error) {
-	var err error
-
+func TransactionVerify(txnHash string) (t *transaction.Transaction, err error) {
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	for i := 0; i < util.MAX_RETRIES; i++ {
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-		if t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain()); err == nil {
+		if t, err = transaction.VerifyTransaction(txnHash, chain.GetServerChain()); err == nil {
 			return t, nil
 		}
 	}
 
-	return nil, err
+	return
 }
 
 func WalletRegister() error {
