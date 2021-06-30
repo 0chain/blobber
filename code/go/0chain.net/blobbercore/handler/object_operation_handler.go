@@ -27,6 +27,7 @@ import (
 	"0chain.net/core/lock"
 	"0chain.net/core/node"
 	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
+	zfileref "github.com/0chain/gosdk/zboxcore/fileref"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -313,7 +314,8 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 				"error parsing the auth ticket for download: %v", err)
 		}
 
-		if authToken.ContentHash != fileref.ContentHash {
+		// we only check content hash if its authticket is referring to a file
+		if authToken.RefType == zfileref.FILE && authToken.ContentHash != fileref.ContentHash {
 			return nil, errors.New("content hash does not match the requested file content hash")
 		}
 
@@ -410,7 +412,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	response.LatestRM = readMarker
 	if len(fileref.EncryptedKey) > 0 {
 		// check if client is authorized to download
-		shareInfo, err := reference.GetShareInfo(ctx, readMarker.ClientID, fileref.PathHash)
+		shareInfo, err := reference.GetShareInfoRecursive(
+			ctx,
+			readMarker.ClientID,
+			allocationTx,
+			fileref.Path,
+		)
 		if err != nil {
 			return nil, errors.New("error during share info lookup in database" + err.Error())
 		} else if shareInfo == nil {

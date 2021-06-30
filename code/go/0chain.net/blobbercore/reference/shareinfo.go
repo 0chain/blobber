@@ -3,7 +3,9 @@ package reference
 import (
 	"0chain.net/blobbercore/datastore"
 	"context"
+	"github.com/0chain/gosdk/zboxcore/fileref"
 	"gorm.io/gorm"
+	"strings"
 	"time"
 )
 
@@ -69,4 +71,23 @@ func GetShareInfo(ctx context.Context, clientID string, filePathHash string) (*S
 		return nil, err
 	}
 	return shareInfo, nil
+}
+
+func GetShareInfoRecursive(ctx context.Context, clientID string, allocationTx string, filePath string) (*ShareInfo, error) {
+	splitted := strings.Split(filePath, "/")
+	for i := 0; i < len(splitted); i++ {
+		path := strings.Join(splitted[:len(splitted) - i], "/")
+		if path == "" {
+			path = "/"
+		}
+		pathHash := fileref.GetReferenceLookup(allocationTx, path)
+		shareInfo, err := GetShareInfo(ctx, clientID, pathHash)
+		if err != nil {
+			return nil, err
+		}
+		if shareInfo != nil {
+			return shareInfo, nil
+		}
+	}
+	return nil, nil
 }
