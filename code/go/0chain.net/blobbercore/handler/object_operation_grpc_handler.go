@@ -96,3 +96,26 @@ func (b *blobberGRPCService) DownloadFile(ctx context.Context, req *blobbergrpc.
 
 	return convert.DownloadFileResponseCreator(resp), nil
 }
+
+func (b *blobberGRPCService) UploadFile(ctx context.Context, req *blobbergrpc.UploadFileRequest) (*blobbergrpc.UploadFileResponse, error) {
+
+	r, err := convert.WriteFileGRPCToHTTP(req)
+	if err != nil {
+		return nil, err
+	}
+
+	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	r.Form = map[string][]string{
+		"path":          {req.Path},
+		"connection_id": {req.ConnectionId},
+		"uploadMeta":    {req.UploadMeta},
+		"updateMeta":    {req.UpdateMeta},
+	}
+
+	resp, err := UploadHandler(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return convert.UploadFileResponseCreator(resp), nil
+}
