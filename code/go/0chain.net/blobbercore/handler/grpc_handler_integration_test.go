@@ -1161,7 +1161,10 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		root, _ := os.Getwd()
 		path := strings.Split(root, `code`)
 
-		err := os.MkdirAll(path[0]+`docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen`, os.ModePerm)
+		err = os.MkdirAll(path[0]+`docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen`, os.ModePerm)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		f, err := os.Create(path[0] + `docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen/MyFile`)
 		if err != nil {
@@ -1184,26 +1187,6 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		//stat, err := file.Stat()
-		//if err != nil {
-		//	t.Fatal(err)
-		//}
-		//fileB := make([]byte, stat.Size())
-		//if _, err := io.ReadFull(file, fileB); err != nil {
-		//	t.Fatal(err)
-		//}
-		//_, err = f.Write(fileB)
-		//if err != nil {
-		//	t.Fatal(err)
-		//}
-		//_, err = f.Write(fileB)
-		//if err != nil {
-		//	t.Fatal(err)
-		//}
-		//_, err = f.Write(fileB)
-		//if err != nil {
-		//	t.Fatal(err)
-		//}
 
 		pubKey, _, signScheme := GeneratePubPrivateKey(t)
 		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
