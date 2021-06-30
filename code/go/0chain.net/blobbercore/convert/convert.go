@@ -3,6 +3,7 @@ package convert
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"mime/multipart"
 	"net/http"
@@ -422,6 +423,63 @@ func convertDirMetaDataGRPCToDirRef(dirref *blobbergrpc.DirMetaData) *reference.
 		CreatedAt:  time.Unix(0, dirref.CreatedAt),
 		UpdatedAt:  time.Unix(0, dirref.UpdatedAt),
 	}
+}
+
+func WriteFileGRPCToHTTP(req *blobbergrpc.UploadFileRequest) (*http.Request, error) {
+	var formData allocation.UpdateFileChange
+	var uploadMetaString string
+	switch req.Method {
+	case `POST`:
+		uploadMetaString = req.UploadMeta
+	case `PUT`:
+		uploadMetaString = req.UpdateMeta
+	}
+	err := json.Unmarshal([]byte(uploadMetaString), &formData)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters",
+			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
+	}
+
+	r, err := http.NewRequest(req.Method, "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Method != `DELETE` {
+		body := bytes.NewBuffer(nil)
+		writer := multipart.NewWriter(body)
+		part, err := writer.CreateFormFile(`uploadFile`, formData.Filename)
+		if err != nil {
+			return nil, err
+		}
+		_, err = part.Write(req.UploadFile)
+		if err != nil {
+			return nil, err
+		}
+
+		thumbPart, err := writer.CreateFormFile(`uploadThumbnailFile`, formData.ThumbnailFilename)
+		if err != nil {
+			return nil, err
+		}
+		_, err = thumbPart.Write(req.UploadThumbnailFile)
+		if err != nil {
+			return nil, err
+		}
+
+		err = writer.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		r, err = http.NewRequest(req.Method, "", body)
+		if err != nil {
+			return nil, err
+		}
+		r.Header.Set("Content-Type", writer.FormDataContentType())
+
+	}
+
+	return r, nil
 }
 
 func DownloadFileGRPCToHTTP(req *blobbergrpc.DownloadFileRequest) (*http.Request, error) {

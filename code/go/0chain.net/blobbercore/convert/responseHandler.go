@@ -393,3 +393,19 @@ func DownloadFileResponseCreator(r interface{}) *blobbergrpc.DownloadFileRespons
 
 	return nil
 }
+
+func UploadFileResponseCreator(r interface{}) *blobbergrpc.UploadFileResponse {
+	if r == nil {
+		return nil
+	}
+
+	httpResp, _ := r.(*blobberHTTP.UploadResult)
+	return &blobbergrpc.UploadFileResponse{
+		Filename:     httpResp.Filename,
+		Size:         httpResp.Size,
+		ContentHash:  httpResp.Hash,
+		MerkleRoot:   httpResp.MerkleRoot,
+		UploadLength: httpResp.UploadLength,
+		UploadOffset: httpResp.UploadOffset,
+	}
+}
