@@ -19,6 +19,7 @@ jobs:
         run: |
           BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')
           echo ::set-output name=BRANCH::${BRANCH}
+          echo "This workflow run is triggered by ${{ github.event_name }} ."
 
       - name: Triggering build.yml for creating & pushing docker images.
         uses: convictional/trigger-workflow-and-wait@v1.3.0
