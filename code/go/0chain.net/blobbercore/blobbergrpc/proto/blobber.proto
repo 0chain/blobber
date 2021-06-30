@@ -14,12 +14,14 @@ service Blobber {
   }
   rpc GetFileMetaData(GetFileMetaDataRequest) returns (GetFileMetaDataResponse) {
     option (google.api.http) = {
-      get: "/v2/file/meta/{allocation}"
+      post: "/v2/file/meta/{allocation}"
+      body: "*"
     };
   }
   rpc GetFileStats(GetFileStatsRequest) returns (GetFileStatsResponse) {
     option (google.api.http) = {
-      get: "/v2/file/stats/{allocation}"
+      post: "/v2/file/stats/{allocation}"
+      body: "*"
     };
   }
   rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {
