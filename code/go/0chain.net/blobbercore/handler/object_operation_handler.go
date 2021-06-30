@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberHTTP"
 
 	"net/http"

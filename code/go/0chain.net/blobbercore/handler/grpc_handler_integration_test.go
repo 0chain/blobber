@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"io"
 	"log"
 	"math/rand"
@@ -894,6 +895,390 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 			ctx := context.Background()
 			ctx = metadata.NewOutgoingContext(ctx, tc.context)
 			_, err := blobberClient.CalculateHash(ctx, tc.input)
+			if err != nil {
+				if !tc.expectingError {
+					t.Fatal(err)
+				}
+
+				continue
+			}
+
+			if tc.expectingError {
+				t.Fatal("expected error")
+			}
+		}
+	})
+
+	t.Run("TestUpdateAttributes", func(t *testing.T) {
+		allocationTx := randString(32)
+
+		pubKey, _, signScheme := GeneratePubPrivateKey(t)
+		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+		pubKeyBytes, _ := hex.DecodeString(pubKey)
+		clientId := encryption.Hash(pubKeyBytes)
+
+		if err := tdController.ClearDatabase(); err != nil {
+			t.Fatal(err)
+		}
+		if err := tdController.AddAttributesTestData(allocationTx, pubKey, clientId); err != nil {
+			t.Fatal(err)
+		}
+
+		attr := &reference.Attributes{WhoPaysForReads: common.WhoPays3rdParty}
+		attrBytes, err := json.Marshal(attr)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		testCases := []struct {
+			name            string
+			context         metadata.MD
+			input           *blobbergrpc.UpdateObjectAttributesRequest
+			expectedMessage int
+			expectingError  bool
+		}{
+			{
+				name: "Success",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          clientId,
+					common.ClientSignatureHeader: clientSignature,
+					common.ClientKeyHeader:       pubKey,
+				}),
+				input: &blobbergrpc.UpdateObjectAttributesRequest{
+					Allocation:   allocationTx,
+					Path:         "/some_file",
+					PathHash:     "exampleId:examplePath",
+					ConnectionId: "connection_id",
+					Attributes:   string(attrBytes),
+				},
+				expectedMessage: int(attr.WhoPaysForReads),
+				expectingError:  false,
+			},
+			{
+				name: "Fail",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          clientId,
+					common.ClientSignatureHeader: clientSignature,
+					common.ClientKeyHeader:       pubKey,
+				}),
+				input: &blobbergrpc.UpdateObjectAttributesRequest{
+					Allocation:   "",
+					Path:         "",
+					PathHash:     "",
+					ConnectionId: "",
+					Attributes:   "",
+				},
+				expectedMessage: 0,
+				expectingError:  true,
+			},
+		}
+
+		for _, tc := range testCases {
+			ctx := context.Background()
+			ctx = metadata.NewOutgoingContext(ctx, tc.context)
+			response, err := blobberClient.UpdateObjectAttributes(ctx, tc.input)
+			if err != nil {
+				if !tc.expectingError {
+					t.Fatal(err)
+				}
+
+				continue
+			}
+
+			if tc.expectingError {
+				t.Fatal("expected error")
+			}
+
+			if response.GetWhoPaysForReads() != int64(tc.expectedMessage) {
+				t.Fatal("failed!")
+			}
+		}
+	})
+
+	t.Run("TestCopyObject", func(t *testing.T) {
+		allocationTx := randString(32)
+
+		pubKey, _, signScheme := GeneratePubPrivateKey(t)
+		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+		pubKeyBytes, _ := hex.DecodeString(pubKey)
+		clientId := encryption.Hash(pubKeyBytes)
+
+		if err := tdController.ClearDatabase(); err != nil {
+			t.Fatal(err)
+		}
+		if err := tdController.AddCopyObjectData(allocationTx, pubKey, clientId); err != nil {
+			t.Fatal(err)
+		}
+
+		testCases := []struct {
+			name            string
+			context         metadata.MD
+			input           *blobbergrpc.CopyObjectRequest
+			expectedMessage string
+			expectingError  bool
+		}{
+			{
+				name: "Success",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          clientId,
+					common.ClientSignatureHeader: clientSignature,
+					common.ClientKeyHeader:       pubKey,
+				}),
+				input: &blobbergrpc.CopyObjectRequest{
+					Allocation:   allocationTx,
+					Path:         "/some_file",
+					PathHash:     "exampleId:examplePath",
+					ConnectionId: "connection_id",
+					Dest:         "/copy",
+				},
+				expectedMessage: "some_file",
+				expectingError:  false,
+			},
+			{
+				name: "Fail",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          clientId,
+					common.ClientSignatureHeader: clientSignature,
+					common.ClientKeyHeader:       pubKey,
+				}),
+				input: &blobbergrpc.CopyObjectRequest{
+					Allocation:   "",
+					Path:         "",
+					PathHash:     "",
+					ConnectionId: "",
+					Dest:         "",
+				},
+				expectedMessage: "",
+				expectingError:  true,
+			},
+		}
+
+		for _, tc := range testCases {
+			ctx := context.Background()
+			ctx = metadata.NewOutgoingContext(ctx, tc.context)
+			response, err := blobberClient.CopyObject(ctx, tc.input)
+			if err != nil {
+				if !tc.expectingError {
+					t.Fatal(err)
+				}
+
+				continue
+			}
+
+			if tc.expectingError {
+				t.Fatal("expected error")
+			}
+
+			if response.GetFilename() != tc.expectedMessage {
+				t.Fatal("failed!")
+			}
+		}
+	})
+
+	t.Run("TestRenameObject", func(t *testing.T) {
+		allocationTx := randString(32)
+
+		pubKey, _, signScheme := GeneratePubPrivateKey(t)
+		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+		pubKeyBytes, _ := hex.DecodeString(pubKey)
+		clientId := encryption.Hash(pubKeyBytes)
+
+		if err := tdController.ClearDatabase(); err != nil {
+			t.Fatal(err)
+		}
+		if err := tdController.AddRenameTestData(allocationTx, pubKey, clientId); err != nil {
+			t.Fatal(err)
+		}
+
+		testCases := []struct {
+			name            string
+			context         metadata.MD
+			input           *blobbergrpc.RenameObjectRequest
+			expectedMessage string
+			expectingError  bool
+		}{
+			{
+				name: "Success",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          clientId,
+					common.ClientSignatureHeader: clientSignature,
+					common.ClientKeyHeader:       pubKey,
+				}),
+				input: &blobbergrpc.RenameObjectRequest{
+					Allocation:   allocationTx,
+					Path:         "/some_file",
+					PathHash:     "exampleId:examplePath",
+					ConnectionId: "connection_id",
+					NewName:      "some_new_file",
+				},
+				expectedMessage: "some_new_file",
+				expectingError:  false,
+			},
+			{
+				name: "Fail",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          clientId,
+					common.ClientSignatureHeader: clientSignature,
+					common.ClientKeyHeader:       pubKey,
+				}),
+				input: &blobbergrpc.RenameObjectRequest{
+					Allocation:   "",
+					Path:         "",
+					PathHash:     "",
+					ConnectionId: "",
+					NewName:      "",
+				},
+				expectedMessage: "",
+				expectingError:  true,
+			},
+		}
+
+		for _, tc := range testCases {
+			ctx := context.Background()
+			ctx = metadata.NewOutgoingContext(ctx, tc.context)
+			response, err := blobberClient.RenameObject(ctx, tc.input)
+			if err != nil {
+				if !tc.expectingError {
+					t.Fatal(err)
+				}
+
+				continue
+			}
+
+			if tc.expectingError {
+				t.Fatal("expected error")
+			}
+
+			if response.GetFilename() != tc.expectedMessage {
+				t.Fatal("failed!")
+			}
+		}
+	})
+
+	t.Run("TestDownload", func(t *testing.T) {
+		allocationTx := randString(32)
+
+		root, _ := os.Getwd()
+		path := strings.Split(root, `code`)
+
+		err = os.MkdirAll(path[0]+`docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen`, os.ModePerm)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			err := os.RemoveAll(path[0] + `docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon`)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}()
+
+		f, err := os.Create(path[0] + `docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen/MyFile`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+
+		file, err := os.Open(root + "/grpc_handler_integration_test.go")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer file.Close()
+
+		_, err = io.Copy(f, file)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		pubKey, _, signScheme := GeneratePubPrivateKey(t)
+		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+		pubKeyBytes, _ := hex.DecodeString(pubKey)
+		clientId := encryption.Hash(pubKeyBytes)
+		now := common.Timestamp(time.Now().Unix())
+		allocationId := `exampleId`
+
+		if err := tdController.ClearDatabase(); err != nil {
+			t.Fatal(err)
+		}
+
+		blobberPubKey := "de52c0a51872d5d2ec04dbc15a6f0696cba22657b80520e1d070e72de64c9b04e19ce3223cae3c743a20184158457582ffe9c369ca9218c04bfe83a26a62d88d"
+		blobberPubKeyBytes, _ := hex.DecodeString(blobberPubKey)
+
+		rm := readmarker.ReadMarker{
+			BlobberID:       encryption.Hash(blobberPubKeyBytes),
+			AllocationID:    allocationId,
+			ClientPublicKey: pubKey,
+			ClientID:        clientId,
+			OwnerID:         clientId,
+			Timestamp:       now,
+			//ReadCounter:     1337,
+		}
+
+		rmSig, err := signScheme.Sign(encryption.Hash(rm.GetHashData()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rm.Signature = rmSig
+
+		rmString, err := json.Marshal(rm)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := tdController.AddDownloadTestData(allocationTx, pubKey, clientId, rmSig, now); err != nil {
+			t.Fatal(err)
+		}
+
+		testCases := []struct {
+			name            string
+			context         metadata.MD
+			input           *blobbergrpc.DownloadFileRequest
+			expectedMessage string
+			expectingError  bool
+		}{
+			{
+				name: "Success",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          clientId,
+					common.ClientSignatureHeader: clientSignature,
+					common.ClientKeyHeader:       pubKey,
+				}),
+				input: &blobbergrpc.DownloadFileRequest{
+					Allocation: allocationTx,
+					Path:       "/some_file",
+					PathHash:   "exampleId:examplePath",
+					ReadMarker: string(rmString),
+					BlockNum:   "1",
+				},
+				expectedMessage: "some_new_file",
+				expectingError:  false,
+			},
+			{
+				name: "Fail",
+				context: metadata.New(map[string]string{
+					common.ClientHeader:          clientId,
+					common.ClientSignatureHeader: clientSignature,
+					common.ClientKeyHeader:       pubKey,
+				}),
+				input: &blobbergrpc.DownloadFileRequest{
+					Allocation: "",
+					Path:       "",
+					PathHash:   "",
+					RxPay:      "",
+					BlockNum:   "",
+					NumBlocks:  "",
+					ReadMarker: "",
+					AuthToken:  "",
+					Content:    "",
+				},
+				expectedMessage: "",
+				expectingError:  true,
+			},
+		}
+
+		for _, tc := range testCases {
+			ctx := context.Background()
+			ctx = metadata.NewOutgoingContext(ctx, tc.context)
+			_, err := blobberClient.DownloadFile(ctx, tc.input)
 			if err != nil {
 				if !tc.expectingError {
 					t.Fatal(err)

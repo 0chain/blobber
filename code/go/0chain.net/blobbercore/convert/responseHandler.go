@@ -3,7 +3,6 @@ package convert
 import (
 	"context"
 	"encoding/json"
-
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	stats2 "github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
@@ -182,11 +181,12 @@ func CollaboratorResponseCreator(r interface{}) *blobbergrpc.CollaboratorRespons
 }
 
 func UpdateObjectAttributesResponseCreator(r interface{}) *blobbergrpc.UpdateObjectAttributesResponse {
-	if r != nil {
+	if r == nil {
 		return nil
 	}
 
 	httpResp, _ := r.(*reference.Attributes)
+
 	return &blobbergrpc.UpdateObjectAttributesResponse{WhoPaysForReads: int64(httpResp.WhoPaysForReads)}
 }
 
@@ -376,14 +376,22 @@ func DownloadFileResponseCreator(r interface{}) *blobbergrpc.DownloadFileRespons
 		return nil
 	}
 
-	httpResp, _ := r.(*blobberHTTP.DownloadResponse)
-	return &blobbergrpc.DownloadFileResponse{
-		Success:      httpResp.Success,
-		Data:         httpResp.Data,
-		AllocationId: httpResp.AllocationID,
-		Path:         httpResp.Path,
-		LatestRm:     ReadMarkerToReadMarkerGRPC(httpResp.LatestRM),
+	switch httpResp := r.(type) {
+	case []byte:
+		return &blobbergrpc.DownloadFileResponse{
+			Data: httpResp,
+		}
+	case *blobberHTTP.DownloadResponse:
+		return &blobbergrpc.DownloadFileResponse{
+			Success:      httpResp.Success,
+			Data:         httpResp.Data,
+			AllocationId: httpResp.AllocationID,
+			Path:         httpResp.Path,
+			LatestRm:     ReadMarkerToReadMarkerGRPC(httpResp.LatestRM),
+		}
 	}
+
+	return nil
 }
 
 func UploadFileResponseCreator(r interface{}) *blobbergrpc.UploadFileResponse {
