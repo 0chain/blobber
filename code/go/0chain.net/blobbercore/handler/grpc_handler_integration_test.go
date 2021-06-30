@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"io"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -1161,37 +1161,49 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		root, _ := os.Getwd()
 		path := strings.Split(root, `code`)
 
+		err := os.MkdirAll(path[0]+`docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen`, os.ModePerm)
+
 		f, err := os.Create(path[0] + `docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen/MyFile`)
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer f.Close()
+		defer func() {
+			err := os.RemoveAll(path[0] + `docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon`)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}()
 		file, err := os.Open(root + "/grpc_handler_integration_test.go")
 		if err != nil {
 			t.Fatal(err)
 		}
-		stat, err := file.Stat()
+		defer file.Close()
+
+		_, err = io.Copy(f, file)
 		if err != nil {
 			t.Fatal(err)
 		}
-		fileB := make([]byte, stat.Size())
-		if _, err := io.ReadFull(file, fileB); err != nil {
-			t.Fatal(err)
-		}
-		_, err = f.Write(fileB)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, err = f.Write(fileB)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, err = f.Write(fileB)
-		if err != nil {
-			t.Fatal(err)
-		}
-		fmt.Println(`file size`, stat.Size())
-		file.Close()
-		f.Close()
+		//stat, err := file.Stat()
+		//if err != nil {
+		//	t.Fatal(err)
+		//}
+		//fileB := make([]byte, stat.Size())
+		//if _, err := io.ReadFull(file, fileB); err != nil {
+		//	t.Fatal(err)
+		//}
+		//_, err = f.Write(fileB)
+		//if err != nil {
+		//	t.Fatal(err)
+		//}
+		//_, err = f.Write(fileB)
+		//if err != nil {
+		//	t.Fatal(err)
+		//}
+		//_, err = f.Write(fileB)
+		//if err != nil {
+		//	t.Fatal(err)
+		//}
 
 		pubKey, _, signScheme := GeneratePubPrivateKey(t)
 		clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
@@ -1251,7 +1263,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 					Path:       "/some_file",
 					PathHash:   "exampleId:examplePath",
 					ReadMarker: string(rmString),
-					BlockNum:   "2",
+					BlockNum:   "1",
 				},
 				expectedMessage: "some_new_file",
 				expectingError:  false,
