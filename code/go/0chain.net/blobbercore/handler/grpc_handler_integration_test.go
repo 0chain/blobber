@@ -1161,22 +1161,28 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		root, _ := os.Getwd()
 		path := strings.Split(root, `code`)
 
-		err = os.MkdirAll(path[0]+`docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen`, os.ModePerm)
+		err = os.Chmod(path[0]+`docker.local/blobber1/files/files`, 0777)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		f, err := os.Create(path[0] + `docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen/MyFile`)
+		err = os.MkdirAll(path[0]+`docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen`, os.ModePerm)
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer f.Close()
 		defer func() {
 			err := os.RemoveAll(path[0] + `docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon`)
 			if err != nil {
 				t.Fatal(err)
 			}
 		}()
+
+		f, err := os.Create(path[0] + `docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen/MyFile`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+
 		file, err := os.Open(root + "/grpc_handler_integration_test.go")
 		if err != nil {
 			t.Fatal(err)
