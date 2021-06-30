@@ -36,7 +36,7 @@ jobs:
           cd docker.local/blobber1
           ../bin/blobber.start_bls.sh </dev/null &>/dev/null &
           cd ../..
-          make integration-tests
+          sudo make integration-tests
   lint:
     runs-on: ubuntu-20.04
     steps:
