@@ -54,7 +54,7 @@ service Blobber {
       body: "*"
     };
   }
-  rpc WriteFile(UploadFileRequest) returns (UploadFileResponse) {
+  rpc UploadFile(UploadFileRequest) returns (UploadFileResponse) {
     option (google.api.http) = {
       post: "/v2/file/upload/{allocation}"
       body: "*"

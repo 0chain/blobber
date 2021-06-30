@@ -995,7 +995,7 @@ func TestBlobberGRPCService_IntegrationTest(t *testing.T) {
 		for _, tc := range testCases {
 			ctx := context.Background()
 			ctx = metadata.NewOutgoingContext(ctx, tc.context)
-			response, err := blobberClient.WriteFile(ctx, tc.input)
+			response, err := blobberClient.UploadFile(ctx, tc.input)
 			if err != nil {
 				if !tc.expectingError {
 					t.Fatal(err)

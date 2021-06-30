@@ -26,7 +26,7 @@ type BlobberClient interface {
 	GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error)
 	DownloadFile(ctx context.Context, in *DownloadFileRequest, opts ...grpc.CallOption) (*DownloadFileResponse, error)
 	RenameObject(ctx context.Context, in *RenameObjectRequest, opts ...grpc.CallOption) (*RenameObjectResponse, error)
-	WriteFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error)
+	UploadFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error)
 	Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error)
 	CalculateHash(ctx context.Context, in *CalculateHashRequest, opts ...grpc.CallOption) (*CalculateHashResponse, error)
 	CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequest, opts ...grpc.CallOption) (*CommitMetaTxnResponse, error)
@@ -124,9 +124,9 @@ func (c *blobberClient) RenameObject(ctx context.Context, in *RenameObjectReques
 	return out, nil
 }
 
-func (c *blobberClient) WriteFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error) {
+func (c *blobberClient) UploadFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error) {
 	out := new(UploadFileResponse)
-	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/WriteFile", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.service.v1.Blobber/UploadFile", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +200,7 @@ type BlobberServer interface {
 	GetObjectTree(context.Context, *GetObjectTreeRequest) (*GetObjectTreeResponse, error)
 	DownloadFile(context.Context, *DownloadFileRequest) (*DownloadFileResponse, error)
 	RenameObject(context.Context, *RenameObjectRequest) (*RenameObjectResponse, error)
-	WriteFile(context.Context, *UploadFileRequest) (*UploadFileResponse, error)
+	UploadFile(context.Context, *UploadFileRequest) (*UploadFileResponse, error)
 	Commit(context.Context, *CommitRequest) (*CommitResponse, error)
 	CalculateHash(context.Context, *CalculateHashRequest) (*CalculateHashResponse, error)
 	CommitMetaTxn(context.Context, *CommitMetaTxnRequest) (*CommitMetaTxnResponse, error)
@@ -241,8 +241,8 @@ func (UnimplementedBlobberServer) DownloadFile(context.Context, *DownloadFileReq
 func (UnimplementedBlobberServer) RenameObject(context.Context, *RenameObjectRequest) (*RenameObjectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RenameObject not implemented")
 }
-func (UnimplementedBlobberServer) WriteFile(context.Context, *UploadFileRequest) (*UploadFileResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method WriteFile not implemented")
+func (UnimplementedBlobberServer) UploadFile(context.Context, *UploadFileRequest) (*UploadFileResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UploadFile not implemented")
 }
 func (UnimplementedBlobberServer) Commit(context.Context, *CommitRequest) (*CommitResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Commit not implemented")
@@ -437,20 +437,20 @@ func _Blobber_RenameObject_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Blobber_WriteFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Blobber_UploadFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UploadFileRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(BlobberServer).WriteFile(ctx, in)
+		return srv.(BlobberServer).UploadFile(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.service.v1.Blobber/WriteFile",
+		FullMethod: "/blobber.service.v1.Blobber/UploadFile",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BlobberServer).WriteFile(ctx, req.(*UploadFileRequest))
+		return srv.(BlobberServer).UploadFile(ctx, req.(*UploadFileRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -604,8 +604,8 @@ var _Blobber_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Blobber_RenameObject_Handler,
 		},
 		{
-			MethodName: "WriteFile",
-			Handler:    _Blobber_WriteFile_Handler,
+			MethodName: "UploadFile",
+			Handler:    _Blobber_UploadFile_Handler,
 		},
 		{
 			MethodName: "Commit",

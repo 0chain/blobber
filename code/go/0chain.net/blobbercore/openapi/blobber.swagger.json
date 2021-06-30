@@ -610,7 +610,7 @@
     },
     "/v2/file/upload/{allocation}": {
       "delete": {
-        "operationId": "Blobber_WriteFile3",
+        "operationId": "Blobber_UploadFile3",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -646,7 +646,7 @@
         ]
       },
       "post": {
-        "operationId": "Blobber_WriteFile",
+        "operationId": "Blobber_UploadFile",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -682,7 +682,7 @@
         ]
       },
       "put": {
-        "operationId": "Blobber_WriteFile2",
+        "operationId": "Blobber_UploadFile2",
         "responses": {
           "200": {
             "description": "A successful response.",

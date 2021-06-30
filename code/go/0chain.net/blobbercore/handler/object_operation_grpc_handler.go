@@ -97,7 +97,7 @@ func (b *blobberGRPCService) DownloadFile(ctx context.Context, req *blobbergrpc.
 	return convert.DownloadFileResponseCreator(resp), nil
 }
 
-func (b *blobberGRPCService) WriteFile(ctx context.Context, req *blobbergrpc.UploadFileRequest) (*blobbergrpc.UploadFileResponse, error) {
+func (b *blobberGRPCService) UploadFile(ctx context.Context, req *blobbergrpc.UploadFileRequest) (*blobbergrpc.UploadFileResponse, error) {
 
 	r, err := convert.WriteFileGRPCToHTTP(req)
 	if err != nil {
