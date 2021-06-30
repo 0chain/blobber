@@ -258,10 +258,6 @@ func main() {
 		panic("Please specify --port which is the port on which requests are accepted")
 	}
 
-	if *grpcPortString == "" {
-		panic("Please specify --grpc_port which is the grpc port on which requests are accepted")
-	}
-
 	reader, err := os.Open(*keysFile)
 	if err != nil {
 		panic(err)
@@ -381,14 +377,25 @@ func main() {
 
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()
-	go func(grpcPort string) {
+	go func(gp *string) {
+		var grpcPort string
+		if gp != nil {
+			grpcPort = *gp
+		}
+
+		if grpcPort == "" {
+			Logger.Error("Could not start grpc server since grpc port has not been specified." +
+				" Please specify the grpc port in the --grpc_port build arguement to start the grpc server")
+			return
+		}
+
 		Logger.Info("listening too grpc requests on port - " + grpcPort)
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
 		if err != nil {
 			log.Fatalf("failed to listen: %v", err)
 		}
 		log.Fatal(grpcServer.Serve(lis))
-	}(*grpcPortString)
+	}(grpcPortString)
 	log.Fatal(server.ListenAndServe())
 }
 
