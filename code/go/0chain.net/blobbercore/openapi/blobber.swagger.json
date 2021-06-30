@@ -361,7 +361,7 @@
       }
     },
     "/v2/file/meta/{allocation}": {
-      "get": {
+      "post": {
         "operationId": "Blobber_GetFileMetaData",
         "responses": {
           "200": {
@@ -385,22 +385,12 @@
             "type": "string"
           },
           {
-            "name": "path",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "pathHash",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "authToken",
-            "in": "query",
-            "required": false,
-            "type": "string"
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetFileMetaDataRequest"
+            }
           }
         ],
         "tags": [
@@ -567,7 +557,7 @@
       }
     },
     "/v2/file/stats/{allocation}": {
-      "get": {
+      "post": {
         "operationId": "Blobber_GetFileStats",
         "responses": {
           "200": {
@@ -591,16 +581,12 @@
             "type": "string"
           },
           {
-            "name": "path",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "pathHash",
-            "in": "query",
-            "required": false,
-            "type": "string"
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetFileStatsRequest"
+            }
           }
         ],
         "tags": [
@@ -1255,6 +1241,23 @@
         }
       }
     },
+    "v1GetFileMetaDataRequest": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "pathHash": {
+          "type": "string"
+        },
+        "authToken": {
+          "type": "string"
+        },
+        "allocation": {
+          "type": "string"
+        }
+      }
+    },
     "v1GetFileMetaDataResponse": {
       "type": "object",
       "properties": {
@@ -1266,6 +1269,20 @@
           "items": {
             "$ref": "#/definitions/v1Collaborator"
           }
+        }
+      }
+    },
+    "v1GetFileStatsRequest": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "pathHash": {
+          "type": "string"
+        },
+        "allocation": {
+          "type": "string"
         }
       }
     },

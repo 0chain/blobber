@@ -9,10 +9,9 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
-	github.com/herumi/bls-go-binary v0.0.0-20191119080710-898950e1a520 // indirect
+	github.com/herumi/bls-go-binary v0.0.0-20191119080710-898950e1a520
 	github.com/jackc/pgproto3/v2 v2.0.4 // indirect
 	github.com/koding/cache v0.0.0-20161222233015-e8a81b0b3f20
-	github.com/magiconair/properties v1.8.1
 	github.com/minio/minio-go v6.0.14+incompatible
 	github.com/mitchellh/mapstructure v1.3.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
@@ -24,6 +23,7 @@ require (
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	google.golang.org/genproto v0.0.0-20210224155714-063164c882e6
 	google.golang.org/grpc v1.36.0
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.0.0
 	google.golang.org/protobuf v1.26.0
 	gopkg.in/ini.v1 v1.61.0 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
