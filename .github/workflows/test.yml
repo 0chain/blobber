@@ -1,7 +1,7 @@
 name: test
 
 on:
-  repository_dispatch
+  workflow_dispatch
 
 jobs:
   dockerize_blobber:
