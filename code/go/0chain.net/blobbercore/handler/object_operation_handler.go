@@ -923,11 +923,24 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
+	allocationID := allocationObj.ID
+	fileOperation := getFileOperation(r)
+	existingFileRef := getExistingFileRef(fsh, ctx, r, allocationObj, fileOperation)
+	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
+	publicKey := allocationObj.OwnerPublicKey
+
+	if isCollaborator {
+		publicKey = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+	}
+
+	valid, err := verifySignatureFromRequest(r, publicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
 	if allocationObj.IsImmutable {
 		return nil, common.NewError("immutable_allocation", "Cannot write to an immutable allocation")
 	}
-
-	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
@@ -953,14 +966,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 	defer mutex.Unlock()
 
 	result := &UploadResult{}
-	mode := allocation.INSERT_OPERATION
-	if r.Method == "PUT" {
-		mode = allocation.UPDATE_OPERATION
-	} else if r.Method == "DELETE" {
-		mode = allocation.DELETE_OPERATION
-	}
 
-	if mode == allocation.DELETE_OPERATION {
+	if fileOperation == allocation.DELETE_OPERATION {
 		if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 		}
@@ -968,51 +975,38 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		if err != nil {
 			return nil, err
 		}
-	} else if mode == allocation.INSERT_OPERATION || mode == allocation.UPDATE_OPERATION {
+	} else if fileOperation == allocation.INSERT_OPERATION || fileOperation == allocation.UPDATE_OPERATION {
+		formField := getFormFieldName(fileOperation)
 		var formData allocation.UpdateFileChange
-		formField := "uploadMeta"
-		if mode == allocation.UPDATE_OPERATION {
-			formField = "updateMeta"
-		}
 		uploadMetaString := r.FormValue(formField)
 		err = json.Unmarshal([]byte(uploadMetaString), &formData)
 		if err != nil {
 			return nil, common.NewError("invalid_parameters",
 				"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 		}
-		exisitingFileRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
 		existingFileRefSize := int64(0)
-		exisitingFileOnCloud := false
-
-		publicKey := allocationObj.OwnerPublicKey
-		if mode == allocation.INSERT_OPERATION {
+		existingFileOnCloud := false
+		if fileOperation == allocation.INSERT_OPERATION {
 			if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 			}
 
-			if exisitingFileRef != nil {
+			if existingFileRef != nil {
 				return nil, common.NewError("duplicate_file", "File at path already exists")
 			}
-		} else if mode == allocation.UPDATE_OPERATION {
-			if exisitingFileRef == nil {
+		} else if fileOperation == allocation.UPDATE_OPERATION {
+			if existingFileRef == nil {
 				return nil, common.NewError("invalid_file_update", "File at path does not exist for update")
 			}
 
-			if reference.IsACollaborator(ctx, exisitingFileRef.ID, clientID) {
-				publicKey = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
-			} else if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
+			if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID && !isCollaborator {
 				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner, collaborator or the payer of the allocation")
 			}
 		}
 
-		valid, err := verifySignatureFromRequest(r, publicKey)
-		if !valid || err != nil {
-			return nil, common.NewError("invalid_signature", "Invalid signature")
-		}
-
-		if exisitingFileRef != nil {
-			existingFileRefSize = exisitingFileRef.Size
-			exisitingFileOnCloud = exisitingFileRef.OnCloud
+		if existingFileRef != nil {
+			existingFileRefSize = existingFileRef.Size
+			existingFileOnCloud = existingFileRef.OnCloud
 		}
 
 		origfile, _, err := r.FormFile("uploadFile")
@@ -1027,7 +1021,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 			defer thumbfile.Close()
 		}
 
-		fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path, OnCloud: exisitingFileOnCloud}
+		fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path, OnCloud: existingFileOnCloud}
 		fileOutputData, err := filestore.GetFileStore().WriteFile(allocationID, fileInputData, origfile, connectionObj.ConnectionID)
 		if err != nil {
 			return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
@@ -1075,12 +1069,12 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		allocationChange := &allocation.AllocationChange{}
 		allocationChange.ConnectionID = connectionObj.ConnectionID
 		allocationChange.Size = allocationSize - existingFileRefSize
-		allocationChange.Operation = mode
+		allocationChange.Operation = fileOperation
 
 		connectionObj.Size += allocationChange.Size
-		if mode == allocation.INSERT_OPERATION {
+		if fileOperation == allocation.INSERT_OPERATION {
 			connectionObj.AddChange(allocationChange, &formData.NewFileChange)
-		} else if mode == allocation.UPDATE_OPERATION {
+		} else if fileOperation == allocation.UPDATE_OPERATION {
 			connectionObj.AddChange(allocationChange, &formData)
 		}
 	}
@@ -1091,4 +1085,37 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 	}
 
 	return result, nil
+}
+
+func getFormFieldName(mode string) string {
+	formField := "uploadMeta"
+	if mode == allocation.UPDATE_OPERATION {
+		formField = "updateMeta"
+	}
+
+	return formField
+}
+
+func getFileOperation(r *http.Request) string {
+	mode := allocation.INSERT_OPERATION
+	if r.Method == "PUT" {
+		mode = allocation.UPDATE_OPERATION
+	} else if r.Method == "DELETE" {
+		mode = allocation.DELETE_OPERATION
+	}
+
+	return mode
+}
+
+func getExistingFileRef(fsh *StorageHandler, ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) *reference.Ref {
+	if fileOperation == allocation.INSERT_OPERATION || fileOperation == allocation.UPDATE_OPERATION {
+		var formData allocation.UpdateFileChange
+		uploadMetaString := r.FormValue(getFormFieldName(fileOperation))
+		err := json.Unmarshal([]byte(uploadMetaString), &formData)
+
+		if err == nil {
+			return fsh.checkIfFileAlreadyExists(ctx, allocationObj.ID, formData.Path)
+		}
+	}
+	return nil
 }
