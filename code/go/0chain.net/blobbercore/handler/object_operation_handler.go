@@ -281,9 +281,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 
 	// authorize file access
 	var (
-		isOwner          = clientID == alloc.OwnerID
-		isRepairer       = clientID == alloc.RepairerID
-		isCollaborator   = reference.IsACollaborator(ctx, fileref.ID, clientID)
+		isOwner        = clientID == alloc.OwnerID
+		isRepairer     = clientID == alloc.RepairerID
+		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
 	if !isOwner && !isRepairer && !isCollaborator {
@@ -923,11 +923,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
 	if allocationObj.IsImmutable {
 		return nil, common.NewError("immutable_allocation", "Cannot write to an immutable allocation")
 	}
@@ -988,6 +983,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		exisitingFileRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, formData.Path)
 		existingFileRefSize := int64(0)
 		exisitingFileOnCloud := false
+
+		publicKey := allocationObj.OwnerPublicKey
 		if mode == allocation.INSERT_OPERATION {
 			if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
@@ -1001,11 +998,16 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 				return nil, common.NewError("invalid_file_update", "File at path does not exist for update")
 			}
 
-			if allocationObj.OwnerID != clientID &&
-				allocationObj.RepairerID != clientID &&
-				!reference.IsACollaborator(ctx, exisitingFileRef.ID, clientID) {
+			if reference.IsACollaborator(ctx, exisitingFileRef.ID, clientID) {
+				publicKey = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+			} else if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner, collaborator or the payer of the allocation")
 			}
+		}
+
+		valid, err := verifySignatureFromRequest(r, publicKey)
+		if !valid || err != nil {
+			return nil, common.NewError("invalid_signature", "Invalid signature")
 		}
 
 		if exisitingFileRef != nil {
@@ -1020,9 +1022,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		defer origfile.Close()
 
 		thumbfile, thumbHeader, _ := r.FormFile("uploadThumbnailFile")
-		thumbnailPresent := false
-		if thumbHeader != nil {
-			thumbnailPresent = true
+		thumbnailPresent := thumbHeader != nil
+		if thumbnailPresent {
 			defer thumbfile.Close()
 		}
 
