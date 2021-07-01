@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"github.com/0chain/gosdk/zboxcore/fileref"
 	"reflect"
 	"strings"
 )
@@ -24,4 +25,19 @@ func UnmarshalValidation(v interface{}) error {
 	}
 
 	return nil
+}
+
+func GetParentPathHashes(allocationTx string, filePath string) []string {
+	splitted := strings.Split(filePath, "/")
+	pathHashes := []string{}
+
+	for i := 0; i < len(splitted); i++ {
+		path := strings.Join(splitted[:len(splitted) - i], "/")
+		if path == "" {
+			path = "/"
+		}
+		pathHash := fileref.GetReferenceLookup(allocationTx, path)
+		pathHashes = append(pathHashes, pathHash)
+	}
+	return pathHashes
 }

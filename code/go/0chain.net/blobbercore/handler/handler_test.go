@@ -270,6 +270,7 @@ func GetAuthTicketForEncryptedFile(allocationID string, remotePath string, fileH
 	at.ClientID = clientID
 	at.FileName = remotePath
 	at.FilePathHash = fileHash
+	at.ContentHash = "content_hash"
 	at.RefType = fileref.FILE
 	timestamp := int64(common.Now())
 	at.Expiration = timestamp + 7776000
@@ -1654,8 +1655,14 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					formWriter := multipart.NewWriter(body)
 					remotePath := "/file.txt"
 
-					formWriter.WriteField("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
+					pathHash := fileref.GetReferenceLookup(alloc.Tx, remotePath)
+					formWriter.WriteField("path_hash", pathHash)
 					formWriter.WriteField("block_num", fmt.Sprintf("%d", 1))
+					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, pathHash, client.GetClientID(), sch.GetPublicKey())
+					if err != nil {
+						t.Fatal(err)
+					}
+					formWriter.WriteField("auth_token", authTicket)
 					rm := &marker.ReadMarker{}
 					rm.ClientID = client.GetClientID()
 					rm.ClientPublicKey = client.GetClientPublicKey()
@@ -1717,11 +1724,12 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
+
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key"}).
-							AddRow("/file.txt", "f", filePathHash, filePathHash, "abcd", "qCj3sXXeXUAByi1ERIbcfXzWN75dyocYzyRXnkStXio="),
+							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", "qCj3sXXeXUAByi1ERIbcfXzWN75dyocYzyRXnkStXio="),
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(1) FROM "collaborators" WHERE`)).
@@ -1738,7 +1746,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(client.GetClientPublicKey(), alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa).
+					WithArgs(client.GetClientPublicKey(), alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
@@ -1765,8 +1773,14 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					formWriter := multipart.NewWriter(body)
 					remotePath := "/file.txt"
 
-					formWriter.WriteField("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
+					pathHash := fileref.GetReferenceLookup(alloc.Tx, remotePath)
+					formWriter.WriteField("path_hash", pathHash)
 					formWriter.WriteField("block_num", fmt.Sprintf("%d", 1))
+					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, pathHash, client.GetClientID(), sch.GetPublicKey())
+					if err != nil {
+						t.Fatal(err)
+					}
+					formWriter.WriteField("auth_token", authTicket)
 					rm := &marker.ReadMarker{}
 					rm.ClientID = client.GetClientID()
 					rm.ClientPublicKey = client.GetClientPublicKey()
@@ -1846,7 +1860,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key"}).
-							AddRow("/file.txt", "f", filePathHash, filePathHash, "abcd", encscheme.GetEncryptedKey()),
+							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", encscheme.GetEncryptedKey()),
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(1) FROM "collaborators" WHERE`)).
@@ -1863,7 +1877,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(client.GetClientPublicKey(), alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa).
+					WithArgs(client.GetClientPublicKey(), alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				reEncryptionKey, _ := encscheme.GetReGenKey(encscheme.GetEncryptedKey(), "filetype:audio")

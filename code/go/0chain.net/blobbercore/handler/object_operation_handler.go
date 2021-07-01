@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"0chain.net/blobbercore/util"
 	"bytes"
 	"context"
 	"encoding/hex"
@@ -290,6 +291,8 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			"error getting file attributes: %v", err)
 	}
 
+	var authToken *readmarker.AuthTicket = nil
+
 	if (allocationObj.OwnerID != clientID &&
 		allocationObj.PayerID != clientID &&
 		!isACollaborator) || len(authTokenString) > 0 {
@@ -307,7 +310,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 				"could not verify the auth ticket")
 		}
 
-		var authToken = &readmarker.AuthTicket{}
+		authToken = &readmarker.AuthTicket{}
 		err = json.Unmarshal([]byte(authTokenString), &authToken)
 		if err != nil {
 			return nil, common.NewErrorf("download_file",
@@ -317,6 +320,20 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		// we only check content hash if its authticket is referring to a file
 		if authToken.RefType == zfileref.FILE && authToken.ContentHash != fileref.ContentHash {
 			return nil, errors.New("content hash does not match the requested file content hash")
+		}
+
+		if authToken.RefType == zfileref.DIRECTORY {
+			hashes := util.GetParentPathHashes(allocationTx, fileref.Path)
+			found := false
+			for _, hash := range hashes {
+				if hash == authToken.FilePathHash {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return nil, errors.New("auth ticket is not authorized to download file specified")
+			}
 		}
 
 		// if --rx_pay used 3rd_party pays
@@ -411,12 +428,14 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	response.Success = true
 	response.LatestRM = readMarker
 	if len(fileref.EncryptedKey) > 0 {
+		if authToken == nil {
+			return nil, errors.New("auth ticket is required to download encrypted file")
+		}
 		// check if client is authorized to download
-		shareInfo, err := reference.GetShareInfoRecursive(
+		shareInfo, err := reference.GetShareInfo(
 			ctx,
 			readMarker.ClientID,
-			allocationTx,
-			fileref.Path,
+			authToken.FilePathHash,
 		)
 		if err != nil {
 			return nil, errors.New("error during share info lookup in database" + err.Error())
