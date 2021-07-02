@@ -801,9 +801,6 @@
           "items": {
             "$ref": "#/definitions/v1Term"
           }
-        },
-        "PayerID": {
-          "type": "string"
         }
       }
     },
