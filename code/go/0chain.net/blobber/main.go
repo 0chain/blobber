@@ -30,8 +30,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	"github.com/0chain/blobber/code/go/0chain.net/core/util"
 
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/handlers"
@@ -40,19 +38,45 @@ import (
 	"go.uber.org/zap"
 )
 
-//var BLOBBER_REGISTERED_LOOKUP_KEY = datastore.ToKey("blobber_registration")
-
 var startTime time.Time
 var serverChain *chain.Chain
 var filesDir *string
 var metadataDB *string
 
 func initHandlers(r *mux.Router) {
-	r.HandleFunc("/", HomePageHandler)
+	r.HandleFunc("/", func (w http.ResponseWriter, r *http.Request) {
+		mc := chain.GetServerChain()
+
+		fmt.Fprintf(w, "<div>Running since %v ...\n", startTime)
+		fmt.Fprintf(w, "<div>Working on the chain: %v</div>\n", mc.ID)
+		fmt.Fprintf(w,
+			"<div>I am a blobber with <ul><li>id:%v</li><li>public_key:%v</li><li>build_tag:%v</li></ul></div>\n",
+			node.Self.ID, node.Self.PublicKey, build.BuildTag,
+		)
+
+		fmt.Fprintf(w, "<div>Miners ...\n")
+		network := zcncore.GetNetwork()
+		for _, miner := range network.Miners {
+			fmt.Fprintf(w, "%v\n", miner)
+		}
+
+		fmt.Fprintf(w, "<div>Sharders ...\n")
+		for _, sharder := range network.Sharders {
+			fmt.Fprintf(w, "%v\n", sharder)
+		}
+	})
+
 	handler.SetupHandlers(r)
 }
 
-func SetupWorkerConfig() {
+var fsStore filestore.FileStore //nolint:unused // global which might be needed somewhere
+
+func initEntities() (err error) {
+	fsStore, err = filestore.SetupFSStore(*filesDir + "/files")
+	return err
+}
+
+func setupWorkerConfig() {
 	config.Configuration.ContentRefWorkerFreq = viper.GetInt64("contentref_cleaner.frequency")
 	config.Configuration.ContentRefWorkerTolerance = viper.GetInt64("contentref_cleaner.tolerance")
 
@@ -117,48 +141,7 @@ func SetupWorkerConfig() {
 	config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
 }
 
-func SetupWorkers() {
-	var root = common.GetRootContext()
-	handler.SetupWorkers(root)
-	challenge.SetupWorkers(root)
-	readmarker.SetupWorkers(root)
-	writemarker.SetupWorkers(root)
-	allocation.StartUpdateWorker(root,
-		config.Configuration.UpdateAllocationsInterval)
-	// stats.StartEventDispatcher(2)
-}
-
-var fsStore filestore.FileStore //nolint:unused // global which might be needed somewhere
-
-func initEntities() (err error) {
-	fsStore, err = filestore.SetupFSStore(*filesDir + "/files")
-	return err
-}
-
-func initServer() {
-
-}
-
-func checkForDBConnection() {
-	retries := 0
-	var err error
-	for retries < 600 {
-		err = datastore.GetStore().Open()
-		if err != nil {
-			time.Sleep(1 * time.Second)
-			retries++
-			continue
-		}
-		break
-	}
-
-	if err != nil {
-		Logger.Error("Error in opening the database. Shutting the server down")
-		panic(err)
-	}
-}
-
-func processMinioConfig(reader io.Reader) error {
+func setupMinioConfig(reader io.Reader) error {
 	scanner := bufio.NewScanner(reader)
 	more := scanner.Scan()
 	if !more {
@@ -190,6 +173,132 @@ func processMinioConfig(reader io.Reader) error {
 	}
 
 	filestore.MinioConfig.BucketLocation = scanner.Text()
+	return nil
+}
+
+func setupWorkers() {
+	var root = common.GetRootContext()
+	handler.SetupWorkers(root)
+	challenge.SetupWorkers(root)
+	readmarker.SetupWorkers(root)
+	writemarker.SetupWorkers(root)
+	allocation.StartUpdateWorker(root,
+		config.Configuration.UpdateAllocationsInterval)
+}
+
+func setupDatabase() {
+	// check for database connection
+	for i := 600; i > 0; i-- {
+		time.Sleep(1 * time.Second)
+		if err := datastore.GetStore().Open(); err == nil {
+			if i == 1 { // no more attempts
+				Logger.Error("Failed to connect to the database. Shutting the server down")
+				panic(err) // fail
+			}
+
+			return // success
+		}
+	}
+}
+
+func setupOnChain() {
+	const ATTEMPT_DELAY = 60 * 1 // 1 minute
+
+	// setup wallet
+	if err := handler.WalletRegister(); err != nil {
+		panic(err)
+	}
+
+	// setup blobber (add or update) on the blockchain (multiple attempts)
+	for i := 10; i > 0; i-- {
+		if err := addOrUpdateOnChain(); err != nil {
+			if i == 1 { // no more attempts
+				panic(err)
+			}
+		} else {
+			break
+		}
+
+		time.Sleep(ATTEMPT_DELAY * time.Second)
+	}
+
+	setupWorkers()
+
+	go healthCheckOnChainWorker()
+
+	if config.Configuration.PriceInUSD {
+		go addOrUpdateOnChainWorker()
+	}
+}
+
+func addOrUpdateOnChain() error {
+	txnHash, err := handler.BlobberAdd(common.GetRootContext())
+	if err != nil {
+		return err
+	}
+
+	if t, err := handler.TransactionVerify(txnHash); err != nil {
+		Logger.Error("Failed to verify blobber add/update transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
+	} else {
+		Logger.Info("Verified blobber add/update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+	}
+
+	return err
+}
+
+func addOrUpdateOnChainWorker() {
+	var REPEAT_DELAY = 60 * 60 * time.Duration(viper.GetInt("price_worker_in_hours")) // 12 hours with default settings
+	for {
+		time.Sleep(REPEAT_DELAY * time.Second)
+		if err := addOrUpdateOnChain(); err != nil {
+			continue // pass // required by linting
+		}
+	}
+}
+
+func healthCheckOnChain() error {
+	txnHash, err := handler.BlobberHealthCheck(common.GetRootContext())
+	if err != nil {
+		if err == handler.ErrBlobberHasRemoved {
+			return nil
+		} else {
+			return err
+		}
+	}
+
+	if t, err := handler.TransactionVerify(txnHash); err != nil {
+		Logger.Error("Failed to verify blobber health check", zap.Any("err", err), zap.String("txn.Hash", txnHash))
+	} else {
+		Logger.Info("Verified blobber health check", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+	}
+
+	return err
+}
+
+func healthCheckOnChainWorker() {
+	const REPEAT_DELAY = 60 * 15 // 15 minutes
+
+	for {
+		time.Sleep(REPEAT_DELAY * time.Second)
+		if err := healthCheckOnChain(); err != nil {
+			continue // pass // required by linting
+		}
+	}
+}
+
+func setup(logDir string) error {
+	// init blockchain related stuff
+	zcncore.SetLogFile(logDir + "/0chainBlobber.log", false)
+	zcncore.SetLogLevel(3)
+	if err := zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme); err != nil {
+		return err
+	}
+	if err := zcncore.SetWalletInfo(node.Self.GetWalletString(), false); err != nil {
+		return err
+	}
+
+	// setup on blockchain
+	go setupOnChain()
 	return nil
 }
 
@@ -240,7 +349,7 @@ func main() {
 	}
 	config.Configuration.ChainID = viper.GetString("server_chain.id")
 	config.Configuration.SignatureScheme = viper.GetString("server_chain.signature_scheme")
-	SetupWorkerConfig()
+	setupWorkerConfig()
 
 	if *filesDir == "" {
 		panic("Please specify --files_dir absolute folder name option where uploaded files can be stored")
@@ -271,7 +380,7 @@ func main() {
 		panic(err)
 	}
 
-	err = processMinioConfig(reader)
+	err = setupMinioConfig(reader)
 	if err != nil {
 		panic(err)
 	}
@@ -307,13 +416,13 @@ func main() {
 
 	chain.SetServerChain(serverChain)
 
-	checkForDBConnection()
+	setupDatabase()
 
 	// Initialize after server chain is setup.
 	if err := initEntities(); err != nil {
 		Logger.Error("Error setting up blobber on blockchian" + err.Error())
 	}
-	if err := SetupBlobberOnBC(*logDir); err != nil {
+	if err := setup(*logDir); err != nil {
 		Logger.Error("Error setting up blobber on blockchian" + err.Error())
 	}
 	mode := "main net"
@@ -344,7 +453,6 @@ func main() {
 
 	common.ConfigRateLimits()
 	initHandlers(r)
-	initServer()
 
 	grpcServer := handler.NewServerWithMiddlewares(common.NewGRPCRateLimiter())
 	handler.RegisterGRPCServices(r, grpcServer)
@@ -397,135 +505,4 @@ func main() {
 		log.Fatal(grpcServer.Serve(lis))
 	}(grpcPortString)
 	log.Fatal(server.ListenAndServe())
-}
-
-func RegisterBlobber() {
-	setup := func() {
-		// badgerdbstore.GetStorageProvider().WriteBytes(ctx, BLOBBER_REGISTERED_LOOKUP_KEY, []byte(txnHash))
-		// badgerdbstore.GetStorageProvider().Commit(ctx)
-		SetupWorkers()
-		go BlobberHealthCheck()
-		if config.Configuration.PriceInUSD {
-			go UpdateBlobberSettings()
-		}
-	}
-
-	registrationRetries := 0
-	// ctx := badgerdbstore.GetStorageProvider().WithConnection(common.GetRootContext())
-	for registrationRetries < 10 {
-		txnHash, err := handler.RegisterBlobber(common.GetRootContext())
-		if err == handler.ErrBlobberHasRegistered {
-			Logger.Debug("Blobber already registered to the mining network")
-			setup()
-			return
-		}
-
-		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-		txnVerified := false
-		verifyRetries := 0
-		for verifyRetries < util.MAX_RETRIES {
-			time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
-			if err == nil {
-				Logger.Info("Transaction for adding blobber accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-				setup()
-				return
-			}
-			verifyRetries++
-		}
-
-		if !txnVerified {
-			Logger.Error("Add blobber transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txnHash))
-		}
-	}
-}
-
-func BlobberHealthCheck() {
-	const HEALTH_CHECK_TIMER = 60 * 15 // 15 Minutes
-	for {
-		txnHash, err := handler.BlobberHealthCheck(common.GetRootContext())
-		if err != nil && err == handler.ErrBlobberHasRemoved {
-			time.Sleep(HEALTH_CHECK_TIMER * time.Second)
-			continue
-		}
-		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-		txnVerified := false
-		verifyRetries := 0
-		for verifyRetries < util.MAX_RETRIES {
-			time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
-			if err == nil {
-				txnVerified = true
-				Logger.Info("Transaction for blobber health check verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-				break
-			}
-			verifyRetries++
-		}
-
-		if !txnVerified {
-			Logger.Error("Blobber health check transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txnHash))
-		}
-		time.Sleep(HEALTH_CHECK_TIMER * time.Second)
-	}
-}
-
-func UpdateBlobberSettings() {
-	var UPDATE_SETTINGS_TIMER = 60 * 60 * time.Duration(viper.GetInt("price_worker_in_hours"))
-	time.Sleep(UPDATE_SETTINGS_TIMER * time.Second)
-	for {
-		txnHash, err := handler.UpdateBlobberSettings(common.GetRootContext())
-		if err != nil {
-			time.Sleep(UPDATE_SETTINGS_TIMER * time.Second)
-			continue
-		}
-		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-		txnVerified := false
-		verifyRetries := 0
-		for verifyRetries < util.MAX_RETRIES {
-			time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
-			if err == nil {
-				txnVerified = true
-				Logger.Info("Transaction for blobber update settings verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-				break
-			}
-			verifyRetries++
-		}
-
-		if !txnVerified {
-			Logger.Error("Blobber update settings transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txnHash))
-		}
-		time.Sleep(UPDATE_SETTINGS_TIMER * time.Second)
-	}
-}
-
-func SetupBlobberOnBC(logDir string) error {
-	var logName = logDir + "/0chainBlobber.log"
-	zcncore.SetLogFile(logName, false)
-	zcncore.SetLogLevel(3)
-	if err := zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme); err != nil {
-		return err
-	}
-	if err := zcncore.SetWalletInfo(node.Self.GetWalletString(), false); err != nil {
-		return err
-	}
-	go RegisterBlobber()
-	return nil
-}
-
-/*HomePageHandler - provides basic info when accessing the home page of the server */
-func HomePageHandler(w http.ResponseWriter, r *http.Request) {
-	mc := chain.GetServerChain()
-	fmt.Fprintf(w, "<div>Running since %v ...\n", startTime)
-	fmt.Fprintf(w, "<div>Working on the chain: %v</div>\n", mc.ID)
-	fmt.Fprintf(w, "<div>I am a blobber with <ul><li>id:%v</li><li>public_key:%v</li><li>build_tag:%v</li></ul></div>\n", node.Self.ID, node.Self.PublicKey, build.BuildTag)
-	fmt.Fprintf(w, "<div>Miners ...\n")
-	network := zcncore.GetNetwork()
-	for _, miner := range network.Miners {
-		fmt.Fprintf(w, "%v\n", miner)
-	}
-	fmt.Fprintf(w, "<div>Sharders ...\n")
-	for _, sharder := range network.Sharders {
-		fmt.Fprintf(w, "%v\n", sharder)
-	}
 }

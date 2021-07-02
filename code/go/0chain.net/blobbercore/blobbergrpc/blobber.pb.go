@@ -2807,17 +2807,18 @@ type Allocation struct {
 	UsedSize         int64   `protobuf:"varint,4,opt,name=UsedSize,proto3" json:"UsedSize,omitempty"`
 	OwnerID          string  `protobuf:"bytes,5,opt,name=OwnerID,proto3" json:"OwnerID,omitempty"`
 	OwnerPublicKey   string  `protobuf:"bytes,6,opt,name=OwnerPublicKey,proto3" json:"OwnerPublicKey,omitempty"`
-	Expiration       int64   `protobuf:"varint,7,opt,name=Expiration,proto3" json:"Expiration,omitempty"`
-	AllocationRoot   string  `protobuf:"bytes,8,opt,name=AllocationRoot,proto3" json:"AllocationRoot,omitempty"`
-	BlobberSize      int64   `protobuf:"varint,9,opt,name=BlobberSize,proto3" json:"BlobberSize,omitempty"`
-	BlobberSizeUsed  int64   `protobuf:"varint,10,opt,name=BlobberSizeUsed,proto3" json:"BlobberSizeUsed,omitempty"`
-	LatestRedeemedWM string  `protobuf:"bytes,11,opt,name=LatestRedeemedWM,proto3" json:"LatestRedeemedWM,omitempty"`
-	IsRedeemRequired bool    `protobuf:"varint,12,opt,name=IsRedeemRequired,proto3" json:"IsRedeemRequired,omitempty"`
-	TimeUnit         int64   `protobuf:"varint,13,opt,name=TimeUnit,proto3" json:"TimeUnit,omitempty"`
-	CleanedUp        bool    `protobuf:"varint,14,opt,name=CleanedUp,proto3" json:"CleanedUp,omitempty"`
-	Finalized        bool    `protobuf:"varint,15,opt,name=Finalized,proto3" json:"Finalized,omitempty"`
-	Terms            []*Term `protobuf:"bytes,16,rep,name=Terms,proto3" json:"Terms,omitempty"`
-	PayerID          string  `protobuf:"bytes,17,opt,name=PayerID,proto3" json:"PayerID,omitempty"`
+	RepairerID       string  `protobuf:"bytes,7,opt,name=RepairerID,proto3" json:"RepairerID,omitempty"`
+	PayerID          string  `protobuf:"bytes,8,opt,name=PayerID,proto3" json:"PayerID,omitempty"`
+	Expiration       int64   `protobuf:"varint,9,opt,name=Expiration,proto3" json:"Expiration,omitempty"`
+	AllocationRoot   string  `protobuf:"bytes,10,opt,name=AllocationRoot,proto3" json:"AllocationRoot,omitempty"`
+	BlobberSize      int64   `protobuf:"varint,11,opt,name=BlobberSize,proto3" json:"BlobberSize,omitempty"`
+	BlobberSizeUsed  int64   `protobuf:"varint,12,opt,name=BlobberSizeUsed,proto3" json:"BlobberSizeUsed,omitempty"`
+	LatestRedeemedWM string  `protobuf:"bytes,13,opt,name=LatestRedeemedWM,proto3" json:"LatestRedeemedWM,omitempty"`
+	IsRedeemRequired bool    `protobuf:"varint,14,opt,name=IsRedeemRequired,proto3" json:"IsRedeemRequired,omitempty"`
+	TimeUnit         int64   `protobuf:"varint,15,opt,name=TimeUnit,proto3" json:"TimeUnit,omitempty"`
+	CleanedUp        bool    `protobuf:"varint,16,opt,name=CleanedUp,proto3" json:"CleanedUp,omitempty"`
+	Finalized        bool    `protobuf:"varint,17,opt,name=Finalized,proto3" json:"Finalized,omitempty"`
+	Terms            []*Term `protobuf:"bytes,18,rep,name=Terms,proto3" json:"Terms,omitempty"`
 }
 
 func (x *Allocation) Reset() {
@@ -2894,6 +2895,20 @@ func (x *Allocation) GetOwnerPublicKey() string {
 	return ""
 }
 
+func (x *Allocation) GetRepairerID() string {
+	if x != nil {
+		return x.RepairerID
+	}
+	return ""
+}
+
+func (x *Allocation) GetPayerID() string {
+	if x != nil {
+		return x.PayerID
+	}
+	return ""
+}
+
 func (x *Allocation) GetExpiration() int64 {
 	if x != nil {
 		return x.Expiration
@@ -2962,13 +2977,6 @@ func (x *Allocation) GetTerms() []*Term {
 		return x.Terms
 	}
 	return nil
-}
-
-func (x *Allocation) GetPayerID() string {
-	if x != nil {
-		return x.PayerID
-	}
-	return ""
 }
 
 type Term struct {

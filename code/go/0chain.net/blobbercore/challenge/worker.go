@@ -10,7 +10,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
@@ -49,7 +48,6 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			Logger.Info("Attempting to commit processed challenges...")
 			rctx := datastore.GetStore().CreateTransaction(ctx)
 			db := datastore.GetStore().GetTransaction(rctx)
 			//lastChallengeRedeemed := &ChallengeEntity{}
@@ -222,10 +220,6 @@ func FindChallenges(ctx context.Context) {
 						for _, v := range blobberChallenges.Challenges {
 							if v == nil || len(v.ChallengeID) == 0 {
 								Logger.Info("No challenge entity from the challenge map")
-								continue
-							}
-							if !common.Within(int64(v.Created), int64(config.Configuration.ChallengeResolveFreq)) {
-								Logger.Info("Challenge is expired", zap.Any("created", v.Created))
 								continue
 							}
 

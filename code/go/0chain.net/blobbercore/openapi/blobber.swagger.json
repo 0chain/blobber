@@ -759,6 +759,12 @@
         "OwnerPublicKey": {
           "type": "string"
         },
+        "RepairerID": {
+          "type": "string"
+        },
+        "PayerID": {
+          "type": "string"
+        },
         "Expiration": {
           "type": "string",
           "format": "int64"
