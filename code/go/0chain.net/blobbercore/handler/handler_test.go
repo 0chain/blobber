@@ -32,7 +32,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"regexp"
-	"strings"
 	"testing"
 	"time"
 )
@@ -1193,11 +1192,11 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`INSERT INTO "marketplace_share_info"`).
-					WithArgs(client.GetClientID(), "abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c", "regenkey", aa, aa).
+					WithArgs(client.GetClientID(), "abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c", "regenkey", aa, false, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 			},
 			wantCode: http.StatusOK,
-			wantBody:    "{\"message\":\"Share info added successfully\",\"existing\":false}\n\n",
+			wantBody:    "{\"message\":\"Share info added successfully\"}\n",
 		},
 		{
 			name: "UpdateShareInfo",
@@ -1288,7 +1287,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					WillReturnResult(sqlmock.NewResult(0, 0))
 			},
 			wantCode: http.StatusOK,
-			wantBody:    "{\"message\":\"Share info added successfully\",\"existing\":true}\n\n",
+			wantBody:    "{\"message\":\"Share info added successfully\"}\n",
 		},
 		{
 			name: "RevokeShareInfo_OK_Existing_Share",
@@ -1362,8 +1361,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow("/file.txt", filePathHash),
 					)
 
-				mock.ExpectExec(regexp.QuoteMeta(`DELETE FROM "marketplace_share_info" WHERE`)).
-					WithArgs("abcdefgh", filePathHash).
+				mock.ExpectExec(regexp.QuoteMeta(`UPDATE "marketplace_share_info"`)).
+					WithArgs(true, "abcdefgh", filePathHash).
 					WillReturnResult(sqlmock.NewResult(0, 1))
 
 			},
@@ -1442,8 +1441,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow("/file.txt", filePathHash),
 					)
 
-				mock.ExpectExec(regexp.QuoteMeta(`DELETE FROM "marketplace_share_info" WHERE`)).
-					WithArgs("abcdefgh", filePathHash).WillReturnError(gorm.ErrRecordNotFound)
+				mock.ExpectExec(regexp.QuoteMeta(`UPDATE "marketplace_share_info"`)).
+					WithArgs(true, "abcdefgh", filePathHash).
+					WillReturnResult(sqlmock.NewResult(0, 0))
 
 			},
 			wantCode: http.StatusOK,
@@ -1896,9 +1896,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	}
 	tests := append(positiveTests, negativeTests...)
 	for _, test := range tests {
-		if !strings.Contains(test.name, "Download") {
-			continue
-		}
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)
 			test.setupDbMock(mock)

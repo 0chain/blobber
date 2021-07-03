@@ -14,6 +14,7 @@ type ShareInfo struct {
 	FilePathHash                  string          `gorm:"file_path_hash" json:"file_path_hash,omitempty"`
 	ReEncryptionKey               string          `gorm:"re_encryption_key" json:"re_encryption_key,omitempty"`
 	ClientEncryptionPublicKey     string          `gorm:"client_encryption_public_key" json:"client_encryption_public_key,omitempty"`
+	Revoked                       bool            `gorm:"revoked" json:"revoked,omitempty"`
 	ExpiryAt                      time.Time       `gorm:"expiry_at" json:"expiry_at,omitempty"`
 }
 
@@ -21,6 +22,7 @@ func TableName() string {
 	return "marketplace_share_info"
 }
 
+// add share if it already doesnot exist
 func AddShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Table(TableName()).Create(shareInfo).Error
@@ -28,14 +30,21 @@ func AddShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 
 func DeleteShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
+
 	result := db.Table(TableName()).
-		Where("client_id = ?", shareInfo.ClientID).
-		Where("file_path_hash = ?", shareInfo.FilePathHash).
-		Delete(&ShareInfo{})
+		Where(&ShareInfo{
+			ClientID:    shareInfo.ClientID,
+			FilePathHash: shareInfo.FilePathHash,
+			Revoked: false,
+		}).
+		Updates(ShareInfo{
+			Revoked: true,
+		})
 
 	if result.Error != nil {
 		return result.Error
 	}
+
 	if result.RowsAffected == 0 {
 		return gorm.ErrRecordNotFound
 	}

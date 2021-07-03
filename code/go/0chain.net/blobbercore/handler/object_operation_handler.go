@@ -437,9 +437,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			readMarker.ClientID,
 			authToken.FilePathHash,
 		)
-		if err != nil {
+		if err != nil  {
 			return nil, errors.New("error during share info lookup in database" + err.Error())
-		} else if shareInfo == nil {
+		} else if shareInfo == nil || shareInfo.Revoked {
 			return nil, errors.New("client does not have permission to download the file. share does not exist")
 		}
 
