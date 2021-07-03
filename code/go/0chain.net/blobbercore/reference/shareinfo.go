@@ -53,12 +53,14 @@ func DeleteShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 
 func UpdateShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
+	dupShareInfo := shareInfo
+	dupShareInfo.Revoked = false
 	return db.Table(TableName()).
 		Where(&ShareInfo{
 			ClientID:    shareInfo.ClientID,
 			FilePathHash: shareInfo.FilePathHash,
 		}).
-		Updates(shareInfo).Error
+		Updates(dupShareInfo).Error
 }
 
 func GetShareInfo(ctx context.Context, clientID string, filePathHash string) (*ShareInfo, error) {
