@@ -14,7 +14,7 @@ type ShareInfo struct {
 	FilePathHash                  string          `gorm:"file_path_hash" json:"file_path_hash,omitempty"`
 	ReEncryptionKey               string          `gorm:"re_encryption_key" json:"re_encryption_key,omitempty"`
 	ClientEncryptionPublicKey     string          `gorm:"client_encryption_public_key" json:"client_encryption_public_key,omitempty"`
-	Revoked                       bool            `gorm:"revoked" json:"revoked,omitempty"`
+	Revoked                       bool            `gorm:"revoked" json:"revoked"`
 	ExpiryAt                      time.Time       `gorm:"expiry_at" json:"expiry_at,omitempty"`
 }
 
@@ -53,14 +53,15 @@ func DeleteShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 
 func UpdateShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	dupShareInfo := shareInfo
-	dupShareInfo.Revoked = false
+
 	return db.Table(TableName()).
 		Where(&ShareInfo{
 			ClientID:    shareInfo.ClientID,
 			FilePathHash: shareInfo.FilePathHash,
 		}).
-		Updates(dupShareInfo).Error
+		Select("Revoked", "ReEncryptionKey", "ExpiryAt", "ClientEncryptionPublicKey").
+		Updates(shareInfo).
+		Error
 }
 
 func GetShareInfo(ctx context.Context, clientID string, filePathHash string) (*ShareInfo, error) {

@@ -1283,8 +1283,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`UPDATE "marketplace_share_info"`).
-					WithArgs(client.GetClientID(), "abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c", "regenkey", aa, aa, "abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
-					WillReturnResult(sqlmock.NewResult(0, 0))
+					WithArgs("regenkey", "kkk", false, aa, "abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
+					WillReturnResult(sqlmock.NewResult(0, 1))
 			},
 			wantCode: http.StatusOK,
 			wantBody:    "{\"message\":\"Share info added successfully\"}\n",
