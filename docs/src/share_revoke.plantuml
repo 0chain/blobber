@@ -1,0 +1,13 @@
+@startuml
+
+title Buyer revokes share for client
+actor Seller
+
+Seller -> Seller : Revoke share using **client id**,\n\
+**allocation id** and **remote path**
+Seller --> Blobber : Revoke share using provided parameters
+Blobber --> Blobber : Find path share in **marketplace_share_info** \n\
+table and set **revoked** flag to true
+Seller --> Seller :  return consensus status, \n\
+we need 100% consensus for success
+@enduml
