@@ -123,12 +123,12 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
+	alloc, err := fsh.verifyAllocation(ctx, allocationTx, true)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-	allocationID := allocationObj.ID
+	allocationID := alloc.ID
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 {
@@ -164,18 +164,24 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 
 	result["collaborators"] = collaborators
 
-	authTokenString := r.FormValue("auth_token")
+	// authorize file access
+	var (
+		isOwner          = clientID == alloc.OwnerID
+		isRepairer       = clientID == alloc.RepairerID
+		isCollaborator   = reference.IsACollaborator(ctx, fileref.ID, clientID)
+	)
 
-	if (allocationObj.OwnerID != clientID &&
-		allocationObj.PayerID != clientID &&
-		!reference.IsACollaborator(ctx, fileref.ID, clientID)) || len(authTokenString) > 0 {
-		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
-		if err != nil {
-			return nil, err
+	if !isOwner && !isRepairer && !isCollaborator {
+		var authTokenString = r.FormValue("auth_token")
+
+		// check auth token
+		if isAuthorized, err := fsh.verifyAuthTicket(ctx,
+			authTokenString, alloc, fileref, clientID,
+		); !isAuthorized {
+			return nil, common.NewErrorf("download_file",
+				"cannot verify auth ticket: %v", err)
 		}
-		if !authTicketVerified {
-			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
-		}
+
 		delete(result, "path")
 	}
 
@@ -696,7 +702,7 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 
 // verifySignatureFromRequest verifyes signature passed as common.ClientSignatureHeader header.
 func verifySignatureFromRequest(r *http.Request, pbK string) (bool, error) {
-	sign := r.Header.Get(common.ClientSignatureHeader)
+	sign := encryption.MiraclToHerumiSig(r.Header.Get(common.ClientSignatureHeader))
 	if len(sign) < 64 {
 		return false, nil
 	}
@@ -707,7 +713,9 @@ func verifySignatureFromRequest(r *http.Request, pbK string) (bool, error) {
 		return false, common.NewError("invalid_params", "Missing allocation tx")
 	}
 
-	return encryption.Verify(pbK, sign, encryption.Hash(data))
+	hash := encryption.Hash(data)
+	pbK = encryption.MiraclToHerumiPK(pbK)
+	return encryption.Verify(pbK, sign, hash)
 }
 
 // pathsFromReq retrieves paths value from request which can be represented as single "path" value or "paths" values,

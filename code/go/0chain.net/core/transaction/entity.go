@@ -68,13 +68,19 @@ type StakePoolSettings struct {
 	ServiceCharge float64 `json:"service_charge"`
 }
 
+type StorageNodeGeolocation struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}
+
 type StorageNode struct {
-	ID                string            `json:"id"`
-	BaseURL           string            `json:"url"`
-	Terms             Terms             `json:"terms"`
-	Capacity          int64             `json:"capacity"`
-	PublicKey         string            `json:"-"`
-	StakePoolSettings StakePoolSettings `json:"stake_pool_settings"`
+	ID                string                 `json:"id"`
+	BaseURL           string                 `json:"url"`
+	Geolocation       StorageNodeGeolocation `json:"geolocation"`
+	Terms             Terms                  `json:"terms"`
+	Capacity          int64                  `json:"capacity"`
+	PublicKey         string                 `json:"-"`
+	StakePoolSettings StakePoolSettings      `json:"stake_pool_settings"`
 }
 
 type BlobberAllocation struct {
@@ -95,6 +101,7 @@ type StorageAllocation struct {
 	Finalized      bool                 `json:"finalized"`
 	CCT            time.Duration        `json:"challenge_completion_time"`
 	TimeUnit       time.Duration        `json:"time_unit"`
+	IsImmutable    bool                 `json:"is_immutable"`
 }
 
 func (sa *StorageAllocation) Until() common.Timestamp {
@@ -115,7 +122,6 @@ const (
 	READ_REDEEM              = "read_redeem"
 	CHALLENGE_RESPONSE       = "challenge_response"
 	BLOBBER_HEALTH_CHECK     = "blobber_health_check"
-	UPDATE_BLOBBER_SETTINGS  = "update_blobber_settings"
 	FINALIZE_ALLOCATION      = "finalize_allocation"
 )
 

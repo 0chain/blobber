@@ -12,6 +12,11 @@ type UploadResult struct {
 	Size       int64  `json:"size"`
 	Hash       string `json:"content_hash"`
 	MerkleRoot string `json:"merkle_root"`
+
+	//UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
+	UploadLength int64 `json:"upload_length"`
+	//Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
+	UploadOffset int64 `json:"upload_offset"`
 }
 
 type CommitResult struct {

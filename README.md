@@ -68,6 +68,13 @@ To link to local gosdk so that the changes are reflected on the blobber build pl
 $ ./docker.local/bin/build.blobber.dev.sh
 
 ```
+For Apple M1 chip builds:
+
+```
+
+$ ./docker.local/bin/build.blobber.sh -m1
+
+```  
 
 3. After building the container for blobber, go to Blobber1 directory (git/blobber/docker.local/blobber1) and run the container using
 
