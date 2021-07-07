@@ -6,6 +6,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"github.com/herumi/bls-go-binary/bls"
+
+	"fmt"
 )
 
 func TestSignatureVerify(t *testing.T) {
@@ -74,6 +77,5 @@ func TestDebugOnly(t *testing.T) {
 	clientKeyBytes2, _ := hex.DecodeString(herumipk)
 	h = Hash(clientKeyBytes2)
 	fmt.Println("hash2 ", h)
-
 
 }
