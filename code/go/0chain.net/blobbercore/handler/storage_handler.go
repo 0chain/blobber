@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberHTTP"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -167,9 +166,9 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 
 	// authorize file access
 	var (
-		isOwner          = clientID == alloc.OwnerID
-		isRepairer       = clientID == alloc.RepairerID
-		isCollaborator   = reference.IsACollaborator(ctx, fileref.ID, clientID)
+		isOwner        = clientID == alloc.OwnerID
+		isRepairer     = clientID == alloc.RepairerID
+		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
 	if !isOwner && !isRepairer && !isCollaborator {
@@ -392,7 +391,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	return result, nil
 }
 
-func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*blobberHTTP.ListResult, error) {
+func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*blobberhttp.ListResult, error) {
 
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
@@ -437,7 +436,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
 
-	var result blobberHTTP.ListResult
+	var result blobberhttp.ListResult
 	result.AllocationRoot = allocationObj.AllocationRoot
 	result.Meta = dirref.GetListingData(ctx)
 	if clientID != allocationObj.OwnerID {
@@ -454,8 +453,8 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	return &result, nil
 }
 
-func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request) (*blobberHTTP.ReferencePathResult, error) {
-	resCh := make(chan *blobberHTTP.ReferencePathResult)
+func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResult, error) {
+	resCh := make(chan *blobberhttp.ReferencePathResult)
 	errCh := make(chan error)
 	go fsh.getReferencePath(ctx, r, resCh, errCh)
 
@@ -471,7 +470,7 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 	}
 }
 
-func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request, resCh chan<- *blobberHTTP.ReferencePathResult, errCh chan<- error) {
+func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request, resCh chan<- *blobberhttp.ReferencePathResult, errCh chan<- error) {
 	if r.Method == "POST" {
 		errCh <- common.NewError("invalid_method", "Invalid method used. Use GET instead")
 		return
@@ -537,7 +536,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 			return
 		}
 	}
-	var refPathResult blobberHTTP.ReferencePathResult
+	var refPathResult blobberhttp.ReferencePathResult
 	refPathResult.ReferencePath = refPath
 	if latestWM != nil {
 		refPathResult.LatestWM = &latestWM.WM
@@ -546,7 +545,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	resCh <- &refPathResult
 }
 
-func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (*blobberHTTP.ObjectPathResult, error) {
+func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (*blobberhttp.ObjectPathResult, error) {
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
@@ -596,7 +595,7 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
 	}
-	var objPathResult blobberHTTP.ObjectPathResult
+	var objPathResult blobberhttp.ObjectPathResult
 	objPathResult.ObjectPath = objectPath
 	if latestWM != nil {
 		objPathResult.LatestWM = &latestWM.WM
@@ -604,7 +603,7 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (
 	return &objPathResult, nil
 }
 
-func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (*blobberHTTP.ReferencePathResult, error) {
+func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResult, error) {
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
@@ -662,7 +661,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
 	}
-	var refPathResult blobberHTTP.ReferencePathResult
+	var refPathResult blobberhttp.ReferencePathResult
 	refPathResult.ReferencePath = refPath
 	if latestWM != nil {
 		refPathResult.LatestWM = &latestWM.WM

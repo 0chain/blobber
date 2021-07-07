@@ -1,4 +1,4 @@
-package blobberHTTP
+package blobberhttp
 
 import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
