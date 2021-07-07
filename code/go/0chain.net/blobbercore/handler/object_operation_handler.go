@@ -293,7 +293,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 
 	var authToken *readmarker.AuthTicket = nil
 
-	if !isOwner && !isRepairer && !isCollaborator {
+	if (!isOwner && !isRepairer && !isCollaborator) || len(r.FormValue("auth_token")) > 0  {
 		var authTokenString = r.FormValue("auth_token")
 
 		// check auth token
