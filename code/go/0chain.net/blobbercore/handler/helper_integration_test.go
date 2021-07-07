@@ -65,7 +65,6 @@ func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberClient, *Tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
 	bClient := blobbergrpc.NewBlobberClient(conn)
 
 	setupIntegrationTestConfig(t)

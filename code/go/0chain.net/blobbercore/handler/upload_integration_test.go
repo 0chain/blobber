@@ -24,7 +24,7 @@ func TestBlobberGRPCService_UploadFile(t *testing.T) {
 	pubKeyBytes, _ := hex.DecodeString(pubKey)
 	clientId := encryption.Hash(pubKeyBytes)
 
-	formFieldByt, err := json.Marshal(&allocation.UpdateFileChange{NewFileChange: allocation.NewFileChange{Filename: `grpc_handler_integration_test.go`}})
+	formFieldByt, err := json.Marshal(&allocation.UpdateFileChange{NewFileChange: allocation.NewFileChange{Filename: `helper_integration_test.go`}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestBlobberGRPCService_UploadFile(t *testing.T) {
 	}
 
 	root, _ := os.Getwd()
-	file, err := os.Open(root + "/grpc_handler_integration_test.go")
+	file, err := os.Open(root + "/helper_integration_test.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestBlobberGRPCService_UploadFile(t *testing.T) {
 				UploadFile:          fileB,
 				UploadThumbnailFile: []byte{},
 			},
-			expectedFileName: "grpc_handler_integration_test.go",
+			expectedFileName: "helper_integration_test.go",
 			expectingError:   false,
 		},
 		{
