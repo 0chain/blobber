@@ -5,7 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberHTTP"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 
 	"net/http"
 	"path/filepath"
@@ -282,9 +283,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 
 	// authorize file access
 	var (
-		isOwner          = clientID == alloc.OwnerID
-		isRepairer       = clientID == alloc.RepairerID
-		isCollaborator   = reference.IsACollaborator(ctx, fileref.ID, clientID)
+		isOwner        = clientID == alloc.OwnerID
+		isRepairer     = clientID == alloc.RepairerID
+		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
 	if !isOwner && !isRepairer && !isCollaborator {
@@ -340,7 +341,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	if latestRM != nil &&
 		latestRM.ReadCounter+(numBlocks) != readMarker.ReadCounter {
 
-		var response = &blobberHTTP.DownloadResponse{
+		var response = &blobberhttp.DownloadResponse{
 			Success:      false,
 			LatestRM:     latestRM,
 			Path:         fileref.Path,
@@ -394,7 +395,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			"couldn't save latest read marker: %v", err)
 	}
 
-	var response = &blobberHTTP.DownloadResponse{}
+	var response = &blobberhttp.DownloadResponse{}
 	response.Success = true
 	response.LatestRM = readMarker
 	response.Data = respData
@@ -405,7 +406,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	return respData, nil
 }
 
-func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberHTTP.CommitResult, error) {
+func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
 
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
@@ -488,7 +489,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			err)
 	}
 
-	var result blobberHTTP.CommitResult
+	var result blobberhttp.CommitResult
 	var latestWM *writemarker.WriteMarkerEntity
 	if len(allocationObj.AllocationRoot) == 0 {
 		latestWM = nil
@@ -659,7 +660,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
 	}
 
-	result := &blobberHTTP.UploadResult{}
+	result := &blobberhttp.UploadResult{}
 	result.Filename = new_name
 	result.Hash = objectRef.Hash
 	result.MerkleRoot = objectRef.MerkleRoot
@@ -866,7 +867,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
 	}
 
-	result := &blobberHTTP.UploadResult{}
+	result := &blobberhttp.UploadResult{}
 	result.Filename = objectRef.Name
 	result.Hash = objectRef.Hash
 	result.MerkleRoot = objectRef.MerkleRoot
@@ -875,7 +876,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	return result, nil
 }
 
-func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*blobberHTTP.UploadResult, error) {
+func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*blobberhttp.UploadResult, error) {
 	path := r.FormValue("path")
 	if len(path) == 0 {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
@@ -897,7 +898,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		connectionObj.Size += allocationChange.Size
 		connectionObj.AddChange(allocationChange, dfc)
 
-		result := &blobberHTTP.UploadResult{}
+		result := &blobberhttp.UploadResult{}
 		result.Filename = fileRef.Name
 		result.Hash = fileRef.Hash
 		result.MerkleRoot = fileRef.MerkleRoot
@@ -910,7 +911,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 }
 
 //WriteFile stores the file into the blobber files system from the HTTP request
-func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blobberHTTP.UploadResult, error) {
+func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
 
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE instead")
@@ -958,7 +959,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	result := &blobberHTTP.UploadResult{}
+	result := &blobberhttp.UploadResult{}
 	mode := allocation.INSERT_OPERATION
 	if r.Method == "PUT" {
 		mode = allocation.UPDATE_OPERATION
