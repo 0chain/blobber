@@ -126,7 +126,7 @@ func TestBlobberGRPCService_Commit(t *testing.T) {
 			t.Fatal("expected error")
 		}
 
-		if getCommiteResp.WriteMarker.AllocationID != tc.expectedAllocation {
+		if getCommiteResp.WriteMarker.AllocationId != tc.expectedAllocation {
 			t.Fatal("unexpected root name from GetObject")
 		}
 	}
