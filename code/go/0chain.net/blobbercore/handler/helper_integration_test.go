@@ -26,7 +26,7 @@ import (
 	"github.com/0chain/gosdk/core/zcncrypto"
 )
 
-const BlobberTestAddr = "localhost:7031"
+const BlobberTestAddr = "localhost:31501"
 const RetryAttempts = 8
 const RetryTimeout = 3
 
