@@ -5,9 +5,14 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
+	"google.golang.org/grpc"
+	"gorm.io/driver/postgres"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
@@ -20,6 +25,60 @@ import (
 
 	"github.com/0chain/gosdk/core/zcncrypto"
 )
+
+const BlobberTestAddr = "localhost:7031"
+const RetryAttempts = 8
+const RetryTimeout = 3
+
+func randString(n int) string {
+
+	const hexLetters = "abcdef0123456789"
+
+	var sb strings.Builder
+	for i := 0; i < n; i++ {
+		sb.WriteByte(hexLetters[rand.Intn(len(hexLetters))])
+	}
+	return sb.String()
+}
+
+func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberClient, *TestDataController) {
+	args := make(map[string]bool)
+	for _, arg := range os.Args {
+		args[arg] = true
+	}
+	if !args["integration"] {
+		t.Skip()
+	}
+
+	var conn *grpc.ClientConn
+	var err error
+	for i := 0; i < RetryAttempts; i++ {
+		conn, err = grpc.Dial(BlobberTestAddr, grpc.WithInsecure())
+		if err != nil {
+			log.Println(err)
+			<-time.After(time.Second * RetryTimeout)
+			continue
+		}
+		break
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	bClient := blobbergrpc.NewBlobberClient(conn)
+
+	setupIntegrationTestConfig(t)
+	db, err := gorm.Open(postgres.Open(fmt.Sprintf(
+		"host=%v port=%v user=%v dbname=%v password=%v sslmode=disable",
+		config.Configuration.DBHost, config.Configuration.DBPort,
+		config.Configuration.DBUserName, config.Configuration.DBName,
+		config.Configuration.DBPassword)), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tdController := NewTestDataController(db)
+
+	return bClient, tdController
+}
 
 type TestDataController struct {
 	db *gorm.DB

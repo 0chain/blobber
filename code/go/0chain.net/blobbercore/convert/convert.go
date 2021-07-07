@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"mime/multipart"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
@@ -27,31 +28,31 @@ func AllocationToGRPCAllocation(alloc *allocation.Allocation) *blobbergrpc.Alloc
 	terms := make([]*blobbergrpc.Term, 0, len(alloc.Terms))
 	for _, t := range alloc.Terms {
 		terms = append(terms, &blobbergrpc.Term{
-			ID:           t.ID,
-			BlobberID:    t.BlobberID,
-			AllocationID: t.AllocationID,
+			Id:           t.ID,
+			BlobberId:    t.BlobberID,
+			AllocationId: t.AllocationID,
 			ReadPrice:    t.ReadPrice,
 			WritePrice:   t.WritePrice,
 		})
 	}
 	return &blobbergrpc.Allocation{
-		ID:               alloc.ID,
+		Id:               alloc.ID,
 		Tx:               alloc.Tx,
 		TotalSize:        alloc.TotalSize,
 		UsedSize:         alloc.UsedSize,
-		OwnerID:          alloc.OwnerID,
+		OwnerId:          alloc.OwnerID,
 		OwnerPublicKey:   alloc.OwnerPublicKey,
 		Expiration:       int64(alloc.Expiration),
 		AllocationRoot:   alloc.AllocationRoot,
 		BlobberSize:      alloc.BlobberSize,
 		BlobberSizeUsed:  alloc.BlobberSizeUsed,
-		LatestRedeemedWM: alloc.LatestRedeemedWM,
+		LatestRedeemedWm: alloc.LatestRedeemedWM,
 		IsRedeemRequired: alloc.IsRedeemRequired,
 		TimeUnit:         int64(alloc.TimeUnit),
 		CleanedUp:        alloc.CleanedUp,
 		Finalized:        alloc.Finalized,
 		Terms:            terms,
-		PayerID:          alloc.PayerID,
+		PayerId:          alloc.PayerID,
 	}
 }
 
@@ -63,31 +64,31 @@ func GRPCAllocationToAllocation(alloc *blobbergrpc.Allocation) *allocation.Alloc
 	terms := make([]*allocation.Terms, 0, len(alloc.Terms))
 	for _, t := range alloc.Terms {
 		terms = append(terms, &allocation.Terms{
-			ID:           t.ID,
-			BlobberID:    t.BlobberID,
-			AllocationID: t.AllocationID,
+			ID:           t.Id,
+			BlobberID:    t.BlobberId,
+			AllocationID: t.AllocationId,
 			ReadPrice:    t.ReadPrice,
 			WritePrice:   t.WritePrice,
 		})
 	}
 	return &allocation.Allocation{
-		ID:               alloc.ID,
+		ID:               alloc.Id,
 		Tx:               alloc.Tx,
 		TotalSize:        alloc.TotalSize,
 		UsedSize:         alloc.UsedSize,
-		OwnerID:          alloc.OwnerID,
+		OwnerID:          alloc.OwnerId,
 		OwnerPublicKey:   alloc.OwnerPublicKey,
 		Expiration:       common.Timestamp(alloc.Expiration),
 		AllocationRoot:   alloc.AllocationRoot,
 		BlobberSize:      alloc.BlobberSize,
 		BlobberSizeUsed:  alloc.BlobberSizeUsed,
-		LatestRedeemedWM: alloc.LatestRedeemedWM,
+		LatestRedeemedWM: alloc.LatestRedeemedWm,
 		IsRedeemRequired: alloc.IsRedeemRequired,
 		TimeUnit:         time.Duration(alloc.TimeUnit),
 		CleanedUp:        alloc.CleanedUp,
 		Finalized:        alloc.Finalized,
 		Terms:            terms,
-		PayerID:          alloc.PayerID,
+		PayerID:          alloc.PayerId,
 	}
 }
 
@@ -97,8 +98,8 @@ func FileStatsToFileStatsGRPC(fileStats *stats.FileStats) *blobbergrpc.FileStats
 	}
 
 	return &blobbergrpc.FileStats{
-		ID:                       fileStats.ID,
-		RefID:                    fileStats.RefID,
+		Id:                       fileStats.ID,
+		RefId:                    fileStats.RefID,
 		NumUpdates:               fileStats.NumUpdates,
 		NumBlockDownloads:        fileStats.NumBlockDownloads,
 		SuccessChallenges:        fileStats.SuccessChallenges,
@@ -118,11 +119,11 @@ func WriteMarkerToWriteMarkerGRPC(wm *writemarker.WriteMarker) *blobbergrpc.Writ
 	return &blobbergrpc.WriteMarker{
 		AllocationRoot:         wm.AllocationRoot,
 		PreviousAllocationRoot: wm.PreviousAllocationRoot,
-		AllocationID:           wm.AllocationID,
+		AllocationId:           wm.AllocationID,
 		Size:                   wm.Size,
-		BlobberID:              wm.BlobberID,
+		BlobberId:              wm.BlobberID,
 		Timestamp:              int64(wm.Timestamp),
-		ClientID:               wm.ClientID,
+		ClientId:               wm.ClientID,
 		Signature:              wm.Signature,
 	}
 }
@@ -135,11 +136,11 @@ func WriteMarkerGRPCToWriteMarker(wm *blobbergrpc.WriteMarker) *writemarker.Writ
 	return &writemarker.WriteMarker{
 		AllocationRoot:         wm.AllocationRoot,
 		PreviousAllocationRoot: wm.PreviousAllocationRoot,
-		AllocationID:           wm.AllocationID,
+		AllocationID:           wm.AllocationId,
 		Size:                   wm.Size,
-		BlobberID:              wm.BlobberID,
+		BlobberID:              wm.BlobberId,
 		Timestamp:              common.Timestamp(wm.Timestamp),
-		ClientID:               wm.ClientID,
+		ClientID:               wm.ClientId,
 		Signature:              wm.Signature,
 	}
 }
@@ -190,8 +191,8 @@ func FileStatsGRPCToFileStats(fileStats *blobbergrpc.FileStats) *stats.FileStats
 	}
 
 	return &stats.FileStats{
-		ID:                       fileStats.ID,
-		RefID:                    fileStats.RefID,
+		ID:                       fileStats.Id,
+		RefID:                    fileStats.RefId,
 		NumUpdates:               fileStats.NumUpdates,
 		NumBlockDownloads:        fileStats.NumBlockDownloads,
 		SuccessChallenges:        fileStats.SuccessChallenges,

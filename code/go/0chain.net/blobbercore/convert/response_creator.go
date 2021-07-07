@@ -1,16 +1,13 @@
 package convert
 
 import (
-	"context"
 	"encoding/json"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-
-	stats2 "github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberHTTP"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	stats2 "github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 )
 
 func GetAllocationResponseCreator(resp interface{}) *blobbergrpc.GetAllocationResponse {
@@ -62,7 +59,7 @@ func ListEntitesResponseCreator(r interface{}) *blobbergrpc.ListEntitiesResponse
 		return nil
 	}
 
-	httpResp, _ := r.(*blobberHTTP.ListResult)
+	httpResp, _ := r.(*blobberhttp.ListResult)
 
 	var resp blobbergrpc.ListEntitiesResponse
 	for i := range httpResp.Entities {
@@ -79,11 +76,11 @@ func GetReferencePathResponseCreator(r interface{}) *blobbergrpc.GetReferencePat
 		return nil
 	}
 
-	httpResp, _ := r.(*blobberHTTP.ReferencePathResult)
+	httpResp, _ := r.(*blobberhttp.ReferencePathResult)
 	var resp blobbergrpc.GetReferencePathResponse
 
 	var recursionCount int
-	resp.LatestWM = WriteMarkerToWriteMarkerGRPC(httpResp.LatestWM)
+	resp.LatestWm = WriteMarkerToWriteMarkerGRPC(httpResp.LatestWM)
 	resp.ReferencePath = ReferencePathToReferencePathGRPC(&recursionCount, httpResp.ReferencePath)
 	return &resp
 }
@@ -93,11 +90,11 @@ func GetObjectTreeResponseCreator(r interface{}) *blobbergrpc.GetObjectTreeRespo
 		return nil
 	}
 
-	httpResp, _ := r.(*blobberHTTP.ReferencePathResult)
+	httpResp, _ := r.(*blobberhttp.ReferencePathResult)
 	var resp blobbergrpc.GetObjectTreeResponse
 
 	var recursionCount int
-	resp.LatestWM = WriteMarkerToWriteMarkerGRPC(httpResp.LatestWM)
+	resp.LatestWm = WriteMarkerToWriteMarkerGRPC(httpResp.LatestWM)
 	resp.ReferencePath = ReferencePathToReferencePathGRPC(&recursionCount, httpResp.ReferencePath)
 	return &resp
 }
@@ -107,7 +104,7 @@ func GetObjectPathResponseCreator(r interface{}) *blobbergrpc.GetObjectPathRespo
 		return nil
 	}
 
-	httpResp, _ := r.(*blobberHTTP.ObjectPathResult)
+	httpResp, _ := r.(*blobberhttp.ObjectPathResult)
 	var resp blobbergrpc.GetObjectPathResponse
 
 	var pathList []*blobbergrpc.FileRef
@@ -133,7 +130,7 @@ func CommitWriteResponseCreator(r interface{}) *blobbergrpc.CommitResponse {
 		return nil
 	}
 
-	httpResp, _ := r.(*blobberHTTP.CommitResult)
+	httpResp, _ := r.(*blobberhttp.CommitResult)
 
 	return &blobbergrpc.CommitResponse{
 		AllocationRoot: httpResp.AllocationRoot,
@@ -195,7 +192,7 @@ func CopyObjectResponseCreator(r interface{}) *blobbergrpc.CopyObjectResponse {
 		return nil
 	}
 
-	httpResp, _ := r.(*blobberHTTP.UploadResult)
+	httpResp, _ := r.(*blobberhttp.UploadResult)
 	return &blobbergrpc.CopyObjectResponse{
 		Filename:     httpResp.Filename,
 		Size:         httpResp.Size,
@@ -206,161 +203,12 @@ func CopyObjectResponseCreator(r interface{}) *blobbergrpc.CopyObjectResponse {
 	}
 }
 
-func GetAllocationResponseHandler(resp *blobbergrpc.GetAllocationResponse) *allocation.Allocation {
-	return GRPCAllocationToAllocation(resp.Allocation)
-}
-
-func GetFileMetaDataResponseHandler(resp *blobbergrpc.GetFileMetaDataResponse) map[string]interface{} {
-	var collaborators []reference.Collaborator
-	for _, c := range resp.Collaborators {
-		collaborators = append(collaborators, *GRPCCollaboratorToCollaborator(c))
-	}
-
-	result := FileRefGRPCToFileRef(resp.MetaData).GetListingData(context.Background())
-	result["collaborators"] = collaborators
-	return result
-}
-
-func GetFileStatsResponseHandler(resp *blobbergrpc.GetFileStatsResponse) map[string]interface{} {
-	ctx := context.Background()
-	result := FileRefGRPCToFileRef(resp.MetaData).GetListingData(ctx)
-
-	statsMap := make(map[string]interface{})
-	statsBytes, _ := json.Marshal(FileStatsGRPCToFileStats(resp.Stats))
-	_ = json.Unmarshal(statsBytes, &statsMap)
-
-	for k, v := range statsMap {
-		result[k] = v
-	}
-
-	return result
-}
-
-func ListEntitesResponseHandler(resp *blobbergrpc.ListEntitiesResponse) *blobberHTTP.ListResult {
-	ctx := context.Background()
-	var entities []map[string]interface{}
-	for i := range resp.Entities {
-		entities = append(entities, FileRefGRPCToFileRef(resp.Entities[i]).GetListingData(ctx))
-	}
-
-	return &blobberHTTP.ListResult{
-		AllocationRoot: resp.AllocationRoot,
-		Meta:           FileRefGRPCToFileRef(resp.MetaData).GetListingData(ctx),
-		Entities:       entities,
-	}
-}
-
-func GetReferencePathResponseHandler(getReferencePathResponse *blobbergrpc.GetReferencePathResponse) *blobberHTTP.ReferencePathResult {
-	var recursionCount int
-	return &blobberHTTP.ReferencePathResult{
-		ReferencePath: ReferencePathGRPCToReferencePath(&recursionCount, getReferencePathResponse.ReferencePath),
-		LatestWM:      WriteMarkerGRPCToWriteMarker(getReferencePathResponse.LatestWM),
-	}
-}
-
-func GetObjectPathResponseHandler(getObjectPathResponse *blobbergrpc.GetObjectPathResponse) *blobberHTTP.ObjectPathResult {
-	ctx := context.Background()
-	path := FileRefGRPCToFileRef(getObjectPathResponse.ObjectPath.Path).GetListingData(ctx)
-	var pathList []map[string]interface{}
-	for _, pl := range getObjectPathResponse.ObjectPath.PathList {
-		pathList = append(pathList, FileRefGRPCToFileRef(pl).GetListingData(ctx))
-	}
-	path["list"] = pathList
-
-	return &blobberHTTP.ObjectPathResult{
-		ObjectPath: &reference.ObjectPath{
-			RootHash:     getObjectPathResponse.ObjectPath.RootHash,
-			Meta:         FileRefGRPCToFileRef(getObjectPathResponse.ObjectPath.Meta).GetListingData(ctx),
-			Path:         path,
-			FileBlockNum: getObjectPathResponse.ObjectPath.FileBlockNum,
-		},
-		LatestWM: WriteMarkerGRPCToWriteMarker(getObjectPathResponse.LatestWriteMarker),
-	}
-}
-
-func GetObjectTreeResponseHandler(getObjectTreeResponse *blobbergrpc.GetObjectTreeResponse) *blobberHTTP.ReferencePathResult {
-	var recursionCount int
-	return &blobberHTTP.ReferencePathResult{
-		ReferencePath: ReferencePathGRPCToReferencePath(&recursionCount, getObjectTreeResponse.ReferencePath),
-		LatestWM:      WriteMarkerGRPCToWriteMarker(getObjectTreeResponse.LatestWM),
-	}
-}
-
-func CommitWriteResponseHandler(resp *blobbergrpc.CommitResponse) *blobberHTTP.CommitResult {
-	return &blobberHTTP.CommitResult{
-		AllocationRoot: resp.AllocationRoot,
-		WriteMarker:    WriteMarkerGRPCToWriteMarker(resp.WriteMarker),
-		Success:        resp.Success,
-		ErrorMessage:   resp.ErrorMessage,
-	}
-}
-
-func GetCalculateHashResponseHandler(response *blobbergrpc.CalculateHashResponse) interface{} {
-	result := make(map[string]interface{})
-	if msg := response.GetMessage(); msg != "" {
-		result["msg"] = msg
-	}
-
-	return result
-}
-
-func GetCommitMetaTxnHandlerResponse(response *blobbergrpc.CommitMetaTxnResponse) interface{} {
-	msg := response.GetMessage()
-	if msg == "" {
-		return nil
-	}
-
-	result := struct {
-		Msg string `json:"msg"`
-	}{
-		Msg: msg,
-	}
-
-	return result
-}
-
-func CollaboratorResponse(response *blobbergrpc.CollaboratorResponse) interface{} {
-	if msg := response.GetMessage(); msg != "" {
-		return struct {
-			Msg string `json:"msg"`
-		}{Msg: msg}
-	}
-
-	if collaborators := response.GetCollaborators(); collaborators != nil {
-		collabs := make([]reference.Collaborator, 0, len(collaborators))
-		for _, c := range collaborators {
-			collabs = append(collabs, *GRPCCollaboratorToCollaborator(c))
-		}
-
-		return collabs
-	}
-
-	return nil
-}
-
-func UpdateObjectAttributesResponseHandler(updateAttributesResponse *blobbergrpc.UpdateObjectAttributesResponse) *blobberHTTP.UpdateObjectAttributesResponse {
-	return &blobberHTTP.UpdateObjectAttributesResponse{
-		WhoPaysForReads: common.WhoPays(updateAttributesResponse.WhoPaysForReads),
-	}
-}
-
-func CopyObjectResponseHandler(copyObjectResponse *blobbergrpc.CopyObjectResponse) *blobberHTTP.UploadResult {
-	return &blobberHTTP.UploadResult{
-		Filename:     copyObjectResponse.Filename,
-		Size:         copyObjectResponse.Size,
-		Hash:         copyObjectResponse.ContentHash,
-		MerkleRoot:   copyObjectResponse.MerkleRoot,
-		UploadLength: copyObjectResponse.UploadLength,
-		UploadOffset: copyObjectResponse.UploadOffset,
-	}
-}
-
 func RenameObjectResponseCreator(r interface{}) *blobbergrpc.RenameObjectResponse {
 	if r == nil {
 		return nil
 	}
 
-	httpResp, _ := r.(*blobberHTTP.UploadResult)
+	httpResp, _ := r.(*blobberhttp.UploadResult)
 	return &blobbergrpc.RenameObjectResponse{
 		Filename:     httpResp.Filename,
 		Size:         httpResp.Size,
@@ -381,7 +229,7 @@ func DownloadFileResponseCreator(r interface{}) *blobbergrpc.DownloadFileRespons
 		return &blobbergrpc.DownloadFileResponse{
 			Data: httpResp,
 		}
-	case *blobberHTTP.DownloadResponse:
+	case *blobberhttp.DownloadResponse:
 		return &blobbergrpc.DownloadFileResponse{
 			Success:      httpResp.Success,
 			Data:         httpResp.Data,
@@ -399,7 +247,7 @@ func UploadFileResponseCreator(r interface{}) *blobbergrpc.UploadFileResponse {
 		return nil
 	}
 
-	httpResp, _ := r.(*blobberHTTP.UploadResult)
+	httpResp, _ := r.(*blobberhttp.UploadResult)
 	return &blobbergrpc.UploadFileResponse{
 		Filename:     httpResp.Filename,
 		Size:         httpResp.Size,

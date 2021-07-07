@@ -124,7 +124,7 @@ message CollaboratorRequest {
 
 message CollaboratorResponse {
   string message = 1;
-  repeated Collaborator Collaborators = 2;
+  repeated Collaborator collaborators = 2;
 }
 
 message CalculateHashRequest {
@@ -168,52 +168,52 @@ message GetObjectTreeRequest {
   string allocation = 2;
 }
 message GetObjectTreeResponse {
-  ReferencePath ReferencePath = 1;
-  WriteMarker LatestWM = 2;
+  ReferencePath reference_path = 1;
+  WriteMarker latest_wm = 2;
 }
 
 message GetReferencePathRequest {
-  string Paths = 1;
-  string Path = 2;
+  string paths = 1;
+  string path = 2;
   string allocation = 3;
 }
 message GetReferencePathResponse {
-  ReferencePath ReferencePath = 1;
-  WriteMarker LatestWM = 2;
+  ReferencePath reference_path = 1;
+  WriteMarker latest_wm = 2;
 }
 
 message ReferencePath {
-  FileRef MetaData = 1;
-  repeated ReferencePath List = 2;
+  FileRef meta_data = 1;
+  repeated ReferencePath list = 2;
 }
 
 message GetObjectPathRequest {
   string allocation = 1;
-  string Path = 2;
-  string BlockNum = 3;
+  string path = 2;
+  string block_num = 3;
 }
 message GetObjectPathResponse {
-  ObjectPath ObjectPath = 1;
-  WriteMarker LatestWriteMarker = 2;
+  ObjectPath object_path = 1;
+  WriteMarker latest_write_marker = 2;
 }
 
 message ObjectPath {
-  string RootHash = 1;
-  FileRef Meta = 2;
-  FileRef Path = 3;
-  repeated FileRef PathList = 4;
-  int64 FileBlockNum = 5;
+  string root_hash = 1;
+  FileRef meta = 2;
+  FileRef path = 3;
+  repeated FileRef path_list = 4;
+  int64 file_block_num = 5;
 }
 
 message WriteMarker {
-  string AllocationRoot = 1;
-  string PreviousAllocationRoot = 2;
-  string AllocationID = 3;
-  int64 Size = 4;
-  string BlobberID = 5;
-  int64 Timestamp = 6;
-  string ClientID = 7;
-  string Signature = 8;
+  string allocation_root = 1;
+  string previous_allocation_root = 2;
+  string allocation_id = 3;
+  int64 size = 4;
+  string blobber_id = 5;
+  int64 timestamp = 6;
+  string client_id = 7;
+  string signature = 8;
 }
 
 message ListEntitiesRequest {
@@ -224,9 +224,9 @@ message ListEntitiesRequest {
 }
 
 message ListEntitiesResponse {
-  string AllocationRoot = 1;
-  FileRef MetaData = 2;
-  repeated FileRef Entities = 3;
+  string allocation_root = 1;
+  FileRef meta_data = 2;
+  repeated FileRef entities = 3;
 }
 
 message GetFileStatsRequest {
@@ -236,21 +236,21 @@ message GetFileStatsRequest {
 }
 
 message GetFileStatsResponse {
-  FileRef MetaData = 1;
-  FileStats Stats = 2;
+  FileRef meta_data = 1;
+  FileStats stats = 2;
 }
 
 message FileStats {
-  int64 ID = 1;
-  int64 RefID = 2;
-  int64 NumUpdates = 3;
-  int64 NumBlockDownloads = 4;
-  int64 SuccessChallenges = 5;
-  int64 FailedChallenges = 6;
-  string LastChallengeResponseTxn = 7;
-  string WriteMarkerRedeemTxn = 8;
-  int64 CreatedAt = 9;
-  int64 UpdatedAt = 10;
+  int64 id = 1;
+  int64 ref_id = 2;
+  int64 num_updates = 3;
+  int64 num_block_downloads = 4;
+  int64 success_challenges = 5;
+  int64 failed_challenges = 6;
+  string last_challenge_response_txn = 7;
+  string write_marker_redeem_txn = 8;
+  int64 created_at = 9;
+  int64 updated_at = 10;
 }
 
 message GetFileMetaDataRequest {
@@ -261,20 +261,20 @@ message GetFileMetaDataRequest {
 }
 
 message GetFileMetaDataResponse {
-  FileRef MetaData = 1;
-  repeated Collaborator Collaborators = 2;
+  FileRef meta_data = 1;
+  repeated Collaborator collaborators = 2;
 }
 
 message CommitMetaTxn {
-  int64 RefId = 1;
-  string TxnId = 2;
-  int64 CreatedAt = 3;
+  int64 ref_id = 1;
+  string txn_id = 2;
+  int64 created_at = 3;
 }
 
 message Collaborator {
-  int64 RefId = 1;
-  string ClientId = 2;
-  int64 CreatedAt = 3;
+  int64 ref_id = 1;
+  string client_id = 2;
+  int64 created_at = 3;
 }
 
 message GetAllocationRequest {
@@ -387,76 +387,76 @@ message UploadFileResponse {
 }
 
 message Allocation {
-  string ID = 1;
-  string Tx = 2;
-  int64  TotalSize = 3;
-  int64 UsedSize = 4;
-  string OwnerID = 5;
-  string OwnerPublicKey = 6;
-  string RepairerID = 7;
-  string PayerID = 8;
-  int64 Expiration = 9;
-  string AllocationRoot = 10;
-  int64 BlobberSize = 11;
-  int64 BlobberSizeUsed = 12;
-  string LatestRedeemedWM = 13;
-  bool IsRedeemRequired = 14;
-  int64 TimeUnit = 15;
-  bool CleanedUp = 16;
-  bool Finalized = 17;
-  repeated Term Terms = 18;
+  string id = 1;
+  string tx = 2;
+  int64  total_size = 3;
+  int64 used_size = 4;
+  string owner_id = 5;
+  string owner_public_key = 6;
+  string repairer_id = 7;
+  string payer_id = 8;
+  int64 expiration = 9;
+  string allocation_root = 10;
+  int64 blobber_size = 11;
+  int64 blobber_size_used = 12;
+  string latest_redeemed_wm = 13;
+  bool is_redeem_required = 14;
+  int64 time_unit = 15;
+  bool cleaned_up = 16;
+  bool finalized = 17;
+  repeated Term terms = 18;
 }
 
 message Term {
-  int64 ID = 1;
-  string BlobberID = 2;
-  string AllocationID = 3;
-  int64 ReadPrice = 4;
-  int64 WritePrice = 5;
+  int64 id = 1;
+  string blobber_id = 2;
+  string allocation_id = 3;
+  int64 read_price = 4;
+  int64 write_price = 5;
 }
 
 message FileRef {
-  string Type = 1;
-  FileMetaData FileMetaData = 2;
-  DirMetaData DirMetaData = 3;
+  string type = 1;
+  FileMetaData file_meta_data = 2;
+  DirMetaData dir_meta_data = 3;
 }
 
 message FileMetaData {
-  string Type = 1;
-  string LookupHash = 2;
-  string Name = 3;
-  string Path = 4;
-  string Hash = 5;
-  int64 NumBlocks = 6;
-  string PathHash = 7;
-  string CustomMeta = 8;
-  string ContentHash = 9;
-  int64 Size = 10;
-  string MerkleRoot = 11;
-  int64 ActualFileSize = 12;
-  string ActualFileHash = 13;
-  string MimeType = 14;
-  int64 ThumbnailSize = 15;
-  string ThumbnailHash = 16;
-  int64 ActualThumbnailSize = 17;
-  string ActualThumbnailHash = 18;
-  string EncryptedKey = 19;
-  bytes Attributes = 20;
-  bool OnCloud = 21;
-  repeated CommitMetaTxn CommitMetaTxns = 22;
-  int64 CreatedAt = 23;
-  int64 UpdatedAt = 24;
+  string type = 1;
+  string lookup_hash = 2;
+  string name = 3;
+  string path = 4;
+  string hash = 5;
+  int64 num_blocks = 6;
+  string path_hash = 7;
+  string custom_meta = 8;
+  string content_hash = 9;
+  int64 size = 10;
+  string merkle_root = 11;
+  int64 actual_file_size = 12;
+  string actual_file_hash = 13;
+  string mime_type = 14;
+  int64 thumbnail_size = 15;
+  string thumbnail_hash = 16;
+  int64 actual_thumbnail_size = 17;
+  string actual_thumbnail_hash = 18;
+  string encrypted_key = 19;
+  bytes attributes = 20;
+  bool on_cloud = 21;
+  repeated CommitMetaTxn commit_meta_txns = 22;
+  int64 created_at = 23;
+  int64 updated_at = 24;
 }
 
 message DirMetaData {
-  string Type = 1;
-  string LookupHash = 2;
-  string Name = 3;
-  string Path = 4;
-  string Hash = 5;
-  int64 NumBlocks = 6;
-  string PathHash = 7;
-  int64 Size = 8;
-  int64 CreatedAt = 9;
-  int64 UpdatedAt = 10;
+  string type = 1;
+  string lookup_hash = 2;
+  string name = 3;
+  string path = 4;
+  string hash = 5;
+  int64 num_blocks = 6;
+  string path_hash = 7;
+  int64 size = 8;
+  int64 created_at = 9;
+  int64 updated_at = 10;
 }
