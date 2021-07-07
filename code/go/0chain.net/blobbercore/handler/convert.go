@@ -25,6 +25,8 @@ func AllocationToGRPCAllocation(alloc *allocation.Allocation) *blobbergrpc.Alloc
 		UsedSize:         alloc.UsedSize,
 		OwnerID:          alloc.OwnerID,
 		OwnerPublicKey:   alloc.OwnerPublicKey,
+		RepairerID:       alloc.RepairerID,
+		PayerID:          alloc.PayerID,
 		Expiration:       int64(alloc.Expiration),
 		AllocationRoot:   alloc.AllocationRoot,
 		BlobberSize:      alloc.BlobberSize,
@@ -35,7 +37,6 @@ func AllocationToGRPCAllocation(alloc *allocation.Allocation) *blobbergrpc.Alloc
 		CleanedUp:        alloc.CleanedUp,
 		Finalized:        alloc.Finalized,
 		Terms:            terms,
-		PayerID:          alloc.PayerID,
 	}
 }
 
