@@ -423,13 +423,13 @@
             "type": "string"
           },
           {
-            "name": "Path",
+            "name": "path",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
-            "name": "BlockNum",
+            "name": "blockNum",
             "in": "query",
             "required": false,
             "type": "string"
@@ -501,13 +501,13 @@
             "type": "string"
           },
           {
-            "name": "Paths",
+            "name": "paths",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
-            "name": "Path",
+            "name": "path",
             "in": "query",
             "required": false,
             "type": "string"
@@ -739,64 +739,64 @@
     "v1Allocation": {
       "type": "object",
       "properties": {
-        "ID": {
+        "id": {
           "type": "string"
         },
-        "Tx": {
+        "tx": {
           "type": "string"
         },
-        "TotalSize": {
+        "totalSize": {
           "type": "string",
           "format": "int64"
         },
-        "UsedSize": {
+        "usedSize": {
           "type": "string",
           "format": "int64"
         },
-        "OwnerID": {
+        "ownerId": {
           "type": "string"
         },
-        "OwnerPublicKey": {
+        "ownerPublicKey": {
           "type": "string"
         },
-        "RepairerID": {
+        "repairerId": {
           "type": "string"
         },
-        "PayerID": {
+        "payerId": {
           "type": "string"
         },
-        "Expiration": {
+        "expiration": {
           "type": "string",
           "format": "int64"
         },
-        "AllocationRoot": {
+        "allocationRoot": {
           "type": "string"
         },
-        "BlobberSize": {
+        "blobberSize": {
           "type": "string",
           "format": "int64"
         },
-        "BlobberSizeUsed": {
+        "blobberSizeUsed": {
           "type": "string",
           "format": "int64"
         },
-        "LatestRedeemedWM": {
+        "latestRedeemedWm": {
           "type": "string"
         },
-        "IsRedeemRequired": {
+        "isRedeemRequired": {
           "type": "boolean"
         },
-        "TimeUnit": {
+        "timeUnit": {
           "type": "string",
           "format": "int64"
         },
-        "CleanedUp": {
+        "cleanedUp": {
           "type": "boolean"
         },
-        "Finalized": {
+        "finalized": {
           "type": "boolean"
         },
-        "Terms": {
+        "terms": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1Term"
@@ -829,14 +829,14 @@
     "v1Collaborator": {
       "type": "object",
       "properties": {
-        "RefId": {
+        "refId": {
           "type": "string",
           "format": "int64"
         },
-        "ClientId": {
+        "clientId": {
           "type": "string"
         },
-        "CreatedAt": {
+        "createdAt": {
           "type": "string",
           "format": "int64"
         }
@@ -868,7 +868,7 @@
         "message": {
           "type": "string"
         },
-        "Collaborators": {
+        "collaborators": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1Collaborator"
@@ -879,14 +879,14 @@
     "v1CommitMetaTxn": {
       "type": "object",
       "properties": {
-        "RefId": {
+        "refId": {
           "type": "string",
           "format": "int64"
         },
-        "TxnId": {
+        "txnId": {
           "type": "string"
         },
-        "CreatedAt": {
+        "createdAt": {
           "type": "string",
           "format": "int64"
         }
@@ -1002,37 +1002,37 @@
     "v1DirMetaData": {
       "type": "object",
       "properties": {
-        "Type": {
+        "type": {
           "type": "string"
         },
-        "LookupHash": {
+        "lookupHash": {
           "type": "string"
         },
-        "Name": {
+        "name": {
           "type": "string"
         },
-        "Path": {
+        "path": {
           "type": "string"
         },
-        "Hash": {
+        "hash": {
           "type": "string"
         },
-        "NumBlocks": {
+        "numBlocks": {
           "type": "string",
           "format": "int64"
         },
-        "PathHash": {
+        "pathHash": {
           "type": "string"
         },
-        "Size": {
+        "size": {
           "type": "string",
           "format": "int64"
         },
-        "CreatedAt": {
+        "createdAt": {
           "type": "string",
           "format": "int64"
         },
-        "UpdatedAt": {
+        "updatedAt": {
           "type": "string",
           "format": "int64"
         }
@@ -1094,86 +1094,86 @@
     "v1FileMetaData": {
       "type": "object",
       "properties": {
-        "Type": {
+        "type": {
           "type": "string"
         },
-        "LookupHash": {
+        "lookupHash": {
           "type": "string"
         },
-        "Name": {
+        "name": {
           "type": "string"
         },
-        "Path": {
+        "path": {
           "type": "string"
         },
-        "Hash": {
+        "hash": {
           "type": "string"
         },
-        "NumBlocks": {
+        "numBlocks": {
           "type": "string",
           "format": "int64"
         },
-        "PathHash": {
+        "pathHash": {
           "type": "string"
         },
-        "CustomMeta": {
+        "customMeta": {
           "type": "string"
         },
-        "ContentHash": {
+        "contentHash": {
           "type": "string"
         },
-        "Size": {
+        "size": {
           "type": "string",
           "format": "int64"
         },
-        "MerkleRoot": {
+        "merkleRoot": {
           "type": "string"
         },
-        "ActualFileSize": {
+        "actualFileSize": {
           "type": "string",
           "format": "int64"
         },
-        "ActualFileHash": {
+        "actualFileHash": {
           "type": "string"
         },
-        "MimeType": {
+        "mimeType": {
           "type": "string"
         },
-        "ThumbnailSize": {
+        "thumbnailSize": {
           "type": "string",
           "format": "int64"
         },
-        "ThumbnailHash": {
+        "thumbnailHash": {
           "type": "string"
         },
-        "ActualThumbnailSize": {
+        "actualThumbnailSize": {
           "type": "string",
           "format": "int64"
         },
-        "ActualThumbnailHash": {
+        "actualThumbnailHash": {
           "type": "string"
         },
-        "EncryptedKey": {
+        "encryptedKey": {
           "type": "string"
         },
-        "Attributes": {
+        "attributes": {
           "type": "string",
           "format": "byte"
         },
-        "OnCloud": {
+        "onCloud": {
           "type": "boolean"
         },
-        "CommitMetaTxns": {
+        "commitMetaTxns": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1CommitMetaTxn"
           }
         },
-        "CreatedAt": {
+        "createdAt": {
           "type": "string",
           "format": "int64"
         },
-        "UpdatedAt": {
+        "updatedAt": {
           "type": "string",
           "format": "int64"
         }
@@ -1182,13 +1182,13 @@
     "v1FileRef": {
       "type": "object",
       "properties": {
-        "Type": {
+        "type": {
           "type": "string"
         },
-        "FileMetaData": {
+        "fileMetaData": {
           "$ref": "#/definitions/v1FileMetaData"
         },
-        "DirMetaData": {
+        "dirMetaData": {
           "$ref": "#/definitions/v1DirMetaData"
         }
       }
@@ -1196,41 +1196,41 @@
     "v1FileStats": {
       "type": "object",
       "properties": {
-        "ID": {
+        "id": {
           "type": "string",
           "format": "int64"
         },
-        "RefID": {
+        "refId": {
           "type": "string",
           "format": "int64"
         },
-        "NumUpdates": {
+        "numUpdates": {
           "type": "string",
           "format": "int64"
         },
-        "NumBlockDownloads": {
+        "numBlockDownloads": {
           "type": "string",
           "format": "int64"
         },
-        "SuccessChallenges": {
+        "successChallenges": {
           "type": "string",
           "format": "int64"
         },
-        "FailedChallenges": {
+        "failedChallenges": {
           "type": "string",
           "format": "int64"
         },
-        "LastChallengeResponseTxn": {
+        "lastChallengeResponseTxn": {
           "type": "string"
         },
-        "WriteMarkerRedeemTxn": {
+        "writeMarkerRedeemTxn": {
           "type": "string"
         },
-        "CreatedAt": {
+        "createdAt": {
           "type": "string",
           "format": "int64"
         },
-        "UpdatedAt": {
+        "updatedAt": {
           "type": "string",
           "format": "int64"
         }
@@ -1264,10 +1264,10 @@
     "v1GetFileMetaDataResponse": {
       "type": "object",
       "properties": {
-        "MetaData": {
+        "metaData": {
           "$ref": "#/definitions/v1FileRef"
         },
-        "Collaborators": {
+        "collaborators": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1Collaborator"
@@ -1292,10 +1292,10 @@
     "v1GetFileStatsResponse": {
       "type": "object",
       "properties": {
-        "MetaData": {
+        "metaData": {
           "$ref": "#/definitions/v1FileRef"
         },
-        "Stats": {
+        "stats": {
           "$ref": "#/definitions/v1FileStats"
         }
       }
@@ -1303,10 +1303,10 @@
     "v1GetObjectPathResponse": {
       "type": "object",
       "properties": {
-        "ObjectPath": {
+        "objectPath": {
           "$ref": "#/definitions/v1ObjectPath"
         },
-        "LatestWriteMarker": {
+        "latestWriteMarker": {
           "$ref": "#/definitions/v1WriteMarker"
         }
       }
@@ -1314,10 +1314,10 @@
     "v1GetObjectTreeResponse": {
       "type": "object",
       "properties": {
-        "ReferencePath": {
+        "referencePath": {
           "$ref": "#/definitions/v1ReferencePath"
         },
-        "LatestWM": {
+        "latestWm": {
           "$ref": "#/definitions/v1WriteMarker"
         }
       }
@@ -1325,10 +1325,10 @@
     "v1GetReferencePathResponse": {
       "type": "object",
       "properties": {
-        "ReferencePath": {
+        "referencePath": {
           "$ref": "#/definitions/v1ReferencePath"
         },
-        "LatestWM": {
+        "latestWm": {
           "$ref": "#/definitions/v1WriteMarker"
         }
       }
@@ -1336,13 +1336,13 @@
     "v1ListEntitiesResponse": {
       "type": "object",
       "properties": {
-        "AllocationRoot": {
+        "allocationRoot": {
           "type": "string"
         },
-        "MetaData": {
+        "metaData": {
           "$ref": "#/definitions/v1FileRef"
         },
-        "Entities": {
+        "entities": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1FileRef"
@@ -1353,22 +1353,22 @@
     "v1ObjectPath": {
       "type": "object",
       "properties": {
-        "RootHash": {
+        "rootHash": {
           "type": "string"
         },
-        "Meta": {
+        "meta": {
           "$ref": "#/definitions/v1FileRef"
         },
-        "Path": {
+        "path": {
           "$ref": "#/definitions/v1FileRef"
         },
-        "PathList": {
+        "pathList": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1FileRef"
           }
         },
-        "FileBlockNum": {
+        "fileBlockNum": {
           "type": "string",
           "format": "int64"
         }
@@ -1419,10 +1419,10 @@
     "v1ReferencePath": {
       "type": "object",
       "properties": {
-        "MetaData": {
+        "metaData": {
           "$ref": "#/definitions/v1FileRef"
         },
-        "List": {
+        "list": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1ReferencePath"
@@ -1481,21 +1481,21 @@
     "v1Term": {
       "type": "object",
       "properties": {
-        "ID": {
+        "id": {
           "type": "string",
           "format": "int64"
         },
-        "BlobberID": {
+        "blobberId": {
           "type": "string"
         },
-        "AllocationID": {
+        "allocationId": {
           "type": "string"
         },
-        "ReadPrice": {
+        "readPrice": {
           "type": "string",
           "format": "int64"
         },
-        "WritePrice": {
+        "writePrice": {
           "type": "string",
           "format": "int64"
         }
@@ -1592,30 +1592,30 @@
     "v1WriteMarker": {
       "type": "object",
       "properties": {
-        "AllocationRoot": {
+        "allocationRoot": {
           "type": "string"
         },
-        "PreviousAllocationRoot": {
+        "previousAllocationRoot": {
           "type": "string"
         },
-        "AllocationID": {
+        "allocationId": {
           "type": "string"
         },
-        "Size": {
+        "size": {
           "type": "string",
           "format": "int64"
         },
-        "BlobberID": {
+        "blobberId": {
           "type": "string"
         },
-        "Timestamp": {
+        "timestamp": {
           "type": "string",
           "format": "int64"
         },
-        "ClientID": {
+        "clientId": {
           "type": "string"
         },
-        "Signature": {
+        "signature": {
           "type": "string"
         }
       }
