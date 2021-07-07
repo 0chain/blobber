@@ -9,11 +9,12 @@ import (
 	"google.golang.org/grpc"
 )
 
-func RegisterGRPCServices(r *mux.Router, server *grpc.Server) {
+func registerGRPCServices(r *mux.Router, server *grpc.Server) {
 	blobberService := newGRPCBlobberService()
 	grpcGatewayHandler := runtime.NewServeMux()
 
 	blobbergrpc.RegisterBlobberServer(server, blobberService)
 	_ = blobbergrpc.RegisterBlobberHandlerServer(context.Background(), grpcGatewayHandler, blobberService)
 	r.PathPrefix("/").Handler(grpcGatewayHandler)
+
 }

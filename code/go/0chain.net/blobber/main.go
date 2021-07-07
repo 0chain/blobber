@@ -44,7 +44,7 @@ var filesDir *string
 var metadataDB *string
 
 func initHandlers(r *mux.Router) {
-	r.HandleFunc("/", func (w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		mc := chain.GetServerChain()
 
 		fmt.Fprintf(w, "<div>Running since %v ...\n", startTime)
@@ -288,7 +288,7 @@ func healthCheckOnChainWorker() {
 
 func setup(logDir string) error {
 	// init blockchain related stuff
-	zcncore.SetLogFile(logDir + "/0chainBlobber.log", false)
+	zcncore.SetLogFile(logDir+"/0chainBlobber.log", false)
 	zcncore.SetLogLevel(3)
 	if err := zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme); err != nil {
 		return err
@@ -454,8 +454,7 @@ func main() {
 	common.ConfigRateLimits()
 	initHandlers(r)
 
-	grpcServer := handler.NewServerWithMiddlewares(common.NewGRPCRateLimiter())
-	handler.RegisterGRPCServices(r, grpcServer)
+	grpcServer := handler.NewGRPCServerWithMiddlewares(common.NewGRPCRateLimiter(), r)
 
 	if config.Development() {
 		reflection.Register(grpcServer)

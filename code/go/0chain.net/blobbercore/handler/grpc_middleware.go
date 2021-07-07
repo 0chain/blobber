@@ -2,7 +2,12 @@ package handler
 
 import (
 	"context"
+	"net/http"
 	"time"
+
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
+
+	"github.com/gorilla/mux"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -53,8 +58,8 @@ func unaryTimeoutInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
-func NewServerWithMiddlewares(limiter grpc_ratelimit.Limiter) *grpc.Server {
-	return grpc.NewServer(
+func NewGRPCServerWithMiddlewares(limiter grpc_ratelimit.Limiter, r *mux.Router) *grpc.Server {
+	srv := grpc.NewServer(
 		grpc.ChainStreamInterceptor(
 			grpc_zap.StreamServerInterceptor(logging.Logger),
 			grpc_recovery.StreamServerInterceptor(),
@@ -67,4 +72,21 @@ func NewServerWithMiddlewares(limiter grpc_ratelimit.Limiter) *grpc.Server {
 			unaryTimeoutInterceptor(), // should always be the lastest, to be "innermost"
 		),
 	)
+
+	registerGRPCServices(r, srv)
+
+	// adds grpc-web middleware
+	wrappedServer := grpcweb.WrapServer(srv)
+	r.Use(func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if wrappedServer.IsGrpcWebRequest(r) {
+				wrappedServer.ServeHTTP(w, r)
+				return
+			}
+
+			h.ServeHTTP(w, r)
+		})
+	})
+
+	return srv
 }

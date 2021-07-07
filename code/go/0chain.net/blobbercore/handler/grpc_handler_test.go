@@ -32,8 +32,7 @@ var (
 
 func startGRPCServer(t *testing.T) {
 	lis = bufconn.Listen(1024 * 1024)
-	grpcS := NewServerWithMiddlewares(&common.GRPCRateLimiter{Limiter: rl.New(1000)})
-	RegisterGRPCServices(mux.NewRouter(), grpcS)
+	grpcS := NewGRPCServerWithMiddlewares(&common.GRPCRateLimiter{Limiter: rl.New(1000)}, mux.NewRouter())
 	go func() {
 		if err := grpcS.Serve(lis); err != nil {
 			t.Errorf("Server exited with error: %v", err)
