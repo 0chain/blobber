@@ -63,9 +63,9 @@ services:
       - ./blobber${BLOBBER}/data/tmp:/tmp
     ports:
       - "505${BLOBBER}:505${BLOBBER}"
-      - "703${BLOBBER}:703${BLOBBER}"
+      - "3150${BLOBBER}:3150${BLOBBER}"
       - "236${BLOBBER}:236${BLOBBER}"
-    command: dlv --listen=:236${BLOBBER} --headless=true --api-version=2 --accept-multiclient exec ./bin/blobber -- --port 505${BLOBBER} --grpc_port 703${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keysconfig/minio_config.txt
+    command: dlv --listen=:236${BLOBBER} --headless=true --api-version=2 --accept-multiclient exec ./bin/blobber -- --port 505${BLOBBER} --grpc_port 3150${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keysconfig/minio_config.txt
     networks:
       default:
       testnet0:
