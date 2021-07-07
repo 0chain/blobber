@@ -87,6 +87,10 @@ db:
   host: postgres
   port: 5432
 
+geolocation:
+  latitude: 0
+  longitude: 0
+
 minio:
   # Enable or disable minio backup service
   start: false

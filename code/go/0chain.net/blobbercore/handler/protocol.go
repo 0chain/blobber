@@ -1,19 +1,20 @@
 package handler
 
 import (
-	"context"
-	"encoding/json"
-	"errors"
 	"sync"
 	"time"
-
-	"0chain.net/blobbercore/config"
-	. "0chain.net/core/logging"
-	"0chain.net/core/node"
-	"0chain.net/core/transaction"
+	"errors"
+	"context"
+	"encoding/json"
+	"go.uber.org/zap"
 
 	"github.com/0chain/gosdk/zcncore"
-	"go.uber.org/zap"
+	"0chain.net/blobbercore/config"
+	"0chain.net/core/chain"
+	"0chain.net/core/node"
+	"0chain.net/core/transaction"
+	"0chain.net/core/util"
+	. "0chain.net/core/logging"
 )
 
 const (
@@ -56,101 +57,12 @@ func (ar *apiResp) err() error { //nolint:unused,deadcode // might be used later
 	return nil
 }
 
-func RegisterBlobber(ctx context.Context) (string, error) {
-	wcb := &WalletCallback{}
-	wcb.wg = &sync.WaitGroup{}
-	wcb.wg.Add(1)
-	err := zcncore.RegisterToMiners(node.Self.GetWallet(), wcb)
-	if err != nil {
-		return "", err
-	}
-
-	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-
-	txn, err := transaction.NewTransactionEntity()
-	if err != nil {
-		return "", err
-	}
-	sn, err := getStorageNode()
-	if err != nil {
-		return "", err
-	}
-
-	snBytes, err := json.Marshal(sn)
-	if err != nil {
-		return "", err
-	}
-	Logger.Info("Adding blobber to the blockchain.")
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
-		transaction.ADD_BLOBBER_SC_NAME, string(snBytes), 0)
-	if err != nil {
-		Logger.Info("Failed during registering blobber to the mining network",
-			zap.String("err:", err.Error()))
-		return "", err
-	}
-
-	return txn.Hash, nil
-}
-
-// ErrBlobberHasRemoved represents service health check error, where the
-// blobber has removed (by owner, in case the blobber doesn't provide its
-// service anymore). Thus the blobber shouldn't send the health check
-// transactions.
-var ErrBlobberHasRemoved = errors.New("blobber has removed")
-
-func BlobberHealthCheck(ctx context.Context) (string, error) {
-	if config.Configuration.Capacity == 0 {
-		return "", ErrBlobberHasRemoved
-	}
-	txn, err := transaction.NewTransactionEntity()
-	if err != nil {
-		return "", err
-	}
-	Logger.Info("Blobber health check to the blockchain.")
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
-		transaction.BLOBBER_HEALTH_CHECK, "", 0)
-	if err != nil {
-		Logger.Info("Failed during blobber health check to the mining network",
-			zap.String("err:", err.Error()))
-		return "", err
-	}
-
-	return txn.Hash, nil
-}
-
-func UpdateBlobberSettings(ctx context.Context) (string, error) {
-	txn, err := transaction.NewTransactionEntity()
-	if err != nil {
-		return "", err
-	}
-
-	sn, err := getStorageNode()
-	if err != nil {
-		return "", err
-	}
-
-	snBytes, err := json.Marshal(sn)
-	if err != nil {
-		return "", err
-	}
-
-	Logger.Info("Updating settings to the blockchain.")
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
-		transaction.UPDATE_BLOBBER_SETTINGS, string(snBytes), 0)
-	if err != nil {
-		Logger.Info("Failed during updating settings to the mining network",
-			zap.String("err:", err.Error()))
-		return "", err
-	}
-
-	return txn.Hash, nil
-}
-
 func getStorageNode() (*transaction.StorageNode, error) {
 	var err error
 	sn := &transaction.StorageNode{}
 	sn.ID = node.Self.ID
 	sn.BaseURL = node.Self.GetURLBase()
+	sn.Geolocation = transaction.StorageNodeGeolocation(config.Geolocation())
 	sn.Capacity = config.Configuration.Capacity
 	readPrice := config.Configuration.ReadPrice
 	writePrice := config.Configuration.WritePrice
@@ -177,4 +89,88 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
 	sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
 	return sn, nil
+}
+
+// Add or update blobber on blockchain
+func BlobberAdd(ctx context.Context) (string, error) {
+	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+
+	// initialize storage node (ie blobber)
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return "", err
+	}
+
+	sn, err := getStorageNode()
+	if err != nil {
+		return "", err
+	}
+
+	snBytes, err := json.Marshal(sn)
+	if err != nil {
+		return "", err
+	}
+
+	Logger.Info("Adding or updating on the blockchain")
+
+	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
+		transaction.ADD_BLOBBER_SC_NAME, string(snBytes), 0)
+	if err != nil {
+		Logger.Info("Failed to set blobber on the blockchain",
+			zap.String("err:", err.Error()))
+		return "", err
+	}
+
+	return txn.Hash, nil
+}
+
+// ErrBlobberHasRemoved represents service health check error, where the
+// blobber has removed (by owner, in case the blobber doesn't provide its
+// service anymore). Thus the blobber shouldn't send the health check
+// transactions.
+var ErrBlobberHasRemoved = errors.New("blobber has removed")
+
+func BlobberHealthCheck(ctx context.Context) (string, error) {
+	if config.Configuration.Capacity == 0 {
+		return "", ErrBlobberHasRemoved
+	}
+
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return "", err
+	}
+
+	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
+		transaction.BLOBBER_HEALTH_CHECK, "", 0)
+	if err != nil {
+		Logger.Info("Failed to health check on the blockchain",
+			zap.String("err:", err.Error()))
+		return "", err
+	}
+
+	return txn.Hash, nil
+}
+
+func TransactionVerify(txnHash string) (t *transaction.Transaction, err error) {
+	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+
+	for i := 0; i < util.MAX_RETRIES; i++ {
+		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+		if t, err = transaction.VerifyTransaction(txnHash, chain.GetServerChain()); err == nil {
+			return t, nil
+		}
+	}
+
+	return
+}
+
+func WalletRegister() error {
+	wcb := &WalletCallback{}
+	wcb.wg = &sync.WaitGroup{}
+	wcb.wg.Add(1)
+	if err := zcncore.RegisterToMiners(node.Self.GetWallet(), wcb); err != nil {
+		return err
+	}
+
+	return nil
 }
