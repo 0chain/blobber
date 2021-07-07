@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
