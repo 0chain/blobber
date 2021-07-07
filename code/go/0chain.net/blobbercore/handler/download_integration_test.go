@@ -41,7 +41,7 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 	}
 	defer f.Close()
 
-	file, err := os.Open(root + "/grpc_handler_integration_test.go")
+	file, err := os.Open(root + "/helper_integration_test.go")
 	if err != nil {
 		t.Fatal(err)
 	}

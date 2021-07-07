@@ -53,7 +53,6 @@ func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberClient, *Tes
 	var conn *grpc.ClientConn
 	var err error
 	for i := 0; i < RetryAttempts; i++ {
-		log.Println("Connection attempt - " + fmt.Sprint(i+1))
 		conn, err = grpc.Dial(BlobberTestAddr, grpc.WithInsecure())
 		if err != nil {
 			log.Println(err)
