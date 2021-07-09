@@ -13,7 +13,6 @@ import (
 	"0chain.net/core/lock"
 	"0chain.net/core/node"
 	"0chain.net/core/transaction"
-	"0chain.net/core/common"
 
 	"github.com/remeh/sizedwaitgroup"
 	"gorm.io/gorm"
@@ -221,10 +220,6 @@ func FindChallenges(ctx context.Context) {
 						for _, v := range blobberChallenges.Challenges {
 							if v == nil || len(v.ChallengeID) == 0 {
 								Logger.Info("No challenge entity from the challenge map")
-								continue
-							}
-							if !common.Within(int64(v.Created), int64(config.Configuration.ChallengeResolveFreq)) {
-								Logger.Info("Challenge is expired", zap.Any("created", v.Created))
 								continue
 							}
 

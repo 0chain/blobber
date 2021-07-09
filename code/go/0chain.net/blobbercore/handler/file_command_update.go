@@ -40,7 +40,7 @@ func (cmd *UpdateFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 	}
 
 	if allocationObj.OwnerID != clientID &&
-		allocationObj.PayerID != clientID &&
+		allocationObj.RepairerID != clientID &&
 		!reference.IsACollaborator(ctx, cmd.exisitingFileRef.ID, clientID) {
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner, collaborator or the payer of the allocation")
 	}

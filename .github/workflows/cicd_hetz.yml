@@ -1,0 +1,166 @@
+name: CICD_Hetzner
+
+# on:
+#   push:
+#     branches:
+#       - gitactionsfix
+
+on:
+  workflow_dispatch:
+    inputs:
+      latest_tag:
+        description: 'type yes for building latest tag'
+        default: 'no'
+        required: true
+
+env:
+  ZCHAIN_BUILDBASE: zchain_build_base
+  ZCHAIN_BUILDRUN: zchain_run_base
+  BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY_TEST }}
+  VALIDATOR_REGISTRY: ${{ secrets.VALIDATOR_REGISTRY_TEST }}
+  KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA_TEST }}
+  KUBE_NAMESPACE: test
+
+jobs:
+  dockerize_blobber:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Get the Version for Tagging
+      id: get_version
+      run: |
+        BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')
+        SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
+        echo ::set-output name=BRANCH::${BRANCH}
+        echo ::set-output name=VERSION::${BRANCH}-${SHORT_SHA} 
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    - name: Build & Push Blobber Image
+      run: |
+        docker build -t $BLOBBER_REGISTRY:$TAG -f "$DOCKERFILE_BLOB" .
+        docker tag $BLOBBER_REGISTRY:$TAG $BLOBBER_REGISTRY:latest
+        # docker push $BLOBBER_REGISTRY:$TAG
+      env:
+        TAG: ${{ steps.get_version.outputs.VERSION }}
+        DOCKERFILE_BLOB: "docker.local/Dockerfile"
+
+    - name: Push Blobber Image with Latest TAG
+      run: |
+        if [[ "$PUSH_LATEST" == "yes" ]]; then
+          docker push $BLOBBER_REGISTRY:latest
+        fi
+      env:
+        PUSH_LATEST: ${{ github.event.inputs.latest_tag }}
+
+    - name: Update Blobber Image to Kubernetes Cluster
+      uses: kodermax/kubectl-aws-eks@master
+      with:
+        args: set image deployment/blobber-01 app=$BLOBBER_REGISTRY:$TAG --record -n $KUBE_NAMESPACE
+        args: set image deployment/blobber-02 app=$BLOBBER_REGISTRY:$TAG --record -n $KUBE_NAMESPACE
+        args: set image deployment/blobber-03 app=$BLOBBER_REGISTRY:$TAG --record -n $KUBE_NAMESPACE
+        args: set image deployment/blobber-04 app=$BLOBBER_REGISTRY:$TAG --record -n $KUBE_NAMESPACE
+        args: set image deployment/blobber-05 app=$BLOBBER_REGISTRY:$TAG --record -n $KUBE_NAMESPACE
+        args: set image deployment/blobber-06 app=$BLOBBER_REGISTRY:$TAG --record -n $KUBE_NAMESPACE
+      env:
+        TAG: ${{ steps.get_version.outputs.VERSION }}
+    
+    - name: Verify Kubernetes Deployment
+      uses: kodermax/kubectl-aws-eks@master
+      with:
+        args: rollout status blobber-01 my-pod -n $KUBE_NAMESPACE
+        args: rollout status blobber-02 my-pod -n $KUBE_NAMESPACE
+        args: rollout status blobber-03 my-pod -n $KUBE_NAMESPACE
+        args: rollout status blobber-04 my-pod -n $KUBE_NAMESPACE
+        args: rollout status blobber-05 my-pod -n $KUBE_NAMESPACE
+        args: rollout status blobber-06 my-pod -n $KUBE_NAMESPACE
+
+    # - name: Triggering LoadTest Repo build
+    #   uses: convictional/trigger-workflow-and-wait@v1.3.0
+    #   with:
+    #     owner: 0chain
+    #     repo: loadTest
+    #     github_token: ${{ secrets.GOSDK }}
+    #     workflow_file_name: load-test-v1.yml
+    #     ref: master
+    #     inputs: '{}'
+    #     propagate_failure: true
+    #     trigger_workflow: true
+    #     wait_workflow: true 
+
+
+  dockerize_validator:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Get the Version for Tagging
+      id: get_version
+      run: |
+        BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')
+        SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
+        echo ::set-output name=BRANCH::${BRANCH}
+        echo ::set-output name=VERSION::${BRANCH}-${SHORT_SHA}    
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    - name: Build & Push Validator Image
+      run: |
+        docker build -t $VALIDATOR_REGISTRY:$TAG -f "$DOCKERFILE_PROXY" .
+        docker tag $VALIDATOR_REGISTRY:$TAG $VALIDATOR_REGISTRY:latest
+        # docker push $VALIDATOR_REGISTRY:$TAG
+      env:
+        TAG: ${{ steps.get_version.outputs.VERSION }}
+        DOCKERFILE_PROXY: "docker.local/ValidatorDockerfile"
+    
+    - name: Push Validator Image with Latest TAG
+      run: |
+        if [[ "$PUSH_LATEST" == "yes" ]]; then
+          docker push $VALIDATOR_REGISTRY:latest
+        fi
+      env:
+        PUSH_LATEST: ${{ github.event.inputs.latest_tag }}
+
+    - name: Update Validator Image to Kubernetes Cluster
+      uses: kodermax/kubectl-aws-eks@master
+      with:
+        args: set image deployment/validator-01 app=$BLOBBER_REGISTRY:$TAG --record -n $KUBE_NAMESPACE
+        args: set image deployment/validator-02 app=$BLOBBER_REGISTRY:$TAG --record -n $KUBE_NAMESPACE
+        args: set image deployment/validator-03 app=$BLOBBER_REGISTRY:$TAG --record -n $KUBE_NAMESPACE
+        args: set image deployment/validator-04 app=$BLOBBER_REGISTRY:$TAG --record -n $KUBE_NAMESPACE
+        args: set image deployment/validator-05 app=$BLOBBER_REGISTRY:$TAG --record -n $KUBE_NAMESPACE
+        args: set image deployment/validator-06 app=$BLOBBER_REGISTRY:$TAG --record -n $KUBE_NAMESPACE
+      env:
+        TAG: ${{ steps.get_version.outputs.VERSION }}
+    
+    - name: Verify Kubernetes Deployment
+      uses: kodermax/kubectl-aws-eks@master
+      with:
+        args: rollout status validator-01 -n $KUBE_NAMESPACE
+        args: rollout status validator-02 -n $KUBE_NAMESPACE
+        args: rollout status validator-03 -n $KUBE_NAMESPACE
+        args: rollout status validator-04 -n $KUBE_NAMESPACE
+        args: rollout status validator-05 -n $KUBE_NAMESPACE
+        args: rollout status validator-06 -n $KUBE_NAMESPACE
+
+    # - name: Triggering LoadTest Repo build
+    #   uses: convictional/trigger-workflow-and-wait@v1.3.0
+    #   with:
+    #     owner: 0chain
+    #     repo: loadTest
+    #     github_token: ${{ secrets.GOSDK }}
+    #     workflow_file_name: load-test-v1.yml
+    #     ref: master
+    #     inputs: '{}'
+    #     propagate_failure: true
+    #     trigger_workflow: true
+    #     wait_workflow: true 
