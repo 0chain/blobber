@@ -6,5 +6,4 @@
 \connect blobber_meta;
 
 
-ALTER TABLE reference_objects
-    ADD COLUMN chunk_size INT NOT NULL DEFAULT 65536;
+ALTER TABLE reference_objects ADD COLUMN chunk_size INT NOT NULL DEFAULT 65536;
