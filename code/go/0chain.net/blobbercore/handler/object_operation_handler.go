@@ -6,29 +6,31 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+
 	"net/http"
 	"path/filepath"
 	"strconv"
 
-	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/config"
-	"0chain.net/blobbercore/constants"
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/blobbercore/filestore"
-	"0chain.net/blobbercore/readmarker"
-	"0chain.net/blobbercore/reference"
-	"0chain.net/blobbercore/stats"
-	"0chain.net/blobbercore/writemarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 
-	"0chain.net/core/common"
-	"0chain.net/core/encryption"
-	"0chain.net/core/lock"
-	"0chain.net/core/node"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
-	. "0chain.net/core/logging"
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 )
 
@@ -281,9 +283,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 
 	// authorize file access
 	var (
-		isOwner          = clientID == alloc.OwnerID
-		isRepairer       = clientID == alloc.RepairerID
-		isCollaborator   = reference.IsACollaborator(ctx, fileref.ID, clientID)
+		isOwner        = clientID == alloc.OwnerID
+		isRepairer     = clientID == alloc.RepairerID
+		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
 	if !isOwner && !isRepairer && !isCollaborator {
@@ -339,7 +341,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	if latestRM != nil &&
 		latestRM.ReadCounter+(numBlocks) != readMarker.ReadCounter {
 
-		var response = &DownloadResponse{
+		var response = &blobberhttp.DownloadResponse{
 			Success:      false,
 			LatestRM:     latestRM,
 			Path:         fileref.Path,
@@ -393,7 +395,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			"couldn't save latest read marker: %v", err)
 	}
 
-	var response = &DownloadResponse{}
+	var response = &blobberhttp.DownloadResponse{}
 	response.Success = true
 	response.LatestRM = readMarker
 	response.Data = respData
@@ -404,7 +406,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 	return respData, nil
 }
 
-func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*CommitResult, error) {
+func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
 
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
@@ -487,7 +489,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*C
 			err)
 	}
 
-	var result CommitResult
+	var result blobberhttp.CommitResult
 	var latestWM *writemarker.WriteMarkerEntity
 	if len(allocationObj.AllocationRoot) == 0 {
 		latestWM = nil
@@ -599,7 +601,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -658,7 +660,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
 	}
 
-	result := &UploadResult{}
+	result := &blobberhttp.UploadResult{}
 	result.Filename = new_name
 	result.Hash = objectRef.Hash
 	result.MerkleRoot = objectRef.MerkleRoot
@@ -687,7 +689,7 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 			"Invalid allocation ID passed: %v", err)
 	}
 
-	valid, err := verifySignatureFromRequest(r, alloc.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocTx, r.Header.Get(common.ClientSignatureHeader), alloc.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -787,7 +789,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -865,7 +867,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
 	}
 
-	result := &UploadResult{}
+	result := &blobberhttp.UploadResult{}
 	result.Filename = objectRef.Name
 	result.Hash = objectRef.Hash
 	result.MerkleRoot = objectRef.MerkleRoot
@@ -874,7 +876,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	return result, nil
 }
 
-func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*UploadResult, error) {
+func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*blobberhttp.UploadResult, error) {
 	path := r.FormValue("path")
 	if len(path) == 0 {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
@@ -896,7 +898,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		connectionObj.Size += allocationChange.Size
 		connectionObj.AddChange(allocationChange, dfc)
 
-		result := &UploadResult{}
+		result := &blobberhttp.UploadResult{}
 		result.Filename = fileRef.Name
 		result.Hash = fileRef.Hash
 		result.MerkleRoot = fileRef.MerkleRoot
@@ -909,7 +911,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 }
 
 //WriteFile stores the file into the blobber files system from the HTTP request
-func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*UploadResult, error) {
+func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
 
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE instead")
@@ -923,7 +925,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -957,7 +959,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*Upl
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	result := &UploadResult{}
+	result := &blobberhttp.UploadResult{}
 	mode := allocation.INSERT_OPERATION
 	if r.Method == "PUT" {
 		mode = allocation.UPDATE_OPERATION

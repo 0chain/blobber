@@ -6,15 +6,16 @@ import (
 	"errors"
 	"context"
 	"encoding/json"
-	"go.uber.org/zap"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	"github.com/0chain/blobber/code/go/0chain.net/core/util"
+	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 
 	"github.com/0chain/gosdk/zcncore"
-	"0chain.net/blobbercore/config"
-	"0chain.net/core/chain"
-	"0chain.net/core/node"
-	"0chain.net/core/transaction"
-	"0chain.net/core/util"
-	. "0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
 const (
