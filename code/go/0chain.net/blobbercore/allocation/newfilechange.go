@@ -86,15 +86,17 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 	}
 
 	var newDir = reference.NewDirectoryRef()
-	newDir.ActualFileSize = 0
+	newDir.ActualFileSize = 2
 	newDir.AllocationID = dirRef.AllocationID
 	newDir.MerkleRoot = nf.MerkleRoot
 	newDir.Name = dirName
+	newDir.Size = 2
+	newDir.NumBlocks = 2
 	newDir.ParentPath = dirRef.Path
 	newDir.WriteMarker = allocationRoot
 	dirRef.AddChild(newDir)
 
-	if _, err := dirRef.CalculateHash(ctx, true); err != nil {
+	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}
 
