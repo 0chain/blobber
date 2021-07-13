@@ -910,7 +910,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 	return nil, common.NewError("invalid_file", "File does not exist at path")
 }
 
-func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*UploadResult, error) {
+func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 
@@ -919,7 +919,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*Upl
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -983,7 +983,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*Upl
 		return nil, err
 	}
 
-	result := &UploadResult{}
+	result := &blobberhttp.UploadResult{}
 	result.Filename = dirPath
 	result.Hash = ""
 	result.MerkleRoot = ""
