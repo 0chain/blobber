@@ -9,15 +9,14 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"0chain.net/blobbercore/config"
-	"0chain.net/blobbercore/constants"
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/blobbercore/stats"
-	"0chain.net/core/common"
-
-	. "0chain.net/core/logging"
 	"go.uber.org/zap"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/gorilla/mux"
 )
 

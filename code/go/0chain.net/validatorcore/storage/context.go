@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
 func SetupContext(handler common.JSONResponderF) common.JSONResponderF {
