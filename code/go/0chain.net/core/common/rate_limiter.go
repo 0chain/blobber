@@ -32,7 +32,7 @@ func (rl *ratelimit) init() {
 const DefaultRequestPerSecond = 100000
 
 //ConfigRateLimits - configure the rate limits
-func ConfigRateLimits() *GRPCRateLimiter {
+func ConfigRateLimits() {
 	userRl := viper.GetFloat64("handlers.rate_limit")
 
 	if userRl == 0 {
@@ -41,6 +41,14 @@ func ConfigRateLimits() *GRPCRateLimiter {
 
 	userRateLimit = &ratelimit{RequestsPerSecond: userRl}
 	userRateLimit.init()
+}
+
+func NewGRPCRateLimiter() *GRPCRateLimiter {
+	userRl := viper.GetFloat64("handlers.rate_limit")
+
+	if userRl == 0 {
+		userRl = DefaultRequestPerSecond
+	}
 
 	return &GRPCRateLimiter{rl.New(int(userRl))}
 }

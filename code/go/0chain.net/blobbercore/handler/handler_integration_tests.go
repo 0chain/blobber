@@ -13,17 +13,17 @@ import (
 	"os"
 	"runtime/pprof"
 
-	"0chain.net/blobbercore/config"
-	"0chain.net/blobbercore/constants"
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/blobbercore/stats"
-	"0chain.net/core/common"
-	"0chain.net/core/node"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"github.com/gorilla/mux"
 
 	// integration tests RPC control
-	crpc "0chain.net/conductor/conductrpc"
+	crpc "github.com/0chain/blobber/code/go/0chain.net/conductor/conductrpc"
 )
 
 var storageHandler StorageHandler
