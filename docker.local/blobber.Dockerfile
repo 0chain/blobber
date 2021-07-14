@@ -5,7 +5,6 @@ LABEL zchain="blobber"
 
 ENV SRC_DIR=/0chain
 ENV GO111MODULE=on
-
 #ENV GOPROXY=https://goproxy.cn,direct 
 
 # Download the dependencies:
@@ -13,7 +12,7 @@ ENV GO111MODULE=on
 COPY .  $SRC_DIR
 COPY ./gosdk  /gosdk
 
-RUN cd $SRC_DIR/ && go mod download -x
+RUN cd $SRC_DIR/ && go mod download 
 
 
 WORKDIR $SRC_DIR/code/go/0chain.net/blobber
@@ -32,5 +31,5 @@ COPY --from=blobber_build  /usr/local/lib/libmcl*.so \
 
 ENV APP_DIR=/blobber
 WORKDIR $APP_DIR
-COPY --from=blobber_build /0chain/go/0chain.net/blobber/blobber $APP_DIR/bin/blobber
+COPY --from=blobber_build /0chain/code/go/0chain.net/blobber/blobber $APP_DIR/bin/blobber
 

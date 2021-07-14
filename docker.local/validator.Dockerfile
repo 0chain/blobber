@@ -5,7 +5,7 @@ LABEL zchain="validator"
 
 ENV SRC_DIR=/blobber
 ENV GO111MODULE=on
-ENV GOPROXY=https://goproxy.cn,direct 
+#ENV GOPROXY=https://goproxy.cn,direct 
 
 
 # Download the dependencies:
@@ -13,7 +13,7 @@ ENV GOPROXY=https://goproxy.cn,direct
 COPY .  $SRC_DIR
 COPY ./gosdk  /gosdk
 
-RUN cd $SRC_DIR/ && go mod download -x
+RUN cd $SRC_DIR/ && go mod download 
 
 WORKDIR $SRC_DIR/code/go/0chain.net/validator
 
@@ -27,4 +27,4 @@ COPY --from=validator_build  /usr/local/lib/libmcl*.so \
                         /usr/local/lib/
 ENV APP_DIR=/blobber
 WORKDIR $APP_DIR
-COPY --from=validator_build $APP_DIR/go/0chain.net/validator/validator $APP_DIR/bin/validator
+COPY --from=validator_build $APP_DIR/code/go/0chain.net/validator/validator $APP_DIR/bin/validator
