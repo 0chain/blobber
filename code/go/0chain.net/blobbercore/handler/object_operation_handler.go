@@ -274,16 +274,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		payerID = alloc.PayerID
 	}
 
-	// set payer: check for command line payer flag (--rx_pay)
-	if r.FormValue("rx_pay") == "true" {
-		payerID = clientID
-	}
-
 	// authorize file access
 	var (
-		isOwner          = clientID == alloc.OwnerID
-		isRepairer       = clientID == alloc.RepairerID
-		isCollaborator   = reference.IsACollaborator(ctx, fileref.ID, clientID)
+		isOwner        = clientID == alloc.OwnerID
+		isRepairer     = clientID == alloc.RepairerID
+		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
 	if !isOwner && !isRepairer && !isCollaborator {
@@ -295,6 +290,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		); !isAuthorized {
 			return nil, common.NewErrorf("download_file",
 				"cannot verify auth ticket: %v", err)
+		}
+
+		// set payer: check for command line payer flag (--rx_pay)
+		if r.FormValue("rx_pay") == "true" {
+			payerID = clientID
 		}
 
 		if json.Unmarshal([]byte(authTokenString), &readmarker.AuthTicket{}) != nil {
