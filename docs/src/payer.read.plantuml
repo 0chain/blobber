@@ -1,0 +1,29 @@
+@startuml
+
+' Defining payer for read operation
+
+#LightGreen:Owner: by default;
+
+if (Is allocatoin.Payer field set?) then (yes)
+  #LightGreen:Payer;
+else (no)
+endif
+
+if (Is rx_pay flag set?) then (yes)
+  #LightGreen:Client;
+else (no)
+endif
+
+if (Is payer Owner, Repairer or Collaborator?) then (no)
+    if (Is auth token provided and valid?) then (no)
+      #Pink:Error;
+    else (yes)
+        if (Is file attr set to WhoPays3rdParty?) then (yes)
+            #LightGreen:Client;
+        else (no)
+        endif
+    endif
+else (yes)
+endif
+
+@enduml
