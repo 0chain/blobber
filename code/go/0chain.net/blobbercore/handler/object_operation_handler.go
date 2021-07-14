@@ -910,6 +910,88 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 	return nil, common.NewError("invalid_file", "File does not exist at path")
 }
 
+func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	allocationID := allocationObj.ID
+
+	if len(clientID) == 0 {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+	}
+
+	dirPath := r.FormValue("dir_path")
+	if len(dirPath) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
+	}
+
+	exisitingRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
+	if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+	}
+
+	if exisitingRef != nil {
+		return nil, common.NewError("duplicate_file", "File at path already exists")
+	}
+
+	connectionID := r.FormValue("connection_id")
+	if len(connectionID) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	if err != nil {
+		return nil, common.NewError("meta_error", "Error reading metadata for connection")
+	}
+
+	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	allocationChange := &allocation.AllocationChange{}
+	allocationChange.ConnectionID = connectionObj.ConnectionID
+	allocationChange.Size = 0
+	allocationChange.Operation = allocation.CREATEDIR_OPERATION
+	connectionObj.Size += allocationChange.Size
+	var formData allocation.NewFileChange
+	formData.Filename = dirPath
+	formData.Path = dirPath
+	formData.AllocationID = allocationID
+	formData.ConnectionID = connectionID
+	formData.ActualHash = "-"
+	formData.ActualSize = 1
+
+	connectionObj.AddChange(allocationChange, &formData)
+
+	err = filestore.GetFileStore().CreateDir(dirPath)
+	if err != nil {
+		return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
+	}
+
+	err = connectionObj.ApplyChanges(ctx, "/")
+	if err != nil {
+		return nil, err
+	}
+
+	result := &blobberhttp.UploadResult{}
+	result.Filename = dirPath
+	result.Hash = ""
+	result.MerkleRoot = ""
+	result.Size = 0
+
+	return result, nil
+}
+
 //WriteFile stores the file into the blobber files system from the HTTP request
 func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
 

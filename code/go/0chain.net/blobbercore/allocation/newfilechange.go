@@ -43,8 +43,78 @@ type NewFileChange struct {
 	IsFinal bool `json:"is_final,omitempty"`
 }
 
+func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, allocationRoot string) (*reference.Ref, error) {
+	path := filepath.Clean(dirName)
+	tSubDirs := reference.GetSubDirsFromPath(path)
+
+	rootRef, err := reference.GetReferencePath(ctx, allocationID, nf.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	dirRef := rootRef
+	treelevel := 0
+	for {
+		found := false
+		for _, child := range dirRef.Children {
+			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
+				if child.Name == tSubDirs[treelevel] {
+					dirRef = child
+					found = true
+					break
+				}
+			}
+		}
+		if found {
+			treelevel++
+			continue
+		}
+		if len(tSubDirs) > treelevel {
+			newRef := reference.NewDirectoryRef()
+			newRef.AllocationID = dirRef.AllocationID
+			newRef.Path = "/" + strings.Join(tSubDirs[:treelevel+1], "/")
+			newRef.ParentPath = "/" + strings.Join(tSubDirs[:treelevel], "/")
+			newRef.Name = tSubDirs[treelevel]
+			newRef.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, newRef.Path)
+			dirRef.AddChild(newRef)
+			dirRef = newRef
+			treelevel++
+			continue
+		} else {
+			break
+		}
+	}
+
+	var newDir = reference.NewDirectoryRef()
+	newDir.ActualFileSize = 2
+	newDir.AllocationID = dirRef.AllocationID
+	newDir.MerkleRoot = nf.MerkleRoot
+	newDir.Name = dirName
+	newDir.Size = 2
+	newDir.NumBlocks = 2
+	newDir.ParentPath = dirRef.Path
+	newDir.WriteMarker = allocationRoot
+	dirRef.AddChild(newDir)
+
+	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
+		return nil, err
+	}
+
+	stats.NewDirCreated(ctx, dirRef.ID)
+	return rootRef, nil
+}
+
 func (nf *NewFileChange) ProcessChange(ctx context.Context,
 	change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+
+	if change.Operation == CREATEDIR_OPERATION {
+		err := nf.Unmarshal(change.Input)
+		if err != nil {
+			return nil, err
+		}
+
+		return nf.CreateDir(ctx, nf.AllocationID, nf.Path, allocationRoot)
+	}
 
 	path, _ := filepath.Split(nf.Path)
 	path = filepath.Clean(path)
@@ -117,6 +187,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context,
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}
+
 	stats.NewFileCreated(ctx, newFile.ID)
 	return rootRef, nil
 }

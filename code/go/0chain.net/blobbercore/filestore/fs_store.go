@@ -475,6 +475,14 @@ func (fs *FileFSStore) GetMerkleTreeForFile(allocationID string, fileData *FileI
 	return mt, nil
 }
 
+func (fs *FileFSStore) CreateDir(dirName string) error {
+	return createDirs(dirName)
+}
+
+func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) error {
+	return nil
+}
+
 func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	infile multipart.File, connectionID string) (*FileOutputData, error) {
 
