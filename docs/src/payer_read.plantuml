@@ -4,7 +4,7 @@
 
 #LightGreen:Owner: by default;
 
-if (Is allocatoin.Payer field set?) then (yes)
+if (Is allocation.Payer field set?) then (yes)
   #LightGreen:Payer;
 else (no)
 endif
@@ -18,7 +18,7 @@ if (Is payer Owner, Repairer or Collaborator?) then (no)
     if (Is auth token provided and valid?) then (no)
       #Pink:Error;
     else (yes)
-        if (Is file attr set to WhoPays3rdParty?) then (yes)
+        if (Is a file attr set to WhoPays3rdParty?) then (yes)
             #LightGreen:Client;
         else (no)
         endif
