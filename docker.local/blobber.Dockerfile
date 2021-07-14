@@ -16,7 +16,7 @@ COPY ./gosdk  /gosdk
 RUN cd $SRC_DIR/ && go mod download -x
 
 
-WORKDIR $SRC_DIR/go/0chain.net/blobber
+WORKDIR $SRC_DIR/code/go/0chain.net/blobber
 
 ARG GIT_COMMIT
 ENV GIT_COMMIT=$GIT_COMMIT

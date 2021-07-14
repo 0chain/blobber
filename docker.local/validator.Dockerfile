@@ -15,7 +15,7 @@ COPY ./gosdk  /gosdk
 
 RUN cd $SRC_DIR/ && go mod download -x
 
-WORKDIR $SRC_DIR/go/0chain.net/validator
+WORKDIR $SRC_DIR/code/go/0chain.net/validator
 
 RUN go build -v -tags "bn256 development" -ldflags "-X 0chain.net/core/build.BuildTag=$GIT_COMMIT"
 
