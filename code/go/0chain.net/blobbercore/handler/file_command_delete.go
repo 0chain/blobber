@@ -4,9 +4,10 @@ import (
 	"context"
 	"net/http"
 
-	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/reference"
-	"0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
 // DeleteFileCommand command for deleting file
@@ -43,7 +44,7 @@ func (cmd *DeleteFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 }
 
 // ProcessContent flush file to FileStorage
-func (cmd *DeleteFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (UploadResult, error) {
+func (cmd *DeleteFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
 
 	deleteSize := cmd.exisitingFileRef.Size
 
@@ -51,7 +52,7 @@ func (cmd *DeleteFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		AllocationID: connectionObj.AllocationID, Name: cmd.exisitingFileRef.Name,
 		Hash: cmd.exisitingFileRef.Hash, Path: cmd.exisitingFileRef.Path, Size: deleteSize}
 
-	result := UploadResult{}
+	result := blobberhttp.UploadResult{}
 	result.Filename = cmd.exisitingFileRef.Name
 	result.Hash = cmd.exisitingFileRef.Hash
 	result.MerkleRoot = cmd.exisitingFileRef.MerkleRoot

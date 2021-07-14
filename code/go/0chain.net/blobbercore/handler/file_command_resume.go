@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/config"
-	"0chain.net/blobbercore/filestore"
-	"0chain.net/blobbercore/reference"
-	"0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 )
 
@@ -53,8 +54,8 @@ func (cmd *ResumeFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 }
 
 // ProcessContent flush file to FileStorage
-func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (UploadResult, error) {
-	result := UploadResult{}
+func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
+	result := blobberhttp.UploadResult{}
 
 	origfile, _, err := req.FormFile("uploadFile")
 	if err != nil {

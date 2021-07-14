@@ -60,8 +60,8 @@ echo "Hostname: $hostname"
 
 
 install_debuggger() {
-    [ -d ../code/go/0chain.net/.vscode ] || mkdir -p ../code/go/0chain.net/.vscode
-    sed "s/Hostname/$hostname/g" launch.json > ../code/go/0chain.net/.vscode/launch.json
+    [ -d ../.vscode ] || mkdir -p ../.vscode
+    sed "s/Hostname/$hostname/g" launch.json > ../.vscode/launch.json
     echo "debugbbers are installed"
 }
 

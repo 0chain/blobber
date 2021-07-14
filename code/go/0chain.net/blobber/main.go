@@ -13,27 +13,29 @@ import (
 	"strconv"
 	"time"
 
+	"google.golang.org/grpc/reflection"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/challenge"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
+	"github.com/0chain/blobber/code/go/0chain.net/core/build"
+	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+
+	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-
-	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/challenge"
-	"0chain.net/blobbercore/config"
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/blobbercore/filestore"
-	"0chain.net/blobbercore/handler"
-	"0chain.net/blobbercore/readmarker"
-	"0chain.net/blobbercore/writemarker"
-	"0chain.net/core/build"
-	"0chain.net/core/chain"
-	"0chain.net/core/common"
-	"0chain.net/core/encryption"
-	"0chain.net/core/logging"
-	. "0chain.net/core/logging"
-	"0chain.net/core/node"
-	"github.com/0chain/gosdk/zcncore"
 )
 
 var startTime time.Time
@@ -367,10 +369,6 @@ func main() {
 		panic("Please specify --port which is the port on which requests are accepted")
 	}
 
-	if *grpcPortString == "" {
-		panic("Please specify --grpc_port which is the grpc port on which requests are accepted")
-	}
-
 	reader, err := os.Open(*keysFile)
 	if err != nil {
 		panic(err)
@@ -455,11 +453,14 @@ func main() {
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT",
 		"DELETE", "OPTIONS"})
 
-	rl := common.ConfigRateLimits()
+	common.ConfigRateLimits()
 	initHandlers(r)
 
-	grpcServer := handler.NewServerWithMiddlewares(rl)
-	handler.RegisterGRPCServices(r, grpcServer)
+	grpcServer := handler.NewGRPCServerWithMiddlewares(common.NewGRPCRateLimiter(), r)
+
+	if config.Development() {
+		reflection.Register(grpcServer)
+	}
 
 	rHandler := handlers.CORS(originsOk, headersOk, methodsOk)(r)
 	if config.Development() {
@@ -485,12 +486,24 @@ func main() {
 
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()
-	go func(grpcPort string) {
+	go func(gp *string) {
+		var grpcPort string
+		if gp != nil {
+			grpcPort = *gp
+		}
+
+		if grpcPort == "" {
+			Logger.Error("Could not start grpc server since grpc port has not been specified." +
+				" Please specify the grpc port in the --grpc_port build arguement to start the grpc server")
+			return
+		}
+
+		Logger.Info("listening too grpc requests on port - " + grpcPort)
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
 		if err != nil {
 			log.Fatalf("failed to listen: %v", err)
 		}
 		log.Fatal(grpcServer.Serve(lis))
-	}(*grpcPortString)
+	}(grpcPortString)
 	log.Fatal(server.ListenAndServe())
 }

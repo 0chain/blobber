@@ -4,7 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 )
 
 // FileCommand execute command for a file operation
@@ -13,7 +14,7 @@ type FileCommand interface {
 	IsAuthorized(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error
 
 	// ProcessContent flush file to FileStorage
-	ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (UploadResult, error)
+	ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error)
 
 	// ProcessThumbnail flush thumbnail file to FileStorage if it has.
 	ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error

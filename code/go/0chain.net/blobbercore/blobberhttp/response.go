@@ -1,10 +1,11 @@
-package handler
+package blobberhttp
 
 import (
-	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/readmarker"
-	"0chain.net/blobbercore/reference"
-	"0chain.net/blobbercore/writemarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
 type UploadResult struct {
@@ -28,14 +29,8 @@ type CommitResult struct {
 	//Result         []*UploadResult         `json:"result"`
 }
 
-type ReferencePath struct {
-	Meta map[string]interface{} `json:"meta_data"`
-	List []*ReferencePath       `json:"list,omitempty"`
-	ref  *reference.Ref
-}
-
 type ReferencePathResult struct {
-	*ReferencePath
+	*reference.ReferencePath
 	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
 }
 
@@ -56,4 +51,8 @@ type DownloadResponse struct {
 	AllocationID string                 `json:"-"`
 	Path         string                 `json:"-"`
 	LatestRM     *readmarker.ReadMarker `json:"latest_rm"`
+}
+
+type UpdateObjectAttributesResponse struct {
+	WhoPaysForReads common.WhoPays `json:"who_pays_for_reads,omitempty"`
 }

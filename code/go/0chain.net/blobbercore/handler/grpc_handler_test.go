@@ -8,12 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
+
 	rl "go.uber.org/ratelimit"
 
-	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/blobbergrpc"
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -30,8 +32,7 @@ var (
 
 func startGRPCServer(t *testing.T) {
 	lis = bufconn.Listen(1024 * 1024)
-	grpcS := NewServerWithMiddlewares(&common.GRPCRateLimiter{Limiter: rl.New(1000)})
-	RegisterGRPCServices(mux.NewRouter(), grpcS)
+	grpcS := NewGRPCServerWithMiddlewares(&common.GRPCRateLimiter{Limiter: rl.New(1000)}, mux.NewRouter())
 	go func() {
 		if err := grpcS.Serve(lis); err != nil {
 			t.Errorf("Server exited with error: %v", err)
@@ -125,13 +126,12 @@ func Test_GetAllocation(t *testing.T) {
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
-					Id:      alloc.Tx,
-					Context: &blobbergrpc.RequestContext{},
+					Id: alloc.Tx,
 				},
 			},
 			expectCommit: true,
 			wantCode:     codes.OK.String(),
-			wantAlloc:    AllocationToGRPCAllocation(alloc),
+			wantAlloc:    convert.AllocationToGRPCAllocation(alloc),
 		},
 		{
 			name: "Commiting_Transaction_ERR",
@@ -157,13 +157,12 @@ func Test_GetAllocation(t *testing.T) {
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
-					Id:      alloc.Tx,
-					Context: &blobbergrpc.RequestContext{},
+					Id: alloc.Tx,
 				},
 			},
 			expectCommit: true,
 			wantCode:     codes.OK.String(),
-			wantAlloc:    AllocationToGRPCAllocation(alloc),
+			wantAlloc:    convert.AllocationToGRPCAllocation(alloc),
 		},
 		{
 			name: "Expired_Allocation_ERR",
@@ -189,8 +188,7 @@ func Test_GetAllocation(t *testing.T) {
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
-					Id:      expiredAlloc.Tx,
-					Context: &blobbergrpc.RequestContext{},
+					Id: expiredAlloc.Tx,
 				},
 			},
 			wantCode: codes.Unknown.String(),
@@ -206,8 +204,7 @@ func Test_GetAllocation(t *testing.T) {
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
-					Id:      "",
-					Context: &blobbergrpc.RequestContext{},
+					Id: "",
 				},
 			},
 			wantCode: codes.Unknown.String(),
@@ -223,8 +220,7 @@ func Test_GetAllocation(t *testing.T) {
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
-					Id:      "id",
-					Context: &blobbergrpc.RequestContext{},
+					Id: "id",
 				},
 			},
 			wantCode: codes.Unknown.String(),

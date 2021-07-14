@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"0chain.net/blobbercore/config"
-	"0chain.net/blobbercore/errors"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/errors"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	. "0chain.net/core/logging"
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 type contextKey int

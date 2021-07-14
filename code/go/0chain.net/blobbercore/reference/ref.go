@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/core/common"
-	"0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -345,10 +345,52 @@ func (r *Ref) Save(ctx context.Context) error {
 }
 
 func (r *Ref) GetListingData(ctx context.Context) map[string]interface{} {
+	if r == nil {
+		return make(map[string]interface{})
+	}
+
 	if r.Type == FILE {
 		return GetListingFieldsMap(*r, FILE_LIST_TAG)
 	}
 	return GetListingFieldsMap(*r, DIR_LIST_TAG)
+}
+
+func ListingDataToRef(refMap map[string]interface{}) *Ref {
+	if len(refMap) < 1 {
+		return nil
+	}
+
+	ref := &Ref{}
+
+	refType, _ := refMap["type"].(string)
+	var tagName string
+	if refType == FILE {
+		tagName = FILE_LIST_TAG
+	} else {
+		tagName = DIR_LIST_TAG
+	}
+
+	t := reflect.TypeOf(ref).Elem()
+	v := reflect.ValueOf(ref).Elem()
+
+	// Iterate over all available fields and read the tag value
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+
+		// Get the field tag value
+		tag := field.Tag.Get(tagName)
+		// Skip if tag is not defined or ignored
+		if tag == "" || tag == "-" {
+			continue
+		}
+
+		val := refMap[tag]
+		if val != nil {
+			v.FieldByName(field.Name).Set(reflect.ValueOf(val))
+		}
+	}
+
+	return ref
 }
 
 func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]interface{} {

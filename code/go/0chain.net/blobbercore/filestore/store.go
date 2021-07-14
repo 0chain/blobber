@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"mime/multipart"
 
-	"0chain.net/core/util"
+	"github.com/0chain/blobber/code/go/0chain.net/core/util"
 )
 
 const CHUNK_SIZE = 64 * 1024

@@ -7,20 +7,18 @@ import (
 	"strconv"
 	"strings"
 
-	"0chain.net/core/encryption"
-	"github.com/gorilla/mux"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 
-	"0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
-
-	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/constants"
-	"0chain.net/blobbercore/readmarker"
-	"0chain.net/blobbercore/reference"
-	"0chain.net/blobbercore/writemarker"
-	"0chain.net/core/common"
-
-	. "0chain.net/core/logging"
 )
 
 const (
@@ -162,9 +160,9 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 
 	// authorize file access
 	var (
-		isOwner          = clientID == alloc.OwnerID
-		isRepairer       = clientID == alloc.RepairerID
-		isCollaborator   = reference.IsACollaborator(ctx, fileref.ID, clientID)
+		isOwner        = clientID == alloc.OwnerID
+		isRepairer     = clientID == alloc.RepairerID
+		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
 	if !isOwner && !isRepairer && !isCollaborator {
@@ -255,7 +253,8 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -341,7 +340,8 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 	allocationID := allocationObj.ID
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -385,7 +385,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	return result, nil
 }
 
-func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*ListResult, error) {
+func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*blobberhttp.ListResult, error) {
 
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
@@ -430,7 +430,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}
 
-	var result ListResult
+	var result blobberhttp.ListResult
 	result.AllocationRoot = allocationObj.AllocationRoot
 	result.Meta = dirref.GetListingData(ctx)
 	if clientID != allocationObj.OwnerID {
@@ -447,8 +447,8 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	return &result, nil
 }
 
-func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request) (*ReferencePathResult, error) {
-	resCh := make(chan *ReferencePathResult)
+func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResult, error) {
+	resCh := make(chan *blobberhttp.ReferencePathResult)
 	errCh := make(chan error)
 	go fsh.getReferencePath(ctx, r, resCh, errCh)
 
@@ -464,7 +464,7 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 	}
 }
 
-func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request, resCh chan<- *ReferencePathResult, errCh chan<- error) {
+func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request, resCh chan<- *blobberhttp.ReferencePathResult, errCh chan<- error) {
 	if r.Method == "POST" {
 		errCh <- common.NewError("invalid_method", "Invalid method used. Use GET instead")
 		return
@@ -478,7 +478,8 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	}
 	allocationID := allocationObj.ID
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		errCh <- common.NewError("invalid_signature", "Invalid signature")
 		return
@@ -502,17 +503,17 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 		return
 	}
 
-	refPath := &ReferencePath{ref: rootRef}
-	refsToProcess := make([]*ReferencePath, 0)
+	refPath := &reference.ReferencePath{Ref: rootRef}
+	refsToProcess := make([]*reference.ReferencePath, 0)
 	refsToProcess = append(refsToProcess, refPath)
 	for len(refsToProcess) > 0 {
 		refToProcess := refsToProcess[0]
-		refToProcess.Meta = refToProcess.ref.GetListingData(ctx)
-		if len(refToProcess.ref.Children) > 0 {
-			refToProcess.List = make([]*ReferencePath, len(refToProcess.ref.Children))
+		refToProcess.Meta = refToProcess.Ref.GetListingData(ctx)
+		if len(refToProcess.Ref.Children) > 0 {
+			refToProcess.List = make([]*reference.ReferencePath, len(refToProcess.Ref.Children))
 		}
-		for idx, child := range refToProcess.ref.Children {
-			childRefPath := &ReferencePath{ref: child}
+		for idx, child := range refToProcess.Ref.Children {
+			childRefPath := &reference.ReferencePath{Ref: child}
 			refToProcess.List[idx] = childRefPath
 			refsToProcess = append(refsToProcess, childRefPath)
 		}
@@ -529,7 +530,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 			return
 		}
 	}
-	var refPathResult ReferencePathResult
+	var refPathResult blobberhttp.ReferencePathResult
 	refPathResult.ReferencePath = refPath
 	if latestWM != nil {
 		refPathResult.LatestWM = &latestWM.WM
@@ -538,7 +539,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	resCh <- &refPathResult
 }
 
-func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (*ObjectPathResult, error) {
+func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (*blobberhttp.ObjectPathResult, error) {
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
@@ -549,7 +550,8 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (
 	}
 	allocationID := allocationObj.ID
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -587,7 +589,7 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
 	}
-	var objPathResult ObjectPathResult
+	var objPathResult blobberhttp.ObjectPathResult
 	objPathResult.ObjectPath = objectPath
 	if latestWM != nil {
 		objPathResult.LatestWM = &latestWM.WM
@@ -595,7 +597,7 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (
 	return &objPathResult, nil
 }
 
-func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (*ReferencePathResult, error) {
+func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResult, error) {
 	if r.Method == "POST" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
@@ -607,7 +609,8 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	}
 	allocationID := allocationObj.ID
 
-	valid, err := verifySignatureFromRequest(r, allocationObj.OwnerPublicKey)
+	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -626,17 +629,17 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 		return nil, err
 	}
 
-	refPath := &ReferencePath{ref: rootRef}
-	refsToProcess := make([]*ReferencePath, 0)
+	refPath := &reference.ReferencePath{Ref: rootRef}
+	refsToProcess := make([]*reference.ReferencePath, 0)
 	refsToProcess = append(refsToProcess, refPath)
 	for len(refsToProcess) > 0 {
 		refToProcess := refsToProcess[0]
-		refToProcess.Meta = refToProcess.ref.GetListingData(ctx)
-		if len(refToProcess.ref.Children) > 0 {
-			refToProcess.List = make([]*ReferencePath, len(refToProcess.ref.Children))
+		refToProcess.Meta = refToProcess.Ref.GetListingData(ctx)
+		if len(refToProcess.Ref.Children) > 0 {
+			refToProcess.List = make([]*reference.ReferencePath, len(refToProcess.Ref.Children))
 		}
-		for idx, child := range refToProcess.ref.Children {
-			childRefPath := &ReferencePath{ref: child}
+		for idx, child := range refToProcess.Ref.Children {
+			childRefPath := &reference.ReferencePath{Ref: child}
 			refToProcess.List[idx] = childRefPath
 			refsToProcess = append(refsToProcess, childRefPath)
 		}
@@ -652,7 +655,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
 	}
-	var refPathResult ReferencePathResult
+	var refPathResult blobberhttp.ReferencePathResult
 	refPathResult.ReferencePath = refPath
 	if latestWM != nil {
 		refPathResult.LatestWM = &latestWM.WM
@@ -696,21 +699,15 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 	return result, nil
 }
 
-// verifySignatureFromRequest verifyes signature passed as common.ClientSignatureHeader header.
-func verifySignatureFromRequest(r *http.Request, pbK string) (bool, error) {
-	sign := encryption.MiraclToHerumiSig(r.Header.Get(common.ClientSignatureHeader))
+// verifySignatureFromRequest verifies signature passed as common.ClientSignatureHeader header.
+func verifySignatureFromRequest(allocation, sign, pbK string) (bool, error) {
+	sign = encryption.MiraclToHerumiSig(sign)
+
 	if len(sign) < 64 {
 		return false, nil
 	}
 
-	vars := mux.Vars(r)
-	data, ok := vars["allocation"]
-	if !ok {
-		return false, common.NewError("invalid_params", "Missing allocation tx")
-	}
-
-	hash := encryption.Hash(data)
-	pbK = encryption.MiraclToHerumiPK(pbK)
+	hash := encryption.Hash(allocation)
 	return encryption.Verify(pbK, sign, hash)
 }
 

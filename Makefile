@@ -1,7 +1,10 @@
-.PHONY: test lint
+.PHONY: test lint integration-tests
 
 test:
-	cd code/go/0chain.net; go test ./...;
+	go test ./...;
 
 lint:
-	cd code/go/0chain.net; golangci-lint run;
+	golangci-lint run --timeout 2m0s;
+
+integration-tests:
+	sudo go test ./... -args integration;

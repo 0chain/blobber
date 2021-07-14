@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"0chain.net/core/config"
+	"github.com/0chain/blobber/code/go/0chain.net/core/config"
 	"github.com/spf13/viper"
 )
 
@@ -44,15 +44,15 @@ func SetupDefaultConfig() {
 }
 
 /*SetupConfig - setup the configuration system */
-func SetupConfig(configDir string) {
+func SetupConfig(configPath string) {
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
 	viper.AutomaticEnv()
 	viper.SetConfigName("0chain_blobber")
-	if configDir == "" {
+	if configPath == "" {
 		viper.AddConfigPath("./config")
 	} else {
-		viper.AddConfigPath(configDir)
+		viper.AddConfigPath(configPath)
 	}
 
 	err := viper.ReadInConfig() // Find and read the config file
@@ -69,7 +69,7 @@ const (
 )
 
 type GeolocationConfig struct {
-	Latitude float64 `mapstructure:"latitude"`
+	Latitude  float64 `mapstructure:"latitude"`
 	Longitude float64 `mapstructure:"longitude"`
 }
 
@@ -150,7 +150,7 @@ func Geolocation() GeolocationConfig {
 	g := Configuration.Geolocation
 	if g.Latitude > 90.00 || g.Latitude < -90.00 ||
 		g.Longitude > 180.00 || g.Longitude < -180.00 {
-			panic("Fatal error in config file")
+		panic("Fatal error in config file")
 
 	}
 	return g
