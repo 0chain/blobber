@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -33,21 +32,6 @@ type ObjectEntity interface {
 	GetHash() string
 	CalculateHash() string
 	GetType() string
-}
-
-type Attributes struct {
-	WhoPaysForReads common.WhoPays `json:"who_pays_for_reads,omitempty" mapstructure:"who_pays_for_reads"`
-}
-
-func (a *Attributes) String() string {
-	if a == nil || (*a) == (Attributes{}) {
-		return "{}"
-	}
-	var b, err = json.Marshal(a)
-	if err != nil {
-		return "{}"
-	}
-	return string(b)
 }
 
 type DirMetaData struct {

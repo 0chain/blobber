@@ -15,54 +15,6 @@ import (
 	"go.uber.org/zap"
 )
 
-func TestAttributes_String(t *testing.T) {
-	tests := []struct {
-		name  string
-		attrs *storage.Attributes
-		want  string
-	}{
-		{
-			name: "owner",
-			attrs: &storage.Attributes{
-				WhoPaysForReads: common.WhoPaysOwner,
-			},
-			want: "{}",
-			// want: "{\"who_pays_for_reads\":0}",
-		},
-		{
-			name: "",
-			attrs: &storage.Attributes{
-				WhoPaysForReads: common.WhoPays3rdParty,
-			},
-			want: "{\"who_pays_for_reads\":1}",
-		},
-		{
-			name:  "nil",
-			attrs: nil,
-			want:  "{}",
-		},
-		{
-			name:  "empty",
-			attrs: &storage.Attributes{},
-			want:  "{}",
-		},
-		{
-			name: "invalid",
-			attrs: &storage.Attributes{
-				WhoPaysForReads: 2,
-			},
-			want: "{\"who_pays_for_reads\":2}",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.attrs.String()
-			assert.Equal(t, tt.want, got)
-		})
-	}
-}
-
 func TestDirMetaData_GetNumBlocks(t *testing.T) {
 	t.Skip("covered in TestObjectPath_VerifyBlockNum")
 }

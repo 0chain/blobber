@@ -7,26 +7,6 @@ import (
 	"net/http"
 )
 
-func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, req *blobbergrpc.UpdateObjectAttributesRequest) (*blobbergrpc.UpdateObjectAttributesResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
-	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":          {req.Path},
-		"path_hash":     {req.PathHash},
-		"connection_id": {req.ConnectionId},
-	}
-
-	resp, err := UpdateAttributesHandler(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return convert.UpdateObjectAttributesResponseCreator(resp), nil
-}
-
 func (b *blobberGRPCService) CopyObject(ctx context.Context, req *blobbergrpc.CopyObjectRequest) (*blobbergrpc.CopyObjectResponse, error) {
 	r, err := http.NewRequest("POST", "", nil)
 	if err != nil {

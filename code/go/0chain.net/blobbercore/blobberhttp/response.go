@@ -5,7 +5,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
 type UploadResult struct {
@@ -51,8 +50,4 @@ type DownloadResponse struct {
 	AllocationID string                 `json:"-"`
 	Path         string                 `json:"-"`
 	LatestRM     *readmarker.ReadMarker `json:"latest_rm"`
-}
-
-type UpdateObjectAttributesResponse struct {
-	WhoPaysForReads common.WhoPays `json:"who_pays_for_reads,omitempty"`
 }
