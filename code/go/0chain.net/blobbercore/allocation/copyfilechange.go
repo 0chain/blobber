@@ -7,8 +7,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-
-	"gorm.io/datatypes"
 )
 
 type CopyFileChange struct {
@@ -94,7 +92,6 @@ func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef *refe
 		newRef.ParentPath = destRef.Path
 		newRef.Name = affectedRef.Name
 		newRef.LookupHash = reference.GetReferenceLookup(newRef.AllocationID, newRef.Path)
-		newRef.Attributes = datatypes.JSON(string(affectedRef.Attributes))
 		destRef.AddChild(newRef)
 		for _, childRef := range affectedRef.Children {
 			rf.processCopyRefs(ctx, childRef, newRef, allocationRoot)
@@ -119,7 +116,6 @@ func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef *refe
 		newFile.ActualThumbnailHash = affectedRef.ActualThumbnailHash
 		newFile.ActualThumbnailSize = affectedRef.ActualThumbnailSize
 		newFile.EncryptedKey = affectedRef.EncryptedKey
-		newFile.Attributes = datatypes.JSON(string(affectedRef.Attributes))
 
 		destRef.AddChild(newFile)
 	}

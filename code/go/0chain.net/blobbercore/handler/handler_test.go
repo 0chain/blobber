@@ -177,7 +177,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 
 func isEndpointAllowGetReq(name string) bool {
 	switch name {
-	case "Stats", "Rename", "Copy", "Attributes", "Upload":
+	case "Stats", "Rename", "Copy", "Upload":
 		return false
 	default:
 		return true
