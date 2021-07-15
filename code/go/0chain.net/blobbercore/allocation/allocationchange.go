@@ -14,13 +14,12 @@ import (
 )
 
 const (
-	INSERT_OPERATION       = "insert"
-	DELETE_OPERATION       = "delete"
-	UPDATE_OPERATION       = "update"
-	RENAME_OPERATION       = "rename"
-	COPY_OPERATION         = "copy"
-	UPDATE_ATTRS_OPERATION = "update_attrs"
-	CREATEDIR_OPERATION    = "createdir"
+	INSERT_OPERATION    = "insert"
+	DELETE_OPERATION    = "delete"
+	UPDATE_OPERATION    = "update"
+	RENAME_OPERATION    = "rename"
+	COPY_OPERATION      = "copy"
+	CREATEDIR_OPERATION = "createdir"
 )
 
 const (
@@ -128,10 +127,7 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 			acp = new(RenameFileChange)
 		case COPY_OPERATION:
 			acp = new(CopyFileChange)
-		case UPDATE_ATTRS_OPERATION:
-			acp = new(AttributesChange)
 		}
-
 		if acp == nil {
 			continue // unknown operation (impossible case?)
 		}
