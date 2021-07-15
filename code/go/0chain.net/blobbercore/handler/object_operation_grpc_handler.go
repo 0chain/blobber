@@ -17,7 +17,6 @@ func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, req *bl
 		"path":          {req.Path},
 		"path_hash":     {req.PathHash},
 		"connection_id": {req.ConnectionId},
-		"attributes":    {req.Attributes},
 	}
 
 	resp, err := UpdateAttributesHandler(ctx, r)

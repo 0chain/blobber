@@ -75,11 +75,6 @@ func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	existingRef.ActualThumbnailSize = nf.ActualThumbnailSize
 	existingRef.EncryptedKey = nf.EncryptedKey
 
-	if err = existingRef.SetAttributes(&nf.Attributes); err != nil {
-		return nil, common.NewErrorf("process_update_file_change",
-			"setting file attributes: %v", err)
-	}
-
 	_, err = rootRef.CalculateHash(ctx, true)
 	stats.FileUpdated(ctx, existingRef.ID)
 	return rootRef, err

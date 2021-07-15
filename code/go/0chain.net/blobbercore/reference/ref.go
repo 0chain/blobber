@@ -2,7 +2,6 @@ package reference
 
 import (
 	"context"
-	"encoding/json"
 	"math"
 	"path/filepath"
 	"reflect"
@@ -15,7 +14,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -29,59 +27,32 @@ const (
 	FILE_LIST_TAG = "filelist"
 )
 
-// The Attributes represents file attributes.
-type Attributes struct {
-	// The WhoPaysForReads represents reading payer. It can be allocation owner
-	// or a 3rd party user. It affects read operations only. It requires
-	// blobbers to be trusted.
-	WhoPaysForReads common.WhoPays `json:"who_pays_for_reads,omitempty"`
-
-	// add more file / directory attributes by needs with
-	// 'omitempty' json tag to avoid hash difference for
-	// equal values
-}
-
-// IsZero returns true, if the Attributes is zero.
-func (a *Attributes) IsZero() bool {
-	return (*a) == (Attributes{})
-}
-
-// Validate the Attributes.
-func (a *Attributes) Validate() (err error) {
-	if err = a.WhoPaysForReads.Validate(); err != nil {
-		return common.NewErrorf("validating_object_attributes",
-			"invalid who_pays_for_reads field: %v", err)
-	}
-	return
-}
-
 type Ref struct {
-	ID                  int64          `gorm:"column:id;primary_key"`
-	Type                string         `gorm:"column:type" dirlist:"type" filelist:"type"`
-	AllocationID        string         `gorm:"column:allocation_id"`
-	LookupHash          string         `gorm:"column:lookup_hash" dirlist:"lookup_hash" filelist:"lookup_hash"`
-	Name                string         `gorm:"column:name" dirlist:"name" filelist:"name"`
-	Path                string         `gorm:"column:path" dirlist:"path" filelist:"path"`
-	Hash                string         `gorm:"column:hash" dirlist:"hash" filelist:"hash"`
-	NumBlocks           int64          `gorm:"column:num_of_blocks" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
-	PathHash            string         `gorm:"column:path_hash" dirlist:"path_hash" filelist:"path_hash"`
-	ParentPath          string         `gorm:"column:parent_path"`
-	PathLevel           int            `gorm:"column:level"`
-	CustomMeta          string         `gorm:"column:custom_meta" filelist:"custom_meta"`
-	ContentHash         string         `gorm:"column:content_hash" filelist:"content_hash"`
-	Size                int64          `gorm:"column:size" dirlist:"size" filelist:"size"`
-	MerkleRoot          string         `gorm:"column:merkle_root" filelist:"merkle_root"`
-	ActualFileSize      int64          `gorm:"column:actual_file_size" filelist:"actual_file_size"`
-	ActualFileHash      string         `gorm:"column:actual_file_hash" filelist:"actual_file_hash"`
-	MimeType            string         `gorm:"column:mimetype" filelist:"mimetype"`
-	WriteMarker         string         `gorm:"column:write_marker"`
-	ThumbnailSize       int64          `gorm:"column:thumbnail_size" filelist:"thumbnail_size"`
-	ThumbnailHash       string         `gorm:"column:thumbnail_hash" filelist:"thumbnail_hash"`
-	ActualThumbnailSize int64          `gorm:"column:actual_thumbnail_size" filelist:"actual_thumbnail_size"`
-	ActualThumbnailHash string         `gorm:"column:actual_thumbnail_hash" filelist:"actual_thumbnail_hash"`
-	EncryptedKey        string         `gorm:"column:encrypted_key" filelist:"encrypted_key"`
-	Attributes          datatypes.JSON `gorm:"column:attributes" filelist:"attributes"`
-	Children            []*Ref         `gorm:"-"`
+	ID                  int64  `gorm:"column:id;primary_key"`
+	Type                string `gorm:"column:type" dirlist:"type" filelist:"type"`
+	AllocationID        string `gorm:"column:allocation_id"`
+	LookupHash          string `gorm:"column:lookup_hash" dirlist:"lookup_hash" filelist:"lookup_hash"`
+	Name                string `gorm:"column:name" dirlist:"name" filelist:"name"`
+	Path                string `gorm:"column:path" dirlist:"path" filelist:"path"`
+	Hash                string `gorm:"column:hash" dirlist:"hash" filelist:"hash"`
+	NumBlocks           int64  `gorm:"column:num_of_blocks" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
+	PathHash            string `gorm:"column:path_hash" dirlist:"path_hash" filelist:"path_hash"`
+	ParentPath          string `gorm:"column:parent_path"`
+	PathLevel           int    `gorm:"column:level"`
+	CustomMeta          string `gorm:"column:custom_meta" filelist:"custom_meta"`
+	ContentHash         string `gorm:"column:content_hash" filelist:"content_hash"`
+	Size                int64  `gorm:"column:size" dirlist:"size" filelist:"size"`
+	MerkleRoot          string `gorm:"column:merkle_root" filelist:"merkle_root"`
+	ActualFileSize      int64  `gorm:"column:actual_file_size" filelist:"actual_file_size"`
+	ActualFileHash      string `gorm:"column:actual_file_hash" filelist:"actual_file_hash"`
+	MimeType            string `gorm:"column:mimetype" filelist:"mimetype"`
+	WriteMarker         string `gorm:"column:write_marker"`
+	ThumbnailSize       int64  `gorm:"column:thumbnail_size" filelist:"thumbnail_size"`
+	ThumbnailHash       string `gorm:"column:thumbnail_hash" filelist:"thumbnail_hash"`
+	ActualThumbnailSize int64  `gorm:"column:actual_thumbnail_size" filelist:"actual_thumbnail_size"`
+	ActualThumbnailHash string `gorm:"column:actual_thumbnail_hash" filelist:"actual_thumbnail_hash"`
+	EncryptedKey        string `gorm:"column:encrypted_key" filelist:"encrypted_key"`
+	Children            []*Ref `gorm:"-"`
 	childrenLoaded      bool
 
 	OnCloud        bool            `gorm:"column:on_cloud" filelist:"on_cloud"`
@@ -101,36 +72,11 @@ func GetReferenceLookup(allocationID string, path string) string {
 }
 
 func NewDirectoryRef() *Ref {
-	return &Ref{Type: DIRECTORY, Attributes: datatypes.JSON("{}")}
+	return &Ref{Type: DIRECTORY}
 }
 
 func NewFileRef() *Ref {
-	return &Ref{Type: FILE, Attributes: datatypes.JSON("{}")}
-}
-
-func (r *Ref) GetAttributes() (attr *Attributes, err error) {
-	if len(r.Attributes) == 0 {
-		attr = new(Attributes) // zero attributes
-		return
-	}
-	attr = new(Attributes)
-	if err = json.Unmarshal([]byte(r.Attributes), attr); err != nil {
-		return nil, common.NewError("decoding file attributes", err.Error())
-	}
-	return // the decoded attributes
-}
-
-func (r *Ref) SetAttributes(attr *Attributes) (err error) {
-	if attr == nil || (*attr) == (Attributes{}) {
-		r.Attributes = datatypes.JSON("{}") // use zero value
-		return
-	}
-	var b []byte
-	if b, err = json.Marshal(attr); err != nil {
-		return common.NewError("encoding file attributes", err.Error())
-	}
-	r.Attributes = datatypes.JSON(b) // or a real value, can be {} too
-	return
+	return &Ref{Type: FILE}
 }
 
 func GetReference(ctx context.Context, allocationID string, path string) (*Ref, error) {
@@ -217,9 +163,6 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID string, path str
 }
 
 func (fr *Ref) GetFileHashData() string {
-	if len(fr.Attributes) == 0 {
-		fr.Attributes = datatypes.JSON("{}")
-	}
 	hashArray := make([]string, 0)
 	hashArray = append(hashArray, fr.AllocationID)
 	hashArray = append(hashArray, fr.Type)
@@ -230,7 +173,6 @@ func (fr *Ref) GetFileHashData() string {
 	hashArray = append(hashArray, fr.MerkleRoot)
 	hashArray = append(hashArray, strconv.FormatInt(fr.ActualFileSize, 10))
 	hashArray = append(hashArray, fr.ActualFileHash)
-	hashArray = append(hashArray, string(fr.Attributes))
 	return strings.Join(hashArray, ":")
 }
 

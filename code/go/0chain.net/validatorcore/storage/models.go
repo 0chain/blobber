@@ -85,13 +85,12 @@ func (r *DirMetaData) GetType() string {
 
 type FileMetaData struct {
 	DirMetaData    `mapstructure:",squash"`
-	CustomMeta     string     `json:"custom_meta" mapstructure:"custom_meta"`
-	ContentHash    string     `json:"content_hash" mapstructure:"content_hash"`
-	Size           int64      `json:"size" mapstructure:"size"`
-	MerkleRoot     string     `json:"merkle_root" mapstructure:"merkle_root"`
-	ActualFileSize int64      `json:"actual_file_size" mapstructure:"actual_file_size"`
-	ActualFileHash string     `json:"actual_file_hash" mapstructure:"actual_file_hash"`
-	Attributes     Attributes `json:"attributes" mapstructure:"attributes" `
+	CustomMeta     string `json:"custom_meta" mapstructure:"custom_meta"`
+	ContentHash    string `json:"content_hash" mapstructure:"content_hash"`
+	Size           int64  `json:"size" mapstructure:"size"`
+	MerkleRoot     string `json:"merkle_root" mapstructure:"merkle_root"`
+	ActualFileSize int64  `json:"actual_file_size" mapstructure:"actual_file_size"`
+	ActualFileHash string `json:"actual_file_hash" mapstructure:"actual_file_hash"`
 }
 
 func (fr *FileMetaData) GetHashData() string {
@@ -105,7 +104,6 @@ func (fr *FileMetaData) GetHashData() string {
 	hashArray = append(hashArray, fr.MerkleRoot)
 	hashArray = append(hashArray, strconv.FormatInt(fr.ActualFileSize, 10))
 	hashArray = append(hashArray, fr.ActualFileHash)
-	hashArray = append(hashArray, fr.Attributes.String())
 	return strings.Join(hashArray, ":")
 }
 

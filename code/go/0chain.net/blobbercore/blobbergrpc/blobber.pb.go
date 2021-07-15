@@ -2151,7 +2151,6 @@ type UpdateObjectAttributesRequest struct {
 	Path         string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	PathHash     string `protobuf:"bytes,3,opt,name=path_hash,json=pathHash,proto3" json:"path_hash,omitempty"`
 	ConnectionId string `protobuf:"bytes,4,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
-	Attributes   string `protobuf:"bytes,5,opt,name=attributes,proto3" json:"attributes,omitempty"`
 }
 
 func (x *UpdateObjectAttributesRequest) Reset() {
@@ -3145,7 +3144,6 @@ type FileMetaData struct {
 	ActualThumbnailSize int64            `protobuf:"varint,17,opt,name=actual_thumbnail_size,json=actualThumbnailSize,proto3" json:"actual_thumbnail_size,omitempty"`
 	ActualThumbnailHash string           `protobuf:"bytes,18,opt,name=actual_thumbnail_hash,json=actualThumbnailHash,proto3" json:"actual_thumbnail_hash,omitempty"`
 	EncryptedKey        string           `protobuf:"bytes,19,opt,name=encrypted_key,json=encryptedKey,proto3" json:"encrypted_key,omitempty"`
-	Attributes          []byte           `protobuf:"bytes,20,opt,name=attributes,proto3" json:"attributes,omitempty"`
 	OnCloud             bool             `protobuf:"varint,21,opt,name=on_cloud,json=onCloud,proto3" json:"on_cloud,omitempty"`
 	CommitMetaTxns      []*CommitMetaTxn `protobuf:"bytes,22,rep,name=commit_meta_txns,json=commitMetaTxns,proto3" json:"commit_meta_txns,omitempty"`
 	CreatedAt           int64            `protobuf:"varint,23,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`

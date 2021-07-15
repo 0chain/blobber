@@ -305,16 +305,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		}
 
 		readMarker.AuthTicket = datatypes.JSON(authTokenString)
-
-		// check for file payer flag
-		if fileAttrs, err := fileref.GetAttributes(); err != nil {
-			return nil, common.NewErrorf("download_file",
-				"error getting file attributes: %v", err)
-		} else {
-			if fileAttrs.WhoPaysForReads == common.WhoPays3rdParty {
-				payerID = clientID
-			}
-		}
 	}
 
 	// create read marker
@@ -667,116 +657,6 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	result.Size = objectRef.Size
 
 	return result, nil
-}
-
-func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
-	r *http.Request) (resp interface{}, err error) {
-
-	if r.Method != http.MethodPost {
-		return nil, common.NewError("update_object_attributes",
-			"Invalid method used. Use POST instead")
-	}
-
-	var (
-		allocTx  = ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-		clientID = ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-
-		alloc *allocation.Allocation
-	)
-
-	if alloc, err = fsh.verifyAllocation(ctx, allocTx, false); err != nil {
-		return nil, common.NewErrorf("update_object_attributes",
-			"Invalid allocation ID passed: %v", err)
-	}
-
-	valid, err := verifySignatureFromRequest(allocTx, r.Header.Get(common.ClientSignatureHeader), alloc.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	if alloc.IsImmutable {
-		return nil, common.NewError("immutable_allocation", "Cannot update data in an immutable allocation")
-	}
-
-	// runtime type check
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
-
-	if clientID == "" {
-		return nil, common.NewError("update_object_attributes",
-			"missing client ID")
-	}
-
-	var attributes = r.FormValue("attributes") // new attributes as string
-	if attributes == "" {
-		return nil, common.NewError("update_object_attributes",
-			"missing new attributes, pass at least {} for empty attributes")
-	}
-
-	var attrs = new(reference.Attributes)
-	if err = json.Unmarshal([]byte(attributes), attrs); err != nil {
-		return nil, common.NewErrorf("update_object_attributes",
-			"decoding given attributes: %v", err)
-	}
-
-	pathHash, err := pathHashFromReq(r, alloc.ID)
-	if err != nil {
-		return nil, common.NewError("update_object_attributes",
-			"missing path and path_hash")
-	}
-
-	if alloc.OwnerID != clientID {
-		return nil, common.NewError("update_object_attributes",
-			"operation needs to be performed by the owner of the allocation")
-	}
-
-	var connID = r.FormValue("connection_id")
-	if connID == "" {
-		return nil, common.NewErrorf("update_object_attributes",
-			"invalid connection id passed: %s", connID)
-	}
-
-	var conn *allocation.AllocationChangeCollector
-	conn, err = allocation.GetAllocationChanges(ctx, connID, alloc.ID, clientID)
-	if err != nil {
-		return nil, common.NewErrorf("update_object_attributes",
-			"reading metadata for connection: %v", err)
-	}
-
-	var mutex = lock.GetMutex(conn.TableName(), connID)
-
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	var ref *reference.Ref
-	ref, err = reference.GetReferenceFromLookupHash(ctx, alloc.ID, pathHash)
-	if err != nil {
-		return nil, common.NewErrorf("update_object_attributes",
-			"invalid file path: %v", err)
-	}
-
-	var change = new(allocation.AllocationChange)
-	change.ConnectionID = conn.ConnectionID
-	change.Operation = allocation.UPDATE_ATTRS_OPERATION
-
-	var uafc = &allocation.AttributesChange{
-		ConnectionID: conn.ConnectionID,
-		AllocationID: conn.AllocationID,
-		Path:         ref.Path,
-		Attributes:   attrs,
-	}
-
-	conn.AddChange(change, uafc)
-
-	err = conn.Save(ctx)
-	if err != nil {
-		Logger.Error("update_object_attributes: "+
-			"error in writing the connection meta data", zap.Error(err))
-		return nil, common.NewError("update_object_attributes",
-			"error writing the connection meta data")
-	}
-
-	// return new attributes as result
-	return attrs, nil
 }
 
 func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
