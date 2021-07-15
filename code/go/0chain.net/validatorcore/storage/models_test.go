@@ -137,9 +137,6 @@ func TestFileMetaData_GetHashData(t *testing.T) {
 			name: "with Attributes.WhoPays = WhoPaysOwner",
 			fmd: storage.FileMetaData{
 				DirMetaData: storage.DirMetaData{},
-				Attributes: storage.Attributes{
-					WhoPaysForReads: common.WhoPaysOwner,
-				},
 			},
 			want: "::::0:::0::{}",
 			// want: "::::0:::0::{\"who_pays_for_reads\":0}",
@@ -148,9 +145,6 @@ func TestFileMetaData_GetHashData(t *testing.T) {
 			name: "with Attributes.WhoPays = WhoPays3rdParty",
 			fmd: storage.FileMetaData{
 				DirMetaData: storage.DirMetaData{},
-				Attributes: storage.Attributes{
-					WhoPaysForReads: common.WhoPays3rdParty,
-				},
 			},
 			want: "::::0:::0::{\"who_pays_for_reads\":1}",
 		},
@@ -187,25 +181,6 @@ func TestFileMetaData_CalculateHash(t *testing.T) {
 	}{
 		{
 			name: "with Attributes.WhoPays = WhoPaysOwner",
-			fmd: storage.FileMetaData{
-				Attributes: storage.Attributes{
-					WhoPaysForReads: common.WhoPaysOwner,
-				},
-			},
-			want: "f78718c8ad33d8b97fe902dabc36df401f82c88bde608ab85005d332ac24de43",
-			// want: "a9862b25db264157a540dc3ecf7aae331f377aeb3c2ef9c59951e1c8c3e3bc15",
-		},
-		{
-			name: "with Attributes.WhoPays = WhoPays3rdParty",
-			fmd: storage.FileMetaData{
-				Attributes: storage.Attributes{
-					WhoPaysForReads: common.WhoPays3rdParty,
-				},
-			},
-			want: "2cc4e60833e5bf1e018910ce256d12374f1d8e87beade0f5c2a63770e6b8a445",
-		},
-		{
-			name: "with Attributes.WhoPays = nil",
 			fmd:  storage.FileMetaData{},
 			want: "f78718c8ad33d8b97fe902dabc36df401f82c88bde608ab85005d332ac24de43",
 		},
@@ -484,7 +459,6 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 							MerkleRoot:     "",
 							ActualFileSize: int64(0),
 							ActualFileHash: "",
-							Attributes:     storage.Attributes{},
 						},
 					},
 				},
@@ -535,7 +509,6 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 							MerkleRoot:     "",
 							ActualFileSize: int64(0),
 							ActualFileHash: "",
-							Attributes:     storage.Attributes{},
 						},
 					},
 				},
@@ -605,7 +578,6 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 									MerkleRoot:     "",
 									ActualFileSize: int64(0),
 									ActualFileHash: "",
-									Attributes:     storage.Attributes{},
 								},
 							},
 						},

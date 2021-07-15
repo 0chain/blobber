@@ -2213,13 +2213,6 @@ func (x *UpdateObjectAttributesRequest) GetConnectionId() string {
 	return ""
 }
 
-func (x *UpdateObjectAttributesRequest) GetAttributes() string {
-	if x != nil {
-		return x.Attributes
-	}
-	return ""
-}
-
 type UpdateObjectAttributesResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -3313,13 +3306,6 @@ func (x *FileMetaData) GetEncryptedKey() string {
 		return x.EncryptedKey
 	}
 	return ""
-}
-
-func (x *FileMetaData) GetAttributes() []byte {
-	if x != nil {
-		return x.Attributes
-	}
-	return nil
 }
 
 func (x *FileMetaData) GetOnCloud() bool {
