@@ -1,7 +1,8 @@
 #!/bin/bash
 
 root=$(pwd)
-hostname=`ifconfig | grep "inet " | grep -Fv 127.0.0.1 | grep broadcast | awk '{print $2}'`
+#hostname=`ifconfig | grep "inet " | grep -Fv 127.0.0.1 | grep broadcast | awk '{print $2}'`
+hostname=158.247.218.192
 
 ips=`ifconfig | grep "inet " | grep 198.18.0 | wc -l`
 
@@ -57,7 +58,12 @@ echo "
 
 echo "Hostname: $hostname"
 
+set_hostname() {
 
+    read -p "change hostname($hostname), please enter new hostname: " hostname
+    echo ""
+    echo "> hostname is updated to: $hostname"
+}
 
 install_debuggger() {
     [ -d ../.vscode ] || mkdir -p ../.vscode
@@ -75,13 +81,14 @@ cleanAll() {
 echo " "
 echo "Please select which blobber/validator you will work on: "
 
-select i in "1" "2" "3" "clean all" "install debugers on .vscode/launch.json"; do
+select i in "1" "2" "3" "clean all" "install debugers on .vscode/launch.json" "set hostname"; do
     case $i in
         "1"             ) break;;
         "2"             ) break;;
         "3"             ) break;;
         "clean all"     ) cleanAll ;;
         "install debugers on .vscode/launch.json" ) install_debuggger;;
+        "set hostname"  ) set_hostname;;
     esac
 done
 
