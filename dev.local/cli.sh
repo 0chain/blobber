@@ -1,8 +1,8 @@
 #!/bin/bash
 
 root=$(pwd)
-#hostname=`ifconfig | grep "inet " | grep -Fv 127.0.0.1 | grep broadcast | awk '{print $2}'`
-hostname=158.247.218.192
+hostname=`ifconfig | grep "inet " | grep -Fv 127.0.0.1 | grep broadcast | awk '{print $2}'`
+
 
 ips=`ifconfig | grep "inet " | grep 198.18.0 | wc -l`
 
@@ -60,9 +60,19 @@ echo "Hostname: $hostname"
 
 set_hostname() {
 
-    read -p "change hostname($hostname), please enter new hostname: " hostname
+    read -p "change hostname($hostname), please enter your hostname: " hostname
     echo ""
     echo "> hostname is updated to: $hostname"
+}
+
+change_zcn() {
+    zcn=$(cat ../config/0chain_blobber.yaml | grep '^block_worker' | awk -F ' ' '{print $2}')
+    read -p "change zcn($zcn), please enter your zcn: " yourZCN
+
+    find ../config/ -name "0chain_blobber.yaml" -exec sed -i '' "s/block_worker/#block_worker/g" {} \;
+    echo "block_worker: $yourZCN" >> ../config/0chain_blobber.yaml
+    zcn=$(cat ../config/0chain_blobber.yaml | grep '^block_worker' | awk -F ' ' '{print $2}')
+    echo "> zcn is updated to: $zcn"
 }
 
 install_debuggger() {
@@ -81,7 +91,7 @@ cleanAll() {
 echo " "
 echo "Please select which blobber/validator you will work on: "
 
-select i in "1" "2" "3" "clean all" "install debugers on .vscode/launch.json" "set hostname"; do
+select i in "1" "2" "3" "clean all" "install debugers on .vscode/launch.json" "set hostname" "change zcn"; do
     case $i in
         "1"             ) break;;
         "2"             ) break;;
@@ -89,6 +99,7 @@ select i in "1" "2" "3" "clean all" "install debugers on .vscode/launch.json" "s
         "clean all"     ) cleanAll ;;
         "install debugers on .vscode/launch.json" ) install_debuggger;;
         "set hostname"  ) set_hostname;;
+        "change zcn"  ) change_zcn;;
     esac
 done
 
