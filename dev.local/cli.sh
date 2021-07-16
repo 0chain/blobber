@@ -67,10 +67,12 @@ set_hostname() {
 
 change_zcn() {
     zcn=$(cat ../config/0chain_blobber.yaml | grep '^block_worker' | awk -F ' ' '{print $2}')
-    read -p "change zcn($zcn), please enter your zcn: " yourZCN
+    read -p "change zcn($zcn), please enter your zcn(leave blank for skip): " yourZCN
 
-    find ../config/ -name "0chain_blobber.yaml" -exec sed -i '' "s/block_worker/#block_worker/g" {} \;
-    echo "block_worker: $yourZCN" >> ../config/0chain_blobber.yaml
+    if [ ! -z "$yourZCN" -a "$yourZCN" != " "  ]; then
+        find ../config/ -name "0chain_blobber.yaml" -exec sed -i '' "s/block_worker/#block_worker/g" {} \;
+        echo "block_worker: $yourZCN" >> ../config/0chain_blobber.yaml
+    fi
     zcn=$(cat ../config/0chain_blobber.yaml | grep '^block_worker' | awk -F ' ' '{print $2}')
     echo "> zcn is updated to: $zcn"
 }
