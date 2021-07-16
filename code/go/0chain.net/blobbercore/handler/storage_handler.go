@@ -26,6 +26,7 @@ const (
 
 	DOWNLOAD_CONTENT_FULL  = "full"
 	DOWNLOAD_CONTENT_THUMB = "thumbnail"
+	PAGE_LIMIT             = 10 //TODO make it to exat limit; for eg: 1MB
 )
 
 type StorageHandler struct{}
@@ -631,7 +632,13 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	if len(path) == 0 {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
-
+	// bOffset := r.FormValue("bOffset")
+	// bLimit := r.FormValue("bLimit")
+	// if len(bOffset) == 0{
+	// 	breadthOffset := OFFSET
+	// }else{
+	// 	breadthOffset := int(bOffset)
+	// }
 	rootRef, err := reference.GetObjectTree(ctx, allocationID, path)
 	if err != nil {
 		return nil, err
@@ -640,6 +647,8 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	refPath := &reference.ReferencePath{Ref: rootRef}
 	refsToProcess := make([]*reference.ReferencePath, 0)
 	refsToProcess = append(refsToProcess, refPath)
+	//It seems it can be controlled from this for loop
+	//SQL query needs to be changed as it can be heavy result
 	for len(refsToProcess) > 0 {
 		refToProcess := refsToProcess[0]
 		refToProcess.Meta = refToProcess.Ref.GetListingData(ctx)
@@ -669,6 +678,54 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 		refPathResult.LatestWM = &latestWM.WM
 	}
 	return &refPathResult, nil
+}
+
+func (fsh *StorageHandler) GetPaginatedObjectTree(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResult, error) {
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	allocationID := allocationObj.ID
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+	path := r.FormValue("path")
+	if len(path) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path")
+	}
+
+	pageStr := r.FormValue("page")
+	var page int
+	if len(pageStr) == 0 {
+		page = 1
+	} else {
+		o, err := strconv.Atoi(pageStr)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid page value type")
+		}
+		if o < 0 {
+			page = 1
+		} else {
+			page = o
+		}
+	}
+
+	refs, err := reference.GetPaginatedObjectTree(ctx, allocationID, path, page) // Also return total pages
+	if err != nil {
+		return nil, err
+	}
+	// Refs will be returned as it is and object tree will be build in gosdk
+	return nil, nil
 }
 
 func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (interface{}, error) {

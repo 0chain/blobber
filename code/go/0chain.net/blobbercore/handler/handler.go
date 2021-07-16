@@ -239,6 +239,20 @@ func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, error
 	return response, nil
 }
 
+func PaginatedObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method == "POST" {
+		return nil, common.NewError("invalid method", "Invalid method used. Use GET instead")
+	}
+	ctx = setupHandlerContext(ctx, r)
+
+	response, err := storageHandler.GetPaginatedObjectTree(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
 func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.RenameObject(ctx, r)

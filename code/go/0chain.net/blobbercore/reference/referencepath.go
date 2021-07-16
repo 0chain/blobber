@@ -8,6 +8,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
+const PAGE_SIZE = 100
+
 type ReferencePath struct {
 	Meta map[string]interface{} `json:"meta_data"`
 	List []*ReferencePath       `json:"list,omitempty"`
@@ -98,4 +100,27 @@ func GetObjectTree(ctx context.Context, allocationID string, path string) (*Ref,
 		childMap[refs[i].Path] = &refs[i]
 	}
 	return &refs[0], nil
+}
+
+func GetPaginatedObjectTree(ctx context.Context, allocationID string, path string, page int) (*[]Ref, error) {
+	var refs []Ref
+	path = filepath.Clean(path)
+	db := datastore.GetStore().GetTransaction(ctx)
+	offset := (page - 1) * PAGE_SIZE
+	db = db.Where(Ref{AllocationID: allocationID}).Where(db.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+	// Select * from reference_objects where allocation_id = {allocatioid} AND (path=path OR path LIKE {path}%)
+	// db = db.Where("allocation_id = ? AND (path = ? OR path LIKE ?)", allocationID, path, path)
+	// db = db.Where(Ref{Path: path, AllocationID: allocationID})
+	// db = db.Or("path LIKE ? AND allocation_id = ?", (path + "/%"), allocationID)
+	db = db.Order("level, lookup_hash")
+	db = db.Offset(offset).Limit(PAGE_SIZE)
+	err := db.Find(&refs).Error
+	if err != nil {
+		return nil, err
+	}
+
+	if len(refs) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path. Could not find object tree")
+	}
+	return &refs, nil
 }
