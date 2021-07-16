@@ -90,22 +90,21 @@ func TestFileMetaData_GetHashData(t *testing.T) {
 			fmd: storage.FileMetaData{
 				DirMetaData: storage.DirMetaData{},
 			},
-			want: "::::0:::0::{}",
-			// want: "::::0:::0::{\"who_pays_for_reads\":0}",
+			want: "::::0:::0:",
 		},
 		{
 			name: "with Attributes.WhoPays = WhoPays3rdParty",
 			fmd: storage.FileMetaData{
 				DirMetaData: storage.DirMetaData{},
 			},
-			want: "::::0:::0::{\"who_pays_for_reads\":1}",
+			want: "::::0:::0:",
 		},
 		{
 			name: "with Attributes.WhoPays = nil",
 			fmd: storage.FileMetaData{
 				DirMetaData: storage.DirMetaData{},
 			},
-			want: "::::0:::0::{}",
+			want: "::::0:::0:",
 		},
 	}
 
@@ -134,7 +133,7 @@ func TestFileMetaData_CalculateHash(t *testing.T) {
 		{
 			name: "with Attributes.WhoPays = WhoPaysOwner",
 			fmd:  storage.FileMetaData{},
-			want: "f78718c8ad33d8b97fe902dabc36df401f82c88bde608ab85005d332ac24de43",
+			want: "a55882aa900433ed2e2620957521bae61c3f032f3b1dc4e4d1ea7d3553f3d820",
 		},
 	}
 
@@ -179,7 +178,7 @@ func TestObjectPath_Parse(t *testing.T) {
 			},
 			allocID:    "1",
 			wantErr:    true,
-			wantErrMsg: "Object path error since there is a mismatch in the file hashes.",
+			wantErrMsg: "hash_mismatch: Object path error since there is a mismatch in the file hashes. file.txt",
 		},
 		{
 			name:    "dir/dir/file path: hash mismatch",
@@ -196,7 +195,7 @@ func TestObjectPath_Parse(t *testing.T) {
 						"list": []map[string]interface{}{
 							map[string]interface{}{
 								"path": "file.txt",
-								"hash": "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+								"hash": "940031d28bdeea34ebd6e758d36fa47421b49377308603046e0ccf1307780cda",
 								"type": "f",
 							},
 						},
@@ -205,7 +204,7 @@ func TestObjectPath_Parse(t *testing.T) {
 			},
 			allocID:    "1",
 			wantErr:    true,
-			wantErrMsg: "Object path error since there is a mismatch in the dir hashes.",
+			wantErrMsg: "hash_mismatch: Object path error since there is a mismatch in the dir hashes. dir2",
 		},
 	}
 
@@ -215,7 +214,7 @@ func TestObjectPath_Parse(t *testing.T) {
 			if !tt.wantErr {
 				require.NoError(t, err)
 			} else {
-				assert.Contains(t, err.Error(), tt.wantErrMsg)
+				require.EqualValues(t, tt.wantErrMsg, err.Error())
 			}
 			assert.Equal(t, tt.want, got)
 		})
@@ -317,11 +316,12 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 		wantErrMsg string
 	}{
 		{
-			name:       "invalid input",
-			objPath:    &storage.ObjectPath{},
-			allocID:    "1",
-			wantErr:    true,
-			wantErrMsg: "Object path error since there is a mismatch in the dir hashes.",
+			name:    "invalid input",
+			objPath: &storage.ObjectPath{},
+			allocID: "1",
+			wantErr: true,
+			wantErrMsg: "invalid_object_path: Error parsing the object path. hash_mismatch:" +
+				" Object path error since there is a mismatch in the dir hashes. ",
 		},
 		{
 			name: "empty",
@@ -370,15 +370,15 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 		{
 			name: "dir/file",
 			objPath: &storage.ObjectPath{
-				RootHash: "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
+				RootHash: "d4b9bd78ecd6232b5fdcb6896583235988118b149fee67b1d901f67c51f138bc",
 				Path: map[string]interface{}{
 					"path": "dir1",
-					"hash": "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
+					"hash": "d4b9bd78ecd6232b5fdcb6896583235988118b149fee67b1d901f67c51f138bc",
 					"type": "d",
 					"list": []map[string]interface{}{
 						map[string]interface{}{
 							"path": "file.txt",
-							"hash": "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+							"hash": "940031d28bdeea34ebd6e758d36fa47421b49377308603046e0ccf1307780cda",
 							"type": "f",
 						},
 					},
@@ -388,7 +388,7 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 					Type:         storage.DIRECTORY,
 					Name:         "",
 					Path:         "dir1",
-					Hash:         "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
+					Hash:         "d4b9bd78ecd6232b5fdcb6896583235988118b149fee67b1d901f67c51f138bc",
 					PathHash:     "",
 					NumBlocks:    int64(0),
 					AllocationID: "",
@@ -399,7 +399,7 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 								Type:         storage.FILE,
 								Name:         "",
 								Path:         "file.txt",
-								Hash:         "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+								Hash:         "940031d28bdeea34ebd6e758d36fa47421b49377308603046e0ccf1307780cda",
 								PathHash:     "",
 								NumBlocks:    int64(0),
 								AllocationID: "1",
@@ -423,12 +423,12 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 				RootHash: "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
 				Path: map[string]interface{}{
 					"path": "dir1",
-					"hash": "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
+					"hash": "d4b9bd78ecd6232b5fdcb6896583235988118b149fee67b1d901f67c51f138bc",
 					"type": "d",
 					"list": []map[string]interface{}{
 						map[string]interface{}{
 							"path": "file.txt",
-							"hash": "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+							"hash": "940031d28bdeea34ebd6e758d36fa47421b49377308603046e0ccf1307780cda",
 							"type": "f",
 						},
 					},
@@ -449,7 +449,7 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 								Type:         storage.FILE,
 								Name:         "",
 								Path:         "file.txt",
-								Hash:         "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+								Hash:         "940031d28bdeea34ebd6e758d36fa47421b49377308603046e0ccf1307780cda",
 								PathHash:     "",
 								NumBlocks:    int64(0),
 								AllocationID: "1",
@@ -467,25 +467,25 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 			},
 			allocID:    "1",
 			wantErr:    true,
-			wantErrMsg: " Root Hash does not match with object path",
+			wantErrMsg: "invalid_object_path: Root Hash does not match with object path",
 		},
 		{
 			name: "dir/dir/file",
 			objPath: &storage.ObjectPath{
-				RootHash: "a02b02080606e78e165fe5a42f8b0087ff82617a1f9c26cc95e269fd653c5a72",
+				RootHash: "e8cecc1bbae33f4c29cad8e81b83264b61b9cc8cc8621075650f6f16da0de779",
 				Path: map[string]interface{}{
 					"path": "dir1",
-					"hash": "a02b02080606e78e165fe5a42f8b0087ff82617a1f9c26cc95e269fd653c5a72",
+					"hash": "e8cecc1bbae33f4c29cad8e81b83264b61b9cc8cc8621075650f6f16da0de779",
 					"type": "d",
 					"list": []map[string]interface{}{
 						map[string]interface{}{
 							"path": "dir2",
-							"hash": "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
+							"hash": "d4b9bd78ecd6232b5fdcb6896583235988118b149fee67b1d901f67c51f138bc",
 							"type": "d",
 							"list": []map[string]interface{}{
 								map[string]interface{}{
 									"path": "file.txt",
-									"hash": "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+									"hash": "940031d28bdeea34ebd6e758d36fa47421b49377308603046e0ccf1307780cda",
 									"type": "f",
 								},
 							},
@@ -497,7 +497,7 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 					Type:         storage.DIRECTORY,
 					Name:         "",
 					Path:         "dir1",
-					Hash:         "a02b02080606e78e165fe5a42f8b0087ff82617a1f9c26cc95e269fd653c5a72",
+					Hash:         "e8cecc1bbae33f4c29cad8e81b83264b61b9cc8cc8621075650f6f16da0de779",
 					PathHash:     "",
 					NumBlocks:    int64(0),
 					AllocationID: "",
@@ -518,7 +518,7 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 										Type:         storage.FILE,
 										Name:         "",
 										Path:         "file.txt",
-										Hash:         "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
+										Hash:         "940031d28bdeea34ebd6e758d36fa47421b49377308603046e0ccf1307780cda",
 										PathHash:     "",
 										NumBlocks:    int64(0),
 										AllocationID: "1",
@@ -547,7 +547,7 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 				require.NoError(t, err)
 			} else {
 				t.Log(err)
-				assert.Contains(t, err.Error(), tt.wantErrMsg)
+				require.EqualValues(t, tt.wantErrMsg, err.Error())
 			}
 		})
 	}
