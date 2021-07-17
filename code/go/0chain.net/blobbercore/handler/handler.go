@@ -15,15 +15,14 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"0chain.net/blobbercore/config"
-	"0chain.net/blobbercore/constants"
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/blobbercore/stats"
-	"0chain.net/core/common"
-
-	. "0chain.net/core/logging"
 	"go.uber.org/zap"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/gorilla/mux"
 )
 
@@ -41,6 +40,9 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/rename/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(RenameHandler))))
 	r.HandleFunc("/v1/file/copy/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CopyHandler))))
 	r.HandleFunc("/v1/file/attributes/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UpdateAttributesHandler))))
+	r.HandleFunc("/v1/dir/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CreateDirHandler)))).Methods("POST")
+	r.HandleFunc("/v1/dir/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CreateDirHandler)))).Methods("DELETE")
+	r.HandleFunc("/v1/dir/rename/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CreateDirHandler)))).Methods("POST")
 
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitHandler))))
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
@@ -262,6 +264,17 @@ func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.CopyObject(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+/*CreateDirHandler is the handler to respond to create dir for allocation*/
+func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+	response, err := storageHandler.CreateDir(ctx, r)
 	if err != nil {
 		return nil, err
 	}

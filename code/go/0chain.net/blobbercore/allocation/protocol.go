@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/core/chain"
-	"0chain.net/core/common"
-	. "0chain.net/core/logging"
-	"0chain.net/core/node"
-	"0chain.net/core/transaction"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
 	"gorm.io/gorm"
 )

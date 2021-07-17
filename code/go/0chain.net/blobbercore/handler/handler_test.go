@@ -1,16 +1,6 @@
 package handler
 
 import (
-	"0chain.net/blobbercore/allocation"
-	bconfig "0chain.net/blobbercore/config"
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/blobbercore/filestore"
-	"0chain.net/blobbercore/reference"
-	"0chain.net/core/chain"
-	"0chain.net/core/common"
-	"0chain.net/core/config"
-	"0chain.net/core/encryption"
-	"0chain.net/core/logging"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -35,6 +25,24 @@ import (
 	"regexp"
 	"testing"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	bconfig "github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/config"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/core/zcncrypto"
+	"github.com/0chain/gosdk/zcncore"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 type MockFileBlockGetter struct {
@@ -1088,16 +1096,16 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
 
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects"`)).
+					WithArgs(aa).
+					WillReturnError(gorm.ErrRecordNotFound)
+
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
 					WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).
 					WillReturnRows(
 						sqlmock.NewRows([]string{}).
 							AddRow(),
 					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects"`)).
-					WithArgs(aa).
-					WillReturnError(gorm.ErrRecordNotFound)
 
 				mock.ExpectExec(`INSERT INTO "allocation_connections"`).
 					WithArgs(aa, aa, aa, aa, aa, aa, aa).

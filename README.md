@@ -35,7 +35,7 @@ In the git/blobber run the following command
 
 ```
 
-$ ./docker.local/bin/blobber.init.setup.sh
+./docker.local/bin/blobber.init.setup.sh
 
 ```
 
@@ -48,7 +48,7 @@ $ ./docker.local/bin/blobber.init.setup.sh
  
  ```
 
-$ docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
+docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
 
 ```
 2. Go to git/blobber directory to build containers using (skip this step if you want to use existing docker images)
@@ -57,7 +57,7 @@ $ docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.
 
 ```
 
-$ ./docker.local/bin/build.blobber.sh
+./docker.local/bin/build.blobber.sh
 
 ```
 
@@ -72,7 +72,7 @@ For Apple M1 chip builds:
 
 ```
 
-$ ./docker.local/bin/build.blobber.sh -m1
+./docker.local/bin/build.blobber.sh -m1
 
 ```  
 
@@ -82,10 +82,10 @@ $ ./docker.local/bin/build.blobber.sh -m1
 
 ```
 # For locally build images
-$ ../bin/blobber.start_bls.sh
+../bin/blobber.start_bls.sh
 
 # For remote images
-$ ../bin/p0blobber.start.sh
+../bin/p0blobber.start.sh
 
 ```
 **_Note: Replace the localhost form `docker.local/p0docker-compose.yml` to your public IP if you are trying to connect to another network ._**
@@ -100,7 +100,7 @@ $ ../bin/p0blobber.start.sh
 
 ```
 
-$ docker ps
+docker ps
 
 ```
 
@@ -173,7 +173,7 @@ block_worker: http://one.devnet-0chain.net/dns
 
 ```
 
-$ docker system prune
+docker system prune
 
 ```
 
@@ -185,7 +185,7 @@ $ docker system prune
 
 ```
 
-$ docker system prune -a
+docker system prune -a
 
 ```
 
