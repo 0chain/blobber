@@ -1,10 +1,11 @@
 package reference
 
 import (
-	"0chain.net/blobbercore/config"
-	"0chain.net/blobbercore/datastore"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/stretchr/testify/require"
 )
 
 // this is just a dummy snippet to connect to local database

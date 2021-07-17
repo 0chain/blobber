@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"0chain.net/blobbercore/util"
 	"bytes"
 	"context"
 	"encoding/hex"
@@ -11,6 +10,9 @@ import (
 	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
+	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 
 	"net/http"
 	"path/filepath"
@@ -23,27 +25,11 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
-
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"0chain.net/blobbercore/allocation"
-	"0chain.net/blobbercore/config"
-	"0chain.net/blobbercore/constants"
-	"0chain.net/blobbercore/datastore"
-	"0chain.net/blobbercore/filestore"
-	"0chain.net/blobbercore/readmarker"
-	"0chain.net/blobbercore/reference"
-	"0chain.net/blobbercore/stats"
-	"0chain.net/blobbercore/writemarker"
-	"0chain.net/core/common"
-	"0chain.net/core/encryption"
-	"0chain.net/core/lock"
-	"0chain.net/core/node"
-	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 	zfileref "github.com/0chain/gosdk/zboxcore/fileref"
 
 	"gorm.io/datatypes"
@@ -192,9 +178,10 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	return
 }
 
-func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
-	resp interface{}, err error) {
-
+func (fsh *StorageHandler) DownloadFile(
+	ctx context.Context,
+	r *http.Request,
+) (resp interface{}, err error) {
 	if r.Method == "GET" {
 		return nil, common.NewError("download_file",
 			"invalid method used (GET), use POST instead")
@@ -321,7 +308,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			return nil, common.NewErrorf("download_file",
 				"error parsing the auth ticket for download: %v", err)
 		}
-		}
 		// set payer: check for command line payer flag (--rx_pay)
 		if r.FormValue("rx_pay") == "true" {
 			payerID = clientID
@@ -441,9 +427,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			"couldn't save latest read marker: %v", err)
 	}
 
-	var response = &blobberhttp.DownloadResponse{}
-	response.Success = true
-	response.LatestRM = readMarker
 	if len(fileref.EncryptedKey) > 0 {
 		if authToken == nil {
 			return nil, errors.New("auth ticket is required to download encrypted file")
@@ -509,9 +492,13 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		}
 		respData = result
 	}
+	var response = &blobberhttp.DownloadResponse{}
+	response.Success = true
+	response.LatestRM = readMarker
 	response.Data = respData
 	response.Path = fileref.Path
 	response.AllocationID = fileref.AllocationID
+	response = response
 
 	stats.FileBlockDownloaded(ctx, fileref.ID)
 	return respData, nil

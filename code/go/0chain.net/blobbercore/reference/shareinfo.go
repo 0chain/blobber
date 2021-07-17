@@ -1,21 +1,21 @@
 package reference
 
 import (
-	"0chain.net/blobbercore/datastore"
 	"context"
-	"gorm.io/gorm"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"gorm.io/gorm"
 )
 
-
 type ShareInfo struct {
-	OwnerID                       string          `gorm:"owner_id" json:"owner_id,omitempty"`
-	ClientID                      string          `gorm:"client_id" json:"client_id"`
-	FilePathHash                  string          `gorm:"file_path_hash" json:"file_path_hash,omitempty"`
-	ReEncryptionKey               string          `gorm:"re_encryption_key" json:"re_encryption_key,omitempty"`
-	ClientEncryptionPublicKey     string          `gorm:"client_encryption_public_key" json:"client_encryption_public_key,omitempty"`
-	Revoked                       bool            `gorm:"revoked" json:"revoked"`
-	ExpiryAt                      time.Time       `gorm:"expiry_at" json:"expiry_at,omitempty"`
+	OwnerID                   string    `gorm:"owner_id" json:"owner_id,omitempty"`
+	ClientID                  string    `gorm:"client_id" json:"client_id"`
+	FilePathHash              string    `gorm:"file_path_hash" json:"file_path_hash,omitempty"`
+	ReEncryptionKey           string    `gorm:"re_encryption_key" json:"re_encryption_key,omitempty"`
+	ClientEncryptionPublicKey string    `gorm:"client_encryption_public_key" json:"client_encryption_public_key,omitempty"`
+	Revoked                   bool      `gorm:"revoked" json:"revoked"`
+	ExpiryAt                  time.Time `gorm:"expiry_at" json:"expiry_at,omitempty"`
 }
 
 func TableName() string {
@@ -33,9 +33,9 @@ func DeleteShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 
 	result := db.Table(TableName()).
 		Where(&ShareInfo{
-			ClientID:    shareInfo.ClientID,
+			ClientID:     shareInfo.ClientID,
 			FilePathHash: shareInfo.FilePathHash,
-			Revoked: false,
+			Revoked:      false,
 		}).
 		Updates(ShareInfo{
 			Revoked: true,
@@ -56,7 +56,7 @@ func UpdateShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 
 	return db.Table(TableName()).
 		Where(&ShareInfo{
-			ClientID:    shareInfo.ClientID,
+			ClientID:     shareInfo.ClientID,
 			FilePathHash: shareInfo.FilePathHash,
 		}).
 		Select("Revoked", "ReEncryptionKey", "ExpiryAt", "ClientEncryptionPublicKey").
@@ -69,7 +69,7 @@ func GetShareInfo(ctx context.Context, clientID string, filePathHash string) (*S
 	shareInfo := &ShareInfo{}
 	err := db.Table(TableName()).
 		Where(&ShareInfo{
-			ClientID:    clientID,
+			ClientID:     clientID,
 			FilePathHash: filePathHash,
 		}).
 		First(shareInfo).Error
@@ -82,4 +82,3 @@ func GetShareInfo(ctx context.Context, clientID string, filePathHash string) (*S
 	}
 	return shareInfo, nil
 }
-
