@@ -492,13 +492,6 @@ func (fsh *StorageHandler) DownloadFile(
 		}
 		respData = result
 	}
-	var response = &blobberhttp.DownloadResponse{}
-	response.Success = true
-	response.LatestRM = readMarker
-	response.Data = respData
-	response.Path = fileref.Path
-	response.AllocationID = fileref.AllocationID
-	response = response
 
 	stats.FileBlockDownloaded(ctx, fileref.ID)
 	return respData, nil
