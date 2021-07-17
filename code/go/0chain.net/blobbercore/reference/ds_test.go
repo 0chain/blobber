@@ -3,6 +3,7 @@ package reference
 import (
 	"0chain.net/blobbercore/config"
 	"0chain.net/blobbercore/datastore"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -14,7 +15,7 @@ func TestMockDb(t *testing.T) {
 	config.Configuration.DBUserName = "blobber_user"
 	config.Configuration.DBPassword = ""
 
-	datastore.GetStore().Open()
+	require.NoError(t, datastore.GetStore().Open())
 	db := datastore.GetStore().GetDB()
 	if db == nil {
 		t.Log("err connecting to database")

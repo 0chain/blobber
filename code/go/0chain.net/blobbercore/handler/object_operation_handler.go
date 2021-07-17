@@ -286,14 +286,14 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 
 	// authorize file access
 	var (
-		isOwner          = clientID == alloc.OwnerID
-		isRepairer       = clientID == alloc.RepairerID
-		isCollaborator   = reference.IsACollaborator(ctx, fileref.ID, clientID)
+		isOwner        = clientID == alloc.OwnerID
+		isRepairer     = clientID == alloc.RepairerID
+		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
 	var authToken *readmarker.AuthTicket = nil
 
-	if (!isOwner && !isRepairer && !isCollaborator) || len(r.FormValue("auth_token")) > 0  {
+	if (!isOwner && !isRepairer && !isCollaborator) || len(r.FormValue("auth_token")) > 0 {
 		var authTokenString = r.FormValue("auth_token")
 
 		// check auth token
@@ -433,7 +433,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			readMarker.ClientID,
 			authToken.FilePathHash,
 		)
-		if err != nil  {
+		if err != nil {
 			return nil, errors.New("error during share info lookup in database" + err.Error())
 		} else if shareInfo == nil || shareInfo.Revoked {
 			return nil, errors.New("client does not have permission to download the file. share does not exist")
@@ -444,17 +444,21 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		// reEncrypt does not require pub / private key,
 		// we could probably make it a classless function
 
-		encscheme.Initialize("")
-		encscheme.InitForDecryption("filetype:audio", fileref.EncryptedKey)
+		if err := encscheme.Initialize(""); err != nil {
+			return nil, err
+		}
+		if err := encscheme.InitForDecryption("filetype:audio", fileref.EncryptedKey); err != nil {
+			return nil, err
+		}
 		if err != nil {
 			return nil, err
 		}
 
 		totalSize := len(respData)
-		result := []byte {}
+		result := []byte{}
 		for i := 0; i < totalSize; i += reference.CHUNK_SIZE {
 			encMsg := &zencryption.EncryptedMessage{}
-			chunkData := respData[i : int64(math.Min(float64(i + reference.CHUNK_SIZE), float64(totalSize)))]
+			chunkData := respData[i:int64(math.Min(float64(i+reference.CHUNK_SIZE), float64(totalSize)))]
 
 			encMsg.EncryptedData = chunkData[(2 * 1024):]
 

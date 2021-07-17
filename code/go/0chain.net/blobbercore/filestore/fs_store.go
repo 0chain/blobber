@@ -102,8 +102,8 @@ func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileDa
 }
 
 type FileFSStore struct {
-	RootDirectory string
-	Minio         *minio.Client
+	RootDirectory   string
+	Minio           *minio.Client
 	fileBlockGetter IFileBlockGetter
 }
 
@@ -118,18 +118,13 @@ func SetupFSStore(rootDir string) (FileStore, error) {
 	if err := createDirs(rootDir); err != nil {
 		return nil, err
 	}
-	fsStore = &FileFSStore{
-		RootDirectory: rootDir,
-		Minio:         intializeMinio(),
-		fileBlockGetter: FileBlockGetter{},
-	}
-	return fsStore, nil
+	return SetupFSStoreI(rootDir, FileBlockGetter{})
 }
 
-func SetupMockFSStore(rootDir string, fileBlockGetter IFileBlockGetter) (FileStore, error) {
+func SetupFSStoreI(rootDir string, fileBlockGetter IFileBlockGetter) (FileStore, error) {
 	fsStore = &FileFSStore{
-		RootDirectory: rootDir,
-		Minio:         intializeMinio(),
+		RootDirectory:   rootDir,
+		Minio:           intializeMinio(),
 		fileBlockGetter: fileBlockGetter,
 	}
 	return fsStore, nil

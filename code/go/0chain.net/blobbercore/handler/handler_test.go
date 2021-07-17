@@ -24,6 +24,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"io"
@@ -65,7 +66,9 @@ var encscheme zencryption.EncryptionScheme
 func setupEncryptionScheme() {
 	encscheme = zencryption.NewEncryptionScheme()
 	mnemonic := client.GetClient().Mnemonic
-	encscheme.Initialize(mnemonic)
+	if err := encscheme.Initialize(mnemonic); err != nil {
+		panic("initialize encscheme")
+	}
 	encscheme.InitForEncryption("filetype:audio")
 }
 
@@ -77,7 +80,7 @@ func init() {
 	logging.Logger = zap.NewNop()
 
 	dir, _ := os.Getwd()
-	if _, err := filestore.SetupMockFSStore(dir + "/tmp", MockFileBlockGetter{}); err != nil {
+	if _, err := filestore.SetupFSStoreI(dir+"/tmp", MockFileBlockGetter{}); err != nil {
 		panic(err)
 	}
 	bconfig.Configuration.MaxFileSize = int64(1 << 30)
@@ -227,20 +230,19 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	),
 	).Name(shareName)
 
-
 	return router,
 		map[string]string{
-			opPath:   opName,
-			rpPath:   rpName,
-			sPath:    sName,
-			otPath:   otName,
-			collPath: collName,
-			rPath:    rName,
-			cPath:    cName,
-			aPath:    aName,
-			uPath:    uName,
+			opPath:    opName,
+			rpPath:    rpName,
+			sPath:     sName,
+			otPath:    otName,
+			collPath:  collName,
+			rPath:     rName,
+			cPath:     cName,
+			aPath:     aName,
+			uPath:     uName,
 			sharePath: shareName,
-			dPath: dName,
+			dPath:     dName,
 		}
 }
 
@@ -286,12 +288,11 @@ func GetAuthTicketForEncryptedFile(allocationID string, remotePath string, fileH
 	return string(atBytes), nil
 }
 
-
 func TestHandlers_Requiring_Signature(t *testing.T) {
 	setup(t)
 
 	clientJson := "{\"client_id\":\"2f34516ed8c567089b7b5572b12950db34a62a07e16770da14b15b170d0d60a9\",\"client_key\":\"bc94452950dd733de3b4498afdab30ff72741beae0b82de12b80a14430018a09ba119ff0bfe69b2a872bded33d560b58c89e071cef6ec8388268d4c3e2865083\",\"keys\":[{\"public_key\":\"bc94452950dd733de3b4498afdab30ff72741beae0b82de12b80a14430018a09ba119ff0bfe69b2a872bded33d560b58c89e071cef6ec8388268d4c3e2865083\",\"private_key\":\"9fef6ff5edc39a79c1d8e5eb7ca7e5ac14d34615ee49e6d8ca12ecec136f5907\"}],\"mnemonics\":\"expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe\",\"version\":\"1.0\",\"date_created\":\"2021-05-30 17:45:06.492093 +0545 +0545 m=+0.139083805\"}"
-	client.PopulateClient(clientJson, "bls0chain")
+	require.NoError(t, client.PopulateClient(clientJson, "bls0chain"))
 	setupEncryptionScheme()
 	router, handlers := setupHandlers()
 
@@ -322,8 +323,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			args        args
 			alloc       *allocation.Allocation
 			setupDbMock func(mock sqlmock.Sqlmock)
-			begin func()
-			end func()
+			begin       func()
+			end         func()
 			wantCode    int
 			wantBody    string
 		}
@@ -1125,14 +1126,14 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					formWriter := multipart.NewWriter(body)
 					shareClientEncryptionPublicKey := "kkk"
 					shareClientID := "abcdefgh"
-					formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey)
+					require.NoError(t, formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey))
 					remotePath := "/file.txt"
 					filePathHash := "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"
 					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, filePathHash, shareClientID, sch.GetPublicKey())
 					if err != nil {
 						t.Fatal(err)
 					}
-					formWriter.WriteField("auth_ticket", authTicket)
+					require.NoError(t, formWriter.WriteField("auth_ticket", authTicket))
 					if err := formWriter.Close(); err != nil {
 						t.Fatal(err)
 					}
@@ -1196,7 +1197,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					WillReturnResult(sqlmock.NewResult(0, 0))
 			},
 			wantCode: http.StatusOK,
-			wantBody:    "{\"message\":\"Share info added successfully\"}\n",
+			wantBody: "{\"message\":\"Share info added successfully\"}\n",
 		},
 		{
 			name: "UpdateShareInfo",
@@ -1213,14 +1214,14 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					formWriter := multipart.NewWriter(body)
 					shareClientEncryptionPublicKey := "kkk"
 					shareClientID := "abcdefgh"
-					formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey)
+					require.NoError(t, formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey))
 					remotePath := "/file.txt"
 					filePathHash := "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"
 					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, filePathHash, shareClientID, sch.GetPublicKey())
 					if err != nil {
 						t.Fatal(err)
 					}
-					formWriter.WriteField("auth_ticket", authTicket)
+					require.NoError(t, formWriter.WriteField("auth_ticket", authTicket))
 					if err := formWriter.Close(); err != nil {
 						t.Fatal(err)
 					}
@@ -1287,7 +1288,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					WillReturnResult(sqlmock.NewResult(0, 1))
 			},
 			wantCode: http.StatusOK,
-			wantBody:    "{\"message\":\"Share info added successfully\"}\n",
+			wantBody: "{\"message\":\"Share info added successfully\"}\n",
 		},
 		{
 			name: "RevokeShareInfo_OK_Existing_Share",
@@ -1305,8 +1306,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					shareClientID := "abcdefgh"
 					remotePath := "/file.txt"
 
-					formWriter.WriteField("refereeClientID", shareClientID)
-					formWriter.WriteField("path", remotePath)
+					require.NoError(t, formWriter.WriteField("refereeClientID", shareClientID))
+					require.NoError(t, formWriter.WriteField("path", remotePath))
 					if err := formWriter.Close(); err != nil {
 						t.Fatal(err)
 					}
@@ -1385,8 +1386,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					shareClientID := "abcdefgh"
 					remotePath := "/file.txt"
 
-					formWriter.WriteField("refereeClientID", shareClientID)
-					formWriter.WriteField("path", remotePath)
+					require.NoError(t, formWriter.WriteField("refereeClientID", shareClientID))
+					require.NoError(t, formWriter.WriteField("path", remotePath))
 					if err := formWriter.Close(); err != nil {
 						t.Fatal(err)
 					}
@@ -1464,8 +1465,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					formWriter := multipart.NewWriter(body)
 					remotePath := "/file.txt"
 
-					formWriter.WriteField("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
-					formWriter.WriteField("block_num", fmt.Sprintf("%d", 1))
+					require.NoError(t, formWriter.WriteField("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath)))
+					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
 					rm := &marker.ReadMarker{}
 					rm.ClientID = client.GetClientID()
 					rm.ClientPublicKey = client.GetClientPublicKey()
@@ -1477,7 +1478,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 					rmData, err := json.Marshal(rm)
-					formWriter.WriteField("read_marker", string(rmData))
+					require.NoError(t, err)
+					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
 					if err := formWriter.Close(); err != nil {
 						t.Fatal(err)
 					}
@@ -1548,8 +1550,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					formWriter := multipart.NewWriter(body)
 					remotePath := "/file.txt"
 
-					formWriter.WriteField("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
-					formWriter.WriteField("block_num", fmt.Sprintf("%d", 1))
+					require.NoError(t, formWriter.WriteField("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath)))
+					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
 					rm := &marker.ReadMarker{}
 					rm.ClientID = client.GetClientID()
 					rm.ClientPublicKey = client.GetClientPublicKey()
@@ -1562,7 +1564,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 					rmData, err := json.Marshal(rm)
-					formWriter.WriteField("read_marker", string(rmData))
+					require.NoError(t, err)
+					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
 					if err := formWriter.Close(); err != nil {
 						t.Fatal(err)
 					}
@@ -1656,13 +1659,13 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					remotePath := "/file.txt"
 
 					pathHash := fileref.GetReferenceLookup(alloc.Tx, remotePath)
-					formWriter.WriteField("path_hash", pathHash)
-					formWriter.WriteField("block_num", fmt.Sprintf("%d", 1))
+					require.NoError(t, formWriter.WriteField("path_hash", pathHash))
+					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
 					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, pathHash, client.GetClientID(), sch.GetPublicKey())
 					if err != nil {
 						t.Fatal(err)
 					}
-					formWriter.WriteField("auth_token", authTicket)
+					require.NoError(t, formWriter.WriteField("auth_token", authTicket))
 					rm := &marker.ReadMarker{}
 					rm.ClientID = client.GetClientID()
 					rm.ClientPublicKey = client.GetClientPublicKey()
@@ -1675,7 +1678,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 					rmData, err := json.Marshal(rm)
-					formWriter.WriteField("read_marker", string(rmData))
+					require.NoError(t, err)
+					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
 					if err := formWriter.Close(); err != nil {
 						t.Fatal(err)
 					}
@@ -1774,13 +1778,13 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					remotePath := "/file.txt"
 
 					pathHash := fileref.GetReferenceLookup(alloc.Tx, remotePath)
-					formWriter.WriteField("path_hash", pathHash)
-					formWriter.WriteField("block_num", fmt.Sprintf("%d", 1))
+					require.NoError(t, formWriter.WriteField("path_hash", pathHash))
+					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
 					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, pathHash, client.GetClientID(), sch.GetPublicKey())
 					if err != nil {
 						t.Fatal(err)
 					}
-					formWriter.WriteField("auth_token", authTicket)
+					require.NoError(t, formWriter.WriteField("auth_token", authTicket))
 					rm := &marker.ReadMarker{}
 					rm.ClientID = client.GetClientID()
 					rm.ClientPublicKey = client.GetClientPublicKey()
@@ -1793,7 +1797,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 					rmData, err := json.Marshal(rm)
-					formWriter.WriteField("read_marker", string(rmData))
+					require.NoError(t, err)
+					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
 					if err := formWriter.Close(); err != nil {
 						t.Fatal(err)
 					}
@@ -1825,7 +1830,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					t.Fatal(err)
 				}
 				header := make([]byte, 2*1024)
-				copy(header[:], encMsg.MessageChecksum+ "," + encMsg.OverallChecksum)
+				copy(header[:], encMsg.MessageChecksum+","+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},
