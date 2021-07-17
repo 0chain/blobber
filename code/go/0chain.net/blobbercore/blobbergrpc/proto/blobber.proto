@@ -66,6 +66,7 @@ service Blobber {
       }
       additional_bindings: {
         delete: "/v2/file/upload/{allocation}"
+        body: "*"
       }
     };
   }
