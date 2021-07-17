@@ -1,12 +1,12 @@
 package datastore
 
 import (
+	"0chain.net/core/common"
 	"context"
 	"fmt"
 	"time"
 
 	"0chain.net/blobbercore/config"
-	"0chain.net/blobbercore/errors"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -39,12 +39,12 @@ func (store *Store) Open() error {
 		config.Configuration.DBUserName, config.Configuration.DBName,
 		config.Configuration.DBPassword)), &gorm.Config{})
 	if err != nil {
-		return errors.DBOpenError
+		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
 	}
 
 	sqldb, err := db.DB()
 	if err != nil {
-		return errors.DBOpenError
+		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
 	}
 
 	sqldb.SetMaxIdleConns(100)

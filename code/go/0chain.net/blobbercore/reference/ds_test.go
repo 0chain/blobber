@@ -9,6 +9,7 @@ import (
 
 // this is just a dummy snippet to connect to local database
 func TestMockDb(t *testing.T) {
+	t.Skip("Fails as the data store is not mocked, so Open returns a dial error")
 	config.Configuration.DBHost = "localhost"
 	config.Configuration.DBName = "blobber_meta"
 	config.Configuration.DBPort = "5431"
@@ -25,9 +26,5 @@ func TestMockDb(t *testing.T) {
 	err := db.Where(&Ref{AllocationID: "4f928c7857fabb5737347c42204eea919a4777f893f35724f563b932f64e2367", Path: "/hack.txt"}).
 		First(ref).
 		Error
-	if err != nil {
-		t.Log("err", err)
-		return
-	}
-	t.Log(string(ref.Attributes))
+	require.NoError(t, err)
 }
