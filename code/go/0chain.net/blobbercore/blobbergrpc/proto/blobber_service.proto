@@ -1,0 +1,116 @@
+syntax = "proto3";
+package blobber;
+
+option go_package = "code/go/0chain.net/blobbercore/blobbergrpc";
+
+import "google/api/annotations.proto";
+import "blobber_contract.proto";
+
+
+service BlobberService {
+  rpc GetAllocation(GetAllocationRequest) returns (GetAllocationResponse) {
+    option (google.api.http) = {
+      get: "/v2/allocation"
+    };
+  }
+  rpc GetFileMetaData(GetFileMetaDataRequest) returns (GetFileMetaDataResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/meta/{allocation}"
+      body: "*"
+    };
+  }
+  rpc GetFileStats(GetFileStatsRequest) returns (GetFileStatsResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/stats/{allocation}"
+      body: "*"
+    };
+  }
+  rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/list/{allocation}"
+    };
+  }
+  rpc GetObjectPath(GetObjectPathRequest) returns (GetObjectPathResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/objectpath/{allocation}"
+    };
+  }
+  rpc GetReferencePath(GetReferencePathRequest) returns (GetReferencePathResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/referencepath/{allocation}"
+    };
+  }
+  rpc GetObjectTree(GetObjectTreeRequest) returns (GetObjectTreeResponse) {
+    option (google.api.http) = {
+      get: "/v2/file/objecttree/{allocation}"
+    };
+  }
+  rpc DownloadFile(DownloadFileRequest) returns (DownloadFileResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/download/{allocation}"
+      body: "*"
+    };
+  }
+  rpc RenameObject(RenameObjectRequest) returns (RenameObjectResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/rename/{allocation}"
+      body: "*"
+    };
+  }
+  rpc UploadFile(UploadFileRequest) returns (UploadFileResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/upload/{allocation}"
+      body: "*"
+      additional_bindings: {
+        put: "/v2/file/upload/{allocation}"
+        body: "*"
+      }
+      additional_bindings: {
+        delete: "/v2/file/upload/{allocation}"
+        body: "*"
+      }
+    };
+  }
+
+  rpc Commit(CommitRequest) returns (CommitResponse) {
+    option (google.api.http) = {
+      post: "/v2/connection/commit/{allocation}"
+      body: "*"
+    };
+  }
+
+  rpc CalculateHash(CalculateHashRequest) returns (CalculateHashResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/calculatehash/{allocation}"
+      body: "*"
+    };
+  }
+
+  rpc CommitMetaTxn(CommitMetaTxnRequest) returns (CommitMetaTxnResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/commitmetatxn/{allocation}"
+      body: "*"
+    };
+  }
+
+  rpc UpdateObjectAttributes(UpdateObjectAttributesRequest) returns (UpdateObjectAttributesResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/attributes/{allocation}"
+      body: "*"
+    };
+  }
+
+  rpc CopyObject(CopyObjectRequest) returns (CopyObjectResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/copy/{allocation}"
+      body: "*"
+    };
+  }
+
+  rpc Collaborator(CollaboratorRequest) returns (CollaboratorResponse) {
+    option (google.api.http) = {
+      post: "/v2/file/collaborator/{allocation}"
+      body: "*"
+    };
+  }
+}

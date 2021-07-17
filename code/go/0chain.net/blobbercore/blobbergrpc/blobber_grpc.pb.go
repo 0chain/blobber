@@ -633,5 +633,5 @@ var _Blobber_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "blobber.proto",
+	Metadata: "blobber_service.proto",
 }
