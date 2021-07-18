@@ -2,13 +2,14 @@ package reference
 
 import (
 	"context"
+	"math"
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
-const PAGE_SIZE = 100
+const PAGE_SIZE = 5
 
 type ReferencePath struct {
 	Meta map[string]interface{} `json:"meta_data"`
@@ -102,25 +103,31 @@ func GetObjectTree(ctx context.Context, allocationID string, path string) (*Ref,
 	return &refs[0], nil
 }
 
-func GetPaginatedObjectTree(ctx context.Context, allocationID string, path string, page int) (*[]Ref, error) {
+func GetPaginatedObjectTree(ctx context.Context, allocationID string, path string, page int) (*[]Ref, int64, error) {
 	var refs []Ref
+	var totalRows int64
+	var totalPages int64
 	path = filepath.Clean(path)
 	db := datastore.GetStore().GetTransaction(ctx)
 	offset := (page - 1) * PAGE_SIZE
-	db = db.Where(Ref{AllocationID: allocationID}).Where(db.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
 	// Select * from reference_objects where allocation_id = {allocatioid} AND (path=path OR path LIKE {path}%)
-	// db = db.Where("allocation_id = ? AND (path = ? OR path LIKE ?)", allocationID, path, path)
-	// db = db.Where(Ref{Path: path, AllocationID: allocationID})
-	// db = db.Or("path LIKE ? AND allocation_id = ?", (path + "/%"), allocationID)
+	db = db.Where(Ref{AllocationID: allocationID}).Where(db.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+	// db = db.Where("deleted_at = null")
 	db = db.Order("level, lookup_hash")
 	db = db.Offset(offset).Limit(PAGE_SIZE)
+
 	err := db.Find(&refs).Error
+
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
+	tx := datastore.GetStore().GetTransaction(ctx)
+	tx = tx.Model(&Ref{}).Where(Ref{AllocationID: allocationID}).Where(db.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+	tx.Count(&totalRows)
+	totalPages = int64(math.Ceil(float64(totalRows) / PAGE_SIZE))
 	if len(refs) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path. Could not find object tree")
+		return nil, 0, common.NewError("invalid_parameters", "Invalid path. Could not find object tree")
 	}
-	return &refs, nil
+	return &refs, totalPages, nil
 }

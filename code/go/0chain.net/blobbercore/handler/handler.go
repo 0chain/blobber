@@ -48,7 +48,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler))))
 	r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
 	r.HandleFunc("/v1/file/objecttree/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectTreeHandler))))
-
+	r.HandleFunc("/v1/file/pg_objecttree/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(PaginatedObjectTreeHandler))))
 	//admin related
 	r.HandleFunc("/_debug", common.UserRateLimit(common.ToJSONResponse(DumpGoRoutines)))
 	r.HandleFunc("/_config", common.UserRateLimit(common.ToJSONResponse(GetConfig)))

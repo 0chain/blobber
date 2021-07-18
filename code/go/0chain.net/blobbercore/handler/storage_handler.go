@@ -632,13 +632,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	if len(path) == 0 {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
-	// bOffset := r.FormValue("bOffset")
-	// bLimit := r.FormValue("bLimit")
-	// if len(bOffset) == 0{
-	// 	breadthOffset := OFFSET
-	// }else{
-	// 	breadthOffset := int(bOffset)
-	// }
+
 	rootRef, err := reference.GetObjectTree(ctx, allocationID, path)
 	if err != nil {
 		return nil, err
@@ -647,8 +641,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	refPath := &reference.ReferencePath{Ref: rootRef}
 	refsToProcess := make([]*reference.ReferencePath, 0)
 	refsToProcess = append(refsToProcess, refPath)
-	//It seems it can be controlled from this for loop
-	//SQL query needs to be changed as it can be heavy result
+
 	for len(refsToProcess) > 0 {
 		refToProcess := refsToProcess[0]
 		refToProcess.Meta = refToProcess.Ref.GetListingData(ctx)
@@ -680,7 +673,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	return &refPathResult, nil
 }
 
-func (fsh *StorageHandler) GetPaginatedObjectTree(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResult, error) {
+func (fsh *StorageHandler) GetPaginatedObjectTree(ctx context.Context, r *http.Request) (*blobberhttp.ObjectTreeResult, error) {
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 
@@ -720,12 +713,29 @@ func (fsh *StorageHandler) GetPaginatedObjectTree(ctx context.Context, r *http.R
 		}
 	}
 
-	refs, err := reference.GetPaginatedObjectTree(ctx, allocationID, path, page) // Also return total pages
+	refs, totalPages, err := reference.GetPaginatedObjectTree(ctx, allocationID, path, page) // Also return total pages
 	if err != nil {
 		return nil, err
 	}
+	var latestWM *writemarker.WriteMarkerEntity
+	if len(allocationObj.AllocationRoot) == 0 {
+		latestWM = nil
+	} else {
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+		if err != nil {
+			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
+		}
+	}
+
+	var oTreeResult blobberhttp.ObjectTreeResult
+	oTreeResult.Refs = refs
+	oTreeResult.Page = int64(page)
+	oTreeResult.TotalPages = totalPages
+	if latestWM != nil {
+		oTreeResult.LatestWM = &latestWM.WM
+	}
 	// Refs will be returned as it is and object tree will be build in gosdk
-	return nil, nil
+	return &oTreeResult, nil
 }
 
 func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (interface{}, error) {
