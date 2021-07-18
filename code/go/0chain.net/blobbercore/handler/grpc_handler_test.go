@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"net"
 	"regexp"
 	"testing"
@@ -13,7 +14,7 @@ import (
 	rl "go.uber.org/ratelimit"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/DATA-DOG/go-sqlmock"
@@ -40,7 +41,7 @@ func startGRPCServer(t *testing.T) {
 	}()
 }
 
-func makeTestClient() (blobbergrpc.BlobberClient, *grpc.ClientConn, error) {
+func makeTestClient() (blobbergrpc.BlobberServiceClient, *grpc.ClientConn, error) {
 	var (
 		ctx       = context.Background()
 		bufDialer = func(context.Context, string) (net.Conn, error) {
@@ -52,7 +53,7 @@ func makeTestClient() (blobbergrpc.BlobberClient, *grpc.ClientConn, error) {
 		return nil, nil, err
 	}
 
-	return blobbergrpc.NewBlobberClient(conn), conn, err
+	return blobbergrpc.NewBlobberServiceClient(conn), conn, err
 }
 
 func makeTestAllocation(exp common.Timestamp) *allocation.Allocation {
