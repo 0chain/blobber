@@ -15,6 +15,10 @@ lint:
   service_suffix: Service
   ignore:
     - google/api
+  except:
+    - PACKAGE_AFFINITY
+    - FILE_LAYOUT
+    - PACKAGE_VERSION_SUFFIX
 breaking:
   use:
     - FILE

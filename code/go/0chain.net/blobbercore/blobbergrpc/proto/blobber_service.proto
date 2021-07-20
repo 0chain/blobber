@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-package blobber.v1;
+package blobber;
 
 option go_package = "code/go/0chain.net/blobbercore/blobbergrpc";
 
 
-import "blobber/v1/blobber_contract.proto";
+import "blobber_contract.proto";
 import "google/api/annotations.proto";
 
 
