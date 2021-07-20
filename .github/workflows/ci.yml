@@ -37,16 +37,20 @@ jobs:
           ../bin/blobber.start_bls.sh </dev/null &>/dev/null &
           cd ../..
           make integration-tests
-  golangci:
-    name: lint
-    runs-on: ubuntu-latest
+  lint:
+    runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
+      - name: Install Go
+        uses: actions/setup-go@v2
         with:
-          version: v1.29
-
+          go-version: 1.14.x
+      - uses: actions/checkout@v2
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.38.0
+          golangci-lint --version
+      - name: Lint
+        run: make lint
 
   buf-build:
     runs-on: ubuntu-latest

@@ -45,7 +45,7 @@ func NewBlobberServiceClient(cc grpc.ClientConnInterface) BlobberServiceClient {
 
 func (c *blobberServiceClient) GetAllocation(ctx context.Context, in *GetAllocationRequest, opts ...grpc.CallOption) (*GetAllocationResponse, error) {
 	out := new(GetAllocationResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/GetAllocation", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/GetAllocation", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (c *blobberServiceClient) GetAllocation(ctx context.Context, in *GetAllocat
 
 func (c *blobberServiceClient) GetFileMetaData(ctx context.Context, in *GetFileMetaDataRequest, opts ...grpc.CallOption) (*GetFileMetaDataResponse, error) {
 	out := new(GetFileMetaDataResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/GetFileMetaData", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/GetFileMetaData", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (c *blobberServiceClient) GetFileMetaData(ctx context.Context, in *GetFileM
 
 func (c *blobberServiceClient) GetFileStats(ctx context.Context, in *GetFileStatsRequest, opts ...grpc.CallOption) (*GetFileStatsResponse, error) {
 	out := new(GetFileStatsResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/GetFileStats", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/GetFileStats", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func (c *blobberServiceClient) GetFileStats(ctx context.Context, in *GetFileStat
 
 func (c *blobberServiceClient) ListEntities(ctx context.Context, in *ListEntitiesRequest, opts ...grpc.CallOption) (*ListEntitiesResponse, error) {
 	out := new(ListEntitiesResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/ListEntities", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/ListEntities", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (c *blobberServiceClient) ListEntities(ctx context.Context, in *ListEntitie
 
 func (c *blobberServiceClient) GetObjectPath(ctx context.Context, in *GetObjectPathRequest, opts ...grpc.CallOption) (*GetObjectPathResponse, error) {
 	out := new(GetObjectPathResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/GetObjectPath", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/GetObjectPath", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (c *blobberServiceClient) GetObjectPath(ctx context.Context, in *GetObjectP
 
 func (c *blobberServiceClient) GetReferencePath(ctx context.Context, in *GetReferencePathRequest, opts ...grpc.CallOption) (*GetReferencePathResponse, error) {
 	out := new(GetReferencePathResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/GetReferencePath", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/GetReferencePath", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (c *blobberServiceClient) GetReferencePath(ctx context.Context, in *GetRefe
 
 func (c *blobberServiceClient) GetObjectTree(ctx context.Context, in *GetObjectTreeRequest, opts ...grpc.CallOption) (*GetObjectTreeResponse, error) {
 	out := new(GetObjectTreeResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/GetObjectTree", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/GetObjectTree", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (c *blobberServiceClient) GetObjectTree(ctx context.Context, in *GetObjectT
 
 func (c *blobberServiceClient) DownloadFile(ctx context.Context, in *DownloadFileRequest, opts ...grpc.CallOption) (*DownloadFileResponse, error) {
 	out := new(DownloadFileResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/DownloadFile", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/DownloadFile", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (c *blobberServiceClient) DownloadFile(ctx context.Context, in *DownloadFil
 
 func (c *blobberServiceClient) RenameObject(ctx context.Context, in *RenameObjectRequest, opts ...grpc.CallOption) (*RenameObjectResponse, error) {
 	out := new(RenameObjectResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/RenameObject", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/RenameObject", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (c *blobberServiceClient) RenameObject(ctx context.Context, in *RenameObjec
 
 func (c *blobberServiceClient) UploadFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error) {
 	out := new(UploadFileResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/UploadFile", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/UploadFile", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (c *blobberServiceClient) UploadFile(ctx context.Context, in *UploadFileReq
 
 func (c *blobberServiceClient) Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error) {
 	out := new(CommitResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/Commit", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/Commit", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (c *blobberServiceClient) Commit(ctx context.Context, in *CommitRequest, op
 
 func (c *blobberServiceClient) CalculateHash(ctx context.Context, in *CalculateHashRequest, opts ...grpc.CallOption) (*CalculateHashResponse, error) {
 	out := new(CalculateHashResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/CalculateHash", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/CalculateHash", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (c *blobberServiceClient) CalculateHash(ctx context.Context, in *CalculateH
 
 func (c *blobberServiceClient) CommitMetaTxn(ctx context.Context, in *CommitMetaTxnRequest, opts ...grpc.CallOption) (*CommitMetaTxnResponse, error) {
 	out := new(CommitMetaTxnResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/CommitMetaTxn", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/CommitMetaTxn", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func (c *blobberServiceClient) CommitMetaTxn(ctx context.Context, in *CommitMeta
 
 func (c *blobberServiceClient) UpdateObjectAttributes(ctx context.Context, in *UpdateObjectAttributesRequest, opts ...grpc.CallOption) (*UpdateObjectAttributesResponse, error) {
 	out := new(UpdateObjectAttributesResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/UpdateObjectAttributes", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/UpdateObjectAttributes", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func (c *blobberServiceClient) UpdateObjectAttributes(ctx context.Context, in *U
 
 func (c *blobberServiceClient) CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CopyObjectResponse, error) {
 	out := new(CopyObjectResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/CopyObject", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/CopyObject", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (c *blobberServiceClient) CopyObject(ctx context.Context, in *CopyObjectReq
 
 func (c *blobberServiceClient) Collaborator(ctx context.Context, in *CollaboratorRequest, opts ...grpc.CallOption) (*CollaboratorResponse, error) {
 	out := new(CollaboratorResponse)
-	err := c.cc.Invoke(ctx, "/blobber.BlobberService/Collaborator", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/blobber.v1.BlobberService/Collaborator", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +283,7 @@ func _BlobberService_GetAllocation_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/GetAllocation",
+		FullMethod: "/blobber.v1.BlobberService/GetAllocation",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).GetAllocation(ctx, req.(*GetAllocationRequest))
@@ -301,7 +301,7 @@ func _BlobberService_GetFileMetaData_Handler(srv interface{}, ctx context.Contex
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/GetFileMetaData",
+		FullMethod: "/blobber.v1.BlobberService/GetFileMetaData",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).GetFileMetaData(ctx, req.(*GetFileMetaDataRequest))
@@ -319,7 +319,7 @@ func _BlobberService_GetFileStats_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/GetFileStats",
+		FullMethod: "/blobber.v1.BlobberService/GetFileStats",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).GetFileStats(ctx, req.(*GetFileStatsRequest))
@@ -337,7 +337,7 @@ func _BlobberService_ListEntities_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/ListEntities",
+		FullMethod: "/blobber.v1.BlobberService/ListEntities",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).ListEntities(ctx, req.(*ListEntitiesRequest))
@@ -355,7 +355,7 @@ func _BlobberService_GetObjectPath_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/GetObjectPath",
+		FullMethod: "/blobber.v1.BlobberService/GetObjectPath",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).GetObjectPath(ctx, req.(*GetObjectPathRequest))
@@ -373,7 +373,7 @@ func _BlobberService_GetReferencePath_Handler(srv interface{}, ctx context.Conte
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/GetReferencePath",
+		FullMethod: "/blobber.v1.BlobberService/GetReferencePath",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).GetReferencePath(ctx, req.(*GetReferencePathRequest))
@@ -391,7 +391,7 @@ func _BlobberService_GetObjectTree_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/GetObjectTree",
+		FullMethod: "/blobber.v1.BlobberService/GetObjectTree",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).GetObjectTree(ctx, req.(*GetObjectTreeRequest))
@@ -409,7 +409,7 @@ func _BlobberService_DownloadFile_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/DownloadFile",
+		FullMethod: "/blobber.v1.BlobberService/DownloadFile",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).DownloadFile(ctx, req.(*DownloadFileRequest))
@@ -427,7 +427,7 @@ func _BlobberService_RenameObject_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/RenameObject",
+		FullMethod: "/blobber.v1.BlobberService/RenameObject",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).RenameObject(ctx, req.(*RenameObjectRequest))
@@ -445,7 +445,7 @@ func _BlobberService_UploadFile_Handler(srv interface{}, ctx context.Context, de
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/UploadFile",
+		FullMethod: "/blobber.v1.BlobberService/UploadFile",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).UploadFile(ctx, req.(*UploadFileRequest))
@@ -463,7 +463,7 @@ func _BlobberService_Commit_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/Commit",
+		FullMethod: "/blobber.v1.BlobberService/Commit",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).Commit(ctx, req.(*CommitRequest))
@@ -481,7 +481,7 @@ func _BlobberService_CalculateHash_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/CalculateHash",
+		FullMethod: "/blobber.v1.BlobberService/CalculateHash",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).CalculateHash(ctx, req.(*CalculateHashRequest))
@@ -499,7 +499,7 @@ func _BlobberService_CommitMetaTxn_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/CommitMetaTxn",
+		FullMethod: "/blobber.v1.BlobberService/CommitMetaTxn",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).CommitMetaTxn(ctx, req.(*CommitMetaTxnRequest))
@@ -517,7 +517,7 @@ func _BlobberService_UpdateObjectAttributes_Handler(srv interface{}, ctx context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/UpdateObjectAttributes",
+		FullMethod: "/blobber.v1.BlobberService/UpdateObjectAttributes",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).UpdateObjectAttributes(ctx, req.(*UpdateObjectAttributesRequest))
@@ -535,7 +535,7 @@ func _BlobberService_CopyObject_Handler(srv interface{}, ctx context.Context, de
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/CopyObject",
+		FullMethod: "/blobber.v1.BlobberService/CopyObject",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).CopyObject(ctx, req.(*CopyObjectRequest))
@@ -553,7 +553,7 @@ func _BlobberService_Collaborator_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blobber.BlobberService/Collaborator",
+		FullMethod: "/blobber.v1.BlobberService/Collaborator",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BlobberServiceServer).Collaborator(ctx, req.(*CollaboratorRequest))
@@ -562,7 +562,7 @@ func _BlobberService_Collaborator_Handler(srv interface{}, ctx context.Context, 
 }
 
 var _BlobberService_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "blobber.BlobberService",
+	ServiceName: "blobber.v1.BlobberService",
 	HandlerType: (*BlobberServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -631,5 +631,5 @@ var _BlobberService_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "blobber_service.proto",
+	Metadata: "blobber/v1/blobber_service.proto",
 }

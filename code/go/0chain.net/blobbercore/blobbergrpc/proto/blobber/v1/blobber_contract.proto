@@ -1,5 +1,6 @@
 syntax = "proto3";
-package blobber;
+
+package blobber.v1;
 
 option go_package = "code/go/0chain.net/blobbercore/blobbergrpc";
 
