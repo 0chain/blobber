@@ -713,7 +713,17 @@ func (fsh *StorageHandler) GetPaginatedObjectTree(ctx context.Context, r *http.R
 		}
 	}
 
-	refs, totalPages, err := reference.GetPaginatedObjectTree(ctx, allocationID, path, page) // Also return total pages
+	offsetPath := r.FormValue("offsetPath")
+	// pathLevelStr := r.FormValue("pathLevel")
+	// var pathLevel int
+	// if len(pageStr) > 0 {
+	// 	p, err := strconv.Atoi(pathLevelStr)
+	// 	if err != nil || p < 0 {
+	// 		return nil, common.NewError("invalid_parameters", "Invalid level value type")
+	// 	}
+	// }
+
+	refs, totalPages, newOffsetPath, err := reference.GetPaginatedObjectTree(ctx, allocationID, path, page, offsetPath) // Also return total pages
 	if err != nil {
 		return nil, err
 	}
@@ -731,6 +741,7 @@ func (fsh *StorageHandler) GetPaginatedObjectTree(ctx context.Context, r *http.R
 	oTreeResult.Refs = refs
 	oTreeResult.Page = int64(page)
 	oTreeResult.TotalPages = totalPages
+	oTreeResult.NewOffsetPath = newOffsetPath
 	if latestWM != nil {
 		oTreeResult.LatestWM = &latestWM.WM
 	}

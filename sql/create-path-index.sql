@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX path_idx ON public.reference_objects USING btree (path)

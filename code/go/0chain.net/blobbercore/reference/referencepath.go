@@ -103,31 +103,28 @@ func GetObjectTree(ctx context.Context, allocationID string, path string) (*Ref,
 	return &refs[0], nil
 }
 
-func GetPaginatedObjectTree(ctx context.Context, allocationID string, path string, page int) (*[]Ref, int64, error) {
-	var refs []Ref
+//This function retrieves refrence_objects tables rows with pagination. Check for issue https://github.com/0chain/gosdk/issues/117
+//Might need to consider covering index for efficient search https://blog.crunchydata.com/blog/why-covering-indexes-are-incredibly-helpful
+func GetPaginatedObjectTree(ctx context.Context, allocationID string, path string, page int, offsetPath string) (refs *[]Ref, totalPages int64, newOffsetPath string, err error) {
 	var totalRows int64
-	var totalPages int64
+	var pRefs []Ref
 	path = filepath.Clean(path)
 	db := datastore.GetStore().GetTransaction(ctx)
-	offset := (page - 1) * PAGE_SIZE
 	// Select * from reference_objects where allocation_id = {allocatioid} AND (path=path OR path LIKE {path}%)
-	db = db.Where(Ref{AllocationID: allocationID}).Where(db.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
-	// db = db.Where("deleted_at = null")
-	db = db.Order("level, lookup_hash")
-	db = db.Offset(offset).Limit(PAGE_SIZE)
+	db = db.Where(Ref{AllocationID: allocationID}).Where("path>'?'", offsetPath).Where(db.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+	db = db.Order("path")
+	db = db.Limit(PAGE_SIZE)
 
-	err := db.Find(&refs).Error
+	err = db.Find(&pRefs).Error
 
 	if err != nil {
-		return nil, 0, err
+		return
 	}
-
+	refs = &pRefs
+	newOffsetPath = pRefs[len(pRefs)-1].Path
 	tx := datastore.GetStore().GetTransaction(ctx)
 	tx = tx.Model(&Ref{}).Where(Ref{AllocationID: allocationID}).Where(db.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
 	tx.Count(&totalRows)
 	totalPages = int64(math.Ceil(float64(totalRows) / PAGE_SIZE))
-	if len(refs) == 0 {
-		return nil, 0, common.NewError("invalid_parameters", "Invalid path. Could not find object tree")
-	}
-	return &refs, totalPages, nil
+	return
 }
