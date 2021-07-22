@@ -1,0 +1,16 @@
+@startuml
+
+actor Client
+
+
+loop till all of requested file chunks are completely downloaded
+Client -> Blobber : Request the file in range of blocks x..y
+Blobber --> Database : Get reencryption key from postgres db table \n\
+for the client
+Blobber --> Blobber : Iterate through all chunks and \n\
+encrypt every chunk using re-encryption key
+Blobber --> Client : Return Re-encrypted message
+Client --> Client :  Re-decrypt the received message using private key
+end
+
+@enduml

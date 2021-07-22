@@ -45,9 +45,66 @@ type MinioConfiguration struct {
 
 var MinioConfig MinioConfiguration
 
+type IFileBlockGetter interface {
+	GetFileBlock(fsStore *FileFSStore, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
+}
+
+type FileBlockGetter struct {
+}
+
+func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
+	allocation, err := fs.SetupAllocation(allocationID, true)
+	if err != nil {
+		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	dirPath, destFile := GetFilePathFromHash(fileData.Hash)
+	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
+	fileObjectPath = filepath.Join(fileObjectPath, destFile)
+
+	file, err := os.Open(fileObjectPath)
+	if err != nil {
+		if os.IsNotExist(err) && fileData.OnCloud {
+			err = fs.DownloadFromCloud(fileData.Hash, fileObjectPath)
+			if err != nil {
+				return nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
+			}
+			file, err = os.Open(fileObjectPath)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+	defer file.Close()
+	fileinfo, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	filesize := int(fileinfo.Size())
+	maxBlockNum := int64(filesize / CHUNK_SIZE)
+	// check for any left over bytes. Add one more go routine if required.
+	if remainder := filesize % CHUNK_SIZE; remainder != 0 {
+		maxBlockNum++
+	}
+
+	if blockNum > maxBlockNum || blockNum < 1 {
+		return nil, common.NewError("invalid_block_number", "Invalid block number")
+	}
+	buffer := make([]byte, CHUNK_SIZE*numBlocks)
+	n, err := file.ReadAt(buffer, ((blockNum - 1) * CHUNK_SIZE))
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+
+	return buffer[:n], nil
+}
+
 type FileFSStore struct {
-	RootDirectory string
-	Minio         *minio.Client
+	RootDirectory   string
+	Minio           *minio.Client
+	fileBlockGetter IFileBlockGetter
 }
 
 type StoreAllocation struct {
@@ -61,9 +118,14 @@ func SetupFSStore(rootDir string) (FileStore, error) {
 	if err := createDirs(rootDir); err != nil {
 		return nil, err
 	}
+	return SetupFSStoreI(rootDir, FileBlockGetter{})
+}
+
+func SetupFSStoreI(rootDir string, fileBlockGetter IFileBlockGetter) (FileStore, error) {
 	fsStore = &FileFSStore{
-		RootDirectory: rootDir,
-		Minio:         intializeMinio(),
+		RootDirectory:   rootDir,
+		Minio:           intializeMinio(),
+		fileBlockGetter: fileBlockGetter,
 	}
 	return fsStore, nil
 }
@@ -280,52 +342,7 @@ func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *F
 }
 
 func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
-	allocation, err := fs.SetupAllocation(allocationID, true)
-	if err != nil {
-		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
-	}
-	dirPath, destFile := GetFilePathFromHash(fileData.Hash)
-	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
-	fileObjectPath = filepath.Join(fileObjectPath, destFile)
-
-	file, err := os.Open(fileObjectPath)
-	if err != nil {
-		if os.IsNotExist(err) && fileData.OnCloud {
-			err = fs.DownloadFromCloud(fileData.Hash, fileObjectPath)
-			if err != nil {
-				return nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
-			}
-			file, err = os.Open(fileObjectPath)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
-	}
-	defer file.Close()
-	fileinfo, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-
-	filesize := int(fileinfo.Size())
-	maxBlockNum := int64(filesize / CHUNK_SIZE)
-	// check for any left over bytes. Add one more go routine if required.
-	if remainder := filesize % CHUNK_SIZE; remainder != 0 {
-		maxBlockNum++
-	}
-
-	if blockNum > maxBlockNum || blockNum < 1 {
-		return nil, common.NewError("invalid_block_number", "Invalid block number")
-	}
-	buffer := make([]byte, CHUNK_SIZE*numBlocks)
-	n, err := file.ReadAt(buffer, ((blockNum - 1) * CHUNK_SIZE))
-	if err != nil && err != io.EOF {
-		return nil, err
-	}
-
-	return buffer[:n], nil
+	return fs.fileBlockGetter.GetFileBlock(fs, allocationID, fileData, blockNum, numBlocks)
 }
 
 func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error {

@@ -1,12 +1,18 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"math"
+	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
+	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 
 	"net/http"
 	"path/filepath"
@@ -19,13 +25,12 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
-
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	zfileref "github.com/0chain/gosdk/zboxcore/fileref"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -173,9 +178,10 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	return
 }
 
-func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
-	resp interface{}, err error) {
-
+func (fsh *StorageHandler) DownloadFile(
+	ctx context.Context,
+	r *http.Request,
+) (resp interface{}, err error) {
 	if r.Method == "GET" {
 		return nil, common.NewError("download_file",
 			"invalid method used (GET), use POST instead")
@@ -283,7 +289,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
-	if !isOwner && !isRepairer && !isCollaborator {
+	var authToken *readmarker.AuthTicket = nil
+
+	if (!isOwner && !isRepairer && !isCollaborator) || len(r.FormValue("auth_token")) > 0 {
 		var authTokenString = r.FormValue("auth_token")
 
 		// check auth token
@@ -294,6 +302,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 				"cannot verify auth ticket: %v", err)
 		}
 
+		authToken = &readmarker.AuthTicket{}
+		err = json.Unmarshal([]byte(authTokenString), &authToken)
+		if err != nil {
+			return nil, common.NewErrorf("download_file",
+				"error parsing the auth ticket for download: %v", err)
+		}
 		// set payer: check for command line payer flag (--rx_pay)
 		if r.FormValue("rx_pay") == "true" {
 			payerID = clientID
@@ -304,6 +318,24 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 				"error parsing the auth ticket for download: %v", err)
 		}
 
+		// we only check content hash if its authticket is referring to a file
+		if authToken.RefType == zfileref.FILE && authToken.ContentHash != fileref.ContentHash {
+			return nil, errors.New("content hash does not match the requested file content hash")
+		}
+
+		if authToken.RefType == zfileref.DIRECTORY {
+			hashes := util.GetParentPathHashes(allocationTx, fileref.Path)
+			found := false
+			for _, hash := range hashes {
+				if hash == authToken.FilePathHash {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return nil, errors.New("auth ticket is not authorized to download file specified")
+			}
+		}
 		readMarker.AuthTicket = datatypes.JSON(authTokenString)
 
 		// check for file payer flag
@@ -395,12 +427,71 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (
 			"couldn't save latest read marker: %v", err)
 	}
 
-	var response = &blobberhttp.DownloadResponse{}
-	response.Success = true
-	response.LatestRM = readMarker
-	response.Data = respData
-	response.Path = fileref.Path
-	response.AllocationID = fileref.AllocationID
+	if len(fileref.EncryptedKey) > 0 {
+		if authToken == nil {
+			return nil, errors.New("auth ticket is required to download encrypted file")
+		}
+		// check if client is authorized to download
+		shareInfo, err := reference.GetShareInfo(
+			ctx,
+			readMarker.ClientID,
+			authToken.FilePathHash,
+		)
+		if err != nil {
+			return nil, errors.New("error during share info lookup in database" + err.Error())
+		} else if shareInfo == nil || shareInfo.Revoked {
+			return nil, errors.New("client does not have permission to download the file. share does not exist")
+		}
+
+		buyerEncryptionPublicKey := shareInfo.ClientEncryptionPublicKey
+		encscheme := zencryption.NewEncryptionScheme()
+		// reEncrypt does not require pub / private key,
+		// we could probably make it a classless function
+
+		if err := encscheme.Initialize(""); err != nil {
+			return nil, err
+		}
+		if err := encscheme.InitForDecryption("filetype:audio", fileref.EncryptedKey); err != nil {
+			return nil, err
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		totalSize := len(respData)
+		result := []byte{}
+		for i := 0; i < totalSize; i += reference.CHUNK_SIZE {
+			encMsg := &zencryption.EncryptedMessage{}
+			chunkData := respData[i:int64(math.Min(float64(i+reference.CHUNK_SIZE), float64(totalSize)))]
+
+			encMsg.EncryptedData = chunkData[(2 * 1024):]
+
+			headerBytes := chunkData[:(2 * 1024)]
+			headerBytes = bytes.Trim(headerBytes, "\x00")
+			headerString := string(headerBytes)
+
+			headerChecksums := strings.Split(headerString, ",")
+			if len(headerChecksums) != 2 {
+				Logger.Error("Block has invalid header", zap.String("request Url", r.URL.String()))
+				return nil, errors.New("Block has invalid header for request " + r.URL.String())
+			}
+
+			encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
+			encMsg.EncryptedKey = encscheme.GetEncryptedKey()
+
+			reEncMsg, err := encscheme.ReEncrypt(encMsg, shareInfo.ReEncryptionKey, buyerEncryptionPublicKey)
+			if err != nil {
+				return nil, err
+			}
+
+			encData, err := reEncMsg.Marshal()
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, encData...)
+		}
+		respData = result
+	}
 
 	stats.FileBlockDownloaded(ctx, fileref.ID)
 	return respData, nil

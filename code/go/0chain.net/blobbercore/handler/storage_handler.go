@@ -146,10 +146,6 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 
-	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
-	}
-
 	result := fileref.GetListingData(ctx)
 
 	commitMetaTxns, err := reference.GetCommitMetaTxns(ctx, fileref.ID)
@@ -757,3 +753,4 @@ func pathHashFromReq(r *http.Request, allocationID string) (string, error) {
 
 	return pathHash, nil
 }
+
