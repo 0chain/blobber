@@ -71,7 +71,9 @@ change_zcn() {
 
     if [ ! -z "$yourZCN" -a "$yourZCN" != " "  ]; then
         find ../config/ -name "0chain_blobber.yaml" -exec sed -i '' "s/block_worker/#block_worker/g" {} \;
+        find ../config/ -name "0chain_validator.yaml" -exec sed -i '' "s/block_worker/#block_worker/g" {} \;
         echo "block_worker: $yourZCN" >> ../config/0chain_blobber.yaml
+         echo "block_worker: $yourZCN" >> ../config/0chain_validator.yaml
     fi
     zcn=$(cat ../config/0chain_blobber.yaml | grep '^block_worker' | awk -F ' ' '{print $2}')
     echo "> zcn is updated to: $zcn"
@@ -132,7 +134,7 @@ install_postgres () {
 
     cd $root
   
-    [ ! "docker ps -a | grep blobber_postgres_init" ] && docker rm blobber_postgres_init --force
+    [ ! "$(docker ps -a | grep blobber_postgres_init)" ] && docker rm blobber_postgres_init --force
 
 
     docker run --name blobber_postgres_init \
