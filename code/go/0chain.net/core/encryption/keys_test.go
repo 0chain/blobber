@@ -1,13 +1,30 @@
 package encryption
 
 import (
-	"testing"
+	"encoding/hex"
+	"github.com/0chain/gosdk/zboxcore/client"
 	"github.com/herumi/bls-go-binary/bls"
 	"github.com/stretchr/testify/require"
+	"testing"
 
 	"fmt"
-	"encoding/hex"
 )
+
+func TestSignatureVerify(t *testing.T) {
+	allocationId := "4f928c7857fabb5737347c42204eea919a4777f893f35724f563b932f64e2367"
+	walletConfig := "{\"client_id\":\"9a566aa4f8e8c342fed97c8928040a21f21b8f574e5782c28568635ba9c75a85\",\"client_key\":\"40cd10039913ceabacf05a7c60e1ad69bb2964987bc50f77495e514dc451f907c3d8ebcdab20eedde9c8f39b9a1d66609a637352f318552fb69d4b3672516d1a\",\"keys\":[{\"public_key\":\"40cd10039913ceabacf05a7c60e1ad69bb2964987bc50f77495e514dc451f907c3d8ebcdab20eedde9c8f39b9a1d66609a637352f318552fb69d4b3672516d1a\",\"private_key\":\"a3a88aad5d89cec28c6e37c2925560ce160ac14d2cdcf4a4654b2bb358fe7514\"}],\"mnemonics\":\"inside february piece turkey offer merry select combine tissue wave wet shift room afraid december gown mean brick speak grant gain become toy clown\",\"version\":\"1.0\",\"date_created\":\"2021-05-21 17:32:29.484657 +0545 +0545 m=+0.072791323\"}"
+	require.NoError(t, client.PopulateClient(walletConfig, "bls0chain"))
+	sig, serr := client.Sign(allocationId)
+	require.Nil(t, serr)
+	require.NotNil(t, sig)
+
+	res, err := client.VerifySignature(
+		"fb0eb9351978091da350348211888b06ed1ce84ae40d08de3cc826cd85197188",
+		allocationId,
+	)
+	require.Nil(t, err)
+	require.Equal(t, res, true)
+}
 
 func TestMiraclToHerumiPK(t *testing.T) {
 	miraclpk1 := `0418a02c6bd223ae0dfda1d2f9a3c81726ab436ce5e9d17c531ff0a385a13a0b491bdfed3a85690775ee35c61678957aaba7b1a1899438829f1dc94248d87ed36817f6dfafec19bfa87bf791a4d694f43fec227ae6f5a867490e30328cac05eaff039ac7dfc3364e851ebd2631ea6f1685609fc66d50223cc696cb59ff2fee47ac`
@@ -59,6 +76,5 @@ func TestDebugOnly(t *testing.T) {
 	clientKeyBytes2, _ := hex.DecodeString(herumipk)
 	h = Hash(clientKeyBytes2)
 	fmt.Println("hash2 ", h)
-
 
 }

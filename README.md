@@ -63,6 +63,13 @@ docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.
 
 ```
 
+To link to local gosdk so that the changes are reflected on the blobber build please use the below command
+
+```
+
+$ ./docker.local/bin/build.blobber.dev.sh
+
+```
 For Apple M1 chip builds:
 
 ```

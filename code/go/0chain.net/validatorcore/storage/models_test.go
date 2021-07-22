@@ -622,8 +622,7 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 			if !tt.wantErr {
 				require.NoError(t, err)
 			} else {
-				t.Log(err)
-				assert.Contains(t, err.Error(), tt.wantErrMsg)
+				require.Contains(t, err.Error(), tt.wantErrMsg)
 			}
 		})
 	}

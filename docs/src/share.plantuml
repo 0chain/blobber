@@ -1,0 +1,17 @@
+@startuml
+
+title Buyer shares encrypted file
+actor Seller
+actor Buyer
+
+Buyer -> Seller: Client Id, encryption public key
+
+Seller -> Seller : Generate auth ticket for file / folder using \n\
+buyer client id as well as encryption public key
+Seller --> Blobber : Upload auth ticket
+Blobber --> Blobber : Save auth ticket to **marketplace_share_info** \n\
+table
+Seller --> Seller :  Check upload consensus status
+Seller --> Seller :  Return auth ticket
+
+@enduml

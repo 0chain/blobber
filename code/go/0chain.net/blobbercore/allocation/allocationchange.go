@@ -22,7 +22,8 @@ const (
 	UPDATE_ATTRS_OPERATION = "update_attrs"
 
 	// RESUME_OPERATION upload operation for INIT/APPEND/FINALIZE
-	RESUME_OPERATION = "resume"
+	RESUME_OPERATION    = "resume"
+	CREATEDIR_OPERATION = "createdir"
 )
 
 const (
