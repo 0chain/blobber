@@ -8,7 +8,6 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_HOST_AUTH_METHOD: trust
 #expose_ci_port
-      # - "5432:5432"
     volumes:
       - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
     networks:
