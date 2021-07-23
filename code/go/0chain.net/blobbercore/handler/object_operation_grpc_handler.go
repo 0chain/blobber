@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
 	"net/http"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 )
 
 func TestGetAllocation_IntegrationTest(t *testing.T) {
