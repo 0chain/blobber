@@ -11,6 +11,13 @@ import (
 	"net/http"
 )
 
+type gRPCHeaderMetadata struct {
+	Client          string
+	ClientKey       string
+	ClientSignature string
+}
+
+
 func registerGRPCServices(r *mux.Router, server *grpc.Server) {
 	blobberService := newGRPCBlobberService()
 	grpcGatewayHandler := runtime.NewServeMux(
@@ -22,8 +29,8 @@ func registerGRPCServices(r *mux.Router, server *grpc.Server) {
 	r.PathPrefix("/").Handler(grpcGatewayHandler)
 }
 
-func getGRPCMetaDataFromCtx(ctx context.Context) *gRPCMetadata {
-	metaData := &gRPCMetadata{}
+func getGRPCMetaDataFromCtx(ctx context.Context) *gRPCHeaderMetadata {
+	metaData := &gRPCHeaderMetadata{}
 
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -44,7 +51,7 @@ func getGRPCMetaDataFromCtx(ctx context.Context) *gRPCMetadata {
 	return metaData
 }
 
-func httpRequestWithMetaData(r *http.Request, md *gRPCMetadata, alloc string) {
+func httpRequestWithMetaData(r *http.Request, md *gRPCHeaderMetadata, alloc string) {
 	r.Header.Set(common.ClientHeader, md.Client)
 	r.Header.Set(common.ClientKeyHeader, md.ClientKey)
 	r.Header.Set(common.ClientSignatureHeader, md.ClientSignature)
@@ -63,10 +70,3 @@ func CustomMatcher(key string) (string, bool) {
 		return runtime.DefaultHeaderMatcher(key)
 	}
 }
-
-type gRPCMetadata struct {
-	Client          string
-	ClientKey       string
-	ClientSignature string
-}
-
