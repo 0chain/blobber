@@ -22,7 +22,7 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 	if err != nil {
 		return nil, err
 	}
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), "")
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), "")
 	r.Form = map[string][]string{"id": {request.Id}}
 
 	resp, err := AllocationHandler(ctx, r)
@@ -38,7 +38,7 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 	if err != nil {
 		return nil, err
 	}
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 	r.Form = map[string][]string{
 		"path_hash":  {req.PathHash},
 		"path":       {req.Path},
@@ -58,7 +58,7 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 	if err != nil {
 		return nil, err
 	}
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 	r.Form = map[string][]string{
 		"path":      {req.Path},
 		"path_hash": {req.PathHash},
@@ -77,7 +77,7 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.
 	if err != nil {
 		return nil, err
 	}
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 	r.Form = map[string][]string{
 		"path":       {req.Path},
 		"path_hash":  {req.PathHash},
@@ -97,7 +97,7 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 	if err != nil {
 		return nil, err
 	}
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 	r.Form = map[string][]string{
 		"path":      {req.Path},
 		"block_num": {req.BlockNum},
@@ -116,7 +116,7 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 	if err != nil {
 		return nil, err
 	}
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 	r.Form = map[string][]string{
 		"path":  {req.Path},
 		"paths": {req.Paths},
@@ -135,7 +135,7 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 	if err != nil {
 		return nil, err
 	}
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 	r.Form = map[string][]string{
 		"path": {req.Path},
 	}
@@ -153,7 +153,7 @@ func (b *blobberGRPCService) CalculateHash(ctx context.Context, req *blobbergrpc
 	if err != nil {
 		return nil, err
 	}
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 	r.Form = map[string][]string{
 		"path":  {req.Path},
 		"paths": {req.Paths},
@@ -172,7 +172,7 @@ func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, req *blobbergrpc
 	if err != nil {
 		return nil, err
 	}
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 	r.Form = map[string][]string{
 		"path":       {req.Path},
 		"path_hash":  {req.PathHash},
@@ -193,7 +193,7 @@ func (b *blobberGRPCService) Collaborator(ctx context.Context, req *blobbergrpc.
 	if err != nil {
 		return nil, err
 	}
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 	r.Form = map[string][]string{
 		"path":      {req.Path},
 		"path_hash": {req.PathHash},
