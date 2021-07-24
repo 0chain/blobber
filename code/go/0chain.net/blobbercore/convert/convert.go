@@ -25,7 +25,7 @@ func AllocationToGRPCAllocation(alloc *allocation.Allocation) *blobbergrpc.Alloc
 		return nil
 	}
 
-	terms := make([]*blobbergrpc.Term, 0, len(alloc.Terms))
+	terms := make([]*blobbergrpc.Term, len(alloc.Terms))
 	for _, t := range alloc.Terms {
 		terms = append(terms, &blobbergrpc.Term{
 			Id:           t.ID,
