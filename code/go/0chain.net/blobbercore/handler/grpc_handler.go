@@ -28,24 +28,25 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 	return convert.GetAllocationResponseCreator(response), nil
 }
 
-func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
+func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, request *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {
+	//r, err := http.NewRequest("POST", "", nil)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
+	//r.Form = map[string][]string{
+	//	"path_hash":  {req.PathHash},
+	//	"path":       {req.Path},
+	//	"auth_token": {req.AuthToken},
+	//}
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+
+	response, err := storageHandler.GetFileMeta(ctx, request)
 	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path_hash":  {req.PathHash},
-		"path":       {req.Path},
-		"auth_token": {req.AuthToken},
+		return nil, errors.Wrap(err, "failed to get FileMetadata")
 	}
 
-	resp, err := FileMetaHandler(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return convert.GetFileMetaDataResponseCreator(resp), nil
+	return convert.GetFileMetaDataResponseCreator(response), nil
 }
 
 func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.GetFileStatsRequest) (*blobbergrpc.GetFileStatsResponse, error) {
