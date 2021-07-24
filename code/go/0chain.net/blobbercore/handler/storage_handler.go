@@ -114,70 +114,64 @@ func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocat
 	return fileReference
 }
 
-func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+func (fsh *StorageHandler) GetFileMeta(ctx context.Context, request *blobbergrpc.GetFileMetaDataRequest) (interface{}, error) {
+
+	allocationTx := request.Allocation
 	alloc, err := fsh.verifyAllocation(ctx, allocationTx, true)
 
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		Logger.Error("Invalid allocation ID passed in the request")
+		return nil, errors.Wrap(err, "invalid allocation id: " + allocationTx)
 	}
+
 	allocationID := alloc.ID
-
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	if len(clientID) == 0 {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+
+	if clientID == "" {
+		Logger.Error("Operation needs to be performed by the owner of allocation")
+		return nil, errors.Wrap(errors.New("missing client id"), "Operation needs to be performed by the owner of the allocation")
 	}
 
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
-
-	pathHash, err := pathHashFromReq(r, allocationID)
-	if err != nil {
-		return nil, err
+	if request.PathHash == ""{
+		if request.Path == "" {
+			Logger.Error("Invalid request path passed in the request")
+			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
+		}
+		request.PathHash = reference.GetReferenceLookup(allocationID, request.Path)
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
-
+	fileRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, request.PathHash)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+		Logger.Error("Invalid file path passed in the request")
+		return nil, errors.Wrap(err, "invalid file path passed in the request")
 	}
 
-	result := fileref.GetListingData(ctx)
+	result := fileRef.GetListingData(ctx)
+	commitMetaTxns, err := reference.GetCommitMetaTxns(ctx, fileRef.ID)
 
-	commitMetaTxns, err := reference.GetCommitMetaTxns(ctx, fileref.ID)
 	if err != nil {
-		Logger.Error("Failed to get commitMetaTxns from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
+		Logger.Error("Failed to get commitMetaTxns from refID", zap.Error(err), zap.Any("ref_id", fileRef.ID))
+		return nil, errors.Wrapf(err, "failed to get commitMetaTxns from refID: %v", fileRef.ID)
 	}
 
 	result["commit_meta_txns"] = commitMetaTxns
 
-	collaborators, err := reference.GetCollaborators(ctx, fileref.ID)
+	collaborators, err := reference.GetCollaborators(ctx, fileRef.ID)
 	if err != nil {
-		Logger.Error("Failed to get collaborators from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
+		Logger.Error("Failed to get collaborators from refID", zap.Error(err), zap.Any("ref_id", fileRef.ID))
+		return nil, errors.Wrapf(err, "failed to get collaborators from refID: %v", fileRef.ID)
 	}
 
 	result["collaborators"] = collaborators
 
-	// authorize file access
-	var (
-		isOwner        = clientID == alloc.OwnerID
-		isRepairer     = clientID == alloc.RepairerID
-		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
-	)
-
-	if !isOwner && !isRepairer && !isCollaborator {
-		var authTokenString = r.FormValue("auth_token")
-
-		// check auth token
+	if !(clientID == alloc.OwnerID) && !(clientID == alloc.RepairerID) && !reference.IsACollaborator(ctx, fileRef.ID, clientID) {
+		// check if auth ticket is valid or not
 		if isAuthorized, err := fsh.verifyAuthTicket(ctx,
-			authTokenString, alloc, fileref, clientID,
+			request.AuthToken, alloc, fileRef, clientID,
 		); !isAuthorized {
-			return nil, common.NewErrorf("download_file",
-				"cannot verify auth ticket: %v", err)
+			Logger.Error("Failed to verify the authorisaton ticket")
+			return nil, errors.Wrap(err, "failed to verify the auth ticket")
 		}
-
 		delete(result, "path")
 	}
 
@@ -742,6 +736,7 @@ func pathHashFromReq(r *http.Request, allocationID string) (string, error) {
 		pathHash = r.FormValue("path_hash")
 		path     = r.FormValue("path")
 	)
+
 	if len(pathHash) == 0 {
 		if len(path) == 0 {
 			return "", common.NewError("invalid_parameters", "Invalid path")
