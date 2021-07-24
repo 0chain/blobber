@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
+	"github.com/pkg/errors"
 	"net/http"
 	"strings"
 
@@ -18,19 +19,13 @@ func newGRPCBlobberService() *blobberGRPCService {
 }
 
 func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobbergrpc.GetAllocationRequest) (*blobbergrpc.GetAllocationResponse, error) {
-	r, err := http.NewRequest("GET", "", nil)
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+	response, err := storageHandler.GetAllocationDetails(ctx, request)
 	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), "")
-	r.Form = map[string][]string{"id": {request.Id}}
-
-	resp, err := AllocationHandler(ctx, r)
-	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "unable to get allocation details for request: " + request.String())
 	}
 
-	return convert.GetAllocationResponseCreator(resp), nil
+	return convert.GetAllocationResponseCreator(response), nil
 }
 
 func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {

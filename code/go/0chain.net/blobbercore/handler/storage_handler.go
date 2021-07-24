@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
+	"github.com/pkg/errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -78,15 +80,11 @@ func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString
 	return true, nil
 }
 
-func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method != "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
-	}
-	allocationTx := r.FormValue("id")
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, request *blobbergrpc.GetAllocationRequest) (interface{}, error) {
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Id, false)
 
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, errors.Wrap(err, "unable to GetAllocationDetails for id: " + request.Id)
 	}
 
 	return allocationObj, nil

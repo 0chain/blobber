@@ -51,7 +51,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CalculateHashHandler))))
 
 	//object info related apis
-	r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler))))
+	//r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler))))
 	r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
 	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
 	r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler))))
@@ -120,21 +120,36 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 		r.Header.Get(common.ClientKeyHeader))
 	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY,
 		vars["allocation"])
-	// signature is not requered for all requests, but if header is empty it won`t affect anything
+	// signature is not required for all requests, but if header is empty it won`t affect anything
 	ctx = context.WithValue(ctx, constants.CLIENT_SIGNATURE_HEADER_KEY, r.Header.Get(common.ClientSignatureHeader))
 	return ctx
 }
 
-func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
+func setupGrpcHandlerContext(ctx context.Context, headerMetadata *gRPCHeaderMetadata) context.Context {
+	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY,
+		headerMetadata.Client)
+	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY,
+		headerMetadata.ClientKey)
+	//TODO(kushthedude): context needed for the use of following key as was not specified anyhwere in the earlier implementation
+	//ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY,
+	//	vars["allocation"])
 
-	response, err := storageHandler.GetAllocationDetails(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
+	// signature is not required for all requests, but if context is empty it won`t affect anything
+	ctx = context.WithValue(ctx, constants.CLIENT_SIGNATURE_HEADER_KEY,
+		headerMetadata.ClientSignature)
+	return ctx
 }
+
+//func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+//	ctx = setupHandlerContext(ctx, r)
+//
+//	response, err := storageHandler.GetAllocationDetails(ctx, r)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return response, nil
+//}
 
 func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
