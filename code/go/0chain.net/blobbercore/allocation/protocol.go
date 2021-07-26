@@ -43,7 +43,7 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 	if err != nil {
 		// unexpected DB error, including a RecordNotFoundError, since
 		// an allocation can't be without its terms (the terms must exist)
-		return
+		return err
 	}
 	a.Terms = terms // set field
 	return          // found in DB
@@ -96,7 +96,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		return nil, err // unexpected
 	}
 
-	isExist = (a.ID != "")
+	isExist = a.ID != ""
 
 	if !isExist {
 		foundBlobber := false

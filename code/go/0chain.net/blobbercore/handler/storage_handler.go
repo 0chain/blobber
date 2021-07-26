@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"github.com/pkg/errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -22,10 +23,9 @@ import (
 )
 
 const (
-	FORM_FILE_PARSE_MAX_MEMORY = 10 * 1024 * 1024
+	FormFileParseMaxMemory = 10 * 1024 * 1024
 
-	DOWNLOAD_CONTENT_FULL  = "full"
-	DOWNLOAD_CONTENT_THUMB = "thumbnail"
+	DownloadContentThumb  = "thumbnail"
 )
 
 type StorageHandler struct{}
@@ -373,15 +373,24 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 
 	result := fileref.GetListingData(ctx)
-	stats, _ := stats.GetFileStats(ctx, fileref.ID)
-	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
-	if wm != nil && stats != nil {
-		stats.WriteMarkerRedeemTxn = wm.CloseTxnID
+	fileStats, err := stats.GetFileStats(ctx, fileref.ID)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to get file stats")
+	}
+	wm, err := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to write market entity")
+	}
+	if wm != nil && fileStats != nil {
+		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
 	}
 	var statsMap map[string]interface{}
-	statsBytes, _ := json.Marshal(stats)
+	statsBytes, err := json.Marshal(fileStats)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to marshal fileStats")
+	}
 	if err = json.Unmarshal(statsBytes, &statsMap); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to unmarshal statsMap")
 	}
 	for k, v := range statsMap {
 		result[k] = v
