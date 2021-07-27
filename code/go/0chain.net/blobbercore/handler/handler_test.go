@@ -266,7 +266,7 @@ func isEndpointAllowGetReq(name string) bool {
 	}
 }
 
-func GetAuthTicketForEncryptedFile(allocationID string, remotePath string, fileHash string, clientID string, encPublicKey string) (string, error) {
+func GetAuthTicketForEncryptedFile(allocationID string, remotePath string, fileHash string, clientID string) (string, error) {
 	at := &marker.AuthTicket{}
 	at.AllocationID = allocationID
 	at.OwnerID = client.GetClientID()
@@ -324,7 +324,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			name        string
 			args        args
 			alloc       *allocation.Allocation
-			setupDbMock func(mock sqlmock.Sqlmock)
+			setupDBMock func(mock sqlmock.Sqlmock)
 			begin       func()
 			end         func()
 			wantCode    int
@@ -336,7 +336,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 		if !isEndpointRequireSignature(name) {
 			continue
 		}
-		baseSetupDbMock := func(mock sqlmock.Sqlmock) {
+		baseSetupDBMock := func(mock sqlmock.Sqlmock) {
 			mock.ExpectBegin()
 
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -379,7 +379,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc:       alloc,
-			setupDbMock: baseSetupDbMock,
+			setupDBMock: baseSetupDBMock,
 			wantCode:    http.StatusBadRequest,
 			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n\n",
 		}
@@ -417,7 +417,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc:       alloc,
-			setupDbMock: baseSetupDbMock,
+			setupDBMock: baseSetupDBMock,
 			wantCode:    http.StatusBadRequest,
 			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n\n",
 		}
@@ -458,7 +458,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -518,7 +518,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -578,7 +578,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -649,7 +649,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -710,7 +710,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -779,7 +779,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -859,7 +859,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectBegin()
@@ -957,7 +957,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectBegin()
@@ -1065,7 +1065,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectBegin()
@@ -1131,7 +1131,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					require.NoError(t, formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey))
 					remotePath := "/file.txt"
 					filePathHash := "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"
-					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, filePathHash, shareClientID, sch.GetPublicKey())
+					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, filePathHash, shareClientID)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1159,7 +1159,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -1219,7 +1219,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					require.NoError(t, formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey))
 					remotePath := "/file.txt"
 					filePathHash := "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"
-					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, filePathHash, shareClientID, sch.GetPublicKey())
+					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, filePathHash, shareClientID)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1247,7 +1247,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -1333,7 +1333,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -1413,7 +1413,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -1506,7 +1506,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -1592,7 +1592,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -1663,7 +1663,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					pathHash := fileref.GetReferenceLookup(alloc.Tx, remotePath)
 					require.NoError(t, formWriter.WriteField("path_hash", pathHash))
 					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
-					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, pathHash, client.GetClientID(), sch.GetPublicKey())
+					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, pathHash, client.GetClientID())
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1706,7 +1706,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}(),
 			},
 			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -1782,7 +1782,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					pathHash := fileref.GetReferenceLookup(alloc.Tx, remotePath)
 					require.NoError(t, formWriter.WriteField("path_hash", pathHash))
 					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
-					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, pathHash, client.GetClientID(), sch.GetPublicKey())
+					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, pathHash, client.GetClientID())
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1839,7 +1839,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			end: func() {
 				resetMockFileBlock()
 			},
-			setupDbMock: func(mock sqlmock.Sqlmock) {
+			setupDBMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
@@ -1905,7 +1905,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)
-			test.setupDbMock(mock)
+			test.setupDBMock(mock)
 
 			if test.begin != nil {
 				test.begin()

@@ -288,7 +288,7 @@ func healthCheckOnChainWorker() {
 
 func setup(logDir string) error {
 	// init blockchain related stuff
-	zcncore.SetLogFile(logDir+"/0chainBlobber.log", false)
+	zcncore.SetLogFile(logDir + "/0chainBlobber.log", false)
 	zcncore.SetLogLevel(3)
 	if err := zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme); err != nil {
 		return err
@@ -420,10 +420,10 @@ func main() {
 
 	// Initialize after server chain is setup.
 	if err := initEntities(); err != nil {
-		Logger.Error("Error setting up blobber on blockchian" + err.Error())
+		Logger.Error("Error setting up blobber on blockchain" + err.Error())
 	}
 	if err := setup(*logDir); err != nil {
-		Logger.Error("Error setting up blobber on blockchian" + err.Error())
+		Logger.Error("Error setting up blobber on blockchain" + err.Error())
 	}
 	mode := "main net"
 	if config.Development() {
@@ -491,15 +491,15 @@ func main() {
 		}
 
 		if grpcPort == "" {
-			Logger.Error("Could not start grpc server since grpc port has not been specified." +
-				" Please specify the grpc port in the --grpc_port build arguement to start the grpc server")
+			Logger.Fatal("failed to start the server: grpc_port not provided")
 			return
 		}
 
-		Logger.Info("listening too grpc requests on port - " + grpcPort)
+		Logger.Info("grpc server serving on port: " + grpcPort)
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
 		if err != nil {
-			log.Fatalf("failed to listen: %v", err)
+			Logger.Fatal("failed to start tcp server")
+			return
 		}
 		log.Fatal(grpcServer.Serve(lis))
 	}(grpcPortString)

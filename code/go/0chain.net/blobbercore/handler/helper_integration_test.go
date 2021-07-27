@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-
 	"google.golang.org/grpc"
 	"gorm.io/driver/postgres"
 
@@ -529,7 +528,7 @@ func setupIntegrationTestConfig(t *testing.T) {
 	config.Configuration.DBPassword = viper.GetString("db.password")
 }
 
-func (c *TestDataController) AddCommitTestData(allocationTx, pubkey, clientId, wmSig string, now common.Timestamp) error {
+func (c *TestDataController) AddCommitTestData(allocationTx, pubkey, clientID, wmSig string, now common.Timestamp) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -557,7 +556,7 @@ func (c *TestDataController) AddCommitTestData(allocationTx, pubkey, clientId, w
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, blobber_size, allocation_root, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
+VALUES ('exampleId' ,'` + allocationTx + `','` + clientID + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -565,7 +564,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 
 	_, err = tx.Exec(`
 INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
-VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
+VALUES ('connection_id' ,'exampleId','` + clientID + `', 1337, 1);
 `)
 	if err != nil {
 		return err
@@ -581,7 +580,7 @@ VALUES (1 ,'connection_id','rename', 1200, '{"allocation_id":"exampleId","path":
 
 	_, err = tx.Exec(`
 INSERT INTO write_markers(prev_allocation_root, allocation_root, status, allocation_id, size, client_id, signature, blobber_id, timestamp, connection_id, client_key)
-VALUES ('/', '/', 2,'exampleId', 1337, '` + clientId + `','` + wmSig + `','blobber_id', ` + fmt.Sprint(now) + `, 'connection_id', '` + pubkey + `');
+VALUES ('/', '/', 2,'exampleId', 1337, '` + clientID + `','` + wmSig + `','blobber_id', ` + fmt.Sprint(now) + `, 'connection_id', '` + pubkey + `');
 `)
 	if err != nil {
 		return err
@@ -605,7 +604,7 @@ VALUES
 	return nil
 }
 
-func (c *TestDataController) AddAttributesTestData(allocationTx, pubkey, clientId string) error {
+func (c *TestDataController) AddAttributesTestData(allocationTx, pubkey, clientID string) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -633,7 +632,7 @@ func (c *TestDataController) AddAttributesTestData(allocationTx, pubkey, clientI
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, blobber_size, allocation_root, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
+VALUES ('exampleId' ,'` + allocationTx + `','` + clientID + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -641,7 +640,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 
 	_, err = tx.Exec(`
 INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
-VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
+VALUES ('connection_id' ,'exampleId','` + clientID + `', 1337, 1);
 `)
 	if err != nil {
 		return err
@@ -665,7 +664,7 @@ VALUES
 	return nil
 }
 
-func (c *TestDataController) AddCopyObjectData(allocationTx, pubkey, clientId string) error {
+func (c *TestDataController) AddCopyObjectData(allocationTx, pubkey, clientID string) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -693,7 +692,7 @@ func (c *TestDataController) AddCopyObjectData(allocationTx, pubkey, clientId st
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, blobber_size, allocation_root, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
+VALUES ('exampleId' ,'` + allocationTx + `','` + clientID + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -701,7 +700,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 
 	_, err = tx.Exec(`
 INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
-VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
+VALUES ('connection_id' ,'exampleId','` + clientID + `', 1337, 1);
 `)
 	if err != nil {
 		return err
@@ -725,7 +724,7 @@ VALUES
 	return nil
 }
 
-func (c *TestDataController) AddRenameTestData(allocationTx, pubkey, clientId string) error {
+func (c *TestDataController) AddRenameTestData(allocationTx, pubkey, clientID string) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -753,7 +752,7 @@ func (c *TestDataController) AddRenameTestData(allocationTx, pubkey, clientId st
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, blobber_size, allocation_root, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
+VALUES ('exampleId' ,'` + allocationTx + `','` + clientID + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -761,7 +760,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 
 	_, err = tx.Exec(`
 INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
-VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
+VALUES ('connection_id' ,'exampleId','` + clientID + `', 1337, 1);
 `)
 	if err != nil {
 		return err
@@ -785,7 +784,7 @@ VALUES
 	return nil
 }
 
-func (c *TestDataController) AddDownloadTestData(allocationTx, pubkey, clientId, wmSig string, now common.Timestamp) error {
+func (c *TestDataController) AddDownloadTestData(allocationTx, pubkey, clientID, wmSig string, now common.Timestamp) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -813,7 +812,7 @@ func (c *TestDataController) AddDownloadTestData(allocationTx, pubkey, clientId,
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, blobber_size, allocation_root, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
+VALUES ('exampleId' ,'` + allocationTx + `','` + clientID + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -821,7 +820,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 
 	_, err = tx.Exec(`
 INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
-VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
+VALUES ('connection_id' ,'exampleId','` + clientID + `', 1337, 1);
 `)
 	if err != nil {
 		return err
@@ -853,7 +852,7 @@ VALUES
 	return nil
 }
 
-func (c *TestDataController) AddUploadTestData(allocationTx, pubkey, clientId string) error {
+func (c *TestDataController) AddUploadTestData(allocationTx, pubkey, clientID string) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -881,7 +880,7 @@ func (c *TestDataController) AddUploadTestData(allocationTx, pubkey, clientId st
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, blobber_size, allocation_root, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
+VALUES ('exampleId' ,'` + allocationTx + `','` + clientID + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
 `)
 	if err != nil {
 		return err

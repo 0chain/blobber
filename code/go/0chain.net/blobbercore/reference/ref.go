@@ -23,10 +23,10 @@ const (
 	FILE      = "f"
 	DIRECTORY = "d"
 
-	CHUNK_SIZE = 64 * 1024
+	ChunkSize = 64 * 1024
 
-	DIR_LIST_TAG  = "dirlist"
-	FILE_LIST_TAG = "filelist"
+	DirListTag  = "dirlist"
+	FileListTag = "filelist"
 )
 
 // The Attributes represents file attributes.
@@ -114,7 +114,7 @@ func (r *Ref) GetAttributes() (attr *Attributes, err error) {
 		return
 	}
 	attr = new(Attributes)
-	if err = json.Unmarshal([]byte(r.Attributes), attr); err != nil {
+	if err = json.Unmarshal(r.Attributes, attr); err != nil {
 		return nil, common.NewError("decoding file attributes", err.Error())
 	}
 	return // the decoded attributes
@@ -129,7 +129,7 @@ func (r *Ref) SetAttributes(attr *Attributes) (err error) {
 	if b, err = json.Marshal(attr); err != nil {
 		return common.NewError("encoding file attributes", err.Error())
 	}
-	r.Attributes = datatypes.JSON(b) // or a real value, can be {} too
+	r.Attributes = b // or a real value, can be {} too
 	return
 }
 
@@ -143,10 +143,10 @@ func GetReference(ctx context.Context, allocationID string, path string) (*Ref, 
 	return nil, err
 }
 
-func GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*Ref, error) {
+func GetReferenceFromLookupHash(ctx context.Context, allocationID string, pathHash string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
+	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
 	if err == nil {
 		return ref, nil
 	}
@@ -216,38 +216,38 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID string, path str
 	return refs[0], nil
 }
 
-func (fr *Ref) GetFileHashData() string {
-	if len(fr.Attributes) == 0 {
-		fr.Attributes = datatypes.JSON("{}")
+func (r *Ref) GetFileHashData() string {
+	if len(r.Attributes) == 0 {
+		r.Attributes = datatypes.JSON("{}")
 	}
 	hashArray := make([]string, 0)
-	hashArray = append(hashArray, fr.AllocationID)
-	hashArray = append(hashArray, fr.Type)
-	hashArray = append(hashArray, fr.Name)
-	hashArray = append(hashArray, fr.Path)
-	hashArray = append(hashArray, strconv.FormatInt(fr.Size, 10))
-	hashArray = append(hashArray, fr.ContentHash)
-	hashArray = append(hashArray, fr.MerkleRoot)
-	hashArray = append(hashArray, strconv.FormatInt(fr.ActualFileSize, 10))
-	hashArray = append(hashArray, fr.ActualFileHash)
-	hashArray = append(hashArray, string(fr.Attributes))
+	hashArray = append(hashArray, r.AllocationID)
+	hashArray = append(hashArray, r.Type)
+	hashArray = append(hashArray, r.Name)
+	hashArray = append(hashArray, r.Path)
+	hashArray = append(hashArray, strconv.FormatInt(r.Size, 10))
+	hashArray = append(hashArray, r.ContentHash)
+	hashArray = append(hashArray, r.MerkleRoot)
+	hashArray = append(hashArray, strconv.FormatInt(r.ActualFileSize, 10))
+	hashArray = append(hashArray, r.ActualFileHash)
+	hashArray = append(hashArray, string(r.Attributes))
 	return strings.Join(hashArray, ":")
 }
 
-func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
+func (r *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
 	// fmt.Println("fileref name , path, hash", fr.Name, fr.Path, fr.Hash)
 	// fmt.Println("Fileref hash data: " + fr.GetFileHashData())
-	fr.Hash = encryption.Hash(fr.GetFileHashData())
+	r.Hash = encryption.Hash(r.GetFileHashData())
 	// fmt.Println("Fileref hash : " + fr.Hash)
-	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / CHUNK_SIZE))
-	fr.PathHash = GetReferenceLookup(fr.AllocationID, fr.Path)
-	fr.PathLevel = len(GetSubDirsFromPath(fr.Path)) + 1 //strings.Count(fr.Path, "/")
-	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
+	r.NumBlocks = int64(math.Ceil(float64(r.Size*1.0) / ChunkSize))
+	r.PathHash = GetReferenceLookup(r.AllocationID, r.Path)
+	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1 //strings.Count(fr.Path, "/")
+	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
 	var err error
 	if saveToDB {
-		err = fr.Save(ctx)
+		err = r.Save(ctx)
 	}
-	return fr.Hash, err
+	return r.Hash, err
 }
 
 func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, error) {
@@ -347,9 +347,9 @@ func (r *Ref) GetListingData(ctx context.Context) map[string]interface{} {
 	}
 
 	if r.Type == FILE {
-		return GetListingFieldsMap(*r, FILE_LIST_TAG)
+		return GetListingFieldsMap(*r, FileListTag)
 	}
-	return GetListingFieldsMap(*r, DIR_LIST_TAG)
+	return GetListingFieldsMap(*r, DirListTag)
 }
 
 func ListingDataToRef(refMap map[string]interface{}) *Ref {
@@ -359,12 +359,13 @@ func ListingDataToRef(refMap map[string]interface{}) *Ref {
 
 	ref := &Ref{}
 
-	refType, _ := refMap["type"].(string)
+	// the strings conversion doesn't require any explicit error checking certainly
+	refType := refMap["type"].(string)
 	var tagName string
 	if refType == FILE {
-		tagName = FILE_LIST_TAG
+		tagName = FileListTag
 	} else {
-		tagName = DIR_LIST_TAG
+		tagName = DirListTag
 	}
 
 	t := reflect.TypeOf(ref).Elem()

@@ -32,7 +32,7 @@ func GetParentPathHashes(allocationTx string, filePath string) []string {
 	pathHashes := []string{}
 
 	for i := 0; i < len(splitted); i++ {
-		path := strings.Join(splitted[:len(splitted) - i], "/")
+		path := strings.Join(splitted[:len(splitted)-i], "/")
 		if path == "" {
 			path = "/"
 		}

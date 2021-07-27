@@ -25,7 +25,7 @@ import (
 const (
 	FormFileParseMaxMemory = 10 * 1024 * 1024
 
-	DownloadContentThumb  = "thumbnail"
+	DownloadContentThumb = "thumbnail"
 )
 
 type StorageHandler struct{}
@@ -762,4 +762,3 @@ func pathHashFromReq(r *http.Request, allocationID string) (string, error) {
 
 	return pathHash, nil
 }
-

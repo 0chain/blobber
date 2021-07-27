@@ -22,4 +22,3 @@ func Within(ts int64, seconds int64) bool {
 func ToTime(ts Timestamp) time.Time {
 	return time.Unix(int64(ts), 0)
 }
-

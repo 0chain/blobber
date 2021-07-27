@@ -17,12 +17,11 @@ type gRPCHeaderMetadata struct {
 	ClientSignature string
 }
 
-
 func registerGRPCServices(r *mux.Router, server *grpc.Server) {
 	blobberService := newGRPCBlobberService()
 	grpcGatewayHandler := runtime.NewServeMux(
-								runtime.WithIncomingHeaderMatcher(CustomMatcher),
-							)
+		runtime.WithIncomingHeaderMatcher(CustomMatcher),
+	)
 
 	blobbergrpc.RegisterBlobberServiceServer(server, blobberService)
 	_ = blobbergrpc.RegisterBlobberServiceHandlerServer(context.Background(), grpcGatewayHandler, blobberService)
