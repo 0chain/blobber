@@ -43,7 +43,7 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 	if err != nil {
 		// unexpected DB error, including a RecordNotFoundError, since
 		// an allocation can't be without its terms (the terms must exist)
-		return err
+		return
 	}
 	a.Terms = terms // set field
 	return          // found in DB

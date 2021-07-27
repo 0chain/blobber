@@ -95,8 +95,8 @@ type BlobberStats struct {
 	WriteMarkers WriteMarkersStat `json:"write_markers"`
 }
 
-type AllocationId struct {
-	Id string `json:"id"`
+type AllocationID struct {
+	ID string `json:"id"`
 }
 
 func LoadBlobberStats(ctx context.Context) *BlobberStats {
@@ -269,7 +269,15 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 		Logger.Error("Error in getting the allocation stats", zap.Error(err))
 		return
 	}
-	defer rows.Close()
+
+	defer func() {
+		err := rows.Close()
+		if err != nil {
+			Logger.Error("Error in closing the db connection row",
+				zap.Error(err))
+			return
+		}
+	}()
 
 	for rows.Next() {
 		var as = &AllocationStats{}
@@ -314,7 +322,15 @@ func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
 			zap.Error(err))
 		return
 	}
-	defer rows.Close()
+
+	defer func() {
+		err := rows.Close()
+		if err != nil {
+			Logger.Error("Error in closing the db connection row",
+				zap.Error(err))
+			return
+		}
+	}()
 
 	for rows.Next() {
 		var (
@@ -371,7 +387,14 @@ func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
 			zap.Error(err))
 		return
 	}
-	defer rows.Close()
+	defer func() {
+		err := rows.Close()
+		if err != nil {
+			Logger.Error("Error in closing the db connection row",
+				zap.Error(err))
+			return
+		}
+	}()
 
 	var allocationStatsMap = make(map[string]*AllocationStats)
 
@@ -424,7 +447,7 @@ func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
 func loadAllocationList(ctx context.Context) (interface{}, error) {
 
 	var (
-		allocations = make([]AllocationId, 0)
+		allocations = make([]AllocationID, 0)
 		db          = datastore.GetStore().GetTransaction(ctx)
 		rows        *sql.Rows
 		err         error
@@ -440,17 +463,25 @@ func loadAllocationList(ctx context.Context) (interface{}, error) {
 		return nil, common.NewError("get_allocations_list_failed",
 			"Failed to get allocation list from DB")
 	}
-	defer rows.Close()
+
+	defer func() {
+		err := rows.Close()
+		if err != nil {
+			Logger.Error("Error in closing the db connection row",
+				zap.Error(err))
+			return
+		}
+	}()
 
 	for rows.Next() {
-		var allocationId AllocationId
-		if err = rows.Scan(&allocationId.Id); err != nil {
+		var allocationID AllocationID
+		if err = rows.Scan(&allocationID.ID); err != nil {
 			Logger.Error("Error in scanning record for blobber allocations",
 				zap.Error(err))
 			return nil, common.NewError("get_allocations_list_failed",
 				"Failed to scan allocation from DB")
 		}
-		allocations = append(allocations, allocationId)
+		allocations = append(allocations, allocationID)
 	}
 
 	if err = rows.Err(); err != nil && err != sql.ErrNoRows {
@@ -477,6 +508,7 @@ func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (
 		rme ReadMarkerEntity
 	)
 
+
 	err = db.Table("read_markers").
 		Select("counter, latest_redeemed_rm, redeem_required").
 		Where("allocation_id = ?", allocationID).
@@ -494,7 +526,7 @@ func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (
 
 	var prev, current = new(ReadMarkerEntity), &rme
 	if len(rme.LatestRedeemedRMBlob) > 0 {
-		err = json.Unmarshal([]byte(rme.LatestRedeemedRMBlob), prev)
+		err = json.Unmarshal(rme.LatestRedeemedRMBlob, prev)
 		if err != nil {
 			return
 		}
@@ -537,7 +569,15 @@ func loadAllocWriteMarkerStat(ctx context.Context, allocationID string) (
 	if err != nil {
 		return
 	}
-	defer rows.Close()
+
+	defer func() {
+		err := rows.Close()
+		if err != nil {
+			Logger.Error("Error in closing the db connection row",
+				zap.Error(err))
+			return
+		}
+	}()
 
 	type writeMarkerRow struct {
 		Status WriteMarkerStatus

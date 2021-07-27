@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	TIMEOUT_SECONDS = 10 // to set deadline for requests
+	TimeoutSeconds = 10 // to set deadline for requests
 )
 
 func unaryDatabaseTransactionInjector() grpc.UnaryServerInterceptor {
@@ -49,7 +49,7 @@ func unaryDatabaseTransactionInjector() grpc.UnaryServerInterceptor {
 
 func unaryTimeoutInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		deadline := time.Now().Add(time.Duration(TIMEOUT_SECONDS * time.Second))
+		deadline := time.Now().Add(TimeoutSeconds * time.Second)
 		ctx, canceler := context.WithDeadline(ctx, deadline)
 		defer canceler()
 
@@ -68,7 +68,7 @@ func NewGRPCServerWithMiddlewares(limiter grpcratelimit.Limiter, r *mux.Router) 
 			grpcrecovery.UnaryServerInterceptor(),
 			unaryDatabaseTransactionInjector(),
 			grpcratelimit.UnaryServerInterceptor(limiter),
-			unaryTimeoutInterceptor(), // should always be the lastest, to be "innermost"
+			unaryTimeoutInterceptor(), // should always be the latest, to be "innermost"
 		),
 	)
 
