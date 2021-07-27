@@ -55,7 +55,7 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 	pubKeyBytes, _ := hex.DecodeString(pubKey)
-	clientId := encryption.Hash(pubKeyBytes)
+	clientID := encryption.Hash(pubKeyBytes)
 	now := common.Timestamp(time.Now().Unix())
 	allocationId := `exampleId`
 
@@ -70,8 +70,8 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 		BlobberID:       encryption.Hash(blobberPubKeyBytes),
 		AllocationID:    allocationId,
 		ClientPublicKey: pubKey,
-		ClientID:        clientId,
-		OwnerID:         clientId,
+		ClientID:        clientID,
+		OwnerID:         clientID,
 		Timestamp:       now,
 		//ReadCounter:     1337,
 	}
@@ -87,7 +87,7 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := tdController.AddDownloadTestData(allocationTx, pubKey, clientId, rmSig, now); err != nil {
+	if err := tdController.AddDownloadTestData(allocationTx, pubKey, clientID, rmSig, now); err != nil {
 		t.Fatal(err)
 	}
 
@@ -101,7 +101,7 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 		{
 			name: "Success",
 			context: metadata.New(map[string]string{
-				common.ClientHeader:          clientId,
+				common.ClientHeader:          clientID,
 				common.ClientSignatureHeader: clientSignature,
 				common.ClientKeyHeader:       pubKey,
 			}),
@@ -118,7 +118,7 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 		{
 			name: "Fail",
 			context: metadata.New(map[string]string{
-				common.ClientHeader:          clientId,
+				common.ClientHeader:          clientID,
 				common.ClientSignatureHeader: clientSignature,
 				common.ClientKeyHeader:       pubKey,
 			}),

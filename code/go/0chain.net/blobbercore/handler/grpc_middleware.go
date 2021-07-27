@@ -11,13 +11,12 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	grpczap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
-	grpc_ratelimit "github.com/grpc-ecosystem/go-grpc-middleware/ratelimit"
-	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
+	grpcratelimit "github.com/grpc-ecosystem/go-grpc-middleware/ratelimit"
+	grpcrecovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	_ "google.golang.org/grpc/encoding/gzip"
 )
 
 const (
@@ -58,17 +57,17 @@ func unaryTimeoutInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
-func NewGRPCServerWithMiddlewares(limiter grpc_ratelimit.Limiter, r *mux.Router) *grpc.Server {
+func NewGRPCServerWithMiddlewares(limiter grpcratelimit.Limiter, r *mux.Router) *grpc.Server {
 	srv := grpc.NewServer(
 		grpc.ChainStreamInterceptor(
-			grpc_zap.StreamServerInterceptor(logging.Logger),
-			grpc_recovery.StreamServerInterceptor(),
+			grpczap.StreamServerInterceptor(logging.Logger),
+			grpcrecovery.StreamServerInterceptor(),
 		),
 		grpc.ChainUnaryInterceptor(
-			grpc_zap.UnaryServerInterceptor(logging.Logger),
-			grpc_recovery.UnaryServerInterceptor(),
+			grpczap.UnaryServerInterceptor(logging.Logger),
+			grpcrecovery.UnaryServerInterceptor(),
 			unaryDatabaseTransactionInjector(),
-			grpc_ratelimit.UnaryServerInterceptor(limiter),
+			grpcratelimit.UnaryServerInterceptor(limiter),
 			unaryTimeoutInterceptor(), // should always be the lastest, to be "innermost"
 		),
 	)

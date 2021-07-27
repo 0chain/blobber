@@ -18,12 +18,12 @@ func TestBlobberGRPCService_CopyObject(t *testing.T) {
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 	pubKeyBytes, _ := hex.DecodeString(pubKey)
-	clientId := encryption.Hash(pubKeyBytes)
+	clientID := encryption.Hash(pubKeyBytes)
 
 	if err := tdController.ClearDatabase(); err != nil {
 		t.Fatal(err)
 	}
-	if err := tdController.AddCopyObjectData(allocationTx, pubKey, clientId); err != nil {
+	if err := tdController.AddCopyObjectData(allocationTx, pubKey, clientID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -37,7 +37,7 @@ func TestBlobberGRPCService_CopyObject(t *testing.T) {
 		{
 			name: "Success",
 			context: metadata.New(map[string]string{
-				common.ClientHeader:          clientId,
+				common.ClientHeader:          clientID,
 				common.ClientSignatureHeader: clientSignature,
 				common.ClientKeyHeader:       pubKey,
 			}),
@@ -54,7 +54,7 @@ func TestBlobberGRPCService_CopyObject(t *testing.T) {
 		{
 			name: "Fail",
 			context: metadata.New(map[string]string{
-				common.ClientHeader:          clientId,
+				common.ClientHeader:          clientID,
 				common.ClientSignatureHeader: clientSignature,
 				common.ClientKeyHeader:       pubKey,
 			}),

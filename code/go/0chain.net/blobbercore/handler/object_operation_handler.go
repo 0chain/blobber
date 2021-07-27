@@ -253,7 +253,7 @@ func (fsh *StorageHandler) DownloadFile(
 			"error parsing the readmarker for download: %v", err)
 	}
 
-	var rmObj = &readmarker.ReadMarkerEntity{}
+	var rmObj = &readmarker.Entity{}
 	rmObj.LatestRM = readMarker
 
 	if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
@@ -289,7 +289,7 @@ func (fsh *StorageHandler) DownloadFile(
 		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
-	var authToken *readmarker.AuthTicket = nil
+	var authToken *readmarker.AuthTicket
 
 	if (!isOwner && !isRepairer && !isCollaborator) || len(r.FormValue("auth_token")) > 0 {
 		var authTokenString = r.FormValue("auth_token")
@@ -351,7 +351,7 @@ func (fsh *StorageHandler) DownloadFile(
 
 	// create read marker
 	var (
-		rme           *readmarker.ReadMarkerEntity
+		rme           *readmarker.Entity
 		latestRM      *readmarker.ReadMarker
 		pendNumBlocks int64
 	)
@@ -1100,7 +1100,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	allocationID := allocationObj.ID
 	fileOperation := getFileOperation(r)
-	existingFileRef := getExistingFileRef(fsh, ctx, r, allocationObj, fileOperation)
+	existingFileRef := getExistingFileRef(ctx, fsh, r, allocationObj, fileOperation)
 	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
 
@@ -1283,7 +1283,7 @@ func getFileOperation(r *http.Request) string {
 	return mode
 }
 
-func getExistingFileRef(fsh *StorageHandler, ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) *reference.Ref {
+func getExistingFileRef(ctx context.Context, fsh *StorageHandler, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) *reference.Ref {
 	if fileOperation == allocation.INSERT_OPERATION || fileOperation == allocation.UPDATE_OPERATION {
 		var formData allocation.UpdateFileChange
 		uploadMetaString := r.FormValue(getFormFieldName(fileOperation))

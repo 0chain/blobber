@@ -235,9 +235,9 @@ func ReferencePathToReferencePathGRPC(recursionCount *int, refPath *reference.Re
 		return nil
 	}
 	// Accounting for bad reference paths where child path points to parent path and causes this algorithm to never end
-	*recursionCount += 1
+	*recursionCount++
 	defer func() {
-		*recursionCount -= 1
+		*recursionCount--
 	}()
 
 	if *recursionCount > 150 {
@@ -263,9 +263,9 @@ func ReferencePathGRPCToReferencePath(recursionCount *int, refPath *blobbergrpc.
 		return nil
 	}
 	// Accounting for bad reference paths where child path points to parent path and causes this algorithm to never end
-	*recursionCount += 1
+	*recursionCount++
 	defer func() {
-		*recursionCount -= 1
+		*recursionCount--
 	}()
 
 	if *recursionCount > 150 {

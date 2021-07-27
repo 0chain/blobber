@@ -19,7 +19,7 @@ func SetupWorkers(ctx context.Context) {
 	go RedeemMarkers(ctx)
 }
 
-func RedeemReadMarker(ctx context.Context, rmEntity *ReadMarkerEntity) (
+func RedeemReadMarker(ctx context.Context, rmEntity *Entity) (
 	err error) {
 
 	Logger.Info("Redeeming the read marker", zap.Any("rm", rmEntity.LatestRM))
@@ -90,8 +90,8 @@ func RedeemMarkers(ctx context.Context) {
 				iterInprogress = true
 				rctx := datastore.GetStore().CreateTransaction(ctx)
 				db := datastore.GetStore().GetTransaction(rctx)
-				readMarkers := make([]*ReadMarkerEntity, 0)
-				rm := &ReadMarkerEntity{RedeemRequired: true}
+				readMarkers := make([]*Entity, 0)
+				rm := &Entity{RedeemRequired: true}
 				db.Where(rm). // redeem_required = true
 						Where("counter <> suspend"). // and not suspended
 						Order("created_at ASC").Find(&readMarkers)
@@ -99,7 +99,7 @@ func RedeemMarkers(ctx context.Context) {
 					swg := sizedwaitgroup.New(config.Configuration.RMRedeemNumWorkers)
 					for _, rmEntity := range readMarkers {
 						swg.Add()
-						go func(redeemCtx context.Context, rmEntity *ReadMarkerEntity) {
+						go func(redeemCtx context.Context, rmEntity *Entity) {
 							redeemCtx = datastore.GetStore().CreateTransaction(redeemCtx)
 							defer redeemCtx.Done()
 							err := RedeemReadMarker(redeemCtx, rmEntity)

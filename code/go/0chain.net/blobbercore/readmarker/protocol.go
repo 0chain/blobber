@@ -24,7 +24,7 @@ type ReadRedeem struct {
 	ReadMarker *ReadMarker `json:"read_marker"`
 }
 
-func (rme *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.Allocation) error {
+func (rme *Entity) VerifyMarker(ctx context.Context, sa *allocation.Allocation) error {
 	if rme == nil || rme.LatestRM == nil {
 		return common.NewError("invalid_read_marker", "No read marker was found")
 	}
@@ -70,7 +70,7 @@ func (rme *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.Al
 // PendNumBlocks return zero, if redeem_required is false. If its true, it
 // returns difference between latest redeemed read marker and current one
 // (till not redeemed).
-func (rme *ReadMarkerEntity) PendNumBlocks() (pendNumBlocks int64, err error) {
+func (rme *Entity) PendNumBlocks() (pendNumBlocks int64, err error) {
 
 	if !rme.RedeemRequired {
 		return // (0, nil), everything is already redeemed
@@ -100,7 +100,7 @@ func (rme *ReadMarkerEntity) PendNumBlocks() (pendNumBlocks int64, err error) {
 
 // getNumBlocks to redeem (difference between the previous RM and the
 // current one)
-func (rme *ReadMarkerEntity) getNumBlocks() (numBlocks int64, err error) {
+func (rme *Entity) getNumBlocks() (numBlocks int64, err error) {
 
 	if rme.LatestRM == nil {
 		return 0, common.NewErrorf("rme_get_num_blocks",
@@ -127,7 +127,7 @@ func (rme *ReadMarkerEntity) getNumBlocks() (numBlocks int64, err error) {
 // a redeeming transaction regarding cache, pending reads (regardless since
 // pending reads is what we are going to redeem) and requesting 0chain to
 // refresh read pools
-func (rme *ReadMarkerEntity) preRedeem(ctx context.Context,
+func (rme *Entity) preRedeem(ctx context.Context,
 	alloc *allocation.Allocation, numBlocks int64) (
 	rps []*allocation.ReadPool, err error) {
 
@@ -199,7 +199,7 @@ func (rme *ReadMarkerEntity) preRedeem(ctx context.Context,
 }
 
 // RedeemReadMarker redeems the read marker.
-func (rme *ReadMarkerEntity) RedeemReadMarker(ctx context.Context) error {
+func (rme *Entity) RedeemReadMarker(ctx context.Context) error {
 
 	if rme.LatestRM.Suspend == rme.LatestRM.ReadCounter {
 		// suspended read marker, no tokens in related read pools

@@ -23,7 +23,7 @@ func TestBlobberGRPCService_Commit(t *testing.T) {
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 	pubKeyBytes, _ := hex.DecodeString(pubKey)
-	clientId := encryption.Hash(pubKeyBytes)
+	clientID := encryption.Hash(pubKeyBytes)
 	now := common.Timestamp(time.Now().UnixNano())
 
 	blobberPubKey := "de52c0a51872d5d2ec04dbc15a6f0696cba22657b80520e1d070e72de64c9b04e19ce3223cae3c743a20184158457582ffe9c369ca9218c04bfe83a26a62d88d"
@@ -48,7 +48,7 @@ func TestBlobberGRPCService_Commit(t *testing.T) {
 		Size:                   1337,
 		BlobberID:              encryption.Hash(blobberPubKeyBytes),
 		Timestamp:              now,
-		ClientID:               clientId,
+		ClientID:               clientID,
 	}
 
 	wmSig, err := signScheme.Sign(encryption.Hash(wm.GetHashData()))
@@ -67,7 +67,7 @@ func TestBlobberGRPCService_Commit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = tdController.AddCommitTestData(allocationTx, pubKey, clientId, wmSig, now)
+	err = tdController.AddCommitTestData(allocationTx, pubKey, clientID, wmSig, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestBlobberGRPCService_Commit(t *testing.T) {
 		{
 			name: "Success",
 			context: metadata.New(map[string]string{
-				common.ClientHeader:          clientId,
+				common.ClientHeader:          clientID,
 				common.ClientSignatureHeader: clientSignature,
 				common.ClientKeyHeader:       pubKey,
 			}),
@@ -97,7 +97,7 @@ func TestBlobberGRPCService_Commit(t *testing.T) {
 		{
 			name: "invalid write_marker",
 			context: metadata.New(map[string]string{
-				common.ClientHeader:          clientId,
+				common.ClientHeader:          clientID,
 				common.ClientSignatureHeader: clientSignature,
 				common.ClientKeyHeader:       pubKey,
 			}),

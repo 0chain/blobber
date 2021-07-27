@@ -31,8 +31,8 @@ type AuthTicket struct {
 	Encrypted       bool             `json:"encrypted"`
 }
 
-func (rm *AuthTicket) GetHashData() string {
-	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.ClientID, rm.OwnerID, rm.FilePathHash, rm.FileName, rm.RefType, rm.ReEncryptionKey, rm.Expiration, rm.Timestamp, rm.ContentHash, rm.Encrypted)
+func (authToken *AuthTicket) GetHashData() string {
+	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v", authToken.AllocationID, authToken.ClientID, authToken.OwnerID, authToken.FilePathHash, authToken.FileName, authToken.RefType, authToken.ReEncryptionKey, authToken.Expiration, authToken.Timestamp, authToken.ContentHash, authToken.Encrypted)
 	return hashData
 }
 
@@ -84,7 +84,7 @@ func (rm *ReadMarker) GetHashData() string {
 	return hashData
 }
 
-type ReadMarkerEntity struct {
+type Entity struct {
 	LatestRM             *ReadMarker    `gorm:"embedded" json:"latest_read_marker,omitempty"`
 	LatestRedeemedRMBlob datatypes.JSON `gorm:"column:latest_redeemed_rm"`
 	RedeemRequired       bool           `gorm:"column:redeem_required"`
@@ -93,13 +93,13 @@ type ReadMarkerEntity struct {
 	datastore.ModelWithTS
 }
 
-func (ReadMarkerEntity) TableName() string {
+func (Entity) TableName() string {
 	return "read_markers"
 }
 
-func GetLatestReadMarkerEntity(ctx context.Context, clientID string) (*ReadMarkerEntity, error) {
+func GetLatestReadMarkerEntity(ctx context.Context, clientID string) (*Entity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
-	rm := &ReadMarkerEntity{}
+	rm := &Entity{}
 	err := db.First(rm, "client_id = ?", clientID).Error
 	if err != nil {
 		return nil, err
@@ -110,7 +110,7 @@ func GetLatestReadMarkerEntity(ctx context.Context, clientID string) (*ReadMarke
 func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, isCreate bool) error {
 	var (
 		db       = datastore.GetStore().GetTransaction(ctx)
-		rmEntity = &ReadMarkerEntity{}
+		rmEntity = &Entity{}
 	)
 
 	rmEntity.LatestRM = rm
@@ -124,7 +124,7 @@ func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, isCreate bool) er
 }
 
 // Sync read marker with 0chain to be sure its correct.
-func (rme *ReadMarkerEntity) Sync(ctx context.Context) (err error) {
+func (rme *Entity) Sync(ctx context.Context) (err error) {
 
 	var db = datastore.GetStore().GetTransaction(ctx)
 
@@ -161,7 +161,7 @@ func (rme *ReadMarkerEntity) Sync(ctx context.Context) (err error) {
 
 // UpdateStatus updates read marker status and all related on successful
 // redeeming.
-func (rme *ReadMarkerEntity) UpdateStatus(ctx context.Context,
+func (rme *Entity) UpdateStatus(ctx context.Context,
 	rps []*allocation.ReadPool, txOutput, redeemTxn string) (err error) {
 
 	var redeems []allocation.ReadPoolRedeem

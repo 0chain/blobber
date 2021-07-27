@@ -28,7 +28,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"github.com/0chain/gosdk/zcncore"
@@ -38,6 +37,7 @@ import (
 	"go.uber.org/zap"
 )
 
+var Logger = logging.Logger
 var startTime time.Time
 var serverChain *chain.Chain
 var filesDir *string
@@ -202,7 +202,7 @@ func setupDatabase() {
 }
 
 func setupOnChain() {
-	const ATTEMPT_DELAY = 60 * 1 // 1 minute
+	const AttemptDelay = 60 * 1 // 1 minute
 
 	// setup wallet
 	if err := handler.WalletRegister(); err != nil {
@@ -219,7 +219,7 @@ func setupOnChain() {
 			break
 		}
 
-		time.Sleep(ATTEMPT_DELAY * time.Second)
+		time.Sleep(AttemptDelay * time.Second)
 	}
 
 	setupWorkers()
@@ -247,9 +247,9 @@ func addOrUpdateOnChain() error {
 }
 
 func addOrUpdateOnChainWorker() {
-	var REPEAT_DELAY = 60 * 60 * time.Duration(viper.GetInt("price_worker_in_hours")) // 12 hours with default settings
+	var RepeatDelay = 60 * 60 * time.Duration(viper.GetInt("price_worker_in_hours")) // 12 hours with default settings
 	for {
-		time.Sleep(REPEAT_DELAY * time.Second)
+		time.Sleep(RepeatDelay * time.Second)
 		if err := addOrUpdateOnChain(); err != nil {
 			continue // pass // required by linting
 		}
@@ -276,10 +276,10 @@ func healthCheckOnChain() error {
 }
 
 func healthCheckOnChainWorker() {
-	const REPEAT_DELAY = 60 * 15 // 15 minutes
+	const RepeatDelay = 60 * 15 // 15 minutes
 
 	for {
-		time.Sleep(REPEAT_DELAY * time.Second)
+		time.Sleep(RepeatDelay * time.Second)
 		if err := healthCheckOnChain(); err != nil {
 			continue // pass // required by linting
 		}
@@ -288,7 +288,7 @@ func healthCheckOnChainWorker() {
 
 func setup(logDir string) error {
 	// init blockchain related stuff
-	zcncore.SetLogFile(logDir + "/0chainBlobber.log", false)
+	zcncore.SetLogFile(logDir+"/0chainBlobber.log", false)
 	zcncore.SetLogLevel(3)
 	if err := zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme); err != nil {
 		return err
