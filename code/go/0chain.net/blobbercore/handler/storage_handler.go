@@ -26,7 +26,10 @@ const (
 
 	DOWNLOAD_CONTENT_FULL  = "full"
 	DOWNLOAD_CONTENT_THUMB = "thumbnail"
-	PAGE_LIMIT             = 10 //TODO make it to exat limit; for eg: 1MB
+	PAGE_LIMIT             = 100 //100 rows will make upto 100 KB
+	UPDATED                = "updated"
+	DELETED                = "deleted"
+	REGULAR                = "regular"
 )
 
 type StorageHandler struct{}
@@ -673,7 +676,9 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	return &refPathResult, nil
 }
 
-func (fsh *StorageHandler) GetPaginatedObjectTree(ctx context.Context, r *http.Request) (*blobberhttp.ObjectTreeResult, error) {
+//Retrieves file refs. One can use three types to refer to regular, updated and deleted. Regular type gives all undeleted rows.
+//Updated gives rows that is updated compared to the date given. And deleted gives deleted refs compared to the date given.
+func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobberhttp.RefResult, error) {
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 
@@ -697,33 +702,67 @@ func (fsh *StorageHandler) GetPaginatedObjectTree(ctx context.Context, r *http.R
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 
-	pageStr := r.FormValue("page")
-	var page int
-	if len(pageStr) == 0 {
-		page = 1
+	pageLimitStr := r.FormValue("pageLimit")
+	var pageLimit int
+	if len(pageLimitStr) == 0 {
+		pageLimit = PAGE_LIMIT
 	} else {
-		o, err := strconv.Atoi(pageStr)
+		o, err := strconv.Atoi(pageLimitStr)
 		if err != nil {
-			return nil, common.NewError("invalid_parameters", "Invalid page value type")
+			return nil, common.NewError("invalid_parameters", "Invalid page limit value type")
 		}
-		if o < 0 {
-			page = 1
+		if o <= 0 {
+			return nil, common.NewError("invalid_parameters", "Zero/Negative page limit value is not allowed")
+		} else if o > PAGE_LIMIT {
+			pageLimit = PAGE_LIMIT
 		} else {
-			page = o
+			pageLimit = o
+		}
+	}
+	offsetPath := r.FormValue("offsetPath")
+	offsetDate := r.FormValue("offsetDate")
+	updatedDate := r.FormValue("updatedDate")
+	err = checkValidDate(offsetDate)
+	if err != nil {
+		return nil, err
+	}
+	err = checkValidDate(updatedDate)
+	if err != nil {
+		return nil, err
+	}
+	fileType := r.FormValue("fileType")
+	levelStr := r.FormValue("level")
+	var level int
+	if len(levelStr) != 0 {
+		level, err = strconv.Atoi(levelStr)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", err.Error())
+		}
+		if level < 0 {
+			return nil, common.NewError("invalid_parameters", "Negative level value is not allowed")
 		}
 	}
 
-	offsetPath := r.FormValue("offsetPath")
-	// pathLevelStr := r.FormValue("pathLevel")
-	// var pathLevel int
-	// if len(pageStr) > 0 {
-	// 	p, err := strconv.Atoi(pathLevelStr)
-	// 	if err != nil || p < 0 {
-	// 		return nil, common.NewError("invalid_parameters", "Invalid level value type")
-	// 	}
-	// }
+	refType := r.FormValue("refType")
+	var refs *[]reference.Ref
+	var totalPages int
+	var newOffsetPath string
+	var newOffsetDate string
 
-	refs, totalPages, newOffsetPath, err := reference.GetPaginatedObjectTree(ctx, allocationID, path, page, offsetPath) // Also return total pages
+	switch {
+	case refType == REGULAR:
+		refs, totalPages, newOffsetPath, err = reference.GetRefs(ctx, allocationID, path, offsetPath, fileType, level, pageLimit)
+
+	case refType == UPDATED:
+		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetUpdatedRefs(ctx, allocationID, path, offsetPath, fileType, updatedDate, offsetDate, level, pageLimit)
+
+	case refType == DELETED:
+		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetDeletedRefs(ctx, allocationID, updatedDate, offsetPath, offsetDate, pageLimit)
+
+	default:
+		return nil, common.NewError("invalid_parameters", "refType param should have value regular/updated/deleted")
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -737,16 +776,16 @@ func (fsh *StorageHandler) GetPaginatedObjectTree(ctx context.Context, r *http.R
 		}
 	}
 
-	var oTreeResult blobberhttp.ObjectTreeResult
-	oTreeResult.Refs = refs
-	oTreeResult.Page = int64(page)
-	oTreeResult.TotalPages = totalPages
-	oTreeResult.NewOffsetPath = newOffsetPath
+	var refResult blobberhttp.RefResult
+	refResult.Refs = refs
+	refResult.TotalPages = totalPages
+	refResult.NewOffsetPath = newOffsetPath
+	refResult.NewOffsetDate = newOffsetDate
 	if latestWM != nil {
-		oTreeResult.LatestWM = &latestWM.WM
+		refResult.LatestWM = &latestWM.WM
 	}
-	// Refs will be returned as it is and object tree will be build in gosdk
-	return &oTreeResult, nil
+	// Refs will be returned as it is and object tree will be build in client side
+	return &refResult, nil
 }
 
 func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (interface{}, error) {
