@@ -375,17 +375,17 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrp
 		Logger.Error("unable to get file stats from fileRef ", zap.Int64("fileRef.id", fileref.ID))
 		return nil, errors.Wrapf(err, "failed to get fileStats from the fileRef")
 	}
-
+	
 	wm, err := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
 	if err != nil {
 		Logger.Error("unable to get write marker from fileRef ", zap.String("fileRef.WriteMarker", fileref.WriteMarker))
 		return nil, errors.Wrapf(err, "failed to get write marker from fileRef ")
 	}
-
+	
 	fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
-
+	
 	var statsMap map[string]interface{}
-
+	
 	statsBytes, err := json.Marshal(fileStats)
 	if err != nil {
 		Logger.Error("unable to marshal fileStats ")
@@ -395,7 +395,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrp
 		Logger.Error("unable to unmarshal into statsMap ")
 		return nil, errors.Wrapf(err, "failed to marshal into statsMap")
 	}
-
+	
 	for k, v := range statsMap {
 		result[k] = v
 	}
