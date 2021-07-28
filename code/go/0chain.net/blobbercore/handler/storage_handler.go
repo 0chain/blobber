@@ -369,6 +369,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, errors.New("failed to get the GetFileStats")
 	}
+
 	wm, err := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
 	if err != nil {
 		return nil, errors.New("failed to get the writemarker")
