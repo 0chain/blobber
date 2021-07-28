@@ -372,16 +372,16 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrp
 	result := fileref.GetListingData(ctx)
 
 	fileStats, err := stats.GetFileStats(ctx, fileref.ID)
-	if err != nil {
-		Logger.Error("unable to get file stats from fileRef ", zap.Int64("fileRef.id", fileref.ID))
-		return nil, errors.Wrapf(err, "failed to get fileStats from the fileRef")
-	}
+	//if err != nil {
+	//	Logger.Error("unable to get file stats from fileRef ", zap.Int64("fileRef.id", fileref.ID))
+	//	return nil, errors.Wrapf(err, "failed to get fileStats from the fileRef")
+	//}
 	
 	wm, err := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
-	if err != nil {
-		Logger.Error("unable to get write marker from fileRef ", zap.String("fileRef.WriteMarker", fileref.WriteMarker))
-		return nil, errors.Wrapf(err, "failed to get write marker from fileRef ")
-	}
+	//if err != nil {
+	//	Logger.Error("unable to get write marker from fileRef ", zap.String("fileRef.WriteMarker", fileref.WriteMarker))
+	//	return nil, errors.Wrapf(err, "failed to get write marker from fileRef ")
+	//}
 	
 	fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
 	
