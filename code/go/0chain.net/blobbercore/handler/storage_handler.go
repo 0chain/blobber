@@ -24,10 +24,8 @@ import (
 )
 
 const (
-	FORM_FILE_PARSE_MAX_MEMORY = 10 * 1024 * 1024
-
-	DOWNLOAD_CONTENT_FULL  = "full"
-	DOWNLOAD_CONTENT_THUMB = "thumbnail"
+	FormFileParseMaxMemory = 10 * 1024 * 1024
+	DownloadContentThumb  = "thumbnail"
 )
 
 type StorageHandler struct{}
@@ -169,7 +167,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, request *blobbergrpc
 		if isAuthorized, err := fsh.verifyAuthTicket(ctx,
 			request.AuthToken, alloc, fileRef, clientID,
 		); !isAuthorized {
-			Logger.Error("Failed to verify the authorisaton ticket")
+			Logger.Error("Failed to verify the authorisation ticket")
 			return nil, errors.Wrap(err, "failed to verify the auth ticket")
 		}
 		delete(result, "path")
@@ -325,56 +323,79 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 	return result, nil
 }
 
-func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
+func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrpc.GetFileStatsRequest) (interface{}, error) {
+	//if r.Method == "GET" {
+	//	return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+	//}
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, errors.Wrap(err, "invalid allocation id in the request")
 	}
 	allocationID := allocationObj.ID
 
-	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	clientSign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+
+	// validate the signature from request
 	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+	if err != nil || !valid {
+		return nil, errors.Wrap(err, "invalid signature passed in request")
 	}
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	if (clientID == "") || (allocationObj.OwnerID != clientID) {
+		return nil, errors.Wrap(errors.New("Invalid Operation"), "operation needs to be performed by allocation's owner")
 	}
 
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+	if request.PathHash == ""{
+		if request.Path == "" {
+			Logger.Error("Invalid request path passed in the request")
+			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
+		}
+		request.PathHash = reference.GetReferenceLookup(allocationID, request.Path)
+	}
 
-	pathHash, err := pathHashFromReq(r, allocationID)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, request.PathHash)
+
 	if err != nil {
-		return nil, err
+		Logger.Error("Invalid file path passed in the request")
+		return nil, errors.Wrapf(err, "invalid file path")
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
-
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-
+	// additional check to ensure the FILE
 	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
+		Logger.Error("Path is not a file")
+		return nil, errors.Wrapf(errors.New("Invalid Parameters"), "path is not a file")
 	}
 
 	result := fileref.GetListingData(ctx)
-	stats, _ := stats.GetFileStats(ctx, fileref.ID)
-	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
-	if wm != nil && stats != nil {
-		stats.WriteMarkerRedeemTxn = wm.CloseTxnID
+	
+	fileStats, err := stats.GetFileStats(ctx, fileref.ID)
+	if err != nil {
+		Logger.Error("unable to get file stats from fileRef ", zap.Int64("fileRef.id", fileref.ID))
+		return nil, errors.Wrapf(err, "failed to get fileStats from the fileRef")
 	}
+
+	wm, err := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
+	if err != nil {
+		Logger.Error("unable to get write marker from fileRef ", zap.String("fileRef.WriteMarker", fileref.WriteMarker))
+		return nil, errors.Wrapf(err, "failed to get write marker from fileRef ")
+	}
+
+	fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
+
 	var statsMap map[string]interface{}
-	statsBytes, _ := json.Marshal(stats)
-	if err = json.Unmarshal(statsBytes, &statsMap); err != nil {
-		return nil, err
+
+	statsBytes, err := json.Marshal(fileStats)
+	if err != nil {
+		Logger.Error("unable to marshal fileStats ")
+		return nil, errors.Wrapf(err, "failed to marshal fileStats")
 	}
+	if err = json.Unmarshal(statsBytes, &statsMap); err != nil {
+		Logger.Error("unable to unmarshal into statsMap ")
+		return nil, errors.Wrapf(err, "failed to marshal into statsMap")
+	}
+
 	for k, v := range statsMap {
 		result[k] = v
 	}

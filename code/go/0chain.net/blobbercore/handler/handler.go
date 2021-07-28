@@ -53,7 +53,7 @@ func SetupHandlers(r *mux.Router) {
 	//object info related apis
 	//r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler))))
 	//r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
-	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
+	//r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
 	r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler))))
 	r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler))))
 	r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
@@ -184,16 +184,16 @@ func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, err
 	return response, nil
 }
 
-func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.GetFileStats(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
-}
+//func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+//	ctx = setupHandlerContext(ctx, r)
+//
+//	response, err := storageHandler.GetFileStats(ctx, r)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return response, nil
+//}
 
 /*DownloadHandler is the handler to respond to download requests from clients*/
 func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
