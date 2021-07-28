@@ -365,11 +365,17 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 
 	result := fileref.GetListingData(ctx)
-	stats, _ := stats.GetFileStats(ctx, fileref.ID)
-	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
-	if wm != nil && stats != nil {
-		stats.WriteMarkerRedeemTxn = wm.CloseTxnID
+	stats, err := stats.GetFileStats(ctx, fileref.ID)
+	if err != nil {
+		return nil, errors.New("failed to get the GetFileStats")
 	}
+	wm, err := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
+	if err != nil {
+		return nil, errors.New("failed to get the writemarker")
+	}
+
+		stats.WriteMarkerRedeemTxn = wm.CloseTxnID
+
 	var statsMap map[string]interface{}
 	statsBytes, _ := json.Marshal(stats)
 	if err = json.Unmarshal(statsBytes, &statsMap); err != nil {
