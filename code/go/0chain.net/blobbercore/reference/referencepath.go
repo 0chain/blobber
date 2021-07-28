@@ -229,8 +229,8 @@ func GetDeletedRefs(ctx context.Context, allocationID, updatedDate, offsetPath, 
 	var pRefs []Ref
 	db := datastore.GetStore().GetDB()
 
-	db1 := db.Session(&gorm.Session{NewDB: true})
-	db2 := db.Session(&gorm.Session{NewDB: true})
+	db1 := db.Session(&gorm.Session{})
+	db2 := db.Session(&gorm.Session{})
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
