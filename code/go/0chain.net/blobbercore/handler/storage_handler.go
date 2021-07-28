@@ -327,7 +327,8 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrp
 	//if r.Method == "GET" {
 	//	return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	//}
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	//allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationTx := request.Allocation
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid allocation id in the request")
@@ -369,7 +370,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrp
 	}
 
 	result := fileref.GetListingData(ctx)
-	
+
 	fileStats, err := stats.GetFileStats(ctx, fileref.ID)
 	if err != nil {
 		Logger.Error("unable to get file stats from fileRef ", zap.Int64("fileRef.id", fileref.ID))
