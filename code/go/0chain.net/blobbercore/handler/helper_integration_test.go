@@ -276,7 +276,7 @@ func (c *TestDataController) AddGetFileStatsTestData(allocationTx, pubKey string
 					log.Println(errRollback)
 				}
 			}
-		}x
+		}
 	}()
 
 	db, err := c.db.DB()
