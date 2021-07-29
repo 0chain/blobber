@@ -30,6 +30,7 @@ jobs:
         continue-on-error: true
       - name: Build test environment and run tests
         run: |
+          sed -i '/#expose_ci_port/c\    ports:\n      - "5432:5432"' ./docker.local/b0docker-compose.yml
           ./docker.local/bin/blobber.init.setup.sh
           docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
           ./docker.local/bin/build.blobber.sh
@@ -52,30 +53,28 @@ jobs:
       - name: Lint
         run: make lint
 
-
-  generated-files-integrity:
-    runs-on: ubuntu-20.04
+  buf-build:
+    runs-on: ubuntu-latest
     steps:
-      - name: Install Go
+      - name: checkout
+        if: success()
+        uses: actions/checkout@v2
+        with:
+          ref: master
+      - name: checkout-master
+        if: success()
+        run: git checkout master
+      - name: checkout
+        if: success()
+        uses: actions/checkout@v2
+      - name: setup
+        if: success()
         uses: actions/setup-go@v2
         with:
           go-version: 1.14.x
-      - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: |
-          cd code/go/0chain.net/blobbercore
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-          go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
-          github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 \
-          google.golang.org/protobuf/cmd/protoc-gen-go \
-          google.golang.org/grpc/cmd/protoc-gen-go-grpc
-          git reset --hard
-      - name: Generate Files
-        run: |
-          ./scripts/generate-grpc.sh
-      - name: Fail if any file has changed
-        run: if output=$(git status --porcelain) && [ -z "$output" ]; then exit 0; else git status; git diff; exit 1; fi;
+      - name: make local
+        if: success()
+        run: make local
 
   dockerize_blobber:
     runs-on: ubuntu-20.04

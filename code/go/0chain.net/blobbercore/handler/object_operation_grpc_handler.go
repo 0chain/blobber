@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
 	"net/http"
 )
@@ -12,7 +12,7 @@ func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, req *bl
 	if err != nil {
 		return nil, err
 	}
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 	r.Form = map[string][]string{
 		"path":          {req.Path},
 		"path_hash":     {req.PathHash},
@@ -33,7 +33,7 @@ func (b *blobberGRPCService) CopyObject(ctx context.Context, req *blobbergrpc.Co
 	if err != nil {
 		return nil, err
 	}
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 	r.Form = map[string][]string{
 		"path":          {req.Path},
 		"path_hash":     {req.PathHash},
@@ -54,7 +54,7 @@ func (b *blobberGRPCService) RenameObject(ctx context.Context, req *blobbergrpc.
 	if err != nil {
 		return nil, err
 	}
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 	r.Form = map[string][]string{
 		"path":          {req.Path},
 		"path_hash":     {req.PathHash},
@@ -76,7 +76,7 @@ func (b *blobberGRPCService) DownloadFile(ctx context.Context, req *blobbergrpc.
 		return nil, err
 	}
 
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 
 	resp, err := DownloadHandler(ctx, r)
 	if err != nil {
@@ -93,7 +93,7 @@ func (b *blobberGRPCService) UploadFile(ctx context.Context, req *blobbergrpc.Up
 		return nil, err
 	}
 
-	httpRequestWithMetaData(r, GetGRPCMetaDataFromCtx(ctx), req.Allocation)
+	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 	r.Form = map[string][]string{
 		"path":          {req.Path},
 		"connection_id": {req.ConnectionId},

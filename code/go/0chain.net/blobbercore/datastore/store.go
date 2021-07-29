@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/errors"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
@@ -39,12 +39,12 @@ func (store *Store) Open() error {
 		config.Configuration.DBUserName, config.Configuration.DBName,
 		config.Configuration.DBPassword)), &gorm.Config{})
 	if err != nil {
-		return errors.DBOpenError
+		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
 	}
 
 	sqldb, err := db.DB()
 	if err != nil {
-		return errors.DBOpenError
+		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
 	}
 
 	sqldb.SetMaxIdleConns(100)

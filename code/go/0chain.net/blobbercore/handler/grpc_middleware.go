@@ -83,7 +83,6 @@ func NewGRPCServerWithMiddlewares(limiter grpc_ratelimit.Limiter, r *mux.Router)
 				wrappedServer.ServeHTTP(w, r)
 				return
 			}
-
 			h.ServeHTTP(w, r)
 		})
 	})

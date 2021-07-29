@@ -17,3 +17,9 @@ func Within(ts int64, seconds int64) bool {
 	now := time.Now().Unix()
 	return now > ts-seconds && now < ts+seconds
 }
+
+//ToTime - converts the common.Timestamp to time.Time
+func ToTime(ts Timestamp) time.Time {
+	return time.Unix(int64(ts), 0)
+}
+

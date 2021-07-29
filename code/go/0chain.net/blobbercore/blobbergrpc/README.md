@@ -1,17 +1,15 @@
 # GRPC Endpoints
 
-## Development
+We are using Buf, which is building a better way to work with Protocol Buffers. Buf supports
+linting & detecting breaking changes for our gRPC protos as well as generating the gRPC stubs.
 
-Modify the '.proto' file in `code/go/0chain.net/blobbercore/blobbergrpc/proto/blobber.proto` and run 
-`scripts/generate-grpc.sh` to add new api's.
-
-GRPC API is implemented in `code/go/0chain.net/blobbercore/handler/grpc_handler.go`.
-
-## Installation
-
-Install the [protoc](https://grpc.io/docs/protoc-installation/) command line interface.
-
+### Pre-Requisites
+- Setup [Buf](https://buf.build) tool on local, run
+```sh
+make deps
 ```
+- Installation of required go-deps for gRPC, run
+```sh
 go install \
 github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
 github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 \
@@ -19,14 +17,13 @@ google.golang.org/protobuf/cmd/protoc-gen-go \
 google.golang.org/grpc/cmd/protoc-gen-go-grpc
 ```
 
-Run this command to install all the GRPC related binaries required to generate GRPC related files using `protoc` CLI.
+## Development
 
-Now you can run the script in `scripts/generate-grpc.sh`.
+- All the protos present in the project can be found by `buf ls-files`.
 
-## Plugins
+- Generation of stubs on local can be done by ` buf generate -o ./code/go/0chain.net/blobbercore/blobbergrpc/` 
 
-* [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway) 
-plugin is being used to expose a REST api for grpc incompatible clients.
+- Buf is also capable of linting the protos according to the best practices of the gRPC `buf lint`
 
 ## Testing
 
@@ -36,12 +33,10 @@ to use docker network ip and not localhost.
 
 Make sure the server is running on `--deployment_mode 0` to use server reflection.
 
-You can use https://github.com/vektra/mockery to generate mocks for tests.
-
 ## Documentation
 
-Basic documentation can be found here - https://grpc.io/docs/languages/go/basics/.
+The basic documentation can be found here - https://grpc.io/docs/languages/go/basics/.
 
-Advanced documentation can be found here - https://github.com/grpc/grpc-go/tree/master/Documentation.
+The advanced documentation can be found here - https://github.com/grpc/grpc-go/tree/master/Documentation.
 
 

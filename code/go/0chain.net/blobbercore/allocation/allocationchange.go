@@ -20,6 +20,7 @@ const (
 	RENAME_OPERATION       = "rename"
 	COPY_OPERATION         = "copy"
 	UPDATE_ATTRS_OPERATION = "update_attrs"
+	CREATEDIR_OPERATION    = "createdir"
 )
 
 const (

@@ -4,13 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"log"
 	"math/rand"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc"
+
 	"google.golang.org/grpc"
 	"gorm.io/driver/postgres"
 
@@ -41,7 +42,7 @@ func randString(n int) string {
 	return sb.String()
 }
 
-func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberClient, *TestDataController) {
+func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClient, *TestDataController) {
 	args := make(map[string]bool)
 	for _, arg := range os.Args {
 		args[arg] = true
@@ -64,7 +65,7 @@ func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberClient, *Tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	bClient := blobbergrpc.NewBlobberClient(conn)
+	bClient := blobbergrpc.NewBlobberServiceClient(conn)
 
 	setupIntegrationTestConfig(t)
 	db, err := gorm.Open(postgres.Open(fmt.Sprintf(
