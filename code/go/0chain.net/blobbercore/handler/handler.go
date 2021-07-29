@@ -54,7 +54,7 @@ func SetupHandlers(r *mux.Router) {
 	//r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler))))
 	//r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
 	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
-	r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler))))
+	//r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler))))
 	r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler))))
 	r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
 	r.HandleFunc("/v1/file/objecttree/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectTreeHandler))))
@@ -207,17 +207,17 @@ func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 	return response, nil
 }
 
-/*ListHandler is the handler to respond to upload requests fro clients*/
-func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.ListEntities(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
-}
+///*ListHandler is the handler to respond to upload requests fro clients*/
+//func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+//	ctx = setupHandlerContext(ctx, r)
+//
+//	response, err := storageHandler.ListEntities(ctx, r)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return response, nil
+//}
 
 /*CommitHandler is the handler to respond to upload requests fro clients*/
 func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {

@@ -68,24 +68,15 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 	return convert.GetFileStatsResponseCreator(resp), nil
 }
 
-func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.ListEntitiesRequest) (*blobbergrpc.ListEntitiesResponse, error) {
-	r, err := http.NewRequest("", "", nil)
+func (b *blobberGRPCService) ListEntities(ctx context.Context, request *blobbergrpc.ListEntitiesRequest) (*blobbergrpc.ListEntitiesResponse, error) {
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+
+	response, err := storageHandler.ListEntities(ctx, request)
 	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":       {req.Path},
-		"path_hash":  {req.PathHash},
-		"auth_token": {req.AuthToken},
+		return nil, errors.Wrap(err, "failed to get list entities")
 	}
 
-	resp, err := ListHandler(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return convert.ListEntitesResponseCreator(resp), nil
+	return convert.ListEntitesResponseCreator(response), nil
 }
 
 func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc.GetObjectPathRequest) (*blobbergrpc.GetObjectPathResponse, error) {
