@@ -48,7 +48,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler))))
 	r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
 	r.HandleFunc("/v1/file/objecttree/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectTreeHandler))))
-	r.HandleFunc("/v1/file/refs/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(RefsHandler))))
+	r.HandleFunc("/v1/file/refs/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(RefsHandler)))).Methods("GET")
 	//admin related
 	r.HandleFunc("/_debug", common.UserRateLimit(common.ToJSONResponse(DumpGoRoutines)))
 	r.HandleFunc("/_config", common.UserRateLimit(common.ToJSONResponse(GetConfig)))
@@ -240,9 +240,6 @@ func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, error
 }
 
 func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "POST" {
-		return nil, common.NewError("invalid method", "Invalid method used. Use GET instead")
-	}
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetRefs(ctx, r)

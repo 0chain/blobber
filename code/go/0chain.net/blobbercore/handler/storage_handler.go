@@ -22,14 +22,11 @@ import (
 )
 
 const (
-	FORM_FILE_PARSE_MAX_MEMORY = 10 * 1024 * 1024
+	FormFileParseMaxMemory = 10 * 1024 * 1024
 
-	DOWNLOAD_CONTENT_FULL  = "full"
-	DOWNLOAD_CONTENT_THUMB = "thumbnail"
-	PAGE_LIMIT             = 100 //100 rows will make upto 100 KB
-	UPDATED                = "updated"
-	DELETED                = "deleted"
-	REGULAR                = "regular"
+	DownloadCcontentFull = "full"
+	DownloadContentThumb = "thumbnail"
+	PageLimit            = 100 //100 rows will make upto 100 KB
 )
 
 type StorageHandler struct{}
@@ -705,7 +702,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	pageLimitStr := r.FormValue("pageLimit")
 	var pageLimit int
 	if len(pageLimitStr) == 0 {
-		pageLimit = PAGE_LIMIT
+		pageLimit = PageLimit
 	} else {
 		o, err := strconv.Atoi(pageLimitStr)
 		if err != nil {
@@ -713,8 +710,8 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		}
 		if o <= 0 {
 			return nil, common.NewError("invalid_parameters", "Zero/Negative page limit value is not allowed")
-		} else if o > PAGE_LIMIT {
-			pageLimit = PAGE_LIMIT
+		} else if o > PageLimit {
+			pageLimit = PageLimit
 		} else {
 			pageLimit = o
 		}
@@ -750,13 +747,13 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	var newOffsetDate string
 
 	switch {
-	case refType == REGULAR:
+	case refType == "regular":
 		refs, totalPages, newOffsetPath, err = reference.GetRefs(ctx, allocationID, path, offsetPath, fileType, level, pageLimit)
 
-	case refType == UPDATED:
+	case refType == "updated":
 		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetUpdatedRefs(ctx, allocationID, path, offsetPath, fileType, updatedDate, offsetDate, level, pageLimit)
 
-	case refType == DELETED:
+	case refType == "deleted":
 		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetDeletedRefs(ctx, allocationID, updatedDate, offsetPath, offsetDate, pageLimit)
 
 	default:

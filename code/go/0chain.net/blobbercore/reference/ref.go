@@ -89,7 +89,7 @@ type Ref struct {
 	CreatedAt      time.Time       `gorm:"column:created_at" dirlist:"created_at" filelist:"created_at" json:"created_at,omitempty"`
 	UpdatedAt      time.Time       `gorm:"column:updated_at" dirlist:"updated_at" filelist:"updated_at" json:"updated_at,omitempty"`
 
-	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at;index" json:"-"` // soft deletion
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"-"` // soft deletion
 }
 
 func (Ref) TableName() string {
