@@ -384,8 +384,9 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 func (fsh *StorageHandler) ListEntities(ctx context.Context, request *blobbergrpc.ListEntitiesRequest) (*blobberhttp.ListResult, error) {
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
+	// todo(kushthedude): generalise the allocation_context in the grpc metadata
+	//allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, true)
 
 	if err != nil {
 		Logger.Error("Invalid allocation id passed")
