@@ -381,49 +381,51 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	return result, nil
 }
 
-func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*blobberhttp.ListResult, error) {
+func (fsh *StorageHandler) ListEntities(ctx context.Context, request *blobbergrpc.ListEntitiesRequest) (*blobberhttp.ListResult, error) {
 
-	if r.Method == "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
-	}
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
 
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		Logger.Error("Invalid allocation id passed")
+		return nil, errors.Wrap(err, "invalid allocation id passed")
 	}
 	allocationID := allocationObj.ID
 
 	if len(clientID) == 0 {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+		Logger.Error("Operation needs to be performed by the owner of the allocation")
+		return nil, errors.Wrap(errors.New("Unauthorised Operation"), "operation needs to be performed by the owner of the allocation")
 	}
 
-	pathHash, err := pathHashFromReq(r, allocationID)
-	if err != nil {
-		return nil, err
-	}
-
-	Logger.Info("Path Hash for list dir :" + pathHash)
-
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
-	}
-	authTokenString := r.FormValue("auth_token")
-	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
-		if err != nil {
-			return nil, err
+	if request.PathHash == ""{
+		if request.Path == "" {
+			Logger.Error("Invalid request path passed in the request")
+			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
 		}
-		if !authTicketVerified {
-			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
+		request.PathHash = reference.GetReferenceLookup(allocationID, request.Path)
+	}
+
+	Logger.Debug("Path Hash for list dir :" + request.PathHash)
+
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, request.PathHash)
+	if err != nil {
+		Logger.Error("Invalid request pathHash passed in the request")
+		return nil, errors.Wrapf(err, "invalid request path has")
+	}
+
+	if clientID != allocationObj.OwnerID || request.AuthToken != "" {
+		authTicketVerified, err := fsh.verifyAuthTicket(ctx, request.AuthToken, allocationObj, fileref, clientID)
+		if err != nil || !authTicketVerified {
+			Logger.Error("Unable to verify authTicket")
+			return nil, errors.Wrapf(errors.New("Unauthorised Operation"), "failed to verify authTicker")
 		}
 	}
 
 	dirref, err := reference.GetRefWithChildren(ctx, allocationID, fileref.Path)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
+		Logger.Error("Invalid fileRef Path passed in the request", zap.String("fileRef", fileref.Path))
+		return nil, errors.Wrapf(err, "invalid fileRef path has")
 	}
 
 	var result blobberhttp.ListResult
