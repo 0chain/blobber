@@ -1,7 +1,7 @@
 module github.com/0chain/blobber
 
 require (
-	github.com/0chain/gosdk v1.2.68-0.20210701180605-719eb403820c
+	github.com/0chain/gosdk v0.0.0
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/didip/tollbooth v4.0.2+incompatible
