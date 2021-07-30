@@ -29,21 +29,11 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 }
 
 func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, request *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {
-	//r, err := http.NewRequest("POST", "", nil)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	//r.Form = map[string][]string{
-	//	"path_hash":  {req.PathHash},
-	//	"path":       {req.Path},
-	//	"auth_token": {req.AuthToken},
-	//}
 	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
 
 	response, err := storageHandler.GetFileMeta(ctx, request)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get FileMetadata")
+		return nil, errors.Wrap(err, "failed to get FileMetadata for request: " + request.String())
 	}
 
 	return convert.GetFileMetaDataResponseCreator(response), nil
@@ -79,23 +69,16 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, request *blobberg
 	return convert.ListEntitesResponseCreator(response), nil
 }
 
-func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc.GetObjectPathRequest) (*blobbergrpc.GetObjectPathResponse, error) {
-	r, err := http.NewRequest("", "", nil)
-	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":      {req.Path},
-		"block_num": {req.BlockNum},
-	}
+func (b *blobberGRPCService) GetObjectPath(ctx context.Context, request *blobbergrpc.GetObjectPathRequest) (*blobbergrpc.GetObjectPathResponse, error) {
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
 
-	resp, err := ObjectPathHandler(ctx, r)
+
+	response, err := storageHandler.GetObjectPath(ctx, request)
 	if err != nil {
 		return nil, err
 	}
 
-	return convert.GetObjectPathResponseCreator(resp), nil
+	return convert.GetObjectPathResponseCreator(response), nil
 }
 
 func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobbergrpc.GetReferencePathRequest) (*blobbergrpc.GetReferencePathResponse, error) {
