@@ -43,6 +43,7 @@ jobs:
         uses: golangci/golangci-lint-action@v2
         with:
           version: latest
+          args: --timeout=2m0s
 
   buf-build:
     runs-on: ubuntu-latest
