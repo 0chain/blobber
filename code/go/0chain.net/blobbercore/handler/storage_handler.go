@@ -538,45 +538,38 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	resCh <- &refPathResult
 }
 
-func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (*blobberhttp.ObjectPathResult, error) {
-	if r.Method == "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
-	}
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+func (fsh *StorageHandler) GetObjectPath(ctx context.Context, request *blobbergrpc.GetObjectPathRequest) (*blobberhttp.ObjectPathResult, error) {
+
+	//todo:kushthedude replace request.Allocation with the ctx stuff
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, false)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, errors.Wrap(err, "invalid allocation id in request")
 	}
 	allocationID := allocationObj.ID
 
 	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(request.Allocation, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+		return nil, errors.Wrap(errors.New("Invalid Parameter"), "invalid signature header in request")
 	}
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-	path := r.FormValue("path")
-	if len(path) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
+		return nil, errors.Wrap(errors.New("Authorisation Error"), "operation needs to be performed by the owner of the allocation")
 	}
 
-	blockNumStr := r.FormValue("block_num")
-	if len(blockNumStr) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
+	if request.Path == "" && request.BlockNum == "" {
+		return nil, errors.Wrap(errors.New("Invalid Parameter"), "invalid path in request")
 	}
 
-	blockNum, err := strconv.ParseInt(blockNumStr, 10, 64)
+	blockNum, err := strconv.ParseInt(request.BlockNum, 10, 64)
 	if err != nil || blockNum < 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid block number")
+		return nil, errors.Wrap(errors.New("Invalid Parameter"), "invalid blockNum in request")
 	}
 
 	objectPath, err := reference.GetObjectPath(ctx, allocationID, blockNum)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to get object path")
 	}
 
 	var latestWM *writemarker.WriteMarkerEntity
@@ -585,7 +578,7 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (
 	} else {
 		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
 		if err != nil {
-			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
+			return nil, errors.Wrap(err, "failed to read latest write marker for allocation")
 		}
 	}
 	var objPathResult blobberhttp.ObjectPathResult
