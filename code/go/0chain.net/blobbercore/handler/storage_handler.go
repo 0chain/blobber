@@ -539,15 +539,16 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 }
 
 func (fsh *StorageHandler) GetObjectPath(ctx context.Context, request *blobbergrpc.GetObjectPathRequest) (*blobberhttp.ObjectPathResult, error) {
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+
+	//todo:kushthedude replace request.Allocation with the ctx stuff
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid allocation id in request")
 	}
 	allocationID := allocationObj.ID
 
 	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(request.Allocation, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, errors.Wrap(errors.New("Invalid Parameter"), "invalid signature header in request")
 	}
@@ -556,6 +557,7 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, request *blobbergr
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
 		return nil, errors.Wrap(errors.New("Authorisation Error"), "operation needs to be performed by the owner of the allocation")
 	}
+
 	if request.Path != "" && request.BlockNum != "" {
 		return nil, errors.Wrap(errors.New("Invalid Parameter"), "invalid path in request")
 	}
