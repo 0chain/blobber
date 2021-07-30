@@ -558,7 +558,7 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, request *blobbergr
 		return nil, errors.Wrap(errors.New("Authorisation Error"), "operation needs to be performed by the owner of the allocation")
 	}
 
-	if request.Path != "" && request.BlockNum != "" {
+	if request.Path == "" && request.BlockNum == "" {
 		return nil, errors.Wrap(errors.New("Invalid Parameter"), "invalid path in request")
 	}
 
