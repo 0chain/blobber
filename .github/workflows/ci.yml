@@ -20,13 +20,9 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.14.x
+          go-version: 1.13.x
       - uses: actions/checkout@v2
-      # In this step, this action saves a list of existing images,
-      # the cache is created without them in the post run.
-      # It also restores the cache if it exists.
       - uses: satackey/action-docker-layer-caching@v0.0.11
-        # Ignore the failure of a step and avoid terminating the job.
         continue-on-error: true
       - name: Build test environment and run tests
         run: |
@@ -38,41 +34,29 @@ jobs:
           ../bin/blobber.start_bls.sh </dev/null &>/dev/null &
           cd ../..
           make integration-tests
-  lint:
-    runs-on: ubuntu-20.04
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
     steps:
-      - name: Install Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.14.x
       - uses: actions/checkout@v2
-      - name: Install golangci-lint
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.38.0
-          golangci-lint --version
-      - name: Lint
-        run: make lint
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
 
   buf-build:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
-        if: success()
-        uses: actions/checkout@v2
+      - name: Check out code
+        uses: actions/checkout@master
         with:
-          ref: master
-      - name: checkout-master
-        if: success()
-        run: git checkout master
-      - name: checkout
-        if: success()
-        uses: actions/checkout@v2
-      - name: setup
+          fetch-depth: 1
+      - name: setup golang
         if: success()
         uses: actions/setup-go@v2
         with:
-          go-version: 1.14.x
-      - name: make local
+          go-version: 1.13.x
+      - name: run buf commands
         if: success()
         run: make local
 
