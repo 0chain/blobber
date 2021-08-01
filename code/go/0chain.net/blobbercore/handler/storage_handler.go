@@ -22,10 +22,11 @@ import (
 )
 
 const (
-	FORM_FILE_PARSE_MAX_MEMORY = 10 * 1024 * 1024
+	FormFileParseMaxMemory = 10 * 1024 * 1024
 
-	DOWNLOAD_CONTENT_FULL  = "full"
-	DOWNLOAD_CONTENT_THUMB = "thumbnail"
+	DownloadCcontentFull = "full"
+	DownloadContentThumb = "thumbnail"
+	PageLimit            = 100 //100 rows will make upto 100 KB
 )
 
 type StorageHandler struct{}
@@ -636,6 +637,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	refPath := &reference.ReferencePath{Ref: rootRef}
 	refsToProcess := make([]*reference.ReferencePath, 0)
 	refsToProcess = append(refsToProcess, refPath)
+
 	for len(refsToProcess) > 0 {
 		refToProcess := refsToProcess[0]
 		refToProcess.Meta = refToProcess.Ref.GetListingData(ctx)
@@ -665,6 +667,118 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 		refPathResult.LatestWM = &latestWM.WM
 	}
 	return &refPathResult, nil
+}
+
+//Retrieves file refs. One can use three types to refer to regular, updated and deleted. Regular type gives all undeleted rows.
+//Updated gives rows that is updated compared to the date given. And deleted gives deleted refs compared to the date given.
+func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobberhttp.RefResult, error) {
+	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	allocationID := allocationObj.ID
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+	path := r.FormValue("path")
+	if len(path) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid path")
+	}
+
+	pageLimitStr := r.FormValue("pageLimit")
+	var pageLimit int
+	if len(pageLimitStr) == 0 {
+		pageLimit = PageLimit
+	} else {
+		o, err := strconv.Atoi(pageLimitStr)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid page limit value type")
+		}
+		if o <= 0 {
+			return nil, common.NewError("invalid_parameters", "Zero/Negative page limit value is not allowed")
+		} else if o > PageLimit {
+			pageLimit = PageLimit
+		} else {
+			pageLimit = o
+		}
+	}
+	offsetPath := r.FormValue("offsetPath")
+	offsetDate := r.FormValue("offsetDate")
+	updatedDate := r.FormValue("updatedDate")
+	err = checkValidDate(offsetDate)
+	if err != nil {
+		return nil, err
+	}
+	err = checkValidDate(updatedDate)
+	if err != nil {
+		return nil, err
+	}
+	fileType := r.FormValue("fileType")
+	levelStr := r.FormValue("level")
+	var level int
+	if len(levelStr) != 0 {
+		level, err = strconv.Atoi(levelStr)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", err.Error())
+		}
+		if level < 0 {
+			return nil, common.NewError("invalid_parameters", "Negative level value is not allowed")
+		}
+	}
+
+	refType := r.FormValue("refType")
+	var refs *[]reference.Ref
+	var totalPages int
+	var newOffsetPath string
+	var newOffsetDate string
+
+	switch {
+	case refType == "regular":
+		refs, totalPages, newOffsetPath, err = reference.GetRefs(ctx, allocationID, path, offsetPath, fileType, level, pageLimit)
+
+	case refType == "updated":
+		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetUpdatedRefs(ctx, allocationID, path, offsetPath, fileType, updatedDate, offsetDate, level, pageLimit)
+
+	case refType == "deleted":
+		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetDeletedRefs(ctx, allocationID, updatedDate, offsetPath, offsetDate, pageLimit)
+
+	default:
+		return nil, common.NewError("invalid_parameters", "refType param should have value regular/updated/deleted")
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	var latestWM *writemarker.WriteMarkerEntity
+	if len(allocationObj.AllocationRoot) == 0 {
+		latestWM = nil
+	} else {
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+		if err != nil {
+			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
+		}
+	}
+
+	var refResult blobberhttp.RefResult
+	refResult.Refs = refs
+	refResult.TotalPages = totalPages
+	refResult.NewOffsetPath = newOffsetPath
+	refResult.NewOffsetDate = newOffsetDate
+	if latestWM != nil {
+		refResult.LatestWM = &latestWM.WM
+	}
+	// Refs will be returned as it is and object tree will be build in client side
+	return &refResult, nil
 }
 
 func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (interface{}, error) {

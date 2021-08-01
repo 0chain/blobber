@@ -34,6 +34,14 @@ type ReferencePathResult struct {
 	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
 }
 
+type RefResult struct {
+	TotalPages    int                      `json:"total_pages"`
+	NewOffsetPath string                   `json:"offsetPath,omitempty"`
+	NewOffsetDate string                   `json:"offsetDate,omitempty"`
+	Refs          *[]reference.Ref         `json:"refs"`
+	LatestWM      *writemarker.WriteMarker `json:"latest_write_marker"`
+}
+
 type ObjectPathResult struct {
 	*reference.ObjectPath
 	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
