@@ -97,22 +97,16 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, request *blob
 	return convert.GetReferencePathResponseCreator(response), nil
 }
 
-func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc.GetObjectTreeRequest) (*blobbergrpc.GetObjectTreeResponse, error) {
-	r, err := http.NewRequest("", "", nil)
+func (b *blobberGRPCService) GetObjectTree(ctx context.Context, request *blobbergrpc.GetObjectTreeRequest) (*blobbergrpc.GetObjectTreeResponse, error) {
+
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+
+	response, err := storageHandler.GetObjectTree(ctx, request)
 	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path": {req.Path},
+		return nil, errors.Wrap(err, "failed to GetObjectTree")
 	}
 
-	resp, err := ObjectTreeHandler(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return convert.GetObjectTreeResponseCreator(resp), nil
+	return convert.GetObjectTreeResponseCreator(response), nil
 }
 
 func (b *blobberGRPCService) CalculateHash(ctx context.Context, req *blobbergrpc.CalculateHashRequest) (*blobbergrpc.CalculateHashResponse, error) {
