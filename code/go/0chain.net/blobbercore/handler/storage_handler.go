@@ -448,8 +448,9 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, request *blobbergrp
 
 func (fsh *StorageHandler) GetReferencePath(ctx context.Context, request *blobbergrpc.GetReferencePathRequest) (*blobberhttp.ReferencePathResult, error) {
 
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	// todo(kushthedude): generalise the allocation_context in the grpc metadata
+	//allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, false)
 	if err != nil {
 		return nil, errors.Wrap(errors.New("Invalid Request"), "Invalid allocation ID passed")
 	}
@@ -457,7 +458,7 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, request *blobbe
 	allocationID := allocationObj.ID
 
 	clientSign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(request.Allocation, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, errors.Wrap(errors.New("Invalid Request"), "Invalid signature passed")
 	}
