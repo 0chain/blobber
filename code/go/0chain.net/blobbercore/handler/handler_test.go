@@ -235,7 +235,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	return router,
 		map[string]string{
 			//opPath:    opName,
-			rpPath:    rpName,
+			//rpPath:    rpName,
 			sPath:     sName,
 			otPath:    otName,
 			collPath:  collName,
