@@ -446,60 +446,36 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, request *blobbergrp
 	return &result, nil
 }
 
-func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResult, error) {
-	resCh := make(chan *blobberhttp.ReferencePathResult)
-	errCh := make(chan error)
-	go fsh.getReferencePath(ctx, r, resCh, errCh)
+func (fsh *StorageHandler) GetReferencePath(ctx context.Context, request *blobbergrpc.GetReferencePathRequest) (*blobberhttp.ReferencePathResult, error) {
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, common.NewError("timeout", "timeout reached")
-		case result := <-resCh:
-			return result, nil
-		case err := <-errCh:
-			return nil, err
-		}
-	}
-}
-
-func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request, resCh chan<- *blobberhttp.ReferencePathResult, errCh chan<- error) {
-	if r.Method == "POST" {
-		errCh <- common.NewError("invalid_method", "Invalid method used. Use GET instead")
-		return
-	}
-
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	// todo(kushthedude): generalise the allocation_context in the grpc metadata
+	//allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, false)
 	if err != nil {
-		errCh <- common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-		return
+		return nil, errors.Wrap(errors.New("Invalid Request"), "Invalid allocation ID passed")
 	}
+
 	allocationID := allocationObj.ID
 
-	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+	clientSign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(request.Allocation, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		errCh <- common.NewError("invalid_signature", "Invalid signature")
-		return
+		return nil, errors.Wrap(errors.New("Invalid Request"), "Invalid signature passed")
 	}
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	if len(clientID) == 0 {
-		errCh <- common.NewError("invalid_operation", "Please pass clientID in the header")
-		return
+	if clientID == "" {
+		return nil, errors.Wrap(errors.New("Invalid Request"), "Invalid client ID passed")
 	}
 
-	paths, err := pathsFromReq(r)
+	paths, err := pathsFromGrpcRequest(request.Paths, request.Path)
 	if err != nil {
-		errCh <- err
-		return
+		return nil, errors.Wrap(err, "failed to get paths from req")
 	}
 
 	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
 	if err != nil {
-		errCh <- err
-		return
+		return nil, errors.Wrap(err, "failed to get reference path from req")
 	}
 
 	refPath := &reference.ReferencePath{Ref: rootRef}
@@ -520,22 +496,23 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	}
 
 	var latestWM *writemarker.WriteMarkerEntity
+
 	if len(allocationObj.AllocationRoot) == 0 {
 		latestWM = nil
 	} else {
 		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
 		if err != nil {
-			errCh <- common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
-			return
+			return nil, errors.Wrap(err, "failed to read latest write marker allocation")
 		}
 	}
+
 	var refPathResult blobberhttp.ReferencePathResult
 	refPathResult.ReferencePath = refPath
 	if latestWM != nil {
 		refPathResult.LatestWM = &latestWM.WM
 	}
 
-	resCh <- &refPathResult
+	return &refPathResult, nil
 }
 
 func (fsh *StorageHandler) GetObjectPath(ctx context.Context, request *blobbergrpc.GetObjectPathRequest) (*blobberhttp.ObjectPathResult, error) {
@@ -725,6 +702,23 @@ func pathsFromReq(r *http.Request) ([]string, error) {
 	}
 
 	return paths, nil
+}
+
+func pathsFromGrpcRequest(paths string, path string) ([]string, error) {
+	pathsArr := make([]string, 0)
+	if paths == "" {
+		if path == "" {
+			return nil, errors.Wrap(errors.New("Invalid Parameters"),
+				"invalid path passed in request")
+		}
+		return append(pathsArr, path), nil
+	}
+
+	if err := json.Unmarshal([]byte(paths), &pathsArr); err != nil {
+		return nil, errors.Wrap(errors.New("Invalid Parameters"),
+			"invalid path passed in request")
+	}
+	return pathsArr, nil
 }
 
 func pathHashFromReq(r *http.Request, allocationID string) (string, error) {

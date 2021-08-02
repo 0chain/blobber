@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
 )
@@ -75,29 +76,25 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, request *blobber
 
 	response, err := storageHandler.GetObjectPath(ctx, request)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to GetObjectPath")
 	}
 
 	return convert.GetObjectPathResponseCreator(response), nil
 }
 
-func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobbergrpc.GetReferencePathRequest) (*blobbergrpc.GetReferencePathResponse, error) {
-	r, err := http.NewRequest("", "", nil)
+func (b *blobberGRPCService) GetReferencePath(ctx context.Context, request *blobbergrpc.GetReferencePathRequest) (*blobbergrpc.GetReferencePathResponse, error) {
+
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
+	defer canceler()
+
+	response, err := storageHandler.GetReferencePath(ctx, request)
+
 	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":  {req.Path},
-		"paths": {req.Paths},
+		return nil, errors.Wrap(err, "failed to GetReferencePath")
 	}
 
-	resp, err := ReferencePathHandler(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return convert.GetReferencePathResponseCreator(resp), nil
+	return convert.GetReferencePathResponseCreator(response), nil
 }
 
 func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc.GetObjectTreeRequest) (*blobbergrpc.GetObjectTreeResponse, error) {
