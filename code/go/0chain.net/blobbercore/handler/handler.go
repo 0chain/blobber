@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 	"runtime/pprof"
-	"time"
+	//"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -56,7 +56,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
 	//r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler))))
 	//r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler))))
-	r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
+	//r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
 	r.HandleFunc("/v1/file/objecttree/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectTreeHandler))))
 
 	//admin related
@@ -231,19 +231,19 @@ func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
-	defer canceler()
-
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.GetReferencePath(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
-}
+//func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+//	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
+//	defer canceler()
+//
+//	ctx = setupHandlerContext(ctx, r)
+//
+//	response, err := storageHandler.GetReferencePath(ctx, r)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return response, nil
+//}
 
 //func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 //	ctx = setupHandlerContext(ctx, r)
