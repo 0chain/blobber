@@ -109,23 +109,16 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, request *blobber
 	return convert.GetObjectTreeResponseCreator(response), nil
 }
 
-func (b *blobberGRPCService) CalculateHash(ctx context.Context, req *blobbergrpc.CalculateHashRequest) (*blobbergrpc.CalculateHashResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
+func (b *blobberGRPCService) CalculateHash(ctx context.Context, request *blobbergrpc.CalculateHashRequest) (*blobbergrpc.CalculateHashResponse, error) {
+
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+
+	response, err := storageHandler.CalculateHash(ctx, request)
 	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":  {req.Path},
-		"paths": {req.Paths},
+		return nil, errors.Wrap(err, "failed to CalculateHash")
 	}
 
-	resp, err := CalculateHashHandler(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return convert.GetCalculateHashResponseCreator(resp), nil
+	return response, nil
 }
 
 func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, req *blobbergrpc.CommitMetaTxnRequest) (*blobbergrpc.CommitMetaTxnResponse, error) {
