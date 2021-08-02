@@ -140,13 +140,6 @@ func CommitWriteResponseCreator(r interface{}) *blobbergrpc.CommitResponse {
 	}
 }
 
-func GetCalculateHashResponseCreator(r interface{}) *blobbergrpc.CalculateHashResponse {
-	httpResp, _ := r.(map[string]interface{})
-	msg, _ := httpResp["msg"].(string)
-
-	return &blobbergrpc.CalculateHashResponse{Message: msg}
-}
-
 func GetCommitMetaTxnResponseCreator(r interface{}) *blobbergrpc.CommitMetaTxnResponse {
 	msg, _ := r.(struct {
 		Msg string `json:"msg"`
