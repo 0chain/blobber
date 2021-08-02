@@ -568,8 +568,9 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, request *blobbergr
 
 func (fsh *StorageHandler) GetObjectTree(ctx context.Context, request *blobbergrpc.GetObjectTreeRequest) (*blobberhttp.ReferencePathResult, error) {
 
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	// todo(kushthedude): generalise the allocation_context in the grpc metadata
+	//allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, false)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to verify allocation")
@@ -578,7 +579,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, request *blobbergr
 	allocationID := allocationObj.ID
 
 	clientSign:= ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(request.Allocation, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, errors.Wrap(errors.New("Authorisation Error"), "failed to verify signature")
 	}
