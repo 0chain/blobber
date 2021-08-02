@@ -566,36 +566,38 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, request *blobbergr
 	return &objPathResult, nil
 }
 
-func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResult, error) {
-	if r.Method == "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
-	}
+func (fsh *StorageHandler) GetObjectTree(ctx context.Context, request *blobbergrpc.GetObjectTreeRequest) (*blobberhttp.ReferencePathResult, error) {
+
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, errors.Wrap(err, "failed to verify allocation")
 	}
+
 	allocationID := allocationObj.ID
 
-	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	clientSign:= ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
 	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+		return nil, errors.Wrap(errors.New("Authorisation Error"), "failed to verify signature")
 	}
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-	path := r.FormValue("path")
-	if len(path) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
+		return nil, errors.Wrap(errors.New("Authorisation Error"),
+			"operation needs to be performed by the owner of the allocation")
 	}
 
-	rootRef, err := reference.GetObjectTree(ctx, allocationID, path)
+	if request.Path == "" {
+		return nil, errors.Wrap(errors.New("Invalid Parameters"),
+			"invalid path passed in request")
+	}
+
+	rootRef, err := reference.GetObjectTree(ctx, allocationID, request.Path)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err,
+			"failed to get object tree from allocation id")
 	}
 
 	refPath := &reference.ReferencePath{Ref: rootRef}
@@ -621,7 +623,8 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	} else {
 		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
 		if err != nil {
-			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
+			return nil, errors.Wrap(err,
+				"failed to read the latest write marker for allocation")
 		}
 	}
 	var refPathResult blobberhttp.ReferencePathResult
