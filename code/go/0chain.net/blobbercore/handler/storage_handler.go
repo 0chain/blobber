@@ -693,27 +693,27 @@ func verifySignatureFromRequest(allocation, sign, pbK string) (bool, error) {
 
 // pathsFromReq retrieves paths value from request which can be represented as single "path" value or "paths" values,
 // marshalled to json.
-func pathsFromReq(r *http.Request) ([]string, error) {
-	var (
-		pathsStr = r.FormValue("paths")
-		path     = r.FormValue("path")
-		paths    = make([]string, 0)
-	)
-
-	if len(pathsStr) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-
-		return append(paths, path), nil
-	}
-
-	if err := json.Unmarshal([]byte(pathsStr), &paths); err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid path array json")
-	}
-
-	return paths, nil
-}
+//func pathsFromReq(r *http.Request) ([]string, error) {
+//	var (
+//		pathsStr = r.FormValue("paths")
+//		path     = r.FormValue("path")
+//		paths    = make([]string, 0)
+//	)
+//
+//	if len(pathsStr) == 0 {
+//		if len(path) == 0 {
+//			return nil, common.NewError("invalid_parameters", "Invalid path")
+//		}
+//
+//		return append(paths, path), nil
+//	}
+//
+//	if err := json.Unmarshal([]byte(pathsStr), &paths); err != nil {
+//		return nil, common.NewError("invalid_parameters", "Invalid path array json")
+//	}
+//
+//	return paths, nil
+//}
 
 func pathsFromGrpcRequest(paths string, path string) ([]string, error) {
 	pathsArr := make([]string, 0)
