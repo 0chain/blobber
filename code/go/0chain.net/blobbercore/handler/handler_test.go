@@ -273,7 +273,6 @@ func GetAuthTicketForEncryptedFile(allocationID string, remotePath string, fileH
 	at.ClientID = clientID
 	at.FileName = remotePath
 	at.FilePathHash = fileHash
-	at.ContentHash = "content_hash"
 	at.RefType = fileref.FILE
 	timestamp := int64(common.Now())
 	at.Expiration = timestamp + 7776000
