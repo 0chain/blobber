@@ -673,10 +673,10 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, request *blobbergr
 			"failed to calculate hash for the rootRef")
 	}
 
-	var result *blobbergrpc.CalculateHashResponse
+	var result blobbergrpc.CalculateHashResponse
 	result.Message = "Hash recalculated for the given paths"
 
-	return result, nil
+	return &result, nil
 }
 
 // verifySignatureFromRequest verifies signature passed as common.ClientSignatureHeader header.
