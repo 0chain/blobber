@@ -192,7 +192,7 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, request *blobbe
 	allocationID := allocationObj.ID
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	if clientID == "" && clientID == allocationObj.OwnerID {
+	if clientID == "" {
 		return nil, errors.Wrap(errors.New("Authorisation Error"),
 			"operation can be performed by owner of allocation")
 	}
