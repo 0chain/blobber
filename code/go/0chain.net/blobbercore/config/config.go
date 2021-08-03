@@ -49,6 +49,7 @@ func SetupConfig(configPath string) {
 	viper.SetEnvKeyReplacer(replacer)
 	viper.AutomaticEnv()
 	viper.SetConfigName("0chain_blobber")
+
 	if configPath == "" {
 		viper.AddConfigPath("./config")
 	} else {

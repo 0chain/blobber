@@ -1,7 +1,9 @@
 #!/bin/bash
 
+set -e
+
 root=$(pwd)
-hostname=`ifconfig | grep "inet " | grep -Fv 127.0.0.1 | grep broadcast | awk '{print $2}'`
+hostname=`ifconfig | grep "inet " | grep -Fv 127.0.0.1 | grep broadcast | awk '{print $2; exit}'`
 
 
 ips=`ifconfig | grep "inet " | grep 198.18.0 | wc -l`
@@ -152,7 +154,7 @@ install_postgres () {
 }
 
 prepareRuntime() {
-    echo "Prepare blobber $i: config,files, data, log .."
+
     cd $root
     [ -d ./data/blobber$i/config ] && rm -rf $root/data/blobber$i/config
     cp -r ../config "./data/blobber$i/"
@@ -170,14 +172,15 @@ prepareRuntime() {
 }
 
 start_blobber () {
-    echo "Building blobber $i ..."
+
+    echo ">>>>>>>>>>>>>> Blobber $i <<<<<<<<<<<<<<<<"
+
+    echo "[1/3] build blobber..."
     cd ../code/go/0chain.net/blobber   
-    go build -v -tags "bn256 development" -gcflags="-N -l" -ldflags "-X 0chain.net/core/build.BuildTag=dev" -o $root/data/blobber$i/blobber .
+    go build -v -tags "bn256 development" -ldflags "-X 0chain.net/core/build.BuildTag=dev" -o $root/data/blobber$i/blobber .
 
+    echo "[2/3] setup runtime..."
     prepareRuntime;
-
-    echo "Starting blobber $i ..."
-
     cd $root
     port="505$i"
     grpc_port="703$i"
@@ -189,20 +192,22 @@ start_blobber () {
     log_dir="./data/blobber$i/log"
     db_dir="./data/blobber$i/data"
 
-    ./data/blobber$i/blobber --port $port --grpc_port $grpc_port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --files_dir $files_dir --log_dir $log_dir --db_dir $db_dir  --minio_file $minio_file --config_dir $config_dir
+    echo "[3/3] run blobber..."
+
+    
+    ./data/blobber$i/blobber --port $port --grpc_port $grpc_port --hostname $hostname --deployment_mode 0 --keys_file $keys_file  --files_dir $files_dir --log_dir $log_dir --db_dir $db_dir  --minio_file $minio_file --config_dir $config_dir
 }
 
 start_validator () {
-    echo "Building validator $i ..."
 
+    echo ">>>>>>>>>>>>>> Validator $i <<<<<<<<<<<<<<<<"
+
+    echo "[1/3] build validator..."
     cd ../code/go/0chain.net/validator   
     go build -v -tags "bn256 development" -gcflags="-N -l" -ldflags "-X 0chain.net/core/build.BuildTag=dev" -o $root/data/blobber$i/validator .
 
-
+    echo "[2/3] setup runtime"
     prepareRuntime;
-
-    echo "Starting validator $i ..."
-
 
     cd $root
     port="506$i"
@@ -211,6 +216,7 @@ start_validator () {
     config_dir="./data/blobber$i/config"
     log_dir="./data/blobber$i/log"
 
+    echo "[3/3] run validator..."
     ./data/blobber$i/validator --port $port -hostname $hostname --deployment_mode 0 --keys_file $keys_file  --log_dir $log_dir --config_dir $config_dir
 }
 
