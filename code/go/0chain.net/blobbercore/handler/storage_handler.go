@@ -180,8 +180,9 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, request *blobbergrpc
 
 func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, request *blobbergrpc.CommitMetaTxnRequest) (*blobbergrpc.CommitMetaTxnResponse, error) {
 
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
+	// todo(kushthedude): generalise the allocation_context in the grpc metadata
+	//allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, true)
 
 	if err != nil {
 		return nil, errors.Wrap(err,
