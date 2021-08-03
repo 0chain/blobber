@@ -48,7 +48,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitHandler))))
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
 	r.HandleFunc("/v1/file/collaborator/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CollaboratorHandler))))
-	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CalculateHashHandler))))
+	//r.HandleFunc("/v1/file/calculatehash/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CalculateHashHandler))))
 
 	//object info related apis
 	//r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler))))
@@ -319,16 +319,16 @@ func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{},
 	return response, nil
 }
 
-func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.CalculateHash(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
-}
+//func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+//	ctx = setupHandlerContext(ctx, r)
+//
+//	response, err := storageHandler.CalculateHash(ctx, r)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return response, nil
+//}
 
 //nolint:gosimple // need more time to verify
 func HandleShutdown(ctx context.Context) {

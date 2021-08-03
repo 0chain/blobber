@@ -636,40 +636,47 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, request *blobbergr
 	return &refPathResult, nil
 }
 
-func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method != "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+func (fsh *StorageHandler) CalculateHash(ctx context.Context, request *blobbergrpc.CalculateHashRequest) (*blobbergrpc.CalculateHashResponse, error) {
+	//if r.Method != "POST" {
+	//	return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+	//}
+	// todo(kushthedude): generalise the allocation_context in the grpc metadata
+	//allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, false)
 
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, errors.Wrap(err,
+			"invalid allocation ID passed in request")
 	}
 	allocationID := allocationObj.ID
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	if clientID == "" || allocationObj.OwnerID != clientID {
+		return nil, errors.Wrap(errors.New("Authorisation Error"),
+			"operation can be performed by owner of the allocation")
 	}
 
-	paths, err := pathsFromReq(r)
+	paths, err := pathsFromGrpcRequest(request.Paths, request.Path)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err,
+			"invalid path passed in request")
 	}
 
 	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err,
+			"failed to get reference path from Paths")
 	}
 
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err,
+			"failed to calculate hash for the rootRef")
 	}
 
-	result := make(map[string]interface{})
-	result["msg"] = "Hash recalculated for the given paths"
-	return result, nil
+	var result blobbergrpc.CalculateHashResponse
+	result.Message = "Hash recalculated for the given paths"
+
+	return &result, nil
 }
 
 // verifySignatureFromRequest verifies signature passed as common.ClientSignatureHeader header.
@@ -686,27 +693,27 @@ func verifySignatureFromRequest(allocation, sign, pbK string) (bool, error) {
 
 // pathsFromReq retrieves paths value from request which can be represented as single "path" value or "paths" values,
 // marshalled to json.
-func pathsFromReq(r *http.Request) ([]string, error) {
-	var (
-		pathsStr = r.FormValue("paths")
-		path     = r.FormValue("path")
-		paths    = make([]string, 0)
-	)
-
-	if len(pathsStr) == 0 {
-		if len(path) == 0 {
-			return nil, common.NewError("invalid_parameters", "Invalid path")
-		}
-
-		return append(paths, path), nil
-	}
-
-	if err := json.Unmarshal([]byte(pathsStr), &paths); err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid path array json")
-	}
-
-	return paths, nil
-}
+//func pathsFromReq(r *http.Request) ([]string, error) {
+//	var (
+//		pathsStr = r.FormValue("paths")
+//		path     = r.FormValue("path")
+//		paths    = make([]string, 0)
+//	)
+//
+//	if len(pathsStr) == 0 {
+//		if len(path) == 0 {
+//			return nil, common.NewError("invalid_parameters", "Invalid path")
+//		}
+//
+//		return append(paths, path), nil
+//	}
+//
+//	if err := json.Unmarshal([]byte(pathsStr), &paths); err != nil {
+//		return nil, common.NewError("invalid_parameters", "Invalid path array json")
+//	}
+//
+//	return paths, nil
+//}
 
 func pathsFromGrpcRequest(paths string, path string) ([]string, error) {
 	pathsArr := make([]string, 0)

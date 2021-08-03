@@ -55,7 +55,6 @@ func TestBlobberGRPCService_CalculateHash(t *testing.T) {
 			if !tc.expectingError {
 				t.Fatal(err)
 			}
-
 			continue
 		}
 
