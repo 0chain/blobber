@@ -178,68 +178,61 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, request *blobbergrpc
 	return result, nil
 }
 
-func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
+func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, request *blobbergrpc.CommitMetaTxnRequest) (*blobbergrpc.CommitMetaTxnResponse, error) {
+
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
 
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, errors.Wrap(err,
+			"invalid allocation id passed in the request")
 	}
+
 	allocationID := allocationObj.ID
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	if len(clientID) == 0 {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	if clientID == "" && clientID == allocationObj.OwnerID {
+		return nil, errors.Wrap(errors.New("Authorisation Error"),
+			"operation can be performed by owner of allocation")
 	}
 
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
-
-	pathHash, err := pathHashFromReq(r, allocationID)
-	if err != nil {
-		return nil, err
-	}
-
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-
-	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
-	}
-
-	authTokenString := r.FormValue("auth_token")
-
-	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
-		if err != nil {
-			return nil, err
+	if request.PathHash == ""{
+		if request.Path == "" {
+			Logger.Error("Invalid request path passed in the request")
+			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
 		}
-		if !authTicketVerified {
-			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
+		request.PathHash = reference.GetReferenceLookup(allocationID, request.Path)
+	}
+
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, request.PathHash)
+	if err != nil && fileref.Type != reference.FILE {
+		return nil, errors.Wrap(errors.New("Invalid Parameters"),
+			"failed to fetch File from file path")
+	}
+
+	if clientID != allocationObj.OwnerID || request.AuthToken == "" {
+		authTicketVerified, err := fsh.verifyAuthTicket(ctx, request.AuthToken, allocationObj, fileref, clientID)
+		if err != nil && !authTicketVerified {
+			return nil, errors.Wrap(errors.New("Authorisation Error"),
+				"failed to verify AuthTicket")
 		}
 	}
 
-	txnID := r.FormValue("txn_id")
-	if len(txnID) == 0 {
-		return nil, common.NewError("invalid_parameter", "TxnID not present in the params")
+	if request.TxnId == "" {
+		return nil, errors.Wrap(errors.New("Parameter Error"),
+			"transaction ID cant be empty")
 	}
 
-	err = reference.AddCommitMetaTxn(ctx, fileref.ID, txnID)
+	err = reference.AddCommitMetaTxn(ctx, fileref.ID, request.TxnId)
 	if err != nil {
-		return nil, common.NewError("add_commit_meta_txn_failed", "Failed to add commitMetaTxn with err :"+err.Error())
+		return nil, errors.Wrap(err,
+			"failed to add commitMetaTxn")
 	}
 
-	result := struct {
-		Msg string `json:"msg"`
-	}{
-		Msg: "Added commitMetaTxn successfully",
-	}
+	var result blobbergrpc.CommitMetaTxnResponse
+	result.Message = "Added commitMetaTxn successfully"
 
-	return result, nil
+	return &result, nil
 }
 
 func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {

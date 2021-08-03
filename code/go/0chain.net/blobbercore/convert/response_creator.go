@@ -140,14 +140,6 @@ func CommitWriteResponseCreator(r interface{}) *blobbergrpc.CommitResponse {
 	}
 }
 
-func GetCommitMetaTxnResponseCreator(r interface{}) *blobbergrpc.CommitMetaTxnResponse {
-	msg, _ := r.(struct {
-		Msg string `json:"msg"`
-	})
-
-	return &blobbergrpc.CommitMetaTxnResponse{Message: msg.Msg}
-}
-
 func CollaboratorResponseCreator(r interface{}) *blobbergrpc.CollaboratorResponse {
 	if r == nil {
 		return nil

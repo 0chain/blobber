@@ -121,25 +121,16 @@ func (b *blobberGRPCService) CalculateHash(ctx context.Context, request *blobber
 	return response, nil
 }
 
-func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, req *blobbergrpc.CommitMetaTxnRequest) (*blobbergrpc.CommitMetaTxnResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
+func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, request *blobbergrpc.CommitMetaTxnRequest) (*blobbergrpc.CommitMetaTxnResponse, error) {
+
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+
+	response, err := storageHandler.AddCommitMetaTxn(ctx, request)
 	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":       {req.Path},
-		"path_hash":  {req.PathHash},
-		"auth_token": {req.AuthToken},
-		"txn_id":     {req.TxnId},
+		return nil, errors.Wrap(err, "failed to CommitMetaTxn")
 	}
 
-	resp, err := CommitMetaTxnHandler(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return convert.GetCommitMetaTxnResponseCreator(resp), nil
+	return response, nil
 }
 
 func (b *blobberGRPCService) Collaborator(ctx context.Context, req *blobbergrpc.CollaboratorRequest) (*blobbergrpc.CollaboratorResponse, error) {
