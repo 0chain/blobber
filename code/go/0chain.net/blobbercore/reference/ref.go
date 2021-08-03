@@ -56,41 +56,42 @@ func (a *Attributes) Validate() (err error) {
 }
 
 type Ref struct {
-	ID                  int64          `gorm:"column:id;primary_key"`
-	Type                string         `gorm:"column:type" dirlist:"type" filelist:"type"`
-	AllocationID        string         `gorm:"column:allocation_id"`
-	LookupHash          string         `gorm:"column:lookup_hash" dirlist:"lookup_hash" filelist:"lookup_hash"`
-	Name                string         `gorm:"column:name" dirlist:"name" filelist:"name"`
-	Path                string         `gorm:"column:path" dirlist:"path" filelist:"path"`
-	Hash                string         `gorm:"column:hash" dirlist:"hash" filelist:"hash"`
-	ChunkSize           int            `gorm:"column:chunk_size" dirlist:"chunk_size" filelist:"chunk_size"`
-	NumBlocks           int64          `gorm:"column:num_of_blocks" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
-	PathHash            string         `gorm:"column:path_hash" dirlist:"path_hash" filelist:"path_hash"`
-	ParentPath          string         `gorm:"column:parent_path"`
-	PathLevel           int            `gorm:"column:level"`
-	CustomMeta          string         `gorm:"column:custom_meta" filelist:"custom_meta"`
-	ContentHash         string         `gorm:"column:content_hash" filelist:"content_hash"`
-	Size                int64          `gorm:"column:size" dirlist:"size" filelist:"size"`
-	MerkleRoot          string         `gorm:"column:merkle_root" filelist:"merkle_root"`
-	ActualFileSize      int64          `gorm:"column:actual_file_size" filelist:"actual_file_size"`
-	ActualFileHash      string         `gorm:"column:actual_file_hash" filelist:"actual_file_hash"`
-	MimeType            string         `gorm:"column:mimetype" filelist:"mimetype"`
-	WriteMarker         string         `gorm:"column:write_marker"`
-	ThumbnailSize       int64          `gorm:"column:thumbnail_size" filelist:"thumbnail_size"`
-	ThumbnailHash       string         `gorm:"column:thumbnail_hash" filelist:"thumbnail_hash"`
-	ActualThumbnailSize int64          `gorm:"column:actual_thumbnail_size" filelist:"actual_thumbnail_size"`
-	ActualThumbnailHash string         `gorm:"column:actual_thumbnail_hash" filelist:"actual_thumbnail_hash"`
-	EncryptedKey        string         `gorm:"column:encrypted_key" filelist:"encrypted_key"`
-	Attributes          datatypes.JSON `gorm:"column:attributes" filelist:"attributes"`
-	Children            []*Ref         `gorm:"-"`
-	childrenLoaded      bool
+	ID                  int64          `gorm:"column:id;primary_key" json:"id,omitempty"`
+	Type                string         `gorm:"column:type" dirlist:"type" filelist:"type" json:"type,omitempty"`
+	AllocationID        string         `gorm:"column:allocation_id" json:"allocation_id,omitempty"`
+	LookupHash          string         `gorm:"column:lookup_hash" dirlist:"lookup_hash" filelist:"lookup_hash" json:"lookup_hash,omitempty"`
+	Name                string         `gorm:"column:name" dirlist:"name" filelist:"name" json:"name,omitempty"`
+	Path                string         `gorm:"column:path" dirlist:"path" filelist:"path" json:"path,omitempty"`
+	Hash                string         `gorm:"column:hash" dirlist:"hash" filelist:"hash" json:"hash,omitempty"`
+	NumBlocks           int64          `gorm:"column:num_of_blocks" dirlist:"num_of_blocks" filelist:"num_of_blocks" json:"num_blocks,omitempty"`
+	PathHash            string         `gorm:"column:path_hash" dirlist:"path_hash" filelist:"path_hash" json:"path_hash,omitempty"`
+	ParentPath          string         `gorm:"column:parent_path" json:"parent_path,omitempty"`
+	PathLevel           int            `gorm:"column:level" json:"level,omitempty"`
+	CustomMeta          string         `gorm:"column:custom_meta" filelist:"custom_meta" json:"custom_meta,omitempty"`
+	ContentHash         string         `gorm:"column:content_hash" filelist:"content_hash" json:"content_hash,omitempty"`
+	Size                int64          `gorm:"column:size" dirlist:"size" filelist:"size" json:"size,omitempty"`
+	MerkleRoot          string         `gorm:"column:merkle_root" filelist:"merkle_root" json:"merkle_root,omitempty"`
+	ActualFileSize      int64          `gorm:"column:actual_file_size" filelist:"actual_file_size" json:"actual_file_size,omitempty"`
+	ActualFileHash      string         `gorm:"column:actual_file_hash" filelist:"actual_file_hash" json:"actual_file_hash,omitempty"`
+	MimeType            string         `gorm:"column:mimetype" filelist:"mimetype" json:"mimetype,omitempty"`
+	WriteMarker         string         `gorm:"column:write_marker" json:"write_marker,omitempty"`
+	ThumbnailSize       int64          `gorm:"column:thumbnail_size" filelist:"thumbnail_size" json:"thumbnail_size,omitempty"`
+	ThumbnailHash       string         `gorm:"column:thumbnail_hash" filelist:"thumbnail_hash" json:"thumbnail_hash,omitempty"`
+	ActualThumbnailSize int64          `gorm:"column:actual_thumbnail_size" filelist:"actual_thumbnail_size" json:"actual_thumbnail_size,omitempty"`
+	ActualThumbnailHash string         `gorm:"column:actual_thumbnail_hash" filelist:"actual_thumbnail_hash" json:"actual_thumbnail_hash,omitempty"`
+	EncryptedKey        string         `gorm:"column:encrypted_key" filelist:"encrypted_key" json:"encrypted_key,omitempty"`
+	Attributes          datatypes.JSON `gorm:"column:attributes" filelist:"attributes" json:"attributes,omitempty"`
+	Children            []*Ref         `gorm:"-" json:"-"`
+	childrenLoaded      bool           `json:"-"`
 
-	OnCloud        bool            `gorm:"column:on_cloud" filelist:"on_cloud"`
-	CommitMetaTxns []CommitMetaTxn `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
-	CreatedAt      time.Time       `gorm:"column:created_at" dirlist:"created_at" filelist:"created_at"`
-	UpdatedAt      time.Time       `gorm:"column:updated_at" dirlist:"updated_at" filelist:"updated_at"`
+	OnCloud        bool            `gorm:"column:on_cloud" filelist:"on_cloud" json:"on_cloud,omitempty"`
+	CommitMetaTxns []CommitMetaTxn `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns" json:"-"`
+	CreatedAt      time.Time       `gorm:"column:created_at" dirlist:"created_at" filelist:"created_at" json:"created_at,omitempty"`
+	UpdatedAt      time.Time       `gorm:"column:updated_at" dirlist:"updated_at" filelist:"updated_at" json:"updated_at,omitempty"`
 
-	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"-"` // soft deletion
+
+	ChunkSize int `gorm:"column:chunk_size" dirlist:"chunk_size" filelist:"chunk_size"`
 }
 
 func (Ref) TableName() string {

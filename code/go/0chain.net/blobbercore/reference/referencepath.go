@@ -2,10 +2,13 @@ package reference
 
 import (
 	"context"
+	"math"
 	"path/filepath"
+	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"gorm.io/gorm"
 )
 
 type ReferencePath struct {
@@ -98,4 +101,179 @@ func GetObjectTree(ctx context.Context, allocationID string, path string) (*Ref,
 		childMap[refs[i].Path] = &refs[i]
 	}
 	return &refs[0], nil
+}
+
+//This function retrieves refrence_objects tables rows with pagination. Check for issue https://github.com/0chain/gosdk/issues/117
+//Might need to consider covering index for efficient search https://blog.crunchydata.com/blog/why-covering-indexes-are-incredibly-helpful
+func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, level, pageLimit int) (refs *[]Ref, totalPages int, newOffsetPath string, err error) {
+	var totalRows int64
+	var pRefs []Ref
+	path = filepath.Clean(path)
+
+	db := datastore.GetStore().GetDB()
+	db1 := db.Session(&gorm.Session{})
+	db2 := db.Session(&gorm.Session{})
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		db1 = db1.Model(&Ref{}).Where("allocation_id = ?", allocationID).
+			Where(db1.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+		if _type != "" {
+			db1 = db1.Where("type = ?", _type)
+		}
+		if level != 0 {
+			db1 = db1.Where("level >= ?", level)
+		}
+		db1 = db1.Count(&totalRows)
+
+		db1 = db1.Where("path > ?", offsetPath)
+
+		db1 = db1.Order("path")
+		err = db1.Limit(pageLimit).Find(&pRefs).Error
+		wg.Done()
+	}()
+
+	go func() {
+		db2 = db2.Model(&Ref{}).Where("allocation_id = ?", allocationID).
+			Where(db2.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+		if _type != "" {
+			db2 = db2.Where("type = ?", _type)
+		}
+		if level != 0 {
+			db2 = db2.Where("level >= ?", level)
+		}
+		db2.Count(&totalRows)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		return
+	}
+
+	refs = &pRefs
+	if len(pRefs) > 0 {
+		newOffsetPath = pRefs[len(pRefs)-1].Path
+
+	}
+	totalPages = int(math.Ceil(float64(totalRows) / float64(pageLimit)))
+	return
+}
+
+//Retrieves updated refs compared to some update_at value. Useful to localCache
+func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, updatedDate, offsetDate string, level, pageLimit int) (refs *[]Ref, totalPages int, newOffsetPath, newOffsetDate string, err error) {
+	var totalRows int64
+	var pRefs []Ref
+	db := datastore.GetStore().GetDB()
+	db1 := db.Session(&gorm.Session{}) //TODO Might need to use transaction from db1/db2 to avoid injection attack
+	db2 := db.Session(&gorm.Session{})
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	go func() {
+		db1 = db1.Model(&Ref{}).Where("allocation_id = ?", allocationID).
+			Where(db1.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+		if _type != "" {
+			db1 = db1.Where("type = ?", _type)
+		}
+		if level != 0 {
+			db1 = db1.Where("level >= ?", level)
+		}
+		if updatedDate != "" {
+			db1 = db1.Where("updated_at > ?", updatedDate)
+		}
+
+		if offsetDate != "" {
+			db1 = db1.Where("(updated_at, path) > (?, ?)", offsetDate, offsetPath)
+		}
+		db1 = db1.Order("updated_at, path")
+		db1 = db1.Limit(pageLimit)
+		err = db1.Find(&pRefs).Error
+		wg.Done()
+	}()
+
+	go func() {
+		db2 = db2.Model(&Ref{}).Where("allocation_id = ?", allocationID).
+			Where(db2.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+		if _type != "" {
+			db2 = db2.Where("type > ?", level)
+		}
+		if level != 0 {
+			db2 = db2.Where("level >= ?", level)
+		}
+		if updatedDate != "" {
+			db2 = db2.Where("updated_at > ?", updatedDate)
+		}
+		db2 = db2.Count(&totalRows)
+		wg.Done()
+	}()
+	wg.Wait()
+	if err != nil {
+		return
+	}
+
+	if len(pRefs) != 0 {
+		lastIdx := len(pRefs) - 1
+		newOffsetDate = pRefs[lastIdx].UpdatedAt.String()
+		newOffsetPath = pRefs[lastIdx].Path
+	}
+	refs = &pRefs
+	totalPages = int(math.Ceil(float64(totalRows) / float64(pageLimit)))
+	return
+}
+
+//Retrieves deleted refs compared to some update_at value. Useful for localCache.
+func GetDeletedRefs(ctx context.Context, allocationID, updatedDate, offsetPath, offsetDate string, pageLimit int) (refs *[]Ref, totalPages int, newOffsetPath, newOffsetDate string, err error) {
+	var totalRows int64
+	var pRefs []Ref
+	db := datastore.GetStore().GetDB()
+
+	db1 := db.Session(&gorm.Session{})
+	db2 := db.Session(&gorm.Session{})
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		db1 = db1.Model(&Ref{}).Unscoped().
+			Select("path", "path_hash", "deleted_at", "updated_at").
+			Where("allocation_id = ?", allocationID)
+
+		if updatedDate == "" {
+			db1 = db1.Where("deleted_at IS NOT null")
+		} else {
+			db1 = db1.Where("deleted_at > ?", updatedDate)
+		}
+
+		if offsetDate != "" {
+			db1 = db1.Where("(updated_at, path) > (?, ?)", offsetDate, offsetPath)
+		}
+
+		err = db1.Order("updated_at, path").Limit(pageLimit).Find(&pRefs).Error
+		wg.Done()
+	}()
+
+	go func() {
+
+		db2 = db2.Model(&Ref{}).Unscoped().Where("allocation_id = ?", allocationID)
+
+		if updatedDate == "" {
+			db2 = db2.Where("deleted_at IS NOT null")
+		} else {
+			db2 = db2.Where("deleted_at > ?", updatedDate)
+		}
+
+		db2 = db2.Count(&totalRows)
+		wg.Done()
+	}()
+	wg.Wait()
+	if len(pRefs) != 0 {
+		lastIdx := len(pRefs) - 1
+		newOffsetDate = pRefs[lastIdx].DeletedAt.Time.String()
+		newOffsetPath = pRefs[lastIdx].Path
+
+	}
+	refs = &pRefs
+	totalPages = int(math.Ceil(float64(totalRows) / float64(pageLimit)))
+	return
 }

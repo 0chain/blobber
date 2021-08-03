@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"sync"
 
-	thrown "github.com/0chain/gosdk/core/common/errors"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/gosdk/zcncore"
 )
 
@@ -61,7 +61,7 @@ func CheckBalance() (float64, error) {
 	wg.Add(1)
 	err := zcncore.GetBalance(statusBar)
 	if err != nil {
-		return 0, thrown.New("check_balance_failed", "Call to GetBalance failed with err: "+err.Error())
+		return 0, common.NewError("check_balance_failed", "Call to GetBalance failed with err: "+err.Error())
 	}
 	wg.Wait()
 	if !statusBar.success {
@@ -81,7 +81,7 @@ func GetBlobbers() ([]*zcncore.Blobber, error) {
 
 	err := zcncore.GetBlobbers(statusBar)
 	if err != nil {
-		return info.Nodes, thrown.New("get_blobbers_failed", "Call to GetBlobbers failed with err: "+err.Error())
+		return info.Nodes, common.NewError("get_blobbers_failed", "Call to GetBlobbers failed with err: "+err.Error())
 	}
 	wg.Wait()
 
@@ -90,7 +90,7 @@ func GetBlobbers() ([]*zcncore.Blobber, error) {
 	}
 
 	if err = json.Unmarshal([]byte(statusBar.info), &info); err != nil {
-		return info.Nodes, thrown.New("get_blobbers_failed", "Decoding response to GetBlobbers failed with err: "+err.Error())
+		return info.Nodes, common.NewError("get_blobbers_failed", "Decoding response to GetBlobbers failed with err: "+err.Error())
 	}
 
 	return info.Nodes, nil
@@ -101,26 +101,26 @@ func CallFaucet() error {
 	statusBar := &ZCNStatus{wg: wg}
 	txn, err := zcncore.NewTransaction(statusBar, 0)
 	if err != nil {
-		return thrown.New("call_faucet_failed", "Failed to create new transaction with err: "+err.Error())
+		return common.NewError("call_faucet_failed", "Failed to create new transaction with err: "+err.Error())
 	}
 	wg.Add(1)
 	err = txn.ExecuteSmartContract(zcncore.FaucetSmartContractAddress, "pour", "Blobber Registration", zcncore.ConvertToValue(0))
 	if err != nil {
-		return thrown.New("call_faucet_failed", "Failed to execute smart contract with err: "+err.Error())
+		return common.NewError("call_faucet_failed", "Failed to execute smart contract with err: "+err.Error())
 	}
 	wg.Wait()
 	if !statusBar.success {
-		return thrown.New("call_faucet_failed", "Failed to execute smart contract with statusBar success failed")
+		return common.NewError("call_faucet_failed", "Failed to execute smart contract with statusBar success failed")
 	}
 	statusBar.success = false
 	wg.Add(1)
 	err = txn.Verify()
 	if err != nil {
-		return thrown.New("call_faucet_failed", "Failed to verify smart contract with err: "+err.Error())
+		return common.NewError("call_faucet_failed", "Failed to verify smart contract with err: "+err.Error())
 	}
 	wg.Wait()
 	if !statusBar.success {
-		return thrown.New("call_faucet_failed", "Failed to verify smart contract with statusBar success failed")
+		return common.NewError("call_faucet_failed", "Failed to verify smart contract with statusBar success failed")
 	}
 	return nil
 }
@@ -130,26 +130,26 @@ func Transfer(token float64, clientID string) error {
 	statusBar := &ZCNStatus{wg: wg}
 	txn, err := zcncore.NewTransaction(statusBar, 0)
 	if err != nil {
-		return thrown.New("call_transfer_failed", "Failed to create new transaction with err: "+err.Error())
+		return common.NewError("call_transfer_failed", "Failed to create new transaction with err: "+err.Error())
 	}
 	wg.Add(1)
 	err = txn.Send(clientID, zcncore.ConvertToValue(token), "Blobber delegate transfer")
 	if err != nil {
-		return thrown.New("call_transfer_failed", "Failed to send tokens with err: "+err.Error())
+		return common.NewError("call_transfer_failed", "Failed to send tokens with err: "+err.Error())
 	}
 	wg.Wait()
 	if !statusBar.success {
-		return thrown.New("call_transfer_failed", "Failed to send tokens with statusBar success failed")
+		return common.NewError("call_transfer_failed", "Failed to send tokens with statusBar success failed")
 	}
 	statusBar.success = false
 	wg.Add(1)
 	err = txn.Verify()
 	if err != nil {
-		return thrown.New("call_transfer_failed", "Failed to verify send transaction with err: "+err.Error())
+		return common.NewError("call_transfer_failed", "Failed to verify send transaction with err: "+err.Error())
 	}
 	wg.Wait()
 	if !statusBar.success {
-		return thrown.New("call_transfer_failed", "Failed to verify send transaction with statusBar success failed")
+		return common.NewError("call_transfer_failed", "Failed to verify send transaction with statusBar success failed")
 	}
 	return nil
 

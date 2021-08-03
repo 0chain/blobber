@@ -208,7 +208,7 @@ func (fsh *StorageHandler) DownloadFile(
 	}
 
 	// get and parse file params
-	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
+	if err = r.ParseMultipartForm(FormFileParseMaxMemory); nil != err {
 		Logger.Info("download_file - request_parse_error", zap.Error(err))
 		return nil, common.NewErrorf("download_file",
 			"request_parse_error: %v", err)
@@ -394,7 +394,7 @@ func (fsh *StorageHandler) DownloadFile(
 		downloadMode = r.FormValue("content")
 		respData     []byte
 	)
-	if len(downloadMode) > 0 && downloadMode == DOWNLOAD_CONTENT_THUMB {
+	if len(downloadMode) > 0 && downloadMode == DownloadContentThumb {
 		var fileData = &filestore.FileInputData{}
 		fileData.Name = fileref.Name
 		fileData.Path = fileref.Path
@@ -561,7 +561,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
+	if err = r.ParseMultipartForm(FormFileParseMaxMemory); nil != err {
 		Logger.Info("Error Parsing the request", zap.Any("error", err))
 		return nil, common.NewError("request_parse_error", err.Error())
 	}
@@ -1123,7 +1123,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	if err := r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); err != nil {
+	if err := r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
 		Logger.Info("Error Parsing the request", zap.Any("error", err))
 		return nil, common.NewError("request_parse_error", err.Error())
 	}

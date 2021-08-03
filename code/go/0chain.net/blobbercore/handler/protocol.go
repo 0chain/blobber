@@ -1,18 +1,18 @@
 package handler
 
 import (
-	"sync"
-	"time"
-	"errors"
 	"context"
 	"encoding/json"
+	"errors"
+	"sync"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 
 	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
