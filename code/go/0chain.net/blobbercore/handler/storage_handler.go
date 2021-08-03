@@ -192,7 +192,7 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, request *blobbe
 	allocationID := allocationObj.ID
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	if clientID == "" {
+	if clientID == "" && clientID == allocationObj.OwnerID {
 		return nil, errors.Wrap(errors.New("Authorisation Error"),
 			"operation can be performed by owner of allocation")
 	}
@@ -211,13 +211,9 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, request *blobbe
 			"failed to fetch File from file path")
 	}
 
-	if clientID != allocationObj.OwnerID || request.AuthToken == "" {
+	if clientID != allocationObj.OwnerID || request.AuthToken != "" {
 		authTicketVerified, err := fsh.verifyAuthTicket(ctx, request.AuthToken, allocationObj, fileref, clientID)
-		if err != nil {
-			return nil, errors.Wrap(errors.New("Authorisation Error"),
-				"failed to verify AuthTicket")
-		}
-		if !authTicketVerified {
+		if err != nil && !authTicketVerified {
 			return nil, errors.Wrap(errors.New("Authorisation Error"),
 				"failed to verify AuthTicket")
 		}
