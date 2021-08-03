@@ -213,7 +213,11 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, request *blobbe
 
 	if clientID != allocationObj.OwnerID || request.AuthToken == "" {
 		authTicketVerified, err := fsh.verifyAuthTicket(ctx, request.AuthToken, allocationObj, fileref, clientID)
-		if err != nil && !authTicketVerified {
+		if err != nil {
+			return nil, errors.Wrap(errors.New("Authorisation Error"),
+				"failed to verify AuthTicket")
+		}
+		if !authTicketVerified {
 			return nil, errors.Wrap(errors.New("Authorisation Error"),
 				"failed to verify AuthTicket")
 		}
