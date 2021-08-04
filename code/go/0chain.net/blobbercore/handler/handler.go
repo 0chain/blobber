@@ -39,7 +39,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/upload/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler))))
 	r.HandleFunc("/v1/file/download/{allocation}", common.UserRateLimit(common.ToByteStream(WithConnection(DownloadHandler))))
 	r.HandleFunc("/v1/file/rename/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(RenameHandler))))
-	r.HandleFunc("/v1/file/copy/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CopyHandler))))
+	//r.HandleFunc("/v1/file/copy/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CopyHandler))))
 	//r.HandleFunc("/v1/file/attributes/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UpdateAttributesHandler))))
 	r.HandleFunc("/v1/dir/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CreateDirHandler)))).Methods("POST")
 	r.HandleFunc("/v1/dir/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CreateDirHandler)))).Methods("DELETE")
@@ -277,15 +277,15 @@ func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-	response, err := storageHandler.CopyObject(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
-}
+//func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+//	ctx = setupHandlerContext(ctx, r)
+//	response, err := storageHandler.CopyObject(ctx, r)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return response, nil
+//}
 
 /*CreateDirHandler is the handler to respond to create dir for allocation*/
 func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error) {

@@ -40,6 +40,13 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	authorisationError = errors.New("Authorisation Error")
+	invalidRequest = errors.New("Invalid Request")
+	invalidParameters = errors.New("Invalid Parameters")
+	immutableAllocation = errors.New("Immutable Allocation")
+)
+
 func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	numBlocks, pendNumBlocks int64, payerID string) (err error) {
 
@@ -455,9 +462,6 @@ func (fsh *StorageHandler) DownloadFile(
 		if err := encscheme.InitForDecryption("filetype:audio", fileref.EncryptedKey); err != nil {
 			return nil, err
 		}
-		if err != nil {
-			return nil, err
-		}
 
 		totalSize := len(respData)
 		result := []byte{}
@@ -702,8 +706,8 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_operation", "Invalid client")
 	}
 
-	new_name := r.FormValue("new_name")
-	if len(new_name) == 0 {
+	newName := r.FormValue("new_name")
+	if len(newName) == 0 {
 		return nil, common.NewError("invalid_parameters", "Invalid name")
 	}
 
@@ -742,7 +746,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	allocationChange.Operation = allocation.RENAME_OPERATION
 	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ConnectionID,
 		AllocationID: connectionObj.AllocationID, Path: objectRef.Path}
-	dfc.NewName = new_name
+	dfc.NewName = newName
 	connectionObj.Size += allocationChange.Size
 	connectionObj.AddChange(allocationChange, dfc)
 
@@ -753,7 +757,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	}
 
 	result := &blobberhttp.UploadResult{}
-	result.Filename = new_name
+	result.Filename = newName
 	result.Hash = objectRef.Hash
 	result.MerkleRoot = objectRef.MerkleRoot
 	result.Size = objectRef.Size
@@ -860,99 +864,110 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 	return &result, nil
 }
 
-func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+func (fsh *StorageHandler) CopyObject(ctx context.Context, request *blobbergrpc.CopyObjectRequest) (*blobbergrpc.CopyObjectResponse, error) {
+
+	clientSign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, false)
+
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, errors.Wrap(err,
+			"invalid allocation ID passed")
 	}
 
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(request.Allocation, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+		return nil, errors.Wrap(invalidRequest,
+			"invalid signature for the request")
 	}
 
 	if allocationObj.IsImmutable {
-		return nil, common.NewError("immutable_allocation", "Cannot copy data in an immutable allocation")
+		return nil, errors.Wrap(immutableAllocation,
+			"failed to copy data in immutable allocation")
 	}
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 
-	allocationID := allocationObj.ID
-
-	if len(clientID) == 0 {
-		return nil, common.NewError("invalid_operation", "Invalid client")
+	if request.Dest == "" || request.ConnectionId == "" || clientID == "" {
+		return nil, errors.Wrap(invalidParameters,
+			"invalid request body passed for the operation")
 	}
 
-	destPath := r.FormValue("dest")
-	if len(destPath) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
+	if request.PathHash == ""{
+		if request.Path == "" {
+			Logger.Error("Invalid request path passed in the request")
+			return nil, errors.Wrapf(invalidParameters,
+				"invalid request path")
+		}
+		request.PathHash = reference.GetReferenceLookup(allocationObj.ID, request.Path)
 	}
 
-	pathHash, err := pathHashFromReq(r, allocationID)
+	if allocationObj.OwnerID != clientID {
+		return nil, errors.Wrap(authorisationError,
+			"operation can be performed by the owner of allocation")
+	}
+
+	connectionObj, err := allocation.GetAllocationChanges(ctx, request.ConnectionId, allocationObj.ID, clientID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err,
+			"failed to read metadata for the connection")
 	}
 
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
-	connectionID := r.FormValue("connection_id")
-	if len(connectionID) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
-	}
-
-	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
-	if err != nil {
-		return nil, common.NewError("meta_error", "Error reading metadata for connection")
-	}
-
-	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
+	mutex := lock.GetMutex(connectionObj.TableName(), request.ConnectionId)
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, request.PathHash)
 
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+		return nil, errors.Wrap(err,
+			"failed to get reference from pathHash")
 	}
-	newPath := filepath.Join(destPath, objectRef.Name)
-	destRef, _ := reference.GetReference(ctx, allocationID, newPath)
-	if destRef != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
+	newPath := filepath.Join(request.Dest, objectRef.Name)
+
+	_, err = reference.GetReference(ctx, allocationObj.ID, newPath)
+	//If any object is present in the path then we would get error as nil,
+	//If there is no object present we would get an error of `Record not found` by gorm
+	//changing the logic here as we should never ever ignore the error.
+	if err == nil {
+		return nil, errors.Wrap(invalidParameters,
+			"object already exists in the passed path")
 	}
 
-	destRef, err = reference.GetReference(ctx, allocationID, destPath)
+	destRef, err := reference.GetReference(ctx, allocationObj.ID, request.Dest)
 	if err != nil || destRef.Type != reference.DIRECTORY {
-		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
+		return nil, errors.Wrap(invalidParameters,
+			"invalid destination directory path provided")
 	}
 
-	allocationChange := &allocation.AllocationChange{}
-	allocationChange.ConnectionID = connectionObj.ConnectionID
-	allocationChange.Size = objectRef.Size
-	allocationChange.Operation = allocation.COPY_OPERATION
-	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ConnectionID,
-		AllocationID: connectionObj.AllocationID, DestPath: destPath}
-	dfc.SrcPath = objectRef.Path
+	allocationChange := &allocation.AllocationChange{
+		ConnectionID: connectionObj.ConnectionID,
+		Size: objectRef.Size,
+		Operation: allocation.COPY_OPERATION,
+	}
+
+	dfc := &allocation.CopyFileChange{
+		ConnectionID: connectionObj.ConnectionID,
+		AllocationID: connectionObj.AllocationID,
+		DestPath: request.Dest,
+		SrcPath: objectRef.Path,
+	}
+
 	connectionObj.Size += allocationChange.Size
 	connectionObj.AddChange(allocationChange, dfc)
 
 	err = connectionObj.Save(ctx)
+
 	if err != nil {
 		Logger.Error("Error in writing the connection meta data", zap.Error(err))
-		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+		return nil, errors.Wrap(err, "failed to write the updated metadata in db")
 	}
 
-	result := &blobberhttp.UploadResult{}
-	result.Filename = objectRef.Name
-	result.Hash = objectRef.Hash
-	result.MerkleRoot = objectRef.MerkleRoot
-	result.Size = objectRef.Size
+	result := &blobbergrpc.CopyObjectResponse{
+		Filename: objectRef.Name,
+		ContentHash: objectRef.Hash,
+		MerkleRoot: objectRef.MerkleRoot,
+		Size: objectRef.Size,
+	}
 
 	return result, nil
 }
