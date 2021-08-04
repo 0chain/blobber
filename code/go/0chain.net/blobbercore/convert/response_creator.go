@@ -162,16 +162,6 @@ func CollaboratorResponseCreator(r interface{}) *blobbergrpc.CollaboratorRespons
 	return &resp
 }
 
-func UpdateObjectAttributesResponseCreator(r interface{}) *blobbergrpc.UpdateObjectAttributesResponse {
-	if r == nil {
-		return nil
-	}
-
-	httpResp, _ := r.(*reference.Attributes)
-
-	return &blobbergrpc.UpdateObjectAttributesResponse{WhoPaysForReads: int64(httpResp.WhoPaysForReads)}
-}
-
 func CopyObjectResponseCreator(r interface{}) *blobbergrpc.CopyObjectResponse {
 	if r == nil {
 		return nil

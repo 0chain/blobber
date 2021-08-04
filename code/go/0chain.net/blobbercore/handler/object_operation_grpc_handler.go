@@ -4,28 +4,31 @@ import (
 	"context"
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
+	"github.com/pkg/errors"
 	"net/http"
 )
 
-func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, req *blobbergrpc.UpdateObjectAttributesRequest) (*blobbergrpc.UpdateObjectAttributesResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
+func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, request *blobbergrpc.UpdateObjectAttributesRequest) (*blobbergrpc.UpdateObjectAttributesResponse, error) {
+	//r, err := http.NewRequest("POST", "", nil)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
+	//r.Form = map[string][]string{
+	//	"path":          {req.Path},
+	//	"path_hash":     {req.PathHash},
+	//	"connection_id": {req.ConnectionId},
+	//	"attributes":    {req.Attributes},
+	//}
+
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+	response, err := storageHandler.UpdateObjectAttributes(ctx, request)
+
 	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":          {req.Path},
-		"path_hash":     {req.PathHash},
-		"connection_id": {req.ConnectionId},
-		"attributes":    {req.Attributes},
+		return nil, errors.Wrap(err, "failed to UpdateObjectAttributes")
 	}
 
-	resp, err := UpdateAttributesHandler(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return convert.UpdateObjectAttributesResponseCreator(resp), nil
+	return response, nil
 }
 
 func (b *blobberGRPCService) CopyObject(ctx context.Context, req *blobbergrpc.CopyObjectRequest) (*blobbergrpc.CopyObjectResponse, error) {
