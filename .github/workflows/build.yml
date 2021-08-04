@@ -1,4 +1,4 @@
-name: BUILD-BLOBBER-VALIDATOR
+name: docker-build
 
 on:
   workflow_dispatch:
