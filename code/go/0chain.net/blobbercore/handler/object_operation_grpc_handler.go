@@ -9,17 +9,6 @@ import (
 )
 
 func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, request *blobbergrpc.UpdateObjectAttributesRequest) (*blobbergrpc.UpdateObjectAttributesResponse, error) {
-	//r, err := http.NewRequest("POST", "", nil)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	//r.Form = map[string][]string{
-	//	"path":          {req.Path},
-	//	"path_hash":     {req.PathHash},
-	//	"connection_id": {req.ConnectionId},
-	//	"attributes":    {req.Attributes},
-	//}
 
 	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
 	response, err := storageHandler.UpdateObjectAttributes(ctx, request)
@@ -31,25 +20,16 @@ func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, request
 	return response, nil
 }
 
-func (b *blobberGRPCService) CopyObject(ctx context.Context, req *blobbergrpc.CopyObjectRequest) (*blobbergrpc.CopyObjectResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
+func (b *blobberGRPCService) CopyObject(ctx context.Context, request *blobbergrpc.CopyObjectRequest) (*blobbergrpc.CopyObjectResponse, error) {
+
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+	response, err := storageHandler.CopyObject(ctx, request)
+
 	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":          {req.Path},
-		"path_hash":     {req.PathHash},
-		"connection_id": {req.ConnectionId},
-		"dest":          {req.Dest},
+		return nil, errors.Wrap(err, "failed to CopyObject")
 	}
 
-	resp, err := CopyHandler(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return convert.CopyObjectResponseCreator(resp), nil
+	return response, nil
 }
 
 func (b *blobberGRPCService) RenameObject(ctx context.Context, req *blobbergrpc.RenameObjectRequest) (*blobbergrpc.RenameObjectResponse, error) {
