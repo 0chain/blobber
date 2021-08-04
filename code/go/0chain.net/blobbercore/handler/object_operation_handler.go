@@ -765,19 +765,20 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 	request *blobbergrpc.UpdateObjectAttributesRequest) (response *blobbergrpc.UpdateObjectAttributesResponse, err error) {
 
 	var (
-		allocTx  = ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+		// todo(kushthedude): generalise the allocation_context in the grpc metadata
+		//allocTx  = request.Allocation
 		clientID = ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 
 		clientSign = ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
 		alloc         *allocation.Allocation
 	)
 
-	if alloc, err = fsh.verifyAllocation(ctx, allocTx, false); err != nil {
+	if alloc, err = fsh.verifyAllocation(ctx, request.Allocation, false); err != nil {
 		return nil, errors.Wrap(err,
 			"failed to verify allocation")
 	}
 
-	valid, err := verifySignatureFromRequest(allocTx, clientSign, alloc.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(request.Allocation, clientSign, alloc.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, errors.Wrap(errors.New("Authorisation Error"),
 			"failed to verify signature from request")
