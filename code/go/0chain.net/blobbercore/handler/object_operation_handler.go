@@ -924,9 +924,9 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, request *blobbergrpc.
 	}
 	newPath := filepath.Join(request.Dest, objectRef.Name)
 	destRef, err := reference.GetReference(ctx, allocationObj.ID, newPath)
-	if destRef != nil || err != nil {
-		return nil, errors.Wrap(err,
-			"invalid destination path passed")
+	if destRef != nil {
+		return nil, errors.Wrap(invalidParameters,
+			"object already exists in the passed path")
 	}
 
 	destRef, err = reference.GetReference(ctx, allocationObj.ID, request.Dest)
