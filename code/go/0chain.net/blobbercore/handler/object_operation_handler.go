@@ -923,13 +923,17 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, request *blobbergrpc.
 			"failed to get reference from pathHash")
 	}
 	newPath := filepath.Join(request.Dest, objectRef.Name)
-	destRef, err := reference.GetReference(ctx, allocationObj.ID, newPath)
-	if destRef != nil {
+
+	_, err = reference.GetReference(ctx, allocationObj.ID, newPath)
+	//If any object is present in the path then we would get error as nil,
+	//If there is no object present we would get an error of `Record not found` by gorm
+	//changing the logic here as we should never ever ignore the error.
+	if err == nil {
 		return nil, errors.Wrap(invalidParameters,
 			"object already exists in the passed path")
 	}
 
-	destRef, err = reference.GetReference(ctx, allocationObj.ID, request.Dest)
+	destRef, err := reference.GetReference(ctx, allocationObj.ID, request.Dest)
 	if err != nil || destRef.Type != reference.DIRECTORY {
 		return nil, errors.Wrap(invalidParameters,
 			"invalid destination directory path provided")
