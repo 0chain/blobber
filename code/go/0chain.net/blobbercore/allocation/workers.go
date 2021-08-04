@@ -2,10 +2,7 @@ package allocation
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
-	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -14,6 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	"github.com/0chain/gosdk/zboxcore/zboxutil"
 
 	"gorm.io/gorm"
 
@@ -297,21 +295,13 @@ func cleanupAllocation(ctx context.Context, a *Allocation) {
 	}
 }
 
-func newConnectionID() string {
-	var nBig, err = rand.Int(rand.Reader, big.NewInt(0xffffffff))
-	if err != nil {
-		panic(err)
-	}
-	return fmt.Sprintf("%d", nBig.Int64())
-}
-
 func deleteInFakeConnection(ctx context.Context, a *Allocation) (err error) {
 	ctx = datastore.GetStore().CreateTransaction(ctx)
 	var tx = datastore.GetStore().GetTransaction(ctx)
 	defer commit(tx, &err)
 
 	var (
-		connID = newConnectionID()
+		connID = zboxutil.NewConnectionId()
 		conn   *AllocationChangeCollector
 	)
 	conn, err = GetAllocationChanges(ctx, connID, a.ID, a.OwnerID)
