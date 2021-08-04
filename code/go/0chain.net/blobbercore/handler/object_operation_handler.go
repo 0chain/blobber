@@ -5,7 +5,8 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
+	"github.com/pkg/errors"
 	"math"
 	"strings"
 
@@ -761,88 +762,73 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 }
 
 func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
-	r *http.Request) (resp interface{}, err error) {
-
-	if r.Method != http.MethodPost {
-		return nil, common.NewError("update_object_attributes",
-			"Invalid method used. Use POST instead")
-	}
+	request *blobbergrpc.UpdateObjectAttributesRequest) (response *blobbergrpc.UpdateObjectAttributesResponse, err error) {
 
 	var (
 		allocTx  = ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 		clientID = ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 
-		alloc *allocation.Allocation
+		clientSign = ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+		alloc         *allocation.Allocation
 	)
 
 	if alloc, err = fsh.verifyAllocation(ctx, allocTx, false); err != nil {
-		return nil, common.NewErrorf("update_object_attributes",
-			"Invalid allocation ID passed: %v", err)
+		return nil, errors.Wrap(err,
+			"failed to verify allocation")
 	}
 
-	valid, err := verifySignatureFromRequest(allocTx, r.Header.Get(common.ClientSignatureHeader), alloc.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocTx, clientSign, alloc.OwnerPublicKey)
 	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+		return nil, errors.Wrap(errors.New("Authorisation Error"),
+			"failed to verify signature from request")
 	}
 
 	if alloc.IsImmutable {
-		return nil, common.NewError("immutable_allocation", "Cannot update data in an immutable allocation")
+		return nil, errors.Wrap(errors.New("Immutable Allocation Error"),
+			"can't update data in an immutable allocation")
 	}
 
-	// runtime type check
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
-
-	if clientID == "" {
-		return nil, common.NewError("update_object_attributes",
-			"missing client ID")
-	}
-
-	var attributes = r.FormValue("attributes") // new attributes as string
-	if attributes == "" {
-		return nil, common.NewError("update_object_attributes",
-			"missing new attributes, pass at least {} for empty attributes")
+	if clientID == "" || request.Attributes == "" || request.ConnectionId == "" {
+		return nil, errors.Wrap(errors.New("Invalid Request"),
+			"client ID or attributed not present in the request header")
 	}
 
 	var attrs = new(reference.Attributes)
-	if err = json.Unmarshal([]byte(attributes), attrs); err != nil {
-		return nil, common.NewErrorf("update_object_attributes",
-			"decoding given attributes: %v", err)
+	if err = json.Unmarshal([]byte(request.Attributes), attrs); err != nil {
+		return nil, errors.Wrap(err,
+			"failed to unmarshal attributes")
 	}
 
-	pathHash, err := pathHashFromReq(r, alloc.ID)
-	if err != nil {
-		return nil, common.NewError("update_object_attributes",
-			"missing path and path_hash")
+	if request.PathHash == ""{
+		if request.Path == "" {
+			Logger.Error("Invalid request path passed in the request")
+			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
+		}
+		request.PathHash = reference.GetReferenceLookup(alloc.ID, request.Path)
 	}
 
 	if alloc.OwnerID != clientID {
-		return nil, common.NewError("update_object_attributes",
+		return nil, errors.Wrap(errors.New("Authorisation Error"),
 			"operation needs to be performed by the owner of the allocation")
 	}
 
-	var connID = r.FormValue("connection_id")
-	if connID == "" {
-		return nil, common.NewErrorf("update_object_attributes",
-			"invalid connection id passed: %s", connID)
-	}
-
 	var conn *allocation.AllocationChangeCollector
-	conn, err = allocation.GetAllocationChanges(ctx, connID, alloc.ID, clientID)
+	conn, err = allocation.GetAllocationChanges(ctx, request.ConnectionId, alloc.ID, clientID)
 	if err != nil {
-		return nil, common.NewErrorf("update_object_attributes",
-			"reading metadata for connection: %v", err)
+		return nil, errors.Wrap(err,
+			"failed to get allocation changes")
 	}
 
-	var mutex = lock.GetMutex(conn.TableName(), connID)
+	var mutex = lock.GetMutex(conn.TableName(), request.ConnectionId)
 
 	mutex.Lock()
 	defer mutex.Unlock()
 
 	var ref *reference.Ref
-	ref, err = reference.GetReferenceFromLookupHash(ctx, alloc.ID, pathHash)
+	ref, err = reference.GetReferenceFromLookupHash(ctx, alloc.ID, request.PathHash)
 	if err != nil {
-		return nil, common.NewErrorf("update_object_attributes",
-			"invalid file path: %v", err)
+		return nil, errors.Wrap(err,
+			"failed to get reference from hash")
 	}
 
 	var change = new(allocation.AllocationChange)
@@ -862,12 +848,15 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 	if err != nil {
 		Logger.Error("update_object_attributes: "+
 			"error in writing the connection meta data", zap.Error(err))
-		return nil, common.NewError("update_object_attributes",
-			"error writing the connection meta data")
+		return nil, errors.Wrap(err,
+			"error in writing the connection meta data")
 	}
 
+	var result blobbergrpc.UpdateObjectAttributesResponse
+	result.WhoPaysForReads = int64(attrs.WhoPaysForReads)
+
 	// return new attributes as result
-	return attrs, nil
+	return &result, nil
 }
 
 func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
