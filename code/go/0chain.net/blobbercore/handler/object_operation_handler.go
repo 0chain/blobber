@@ -182,10 +182,6 @@ func (fsh *StorageHandler) DownloadFile(
 	ctx context.Context,
 	r *http.Request,
 ) (resp interface{}, err error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("download_file",
-			"invalid method used (GET), use POST instead")
-	}
 
 	// get client and allocation ids
 	var (
@@ -319,7 +315,7 @@ func (fsh *StorageHandler) DownloadFile(
 		}
 
 		// we only check content hash if its authticket is referring to a file
-		if authToken.RefType == zfileref.FILE && authToken.ContentHash != fileref.ContentHash {
+		if authToken.RefType == zfileref.FILE && authToken.ActualFileHash != fileref.ActualFileHash {
 			return nil, errors.New("content hash does not match the requested file content hash")
 		}
 
