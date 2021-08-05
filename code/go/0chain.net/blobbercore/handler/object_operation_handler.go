@@ -435,7 +435,9 @@ func (fsh *StorageHandler) DownloadFile(
 		)
 		if err != nil {
 			return nil, errors.New("error during share info lookup in database" + err.Error())
-		} else if shareInfo == nil || shareInfo.Revoked {
+		}
+
+		if shareInfo.Revoked {
 			return nil, errors.New("client does not have permission to download the file. share does not exist")
 		}
 
@@ -448,9 +450,6 @@ func (fsh *StorageHandler) DownloadFile(
 			return nil, err
 		}
 		if err := encscheme.InitForDecryption("filetype:audio", fileref.EncryptedKey); err != nil {
-			return nil, err
-		}
-		if err != nil {
 			return nil, err
 		}
 

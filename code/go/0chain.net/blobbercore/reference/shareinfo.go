@@ -74,9 +74,6 @@ func GetShareInfo(ctx context.Context, clientID string, filePathHash string) (*S
 		}).
 		First(shareInfo).Error
 
-	if err == gorm.ErrRecordNotFound {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, err
 	}
