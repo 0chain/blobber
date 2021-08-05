@@ -160,3 +160,14 @@ func CopyObjectResponseHandler(copyObjectResponse *blobbergrpc.CopyObjectRespons
 		UploadOffset: copyObjectResponse.UploadOffset,
 	}
 }
+
+func RenameObjectResponseHandler(renameObjectResponse *blobbergrpc.RenameObjectResponse) *blobberhttp.UploadResult {
+	return &blobberhttp.UploadResult{
+		Filename:     renameObjectResponse.Filename,
+		Size:         renameObjectResponse.Size,
+		Hash:         renameObjectResponse.ContentHash,
+		MerkleRoot:   renameObjectResponse.MerkleRoot,
+		UploadLength: renameObjectResponse.UploadLength,
+		UploadOffset: renameObjectResponse.UploadOffset,
+	}
+}
