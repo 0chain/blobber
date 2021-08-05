@@ -5,7 +5,6 @@ import (
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
 	"github.com/pkg/errors"
-	"net/http"
 )
 
 func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, request *blobbergrpc.UpdateObjectAttributesRequest) (*blobbergrpc.UpdateObjectAttributesResponse, error) {
@@ -32,25 +31,15 @@ func (b *blobberGRPCService) CopyObject(ctx context.Context, request *blobbergrp
 	return response, nil
 }
 
-func (b *blobberGRPCService) RenameObject(ctx context.Context, req *blobbergrpc.RenameObjectRequest) (*blobbergrpc.RenameObjectResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
-	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":          {req.Path},
-		"path_hash":     {req.PathHash},
-		"connection_id": {req.ConnectionId},
-		"new_name":      {req.NewName},
-	}
+func (b *blobberGRPCService) RenameObject(ctx context.Context, request *blobbergrpc.RenameObjectRequest) (*blobbergrpc.RenameObjectResponse, error) {
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
 
-	resp, err := RenameHandler(ctx, r)
+	response, err := storageHandler.RenameObject(ctx, request)
 	if err != nil {
 		return nil, err
 	}
 
-	return convert.RenameObjectResponseCreator(resp), nil
+	return response, nil
 }
 
 func (b *blobberGRPCService) DownloadFile(ctx context.Context, req *blobbergrpc.DownloadFileRequest) (*blobbergrpc.DownloadFileResponse, error) {

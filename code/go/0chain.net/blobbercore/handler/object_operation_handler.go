@@ -677,90 +677,95 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	return &result, nil
 }
 
-func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (interface{}, error) {
+func (fsh *StorageHandler) RenameObject(ctx context.Context, request *blobbergrpc.RenameObjectRequest) (*blobbergrpc.RenameObjectResponse, error) {
 
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	clientSign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, false)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, errors.Wrap(err,
+			"invalid allocation id passed")
 	}
 
 	if allocationObj.IsImmutable {
-		return nil, common.NewError("immutable_allocation", "Cannot rename data in an immutable allocation")
+		return nil, errors.Wrap(immutableAllocation,
+			"can't rename an immutable allocation")
 	}
 
-	allocationID := allocationObj.ID
-
-	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
-
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(request.Allocation, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+		return nil, errors.Wrap(err,
+			"failed to verify signature for the request")
 	}
 
-	if len(clientID) == 0 {
-		return nil, common.NewError("invalid_operation", "Invalid client")
+	if request.NewName == "" || request.ConnectionId == ""{
+		return nil, errors.Wrap(invalidRequest,
+			"empty parameters passed in the request")
 	}
 
-	newName := r.FormValue("new_name")
-	if len(newName) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid name")
-	}
-
-	pathHash, err := pathHashFromReq(r, allocationID)
-	if err != nil {
-		return nil, err
+	if request.PathHash == ""{
+		if request.Path == "" {
+			Logger.Error("Invalid request path passed in the request")
+			return nil, errors.Wrap(invalidParameters,
+				"invalid request path")
+		}
+		request.PathHash = reference.GetReferenceLookup(allocationObj.ID, request.Path)
 	}
 
 	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+		return nil, errors.Wrap(authorisationError,
+			"operation needs to be performed by the owner of the allocation")
 	}
 
-	connectionID := r.FormValue("connection_id")
-	if len(connectionID) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
-	}
-
-	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	connectionObj, err := allocation.GetAllocationChanges(ctx, request.ConnectionId, allocationObj.ID, clientID)
 	if err != nil {
-		return nil, common.NewError("meta_error", "Error reading metadata for connection")
+		return nil, errors.Wrap(err,
+			"failed to read metadata for the connection")
 	}
 
-	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
+	mutex := lock.GetMutex(connectionObj.TableName(), request.ConnectionId)
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, request.PathHash)
 
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+		return nil, errors.Wrap(err,
+			"invalid file path passed")
 	}
 
-	allocationChange := &allocation.AllocationChange{}
-	allocationChange.ConnectionID = connectionObj.ConnectionID
-	allocationChange.Size = 0
-	allocationChange.Operation = allocation.RENAME_OPERATION
-	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ConnectionID,
-		AllocationID: connectionObj.AllocationID, Path: objectRef.Path}
-	dfc.NewName = newName
+	allocationChange := &allocation.AllocationChange{
+		ConnectionID: connectionObj.ConnectionID,
+		Size: 0,
+		Operation: allocation.RENAME_OPERATION,
+	}
+
+	dfc := &allocation.RenameFileChange{
+		ConnectionID: connectionObj.ConnectionID,
+		AllocationID: connectionObj.AllocationID,
+		Path: objectRef.Path,
+		NewName: request.NewName,
+	}
+
 	connectionObj.Size += allocationChange.Size
 	connectionObj.AddChange(allocationChange, dfc)
 
 	err = connectionObj.Save(ctx)
 	if err != nil {
 		Logger.Error("Error in writing the connection meta data", zap.Error(err))
-		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+		return nil, errors.Wrap(err,
+			"failed to write the connection metadata in db")
 	}
 
-	result := &blobberhttp.UploadResult{}
-	result.Filename = newName
-	result.Hash = objectRef.Hash
-	result.MerkleRoot = objectRef.MerkleRoot
-	result.Size = objectRef.Size
+	result := &blobbergrpc.RenameObjectResponse{
+		Filename:     request.NewName,
+		Size:         objectRef.Size,
+		ContentHash:  objectRef.Hash,
+		MerkleRoot:   objectRef.MerkleRoot,
+		UploadLength: 0,
+		UploadOffset: 0,
+	}
 
 	return result, nil
 }
