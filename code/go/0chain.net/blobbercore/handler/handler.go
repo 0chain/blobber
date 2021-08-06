@@ -453,10 +453,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		ExpiryAt:                  common.ToTime(authTicket.Expiration),
 	}
 
-	existingShare, err := reference.GetShareInfo(ctx, authTicket.ClientID, authTicket.FilePathHash)
-	if err != nil {
-		return nil, err
-	}
+	existingShare, _ := reference.GetShareInfo(ctx, authTicket.ClientID, authTicket.FilePathHash)
 
 	if existingShare != nil {
 		err = reference.UpdateShareInfo(ctx, shareInfo)
