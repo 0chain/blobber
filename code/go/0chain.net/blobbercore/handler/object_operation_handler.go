@@ -423,12 +423,9 @@ func (fsh *StorageHandler) DownloadFile(
 			"couldn't save latest read marker: %v", err)
 	}
 
-	if len(fileref.EncryptedKey) > 0 {
-		if authToken == nil {
-			return nil, errors.New("auth ticket is required to download encrypted file")
-		}
-		// check if client is authorized to download
-		shareInfo, err := reference.GetShareInfo(
+	var shareInfo *reference.ShareInfo
+	if authToken != nil {
+		shareInfo, err = reference.GetShareInfo(
 			ctx,
 			readMarker.ClientID,
 			authToken.FilePathHash,
@@ -439,6 +436,17 @@ func (fsh *StorageHandler) DownloadFile(
 
 		if shareInfo.Revoked {
 			return nil, errors.New("client does not have permission to download the file. share does not exist")
+		}
+	}
+
+	if len(fileref.EncryptedKey) > 0 {
+		if authToken == nil {
+			return nil, errors.New("auth ticket is required to download encrypted file")
+		}
+
+		// should not happen, just in case
+		if shareInfo == nil {
+			return nil, errors.New("error during share info lookup in database, shareInfo is nil")
 		}
 
 		buyerEncryptionPublicKey := shareInfo.ClientEncryptionPublicKey
