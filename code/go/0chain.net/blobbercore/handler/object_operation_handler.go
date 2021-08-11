@@ -430,12 +430,9 @@ func (fsh *StorageHandler) DownloadFile(
 			readMarker.ClientID,
 			authToken.FilePathHash,
 		)
-		if err != nil {
-			return nil, errors.New("error during share info lookup in database" + err.Error())
-		}
 
-		if shareInfo.Revoked {
-			return nil, errors.New("client does not have permission to download the file. share does not exist")
+		if err == nil && shareInfo.Revoked {
+			return nil, errors.New("client does not have permission to download the file. share revoked")
 		}
 	}
 
@@ -446,7 +443,7 @@ func (fsh *StorageHandler) DownloadFile(
 
 		// should not happen, just in case
 		if shareInfo == nil {
-			return nil, errors.New("error during share info lookup in database, shareInfo is nil")
+			return nil, errors.New("client does not have permission to download the file. share does not exist")
 		}
 
 		buyerEncryptionPublicKey := shareInfo.ClientEncryptionPublicKey
