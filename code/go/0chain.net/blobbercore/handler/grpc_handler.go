@@ -5,7 +5,6 @@ import (
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/pkg/errors"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
@@ -133,22 +132,13 @@ func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, request *blobber
 	return response, nil
 }
 
-func (b *blobberGRPCService) Collaborator(ctx context.Context, req *blobbergrpc.CollaboratorRequest) (*blobbergrpc.CollaboratorResponse, error) {
-	r, err := http.NewRequest(strings.ToUpper(req.Method), "", nil)
-	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":      {req.Path},
-		"path_hash": {req.PathHash},
-		"collab_id": {req.CollabId},
-	}
+func (b *blobberGRPCService) Collaborator(ctx context.Context, request *blobbergrpc.CollaboratorRequest) (*blobbergrpc.CollaboratorResponse, error) {
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
 
-	resp, err := CollaboratorHandler(ctx, r)
-	if err != nil {
-		return nil, err
-	}
+	response, err := storageHandler.AddCollaborator(ctx, request)
 
-	return convert.CollaboratorResponseCreator(resp), nil
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to ModifyCollaborators")
+	}
+	return response, nil
 }

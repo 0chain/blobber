@@ -162,38 +162,6 @@ func CollaboratorResponseCreator(r interface{}) *blobbergrpc.CollaboratorRespons
 	return &resp
 }
 
-func CopyObjectResponseCreator(r interface{}) *blobbergrpc.CopyObjectResponse {
-	if r == nil {
-		return nil
-	}
-
-	httpResp, _ := r.(*blobberhttp.UploadResult)
-	return &blobbergrpc.CopyObjectResponse{
-		Filename:     httpResp.Filename,
-		Size:         httpResp.Size,
-		ContentHash:  httpResp.Hash,
-		MerkleRoot:   httpResp.MerkleRoot,
-		UploadLength: httpResp.UploadLength,
-		UploadOffset: httpResp.UploadOffset,
-	}
-}
-
-func RenameObjectResponseCreator(r interface{}) *blobbergrpc.RenameObjectResponse {
-	if r == nil {
-		return nil
-	}
-
-	httpResp, _ := r.(*blobberhttp.UploadResult)
-	return &blobbergrpc.RenameObjectResponse{
-		Filename:     httpResp.Filename,
-		Size:         httpResp.Size,
-		ContentHash:  httpResp.Hash,
-		MerkleRoot:   httpResp.MerkleRoot,
-		UploadLength: httpResp.UploadLength,
-		UploadOffset: httpResp.UploadOffset,
-	}
-}
-
 func DownloadFileResponseCreator(r interface{}) *blobbergrpc.DownloadFileResponse {
 	if r == nil {
 		return nil

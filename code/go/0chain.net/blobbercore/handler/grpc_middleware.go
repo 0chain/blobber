@@ -33,7 +33,7 @@ func unaryDatabaseTransactionInjector() grpc.UnaryServerInterceptor {
 		if err != nil {
 			var rollErr = GetMetaDataStore().GetTransaction(ctx).Rollback().Error
 			if rollErr != nil {
-				logger.Error("couldn't rollback", zap.Error(err))
+				logger.Error("failed to rollback transaction", zap.Error(err))
 			}
 			return nil, err
 		}

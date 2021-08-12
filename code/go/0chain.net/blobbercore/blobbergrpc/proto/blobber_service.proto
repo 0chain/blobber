@@ -113,6 +113,13 @@ service BlobberService {
     option (google.api.http) = {
       post: "/v2/file/collaborator/{allocation}"
       body: "*"
+      additional_bindings: {
+        get: "/v2/file/collaborator/{allocation}"
+      }
+      additional_bindings: {
+        delete: "/v2/file/collaborator/{allocation}"
+        body: "*"
+      }
     };
   }
 }
