@@ -236,87 +236,92 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, request *blobbe
 	return &result, nil
 }
 
-func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
+func (fsh *StorageHandler) AddCollaborator(ctx context.Context, request *blobbergrpc.CollaboratorRequest) (*blobbergrpc.CollaboratorResponse, error) {
+	//allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, true)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, errors.Wrap(err, "invalid allocation id passed")
 	}
 
-	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+	clientSign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(request.Allocation, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+		return nil, errors.Wrap(invalidParameters, "invalid signature passed")
 	}
 
-	allocationID := allocationObj.ID
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 
-	pathHash, err := pathHashFromReq(r, allocationID)
-	if err != nil {
-		return nil, err
+	if request.PathHash == ""{
+		if request.Path == "" {
+			Logger.Error("Invalid request path passed in the request")
+			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
+		}
+		request.PathHash = reference.GetReferenceLookup(allocationObj.ID, request.Path)
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, request.PathHash)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+		return nil, errors.Wrap(err, "invalid file path")
 	}
 
 	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
+		return nil, errors.Wrap(invalidParameters, "path is not a filePath")
 	}
 
-	collabClientID := r.FormValue("collab_id")
-	if len(collabClientID) == 0 {
-		return nil, common.NewError("invalid_parameter", "collab_id not present in the params")
+	if request.CollabId == "" {
+		return nil, errors.Wrap(invalidParameters, "collab_id is missing in request")
 	}
 
-	var result struct {
-		Msg string `json:"msg"`
-	}
+	var response blobbergrpc.CollaboratorResponse
 
-	switch r.Method {
+	switch request.Method {
 	case http.MethodPost:
-		if len(clientID) == 0 || clientID != allocationObj.OwnerID {
-			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+		if clientID == "" || clientID != allocationObj.OwnerID {
+			return nil, errors.Wrap(authorisationError, "operation needs to be performed by owner")
 		}
 
-		if reference.IsACollaborator(ctx, fileref.ID, collabClientID) {
-			result.Msg = "Given client ID is already a collaborator"
-			return result, nil
+		if reference.IsACollaborator(ctx, fileref.ID, request.CollabId) {
+			response.Message = "Given client ID is already a collaborator"
+			return &response, nil
 		}
 
-		err = reference.AddCollaborator(ctx, fileref.ID, collabClientID)
+		err = reference.AddCollaborator(ctx, fileref.ID, request.CollabId)
 		if err != nil {
 			return nil, common.NewError("add_collaborator_failed", "Failed to add collaborator with err :"+err.Error())
 		}
-		result.Msg = "Added collaborator successfully"
+		response.Message = "Added collaborator successfully"
 
 	case http.MethodGet:
 		collaborators, err := reference.GetCollaborators(ctx, fileref.ID)
 		if err != nil {
-			return nil, common.NewError("get_collaborator_failed", "Failed to get collaborators from refID with err:"+err.Error())
+			return nil, errors.Wrap(err, "failed to get the collaborator")
+		}
+		for _, c := range collaborators {
+			response.Collaborators = append(response.Collaborators, &blobbergrpc.Collaborator{
+				RefId:     c.RefID,
+				ClientId:  c.ClientID,
+				CreatedAt: c.CreatedAt.UnixNano(),
+			})
 		}
 
-		return collaborators, nil
+		return &response, nil
 
 	case http.MethodDelete:
-		if len(clientID) == 0 || clientID != allocationObj.OwnerID {
-			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+		if clientID == "" || clientID != allocationObj.OwnerID {
+			return nil, errors.Wrap(authorisationError, "operation needs to be performed by owner")
 		}
 
-		err = reference.RemoveCollaborator(ctx, fileref.ID, collabClientID)
+		err = reference.RemoveCollaborator(ctx, fileref.ID, request.CollabId)
 		if err != nil {
-			return nil, common.NewError("delete_collaborator_failed", "Failed to delete collaborator from refID with err:"+err.Error())
+			return nil, errors.Wrap(err, "failed to delete the collaborator")
 		}
-		result.Msg = "Removed collaborator successfully"
+		response.Message = "Removed collaborator successfully"
 
 	default:
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST/GET/DELETE instead")
+		return nil, errors.Wrap(errors.New("Invalid Method"), "use GET/POST/DELETE only")
 	}
 
-	return result, nil
+	return &response, nil
 }
 
 func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (interface{}, error) {
