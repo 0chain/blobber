@@ -31,10 +31,11 @@ func SetupWorkers(ctx context.Context) {
 	go SubmitProcessedChallenges(ctx) //nolint:errcheck // goroutines
 }
 
-func GetValidationTickets(ctx context.Context, challengeObj *ChallengeEntity) error {
+// LoadValidationTickets load validation tickets for challenge
+func LoadValidationTickets(ctx context.Context, challengeObj *ChallengeEntity) error {
 	mutex := lock.GetMutex(challengeObj.TableName(), challengeObj.ChallengeID)
 	mutex.Lock()
-	err := challengeObj.GetValidationTickets(ctx)
+	err := challengeObj.LoadValidationTickets(ctx)
 	if err != nil {
 		Logger.Error("Error getting the validation tickets", zap.Error(err), zap.String("challenge_id", challengeObj.ChallengeID))
 	}
@@ -179,7 +180,7 @@ func FindChallenges(ctx context.Context) {
 						go func(redeemCtx context.Context, challengeEntity *ChallengeEntity) {
 							redeemCtx = datastore.GetStore().CreateTransaction(redeemCtx)
 							defer redeemCtx.Done()
-							err := GetValidationTickets(redeemCtx, challengeEntity)
+							err := LoadValidationTickets(redeemCtx, challengeEntity)
 							if err != nil {
 								Logger.Error("Getting validation tickets failed", zap.Any("challenge_id", challengeEntity.ChallengeID), zap.Error(err))
 							}

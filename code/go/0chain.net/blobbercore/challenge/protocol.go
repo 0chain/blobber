@@ -67,7 +67,8 @@ func (cr *ChallengeEntity) ErrorChallenge(ctx context.Context, err error) {
 	}
 }
 
-func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
+// LoadValidationTickets load validation tickets
+func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	if len(cr.Validators) == 0 {
 		cr.StatusMessage = "No validators assigned to the challange"
 		if err := cr.Save(ctx); err != nil {
@@ -93,7 +94,6 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 	blockNum := int64(0)
 	if rootRef.NumBlocks > 0 {
 		r := rand.New(rand.NewSource(cr.RandomNumber))
-		//rand.Seed(cr.RandomNumber)
 		blockNum = r.Int63n(rootRef.NumBlocks)
 		blockNum = blockNum + 1
 	} else {
@@ -140,7 +140,6 @@ func (cr *ChallengeEntity) GetValidationTickets(ctx context.Context) error {
 		inputData.Path = objectPath.Meta["path"].(string)
 		inputData.Hash = objectPath.Meta["content_hash"].(string)
 		r := rand.New(rand.NewSource(cr.RandomNumber))
-		//rand.Seed(cr.RandomNumber)
 		blockoffset := r.Intn(1024)
 		blockData, mt, err := filestore.GetFileStore().GetFileBlockForChallenge(cr.AllocationID, inputData, blockoffset)
 
