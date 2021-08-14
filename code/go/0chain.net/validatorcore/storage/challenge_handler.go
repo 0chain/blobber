@@ -86,8 +86,8 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 		validationTicket.Message = err.Error()
 		validationTicket.ValidatorID = node.Self.ID
 		validationTicket.ValidatorKey = node.Self.PublicKey
-cvidl,  ,, ,dl;w   fekeokkkkccccmmmccc,,,ccc...aa;//eee;.//xx9ooeed...c 9okm,m cmmmmcjcmmnmmnnnncnnvvbvhflf.mfkfmfmfjfmmmorfmr
-'lfl,lo'kklvfrp,,f,glfl.,fb  vgz,f,[fl;eflpovvfofkptlorgjjtfogkvy86i8rikgmb,,orlm,th,,kgh lkb,h,n,hnmmmhkmhmkhmj,,nhkbnhkhnmnkbmhkbnmj ngkbi nbiin jmmbm bmjkgbkjb, mmmmmmmmgmgmg,mgmmgmgmgmgmggkgkgkii9œr•≤≤©©≤©µ∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆∆†gnhnthnthngjn,a----ol,,,....................................  n ,lv n n                                              hhnnuubmm,,,]		validationTicket.Timestamp = common.Now()
+		validationTicket.Timestamp = common.Now()
+
 		if err := validationTicket.Sign(); err != nil {
 			return nil, common.NewError("invalid_parameters", err.Error())
 		}
