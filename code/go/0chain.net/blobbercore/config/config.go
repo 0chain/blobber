@@ -131,6 +131,11 @@ type Config struct {
 	ServiceCharge float64 `json:"service_charge"`
 
 	Geolocation GeolocationConfig `mapstructure:"geolocation"`
+
+	// MinSubmit minial submit from miners
+	MinSubmit int
+	// MinConfirmation minial confirmation from sharders
+	MinConfirmation int
 }
 
 /*Configuration of the system */

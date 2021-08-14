@@ -1,6 +1,7 @@
 module github.com/0chain/blobber
 
 require (
+	github.com/0chain/errors v1.0.1
 	github.com/0chain/gosdk v1.2.81
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
@@ -40,3 +41,5 @@ require (
 replace github.com/0chain/gosdk => ../gosdk
 
 go 1.13
+
+replace github.com/0chain/gosdk => ../gosdk

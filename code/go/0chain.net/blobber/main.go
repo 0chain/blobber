@@ -30,6 +30,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/handlers"
@@ -139,6 +140,21 @@ func setupWorkerConfig() {
 	config.Configuration.MaxStake = int64(viper.GetFloat64("max_stake") * 1e10)
 	config.Configuration.NumDelegates = viper.GetInt("num_delegates")
 	config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
+
+	config.Configuration.MinSubmit = viper.GetInt("min_submit")
+	if config.Configuration.MinSubmit < 1 {
+		config.Configuration.MinSubmit = 50
+	} else if config.Configuration.MinSubmit > 100 {
+		config.Configuration.MinSubmit = 100
+	}
+	config.Configuration.MinConfirmation = viper.GetInt("min_confirmation")
+	if config.Configuration.MinConfirmation < 1 {
+		config.Configuration.MinConfirmation = 50
+	} else if config.Configuration.MinConfirmation > 100 {
+		config.Configuration.MinConfirmation = 100
+	}
+
+	transaction.MinConfirmation = config.Configuration.MinConfirmation
 }
 
 func setupMinioConfig(reader io.Reader) error {
