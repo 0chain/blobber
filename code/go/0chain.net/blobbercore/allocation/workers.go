@@ -178,8 +178,7 @@ func requestAllocation(allocID string) (
 		transaction.STORAGE_CONTRACT_ADDRESS,
 		"/allocation",
 		map[string]string{"allocation": allocID},
-		chain.GetServerChain(),
-		nil)
+		chain.GetServerChain())
 	if err != nil {
 		return
 	}

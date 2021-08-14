@@ -143,9 +143,9 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		msgList := make([]string, 0, len(errs))
 
 		for _, msg := range errs {
-			msgList = append(msgList, msg)
+			msgList = append(msgList, msg.Error())
 		}
-		return errors.Throw(ErrTooLessConfirmation, msgList...)
+		return nil, errors.Throw(ErrTooLessConfirmation, msgList...)
 	}
 
 	return resMaxCounterBody, nil
