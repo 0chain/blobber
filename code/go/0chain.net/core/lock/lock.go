@@ -8,9 +8,10 @@ import (
 var (
 	// MutexCleanInterval start to clean unsed mutex at specified interval
 	MutexCleanInterval = 10 * time.Minute
+)
 
+var (
 	lockPool  = make(map[string]*Mutex)
-	counters  = make(map[string]int)
 	lockMutex sync.Mutex
 )
 
