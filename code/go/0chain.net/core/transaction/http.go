@@ -79,8 +79,21 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		if err != nil {
 			break
 		}
-
 		selectedSharders = append(selectedSharders, network.Sharders[n])
+	}
+
+	urls := make([]string, 0, len(network.Sharders))
+
+	q := url.Values{}
+	for k, v := range params {
+		q.Add(k, v)
+	}
+
+	for _, sharder := range selectedSharders {
+
+		u := fmt.Sprintf("%v/%v%v%v", sharder, SC_REST_API_URL, scAddress, relativePath)
+
+		urls = append(urls, u+"?"+q.Encode())
 	}
 
 	transport := &http.Transport{
@@ -144,20 +157,6 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		resty.WithTimeout(resty.DefaultRequestTimeout),
 		resty.WithRetry(resty.DefaultRetry),
 		resty.WithHeader(header))
-
-	urls := make([]string, 0, len(network.Sharders))
-
-	q := url.Values{}
-	for k, v := range params {
-		q.Add(k, v)
-	}
-
-	for _, sharder := range network.Sharders {
-
-		u := fmt.Sprintf("%v/%v%v%v", sharder, SC_REST_API_URL, scAddress, relativePath)
-
-		urls = append(urls, u+"?"+q.Encode())
-	}
 
 	for {
 		r.DoGet(context.TODO(), urls...)
