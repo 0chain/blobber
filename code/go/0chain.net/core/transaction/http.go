@@ -83,7 +83,12 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		selectedSharders = append(selectedSharders, network.Sharders[n])
 	}
 
-	numSuccess := 0
+	transport := &http.Transport{
+		Dial: (&net.Dialer{
+			Timeout: resty.DefaultDialTimeout,
+		}).Dial,
+		TLSHandshakeTimeout: resty.DefaultDialTimeout,
+	}
 
 	header := map[string]string{
 		"Content-Type":                "application/json; charset=utf-8",
@@ -92,13 +97,6 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 
 	//leave first item for ErrTooLessConfirmation
 	var msgList = make([]string, 1, numSharders)
-
-	transport := &http.Transport{
-		Dial: (&net.Dialer{
-			Timeout: resty.DefaultDialTimeout,
-		}).Dial,
-		TLSHandshakeTimeout: resty.DefaultDialTimeout,
-	}
 
 	r := resty.New(transport, func(req *http.Request, resp *http.Response, cancelFunc context.CancelFunc, err error) error {
 
@@ -166,7 +164,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 
 		r.Wait()
 
-		if numSuccess >= minNumConfirmation {
+		if hashMaxCounter >= minNumConfirmation {
 			break
 		}
 
@@ -183,9 +181,9 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 
 	}
 
-	if numSuccess < minNumConfirmation {
+	if hashMaxCounter < minNumConfirmation {
 
-		msgList[0] = fmt.Sprintf("min_confirmation is %v%%, but got %v/%v sharders", MinConfirmation, numSuccess, numSharders)
+		msgList[0] = fmt.Sprintf("min_confirmation is %v%%, but got %v/%v sharders", MinConfirmation, hashMaxCounter, numSharders)
 
 		return nil, errors.Throw(ErrTooLessConfirmation, msgList...)
 	}
