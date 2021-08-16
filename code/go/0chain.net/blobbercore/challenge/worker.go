@@ -201,7 +201,7 @@ func FindChallenges(ctx context.Context) {
 
 				var blobberChallenges BCChallengeResponse
 				blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
-				retBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain(), nil)
+				retBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain())
 
 				if err != nil {
 					Logger.Error("Error getting the open challenges from the blockchain", zap.Error(err))

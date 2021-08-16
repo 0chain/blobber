@@ -35,7 +35,7 @@ func RedeemReadMarker(ctx context.Context, rmEntity *ReadMarkerEntity) (
 
 	latestRMBytes, err = transaction.MakeSCRestAPICall(
 		transaction.STORAGE_CONTRACT_ADDRESS, "/latestreadmarker", params,
-		chain.GetServerChain(), nil)
+		chain.GetServerChain())
 
 	if err != nil {
 		Logger.Error("Error from sc rest api call", zap.Error(err))

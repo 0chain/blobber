@@ -196,7 +196,7 @@ func RequestReadPools(clientID, allocationID string) (
 			"allocation_id": allocationID,
 			"blobber_id":    blobberID,
 		},
-		chain.GetServerChain(), nil)
+		chain.GetServerChain())
 	if err != nil {
 		return nil, fmt.Errorf("requesting read pools stat: %v", err)
 	}
@@ -245,7 +245,7 @@ func RequestWritePools(clientID, allocationID string) (
 			"allocation_id": allocationID,
 			"blobber_id":    blobberID,
 		},
-		chain.GetServerChain(), nil)
+		chain.GetServerChain())
 	if err != nil {
 		return nil, fmt.Errorf("requesting write pools stat: %v", err)
 	}

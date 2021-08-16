@@ -94,7 +94,6 @@ func getStorageNode() (*transaction.StorageNode, error) {
 
 // Add or update blobber on blockchain
 func BlobberAdd(ctx context.Context) (string, error) {
-	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	// initialize storage node (ie blobber)
 	txn, err := transaction.NewTransactionEntity()
@@ -153,7 +152,6 @@ func BlobberHealthCheck(ctx context.Context) (string, error) {
 }
 
 func TransactionVerify(txnHash string) (t *transaction.Transaction, err error) {
-	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	for i := 0; i < util.MAX_RETRIES; i++ {
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
@@ -162,7 +160,7 @@ func TransactionVerify(txnHash string) (t *transaction.Transaction, err error) {
 		}
 	}
 
-	return
+	return nil, errors.New("[txn]max retries exceeded with " + txnHash)
 }
 
 func WalletRegister() error {

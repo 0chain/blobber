@@ -64,7 +64,7 @@ const (
 )
 
 type GeolocationConfig struct {
-	Latitude float64 `mapstructure:"latitude"`
+	Latitude  float64 `mapstructure:"latitude"`
 	Longitude float64 `mapstructure:"longitude"`
 }
 
@@ -125,6 +125,11 @@ type Config struct {
 	ServiceCharge float64 `json:"service_charge"`
 
 	Geolocation GeolocationConfig `mapstructure:"geolocation"`
+
+	// MinSubmit minial submit from miners
+	MinSubmit int
+	// MinConfirmation minial confirmation from sharders
+	MinConfirmation int
 }
 
 /*Configuration of the system */
@@ -145,7 +150,7 @@ func Geolocation() GeolocationConfig {
 	g := Configuration.Geolocation
 	if g.Latitude > 90.00 || g.Latitude < -90.00 ||
 		g.Longitude > 180.00 || g.Longitude < -180.00 {
-			panic("Fatal error in config file")
+		panic("Fatal error in config file")
 
 	}
 	return g
