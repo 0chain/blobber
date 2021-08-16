@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
+	"math"
+	"strconv"
 
 	"fmt"
 	"io"
@@ -17,6 +19,7 @@ import (
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/core/resty"
+	"github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/zcncore"
 
 	"go.uber.org/zap"
@@ -63,6 +66,33 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		return nil, ErrNoAvailableSharder
 	}
 
+	minNumConfirmation := int(math.Ceil(float64(MinConfirmation*numSharders) / 100))
+
+	rand := util.NewRand(numSharders)
+
+	selectedSharders := make([]string, 0, minNumConfirmation+1)
+
+	// random pick minNumConfirmation+1 first
+	for i := 0; i <= minNumConfirmation; i++ {
+		n, err := rand.Next()
+
+		if err != nil {
+			break
+		}
+
+		selectedSharders = append(selectedSharders, network.Sharders[n])
+	}
+
+	numSuccess := 0
+
+	header := map[string]string{
+		"Content-Type":                "application/json; charset=utf-8",
+		"Access-Control-Allow-Origin": "*",
+	}
+
+	//leave first item for ErrTooLessConfirmation
+	var msgList = make([]string, 1, numSharders)
+
 	transport := &http.Transport{
 		Dial: (&net.Dialer{
 			Timeout: resty.DefaultDialTimeout,
@@ -72,15 +102,20 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 
 	r := resty.New(transport, func(req *http.Request, resp *http.Response, cancelFunc context.CancelFunc, err error) error {
 
-		if err != nil {
-			return errors.Throw(ErrBadRequest, err.Error())
+		if err != nil { //network issue
+			msgList = append(msgList, err.Error())
+			return err
 		}
+
+		url := req.URL.String()
 
 		if resp.StatusCode != http.StatusOK {
 			resBody, _ := ioutil.ReadAll(resp.Body)
 			resp.Body.Close()
 
 			Logger.Error("[sharder]"+resp.Status, zap.String("url", req.URL.String()), zap.String("response", string(resBody)))
+
+			msgList = append(msgList, url+": ["+strconv.Itoa(resp.StatusCode)+"] "+string(resBody))
 
 			return errors.Throw(ErrBadRequest, req.URL.String()+" "+resp.Status)
 
@@ -93,7 +128,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 
 		if err != nil {
 			Logger.Error("[sharder]"+resp.Status, zap.String("url", req.URL.String()), zap.String("response", string(resBody)))
-
+			msgList = append(msgList, url+": "+err.Error())
 			return errors.Throw(ErrBadRequest, req.URL.String()+" "+err.Error())
 
 		}
@@ -106,18 +141,11 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			resMaxCounterBody = resBody
 		}
 
-		consensus := int(float64(hashMaxCounter) / float64(numSharders) * 100)
-
-		// It is confirmed, and cancel other requests for performance
-		if consensus > 0 && consensus >= MinConfirmation {
-			cancelFunc()
-			return nil
-		}
-
 		return nil
 	},
 		resty.WithTimeout(resty.DefaultRequestTimeout),
-		resty.WithRetry(resty.DefaultRetry))
+		resty.WithRetry(resty.DefaultRetry),
+		resty.WithHeader(header))
 
 	urls := make([]string, 0, len(network.Sharders))
 
@@ -133,18 +161,32 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		urls = append(urls, u+"?"+q.Encode())
 	}
 
-	r.DoGet(context.Background(), urls...)
+	for {
+		r.DoGet(context.TODO(), urls...)
 
-	errs := r.Wait()
+		r.Wait()
 
-	consensus := int(float64(hashMaxCounter) / float64(numSharders) * 100)
-
-	if consensus < MinConfirmation {
-		msgList := make([]string, 0, len(errs))
-
-		for _, msg := range errs {
-			msgList = append(msgList, msg.Error())
+		if numSuccess >= minNumConfirmation {
+			break
 		}
+
+		// pick more one sharder to query transaction
+		n, err := rand.Next()
+
+		if errors.Is(err, util.ErrNoItem) {
+			break
+		}
+
+		urls = []string{
+			fmt.Sprintf("%v/%v%v%v", network.Sharders[n], SC_REST_API_URL, scAddress, relativePath) + "?" + q.Encode(),
+		}
+
+	}
+
+	if numSuccess < minNumConfirmation {
+
+		msgList[0] = fmt.Sprintf("min_confirmation is %v%%, but got %v/%v sharders", MinConfirmation, numSuccess, numSharders)
+
 		return nil, errors.Throw(ErrTooLessConfirmation, msgList...)
 	}
 
