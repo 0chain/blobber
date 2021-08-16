@@ -50,8 +50,7 @@ func (MockFileBlockGetter) GetFileBlock(
 	allocationID string,
 	fileData *filestore.FileInputData,
 	blockNum int64,
-	numBlocks int64,
-) ([]byte, error) {
+	numBlocks int64, chunkSize int) ([]byte, error) {
 	return []byte(mockFileBlock), nil
 }
 
@@ -68,7 +67,7 @@ var encscheme zencryption.EncryptionScheme
 func setupEncryptionScheme() {
 	encscheme = zencryption.NewEncryptionScheme()
 	mnemonic := client.GetClient().Mnemonic
-	if err := encscheme.Initialize(mnemonic); err != nil {
+	if _, err := encscheme.Initialize(mnemonic); err != nil {
 		panic("initialize encscheme")
 	}
 	encscheme.InitForEncryption("filetype:audio")
