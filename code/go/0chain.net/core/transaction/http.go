@@ -65,9 +65,9 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 
 	transport := &http.Transport{
 		Dial: (&net.Dialer{
-			Timeout: DefaultDialTimeout,
+			Timeout: resty.DefaultDialTimeout,
 		}).Dial,
-		TLSHandshakeTimeout: DefaultDialTimeout,
+		TLSHandshakeTimeout: resty.DefaultDialTimeout,
 	}
 
 	r := resty.New(transport, func(req *http.Request, resp *http.Response, cancelFunc context.CancelFunc, err error) error {
@@ -116,8 +116,8 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 
 		return nil
 	},
-		resty.WithTimeout(DefaultRequestTimeout),
-		resty.WithRetry(DefaultRetry))
+		resty.WithTimeout(resty.DefaultRequestTimeout),
+		resty.WithRetry(resty.DefaultRetry))
 
 	urls := make([]string, 0, len(network.Sharders))
 
