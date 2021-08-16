@@ -6,15 +6,21 @@ import (
 )
 
 var (
-	lockPool   = make(map[string]*Mutex)
-	unlockPool = make(map[string]time.Time)
-	lockMutex  sync.Mutex
+	// MutexCleanInterval start to clean unsed mutex at specified interval
+	MutexCleanInterval = 10 * time.Minute
+
+	lockPool  = make(map[string]*Mutex)
+	counters  = make(map[string]int)
+	lockMutex sync.Mutex
 )
 
 // Mutex a mutual exclusion lock.
 type Mutex struct {
 	// key lock key in pool
 	key string
+	// usedby how objects it is used by
+	usedby int
+
 	sync.Mutex
 }
 
@@ -28,43 +34,49 @@ func (m *Mutex) Unlock() {
 	lockMutex.Lock()
 	defer lockMutex.Unlock()
 
+	m.usedby--
 	m.Mutex.Unlock()
-	//mark it as unlock object, it will be deleted in clean worker
-	unlockPool[m.key] = time.Now()
 }
 
 // GetMutex get mutex by table and key
 func GetMutex(tablename string, key string) *Mutex {
 	lockKey := tablename + ":" + key
 	lockMutex.Lock()
+
 	defer lockMutex.Unlock()
 	if eLock, ok := lockPool[lockKey]; ok {
-		// do NOT remove it from pool
-		delete(unlockPool, lockKey)
+		eLock.usedby++
 		return eLock
 	}
 
-	m := &Mutex{key: lockKey}
+	m := &Mutex{key: lockKey, usedby: 1}
+
 	lockPool[lockKey] = m
 
 	return m
 }
 
 func init() {
-	go startLockPoolCleaner()
+	go startWorker()
 }
 
-func startLockPoolCleaner() {
-	for {
-		time.Sleep(1 * time.Hour)
+func cleanUnusedMutexs() {
+	lockMutex.Lock()
 
-		lockMutex.Lock()
-
-		for key := range unlockPool {
-			delete(lockPool, key)
+	for k, v := range lockPool {
+		if v.usedby < 1 {
+			delete(lockPool, k)
 		}
+	}
 
-		unlockPool = make(map[string]time.Time)
-		lockMutex.Unlock()
+	lockMutex.Unlock()
+}
+
+func startWorker() {
+	for {
+		time.Sleep(MutexCleanInterval)
+
+		cleanUnusedMutexs()
+
 	}
 }
