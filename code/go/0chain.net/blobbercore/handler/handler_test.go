@@ -1279,8 +1279,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
 					WithArgs("abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
 					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow("abcdefgh"),
+						sqlmock.NewRows([]string{"client_id", "owner_id"}).
+							AddRow("abcdefgh", "owner"),
 					)
 				aa := sqlmock.AnyArg()
 
