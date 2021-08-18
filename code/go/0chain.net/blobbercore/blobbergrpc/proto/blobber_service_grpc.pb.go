@@ -33,6 +33,7 @@ type BlobberServiceClient interface {
 	UpdateObjectAttributes(ctx context.Context, in *UpdateObjectAttributesRequest, opts ...grpc.CallOption) (*UpdateObjectAttributesResponse, error)
 	CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CopyObjectResponse, error)
 	Collaborator(ctx context.Context, in *CollaboratorRequest, opts ...grpc.CallOption) (*CollaboratorResponse, error)
+	MarketplaceShareInfo(ctx context.Context, in *MarketplaceShareRequest, opts ...grpc.CallOption) (*MarketplaceShareResponse, error)
 }
 
 type blobberServiceClient struct {
@@ -187,6 +188,15 @@ func (c *blobberServiceClient) Collaborator(ctx context.Context, in *Collaborato
 	return out, nil
 }
 
+func (c *blobberServiceClient) MarketplaceShareInfo(ctx context.Context, in *MarketplaceShareRequest, opts ...grpc.CallOption) (*MarketplaceShareResponse, error) {
+	out := new(MarketplaceShareResponse)
+	err := c.cc.Invoke(ctx, "/blobber.BlobberService/MarketplaceShareInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BlobberServiceServer is the server API for BlobberService service.
 // All implementations should embed UnimplementedBlobberServiceServer
 // for forward compatibility
@@ -207,6 +217,7 @@ type BlobberServiceServer interface {
 	UpdateObjectAttributes(context.Context, *UpdateObjectAttributesRequest) (*UpdateObjectAttributesResponse, error)
 	CopyObject(context.Context, *CopyObjectRequest) (*CopyObjectResponse, error)
 	Collaborator(context.Context, *CollaboratorRequest) (*CollaboratorResponse, error)
+	MarketplaceShareInfo(context.Context, *MarketplaceShareRequest) (*MarketplaceShareResponse, error)
 }
 
 // UnimplementedBlobberServiceServer should be embedded to have forward compatible implementations.
@@ -260,6 +271,9 @@ func (UnimplementedBlobberServiceServer) CopyObject(context.Context, *CopyObject
 }
 func (UnimplementedBlobberServiceServer) Collaborator(context.Context, *CollaboratorRequest) (*CollaboratorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Collaborator not implemented")
+}
+func (UnimplementedBlobberServiceServer) MarketplaceShareInfo(context.Context, *MarketplaceShareRequest) (*MarketplaceShareResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MarketplaceShareInfo not implemented")
 }
 
 // UnsafeBlobberServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -561,6 +575,24 @@ func _BlobberService_Collaborator_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BlobberService_MarketplaceShareInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MarketplaceShareRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BlobberServiceServer).MarketplaceShareInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blobber.BlobberService/MarketplaceShareInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BlobberServiceServer).MarketplaceShareInfo(ctx, req.(*MarketplaceShareRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _BlobberService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "blobber.BlobberService",
 	HandlerType: (*BlobberServiceServer)(nil),
@@ -628,6 +660,10 @@ var _BlobberService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Collaborator",
 			Handler:    _BlobberService_Collaborator_Handler,
+		},
+		{
+			MethodName: "MarketplaceShareInfo",
+			Handler:    _BlobberService_MarketplaceShareInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

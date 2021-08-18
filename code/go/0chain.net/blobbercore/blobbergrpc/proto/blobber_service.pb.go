@@ -28,7 +28,7 @@ var file_blobber_service_proto_rawDesc = []byte{
 	0x1a, 0x16, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x5f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61,
 	0x63, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x1c, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65,
 	0x2f, 0x61, 0x70, 0x69, 0x2f, 0x61, 0x6e, 0x6e, 0x6f, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73,
-	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x32, 0xb8, 0x10, 0x0a, 0x0e, 0x42, 0x6c, 0x6f, 0x62, 0x62,
+	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x32, 0xf3, 0x11, 0x0a, 0x0e, 0x42, 0x6c, 0x6f, 0x62, 0x62,
 	0x65, 0x72, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x66, 0x0a, 0x0d, 0x47, 0x65, 0x74,
 	0x41, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x1d, 0x2e, 0x62, 0x6c, 0x6f,
 	0x62, 0x62, 0x65, 0x72, 0x2e, 0x47, 0x65, 0x74, 0x41, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69,
@@ -160,10 +160,22 @@ var file_blobber_service_proto_rawDesc = []byte{
 	0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x7d, 0x5a, 0x27, 0x2a, 0x22, 0x2f, 0x76, 0x32, 0x2f,
 	0x66, 0x69, 0x6c, 0x65, 0x2f, 0x63, 0x6f, 0x6c, 0x6c, 0x61, 0x62, 0x6f, 0x72, 0x61, 0x74, 0x6f,
 	0x72, 0x2f, 0x7b, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x7d, 0x3a, 0x01,
-	0x2a, 0x42, 0x2c, 0x5a, 0x2a, 0x63, 0x6f, 0x64, 0x65, 0x2f, 0x67, 0x6f, 0x2f, 0x30, 0x63, 0x68,
-	0x61, 0x69, 0x6e, 0x2e, 0x6e, 0x65, 0x74, 0x2f, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x63,
-	0x6f, 0x72, 0x65, 0x2f, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x67, 0x72, 0x70, 0x63, 0x62,
-	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x2a, 0x12, 0xb8, 0x01, 0x0a, 0x14, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x70, 0x6c, 0x61, 0x63,
+	0x65, 0x53, 0x68, 0x61, 0x72, 0x65, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x20, 0x2e, 0x62, 0x6c, 0x6f,
+	0x62, 0x62, 0x65, 0x72, 0x2e, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x70, 0x6c, 0x61, 0x63, 0x65,
+	0x53, 0x68, 0x61, 0x72, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21, 0x2e, 0x62,
+	0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x2e, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x70, 0x6c, 0x61,
+	0x63, 0x65, 0x53, 0x68, 0x61, 0x72, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
+	0x5b, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x55, 0x22, 0x26, 0x2f, 0x76, 0x32, 0x2f, 0x6d, 0x61, 0x72,
+	0x6b, 0x65, 0x74, 0x70, 0x6c, 0x61, 0x63, 0x65, 0x2f, 0x73, 0x68, 0x61, 0x72, 0x65, 0x69, 0x6e,
+	0x66, 0x6f, 0x2f, 0x7b, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x7d, 0x3a,
+	0x01, 0x2a, 0x5a, 0x28, 0x2a, 0x26, 0x2f, 0x76, 0x32, 0x2f, 0x6d, 0x61, 0x72, 0x6b, 0x65, 0x74,
+	0x70, 0x6c, 0x61, 0x63, 0x65, 0x2f, 0x73, 0x68, 0x61, 0x72, 0x65, 0x69, 0x6e, 0x66, 0x6f, 0x2f,
+	0x7b, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x7d, 0x42, 0x2c, 0x5a, 0x2a,
+	0x63, 0x6f, 0x64, 0x65, 0x2f, 0x67, 0x6f, 0x2f, 0x30, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x2e, 0x6e,
+	0x65, 0x74, 0x2f, 0x62, 0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x63, 0x6f, 0x72, 0x65, 0x2f, 0x62,
+	0x6c, 0x6f, 0x62, 0x62, 0x65, 0x72, 0x67, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var file_blobber_service_proto_goTypes = []interface{}{
@@ -183,22 +195,24 @@ var file_blobber_service_proto_goTypes = []interface{}{
 	(*UpdateObjectAttributesRequest)(nil),  // 13: blobber.UpdateObjectAttributesRequest
 	(*CopyObjectRequest)(nil),              // 14: blobber.CopyObjectRequest
 	(*CollaboratorRequest)(nil),            // 15: blobber.CollaboratorRequest
-	(*GetAllocationResponse)(nil),          // 16: blobber.GetAllocationResponse
-	(*GetFileMetaDataResponse)(nil),        // 17: blobber.GetFileMetaDataResponse
-	(*GetFileStatsResponse)(nil),           // 18: blobber.GetFileStatsResponse
-	(*ListEntitiesResponse)(nil),           // 19: blobber.ListEntitiesResponse
-	(*GetObjectPathResponse)(nil),          // 20: blobber.GetObjectPathResponse
-	(*GetReferencePathResponse)(nil),       // 21: blobber.GetReferencePathResponse
-	(*GetObjectTreeResponse)(nil),          // 22: blobber.GetObjectTreeResponse
-	(*DownloadFileResponse)(nil),           // 23: blobber.DownloadFileResponse
-	(*RenameObjectResponse)(nil),           // 24: blobber.RenameObjectResponse
-	(*UploadFileResponse)(nil),             // 25: blobber.UploadFileResponse
-	(*CommitResponse)(nil),                 // 26: blobber.CommitResponse
-	(*CalculateHashResponse)(nil),          // 27: blobber.CalculateHashResponse
-	(*CommitMetaTxnResponse)(nil),          // 28: blobber.CommitMetaTxnResponse
-	(*UpdateObjectAttributesResponse)(nil), // 29: blobber.UpdateObjectAttributesResponse
-	(*CopyObjectResponse)(nil),             // 30: blobber.CopyObjectResponse
-	(*CollaboratorResponse)(nil),           // 31: blobber.CollaboratorResponse
+	(*MarketplaceShareRequest)(nil),        // 16: blobber.MarketplaceShareRequest
+	(*GetAllocationResponse)(nil),          // 17: blobber.GetAllocationResponse
+	(*GetFileMetaDataResponse)(nil),        // 18: blobber.GetFileMetaDataResponse
+	(*GetFileStatsResponse)(nil),           // 19: blobber.GetFileStatsResponse
+	(*ListEntitiesResponse)(nil),           // 20: blobber.ListEntitiesResponse
+	(*GetObjectPathResponse)(nil),          // 21: blobber.GetObjectPathResponse
+	(*GetReferencePathResponse)(nil),       // 22: blobber.GetReferencePathResponse
+	(*GetObjectTreeResponse)(nil),          // 23: blobber.GetObjectTreeResponse
+	(*DownloadFileResponse)(nil),           // 24: blobber.DownloadFileResponse
+	(*RenameObjectResponse)(nil),           // 25: blobber.RenameObjectResponse
+	(*UploadFileResponse)(nil),             // 26: blobber.UploadFileResponse
+	(*CommitResponse)(nil),                 // 27: blobber.CommitResponse
+	(*CalculateHashResponse)(nil),          // 28: blobber.CalculateHashResponse
+	(*CommitMetaTxnResponse)(nil),          // 29: blobber.CommitMetaTxnResponse
+	(*UpdateObjectAttributesResponse)(nil), // 30: blobber.UpdateObjectAttributesResponse
+	(*CopyObjectResponse)(nil),             // 31: blobber.CopyObjectResponse
+	(*CollaboratorResponse)(nil),           // 32: blobber.CollaboratorResponse
+	(*MarketplaceShareResponse)(nil),       // 33: blobber.MarketplaceShareResponse
 }
 var file_blobber_service_proto_depIdxs = []int32{
 	0,  // 0: blobber.BlobberService.GetAllocation:input_type -> blobber.GetAllocationRequest
@@ -217,24 +231,26 @@ var file_blobber_service_proto_depIdxs = []int32{
 	13, // 13: blobber.BlobberService.UpdateObjectAttributes:input_type -> blobber.UpdateObjectAttributesRequest
 	14, // 14: blobber.BlobberService.CopyObject:input_type -> blobber.CopyObjectRequest
 	15, // 15: blobber.BlobberService.Collaborator:input_type -> blobber.CollaboratorRequest
-	16, // 16: blobber.BlobberService.GetAllocation:output_type -> blobber.GetAllocationResponse
-	17, // 17: blobber.BlobberService.GetFileMetaData:output_type -> blobber.GetFileMetaDataResponse
-	18, // 18: blobber.BlobberService.GetFileStats:output_type -> blobber.GetFileStatsResponse
-	19, // 19: blobber.BlobberService.ListEntities:output_type -> blobber.ListEntitiesResponse
-	20, // 20: blobber.BlobberService.GetObjectPath:output_type -> blobber.GetObjectPathResponse
-	21, // 21: blobber.BlobberService.GetReferencePath:output_type -> blobber.GetReferencePathResponse
-	22, // 22: blobber.BlobberService.GetObjectTree:output_type -> blobber.GetObjectTreeResponse
-	23, // 23: blobber.BlobberService.DownloadFile:output_type -> blobber.DownloadFileResponse
-	24, // 24: blobber.BlobberService.RenameObject:output_type -> blobber.RenameObjectResponse
-	25, // 25: blobber.BlobberService.UploadFile:output_type -> blobber.UploadFileResponse
-	26, // 26: blobber.BlobberService.Commit:output_type -> blobber.CommitResponse
-	27, // 27: blobber.BlobberService.CalculateHash:output_type -> blobber.CalculateHashResponse
-	28, // 28: blobber.BlobberService.CommitMetaTxn:output_type -> blobber.CommitMetaTxnResponse
-	29, // 29: blobber.BlobberService.UpdateObjectAttributes:output_type -> blobber.UpdateObjectAttributesResponse
-	30, // 30: blobber.BlobberService.CopyObject:output_type -> blobber.CopyObjectResponse
-	31, // 31: blobber.BlobberService.Collaborator:output_type -> blobber.CollaboratorResponse
-	16, // [16:32] is the sub-list for method output_type
-	0,  // [0:16] is the sub-list for method input_type
+	16, // 16: blobber.BlobberService.MarketplaceShareInfo:input_type -> blobber.MarketplaceShareRequest
+	17, // 17: blobber.BlobberService.GetAllocation:output_type -> blobber.GetAllocationResponse
+	18, // 18: blobber.BlobberService.GetFileMetaData:output_type -> blobber.GetFileMetaDataResponse
+	19, // 19: blobber.BlobberService.GetFileStats:output_type -> blobber.GetFileStatsResponse
+	20, // 20: blobber.BlobberService.ListEntities:output_type -> blobber.ListEntitiesResponse
+	21, // 21: blobber.BlobberService.GetObjectPath:output_type -> blobber.GetObjectPathResponse
+	22, // 22: blobber.BlobberService.GetReferencePath:output_type -> blobber.GetReferencePathResponse
+	23, // 23: blobber.BlobberService.GetObjectTree:output_type -> blobber.GetObjectTreeResponse
+	24, // 24: blobber.BlobberService.DownloadFile:output_type -> blobber.DownloadFileResponse
+	25, // 25: blobber.BlobberService.RenameObject:output_type -> blobber.RenameObjectResponse
+	26, // 26: blobber.BlobberService.UploadFile:output_type -> blobber.UploadFileResponse
+	27, // 27: blobber.BlobberService.Commit:output_type -> blobber.CommitResponse
+	28, // 28: blobber.BlobberService.CalculateHash:output_type -> blobber.CalculateHashResponse
+	29, // 29: blobber.BlobberService.CommitMetaTxn:output_type -> blobber.CommitMetaTxnResponse
+	30, // 30: blobber.BlobberService.UpdateObjectAttributes:output_type -> blobber.UpdateObjectAttributesResponse
+	31, // 31: blobber.BlobberService.CopyObject:output_type -> blobber.CopyObjectResponse
+	32, // 32: blobber.BlobberService.Collaborator:output_type -> blobber.CollaboratorResponse
+	33, // 33: blobber.BlobberService.MarketplaceShareInfo:output_type -> blobber.MarketplaceShareResponse
+	17, // [17:34] is the sub-list for method output_type
+	0,  // [0:17] is the sub-list for method input_type
 	0,  // [0:0] is the sub-list for extension type_name
 	0,  // [0:0] is the sub-list for extension extendee
 	0,  // [0:0] is the sub-list for field type_name
