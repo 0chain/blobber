@@ -122,4 +122,14 @@ service BlobberService {
       }
     };
   }
+
+  rpc MarketplaceShareInfo(MarketplaceShareInfoRequest) returns (MarketplaceShareInfoResponse) {
+    option (google.api.http) = {
+      post: "/v2/marketplace/shareinfo/{allocation}"
+      body: "*"
+      additional_bindings: {
+        delete: "/v2/marketplace/shareinfo/{allocation}"
+      }
+    };
+  }
 }
