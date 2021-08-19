@@ -1370,7 +1370,7 @@ func local_request_BlobberService_Collaborator_2(ctx context.Context, marshaler 
 }
 
 func request_BlobberService_MarketplaceShareInfo_0(ctx context.Context, marshaler runtime.Marshaler, client BlobberServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq MarketplaceShareRequest
+	var protoReq MarketplaceShareInfoRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1404,7 +1404,7 @@ func request_BlobberService_MarketplaceShareInfo_0(ctx context.Context, marshale
 }
 
 func local_request_BlobberService_MarketplaceShareInfo_0(ctx context.Context, marshaler runtime.Marshaler, server BlobberServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq MarketplaceShareRequest
+	var protoReq MarketplaceShareInfoRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1442,7 +1442,7 @@ var (
 )
 
 func request_BlobberService_MarketplaceShareInfo_1(ctx context.Context, marshaler runtime.Marshaler, client BlobberServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq MarketplaceShareRequest
+	var protoReq MarketplaceShareInfoRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -1475,7 +1475,7 @@ func request_BlobberService_MarketplaceShareInfo_1(ctx context.Context, marshale
 }
 
 func local_request_BlobberService_MarketplaceShareInfo_1(ctx context.Context, marshaler runtime.Marshaler, server BlobberServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq MarketplaceShareRequest
+	var protoReq MarketplaceShareInfoRequest
 	var metadata runtime.ServerMetadata
 
 	var (

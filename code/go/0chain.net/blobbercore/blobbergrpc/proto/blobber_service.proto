@@ -123,7 +123,7 @@ service BlobberService {
     };
   }
 
-  rpc MarketplaceShareInfo(MarketplaceShareRequest) returns (MarketplaceShareResponse) {
+  rpc MarketplaceShareInfo(MarketplaceShareInfoRequest) returns (MarketplaceShareInfoResponse) {
     option (google.api.http) = {
       post: "/v2/marketplace/shareinfo/{allocation}"
       body: "*"

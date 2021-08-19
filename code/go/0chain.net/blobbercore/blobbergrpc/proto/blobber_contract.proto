@@ -360,14 +360,14 @@ message DirMetaData {
   int64 updated_at = 10;
 }
 
-message MarketplaceShareRequest {
+message MarketplaceShareInfoRequest {
   string allocation = 1;
   string encryption_public_key = 2;
   string auth_ticket = 3;
   string http_method = 4;
 }
 
-message MarketplaceShareResponse {
+message MarketplaceShareInfoResponse {
   string response_status = 1;
   string message = 2;
 }
