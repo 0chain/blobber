@@ -154,7 +154,7 @@ For example: If you want to connect to one network
 
 ```
 
-block_worker: http://beta.0chain.net/dns
+block_worker: https://beta.0chain.net/dns
 
 ```
 
