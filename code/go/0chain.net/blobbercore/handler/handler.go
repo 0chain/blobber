@@ -4,17 +4,10 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"net/http"
 	"os"
 	"runtime/pprof"
 	//"time"
-
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/gosdk/zboxcore/fileref"
-	"gorm.io/gorm"
 
 	"go.uber.org/zap"
 
@@ -355,137 +348,12 @@ func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, erro
 	return "cleanup", err
 }
 
-func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-
-	sign := r.Header.Get(common.ClientSignatureHeader)
-	allocation, ok := mux.Vars(r)["allocation"]
-	if !ok {
-		return false, common.NewError("invalid_params", "Missing allocation tx")
-	}
-	valid, err := verifySignatureFromRequest(allocation, sign, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	path := r.FormValue("path")
-	refereeClientID := r.FormValue("refereeClientID")
-	filePathHash := fileref.GetReferenceLookup(allocationID, path)
-	_, err = reference.GetReferenceFromLookupHash(ctx, allocationID, filePathHash)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	if clientID != allocationObj.OwnerID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-	err = reference.DeleteShareInfo(ctx, reference.ShareInfo{
-		ClientID:     refereeClientID,
-		FilePathHash: filePathHash,
-	})
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		resp := map[string]interface{}{
-			"status":  http.StatusNotFound,
-			"message": "Path not found",
-		}
-		return resp, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	resp := map[string]interface{}{
-		"status":  http.StatusNoContent,
-		"message": "Path successfully removed from allocation",
-	}
-	return resp, nil
-}
-
-func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-
-	sign := r.Header.Get(common.ClientSignatureHeader)
-	allocation, ok := mux.Vars(r)["allocation"]
-	if !ok {
-		return false, common.NewError("invalid_params", "Missing allocation tx")
-	}
-	valid, err := verifySignatureFromRequest(allocation, sign, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	encryptionPublicKey := r.FormValue("encryption_public_key")
-	authTicketString := r.FormValue("auth_ticket")
-	authTicket := &readmarker.AuthTicket{}
-
-	err = json.Unmarshal([]byte(authTicketString), &authTicket)
-	if err != nil {
-		return false, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
-	}
-
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, authTicket.FilePathHash)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-
-	authTicketVerified, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileref, authTicket.ClientID)
-	if !authTicketVerified {
-		return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket. "+err.Error())
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	shareInfo := reference.ShareInfo{
-		OwnerID:                   authTicket.OwnerID,
-		ClientID:                  authTicket.ClientID,
-		FilePathHash:              authTicket.FilePathHash,
-		ReEncryptionKey:           authTicket.ReEncryptionKey,
-		ClientEncryptionPublicKey: encryptionPublicKey,
-		ExpiryAt:                  common.ToTime(authTicket.Expiration),
-	}
-
-	existingShare, err := reference.GetShareInfo(ctx, authTicket.ClientID, authTicket.FilePathHash)
-	if err != nil {
-		return nil, err
-	}
-
-	if existingShare != nil {
-		err = reference.UpdateShareInfo(ctx, shareInfo)
-	} else {
-		err = reference.AddShareInfo(ctx, shareInfo)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	resp := map[string]interface{}{
-		"message": "Share info added successfully",
-	}
-
-	return resp, nil
-}
-
 func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "DELETE" {
-		return RevokeShare(ctx, r)
+	ctx = setupHandlerContext(ctx, r)
+	response, err := storageHandler.MarketPlaceShareInfoHandler(ctx, r)
+	if err != nil {
+		return nil, err
 	}
 
-	if r.Method == "POST" {
-		return InsertShare(ctx, r)
-	}
-
-	return nil, errors.New("invalid request method, only POST is allowed")
+	return response, nil
 }

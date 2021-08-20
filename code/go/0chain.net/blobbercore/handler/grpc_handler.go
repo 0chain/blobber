@@ -142,3 +142,8 @@ func (b *blobberGRPCService) Collaborator(ctx context.Context, request *blobberg
 	}
 	return response, nil
 }
+
+func (b *blobberGRPCService) MarketplaceShareInfo(ctx context.Context, request *blobbergrpc.MarketplaceShareInfoRequest) (*blobbergrpc.MarketplaceShareInfoResponse, error){
+
+	return nil, nil
+}

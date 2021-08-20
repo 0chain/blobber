@@ -26,7 +26,7 @@ const (
 type ReqRespHandlerf func(w http.ResponseWriter, r *http.Request)
 
 /*JSONResponderF - a handler that takes standard request (non-json) and responds with a json response
-* Useful for POST opertaion where the input is posted as json with
+* Useful for POST operation where the input is posted as json with
 *    Content-type: application/json
 * header
  */
