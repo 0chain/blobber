@@ -681,33 +681,30 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, request *blobbergr
 	return &result, nil
 }
 
-func (fsh *StorageHandler) MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+func (fsh *StorageHandler) MarketPlaceShareInfoHandler(ctx context.Context, request *blobbergrpc.MarketplaceShareInfoRequest) (*blobbergrpc.MarketplaceShareInfoResponse, error) {
 
-	switch r.Method {
+	switch request.HttpMethod {
 	case http.MethodPost:
-		return fsh.InsertShare(ctx, r)
+		return fsh.InsertShare(ctx, request)
 	case http.MethodDelete:
-		return fsh.RevokeShare(ctx, r)
+		return fsh.RevokeShare(ctx, request)
 	default:
 		return nil, errors.Wrap(invalidRequest, "use POST/DELETE method")
 	}
 }
 
 
-func (fsh *StorageHandler) RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
+func (fsh *StorageHandler) RevokeShare(ctx context.Context, request *blobbergrpc.MarketplaceShareInfoRequest) (*blobbergrpc.MarketplaceShareInfoResponse, error) {
 
 	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, true)
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	sign := r.Header.Get(common.ClientSignatureHeader)
-	allocation, ok := mux.Vars(r)["allocation"]
-	if !ok {
-		return false, common.NewError("invalid_params", "Missing allocation tx")
-	}
-	valid, err := verifySignatureFromRequest(allocation, sign, allocationObj.OwnerPublicKey)
+	clientSign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+
+	valid, err := verifySignatureFromRequest(allocationID, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}

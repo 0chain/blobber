@@ -145,5 +145,12 @@ func (b *blobberGRPCService) Collaborator(ctx context.Context, request *blobberg
 
 func (b *blobberGRPCService) MarketplaceShareInfo(ctx context.Context, request *blobbergrpc.MarketplaceShareInfoRequest) (*blobbergrpc.MarketplaceShareInfoResponse, error){
 
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+	response, err := storageHandler.MarketPlaceShareInfoHandler(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
 	return nil, nil
 }
