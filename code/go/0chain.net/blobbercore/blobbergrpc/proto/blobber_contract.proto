@@ -365,6 +365,8 @@ message MarketplaceShareInfoRequest {
   string encryption_public_key = 2;
   string auth_ticket = 3;
   string http_method = 4;
+  string path = 5;
+  string referee_client_id = 6;
 }
 
 message MarketplaceShareInfoResponse {
