@@ -21,6 +21,7 @@ func GetReferencePath(ctx context.Context, allocationID string, path string) (*R
 	return GetReferencePathFromPaths(ctx, allocationID, []string{path})
 }
 
+// GetReferencePathFromPaths validate and build full dir tree from db, and CalculateHash and return root Ref
 func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
@@ -41,11 +42,13 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 		}
 	}
 
+	// root reference_objects with parent_path=""
 	db = db.Or("parent_path = ? AND allocation_id = ?", "", allocationID)
 	err := db.Order("level, lookup_hash").Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}
+	// there is no any child reference_objects for affected path, and instert root reference_objects
 	if len(refs) == 0 {
 		return &Ref{Type: DIRECTORY, AllocationID: allocationID, Name: "/", Path: "/", ParentPath: "", PathLevel: 1}, nil
 	}
@@ -55,9 +58,11 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 		return nil, common.NewError("invalid_dir_tree", "DB has invalid tree. Root not found in DB")
 	}
 
+	// valdiate dir tree, and populate Ref's children for CalculateHash
 	refMap := make(map[string]*Ref)
 	refMap[rootRef.Path] = rootRef
 	for i := 1; i < len(refs); i++ {
+
 		if _, ok := refMap[refs[i].ParentPath]; !ok {
 			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
 		}

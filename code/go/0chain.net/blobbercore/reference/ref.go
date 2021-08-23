@@ -98,6 +98,7 @@ func (Ref) TableName() string {
 	return "reference_objects"
 }
 
+// GetReferenceLookup hash(allocationID + ":" + path)
 func GetReferenceLookup(allocationID string, path string) string {
 	return encryption.Hash(allocationID + ":" + path)
 }
@@ -255,6 +256,7 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 }
 
 func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, error) {
+	// empty directory, return hash directly
 	if len(r.Children) == 0 && !r.childrenLoaded {
 		return r.Hash, nil
 	}
@@ -345,6 +347,7 @@ func (r *Ref) Save(ctx context.Context) error {
 	return db.Save(r).Error
 }
 
+// GetListingData reflect and convert all fields into map[string]interface{}
 func (r *Ref) GetListingData(ctx context.Context) map[string]interface{} {
 	if r == nil {
 		return make(map[string]interface{})

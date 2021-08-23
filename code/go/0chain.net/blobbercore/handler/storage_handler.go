@@ -31,6 +31,7 @@ const (
 
 type StorageHandler struct{}
 
+// verifyAllocation try to get allocation from postgres.if it doesn't exists, get it from sharders, and insert it into postgres.
 func (fsh *StorageHandler) verifyAllocation(ctx context.Context, tx string,
 	readonly bool) (alloc *allocation.Allocation, err error) {
 
@@ -509,8 +510,10 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	}
 
 	refPath := &reference.ReferencePath{Ref: rootRef}
-	refsToProcess := make([]*reference.ReferencePath, 0)
-	refsToProcess = append(refsToProcess, refPath)
+
+	refsToProcess := []*reference.ReferencePath{refPath}
+
+	//convert Ref tree to ReferencePath tree
 	for len(refsToProcess) > 0 {
 		refToProcess := refsToProcess[0]
 		refToProcess.Meta = refToProcess.Ref.GetListingData(ctx)

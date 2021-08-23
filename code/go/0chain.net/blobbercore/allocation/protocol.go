@@ -49,6 +49,7 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 	return          // found in DB
 }
 
+// VerifyAllocationTransaction try to get allocation from postgres.if it doesn't exists, get it from sharders, and insert it into postgres.
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	readonly bool) (a *Allocation, err error) {
 
