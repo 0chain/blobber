@@ -25,7 +25,8 @@ func registerGRPCServices(r *mux.Router, server *grpc.Server) {
 		runtime.WithIncomingHeaderMatcher(CustomMatcher),
 	)
 
-	_ = grpcGatewayHandler.HandlePath("POST", `/v1/file/upload/{allocation}`, uploadHandler)
+	_ = grpcGatewayHandler.HandlePath("POST", `/v1/file/upload/{allocation}`,
+		upload(common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler)))))
 
 	blobbergrpc.RegisterBlobberServiceServer(server, blobberService)
 	_ = blobbergrpc.RegisterBlobberServiceHandlerServer(context.Background(), grpcGatewayHandler, blobberService)
@@ -84,9 +85,10 @@ func CustomMatcher(key string) (string, bool) {
 	}
 }
 
-func uploadHandler(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-	ctx := setupGRPCMuxHandlerContext(r.Context(), r, pathParams)
-
-	response, err := storageHandler.WriteFile(ctx, r)
-	common.Respond(w, response, err)
+func upload(handler common.ReqRespHandlerf) runtime.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+		*r = *mux.SetURLVars(r, map[string]string{"allocation": pathParams[`allocation`]})
+		*r = *r.WithContext(setupHandlerContext(r.Context(), r))
+		handler(w, r)
+	}
 }
