@@ -18,14 +18,14 @@ type gRPCHeaderMetadata struct {
 	ClientSignature string
 }
 
-
 func registerGRPCServices(r *mux.Router, server *grpc.Server) {
 	blobberService := newGRPCBlobberService()
 	r.Use(Middleware2("ds"))
 	grpcGatewayHandler := runtime.NewServeMux(
-								runtime.WithIncomingHeaderMatcher(CustomMatcher),
-							)
+		runtime.WithIncomingHeaderMatcher(CustomMatcher),
+	)
 
+	_ = grpcGatewayHandler.HandlePath("POST", `/v1/file/upload/{allocation}`, uploadHandler)
 
 	blobbergrpc.RegisterBlobberServiceServer(server, blobberService)
 	_ = blobbergrpc.RegisterBlobberServiceHandlerServer(context.Background(), grpcGatewayHandler, blobberService)
@@ -82,4 +82,11 @@ func CustomMatcher(key string) (string, bool) {
 	default:
 		return runtime.DefaultHeaderMatcher(key)
 	}
+}
+
+func uploadHandler(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	ctx := setupGRPCMuxHandlerContext(r.Context(), r, pathParams)
+
+	response, err := storageHandler.WriteFile(ctx, r)
+	common.Respond(w, response, err)
 }

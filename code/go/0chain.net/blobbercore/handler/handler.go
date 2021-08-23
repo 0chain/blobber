@@ -125,6 +125,18 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	return ctx
 }
 
+func setupGRPCMuxHandlerContext(ctx context.Context, r *http.Request, pathParams map[string]string) context.Context {
+	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY,
+		r.Header.Get(common.ClientHeader))
+	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY,
+		r.Header.Get(common.ClientKeyHeader))
+	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY,
+		pathParams["allocation"])
+	// signature is not required for all requests, but if header is empty it won`t affect anything
+	ctx = context.WithValue(ctx, constants.CLIENT_SIGNATURE_HEADER_KEY, r.Header.Get(common.ClientSignatureHeader))
+	return ctx
+}
+
 func setupGrpcHandlerContext(ctx context.Context, headerMetadata *gRPCHeaderMetadata) context.Context {
 	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY,
 		headerMetadata.Client)
