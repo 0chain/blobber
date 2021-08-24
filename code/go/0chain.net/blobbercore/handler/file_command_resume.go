@@ -40,8 +40,8 @@ func (cmd *ResumeFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 		return common.NewError("duplicate_file", "File at path already exists")
 	}
 
-	//create a TrustedConentHasher instance first, it will be reloaded from db in cmd.reloadChange if it is not first chunk
-	//cmd.changeProcessor.TrustedConentHasher = &util.TrustedConentHasher{}
+	//create a FixedMerkleTree instance first, it will be reloaded from db in cmd.reloadChange if it is not first chunk
+	//cmd.changeProcessor.FixedMerkleTree = &util.FixedMerkleTree{}
 
 	if changeProcessor.ChunkSize <= 0 {
 		changeProcessor.ChunkSize = fileref.CHUNK_SIZE
@@ -103,7 +103,7 @@ func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	//push leaf to merkle hasher for computing, save state in db
 
-	//cmd.changeProcessor.TrustedConentHasher.Write(origfile.Read(p []byte))
+	//cmd.changeProcessor.FixedMerkleTree.Write(origfile.Read(p []byte))
 
 	// err = cmd.changeProcessor.MerkleHasher.Push(cmd.changeProcessor.Hash, cmd.changeProcessor.ChunkIndex)
 	// if errors.Is(err, util.ErrLeafNoSequenced) {
