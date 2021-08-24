@@ -52,6 +52,7 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, request *blobberg
 func (b *blobberGRPCService) ListEntities(ctx context.Context, request *blobbergrpc.ListEntitiesRequest) (*blobbergrpc.ListEntitiesResponse, error) {
 	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
 
+
 	response, err := storageHandler.ListEntities(ctx, request)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get list entities")

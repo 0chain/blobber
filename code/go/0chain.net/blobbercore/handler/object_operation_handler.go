@@ -779,7 +779,7 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 		clientID = ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 
 		clientSign = ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
-		alloc *allocation.Allocation
+		alloc         *allocation.Allocation
 	)
 
 	if alloc, err = fsh.verifyAllocation(ctx, request.Allocation, false); err != nil {
