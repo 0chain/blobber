@@ -9,22 +9,19 @@ import (
 	"net/http"
 	"os"
 	"runtime/pprof"
-	//"time"
-
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/gosdk/zboxcore/fileref"
-	"gorm.io/gorm"
-
-	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/zboxcore/fileref"
 	"github.com/gorilla/mux"
+	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 var storageHandler StorageHandler
@@ -53,7 +50,7 @@ func SetupHandlers(r *mux.Router) {
 	//object info related apis
 	//r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler))))
 	//r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
-	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
+	//r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
 	//r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler))))
 	//r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler))))
 	//r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
@@ -184,16 +181,16 @@ func setupGrpcHandlerContext(ctx context.Context, headerMetadata *gRPCHeaderMeta
 //	return response, nil
 //}
 
-func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.GetFileStats(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
-}
+//func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+//	ctx = setupHandlerContext(ctx, r)
+//
+//	response, err := storageHandler.GetFileStats(ctx, r)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return response, nil
+//}
 
 /*DownloadHandler is the handler to respond to download requests from clients*/
 func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -341,16 +338,16 @@ func HandleShutdown(ctx context.Context) {
 	}()
 }
 
-func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
+func DumpGoRoutines(_ context.Context, _ *http.Request) (interface{}, error) {
 	_ = pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 	return "success", nil
 }
 
-func GetConfig(ctx context.Context, r *http.Request) (interface{}, error) {
+func GetConfig(_ context.Context, _ *http.Request) (interface{}, error) {
 	return config.Configuration, nil
 }
 
-func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+func CleanupDiskHandler(ctx context.Context, _ *http.Request) (interface{}, error) {
 	err := CleanupDiskFiles(ctx)
 	return "cleanup", err
 }
@@ -434,12 +431,12 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return false, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, authTicket.FilePathHash)
+	fileRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, authTicket.FilePathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 
-	authTicketVerified, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileref, authTicket.ClientID)
+	authTicketVerified, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileRef, authTicket.ClientID)
 	if !authTicketVerified {
 		return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket. "+err.Error())
 	}

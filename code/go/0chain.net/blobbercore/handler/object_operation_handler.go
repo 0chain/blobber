@@ -5,45 +5,41 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
-	"github.com/pkg/errors"
 	"math"
-	"strings"
-
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
-	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
-
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 	zfileref "github.com/0chain/gosdk/zboxcore/fileref"
-
+	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
-
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
 )
 
 var (
-	authorisationError = errors.New("Authorisation Error")
-	invalidRequest = errors.New("Invalid Request")
-	invalidParameters = errors.New("Invalid Parameters")
+	authorisationError  = errors.New("Authorisation Error")
+	invalidRequest      = errors.New("Invalid Request")
+	invalidParameters   = errors.New("Invalid Parameters")
 	immutableAllocation = errors.New("Immutable Allocation")
 )
 
@@ -216,7 +212,7 @@ func (fsh *StorageHandler) DownloadFile(
 	}
 
 	// get and parse file params
-	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
+	if err = r.ParseMultipartForm(FormFileParseMaxMemory); nil != err {
 		Logger.Info("download_file - request_parse_error", zap.Error(err))
 		return nil, common.NewErrorf("download_file",
 			"request_parse_error: %v", err)
@@ -402,7 +398,7 @@ func (fsh *StorageHandler) DownloadFile(
 		downloadMode = r.FormValue("content")
 		respData     []byte
 	)
-	if len(downloadMode) > 0 && downloadMode == DOWNLOAD_CONTENT_THUMB {
+	if len(downloadMode) > 0 && downloadMode == DownloadContentThumb {
 		var fileData = &filestore.FileInputData{}
 		fileData.Name = fileref.Name
 		fileData.Path = fileref.Path
@@ -566,7 +562,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	if err = r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); nil != err {
+	if err = r.ParseMultipartForm(FormFileParseMaxMemory); nil != err {
 		Logger.Info("Error Parsing the request", zap.Any("error", err))
 		return nil, common.NewError("request_parse_error", err.Error())
 	}
@@ -699,12 +695,12 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, request *blobbergrp
 			"failed to verify signature for the request")
 	}
 
-	if request.NewName == "" || request.ConnectionId == ""{
+	if request.NewName == "" || request.ConnectionId == "" {
 		return nil, errors.Wrap(invalidRequest,
 			"empty parameters passed in the request")
 	}
 
-	if request.PathHash == ""{
+	if request.PathHash == "" {
 		if request.Path == "" {
 			Logger.Error("Invalid request path passed in the request")
 			return nil, errors.Wrap(invalidParameters,
@@ -737,15 +733,15 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, request *blobbergrp
 
 	allocationChange := &allocation.AllocationChange{
 		ConnectionID: connectionObj.ConnectionID,
-		Size: 0,
-		Operation: allocation.RENAME_OPERATION,
+		Size:         0,
+		Operation:    allocation.RENAME_OPERATION,
 	}
 
 	dfc := &allocation.RenameFileChange{
 		ConnectionID: connectionObj.ConnectionID,
 		AllocationID: connectionObj.AllocationID,
-		Path: objectRef.Path,
-		NewName: request.NewName,
+		Path:         objectRef.Path,
+		NewName:      request.NewName,
 	}
 
 	connectionObj.Size += allocationChange.Size
@@ -779,7 +775,7 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 		clientID = ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 
 		clientSign = ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
-		alloc         *allocation.Allocation
+		alloc      *allocation.Allocation
 	)
 
 	if alloc, err = fsh.verifyAllocation(ctx, request.Allocation, false); err != nil {
@@ -809,7 +805,7 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 			"failed to unmarshal attributes")
 	}
 
-	if request.PathHash == ""{
+	if request.PathHash == "" {
 		if request.Path == "" {
 			Logger.Error("Invalid request path passed in the request")
 			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
@@ -897,7 +893,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, request *blobbergrpc.
 			"invalid request body passed for the operation")
 	}
 
-	if request.PathHash == ""{
+	if request.PathHash == "" {
 		if request.Path == "" {
 			Logger.Error("Invalid request path passed in the request")
 			return nil, errors.Wrapf(invalidParameters,
@@ -946,15 +942,15 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, request *blobbergrpc.
 
 	allocationChange := &allocation.AllocationChange{
 		ConnectionID: connectionObj.ConnectionID,
-		Size: objectRef.Size,
-		Operation: allocation.COPY_OPERATION,
+		Size:         objectRef.Size,
+		Operation:    allocation.COPY_OPERATION,
 	}
 
 	dfc := &allocation.CopyFileChange{
 		ConnectionID: connectionObj.ConnectionID,
 		AllocationID: connectionObj.AllocationID,
-		DestPath: request.Dest,
-		SrcPath: objectRef.Path,
+		DestPath:     request.Dest,
+		SrcPath:      objectRef.Path,
 	}
 
 	connectionObj.Size += allocationChange.Size
@@ -968,10 +964,10 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, request *blobbergrpc.
 	}
 
 	result := &blobbergrpc.CopyObjectResponse{
-		Filename: objectRef.Name,
+		Filename:    objectRef.Name,
 		ContentHash: objectRef.Hash,
-		MerkleRoot: objectRef.MerkleRoot,
-		Size: objectRef.Size,
+		MerkleRoot:  objectRef.MerkleRoot,
+		Size:        objectRef.Size,
 	}
 
 	return result, nil
@@ -1132,7 +1128,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	if err := r.ParseMultipartForm(FORM_FILE_PARSE_MAX_MEMORY); err != nil {
+	if err := r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
 		Logger.Info("Error Parsing the request", zap.Any("error", err))
 		return nil, common.NewError("request_parse_error", err.Error())
 	}

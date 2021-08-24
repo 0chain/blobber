@@ -13,6 +13,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	bconfig "github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/config"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
 	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
@@ -25,17 +34,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	bconfig "github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/config"
-	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 type MockFileBlockGetter struct {
@@ -45,13 +43,13 @@ type MockFileBlockGetter struct {
 var mockFileBlock []byte
 
 func (MockFileBlockGetter) GetFileBlock(
-	fsStore *filestore.FileFSStore,
-	allocationID string,
-	fileData *filestore.FileInputData,
-	blockNum int64,
-	numBlocks int64,
+	_ *filestore.FileFSStore,
+	_ string,
+	_ *filestore.FileInputData,
+	_ int64,
+	_ int64,
 ) ([]byte, error) {
-	return []byte(mockFileBlock), nil
+	return mockFileBlock, nil
 }
 
 func setMockFileBlock(data []byte) {
@@ -150,14 +148,14 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	//),
 	//).Name(rpName)
 
-	sPath := "/v1/file/stats/{allocation}"
-	sName := "Stats"
-	router.HandleFunc(sPath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithReadOnlyConnection(FileStatsHandler),
-		),
-	),
-	).Name(sName)
+	//sPath := "/v1/file/stats/{allocation}"
+	//sName := "Stats"
+	//router.HandleFunc(sPath, common.UserRateLimit(
+	//	common.ToJSONResponse(
+	//		WithReadOnlyConnection(FileStatsHandler),
+	//	),
+	//),
+	//).Name(sName)
 
 	//otPath := "/v1/file/objecttree/{allocation}"
 	//otName := "Object_Tree"
@@ -235,7 +233,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 		map[string]string{
 			//opPath:    opName,
 			//rpPath:    rpName,
-			sPath:     sName,
+			//sPath:     sName,
 			//otPath:    otName,
 			//collPath:  collName,
 			//rPath:     rName,
@@ -265,7 +263,7 @@ func isEndpointAllowGetReq(name string) bool {
 	}
 }
 
-func GetAuthTicketForEncryptedFile(allocationID string, remotePath string, fileHash string, clientID string, encPublicKey string) (string, error) {
+func GetAuthTicketForEncryptedFile(allocationID string, remotePath string, fileHash string, clientID string, _ string) (string, error) {
 	at := &marker.AuthTicket{}
 	at.AllocationID = allocationID
 	at.OwnerID = client.GetClientID()
@@ -545,77 +543,77 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 		//	},
 		//	wantCode: http.StatusOK,
 		//},
-		{
-			name: "Stats_OK",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: func() *http.Request {
-					handlerName := handlers["/v1/file/stats/{allocation}"]
-					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
-					if err != nil {
-						t.Fatal()
-					}
-					q := url.Query()
-					q.Set("path", path)
-					url.RawQuery = q.Encode()
-
-					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					r.Header.Set(common.ClientSignatureHeader, sign)
-					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-
-					return r
-				}(),
-			},
-			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectBegin()
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
-					WithArgs(alloc.Tx).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id"}).
-							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
-					WithArgs(alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "allocation_id"}).
-							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
-					)
-
-				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, lookUpHash).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"type"}).
-							AddRow(reference.FILE),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "file_stats"`)).
-					WillReturnRows(
-						sqlmock.NewRows([]string{}).
-							AddRow(),
-					)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "write_markers"`)).
-					WithArgs(sqlmock.AnyArg()).
-					WillReturnRows(
-						sqlmock.NewRows([]string{}).
-							AddRow(),
-					)
-			},
-			wantCode: http.StatusOK,
-		},
+		//{
+		//	name: "Stats_OK",
+		//	args: args{
+		//		w: httptest.NewRecorder(),
+		//		r: func() *http.Request {
+		//			handlerName := handlers["/v1/file/stats/{allocation}"]
+		//			url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
+		//			if err != nil {
+		//				t.Fatal()
+		//			}
+		//			q := url.Query()
+		//			q.Set("path", path)
+		//			url.RawQuery = q.Encode()
+		//
+		//			r, err := http.NewRequest(http.MethodPost, url.String(), nil)
+		//			if err != nil {
+		//				t.Fatal(err)
+		//			}
+		//
+		//			hash := encryption.Hash(alloc.Tx)
+		//			sign, err := sch.Sign(hash)
+		//			if err != nil {
+		//				t.Fatal(err)
+		//			}
+		//
+		//			r.Header.Set(common.ClientSignatureHeader, sign)
+		//			r.Header.Set(common.ClientHeader, alloc.OwnerID)
+		//
+		//			return r
+		//		}(),
+		//	},
+		//	alloc: alloc,
+		//	setupDbMock: func(mock sqlmock.Sqlmock) {
+		//		mock.ExpectBegin()
+		//
+		//		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
+		//			WithArgs(alloc.Tx).
+		//			WillReturnRows(
+		//				sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id"}).
+		//					AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID),
+		//			)
+		//
+		//		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
+		//			WithArgs(alloc.ID).
+		//			WillReturnRows(
+		//				sqlmock.NewRows([]string{"id", "allocation_id"}).
+		//					AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
+		//			)
+		//
+		//		lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
+		//		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+		//			WithArgs(alloc.ID, lookUpHash).
+		//			WillReturnRows(
+		//				sqlmock.NewRows([]string{"type"}).
+		//					AddRow(reference.FILE),
+		//			)
+		//
+		//		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "file_stats"`)).
+		//			WillReturnRows(
+		//				sqlmock.NewRows([]string{}).
+		//					AddRow(),
+		//			)
+		//		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "write_markers"`)).
+		//			WithArgs(sqlmock.AnyArg()).
+		//			WillReturnRows(
+		//				sqlmock.NewRows([]string{}).
+		//					AddRow(),
+		//			)
+		//	},
+		//	wantCode: http.StatusOK,
+		//},
 		//{
 		//	name: "Object_Tree_OK",
 		//	args: args{
