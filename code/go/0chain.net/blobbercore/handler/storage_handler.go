@@ -81,7 +81,7 @@ func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, request *bl
 	allocationObj, err := fsh.verifyAllocation(ctx, request.Id, false)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to GetAllocationDetails for id: "+request.Id)
+		return nil, errors.Wrap(err, "unable to GetAllocationDetails for id: " + request.Id)
 	}
 
 	return allocationObj, nil

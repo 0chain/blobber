@@ -21,7 +21,7 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
 	response, err := storageHandler.GetAllocationDetails(ctx, request)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to get allocation details for request: "+request.String())
+		return nil, errors.Wrap(err, "unable to get allocation details for request: " + request.String())
 	}
 
 	return convert.GetAllocationResponseCreator(response), nil
@@ -32,7 +32,7 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, request *blobb
 
 	response, err := storageHandler.GetFileMeta(ctx, request)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get FileMetadata for request: "+request.String())
+		return nil, errors.Wrap(err, "failed to get FileMetadata for request: " + request.String())
 	}
 
 	return convert.GetFileMetaDataResponseCreator(response), nil
@@ -43,7 +43,7 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, request *blobberg
 
 	response, err := storageHandler.GetFileStats(ctx, request)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get FileStats for request: "+request.String())
+		return nil, errors.Wrap(err, "failed to get FileStats for request: " + request.String())
 	}
 
 	return convert.GetFileStatsResponseCreator(response), nil
