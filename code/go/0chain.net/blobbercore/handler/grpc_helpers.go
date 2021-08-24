@@ -3,13 +3,14 @@ package handler
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/gorilla/mux"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-	"net/http"
 )
 
 type gRPCHeaderMetadata struct {
@@ -18,18 +19,18 @@ type gRPCHeaderMetadata struct {
 	ClientSignature string
 }
 
-
 func registerGRPCServices(r *mux.Router, server *grpc.Server) {
 	blobberService := newGRPCBlobberService()
 	r.Use(Middleware2("ds"))
 	grpcGatewayHandler := runtime.NewServeMux(
-								runtime.WithIncomingHeaderMatcher(CustomMatcher),
-							)
-
+		runtime.WithIncomingHeaderMatcher(CustomMatcher),
+	)
 
 	blobbergrpc.RegisterBlobberServiceServer(server, blobberService)
 	_ = blobbergrpc.RegisterBlobberServiceHandlerServer(context.Background(), grpcGatewayHandler, blobberService)
 	r.PathPrefix("/").Handler(grpcGatewayHandler)
+
+	grpcHandlePaths(grpcGatewayHandler)
 }
 
 func Middleware2(s string) mux.MiddlewareFunc {

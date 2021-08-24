@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 
 	"github.com/gorilla/mux"
@@ -88,4 +89,13 @@ func NewGRPCServerWithMiddlewares(limiter grpc_ratelimit.Limiter, r *mux.Router)
 	})
 
 	return srv
+}
+
+func grpcHandlePaths(r *runtime.ServeMux) {
+	_ = r.HandlePath("POST", "/v1/file/upload/{allocation}",
+		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+			r = mux.SetURLVars(r, map[string]string{"allocation": pathParams[`allocation`]})
+			common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler)))(w, r)
+		})
+
 }
