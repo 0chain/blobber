@@ -9,19 +9,22 @@ import (
 	"net/http"
 	"os"
 	"runtime/pprof"
+	//"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/gosdk/zboxcore/fileref"
+	"gorm.io/gorm"
+
+	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/zboxcore/fileref"
 	"github.com/gorilla/mux"
-	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 var storageHandler StorageHandler
@@ -338,16 +341,16 @@ func HandleShutdown(ctx context.Context) {
 	}()
 }
 
-func DumpGoRoutines(_ context.Context, _ *http.Request) (interface{}, error) {
+func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
 	_ = pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 	return "success", nil
 }
 
-func GetConfig(_ context.Context, _ *http.Request) (interface{}, error) {
+func GetConfig(ctx context.Context, r *http.Request) (interface{}, error) {
 	return config.Configuration, nil
 }
 
-func CleanupDiskHandler(ctx context.Context, _ *http.Request) (interface{}, error) {
+func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	err := CleanupDiskFiles(ctx)
 	return "cleanup", err
 }
@@ -431,12 +434,12 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return false, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
 	}
 
-	fileRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, authTicket.FilePathHash)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, authTicket.FilePathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 
-	authTicketVerified, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileRef, authTicket.ClientID)
+	authTicketVerified, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileref, authTicket.ClientID)
 	if !authTicketVerified {
 		return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket. "+err.Error())
 	}

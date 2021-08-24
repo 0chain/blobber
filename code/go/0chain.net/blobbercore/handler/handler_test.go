@@ -13,15 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	bconfig "github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/config"
-	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
 	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
@@ -34,6 +25,16 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	bconfig "github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/config"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 type MockFileBlockGetter struct {
@@ -43,13 +44,13 @@ type MockFileBlockGetter struct {
 var mockFileBlock []byte
 
 func (MockFileBlockGetter) GetFileBlock(
-	_ *filestore.FileFSStore,
-	_ string,
-	_ *filestore.FileInputData,
-	_ int64,
-	_ int64,
+	fsStore *filestore.FileFSStore,
+	allocationID string,
+	fileData *filestore.FileInputData,
+	blockNum int64,
+	numBlocks int64,
 ) ([]byte, error) {
-	return mockFileBlock, nil
+	return []byte(mockFileBlock), nil
 }
 
 func setMockFileBlock(data []byte) {

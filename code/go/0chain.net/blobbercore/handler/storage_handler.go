@@ -3,13 +3,15 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
+	"github.com/pkg/errors"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -18,13 +20,14 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
 
 const (
-	FormFileParseMaxMemory = 10 * 1024 * 1024
-	DownloadContentThumb   = "thumbnail"
+	FORM_FILE_PARSE_MAX_MEMORY = 10 * 1024 * 1024
+
+	DOWNLOAD_CONTENT_FULL  = "full"
+	DOWNLOAD_CONTENT_THUMB = "thumbnail"
 )
 
 type StorageHandler struct{}
@@ -112,12 +115,13 @@ func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocat
 }
 
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, request *blobbergrpc.GetFileMetaDataRequest) (interface{}, error) {
+
 	allocationTx := request.Allocation
 	alloc, err := fsh.verifyAllocation(ctx, allocationTx, true)
 
 	if err != nil {
 		Logger.Error("Invalid allocation ID passed in the request")
-		return nil, errors.Wrap(err, "invalid allocation id: "+allocationTx)
+		return nil, errors.Wrap(err, "invalid allocation id: " + allocationTx)
 	}
 
 	allocationID := alloc.ID
@@ -128,7 +132,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, request *blobbergrpc
 		return nil, errors.Wrap(errors.New("missing client id"), "Operation needs to be performed by the owner of the allocation")
 	}
 
-	if request.PathHash == "" {
+	if request.PathHash == ""{
 		if request.Path == "" {
 			Logger.Error("Invalid request path passed in the request")
 			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
@@ -193,7 +197,7 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, request *blobbe
 			"operation can be performed by owner of allocation")
 	}
 
-	if request.PathHash == "" {
+	if request.PathHash == ""{
 		if request.Path == "" {
 			Logger.Error("Invalid request path passed in the request")
 			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
@@ -247,7 +251,7 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, request *blobber
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 
-	if request.PathHash == "" {
+	if request.PathHash == ""{
 		if request.Path == "" {
 			Logger.Error("Invalid request path passed in the request")
 			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
@@ -321,11 +325,11 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, request *blobber
 }
 
 func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrpc.GetFileStatsRequest) (interface{}, error) {
-	allocationTx := request.Allocation
-	alloc, err := fsh.verifyAllocation(ctx, allocationTx, true)
+	// todo(kushthedude): generalise the allocation_context in the grpc metadata
+	alloc, err := fsh.verifyAllocation(ctx, request.Allocation, true)
 	if err != nil {
 		Logger.Error("Invalid allocation ID passed in the request")
-		return nil, errors.Wrap(err, "invalid allocation id: "+allocationTx)
+		return nil, errors.Wrap(err, "invalid allocation id passed")
 	}
 
 	allocationID := alloc.ID
@@ -359,16 +363,16 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrp
 
 	result := fileref.GetListingData(ctx)
 	fileStats, err := stats.GetFileStats(ctx, fileref.ID)
-	if err != nil {
-		Logger.Error("unable to get file stats from fileRef ", zap.Int64("fileRef.id", fileref.ID))
-		return nil, errors.Wrapf(err, "failed to get fileStats from the fileRef")
-	}
+	//if err != nil {
+	//	Logger.Error("unable to get file stats from fileRef ", zap.Int64("fileRef.id", fileref.ID))
+	//	return nil, errors.Wrap(err, "failed to get fileStats from the fileRef")
+	//}
 
 	wm, err := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
-	if err != nil {
-		Logger.Error("unable to get write marker from fileRef ", zap.String("fileRef.WriteMarker", fileref.WriteMarker))
-		return nil, errors.Wrapf(err, "failed to get write marker from fileRef ")
-	}
+	//if err != nil {
+	//	Logger.Error("unable to get write marker from fileRef ", zap.String("fileRef.WriteMarker", fileref.WriteMarker))
+	//	return nil, errors.Wrap(err, "failed to get write marker from fileRef")
+	//}
 	if wm != nil && fileStats != nil {
 		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
 	}
@@ -410,7 +414,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, request *blobbergrp
 		return nil, errors.Wrap(errors.New("Unauthorised Operation"), "operation needs to be performed by the owner of the allocation")
 	}
 
-	if request.PathHash == "" {
+	if request.PathHash == ""{
 		if request.Path == "" {
 			Logger.Error("Invalid request path passed in the request")
 			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
@@ -589,7 +593,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, request *blobbergr
 
 	allocationID := allocationObj.ID
 
-	clientSign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	clientSign:= ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
 	valid, err := verifySignatureFromRequest(request.Allocation, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, errors.Wrap(errors.New("Authorisation Error"), "failed to verify signature")
