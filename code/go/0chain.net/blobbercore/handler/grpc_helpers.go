@@ -30,7 +30,11 @@ func registerGRPCServices(r *mux.Router, server *grpc.Server) {
 	_ = blobbergrpc.RegisterBlobberServiceHandlerServer(context.Background(), grpcGatewayHandler, blobberService)
 	r.PathPrefix("/").Handler(grpcGatewayHandler)
 
-	grpcHandlePaths(grpcGatewayHandler)
+	_ = grpcGatewayHandler.HandlePath("POST", "/v1/file/upload/{allocation}",
+		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+			r = mux.SetURLVars(r, map[string]string{"allocation": pathParams[`allocation`]})
+			common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler)))(w, r)
+		})
 }
 
 func Middleware2(s string) mux.MiddlewareFunc {
