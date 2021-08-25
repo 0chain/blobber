@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/gorilla/mux"
@@ -18,6 +20,7 @@ type gRPCHeaderMetadata struct {
 	ClientSignature string
 }
 
+
 func registerGRPCServices(r *mux.Router, server *grpc.Server) {
 	blobberService := newGRPCBlobberService()
 	r.Use(Middleware2("ds"))
@@ -31,6 +34,12 @@ func registerGRPCServices(r *mux.Router, server *grpc.Server) {
 	blobbergrpc.RegisterBlobberServiceServer(server, blobberService)
 	_ = blobbergrpc.RegisterBlobberServiceHandlerServer(context.Background(), grpcGatewayHandler, blobberService)
 	r.PathPrefix("/").Handler(grpcGatewayHandler)
+
+	_ = grpcGatewayHandler.HandlePath("POST", "/v1/file/upload/{allocation}",
+		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+			r = mux.SetURLVars(r, map[string]string{"allocation": pathParams[`allocation`]})
+			common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler)))(w, r)
+		})
 }
 
 func Middleware2(s string) mux.MiddlewareFunc {
