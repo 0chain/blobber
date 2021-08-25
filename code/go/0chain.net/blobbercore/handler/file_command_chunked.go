@@ -101,8 +101,8 @@ func (cmd *ChunkedFileCommand) ProcessContent(ctx context.Context, req *http.Req
 		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
 	}
 
-	// save client's ContentHash in database instead blobber's
-	// it save time to compute hash for whole fragment again
+	// Save client's ContentHash in database instead blobber's
+	// it saves time to read and compute hash of fragment from disk again
 	//cmd.changeProcessor.Hash = fileOutputData.ContentHash
 
 	cmd.changeProcessor.AllocationID = allocationObj.ID

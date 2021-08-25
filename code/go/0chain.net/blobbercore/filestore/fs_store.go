@@ -47,13 +47,13 @@ type MinioConfiguration struct {
 var MinioConfig MinioConfiguration
 
 type IFileBlockGetter interface {
-	GetFileBlock(fsStore *FileFSStore, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64, chunkSize int) ([]byte, error)
+	GetFileBlock(fsStore *FileFSStore, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
 }
 
 type FileBlockGetter struct {
 }
 
-func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64, chunkSize int) ([]byte, error) {
+func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
 	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
@@ -84,17 +84,17 @@ func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileDa
 	}
 
 	filesize := int(fileinfo.Size())
-	maxBlockNum := int64(filesize / chunkSize)
+	maxBlockNum := int64(filesize / fileData.ChunkSize)
 	// check for any left over bytes. Add one more go routine if required.
-	if remainder := filesize % chunkSize; remainder != 0 {
+	if remainder := filesize % fileData.ChunkSize; remainder != 0 {
 		maxBlockNum++
 	}
 
 	if blockNum > maxBlockNum || blockNum < 1 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number")
 	}
-	buffer := make([]byte, int64(chunkSize)*numBlocks)
-	n, err := file.ReadAt(buffer, ((blockNum - 1) * int64(chunkSize)))
+	buffer := make([]byte, int64(fileData.ChunkSize)*numBlocks)
+	n, err := file.ReadAt(buffer, ((blockNum - 1) * int64(fileData.ChunkSize)))
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
@@ -342,9 +342,9 @@ func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *F
 	return returnBytes, mt, nil
 }
 
-func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64, chunkSize int) ([]byte, error) {
+func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
 
-	return fs.fileBlockGetter.GetFileBlock(fs, allocationID, fileData, blockNum, numBlocks, chunkSize)
+	return fs.fileBlockGetter.GetFileBlock(fs, allocationID, fileData, blockNum, numBlocks)
 
 }
 

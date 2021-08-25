@@ -46,7 +46,7 @@ type FileStore interface {
 	CreateDir(dirName string) error
 	DeleteDir(allocationID, dirPath, connectionID string) error
 
-	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64, chunkSize int) ([]byte, error)
+	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
 
 	CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error)
 	//GetMerkleTreeForFile(allocationID string, fileData *FileInputData) (util.MerkleTreeI, error)

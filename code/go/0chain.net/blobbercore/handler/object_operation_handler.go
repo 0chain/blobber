@@ -396,8 +396,9 @@ func (fsh *StorageHandler) DownloadFile(
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ThumbnailHash
 		fileData.OnCloud = fileref.OnCloud
+		fileData.ChunkSize = fileref.ChunkSize
 		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID,
-			fileData, blockNum, numBlocks, fileref.ChunkSize)
+			fileData, blockNum, numBlocks)
 		if err != nil {
 			return nil, common.NewErrorf("download_file",
 				"couldn't get thumbnail block: %v", err)
@@ -408,8 +409,10 @@ func (fsh *StorageHandler) DownloadFile(
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ContentHash
 		fileData.OnCloud = fileref.OnCloud
+		fileData.ChunkSize = fileref.ChunkSize
+
 		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID,
-			fileData, blockNum, numBlocks, fileref.ChunkSize)
+			fileData, blockNum, numBlocks)
 		if err != nil {
 			return nil, common.NewErrorf("download_file",
 				"couldn't get file block: %v", err)
