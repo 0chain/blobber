@@ -83,8 +83,8 @@ func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileDa
 		return nil, err
 	}
 
-	filesize := int(fileinfo.Size())
-	maxBlockNum := int64(filesize / fileData.ChunkSize)
+	filesize := fileinfo.Size()
+	maxBlockNum := filesize / fileData.ChunkSize
 	// check for any left over bytes. Add one more go routine if required.
 	if remainder := filesize % fileData.ChunkSize; remainder != 0 {
 		maxBlockNum++

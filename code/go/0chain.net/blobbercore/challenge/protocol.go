@@ -139,6 +139,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		inputData.Name = objectPath.Meta["name"].(string)
 		inputData.Path = objectPath.Meta["path"].(string)
 		inputData.Hash = objectPath.Meta["content_hash"].(string)
+		inputData.ChunkSize = objectPath.ChunkSize
 		r := rand.New(rand.NewSource(cr.RandomNumber))
 		blockoffset := r.Intn(1024)
 		blockData, mt, err := filestore.GetFileStore().GetFileBlockForChallenge(cr.AllocationID, inputData, blockoffset)

@@ -16,7 +16,7 @@ type FileInputData struct {
 	OnCloud bool
 
 	// ChunkSize chunk size
-	ChunkSize int
+	ChunkSize int64
 	//IsChunked the request is chunked upload
 	IsChunked bool
 	//UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.

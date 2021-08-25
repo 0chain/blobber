@@ -48,7 +48,7 @@ type NewFileChange struct {
 	EncryptedKey string `json:"encrypted_key,omitempty"`
 	CustomMeta   string `json:"custom_meta,omitempty"`
 
-	ChunkSize int `json:"chunk_size,omitempty"` // the size of achunk. 64*1024 is default
+	ChunkSize int64 `json:"chunk_size,omitempty"` // the size of achunk. 64*1024 is default
 }
 
 func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, allocationRoot string) (*reference.Ref, error) {

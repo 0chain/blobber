@@ -91,7 +91,7 @@ type Ref struct {
 
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"-"` // soft deletion
 
-	ChunkSize int `gorm:"column:chunk_size" dirlist:"chunk_size" filelist:"chunk_size"`
+	ChunkSize int64 `gorm:"column:chunk_size" dirlist:"chunk_size" filelist:"chunk_size"`
 }
 
 func (Ref) TableName() string {
@@ -235,7 +235,7 @@ func (fr *Ref) GetFileHashData() string {
 	hashArray = append(hashArray, strconv.FormatInt(fr.ActualFileSize, 10))
 	hashArray = append(hashArray, fr.ActualFileHash)
 	hashArray = append(hashArray, string(fr.Attributes))
-	hashArray = append(hashArray, strconv.Itoa(fr.ChunkSize))
+	hashArray = append(hashArray, strconv.FormatInt(fr.ChunkSize, 10))
 	return strings.Join(hashArray, ":")
 }
 
