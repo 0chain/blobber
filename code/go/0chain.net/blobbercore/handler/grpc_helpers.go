@@ -11,7 +11,6 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-	"net/http"
 )
 
 type gRPCHeaderMetadata struct {
@@ -20,16 +19,12 @@ type gRPCHeaderMetadata struct {
 	ClientSignature string
 }
 
-
 func registerGRPCServices(r *mux.Router, server *grpc.Server) {
 	blobberService := newGRPCBlobberService()
 	r.Use(Middleware2("ds"))
 	grpcGatewayHandler := runtime.NewServeMux(
 		runtime.WithIncomingHeaderMatcher(CustomMatcher),
 	)
-
-	_ = grpcGatewayHandler.HandlePath("POST", `/v1/file/upload/{allocation}`,
-		upload(common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler)))))
 
 	blobbergrpc.RegisterBlobberServiceServer(server, blobberService)
 	_ = blobbergrpc.RegisterBlobberServiceHandlerServer(context.Background(), grpcGatewayHandler, blobberService)
@@ -39,6 +34,12 @@ func registerGRPCServices(r *mux.Router, server *grpc.Server) {
 		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 			r = mux.SetURLVars(r, map[string]string{"allocation": pathParams[`allocation`]})
 			common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler)))(w, r)
+		})
+
+	_ = grpcGatewayHandler.HandlePath("POST", "/v1/file/download/{allocation}",
+		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+			r = mux.SetURLVars(r, map[string]string{"allocation": pathParams[`allocation`]})
+			common.UserRateLimit(common.ToByteStream(WithConnection(DownloadHandler)))(w, r)
 		})
 }
 
@@ -91,13 +92,5 @@ func CustomMatcher(key string) (string, bool) {
 		return key, true
 	default:
 		return runtime.DefaultHeaderMatcher(key)
-	}
-}
-
-func upload(handler common.ReqRespHandlerf) runtime.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-		*r = *mux.SetURLVars(r, map[string]string{"allocation": pathParams[`allocation`]})
-		*r = *r.WithContext(setupHandlerContext(r.Context(), r))
-		handler(w, r)
 	}
 }
