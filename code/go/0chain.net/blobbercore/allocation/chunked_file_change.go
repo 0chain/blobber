@@ -14,18 +14,19 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
-// ResumeFileChange file change processor for continuous upload in INIT/APPEND/FINALIZE
-type ResumeFileChange struct {
+// ChunkedFileChange file change processor for continuous upload in INIT/APPEND/FINALIZE
+type ChunkedFileChange struct {
 	NewFileChange
 
-	//FixedMerkleTree *gosdk.FixedMerkleTree `json:"trusted_conent_hasher,omitempty"` // streaming merkle hasher to save current state of tree
-	IsFinal      bool  `json:"is_final,omitempty"`      // current chunk is last or not
-	ChunkIndex   int   `json:"chunk_index,omitempty"`   // the seq of current chunk. all chunks MUST be uploaded one by one because of streaming merkle hash
-	UploadOffset int64 `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
+	IsFinal bool `json:"is_final,omitempty"` // current chunk is last or not
+
+	ChunkIndex   int    `json:"chunk_index,omitempty"` // the seq of current chunk. all chunks MUST be uploaded one by one because of CompactMerkleTree
+	ChunkHash    string `json:"chunk_hash,omitempty"`
+	UploadOffset int64  `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
 }
 
 // ProcessChange update references, and create a new FileRef
-func (nf *ResumeFileChange) ProcessChange(ctx context.Context,
+func (nf *ChunkedFileChange) ProcessChange(ctx context.Context,
 	change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 
 	path, _ := filepath.Split(nf.Path)
@@ -105,7 +106,7 @@ func (nf *ResumeFileChange) ProcessChange(ctx context.Context,
 }
 
 // Marshal marshal and change to persistent to postgres
-func (nf *ResumeFileChange) Marshal() (string, error) {
+func (nf *ChunkedFileChange) Marshal() (string, error) {
 	ret, err := json.Marshal(nf)
 	if err != nil {
 		return "", err
@@ -114,7 +115,7 @@ func (nf *ResumeFileChange) Marshal() (string, error) {
 }
 
 // Unmarshal reload and unmarshal change from allocation_changes.input on postgres
-func (nf *ResumeFileChange) Unmarshal(input string) error {
+func (nf *ChunkedFileChange) Unmarshal(input string) error {
 	if err := json.Unmarshal([]byte(input), nf); err != nil {
 		return err
 	}
@@ -123,7 +124,7 @@ func (nf *ResumeFileChange) Unmarshal(input string) error {
 }
 
 // DeleteTempFile delete temp files from allocation's temp dir
-func (nf *ResumeFileChange) DeleteTempFile() error {
+func (nf *ChunkedFileChange) DeleteTempFile() error {
 	fileInputData := &filestore.FileInputData{}
 	fileInputData.Name = nf.Filename
 	fileInputData.Path = nf.Path
@@ -140,7 +141,7 @@ func (nf *ResumeFileChange) DeleteTempFile() error {
 }
 
 // CommitToFileStore move files from temp dir to object dir
-func (nf *ResumeFileChange) CommitToFileStore(ctx context.Context) error {
+func (nf *ChunkedFileChange) CommitToFileStore(ctx context.Context) error {
 	fileInputData := &filestore.FileInputData{}
 	fileInputData.Name = nf.Filename
 	fileInputData.Path = nf.Path

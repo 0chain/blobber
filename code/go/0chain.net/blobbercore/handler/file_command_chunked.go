@@ -14,19 +14,19 @@ import (
 	"github.com/0chain/gosdk/zboxcore/fileref"
 )
 
-// ResumeFileCommand command for resuming file
-type ResumeFileCommand struct {
+// ChunkedFileCommand command for resuming file
+type ChunkedFileCommand struct {
 	allocationChange *allocation.AllocationChange
-	changeProcessor  *allocation.ResumeFileChange
+	changeProcessor  *allocation.ChunkedFileChange
 }
 
 // IsAuthorized validate request.
-func (cmd *ResumeFileCommand) IsAuthorized(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
+func (cmd *ChunkedFileCommand) IsAuthorized(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	changeProcessor := &allocation.ResumeFileChange{}
+	changeProcessor := &allocation.ChunkedFileChange{}
 
 	uploadMetaString := req.FormValue("uploadMeta")
 	err := json.Unmarshal([]byte(uploadMetaString), changeProcessor)
@@ -54,7 +54,7 @@ func (cmd *ResumeFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 }
 
 // ProcessContent flush file to FileStorage
-func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
+func (cmd *ChunkedFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
 	result := blobberhttp.UploadResult{}
 
 	origfile, _, err := req.FormFile("uploadFile")
@@ -69,7 +69,7 @@ func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		Path:         cmd.changeProcessor.Path,
 		OnCloud:      false,
 		UploadOffset: cmd.changeProcessor.UploadOffset,
-		IsResumable:  true,
+		IsChunked:    true,
 		IsFinal:      cmd.changeProcessor.IsFinal,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
@@ -97,27 +97,11 @@ func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}
 
-	if len(cmd.changeProcessor.Hash) > 0 && cmd.changeProcessor.Hash != fileOutputData.ContentHash {
+	if len(cmd.changeProcessor.ChunkHash) > 0 && cmd.changeProcessor.ChunkHash != fileOutputData.ContentHash {
 		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
 	}
 
-	//push leaf to merkle hasher for computing, save state in db
-
-	//cmd.changeProcessor.FixedMerkleTree.Write(origfile.Read(p []byte))
-
-	// err = cmd.changeProcessor.MerkleHasher.Push(cmd.changeProcessor.Hash, cmd.changeProcessor.ChunkIndex)
-	// if errors.Is(err, util.ErrLeafNoSequenced) {
-
-	// 	return result, common.NewError("invalid_chunk_index", "Next chunk index should be "+strconv.Itoa(cmd.changeProcessor.MerkleHasher.Count)+" not "+strconv.Itoa(cmd.changeProcessor.ChunkIndex))
-	// }
-
 	cmd.changeProcessor.Hash = fileOutputData.ContentHash
-
-	if cmd.changeProcessor.IsFinal {
-
-		//cmd.changeProcessor.ActualHash = cmd.changeProcessor.MerkleHasher.GetMerkleRoot()
-		//cmd.changeProcessor.Hash = fileOutputData.ContentHash
-	}
 
 	cmd.changeProcessor.AllocationID = allocationObj.ID
 	cmd.changeProcessor.Size = allocationSize
@@ -133,7 +117,7 @@ func (cmd *ResumeFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 }
 
 // ProcessThumbnail flush thumbnail file to FileStorage if it has.
-func (cmd *ResumeFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
+func (cmd *ChunkedFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
 
 	thumbfile, thumbHeader, _ := req.FormFile("uploadThumbnailFile")
 
@@ -158,11 +142,11 @@ func (cmd *ResumeFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 	return nil
 }
 
-func (cmd *ResumeFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
+func (cmd *ChunkedFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
 		if c.Operation == allocation.RESUME_OPERATION {
 
-			dbChangeProcessor := &allocation.ResumeFileChange{}
+			dbChangeProcessor := &allocation.ChunkedFileChange{}
 
 			dbChangeProcessor.Unmarshal(c.Input)
 
@@ -172,8 +156,8 @@ func (cmd *ResumeFileCommand) reloadChange(connectionObj *allocation.AllocationC
 	}
 }
 
-// UpdateChange replace ResumeFileChange in db
-func (cmd *ResumeFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
+// UpdateChange replace ChunkedFileChange in db
+func (cmd *ChunkedFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	for _, c := range connectionObj.Changes {
 		if c.Operation == allocation.RESUME_OPERATION {
 			c.Size = connectionObj.Size

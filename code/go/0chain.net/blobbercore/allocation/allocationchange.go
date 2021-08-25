@@ -143,7 +143,7 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 		case UPDATE_ATTRS_OPERATION:
 			acp = new(AttributesChange)
 		case RESUME_OPERATION:
-			acp = new(ResumeFileChange)
+			acp = new(ChunkedFileChange)
 		}
 
 		if acp == nil {

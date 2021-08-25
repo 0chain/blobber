@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/errors"
 	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -23,6 +24,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
+	"github.com/0chain/gosdk/constants"
 	"github.com/minio/minio-go"
 	"golang.org/x/crypto/sha3"
 )
@@ -504,7 +506,7 @@ func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) err
 func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	infile multipart.File, connectionID string) (*FileOutputData, error) {
 
-	if fileData.IsResumable {
+	if fileData.IsChunked {
 		return fs.WriteChunk(allocationID, fileData, infile, connectionID)
 	}
 
@@ -599,11 +601,12 @@ func (fs *FileFSStore) WriteChunk(allocationID string, fileData *FileInputData,
 	size, err := dest.WriteChunk(context.TODO(), fileData.UploadOffset, io.TeeReader(infile, h))
 
 	if err != nil {
-		return nil, common.NewError("file_write_error", err.Error())
+		return nil, errors.ThrowLog(err.Error(), constants.ErrUnableWriteFile)
 	}
 
-	fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
 	fileRef.Size = size
+	fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
+
 	fileRef.Name = fileData.Name
 	fileRef.Path = fileData.Path
 

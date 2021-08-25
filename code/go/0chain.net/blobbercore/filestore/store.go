@@ -15,8 +15,10 @@ type FileInputData struct {
 	Hash    string
 	OnCloud bool
 
-	//IsResumable the request is resumable upload
-	IsResumable bool
+	// ChunkSize chunk size
+	ChunkSize int
+	//IsChunked the request is chunked upload
+	IsChunked bool
 	//UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
 	UploadLength int64
 	//Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.

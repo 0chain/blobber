@@ -26,15 +26,17 @@ type FileCommand interface {
 // createFileCommand create file command for INSERT,UPDATE and RESUME
 func createFileCommand(req *http.Request) FileCommand {
 	switch req.Method {
+	case http.MethodPost:
+		return &ChunkedFileCommand{}
 	case http.MethodPatch:
-		return &ResumeFileCommand{}
+		return &ChunkedFileCommand{}
+
 	case http.MethodPut:
 		return &UpdateFileCommand{}
-	case http.MethodPost:
-		return &InsertFileCommand{}
 	case http.MethodDelete:
 		return &DeleteFileCommand{}
+
 	default:
-		return &InsertFileCommand{}
+		return &ChunkedFileCommand{}
 	}
 }
