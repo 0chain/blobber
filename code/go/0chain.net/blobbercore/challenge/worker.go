@@ -1,32 +1,22 @@
 package challenge
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
 	"github.com/remeh/sizedwaitgroup"
-	"gorm.io/gorm"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 )
 
-type BCChallengeResponse struct {
-	BlobberID  string             `json:"blobber_id"`
-	Challenges []*ChallengeEntity `json:"challenges"`
-}
-
+// SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {
+	go startSyncChallenges(ctx)
 	go FindChallenges(ctx)
 	go SubmitProcessedChallenges(ctx) //nolint:errcheck // goroutines
 }
@@ -43,15 +33,15 @@ func LoadValidationTickets(ctx context.Context, challengeObj *ChallengeEntity) e
 	return err
 }
 
-func SubmitProcessedChallenges(ctx context.Context) error {
+func SubmitProcessedChallenges(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return
 		default:
 			rctx := datastore.GetStore().CreateTransaction(ctx)
 			db := datastore.GetStore().GetTransaction(rctx)
-			//lastChallengeRedeemed := &ChallengeEntity{}
+
 			rows, err := db.Table("challenges").
 				Select("commit_txn_id, sequence").
 				Where(ChallengeEntity{Status: Committed}).
@@ -148,11 +138,7 @@ func SubmitProcessedChallenges(ctx context.Context) error {
 		}
 		time.Sleep(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
 	}
-
-	return nil //nolint:govet // need more time to verify
 }
-
-var iterInprogress = false
 
 func FindChallenges(ctx context.Context) {
 	ticker := time.NewTicker(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
@@ -161,94 +147,54 @@ func FindChallenges(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if !iterInprogress {
-				iterInprogress = true
-				rctx := datastore.GetStore().CreateTransaction(ctx)
-				db := datastore.GetStore().GetTransaction(rctx)
-				openchallenges := make([]*ChallengeEntity, 0)
-				db.Where(ChallengeEntity{Status: Accepted}).Find(&openchallenges)
-				if len(openchallenges) > 0 {
-					swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
-					for _, openchallenge := range openchallenges {
-						Logger.Info("Processing the challenge", zap.Any("challenge_id", openchallenge.ChallengeID), zap.Any("openchallenge", openchallenge))
-						err := openchallenge.UnmarshalFields()
+
+			rctx := datastore.GetStore().CreateTransaction(ctx)
+			db := datastore.GetStore().GetTransaction(rctx)
+			openchallenges := make([]*ChallengeEntity, 0)
+			db.Where(ChallengeEntity{Status: Accepted}).Find(&openchallenges)
+			if len(openchallenges) > 0 {
+				swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
+				for _, openchallenge := range openchallenges {
+					Logger.Info("Processing the challenge", zap.Any("challenge_id", openchallenge.ChallengeID), zap.Any("openchallenge", openchallenge))
+					err := openchallenge.UnmarshalFields()
+					if err != nil {
+						Logger.Error("Error unmarshaling challenge entity.", zap.Error(err))
+						continue
+					}
+					swg.Add()
+					go func(redeemCtx context.Context, challengeEntity *ChallengeEntity) {
+						redeemCtx = datastore.GetStore().CreateTransaction(redeemCtx)
+						defer redeemCtx.Done()
+						err := LoadValidationTickets(redeemCtx, challengeEntity)
 						if err != nil {
-							Logger.Error("Error unmarshaling challenge entity.", zap.Error(err))
-							continue
+							Logger.Error("Getting validation tickets failed", zap.Any("challenge_id", challengeEntity.ChallengeID), zap.Error(err))
 						}
-						swg.Add()
-						go func(redeemCtx context.Context, challengeEntity *ChallengeEntity) {
-							redeemCtx = datastore.GetStore().CreateTransaction(redeemCtx)
-							defer redeemCtx.Done()
-							err := LoadValidationTickets(redeemCtx, challengeEntity)
-							if err != nil {
-								Logger.Error("Getting validation tickets failed", zap.Any("challenge_id", challengeEntity.ChallengeID), zap.Error(err))
-							}
-							db := datastore.GetStore().GetTransaction(redeemCtx)
-							err = db.Commit().Error
-							if err != nil {
-								Logger.Error("Error commiting the readmarker redeem", zap.Error(err))
-							}
-							swg.Done()
-						}(ctx, openchallenge)
-					}
-					swg.Wait()
-				}
-				db.Rollback()
-				rctx.Done()
-
-				params := make(map[string]string)
-				params["blobber"] = node.Self.ID
-
-				var blobberChallenges BCChallengeResponse
-				blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
-				retBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain())
-
-				if err != nil {
-					Logger.Error("Error getting the open challenges from the blockchain", zap.Error(err))
-				} else {
-					tCtx := datastore.GetStore().CreateTransaction(ctx)
-					db := datastore.GetStore().GetTransaction(tCtx)
-					bytesReader := bytes.NewBuffer(retBytes)
-
-					d := json.NewDecoder(bytesReader)
-					d.UseNumber()
-					errd := d.Decode(&blobberChallenges)
-
-					if errd != nil {
-						Logger.Error("Error in unmarshal of the sharder response", zap.Error(errd))
-					} else {
-						for _, v := range blobberChallenges.Challenges {
-							if v == nil || len(v.ChallengeID) == 0 {
-								Logger.Info("No challenge entity from the challenge map")
-								continue
-							}
-
-							challengeObj := v
-							_, err := GetChallengeEntity(tCtx, challengeObj.ChallengeID)
-
-							if errors.Is(err, gorm.ErrRecordNotFound) {
-								latestChallenge, err := GetLastChallengeEntity(tCtx)
-								if err == nil || errors.Is(err, gorm.ErrRecordNotFound) {
-									if (latestChallenge == nil && len(challengeObj.PrevChallengeID) == 0) || latestChallenge.ChallengeID == challengeObj.PrevChallengeID {
-										Logger.Info("Adding new challenge found from blockchain", zap.String("challenge", v.ChallengeID))
-										challengeObj.Status = Accepted
-										if err := challengeObj.Save(tCtx); err != nil {
-											Logger.Error("ChallengeEntity_Save", zap.String("challenge_id", challengeObj.ChallengeID), zap.Error(err))
-										}
-									} else {
-										Logger.Error("Challenge chain is not valid")
-									}
-								}
-								//go stats.AddNewChallengeEvent(challengeObj.AllocationID, challengeObj.ID)
-							}
+						db := datastore.GetStore().GetTransaction(redeemCtx)
+						err = db.Commit().Error
+						if err != nil {
+							Logger.Error("Error commiting the readmarker redeem", zap.Error(err))
 						}
-					}
-					db.Commit()
-					tCtx.Done()
+						swg.Done()
+					}(ctx, openchallenge)
 				}
-				iterInprogress = false
+				swg.Wait()
 			}
+			db.Rollback()
+			rctx.Done()
+
+		}
+	}
+}
+
+// startSyncChallenges
+func startSyncChallenges(ctx context.Context) {
+	ticker := time.NewTicker(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			syncChallenges(ctx)
 		}
 	}
 }
