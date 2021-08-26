@@ -335,7 +335,7 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 	contentHasher := util.NewCompactMerkleTree(nil)
 	err = contentHasher.Reload(cr.ChunkSize, bytes.NewReader(cr.DataBlock))
 	if err != nil {
-		return common.NewError("challenge_validation_failed", "Failed to calcuate content hash for the data block")
+		return common.NewError("challenge_validation_failed", "Failed to calculate content hash for the data block")
 	}
 
 	merkleVerify := util.VerifyMerklePath(contentHasher.GetMerkleRoot(), cr.MerklePath, cr.ObjPath.Meta.MerkleRoot)
