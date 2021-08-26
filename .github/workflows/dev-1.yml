@@ -1,4 +1,4 @@
-name: CICD-01
+name: DEPLOY_TO_DEV-1
 
 on:
   workflow_dispatch:
@@ -24,7 +24,7 @@ jobs:
       - name: Setup kubeconfig
         run: |
           mkdir -p ~/.kube
-          echo "${{ secrets.CICD01KC }}" | base64 -d > ~/.kube/config
+          echo "${{ secrets.DEV1KC }}" | base64 -d > ~/.kube/config
       - name: Setup chain
         run: |
           helm upgrade --install blobber -n helmtest --set blobber.blobberImage.tag=${{ github.event.inputs.image }} --set validator.validatorImage.tag=${{ github.event.inputs.image }} 0chain-helm/blobber
