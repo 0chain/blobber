@@ -3,6 +3,8 @@ package challenge
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"math"
 	"math/rand"
 	"time"
 
@@ -140,8 +142,17 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		inputData.Path = objectPath.Meta["path"].(string)
 		inputData.Hash = objectPath.Meta["content_hash"].(string)
 		inputData.ChunkSize = objectPath.ChunkSize
+
+		maxNumBlocks := 1024
+
+		// the file is too small, some of 1024 blocks is not filled
+		if objectPath.Size < objectPath.ChunkSize {
+			merkleChunkSize := objectPath.ChunkSize / 1024
+			maxNumBlocks = int(math.Ceil(float64(objectPath.Size) / float64(merkleChunkSize)))
+		}
+
 		r := rand.New(rand.NewSource(cr.RandomNumber))
-		blockoffset := r.Intn(1024)
+		blockoffset := r.Intn(maxNumBlocks)
 		blockData, mt, err := filestore.GetFileStore().GetFileBlockForChallenge(cr.AllocationID, inputData, blockoffset)
 
 		if err != nil {
@@ -150,6 +161,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		}
 		postData["data"] = []byte(blockData)
 		postData["merkle_path"] = mt.GetPathByIndex(blockoffset)
+		postData["chunk_size"] = objectPath.ChunkSize
 	}
 
 	postDataBytes, err := json.Marshal(postData)
@@ -169,7 +181,9 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 				continue
 			}
 		}
+
 		url := validator.URL + VALIDATOR_URL
+		fmt.Println(url)
 		resp, err := util.SendPostRequest(url, postDataBytes, nil)
 		if err != nil {
 			Logger.Info("Got error from the validator.", zap.Any("error", err.Error()))
@@ -218,7 +232,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			cr.Result = ChallengeSuccess
 		} else {
 			cr.Result = ChallengeFailure
-			Logger.Error("Challenge failed by the validators", zap.Any("block_num", cr.BlockNum), zap.Any("object_path", objectPath), zap.Any("challenge", cr))
+			//Logger.Error("Challenge failed by the validators", zap.Any("block_num", cr.BlockNum), zap.Any("object_path", objectPath), zap.Any("challenge", cr))
 		}
 
 		cr.Status = Processed

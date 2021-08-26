@@ -72,7 +72,7 @@ func syncChallenges(ctx context.Context) {
 					}
 
 					isFirstChallengeInDatabase := len(challengeObj.PrevChallengeID) == 0 || latestChallenge == nil
-					isNextChallengeOnChain := latestChallenge.ChallengeID == challengeObj.PrevChallengeID
+					isNextChallengeOnChain := latestChallenge == nil || latestChallenge.ChallengeID == challengeObj.PrevChallengeID
 
 					if isFirstChallengeInDatabase || isNextChallengeOnChain {
 						logging.Logger.Info("Adding new challenge found from blockchain", zap.String("challenge", challengeObj.ChallengeID))

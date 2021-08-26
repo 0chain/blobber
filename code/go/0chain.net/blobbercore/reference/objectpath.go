@@ -13,6 +13,7 @@ type ObjectPath struct {
 	Path         map[string]interface{} `json:"path"`
 	FileBlockNum int64                  `json:"file_block_num"`
 	ChunkSize    int64                  `json:"chunk_size"`
+	Size         int64                  `json:"size"`
 	RefID        int64                  `json:"-"`
 }
 
@@ -85,6 +86,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 	retObj.Path = result
 	retObj.FileBlockNum = remainingBlocks
 	retObj.ChunkSize = curRef.ChunkSize
+	retObj.Size = curRef.Size
 	retObj.RefID = curRef.ID
 
 	return &retObj, nil

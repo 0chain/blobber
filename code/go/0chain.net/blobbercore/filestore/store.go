@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"mime/multipart"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/util"
+	"github.com/0chain/gosdk/core/util"
 )
 
 const CHUNK_SIZE = 64 * 1024
@@ -49,7 +49,7 @@ type FileStore interface {
 	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
 
 	CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error)
-	//GetMerkleTreeForFile(allocationID string, fileData *FileInputData) (util.MerkleTreeI, error)
+
 	GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error)
 	DeleteFile(allocationID string, contentHash string) error
 	GetTotalDiskSizeUsed() (int64, error)
