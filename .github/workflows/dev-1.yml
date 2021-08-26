@@ -27,5 +27,5 @@ jobs:
           echo "${{ secrets.DEV1KC }}" | base64 -d > ~/.kube/config
       - name: Setup chain
         run: |
-          helm upgrade --install blobber -n helmtest --set blobber.blobberImage.tag=${{ github.event.inputs.image }} --set validator.validatorImage.tag=${{ github.event.inputs.image }} 0chain-helm/blobber
+          helm upgrade --install blobber -n dev-1 --set blobber.blobberImage.tag=${{ github.event.inputs.image }} --set validator.validatorImage.tag=${{ github.event.inputs.image }} 0chain-helm/blobber
           rm -rf ~/.kube
