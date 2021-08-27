@@ -156,7 +156,7 @@ For example: If you want to connect to beta network
 
 ```
 
-block_worker: http://one.devnet-0chain.net/dns
+block_worker: https://beta.0chain.net/dns
 
 ```
 

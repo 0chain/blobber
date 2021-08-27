@@ -36,12 +36,12 @@ $ docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.
 ```
 2. Update block_worker url you give in the `config/0chain_blobber/validator.yaml` and `config/0chain_blobber/0chain_blobber.yaml` config file.
 
-For example: If you want to connect to one network, set
+For example: If you want to connect to beta network, set
 
 
 ```
 
-block_worker: http://one.devnet-0chain.net/dns
+block_worker: https://beta.0chain.net/dns
 
 ```
 3. Modify `docker.local/keys_config/b0bnode1_keys.txt` and replace `localhost` with public ip of your instance / vm.
