@@ -1,0 +1,13 @@
+name: Validate
+
+on: [pull_request]
+
+jobs:
+  validate-protos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: bufbuild/buf-setup-action@v0.3.1
+      - uses: bufbuild/buf-breaking-action@v0.4.0
+        with:
+          against: 'https://github.com/0chain/blobber.git#branch=${{ github.base_ref }}'
