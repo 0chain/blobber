@@ -44,7 +44,9 @@ jobs:
           sed -i '/#expose_ci_port/c\    ports:\n      - "5432:5432"' ./docker.local/b0docker-compose.yml
           ./docker.local/bin/blobber.init.setup.sh
           docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
+          ./docker.local/bin/build.base.sh
           ./docker.local/bin/build.blobber.sh
+          ./docker.local/bin/build.validator.sh
           cd docker.local/blobber1
           ../bin/blobber.start_bls.sh </dev/null &>/dev/null &
           cd ../..
