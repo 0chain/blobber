@@ -69,7 +69,6 @@ service BlobberService {
       }
       additional_bindings: {
         delete: "/v2/file/upload/{allocation}"
-        body: "*"
       }
     };
   }
@@ -118,7 +117,6 @@ service BlobberService {
       }
       additional_bindings: {
         delete: "/v2/file/collaborator/{allocation}"
-        body: "*"
       }
     };
   }

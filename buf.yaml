@@ -1,12 +1,10 @@
 version: v1beta1
 name: buf.build/0chain/blobber
 deps:
-  - buf.build/beta/googleapis
+  - buf.build/googleapis/googleapis
 build:
   roots:
     - code/go/0chain.net/blobbercore/blobbergrpc/proto
-  excludes:
-    - code/go/0chain.net/blobbercore/blobbergrpc/proto/google
 lint:
   use:
     - DEFAULT
