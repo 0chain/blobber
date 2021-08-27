@@ -1,9 +1,9 @@
-name: Validate
+name: Buf
 
 on: [pull_request]
 
 jobs:
-  validate-protos:
+  validate-grpc-stubs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
