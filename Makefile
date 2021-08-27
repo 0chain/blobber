@@ -21,7 +21,7 @@ lint:
 
 .PHONY: integration-tests
 integration-tests:
-	sudo go test ./... -args integration;
+	 go test ./... -args integration;
 
 
 

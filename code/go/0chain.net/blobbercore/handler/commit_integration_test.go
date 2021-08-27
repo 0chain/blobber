@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"strconv"
 	"testing"
 	"time"
+
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
@@ -37,6 +38,7 @@ func TestBlobberGRPCService_Commit(t *testing.T) {
 		ContentHash:    "contentHash",
 		MerkleRoot:     "merkleRoot",
 		ActualFileHash: "actualFileHash",
+		ChunkSize:      65536,
 	}
 
 	rootRefHash := encryption.Hash(encryption.Hash(fr.GetFileHashData()))
