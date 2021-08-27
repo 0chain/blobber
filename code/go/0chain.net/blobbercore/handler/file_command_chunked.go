@@ -11,7 +11,9 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/zboxcore/fileref"
+	"go.uber.org/zap"
 )
 
 // ChunkedFileCommand command for resuming file
@@ -150,7 +152,10 @@ func (cmd *ChunkedFileCommand) reloadChange(connectionObj *allocation.Allocation
 
 			dbChangeProcessor := &allocation.ChunkedFileChange{}
 
-			dbChangeProcessor.Unmarshal(c.Input)
+			err := dbChangeProcessor.Unmarshal(c.Input)
+			if err != nil {
+				logging.Logger.Error("reloadChange", zap.Error(err))
+			}
 
 			cmd.changeProcessor.Size = dbChangeProcessor.Size
 			return

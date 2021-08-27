@@ -30,7 +30,7 @@ func (cmd *DeleteFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 	cmd.exisitingFileRef, _ = reference.GetReference(ctx, allocationObj.ID, path)
 
 	if cmd.exisitingFileRef == nil {
-		common.NewError("invalid_file", "File does not exist at path")
+		return common.NewError("invalid_file", "File does not exist at path")
 	}
 
 	return nil
