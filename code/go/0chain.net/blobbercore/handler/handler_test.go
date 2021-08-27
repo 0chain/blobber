@@ -50,7 +50,7 @@ func (MockFileBlockGetter) GetFileBlock(
 	allocationID string,
 	fileData *filestore.FileInputData,
 	blockNum int64,
-	numBlocks int64, chunkSize int) ([]byte, error) {
+	numBlocks int64) ([]byte, error) {
 	return []byte(mockFileBlock), nil
 }
 
