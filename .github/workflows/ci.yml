@@ -2,10 +2,6 @@ name: CI
 
 on:
   push:
-    branches-ignore:
-      - dayi/main
-      - dayi/qa
-      - dayi/dev
 
   release:
     types:
