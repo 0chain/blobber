@@ -3,13 +3,14 @@ module github.com/0chain/blobber
 require (
 	github.com/0chain/gosdk v1.2.68-0.20210701180605-719eb403820c
 	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/bufbuild/buf v0.37.0 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/didip/tollbooth v4.0.2+incompatible
 	github.com/go-ini/ini v1.55.0 // indirect
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0
 	github.com/herumi/bls-go-binary v0.0.0-20191119080710-898950e1a520
 	github.com/improbable-eng/grpc-web v0.14.0
 	github.com/jackc/pgproto3/v2 v2.0.4 // indirect
@@ -25,10 +26,10 @@ require (
 	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
-	google.golang.org/genproto v0.0.0-20210224155714-063164c882e6
-	google.golang.org/grpc v1.36.0
-	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.0.0
-	google.golang.org/protobuf v1.26.0
+	google.golang.org/genproto v0.0.0-20210617175327-b9e0b3197ced
+	google.golang.org/grpc v1.38.0
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
+	google.golang.org/protobuf v1.27.1
 	gopkg.in/ini.v1 v1.61.0 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0

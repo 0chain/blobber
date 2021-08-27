@@ -168,8 +168,8 @@ message CommitMetaTxn {
 
 message Collaborator {
   int64 ref_id = 1;
-  string client_id = 2;
-  int64 created_at = 3;
+  string client_id = 3;
+  int64 created_at = 2;
 }
 
 message GetAllocationRequest {
