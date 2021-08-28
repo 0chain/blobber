@@ -23,10 +23,10 @@ import (
 
 const (
 	FormFileParseMaxMemory = 10 * 1024 * 1024
-
-	DownloadCcontentFull = "full"
-	DownloadContentThumb = "thumbnail"
-	PageLimit            = 100 //100 rows will make upto 100 KB
+	OffsetDateLayout       = "2006-01-02T15:04:05.99999Z07:00"
+	DownloadCcontentFull   = "full"
+	DownloadContentThumb   = "thumbnail"
+	PageLimit              = 100 //100 rows will make upto 100 KB
 )
 
 type StorageHandler struct{}
@@ -671,6 +671,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 
 //Retrieves file refs. One can use three types to refer to regular, updated and deleted. Regular type gives all undeleted rows.
 //Updated gives rows that is updated compared to the date given. And deleted gives deleted refs compared to the date given.
+//Updated date time format should be as declared in above constant; OffsetDateLayout
 func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobberhttp.RefResult, error) {
 	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
@@ -715,11 +716,11 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	offsetPath := r.FormValue("offsetPath")
 	offsetDate := r.FormValue("offsetDate")
 	updatedDate := r.FormValue("updatedDate")
-	err = checkValidDate(offsetDate)
+	err = checkValidDate(offsetDate, OffsetDateLayout)
 	if err != nil {
 		return nil, err
 	}
-	err = checkValidDate(updatedDate)
+	err = checkValidDate(updatedDate, OffsetDateLayout)
 	if err != nil {
 		return nil, err
 	}
@@ -737,7 +738,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	}
 
 	refType := r.FormValue("refType")
-	var refs *[]reference.Ref
+	var refs *[]reference.PaginatedRef
 	var totalPages int
 	var newOffsetPath string
 	var newOffsetDate string
@@ -747,10 +748,10 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		refs, totalPages, newOffsetPath, err = reference.GetRefs(ctx, allocationID, path, offsetPath, fileType, level, pageLimit)
 
 	case refType == "updated":
-		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetUpdatedRefs(ctx, allocationID, path, offsetPath, fileType, updatedDate, offsetDate, level, pageLimit)
+		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetUpdatedRefs(ctx, allocationID, path, offsetPath, fileType, updatedDate, offsetDate, level, pageLimit, OffsetDateLayout)
 
 	case refType == "deleted":
-		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetDeletedRefs(ctx, allocationID, updatedDate, offsetPath, offsetDate, pageLimit)
+		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetDeletedRefs(ctx, allocationID, updatedDate, offsetPath, offsetDate, pageLimit, OffsetDateLayout)
 
 	default:
 		return nil, common.NewError("invalid_parameters", "refType param should have value regular/updated/deleted")
@@ -772,8 +773,8 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	var refResult blobberhttp.RefResult
 	refResult.Refs = refs
 	refResult.TotalPages = totalPages
-	refResult.NewOffsetPath = newOffsetPath
-	refResult.NewOffsetDate = newOffsetDate
+	refResult.OffsetPath = newOffsetPath
+	refResult.OffsetDate = newOffsetDate
 	if latestWM != nil {
 		refResult.LatestWM = &latestWM.WM
 	}
@@ -867,4 +868,3 @@ func pathHashFromReq(r *http.Request, allocationID string) (string, error) {
 
 	return pathHash, nil
 }
-
