@@ -36,7 +36,19 @@ func registerGRPCServices(r *mux.Router, server *grpc.Server) {
 			common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler)))(w, r)
 		})
 
-	_ = grpcGatewayHandler.HandlePath("POST", "/v1/file/download/{allocation}",
+	_ = grpcGatewayHandler.HandlePath("PUT", "/v1/file/upload/{allocation}",
+		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+			r = mux.SetURLVars(r, map[string]string{"allocation": pathParams[`allocation`]})
+			common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler)))(w, r)
+		})
+
+	_ = grpcGatewayHandler.HandlePath("DELETE", "/v1/file/upload/{allocation}",
+		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+			r = mux.SetURLVars(r, map[string]string{"allocation": pathParams[`allocation`]})
+			common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler)))(w, r)
+		})
+
+	_ = grpcGatewayHandler.HandlePath("DELETE", "/v1/file/download/{allocation}",
 		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 			r = mux.SetURLVars(r, map[string]string{"allocation": pathParams[`allocation`]})
 			common.UserRateLimit(common.ToByteStream(WithConnection(DownloadHandler)))(w, r)
