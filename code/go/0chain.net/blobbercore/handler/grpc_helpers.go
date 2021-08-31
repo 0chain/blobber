@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"net/http"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
@@ -27,32 +28,54 @@ func registerGRPCServices(r *mux.Router, server *grpc.Server) {
 	)
 
 	blobbergrpc.RegisterBlobberServiceServer(server, blobberService)
-	_ = blobbergrpc.RegisterBlobberServiceHandlerServer(context.Background(), grpcGatewayHandler, blobberService)
+	err := blobbergrpc.RegisterBlobberServiceHandlerServer(context.Background(), grpcGatewayHandler, blobberService)
+	if err != nil {
+		logging.Logger.Error("Error registering blobber service handler" + err.Error())
+		return
+	}
+
 	r.PathPrefix("/").Handler(grpcGatewayHandler)
 
-	_ = grpcGatewayHandler.HandlePath("POST", "/v1/file/upload/{allocation}",
+	err = grpcGatewayHandler.HandlePath("POST", "/v1/file/upload/{allocation}",
 		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 			r = mux.SetURLVars(r, map[string]string{"allocation": pathParams[`allocation`]})
 			common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler)))(w, r)
 		})
+	if err != nil {
+		logging.Logger.Error("Error registering upload POST handler" + err.Error())
+		return
+	}
 
-	_ = grpcGatewayHandler.HandlePath("PUT", "/v1/file/upload/{allocation}",
+	err = grpcGatewayHandler.HandlePath("PUT", "/v1/file/upload/{allocation}",
 		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 			r = mux.SetURLVars(r, map[string]string{"allocation": pathParams[`allocation`]})
 			common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler)))(w, r)
 		})
+	if err != nil {
+		logging.Logger.Error("Error registering upload PUT handler" + err.Error())
+		return
+	}
 
-	_ = grpcGatewayHandler.HandlePath("DELETE", "/v1/file/upload/{allocation}",
+	err = grpcGatewayHandler.HandlePath("DELETE", "/v1/file/upload/{allocation}",
 		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 			r = mux.SetURLVars(r, map[string]string{"allocation": pathParams[`allocation`]})
 			common.UserRateLimit(common.ToJSONResponse(WithConnection(UploadHandler)))(w, r)
 		})
+	if err != nil {
+		logging.Logger.Error("Error registering upload DELETE handler" + err.Error())
+		return
+	}
 
-	_ = grpcGatewayHandler.HandlePath("DELETE", "/v1/file/download/{allocation}",
+	err = grpcGatewayHandler.HandlePath("POST", "/v1/file/download/{allocation}",
 		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 			r = mux.SetURLVars(r, map[string]string{"allocation": pathParams[`allocation`]})
 			common.UserRateLimit(common.ToByteStream(WithConnection(DownloadHandler)))(w, r)
 		})
+
+	if err != nil {
+		logging.Logger.Error("Error registering download POST handler" + err.Error())
+		return
+	}
 }
 
 func Middleware2(s string) mux.MiddlewareFunc {
