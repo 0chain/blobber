@@ -20,9 +20,9 @@ import (
 )
 
 func SetupWorkers(ctx context.Context) {
-	go CleanupTempFiles(ctx)
+	go startCleanupTempFiles(ctx)
 	if config.Configuration.MinioStart {
-		go MoveColdDataToCloud(ctx)
+		go startMoveColdDataToCloud(ctx)
 	}
 }
 
@@ -52,7 +52,40 @@ func CleanupDiskFiles(ctx context.Context) error {
 	return nil
 }
 
-func CleanupTempFiles(ctx context.Context) {
+func cleanupTempFiles(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			Logger.Error("[recover] cleanupTempFiles", zap.Any("err", r))
+		}
+	}()
+
+	rctx := datastore.GetStore().CreateTransaction(ctx)
+	db := datastore.GetStore().GetTransaction(rctx)
+	now := time.Now().UTC()
+	then := now.Add(time.Duration(-config.Configuration.OpenConnectionWorkerTolerance) * time.Second)
+
+	var openConnectionsToDelete []allocation.AllocationChangeCollector
+	db.Table((&allocation.AllocationChangeCollector{}).TableName()).Where("updated_at < ? AND status IN (?,?)", then, allocation.NewConnection, allocation.InProgressConnection).Preload("Changes").Find(&openConnectionsToDelete)
+	for _, connection := range openConnectionsToDelete {
+
+		Logger.Info("Deleting temp files for the connection", zap.Any("connection", connection.ConnectionID))
+		connection.ComputeProperties()
+		nctx := datastore.GetStore().CreateTransaction(ctx)
+		ndb := datastore.GetStore().GetTransaction(nctx)
+		for _, changeProcessor := range connection.AllocationChanges {
+			if err := changeProcessor.DeleteTempFile(); err != nil {
+				Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
+			}
+		}
+		ndb.Model(connection).Updates(allocation.AllocationChangeCollector{Status: allocation.DeletedConnection})
+		ndb.Commit()
+		nctx.Done()
+	}
+	db.Rollback()
+	rctx.Done()
+}
+
+func startCleanupTempFiles(ctx context.Context) {
 	var iterInprogress = false
 	ticker := time.NewTicker(time.Duration(config.Configuration.OpenConnectionWorkerFreq) * time.Second)
 	for {
@@ -63,37 +96,71 @@ func CleanupTempFiles(ctx context.Context) {
 			//Logger.Info("Trying to redeem writemarkers.", zap.Any("iterInprogress", iterInprogress), zap.Any("numOfWorkers", numOfWorkers))
 			if !iterInprogress {
 				iterInprogress = true //nolint:ineffassign // probably has something to do with goroutines
-				rctx := datastore.GetStore().CreateTransaction(ctx)
-				db := datastore.GetStore().GetTransaction(rctx)
-				now := time.Now().UTC()
-				then := now.Add(time.Duration(-config.Configuration.OpenConnectionWorkerTolerance) * time.Second)
-
-				var openConnectionsToDelete []allocation.AllocationChangeCollector
-				db.Table((&allocation.AllocationChangeCollector{}).TableName()).Where("updated_at < ? AND status IN (?,?)", then, allocation.NewConnection, allocation.InProgressConnection).Preload("Changes").Find(&openConnectionsToDelete)
-				for _, connection := range openConnectionsToDelete {
-
-					Logger.Info("Deleting temp files for the connection", zap.Any("connection", connection.ConnectionID))
-					connection.ComputeProperties()
-					nctx := datastore.GetStore().CreateTransaction(ctx)
-					ndb := datastore.GetStore().GetTransaction(nctx)
-					for _, changeProcessor := range connection.AllocationChanges {
-						if err := changeProcessor.DeleteTempFile(); err != nil {
-							Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
-						}
-					}
-					ndb.Model(connection).Updates(allocation.AllocationChangeCollector{Status: allocation.DeletedConnection})
-					ndb.Commit()
-					nctx.Done()
-				}
-				db.Rollback()
-				rctx.Done()
+				cleanupTempFiles(ctx)
 				iterInprogress = false
 			}
 		}
 	}
 }
 
-func MoveColdDataToCloud(ctx context.Context) {
+func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize int64, limit int64) {
+	defer func() {
+		if r := recover(); r != nil {
+			Logger.Error("[recover] moveColdDataToCloud", zap.Any("err", r))
+		}
+	}()
+
+	fs := filestore.GetFileStore()
+	totalDiskSizeUsed, err := fs.GetTotalDiskSizeUsed()
+	if err != nil {
+		Logger.Error("Unable to get total disk size used from the file store", zap.Error(err))
+		return
+	}
+
+	// Check if capacity exceded the start capacity size
+	if totalDiskSizeUsed > config.Configuration.ColdStorageStartCapacitySize {
+		rctx := datastore.GetStore().CreateTransaction(ctx)
+		db := datastore.GetStore().GetTransaction(rctx)
+		// Get total number of fileRefs with size greater than limit and on_cloud = false
+		var totalRecords int64
+		db.Table((&reference.Ref{}).TableName()).
+			Where("size > ? AND on_cloud = ?", coldStorageMinFileSize, false).
+			Count(&totalRecords)
+
+		offset := int64(0)
+		for offset < totalRecords {
+			// Get all fileRefs with size greater than limit and on_cloud false
+			var fileRefs []*reference.Ref
+			db.Offset(int(offset)).Limit(int(limit)).
+				Table((&reference.Ref{}).TableName()).
+				Where("size > ? AND on_cloud = ?", coldStorageMinFileSize, false).
+				Find(&fileRefs)
+
+			for _, fileRef := range fileRefs {
+				if fileRef.Type == reference.DIRECTORY {
+					continue
+				}
+
+				fileStat, err := stats.GetFileStats(rctx, fileRef.ID)
+				if err != nil {
+					Logger.Error("Unable to find filestats for fileRef with", zap.Any("reID", fileRef.ID))
+					continue
+				}
+
+				timeToAdd := time.Duration(config.Configuration.ColdStorageTimeLimitInHours) * time.Hour
+				if fileStat.UpdatedAt.Before(time.Now().Add(-1 * timeToAdd)) {
+					Logger.Info("Moving file to cloud", zap.Any("path", fileRef.Path), zap.Any("allocation", fileRef.AllocationID))
+					moveFileToCloud(ctx, fileRef)
+				}
+			}
+			offset = offset + limit
+		}
+		db.Commit()
+		rctx.Done()
+	}
+}
+
+func startMoveColdDataToCloud(ctx context.Context) {
 	var iterInprogress = false
 	var coldStorageMinFileSize = config.Configuration.ColdStorageMinimumFileSize
 	var limit = config.Configuration.ColdStorageJobQueryLimit
@@ -104,54 +171,8 @@ func MoveColdDataToCloud(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if !iterInprogress {
-				fs := filestore.GetFileStore()
-				totalDiskSizeUsed, err := fs.GetTotalDiskSizeUsed()
-				if err != nil {
-					Logger.Error("Unable to get total disk size used from the file store", zap.Error(err))
-					return
-				}
 
-				// Check if capacity exceded the start capacity size
-				if totalDiskSizeUsed > config.Configuration.ColdStorageStartCapacitySize {
-					rctx := datastore.GetStore().CreateTransaction(ctx)
-					db := datastore.GetStore().GetTransaction(rctx)
-					// Get total number of fileRefs with size greater than limit and on_cloud = false
-					var totalRecords int64
-					db.Table((&reference.Ref{}).TableName()).
-						Where("size > ? AND on_cloud = ?", coldStorageMinFileSize, false).
-						Count(&totalRecords)
-
-					offset := int64(0)
-					for offset < totalRecords {
-						// Get all fileRefs with size greater than limit and on_cloud false
-						var fileRefs []*reference.Ref
-						db.Offset(int(offset)).Limit(int(limit)).
-							Table((&reference.Ref{}).TableName()).
-							Where("size > ? AND on_cloud = ?", coldStorageMinFileSize, false).
-							Find(&fileRefs)
-
-						for _, fileRef := range fileRefs {
-							if fileRef.Type == reference.DIRECTORY {
-								continue
-							}
-
-							fileStat, err := stats.GetFileStats(rctx, fileRef.ID)
-							if err != nil {
-								Logger.Error("Unable to find filestats for fileRef with", zap.Any("reID", fileRef.ID))
-								continue
-							}
-
-							timeToAdd := time.Duration(config.Configuration.ColdStorageTimeLimitInHours) * time.Hour
-							if fileStat.UpdatedAt.Before(time.Now().Add(-1 * timeToAdd)) {
-								Logger.Info("Moving file to cloud", zap.Any("path", fileRef.Path), zap.Any("allocation", fileRef.AllocationID))
-								moveFileToCloud(ctx, fileRef)
-							}
-						}
-						offset = offset + limit
-					}
-					db.Commit()
-					rctx.Done()
-				}
+				moveColdDataToCloud(ctx, coldStorageMinFileSize, limit)
 				iterInprogress = false
 				stats.LastMinioScan = time.Now()
 				Logger.Info("Move cold data to cloud worker running successfully")

@@ -74,6 +74,12 @@ func waitOrQuit(ctx context.Context, d time.Duration) (quit bool) {
 
 func updateWork(ctx context.Context) {
 
+	defer func() {
+		if r := recover(); r != nil {
+			Logger.Error("[recover] updateWork", zap.Any("err", r))
+		}
+	}()
+
 	var (
 		allocs []*Allocation
 		count  int64

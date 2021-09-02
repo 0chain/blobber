@@ -27,7 +27,7 @@ type BCChallengeResponse struct {
 func syncChallenges(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			logging.Logger.Error("Error getting the open challenges from the blockchain", zap.Any("err", r))
+			logging.Logger.Error("[recover] syncChallenges", zap.Any("err", r))
 		}
 	}()
 
@@ -99,7 +99,7 @@ func syncChallenges(ctx context.Context) {
 func processChallenges(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			logging.Logger.Error("Processing the challenge", zap.Any("err", r))
+			logging.Logger.Error("[recover] processChallenges", zap.Any("err", r))
 		}
 	}()
 	rctx := datastore.GetStore().CreateTransaction(ctx)
