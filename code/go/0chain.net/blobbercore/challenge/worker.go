@@ -8,8 +8,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 
-	"github.com/remeh/sizedwaitgroup"
-
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 )
@@ -17,7 +15,7 @@ import (
 // SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {
 	go startSyncChallenges(ctx)
-	go FindChallenges(ctx)
+	go startProcessChallenges(ctx)
 	go SubmitProcessedChallenges(ctx) //nolint:errcheck // goroutines
 }
 
@@ -140,48 +138,14 @@ func SubmitProcessedChallenges(ctx context.Context) {
 	}
 }
 
-func FindChallenges(ctx context.Context) {
+func startProcessChallenges(ctx context.Context) {
 	ticker := time.NewTicker(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-
-			rctx := datastore.GetStore().CreateTransaction(ctx)
-			db := datastore.GetStore().GetTransaction(rctx)
-			openchallenges := make([]*ChallengeEntity, 0)
-			db.Where(ChallengeEntity{Status: Accepted}).Find(&openchallenges)
-			if len(openchallenges) > 0 {
-				swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
-				for _, openchallenge := range openchallenges {
-					Logger.Info("Processing the challenge", zap.Any("challenge_id", openchallenge.ChallengeID), zap.Any("openchallenge", openchallenge))
-					err := openchallenge.UnmarshalFields()
-					if err != nil {
-						Logger.Error("Error unmarshaling challenge entity.", zap.Error(err))
-						continue
-					}
-					swg.Add()
-					go func(redeemCtx context.Context, challengeEntity *ChallengeEntity) {
-						redeemCtx = datastore.GetStore().CreateTransaction(redeemCtx)
-						defer redeemCtx.Done()
-						err := LoadValidationTickets(redeemCtx, challengeEntity)
-						if err != nil {
-							Logger.Error("Getting validation tickets failed", zap.Any("challenge_id", challengeEntity.ChallengeID), zap.Error(err))
-						}
-						db := datastore.GetStore().GetTransaction(redeemCtx)
-						err = db.Commit().Error
-						if err != nil {
-							Logger.Error("Error commiting the readmarker redeem", zap.Error(err))
-						}
-						swg.Done()
-					}(ctx, openchallenge)
-				}
-				swg.Wait()
-			}
-			db.Rollback()
-			rctx.Done()
-
+			processChallenges(ctx)
 		}
 	}
 }

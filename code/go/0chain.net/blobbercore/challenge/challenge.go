@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
@@ -91,4 +93,46 @@ func syncChallenges(ctx context.Context) {
 		}
 
 	}
+}
+
+// processChallenges read and process challenges from db
+func processChallenges(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Logger.Error("Processing the challenge", zap.Any("err", r))
+		}
+	}()
+	rctx := datastore.GetStore().CreateTransaction(ctx)
+	db := datastore.GetStore().GetTransaction(rctx)
+	openchallenges := make([]*ChallengeEntity, 0)
+	db.Where(ChallengeEntity{Status: Accepted}).Find(&openchallenges)
+	if len(openchallenges) > 0 {
+		swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
+		for _, openchallenge := range openchallenges {
+			logging.Logger.Info("Processing the challenge", zap.Any("challenge_id", openchallenge.ChallengeID), zap.Any("openchallenge", openchallenge))
+			err := openchallenge.UnmarshalFields()
+			if err != nil {
+				logging.Logger.Error("Error unmarshaling challenge entity.", zap.Error(err))
+				continue
+			}
+			swg.Add()
+			go func(redeemCtx context.Context, challengeEntity *ChallengeEntity) {
+				redeemCtx = datastore.GetStore().CreateTransaction(redeemCtx)
+				defer redeemCtx.Done()
+				err := LoadValidationTickets(redeemCtx, challengeEntity)
+				if err != nil {
+					logging.Logger.Error("Getting validation tickets failed", zap.Any("challenge_id", challengeEntity.ChallengeID), zap.Error(err))
+				}
+				db := datastore.GetStore().GetTransaction(redeemCtx)
+				err = db.Commit().Error
+				if err != nil {
+					logging.Logger.Error("Error commiting the readmarker redeem", zap.Error(err))
+				}
+				swg.Done()
+			}(ctx, openchallenge)
+		}
+		swg.Wait()
+	}
+	db.Rollback()
+	rctx.Done()
 }
