@@ -46,7 +46,7 @@ func (wm *WriteMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.Al
 	}
 
 	if wm.WM.Size != co.Size {
-		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker size does not match the connection size %v <> %v", wm.WM.Size, co.Size))
+		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker size %v does not match the connection size %v", wm.WM.Size, co.Size))
 	}
 
 	clientPublicKey := ctx.Value(constants.ContextKeyClientKey).(string)

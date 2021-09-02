@@ -20,7 +20,7 @@ import (
 // AddFileCommand command for resuming file
 type AddFileCommand struct {
 	allocationChange *allocation.AllocationChange
-	changeProcessor  *allocation.AddFileChanger
+	fileChanger      *allocation.AddFileChanger
 }
 
 // IsAuthorized validate request.
@@ -29,28 +29,28 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	changeProcessor := &allocation.AddFileChanger{}
+	fileChanger := &allocation.AddFileChanger{}
 
 	uploadMetaString := req.FormValue("uploadMeta")
-	err := json.Unmarshal([]byte(uploadMetaString), changeProcessor)
+	err := json.Unmarshal([]byte(uploadMetaString), fileChanger)
 	if err != nil {
 		return common.NewError("invalid_parameters",
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 	}
-	exisitingFileRef, _ := reference.GetReference(ctx, allocationObj.ID, changeProcessor.Path)
+	exisitingFileRef, _ := reference.GetReference(ctx, allocationObj.ID, fileChanger.Path)
 
 	if exisitingFileRef != nil {
 		return common.NewError("duplicate_file", "File at path already exists")
 	}
 
 	//create a FixedMerkleTree instance first, it will be reloaded from db in cmd.reloadChange if it is not first chunk
-	//cmd.changeProcessor.FixedMerkleTree = &util.FixedMerkleTree{}
+	//cmd.fileChanger.FixedMerkleTree = &util.FixedMerkleTree{}
 
-	if changeProcessor.ChunkSize <= 0 {
-		changeProcessor.ChunkSize = fileref.CHUNK_SIZE
+	if fileChanger.ChunkSize <= 0 {
+		fileChanger.ChunkSize = fileref.CHUNK_SIZE
 	}
 
-	cmd.changeProcessor = changeProcessor
+	cmd.fileChanger = fileChanger
 
 	return nil
 
@@ -68,19 +68,21 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 
 	cmd.reloadChange(connectionObj)
 
-	fileInputData := &filestore.FileInputData{Name: cmd.changeProcessor.Filename,
-		Path:         cmd.changeProcessor.Path,
-		OnCloud:      false,
-		UploadOffset: cmd.changeProcessor.UploadOffset,
+	fileInputData := &filestore.FileInputData{
+		Name:    cmd.fileChanger.Filename,
+		Path:    cmd.fileChanger.Path,
+		OnCloud: false,
+
+		UploadOffset: cmd.fileChanger.UploadOffset,
 		IsChunked:    true,
-		IsFinal:      cmd.changeProcessor.IsFinal,
+		IsFinal:      cmd.fileChanger.IsFinal,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
 
-	result.Filename = cmd.changeProcessor.Filename
+	result.Filename = cmd.fileChanger.Filename
 	result.Hash = fileOutputData.ContentHash
 	result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
@@ -100,16 +102,16 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}
 
-	if len(cmd.changeProcessor.ChunkHash) > 0 && cmd.changeProcessor.ChunkHash != fileOutputData.ContentHash {
+	if len(cmd.fileChanger.ChunkHash) > 0 && cmd.fileChanger.ChunkHash != fileOutputData.ContentHash {
 		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
 	}
 
 	// Save client's ContentHash in database instead blobber's
 	// it saves time to read and compute hash of fragment from disk again
-	//cmd.changeProcessor.Hash = fileOutputData.ContentHash
+	//cmd.fileChanger.Hash = fileOutputData.ContentHash
 
-	cmd.changeProcessor.AllocationID = allocationObj.ID
-	cmd.changeProcessor.Size = allocationSize
+	cmd.fileChanger.AllocationID = allocationObj.ID
+	cmd.fileChanger.Size = allocationSize
 
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionObj.ConnectionID
@@ -130,18 +132,18 @@ func (cmd *AddFileCommand) ProcessThumbnail(ctx context.Context, req *http.Reque
 
 		defer thumbfile.Close()
 
-		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.changeProcessor.Path}
+		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
 		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, thumbInputData, thumbfile, connectionObj.ConnectionID)
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 		}
-		if cmd.changeProcessor.ThumbnailHash != thumbOutputData.ContentHash {
+		if cmd.fileChanger.ThumbnailHash != thumbOutputData.ContentHash {
 			return common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the thumbnail content")
 		}
 
-		cmd.changeProcessor.ThumbnailHash = thumbOutputData.ContentHash
-		cmd.changeProcessor.ThumbnailSize = thumbOutputData.Size
-		cmd.changeProcessor.ThumbnailFilename = thumbInputData.Name
+		cmd.fileChanger.ThumbnailHash = thumbOutputData.ContentHash
+		cmd.fileChanger.ThumbnailSize = thumbOutputData.Size
+		cmd.fileChanger.ThumbnailFilename = thumbInputData.Name
 	}
 
 	return nil
@@ -158,7 +160,7 @@ func (cmd *AddFileCommand) reloadChange(connectionObj *allocation.AllocationChan
 				logging.Logger.Error("reloadChange", zap.Error(err))
 			}
 
-			cmd.changeProcessor.Size = dbChangeProcessor.Size
+			cmd.fileChanger.Size = dbChangeProcessor.Size
 			return
 		}
 	}
@@ -169,7 +171,7 @@ func (cmd *AddFileCommand) UpdateChange(ctx context.Context, connectionObj *allo
 	for _, c := range connectionObj.Changes {
 		if c.Operation == constants.FileOperationInsert {
 			c.Size = connectionObj.Size
-			c.Input, _ = cmd.changeProcessor.Marshal()
+			c.Input, _ = cmd.fileChanger.Marshal()
 
 			//c.ModelWithTS.UpdatedAt = time.Now()
 			err := connectionObj.Save(ctx)
@@ -182,7 +184,7 @@ func (cmd *AddFileCommand) UpdateChange(ctx context.Context, connectionObj *allo
 	}
 
 	//NOT FOUND
-	connectionObj.AddChange(cmd.allocationChange, cmd.changeProcessor)
+	connectionObj.AddChange(cmd.allocationChange, cmd.fileChanger)
 
 	return connectionObj.Save(ctx)
 }

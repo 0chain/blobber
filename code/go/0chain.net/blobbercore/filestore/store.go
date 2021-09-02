@@ -32,7 +32,8 @@ type FileOutputData struct {
 	Path        string
 	MerkleRoot  string
 	ContentHash string
-	Size        int64
+	// Size wirtten size/chunk size
+	Size int64
 	// ChunkUploaded the chunk is uploaded or not.
 	ChunkUploaded bool
 }
@@ -40,6 +41,7 @@ type FileOutputData struct {
 type FileObjectHandler func(contentHash string, contentSize int64)
 
 type FileStore interface {
+	// WriteFile write chunk file into disk
 	WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
 	DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
 

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"path/filepath"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
@@ -16,7 +15,7 @@ import (
 )
 
 type UpdateFileChanger struct {
-	NewFileChange
+	BaseFileChanger
 }
 
 func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
@@ -100,42 +99,4 @@ func (nf *UpdateFileChanger) Unmarshal(input string) error {
 	}
 
 	return util.UnmarshalValidation(nf)
-}
-
-func (nf *UpdateFileChanger) DeleteTempFile() error {
-	fileInputData := &filestore.FileInputData{}
-	fileInputData.Name = nf.Filename
-	fileInputData.Path = nf.Path
-	fileInputData.Hash = nf.Hash
-	err := filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
-	if nf.ThumbnailSize > 0 {
-		fileInputData := &filestore.FileInputData{}
-		fileInputData.Name = nf.ThumbnailFilename
-		fileInputData.Path = nf.Path
-		fileInputData.Hash = nf.ThumbnailHash
-		err = filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
-	}
-	return err
-}
-
-func (nfch *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
-	fileInputData := &filestore.FileInputData{}
-	fileInputData.Name = nfch.Filename
-	fileInputData.Path = nfch.Path
-	fileInputData.Hash = nfch.Hash
-	_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, fileInputData, nfch.ConnectionID)
-	if err != nil {
-		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-	}
-	if nfch.ThumbnailSize > 0 {
-		fileInputData := &filestore.FileInputData{}
-		fileInputData.Name = nfch.ThumbnailFilename
-		fileInputData.Path = nfch.Path
-		fileInputData.Hash = nfch.ThumbnailHash
-		_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, fileInputData, nfch.ConnectionID)
-		if err != nil {
-			return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-		}
-	}
-	return nil
 }

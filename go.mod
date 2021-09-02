@@ -1,5 +1,7 @@
 module github.com/0chain/blobber
 
+go 1.13
+
 require (
 	github.com/0chain/errors v1.0.3
 	github.com/0chain/gosdk v1.2.82
@@ -39,7 +41,3 @@ require (
 )
 
 replace github.com/0chain/gosdk => ../gosdk
-
-go 1.13
-
-//replace github.com/0chain/gosdk => ../gosdk
