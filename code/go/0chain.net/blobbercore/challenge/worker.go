@@ -23,11 +23,18 @@ func SetupWorkers(ctx context.Context) {
 func LoadValidationTickets(ctx context.Context, challengeObj *ChallengeEntity) error {
 	mutex := lock.GetMutex(challengeObj.TableName(), challengeObj.ChallengeID)
 	mutex.Lock()
+
+	defer func() {
+		if r := recover(); r != nil {
+			Logger.Error("[recover] LoadValidationTickets", zap.Any("err", r))
+		}
+	}()
+
 	err := challengeObj.LoadValidationTickets(ctx)
 	if err != nil {
 		Logger.Error("Error getting the validation tickets", zap.Error(err), zap.String("challenge_id", challengeObj.ChallengeID))
 	}
-	mutex.Unlock()
+
 	return err
 }
 
