@@ -1013,7 +1013,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 
 					q := url.Query()
-					formFieldByt, err := json.Marshal(&allocation.UpdateFileChange{})
+					formFieldByt, err := json.Marshal(&allocation.UpdateFileChanger{})
 					if err != nil {
 						t.Fatal(err)
 					}

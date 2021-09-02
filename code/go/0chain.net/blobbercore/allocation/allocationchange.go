@@ -8,22 +8,10 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/constants"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-)
-
-const (
-	INSERT_OPERATION       = "insert"
-	DELETE_OPERATION       = "delete"
-	UPDATE_OPERATION       = "update"
-	RENAME_OPERATION       = "rename"
-	COPY_OPERATION         = "copy"
-	UPDATE_ATTRS_OPERATION = "update_attrs"
-
-	// RESUME_OPERATION upload operation for INIT/APPEND/FINALIZE
-	RESUME_OPERATION    = "resume"
-	CREATEDIR_OPERATION = "createdir"
 )
 
 const (
@@ -130,20 +118,19 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 	for _, change := range cc.Changes {
 		var acp AllocationChangeProcessor
 		switch change.Operation {
-		case INSERT_OPERATION:
+		case constants.FileOperationInsert:
 			acp = new(NewFileChange)
-		case UPDATE_OPERATION:
-			acp = new(UpdateFileChange)
-		case DELETE_OPERATION:
+		case constants.FileOperationUpdate:
+			acp = new(UpdateFileChanger)
+		case constants.FileOperationDelete:
 			acp = new(DeleteFileChange)
-		case RENAME_OPERATION:
+		case constants.FileOperationRename:
 			acp = new(RenameFileChange)
-		case COPY_OPERATION:
+		case constants.FileOperationCopy:
 			acp = new(CopyFileChange)
-		case UPDATE_ATTRS_OPERATION:
+		case constants.FileOperationUpdateAttrs:
 			acp = new(AttributesChange)
-		case RESUME_OPERATION:
-			acp = new(ChunkedFileChange)
+
 		}
 
 		if acp == nil {

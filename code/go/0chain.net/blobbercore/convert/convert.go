@@ -427,7 +427,7 @@ func convertDirMetaDataGRPCToDirRef(dirref *blobbergrpc.DirMetaData) *reference.
 }
 
 func WriteFileGRPCToHTTP(req *blobbergrpc.UploadFileRequest) (*http.Request, error) {
-	var formData allocation.UpdateFileChange
+	var formData allocation.UpdateFileChanger
 	var uploadMetaString string
 	switch req.Method {
 	case `POST`:

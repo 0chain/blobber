@@ -30,6 +30,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	sdkConstants "github.com/0chain/gosdk/constants"
 	zfileref "github.com/0chain/gosdk/zboxcore/fileref"
 
 	"gorm.io/datatypes"
@@ -542,8 +543,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	var isCollaborator bool
 	for _, change := range connectionObj.Changes {
-		if change.Operation == allocation.UPDATE_OPERATION {
-			updateFileChange := new(allocation.UpdateFileChange)
+		if change.Operation == sdkConstants.FileOperationUpdate {
+			updateFileChange := new(allocation.UpdateFileChanger)
 			if err := updateFileChange.Unmarshal(change.Input); err != nil {
 				return nil, err
 			}
@@ -742,7 +743,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	allocationChange := &allocation.AllocationChange{}
 	allocationChange.ConnectionID = connectionObj.ConnectionID
 	allocationChange.Size = 0
-	allocationChange.Operation = allocation.RENAME_OPERATION
+	allocationChange.Operation = sdkConstants.FileOperationRename
 	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ConnectionID,
 		AllocationID: connectionObj.AllocationID, Path: objectRef.Path}
 	dfc.NewName = new_name
@@ -851,7 +852,7 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 
 	var change = new(allocation.AllocationChange)
 	change.ConnectionID = conn.ConnectionID
-	change.Operation = allocation.UPDATE_ATTRS_OPERATION
+	change.Operation = sdkConstants.FileOperationUpdateAttrs
 
 	var uafc = &allocation.AttributesChange{
 		ConnectionID: conn.ConnectionID,
@@ -949,7 +950,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	allocationChange := &allocation.AllocationChange{}
 	allocationChange.ConnectionID = connectionObj.ConnectionID
 	allocationChange.Size = objectRef.Size
-	allocationChange.Operation = allocation.COPY_OPERATION
+	allocationChange.Operation = sdkConstants.FileOperationCopy
 	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ConnectionID,
 		AllocationID: connectionObj.AllocationID, DestPath: destPath}
 	dfc.SrcPath = objectRef.Path
@@ -985,7 +986,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		allocationChange := &allocation.AllocationChange{}
 		allocationChange.ConnectionID = connectionObj.ConnectionID
 		allocationChange.Size = 0 - deleteSize
-		allocationChange.Operation = allocation.DELETE_OPERATION
+		allocationChange.Operation = sdkConstants.FileOperationDelete
 		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ConnectionID,
 			AllocationID: connectionObj.AllocationID, Name: fileRef.Name,
 			Hash: fileRef.Hash, Path: fileRef.Path, Size: deleteSize}
@@ -1056,7 +1057,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	allocationChange := &allocation.AllocationChange{}
 	allocationChange.ConnectionID = connectionObj.ConnectionID
 	allocationChange.Size = 0
-	allocationChange.Operation = allocation.CREATEDIR_OPERATION
+	allocationChange.Operation = sdkConstants.FileOperationCreateDir
 	connectionObj.Size += allocationChange.Size
 	var formData allocation.NewFileChange
 	formData.Filename = dirPath
@@ -1177,7 +1178,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 func getFormFieldName(mode string) string {
 	formField := "uploadMeta"
-	if mode == allocation.UPDATE_OPERATION {
+	if mode == sdkConstants.FileOperationUpdate {
 		formField = "updateMeta"
 	}
 
@@ -1185,19 +1186,19 @@ func getFormFieldName(mode string) string {
 }
 
 func getFileOperation(r *http.Request) string {
-	mode := allocation.INSERT_OPERATION
+	mode := sdkConstants.FileOperationInsert
 	if r.Method == "PUT" {
-		mode = allocation.UPDATE_OPERATION
+		mode = sdkConstants.FileOperationUpdate
 	} else if r.Method == "DELETE" {
-		mode = allocation.DELETE_OPERATION
+		mode = sdkConstants.FileOperationDelete
 	}
 
 	return mode
 }
 
 func getExistingFileRef(fsh *StorageHandler, ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) *reference.Ref {
-	if fileOperation == allocation.INSERT_OPERATION || fileOperation == allocation.UPDATE_OPERATION {
-		var formData allocation.UpdateFileChange
+	if fileOperation == sdkConstants.FileOperationInsert || fileOperation == sdkConstants.FileOperationUpdate {
+		var formData allocation.UpdateFileChanger
 		uploadMetaString := r.FormValue(getFormFieldName(fileOperation))
 		err := json.Unmarshal([]byte(uploadMetaString), &formData)
 

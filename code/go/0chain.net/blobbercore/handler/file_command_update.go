@@ -11,13 +11,14 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	sdkConstants "github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 )
 
 // UpdateFileCommand command for updating file
 type UpdateFileCommand struct {
 	exisitingFileRef *reference.Ref
-	changeProcessor  *allocation.UpdateFileChange
+	changeProcessor  *allocation.UpdateFileChanger
 	allocationChange *allocation.AllocationChange
 }
 
@@ -95,7 +96,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionObj.ConnectionID
 	cmd.allocationChange.Size = allocationSize - cmd.exisitingFileRef.Size
-	cmd.allocationChange.Operation = allocation.UPDATE_OPERATION
+	cmd.allocationChange.Operation = sdkConstants.FileOperationUpdate
 
 	connectionObj.Size += cmd.allocationChange.Size
 
@@ -129,7 +130,7 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 
 }
 
-// UpdateChange add UpdateFileChange in db
+// UpdateChange add UpdateFileChanger in db
 func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	connectionObj.AddChange(cmd.allocationChange, cmd.changeProcessor)
 

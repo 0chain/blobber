@@ -11,6 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/zboxutil"
 
 	"gorm.io/gorm"
@@ -362,7 +363,7 @@ func deleteFile(ctx context.Context, path string,
 
 	change.ConnectionID = conn.ConnectionID
 	change.Size = 0 - deleteSize
-	change.Operation = DELETE_OPERATION
+	change.Operation = constants.FileOperationDelete
 
 	var dfc = &DeleteFileChange{
 		ConnectionID: conn.ConnectionID,

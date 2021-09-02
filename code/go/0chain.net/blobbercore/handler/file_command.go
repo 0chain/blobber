@@ -23,20 +23,17 @@ type FileCommand interface {
 	UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error
 }
 
-// createFileCommand create file command for INSERT,UPDATE and RESUME
+// createFileCommand create file command for UPLOAD,UPDATE and DELETE
 func createFileCommand(req *http.Request) FileCommand {
 	switch req.Method {
 	case http.MethodPost:
-		return &ChunkedFileCommand{}
-	case http.MethodPatch:
-		return &ChunkedFileCommand{}
-
+		return &AddFileCommand{}
 	case http.MethodPut:
 		return &UpdateFileCommand{}
 	case http.MethodDelete:
-		return &DeleteFileCommand{}
+		return &FileCommandDelete{}
 
 	default:
-		return &ChunkedFileCommand{}
+		return &AddFileCommand{}
 	}
 }

@@ -15,11 +15,11 @@ import (
 	"go.uber.org/zap"
 )
 
-type UpdateFileChange struct {
+type UpdateFileChanger struct {
 	NewFileChange
 }
 
-func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 
 	path, _ := filepath.Split(nf.Path)
 	path = filepath.Clean(path)
@@ -86,7 +86,7 @@ func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	return rootRef, err
 }
 
-func (nf *UpdateFileChange) Marshal() (string, error) {
+func (nf *UpdateFileChanger) Marshal() (string, error) {
 	ret, err := json.Marshal(nf)
 	if err != nil {
 		return "", err
@@ -94,7 +94,7 @@ func (nf *UpdateFileChange) Marshal() (string, error) {
 	return string(ret), nil
 }
 
-func (nf *UpdateFileChange) Unmarshal(input string) error {
+func (nf *UpdateFileChanger) Unmarshal(input string) error {
 	if err := json.Unmarshal([]byte(input), nf); err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func (nf *UpdateFileChange) Unmarshal(input string) error {
 	return util.UnmarshalValidation(nf)
 }
 
-func (nf *UpdateFileChange) DeleteTempFile() error {
+func (nf *UpdateFileChanger) DeleteTempFile() error {
 	fileInputData := &filestore.FileInputData{}
 	fileInputData.Name = nf.Filename
 	fileInputData.Path = nf.Path
@@ -118,7 +118,7 @@ func (nf *UpdateFileChange) DeleteTempFile() error {
 	return err
 }
 
-func (nfch *UpdateFileChange) CommitToFileStore(ctx context.Context) error {
+func (nfch *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
 	fileInputData := &filestore.FileInputData{}
 	fileInputData.Name = nfch.Filename
 	fileInputData.Path = nfch.Path

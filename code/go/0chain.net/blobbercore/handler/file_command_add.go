@@ -12,23 +12,24 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"go.uber.org/zap"
 )
 
-// ChunkedFileCommand command for resuming file
-type ChunkedFileCommand struct {
+// AddFileCommand command for resuming file
+type AddFileCommand struct {
 	allocationChange *allocation.AllocationChange
-	changeProcessor  *allocation.ChunkedFileChange
+	changeProcessor  *allocation.AddFileChanger
 }
 
 // IsAuthorized validate request.
-func (cmd *ChunkedFileCommand) IsAuthorized(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
+func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	changeProcessor := &allocation.ChunkedFileChange{}
+	changeProcessor := &allocation.AddFileChanger{}
 
 	uploadMetaString := req.FormValue("uploadMeta")
 	err := json.Unmarshal([]byte(uploadMetaString), changeProcessor)
@@ -56,7 +57,7 @@ func (cmd *ChunkedFileCommand) IsAuthorized(ctx context.Context, req *http.Reque
 }
 
 // ProcessContent flush file to FileStorage
-func (cmd *ChunkedFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
+func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
 	result := blobberhttp.UploadResult{}
 
 	origfile, _, err := req.FormFile("uploadFile")
@@ -113,7 +114,7 @@ func (cmd *ChunkedFileCommand) ProcessContent(ctx context.Context, req *http.Req
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionObj.ConnectionID
 	cmd.allocationChange.Size = allocationSize
-	cmd.allocationChange.Operation = allocation.RESUME_OPERATION
+	cmd.allocationChange.Operation = constants.FileOperationInsert
 
 	connectionObj.Size = allocationSize
 
@@ -121,7 +122,7 @@ func (cmd *ChunkedFileCommand) ProcessContent(ctx context.Context, req *http.Req
 }
 
 // ProcessThumbnail flush thumbnail file to FileStorage if it has.
-func (cmd *ChunkedFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
+func (cmd *AddFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
 
 	thumbfile, thumbHeader, _ := req.FormFile("uploadThumbnailFile")
 
@@ -146,11 +147,11 @@ func (cmd *ChunkedFileCommand) ProcessThumbnail(ctx context.Context, req *http.R
 	return nil
 }
 
-func (cmd *ChunkedFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
+func (cmd *AddFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
-		if c.Operation == allocation.RESUME_OPERATION {
+		if c.Operation == constants.FileOperationInsert {
 
-			dbChangeProcessor := &allocation.ChunkedFileChange{}
+			dbChangeProcessor := &allocation.AddFileChanger{}
 
 			err := dbChangeProcessor.Unmarshal(c.Input)
 			if err != nil {
@@ -163,10 +164,10 @@ func (cmd *ChunkedFileCommand) reloadChange(connectionObj *allocation.Allocation
 	}
 }
 
-// UpdateChange replace ChunkedFileChange in db
-func (cmd *ChunkedFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
+// UpdateChange replace AddFileChange in db
+func (cmd *AddFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	for _, c := range connectionObj.Changes {
-		if c.Operation == allocation.RESUME_OPERATION {
+		if c.Operation == constants.FileOperationInsert {
 			c.Size = connectionObj.Size
 			c.Input, _ = cmd.changeProcessor.Marshal()
 

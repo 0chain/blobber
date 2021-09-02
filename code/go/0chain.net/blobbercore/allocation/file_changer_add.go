@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
@@ -14,19 +13,13 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
-// ChunkedFileChange file change processor for continuous upload in INIT/APPEND/FINALIZE
-type ChunkedFileChange struct {
-	NewFileChange
-
-	IsFinal bool `json:"is_final,omitempty"` // current chunk is last or not
-
-	ChunkIndex   int    `json:"chunk_index,omitempty"` // the seq of current chunk. all chunks MUST be uploaded one by one because of CompactMerkleTree
-	ChunkHash    string `json:"chunk_hash,omitempty"`
-	UploadOffset int64  `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
+// AddFileChanger file change processor for continuous upload in INIT/APPEND/FINALIZE
+type AddFileChanger struct {
+	BaseFileChanger
 }
 
 // ProcessChange update references, and create a new FileRef
-func (nf *ChunkedFileChange) ProcessChange(ctx context.Context,
+func (nf *AddFileChanger) ProcessChange(ctx context.Context,
 	change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 
 	path, _ := filepath.Split(nf.Path)
@@ -106,7 +99,7 @@ func (nf *ChunkedFileChange) ProcessChange(ctx context.Context,
 }
 
 // Marshal marshal and change to persistent to postgres
-func (nf *ChunkedFileChange) Marshal() (string, error) {
+func (nf *AddFileChanger) Marshal() (string, error) {
 	ret, err := json.Marshal(nf)
 	if err != nil {
 		return "", err
@@ -115,7 +108,7 @@ func (nf *ChunkedFileChange) Marshal() (string, error) {
 }
 
 // Unmarshal reload and unmarshal change from allocation_changes.input on postgres
-func (nf *ChunkedFileChange) Unmarshal(input string) error {
+func (nf *AddFileChanger) Unmarshal(input string) error {
 	if err := json.Unmarshal([]byte(input), nf); err != nil {
 		return err
 	}
@@ -123,42 +116,42 @@ func (nf *ChunkedFileChange) Unmarshal(input string) error {
 	return util.UnmarshalValidation(nf)
 }
 
-// DeleteTempFile delete temp files from allocation's temp dir
-func (nf *ChunkedFileChange) DeleteTempFile() error {
-	fileInputData := &filestore.FileInputData{}
-	fileInputData.Name = nf.Filename
-	fileInputData.Path = nf.Path
-	fileInputData.Hash = nf.Hash
-	err := filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
-	if nf.ThumbnailSize > 0 {
-		fileInputData := &filestore.FileInputData{}
-		fileInputData.Name = nf.ThumbnailFilename
-		fileInputData.Path = nf.Path
-		fileInputData.Hash = nf.ThumbnailHash
-		err = filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
-	}
-	return err
-}
+// // DeleteTempFile delete temp files from allocation's temp dir
+// func (nf *AddFileChanger) DeleteTempFile() error {
+// 	fileInputData := &filestore.FileInputData{}
+// 	fileInputData.Name = nf.Filename
+// 	fileInputData.Path = nf.Path
+// 	fileInputData.Hash = nf.Hash
+// 	err := filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
+// 	if nf.ThumbnailSize > 0 {
+// 		fileInputData := &filestore.FileInputData{}
+// 		fileInputData.Name = nf.ThumbnailFilename
+// 		fileInputData.Path = nf.Path
+// 		fileInputData.Hash = nf.ThumbnailHash
+// 		err = filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
+// 	}
+// 	return err
+// }
 
-// CommitToFileStore move files from temp dir to object dir
-func (nf *ChunkedFileChange) CommitToFileStore(ctx context.Context) error {
-	fileInputData := &filestore.FileInputData{}
-	fileInputData.Name = nf.Filename
-	fileInputData.Path = nf.Path
-	fileInputData.Hash = nf.Hash
-	_, err := filestore.GetFileStore().CommitWrite(nf.AllocationID, fileInputData, nf.ConnectionID)
-	if err != nil {
-		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-	}
-	if nf.ThumbnailSize > 0 {
-		fileInputData := &filestore.FileInputData{}
-		fileInputData.Name = nf.ThumbnailFilename
-		fileInputData.Path = nf.Path
-		fileInputData.Hash = nf.ThumbnailHash
-		_, err := filestore.GetFileStore().CommitWrite(nf.AllocationID, fileInputData, nf.ConnectionID)
-		if err != nil {
-			return common.NewError("file_store_error", "Error committing thumbnail to file store. "+err.Error())
-		}
-	}
-	return nil
-}
+// // CommitToFileStore move files from temp dir to object dir
+// func (nf *AddFileChanger) CommitToFileStore(ctx context.Context) error {
+// 	fileInputData := &filestore.FileInputData{}
+// 	fileInputData.Name = nf.Filename
+// 	fileInputData.Path = nf.Path
+// 	fileInputData.Hash = nf.Hash
+// 	_, err := filestore.GetFileStore().CommitWrite(nf.AllocationID, fileInputData, nf.ConnectionID)
+// 	if err != nil {
+// 		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+// 	}
+// 	if nf.ThumbnailSize > 0 {
+// 		fileInputData := &filestore.FileInputData{}
+// 		fileInputData.Name = nf.ThumbnailFilename
+// 		fileInputData.Path = nf.Path
+// 		fileInputData.Hash = nf.ThumbnailHash
+// 		_, err := filestore.GetFileStore().CommitWrite(nf.AllocationID, fileInputData, nf.ConnectionID)
+// 		if err != nil {
+// 			return common.NewError("file_store_error", "Error committing thumbnail to file store. "+err.Error())
+// 		}
+// 	}
+// 	return nil
+// }
