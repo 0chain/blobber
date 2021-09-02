@@ -14,11 +14,11 @@ import (
 	"runtime/pprof"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"github.com/0chain/gosdk/constants"
 
 	"github.com/gorilla/mux"
 
@@ -96,11 +96,11 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 
 func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	var vars = mux.Vars(r)
-	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY,
+	ctx = context.WithValue(ctx, constants.ContextKeyClient,
 		r.Header.Get(common.ClientHeader))
-	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY,
+	ctx = context.WithValue(ctx, constants.ContextKeyClientKey,
 		r.Header.Get(common.ClientKeyHeader))
-	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY,
+	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
 		vars["allocation"])
 	return ctx
 }

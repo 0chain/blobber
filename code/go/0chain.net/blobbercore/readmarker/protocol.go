@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
+	"github.com/0chain/gosdk/constants"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
@@ -35,12 +35,12 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 		return common.NewError("read_marker_validation_failed", "Read Marker is not for the blobber")
 	}
 
-	clientPublicKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+	clientPublicKey := ctx.Value(constants.ContextKeyClientKey).(string)
 	if len(clientPublicKey) == 0 || clientPublicKey != rm.LatestRM.ClientPublicKey {
 		return common.NewError("read_marker_validation_failed", "Could not get the public key of the client")
 	}
 
-	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	if len(clientID) == 0 || clientID != rm.LatestRM.ClientID {
 		return common.NewError("read_marker_validation_failed", "Read Marker clientID does not match request clientID")
 	}

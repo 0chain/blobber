@@ -19,11 +19,11 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/constants"
 	"github.com/gorilla/mux"
 )
 
@@ -114,14 +114,14 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 
 func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	var vars = mux.Vars(r)
-	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY,
+	ctx = context.WithValue(ctx, constants.ContextKeyClient,
 		r.Header.Get(common.ClientHeader))
-	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY,
+	ctx = context.WithValue(ctx, constants.ContextKeyClientKey,
 		r.Header.Get(common.ClientKeyHeader))
-	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY,
+	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
 		vars["allocation"])
 	// signature is not requered for all requests, but if header is empty it won`t affect anything
-	ctx = context.WithValue(ctx, constants.CLIENT_SIGNATURE_HEADER_KEY, r.Header.Get(common.ClientSignatureHeader))
+	ctx = context.WithValue(ctx, constants.ContextKeyClientSignatureHeaderKey, r.Header.Get(common.ClientSignatureHeader))
 	return ctx
 }
 
@@ -354,7 +354,7 @@ func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, erro
 func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -377,7 +377,7 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
-	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	if clientID != allocationObj.OwnerID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
@@ -405,7 +405,7 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())

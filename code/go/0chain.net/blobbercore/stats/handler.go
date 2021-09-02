@@ -6,10 +6,10 @@ import (
 	"html/template"
 	"net/http"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/constants"
 
 	"go.uber.org/zap"
 )
@@ -283,11 +283,11 @@ func StatsJSONHandler(ctx context.Context, r *http.Request) (interface{}, error)
 
 func GetStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	q := r.URL.Query()
-	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, q.Get("allocation_id"))
+	ctx = context.WithValue(ctx, constants.ContextKeyAllocation, q.Get("allocation_id"))
 	ctx = datastore.GetStore().CreateTransaction(ctx)
 	db := datastore.GetStore().GetTransaction(ctx)
 	defer db.Rollback()
-	allocationID := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
 	bs := &BlobberStats{}
 	if len(allocationID) != 0 {
 		// TODO: Get only the allocation info from DB

@@ -4,9 +4,6 @@ import (
 	"fmt"
 )
 
-/*ContextKey - type for key used to store values into context */
-type ContextKey string
-
 // WhoPays for file downloading.
 type WhoPays int
 
