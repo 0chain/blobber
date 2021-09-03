@@ -76,6 +76,10 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		Name:    cmd.fileChanger.Filename,
 		Path:    cmd.fileChanger.Path,
 		OnCloud: cmd.exisitingFileRef.OnCloud,
+
+		UploadOffset: cmd.fileChanger.UploadOffset,
+		IsChunked:    cmd.fileChanger.ChunkSize > 0,
+		IsFinal:      cmd.fileChanger.IsFinal,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
 	if err != nil {
@@ -84,7 +88,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	result.Filename = cmd.fileChanger.Filename
 	result.Hash = fileOutputData.ContentHash
-	result.MerkleRoot = fileOutputData.MerkleRoot
+	//result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := connectionObj.Size

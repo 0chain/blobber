@@ -84,7 +84,7 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 
 	result.Filename = cmd.fileChanger.Filename
 	result.Hash = fileOutputData.ContentHash
-	result.MerkleRoot = fileOutputData.MerkleRoot
+	//result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := connectionObj.Size
