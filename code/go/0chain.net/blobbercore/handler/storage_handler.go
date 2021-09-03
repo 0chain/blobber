@@ -3,11 +3,12 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
-	"github.com/pkg/errors"
 	"net/http"
 	"strconv"
 	"strings"
+
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
+	"github.com/pkg/errors"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 
@@ -362,17 +363,19 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrp
 	}
 
 	result := fileref.GetListingData(ctx)
-	fileStats, _ := stats.GetFileStats(ctx, fileref.ID)
-	//if err != nil {
-	//	Logger.Error("unable to get file stats from fileRef ", zap.Int64("fileRef.id", fileref.ID))
-	//	return nil, errors.Wrap(err, "failed to get fileStats from the fileRef")
-	//}
+	fileStats, err := stats.GetFileStats(ctx, fileref.ID)
+	if err != nil {
+		Logger.Error("unable to get file stats from fileRef ", zap.Int64("fileRef.id", fileref.ID))
+		Logger.Error(err.Error(), zap.Int64("fileRef.id", fileref.ID)) // for debug
+		//return nil, errors.Wrap(err, "failed to get fileStats from the fileRef")
+	}
 
-	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
-	//if err != nil {
-	//	Logger.Error("unable to get write marker from fileRef ", zap.String("fileRef.WriteMarker", fileref.WriteMarker))
+	wm, err := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
+	if err != nil {
+		Logger.Error("unable to get write marker from fileRef ", zap.String("fileRef.WriteMarker", fileref.WriteMarker))
+		Logger.Error(err.Error(), zap.Int64("fileRef.id", fileref.ID)) // for debug
 	//	return nil, errors.Wrap(err, "failed to get write marker from fileRef")
-	//}
+	}
 	if wm != nil && fileStats != nil {
 		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
 	}
