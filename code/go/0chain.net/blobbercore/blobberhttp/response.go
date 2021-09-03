@@ -35,11 +35,11 @@ type ReferencePathResult struct {
 }
 
 type RefResult struct {
-	TotalPages    int                      `json:"total_pages"`
-	NewOffsetPath string                   `json:"offsetPath,omitempty"`
-	NewOffsetDate string                   `json:"offsetDate,omitempty"`
-	Refs          *[]reference.Ref         `json:"refs"`
-	LatestWM      *writemarker.WriteMarker `json:"latest_write_marker"`
+	TotalPages int                       `json:"total_pages"`
+	OffsetPath string                    `json:"offset_path,omitempty"` //used for pagination; index for path is created in database
+	OffsetDate string                    `json:"offset_date,omitempty"` //used for pagination; idex for updated_at is created in database
+	Refs       *[]reference.PaginatedRef `json:"refs"`
+	LatestWM   *writemarker.WriteMarker  `json:"latest_write_marker"`
 }
 
 type ObjectPathResult struct {
