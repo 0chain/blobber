@@ -3,6 +3,7 @@ package convert
 import (
 	"encoding/json"
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
+	"github.com/pkg/errors"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
@@ -36,9 +37,10 @@ func GetFileMetaDataResponseCreator(httpResp interface{}) *blobbergrpc.GetFileMe
 	return &resp
 }
 
-func GetFileStatsResponseCreator(r interface{}) *blobbergrpc.GetFileStatsResponse {
+func GetFileStatsResponseCreator(r interface{}) (*blobbergrpc.GetFileStatsResponse, error) {
 	if r == nil {
-		return nil
+		return nil, errors.Wrapf(errors.New("EMPTY REQUEST"), "empty interface passed")
+		
 	}
 
 	httpResp, _ := r.(map[string]interface{})
@@ -46,12 +48,18 @@ func GetFileStatsResponseCreator(r interface{}) *blobbergrpc.GetFileStatsRespons
 	var resp blobbergrpc.GetFileStatsResponse
 	resp.MetaData = FileRefToFileRefGRPC(reference.ListingDataToRef(httpResp))
 
-	respRaw, _ := json.Marshal(httpResp)
+	respRaw, err := json.Marshal(httpResp)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to marshal httpResp")
+	}
 	var stats stats2.FileStats
-	_ = json.Unmarshal(respRaw, &stats)
+	err = json.Unmarshal(respRaw, &stats)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal respRaw into stats")
+	}
 	resp.Stats = FileStatsToFileStatsGRPC(&stats)
 
-	return &resp
+	return &resp, nil
 }
 
 func ListEntitesResponseCreator(r interface{}) *blobbergrpc.ListEntitiesResponse {
