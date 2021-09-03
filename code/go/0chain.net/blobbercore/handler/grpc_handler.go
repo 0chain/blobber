@@ -46,7 +46,12 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, request *blobberg
 		return nil, errors.Wrap(err, "failed to get FileStats for request: " + request.String())
 	}
 
-	return convert.GetFileStatsResponseCreator(response), nil
+	result, err := convert.GetFileStatsResponseCreator(response)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to convert FileStats for request: " + request.String())
+	}
+
+	return result, nil
 }
 
 func (b *blobberGRPCService) ListEntities(ctx context.Context, request *blobbergrpc.ListEntitiesRequest) (*blobbergrpc.ListEntitiesResponse, error) {
