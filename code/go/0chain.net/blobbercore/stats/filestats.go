@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
@@ -24,16 +26,12 @@ type FileStats struct {
 	//NumBlockWrites           int64  `gorm:"column:num_of_block_writes" json:"num_of_block_writes"`
 }
 
-var (
-	Logger *zap.Logger
-)
-
 func (FileStats) TableName() string {
 	return "file_stats"
 }
 
 func NewDirCreated(ctx context.Context, refID int64) {
-	Logger.Info("NewDirCreated inner...")
+	logging.Logger.Info("NewDirCreated inner...")
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
 	stats.NumBlockDownloads = 0
@@ -42,7 +40,7 @@ func NewDirCreated(ctx context.Context, refID int64) {
 }
 
 func NewFileCreated(ctx context.Context, refID int64) {
-	Logger.Info("NewFileCreated inner...")
+	logging.Logger.Info("NewFileCreated inner...")
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
 	stats.NumBlockDownloads = 0
@@ -51,21 +49,21 @@ func NewFileCreated(ctx context.Context, refID int64) {
 }
 
 func FileUpdated(ctx context.Context, refID int64) {
-	Logger.Info("FileUpdated inner...")
+	logging.Logger.Info("FileUpdated inner...")
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
 	db.Model(stats).Where(stats).Update("num_of_updates", gorm.Expr("num_of_updates + ?", 1))
 }
 
 func FileBlockDownloaded(ctx context.Context, refID int64) {
-	Logger.Info("FileBlockDownloaded inner...")
+	logging.Logger.Info("FileBlockDownloaded inner...")
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
 	db.Model(stats).Where(FileStats{RefID: refID}).Update("num_of_block_downloads", gorm.Expr("num_of_block_downloads + ?", 1))
 }
 
 func GetFileStats(ctx context.Context, refID int64) (*FileStats, error) {
-	Logger.Info("GetFileStats inner...")
+	logging.Logger.Info("GetFileStats inner...")
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
 	err := db.Model(stats).Where(FileStats{RefID: refID}).First(stats).Error
