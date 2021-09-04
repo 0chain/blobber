@@ -5,9 +5,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 
 	"gorm.io/gorm"
 )
