@@ -56,9 +56,10 @@ func FileUpdated(ctx context.Context, refID int64) {
 func FileBlockDownloaded(ctx context.Context, refID int64) error {
 	logging.Logger.Info("FileBlockDownloaded inner...")
 	db := datastore.GetStore().GetTransaction(ctx)
-	stats := &FileStats{RefID: refID}
-	err := db.Model(stats).Where(stats).
-		Update("num_of_block_downloads", gorm.Expr("num_of_block_downloads + ?", 1)).Error
+	//stats := &FileStats{RefID: refID}
+	err := db.Model(&FileStats{}).Where("ref_id = ?", refID).
+		Update("num_of_block_downloads", gorm.Expr("num_of_block_downloads + ?", 1)).
+		Error
 	if err != nil {
 		return errors.Wrap(err, "db get error for FileBlockDownloaded")
 	}
