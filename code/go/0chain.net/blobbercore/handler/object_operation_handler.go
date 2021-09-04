@@ -5,19 +5,19 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"math"
+	"net/http"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/pkg/errors"
-	"math"
-	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
-
-	"net/http"
-	"path/filepath"
-	"strconv"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -498,7 +498,10 @@ func (fsh *StorageHandler) DownloadFile(
 		respData = result
 	}
 
-	stats.FileBlockDownloaded(ctx, fileref.ID)
+	if err := stats.FileBlockDownloaded(ctx, fileref.ID); err != nil {
+		return nil, err
+	}
+
 	return respData, nil
 }
 
