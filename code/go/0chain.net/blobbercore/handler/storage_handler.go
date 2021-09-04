@@ -327,6 +327,7 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, request *blobber
 
 func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrpc.GetFileStatsRequest) (interface{}, error) {
 	// todo(kushthedude): generalise the allocation_context in the grpc metadata
+	Logger.Info("verifyAllocation...")
 	alloc, err := fsh.verifyAllocation(ctx, request.Allocation, true)
 	if err != nil {
 		Logger.Error("Invalid allocation ID passed in the request")
@@ -340,6 +341,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrp
 		return nil, errors.Wrap(errors.New("missing client id"), "Operation needs to be performed by the owner of the allocation")
 	}
 
+	Logger.Info("verifySignatureFromRequest...")
 	clientSign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
 	valid, err := verifySignatureFromRequest(request.Allocation, clientSign, alloc.OwnerPublicKey)
 	if !valid || err != nil {
@@ -351,9 +353,11 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrp
 			Logger.Error("Invalid request path passed in the request")
 			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
 		}
+		Logger.Info("GetReferenceLookup...")
 		request.PathHash = reference.GetReferenceLookup(allocationID, request.Path)
 	}
 
+	Logger.Info("GetReferenceFromLookupHash...")
 	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, request.PathHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid file path")
@@ -362,7 +366,9 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrp
 		return nil, errors.Wrap(invalidParameters, "path is not a filePath")
 	}
 
+	Logger.Info("GetListingData...")
 	result := fileref.GetListingData(ctx)
+	Logger.Info("GetFileStats...")
 	fileStats, err := stats.GetFileStats(ctx, fileref.ID)
 	if err != nil {
 		Logger.Error("unable to get file stats from fileRef ", zap.Int64("fileRef.id", fileref.ID))
