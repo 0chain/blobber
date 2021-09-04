@@ -307,6 +307,14 @@ VALUES (1234,'exampleId','exampleId:examplePath','exampleId:examplePath','f','fi
 		return err
 	}
 
+	_, err = tx.Exec(`
+INSERT INTO file_stats (ref_id, num_of_block_downloads)
+VALUES (1234, 1);
+`)
+	if err != nil {
+		return err
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return err
