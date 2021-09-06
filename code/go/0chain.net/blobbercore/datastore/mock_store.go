@@ -2,12 +2,33 @@ package datastore
 
 import (
 	"database/sql"
+	"testing"
+
 	"github.com/DATA-DOG/go-sqlmock"
+	mocket "github.com/selvatico/go-mocket"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"testing"
 )
+
+// https://githubmemory.com/repo/Selvatico/go-mocket/issues/28
+func MocketTheStore(t *testing.T, logging bool) {
+	var err error
+
+	mocket.Catcher.Reset()
+	mocket.Catcher.Register()
+	mocket.Catcher.Logging = logging
+
+	dialect := postgres.New(postgres.Config{
+		DSN:                  "mockdb",
+		DriverName:           mocket.DriverName,
+		PreferSimpleProtocol: true,
+	})
+
+	gdb, err := gorm.Open(dialect, new(gorm.Config))
+	require.NoError(t, err)
+	setDB(gdb)
+}
 
 func MockTheStore(t *testing.T) sqlmock.Sqlmock {
 	var db *sql.DB
