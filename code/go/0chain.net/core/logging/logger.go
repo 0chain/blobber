@@ -37,6 +37,7 @@ func InitLogging(mode string, logDir string, logFile string) {
 	cfg.Encoding = "console"
 	cfg.EncoderConfig.TimeKey = "timestamp"
 	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	cfg.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
 
 	l, err := cfg.Build(SetOutput(logWriter, cfg))
 	if err != nil {
