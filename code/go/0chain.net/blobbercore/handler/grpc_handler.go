@@ -3,7 +3,9 @@ package handler
 import (
 	"context"
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
@@ -43,11 +45,13 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, request *blobberg
 
 	response, err := storageHandler.GetFileStats(ctx, request)
 	if err != nil {
+		logging.Logger.Info("failed with error", zap.Error(err))
 		return nil, errors.Wrap(err, "failed to get FileStats for request: " + request.String())
 	}
 
 	result, err := convert.GetFileStatsResponseCreator(response)
 	if err != nil {
+		logging.Logger.Info("failed with error", zap.Error(err))
 		return nil, errors.Wrap(err, "failed to convert FileStats for request: " + request.String())
 	}
 
