@@ -24,9 +24,9 @@ import (
 const (
 	FormFileParseMaxMemory = 10 * 1024 * 1024
 
-	DownloadCcontentFull = "full"
+	DownloadContentFull  = "full"
 	DownloadContentThumb = "thumbnail"
-	PageLimit            = 100 //100 rows will make upto 100 KB
+	PageLimit            = 100 //100 rows will make up to 100 KB
 )
 
 type StorageHandler struct{}
