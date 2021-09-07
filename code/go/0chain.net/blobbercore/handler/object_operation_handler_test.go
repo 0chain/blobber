@@ -100,9 +100,6 @@ func TestDownloadFile(t *testing.T) {
 			// input from blobber database
 			allocation allocation.Allocation
 		}
-		args struct {
-			request *http.Request
-		}
 		want struct {
 			blobberIds []int
 			err        bool
@@ -117,13 +114,7 @@ func TestDownloadFile(t *testing.T) {
 	)
 	node.Self.ID = mockBlobberId
 
-	var getPayerId = func(p parameters) client.Client {
-		if p.isOwner || p.isCollaborator || p.attribute == common.WhoPaysOwner {
-			return mockOwner
-		}
-		return mockClient
-	}
-
+	// reuse code from GOSDK, https://github.com/0chain/gosdk/blob/staging/zboxcore/sdk/blockdownloadworker.go#L150
 	var addToForm = func(
 		t *testing.T,
 		formWriter *multipart.Writer,
@@ -142,14 +133,14 @@ func TestDownloadFile(t *testing.T) {
 		rmData, err := json.Marshal(rm)
 		require.NoError(t, err)
 		//pathHash := fileref.GetReferenceLookup(p.inData.allocationID, p.inData.remotefilepath)
-		formWriter.WriteField("path_hash", p.inData.pathHash)
-		formWriter.WriteField("path", p.inData.remotefilepath)
+		require.NoError(t, formWriter.WriteField("path_hash", p.inData.pathHash))
+		require.NoError(t, formWriter.WriteField("path", p.inData.remotefilepath))
 		if p.inData.rxPay {
-			formWriter.WriteField("rx_pay", "true") // pay oneself
+			require.NoError(t, formWriter.WriteField("rx_pay", "true"))
 		}
-		formWriter.WriteField("block_num", fmt.Sprintf("%d", p.inData.blockNum))
-		formWriter.WriteField("num_blocks", fmt.Sprintf("%d", p.inData.numBlocks))
-		formWriter.WriteField("read_marker", string(rmData))
+		require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", p.inData.blockNum)))
+		require.NoError(t, formWriter.WriteField("num_blocks", fmt.Sprintf("%d", p.inData.numBlocks)))
+		require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
 		if p.useAuthTicket {
 			authTicket := &marker.AuthTicket{
 				AllocationID: p.inData.allocationID,
@@ -160,15 +151,15 @@ func TestDownloadFile(t *testing.T) {
 				FilePathHash: p.inData.pathHash,
 			}
 			require.NoError(t, client.PopulateClient(mockOwnerWallet, "bls0chain"))
-			authTicket.Sign()
+			require.NoError(t, authTicket.Sign())
 			require.NoError(t, client.PopulateClient(mockClientWallet, "bls0chain"))
 			authTicketBytes, _ := json.Marshal(authTicket)
-			formWriter.WriteField("auth_token", string(authTicketBytes))
+			require.NoError(t, formWriter.WriteField("auth_token", string(authTicketBytes)))
 		}
 		if len(p.inData.contentMode) > 0 {
-			formWriter.WriteField("content", p.inData.contentMode)
+			require.NoError(t, formWriter.WriteField("content", p.inData.contentMode))
 		}
-		formWriter.Close()
+		require.NoError(t, formWriter.Close())
 		return rm
 	}
 
@@ -201,9 +192,9 @@ func TestDownloadFile(t *testing.T) {
 					Balance:  funds,
 					ExpireAt: mockLongTimeInFuture,
 				})
-				bytes, err := json.Marshal(&pss)
+				mbytes, err := json.Marshal(&pss)
 				require.NoError(t, err)
-				return bytes, nil
+				return mbytes, nil
 			default:
 				require.Fail(t, "unexpected REST API endpoint call: "+relativePath)
 			}
@@ -413,7 +404,7 @@ func TestDownloadFile(t *testing.T) {
 			require.EqualValues(t, client.GetClientPublicKey(), args[0].Value)
 			require.EqualValues(t, mockBlobberId, args[1].Value)
 			require.EqualValues(t, mockAllocationId, args[2].Value)
-			require.EqualValues(t, p.payerId.ClientID, args[3].Value)
+			require.EqualValues(t, mockOwner.ClientID, args[3].Value)
 			require.EqualValues(t, now, args[4].Value)
 			require.EqualValues(t, p.inData.numBlocks, args[5].Value)
 			require.EqualValues(t, p.payerId.ClientID, args[7].Value)
@@ -464,8 +455,15 @@ func TestDownloadFile(t *testing.T) {
 			Tx: mockAllocationTx,
 		}
 		require.True(t, (p.isOwner && !p.isCollaborator && !p.useAuthTicket) || !p.isOwner)
+		require.True(t, p.attribute == common.WhoPays3rdParty || p.attribute == common.WhoPaysOwner)
 		p.inData.pathHash = fileref.GetReferenceLookup(p.inData.allocationID, p.inData.remotefilepath)
-		p.payerId = getPayerId(*p)
+		if p.isOwner ||
+			p.isCollaborator ||
+			(p.attribute == common.WhoPaysOwner && !p.rxPay) {
+			p.payerId = mockOwner
+		} else {
+			p.payerId = mockClient
+		}
 	}
 
 	tests := []test{
@@ -524,20 +522,63 @@ func TestDownloadFile(t *testing.T) {
 				isFunded0Chain:  true,
 				rxPay:           false,
 			},
-		}, /*
-			{
-				name: "ok_authTicket_wp_owner",
-				parameters: parameters{
-					isOwner:         false,
-					isCollaborator:  true,
-					useAuthTicket:   false,
-					attribute:       common.WhoPaysOwner,
-					isRevoked:       false,
-					isFundedBlobber: true,
-					isFunded0Chain:  true,
-					rxPay:           false,
-				},
-			},*/
+		},
+		{
+			name: "ok_authTicket_wp_owner",
+			parameters: parameters{
+				isOwner:         false,
+				isCollaborator:  false,
+				useAuthTicket:   true,
+				attribute:       common.WhoPaysOwner,
+				isRevoked:       false,
+				isFundedBlobber: false,
+				isFunded0Chain:  true,
+				rxPay:           false,
+			},
+		},
+		{
+			name: "ok_authTicket_wp_3rdParty_funded_0chain",
+			parameters: parameters{
+				isOwner:         false,
+				isCollaborator:  false,
+				useAuthTicket:   true,
+				attribute:       common.WhoPays3rdParty,
+				isRevoked:       false,
+				isFundedBlobber: false,
+				isFunded0Chain:  true,
+				rxPay:           false,
+			},
+		},
+		{
+			name: "err_authTicket_wp_3rdParty_revoked",
+			parameters: parameters{
+				isOwner:         false,
+				isCollaborator:  false,
+				useAuthTicket:   true,
+				attribute:       common.WhoPays3rdParty,
+				isRevoked:       true,
+				isFundedBlobber: false,
+				isFunded0Chain:  true,
+				rxPay:           false,
+			},
+			want: want{
+				err:    true,
+				errMsg: "client does not have permission to download the file. share revoked",
+			},
+		},
+		{
+			name: "ok_authTicket_wp_owner",
+			parameters: parameters{
+				isOwner:         false,
+				isCollaborator:  false,
+				useAuthTicket:   true,
+				attribute:       common.WhoPaysOwner,
+				isRevoked:       false,
+				isFundedBlobber: false,
+				isFunded0Chain:  true,
+				rxPay:           true,
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name,
