@@ -110,9 +110,11 @@ func GetObjectTree(ctx context.Context, allocationID string, path string) (*Ref,
 
 //This function retrieves refrence_objects tables rows with pagination. Check for issue https://github.com/0chain/gosdk/issues/117
 //Might need to consider covering index for efficient search https://blog.crunchydata.com/blog/why-covering-indexes-are-incredibly-helpful
-func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, level, pageLimit int) (refs *[]Ref, totalPages int, newOffsetPath string, err error) {
+//To retrieve refs efficiently form pagination index is created in postgresql on path column so it can be used to paginate refs
+//very easily and effectively; Same case for offsetDate.
+func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, level, pageLimit int) (refs *[]PaginatedRef, totalPages int, newOffsetPath string, err error) {
 	var totalRows int64
-	var pRefs []Ref
+	var pRefs []PaginatedRef
 	path = filepath.Clean(path)
 
 	db := datastore.GetStore().GetDB()
@@ -130,7 +132,6 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 		if level != 0 {
 			db1 = db1.Where("level >= ?", level)
 		}
-		db1 = db1.Count(&totalRows)
 
 		db1 = db1.Where("path > ?", offsetPath)
 
@@ -166,9 +167,9 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 }
 
 //Retrieves updated refs compared to some update_at value. Useful to localCache
-func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, updatedDate, offsetDate string, level, pageLimit int) (refs *[]Ref, totalPages int, newOffsetPath, newOffsetDate string, err error) {
+func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, updatedDate, offsetDate string, level, pageLimit int, dateLayOut string) (refs *[]PaginatedRef, totalPages int, newOffsetPath, newOffsetDate string, err error) {
 	var totalRows int64
-	var pRefs []Ref
+	var pRefs []PaginatedRef
 	db := datastore.GetStore().GetDB()
 	db1 := db.Session(&gorm.Session{}) //TODO Might need to use transaction from db1/db2 to avoid injection attack
 	db2 := db.Session(&gorm.Session{})
@@ -220,7 +221,7 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, 
 
 	if len(pRefs) != 0 {
 		lastIdx := len(pRefs) - 1
-		newOffsetDate = pRefs[lastIdx].UpdatedAt.String()
+		newOffsetDate = pRefs[lastIdx].UpdatedAt.Format(dateLayOut)
 		newOffsetPath = pRefs[lastIdx].Path
 	}
 	refs = &pRefs
@@ -229,9 +230,9 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, 
 }
 
 //Retrieves deleted refs compared to some update_at value. Useful for localCache.
-func GetDeletedRefs(ctx context.Context, allocationID, updatedDate, offsetPath, offsetDate string, pageLimit int) (refs *[]Ref, totalPages int, newOffsetPath, newOffsetDate string, err error) {
+func GetDeletedRefs(ctx context.Context, allocationID, updatedDate, offsetPath, offsetDate string, pageLimit int, dateLayOut string) (refs *[]PaginatedRef, totalPages int, newOffsetPath, newOffsetDate string, err error) {
 	var totalRows int64
-	var pRefs []Ref
+	var pRefs []PaginatedRef
 	db := datastore.GetStore().GetDB()
 
 	db1 := db.Session(&gorm.Session{})
@@ -274,7 +275,7 @@ func GetDeletedRefs(ctx context.Context, allocationID, updatedDate, offsetPath, 
 	wg.Wait()
 	if len(pRefs) != 0 {
 		lastIdx := len(pRefs) - 1
-		newOffsetDate = pRefs[lastIdx].DeletedAt.Time.String()
+		newOffsetDate = pRefs[lastIdx].DeletedAt.Time.Format(dateLayOut)
 		newOffsetPath = pRefs[lastIdx].Path
 
 	}
