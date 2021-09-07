@@ -50,7 +50,7 @@ func GetFileStatsResponseCreator(r interface{}) (*blobbergrpc.GetFileStatsRespon
 	var resp blobbergrpc.GetFileStatsResponse
 	resp.MetaData = FileRefToFileRefGRPC(reference.ListingDataToRef(httpResp))
 
-	logging.Logger.Info("filestat response was successfully fetched", zap.Any("metadata", resp.Stats))
+	logging.Logger.Info("filestat response was successfully fetched", zap.Any("metadata", resp.MetaData))
 	respRaw, err := json.Marshal(httpResp)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal httpResp")
