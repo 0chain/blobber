@@ -33,7 +33,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 
 	"testing"
@@ -101,14 +100,12 @@ func TestDownloadFile(t *testing.T) {
 			allocation allocation.Allocation
 		}
 		want struct {
-			blobberIds []int
-			err        bool
-			errMsg     string
+			err    bool
+			errMsg string
 		}
 		test struct {
 			name       string
 			parameters parameters
-			mockSetup  func(sqlmock.Sqlmock)
 			want       want
 		}
 	)
@@ -430,8 +427,6 @@ func TestDownloadFile(t *testing.T) {
 		body := new(bytes.Buffer)
 		formWriter := multipart.NewWriter(body)
 		rm := addToForm(t, formWriter, p)
-		url := fmt.Sprintf("%s%s%s", "my_blobber_url", "/v1/file/download/", p.allocation.Tx)
-		url = url
 		req := httptest.NewRequest(http.MethodPost, "/v1/file/download/", body)
 		require.NoError(t, req.ParseForm())
 		req.Header.Add("Content-Type", formWriter.FormDataContentType())
