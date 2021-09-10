@@ -129,7 +129,6 @@ func TestDownloadFile(t *testing.T) {
 		require.NoError(t, err)
 		rmData, err := json.Marshal(rm)
 		require.NoError(t, err)
-		//pathHash := fileref.GetReferenceLookup(p.inData.allocationID, p.inData.remotefilepath)
 		require.NoError(t, formWriter.WriteField("path_hash", p.inData.pathHash))
 		require.NoError(t, formWriter.WriteField("path", p.inData.remotefilepath))
 		if p.inData.rxPay {
@@ -254,9 +253,7 @@ func TestDownloadFile(t *testing.T) {
 			`SELECT count(1) FROM "collaborators" WHERE`,
 		).WithArgs(
 			mockClient.ClientID,
-		).WithCallback(func(par1 string, args []driver.NamedValue) {
-			fmt.Println(args)
-		}).WithReply(
+		).WithReply(
 			[]map[string]interface{}{{"count": collaboratorRtv}},
 		)
 
@@ -407,9 +404,7 @@ func TestDownloadFile(t *testing.T) {
 			require.EqualValues(t, p.payerId.ClientID, args[7].Value)
 		}).WithQuery(`UPDATE "read_markers" SET`).WithID(1)
 
-		mocket.Catcher.NewMock().WithCallback(func(par1 string, par2 []driver.NamedValue) {
-			fmt.Println("string", par1, "[]NamedValue", par2)
-		}).WithQuery(`UPDATE "file_stats" SET`).WithID(1)
+		mocket.Catcher.NewMock().WithQuery(`UPDATE "file_stats" SET`).WithID(1)
 	}
 
 	setupCtx := func(p parameters) context.Context {
@@ -591,10 +586,8 @@ func TestDownloadFile(t *testing.T) {
 				setupOutMock(t, test.parameters, *rm)
 
 				var sh StorageHandler
-				resp, err := sh.DownloadFile(setupCtx(test.parameters), request)
+				_, err := sh.DownloadFile(setupCtx(test.parameters), request)
 
-				fmt.Println("err", err)
-				fmt.Println("resp", resp)
 				require.EqualValues(t, test.want.err, err != nil)
 				if err != nil {
 					require.EqualValues(t, test.want.errMsg, err.Error())
