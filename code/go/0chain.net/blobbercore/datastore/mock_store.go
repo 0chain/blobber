@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// https://githubmemory.com/repo/Selvatico/go-mocket/issues/28
+
 func MocketTheStore(t *testing.T, logging bool) {
 	var err error
 
@@ -30,6 +30,8 @@ func MocketTheStore(t *testing.T, logging bool) {
 	setDB(gdb)
 }
 
+// sqlmock has problems with inserts, so use mocket for tests with inserts
+// https://github.com/DATA-DOG/go-sqlmock/issues/118
 func MockTheStore(t *testing.T) sqlmock.Sqlmock {
 	var db *sql.DB
 	var mock sqlmock.Sqlmock
