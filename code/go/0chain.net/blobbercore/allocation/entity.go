@@ -25,8 +25,8 @@ type Allocation struct {
 	UsedSize         int64            `gorm:"column:used_size"`
 	OwnerID          string           `gorm:"column:owner_id"`
 	OwnerPublicKey   string           `gorm:"column:owner_public_key"`
-	RepairerID       string           `gorm:"column:repairer_id"` // experimental / blobber node id
-	PayerID          string           `gorm:"column:payer_id"`    // optional / client paying for all r/w ops
+	RepairerID       string           `gorm:"column:repairer_id"`// experimental / blobber node id
+	PayerID          string           `gorm:"column:payer_id"` // optional / client paying for all r/w ops
 	Expiration       common.Timestamp `gorm:"column:expiration_date"`
 	AllocationRoot   string           `gorm:"column:allocation_root"`
 	BlobberSize      int64            `gorm:"column:blobber_size"`
@@ -36,10 +36,10 @@ type Allocation struct {
 	TimeUnit         time.Duration    `gorm:"column:time_unit"`
 	IsImmutable      bool             `gorm:"is_immutable"`
 	// Ending and cleaning
-	CleanedUp bool `gorm:"column:cleaned_up"`
-	Finalized bool `gorm:"column:finalized"`
+	CleanedUp        bool `gorm:"column:cleaned_up"`
+	Finalized        bool `gorm:"column:finalized"`
 	// Has many terms
-	Terms []*Terms `gorm:"-"`
+	Terms            []*Terms `gorm:"-"`
 }
 
 func (Allocation) TableName() string {
