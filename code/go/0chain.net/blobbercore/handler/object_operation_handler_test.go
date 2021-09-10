@@ -40,7 +40,7 @@ import (
 
 func TestDownloadFile(t *testing.T) {
 	const (
-		mocketLogging    = true
+		mocketLogging    = false
 		mockBlobberId    = "mock_blobber_id"
 		mockAllocationId = "mock_allocation_id"
 		mockAllocationTx = "mock_allocation_Tx"
