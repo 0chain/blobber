@@ -385,7 +385,7 @@ func ListingDataToRef(refMap map[string]interface{}) *Ref {
 		logging.Logger.Info("logging each field", zap.Any("tag", tag))
 		logging.Logger.Info("logging each field again", zap.Any("field", field))
 
-		if strings.Contains(tag, "at") {
+		if strings.Contains(tag, "_at") {
 			continue
 		}
 
