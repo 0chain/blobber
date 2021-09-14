@@ -150,7 +150,7 @@ func updateAllocation(ctx context.Context, a *Allocation) {
 	}
 
 	// if new Tx, then we have to update the allocation
-	if sa.Tx != a.Tx || sa.Finalized != a.Finalized {
+	if sa.Tx != a.Tx || sa.OwnerID != a.OwnerID || sa.Finalized != a.Finalized {
 		if a, err = updateAllocationInDB(ctx, a, sa); err != nil {
 			Logger.Error("updating allocation in DB", zap.Error(err))
 			return
@@ -207,6 +207,8 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 
 	// transaction
 	a.Tx = sa.Tx
+	a.OwnerID = sa.OwnerID
+	a.OwnerPublicKey = sa.OwnerPublicKey
 
 	// update fields
 	a.Expiration = sa.Expiration
