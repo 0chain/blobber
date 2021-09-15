@@ -35,6 +35,7 @@ const (
 )
 
 var ErrNoTxnDetail = common.NewError("missing_transaction_detail", "No transaction detail was found on any of the sharders")
+var MakeSCRestAPICall func(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) ([]byte, error) = makeSCRestAPICall
 
 type SCRestAPIHandler func(response map[string][]byte, numSharders int, err error)
 
@@ -53,7 +54,7 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 }
 
 // MakeSCRestAPICall execute api reqeust from sharders, and parse and return result
-func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) ([]byte, error) {
+func makeSCRestAPICall(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) ([]byte, error) {
 	var resMaxCounterBody []byte
 
 	var hashMaxCounter int
