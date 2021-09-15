@@ -2504,49 +2504,49 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 }
 
 var (
-	pattern_BlobberService_GetAllocation_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v2", "allocation"}, ""))
+	pattern_BlobberService_GetAllocation_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "allocation"}, ""))
 
-	pattern_BlobberService_GetFileMetaData_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "meta", "allocation"}, ""))
+	pattern_BlobberService_GetFileMetaData_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "meta", "allocation"}, ""))
 
-	pattern_BlobberService_GetFileStats_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "stats", "allocation"}, ""))
+	pattern_BlobberService_GetFileStats_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "stats", "allocation"}, ""))
 
-	pattern_BlobberService_ListEntities_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "list", "allocation"}, ""))
+	pattern_BlobberService_ListEntities_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "list", "allocation"}, ""))
 
-	pattern_BlobberService_GetObjectPath_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "objectpath", "allocation"}, ""))
+	pattern_BlobberService_GetObjectPath_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "objectpath", "allocation"}, ""))
 
-	pattern_BlobberService_GetReferencePath_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "referencepath", "allocation"}, ""))
+	pattern_BlobberService_GetReferencePath_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "referencepath", "allocation"}, ""))
 
-	pattern_BlobberService_GetObjectTree_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "objecttree", "allocation"}, ""))
+	pattern_BlobberService_GetObjectTree_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "objecttree", "allocation"}, ""))
 
-	pattern_BlobberService_DownloadFile_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "download", "allocation"}, ""))
+	pattern_BlobberService_DownloadFile_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "download", "allocation"}, ""))
 
-	pattern_BlobberService_RenameObject_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "rename", "allocation"}, ""))
+	pattern_BlobberService_RenameObject_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "rename", "allocation"}, ""))
 
-	pattern_BlobberService_UploadFile_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "upload", "allocation"}, ""))
+	pattern_BlobberService_UploadFile_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "upload", "allocation"}, ""))
 
-	pattern_BlobberService_UploadFile_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "upload", "allocation"}, ""))
+	pattern_BlobberService_UploadFile_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "upload", "allocation"}, ""))
 
-	pattern_BlobberService_UploadFile_2 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "upload", "allocation"}, ""))
+	pattern_BlobberService_UploadFile_2 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "upload", "allocation"}, ""))
 
-	pattern_BlobberService_Commit_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "connection", "commit", "allocation"}, ""))
+	pattern_BlobberService_Commit_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "connection", "commit", "allocation"}, ""))
 
-	pattern_BlobberService_CalculateHash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "calculatehash", "allocation"}, ""))
+	pattern_BlobberService_CalculateHash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "calculatehash", "allocation"}, ""))
 
-	pattern_BlobberService_CommitMetaTxn_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "commitmetatxn", "allocation"}, ""))
+	pattern_BlobberService_CommitMetaTxn_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "commitmetatxn", "allocation"}, ""))
 
-	pattern_BlobberService_UpdateObjectAttributes_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "attributes", "allocation"}, ""))
+	pattern_BlobberService_UpdateObjectAttributes_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "attributes", "allocation"}, ""))
 
-	pattern_BlobberService_CopyObject_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "copy", "allocation"}, ""))
+	pattern_BlobberService_CopyObject_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "copy", "allocation"}, ""))
 
-	pattern_BlobberService_Collaborator_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "collaborator", "allocation"}, ""))
+	pattern_BlobberService_Collaborator_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "collaborator", "allocation"}, ""))
 
-	pattern_BlobberService_Collaborator_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "collaborator", "allocation"}, ""))
+	pattern_BlobberService_Collaborator_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "collaborator", "allocation"}, ""))
 
-	pattern_BlobberService_Collaborator_2 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "collaborator", "allocation"}, ""))
+	pattern_BlobberService_Collaborator_2 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "collaborator", "allocation"}, ""))
 
-	pattern_BlobberService_MarketplaceShareInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "marketplace", "shareinfo", "allocation"}, ""))
+	pattern_BlobberService_MarketplaceShareInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "marketplace", "shareinfo", "allocation"}, ""))
 
-	pattern_BlobberService_MarketplaceShareInfo_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "marketplace", "shareinfo", "allocation"}, ""))
+	pattern_BlobberService_MarketplaceShareInfo_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "marketplace", "shareinfo", "allocation"}, ""))
 )
 
 var (
