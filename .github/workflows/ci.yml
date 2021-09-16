@@ -15,7 +15,7 @@ env:
   VALIDATOR_REGISTRY: ${{ secrets.VALIDATOR_REGISTRY }}
 
 jobs:
-  integration-test:
+  integration_test:
     runs-on: ubuntu-20.04
     steps:
       - name: Install Go
