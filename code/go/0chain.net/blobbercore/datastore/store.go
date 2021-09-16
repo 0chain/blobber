@@ -26,10 +26,10 @@ type Store interface {
 	Close()
 }
 
-var store Store
+var instance Store
 
 func GetStore() Store {
-	return store
+	return instance
 }
 
 func FromContext(ctx context.Context) Store {

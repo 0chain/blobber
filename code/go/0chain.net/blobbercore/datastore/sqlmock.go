@@ -30,8 +30,11 @@ func (store *Sqlmock) Open() error {
 	})
 	var gdb *gorm.DB
 	gdb, err = gorm.Open(dialector, &gorm.Config{})
+	if err != nil {
+		return err
+	}
 
-	store = &Sqlmock{
+	instance = &Sqlmock{
 		db:      gdb,
 		Sqlmock: mock,
 	}

@@ -31,7 +31,7 @@ func (store *Mocket) Open() error {
 		return err
 	}
 
-	store = &Mocket{
+	instance = &Mocket{
 		db: gdb,
 	}
 

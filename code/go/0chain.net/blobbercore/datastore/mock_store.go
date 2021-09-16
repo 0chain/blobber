@@ -28,7 +28,7 @@ func MocketTheStore(t *testing.T, logging bool) {
 	require.NoError(t, err)
 	//setDB(gdb)
 
-	store = &postgresStore{
+	instance = &postgresStore{
 		db: gdb,
 	}
 }
@@ -52,7 +52,7 @@ func MockTheStore(t *testing.T) sqlmock.Sqlmock {
 	gdb, err = gorm.Open(dialector, &gorm.Config{})
 	require.NoError(t, err)
 
-	store = &postgresStore{
+	instance = &postgresStore{
 		db: gdb,
 	}
 

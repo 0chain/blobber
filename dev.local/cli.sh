@@ -116,22 +116,22 @@ install_postgres () {
 
     [ ! "$(docker ps -a | grep blobber_postgres)" ] && docker run --name blobber_postgres --restart always -p 5432:5432 -e POSTGRES_PASSWORD=postgres -d postgres:11
 
-    [ -d "./data/blobber$i" ] || mkdir -p "./data/blobber$i" 
+    [ -d "./data/blobber" ] || mkdir -p "./data/blobber" 
 
     echo Initializing database
 
-    [ -d "./data/blobber$i/sql" ] && rm -rf  [ -d "./data/blobber$i/sql" ]
+    [ -d "./data/blobber/sql" ] && rm -rf  [ -d "./data/blobber/sql" ]
 
-    cp -r ../sql "./data/blobber$i/"
-    cd "./data/blobber$i/sql"
+    cp -r ../sql "./data/blobber/"
+    cd "./data/blobber/sql"
 
-    find . -name "*.sql" -exec sed -i '' "s/blobber_user/blobber_user$i/g" {} \;
-    find . -name "*.sql" -exec sed -i '' "s/blobber_meta/blobber_meta$i/g" {} \;
+    find . -name "*.sql" -exec sed -i '' "s/blobber_user/blobber_user/g" {} \;
+    find . -name "*.sql" -exec sed -i '' "s/blobber_meta/blobber_meta/g" {} \;
 
 
     cd $root
-    [ -d "./data/blobber$i/bin" ] && rm -rf  [ -d "./data/blobber$i/bin" ]
-    cp -r ../bin "./data/blobber$i/"
+    [ -d "./data/blobber/bin" ] && rm -rf  [ -d "./data/blobber/bin" ]
+    cp -r ../bin "./data/blobber/"
 
 
     cd $root
@@ -145,8 +145,8 @@ install_postgres () {
     -e  POSTGRES_HOST=postgres \
     -e  POSTGRES_USER=postgres  \
     -e  POSTGRES_PASSWORD=postgres \
-    -v  $root/data/blobber$i/bin:/blobber/bin \
-    -v  $root/data/blobber$i/sql:/blobber/sql \
+    -v  $root/data/blobber/bin:/blobber/bin \
+    -v  $root/data/blobber/sql:/blobber/sql \
     postgres:11 bash /blobber/bin/postgres-entrypoint.sh 
 
     docker rm blobber_postgres_init --force
