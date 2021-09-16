@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"github.com/0chain/gosdk/zboxcore/sdk"
 )
@@ -29,20 +31,9 @@ func BenchmarkUploadFile(b *testing.B) {
 	MB := 1024 * KB
 	//GB := 1024 * MB
 
-	formBuilder := sdk.CreateChunkedUploadFormBuilder()
+	datastore.UseMocket()
 
-	// setupHandlerContext := func(ctx context.Context, r *http.Request) context.Context {
-	// 	var vars = mux.Vars(r)
-	// 	ctx = context.WithValue(ctx, constants.ContextKeyClient,
-	// 		r.Header.Get(common.ClientHeader))
-	// 	ctx = context.WithValue(ctx, constants.ContextKeyClientKey,
-	// 		r.Header.Get(common.ClientKeyHeader))
-	// 	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
-	// 		vars["allocation"])
-	// 	// signature is not required for all requests, but if header is empty it won`t affect anything
-	// 	ctx = context.WithValue(ctx, constants.ContextKeyClientSignatureHeaderKey, r.Header.Get(common.ClientSignatureHeader))
-	// 	return ctx
-	// }
+	formBuilder := sdk.CreateChunkedUploadFormBuilder()
 
 	var storageHandler StorageHandler
 
@@ -59,7 +50,7 @@ func BenchmarkUploadFile(b *testing.B) {
 		b.Run(bm.Name, func(b *testing.B) {
 
 			fileName := strings.Replace(bm.Name, " ", "_", -1) + ".txt"
-			fileBytes := generateRandomBytes(bm.Size)
+			chunkBytes := generateRandomBytes(bm.ChunkSize)
 			fileMeta := &sdk.FileMeta{
 				Path:       "/tmp/" + fileName,
 				ActualSize: int64(bm.Size),
@@ -74,12 +65,18 @@ func BenchmarkUploadFile(b *testing.B) {
 			hasher := sdk.CreateHasher(bm.ChunkSize)
 			isFinal := false
 
+			ctx := context.WithValue(context.TODO(), constants.ContextKeyClient, "client_id")
+			ctx = context.WithValue(ctx, constants.ContextKeyClientKey, "client_key")
+			ctx = context.WithValue(ctx, constants.ContextKeyAllocation, "allocation_id")
+
+			ctx = GetMetaDataStore().CreateTransaction(ctx)
+
 			for i := 0; i < b.N; i++ {
-				body, _, _ := formBuilder.Build(fileMeta, hasher, "connectionID", int64(bm.ChunkSize), i, isFinal, "", fileBytes, nil)
+				body, _, _ := formBuilder.Build(fileMeta, hasher, "connectionID", int64(bm.ChunkSize), 0, isFinal, "", chunkBytes, nil)
 
-				req := httptest.NewRequest(http.MethodPost, "", body)
+				req := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:5051//v1/file/upload/benchmark_upload", body)
 
-				_, err := storageHandler.WriteFile(context.TODO(), req)
+				_, err := storageHandler.WriteFile(ctx, req)
 
 				if err != nil {
 					b.Fatal(err)

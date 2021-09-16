@@ -17,6 +17,7 @@ env:
 jobs:
   integration_test:
     runs-on: ubuntu-20.04
+    timeout-minutes: 30
     steps:
       - name: Install Go
         uses: actions/setup-go@v2

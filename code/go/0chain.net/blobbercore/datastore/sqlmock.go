@@ -9,6 +9,18 @@ import (
 	"gorm.io/gorm"
 )
 
+var sqlmockInstance *Sqlmock
+
+// UseSqlmock use sqlmock to mock sql driver
+func UseSqlmock() {
+	if sqlmockInstance == nil {
+		sqlmockInstance = &Sqlmock{}
+		sqlmockInstance.Open()
+	}
+
+	instance = sqlmockInstance
+}
+
 // Sqlmock mock sql driver in data-dog/sqlmock
 type Sqlmock struct {
 	db      *gorm.DB
@@ -34,10 +46,8 @@ func (store *Sqlmock) Open() error {
 		return err
 	}
 
-	instance = &Sqlmock{
-		db:      gdb,
-		Sqlmock: mock,
-	}
+	store.db = gdb
+	store.Sqlmock = mock
 
 	return nil
 }

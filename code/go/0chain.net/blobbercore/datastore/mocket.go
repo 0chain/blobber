@@ -9,6 +9,18 @@ import (
 	"gorm.io/gorm"
 )
 
+var mocketInstance *Mocket
+
+// UseMocket use mocket to mock sql driver
+func UseMocket() {
+	if mocketInstance == nil {
+		mocketInstance = &Mocket{}
+		mocketInstance.Open()
+	}
+
+	instance = mocketInstance
+}
+
 // Mocket mock sql driver in data-dog/sqlmock
 type Mocket struct {
 	db *gorm.DB
@@ -31,9 +43,7 @@ func (store *Mocket) Open() error {
 		return err
 	}
 
-	instance = &Mocket{
-		db: gdb,
-	}
+	store.db = gdb
 
 	return nil
 }
