@@ -96,7 +96,7 @@ jobs:
 
   dockerize_blobber:
     runs-on: ubuntu-20.04
-    needs: test
+    needs: integration_test
     if: github.event_name == 'release' && github.event.action == 'published'
     steps:
     - uses: actions/checkout@v2
@@ -120,7 +120,7 @@ jobs:
 
   dockerize_validator:
     runs-on: ubuntu-20.04
-    needs: test
+    needs: integration_test
     if: github.event_name == 'release' && github.event.action == 'published'
     steps:
     - uses: actions/checkout@v2
