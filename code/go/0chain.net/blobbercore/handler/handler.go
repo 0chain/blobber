@@ -29,7 +29,7 @@ import (
 
 var storageHandler StorageHandler
 
-func GetMetaDataStore() *datastore.Store {
+func GetMetaDataStore() datastore.Store {
 	return datastore.GetStore()
 }
 

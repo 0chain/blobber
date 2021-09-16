@@ -405,12 +405,12 @@ func TestDownloadFile(t *testing.T) {
 
 	setupCtx := func(p parameters) context.Context {
 		ctx := context.TODO()
-		ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY, client.GetClientID())
-		ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY, p.inData.allocationTx)
-		ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY, client.GetClientPublicKey())
+		ctx = context.WithValue(ctx, constants.ContextKeyClient, client.GetClientID())
+		ctx = context.WithValue(ctx, constants.ContextKeyAllocation, p.inData.allocationTx)
+		ctx = context.WithValue(ctx, constants.ContextKeyClientKey, client.GetClientPublicKey())
 
 		db := datastore.GetStore().GetDB().Begin()
-		ctx = context.WithValue(ctx, datastore.CONNECTION_CONTEXT_KEY, db)
+		ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
 		return ctx
 	}
 
