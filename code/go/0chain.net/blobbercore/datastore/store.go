@@ -28,6 +28,10 @@ type Store interface {
 
 var instance Store
 
+func init() {
+	instance = &postgresStore{}
+}
+
 func GetStore() Store {
 	return instance
 }

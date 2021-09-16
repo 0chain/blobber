@@ -183,7 +183,7 @@ start_blobber () {
     prepareRuntime;
     cd $root
     port="505$i"
-    grpc_port="703$i"
+    grpc_port="3150$i"
 
     keys_file="../docker.local/keys_config/b0bnode${i}_keys.txt"
     minio_file="../docker.local/keys_config/minio_config.txt"
