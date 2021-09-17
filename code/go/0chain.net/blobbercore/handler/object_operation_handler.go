@@ -1176,12 +1176,13 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 }
 
 func getFormFieldName(mode string) string {
-	formField := "uploadMeta"
-	if mode == constants.FileOperationUpdate {
-		formField = "updateMeta"
-	}
+	return "uploadMeta"
+	//	formField := "uploadMeta"
+	// if mode == constants.FileOperationUpdate {
+	// 	//formField = "updateMeta"
+	// }
 
-	return formField
+	//return formField
 }
 
 func getFileOperation(r *http.Request) string {
