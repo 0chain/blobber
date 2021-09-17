@@ -1,5 +1,5 @@
 ARG image_tag
-FROM golang:1.14.9-alpine3.12 as blobber_build
+FROM golang:1.17.1-alpine3.14 as blobber_build
 
 RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep
 
