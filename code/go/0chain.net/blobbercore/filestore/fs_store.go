@@ -117,6 +117,16 @@ type StoreAllocation struct {
 	TempObjectsPath string
 }
 
+var fileFSStore *FileFSStore
+
+func UseDisk() {
+	if fileFSStore == nil {
+		panic("UseDisk: please SetupFSStore first")
+	}
+
+	fileStore = fileFSStore
+}
+
 func SetupFSStore(rootDir string) (FileStore, error) {
 	if err := createDirs(rootDir); err != nil {
 		return nil, err
@@ -125,12 +135,15 @@ func SetupFSStore(rootDir string) (FileStore, error) {
 }
 
 func SetupFSStoreI(rootDir string, fileBlockGetter IFileBlockGetter) (FileStore, error) {
-	fsStore = &FileFSStore{
+	fileFSStore = &FileFSStore{
 		RootDirectory:   rootDir,
 		Minio:           intializeMinio(),
 		fileBlockGetter: fileBlockGetter,
 	}
-	return fsStore, nil
+
+	fileStore = fileFSStore
+
+	return fileStore, nil
 }
 
 func intializeMinio() *minio.Client {

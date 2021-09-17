@@ -63,8 +63,8 @@ type FileStore interface {
 	SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)
 }
 
-var fsStore FileStore
+var fileStore FileStore
 
 func GetFileStore() FileStore {
-	return fsStore
+	return fileStore
 }

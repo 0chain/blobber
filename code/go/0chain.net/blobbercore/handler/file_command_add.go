@@ -73,6 +73,7 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 		Path:    cmd.fileChanger.Path,
 		OnCloud: false,
 
+		ChunkSize:    cmd.fileChanger.ChunkSize,
 		UploadOffset: cmd.fileChanger.UploadOffset,
 		IsChunked:    true,
 		IsFinal:      cmd.fileChanger.IsFinal,
