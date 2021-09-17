@@ -35,7 +35,7 @@ ARG go_bls_tag
 RUN go build -v -tags ${go_build_mode} -tags ${go_bls_tag} -ldflags "-X 0chain.net/core/build.BuildTag=${image_tag}"
 
 # Copy the build artifact into a minimal runtime image:
-FROM golang:1.11.4-alpine3.8
+FROM golang:1.17.1-alpine3.14
 RUN apk add gmp gmp-dev openssl-dev
 COPY --from=validator_build  /usr/local/lib/libmcl*.so \
                         /usr/local/lib/libbls*.so \
