@@ -70,9 +70,19 @@ func BenchmarkUploadFile(b *testing.B) {
 
 			body, formData, _ := formBuilder.Build(fileMeta, hasher, "connectionID", int64(bm.ChunkSize), 0, isFinal, "", chunkBytes, nil)
 
-			req, _ := blobber.NewRequest(http.MethodPost, "http://127.0.0.1:5051/v1/file/upload/benchmark_upload", body)
+			req, err := blobber.NewRequest(http.MethodPost, "http://127.0.0.1:5051/v1/file/upload/benchmark_upload", body)
+
+			if err != nil {
+				b.Fatal(err)
+				return
+			}
+
 			req.Header.Set("Content-Type", formData.ContentType)
-			blobber.SignRequest(req, allocationID)
+			err = blobber.SignRequest(req, allocationID)
+			if err != nil {
+				b.Fatal(err)
+				return
+			}
 
 			ctx := GetMetaDataStore().CreateTransaction(context.TODO())
 

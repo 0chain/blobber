@@ -15,7 +15,10 @@ var sqlmockInstance *Sqlmock
 func UseSqlmock() {
 	if sqlmockInstance == nil {
 		sqlmockInstance = &Sqlmock{}
-		sqlmockInstance.Open()
+		err := sqlmockInstance.Open()
+		if err != nil {
+			panic("UseSqlmock: " + err.Error())
+		}
 	}
 
 	instance = sqlmockInstance

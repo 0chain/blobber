@@ -17,7 +17,10 @@ func UseMocket(logging bool) {
 	if mocketInstance == nil {
 		mocketInstance = &Mocket{}
 		mocketInstance.logging = logging
-		mocketInstance.Open()
+		err := mocketInstance.Open()
+		if err != nil {
+			panic("UseMocket: " + err.Error())
+		}
 	}
 
 	instance = mocketInstance
