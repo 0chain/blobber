@@ -17,6 +17,10 @@ jobs:
   unit_tests:
     runs-on: ubuntu-20.04
     steps:
+      - name: Setup go 1.16
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.16' # The Go version to download (if necessary) and use.
       - name: Set GITHUB_ENV
         run: |
           echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
