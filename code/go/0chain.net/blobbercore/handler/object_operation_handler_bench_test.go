@@ -48,7 +48,7 @@ func BenchmarkUploadFileWithDisk(b *testing.B) {
 		ChunkSize int
 	}{
 		{Name: "64K", ChunkSize: 64 * KB},
-		{Name: "64K", ChunkSize: 640 * KB},
+		{Name: "640K", ChunkSize: 640 * KB},
 		{Name: "6M", ChunkSize: 6 * MB},
 		{Name: "60M", ChunkSize: 60 * MB},
 	}
@@ -139,7 +139,7 @@ func BenchmarkUploadFileWithNoDisk(b *testing.B) {
 		ChunkSize int
 	}{
 		{Name: "64K", ChunkSize: 64 * KB},
-		{Name: "64K", ChunkSize: 640 * KB},
+		{Name: "640K", ChunkSize: 640 * KB},
 		{Name: "6M", ChunkSize: 6 * MB},
 		{Name: "60M", ChunkSize: 60 * MB},
 	}

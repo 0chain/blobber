@@ -34,7 +34,7 @@ jobs:
           git checkout $BRANCH
 
       - name: Run benchmark
-        run: go test -tags bn256 -benchmem -benchtime=5s -run="BenchmarkUploadFile*" -bench="BenchmarkUploadFile*"   ./... | tee benchmark.txt
+        run: go test -tags bn256 -benchmem -run="BenchmarkUploadFile*" -bench="BenchmarkUploadFile*"   ./... | tee benchmark.txt
  
       # Run `github-action-benchmark` action
       # - name: Push benchmark report
