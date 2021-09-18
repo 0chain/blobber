@@ -25,7 +25,9 @@ jobs:
         with:
           go-version: '1.16' # The Go version to download (if necessary) and use.
       - run: go version    
-      - uses: actions/checkout@v2
+
+      - name: Clone Blobber
+        uses: actions/checkout@v2
       # - uses: satackey/action-docker-layer-caching@v0.0.11
       #   continue-on-error: true
 
@@ -35,7 +37,7 @@ jobs:
           echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
           echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
           echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-          
+
       # git clone gosdk with same branch
       - name: Clone gosdk
         run: |
@@ -46,8 +48,7 @@ jobs:
 
       - name: Build test environment and run tests
         run: |
-          go version
-          sudo chmod -R 777 .
+       
 
           sed -i '/#expose_ci_port/c\    ports:\n      - "5432:5432"' ./docker.local/b0docker-compose.yml
           ./docker.local/bin/blobber.init.setup.sh
@@ -58,8 +59,12 @@ jobs:
           cd docker.local/blobber1
           ../bin/blobber.start_bls.sh </dev/null &>/dev/null &
           cd ../..
-    
-          make integration-tests
+          go version
+          sudo go version
+          gobin=$(which go)
+          echo $gobin
+          sudo chmod -R 777 .
+          sudo export go=$gobin && sudo make integration-tests
   golangci:
     name: lint
     runs-on: ubuntu-latest
