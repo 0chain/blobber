@@ -24,13 +24,13 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: '1.16' # The Go version to download (if necessary) and use.
-      - name: Setup go for root
-        run: |
-          go version  
-          sudo go version
-          gobin=$(which go)
-          echo $gobin  
-          sudo go version
+      # - name: Setup go for root
+      #   run: |
+      #     go version  
+      #     sudo go version
+      #     gobin=$(which go)
+      #     echo $gobin  
+      #     sudo go version
 
       - name: Clone Blobber
         uses: actions/checkout@v2
@@ -54,8 +54,6 @@ jobs:
 
       - name: Build test environment and run tests
         run: |
-       
-
           sed -i '/#expose_ci_port/c\    ports:\n      - "5432:5432"' ./docker.local/b0docker-compose.yml
           ./docker.local/bin/blobber.init.setup.sh
           docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
@@ -65,12 +63,9 @@ jobs:
           cd docker.local/blobber1
           ../bin/blobber.start_bls.sh </dev/null &>/dev/null &
           cd ../..
-          go version
-          sudo go version
-          gobin=$(which go)
-          echo $gobin
-          sudo chmod -R 777 .
-          sudo export go=$gobin && sudo make integration-tests
+      
+          go16=$(which go)
+          sudo $go16 test ./... -args integration;
   golangci:
     name: lint
     runs-on: ubuntu-latest
