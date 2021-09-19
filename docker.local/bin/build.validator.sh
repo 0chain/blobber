@@ -17,8 +17,8 @@ do
     esac
 done
 
-[ -d ./gosdk ] && rm -rf gosdk
-cp -r ../gosdk ./
+# [ -d ./gosdk ] && rm -rf gosdk
+# cp -r ../gosdk ./
 
 docker $cmd  --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/validator.Dockerfile . -t validator
 
