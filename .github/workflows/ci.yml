@@ -24,16 +24,10 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: '1.16' # The Go version to download (if necessary) and use.
-      # - name: Setup go for root
-      #   run: |
-      #     go version  
-      #     sudo go version
-      #     gobin=$(which go)
-      #     echo $gobin  
-      #     sudo go version
 
       - name: Clone Blobber
         uses: actions/checkout@v2
+
       # - uses: satackey/action-docker-layer-caching@v0.0.11
       #   continue-on-error: true
 
@@ -45,12 +39,12 @@ jobs:
           echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
 
       # git clone gosdk with same branch
-      - name: Clone gosdk
-        run: |
-          [ -d $GOSDK ] && rm -rf $GOSDK
-          git clone https://github.com/0chain/gosdk.git $GOSDK
-          cd $GOSDK
-          git checkout $BRANCH
+      # - name: Clone gosdk
+      #   run: |
+      #     [ -d $GOSDK ] && rm -rf $GOSDK
+      #     git clone https://github.com/0chain/gosdk.git $GOSDK
+      #     cd $GOSDK
+      #     git checkout $BRANCH
 
       - name: Build test environment and run tests
         run: |
@@ -76,18 +70,20 @@ jobs:
           go-version: '1.16' # The Go version to download (if necessary) and use.
       - uses: actions/checkout@v2
 
-      # git clone gosdk with same branch
+ 
       - name: Set GITHUB_ENV
         run: |
           echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
           echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
           echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-      - name: Clone gosdk
-        run: |
-          [ -d $GOSDK ] && rm -rf $GOSDK
-          git clone https://github.com/0chain/gosdk.git $GOSDK
-          cd $GOSDK
-          git checkout $BRANCH
+          
+      # git clone gosdk with same branch
+      # - name: Clone gosdk
+      #   run: |
+      #     [ -d $GOSDK ] && rm -rf $GOSDK
+      #     git clone https://github.com/0chain/gosdk.git $GOSDK
+      #     cd $GOSDK
+      #     git checkout $BRANCH
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2

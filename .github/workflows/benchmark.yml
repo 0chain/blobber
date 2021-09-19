@@ -26,12 +26,12 @@ jobs:
       - name: Clone blobber
         uses: actions/checkout@v2
 
-      - name: Clone gosdk
-        run: |
-          [ -d $GOSDK ] && rm -rf $GOSDK
-          git clone https://github.com/0chain/gosdk.git $GOSDK
-          cd $GOSDK
-          git checkout $BRANCH
+      # - name: Clone gosdk
+      #   run: |
+      #     [ -d $GOSDK ] && rm -rf $GOSDK
+      #     git clone https://github.com/0chain/gosdk.git $GOSDK
+      #     cd $GOSDK
+      #     git checkout $BRANCH
 
       - name: Run benchmark
         run: go test -tags bn256 -benchmem -run="BenchmarkUploadFile*" -bench="BenchmarkUploadFile*"   ./... | tee benchmark.txt
