@@ -85,7 +85,7 @@ func NewGRPCServerWithMiddlewares(limiter grpc_ratelimit.Limiter, r *mux.Router)
 			}
 
 			ctx := GetMetaDataStore().CreateTransaction(r.Context())
-			r.WithContext(ctx)
+			r = r.WithContext(ctx)
 
 			h.ServeHTTP(w, r)
 		})
