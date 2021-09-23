@@ -16,7 +16,7 @@ env:
 
 jobs:
   integration_test:
-    runs-on: ubuntu-20.04
+    runs-on: [ubuntu-20.04]
     timeout-minutes: 40
     steps:
   
@@ -26,7 +26,7 @@ jobs:
           go-version: '1.16' # The Go version to download (if necessary) and use.
 
       - name: Clone Blobber
-        uses: actions/checkout@v2
+        uses: actions/checkout@v1
 
       - name: Build test environment and run tests
         run: |

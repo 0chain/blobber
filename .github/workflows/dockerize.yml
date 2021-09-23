@@ -17,17 +17,13 @@ jobs:
   build_base:
     runs-on: [self-hosted, build]
     steps:
-      - name: Setup go 1.16
-        uses: actions/setup-go@v2
-        with:
-          go-version: '1.16' # The Go version to download (if necessary) and use.
       - name: Set GITHUB_ENV
         run: |
           echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
           echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
           echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
       - name: Clone blobber
-        uses: actions/checkout@v2      
+        uses: actions/checkout@v1     
 
       # - name: Clone gosdk
       #   run: |
@@ -62,7 +58,7 @@ jobs:
             echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
       
       - name: Clone blobber
-        uses: actions/checkout@v2
+        uses: actions/checkout@v1
 
       # - name: Clone gosdk
       #   run: |
@@ -142,7 +138,7 @@ jobs:
             echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
       
       - name: Clone blobber
-        uses: actions/checkout@v2
+        uses: actions/checkout@v1
 
       # - name: Clone gosdk
       #   run: |
