@@ -3,9 +3,6 @@ package chain
 import (
 	"context"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
-
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/config"
 	"github.com/spf13/viper"
@@ -21,8 +18,6 @@ func SetServerChain(c *Chain) {
 
 /*GetServerChain - returns the chain object for the server chain */
 func GetServerChain() *Chain {
-	logging.Logger.Info("call chain.GetServerChain",
-		zap.Any("GetServerChainResponse", ServerChain))
 	return ServerChain
 }
 
