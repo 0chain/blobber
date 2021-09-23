@@ -5,7 +5,7 @@ on:
   branches:
     - staging
     - stream
-    - '*'
+    - 'fix/github_action_checkout'
   tags: 
     - '*'
 
