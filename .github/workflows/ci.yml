@@ -16,7 +16,7 @@ env:
 
 jobs:
   integration_test:
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, load-test]
     timeout-minutes: 40
     steps:
   
@@ -44,7 +44,7 @@ jobs:
           sudo $go16 test -tags bn256  ./... -args integration;
   golangci:
     name: lint
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, tests-suite]
     steps:
       - name: Setup go 1.16
         uses: actions/setup-go@v2
@@ -59,7 +59,7 @@ jobs:
           args: --timeout=2m0s
 
   buf-build:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, tests-suite]
     steps:
       - name: Check out code
         uses: actions/checkout@master
@@ -76,7 +76,7 @@ jobs:
         run: make local
 
   dockerize_blobber:
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
     needs: integration_test
     if: github.event_name == 'release' && github.event.action == 'published'
     steps:
@@ -100,7 +100,7 @@ jobs:
         TAG: ${{ steps.get_version.outputs.VERSION }}
 
   dockerize_validator:
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
     needs: integration_test
     if: github.event_name == 'release' && github.event.action == 'published'
     steps:

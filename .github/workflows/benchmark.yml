@@ -8,7 +8,7 @@ on:
 
 jobs:
   benchmark:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, load-test]
     steps:
       - name: Setup go 1.16
         uses: actions/setup-go@v2
