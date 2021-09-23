@@ -92,6 +92,8 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, request *blob
 		zap.String("allocation", request.Allocation),
 		zap.String("request", request.String()))
 
+	logging.Logger.Info("call storageHandler.GetReferencePath",
+		zap.Any("request", request.String()))
 	response, err := storageHandler.GetReferencePath(ctx, request)
 
 	if err != nil {
