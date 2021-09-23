@@ -23,7 +23,7 @@ on:
 jobs:
   analyze:
     name: Analyze
-    runs-on: [self-hosted, build]
+    runs-on: [self-hosted, docker-builds]
     permissions:
       actions: read
       contents: read
