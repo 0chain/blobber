@@ -11,36 +11,45 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/gosdk/constants"
 )
 
 type NewFileChange struct {
-	ConnectionID        string               `json:"connection_id" validation:"required"`
-	AllocationID        string               `json:"allocation_id"`
-	Filename            string               `json:"filename" validation:"required"`
-	ThumbnailFilename   string               `json:"thumbnail_filename"`
-	Path                string               `json:"filepath" validation:"required"`
-	Size                int64                `json:"size"`
-	Hash                string               `json:"content_hash,omitempty"`
-	ThumbnailSize       int64                `json:"thumbnail_size"`
-	ThumbnailHash       string               `json:"thumbnail_content_hash,omitempty"`
-	MerkleRoot          string               `json:"merkle_root,omitempty"`
-	ActualHash          string               `json:"actual_hash,omitempty" validation:"required"`
-	ActualSize          int64                `json:"actual_size,omitempty" validation:"required"`
-	ActualThumbnailSize int64                `json:"actual_thumb_size"`
-	ActualThumbnailHash string               `json:"actual_thumb_hash"`
-	MimeType            string               `json:"mimetype,omitempty"`
-	EncryptedKey        string               `json:"encrypted_key,omitempty"`
-	CustomMeta          string               `json:"custom_meta,omitempty"`
-	Attributes          reference.Attributes `json:"attributes,omitempty"`
+	//client side: unmarshal them from 'updateMeta'/'uploadMeta'
+	ConnectionID string `json:"connection_id" validation:"required"`
+	//client side:
+	Filename string `json:"filename" validation:"required"`
+	//client side:
+	Path string `json:"filepath" validation:"required"`
+	//client side:
+	ActualHash string `json:"actual_hash,omitempty" validation:"required"`
+	//client side:
+	ActualSize int64 `json:"actual_size,omitempty" validation:"required"`
+	//client side:
+	ActualThumbnailSize int64 `json:"actual_thumb_size"`
+	//client side:
+	ActualThumbnailHash string `json:"actual_thumb_hash"`
+	//client side:
+	MimeType string `json:"mimetype,omitempty"`
+	//client side:
+	Attributes reference.Attributes `json:"attributes,omitempty"`
+	//client side:
+	MerkleRoot string `json:"merkle_root,omitempty"`
 
-	// IsResumable the request is resumable upload
-	IsResumable bool `json:"is_resumable,omitempty"`
-	// UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
-	UploadLength int64 `json:"upload_length,omitempty"`
-	// Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
-	UploadOffset int64 `json:"upload_offset,omitempty"`
-	// IsFinal  the request is final chunk
-	IsFinal bool `json:"is_final,omitempty"`
+	//server side: update them by ChangeProcessor
+	AllocationID string `json:"allocation_id"`
+	//client side:
+	Hash string `json:"content_hash,omitempty"`
+	Size int64  `json:"size"`
+	//server side:
+	ThumbnailHash     string `json:"thumbnail_content_hash,omitempty"`
+	ThumbnailSize     int64  `json:"thumbnail_size"`
+	ThumbnailFilename string `json:"thumbnail_filename"`
+
+	EncryptedKey string `json:"encrypted_key,omitempty"`
+	CustomMeta   string `json:"custom_meta,omitempty"`
+
+	ChunkSize int64 `json:"chunk_size,omitempty"` // the size of achunk. 64*1024 is default
 }
 
 func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, allocationRoot string) (*reference.Ref, error) {
@@ -107,7 +116,7 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 func (nf *NewFileChange) ProcessChange(ctx context.Context,
 	change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 
-	if change.Operation == CREATEDIR_OPERATION {
+	if change.Operation == constants.FileOperationCreateDir {
 		err := nf.Unmarshal(change.Input)
 		if err != nil {
 			return nil, err
@@ -177,6 +186,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context,
 	newFile.ActualThumbnailHash = nf.ActualThumbnailHash
 	newFile.ActualThumbnailSize = nf.ActualThumbnailSize
 	newFile.EncryptedKey = nf.EncryptedKey
+	newFile.ChunkSize = nf.ChunkSize
 
 	if err = newFile.SetAttributes(&nf.Attributes); err != nil {
 		return nil, common.NewErrorf("process_new_file_change",

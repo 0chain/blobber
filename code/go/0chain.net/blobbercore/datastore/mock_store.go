@@ -11,7 +11,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
 func MocketTheStore(t *testing.T, logging bool) {
 	var err error
 
@@ -27,11 +26,15 @@ func MocketTheStore(t *testing.T, logging bool) {
 
 	gdb, err := gorm.Open(dialect, new(gorm.Config))
 	require.NoError(t, err)
-	setDB(gdb)
+	//setDB(gdb)
+
+	instance = &postgresStore{
+		db: gdb,
+	}
 }
 
 // sqlmock has problems with inserts, so use mocket for tests with inserts
-// https://github.com/DATA-DOG/go-sqlmock/issues/118
+
 func MockTheStore(t *testing.T) sqlmock.Sqlmock {
 	var db *sql.DB
 	var mock sqlmock.Sqlmock
@@ -49,7 +52,9 @@ func MockTheStore(t *testing.T) sqlmock.Sqlmock {
 	gdb, err = gorm.Open(dialector, &gorm.Config{})
 	require.NoError(t, err)
 
-	setDB(gdb)
+	instance = &postgresStore{
+		db: gdb,
+	}
 
 	return mock
 }

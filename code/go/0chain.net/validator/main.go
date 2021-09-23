@@ -44,11 +44,12 @@ func main() {
 	logDir := flag.String("log_dir", "", "log_dir")
 	portString := flag.String("port", "", "port")
 	hostname := flag.String("hostname", "", "hostname")
+	configDir := flag.String("config_dir", "./config", "config_dir")
 
 	flag.Parse()
 
 	config.SetupDefaultConfig()
-	config.SetupConfig()
+	config.SetupConfig(*configDir)
 
 	config.Configuration.DeploymentMode = byte(*deploymentMode)
 

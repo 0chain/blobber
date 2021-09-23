@@ -49,7 +49,13 @@ func SetupConfig(configPath string) {
 	viper.SetEnvKeyReplacer(replacer)
 	viper.AutomaticEnv()
 	viper.SetConfigName("0chain_blobber")
-	viper.AddConfigPath(configPath)
+
+	if configPath == "" {
+		viper.AddConfigPath("./config")
+	} else {
+		viper.AddConfigPath(configPath)
+	}
+
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {             // Handle errors reading the config file
 		panic(fmt.Errorf("fatal error config file: %s", err))

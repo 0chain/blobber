@@ -1,0 +1,219 @@
+name: Dockerize
+
+on:
+ push: 
+  branches:
+    - dayi/main
+    - dayi/qa
+    - dayi/dev
+  pull_request:
+    - dayi/main
+    - dayi/qa
+    - dayi/dev
+  # tags: 
+  #   - '*'
+
+
+env:
+  BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY }}
+  VALIDATOR_REGISTRY: ${{ secrets.VALIDATOR_REGISTRY }}
+
+jobs:
+  build_base:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Setup go 1.16
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.16' # The Go version to download (if necessary) and use.
+      - name: Set GITHUB_ENV
+        run: |
+          echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+          echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
+          echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+      - name: Clone blobber
+        uses: actions/checkout@v2      
+
+      # - name: Clone gosdk
+      #   run: |
+      #     [ -d $GOSDK ] && rm -rf $GOSDK
+      #     git clone https://github.com/0chain/gosdk.git $GOSDK
+      #     cd $GOSDK
+      #     git checkout $BRANCH
+        
+  
+      - name: Build blobber_base
+        run: ./docker.local/bin/build.base.sh
+
+      - name: Export blobber_base
+        run:  |
+          mkdir -p /tmp/0chain/
+          docker save "blobber_base" > /tmp/0chain/blobber_base.tar
+
+      - name: Upload blobber_base
+        uses: actions/upload-artifact@v2
+        with:
+          name: blobber_base
+          path: /tmp/0chain/blobber_base.tar
+
+  build_blobber:
+    needs: build_base
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Set GITHUB_ENV
+        run: |
+            echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+            echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
+            echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+      
+      - name: Clone blobber
+        uses: actions/checkout@v2
+
+      # - name: Clone gosdk
+      #   run: |
+      #     [ -d $GOSDK ] && rm -rf $GOSDK
+      #     git clone https://github.com/0chain/gosdk.git $GOSDK
+      #     cd $GOSDK
+      #     git checkout $BRANCH
+
+      - name: Download blobber_base
+        uses: actions/download-artifact@v2
+        with:
+          name: blobber_base
+          path: /tmp/0chain
+
+      - name: Load blobber_base
+        run: |
+          docker load --input /tmp/0chain/blobber_base.tar
+          
+        #docker image ls -a
+
+      - name: Build blobber
+        run: ./docker.local/bin/build.blobber.sh
+      
+      - name: Export blobber
+        run:  |
+          mkdir -p /tmp/0chain/
+          docker save "blobber" > /tmp/0chain/blobber.tar
+
+      - name: Upload blobber
+        uses: actions/upload-artifact@v2
+        with:
+          name: blobber
+          path: /tmp/0chain/blobber.tar
+       
+  publish_blobber:
+    needs: build_blobber
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Set GITHUB_ENV
+        run: |
+            echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+            echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
+            echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+    
+      - name: Download blobber
+        uses: actions/download-artifact@v2
+        with:
+          name: blobber
+          path: /tmp/0chain
+
+      - name: Load blobber
+        run: |
+          docker load --input /tmp/0chain/blobber.tar
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Push blobber
+        run: |
+          docker tag blobber:latest ${BLOBBER_REGISTRY}:$TAG
+          docker push ${BLOBBER_REGISTRY}:$TAG
+
+          SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
+          docker tag blobber:latest ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA
+          docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA  
+
+        
+
+  build_validator:
+    needs: build_base
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Set GITHUB_ENV
+        run: |
+            echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+            echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
+            echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+      
+      - name: Clone blobber
+        uses: actions/checkout@v2
+
+      # - name: Clone gosdk
+      #   run: |
+      #     [ -d $GOSDK ] && rm -rf $GOSDK
+      #     git clone https://github.com/0chain/gosdk.git $GOSDK
+      #     cd $GOSDK
+      #     git checkout $BRANCH
+
+      - name: Download blobber_base
+        uses: actions/download-artifact@v2
+        with:
+          name: blobber_base
+          path: /tmp/0chain
+
+      - name: Load blobber_base
+        run: |
+          docker load --input /tmp/0chain/blobber_base.tar
+          
+        #docker image ls -a
+
+      - name: Build validator
+        run: ./docker.local/bin/build.validator.sh
+      
+      - name: Export validator
+        run:  |
+          mkdir -p /tmp/0chain/
+          docker save "validator" > /tmp/0chain/validator.tar
+
+      - name: Upload validator
+        uses: actions/upload-artifact@v2
+        with:
+          name: validator
+          path: /tmp/0chain/validator.tar
+       
+  publish_validator:
+    needs: build_validator
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Set GITHUB_ENV
+        run: |
+            echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+            echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
+            echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+    
+      - name: Download validator
+        uses: actions/download-artifact@v2
+        with:
+          name: validator
+          path: /tmp/0chain
+
+      - name: Load validator
+        run: |
+          docker load --input /tmp/0chain/validator.tar
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Push validator
+        run: |
+          docker tag validator:latest ${VALIDATOR_REGISTRY}:$TAG
+          docker push ${VALIDATOR_REGISTRY}:$TAG
+
+          SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
+          docker tag validator:latest ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA
+          docker push ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA

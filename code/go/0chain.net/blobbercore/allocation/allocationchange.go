@@ -8,19 +8,10 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/constants"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-)
-
-const (
-	INSERT_OPERATION       = "insert"
-	DELETE_OPERATION       = "delete"
-	UPDATE_OPERATION       = "update"
-	RENAME_OPERATION       = "rename"
-	COPY_OPERATION         = "copy"
-	UPDATE_ATTRS_OPERATION = "update_attrs"
-	CREATEDIR_OPERATION    = "createdir"
 )
 
 const (
@@ -32,6 +23,7 @@ const (
 
 var OperationNotApplicable = common.NewError("operation_not_valid", "Not an applicable operation")
 
+// AllocationChangeProcessor request transaction of file operation. it is president in postgres, and can be rebuilt for next http reqeust(eg CommitHandler)
 type AllocationChangeProcessor interface {
 	CommitToFileStore(ctx context.Context) error
 	DeleteTempFile() error
@@ -68,22 +60,31 @@ func (AllocationChange) TableName() string {
 	return "allocation_changes"
 }
 
+func (change *AllocationChange) Save(ctx context.Context) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	return db.Save(change).Error
+}
+
+// GetAllocationChanges reload connection's changes in allocation from postgres.
+//	1. update connection's status with NewConnection if connection_id is not found in postgres
+//  2. mark as NewConnection if connection_id is marked as DeleteConnection
 func GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*AllocationChangeCollector, error) {
 	cc := &AllocationChangeCollector{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where(&AllocationChangeCollector{
-		ConnectionID: connectionID,
-		AllocationID: allocationID,
-		ClientID:     clientID,
-	}).Not(&AllocationChangeCollector{
-		Status: DeletedConnection,
-	}).Preload("Changes").First(cc).Error
+	err := db.Where("connection_id = ? and allocation_id = ? and client_id = ? and status <> ?",
+		connectionID,
+		allocationID,
+		clientID,
+		DeletedConnection,
+	).Preload("Changes").First(cc).Error
 
 	if err == nil {
 		cc.ComputeProperties()
 		return cc, nil
 	}
 
+	// It is a bug when connetion_id was marked as DeletedConnection
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		cc.ConnectionID = connectionID
 		cc.AllocationID = allocationID
@@ -105,31 +106,31 @@ func (cc *AllocationChangeCollector) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	if cc.Status == NewConnection {
 		cc.Status = InProgressConnection
-		err := db.Create(cc).Error
-		return err
-	} else {
-		err := db.Save(cc).Error
-		return err
+		return db.Create(cc).Error
 	}
+
+	return db.Save(cc).Error
 }
 
+// ComputeProperties unmarshal all ChangeProcesses from postgres
 func (cc *AllocationChangeCollector) ComputeProperties() {
 	cc.AllocationChanges = make([]AllocationChangeProcessor, 0, len(cc.Changes))
 	for _, change := range cc.Changes {
 		var acp AllocationChangeProcessor
 		switch change.Operation {
-		case INSERT_OPERATION:
+		case constants.FileOperationInsert:
 			acp = new(NewFileChange)
-		case UPDATE_OPERATION:
-			acp = new(UpdateFileChange)
-		case DELETE_OPERATION:
+		case constants.FileOperationUpdate:
+			acp = new(UpdateFileChanger)
+		case constants.FileOperationDelete:
 			acp = new(DeleteFileChange)
-		case RENAME_OPERATION:
+		case constants.FileOperationRename:
 			acp = new(RenameFileChange)
-		case COPY_OPERATION:
+		case constants.FileOperationCopy:
 			acp = new(CopyFileChange)
-		case UPDATE_ATTRS_OPERATION:
+		case constants.FileOperationUpdateAttrs:
 			acp = new(AttributesChange)
+
 		}
 
 		if acp == nil {

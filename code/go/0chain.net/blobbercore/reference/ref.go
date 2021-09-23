@@ -90,6 +90,8 @@ type Ref struct {
 	UpdatedAt      time.Time       `gorm:"column:updated_at" dirlist:"updated_at" filelist:"updated_at"`
 
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
+
+	ChunkSize int64 `gorm:"column:chunk_size" dirlist:"chunk_size" filelist:"chunk_size"`
 }
 
 type PaginatedRef struct { //Gorm smart select fields.
@@ -123,12 +125,15 @@ type PaginatedRef struct { //Gorm smart select fields.
 	CreatedAt time.Time      `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt time.Time      `gorm:"column:updated_at" json:"updated_at,omitempty"`
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"-"` // soft deletion
+
+	ChunkSize int64 `gorm:"column:chunk_size" dirlist:"chunk_size" filelist:"chunk_size"`
 }
 
 func (Ref) TableName() string {
 	return "reference_objects"
 }
 
+// GetReferenceLookup hash(allocationID + ":" + path)
 func GetReferenceLookup(allocationID string, path string) string {
 	return encryption.Hash(allocationID + ":" + path)
 }
@@ -166,6 +171,7 @@ func (r *Ref) SetAttributes(attr *Attributes) (err error) {
 	return
 }
 
+// GetReference get FileRef with allcationID and path from postgres
 func GetReference(ctx context.Context, allocationID string, path string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
@@ -264,6 +270,7 @@ func (fr *Ref) GetFileHashData() string {
 	hashArray = append(hashArray, strconv.FormatInt(fr.ActualFileSize, 10))
 	hashArray = append(hashArray, fr.ActualFileHash)
 	hashArray = append(hashArray, string(fr.Attributes))
+	hashArray = append(hashArray, strconv.FormatInt(fr.ChunkSize, 10))
 	return strings.Join(hashArray, ":")
 }
 
@@ -272,7 +279,7 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 	// fmt.Println("Fileref hash data: " + fr.GetFileHashData())
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
 	// fmt.Println("Fileref hash : " + fr.Hash)
-	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / CHUNK_SIZE))
+	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
 	fr.PathHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	fr.PathLevel = len(GetSubDirsFromPath(fr.Path)) + 1 //strings.Count(fr.Path, "/")
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
@@ -284,6 +291,7 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 }
 
 func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, error) {
+	// empty directory, return hash directly
 	if len(r.Children) == 0 && !r.childrenLoaded {
 		return r.Hash, nil
 	}
@@ -374,6 +382,7 @@ func (r *Ref) Save(ctx context.Context) error {
 	return db.Save(r).Error
 }
 
+// GetListingData reflect and convert all fields into map[string]interface{}
 func (r *Ref) GetListingData(ctx context.Context) map[string]interface{} {
 	if r == nil {
 		return make(map[string]interface{})

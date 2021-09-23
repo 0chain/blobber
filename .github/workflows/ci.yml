@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+
   release:
     types:
       - published
@@ -14,31 +15,76 @@ env:
   VALIDATOR_REGISTRY: ${{ secrets.VALIDATOR_REGISTRY }}
 
 jobs:
-  test:
+  integration_test:
     runs-on: ubuntu-20.04
+    timeout-minutes: 40
     steps:
-      - name: Install Go
+  
+      - name: Setup go 1.16
         uses: actions/setup-go@v2
         with:
-          go-version: 1.13.x
-      - uses: actions/checkout@v2
-      - uses: satackey/action-docker-layer-caching@v0.0.11
-        continue-on-error: true
+          go-version: '1.16' # The Go version to download (if necessary) and use.
+
+      - name: Clone Blobber
+        uses: actions/checkout@v2
+
+      # - uses: satackey/action-docker-layer-caching@v0.0.11
+      #   continue-on-error: true
+
+
+      - name: Set GITHUB_ENV
+        run: |
+          echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+          echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
+          echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+
+      # git clone gosdk with same branch
+      # - name: Clone gosdk
+      #   run: |
+      #     [ -d $GOSDK ] && rm -rf $GOSDK
+      #     git clone https://github.com/0chain/gosdk.git $GOSDK
+      #     cd $GOSDK
+      #     git checkout $BRANCH
+
       - name: Build test environment and run tests
         run: |
           sed -i '/#expose_ci_port/c\    ports:\n      - "5432:5432"' ./docker.local/b0docker-compose.yml
           ./docker.local/bin/blobber.init.setup.sh
           docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
+          ./docker.local/bin/build.base.sh
           ./docker.local/bin/build.blobber.sh
+          ./docker.local/bin/build.validator.sh
           cd docker.local/blobber1
           ../bin/blobber.start_bls.sh </dev/null &>/dev/null &
           cd ../..
-          make integration-tests
+      
+          go16=$(which go)
+          sudo $go16 test ./... -args integration;
   golangci:
     name: lint
     runs-on: ubuntu-latest
     steps:
+      - name: Setup go 1.16
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.16' # The Go version to download (if necessary) and use.
       - uses: actions/checkout@v2
+
+ 
+      - name: Set GITHUB_ENV
+        run: |
+          echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+          echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
+          echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+          
+      # git clone gosdk with same branch
+      # - name: Clone gosdk
+      #   run: |
+      #     [ -d $GOSDK ] && rm -rf $GOSDK
+      #     git clone https://github.com/0chain/gosdk.git $GOSDK
+      #     cd $GOSDK
+      #     git checkout $BRANCH
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
@@ -52,18 +98,19 @@ jobs:
         uses: actions/checkout@master
         with:
           fetch-depth: 1
+
       - name: setup golang
         if: success()
         uses: actions/setup-go@v2
         with:
-          go-version: 1.13.x
+          go-version: 1.16.x
       - name: run buf commands
         if: success()
         run: make local
 
   dockerize_blobber:
     runs-on: ubuntu-20.04
-    needs: test
+    needs: integration_test
     if: github.event_name == 'release' && github.event.action == 'published'
     steps:
     - uses: actions/checkout@v2
@@ -87,7 +134,7 @@ jobs:
 
   dockerize_validator:
     runs-on: ubuntu-20.04
-    needs: test
+    needs: integration_test
     if: github.event_name == 'release' && github.event.action == 'published'
     steps:
     - uses: actions/checkout@v2

@@ -19,9 +19,10 @@ test:
 lint:
 	golangci-lint run --timeout 2m0s;
 
+
 .PHONY: integration-tests
 integration-tests:
-	sudo go test ./... -args integration;
+	go test ./... -args integration;
 
 
 

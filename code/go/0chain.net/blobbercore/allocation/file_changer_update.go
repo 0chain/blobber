@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"path/filepath"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
@@ -15,11 +14,11 @@ import (
 	"go.uber.org/zap"
 )
 
-type UpdateFileChange struct {
-	NewFileChange
+type UpdateFileChanger struct {
+	BaseFileChanger
 }
 
-func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 
 	path, _ := filepath.Split(nf.Path)
 	path = filepath.Clean(path)
@@ -74,6 +73,7 @@ func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	existingRef.ActualThumbnailHash = nf.ActualThumbnailHash
 	existingRef.ActualThumbnailSize = nf.ActualThumbnailSize
 	existingRef.EncryptedKey = nf.EncryptedKey
+	existingRef.ChunkSize = nf.ChunkSize
 
 	if err = existingRef.SetAttributes(&nf.Attributes); err != nil {
 		return nil, common.NewErrorf("process_update_file_change",
@@ -85,7 +85,7 @@ func (nf *UpdateFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	return rootRef, err
 }
 
-func (nf *UpdateFileChange) Marshal() (string, error) {
+func (nf *UpdateFileChanger) Marshal() (string, error) {
 	ret, err := json.Marshal(nf)
 	if err != nil {
 		return "", err
@@ -93,48 +93,10 @@ func (nf *UpdateFileChange) Marshal() (string, error) {
 	return string(ret), nil
 }
 
-func (nf *UpdateFileChange) Unmarshal(input string) error {
+func (nf *UpdateFileChanger) Unmarshal(input string) error {
 	if err := json.Unmarshal([]byte(input), nf); err != nil {
 		return err
 	}
 
 	return util.UnmarshalValidation(nf)
-}
-
-func (nf *UpdateFileChange) DeleteTempFile() error {
-	fileInputData := &filestore.FileInputData{}
-	fileInputData.Name = nf.Filename
-	fileInputData.Path = nf.Path
-	fileInputData.Hash = nf.Hash
-	err := filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
-	if nf.ThumbnailSize > 0 {
-		fileInputData := &filestore.FileInputData{}
-		fileInputData.Name = nf.ThumbnailFilename
-		fileInputData.Path = nf.Path
-		fileInputData.Hash = nf.ThumbnailHash
-		err = filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
-	}
-	return err
-}
-
-func (nfch *UpdateFileChange) CommitToFileStore(ctx context.Context) error {
-	fileInputData := &filestore.FileInputData{}
-	fileInputData.Name = nfch.Filename
-	fileInputData.Path = nfch.Path
-	fileInputData.Hash = nfch.Hash
-	_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, fileInputData, nfch.ConnectionID)
-	if err != nil {
-		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-	}
-	if nfch.ThumbnailSize > 0 {
-		fileInputData := &filestore.FileInputData{}
-		fileInputData.Name = nfch.ThumbnailFilename
-		fileInputData.Path = nfch.Path
-		fileInputData.Hash = nfch.ThumbnailHash
-		_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, fileInputData, nfch.ConnectionID)
-		if err != nil {
-			return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-		}
-	}
-	return nil
 }

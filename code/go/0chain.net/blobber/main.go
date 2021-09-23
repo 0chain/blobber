@@ -350,11 +350,13 @@ func main() {
 	portString := flag.String("port", "", "port")
 	grpcPortString := flag.String("grpc_port", "", "grpc_port")
 	hostname := flag.String("hostname", "", "hostname")
+	configDir := flag.String("config_dir", "./config", "config_dir")
 
 	flag.Parse()
 
 	config.SetupDefaultConfig()
-	config.SetupConfig("./config")
+
+	config.SetupConfig(*configDir)
 
 	config.Configuration.DeploymentMode = byte(*deploymentMode)
 

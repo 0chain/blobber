@@ -57,7 +57,7 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context,
 
 	db := datastore.GetStore().GetTransaction(ctx)
 	statusBytes, _ := json.Marshal(statusMessage)
-	fmt.Println(string(statusBytes))
+
 	if status == Failed {
 		wm.ReedeemRetries++
 		err = db.Model(wm).Updates(WriteMarkerEntity{
@@ -98,6 +98,7 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context,
 	return
 }
 
+// GetWriteMarkerEntity get WriteMarkerEntity from postgres
 func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	wm := &WriteMarkerEntity{}

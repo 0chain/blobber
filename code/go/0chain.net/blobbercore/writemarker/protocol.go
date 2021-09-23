@@ -3,16 +3,17 @@ package writemarker
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	"github.com/0chain/gosdk/constants"
 
 	"go.uber.org/zap"
 )
@@ -45,15 +46,15 @@ func (wm *WriteMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.Al
 	}
 
 	if wm.WM.Size != co.Size {
-		return common.NewError("write_marker_validation_failed", "Write Marker size does not match the connection size")
+		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker size %v does not match the connection size %v", wm.WM.Size, co.Size))
 	}
 
-	clientPublicKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+	clientPublicKey := ctx.Value(constants.ContextKeyClientKey).(string)
 	if len(clientPublicKey) == 0 {
 		return common.NewError("write_marker_validation_failed", "Could not get the public key of the client")
 	}
 
-	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	if len(clientID) == 0 || clientID != wm.WM.ClientID || clientID != co.ClientID || co.ClientID != wm.WM.ClientID {
 		return common.NewError("write_marker_validation_failed", "Write Marker is not by the same client who uploaded")
 	}

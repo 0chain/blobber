@@ -13,14 +13,12 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/config"
 
+	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
 )
 
 const CHUNK_SIZE = 64 * 1024
-const ALLOCATION_CONTEXT_KEY common.ContextKey = "allocation"
-const CLIENT_CONTEXT_KEY common.ContextKey = "client"
-const CLIENT_KEY_CONTEXT_KEY common.ContextKey = "client_key"
 
 type StorageNode struct {
 	ID        string `json:"id"`
@@ -84,7 +82,7 @@ func (sp *ValidatorProtocolImpl) VerifyAllocationTransaction(ctx context.Context
 }
 
 func (sp *ValidatorProtocolImpl) VerifyChallengeTransaction(ctx context.Context, challengeRequest *ChallengeRequest) (*Challenge, error) {
-	blobberID := ctx.Value(CLIENT_CONTEXT_KEY).(string)
+	blobberID := ctx.Value(constants.ContextKeyClient).(string)
 	if len(blobberID) == 0 {
 		return nil, common.NewError("invalid_client", "Call from an invalid client")
 	}
