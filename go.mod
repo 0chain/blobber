@@ -40,4 +40,6 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
+replace github.com/gin-gonic/gin v1.6.3 => github.com/gin-gonic/gin v1.7.0
+
 // replace github.com/0chain/gosdk => ../gosdk
