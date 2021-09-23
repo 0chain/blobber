@@ -2,11 +2,12 @@ package handler
 
 import (
 	"context"
+	"time"
+
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
 )
@@ -86,6 +87,10 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, request *blob
 	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
 	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
 	defer canceler()
+
+	logging.Logger.Info("handler GetReferencePath req info",
+		zap.String("allocation", request.Allocation),
+		zap.String("request", request.String()))
 
 	response, err := storageHandler.GetReferencePath(ctx, request)
 
