@@ -3,15 +3,13 @@ name: Tests
 on:
   push: 
     branches:
-      - dayi/main
-      - dayi/qa
-      - dayi/dev
+      - master
+      - staging
+      - stream
     pull_request:
-      - dayi/main
-      - dayi/qa
-      - dayi/dev
-    # tags: 
-    #   - '*'
+      - master
+      - staging
+      - stream
 
 jobs:
   unit_tests:

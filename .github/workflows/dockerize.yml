@@ -3,13 +3,9 @@ name: Dockerize
 on:
  push: 
   branches:
-    - dayi/main
-    - dayi/qa
-    - dayi/dev
+    - stream
   pull_request:
-    - dayi/main
-    - dayi/qa
-    - dayi/dev
+    - stream
   # tags: 
   #   - '*'
 
@@ -85,8 +81,6 @@ jobs:
       - name: Load blobber_base
         run: |
           docker load --input /tmp/0chain/blobber_base.tar
-          
-        #docker image ls -a
 
       - name: Build blobber
         run: ./docker.local/bin/build.blobber.sh
