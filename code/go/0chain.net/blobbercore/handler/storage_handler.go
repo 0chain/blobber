@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
@@ -41,6 +42,8 @@ func (fsh *StorageHandler) verifyAllocation(ctx context.Context, tx string,
 			"invalid allocation id")
 	}
 
+	logging.Logger.Info("call allocation.VerifyAllocationTransaction",
+		zap.String("tx", tx))
 	alloc, err = allocation.VerifyAllocationTransaction(ctx, tx, readonly)
 	if err != nil {
 		return nil, common.NewErrorf("verify_allocation",
@@ -468,6 +471,9 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, request *blobbe
 
 	// todo(kushthedude): generalise the allocation_context in the grpc metadata
 	//allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+
+	logging.Logger.Info("call fsh.verifyAllocation",
+		zap.String("allocation", request.Allocation))
 	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, false)
 	if err != nil {
 		return nil, errors.Wrap(errors.New("Invalid Request"), "Invalid allocation ID passed")

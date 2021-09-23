@@ -6,12 +6,15 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	"go.uber.org/zap"
 
 	"gorm.io/gorm"
 )
@@ -52,9 +55,13 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	readonly bool) (a *Allocation, err error) {
 
+	logging.Logger.Info("call datastore.GetStore().GetTransaction")
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
-	a = new(Allocation)
+
+	logging.Logger.Info("call get allocation from store",
+		zap.String("allocationTx", allocationTx))
+	a = &Allocation{}
 	err = tx.Model(&Allocation{}).
 		Where(&Allocation{Tx: allocationTx}).
 		First(a).Error
@@ -76,6 +83,8 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		return          // found in DB
 	}
 
+	logging.Logger.Info("call transaction.VerifyTransaction",
+		zap.String("allocationTx", allocationTx))
 	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
 	if err != nil {
 		return nil, common.NewError("invalid_allocation",
