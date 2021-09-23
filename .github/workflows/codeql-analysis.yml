@@ -23,7 +23,7 @@ on:
 jobs:
   analyze:
     name: Analyze
-    runs-on: [self-hosted, docker-builds]
+    runs-on: [self-hosted, build]
     permissions:
       actions: read
       contents: read
@@ -40,6 +40,12 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v1
+
+    - name: setup golang
+      if: success()
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.16.x
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
