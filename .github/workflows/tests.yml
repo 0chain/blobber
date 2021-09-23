@@ -3,33 +3,32 @@ name: Tests
 on:
   push: 
     branches:
-      - dayi/main
-      - dayi/qa
-      - dayi/dev
+      - master
+      - staging
+      - stream
     pull_request:
-      - dayi/main
-      - dayi/qa
-      - dayi/dev
-    # tags: 
-    #   - '*'
+      - master
+      - staging
+      - stream
 
 jobs:
   unit_tests:
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, load-test]
     steps:
       - name: Setup go 1.16
         uses: actions/setup-go@v2
         with:
           go-version: '1.16' # The Go version to download (if necessary) and use.
-      - name: Set GITHUB_ENV
-        run: |
-          echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
-          echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-         
+
       - name: Clone blobber
         uses: actions/checkout@v2
 
+      # - name: Set GITHUB_ENV
+      #   run: |
+      #     echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+      #     echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
+      #     echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+         
       # - name: Clone gosdk
       #   run: |
       #     [ -d $GOSDK ] && rm -rf $GOSDK
@@ -40,8 +39,8 @@ jobs:
       - name: Run tests
         run: |
           cd $GITHUB_WORKSPACE/code/go/0chain.net/ 
-          go test -race -coverprofile=coverage.txt -covermode=atomic ./...
-      - name: Codecov
-        run: |
-          cd $GITHUB_WORKSPACE/code/go/0chain.net/
-          bash <(curl -s https://codecov.io/bash)
+          go test -tags bn256 -race -coverprofile=coverage.txt -covermode=atomic ./...
+      # - name: Codecov
+      #   run: |
+      #     cd $GITHUB_WORKSPACE/code/go/0chain.net/
+      #     bash <(curl -s https://codecov.io/bash)

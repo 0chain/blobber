@@ -16,7 +16,7 @@ env:
 
 jobs:
   dockerize_blobber:
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
     steps:
     - uses: actions/checkout@v2
 
@@ -56,7 +56,7 @@ jobs:
         BRANCH: ${{ steps.get_version.outputs.BRANCH }}
 
   dockerize_validator:
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
     steps:
     - uses: actions/checkout@v1
 

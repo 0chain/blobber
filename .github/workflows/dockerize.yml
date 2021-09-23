@@ -3,15 +3,10 @@ name: Dockerize
 on:
  push: 
   branches:
-    - dayi/main
-    - dayi/qa
-    - dayi/dev
-  pull_request:
-    - dayi/main
-    - dayi/qa
-    - dayi/dev
-  # tags: 
-  #   - '*'
+    - staging
+    - stream
+  tags: 
+    - '*'
 
 
 env:
@@ -20,7 +15,7 @@ env:
 
 jobs:
   build_base:
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
     steps:
       - name: Setup go 1.16
         uses: actions/setup-go@v2
@@ -58,7 +53,7 @@ jobs:
 
   build_blobber:
     needs: build_base
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
     steps:
       - name: Set GITHUB_ENV
         run: |
@@ -85,8 +80,6 @@ jobs:
       - name: Load blobber_base
         run: |
           docker load --input /tmp/0chain/blobber_base.tar
-          
-        #docker image ls -a
 
       - name: Build blobber
         run: ./docker.local/bin/build.blobber.sh
@@ -104,7 +97,7 @@ jobs:
        
   publish_blobber:
     needs: build_blobber
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted]
     steps:
       - name: Set GITHUB_ENV
         run: |
@@ -140,7 +133,7 @@ jobs:
 
   build_validator:
     needs: build_base
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
     steps:
       - name: Set GITHUB_ENV
         run: |
@@ -186,7 +179,7 @@ jobs:
        
   publish_validator:
     needs: build_validator
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted]
     steps:
       - name: Set GITHUB_ENV
         run: |

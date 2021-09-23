@@ -76,6 +76,11 @@ networks:
     driver: bridge
   testnet0:
     external: true
+    # driver: bridge
+    # ipam:
+    #   config:
+    #     - subnet: 198.18.0.0/15
+    #     - gateway: 198.18.0.255
 
 volumes:
   data:
