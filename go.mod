@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.2.87-beat.1
+	github.com/0chain/gosdk v1.2.88
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/didip/tollbooth v4.0.2+incompatible
