@@ -13,7 +13,7 @@ name: "CodeQL"
 
 on:
   push:
-    # branches: [ staging, master ]
+    branches: [ staging, master ]
   pull_request:
     # The branches below must be a subset of the branches above
     branches: [ staging, master ]
@@ -41,7 +41,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v1
 
-    - name: setup golang
+    - name: Setup go 1.16
       if: success()
       uses: actions/setup-go@v2
       with:
