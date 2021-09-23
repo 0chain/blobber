@@ -10,12 +10,13 @@ jobs:
   benchmark:
     runs-on: ubuntu-latest
     steps:
- 
       - name: Setup go 1.16
         uses: actions/setup-go@v2
         with:
           go-version: '1.16' # The Go version to download (if necessary) and use.
 
+      - name: Clone blobber
+        uses: actions/checkout@v2
 
       - name: Set GITHUB_ENV
         run: |
@@ -23,8 +24,6 @@ jobs:
             echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
             echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
 
-      - name: Clone blobber
-        uses: actions/checkout@v2
 
       # - name: Clone gosdk
       #   run: |

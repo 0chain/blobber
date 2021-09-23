@@ -3,11 +3,10 @@ name: Dockerize
 on:
  push: 
   branches:
+    - staging
     - stream
-  pull_request:
-    - stream
-  # tags: 
-  #   - '*'
+  tags: 
+    - '*'
 
 
 env:

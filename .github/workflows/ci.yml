@@ -28,24 +28,6 @@ jobs:
       - name: Clone Blobber
         uses: actions/checkout@v2
 
-      # - uses: satackey/action-docker-layer-caching@v0.0.11
-      #   continue-on-error: true
-
-
-      - name: Set GITHUB_ENV
-        run: |
-          echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
-          echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-
-      # git clone gosdk with same branch
-      # - name: Clone gosdk
-      #   run: |
-      #     [ -d $GOSDK ] && rm -rf $GOSDK
-      #     git clone https://github.com/0chain/gosdk.git $GOSDK
-      #     cd $GOSDK
-      #     git checkout $BRANCH
-
       - name: Build test environment and run tests
         run: |
           sed -i '/#expose_ci_port/c\    ports:\n      - "5432:5432"' ./docker.local/b0docker-compose.yml
@@ -59,7 +41,7 @@ jobs:
           cd ../..
       
           go16=$(which go)
-          sudo $go16 test ./... -args integration;
+          sudo $go16 test -tags bn256  ./... -args integration;
   golangci:
     name: lint
     runs-on: ubuntu-latest
@@ -69,21 +51,6 @@ jobs:
         with:
           go-version: '1.16' # The Go version to download (if necessary) and use.
       - uses: actions/checkout@v2
-
- 
-      - name: Set GITHUB_ENV
-        run: |
-          echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
-          echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-          
-      # git clone gosdk with same branch
-      # - name: Clone gosdk
-      #   run: |
-      #     [ -d $GOSDK ] && rm -rf $GOSDK
-      #     git clone https://github.com/0chain/gosdk.git $GOSDK
-      #     cd $GOSDK
-      #     git checkout $BRANCH
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
