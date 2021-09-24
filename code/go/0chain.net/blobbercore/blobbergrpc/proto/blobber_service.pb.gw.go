@@ -6,7 +6,7 @@ Package blobbergrpc is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package proto
+package blobbergrpc
 
 import (
 	"context"
@@ -1519,7 +1519,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/GetAllocation", runtime.WithHTTPPathPattern("/v2/allocation"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/GetAllocation")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1542,7 +1542,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/GetFileMetaData", runtime.WithHTTPPathPattern("/v2/file/meta/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/GetFileMetaData")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1565,7 +1565,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/GetFileStats", runtime.WithHTTPPathPattern("/v2/file/stats/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/GetFileStats")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1588,7 +1588,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/ListEntities", runtime.WithHTTPPathPattern("/v2/file/list/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/ListEntities")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1611,7 +1611,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/GetObjectPath", runtime.WithHTTPPathPattern("/v2/file/objectpath/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/GetObjectPath")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1634,7 +1634,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/GetReferencePath", runtime.WithHTTPPathPattern("/v2/file/referencepath/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/GetReferencePath")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1657,7 +1657,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/GetObjectTree", runtime.WithHTTPPathPattern("/v2/file/objecttree/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/GetObjectTree")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1680,7 +1680,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/DownloadFile", runtime.WithHTTPPathPattern("/v2/file/download/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/DownloadFile")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1703,7 +1703,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/RenameObject", runtime.WithHTTPPathPattern("/v2/file/rename/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/RenameObject")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1726,7 +1726,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/UploadFile", runtime.WithHTTPPathPattern("/v2/file/upload/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/UploadFile")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1749,7 +1749,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/UploadFile", runtime.WithHTTPPathPattern("/v2/file/upload/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/UploadFile")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1772,7 +1772,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/UploadFile", runtime.WithHTTPPathPattern("/v2/file/upload/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/UploadFile")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1795,7 +1795,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/Commit", runtime.WithHTTPPathPattern("/v2/connection/commit/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/Commit")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1818,7 +1818,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/CalculateHash", runtime.WithHTTPPathPattern("/v2/file/calculatehash/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/CalculateHash")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1841,7 +1841,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/CommitMetaTxn", runtime.WithHTTPPathPattern("/v2/file/commitmetatxn/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/CommitMetaTxn")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1864,7 +1864,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/UpdateObjectAttributes", runtime.WithHTTPPathPattern("/v2/file/attributes/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/UpdateObjectAttributes")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1887,7 +1887,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/CopyObject", runtime.WithHTTPPathPattern("/v2/file/copy/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/CopyObject")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1910,7 +1910,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/Collaborator", runtime.WithHTTPPathPattern("/v2/file/collaborator/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/Collaborator")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1933,7 +1933,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/Collaborator", runtime.WithHTTPPathPattern("/v2/file/collaborator/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/Collaborator")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1956,7 +1956,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/Collaborator", runtime.WithHTTPPathPattern("/v2/file/collaborator/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/Collaborator")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1979,7 +1979,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/MarketplaceShareInfo", runtime.WithHTTPPathPattern("/v2/marketplace/shareinfo/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/MarketplaceShareInfo")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2002,7 +2002,7 @@ func RegisterBlobberServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/MarketplaceShareInfo", runtime.WithHTTPPathPattern("/v2/marketplace/shareinfo/{allocation}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/blobber.BlobberService/MarketplaceShareInfo")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2064,7 +2064,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/GetAllocation", runtime.WithHTTPPathPattern("/v2/allocation"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/GetAllocation")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2084,7 +2084,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/GetFileMetaData", runtime.WithHTTPPathPattern("/v2/file/meta/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/GetFileMetaData")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2104,7 +2104,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/GetFileStats", runtime.WithHTTPPathPattern("/v2/file/stats/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/GetFileStats")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2124,7 +2124,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/ListEntities", runtime.WithHTTPPathPattern("/v2/file/list/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/ListEntities")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2144,7 +2144,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/GetObjectPath", runtime.WithHTTPPathPattern("/v2/file/objectpath/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/GetObjectPath")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2164,7 +2164,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/GetReferencePath", runtime.WithHTTPPathPattern("/v2/file/referencepath/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/GetReferencePath")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2184,7 +2184,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/GetObjectTree", runtime.WithHTTPPathPattern("/v2/file/objecttree/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/GetObjectTree")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2204,7 +2204,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/DownloadFile", runtime.WithHTTPPathPattern("/v2/file/download/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/DownloadFile")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2224,7 +2224,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/RenameObject", runtime.WithHTTPPathPattern("/v2/file/rename/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/RenameObject")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2244,7 +2244,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/UploadFile", runtime.WithHTTPPathPattern("/v2/file/upload/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/UploadFile")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2264,7 +2264,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/UploadFile", runtime.WithHTTPPathPattern("/v2/file/upload/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/UploadFile")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2284,7 +2284,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/UploadFile", runtime.WithHTTPPathPattern("/v2/file/upload/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/UploadFile")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2304,7 +2304,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/Commit", runtime.WithHTTPPathPattern("/v2/connection/commit/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/Commit")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2324,7 +2324,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/CalculateHash", runtime.WithHTTPPathPattern("/v2/file/calculatehash/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/CalculateHash")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2344,7 +2344,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/CommitMetaTxn", runtime.WithHTTPPathPattern("/v2/file/commitmetatxn/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/CommitMetaTxn")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2364,7 +2364,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/UpdateObjectAttributes", runtime.WithHTTPPathPattern("/v2/file/attributes/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/UpdateObjectAttributes")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2384,7 +2384,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/CopyObject", runtime.WithHTTPPathPattern("/v2/file/copy/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/CopyObject")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2404,7 +2404,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/Collaborator", runtime.WithHTTPPathPattern("/v2/file/collaborator/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/Collaborator")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2424,7 +2424,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/Collaborator", runtime.WithHTTPPathPattern("/v2/file/collaborator/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/Collaborator")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2444,7 +2444,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/Collaborator", runtime.WithHTTPPathPattern("/v2/file/collaborator/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/Collaborator")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2464,7 +2464,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/MarketplaceShareInfo", runtime.WithHTTPPathPattern("/v2/marketplace/shareinfo/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/MarketplaceShareInfo")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2484,7 +2484,7 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/MarketplaceShareInfo", runtime.WithHTTPPathPattern("/v2/marketplace/shareinfo/{allocation}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/blobber.BlobberService/MarketplaceShareInfo")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2504,49 +2504,49 @@ func RegisterBlobberServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 }
 
 var (
-	pattern_BlobberService_GetAllocation_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v2", "allocation"}, ""))
+	pattern_BlobberService_GetAllocation_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "allocation"}, ""))
 
-	pattern_BlobberService_GetFileMetaData_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "meta", "allocation"}, ""))
+	pattern_BlobberService_GetFileMetaData_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "meta", "allocation"}, ""))
 
-	pattern_BlobberService_GetFileStats_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "stats", "allocation"}, ""))
+	pattern_BlobberService_GetFileStats_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "stats", "allocation"}, ""))
 
-	pattern_BlobberService_ListEntities_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "list", "allocation"}, ""))
+	pattern_BlobberService_ListEntities_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "list", "allocation"}, ""))
 
-	pattern_BlobberService_GetObjectPath_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "objectpath", "allocation"}, ""))
+	pattern_BlobberService_GetObjectPath_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "objectpath", "allocation"}, ""))
 
-	pattern_BlobberService_GetReferencePath_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "referencepath", "allocation"}, ""))
+	pattern_BlobberService_GetReferencePath_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "referencepath", "allocation"}, ""))
 
-	pattern_BlobberService_GetObjectTree_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "objecttree", "allocation"}, ""))
+	pattern_BlobberService_GetObjectTree_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "objecttree", "allocation"}, ""))
 
-	pattern_BlobberService_DownloadFile_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "download", "allocation"}, ""))
+	pattern_BlobberService_DownloadFile_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "download", "allocation"}, ""))
 
-	pattern_BlobberService_RenameObject_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "rename", "allocation"}, ""))
+	pattern_BlobberService_RenameObject_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "rename", "allocation"}, ""))
 
-	pattern_BlobberService_UploadFile_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "upload", "allocation"}, ""))
+	pattern_BlobberService_UploadFile_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "upload", "allocation"}, ""))
 
-	pattern_BlobberService_UploadFile_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "upload", "allocation"}, ""))
+	pattern_BlobberService_UploadFile_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "upload", "allocation"}, ""))
 
-	pattern_BlobberService_UploadFile_2 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "upload", "allocation"}, ""))
+	pattern_BlobberService_UploadFile_2 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "upload", "allocation"}, ""))
 
-	pattern_BlobberService_Commit_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "connection", "commit", "allocation"}, ""))
+	pattern_BlobberService_Commit_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "connection", "commit", "allocation"}, ""))
 
-	pattern_BlobberService_CalculateHash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "calculatehash", "allocation"}, ""))
+	pattern_BlobberService_CalculateHash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "calculatehash", "allocation"}, ""))
 
-	pattern_BlobberService_CommitMetaTxn_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "commitmetatxn", "allocation"}, ""))
+	pattern_BlobberService_CommitMetaTxn_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "commitmetatxn", "allocation"}, ""))
 
-	pattern_BlobberService_UpdateObjectAttributes_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "attributes", "allocation"}, ""))
+	pattern_BlobberService_UpdateObjectAttributes_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "attributes", "allocation"}, ""))
 
-	pattern_BlobberService_CopyObject_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "copy", "allocation"}, ""))
+	pattern_BlobberService_CopyObject_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "copy", "allocation"}, ""))
 
-	pattern_BlobberService_Collaborator_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "collaborator", "allocation"}, ""))
+	pattern_BlobberService_Collaborator_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "collaborator", "allocation"}, ""))
 
-	pattern_BlobberService_Collaborator_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "collaborator", "allocation"}, ""))
+	pattern_BlobberService_Collaborator_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "collaborator", "allocation"}, ""))
 
-	pattern_BlobberService_Collaborator_2 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "file", "collaborator", "allocation"}, ""))
+	pattern_BlobberService_Collaborator_2 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "file", "collaborator", "allocation"}, ""))
 
-	pattern_BlobberService_MarketplaceShareInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "marketplace", "shareinfo", "allocation"}, ""))
+	pattern_BlobberService_MarketplaceShareInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "marketplace", "shareinfo", "allocation"}, ""))
 
-	pattern_BlobberService_MarketplaceShareInfo_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "marketplace", "shareinfo", "allocation"}, ""))
+	pattern_BlobberService_MarketplaceShareInfo_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "marketplace", "shareinfo", "allocation"}, ""))
 )
 
 var (

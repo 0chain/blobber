@@ -107,14 +107,16 @@ func NewGRPCServerWithMiddlewares(limiter grpc_ratelimit.Limiter, r *mux.Router)
 			if wrappedServer.IsGrpcWebRequest(r) {
 				logging.Logger.Info("executing a request via grpc wrappedServer",
 					zap.String("method", r.Method),
-					zap.String("URL", r.URL.String()))
+					zap.String("URL", r.URL.String()),
+					zap.Any("request", r))
 				wrappedServer.ServeHTTP(w, r)
 				return
 			}
 
 			logging.Logger.Info("executing a request directly",
 				zap.String("method", r.Method),
-				zap.String("URL", r.URL.String()))
+				zap.String("URL", r.URL.String()),
+				zap.Any("request", r))
 			httpDatabaseTransactionInjector(h).ServeHTTP(w, r)
 		})
 	})
