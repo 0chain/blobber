@@ -12,63 +12,63 @@ import "google/api/annotations.proto";
 service BlobberService {
   rpc GetAllocation(GetAllocationRequest) returns (GetAllocationResponse) {
     option (google.api.http) = {
-      get: "/v2/allocation"
+      get: "/v1/allocation"
     };
   }
   rpc GetFileMetaData(GetFileMetaDataRequest) returns (GetFileMetaDataResponse) {
     option (google.api.http) = {
-      post: "/v2/file/meta/{allocation}"
+      post: "/v1/file/meta/{allocation}"
       body: "*"
     };
   }
   rpc GetFileStats(GetFileStatsRequest) returns (GetFileStatsResponse) {
     option (google.api.http) = {
-      post: "/v2/file/stats/{allocation}"
+      post: "/v1/file/stats/{allocation}"
       body: "*"
     };
   }
   rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {
     option (google.api.http) = {
-      get: "/v2/file/list/{allocation}"
+      get: "/v1/file/list/{allocation}"
     };
   }
   rpc GetObjectPath(GetObjectPathRequest) returns (GetObjectPathResponse) {
     option (google.api.http) = {
-      get: "/v2/file/objectpath/{allocation}"
+      get: "/v1/file/objectpath/{allocation}"
     };
   }
   rpc GetReferencePath(GetReferencePathRequest) returns (GetReferencePathResponse) {
     option (google.api.http) = {
-      get: "/v2/file/referencepath/{allocation}"
+      get: "/v1/file/referencepath/{allocation}"
     };
   }
   rpc GetObjectTree(GetObjectTreeRequest) returns (GetObjectTreeResponse) {
     option (google.api.http) = {
-      get: "/v2/file/objecttree/{allocation}"
+      get: "/v1/file/objecttree/{allocation}"
     };
   }
   rpc DownloadFile(DownloadFileRequest) returns (DownloadFileResponse) {
     option (google.api.http) = {
-      post: "/v2/file/download/{allocation}"
+      post: "/v1/file/download/{allocation}"
       body: "*"
     };
   }
   rpc RenameObject(RenameObjectRequest) returns (RenameObjectResponse) {
     option (google.api.http) = {
-      post: "/v2/file/rename/{allocation}"
+      post: "/v1/file/rename/{allocation}"
       body: "*"
     };
   }
   rpc UploadFile(UploadFileRequest) returns (UploadFileResponse) {
     option (google.api.http) = {
-      post: "/v2/file/upload/{allocation}"
+      post: "/v1/file/upload/{allocation}"
       body: "*"
       additional_bindings: {
-        put: "/v2/file/upload/{allocation}"
+        put: "/v1/file/upload/{allocation}"
         body: "*"
       }
       additional_bindings: {
-        delete: "/v2/file/upload/{allocation}"
+        delete: "/v1/file/upload/{allocation}"
         body: "*"
       }
     };
@@ -76,48 +76,48 @@ service BlobberService {
 
   rpc Commit(CommitRequest) returns (CommitResponse) {
     option (google.api.http) = {
-      post: "/v2/connection/commit/{allocation}"
+      post: "/v1/connection/commit/{allocation}"
       body: "*"
     };
   }
 
   rpc CalculateHash(CalculateHashRequest) returns (CalculateHashResponse) {
     option (google.api.http) = {
-      post: "/v2/file/calculatehash/{allocation}"
+      post: "/v1/file/calculatehash/{allocation}"
       body: "*"
     };
   }
 
   rpc CommitMetaTxn(CommitMetaTxnRequest) returns (CommitMetaTxnResponse) {
     option (google.api.http) = {
-      post: "/v2/file/commitmetatxn/{allocation}"
+      post: "/v1/file/commitmetatxn/{allocation}"
       body: "*"
     };
   }
 
   rpc UpdateObjectAttributes(UpdateObjectAttributesRequest) returns (UpdateObjectAttributesResponse) {
     option (google.api.http) = {
-      post: "/v2/file/attributes/{allocation}"
+      post: "/v1/file/attributes/{allocation}"
       body: "*"
     };
   }
 
   rpc CopyObject(CopyObjectRequest) returns (CopyObjectResponse) {
     option (google.api.http) = {
-      post: "/v2/file/copy/{allocation}"
+      post: "/v1/file/copy/{allocation}"
       body: "*"
     };
   }
 
   rpc Collaborator(CollaboratorRequest) returns (CollaboratorResponse) {
     option (google.api.http) = {
-      post: "/v2/file/collaborator/{allocation}"
+      post: "/v1/file/collaborator/{allocation}"
       body: "*"
       additional_bindings: {
-        get: "/v2/file/collaborator/{allocation}"
+        get: "/v1/file/collaborator/{allocation}"
       }
       additional_bindings: {
-        delete: "/v2/file/collaborator/{allocation}"
+        delete: "/v1/file/collaborator/{allocation}"
         body: "*"
       }
     };
@@ -125,10 +125,10 @@ service BlobberService {
 
   rpc MarketplaceShareInfo(MarketplaceShareInfoRequest) returns (MarketplaceShareInfoResponse) {
     option (google.api.http) = {
-      post: "/v2/marketplace/shareinfo/{allocation}"
+      post: "/v1/marketplace/shareinfo/{allocation}"
       body: "*"
       additional_bindings: {
-        delete: "/v2/marketplace/shareinfo/{allocation}"
+        delete: "/v1/marketplace/shareinfo/{allocation}"
       }
     };
   }
