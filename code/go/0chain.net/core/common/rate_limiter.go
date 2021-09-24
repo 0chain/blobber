@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/didip/tollbooth"
-	"github.com/didip/tollbooth/limiter"
+	"github.com/didip/tollbooth/v6"
+	"github.com/didip/tollbooth/v6/limiter"
 	"github.com/spf13/viper"
 	rl "go.uber.org/ratelimit"
 )

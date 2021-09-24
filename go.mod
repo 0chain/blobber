@@ -7,7 +7,7 @@ require (
 	github.com/0chain/gosdk v1.2.88
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
-	github.com/didip/tollbooth v4.0.2+incompatible
+	github.com/didip/tollbooth/v6 v6.1.1
 	github.com/go-ini/ini v1.55.0 // indirect
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
