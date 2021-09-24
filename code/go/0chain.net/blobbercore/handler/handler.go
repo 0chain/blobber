@@ -86,6 +86,10 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 	return func(ctx context.Context, r *http.Request) (
 		resp interface{}, err error) {
 
+		if GetMetaDataStore().HasTransaction(ctx) {
+			return handler(ctx, r)
+		}
+
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
 		resp, err = handler(ctx, r)
 
