@@ -78,6 +78,11 @@ func (store *Store) GetTransaction(ctx context.Context) *gorm.DB {
 	return nil
 }
 
+func (store *Store) HasTransaction(ctx context.Context) bool {
+	conn := ctx.Value(CONNECTION_CONTEXT_KEY)
+	return conn != nil
+}
+
 func (store *Store) GetDB() *gorm.DB {
 	return store.db
 }
