@@ -61,7 +61,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 
 	logging.Logger.Info("call get allocation from store",
 		zap.String("allocationTx", allocationTx))
-	a = &Allocation{}
+	a = new(Allocation)
 	err = tx.Model(&Allocation{}).
 		Where(&Allocation{Tx: allocationTx}).
 		First(a).Error

@@ -84,6 +84,10 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, request *blobber
 
 func (b *blobberGRPCService) GetReferencePath(ctx context.Context, request *blobbergrpc.GetReferencePathRequest) (*blobbergrpc.GetReferencePathResponse, error) {
 
+	ctx = GetMetaDataStore().CreateTransaction(ctx)
+	defer func() {
+		GetMetaDataStore().GetTransaction(ctx).Rollback()
+	}()
 	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
 	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
 	defer canceler()
