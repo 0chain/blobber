@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -58,6 +59,30 @@ func unaryTimeoutInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
+func httpDatabaseTransactionInjector(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := GetMetaDataStore().CreateTransaction(r.Context())
+		r = r.WithContext(ctx)
+
+		next.ServeHTTP(w, r)
+		var err error
+
+		defer func() {
+			if err != nil {
+				var rollErr = GetMetaDataStore().GetTransaction(ctx).Rollback().Error
+				if rollErr != nil {
+					logging.Logger.Error(fmt.Sprintf("couldn't rollback: %v", err), zap.Error(err))
+				}
+			}
+		}()
+
+		err = GetMetaDataStore().GetTransaction(ctx).Commit().Error
+		if err != nil {
+			logging.Logger.Error(fmt.Sprintf("error committing to meta store: %v", err), zap.Error(err))
+		}
+	})
+}
+
 func NewGRPCServerWithMiddlewares(limiter grpc_ratelimit.Limiter, r *mux.Router) *grpc.Server {
 	srv := grpc.NewServer(
 		grpc.ChainStreamInterceptor(
@@ -83,7 +108,8 @@ func NewGRPCServerWithMiddlewares(limiter grpc_ratelimit.Limiter, r *mux.Router)
 				wrappedServer.ServeHTTP(w, r)
 				return
 			}
-			h.ServeHTTP(w, r)
+
+			httpDatabaseTransactionInjector(h).ServeHTTP(w, r)
 		})
 	})
 
