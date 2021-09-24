@@ -139,7 +139,7 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		resp.Body.Close()
 
 		if err != nil {
-			Logger.Error("[sharder]"+resp.Status, zap.String("url", req.URL.String()), zap.String("response", string(resBody)))
+			Logger.Error("[sharder]"+err.Error(), zap.String("url", req.URL.String()), zap.String("response", string(resBody)))
 			msgList = append(msgList, url+": "+err.Error())
 			return errors.Throw(ErrBadRequest, req.URL.String()+" "+err.Error())
 

@@ -9,6 +9,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
+	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/remeh/sizedwaitgroup"
@@ -23,11 +24,11 @@ type BCChallengeResponse struct {
 	Challenges []*ChallengeEntity `json:"challenges"`
 }
 
-// syncChallenges get challenge from blockchain , and add them in database
-func syncChallenges(ctx context.Context) {
+// syncOpenChallenges get challenge from blockchain , and add them in database
+func syncOpenChallenges(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			logging.Logger.Error("[recover] syncChallenges", zap.Any("err", r))
+			logging.Logger.Error("[recover]challenge", zap.Any("err", r))
 		}
 	}()
 
@@ -95,11 +96,11 @@ func syncChallenges(ctx context.Context) {
 	}
 }
 
-// processChallenges read and process challenges from db
-func processChallenges(ctx context.Context) {
+// processAccepted read accepted challenge from db, and send them to validator to pass challenge
+func processAccepted(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			logging.Logger.Error("[recover] processChallenges", zap.Any("err", r))
+			logging.Logger.Error("[recover]challenge", zap.Any("err", r))
 		}
 	}()
 	rctx := datastore.GetStore().CreateTransaction(ctx)
@@ -119,7 +120,7 @@ func processChallenges(ctx context.Context) {
 			go func(redeemCtx context.Context, challengeEntity *ChallengeEntity) {
 				redeemCtx = datastore.GetStore().CreateTransaction(redeemCtx)
 				defer redeemCtx.Done()
-				err := LoadValidationTickets(redeemCtx, challengeEntity)
+				err := loadValidationTickets(redeemCtx, challengeEntity)
 				if err != nil {
 					logging.Logger.Error("Getting validation tickets failed", zap.Any("challenge_id", challengeEntity.ChallengeID), zap.Error(err))
 				}
@@ -133,6 +134,71 @@ func processChallenges(ctx context.Context) {
 		}
 		swg.Wait()
 	}
+	db.Rollback()
+	rctx.Done()
+}
+
+// loadValidationTickets load validation tickets for challenge
+func loadValidationTickets(ctx context.Context, challengeObj *ChallengeEntity) error {
+	mutex := lock.GetMutex(challengeObj.TableName(), challengeObj.ChallengeID)
+	mutex.Lock()
+
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Logger.Error("[recover] LoadValidationTickets", zap.Any("err", r))
+		}
+	}()
+
+	err := challengeObj.LoadValidationTickets(ctx)
+	if err != nil {
+		logging.Logger.Error("Error getting the validation tickets", zap.Error(err), zap.String("challenge_id", challengeObj.ChallengeID))
+	}
+
+	return err
+}
+
+func commitProcessed(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Logger.Error("[recover]challenge", zap.Any("err", r))
+		}
+	}()
+
+	rctx := datastore.GetStore().CreateTransaction(ctx)
+	db := datastore.GetStore().GetTransaction(rctx)
+	openchallenges := make([]*ChallengeEntity, 0)
+
+	db.Where(ChallengeEntity{Status: Processed}).
+		Order("sequence").
+		Find(&openchallenges)
+
+	for _, openchallenge := range openchallenges {
+		logging.Logger.Info("Attempting to commit challenge", zap.Any("challenge_id", openchallenge.ChallengeID), zap.Any("openchallenge", openchallenge))
+		if err := openchallenge.UnmarshalFields(); err != nil {
+			logging.Logger.Error("ChallengeEntity_UnmarshalFields", zap.String("challenge_id", openchallenge.ChallengeID), zap.Error(err))
+		}
+		mutex := lock.GetMutex(openchallenge.TableName(), openchallenge.ChallengeID)
+		mutex.Lock()
+		redeemCtx := datastore.GetStore().CreateTransaction(ctx)
+		err := openchallenge.CommitChallenge(redeemCtx, false)
+		if err != nil {
+			logging.Logger.Error("Error committing to blockchain",
+				zap.Error(err),
+				zap.String("challenge_id", openchallenge.ChallengeID))
+		}
+		mutex.Unlock()
+		db := datastore.GetStore().GetTransaction(redeemCtx)
+		db.Commit()
+		if err == nil && openchallenge.Status == Committed {
+			logging.Logger.Info("Challenge has been submitted to blockchain",
+				zap.Any("id", openchallenge.ChallengeID),
+				zap.String("txn", openchallenge.CommitTxnID))
+		} else {
+			logging.Logger.Info("Challenge was not committed", zap.Any("challenge_id", openchallenge.ChallengeID))
+			break
+		}
+	}
+
 	db.Rollback()
 	rctx.Done()
 }
