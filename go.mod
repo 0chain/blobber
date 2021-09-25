@@ -30,7 +30,7 @@ require (
 	google.golang.org/genproto v0.0.0-20210303154014-9728d6b83eeb
 	google.golang.org/grpc v1.36.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.0.1
-	google.golang.org/protobuf v1.26.0
+	google.golang.org/protobuf v1.27.1
 	gopkg.in/ini.v1 v1.61.0 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
