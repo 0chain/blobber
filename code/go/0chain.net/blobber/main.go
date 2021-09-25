@@ -472,7 +472,7 @@ func main() {
 	common.ConfigRateLimits()
 	initHandlers(r)
 
-	grpcServer := handler.NewGRPCServerWithMiddlewares(common.NewGRPCRateLimiter(), r)
+	grpcServer := handler.NewGRPCServerWithMiddlewares(r)
 
 	if config.Development() {
 		reflection.Register(grpcServer)

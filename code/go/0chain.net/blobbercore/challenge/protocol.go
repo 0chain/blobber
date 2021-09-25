@@ -3,7 +3,6 @@ package challenge
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"math"
 	"math/rand"
 	"time"
@@ -183,7 +182,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		}
 
 		url := validator.URL + VALIDATOR_URL
-		fmt.Println(url)
+
 		resp, err := util.SendPostRequest(url, postDataBytes, nil)
 		if err != nil {
 			Logger.Info("Got error from the validator.", zap.Any("error", err.Error()))
