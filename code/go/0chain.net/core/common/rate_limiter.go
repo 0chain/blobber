@@ -29,15 +29,9 @@ func (rl *ratelimit) init() {
 		SetMethods([]string{"GET", "POST", "PUT", "DELETE"})
 }
 
-const DefaultRequestPerSecond = 100000
-
 //ConfigRateLimits - configure the rate limits
 func ConfigRateLimits() {
 	userRl := viper.GetFloat64("handlers.rate_limit")
-
-	if userRl == 0 {
-		userRl = DefaultRequestPerSecond
-	}
 
 	userRateLimit = &ratelimit{RequestsPerSecond: userRl}
 	userRateLimit.init()
@@ -45,10 +39,6 @@ func ConfigRateLimits() {
 
 func NewGRPCRateLimiter() *GRPCRateLimiter {
 	userRl := viper.GetFloat64("handlers.rate_limit")
-
-	if userRl == 0 {
-		userRl = DefaultRequestPerSecond
-	}
 
 	return &GRPCRateLimiter{rl.New(int(userRl))}
 }
@@ -63,11 +53,10 @@ func (r *GRPCRateLimiter) Limit() bool {
 }
 
 //UserRateLimit - rate limiting for end user handlers
-func UserRateLimit(handler ReqRespHandlerf) ReqRespHandlerf {
+func UserRateLimit(h http.Handler) http.Handler {
 	if !userRateLimit.RateLimit {
-		return handler
+		return h
 	}
-	return func(writer http.ResponseWriter, request *http.Request) {
-		tollbooth.LimitFuncHandler(userRateLimit.Limiter, handler).ServeHTTP(writer, request)
-	}
+
+	return tollbooth.LimitFuncHandler(userRateLimit.Limiter, h.ServeHTTP)
 }
