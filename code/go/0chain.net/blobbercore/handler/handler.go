@@ -38,7 +38,7 @@ func GetMetaDataStore() datastore.Store {
 func SetupHandlers(r *mux.Router) {
 
 	r.Use(panicRecovery)
-	r.Use(common.UserRateLimit)
+	r.Use(common.UseUserRateLimit)
 
 	//object operations
 	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONResponse(WithConnection(UploadHandler)))

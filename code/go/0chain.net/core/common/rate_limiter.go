@@ -53,7 +53,18 @@ func (r *GRPCRateLimiter) Limit() bool {
 }
 
 //UserRateLimit - rate limiting for end user handlers
-func UserRateLimit(h http.Handler) http.Handler {
+func UserRateLimit(handler ReqRespHandlerf) ReqRespHandlerf {
+
+	if !userRateLimit.RateLimit {
+		return handler
+	}
+	return func(writer http.ResponseWriter, request *http.Request) {
+		tollbooth.LimitFuncHandler(userRateLimit.Limiter, handler).ServeHTTP(writer, request)
+	}
+}
+
+//UserRateLimit - rate limiting for end user handlers
+func UseUserRateLimit(h http.Handler) http.Handler {
 	if !userRateLimit.RateLimit {
 		return h
 	}
