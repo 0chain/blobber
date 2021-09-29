@@ -130,7 +130,7 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 			db1 = db1.Where("type = ?", _type)
 		}
 		if level != 0 {
-			db1 = db1.Where("level >= ?", level)
+			db1 = db1.Where("level = ?", level)
 		}
 
 		db1 = db1.Where("path > ?", offsetPath)
@@ -147,7 +147,7 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 			db2 = db2.Where("type = ?", _type)
 		}
 		if level != 0 {
-			db2 = db2.Where("level >= ?", level)
+			db2 = db2.Where("level = ?", level)
 		}
 		db2.Count(&totalRows)
 		wg.Done()
@@ -184,7 +184,7 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, 
 			db1 = db1.Where("type = ?", _type)
 		}
 		if level != 0 {
-			db1 = db1.Where("level >= ?", level)
+			db1 = db1.Where("level = ?", level)
 		}
 		if updatedDate != "" {
 			db1 = db1.Where("updated_at > ?", updatedDate)
@@ -206,7 +206,7 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, 
 			db2 = db2.Where("type > ?", level)
 		}
 		if level != 0 {
-			db2 = db2.Where("level >= ?", level)
+			db2 = db2.Where("level = ?", level)
 		}
 		if updatedDate != "" {
 			db2 = db2.Where("updated_at > ?", updatedDate)
