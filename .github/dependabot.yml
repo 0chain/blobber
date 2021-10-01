@@ -11,6 +11,6 @@ updates:
       interval: "daily"
     open-pull-requests-limit: 10
     reviewers:
-    - kushthedude
+    - cnlangzi
     labels:
     - pr/dependencies
