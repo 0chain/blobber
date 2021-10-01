@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"runtime"
@@ -487,25 +486,6 @@ func main() {
 	}
 
 	startTime = time.Now().UTC()
-	go func(gp *string) {
-		var grpcPort string
-		if gp != nil {
-			grpcPort = *gp
-		}
-
-		if grpcPort == "" {
-			Logger.Error("Could not start grpc server since grpc port has not been specified." +
-				" Please specify the grpc port in the --grpc_port build arguement to start the grpc server")
-			return
-		}
-
-		Logger.Info("listening too grpc requests on port - " + grpcPort)
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
-		if err != nil {
-			log.Fatalf("failed to listen: %v", err)
-		}
-		log.Fatal(grpcServer.Serve(lis))
-	}(grpcPortString)
 
 	log.Fatal(server.ListenAndServe())
 }
