@@ -246,7 +246,7 @@ func TestDownloadFile(t *testing.T) {
 			collaboratorRtv = 1
 		}
 		mocket.Catcher.NewMock().OneTime().WithQuery(
-			`SELECT count(1) FROM "collaborators" WHERE`,
+			`SELECT count(*) FROM "collaborators" WHERE`,
 		).WithArgs(
 			mockClient.ClientID,
 		).WithReply(

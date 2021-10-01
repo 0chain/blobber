@@ -29,5 +29,4 @@ func startGRPCServer(r mux.Router, port string) {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	log.Fatal(grpcServer.Serve(lis))
-
 }
