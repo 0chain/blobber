@@ -29,7 +29,6 @@ import (
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	"google.golang.org/grpc/reflection"
 
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/mux"
@@ -339,6 +338,9 @@ func setup(logDir string) error {
 // }
 
 func main() {
+
+	grpcPortString := ""
+
 	deploymentMode := flag.Int("deployment_mode", 2, "deployment_mode")
 	keysFile := flag.String("keys_file", "", "keys_file")
 	minioFile := flag.String("minio_file", "", "minio_file")
@@ -346,9 +348,10 @@ func main() {
 	metadataDB = flag.String("db_dir", "", "db_dir")
 	logDir := flag.String("log_dir", "", "log_dir")
 	portString := flag.String("port", "", "port")
-	grpcPortString := flag.String("grpc_port", "", "grpc_port")
 	hostname := flag.String("hostname", "", "hostname")
 	configDir := flag.String("config_dir", "./config", "config_dir")
+
+	flag.StringVar(&grpcPortString, "grpc_port", "", "grpc_port")
 
 	flag.Parse()
 
@@ -457,12 +460,6 @@ func main() {
 	initHandlers(r)
 
 	if config.Development() {
-		grpcServer := handler.NewGRPCServerWithMiddlewares(r)
-		reflection.Register(grpcServer)
-		registerGRPCServer(r)
-	}
-
-	if config.Development() {
 		// No WriteTimeout setup to enable pprof
 		server = &http.Server{
 			Addr:              address,
@@ -484,6 +481,11 @@ func main() {
 	handler.HandleShutdown(common.GetRootContext())
 
 	Logger.Info("Ready to listen to the requests")
+
+	if config.Development() {
+		go startGRPCServer(*r, grpcPortString)
+	}
+
 	startTime = time.Now().UTC()
 	go func(gp *string) {
 		var grpcPort string
@@ -504,5 +506,6 @@ func main() {
 		}
 		log.Fatal(grpcServer.Serve(lis))
 	}(grpcPortString)
+
 	log.Fatal(server.ListenAndServe())
 }
