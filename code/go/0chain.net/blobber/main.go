@@ -13,8 +13,6 @@ import (
 	"strconv"
 	"time"
 
-	"google.golang.org/grpc/reflection"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/challenge"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -31,9 +29,9 @@ import (
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	"google.golang.org/grpc/reflection"
 
 	"github.com/0chain/gosdk/zcncore"
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -453,39 +451,24 @@ func main() {
 
 	var server *http.Server
 
-	// setup CORS
 	r := mux.NewRouter()
-
-	headersOk := handlers.AllowedHeaders([]string{
-		"X-Requested-With", "X-App-Client-ID",
-		"X-App-Client-Key", "Content-Type",
-		"X-App-Client-Signature",
-	})
-
-	// Allow anybody to access API.
-	// originsOk := handlers.AllowedOriginValidator(isValidOrigin)
-	originsOk := handlers.AllowedOrigins([]string{"*"})
-
-	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT",
-		"DELETE", "OPTIONS"})
 
 	common.ConfigRateLimits()
 	initHandlers(r)
 
-	grpcServer := handler.NewGRPCServerWithMiddlewares(r)
-
 	if config.Development() {
+		grpcServer := handler.NewGRPCServerWithMiddlewares(r)
 		reflection.Register(grpcServer)
+		registerGRPCServer(r)
 	}
 
-	rHandler := handlers.CORS(originsOk, headersOk, methodsOk)(r)
 	if config.Development() {
 		// No WriteTimeout setup to enable pprof
 		server = &http.Server{
 			Addr:              address,
 			ReadHeaderTimeout: 30 * time.Second,
 			MaxHeaderBytes:    1 << 20,
-			Handler:           rHandler,
+			Handler:           r,
 		}
 	} else {
 		server = &http.Server{
@@ -494,7 +477,7 @@ func main() {
 			WriteTimeout:      30 * time.Second,
 			IdleTimeout:       30 * time.Second,
 			MaxHeaderBytes:    1 << 20,
-			Handler:           rHandler,
+			Handler:           r,
 		}
 	}
 	common.HandleShutdown(server)
