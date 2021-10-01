@@ -97,15 +97,16 @@ cleanAll() {
 echo " "
 echo "Please select which blobber/validator you will work on: "
 
-select i in "1" "2" "3" "clean all" "install debugers on .vscode/launch.json" "set hostname" "change zcn"; do
+select i in "1" "2" "3" "integration-tests" "clean all" "install debugers on .vscode/launch.json" "set hostname" "change zcn"; do
     case $i in
-        "1"             ) break;;
-        "2"             ) break;;
-        "3"             ) break;;
-        "clean all"     ) cleanAll ;;
+        "1"                 ) break;;
+        "2"                 ) break;;
+        "3"                 ) break;;
+        "clean all"         ) cleanAll ;;
+        "integration-tests" ) i="" && break ;;
         "install debugers on .vscode/launch.json" ) install_debuggger;;
-        "set hostname"  ) set_hostname;;
-        "change zcn"  ) change_zcn;;
+        "set hostname"      ) set_hostname;;
+        "change zcn"        ) change_zcn;;
     esac
 done
 
@@ -170,6 +171,7 @@ prepareRuntime() {
     [ -d data ] || mkdir data
     [ -d log ] || mkdir log
 }
+
 
 start_blobber () {
 
