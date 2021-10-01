@@ -3,15 +3,14 @@ package handler
 import (
 	"context"
 	"errors"
-	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"net"
 	"regexp"
 	"testing"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 
-	rl "go.uber.org/ratelimit"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 
@@ -33,7 +32,7 @@ var (
 
 func startGRPCServer(t *testing.T) {
 	lis = bufconn.Listen(1024 * 1024)
-	grpcS := NewGRPCServerWithMiddlewares(&common.GRPCRateLimiter{Limiter: rl.New(1000)}, mux.NewRouter())
+	grpcS := NewGRPCServerWithMiddlewares(mux.NewRouter())
 	go func() {
 		if err := grpcS.Serve(lis); err != nil {
 			t.Errorf("Server exited with error: %v", err)
