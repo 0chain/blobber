@@ -125,8 +125,8 @@ install_postgres () {
     cp -r ../sql "./data/blobber/"
     cd "./data/blobber/sql"
 
-    find . -name "*.sql" -exec sed -i '' "s/blobber_user/blobber_user/g" {} \;
-    find . -name "*.sql" -exec sed -i '' "s/blobber_meta/blobber_meta/g" {} \;
+    find . -name "*.sql" -exec sed -i '' "s/blobber_user/blobber_user$i/g" {} \;
+    find . -name "*.sql" -exec sed -i '' "s/blobber_meta/blobber_meta$i/g" {} \;
 
 
     cd $root
