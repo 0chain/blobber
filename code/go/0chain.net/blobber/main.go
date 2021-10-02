@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
@@ -334,6 +335,8 @@ func main() {
 	portString := flag.String("port", "", "port")
 	grpcPortString := flag.String("grpc_port", "", "grpc_port")
 	hostname := flag.String("hostname", "", "hostname")
+	publicCertFile := flag.String("public_cert_file", "", "public cert file")
+	privateKeyFile := flag.String("private_key_file", "", "private key file")
 
 	flag.Parse()
 
@@ -365,6 +368,14 @@ func main() {
 
 	if *portString == "" {
 		panic("Please specify --port which is the port on which requests are accepted")
+	}
+
+	if *publicCertFile == "" {
+		panic("Please specify --public_cert_file which is the public certificate for https.")
+	}
+
+	if *privateKeyFile == "" {
+		panic("Please specify --private_key_file which is the private key file for https.")
 	}
 
 	reader, err := os.Open(*keysFile)
@@ -420,10 +431,10 @@ func main() {
 
 	// Initialize after server chain is setup.
 	if err := initEntities(); err != nil {
-		Logger.Error("Error setting up blobber on blockchian" + err.Error())
+		Logger.Error("Error setting up blobber on blockchain" + err.Error())
 	}
 	if err := setup(*logDir); err != nil {
-		Logger.Error("Error setting up blobber on blockchian" + err.Error())
+		Logger.Error("Error setting up blobber on blockchain" + err.Error())
 	}
 	mode := "main net"
 	if config.Development() {
@@ -461,6 +472,12 @@ func main() {
 	}
 
 	rHandler := handlers.CORS(originsOk, headersOk, methodsOk)(r)
+
+	cert, err := tls.LoadX509KeyPair(*publicCertFile, *privateKeyFile)
+	if err != nil {
+		Logger.Error("Error loading certificate on blobber on blockchain" + err.Error())
+	}
+
 	if config.Development() {
 		// No WriteTimeout setup to enable pprof
 		server = &http.Server{
@@ -468,6 +485,9 @@ func main() {
 			ReadHeaderTimeout: 30 * time.Second,
 			MaxHeaderBytes:    1 << 20,
 			Handler:           rHandler,
+			TLSConfig: &tls.Config{
+				Certificates: []tls.Certificate{cert},
+			},
 		}
 	} else {
 		server = &http.Server{
@@ -477,8 +497,12 @@ func main() {
 			IdleTimeout:       30 * time.Second,
 			MaxHeaderBytes:    1 << 20,
 			Handler:           rHandler,
+			TLSConfig: &tls.Config{
+				Certificates: []tls.Certificate{cert},
+			},
 		}
 	}
+
 	common.HandleShutdown(server)
 	handler.HandleShutdown(common.GetRootContext())
 
