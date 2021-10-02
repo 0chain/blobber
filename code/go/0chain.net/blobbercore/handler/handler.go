@@ -22,7 +22,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
 	"github.com/gorilla/mux"
@@ -37,7 +36,7 @@ func GetMetaDataStore() datastore.Store {
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
 
-	r.Use(panicRecovery, common.UseUserRateLimit)
+	r.Use(useRecovery, useCORS(), common.UseUserRateLimit)
 
 	//object operations
 	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONResponse(WithConnection(UploadHandler)))
@@ -73,18 +72,6 @@ func SetupHandlers(r *mux.Router) {
 
 	//marketplace related
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(MarketPlaceShareInfoHandler)))
-}
-
-func panicRecovery(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				logging.Logger.Error("[recover]http", zap.String("url", r.URL.String()), zap.Any("err", err))
-			}
-		}()
-
-		h.ServeHTTP(w, r)
-	})
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {

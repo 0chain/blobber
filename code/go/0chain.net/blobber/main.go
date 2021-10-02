@@ -6,14 +6,11 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"runtime"
 	"strconv"
 	"time"
-
-	"google.golang.org/grpc/reflection"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/challenge"
@@ -33,7 +30,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
 	"github.com/0chain/gosdk/zcncore"
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -341,6 +337,9 @@ func setup(logDir string) error {
 // }
 
 func main() {
+
+	grpcPortString := ""
+
 	deploymentMode := flag.Int("deployment_mode", 2, "deployment_mode")
 	keysFile := flag.String("keys_file", "", "keys_file")
 	minioFile := flag.String("minio_file", "", "minio_file")
@@ -348,9 +347,10 @@ func main() {
 	metadataDB = flag.String("db_dir", "", "db_dir")
 	logDir := flag.String("log_dir", "", "log_dir")
 	portString := flag.String("port", "", "port")
-	grpcPortString := flag.String("grpc_port", "", "grpc_port")
 	hostname := flag.String("hostname", "", "hostname")
 	configDir := flag.String("config_dir", "./config", "config_dir")
+
+	flag.StringVar(&grpcPortString, "grpc_port", "", "grpc_port")
 
 	flag.Parse()
 
@@ -453,39 +453,18 @@ func main() {
 
 	var server *http.Server
 
-	// setup CORS
 	r := mux.NewRouter()
-
-	headersOk := handlers.AllowedHeaders([]string{
-		"X-Requested-With", "X-App-Client-ID",
-		"X-App-Client-Key", "Content-Type",
-		"X-App-Client-Signature",
-	})
-
-	// Allow anybody to access API.
-	// originsOk := handlers.AllowedOriginValidator(isValidOrigin)
-	originsOk := handlers.AllowedOrigins([]string{"*"})
-
-	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT",
-		"DELETE", "OPTIONS"})
 
 	common.ConfigRateLimits()
 	initHandlers(r)
 
-	grpcServer := handler.NewGRPCServerWithMiddlewares(r)
-
-	if config.Development() {
-		reflection.Register(grpcServer)
-	}
-
-	rHandler := handlers.CORS(originsOk, headersOk, methodsOk)(r)
 	if config.Development() {
 		// No WriteTimeout setup to enable pprof
 		server = &http.Server{
 			Addr:              address,
 			ReadHeaderTimeout: 30 * time.Second,
 			MaxHeaderBytes:    1 << 20,
-			Handler:           rHandler,
+			Handler:           r,
 		}
 	} else {
 		server = &http.Server{
@@ -494,32 +473,19 @@ func main() {
 			WriteTimeout:      30 * time.Second,
 			IdleTimeout:       30 * time.Second,
 			MaxHeaderBytes:    1 << 20,
-			Handler:           rHandler,
+			Handler:           r,
 		}
 	}
 	common.HandleShutdown(server)
 	handler.HandleShutdown(common.GetRootContext())
 
 	Logger.Info("Ready to listen to the requests")
+
+	if config.Development() {
+		go startGRPCServer(*r, grpcPortString)
+	}
+
 	startTime = time.Now().UTC()
-	go func(gp *string) {
-		var grpcPort string
-		if gp != nil {
-			grpcPort = *gp
-		}
 
-		if grpcPort == "" {
-			Logger.Error("Could not start grpc server since grpc port has not been specified." +
-				" Please specify the grpc port in the --grpc_port build arguement to start the grpc server")
-			return
-		}
-
-		Logger.Info("listening too grpc requests on port - " + grpcPort)
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
-		if err != nil {
-			log.Fatalf("failed to listen: %v", err)
-		}
-		log.Fatal(grpcServer.Serve(lis))
-	}(grpcPortString)
 	log.Fatal(server.ListenAndServe())
 }

@@ -1621,7 +1621,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow("/file.txt", "f", filePathHash, "abcd"),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(1) FROM "collaborators" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
 					WithArgs(client.GetClientID()).
 					WillReturnError(gorm.ErrRecordNotFound)
 
@@ -1634,7 +1634,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 				aa := sqlmock.AnyArg()
 
-				mock.ExpectExec(`UPDATE "read_markers"`).
+				mock.ExpectExec(`(UPDATE "read_markers" SET)(.+)`).
 					WithArgs(client.GetClientPublicKey(), alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
@@ -1736,7 +1736,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", "qCj3sXXeXUAByi1ERIbcfXzWN75dyocYzyRXnkStXio="),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(1) FROM "collaborators" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
 					WithArgs(client.GetClientID()).
 					WillReturnError(gorm.ErrRecordNotFound)
 
@@ -1868,7 +1868,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", encscheme.GetEncryptedKey()),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(1) FROM "collaborators" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
 					WithArgs(client.GetClientID()).
 					WillReturnError(gorm.ErrRecordNotFound)
 

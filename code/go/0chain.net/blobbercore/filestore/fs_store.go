@@ -366,12 +366,18 @@ func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData
 func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error {
 	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
-		return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+		Logger.Warn("invalid_allocation", zap.String("allocationID", allocationID), zap.Error(err))
+		return nil
 	}
 
 	fileObjectPath := fs.generateTempPath(allocation, fileData, connectionID)
 
-	return os.Remove(fileObjectPath)
+	err = os.Remove(fileObjectPath)
+	if err != nil {
+		Logger.Warn("invalid_path", zap.String("fileObjectPath", fileObjectPath), zap.Error(err))
+	}
+
+	return nil
 }
 
 func (fs *FileFSStore) generateTempPath(allocation *StoreAllocation, fileData *FileInputData, connectionID string) string {
