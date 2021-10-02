@@ -6,7 +6,6 @@ require (
 	github.com/0chain/errors v1.0.3
 	github.com/0chain/gosdk v1.2.88
 	github.com/DATA-DOG/go-sqlmock v1.5.0
-	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/didip/tollbooth/v6 v6.1.1
 	github.com/go-ini/ini v1.55.0 // indirect
 	github.com/gorilla/handlers v1.5.1
@@ -14,7 +13,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
 	github.com/herumi/bls-go-binary v1.0.1-0.20210830012634-a8e769d3b872
-	github.com/improbable-eng/grpc-web v0.14.0
+	github.com/improbable-eng/grpc-web v0.14.1
 	github.com/koding/cache v0.0.0-20161222233015-e8a81b0b3f20
 	github.com/minio/minio-go v6.0.14+incompatible
 	github.com/mitchellh/mapstructure v1.4.2
