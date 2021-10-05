@@ -24,7 +24,7 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
 	response, err := storageHandler.GetAllocationDetails(ctx, request)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to get allocation details for request: " + request.String())
+		return nil, errors.Wrap(err, "unable to get allocation details for request: "+request.String())
 	}
 
 	return convert.GetAllocationResponseCreator(response), nil
@@ -35,7 +35,7 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, request *blobb
 
 	response, err := storageHandler.GetFileMeta(ctx, request)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get FileMetadata for request: " + request.String())
+		return nil, errors.Wrap(err, "failed to get FileMetadata for request: "+request.String())
 	}
 
 	return convert.GetFileMetaDataResponseCreator(response), nil
@@ -47,13 +47,13 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, request *blobberg
 	response, err := storageHandler.GetFileStats(ctx, request)
 	if err != nil {
 		logging.Logger.Info("failed with error", zap.Error(err))
-		return nil, errors.Wrap(err, "failed to get FileStats for request: " + request.String())
+		return nil, errors.Wrap(err, "failed to get FileStats for request: "+request.String())
 	}
 
 	result, err := convert.GetFileStatsResponseCreator(response)
 	if err != nil {
 		logging.Logger.Info("failed with error", zap.Error(err))
-		return nil, errors.Wrap(err, "failed to convert FileStats for request: " + request.String())
+		return nil, errors.Wrap(err, "failed to convert FileStats for request: "+request.String())
 	}
 
 	return result, nil
@@ -61,7 +61,6 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, request *blobberg
 
 func (b *blobberGRPCService) ListEntities(ctx context.Context, request *blobbergrpc.ListEntitiesRequest) (*blobbergrpc.ListEntitiesResponse, error) {
 	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
-
 
 	response, err := storageHandler.ListEntities(ctx, request)
 	if err != nil {
@@ -151,5 +150,16 @@ func (b *blobberGRPCService) Collaborator(ctx context.Context, request *blobberg
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to ModifyCollaborators")
 	}
+	return response, nil
+}
+
+func (b *blobberGRPCService) MarketplaceShareInfo(ctx context.Context, request *blobbergrpc.MarketplaceShareInfoRequest) (*blobbergrpc.MarketplaceShareInfoResponse, error) {
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+
+	response, err := storageHandler.MarketplaceShareInfo(ctx, request)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed revoke/insert market place share")
+	}
+
 	return response, nil
 }
