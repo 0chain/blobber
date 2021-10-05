@@ -5,6 +5,7 @@ import (
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/gosdk/zboxcore/client"
 	"google.golang.org/grpc/metadata"
 	"net/http"
 	"testing"
@@ -22,9 +23,14 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	err = tdController.AddMarketplaceShareInfoTestData(allocationTx, pubKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	path := "/file.txt"
 	filePathHash := "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"
-	authTicket, err := GetAuthTicketForEncryptedFile(allocationTx, path, filePathHash, clientSignature, pubKey)
+	authTicket, err := GetAuthTicketForEncryptedFile(allocationTx, path, filePathHash, client.GetClientID(), pubKey)
 	if err != nil {
 		t.Fatal(err)
 	}
