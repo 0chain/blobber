@@ -49,7 +49,7 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 			input: &blobbergrpc.MarketplaceShareInfoRequest{
 				Allocation:          allocationTx,
 				EncryptionPublicKey: pubKey,
-				AuthTicket:          "",
+				AuthTicket:          authTicket,
 				HttpMethod:          http.MethodPost,
 				Path:                "/",
 				RefereeClientId:     "",
@@ -66,9 +66,9 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 			input: &blobbergrpc.MarketplaceShareInfoRequest{
 				Allocation:          allocationTx,
 				EncryptionPublicKey: pubKey,
-				AuthTicket:          "",
+				AuthTicket:          authTicket,
 				HttpMethod:          http.MethodDelete,
-				Path:                "root",
+				Path:                "/",
 				RefereeClientId:     "abcdefgh",
 			},
 			expectingError: false,
