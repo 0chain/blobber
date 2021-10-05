@@ -28,7 +28,7 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	authTicket, err := GetAuthTicketForEncryptedFile(allocationTx, "/", "exampleId:examplePath", client.GetClientID(), pubKey)
+	authTicket, err := GetAuthTicketForEncryptedFile("exampleId", "/", "exampleId:examplePath", client.GetClientID(), pubKey)
 	if err != nil {
 		t.Fatal(err)
 	}
