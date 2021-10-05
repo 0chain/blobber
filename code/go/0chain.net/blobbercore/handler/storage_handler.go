@@ -748,8 +748,8 @@ func (fsh *StorageHandler) RevokeShare(ctx context.Context, request *blobbergrpc
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		// todo: NOT_FOUND grpc error code
 		return &blobbergrpc.MarketplaceShareInfoResponse{
-			ResponseStatus: http.StatusNotFound,
-			Message:        "Path not found",
+			StatusCode: http.StatusNotFound,
+			Message:    "Path not found",
 		}, nil
 	}
 	if err != nil {
@@ -757,8 +757,8 @@ func (fsh *StorageHandler) RevokeShare(ctx context.Context, request *blobbergrpc
 	}
 
 	return &blobbergrpc.MarketplaceShareInfoResponse{
-		ResponseStatus: http.StatusNoContent,
-		Message:        "Path successfully removed from allocation",
+		StatusCode: http.StatusNoContent,
+		Message:    "Path successfully removed from allocation",
 	}, nil
 }
 
@@ -819,8 +819,8 @@ func (fsh *StorageHandler) InsertShare(ctx context.Context, request *blobbergrpc
 	}
 
 	resp := &blobbergrpc.MarketplaceShareInfoResponse{
-		ResponseStatus: http.StatusOK,
-		Message:        "Share info added successfully",
+		StatusCode: http.StatusOK,
+		Message:    "Share info added successfully",
 	}
 
 	return resp, nil
