@@ -8,6 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/pkg/errors"
 )
 
 type WriteMarker struct {
@@ -103,7 +104,7 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMa
 	wm := &WriteMarkerEntity{}
 	err := db.First(wm, "allocation_root = ?", allocation_root).Error
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "db first error")
 	}
 	return wm, nil
 }

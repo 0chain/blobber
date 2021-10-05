@@ -3,13 +3,15 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
-	"github.com/pkg/errors"
 	"net/http"
 	"strconv"
 	"strings"
 
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
+	"github.com/pkg/errors"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
@@ -40,6 +42,8 @@ func (fsh *StorageHandler) verifyAllocation(ctx context.Context, tx string,
 			"invalid allocation id")
 	}
 
+	logging.Logger.Info("call allocation.VerifyAllocationTransaction",
+		zap.String("tx", tx))
 	alloc, err = allocation.VerifyAllocationTransaction(ctx, tx, readonly)
 	if err != nil {
 		return nil, common.NewErrorf("verify_allocation",
@@ -169,7 +173,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, request *blobbergrpc
 		if isAuthorized, err := fsh.verifyAuthTicket(ctx,
 			request.AuthToken, alloc, fileRef, clientID,
 		); !isAuthorized {
-			Logger.Error("Failed to verify the authorisaton ticket")
+			Logger.Error("Failed to verify the authorisation ticket")
 			return nil, errors.Wrap(err, "failed to verify the auth ticket")
 		}
 		delete(result, "path")
@@ -236,142 +240,165 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, request *blobbe
 	return &result, nil
 }
 
-func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
+func (fsh *StorageHandler) AddCollaborator(ctx context.Context, request *blobbergrpc.CollaboratorRequest) (*blobbergrpc.CollaboratorResponse, error) {
+	//allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, true)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, errors.Wrap(err, "invalid allocation id passed")
 	}
 
-	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+	clientSign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(request.Allocation, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+		return nil, errors.Wrap(invalidParameters, "invalid signature passed")
 	}
 
-	allocationID := allocationObj.ID
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
 
-	pathHash, err := pathHashFromReq(r, allocationID)
-	if err != nil {
-		return nil, err
+	if request.PathHash == ""{
+		if request.Path == "" {
+			Logger.Error("Invalid request path passed in the request")
+			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
+		}
+		request.PathHash = reference.GetReferenceLookup(allocationObj.ID, request.Path)
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, request.PathHash)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+		return nil, errors.Wrap(err, "invalid file path")
 	}
 
 	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
+		return nil, errors.Wrap(invalidParameters, "path is not a filePath")
 	}
 
-	collabClientID := r.FormValue("collab_id")
-	if len(collabClientID) == 0 {
-		return nil, common.NewError("invalid_parameter", "collab_id not present in the params")
+	if request.CollabId == "" {
+		return nil, errors.Wrap(invalidParameters, "collab_id is missing in request")
 	}
 
-	var result struct {
-		Msg string `json:"msg"`
-	}
+	var response blobbergrpc.CollaboratorResponse
 
-	switch r.Method {
+	switch request.Method {
 	case http.MethodPost:
-		if len(clientID) == 0 || clientID != allocationObj.OwnerID {
-			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+		if clientID == "" || clientID != allocationObj.OwnerID {
+			return nil, errors.Wrap(authorisationError, "operation needs to be performed by owner")
 		}
 
-		if reference.IsACollaborator(ctx, fileref.ID, collabClientID) {
-			result.Msg = "Given client ID is already a collaborator"
-			return result, nil
+		if reference.IsACollaborator(ctx, fileref.ID, request.CollabId) {
+			response.Message = "Given client ID is already a collaborator"
+			return &response, nil
 		}
 
-		err = reference.AddCollaborator(ctx, fileref.ID, collabClientID)
+		err = reference.AddCollaborator(ctx, fileref.ID, request.CollabId)
 		if err != nil {
 			return nil, common.NewError("add_collaborator_failed", "Failed to add collaborator with err :"+err.Error())
 		}
-		result.Msg = "Added collaborator successfully"
+		response.Message = "Added collaborator successfully"
 
 	case http.MethodGet:
 		collaborators, err := reference.GetCollaborators(ctx, fileref.ID)
 		if err != nil {
-			return nil, common.NewError("get_collaborator_failed", "Failed to get collaborators from refID with err:"+err.Error())
+			return nil, errors.Wrap(err, "failed to get the collaborator")
+		}
+		for _, c := range collaborators {
+			response.Collaborators = append(response.Collaborators, &blobbergrpc.Collaborator{
+				RefId:     c.RefID,
+				ClientId:  c.ClientID,
+				CreatedAt: c.CreatedAt.UnixNano(),
+			})
 		}
 
-		return collaborators, nil
+		return &response, nil
 
 	case http.MethodDelete:
-		if len(clientID) == 0 || clientID != allocationObj.OwnerID {
-			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+		if clientID == "" || clientID != allocationObj.OwnerID {
+			return nil, errors.Wrap(authorisationError, "operation needs to be performed by owner")
 		}
 
-		err = reference.RemoveCollaborator(ctx, fileref.ID, collabClientID)
+		err = reference.RemoveCollaborator(ctx, fileref.ID, request.CollabId)
 		if err != nil {
-			return nil, common.NewError("delete_collaborator_failed", "Failed to delete collaborator from refID with err:"+err.Error())
+			return nil, errors.Wrap(err, "failed to delete the collaborator")
 		}
-		result.Msg = "Removed collaborator successfully"
+		response.Message = "Removed collaborator successfully"
 
 	default:
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST/GET/DELETE instead")
+		return nil, errors.Wrap(errors.New("Invalid Method"), "use GET/POST/DELETE only")
 	}
 
-	return result, nil
+	return &response, nil
 }
 
-func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
+func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrpc.GetFileStatsRequest) (interface{}, error) {
+	// todo(kushthedude): generalise the allocation_context in the grpc metadata
+	alloc, err := fsh.verifyAllocation(ctx, request.Allocation, true)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-	allocationID := allocationObj.ID
-
-	clientSign, _ := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+		Logger.Error("Invalid allocation ID passed in the request")
+		return nil, errors.Wrap(err, "invalid allocation id passed")
 	}
 
+	allocationID := alloc.ID
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	if clientID == "" {
+		Logger.Error("Operation needs to be performed by the owner of allocation")
+		return nil, errors.Wrap(errors.New("missing client id"), "Operation needs to be performed by the owner of the allocation")
 	}
 
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+	clientSign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(request.Allocation, clientSign, alloc.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, errors.Wrap(invalidParameters, "invalid signature passed")
+	}
 
-	pathHash, err := pathHashFromReq(r, allocationID)
+	if request.PathHash == "" {
+		if request.Path == "" {
+			Logger.Error("Invalid request path passed in the request")
+			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
+		}
+		request.PathHash = reference.GetReferenceLookup(allocationID, request.Path)
+	}
+
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, request.PathHash)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "invalid file path")
 	}
-
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
-
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-
 	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
+		return nil, errors.Wrap(invalidParameters, "path is not a filePath")
 	}
 
 	result := fileref.GetListingData(ctx)
-	stats, _ := stats.GetFileStats(ctx, fileref.ID)
-	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
-	if wm != nil && stats != nil {
-		stats.WriteMarkerRedeemTxn = wm.CloseTxnID
+	fileStats, err := stats.GetFileStats(ctx, fileref.ID)
+	if err != nil {
+		Logger.Error("unable to get file stats from fileRef ", zap.Int64("fileRef.id", fileref.ID))
+		Logger.Error(err.Error(), zap.Int64("fileRef.id", fileref.ID)) // for debug
+		//return nil, errors.Wrap(err, "failed to get fileStats from the fileRef")
 	}
+
+	wm, err := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
+	if err != nil {
+		Logger.Error("unable to get write marker from fileRef ", zap.String("fileRef.WriteMarker", fileref.WriteMarker))
+		Logger.Error(err.Error(), zap.Int64("fileRef.id", fileref.ID)) // for debug
+	//	return nil, errors.Wrap(err, "failed to get write marker from fileRef")
+	}
+	if wm != nil && fileStats != nil {
+		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
+	}
+
 	var statsMap map[string]interface{}
-	statsBytes, _ := json.Marshal(stats)
-	if err = json.Unmarshal(statsBytes, &statsMap); err != nil {
-		return nil, err
+
+	statsBytes, err := json.Marshal(fileStats)
+	if err != nil {
+		Logger.Error("unable to marshal fileStats ")
+		return nil, errors.Wrapf(err, "failed to marshal fileStats")
 	}
+	if err = json.Unmarshal(statsBytes, &statsMap); err != nil {
+		Logger.Error("unable to unmarshal into statsMap ")
+		return nil, errors.Wrapf(err, "failed to marshal into statsMap")
+	}
+
 	for k, v := range statsMap {
 		result[k] = v
 	}
+
 	return result, nil
 }
 
@@ -444,6 +471,9 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, request *blobbe
 
 	// todo(kushthedude): generalise the allocation_context in the grpc metadata
 	//allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+
+	logging.Logger.Info("call fsh.verifyAllocation",
+		zap.String("allocation", request.Allocation))
 	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, false)
 	if err != nil {
 		return nil, errors.Wrap(errors.New("Invalid Request"), "Invalid allocation ID passed")
@@ -741,4 +771,3 @@ func pathHashFromReq(r *http.Request, allocationID string) (string, error) {
 
 	return pathHash, nil
 }
-

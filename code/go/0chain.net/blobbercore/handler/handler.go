@@ -47,13 +47,13 @@ func SetupHandlers(r *mux.Router) {
 
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitHandler))))
 	//r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
-	r.HandleFunc("/v1/file/collaborator/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CollaboratorHandler))))
+	//r.HandleFunc("/v1/file/collaborator/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CollaboratorHandler))))
 	//r.HandleFunc("/v1/file/calculatehash/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CalculateHashHandler))))
 
 	//object info related apis
 	//r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler))))
 	//r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
-	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
+	//r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
 	//r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler))))
 	//r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler))))
 	//r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
@@ -173,27 +173,27 @@ func setupGrpcHandlerContext(ctx context.Context, headerMetadata *gRPCHeaderMeta
 //	return response, nil
 //}
 
-func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
+//func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+//	ctx = setupHandlerContext(ctx, r)
+//
+//	response, err := storageHandler.AddCollaborator(ctx, r)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return response, nil
+//}
 
-	response, err := storageHandler.AddCollaborator(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
-}
-
-func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.GetFileStats(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
-}
+//func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+//	ctx = setupHandlerContext(ctx, r)
+//
+//	response, err := storageHandler.GetFileStats(ctx, r)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return response, nil
+//}
 
 /*DownloadHandler is the handler to respond to download requests from clients*/
 func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) {

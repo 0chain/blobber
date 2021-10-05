@@ -2,11 +2,12 @@ package handler
 
 import (
 	"context"
-	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
-	"github.com/pkg/errors"
-	"net/http"
-	"strings"
 	"time"
+
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/pkg/errors"
+	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
 )
@@ -40,27 +41,27 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, request *blobb
 	return convert.GetFileMetaDataResponseCreator(response), nil
 }
 
-func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.GetFileStatsRequest) (*blobbergrpc.GetFileStatsResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
+func (b *blobberGRPCService) GetFileStats(ctx context.Context, request *blobbergrpc.GetFileStatsRequest) (*blobbergrpc.GetFileStatsResponse, error) {
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+
+	response, err := storageHandler.GetFileStats(ctx, request)
 	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":      {req.Path},
-		"path_hash": {req.PathHash},
+		logging.Logger.Info("failed with error", zap.Error(err))
+		return nil, errors.Wrap(err, "failed to get FileStats for request: " + request.String())
 	}
 
-	resp, err := FileStatsHandler(ctx, r)
+	result, err := convert.GetFileStatsResponseCreator(response)
 	if err != nil {
-		return nil, err
+		logging.Logger.Info("failed with error", zap.Error(err))
+		return nil, errors.Wrap(err, "failed to convert FileStats for request: " + request.String())
 	}
 
-	return convert.GetFileStatsResponseCreator(resp), nil
+	return result, nil
 }
 
 func (b *blobberGRPCService) ListEntities(ctx context.Context, request *blobbergrpc.ListEntitiesRequest) (*blobbergrpc.ListEntitiesResponse, error) {
 	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+
 
 	response, err := storageHandler.ListEntities(ctx, request)
 	if err != nil {
@@ -73,7 +74,6 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, request *blobberg
 func (b *blobberGRPCService) GetObjectPath(ctx context.Context, request *blobbergrpc.GetObjectPathRequest) (*blobbergrpc.GetObjectPathResponse, error) {
 	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
 
-
 	response, err := storageHandler.GetObjectPath(ctx, request)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to GetObjectPath")
@@ -84,10 +84,20 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, request *blobber
 
 func (b *blobberGRPCService) GetReferencePath(ctx context.Context, request *blobbergrpc.GetReferencePathRequest) (*blobbergrpc.GetReferencePathResponse, error) {
 
+	ctx = GetMetaDataStore().CreateTransaction(ctx)
+	defer func() {
+		GetMetaDataStore().GetTransaction(ctx).Rollback()
+	}()
 	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
 	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
 	defer canceler()
 
+	logging.Logger.Info("handler GetReferencePath req info",
+		zap.String("allocation", request.Allocation),
+		zap.String("request", request.String()))
+
+	logging.Logger.Info("call storageHandler.GetReferencePath",
+		zap.Any("request", request.String()))
 	response, err := storageHandler.GetReferencePath(ctx, request)
 
 	if err != nil {
@@ -133,22 +143,13 @@ func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, request *blobber
 	return response, nil
 }
 
-func (b *blobberGRPCService) Collaborator(ctx context.Context, req *blobbergrpc.CollaboratorRequest) (*blobbergrpc.CollaboratorResponse, error) {
-	r, err := http.NewRequest(strings.ToUpper(req.Method), "", nil)
-	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":      {req.Path},
-		"path_hash": {req.PathHash},
-		"collab_id": {req.CollabId},
-	}
+func (b *blobberGRPCService) Collaborator(ctx context.Context, request *blobbergrpc.CollaboratorRequest) (*blobbergrpc.CollaboratorResponse, error) {
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
 
-	resp, err := CollaboratorHandler(ctx, r)
-	if err != nil {
-		return nil, err
-	}
+	response, err := storageHandler.AddCollaborator(ctx, request)
 
-	return convert.CollaboratorResponseCreator(resp), nil
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to ModifyCollaborators")
+	}
+	return response, nil
 }

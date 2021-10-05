@@ -2,12 +2,14 @@ package convert
 
 import (
 	"encoding/json"
-	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	stats2 "github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 func GetAllocationResponseCreator(resp interface{}) *blobbergrpc.GetAllocationResponse {
@@ -36,22 +38,31 @@ func GetFileMetaDataResponseCreator(httpResp interface{}) *blobbergrpc.GetFileMe
 	return &resp
 }
 
-func GetFileStatsResponseCreator(r interface{}) *blobbergrpc.GetFileStatsResponse {
+func GetFileStatsResponseCreator(r interface{}) (*blobbergrpc.GetFileStatsResponse, error) {
 	if r == nil {
-		return nil
+		return nil, errors.Wrapf(errors.New("EMPTY REQUEST"), "empty interface passed")
+		
 	}
 
 	httpResp, _ := r.(map[string]interface{})
+	logging.Logger.Info("filestat resposne is", zap.Any("httpResp", httpResp))
 
 	var resp blobbergrpc.GetFileStatsResponse
 	resp.MetaData = FileRefToFileRefGRPC(reference.ListingDataToRef(httpResp))
 
-	respRaw, _ := json.Marshal(httpResp)
+	logging.Logger.Info("filestat response was successfully fetched", zap.Any("metadata", resp.MetaData))
+	respRaw, err := json.Marshal(httpResp)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to marshal httpResp")
+	}
 	var stats stats2.FileStats
-	_ = json.Unmarshal(respRaw, &stats)
+	err = json.Unmarshal(respRaw, &stats)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal respRaw into stats")
+	}
 	resp.Stats = FileStatsToFileStatsGRPC(&stats)
 
-	return &resp
+	return &resp, nil
 }
 
 func ListEntitesResponseCreator(r interface{}) *blobbergrpc.ListEntitiesResponse {
@@ -160,38 +171,6 @@ func CollaboratorResponseCreator(r interface{}) *blobbergrpc.CollaboratorRespons
 	}
 
 	return &resp
-}
-
-func CopyObjectResponseCreator(r interface{}) *blobbergrpc.CopyObjectResponse {
-	if r == nil {
-		return nil
-	}
-
-	httpResp, _ := r.(*blobberhttp.UploadResult)
-	return &blobbergrpc.CopyObjectResponse{
-		Filename:     httpResp.Filename,
-		Size:         httpResp.Size,
-		ContentHash:  httpResp.Hash,
-		MerkleRoot:   httpResp.MerkleRoot,
-		UploadLength: httpResp.UploadLength,
-		UploadOffset: httpResp.UploadOffset,
-	}
-}
-
-func RenameObjectResponseCreator(r interface{}) *blobbergrpc.RenameObjectResponse {
-	if r == nil {
-		return nil
-	}
-
-	httpResp, _ := r.(*blobberhttp.UploadResult)
-	return &blobbergrpc.RenameObjectResponse{
-		Filename:     httpResp.Filename,
-		Size:         httpResp.Size,
-		ContentHash:  httpResp.Hash,
-		MerkleRoot:   httpResp.MerkleRoot,
-		UploadLength: httpResp.UploadLength,
-		UploadOffset: httpResp.UploadOffset,
-	}
 }
 
 func DownloadFileResponseCreator(r interface{}) *blobbergrpc.DownloadFileResponse {

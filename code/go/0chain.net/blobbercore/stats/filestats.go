@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/pkg/errors"
 
 	"gorm.io/gorm"
 )
@@ -59,7 +60,7 @@ func GetFileStats(ctx context.Context, refID int64) (*FileStats, error) {
 	stats := &FileStats{RefID: refID}
 	err := db.Model(stats).Where(FileStats{RefID: refID}).First(stats).Error
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "db get error")
 	}
 	return stats, err
 }

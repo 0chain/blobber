@@ -3,6 +3,8 @@ package reference
 import (
 	"context"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"math"
 	"path/filepath"
 	"reflect"
@@ -378,6 +380,12 @@ func ListingDataToRef(refMap map[string]interface{}) *Ref {
 		tag := field.Tag.Get(tagName)
 		// Skip if tag is not defined or ignored
 		if tag == "" || tag == "-" {
+			continue
+		}
+		logging.Logger.Info("logging each field", zap.Any("tag", tag))
+		logging.Logger.Info("logging each field again", zap.Any("field", field))
+
+		if strings.Contains(tag, "_at") {
 			continue
 		}
 
