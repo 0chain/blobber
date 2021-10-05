@@ -36,7 +36,7 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 		expectingError bool
 	}{
 		{
-			name: "Success",
+			name: "Success Insert share ",
 			context: metadata.New(map[string]string{
 				common.ClientHeader:          "exampleOwnerId",
 				common.ClientSignatureHeader: clientSignature,
@@ -49,6 +49,40 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 				HttpMethod:          http.MethodPost,
 				Path:                "/file.txt",
 				RefereeClientId:     "",
+			},
+			expectingError: false,
+		},
+		{
+			name: "Success Revoke share ",
+			context: metadata.New(map[string]string{
+				common.ClientHeader:          "exampleOwnerId",
+				common.ClientSignatureHeader: clientSignature,
+				common.ClientKeyHeader:       pubKey,
+			}),
+			input: &blobbergrpc.MarketplaceShareInfoRequest{
+				Allocation:          allocationTx,
+				EncryptionPublicKey: pubKey,
+				AuthTicket:          authTicket,
+				HttpMethod:          http.MethodDelete,
+				Path:                "/file.txt",
+				RefereeClientId:     "abcdefgh",
+			},
+			expectingError: false,
+		},
+		{
+			name: "Invalid Marketplace share method",
+			context: metadata.New(map[string]string{
+				common.ClientHeader:          "exampleOwnerId",
+				common.ClientSignatureHeader: clientSignature,
+				common.ClientKeyHeader:       pubKey,
+			}),
+			input: &blobbergrpc.MarketplaceShareInfoRequest{
+				Allocation:          allocationTx,
+				EncryptionPublicKey: pubKey,
+				AuthTicket:          authTicket,
+				HttpMethod:          http.MethodGet,
+				Path:                "/file.txt",
+				RefereeClientId:     "abcdefgh",
 			},
 			expectingError: true,
 		},
