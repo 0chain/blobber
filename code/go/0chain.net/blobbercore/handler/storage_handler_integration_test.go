@@ -2,10 +2,10 @@ package handler
 
 import (
 	"context"
+	"encoding/hex"
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	"github.com/0chain/gosdk/zboxcore/client"
 	"google.golang.org/grpc/metadata"
 	"net/http"
 	"testing"
@@ -17,6 +17,8 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+	pubKeyBytes, _ := hex.DecodeString(pubKey)
+	clientId := encryption.Hash(pubKeyBytes)
 
 	err := tdController.ClearDatabase()
 	if err != nil {
@@ -28,7 +30,7 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	authTicket, err := GetAuthTicketForEncryptedFile("exampleId", "/", "exampleId:examplePath", client.GetClientID(), pubKey)
+	authTicket, err := GetAuthTicketForEncryptedFile("exampleId", "/", "exampleId:examplePath", clientId, pubKey)
 	if err != nil {
 		t.Fatal(err)
 	}
