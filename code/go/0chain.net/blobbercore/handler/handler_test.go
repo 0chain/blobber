@@ -221,14 +221,14 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	),
 	).Name(dName)
 
-	sharePath := "/v1/marketplace/shareinfo/{allocation}"
-	shareName := "Share"
-	router.HandleFunc(sharePath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithReadOnlyConnection(MarketPlaceShareInfoHandler),
-		),
-	),
-	).Name(shareName)
+	//sharePath := "/v1/marketplace/shareinfo/{allocation}"
+	//shareName := "Share"
+	//router.HandleFunc(sharePath, common.UserRateLimit(
+	//	common.ToJSONResponse(
+	//		WithReadOnlyConnection(MarketPlaceShareInfoHandler),
+	//	),
+	//),
+	//).Name(shareName)
 
 	return router,
 		map[string]string{
@@ -241,7 +241,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 			//cPath:     cName,
 			//aPath:     aName,
 			uPath:     uName,
-			sharePath: shareName,
+			//sharePath: shareName,
 			dPath:     dName,
 		}
 }
