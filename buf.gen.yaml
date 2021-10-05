@@ -9,3 +9,6 @@ plugins:
   - name: grpc-gateway
     out: proto
     opt: paths=source_relative,allow_delete_body=true
+breaking:
+  uses:
+    - FIELD_NO_DELETE_UNLESS_NUMBER_RESERVED
