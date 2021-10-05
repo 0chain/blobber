@@ -22,3 +22,5 @@ lint:
 breaking:
   use:
     - FILE
+  except:
+    - FIELD_NO_DELETE
