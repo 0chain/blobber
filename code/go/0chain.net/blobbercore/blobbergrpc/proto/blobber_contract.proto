@@ -370,8 +370,8 @@ message MarketplaceShareInfoRequest {
 }
 
 message MarketplaceShareInfoResponse {
-  reserved 1;
-  reserved "response_status";
+  // todo: deprecate this field
+  string response_status = 1;
   string message = 2;
   int64 status_code = 3;
 }
