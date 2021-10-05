@@ -25,7 +25,7 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = tdController.AddMarketplaceShareInfoTestData(allocationTx, pubKey)
+	err = tdController.AddMarketplaceShareInfoTestData(allocationTx, pubKey, clientId)
 	if err != nil {
 		t.Fatal(err)
 	}

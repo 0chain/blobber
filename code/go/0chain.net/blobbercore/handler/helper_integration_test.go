@@ -498,7 +498,7 @@ VALUES (1234,'exampleId','exampleId:examplePath','exampleId:examplePath','d','ro
 	return nil
 }
 
-func (c *TestDataController) AddMarketplaceShareInfoTestData(allocationTx, pubKey string) error {
+func (c *TestDataController) AddMarketplaceShareInfoTestData(allocationTx, pubKey, ownerID string) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -526,7 +526,7 @@ func (c *TestDataController) AddMarketplaceShareInfoTestData(allocationTx, pubKe
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubKey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 'repairer_id', false);
+VALUES ('exampleId' ,'` + allocationTx + `','` + ownerID + `','` + pubKey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 'repairer_id', false);
 `)
 	if err != nil {
 		return err
