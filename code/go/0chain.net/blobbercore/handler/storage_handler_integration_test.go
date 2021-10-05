@@ -44,7 +44,7 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 		{
 			name: "Success Insert share ",
 			context: metadata.New(map[string]string{
-				common.ClientHeader:          "exampleOwnerId",
+				common.ClientHeader:          clientId,
 				common.ClientSignatureHeader: clientSignature,
 				common.ClientKeyHeader:       pubKey,
 			}),
@@ -61,7 +61,7 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 		{
 			name: "Success Revoke share ",
 			context: metadata.New(map[string]string{
-				common.ClientHeader:          "exampleOwnerId",
+				common.ClientHeader:          clientId,
 				common.ClientSignatureHeader: clientSignature,
 				common.ClientKeyHeader:       pubKey,
 			}),
@@ -78,7 +78,7 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 		{
 			name: "Invalid Marketplace share method",
 			context: metadata.New(map[string]string{
-				common.ClientHeader:          "exampleOwnerId",
+				common.ClientHeader:          clientId,
 				common.ClientSignatureHeader: clientSignature,
 				common.ClientKeyHeader:       pubKey,
 			}),
