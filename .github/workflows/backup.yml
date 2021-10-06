@@ -13,10 +13,7 @@ jobs:
         run: |
           github-backup 0chain -P -t ${{ secrets.ACCESS_TOKEN }} --output-directory=/github-backup/blobber --all -O -R blobber
       - name: Create zip
-        uses: papeloto/action-zip@v1
-        with:
-          files: /github-backup/blobber
-          dest: blobber.zip
+        run: zip -r blobber.zip /github-backup/blobber
       - name: Set AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
