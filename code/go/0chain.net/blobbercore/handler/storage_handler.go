@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"gorm.io/gorm"
 	"net/http"
@@ -781,10 +782,10 @@ func (fsh *StorageHandler) InsertShare(ctx context.Context, request *blobbergrpc
 		Logger.Error("Invalid request path passed in the request")
 		return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
 	}
-	PathHash := reference.GetReferenceLookup(allocationObj.ID, request.Path)
-	Logger.Info("pathhash is ", zap.Any("path_hash", PathHash))
+	pathHash := reference.GetReferenceLookup(allocationObj.ID, request.Path)
+	fmt.Print("pathhash is %v ", pathHash)
 
-	fileReference, err := reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, PathHash)
+	fileReference, err := reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, pathHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "Invalid file path")
 	}
@@ -800,13 +801,13 @@ func (fsh *StorageHandler) InsertShare(ctx context.Context, request *blobbergrpc
 	shareInfo := reference.ShareInfo{
 		OwnerID:                   allocationObj.OwnerID,
 		ClientID:                  clientID,
-		FilePathHash:              PathHash,
+		FilePathHash:              pathHash,
 		ReEncryptionKey:           allocationObj.OwnerPublicKey,
 		ClientEncryptionPublicKey: request.EncryptionPublicKey,
 		ExpiryAt:                  common.ToTime(allocationObj.Expiration),
 	}
 
-	existingShare, err := reference.GetShareInfo(ctx, clientID, PathHash)
+	existingShare, err := reference.GetShareInfo(ctx, clientID, pathHash)
 	if err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"google.golang.org/grpc/metadata"
@@ -28,7 +29,9 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 	}
 
 	fmt.Printf("clientId: %v ---- ", clientId)
-	err = tdController.AddMarketplaceShareInfoTestData(allocationTx, pubKey, clientId)
+	path := "/"
+	pathHash := reference.GetReferenceLookup("exampleId", path)
+	err = tdController.AddMarketplaceShareInfoTestData(allocationTx, pubKey, clientId, pathHash)
 	if err != nil {
 		t.Fatal(err)
 	}
