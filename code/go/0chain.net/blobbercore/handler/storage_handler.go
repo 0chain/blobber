@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"gorm.io/gorm"
 	"net/http"
@@ -731,6 +730,11 @@ func (fsh *StorageHandler) RevokeShare(ctx context.Context, request *blobbergrpc
 		return nil, errors.Wrap(err, "Invalid signature")
 	}
 
+	if request.Path == "" {
+		Logger.Error("Invalid request path passed in the request")
+		return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
+	}
+
 	filePathHash := fileref.GetReferenceLookup(allocationObj.ID, request.Path)
 	_, err = reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, filePathHash)
 	if err != nil {
@@ -782,8 +786,8 @@ func (fsh *StorageHandler) InsertShare(ctx context.Context, request *blobbergrpc
 		Logger.Error("Invalid request path passed in the request")
 		return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
 	}
+
 	pathHash := reference.GetReferenceLookup(allocationObj.ID, request.Path)
-	fmt.Printf("pathhash is %v \n", pathHash)
 
 	fileReference, err := reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, pathHash)
 	if err != nil {

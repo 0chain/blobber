@@ -28,8 +28,9 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 	}
 
 	path := "/"
-	pathHash := reference.GetReferenceLookup("exampleId", path)
-	err = tdController.AddMarketplaceShareInfoTestData(allocationTx, pubKey, clientId, pathHash)
+	allocationId := "exampleId"
+	pathHash := reference.GetReferenceLookup(allocationId, path)
+	err = tdController.AddMarketplaceShareInfoTestData(allocationTx, pubKey, clientId, allocationId, path, pathHash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,45 +80,45 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 				EncryptionPublicKey: pubKey,
 				AuthTicket:          "",
 				HttpMethod:          http.MethodPost,
-				Path:                "/",
+				Path:                path,
 				RefereeClientId:     "",
 			},
 			expectingError: false,
 		},
-		//{
-		//	name: "Success Revoke share ",
-		//	context: metadata.New(map[string]string{
-		//		common.ClientHeader:          clientId,
-		//		common.ClientSignatureHeader: clientSignature,
-		//		common.ClientKeyHeader:       pubKey,
-		//	}),
-		//	input: &blobbergrpc.MarketplaceShareInfoRequest{
-		//		Allocation:          allocationTx,
-		//		EncryptionPublicKey: pubKey,
-		//		AuthTicket:          "",
-		//		HttpMethod:          http.MethodDelete,
-		//		Path:                "/",
-		//		RefereeClientId:     "abcdefgh",
-		//	},
-		//	expectingError: false,
-		//},
-		//{
-		//	name: "Invalid Marketplace share method",
-		//	context: metadata.New(map[string]string{
-		//		common.ClientHeader:          clientId,
-		//		common.ClientSignatureHeader: clientSignature,
-		//		common.ClientKeyHeader:       pubKey,
-		//	}),
-		//	input: &blobbergrpc.MarketplaceShareInfoRequest{
-		//		Allocation:          allocationTx,
-		//		EncryptionPublicKey: pubKey,
-		//		AuthTicket:          "",
-		//		HttpMethod:          http.MethodGet,
-		//		Path:                "/file.txt",
-		//		RefereeClientId:     "abcdefgh",
-		//	},
-		//	expectingError: true,
-		//},
+		{
+			name: "Success Revoke share ",
+			context: metadata.New(map[string]string{
+				common.ClientHeader:          clientId,
+				common.ClientSignatureHeader: clientSignature,
+				common.ClientKeyHeader:       pubKey,
+			}),
+			input: &blobbergrpc.MarketplaceShareInfoRequest{
+				Allocation:          allocationTx,
+				EncryptionPublicKey: pubKey,
+				AuthTicket:          "",
+				HttpMethod:          http.MethodDelete,
+				Path:                path,
+				RefereeClientId:     "abcdefgh",
+			},
+			expectingError: false,
+		},
+		{
+			name: "Invalid Marketplace share method",
+			context: metadata.New(map[string]string{
+				common.ClientHeader:          clientId,
+				common.ClientSignatureHeader: clientSignature,
+				common.ClientKeyHeader:       pubKey,
+			}),
+			input: &blobbergrpc.MarketplaceShareInfoRequest{
+				Allocation:          allocationTx,
+				EncryptionPublicKey: pubKey,
+				AuthTicket:          "",
+				HttpMethod:          http.MethodGet,
+				Path:                "/file.txt",
+				RefereeClientId:     "abcdefgh",
+			},
+			expectingError: true,
+		},
 	}
 
 	for _, tc := range testCases {
