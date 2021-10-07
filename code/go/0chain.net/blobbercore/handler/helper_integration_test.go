@@ -533,6 +533,22 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + ownerID + `','` + pubKey + `',`
 	}
 
 	_, err = tx.Exec(`
+INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
+VALUES ('connection_id' ,'exampleId','` + ownerID + `', 1337, 1);
+`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+INSERT INTO allocation_changes (id, connection_id, operation, size, input)
+VALUES (1 ,'connection_id','rename', 1200, '{"allocation_id":"exampleId","path":"/some_file","new_name":"new_name"}');
+`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
 INSERT INTO reference_objects (id, allocation_id, path_hash,lookup_hash,type,name,path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
 VALUES (1234,'exampleId','exampleId:examplePath','exampleId:examplePath','d','root','/','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
 `)
