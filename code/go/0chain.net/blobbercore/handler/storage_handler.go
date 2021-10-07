@@ -784,18 +784,13 @@ func (fsh *StorageHandler) InsertShare(ctx context.Context, request *blobbergrpc
 	}
 	PathHash := reference.GetReferenceLookup(request.Allocation, request.Path)
 
-
-	if err != nil {
-		return nil, errors.Wrap(err, "Error parsing the auth ticket for download.")
-	}
-
 	fileReference, err := reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, PathHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "Invalid file path")
 	}
 
 	if clientID != allocationObj.OwnerID || request.AuthTicket != "" {
-		authTicketVerified, err := fsh.verifyAuthTicket(ctx, authTicket, allocationObj, fileReference, clientID)
+		authTicketVerified, err := fsh.verifyAuthTicket(ctx, request.AuthTicket, allocationObj, fileReference, clientID)
 		if err != nil && !authTicketVerified {
 			return nil, errors.Wrap(errors.New("Authorisation Error"),
 				"failed to verify AuthTicket")
