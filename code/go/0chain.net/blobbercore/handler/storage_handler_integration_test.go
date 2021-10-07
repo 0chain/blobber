@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -28,7 +27,6 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fmt.Printf("clientId: %v ---- ", clientId)
 	path := "/"
 	pathHash := reference.GetReferenceLookup("exampleId", path)
 	err = tdController.AddMarketplaceShareInfoTestData(allocationTx, pubKey, clientId, pathHash)

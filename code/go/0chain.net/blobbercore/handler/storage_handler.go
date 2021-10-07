@@ -783,7 +783,7 @@ func (fsh *StorageHandler) InsertShare(ctx context.Context, request *blobbergrpc
 		return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
 	}
 	pathHash := reference.GetReferenceLookup(allocationObj.ID, request.Path)
-	fmt.Print("pathhash is %v ", pathHash)
+	fmt.Printf("pathhash is %v \n", pathHash)
 
 	fileReference, err := reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, pathHash)
 	if err != nil {
@@ -809,7 +809,7 @@ func (fsh *StorageHandler) InsertShare(ctx context.Context, request *blobbergrpc
 
 	existingShare, err := reference.GetShareInfo(ctx, clientID, pathHash)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error getting share info")
 	}
 
 	if existingShare != nil {
@@ -818,7 +818,7 @@ func (fsh *StorageHandler) InsertShare(ctx context.Context, request *blobbergrpc
 		err = reference.AddShareInfo(ctx, shareInfo)
 	}
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error updating/adding share")
 	}
 
 	resp := &blobbergrpc.MarketplaceShareInfoResponse{
