@@ -370,6 +370,8 @@ message MarketplaceShareInfoRequest {
 }
 
 message MarketplaceShareInfoResponse {
-  string response_status = 1;
+  reserved 1;
+  reserved "response_status";
   string message = 2;
+  int64 status_code = 3;
 }

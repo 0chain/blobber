@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-
 	"google.golang.org/grpc"
 	"gorm.io/driver/postgres"
 
@@ -486,6 +485,56 @@ VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubkey + `',` 
 	_, err = tx.Exec(`
 INSERT INTO reference_objects (id, allocation_id, path_hash,lookup_hash,type,name,path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
 VALUES (1234,'exampleId','exampleId:examplePath','exampleId:examplePath','d','root','/','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
+`)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *TestDataController) AddMarketplaceShareInfoTestData(allocationTx, pubKey, ownerID, allocationId, path, pathHash string) error {
+	var err error
+	var tx *sql.Tx
+	defer func() {
+		if err != nil {
+			if tx != nil {
+				errRollback := tx.Rollback()
+				if errRollback != nil {
+					log.Println(errRollback)
+				}
+			}
+		}
+	}()
+
+	db, err := c.db.DB()
+	if err != nil {
+		return err
+	}
+
+	tx, err = db.BeginTx(context.Background(), &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	expTime := time.Now().Add(time.Hour * 1000).UnixNano()
+
+	_, err = tx.Exec(`
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, repairer_id, is_immutable)
+VALUES ('`+ allocationId +`' ,'` + allocationTx + `','` + ownerID + `','` + pubKey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 'repairer_id', false);
+`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+INSERT INTO reference_objects (id, allocation_id, path_hash,lookup_hash,type,name,path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
+VALUES (1234,'exampleId','exampleId:examplePath','`+ pathHash +`','d','root','` + path + `','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
 `)
 	if err != nil {
 		return err

@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"github.com/0chain/gosdk/zboxcore/fileref"
+	"gorm.io/gorm"
 	"net/http"
 	"strconv"
 	"strings"
@@ -88,7 +90,7 @@ func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, request *bl
 	allocationObj, err := fsh.verifyAllocation(ctx, request.Id, false)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to GetAllocationDetails for id: " + request.Id)
+		return nil, errors.Wrap(err, "unable to GetAllocationDetails for id: "+request.Id)
 	}
 
 	return allocationObj, nil
@@ -125,7 +127,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, request *blobbergrpc
 
 	if err != nil {
 		Logger.Error("Invalid allocation ID passed in the request")
-		return nil, errors.Wrap(err, "invalid allocation id: " + allocationTx)
+		return nil, errors.Wrap(err, "invalid allocation id: "+allocationTx)
 	}
 
 	allocationID := alloc.ID
@@ -136,7 +138,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, request *blobbergrpc
 		return nil, errors.Wrap(errors.New("missing client id"), "Operation needs to be performed by the owner of the allocation")
 	}
 
-	if request.PathHash == ""{
+	if request.PathHash == "" {
 		if request.Path == "" {
 			Logger.Error("Invalid request path passed in the request")
 			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
@@ -201,7 +203,7 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, request *blobbe
 			"operation can be performed by owner of allocation")
 	}
 
-	if request.PathHash == ""{
+	if request.PathHash == "" {
 		if request.Path == "" {
 			Logger.Error("Invalid request path passed in the request")
 			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
@@ -255,7 +257,7 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, request *blobber
 
 	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 
-	if request.PathHash == ""{
+	if request.PathHash == "" {
 		if request.Path == "" {
 			Logger.Error("Invalid request path passed in the request")
 			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
@@ -377,7 +379,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, request *blobbergrp
 	if err != nil {
 		Logger.Error("unable to get write marker from fileRef ", zap.String("fileRef.WriteMarker", fileref.WriteMarker))
 		Logger.Error(err.Error(), zap.Int64("fileRef.id", fileref.ID)) // for debug
-	//	return nil, errors.Wrap(err, "failed to get write marker from fileRef")
+		//	return nil, errors.Wrap(err, "failed to get write marker from fileRef")
 	}
 	if wm != nil && fileStats != nil {
 		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
@@ -420,7 +422,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, request *blobbergrp
 		return nil, errors.Wrap(errors.New("Unauthorised Operation"), "operation needs to be performed by the owner of the allocation")
 	}
 
-	if request.PathHash == ""{
+	if request.PathHash == "" {
 		if request.Path == "" {
 			Logger.Error("Invalid request path passed in the request")
 			return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
@@ -602,7 +604,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, request *blobbergr
 
 	allocationID := allocationObj.ID
 
-	clientSign:= ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	clientSign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
 	valid, err := verifySignatureFromRequest(request.Allocation, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, errors.Wrap(errors.New("Authorisation Error"), "failed to verify signature")
@@ -701,6 +703,134 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, request *blobbergr
 	result.Message = "Hash recalculated for the given paths"
 
 	return &result, nil
+}
+
+func (fsh *StorageHandler) MarketplaceShareInfo(ctx context.Context, request *blobbergrpc.MarketplaceShareInfoRequest) (*blobbergrpc.MarketplaceShareInfoResponse, error) {
+	switch request.HttpMethod {
+	case http.MethodDelete:
+		return fsh.RevokeShare(ctx, request)
+	case http.MethodPost:
+		return fsh.InsertShare(ctx, request)
+	default:
+		return nil, errors.Wrap(errors.New("Method not allowed"), "POST/DELETE are allowed for httpMethod")
+	}
+}
+
+func (fsh *StorageHandler) RevokeShare(ctx context.Context, request *blobbergrpc.MarketplaceShareInfoRequest) (*blobbergrpc.MarketplaceShareInfoResponse, error) {
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, true)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid allocation ID passed.")
+	}
+
+	sign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	valid, err := verifySignatureFromRequest(request.Allocation, sign, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, errors.Wrap(err, "Invalid signature")
+	}
+
+	if request.Path == "" {
+		Logger.Error("Invalid request path passed in the request")
+		return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
+	}
+
+	filePathHash := fileref.GetReferenceLookup(allocationObj.ID, request.Path)
+	_, err = reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, filePathHash)
+	if err != nil {
+		return nil, errors.Wrap(err, "Invalid file path")
+	}
+
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	if clientID != allocationObj.OwnerID {
+		return nil, errors.Wrap(err, "Operation needs to be performed by the owner of the allocation")
+	}
+	err = reference.DeleteShareInfo(ctx, reference.ShareInfo{
+		ClientID:     request.RefereeClientId,
+		FilePathHash: filePathHash,
+	})
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		// todo: NOT_FOUND grpc error code
+		return &blobbergrpc.MarketplaceShareInfoResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "Path not found",
+		}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &blobbergrpc.MarketplaceShareInfoResponse{
+		StatusCode: http.StatusNoContent,
+		Message:    "Path successfully removed from allocation",
+	}, nil
+}
+
+func (fsh *StorageHandler) InsertShare(ctx context.Context, request *blobbergrpc.MarketplaceShareInfoRequest) (*blobbergrpc.MarketplaceShareInfoResponse, error) {
+	ctx = setupGrpcHandlerContext(ctx, getGRPCMetaDataFromCtx(ctx))
+
+	allocationObj, err := fsh.verifyAllocation(ctx, request.Allocation, true)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid allocation ID passed.")
+	}
+
+	sign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	valid, err := verifySignatureFromRequest(request.Allocation, sign, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, errors.Wrap(err, "Invalid signature")
+	}
+
+	if request.Path == "" {
+		Logger.Error("Invalid request path passed in the request")
+		return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
+	}
+
+	pathHash := reference.GetReferenceLookup(allocationObj.ID, request.Path)
+
+	fileReference, err := reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, pathHash)
+	if err != nil {
+		return nil, errors.Wrap(err, "Invalid file path")
+	}
+
+	if clientID != allocationObj.OwnerID || request.AuthTicket != "" {
+		authTicketVerified, err := fsh.verifyAuthTicket(ctx, request.AuthTicket, allocationObj, fileReference, clientID)
+		if err != nil && !authTicketVerified {
+			return nil, errors.Wrap(errors.New("Authorisation Error"),
+				"failed to verify AuthTicket")
+		}
+	}
+
+	shareInfo := reference.ShareInfo{
+		OwnerID:                   allocationObj.OwnerID,
+		ClientID:                  clientID,
+		FilePathHash:              pathHash,
+		ReEncryptionKey:           allocationObj.OwnerPublicKey,
+		ClientEncryptionPublicKey: request.EncryptionPublicKey,
+		ExpiryAt:                  common.ToTime(allocationObj.Expiration),
+	}
+
+	existingShare, err := reference.GetShareInfo(ctx, clientID, pathHash)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting share info")
+	}
+
+	if existingShare != nil {
+		err = reference.UpdateShareInfo(ctx, shareInfo)
+	} else {
+		err = reference.AddShareInfo(ctx, shareInfo)
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "error updating/adding share")
+	}
+
+	resp := &blobbergrpc.MarketplaceShareInfoResponse{
+		StatusCode: http.StatusOK,
+		Message:    "Share info added successfully",
+	}
+
+	return resp, nil
 }
 
 // verifySignatureFromRequest verifies signature passed as common.ClientSignatureHeader header.
