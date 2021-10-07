@@ -20,7 +20,6 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 	pubKeyBytes, _ := hex.DecodeString(pubKey)
 	clientId := encryption.Hash(pubKeyBytes)
-	//allocationId := `exampleId`
 
 	err := tdController.ClearDatabase()
 	if err != nil {
@@ -34,33 +33,6 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	//at := &marker.AuthTicket{}
-	//at.AllocationID = "exampleId"
-	//at.OwnerID = clientId
-	//at.ClientID = clientId
-	//at.FileName = "/"
-	//at.FilePathHash = "exampleId:examplePath"
-	//at.ContentHash = "content_hash"
-	//at.RefType = fileref.FILE
-	//timestamp := int64(common.Now())
-	//at.Expiration = timestamp + 7776000
-	//at.Timestamp = timestamp
-	//at.ReEncryptionKey = "regenkey"
-	//err = at.Sign()
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//atBytes, err := json.Marshal(at)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//authTicket := string(atBytes)
-	//
-	//authTicket, err := GetAuthTicketForEncryptedFile("exampleId", "/", "exampleId:examplePath", clientId, pubKey)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
 
 	testCases := []struct {
 		name           string
