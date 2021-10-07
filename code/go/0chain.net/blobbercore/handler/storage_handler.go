@@ -782,6 +782,7 @@ func (fsh *StorageHandler) InsertShare(ctx context.Context, request *blobbergrpc
 		return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
 	}
 	PathHash := reference.GetReferenceLookup(allocationObj.ID, request.Path)
+	Logger.Info("pathhash is ", zap.Any("path_hash", PathHash))
 
 	fileReference, err := reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, PathHash)
 	if err != nil {

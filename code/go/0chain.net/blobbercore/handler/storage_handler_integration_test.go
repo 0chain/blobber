@@ -20,6 +20,7 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 	pubKeyBytes, _ := hex.DecodeString(pubKey)
 	clientId := encryption.Hash(pubKeyBytes)
+	//allocationId := `exampleId`
 
 	err := tdController.ClearDatabase()
 	if err != nil {
@@ -77,7 +78,7 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 				EncryptionPublicKey: pubKey,
 				AuthTicket:          "",
 				HttpMethod:          http.MethodPost,
-				Path:                "/",
+				Path:                "examplePath",
 				RefereeClientId:     "",
 			},
 			expectingError: false,
