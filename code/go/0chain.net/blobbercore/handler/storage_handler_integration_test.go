@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
@@ -25,6 +26,7 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	fmt.Printf("clientId: %v ---- ", clientId)
 	err = tdController.AddMarketplaceShareInfoTestData(allocationTx, pubKey, clientId)
 	if err != nil {
 		t.Fatal(err)
