@@ -730,6 +730,11 @@ func (fsh *StorageHandler) RevokeShare(ctx context.Context, request *blobbergrpc
 		return nil, errors.Wrap(err, "Invalid signature")
 	}
 
+	if request.Path == "" {
+		Logger.Error("Invalid request path passed in the request")
+		return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
+	}
+
 	filePathHash := fileref.GetReferenceLookup(allocationObj.ID, request.Path)
 	_, err = reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, filePathHash)
 	if err != nil {
@@ -771,42 +776,44 @@ func (fsh *StorageHandler) InsertShare(ctx context.Context, request *blobbergrpc
 	}
 
 	sign := ctx.Value(constants.CLIENT_SIGNATURE_HEADER_KEY).(string)
+	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
 	valid, err := verifySignatureFromRequest(request.Allocation, sign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, errors.Wrap(err, "Invalid signature")
 	}
 
-	authTicket := new(readmarker.AuthTicket)
-	err = json.Unmarshal([]byte(request.AuthTicket), &authTicket)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error parsing the auth ticket for download.")
+	if request.Path == "" {
+		Logger.Error("Invalid request path passed in the request")
+		return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
 	}
 
-	fileReference, err := reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, authTicket.FilePathHash)
+	pathHash := reference.GetReferenceLookup(allocationObj.ID, request.Path)
+
+	fileReference, err := reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, pathHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "Invalid file path")
 	}
 
-	authTicketVerified, err := storageHandler.verifyAuthTicket(ctx, request.AuthTicket, allocationObj, fileReference, authTicket.ClientID)
-	if !authTicketVerified {
-		return nil, errors.Wrap(err, "Could not verify the auth ticket")
-	}
-	if err != nil {
-		return nil, err
+	if clientID != allocationObj.OwnerID || request.AuthTicket != "" {
+		authTicketVerified, err := fsh.verifyAuthTicket(ctx, request.AuthTicket, allocationObj, fileReference, clientID)
+		if err != nil && !authTicketVerified {
+			return nil, errors.Wrap(errors.New("Authorisation Error"),
+				"failed to verify AuthTicket")
+		}
 	}
 
 	shareInfo := reference.ShareInfo{
-		OwnerID:                   authTicket.OwnerID,
-		ClientID:                  authTicket.ClientID,
-		FilePathHash:              authTicket.FilePathHash,
-		ReEncryptionKey:           authTicket.ReEncryptionKey,
+		OwnerID:                   allocationObj.OwnerID,
+		ClientID:                  clientID,
+		FilePathHash:              pathHash,
+		ReEncryptionKey:           allocationObj.OwnerPublicKey,
 		ClientEncryptionPublicKey: request.EncryptionPublicKey,
-		ExpiryAt:                  common.ToTime(authTicket.Expiration),
+		ExpiryAt:                  common.ToTime(allocationObj.Expiration),
 	}
 
-	existingShare, err := reference.GetShareInfo(ctx, authTicket.ClientID, authTicket.FilePathHash)
+	existingShare, err := reference.GetShareInfo(ctx, clientID, pathHash)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error getting share info")
 	}
 
 	if existingShare != nil {
@@ -815,7 +822,7 @@ func (fsh *StorageHandler) InsertShare(ctx context.Context, request *blobbergrpc
 		err = reference.AddShareInfo(ctx, shareInfo)
 	}
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error updating/adding share")
 	}
 
 	resp := &blobbergrpc.MarketplaceShareInfoResponse{
