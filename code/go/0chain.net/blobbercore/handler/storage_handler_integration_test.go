@@ -75,7 +75,7 @@ func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
 				EncryptionPublicKey: pubKey,
 				AuthTicket:          "",
 				HttpMethod:          http.MethodPost,
-				Path:                "/",
+				Path:                "examplePath",
 				RefereeClientId:     "",
 			},
 			expectingError: false,
