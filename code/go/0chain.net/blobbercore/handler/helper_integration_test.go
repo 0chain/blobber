@@ -522,7 +522,7 @@ func (c *TestDataController) AddMarketplaceShareInfoTestData(allocationTx, pubKe
 		return err
 	}
 
-	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
+	expTime := time.Now().Add(time.Hour * 1000).UnixNano()
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, repairer_id, is_immutable)
