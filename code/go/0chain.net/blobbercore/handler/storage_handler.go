@@ -777,12 +777,11 @@ func (fsh *StorageHandler) InsertShare(ctx context.Context, request *blobbergrpc
 		return nil, errors.Wrap(err, "Invalid signature")
 	}
 
-
 	if request.Path == "" {
 		Logger.Error("Invalid request path passed in the request")
 		return nil, errors.Wrapf(errors.New("invalid request parameters"), "invalid request path")
 	}
-	PathHash := reference.GetReferenceLookup(request.Allocation, request.Path)
+	PathHash := reference.GetReferenceLookup(allocationObj.ID, request.Path)
 
 	fileReference, err := reference.GetReferenceFromLookupHash(ctx, allocationObj.ID, PathHash)
 	if err != nil {
