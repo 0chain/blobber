@@ -21,6 +21,7 @@ import (
 	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 	"github.com/0chain/gosdk/zcncore"
 	mocket "github.com/selvatico/go-mocket"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
 )
@@ -150,33 +151,55 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 			expectedMessage: "some_new_file",
 			expectingError:  false,
 			setupDbMock: func() {
+				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY level, lookup_hash%!!(string=allocation id)!(string=old_file.pdf/%!)(MISSING)!(string=old_file.pdf)(EXTRA string=allocation id)`
 				mocket.Catcher.NewMock().OneTime().WithQuery(
 					`SELECT * FROM "reference_objects" WHERE`,
-				).WithReply(
-					[]map[string]interface{}{{
-						"id":          2,
-						"level":       1,
-						"lookup_hash": "lookup_hash",
-					}},
-				)
+				).WithQuery(query).
+					WithReply(
+						[]map[string]interface{}{{
+							"id":          2,
+							"level":       1,
+							"lookup_hash": "lookup_hash",
+							"path":        "old_file.pdf",
+						}},
+					)
 
-				// root ref
+				query = `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY level, lookup_hash%!!(string=allocation id)!(string=)!(string=.)!(string=allocation id)!(string=old_file.pdf)(EXTRA string=allocation id)`
 				mocket.Catcher.NewMock().OneTime().WithQuery(
 					`SELECT * FROM "reference_objects" WHERE`,
-				).WithArgs("", alloc.ID).WithReply(
+				).WithQuery(query).WithReply(
 					[]map[string]interface{}{{
 						"id":          1,
 						"level":       0,
 						"lookup_hash": "lookup_hash_root",
-					}},
+						"path":        "/",
+						"parent_path": ".",
+					},
+						{
+							"id":          2,
+							"level":       1,
+							"lookup_hash": "lookup_hash",
+							"path":        "old_file.pdf",
+							"parent_path": "/",
+						}},
 				)
 
+				mocket.Catcher.NewMock().OneTime().WithQuery(
+					`INSERT INTO "reference_objects"`,
+				).WithQuery(query).WithReply(
+					[]map[string]interface{}{{
+						"id":          2,
+						"level":       1,
+						"lookup_hash": "lookup_hash",
+						"path":        "new_file.pdf",
+					}},
+				)
 			},
 		},
 	}
 
 	for _, tc := range testCases {
-		datastore.MocketTheStore(t, false)
+		datastore.MocketTheStore(t, true)
 		tc.setupDbMock()
 
 		ctx := context.TODO()
@@ -198,9 +221,8 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 			t.Fatal("expected error")
 		}
 
-		if response.Name != tc.expectedMessage {
-			t.Fatal("failed!")
-		}
+		require.EqualValues(t, len(response.Children), 1)
+		require.EqualValues(t, response.Children[0].Path, tc.newName)
 	}
 }
 
