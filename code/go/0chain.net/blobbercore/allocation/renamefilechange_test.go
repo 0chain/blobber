@@ -41,10 +41,6 @@ func (MockFileBlockGetter) GetFileBlock(
 	return []byte(mockFileBlock), nil
 }
 
-func setMockFileBlock(data []byte) {
-	mockFileBlock = data
-}
-
 func resetMockFileBlock() {
 	mockFileBlock = []byte("mock")
 }
