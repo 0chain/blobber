@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -139,18 +140,78 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 		setupDbMock     func()
 	}{
 		{
+			name:            "Cant_find_file_object",
+			allocChange:     &AllocationChange{},
+			allocRoot:       "/",
+			path:            "/old_dir",
+			newName:         "/new_dir",
+			expectedMessage: "Invalid path. Could not find object tree",
+			expectingError:  true,
+			setupDbMock: func() {
+				mocket.Catcher.Reset()
+			},
+		},
+		{
+			name:            "Dirname_Change_Ok",
+			allocChange:     &AllocationChange{},
+			allocRoot:       "/",
+			path:            "/old_dir",
+			newName:         "/new_dir",
+			expectedMessage: "",
+			expectingError:  false,
+			setupDbMock: func() {
+				mocket.Catcher.Reset()
+
+				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY level, lookup_hash%!!(string=allocation id)!(string=/old_dir/%!)(MISSING)!(string=/old_dir)(EXTRA string=allocation id)`
+				mocket.Catcher.NewMock().OneTime().WithQuery(
+					`SELECT * FROM "reference_objects" WHERE`,
+				).WithQuery(query).
+					WithReply(
+						[]map[string]interface{}{{
+							"id":          2,
+							"level":       1,
+							"lookup_hash": "lookup_hash",
+							"path":        "/old_dir",
+						}},
+					)
+
+				query = `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY level, lookup_hash%!!(string=allocation id)!(string=)!(string=/)!(string=allocation id)!(string=/old_dir)(EXTRA string=allocation id)`
+				mocket.Catcher.NewMock().OneTime().WithQuery(
+					`SELECT * FROM "reference_objects" WHERE`,
+				).WithQuery(query).WithReply(
+					[]map[string]interface{}{{
+						"id":          1,
+						"level":       0,
+						"lookup_hash": "lookup_hash_root",
+						"path":        "/",
+						"parent_path": ".",
+					},
+						{
+							"id":          2,
+							"level":       1,
+							"lookup_hash": "lookup_hash",
+							"path":        "/old_dir",
+							"parent_path": "/",
+						}},
+				)
+
+				mocket.Catcher.NewMock().WithQuery(`INSERT INTO "reference_objects"`).
+					WithID(1)
+			},
+		},
+		{
 			name:            "Filename_Change_Ok",
 			allocChange:     &AllocationChange{},
 			allocRoot:       "/",
 			path:            "old_file.pdf",
 			newName:         "new_file.pdf",
-			expectedMessage: "some_new_file",
+			expectedMessage: "",
 			expectingError:  false,
 			setupDbMock: func() {
+				mocket.Catcher.Reset()
+
 				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY level, lookup_hash%!!(string=allocation id)!(string=old_file.pdf/%!)(MISSING)!(string=old_file.pdf)(EXTRA string=allocation id)`
-				mocket.Catcher.NewMock().OneTime().WithQuery(
-					`SELECT * FROM "reference_objects" WHERE`,
-				).WithQuery(query).
+				mocket.Catcher.NewMock().OneTime().WithQuery(query).
 					WithReply(
 						[]map[string]interface{}{{
 							"id":          2,
@@ -161,9 +222,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 					)
 
 				query = `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY level, lookup_hash%!!(string=allocation id)!(string=)!(string=.)!(string=allocation id)!(string=old_file.pdf)(EXTRA string=allocation id)`
-				mocket.Catcher.NewMock().OneTime().WithQuery(
-					`SELECT * FROM "reference_objects" WHERE`,
-				).WithQuery(query).WithReply(
+				mocket.Catcher.NewMock().OneTime().WithQuery(query).WithReply(
 					[]map[string]interface{}{{
 						"id":          1,
 						"level":       0,
@@ -180,16 +239,19 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 						}},
 				)
 
-				mocket.Catcher.NewMock().OneTime().WithQuery(
-					`INSERT INTO "reference_objects"`,
-				).WithQuery(query).WithReply(
-					[]map[string]interface{}{{
-						"id":          2,
-						"level":       1,
-						"lookup_hash": "lookup_hash",
-						"path":        "new_file.pdf",
-					}},
-				)
+				query = `SELECT * FROM "reference_objects" WHERE "id" = $1 AND "reference_objects"."deleted_at" IS NULL ORDER BY "reference_objects"."id" LIMIT 1%!(EXTRA int64=1)`
+				mocket.Catcher.NewMock().OneTime().WithQuery(query).
+					WithReply(
+						[]map[string]interface{}{{
+							"id":          1,
+							"level":       0,
+							"lookup_hash": "lookup_hash_root",
+							"path":        "/",
+							"parent_path": ".",
+						}},
+					)
+				mocket.Catcher.NewMock().WithQuery(`INSERT INTO "reference_objects"`).
+					WithID(1)
 			},
 		},
 	}
@@ -208,6 +270,11 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 		if err != nil {
 			if !tc.expectingError {
 				t.Fatal(err)
+			}
+
+			if tc.expectingError && strings.Contains(tc.expectedMessage, err.Error()) {
+				t.Fatal("expected error " + tc.expectedMessage)
+				break
 			}
 
 			continue
