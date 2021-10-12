@@ -198,6 +198,9 @@ func GetSubDirsFromPath(p string) []string {
 	parent = filepath.Clean(parent)
 	subDirs := make([]string, 0)
 	for len(cur) > 0 {
+		if cur == "." {
+			break
+		}
 		subDirs = append([]string{cur}, subDirs...)
 		parent, cur = filepath.Split(parent)
 		parent = filepath.Clean(parent)
