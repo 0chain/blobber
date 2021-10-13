@@ -259,7 +259,7 @@ func (fr *Ref) GetFileHashData() string {
 	if len(fr.Attributes) == 0 {
 		fr.Attributes = datatypes.JSON("{}")
 	}
-	hashArray := make([]string, 0)
+	hashArray := make([]string, 0, 11)
 	hashArray = append(hashArray, fr.AllocationID)
 	hashArray = append(hashArray, fr.Type)
 	hashArray = append(hashArray, fr.Name)
@@ -271,17 +271,17 @@ func (fr *Ref) GetFileHashData() string {
 	hashArray = append(hashArray, fr.ActualFileHash)
 	hashArray = append(hashArray, string(fr.Attributes))
 	hashArray = append(hashArray, strconv.FormatInt(fr.ChunkSize, 10))
-	return strings.Join(hashArray, ":")
+
+	hashData := strings.Join(hashArray, ":")
+	//fmt.Println(fr.Path, hashData)
+	return hashData
 }
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
-	// fmt.Println("fileref name , path, hash", fr.Name, fr.Path, fr.Hash)
-	// fmt.Println("Fileref hash data: " + fr.GetFileHashData())
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
-	// fmt.Println("Fileref hash : " + fr.Hash)
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
 	fr.PathHash = GetReferenceLookup(fr.AllocationID, fr.Path)
-	fr.PathLevel = len(GetSubDirsFromPath(fr.Path)) + 1 //strings.Count(fr.Path, "/")
+	fr.PathLevel = len(GetSubDirsFromPath(fr.Path)) + 1
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	var err error
 	if saveToDB {
@@ -314,15 +314,13 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
 	}
-	// fmt.Println("ref name and path, hash :" + r.Name + " " + r.Path + " " + r.Hash)
-	// fmt.Println("ref hash data: " + strings.Join(childHashes, ":"))
+
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
-	// fmt.Println("ref hash : " + r.Hash)
+
 	r.NumBlocks = refNumBlocks
 	r.Size = size
-	//fmt.Println("Ref Path hash: " + strings.Join(childPathHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
-	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1 //strings.Count(r.Path, "/")
+	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
 
 	var err error
