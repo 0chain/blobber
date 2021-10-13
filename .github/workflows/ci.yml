@@ -3,8 +3,6 @@ name: CI
 on:
   push:
     branches: [ master, staging ]
-  pull_request:
-
 
   release:
     types:
