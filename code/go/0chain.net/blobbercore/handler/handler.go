@@ -452,10 +452,6 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, common.NewError("share_info_insert", "Wrong ownerID or clientID")
 	}
 
-	if allocationObj.OwnerID != authTicket.OwnerID {
-		return nil, common.NewError("share_info_insert", "Wrong owner of allocation")
-	}
-
 	shareInfo := reference.ShareInfo{
 		OwnerID:                   authTicket.OwnerID,
 		ClientID:                  authTicket.ClientID,
