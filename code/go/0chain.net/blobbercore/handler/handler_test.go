@@ -1125,7 +1125,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					body := bytes.NewBuffer(nil)
 					formWriter := multipart.NewWriter(body)
 					shareClientEncryptionPublicKey := "kkk"
-					shareClientID := "abcdefgh"
+					shareClientID := "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77"
 					require.NoError(t, formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey))
 					remotePath := "/file.txt"
 					filePathHash := "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"
@@ -1213,7 +1213,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					body := bytes.NewBuffer(nil)
 					formWriter := multipart.NewWriter(body)
 					shareClientEncryptionPublicKey := "kkk"
-					shareClientID := "abcdefgh"
+					shareClientID := "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77"
 					require.NoError(t, formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey))
 					remotePath := "/file.txt"
 					filePathHash := "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"
@@ -1303,7 +1303,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					body := bytes.NewBuffer(nil)
 					formWriter := multipart.NewWriter(body)
-					shareClientID := "abcdefgh"
+					shareClientID := "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77"
 					remotePath := "/file.txt"
 
 					require.NoError(t, formWriter.WriteField("refereeClientID", shareClientID))
@@ -1383,7 +1383,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					body := bytes.NewBuffer(nil)
 					formWriter := multipart.NewWriter(body)
-					shareClientID := "abcdefgh"
+					shareClientID := "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77"
 					remotePath := "/file.txt"
 
 					require.NoError(t, formWriter.WriteField("refereeClientID", shareClientID))
