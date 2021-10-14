@@ -29,6 +29,12 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	if err != nil {
 		return nil, err
 	}
+
+	_, err = reference.GetObjectTree(ctx, rf.AllocationID, rf.NewName)
+	if err == nil {
+		return nil, common.NewError("invalid_reference_path", "Invalid new name of path, it's already exists")
+	}
+
 	path, _ := filepath.Split(affectedRef.Path)
 	path = filepath.Clean(path)
 	affectedRef.Name = rf.NewName
