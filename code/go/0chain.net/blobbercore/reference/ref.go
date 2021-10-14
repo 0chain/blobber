@@ -272,9 +272,7 @@ func (fr *Ref) GetFileHashData() string {
 	hashArray = append(hashArray, string(fr.Attributes))
 	hashArray = append(hashArray, strconv.FormatInt(fr.ChunkSize, 10))
 
-	hashData := strings.Join(hashArray, ":")
-	//fmt.Println(fr.Path, hashData)
-	return hashData
+	return strings.Join(hashArray, ":")
 }
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
