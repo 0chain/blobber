@@ -120,6 +120,7 @@ func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef *refe
 		newFile.ActualThumbnailSize = affectedRef.ActualThumbnailSize
 		newFile.EncryptedKey = affectedRef.EncryptedKey
 		newFile.Attributes = datatypes.JSON(string(affectedRef.Attributes))
+		newFile.ChunkSize = affectedRef.ChunkSize
 
 		destRef.AddChild(newFile)
 	}
