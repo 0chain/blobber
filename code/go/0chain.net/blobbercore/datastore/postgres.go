@@ -22,7 +22,9 @@ func (store *postgresStore) Open() error {
 		"host=%v port=%v user=%v dbname=%v password=%v sslmode=disable",
 		config.Configuration.DBHost, config.Configuration.DBPort,
 		config.Configuration.DBUserName, config.Configuration.DBName,
-		config.Configuration.DBPassword)), &gorm.Config{})
+		config.Configuration.DBPassword)), &gorm.Config{
+		SkipDefaultTransaction: true, // https://gorm.io/docs/performance.html#Disable-Default-Transaction
+	})
 	if err != nil {
 		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
 	}

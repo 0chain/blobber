@@ -36,7 +36,7 @@ func GetMetaDataStore() datastore.Store {
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
 
-	r.Use(useRecovery, useCORS(), common.UseUserRateLimit)
+	r.Use(WithRecovery, WithCORS(), common.UseUserRateLimit)
 
 	//object operations
 	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONResponse(WithConnection(UploadHandler)))
@@ -44,9 +44,6 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/rename/{allocation}", common.ToJSONResponse(WithConnection(RenameHandler)))
 	r.HandleFunc("/v1/file/copy/{allocation}", common.ToJSONResponse(WithConnection(CopyHandler)))
 	r.HandleFunc("/v1/file/attributes/{allocation}", common.ToJSONResponse(WithConnection(UpdateAttributesHandler)))
-	r.HandleFunc("/v1/dir/{allocation}", common.ToJSONResponse(WithConnection(CreateDirHandler))).Methods("POST")
-	r.HandleFunc("/v1/dir/{allocation}", common.ToJSONResponse(WithConnection(CreateDirHandler))).Methods("DELETE")
-	r.HandleFunc("/v1/dir/rename/{allocation}", common.ToJSONResponse(WithConnection(CreateDirHandler))).Methods("POST")
 
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithConnection(CommitHandler)))
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.ToJSONResponse(WithConnection(CommitMetaTxnHandler)))
@@ -72,6 +69,12 @@ func SetupHandlers(r *mux.Router) {
 
 	//marketplace related
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(MarketPlaceShareInfoHandler)))
+
+	//New API handlers for better readable and performance
+
+	//directory
+	r.HandleFunc("/v1/dir/{allocation}", WithJSON(CreateDir)).Methods(http.MethodPut)
+
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
@@ -279,17 +282,6 @@ func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.CopyObject(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
-}
-
-/*CreateDirHandler is the handler to respond to create dir for allocation*/
-func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-	response, err := storageHandler.CreateDir(ctx, r)
 	if err != nil {
 		return nil, err
 	}

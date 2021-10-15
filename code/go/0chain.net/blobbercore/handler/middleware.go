@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func useCORS() func(http.Handler) http.Handler {
+func WithCORS() func(http.Handler) http.Handler {
 	headersOk := handlers.AllowedHeaders([]string{
 		"X-Requested-With", "X-App-Client-ID",
 		"X-App-Client-Key", "Content-Type",
@@ -25,13 +25,21 @@ func useCORS() func(http.Handler) http.Handler {
 	return handlers.CORS(originsOk, headersOk, methodsOk)
 }
 
-func useRecovery(h http.Handler) http.Handler {
+func WithRecovery(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
 				logging.Logger.Error("[recover]http", zap.String("url", r.URL.String()), zap.Any("err", err))
 			}
 		}()
+
+		h.ServeHTTP(w, r)
+	})
+}
+
+// WithSignature verify request signature
+func WithSignature(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		h.ServeHTTP(w, r)
 	})

@@ -1025,7 +1025,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	dirPath := r.FormValue("dir_path")
+	dirPath := r.FormValue("name")
 	if len(dirPath) == 0 {
 		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
 	}
@@ -1068,10 +1068,10 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 	connectionObj.AddChange(allocationChange, &formData)
 
-	err = filestore.GetFileStore().CreateDir(dirPath)
-	if err != nil {
-		return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
-	}
+	// err = filestore.GetFileStore().CreateDir(dirPath)
+	// if err != nil {
+	// 	return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
+	// }
 
 	err = connectionObj.ApplyChanges(ctx, "/")
 	if err != nil {
