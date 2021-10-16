@@ -41,8 +41,9 @@ const (
 // https://gorm.io/docs/performance.html#Caches-Prepared-Statement
 func DryRun(db *gorm.DB) {
 
+	// https://gorm.io/docs/session.html#DryRun
 	// Session mode
-	tx := db.Session(&gorm.Session{PrepareStmt: true})
+	tx := db.Session(&gorm.Session{PrepareStmt: true, DryRun: true})
 
 	// use Table instead of Model to reduce reflect times
 

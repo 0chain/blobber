@@ -215,7 +215,7 @@ func setupDatabase() {
 
 	db := datastore.GetStore().GetDB()
 	log.Println("[db] migrate")
-	models.AutoMigrate(db, config.Configuration.DBUserName)
+	models.AutoMigrate(db)
 
 	//run DryRun in background worker
 	go func() {
