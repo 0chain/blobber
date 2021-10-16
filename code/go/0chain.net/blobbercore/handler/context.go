@@ -70,7 +70,7 @@ func WithJSON(handler func(ctx *Context) (interface{}, error)) func(w http.Respo
 		if statusCode == 0 {
 			statusCode = http.StatusOK
 		}
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(statusCode)
 
 		if result != nil {
 			json.NewEncoder(w).Encode(result) //nolint
