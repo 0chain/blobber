@@ -22,7 +22,7 @@ lint:
 
 .PHONY: integration-tests
 integration-tests:
-	go test -tags bn256  -p 1 ./... -args integration;
+	go test -tags bn256 ./... -args integration;
 
 
 
