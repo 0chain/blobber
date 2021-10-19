@@ -534,10 +534,16 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, path, alloc.ID, "/", "", alloc.ID).
+					WithArgs(alloc.ID, "/").
 					WillReturnRows(
-						sqlmock.NewRows([]string{"path"}).
-							AddRow("/"),
+						sqlmock.NewRows([]string{"path", "parent_path"}).AddRow("/", ""),
+					)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					WithArgs(alloc.ID, path).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"path", "parent_path"}).
+							AddRow(path, "/"),
 					)
 
 				mock.ExpectCommit()

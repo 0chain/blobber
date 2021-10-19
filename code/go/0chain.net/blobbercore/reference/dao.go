@@ -58,7 +58,7 @@ func Get(ctx context.Context, db *gorm.DB, allocationTx, path string) (*models.R
 }
 
 const (
-	SQLWhereGetByAllocationTxAndPath = "reference_objects.allocation_id = ? and reference_objects.path = ?"
+	SQLWhereGetByAllocationTxAndPath = "reference_objects.allocation_id = ? and reference_objects.path = ? and deleted_at is NULL"
 )
 
 // DryRun  Creates a prepared statement when executing any SQL and caches them to speed up future calls
@@ -73,5 +73,8 @@ func DryRun(db *gorm.DB) {
 
 	// prepare statement for GetOrCreate
 	tx.Table(models.TableNameAllocation).Where(SQLWhereGetByAllocationTxAndPath, "allocation_id", "path").First(&models.ReferenceObject{})
+	// count
+	var count int64
+	tx.Table(models.TableNameAllocation).Where(SQLWhereGetByAllocationTxAndPath, "allocation_id", "path").Count(&count)
 
 }

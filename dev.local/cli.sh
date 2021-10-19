@@ -248,4 +248,5 @@ select f in "install postgres" "start blobber" "start validator" "clean"; do
     esac
 done
 
-
+# 
+# --port 5051 --grpc_port 31501 --hostname 192.168.31.110 --deployment_mode 0 --keys_file ../../../../docker.local/keys_config/b0bnode1_keys.txt --minio_file ../../../../docker.local/keys_config/minio_config.txt --files_dir ../../../../dev.local/data/blobber/files --log_dir ../../../../dev.local/data/blobber/log --db_dir ../../../../dev.local/data/blobber/data --config_dir ../../../../dev.local/data/blobber/config
