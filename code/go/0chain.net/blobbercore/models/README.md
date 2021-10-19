@@ -11,6 +11,15 @@ NB: current schema that is created by sql scripts is versioned as `0.0.0`.
 
 ## How to add a new version
 
+### Migrate table/column in gorm.AutoMigrate
+ if migration works with gorm.AutoMigrate, please use it to migrate. It works without releasing new `Version` 
+ - update your model
+ - added your model in [AutoMigrate](https://github.com/0chain/blobber/blob/0aea42103f924138d3cf1896569e6b44e85e8e45/code/go/0chain.net/blobbercore/models/migration.go#L63) if it doesn't exists
+  ```
+   db.AutoMigrate(&Migration{},&YourModel{})
+  ```
+
+### Migrate index/constraints manually if it is not easy to do in `AutoMigrate`
 - create a new `Migration` with scripts
 - append it in releases
 ```
