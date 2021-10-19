@@ -260,7 +260,7 @@ func (fr *Ref) GetFileHashData() string {
 	if len(fr.Attributes) == 0 {
 		fr.Attributes = datatypes.JSON("{}")
 	}
-	hashArray := make([]string, 0)
+	hashArray := make([]string, 0, 11)
 	hashArray = append(hashArray, fr.AllocationID)
 	hashArray = append(hashArray, fr.Type)
 	hashArray = append(hashArray, fr.Name)
@@ -272,6 +272,7 @@ func (fr *Ref) GetFileHashData() string {
 	hashArray = append(hashArray, fr.ActualFileHash)
 	hashArray = append(hashArray, string(fr.Attributes))
 	hashArray = append(hashArray, strconv.FormatInt(fr.ChunkSize, 10))
+
 	return strings.Join(hashArray, ":")
 }
 
@@ -308,15 +309,16 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	childPathHashes := make([]string, 0, len(r.Children))
 	var refNumBlocks int64
 	var size int64
+
 	for _, childRef := range r.Children {
 		if len(childRef.Hash) > 0 {
 			childHashes = append(childHashes, childRef.Hash)
 			childPathHashes = append(childPathHashes, childRef.PathHash)
-
 			refNumBlocks += childRef.NumBlocks
 			size += childRef.Size
 		}
 	}
+
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
 	r.NumBlocks = refNumBlocks
 	r.Size = size

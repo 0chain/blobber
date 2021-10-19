@@ -5,11 +5,7 @@ on:
     branches:
       - master
       - staging
-      - stream
-    pull_request:
-      - master
-      - staging
-      - stream
+  pull_request:
 
 jobs:
   unit_tests:
