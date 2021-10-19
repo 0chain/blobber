@@ -38,8 +38,8 @@ func TestCreateDir(t *testing.T) {
 		t.Run(it.TestName, func(test *testing.T) {
 			body := &bytes.Buffer{}
 			formWriter := multipart.NewWriter(body)
-			formWriter.WriteField("connection_id", "connection_id")
-			formWriter.WriteField("name", it.ArgName)
+			formWriter.WriteField("connection_id", "connection_id") //nolint
+			formWriter.WriteField("name", it.ArgName)               //nolint
 			formWriter.Close()
 
 			ctx := &Context{
