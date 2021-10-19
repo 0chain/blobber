@@ -51,7 +51,7 @@ func Get(ctx context.Context, db *gorm.DB, allocationTx, path string) (*models.R
 	}
 
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return it, errors.Throw(constants.ErrEntityNotFound, "alloction_id: "+allocationTx+" path: "+path)
+		return it, errors.Throw(constants.ErrEntityNotFound, "allocation_id: "+allocationTx+" path: "+path)
 	}
 
 	return nil, errors.ThrowLog(result.Error.Error(), constants.ErrBadDatabaseOperation)

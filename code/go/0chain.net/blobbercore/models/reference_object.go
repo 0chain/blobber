@@ -1,10 +1,7 @@
 package models
 
 import (
-	"time"
-
 	"gorm.io/datatypes"
-	"gorm.io/gorm"
 )
 
 const TableNameReferenceObject = "reference_objects"
@@ -38,11 +35,9 @@ type ReferenceObject struct {
 
 	OnCloud bool `gorm:"column:on_cloud"`
 
-	CreatedAt time.Time      `gorm:"column:created_at"`
-	UpdatedAt time.Time      `gorm:"column:updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
-
 	ChunkSize int64 `gorm:"column:chunk_size"`
+
+	ModelWithTS
 }
 
 func (ReferenceObject) TableName() string {
