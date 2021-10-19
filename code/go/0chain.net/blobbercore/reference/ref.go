@@ -205,6 +205,7 @@ func GetSubDirsFromPath(p string) []string {
 	return subDirs
 }
 
+// GetRefWithChildren only works for cli list
 func GetRefWithChildren(ctx context.Context, allocationID string, path string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
@@ -275,13 +276,10 @@ func (fr *Ref) GetFileHashData() string {
 }
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
-	// fmt.Println("fileref name , path, hash", fr.Name, fr.Path, fr.Hash)
-	// fmt.Println("Fileref hash data: " + fr.GetFileHashData())
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
-	// fmt.Println("Fileref hash : " + fr.Hash)
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
 	fr.PathHash = GetReferenceLookup(fr.AllocationID, fr.Path)
-	fr.PathLevel = len(GetSubDirsFromPath(fr.Path)) + 1 //strings.Count(fr.Path, "/")
+	fr.PathLevel = len(GetSubDirsFromPath(fr.Path)) + 1
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	var err error
 	if saveToDB {
@@ -293,7 +291,9 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, error) {
 	// empty directory, return hash directly
 	if len(r.Children) == 0 && !r.childrenLoaded {
-		return r.Hash, nil
+		// skip empty directory in hash
+		return "", nil
+		//return r.Hash, nil
 	}
 	sort.SliceStable(r.Children, func(i, j int) bool {
 		return strings.Compare(r.Children[i].LookupHash, r.Children[j].LookupHash) == -1
@@ -304,25 +304,24 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 			return "", err
 		}
 	}
-	childHashes := make([]string, len(r.Children))
-	childPathHashes := make([]string, len(r.Children))
+	childHashes := make([]string, 0, len(r.Children))
+	childPathHashes := make([]string, 0, len(r.Children))
 	var refNumBlocks int64
 	var size int64
-	for index, childRef := range r.Children {
-		childHashes[index] = childRef.Hash
-		childPathHashes[index] = childRef.PathHash
-		refNumBlocks += childRef.NumBlocks
-		size += childRef.Size
+	for _, childRef := range r.Children {
+		if len(childRef.Hash) > 0 {
+			childHashes = append(childHashes, childRef.Hash)
+			childPathHashes = append(childPathHashes, childRef.PathHash)
+
+			refNumBlocks += childRef.NumBlocks
+			size += childRef.Size
+		}
 	}
-	// fmt.Println("ref name and path, hash :" + r.Name + " " + r.Path + " " + r.Hash)
-	// fmt.Println("ref hash data: " + strings.Join(childHashes, ":"))
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
-	// fmt.Println("ref hash : " + r.Hash)
 	r.NumBlocks = refNumBlocks
 	r.Size = size
-	//fmt.Println("Ref Path hash: " + strings.Join(childPathHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
-	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1 //strings.Count(r.Path, "/")
+	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
 
 	var err error

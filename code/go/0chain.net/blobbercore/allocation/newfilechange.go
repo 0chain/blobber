@@ -11,7 +11,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/gosdk/constants"
 )
 
 type NewFileChange struct {
@@ -115,15 +114,6 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 
 func (nf *NewFileChange) ProcessChange(ctx context.Context,
 	change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
-
-	if change.Operation == constants.FileOperationCreateDir {
-		err := nf.Unmarshal(change.Input)
-		if err != nil {
-			return nil, err
-		}
-
-		return nf.CreateDir(ctx, nf.AllocationID, nf.Path, allocationRoot)
-	}
 
 	path, _ := filepath.Split(nf.Path)
 	path = filepath.Clean(path)

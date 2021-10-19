@@ -7,7 +7,10 @@ import (
 	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/models"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/errors"
+	"github.com/0chain/gosdk/constants"
 	"gorm.io/gorm"
 )
 
@@ -23,31 +26,46 @@ func GetReferencePath(ctx context.Context, allocationID string, path string) (*R
 
 // GetReferencePathFromPaths validate and build full dir tree from db, and CalculateHash and return root Ref
 func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
-	var refs []Ref
+	refs := make([]Ref, 0)
 	db := datastore.GetStore().GetTransaction(ctx)
 	pathsAdded := make(map[string]bool)
 	for _, path := range paths {
-		if _, ok := pathsAdded[path]; !ok {
-			db = db.Where(Ref{ParentPath: path, AllocationID: allocationID})
-			pathsAdded[path] = true
-		}
-		depth := len(GetSubDirsFromPath(path)) + 1
-		curPath := filepath.Dir(path)
-		for i := 0; i < depth-1; i++ {
-			if _, ok := pathsAdded[curPath]; !ok {
-				db = db.Or(Ref{ParentPath: curPath, AllocationID: allocationID})
-				pathsAdded[curPath] = true
+		rw := NewRefWalkerFromPath(path)
+
+		rw.Top()
+
+		for {
+
+			p := rw.Path()
+
+			if len(p) == 0 {
+				break
 			}
-			curPath = filepath.Dir(curPath)
+
+			if ok := pathsAdded[p]; !ok {
+
+				var ref Ref
+				err := db.Table(models.TableNameReferenceObject).
+					Where(SQLWhereGetByAllocationTxAndPath, allocationID, p).
+					First(&ref).Error
+
+				if err == nil {
+					pathsAdded[p] = true
+					refs = append(refs, ref)
+				} else {
+					if !errors.Is(gorm.ErrRecordNotFound, err) {
+						return nil, errors.ThrowLog(err.Error(), constants.ErrBadDatabaseOperation, "ref: "+p)
+					}
+				}
+
+			}
+
+			if !rw.Forward() {
+				break
+			}
 		}
 	}
 
-	// root reference_objects with parent_path=""
-	db = db.Or("parent_path = ? AND allocation_id = ?", "", allocationID)
-	err := db.Order("level, lookup_hash").Find(&refs).Error
-	if err != nil {
-		return nil, err
-	}
 	// there is no any child reference_objects for affected path, and instert root reference_objects
 	if len(refs) == 0 {
 		return &Ref{Type: DIRECTORY, AllocationID: allocationID, Name: "/", Path: "/", ParentPath: "", PathLevel: 1}, nil

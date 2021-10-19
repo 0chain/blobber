@@ -69,9 +69,12 @@ func (r *DirMetaData) GetHash() string {
 
 func (r *DirMetaData) CalculateHash() string {
 
-	childHashes := make([]string, len(r.Children))
-	for index, childRef := range r.Children {
-		childHashes[index] = childRef.GetHash()
+	childHashes := make([]string, 0, len(r.Children))
+	for _, childRef := range r.Children {
+		if len(childRef.GetHash()) > 0 {
+			childHashes = append(childHashes, childRef.GetHash())
+		}
+
 	}
 
 	return encryption.Hash(strings.Join(childHashes, ":"))

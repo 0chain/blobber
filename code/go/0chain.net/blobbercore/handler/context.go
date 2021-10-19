@@ -36,6 +36,7 @@ type Context struct {
 	StatusCode int
 }
 
+// WithJSON respond to request with json
 func WithJSON(handler func(ctx *Context) (interface{}, error)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
@@ -45,7 +46,7 @@ func WithJSON(handler func(ctx *Context) (interface{}, error)) func(w http.Respo
 			return
 		}
 
-		ctx, err := WithContext(r)
+		ctx, err := WithAuth(r)
 
 		var result interface{}
 		if err == nil {
@@ -79,7 +80,8 @@ func WithJSON(handler func(ctx *Context) (interface{}, error)) func(w http.Respo
 	}
 }
 
-func WithContext(r *http.Request) (*Context, error) {
+// WithAuth verify alloation and signature
+func WithAuth(r *http.Request) (*Context, error) {
 
 	ctx := &Context{
 		Context: context.TODO(),
