@@ -59,7 +59,7 @@ docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.
 
 ```
 
-./docker.local/bin/build.blobber.sh
+./docker.local/bin/build.blobber.base.sh && ./docker.local/bin/build.blobber.sh && ./docker.local/bin/build.validator.sh
 
 ```
 
