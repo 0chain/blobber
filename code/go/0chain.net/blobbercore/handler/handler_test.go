@@ -1125,7 +1125,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					body := bytes.NewBuffer(nil)
 					formWriter := multipart.NewWriter(body)
 					shareClientEncryptionPublicKey := "kkk"
-					shareClientID := "abcdefgh"
+					shareClientID := "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77"
 					require.NoError(t, formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey))
 					remotePath := "/file.txt"
 					filePathHash := "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"
@@ -1188,12 +1188,12 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
-					WithArgs("abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
+					WithArgs("da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
 					WillReturnRows(sqlmock.NewRows([]string{}))
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`INSERT INTO "marketplace_share_info"`).
-					WithArgs(client.GetClientID(), "abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c", "regenkey", aa, false, aa).
+					WithArgs(client.GetClientID(), "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c", "regenkey", aa, false, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 			},
 			wantCode: http.StatusOK,
@@ -1213,7 +1213,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					body := bytes.NewBuffer(nil)
 					formWriter := multipart.NewWriter(body)
 					shareClientEncryptionPublicKey := "kkk"
-					shareClientID := "abcdefgh"
+					shareClientID := "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77"
 					require.NoError(t, formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey))
 					remotePath := "/file.txt"
 					filePathHash := "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"
@@ -1276,7 +1276,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
-					WithArgs("abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
+					WithArgs("da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
 					WillReturnRows(
 						sqlmock.NewRows([]string{"client_id", "owner_id"}).
 							AddRow("abcdefgh", "owner"),
@@ -1284,7 +1284,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`UPDATE "marketplace_share_info"`).
-					WithArgs("regenkey", "kkk", false, aa, "abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
+					WithArgs("regenkey", "kkk", false, aa, "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
 					WillReturnResult(sqlmock.NewResult(0, 1))
 			},
 			wantCode: http.StatusOK,
@@ -1303,7 +1303,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					body := bytes.NewBuffer(nil)
 					formWriter := multipart.NewWriter(body)
-					shareClientID := "abcdefgh"
+					shareClientID := "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77"
 					remotePath := "/file.txt"
 
 					require.NoError(t, formWriter.WriteField("refereeClientID", shareClientID))
@@ -1363,7 +1363,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				mock.ExpectExec(regexp.QuoteMeta(`UPDATE "marketplace_share_info"`)).
-					WithArgs(true, "abcdefgh", filePathHash).
+					WithArgs(true, "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77", filePathHash).
 					WillReturnResult(sqlmock.NewResult(0, 1))
 
 			},
@@ -1383,7 +1383,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					body := bytes.NewBuffer(nil)
 					formWriter := multipart.NewWriter(body)
-					shareClientID := "abcdefgh"
+					shareClientID := "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77"
 					remotePath := "/file.txt"
 
 					require.NoError(t, formWriter.WriteField("refereeClientID", shareClientID))
@@ -1443,7 +1443,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				mock.ExpectExec(regexp.QuoteMeta(`UPDATE "marketplace_share_info"`)).
-					WithArgs(true, "abcdefgh", filePathHash).
+					WithArgs(true, "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77", filePathHash).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 			},
