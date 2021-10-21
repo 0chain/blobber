@@ -79,16 +79,13 @@ func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString
 		}
 
 		authRefPath := authTokenRef.Path
-		if strings.HasPrefix(authRefPath, ".") {
+		if strings.HasPrefix(authRefPath, ".") || authRefPath == "/" {
 			authRefPath = ""
 		}
 
 		if refRequested.ParentPath != authTokenRef.Path && !strings.HasPrefix(parentPath, authRefPath+"/") {
 			return false, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
 		}
-		//if refRequested.ParentPath != authTokenRef.Path && !strings.HasPrefix(refRequested.ParentPath, authTokenRef.Path+"/") {
-		//	return false, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
-		//}
 	}
 
 	return true, nil
