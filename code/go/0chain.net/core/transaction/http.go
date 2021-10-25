@@ -2,10 +2,9 @@ package transaction
 
 import (
 	"context"
-	"crypto/sha1"
 	"encoding/hex"
+	"hash/fnv"
 	"math"
-	"strconv"
 
 	"fmt"
 	"io"
@@ -21,8 +20,6 @@ import (
 	"github.com/0chain/gosdk/core/resty"
 	"github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/zcncore"
-
-	"go.uber.org/zap"
 )
 
 const TXN_SUBMIT_URL = "v1/transaction/put"
@@ -122,26 +119,23 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		url := req.URL.String()
 
 		if resp.StatusCode != http.StatusOK {
-			resBody, _ := ioutil.ReadAll(resp.Body)
 			resp.Body.Close()
+			errorMsg := "[sharder]" + resp.Status + ": " + url
+			msgList = append(msgList, errorMsg)
 
-			Logger.Error("[sharder]"+resp.Status, zap.String("url", req.URL.String()), zap.String("response", string(resBody)))
-
-			msgList = append(msgList, url+": ["+strconv.Itoa(resp.StatusCode)+"] "+string(resBody))
-
-			return errors.Throw(ErrBadRequest, req.URL.String()+" "+resp.Status)
+			return errors.Throw(ErrBadRequest, errorMsg)
 
 		}
 
-		hash := sha1.New()
+		hash := fnv.New32() //use fnv for better performance
 		teeReader := io.TeeReader(resp.Body, hash)
 		resBody, err := ioutil.ReadAll(teeReader)
 		resp.Body.Close()
 
 		if err != nil {
-			Logger.Error("[sharder]"+err.Error(), zap.String("url", req.URL.String()), zap.String("response", string(resBody)))
-			msgList = append(msgList, url+": "+err.Error())
-			return errors.Throw(ErrBadRequest, req.URL.String()+" "+err.Error())
+			errorMsg := "[sharder]body: " + url + " " + err.Error()
+			msgList = append(msgList, errorMsg)
+			return errors.Throw(ErrBadRequest, errorMsg)
 
 		}
 
