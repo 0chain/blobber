@@ -226,6 +226,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			if vt.Result {
 				numSuccess++
 			} else {
+				Logger.Error("[challenge]ticket: "+vt.Message, zap.String("validator", vt.ValidatorID))
 				numFailure++
 			}
 			numValidatorsResponded++
@@ -262,6 +263,7 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 				cr.Status = Committed
 				cr.StatusMessage = t.TransactionOutput
 				cr.CommitTxnID = t.Hash
+				cr.UpdatedAt = time.Now().UTC()
 				if err := cr.Save(ctx); err != nil {
 					Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 				}
@@ -281,6 +283,7 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		if t != nil {
 			cr.CommitTxnID = t.Hash
 			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
+			cr.UpdatedAt = time.Now().UTC()
 		}
 		cr.ErrorChallenge(ctx, err)
 		Logger.Error("[challenge]submit: Error while submitting challenge to BC.", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
