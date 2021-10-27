@@ -18,7 +18,7 @@ import (
 )
 
 func TestBlobberGRPCService_DownloadFile(t *testing.T) {
-	bClient, tdController := setupHandlerTests(t)
+	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 
 	root, _ := os.Getwd()

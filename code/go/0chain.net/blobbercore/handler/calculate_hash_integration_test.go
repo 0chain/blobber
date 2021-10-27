@@ -11,7 +11,7 @@ import (
 )
 
 func TestBlobberGRPCService_CalculateHash(t *testing.T) {
-	bClient, tdController := setupHandlerTests(t)
+	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))

@@ -14,7 +14,7 @@ import (
 )
 
 func TestBlobberGRPCService_UpdateObjectAttributes(t *testing.T) {
-	bClient, tdController := setupHandlerTests(t)
+	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)

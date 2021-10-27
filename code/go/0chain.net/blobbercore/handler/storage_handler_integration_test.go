@@ -13,7 +13,7 @@ import (
 )
 
 func TestBlobberGRPCService_MarketplaceShareInfo(t *testing.T) {
-	bClient, tdController := setupHandlerTests(t)
+	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
