@@ -148,7 +148,7 @@ block_worker: http://198.18.0.98:9091
 
   
 
-This works as a dns service, You need to know the above url for any network you want to connect, Just replace it in the above metioned file.
+This works as a dns service, You need to know the above url for any network you want to connect, Just replace it in the above mentioned file.
 
 For example: If you want to connect to beta network
 
