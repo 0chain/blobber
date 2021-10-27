@@ -10,8 +10,8 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func TestGetFilestats_IntegrationTest(t *testing.T) {
-	bClient, tdController := setupHandlerIntegrationTests(t)
+func TestBlobberGRPCService_GetObjectPath(t *testing.T) {
+	bClient, tdController := setupHandlerTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
@@ -21,17 +21,17 @@ func TestGetFilestats_IntegrationTest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = tdController.AddGetFileStatsTestData(allocationTx, pubKey)
+	err = tdController.AddGetObjectPathTestData(allocationTx, pubKey)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	testCases := []struct {
-		name             string
-		context          metadata.MD
-		input            *blobbergrpc.GetFileStatsRequest
-		expectedFileName string
-		expectingError   bool
+		name           string
+		context        metadata.MD
+		input          *blobbergrpc.GetObjectPathRequest
+		expectedPath   string
+		expectingError bool
 	}{
 		{
 			name: "Success",
@@ -39,34 +39,20 @@ func TestGetFilestats_IntegrationTest(t *testing.T) {
 				common.ClientHeader:          "exampleOwnerId",
 				common.ClientSignatureHeader: clientSignature,
 			}),
-			input: &blobbergrpc.GetFileStatsRequest{
-				Path:       "examplePath",
-				PathHash:   "exampleId:examplePath",
+			input: &blobbergrpc.GetObjectPathRequest{
 				Allocation: allocationTx,
-			},
-			expectedFileName: "filename",
-			expectingError:   false,
-		},
-		{
-			name: "Unknown Path",
-			context: metadata.New(map[string]string{
-				common.ClientHeader:          "exampleOwnerId",
-				common.ClientSignatureHeader: clientSignature,
-			}),
-			input: &blobbergrpc.GetFileStatsRequest{
 				Path:       "examplePath",
-				PathHash:   "exampleId:examplePath123",
-				Allocation: allocationTx,
+				BlockNum:   "0",
 			},
-			expectedFileName: "",
-			expectingError:   true,
+			expectedPath:   "/",
+			expectingError: false,
 		},
 	}
 
 	for _, tc := range testCases {
 		ctx := context.Background()
 		ctx = metadata.NewOutgoingContext(ctx, tc.context)
-		getFileStatsResp, err := bClient.GetFileStats(ctx, tc.input)
+		getObjectPathResp, err := bClient.GetObjectPath(ctx, tc.input)
 		if err != nil {
 			if !tc.expectingError {
 				t.Fatal(err)
@@ -78,9 +64,8 @@ func TestGetFilestats_IntegrationTest(t *testing.T) {
 			t.Fatal("expected error")
 		}
 
-		if getFileStatsResp.MetaData.FileMetaData.Name != tc.expectedFileName {
-			t.Fatal("unexpected file name from GetFileStats rpc")
+		if getObjectPathResp.ObjectPath.Path.DirMetaData.Path != tc.expectedPath {
+			t.Fatal("unexpected root hash from GetObjectPath rpc")
 		}
 	}
-
 }

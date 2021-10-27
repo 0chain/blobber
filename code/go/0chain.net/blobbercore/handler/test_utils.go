@@ -41,14 +41,14 @@ func randString(n int) string {
 	return sb.String()
 }
 
-func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClient, *TestDataController) {
+func setupHandlerTests(t *testing.T) (blobbergrpc.BlobberServiceClient, *TestDataController) {
 	args := make(map[string]bool)
 	for _, arg := range os.Args {
 		args[arg] = true
 	}
-	if !args["integration"] {
-		t.Skip()
-	}
+	//if !args["integration"] {
+	//	t.Skip()
+	//}
 
 	var conn *grpc.ClientConn
 	var err error
@@ -66,7 +66,7 @@ func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClien
 	}
 	bClient := blobbergrpc.NewBlobberServiceClient(conn)
 
-	setupIntegrationTestConfig(t)
+	setupTestConfig(t)
 	db, err := gorm.Open(postgres.Open(fmt.Sprintf(
 		"host=%v port=%v user=%v dbname=%v password=%v sslmode=disable",
 		config.Configuration.DBHost, config.Configuration.DBPort,
@@ -561,7 +561,7 @@ func GeneratePubPrivateKey(t *testing.T) (string, string, zcncrypto.SignatureSch
 	return keyPair.PublicKey, keyPair.PrivateKey, signScheme
 }
 
-func setupIntegrationTestConfig(t *testing.T) {
+func setupTestConfig(t *testing.T) {
 
 	pwd, err := os.Getwd()
 	if err != nil {

@@ -18,7 +18,7 @@ do
 done
 
 docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/ValidatorDockerfile . -t validator
-docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/IntegrationTestsBlobberDockerfile . -t blobber
+docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/DockerfileIntegrationTestsBlobber . -t blobber
 
 for i in $(seq 1 6);
 do

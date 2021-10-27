@@ -7,9 +7,9 @@ import (
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 )
 
-func TestGetAllocation_IntegrationTest(t *testing.T) {
+func TestGetAllocation(t *testing.T) {
 
-	bClient, tdController := setupHandlerIntegrationTests(t)
+	bClient, tdController := setupHandlerTests(t)
 
 	err := tdController.ClearDatabase()
 	if err != nil {

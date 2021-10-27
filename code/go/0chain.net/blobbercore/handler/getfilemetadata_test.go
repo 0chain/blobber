@@ -9,8 +9,8 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func TestGetFileMetaData_IntegrationTest(t *testing.T) {
-	bClient, tdController := setupHandlerIntegrationTests(t)
+func TestGetFileMetaData(t *testing.T) {
+	bClient, tdController := setupHandlerTests(t)
 
 	err := tdController.ClearDatabase()
 	if err != nil {

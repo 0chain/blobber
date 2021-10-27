@@ -10,9 +10,8 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func TestBlobberGRPCService_GetReferencePath(t *testing.T) {
-
-	bClient, tdController := setupHandlerIntegrationTests(t)
+func TestGetFilestats(t *testing.T) {
+	bClient, tdController := setupHandlerTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
@@ -22,17 +21,17 @@ func TestBlobberGRPCService_GetReferencePath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = tdController.AddGetReferencePathTestData(allocationTx, pubKey)
+	err = tdController.AddGetFileStatsTestData(allocationTx, pubKey)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	testCases := []struct {
-		name           string
-		context        metadata.MD
-		input          *blobbergrpc.GetReferencePathRequest
-		expectedPath   string
-		expectingError bool
+		name             string
+		context          metadata.MD
+		input            *blobbergrpc.GetFileStatsRequest
+		expectedFileName string
+		expectingError   bool
 	}{
 		{
 			name: "Success",
@@ -40,20 +39,34 @@ func TestBlobberGRPCService_GetReferencePath(t *testing.T) {
 				common.ClientHeader:          "exampleOwnerId",
 				common.ClientSignatureHeader: clientSignature,
 			}),
-			input: &blobbergrpc.GetReferencePathRequest{
-				Paths:      "",
-				Path:       "/",
+			input: &blobbergrpc.GetFileStatsRequest{
+				Path:       "examplePath",
+				PathHash:   "exampleId:examplePath",
 				Allocation: allocationTx,
 			},
-			expectedPath:   "/",
-			expectingError: false,
+			expectedFileName: "filename",
+			expectingError:   false,
+		},
+		{
+			name: "Unknown Path",
+			context: metadata.New(map[string]string{
+				common.ClientHeader:          "exampleOwnerId",
+				common.ClientSignatureHeader: clientSignature,
+			}),
+			input: &blobbergrpc.GetFileStatsRequest{
+				Path:       "examplePath",
+				PathHash:   "exampleId:examplePath123",
+				Allocation: allocationTx,
+			},
+			expectedFileName: "",
+			expectingError:   true,
 		},
 	}
 
 	for _, tc := range testCases {
 		ctx := context.Background()
 		ctx = metadata.NewOutgoingContext(ctx, tc.context)
-		getReferencePathResp, err := bClient.GetReferencePath(ctx, tc.input)
+		getFileStatsResp, err := bClient.GetFileStats(ctx, tc.input)
 		if err != nil {
 			if !tc.expectingError {
 				t.Fatal(err)
@@ -65,8 +78,9 @@ func TestBlobberGRPCService_GetReferencePath(t *testing.T) {
 			t.Fatal("expected error")
 		}
 
-		if getReferencePathResp.ReferencePath.MetaData.DirMetaData.Path != tc.expectedPath {
-			t.Fatal("unexpected path from GetReferencePath rpc")
+		if getFileStatsResp.MetaData.FileMetaData.Name != tc.expectedFileName {
+			t.Fatal("unexpected file name from GetFileStats rpc")
 		}
 	}
+
 }

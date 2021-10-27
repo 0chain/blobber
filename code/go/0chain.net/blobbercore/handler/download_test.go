@@ -18,7 +18,7 @@ import (
 )
 
 func TestBlobberGRPCService_DownloadFile(t *testing.T) {
-	bClient, tdController := setupHandlerIntegrationTests(t)
+	bClient, tdController := setupHandlerTests(t)
 	allocationTx := randString(32)
 
 	root, _ := os.Getwd()
@@ -41,7 +41,7 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 	}
 	defer f.Close()
 
-	file, err := os.Open(root + "/helper_integration_test.go")
+	file, err := os.Open(root + "/test_utils.go")
 	if err != nil {
 		t.Fatal(err)
 	}
