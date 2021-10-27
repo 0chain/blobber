@@ -12,7 +12,7 @@ import (
 
 func TestBlobberGRPCService_GetReferencePath(t *testing.T) {
 
-	bClient, tdController := setupHandlerIntegrationTests(t)
+	bClient, tdController := setupHandlerTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)

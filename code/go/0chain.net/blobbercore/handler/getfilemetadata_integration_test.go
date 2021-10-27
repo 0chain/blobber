@@ -10,7 +10,7 @@ import (
 )
 
 func TestGetFileMetaData_IntegrationTest(t *testing.T) {
-	bClient, tdController := setupHandlerIntegrationTests(t)
+	bClient, tdController := setupHandlerTests(t)
 
 	err := tdController.ClearDatabase()
 	if err != nil {
