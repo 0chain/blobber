@@ -42,13 +42,13 @@ func randString(n int) string {
 }
 
 func setupHandlerTests(t *testing.T) (blobbergrpc.BlobberServiceClient, *TestDataController) {
-	args := make(map[string]bool)
-	for _, arg := range os.Args {
-		args[arg] = true
-	}
-	if !args["integration"] {
-		t.Skip()
-	}
+	//args := make(map[string]bool)
+	//for _, arg := range os.Args {
+	//	args[arg] = true
+	//}
+	//if !args["integration"] {
+	//	t.Skip()
+	//}
 
 	var conn *grpc.ClientConn
 	var err error
