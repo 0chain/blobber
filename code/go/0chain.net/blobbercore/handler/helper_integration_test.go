@@ -41,7 +41,7 @@ func randString(n int) string {
 	return sb.String()
 }
 
-func setupHandlerTests(t *testing.T) (blobbergrpc.BlobberServiceClient, *TestDataController) {
+func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClient, *TestDataController) {
 	args := make(map[string]bool)
 	for _, arg := range os.Args {
 		args[arg] = true
