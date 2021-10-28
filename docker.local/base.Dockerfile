@@ -2,7 +2,7 @@ FROM golang:1.17.1-alpine3.14 as blobber_base
 
 LABEL zchain="blobber"
 
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+# RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep
 
