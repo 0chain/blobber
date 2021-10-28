@@ -463,9 +463,9 @@ func (fsh *StorageHandler) DownloadFile(
 
 		totalSize := len(respData)
 		result := []byte{}
-		for i := 0; i < totalSize; i += reference.CHUNK_SIZE {
+		for i := 0; i < totalSize; i += int(fileref.ChunkSize) {
 			encMsg := &zencryption.EncryptedMessage{}
-			chunkData := respData[i:int64(math.Min(float64(i+reference.CHUNK_SIZE), float64(totalSize)))]
+			chunkData := respData[i:int64(math.Min(float64(i+int(fileref.ChunkSize)), float64(totalSize)))]
 
 			encMsg.EncryptedData = chunkData[(2 * 1024):]
 
