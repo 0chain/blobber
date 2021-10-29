@@ -54,13 +54,7 @@ Note: Run all scripts as sudo
 
 A block worker URL is a field in the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` configuration files that require the URL of bloockchain network you want to connect to.For testing purposes we will connect to the beta 0chain network and replace the default URL in blobber/config/0chain_validator.yaml and 0chain_blobber.yaml with the below-mentioned URL.
 ```
-<<<<<<< HEAD
 block_worker: http://beta.0chain.net/dns
-=======
-
-./docker.local/bin/build.base.sh && ./docker.local/bin/build.blobber.sh && ./docker.local/bin/build.validator.sh
-
->>>>>>> staging
 ```
 
 3. Go back to the blobber directory and build blobber containers using the scripts below
