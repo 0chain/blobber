@@ -439,10 +439,7 @@ func (fsh *StorageHandler) DownloadFile(
 		}
 	}
 
-	if len(fileref.EncryptedKey) > 0 && !isOwner {
-		if authToken == nil {
-			return nil, errors.New("auth ticket is required to download encrypted file")
-		}
+	if len(fileref.EncryptedKey) > 0 && authToken != nil {
 
 		// should not happen, just in case
 		if shareInfo == nil {
