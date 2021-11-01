@@ -199,7 +199,7 @@ VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKe
 	return nil
 }
 
-func (c *TestDataController) AddGetFileMetaDataTestData() error {
+func (c *TestDataController) AddGetFileMetaDataTestData(allocationTx, pubKey string) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -227,7 +227,7 @@ func (c *TestDataController) AddGetFileMetaDataTestData() error {
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, repairer_id, is_immutable)
-VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKey',` + fmt.Sprint(expTime) + `,'examplePayerId', 'repairer_id', false);
+VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubKey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 'repairer_id', false);
 `)
 	if err != nil {
 		return err
