@@ -122,9 +122,9 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
+
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	alloc, err := fsh.verifyAllocation(ctx, allocationTx, true)
-
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -135,17 +135,32 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	_ = ctx.Value(constants.ContextKeyClientKey).(string)
-
 	pathHash, err := pathHashFromReq(r, allocationID)
 	if err != nil {
 		return nil, err
 	}
 
 	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
-
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	var (
+		isOwner    = clientID == alloc.OwnerID
+		isRepairer = clientID == alloc.RepairerID
+		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
+	)
+
+	if isOwner || isCollaborator{
+		publicKey := alloc.OwnerPublicKey
+		if isCollaborator {
+			publicKey = ctx.Value(constants.ContextKeyClientKey).(string)
+		}
+
+		valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
+		if !valid || err != nil {
+			return nil, common.NewError("invalid_signature", "Invalid signature")
+		}
 	}
 
 	result := fileref.GetListingData(ctx)
@@ -164,13 +179,6 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 
 	result["collaborators"] = collaborators
 
-	// authorize file access
-	var (
-		isOwner        = clientID == alloc.OwnerID
-		isRepairer     = clientID == alloc.RepairerID
-		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
-	)
-
 	if !isOwner && !isRepairer && !isCollaborator {
 		var authTokenString = r.FormValue("auth_token")
 
@@ -178,7 +186,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		if isAuthorized, err := fsh.verifyAuthTicket(ctx,
 			authTokenString, alloc, fileref, clientID,
 		); !isAuthorized {
-			return nil, common.NewErrorf("download_file",
+			return nil, common.NewErrorf("file_meta",
 				"cannot verify auth ticket: %v", err)
 		}
 
@@ -365,7 +373,6 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 
 	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
-
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -375,13 +382,13 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 
 	result := fileref.GetListingData(ctx)
-	stats, _ := stats.GetFileStats(ctx, fileref.ID)
+	fileStats, _ := stats.GetFileStats(ctx, fileref.ID)
 	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
-	if wm != nil && stats != nil {
-		stats.WriteMarkerRedeemTxn = wm.CloseTxnID
+	if wm != nil && fileStats != nil {
+		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
 	}
 	var statsMap map[string]interface{}
-	statsBytes, _ := json.Marshal(stats)
+	statsBytes, _ := json.Marshal(fileStats)
 	if err = json.Unmarshal(statsBytes, &statsMap); err != nil {
 		return nil, err
 	}
