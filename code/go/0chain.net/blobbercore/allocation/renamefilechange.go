@@ -25,14 +25,14 @@ func (rf *RenameFileChange) DeleteTempFile() error {
 }
 
 func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+	exists, _ := reference.PathExists(ctx, rf.AllocationID, rf.NewName)
+	if exists {
+		return nil, common.NewError("invalid_reference_path", "Invalid new name of path, it's already exists")
+	}
+
 	affectedRef, err := reference.GetObjectTree(ctx, rf.AllocationID, rf.Path)
 	if err != nil {
 		return nil, err
-	}
-
-	_, err = reference.GetObjectTree(ctx, rf.AllocationID, rf.NewName)
-	if err == nil {
-		return nil, common.NewError("invalid_reference_path", "Invalid new name of path, it's already exists")
 	}
 
 	path, _ := filepath.Split(affectedRef.Path)
