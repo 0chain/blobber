@@ -18,7 +18,7 @@ func TestWriteMarker_GetHashData(t *testing.T) {
 	wm, wallet, err := setupEntityTest(t)
 	require.NoError(t, err)
 
-	want := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", "alloc_root", "prev_alloc_root", "alloc_id", "blobber_id", wallet.ClientID, 1, common.Now())
+	want := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", "alloc_root", "prev_alloc_root", "alloc_id", "blobber_id", wallet.ClientID, 1, wm.Timestamp)
 	got := wm.GetHashData()
 	assert.Equal(t, want, got)
 }
