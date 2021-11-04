@@ -179,7 +179,7 @@ start_blobber () {
 
     echo "[1/3] build blobber..."
     cd ../code/go/0chain.net/blobber   
-    go build -v -tags "bn256 development" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=dev" -o $root/data/blobber$i/blobber .
+    CGO_ENABLED=1 go build -v -tags "bn256 development" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=dev" -o $root/data/blobber$i/blobber .
 
     echo "[2/3] setup runtime..."
     prepareRuntime;
@@ -206,7 +206,7 @@ start_validator () {
 
     echo "[1/3] build validator..."
     cd ../code/go/0chain.net/validator   
-    go build -v -tags "bn256 development" -gcflags="-N -l" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=dev" -o $root/data/blobber$i/validator .
+    CGO_ENABLED=1 go build -v -tags "bn256 development" -gcflags="-N -l" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=dev" -o $root/data/blobber$i/validator .
 
     echo "[2/3] setup runtime"
     prepareRuntime;
@@ -247,5 +247,3 @@ select f in "install postgres" "start blobber" "start validator" "clean"; do
         "clean"             )   clean;      break;;
     esac
 done
-
-
