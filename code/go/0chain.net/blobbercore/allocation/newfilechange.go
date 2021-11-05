@@ -22,9 +22,9 @@ type NewFileChange struct {
 	//client side:
 	Path string `json:"filepath" validation:"required"`
 	//client side:
-	ActualHash string `json:"actual_hash,omitempty" validation:"required"`
+	ActualHash string `json:"actual_hash,omitempty" `
 	//client side:
-	ActualSize int64 `json:"actual_size,omitempty" validation:"required"`
+	ActualSize int64 `json:"actual_size,omitempty"`
 	//client side:
 	ActualThumbnailSize int64 `json:"actual_thumb_size"`
 	//client side:

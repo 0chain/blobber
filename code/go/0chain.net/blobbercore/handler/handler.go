@@ -446,6 +446,11 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 
+	// dummy, to avoid input and sql error
+	if len(authTicket.ClientID) != 64 || len(authTicket.OwnerID) != 64 {
+		return nil, common.NewError("share_info_insert", "Wrong ownerID or clientID")
+	}
+
 	shareInfo := reference.ShareInfo{
 		OwnerID:                   authTicket.OwnerID,
 		ClientID:                  authTicket.ClientID,
@@ -463,7 +468,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		err = reference.AddShareInfo(ctx, shareInfo)
 	}
 	if err != nil {
-		return nil, err
+		return nil, common.NewError("share_info_insert", "Unable to save share info")
 	}
 
 	resp := map[string]interface{}{

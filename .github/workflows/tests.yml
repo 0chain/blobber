@@ -5,11 +5,7 @@ on:
     branches:
       - master
       - staging
-      - stream
-    pull_request:
-      - master
-      - staging
-      - stream
+  pull_request:
 
 jobs:
   unit_tests:
@@ -39,7 +35,7 @@ jobs:
       - name: Run tests
         run: |
           cd $GITHUB_WORKSPACE/code/go/0chain.net/ 
-          go test -tags bn256 -race -coverprofile=coverage.txt -covermode=atomic ./...
+          CGO_ENABLED=1 go test -tags bn256 -race -coverprofile=coverage.txt -covermode=atomic ./...
       # - name: Codecov
       #   run: |
       #     cd $GITHUB_WORKSPACE/code/go/0chain.net/
