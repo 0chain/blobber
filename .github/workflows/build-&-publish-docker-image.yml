@@ -1,6 +1,8 @@
 name: build-&-publish-docker-image
 
 on:
+  push:
+    branches: [ staging ]
   workflow_dispatch:
     inputs:
       latest_tag:
