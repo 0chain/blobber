@@ -1,29 +1,34 @@
 package encryption
 
 import (
-	"encoding/hex"
-	"github.com/0chain/gosdk/zboxcore/client"
-	"github.com/herumi/bls-go-binary/bls"
-	"github.com/stretchr/testify/require"
+	"fmt"
 	"testing"
 
-	"fmt"
+	"github.com/0chain/gosdk/core/zcncrypto"
+	"github.com/0chain/gosdk/zboxcore/client"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSignatureVerify(t *testing.T) {
-	allocationId := "4f928c7857fabb5737347c42204eea919a4777f893f35724f563b932f64e2367"
-	walletConfig := "{\"client_id\":\"9a566aa4f8e8c342fed97c8928040a21f21b8f574e5782c28568635ba9c75a85\",\"client_key\":\"40cd10039913ceabacf05a7c60e1ad69bb2964987bc50f77495e514dc451f907c3d8ebcdab20eedde9c8f39b9a1d66609a637352f318552fb69d4b3672516d1a\",\"keys\":[{\"public_key\":\"40cd10039913ceabacf05a7c60e1ad69bb2964987bc50f77495e514dc451f907c3d8ebcdab20eedde9c8f39b9a1d66609a637352f318552fb69d4b3672516d1a\",\"private_key\":\"a3a88aad5d89cec28c6e37c2925560ce160ac14d2cdcf4a4654b2bb358fe7514\"}],\"mnemonics\":\"inside february piece turkey offer merry select combine tissue wave wet shift room afraid december gown mean brick speak grant gain become toy clown\",\"version\":\"1.0\",\"date_created\":\"2021-05-21 17:32:29.484657 +0545 +0545 m=+0.072791323\"}"
+	walletConfig := "{\"client_id\":\"9a566aa4f8e8c342fed97c8928040a21f21b8f574e5782c28568635ba9c75a85\",\"client_key\":\"40cd10039913ceabacf05a7c60e1ad69bb2964987bc50f77495e514dc451f907c3d8ebcdab20eedde9c8f39b9a1d66609a637352f318552fb69d4b3672516d1a\",\"keys\":[{\"public_key\":\"041eeb1b4eb9b2456799d8e2a566877e83bc5d76ff38b964bd4b7796f6a6ccae6f1966a4d91d362669fafa3d95526b132a6341e3dfff6447e0e76a07b3a7cfa6e8034574266b382b8e5174477ab8a32a49a57eda74895578031cd2d41fd0aef446046d6e633f5eb68a93013dfac1420bf7a1e1bf7a87476024478e97a1cc115de9\",\"private_key\":\"18c09c2639d7c8b3f26b273cdbfddf330c4f86c2ac3030a6b9a8533dc0c91f5e\"}],\"mnemonics\":\"inside february piece turkey offer merry select combine tissue wave wet shift room afraid december gown mean brick speak grant gain become toy clown\",\"version\":\"1.0\",\"date_created\":\"2021-05-21 17:32:29.484657 +0545 +0545 m=+0.072791323\"}"
 	require.NoError(t, client.PopulateClient(walletConfig, "bls0chain"))
-	sig, serr := client.Sign(allocationId)
+
+	data := `TEST`
+	hash := zcncrypto.Sha3Sum256(data)
+	fmt.Printf("hash: %#v\n", hash)
+
+	sig, serr := client.Sign(hash)
+
 	require.Nil(t, serr)
 	require.NotNil(t, sig)
 
 	res, err := client.VerifySignature(
-		"fb0eb9351978091da350348211888b06ed1ce84ae40d08de3cc826cd85197188",
-		allocationId,
+		sig,
+		hash,
 	)
 	require.Nil(t, err)
-	require.Equal(t, res, true)
+	require.Equal(t, true, res)
 }
 
 func TestMiraclToHerumiPK(t *testing.T) {
@@ -39,12 +44,12 @@ func TestMiraclToHerumiPK(t *testing.T) {
 }
 
 func TestMiraclToHerumiSig(t *testing.T) {
-	miraclsig1 := `(0d4dbad6d2586d5e01b6b7fbad77e4adfa81212c52b4a0b885e19c58e0944764,110061aa16d5ba36eef0ad4503be346908d3513c0a2aedfd0d2923411b420eca)`
+	miraclsig1 := `(0ac789dec32d499e4c718597ac4c958873432a9707f27024546a9d70481de430,029b11554a2b864d16542a9617e1284bbb24d9e0ffe001aa7c6438c89484a6f5)`
 	sig1 := MiraclToHerumiSig(miraclsig1)
 
-	require.EqualValues(t, sig1, "644794e0589ce185b8a0b4522c2181faade477adfbb7b6015e6d58d2d6ba4d0d")
+	require.EqualValues(t, "644794e0589ce185b8a0b4522c2181faade477adfbb7b6015e6d58d2d6ba4d0d", sig1)
 
-	// Assert DeserializeHexStr works on the output of MiraclToHerumiSig
+	Assert DeserializeHexStr works on the output of MiraclToHerumiSig
 	var sig bls.Sign
 	err := sig.DeserializeHexStr(sig1)
 	require.NoError(t, err)

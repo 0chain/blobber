@@ -2,9 +2,12 @@ module github.com/0chain/blobber
 
 go 1.16
 
+// temporary, for development
+// replace github.com/0chain/gosdk => ../gosdk
+
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.3.0-beta.3.0.20211028024808-1a15c1339eb2
+	github.com/0chain/gosdk v1.3.0-beta.3.0.20211105092744-13c2212258b2
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.1
 	github.com/go-ini/ini v1.55.0 // indirect
@@ -25,7 +28,7 @@ require (
 	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
-	google.golang.org/genproto v0.0.0-20210903162649-d08c68adba83
+	google.golang.org/genproto v0.0.0-20211101144312-62acf1d99145
 	google.golang.org/grpc v1.41.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.27.1
@@ -36,5 +39,3 @@ require (
 	gorm.io/gorm v1.22.2
 	nhooyr.io/websocket v1.8.7 // indirect
 )
-
-//replace github.com/0chain/gosdk => ../gosdk

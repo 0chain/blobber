@@ -49,7 +49,7 @@ func Verify(publicKey string, signature string, hash string) (bool, error) {
 // If input is MIRACL public key, convert it to herumi/bls public key.
 //
 // This is an example of the raw public key we expect from MIRACL
-var miraclExamplePK = `0418a02c6bd223ae0dfda1d2f9a3c81726ab436ce5e9d17c531ff0a385a13a0b491bdfed3a85690775ee35c61678957aaba7b1a1899438829f1dc94248d87ed36817f6dfafec19bfa87bf791a4d694f43fec227ae6f5a867490e30328cac05eaff039ac7dfc3364e851ebd2631ea6f1685609fc66d50223cc696cb59ff2fee47ac`
+var miraclExamplePK = `041eeb1b4eb9b2456799d8e2a566877e83bc5d76ff38b964bd4b7796f6a6ccae6f1966a4d91d362669fafa3d95526b132a6341e3dfff6447e0e76a07b3a7cfa6e8034574266b382b8e5174477ab8a32a49a57eda74895578031cd2d41fd0aef446046d6e633f5eb68a93013dfac1420bf7a1e1bf7a87476024478e97a1cc115de9`
 
 //
 // This is an example of the same MIRACL public key serialized with ToString().
@@ -82,6 +82,7 @@ func MiraclToHerumiSig(sig string) string {
 	if len(sig) <= 2 {
 		return sig
 	}
+
 	if sig[0] != miraclExampleSig[0] {
 		return sig
 	}
@@ -93,6 +94,7 @@ func MiraclToHerumiSig(sig string) string {
 	n1 := withoutParens[0:comma]
 	n2 := withoutParens[(comma + 1):]
 	var sign bls.Sign
+
 	err := sign.SetHexString("1 " + n1 + " " + n2)
 	if err != nil {
 		Logger.Error("MiraclToHerumiSig: " + err.Error())
