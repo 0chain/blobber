@@ -1,11 +1,13 @@
 package encryption
 
 import (
+	"encoding/hex"
 	"fmt"
 	"testing"
 
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
+	"github.com/herumi/bls-go-binary/bls"
 
 	"github.com/stretchr/testify/require"
 )
@@ -49,7 +51,7 @@ func TestMiraclToHerumiSig(t *testing.T) {
 
 	require.EqualValues(t, "644794e0589ce185b8a0b4522c2181faade477adfbb7b6015e6d58d2d6ba4d0d", sig1)
 
-	Assert DeserializeHexStr works on the output of MiraclToHerumiSig
+	// Assert DeserializeHexStr works on the output of MiraclToHerumiSig
 	var sig bls.Sign
 	err := sig.DeserializeHexStr(sig1)
 	require.NoError(t, err)
