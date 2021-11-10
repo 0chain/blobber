@@ -30,10 +30,6 @@ services:
     image: blobber
     environment:
       - DOCKER= true
-    depends_on:
-      - validator
-    links:
-      - validator:validator
     volumes:
       - ../config:/blobber/config
       - ./blobber${BLOBBER}/files:/blobber/files
