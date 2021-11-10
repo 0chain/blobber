@@ -27,7 +27,7 @@ import (
 	"github.com/0chain/gosdk/core/zcncrypto"
 )
 
-const BlobberTestAddr = "localhost:31501"
+const BlobberTestAddr = "127.0.0.1:31501"
 const RetryAttempts = 8
 const RetryTimeout = 3
 
@@ -47,9 +47,9 @@ func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClien
 	for _, arg := range os.Args {
 		args[arg] = true
 	}
-	if !args["integration"] {
-		t.Skip()
-	}
+	// if !args["integration"] {
+	// 	t.Skip()
+	// }
 
 	var conn *grpc.ClientConn
 	var err error
