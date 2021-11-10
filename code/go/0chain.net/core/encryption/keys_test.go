@@ -1,7 +1,6 @@
 package encryption
 
 import (
-	"encoding/hex"
 	"testing"
 
 	"github.com/0chain/gosdk/zboxcore/client"
@@ -61,19 +60,19 @@ func TestDebugOnly(t *testing.T) {
 	// clientKey := "536d2ecfe5aab6c343e8c2e7ee9daa60c43eecc53f4b1c07a6cb2648d9e66c14f2e3fcd43875be40722992f56570fe3c751caacbc7d859b309c787f654bd5a97"
 	// // => 5c2fdfa03fc013cff0e4b716f0529b914e18fd2bc6cdfed49df13b6e3dc4684d
 
-	clientKey := "0416c528570ce46eb83584cd604a9ed62644ef4f71a86587d57e4ab91953ff4699107374870799ad4550c4f3833cca2a4d5de75436d67caf89097f1e7d6d7de6d424cb5a08b9dca8957ea7c81a23d066b93a27500954cd29733149ec1f8a8abd540d08f9f81bb24b83ff27e24f173e639573e10a22ed7b0ca326a1aa9dc03e1eef"
+	//clientKey := "0416c528570ce46eb83584cd604a9ed62644ef4f71a86587d57e4ab91953ff4699107374870799ad4550c4f3833cca2a4d5de75436d67caf89097f1e7d6d7de6d424cb5a08b9dca8957ea7c81a23d066b93a27500954cd29733149ec1f8a8abd540d08f9f81bb24b83ff27e24f173e639573e10a22ed7b0ca326a1aa9dc03e1eef"
 	// => bd3adcacc78ed4352931b138729986a07d2bf0e0a3bf2c885b37a9a0e649dd87
 	// Looking for bd3adcacc78ed4352931b138729986a07d2bf0e0a3bf2c885b37a9a0e649dd87
 
-	clientKeyBytes, _ := hex.DecodeString(clientKey)
-	h := Hash(clientKeyBytes)
+	//clientKeyBytes, _ := hex.DecodeString(clientKey)
+	//	h := Hash(clientKeyBytes)
 
 	//fmt.Println("hash ", h)
 
-	herumipk := MiraclToHerumiPK(clientKey)
+	//herumipk := MiraclToHerumiPK(clientKey)
 	//fmt.Println("herumipk ", herumipk)
-	clientKeyBytes2, _ := hex.DecodeString(herumipk)
-	h = Hash(clientKeyBytes2)
+	//clientKeyBytes2, _ := hex.DecodeString(herumipk)
+	//	h = Hash(clientKeyBytes2)
 	//fmt.Println("hash2 ", h)
 
 }
