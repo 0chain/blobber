@@ -1,5 +1,9 @@
 name: "0Chain System Tests"
 
+concurrency:
+  group: ${{ github.head_ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
     inputs:
@@ -99,7 +103,7 @@ jobs:
         github_user: 'service-0chain'
         
     - name: Set PR Status Success
-      if: success() && steps.findPr.outputs.number
+      if: ${{ success() && steps.findPr.outputs.number }}
       uses: niteoweb/pull_request_status_action@v1.0.0
       with:
         pr_number: ${{ steps.findPr.outputs.pr }}
@@ -112,7 +116,7 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
 
     - name: Set PR Status Failed
-      if: failure() && steps.findPr.outputs.number
+      if: ${{ failure() && steps.findPr.outputs.number }}
       uses: niteoweb/pull_request_status_action@v1.0.0
       with:
         pr_number: ${{ steps.findPr.outputs.pr }}
