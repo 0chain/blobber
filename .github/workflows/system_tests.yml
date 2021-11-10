@@ -60,7 +60,7 @@ jobs:
     
     - name: Set PR Status Pending
       uses: niteoweb/pull_request_status_action@v1.0.0
-      if: success() && steps.findPr.outputs.number
+      if: steps.findPr.outputs.number
       with:
         pr_number: ${{ steps.findPr.outputs.pr }}
         description: "System tests running"
@@ -73,7 +73,7 @@ jobs:
 
     - uses: stewartie4/trigger-workflow-and-wait@master
       name: "Run System Tests"
-      if: ${{ always() && github.event.inputs.skip_tests != 'FALSE' }}
+      if: ${{ github.event.inputs.skip_tests == 'FALSE' }}
       with:
         owner: 0chain
         repo: system_test
