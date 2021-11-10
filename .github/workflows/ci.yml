@@ -40,11 +40,12 @@ jobs:
           ./docker.local/bin/blobber.init.setup.sh
           cd docker.local/blobber1
           ../bin/blobber.start_github.sh
+          docker ps
 
       - name: Run Tests
         run: |
-          go16=$(which go)
-          sudo $go16 test -tags bn256  ./... -args integration
+          go17=$(which go)
+          sudo $go17 test -tags bn256  ./... -args integration
 
   golangci:
     name: lint
