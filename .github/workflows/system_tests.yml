@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
        system_tests_branch:
-        description: 'Branch containing the system tests you wish to run'
+        description: 'system_tests branch. Containing the tests you wish to run'
         default: 'master'
         required: true
        zbox_cli_branch:
