@@ -7,6 +7,10 @@ concurrency:
 on:
   workflow_dispatch:
     inputs:
+       system_tests_branch:
+        description: 'Branch containing the system tests you wish to run'
+        default: 'master'
+        required: true
        zbox_cli_branch:
         description: '0Box CLI (branch or commit SHA) which the tests will use'
         default: 'staging'
@@ -83,7 +87,7 @@ jobs:
         repo: system_test
         github_token: ${{ secrets.SVC_ACCOUNT_SECRET }}
         workflow_file_name: ci.yml
-        ref: master
+        ref: github.event.inputs.system_tests_branch
         wait_interval: 60
         inputs: > 
            {
