@@ -21,28 +21,27 @@ jobs:
     timeout-minutes: 40
     steps:
   
-      - name: Setup go 1.16
+      - name: Setup go 1.17
         uses: actions/setup-go@v2
         with:
-          go-version: '1.16' # The Go version to download (if necessary) and use.
+          go-version: '1.17' # The Go version to download (if necessary) and use.
 
       - name: Clone Blobber
         uses: actions/checkout@v1
 
-      - name: Build blobber
+      - name: Build Blobber
         run: |
-          sed -i '/#expose_ci_port/c\    ports:\n      - "5432:5432"' ./docker.local/b0docker-compose.yml
-          ./docker.local/bin/blobber.init.setup.sh
           docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
           ./docker.local/bin/build.base.sh
           ./docker.local/bin/build.blobber.sh
 
-      - name: Run blobber on grpc  
+      - name: Run Blobber on gRPC  
         run: |
+          ./docker.local/bin/blobber.init.setup.sh
           cd docker.local/blobber1
-          ../bin/blobber.start_bls.sh  
-          
-      - name: Build test environment and run tests
+          ../bin/blobber.start_github.sh  
+
+      - name: Run Tests
         run: |
           go16=$(which go)
           sudo $go16 test -tags bn256  ./... -args integration
