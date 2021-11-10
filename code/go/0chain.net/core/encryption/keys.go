@@ -59,11 +59,14 @@ func MiraclToHerumiPK(pk string) string {
 		// If input is normal herumi/bls public key, it returns it immmediately.
 		return pk
 	}
+	bls.Init(bls.CurveFp254BNb)
+
 	n1 := pk[2:66]
 	n2 := pk[66:(66 + 64)]
 	n3 := pk[(66 + 64):(66 + 64 + 64)]
 	n4 := pk[(66 + 64 + 64):(66 + 64 + 64 + 64)]
 	var p bls.PublicKey
+
 	err := p.SetHexString("1 " + n2 + " " + n1 + " " + n4 + " " + n3)
 	if err != nil {
 		Logger.Error("MiraclToHerumiPK: " + err.Error())
@@ -93,6 +96,8 @@ func MiraclToHerumiSig(sig string) string {
 	}
 	n1 := withoutParens[0:comma]
 	n2 := withoutParens[(comma + 1):]
+
+	bls.Init(bls.CurveFp254BNb)
 	var sign bls.Sign
 
 	err := sign.SetHexString("1 " + n1 + " " + n2)

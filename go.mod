@@ -7,7 +7,7 @@ go 1.16
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.3.0-beta.4.0.20211108072345-38615ba925a5
+	github.com/0chain/gosdk v1.3.1-0.20211110061128-e59d0b750eb7
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.1
 	github.com/go-ini/ini v1.55.0 // indirect
