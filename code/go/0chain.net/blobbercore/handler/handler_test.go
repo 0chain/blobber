@@ -302,8 +302,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	router, handlers := setupHandlers()
 
 	sch := zcncrypto.NewSignatureScheme("bls0chain")
-	sch.Mnemonic = "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
-	_, err := sch.GenerateKeys()
+	//sch.Mnemonic = "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
+	_, err := sch.RecoverKeys("expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe")
 	if err != nil {
 		t.Fatal(err)
 	}

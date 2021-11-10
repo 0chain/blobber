@@ -2,12 +2,11 @@ package encryption
 
 import (
 	"encoding/hex"
+	"testing"
+
 	"github.com/0chain/gosdk/zboxcore/client"
 	"github.com/herumi/bls-go-binary/bls"
 	"github.com/stretchr/testify/require"
-	"testing"
-
-	"fmt"
 )
 
 func TestSignatureVerify(t *testing.T) {
@@ -69,12 +68,12 @@ func TestDebugOnly(t *testing.T) {
 	clientKeyBytes, _ := hex.DecodeString(clientKey)
 	h := Hash(clientKeyBytes)
 
-	fmt.Println("hash ", h)
+	//fmt.Println("hash ", h)
 
 	herumipk := MiraclToHerumiPK(clientKey)
-	fmt.Println("herumipk ", herumipk)
+	//fmt.Println("herumipk ", herumipk)
 	clientKeyBytes2, _ := hex.DecodeString(herumipk)
 	h = Hash(clientKeyBytes2)
-	fmt.Println("hash2 ", h)
+	//fmt.Println("hash2 ", h)
 
 }
