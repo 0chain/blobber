@@ -36,7 +36,7 @@ on:
         default: 'staging'
         required: true
        skip_tests:
-        description: '(LAST RESORT ONLY) Skip system tests and report green to allow a PR to merge - By using you confirm that unrelated issues are causing tests to fail and not the code being merged'
+        description: '(LAST RESORT ONLY) Skip system tests. This will allow a PR to merge without requiring a green test run.  *By using you certify that the code being merged is not causing system tests to fail*'
         default: 'FALSE'
         required: true
 jobs:
