@@ -36,9 +36,9 @@ jobs:
           docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
           ./docker.local/bin/build.base.sh
           ./docker.local/bin/build.blobber.sh
-          ./docker.local/bin/build.validator.sh
+    
           cd docker.local/blobber1
-          ../bin/blobber.start_bls.sh </dev/null &>/dev/null &
+          ../bin/blobber.start_bls.sh
           cd ../..
       
           go16=$(which go)
