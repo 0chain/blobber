@@ -35,6 +35,10 @@ on:
         description: '0block DOCKER IMAGE to deploy'
         default: 'staging'
         required: true
+       skip_tests:
+        description: '(LAST RESORT ONLY) Skip system tests and report green to allow a PR to merge - By using you confirm that unrelated issues are causing tests to fail and not the code being merged'
+        default: 'FALSE'
+        required: true
 jobs:
   system-tests:  
     runs-on: [ tests-suite ]
@@ -69,6 +73,7 @@ jobs:
 
     - uses: stewartie4/trigger-workflow-and-wait@master
       name: "Run System Tests"
+      if: ${{ always() && github.event.inputs.skip_tests != 'FALSE' }}
       with:
         owner: 0chain
         repo: system_test
