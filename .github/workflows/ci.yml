@@ -29,20 +29,24 @@ jobs:
       - name: Clone Blobber
         uses: actions/checkout@v1
 
-      - name: Build test environment and run tests
+      - name: Build blobber
         run: |
           sed -i '/#expose_ci_port/c\    ports:\n      - "5432:5432"' ./docker.local/b0docker-compose.yml
           ./docker.local/bin/blobber.init.setup.sh
           docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
           ./docker.local/bin/build.base.sh
           ./docker.local/bin/build.blobber.sh
-    
+
+      - name: Run blobber on grpc  
+        run: |
           cd docker.local/blobber1
-          ../bin/blobber.start_bls.sh
-          cd ../..
-      
+          ../bin/blobber.start_bls.sh  
+          
+      - name: Build test environment and run tests
+        run: |
           go16=$(which go)
-          sudo $go16 test -tags bn256  ./... -args integration;
+          sudo $go16 test -tags bn256  ./... -args integration
+
   golangci:
     name: lint
     runs-on: [self-hosted, tests-suite]
