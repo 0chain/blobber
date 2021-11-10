@@ -39,7 +39,7 @@ jobs:
         run: |
           ./docker.local/bin/blobber.init.setup.sh
           cd docker.local/blobber1
-          ../bin/blobber.start_github.sh  
+          ../bin/blobber.start_github.sh
 
       - name: Run Tests
         run: |
