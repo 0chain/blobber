@@ -47,9 +47,9 @@ func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClien
 	for _, arg := range os.Args {
 		args[arg] = true
 	}
-	// if !args["integration"] {
-	// 	t.Skip()
-	// }
+	if !args["integration"] {
+		t.Skip()
+	}
 
 	var conn *grpc.ClientConn
 	var err error
