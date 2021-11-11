@@ -66,10 +66,6 @@ func startHttpServer() {
 
 	logging.Logger.Info("Ready to listen to the requests")
 
-	if config.Development() {
-		go startGRPCServer(*r)
-	}
-
 	startTime = time.Now().UTC()
 
 	log.Fatal(server.ListenAndServe())

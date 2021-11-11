@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"log"
 	"net"
 	"strconv"
@@ -14,17 +15,22 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-func startGRPCServer(r mux.Router) {
-	grpcServer := handler.NewGRPCServerWithMiddlewares(&r)
+func startGRPCServer() {
+	fmt.Println("[10/10] starting grpc server	[OK]")
+
+	r := mux.NewRouter()
+
+	common.ConfigRateLimits()
+	initHandlers(r)
+	grpcServer := handler.NewGRPCServerWithMiddlewares(r)
 	reflection.Register(grpcServer)
 
 	if grpcPort <= 0 {
-		logging.Logger.Error("Could not start grpc server since grpc port has not been specified." +
-			" Please specify the grpc port in the --grpc_port build arguement to start the grpc server")
+		logging.Logger.Error("grpc port missing")
 		return
 	}
 
-	logging.Logger.Info("listening too grpc requests on port - " + strconv.Itoa(grpcPort))
+	logging.Logger.Info("started grpc server on to grpc requests on port - " + strconv.Itoa(grpcPort))
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", grpcPort))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
