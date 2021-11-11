@@ -9,7 +9,7 @@ import (
 )
 
 func setupDatabase() error {
-	fmt.Print("\r[7/10] connect data store")
+	fmt.Print("\r[7/11] connect data store")
 	// check for database connection
 	for i := 0; i < 600; i++ {
 

@@ -9,7 +9,7 @@ import (
 )
 
 func setupLogging() {
-	fmt.Print("[3/10] init logging")
+	fmt.Print("[3/11] init logging")
 
 	if config.Development() {
 		logging.InitLogging("development", logDir, "0chainBlobber.log")

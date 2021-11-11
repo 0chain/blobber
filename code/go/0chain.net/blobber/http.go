@@ -23,7 +23,7 @@ import (
 var startTime time.Time
 
 func startHttpServer() {
-	fmt.Println("[10/10] start http server	[OK]")
+	fmt.Println("[11/11] start http server	[OK]")
 
 	mode := "main net"
 	if config.Development() {
@@ -65,7 +65,6 @@ func startHttpServer() {
 	handler.HandleShutdown(common.GetRootContext())
 
 	logging.Logger.Info("Ready to listen to the requests")
-
 
 	startTime = time.Now().UTC()
 

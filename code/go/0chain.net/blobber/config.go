@@ -11,7 +11,7 @@ import (
 )
 
 func setupConfig() {
-	fmt.Print("[2/10] load config")
+	fmt.Print("[2/11] load config")
 	// setup default
 	config.SetupDefaultConfig()
 

@@ -15,7 +15,7 @@ import (
 )
 
 func setupOnChain() {
-	fmt.Println("[9/10] connecting to chain	")
+	fmt.Println("[9/11] connecting to chain	")
 
 	const ATTEMPT_DELAY = 60 * 1
 

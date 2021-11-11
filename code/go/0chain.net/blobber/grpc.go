@@ -4,10 +4,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"log"
 	"net"
 	"strconv"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -15,9 +16,8 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-
 func startGRPCServer() {
-	fmt.Println("[10/10] starting grpc server	[OK]")
+	fmt.Println("[10/11] starting grpc server	[OK]")
 
 	r := mux.NewRouter()
 
