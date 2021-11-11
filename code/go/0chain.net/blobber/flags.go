@@ -34,7 +34,7 @@ func init() {
 }
 
 func parseFlags() {
-	fmt.Print("[1/10] load flags")
+	fmt.Print("[1/11] load flags")
 	flag.Parse()
 
 	if filesDir == "" {
