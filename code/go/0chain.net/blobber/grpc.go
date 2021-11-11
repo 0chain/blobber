@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
+
 func startGRPCServer() {
 	fmt.Println("[10/10] starting grpc server	[OK]")
 
@@ -31,6 +32,7 @@ func startGRPCServer() {
 	}
 
 	logging.Logger.Info("started grpc server on to grpc requests on port - " + strconv.Itoa(grpcPort))
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", grpcPort))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)

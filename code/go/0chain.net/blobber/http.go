@@ -66,6 +66,7 @@ func startHttpServer() {
 
 	logging.Logger.Info("Ready to listen to the requests")
 
+
 	startTime = time.Now().UTC()
 
 	log.Fatal(server.ListenAndServe())
