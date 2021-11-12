@@ -4,6 +4,22 @@ LABEL zchain="blobber"
 
 # RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
+RUN echo "https://mirrors.aliyun.com/alpine/v3.14/main" >> /etc/apk/repositories
+RUN echo "https://mirrors.aliyun.com/alpine/v3.14/community" >> /etc/apk/repositories
+
+RUN echo "https://sjc.edge.kernel.org/alpine/v3.14/main" >> /etc/apk/repositories
+RUN echo "https://sjc.edge.kernel.org/alpine/v3.14/community" >> /etc/apk/repositories
+
+RUN echo "https://uk.alpinelinux.org/alpine/v3.14/main" >> /etc/apk/repositories
+RUN echo "https://uk.alpinelinux.org/alpine/v3.14/community" >> /etc/apk/repositories
+
+RUN echo "https://dl-4.alpinelinux.org/alpine/v3.14/main" >> /etc/apk/repositories
+RUN echo "https://dl-4.alpinelinux.org/alpine/v3.14/community" >> /etc/apk/repositories
+
+RUN echo "https://mirror.yandex.ru/alpine/v3.14/main" >> /etc/apk/repositories
+RUN echo "https://mirror.yandex.ru/alpine/v3.14/community" >> /etc/apk/repositories
+
+
 RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep
 
 # Install Herumi's cryptography
