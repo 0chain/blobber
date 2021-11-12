@@ -11,6 +11,7 @@ on:
 
 jobs:
   unit_tests:
+    name: "Unit Tests"
     runs-on: [self-hosted, load-test]
     steps:
       - name: Setup go 1.17
@@ -21,20 +22,14 @@ jobs:
       - name: Clone blobber
         uses: actions/checkout@v2
 
-      # - name: Set GITHUB_ENV
-      #   run: |
-      #     echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
-      #     echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
-      #     echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-         
-  
       - name: Run tests
         run: |
           cd $GITHUB_WORKSPACE/code/go/0chain.net/ 
           CGO_ENABLED=1 go test -tags bn256 -race -coverprofile=coverage.txt -covermode=atomic ./...
 
-
   integration_test:
+    name: "Integration Tests"
+    needs: unit_tests
     runs-on: [ubuntu-20.04]
     timeout-minutes: 40
     steps:
@@ -64,7 +59,8 @@ jobs:
           running=0
           if [ $running -eq 0 ]; then
             echo "checking gPRC server status"
-            curl 127.0.0.1:31501 && $running=1 || sleep 3
+            docker ps
+            docker logs blobber1_blobber_1 | grep "\[10/11\]" && $running=1 || sleep 3
           fi
 
           echo "gRPC server is running"
@@ -72,7 +68,7 @@ jobs:
       - name: Run Tests
         run: |
           go17=$(which go)
-          sudo  CGO_ENABLED=1 $go17 test -tags bn256  ./... -args integration
+          sudo CGO_ENABLED=1 $go17 test -tags bn256  ./... -args integration
 
   golangci:
     name: lint
