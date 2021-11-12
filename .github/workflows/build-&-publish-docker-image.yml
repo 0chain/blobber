@@ -30,24 +30,22 @@ jobs:
         echo ::set-output name=BRANCH::${BRANCH}
         echo ::set-output name=VERSION::${BRANCH}-${SHORT_SHA} 
 
+    - name: Build base
+      run: ./docker.local/bin/build.base.sh
+
+    - name: Build blobber
+      run: ./docker.local/bin/build.blobber.sh
+
     - name: Login to Docker Hub
       uses: docker/login-action@v1
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-    - name: Build blobber Docker Image
-      run: |
-        docker build -t $BLOBBER_REGISTRY:$TAG -f "$DOCKERFILE_BLOB" .
-        docker tag $BLOBBER_REGISTRY:$TAG $BLOBBER_REGISTRY:latest
-        docker tag $BLOBBER_REGISTRY:$TAG $BLOBBER_REGISTRY:staging
-        docker push $BLOBBER_REGISTRY:$TAG
-      env:
-        TAG: ${{ steps.get_version.outputs.VERSION }}
-        DOCKERFILE_BLOB: "docker.local/Dockerfile"
-
     - name: Push blobber Docker Image
       run: |
+        docker tag blobber:latest ${BLOBBER_REGISTRY}:$TAG
+        docker push ${BLOBBER_REGISTRY}:$TAG
         if [[ "$PUSH_LATEST" == "yes" ]] && [[ "$BRANCH" == "master" ]]; then
           docker push $BLOBBER_REGISTRY:latest
         elif [[ "$BRANCH" == "staging" ]]; then
@@ -55,6 +53,7 @@ jobs:
         fi
       env:
         PUSH_LATEST: ${{ github.event.inputs.latest_tag }}
+        TAG: ${{ steps.get_version.outputs.VERSION }}
         BRANCH: ${{ steps.get_version.outputs.BRANCH }}
 
   dockerize_validator:
@@ -69,24 +68,23 @@ jobs:
         SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
         echo ::set-output name=BRANCH::${BRANCH}
         echo ::set-output name=VERSION::${BRANCH}-${SHORT_SHA}    
+
+    - name: Build base
+      run: ./docker.local/bin/build.base.sh
+
+    - name: Build validator
+      run: ./docker.local/bin/build.validator.sh
+
     - name: Login to Docker Hub
       uses: docker/login-action@v1
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-    - name: Build validator Docker Image
-      run: |
-        docker build -t $VALIDATOR_REGISTRY:$TAG -f "$DOCKERFILE_PROXY" .
-        docker tag $VALIDATOR_REGISTRY:$TAG $VALIDATOR_REGISTRY:latest
-        docker tag $VALIDATOR_REGISTRY:$TAG $VALIDATOR_REGISTRY:staging
-        docker push $VALIDATOR_REGISTRY:$TAG
-      env:
-        TAG: ${{ steps.get_version.outputs.VERSION }}
-        DOCKERFILE_PROXY: "docker.local/ValidatorDockerfile"
-    
     - name: Push validator Docker Image
       run: |
+        docker tag validator:latest ${VALIDATOR_REGISTRY}:$TAG
+        docker push ${VALIDATOR_REGISTRY}:$TAG
         if [[ "$PUSH_LATEST" == "yes" ]] && [[ "$BRANCH" == "master" ]]; then
           docker push $VALIDATOR_REGISTRY:latest
         elif [[ "$BRANCH" == "staging" ]]; then
@@ -94,4 +92,5 @@ jobs:
         fi
       env:
         PUSH_LATEST: ${{ github.event.inputs.latest_tag }}
+        TAG: ${{ steps.get_version.outputs.VERSION }}
         BRANCH: ${{ steps.get_version.outputs.BRANCH }}
