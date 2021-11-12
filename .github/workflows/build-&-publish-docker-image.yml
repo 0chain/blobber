@@ -20,7 +20,7 @@ jobs:
   dockerize_blobber:
     runs-on: [self-hosted, build]
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v1
 
     - name: Get the version
       id: get_version
