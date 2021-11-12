@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"github.com/gorilla/mux"
 )
 
 func main() {
@@ -43,11 +44,11 @@ func main() {
 
 	go setupOnChain()
 
-	go startGRPCServer()
-	
-	startHttpServer()
+	r := mux.NewRouter()
 
-
-
+	// pass Router by copy
+	startGRPCServer(*r)
+	// pass Router by value
+	startHttpServer(r)
 
 }

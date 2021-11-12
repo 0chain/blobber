@@ -22,8 +22,7 @@ import (
 
 var startTime time.Time
 
-func startHttpServer() {
-	fmt.Println("[11/11] start http server	[OK]")
+func startHttpServer(r *mux.Router) {
 
 	mode := "main net"
 	if config.Development() {
@@ -37,8 +36,6 @@ func startHttpServer() {
 	//address := publicIP + ":" + portString
 	address := ":" + strconv.Itoa(httpPort)
 	var server *http.Server
-
-	r := mux.NewRouter()
 
 	common.ConfigRateLimits()
 	initHandlers(r)
@@ -65,7 +62,7 @@ func startHttpServer() {
 	handler.HandleShutdown(common.GetRootContext())
 
 	logging.Logger.Info("Ready to listen to the requests")
-
+	fmt.Println("[11/11] start http server	[OK]")
 	startTime = time.Now().UTC()
 
 	log.Fatal(server.ListenAndServe())

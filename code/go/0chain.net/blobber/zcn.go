@@ -15,6 +15,8 @@ import (
 )
 
 func setupOnChain() {
+	//wait http & grpc startup, and go to setup on chain
+	time.Sleep(1 * time.Second)
 	fmt.Println("[9/11] connecting to chain	")
 
 	const ATTEMPT_DELAY = 60 * 1
