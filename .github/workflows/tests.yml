@@ -59,6 +59,15 @@ jobs:
           cd docker.local/blobber1
           ../bin/blobber.start_github.sh
           docker ps
+      - name: Wait gPRC Server
+        run: |
+          running=0
+          if [ $running -eq 0 ]; then
+            echo "checking gPRC server status"
+            curl 127.0.0.1:31501 && $running=1 || sleep 3
+          fi
+
+          echo "gRPC server is running"
 
       - name: Run Tests
         run: |
