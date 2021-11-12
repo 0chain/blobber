@@ -6,15 +6,17 @@ on:
       - master
       - staging
   pull_request:
+    paths-ignore:
+      - '**.md'
 
 jobs:
   unit_tests:
     runs-on: [self-hosted, load-test]
     steps:
-      - name: Setup go 1.16
+      - name: Setup go 1.17
         uses: actions/setup-go@v2
         with:
-          go-version: '1.16' # The Go version to download (if necessary) and use.
+          go-version: '1.17' # The Go version to download (if necessary) and use.
 
       - name: Clone blobber
         uses: actions/checkout@v2
@@ -25,18 +27,73 @@ jobs:
       #     echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
       #     echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
          
-      # - name: Clone gosdk
-      #   run: |
-      #     [ -d $GOSDK ] && rm -rf $GOSDK
-      #     git clone https://github.com/0chain/gosdk.git $GOSDK
-      #     cd $GOSDK
-      #     git checkout $BRANCH
   
       - name: Run tests
         run: |
           cd $GITHUB_WORKSPACE/code/go/0chain.net/ 
           CGO_ENABLED=1 go test -tags bn256 -race -coverprofile=coverage.txt -covermode=atomic ./...
-      # - name: Codecov
-      #   run: |
-      #     cd $GITHUB_WORKSPACE/code/go/0chain.net/
-      #     bash <(curl -s https://codecov.io/bash)
+
+
+  integration_test:
+    runs-on: [ubuntu-20.04]
+    timeout-minutes: 40
+    steps:
+  
+      - name: Setup go 1.17
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.17' # The Go version to download (if necessary) and use.
+
+      - name: Clone Blobber
+        uses: actions/checkout@v1
+
+      - name: Build Blobber
+        run: |
+          docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
+          ./docker.local/bin/build.base.sh
+          ./docker.local/bin/build.blobber.sh
+
+      - name: Run Blobber on gRPC  
+        run: |
+          ./docker.local/bin/blobber.init.setup.sh
+          cd docker.local/blobber1
+          ../bin/blobber.start_github.sh
+          docker ps
+
+      - name: Run Tests
+        run: |
+          go17=$(which go)
+          sudo  CGO_ENABLED=1 $go17 test -tags bn256  ./... -args integration
+
+  golangci:
+    name: lint
+    runs-on: [self-hosted, tests-suite]
+    steps:
+      - name: Setup go 1.17
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.17' # The Go version to download (if necessary) and use.
+      - uses: actions/checkout@v2
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
+          args: --timeout=2m0s
+
+  buf-build:
+    runs-on: [self-hosted, tests-suite]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@master
+        with:
+          fetch-depth: 1
+
+      - name: setup golang
+        if: success()
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17.x
+      - name: run buf commands
+        if: success()
+        run: make local
