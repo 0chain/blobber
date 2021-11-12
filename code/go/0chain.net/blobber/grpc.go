@@ -17,11 +17,13 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-func startGRPCServer(r mux.Router) {
+func startGRPCServer() {
 
 	common.ConfigRateLimits()
-	initHandlers(&r)
-	grpcServer := handler.NewGRPCServerWithMiddlewares(&r)
+	r := mux.NewRouter()
+	initHandlers(r)
+
+	grpcServer := handler.NewGRPCServerWithMiddlewares(r)
 	reflection.Register(grpcServer)
 
 	if grpcPort <= 0 {

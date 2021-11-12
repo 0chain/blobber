@@ -22,7 +22,7 @@ lint:
 
 .PHONY: integration-tests
 integration-tests:
-	CGO_ENABLED=1 go test -tags bn256  ./... -args integration
+	CGO_ENABLED=1 go test -p 1 -tags bn256  ./... -args integration
 
 
 

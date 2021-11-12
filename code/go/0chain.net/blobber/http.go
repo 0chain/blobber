@@ -22,7 +22,7 @@ import (
 
 var startTime time.Time
 
-func startHttpServer(r *mux.Router) {
+func startHttpServer() {
 
 	mode := "main net"
 	if config.Development() {
@@ -38,6 +38,7 @@ func startHttpServer(r *mux.Router) {
 	var server *http.Server
 
 	common.ConfigRateLimits()
+	r := mux.NewRouter()
 	initHandlers(r)
 
 	if config.Development() {
