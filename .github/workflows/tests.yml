@@ -5,9 +5,11 @@ on:
     branches:
       - master
       - staging
+  tags:
+      - '*'
   pull_request:
-    paths-ignore:
-      - '**.md'
+      - '*'
+
 
 jobs:
   unit_tests:
@@ -59,7 +61,7 @@ jobs:
           cd docker.local/blobber1
           ../bin/blobber.start_github.sh
           docker ps
-      - name: Wait gPRC Server
+      - name: Wait gPRC Server 
         run: |
           running=0
           if [ $running -eq 0 ]; then
