@@ -3,7 +3,7 @@ LABEL zchain="blobber"
 
 ENV SRC_DIR=/0chain
 ENV GO111MODULE=on
-#ENV GOPROXY=https://goproxy.cn,direct 
+# ENV GOPROXY=http://10.10.10.100:3080 
 
 # Download the dependencies:
 # Will be cached if we don't change mod/sum files
