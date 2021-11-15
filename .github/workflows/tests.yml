@@ -51,6 +51,7 @@ jobs:
       - name: Run Tests
         run: |
           make local-run &
+          sleep 20
           running=0
           echo "checking blobber server status"
           if [ $running -eq 0 ]; then
