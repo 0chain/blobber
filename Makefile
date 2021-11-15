@@ -9,7 +9,8 @@
 ########################################################
 ########################################################
 ########################################################
-
+UNAME_OS := $(shell uname -s)
+UNAME_ARCH := $(shell uname -m)
 
 .PHONY: test
 test:
@@ -30,7 +31,11 @@ local-init:
 	mkdir -p ./dev.local/data/blobber 
 	#[ -d ./dev.local/data/blobber/config ] && rm -rf ./dev.local/data/blobber/config
 	cp -r ./config ./dev.local/data/blobber/ 
+ifeq ($(UNAME_OS),Darwin)
 	cd ./dev.local/data/blobber/config/ && find . -name "*.yaml" -exec sed -i '' "s/postgres/127.0.0.1/g" {} \;
+else
+	cd ./dev.local/data/blobber/config/ && sed -i "s/postgres/127.0.0.1/g" ./0chain_blobber.yaml
+endif
 	cd ./dev.local/data/blobber && [ -d files ] || mkdir files 
 	cd ./dev.local/data/blobber && [ -d data ] || mkdir data 
 	cd ./dev.local/data/blobber && [ -d log ] || mkdir log
@@ -99,8 +104,7 @@ BUF_INSTALL_FROM_SOURCE := false
 
 ### Everything below this line is meant to be static, i.e. only adjust the above variables. ###
 
-UNAME_OS := $(shell uname -s)
-UNAME_ARCH := $(shell uname -m)
+
 # Buf will be cached to ~/.cache/buf-example.
 CACHE_BASE := $(HOME)/.cache/$(PROJECT)
 # This allows switching between i.e a Docker container and your local setup without overwriting.
