@@ -42,28 +42,14 @@ jobs:
       - name: Clone Blobber
         uses: actions/checkout@v1
 
-      - name: Build Blobber
-        run: |
-          docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
-          ./docker.local/bin/build.base.sh
-          ./docker.local/bin/build.blobber.sh
-
-      - name: Run Blobber on gRPC  
+      - name: Init Postgres
         run: |
           ./docker.local/bin/blobber.init.setup.sh
           cd docker.local/blobber1
           ../bin/blobber.start_github.sh
           docker ps
-      - name: Wait gPRC Server 
-        run: |
-          running=0
-          if [ $running -eq 0 ]; then
-            echo "checking gPRC server status"
-            docker ps
-            docker logs blobber1_blobber_1 | grep "\[10/11\]" && $running=1 || sleep 3
-          fi
-
-          echo "gRPC server is running"
+      - name: Run Blobber
+        run: make local-run 
 
       - name: Run Tests
         run: |

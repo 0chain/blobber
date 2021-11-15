@@ -24,8 +24,39 @@ lint:
 integration-tests:
 	CGO_ENABLED=1 go test -p 1 -tags bn256  ./... -args integration
 
+.PHONY: local-init
+local-init:
+	@echo "init blobber"
+	mkdir -p ./dev.local/data/blobber 
+	#[ -d ./dev.local/data/blobber/config ] && rm -rf ./dev.local/data/blobber/config
+	cp -r ./config ./dev.local/data/blobber/ 
+	cd ./dev.local/data/blobber/config/ && find . -name "*.yaml" -exec sed -i '' "s/postgres/127.0.0.1/g" {} \;
+	cd ./dev.local/data/blobber && [ -d files ] || mkdir files 
+	cd ./dev.local/data/blobber && [ -d data ] || mkdir data 
+	cd ./dev.local/data/blobber && [ -d log ] || mkdir log
+
+.PHONY: local-build
+local-build: local-init
+	@echo "build blobber..."
+	cd ./code/go/0chain.net/blobber && CGO_ENABLED=1 go build -v -tags "bn256 development" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=dev" -o ../../../../dev.local/data/blobber/blobber .
 
 
+.PHONY: local-run
+local-run: local-build
+	@echo "run blobber..."
+
+	cd ./dev.local/ && ./data/blobber/blobber \
+	--port 5051 \
+	--grpc_port 31501 \
+	--hostname 127.0.0.1 \
+	--deployment_mode 0 \
+	--keys_file ../docker.local/keys_config/b0bnode1_keys.txt  \
+	--files_dir ./data/blobber/files \
+	--log_dir ./data/blobber/log \
+	--db_dir ./data/blobber/data  \
+	--minio_file ../docker.local/keys_config/minio_config.txt \
+	--config_dir ./data/blobber/config
+    
 
 ########################################################
 ########################################################
