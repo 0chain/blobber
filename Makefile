@@ -28,7 +28,7 @@ integration-tests:
 
 .PHONY: local-init
 local-init:
-	@echo "init blobber"
+	@echo "=========================[ init blobber ]========================="
 	mkdir -p ./dev.local/data/blobber 
 	#[ -d ./dev.local/data/blobber/config ] && rm -rf ./dev.local/data/blobber/config
 	cp -r ./config ./dev.local/data/blobber/ 
@@ -43,13 +43,13 @@ endif
 
 .PHONY: local-build
 local-build: local-init
-	@echo "build blobber..."
+	@echo "=========================[ build blobber ]========================="
 	cd ./code/go/0chain.net/blobber && CGO_ENABLED=1 go build -tags "bn256 development" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=dev" -o ../../../../dev.local/data/blobber/blobber .
 
 
 .PHONY: local-run
-local-run: local-build
-	@echo "run blobber..."
+local-run: 
+	@echo "=========================[ run blobber ]========================="
 	cd ./dev.local/ && integration=1 ./data/blobber/blobber \
 	--port 5051 \
 	--grpc_port 31501 \
