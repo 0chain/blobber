@@ -3,19 +3,21 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 )
 
 var (
-	deploymentMode int
-	keysFile       string
-	minioFile      string
-	filesDir       string
-	metadataDB     string
-	logDir         string
-	httpPort       int
-	hostname       string
-	configDir      string
-	grpcPort       int
+	deploymentMode    int
+	keysFile          string
+	minioFile         string
+	filesDir          string
+	metadataDB        string
+	logDir            string
+	httpPort          int
+	hostname          string
+	configDir         string
+	grpcPort          int
+	isIntegrationTest bool
 )
 
 func init() {
@@ -34,7 +36,7 @@ func init() {
 }
 
 func parseFlags() {
-	fmt.Print("[1/10] load flags")
+	fmt.Print("[1/11] load flags")
 	flag.Parse()
 
 	if filesDir == "" {
@@ -52,5 +54,7 @@ func parseFlags() {
 	if httpPort <= 0 {
 		panic("Please specify --port which is the port on which requests are accepted")
 	}
+	isIntegrationTest = os.Getenv("integration") == "1"
+
 	fmt.Print("		[OK]\n")
 }

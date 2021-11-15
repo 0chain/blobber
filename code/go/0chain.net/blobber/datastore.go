@@ -9,7 +9,7 @@ import (
 )
 
 func setupDatabase() error {
-	fmt.Print("\r[7/10] connect data store")
+	fmt.Print("\r[7/11] connect data store")
 	// check for database connection
 	for i := 0; i < 600; i++ {
 
@@ -18,7 +18,7 @@ func setupDatabase() error {
 		}
 
 		if err := datastore.GetStore().Open(); err == nil {
-			if i == 1 { // no more attempts
+			if i == 599 { // no more attempts
 				logging.Logger.Error("Failed to connect to the database. Shutting the server down")
 				return err
 			}

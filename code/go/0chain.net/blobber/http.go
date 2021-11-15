@@ -23,7 +23,6 @@ import (
 var startTime time.Time
 
 func startHttpServer() {
-	fmt.Println("[10/10] start http server	[OK]")
 
 	mode := "main net"
 	if config.Development() {
@@ -38,9 +37,8 @@ func startHttpServer() {
 	address := ":" + strconv.Itoa(httpPort)
 	var server *http.Server
 
-	r := mux.NewRouter()
-
 	common.ConfigRateLimits()
+	r := mux.NewRouter()
 	initHandlers(r)
 
 	if config.Development() {
@@ -65,11 +63,7 @@ func startHttpServer() {
 	handler.HandleShutdown(common.GetRootContext())
 
 	logging.Logger.Info("Ready to listen to the requests")
-
-	if config.Development() {
-		go startGRPCServer(*r)
-	}
-
+	fmt.Println("[11/11] start http server	[OK]")
 	startTime = time.Now().UTC()
 
 	log.Fatal(server.ListenAndServe())

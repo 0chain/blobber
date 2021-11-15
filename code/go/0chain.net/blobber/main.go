@@ -43,5 +43,8 @@ func main() {
 
 	go setupOnChain()
 
+	startGRPCServer()
+
 	startHttpServer()
+
 }
