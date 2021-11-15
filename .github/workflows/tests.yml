@@ -42,17 +42,18 @@ jobs:
       - name: Clone Blobber
         uses: actions/checkout@v1
 
-      - name: Init Postgres
+      - name: Install Postgres
         run: |
           ./docker.local/bin/blobber.init.setup.sh
           cd docker.local/blobber1
           ../bin/blobber.start_github.sh
           docker ps
-      - name: Run Blobber
-        run: make local-run &
+
 
       - name: Run Tests
         run: |
+          make local-run &
+          sleep 10
           go17=$(which go)
           sudo CGO_ENABLED=1 $go17 test -tags bn256  ./... -args integration
 
