@@ -88,7 +88,6 @@ install_debuggger() {
 }
 
 cleanAll() {
-    
     cd $root
     rm -rf ./data && echo "data is removed"
 }
@@ -112,31 +111,36 @@ done
 
 
 install_postgres () {
-
     echo Installing blobber_postgres in docker...
 
     [ ! "$(docker ps -a | grep blobber_postgres)" ] && docker run --name blobber_postgres --restart always -p 5432:5432 -e POSTGRES_PASSWORD=postgres -d postgres:11
 
-    [ -d "./data/blobber" ] || mkdir -p "./data/blobber" 
+
+    [ -d "./data/blobber$i" ] || mkdir -p "./data/blobber$i"
 
     echo Initializing database
 
-    [ -d "./data/blobber/sql" ] && rm -rf  [ -d "./data/blobber/sql" ]
+    [ -d "./data/blobber$i/sql" ] && rm -rf  [ -d "./data/blobber$i/sql" ]
 
-    cp -r ../sql "./data/blobber/"
-    cd "./data/blobber/sql"
+    cp -r ../sql "./data/blobber$i/"
+    cd "./data/blobber$i/sql"
 
-    find . -name "*.sql" -exec sed -i '' "s/blobber_user/blobber_user$i/g" {} \;
-    find . -name "*.sql" -exec sed -i '' "s/blobber_meta/blobber_meta$i/g" {} \;
+    if [[ "$(uname)" == "Darwin" ]]
+    then
+        find . -name "*.sql" -exec sed -i '' "s/blobber_user/blobber_user$i/g" {} \;
+        find . -name "*.sql" -exec sed -i '' "s/blobber_meta/blobber_meta$i/g" {} \;
+    else
+        sed -i "s/blobber_user/blobber_user$i/g" *.sql;
+        sed -i "s/blobber_meta/blobber_meta$i/g" *.sql;
+    fi
+
+    cd $root
+    [ -d "./data/blobber$i/bin" ] && rm -rf  [ -d "./data/blobber$i/bin" ]
+    cp -r ../bin "./data/blobber$i/"
 
 
     cd $root
-    [ -d "./data/blobber/bin" ] && rm -rf  [ -d "./data/blobber/bin" ]
-    cp -r ../bin "./data/blobber/"
 
-
-    cd $root
-  
     [ ! "$(docker ps -a | grep blobber_postgres_init)" ] && docker rm blobber_postgres_init --force
 
 
@@ -146,25 +150,30 @@ install_postgres () {
     -e  POSTGRES_HOST=postgres \
     -e  POSTGRES_USER=postgres  \
     -e  POSTGRES_PASSWORD=postgres \
-    -v  $root/data/blobber/bin:/blobber/bin \
-    -v  $root/data/blobber/sql:/blobber/sql \
+    -v  $root/data/blobber$i/bin:/blobber/bin \
+    -v  $root/data/blobber$i/sql:/blobber/sql \
     postgres:11 bash /blobber/bin/postgres-entrypoint.sh 
 
     docker rm blobber_postgres_init --force
-
 }
 
 prepareRuntime() {
-
     cd $root
     [ -d ./data/blobber$i/config ] && rm -rf $root/data/blobber$i/config
     cp -r ../config "./data/blobber$i/"
 
     cd  ./data/blobber$i/config/
+    if [[ "$(uname)" == "Darwin" ]]
+    then
+        find . -name "*.yaml" -exec sed -i '' "s/blobber_user/blobber_user$i/g" {} \;
+        find . -name "*.yaml" -exec sed -i '' "s/blobber_meta/blobber_meta$i/g" {} \;
+        find . -name "*.yaml" -exec sed -i '' "s/postgres/127.0.0.1/g" {} \;
+    else
+        sed -i "s/blobber_user/blobber_user$i/g" *.yaml;
+        sed -i "s/blobber_meta/blobber_meta$i/g" *.yaml;
+        sed -i "s/postgres/127.0.0.1/g" *.yaml
+    fi
 
-    find . -name "*.yaml" -exec sed -i '' "s/blobber_user/blobber_user$i/g" {} \;
-    find . -name "*.yaml" -exec sed -i '' "s/blobber_meta/blobber_meta$i/g" {} \;
-    find . -name "*.yaml" -exec sed -i '' "s/postgres/127.0.0.1/g" {} \;
     cd $root/data/blobber$i/
 
     [ -d files ] || mkdir files
@@ -174,7 +183,6 @@ prepareRuntime() {
 
 
 start_blobber () {
-
     echo ">>>>>>>>>>>>>> Blobber $i <<<<<<<<<<<<<<<<"
 
     echo "[1/3] build blobber..."
@@ -196,12 +204,10 @@ start_blobber () {
 
     echo "[3/3] run blobber..."
 
-    
     ./data/blobber$i/blobber --port $port --grpc_port $grpc_port --hostname $hostname --deployment_mode 0 --keys_file $keys_file  --files_dir $files_dir --log_dir $log_dir --db_dir $db_dir  --minio_file $minio_file --config_dir $config_dir
 }
 
 start_validator () {
-
     echo ">>>>>>>>>>>>>> Validator $i <<<<<<<<<<<<<<<<"
 
     echo "[1/3] build validator..."
@@ -223,13 +229,10 @@ start_validator () {
 }
 
 clean () {
-    echo "Building blobber $i"
-
+    echo "Cleaning blobber $i"
     cd $root
-
     rm -rf "./data/blobber$i"
 }
-
 
 echo "
 **********************************************
