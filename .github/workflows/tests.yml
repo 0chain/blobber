@@ -51,7 +51,13 @@ jobs:
       - name: Run Tests
         run: |
           make local-run &
-          sleep 15
+          running=0
+          echo "checking blobber server status"
+          if [ $running -eq 0 ]; then
+            echo -e "."
+            curl 127.0.0.1:5051 && $running=1 || sleep 1
+          fi
+
           #sudo make integration-tests 
           go17=$(which go)
           root=$(pwd)

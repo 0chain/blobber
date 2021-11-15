@@ -40,5 +40,7 @@ func startGRPCServer() {
 	}
 
 	fmt.Println("[10/11] starting grpc server	[OK]")
-	go log.Fatal(grpcServer.Serve(lis))
+	go func() {
+		log.Fatal(grpcServer.Serve(lis))
+	}()
 }
