@@ -11,6 +11,7 @@
 ########################################################
 UNAME_OS := $(shell uname -s)
 UNAME_ARCH := $(shell uname -m)
+ROOT := $(shell pwd)
 
 .PHONY: test
 test:
@@ -23,7 +24,7 @@ lint:
 
 .PHONY: integration-tests
 integration-tests:
-	CGO_ENABLED=1 go test -p 1 -tags bn256  ./... -args integration
+	CGO_ENABLED=1 root=$(ROOT) integration=1   go test -p 1 -tags bn256  ./...
 
 .PHONY: local-init
 local-init:

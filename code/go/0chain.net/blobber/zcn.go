@@ -23,11 +23,15 @@ func setupOnChain() {
 
 	// setup wallet
 	fmt.Print("	+ connect to miners: ")
-	if err := handler.WalletRegister(); err != nil {
-		fmt.Println(err.Error() + "\n")
-		panic(err)
+	if isIntegrationTest {
+		fmt.Print("	[SKIP]\n")
+	} else {
+		if err := handler.WalletRegister(); err != nil {
+			fmt.Println(err.Error() + "\n")
+			panic(err)
+		}
+		fmt.Print("	[OK]\n")
 	}
-	fmt.Print("	[OK]\n")
 
 	// setup blobber (add or update) on the blockchain (multiple attempts)
 	for i := 1; i <= 10; i++ {
@@ -37,20 +41,26 @@ func setupOnChain() {
 			fmt.Printf("\r	+ [%v/10]connect to sharders:", i)
 		}
 
-		if err := registerBlobberOnChain(); err != nil {
-			if i == 10 { // no more attempts
-				panic(err)
-			}
-			fmt.Print("\n		", err.Error()+"\n")
-
-		} else {
-			fmt.Print("	[OK]\n")
+		if isIntegrationTest {
+			fmt.Print("	[SKIP]\n")
 			break
-		}
-		for n := 0; n < ATTEMPT_DELAY; n++ {
-			<-time.After(1 * time.Second)
+		} else {
 
-			fmt.Printf("\r	- wait %v seconds to retry", ATTEMPT_DELAY-n)
+			if err := registerBlobberOnChain(); err != nil {
+				if i == 10 { // no more attempts
+					panic(err)
+				}
+				fmt.Print("\n		", err.Error()+"\n")
+
+			} else {
+				fmt.Print("	[OK]\n")
+				break
+			}
+			for n := 0; n < ATTEMPT_DELAY; n++ {
+				<-time.After(1 * time.Second)
+
+				fmt.Printf("\r	- wait %v seconds to retry", ATTEMPT_DELAY-n)
+			}
 		}
 
 	}
@@ -88,11 +98,19 @@ func setupServerChain() error {
 	chain.SetServerChain(serverChain)
 
 	if err := zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme); err != nil {
+		if isIntegrationTest {
+			return nil
+		}
+
 		return err
 	}
 	if err := zcncore.SetWalletInfo(node.Self.GetWalletString(), false); err != nil {
+		if isIntegrationTest {
+			return nil
+		}
 		return err
 	}
+
 	fmt.Print("	[OK]\n")
 	return nil
 }
