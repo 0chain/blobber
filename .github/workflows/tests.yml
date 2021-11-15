@@ -5,12 +5,13 @@ on:
     branches:
       - master
       - staging
+    tags:
+      - "*"
   pull_request:
-    paths-ignore:
-      - '**.md'
 
 jobs:
   unit_tests:
+    name: "Unit Tests"
     runs-on: [self-hosted, load-test]
     steps:
       - name: Setup go 1.17
@@ -21,20 +22,14 @@ jobs:
       - name: Clone blobber
         uses: actions/checkout@v2
 
-      # - name: Set GITHUB_ENV
-      #   run: |
-      #     echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
-      #     echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
-      #     echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-         
-  
       - name: Run tests
         run: |
           cd $GITHUB_WORKSPACE/code/go/0chain.net/ 
           CGO_ENABLED=1 go test -tags bn256 -race -coverprofile=coverage.txt -covermode=atomic ./...
 
-
   integration_test:
+    name: "Integration Tests"
+    needs: unit_tests
     runs-on: [ubuntu-20.04]
     timeout-minutes: 40
     steps:
@@ -47,23 +42,29 @@ jobs:
       - name: Clone Blobber
         uses: actions/checkout@v1
 
-      - name: Build Blobber
-        run: |
-          docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
-          ./docker.local/bin/build.base.sh
-          ./docker.local/bin/build.blobber.sh
-
-      - name: Run Blobber on gRPC  
+      - name: Install Postgres
         run: |
           ./docker.local/bin/blobber.init.setup.sh
           cd docker.local/blobber1
           ../bin/blobber.start_github.sh
           docker ps
-
       - name: Run Tests
         run: |
+          make local-build
+          sudo make local-run &
+          sleep 15
+          running=0
+          echo "checking blobber server status"
+          if [ $running -eq 0 ]; then
+            echo "checking blobber server status"
+            curl 127.0.0.1:5051 && $running=1 || sleep 2
+          fi
+
+          echo =========================[ run tests ]=========================
+          #sudo make integration-tests 
           go17=$(which go)
-          sudo  CGO_ENABLED=1 $go17 test -tags bn256  ./... -args integration
+          root=$(pwd)
+          sudo CGO_ENABLED=1 root=$root integration=1 $go17 test -tags bn256  ./...
 
   golangci:
     name: lint

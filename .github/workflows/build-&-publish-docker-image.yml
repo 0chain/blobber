@@ -6,6 +6,7 @@ on:
       - staging
     tags: 
       - '*'
+  pull_request:
 
   workflow_dispatch:
 
@@ -20,9 +21,8 @@ jobs:
     steps:
       - name: Set GITHUB_ENV
         run: |
-          echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
-          echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+          echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
+          echo "TAG=$(echo ${GITHUB_REF##*/}) | sed 's/\//-/g' )" >> $GITHUB_ENV
       - name: Clone blobber
         uses: actions/checkout@v1     
   

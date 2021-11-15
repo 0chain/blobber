@@ -18,7 +18,7 @@ func setupDatabase() error {
 		}
 
 		if err := datastore.GetStore().Open(); err == nil {
-			if i == 1 { // no more attempts
+			if i == 599 { // no more attempts
 				logging.Logger.Error("Failed to connect to the database. Shutting the server down")
 				return err
 			}
