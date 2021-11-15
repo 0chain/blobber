@@ -64,13 +64,14 @@ func setupOnChain() {
 		}
 
 	}
+	if !isIntegrationTest {
+		go setupWorkers()
 
-	go setupWorkers()
+		go keepAliveOnChain()
 
-	go keepAliveOnChain()
-
-	if config.Configuration.PriceInUSD {
-		go refreshPriceOnChain()
+		if config.Configuration.PriceInUSD {
+			go refreshPriceOnChain()
+		}
 	}
 }
 
