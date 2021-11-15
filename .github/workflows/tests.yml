@@ -51,7 +51,7 @@ jobs:
       - name: Run Tests
         run: |
           make local-run &
-          sleep 5
+          sleep 15
           #sudo make integration-tests 
           go17=$(which go)
           root=$(pwd)
