@@ -43,14 +43,13 @@ endif
 .PHONY: local-build
 local-build: local-init
 	@echo "build blobber..."
-	cd ./code/go/0chain.net/blobber && CGO_ENABLED=1 go build -v -tags "bn256 development" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=dev" -o ../../../../dev.local/data/blobber/blobber .
+	cd ./code/go/0chain.net/blobber && CGO_ENABLED=1 go build -tags "bn256 development" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=dev" -o ../../../../dev.local/data/blobber/blobber .
 
 
 .PHONY: local-run
 local-run: local-build
 	@echo "run blobber..."
-
-	cd ./dev.local/ && ./data/blobber/blobber \
+	cd ./dev.local/ && integration=1 ./data/blobber/blobber \
 	--port 5051 \
 	--grpc_port 31501 \
 	--hostname 127.0.0.1 \
@@ -60,8 +59,7 @@ local-run: local-build
 	--log_dir ./data/blobber/log \
 	--db_dir ./data/blobber/data  \
 	--minio_file ../docker.local/keys_config/minio_config.txt \
-	--config_dir ./data/blobber/config \
-	-args integration
+	--config_dir ./data/blobber/config
     
 
 ########################################################

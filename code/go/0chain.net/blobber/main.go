@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
@@ -27,6 +29,8 @@ func main() {
 			logging.Logger.Error("Error setting up server chain" + err.Error())
 			panic(err)
 		}
+	} else {
+		fmt.Print("[6/10] setup server chain	[SKIP]\n")
 	}
 
 	if err := setupDatabase(); err != nil {
@@ -45,6 +49,8 @@ func main() {
 
 	if !isIntegrationTest {
 		go setupOnChain()
+	} else {
+		fmt.Print("[9/11] connecting to chain	[SKIP]\n")
 	}
 
 	startGRPCServer()

@@ -54,15 +54,7 @@ func parseFlags() {
 	if httpPort <= 0 {
 		panic("Please specify --port which is the port on which requests are accepted")
 	}
-
-	args := make(map[string]bool)
-	for _, arg := range os.Args {
-		args[arg] = true
-		if arg == "integration" {
-			isIntegrationTest = true
-		}
-
-	}
+	isIntegrationTest = os.Getenv("integration") == "1"
 
 	fmt.Print("		[OK]\n")
 }
