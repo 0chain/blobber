@@ -22,9 +22,11 @@ func main() {
 		panic(err)
 	}
 
-	if err := setupServerChain(); err != nil {
-		logging.Logger.Error("Error setting up server chain" + err.Error())
-		//panic(err)
+	if !isIntegrationTest {
+		if err := setupServerChain(); err != nil {
+			logging.Logger.Error("Error setting up server chain" + err.Error())
+			panic(err)
+		}
 	}
 
 	if err := setupDatabase(); err != nil {
@@ -41,7 +43,9 @@ func main() {
 	// only enabled with "// +build integration_tests"
 	initIntegrationsTests(node.Self.ID)
 
-	go setupOnChain()
+	if !isIntegrationTest {
+		go setupOnChain()
+	}
 
 	startGRPCServer()
 

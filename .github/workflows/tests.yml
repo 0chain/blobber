@@ -49,7 +49,7 @@ jobs:
           ../bin/blobber.start_github.sh
           docker ps
       - name: Run Blobber
-        run: make local-run 
+        run: make local-run &
 
       - name: Run Tests
         run: |
