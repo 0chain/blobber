@@ -48,16 +48,14 @@ jobs:
           cd docker.local/blobber1
           ../bin/blobber.start_github.sh
           docker ps
-      - name: Run Blobber
+      - name: Run Tests
         run: |
           make local-run &
           sleep 5
-
-      - name: Run Tests
-        run: |
-          go17=$(which go)
-          root=$(pwd)
-          sudo CGO_ENABLED=1 root=$root integration=1  $go17 test -tags bn256  ./...
+          make integration-tests 
+          # go17=$(which go)
+          # root=$(pwd)
+          # sudo CGO_ENABLED=1 root=$root integration=1  $go17 test -tags bn256  ./...
 
   golangci:
     name: lint
