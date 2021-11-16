@@ -1,0 +1,50 @@
+name: "0Chain System Tests"
+
+on:
+  workflow_dispatch:
+    inputs:
+       zbox_cli_branch:
+        description: '0Box CLI (branch or commit SHA) which the tests will use'
+        default: 'staging'
+        required: true
+       zwallet_cli_branch:
+        description: '0Wallet CLI (branch or commit SHA) which the tests will use'
+        default: 'staging'
+        required: true
+       miner_image:
+        description: 'miner DOCKER IMAGE to deploy'
+        default: 'staging'
+        required: true
+       sharder_image:
+        description: 'sharder DOCKER IMAGE to deploy'
+        default: 'staging'
+        required: true
+       blobber_image:
+        description: 'blobber DOCKER IMAGE to deploy'
+        default: 'staging'
+        required: true
+       validator_image:
+        description: 'validator DOCKER IMAGE to deploy'
+        default: 'staging'
+        required: true
+       zbox_image:
+        description: '0box DOCKER IMAGE to deploy'
+        default: 'staging'
+        required: true
+       zblock_image:
+        description: '0block DOCKER IMAGE to deploy'
+        default: 'staging'
+        required: true
+jobs:
+  system-tests:  
+    runs-on: [ tests-suite ]
+    steps:
+      
+    - name: Extract branch name
+      shell: bash
+      run: |
+         echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+         pull_number=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+         echo "##[set-output name=pr_number;]$(echo $pull_number)"
+      id: extract_branch     
+    

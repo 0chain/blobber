@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.3.0-beta.3.0.20211028024808-1a15c1339eb2
+	github.com/0chain/gosdk v1.3.1-0.20211110141100-0523404d2ee1
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.1
 	github.com/go-ini/ini v1.55.0 // indirect
@@ -13,7 +13,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0
 	github.com/herumi/bls-go-binary v1.0.1-0.20210830012634-a8e769d3b872
-	github.com/improbable-eng/grpc-web v0.14.1
+	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/koding/cache v0.0.0-20161222233015-e8a81b0b3f20
 	github.com/minio/minio-go v6.0.14+incompatible
 	github.com/mitchellh/mapstructure v1.4.2
@@ -25,15 +25,15 @@ require (
 	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
-	google.golang.org/genproto v0.0.0-20210903162649-d08c68adba83
-	google.golang.org/grpc v1.41.0
+	google.golang.org/genproto v0.0.0-20211101144312-62acf1d99145
+	google.golang.org/grpc v1.42.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.27.1
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gorm.io/datatypes v0.0.0-20200806042100-bc394008dd0d
-	gorm.io/driver/postgres v1.2.1
-	gorm.io/gorm v1.22.2
+	gorm.io/driver/postgres v1.2.2
+	gorm.io/gorm v1.22.3
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
