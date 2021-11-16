@@ -115,6 +115,7 @@ func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, isCreate bool) er
 
 	rmEntity.LatestRM = rm
 	rmEntity.RedeemRequired = true
+	rmEntity.LatestRedeemedRMBlob = datatypes.JSON("{}")
 
 	if isCreate {
 		return db.Create(rmEntity).Error
@@ -128,16 +129,22 @@ func (rm *ReadMarkerEntity) Sync(ctx context.Context) (err error) {
 
 	var db = datastore.GetStore().GetTransaction(ctx)
 
-	var rmUpdates = make(map[string]interface{})
-	rmUpdates["latest_redeem_txn_id"] = "Synced from SC REST API"
-	rmUpdates["status_message"] = "sync"
-	rmUpdates["redeem_required"] = false
-
-	var latestRMBytes []byte
-	if latestRMBytes, err = json.Marshal(rm.LatestRM); err != nil {
-		return common.NewErrorf("rme_sync", "marshaling latest RM: %v", err)
-	}
-	rmUpdates["latest_redeemed_rm"] = latestRMBytes
+	//////////////////////////////////////////////////////////////////////////////
+	///////////////////////  Not using this map anywhere  ////////////////////////
+	//////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////
+	// var rmUpdates = make(map[string]interface{})								//
+	// rmUpdates["latest_redeem_txn_id"] = "Synced from SC REST API"			//
+	// rmUpdates["status_message"] = "sync"										//
+	// rmUpdates["redeem_required"] = false										//
+	//																			//
+	// var latestRMBytes []byte													//
+	// if latestRMBytes, err = json.Marshal(rm.LatestRM); err != nil {			//
+	// 	return common.NewErrorf("rme_sync", "marshaling latest RM: %v", err)	//
+	// }																		//
+	// rmUpdates["latest_redeemed_rm"] = latestRMBytes							//
+	//////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////
 
 	// update local read pools cache from sharders
 	var rps []*allocation.ReadPool
@@ -183,6 +190,9 @@ func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context,
 	if latestRMBytes, err = json.Marshal(rm.LatestRM); err != nil {
 		return common.NewErrorf("rme_update_status",
 			"marshaling latest RM: %v", err)
+	}
+	if len(latestRMBytes) == 0 || string(latestRMBytes) == "" {
+		latestRMBytes = []byte("{}")
 	}
 	rmUpdates["latest_redeemed_rm"] = latestRMBytes
 
