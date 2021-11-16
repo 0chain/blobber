@@ -15,26 +15,23 @@ func SetupWorkers(ctx context.Context) {
 }
 
 func startCommitProcessed(ctx context.Context) {
-	ticker := time.NewTicker(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
-	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
+		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
 			commitProcessed(ctx)
 		}
 	}
 }
 
 func startProcessAccepted(ctx context.Context) {
-	ticker := time.NewTicker(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
-	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
+		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
 			processAccepted(ctx)
 		}
 	}
@@ -42,13 +39,12 @@ func startProcessAccepted(ctx context.Context) {
 
 // startSyncOpen
 func startSyncOpen(ctx context.Context) {
-	ticker := time.NewTicker(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second)
-	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
+		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
 			syncOpenChallenges(ctx)
 		}
 	}

@@ -2,9 +2,7 @@ name: Benchmark tests
 
 on:
   push:
-    branches: [ master, staging, stream ]
-  pull_request:
-    branches: [ master, staging, stream ]
+    branches: [ master, staging ]
 
 jobs:
   benchmark:
@@ -33,7 +31,7 @@ jobs:
       #     git checkout $BRANCH
 
       - name: Run benchmark
-        run: go test -tags bn256 -benchmem -run="BenchmarkUploadFile*" -bench="BenchmarkUploadFile*"   ./... | tee benchmark.txt
+        run: CGO_ENABLED=1 go test -tags bn256 -benchmem -run="BenchmarkUploadFile*" -bench="BenchmarkUploadFile*"   ./... | tee benchmark.txt
  
       # Run `github-action-benchmark` action
       # - name: Push benchmark report

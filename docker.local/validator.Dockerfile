@@ -17,7 +17,7 @@ RUN cd $SRC_DIR/ && go mod download
 
 WORKDIR $SRC_DIR/code/go/0chain.net/validator
 
-RUN go build -v -tags "bn256 development" -ldflags "-X 0chain.net/core/build.BuildTag=$GIT_COMMIT"
+RUN CGO_ENABLED=1 go build -v -tags "bn256 development" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=$GIT_COMMIT"
 
 # Copy the build artifact into a minimal runtime image:
 FROM golang:1.17.1-alpine3.14

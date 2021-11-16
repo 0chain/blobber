@@ -9,11 +9,13 @@
 ########################################################
 ########################################################
 ########################################################
-
+UNAME_OS := $(shell uname -s)
+UNAME_ARCH := $(shell uname -m)
+ROOT := $(shell pwd)
 
 .PHONY: test
 test:
-	go test -tags bn256  ./...;
+	CGO_ENABLED=1 go test -tags bn256  ./...
 
 .PHONY: lint
 lint:
@@ -22,10 +24,44 @@ lint:
 
 .PHONY: integration-tests
 integration-tests:
-	go test -tags bn256  ./... -args integration;
+	CGO_ENABLED=1 root=$(ROOT) integration=1   go test -p 1 -tags bn256  ./...
+
+.PHONY: local-init
+local-init:
+	@echo "=========================[ init blobber ]========================="
+	mkdir -p ./dev.local/data/blobber 
+	#[ -d ./dev.local/data/blobber/config ] && rm -rf ./dev.local/data/blobber/config
+	cp -r ./config ./dev.local/data/blobber/ 
+ifeq ($(UNAME_OS),Darwin)
+	cd ./dev.local/data/blobber/config/ && find . -name "*.yaml" -exec sed -i '' "s/postgres/127.0.0.1/g" {} \;
+else
+	cd ./dev.local/data/blobber/config/ && sed -i "s/postgres/127.0.0.1/g" ./0chain_blobber.yaml
+endif
+	cd ./dev.local/data/blobber && [ -d files ] || mkdir files 
+	cd ./dev.local/data/blobber && [ -d data ] || mkdir data 
+	cd ./dev.local/data/blobber && [ -d log ] || mkdir log
+
+.PHONY: local-build
+local-build: local-init
+	@echo "=========================[ build blobber ]========================="
+	cd ./code/go/0chain.net/blobber && CGO_ENABLED=1 go build -tags "bn256 development" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=dev" -o ../../../../dev.local/data/blobber/blobber .
 
 
-
+.PHONY: local-run
+local-run: 
+	@echo "=========================[ run blobber ]========================="
+	cd ./dev.local/ && integration=1 ./data/blobber/blobber \
+	--port 5051 \
+	--grpc_port 31501 \
+	--hostname 127.0.0.1 \
+	--deployment_mode 0 \
+	--keys_file ../docker.local/keys_config/b0bnode1_keys.txt  \
+	--files_dir ./data/blobber/files \
+	--log_dir ./data/blobber/log \
+	--db_dir ./data/blobber/data  \
+	--minio_file ../docker.local/keys_config/minio_config.txt \
+	--config_dir ./data/blobber/config
+    
 
 ########################################################
 ########################################################
@@ -68,8 +104,7 @@ BUF_INSTALL_FROM_SOURCE := false
 
 ### Everything below this line is meant to be static, i.e. only adjust the above variables. ###
 
-UNAME_OS := $(shell uname -s)
-UNAME_ARCH := $(shell uname -m)
+
 # Buf will be cached to ~/.cache/buf-example.
 CACHE_BASE := $(HOME)/.cache/$(PROJECT)
 # This allows switching between i.e a Docker container and your local setup without overwriting.

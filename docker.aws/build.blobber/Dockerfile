@@ -12,7 +12,7 @@ RUN apk add gmp gmp-dev openssl-dev && \
     mv bls* bls && \
     make -C mcl -j $(nproc) lib/libmclbn256.so install && \
     cp mcl/lib/libmclbn256.so /usr/local/lib && \
-    make -C bls -j $(nproc) install && \
+    make MCL_DIR=$(pwd)/mcl -C bls -j $(nproc) install && \
     rm -R /tmp/mcl && \
     rm -R /tmp/bls
 
@@ -32,7 +32,7 @@ WORKDIR $SRC_DIR/go/0chain.net/blobber
 ARG image_tag
 ARG go_build_mode
 ARG go_bls_tag
-RUN go build -v -tags ${go_build_mode} -tags ${go_bls_tag} -ldflags "-X 0chain.net/core/build.BuildTag=${image_tag}"
+RUN CGO_ENABLED=1 go build -v -tags ${go_build_mode} -tags ${go_bls_tag} -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=${image_tag}"
 
 # Copy the build artifact into a minimal runtime image:
 FROM golang:1.17.1-alpine3.14
