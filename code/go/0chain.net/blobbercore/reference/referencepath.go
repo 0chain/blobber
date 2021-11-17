@@ -89,11 +89,7 @@ func PathExists(ctx context.Context, allocationID string, path string) (bool, er
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	ref := Ref{Path: path, AllocationID: allocationID}
-	db = db.Where(ref).Or("path LIKE ? AND allocation_id = ?", (path + "/%"), allocationID)
-
-	err := db.Order("level, lookup_hash").Preload(ref.TableName(), func(tx *gorm.DB) *gorm.DB {
-		return tx.Select("id")
-	}).Find(&refs).Error
+	err := db.Where(ref).Find(&refs).Error
 
 	if err != nil || len(refs) == 0 {
 		return false, err
