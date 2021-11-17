@@ -25,10 +25,16 @@ func (rf *RenameFileChange) DeleteTempFile() error {
 }
 
 func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+	isFilePresent, _ := reference.PathExists(ctx, rf.AllocationID, rf.NewName)
+	if isFilePresent {
+		return nil, common.NewError("invalid_reference_path", "file already exists")
+	}
+
 	affectedRef, err := reference.GetObjectTree(ctx, rf.AllocationID, rf.Path)
 	if err != nil {
 		return nil, err
 	}
+
 	path, _ := filepath.Split(affectedRef.Path)
 	path = filepath.Clean(path)
 	affectedRef.Name = rf.NewName
