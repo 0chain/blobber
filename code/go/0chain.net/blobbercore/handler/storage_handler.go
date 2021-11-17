@@ -157,12 +157,12 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	}
 
 	var (
-		isOwner    = clientID == alloc.OwnerID
-		isRepairer = clientID == alloc.RepairerID
+		isOwner        = clientID == alloc.OwnerID
+		isRepairer     = clientID == alloc.RepairerID
 		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
-	if isOwner || isCollaborator{
+	if isOwner || isCollaborator {
 		publicKey := alloc.OwnerPublicKey
 		if isCollaborator {
 			publicKey = ctx.Value(constants.ContextKeyClientKey).(string)
@@ -417,7 +417,6 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
-
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
