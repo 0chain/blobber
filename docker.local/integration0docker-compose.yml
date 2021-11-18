@@ -7,6 +7,7 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_USER: postgres
       POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_PASSWORD: secret
     volumes:
       - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
     networks:
@@ -17,6 +18,7 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_HOST: postgres
       POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
     volumes:
       - ../bin:/blobber/bin
       - ../sql:/blobber/sql
@@ -24,7 +26,7 @@ services:
     links:
       - postgres:postgres
   validator:
-    image: validator
+    image: validator-integration
     environment:
       - DOCKER= true
     depends_on:
@@ -45,7 +47,7 @@ services:
         ipv4_address: 198.18.0.6${BLOBBER}
 
   blobber:
-    image: blobber
+    image: blobber-integration
     environment:
       - DOCKER= true
     depends_on:

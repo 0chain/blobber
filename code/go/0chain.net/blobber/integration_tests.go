@@ -3,12 +3,16 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	crpc "github.com/0chain/blobber/code/go/0chain.net/conductor/conductrpc" // integration tests
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"log"
 	"net"
+	"strconv"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"github.com/gorilla/mux"
 	"google.golang.org/grpc/reflection"
@@ -24,20 +28,29 @@ func shutdownIntegrationTests() {
 	crpc.Shutdown()
 }
 
-func startGRPCServer(r mux.Router, port string) {
-	grpcServer := handler.NewGRPCServerWithMiddlewares(&r)
+func startGRPCServer() {
+	common.ConfigRateLimits()
+	r := mux.NewRouter()
+	initHandlers(r)
+
+	grpcServer := handler.NewGRPCServerWithMiddlewares(r)
 	reflection.Register(grpcServer)
 
-	if port == "" {
-		logging.Logger.Error("Could not start grpc server since grpc port has not been specified." +
-			" Please specify the grpc port in the --grpc_port build arguement to start the grpc server")
-		return
+	if grpcPort <= 0 {
+		logging.Logger.Error("grpc port missing")
+		panic(errors.New("grpc port missing"))
 	}
 
-	logging.Logger.Info("listening too grpc requests on port - " + port)
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
+	logging.Logger.Info("started grpc server on to grpc requests on port - " + strconv.Itoa(grpcPort))
+
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", grpcPort))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
+		panic(err)
 	}
-	log.Fatal(grpcServer.Serve(lis))
+
+	fmt.Println("[10/11] starting grpc server	[OK]")
+	go func() {
+		log.Fatal(grpcServer.Serve(lis))
+	}()
 }
