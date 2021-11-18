@@ -435,7 +435,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 
 	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
+		return nil, common.NewError("invalid_parameters", "Ignore any "+err.Error()+" for /")
 	}
 	authTokenString := r.FormValue("auth_token")
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {

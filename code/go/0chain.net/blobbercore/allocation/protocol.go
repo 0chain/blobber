@@ -140,9 +140,10 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		})
 	}
 
-	if readonly {
-		return a, nil
-	}
+	// TODO: Remove it after we are sure that readonly is not needed
+	// if readonly {
+	// 	return a, nil
+	// }
 
 	Logger.Info("Saving the allocation to DB")
 
@@ -168,7 +169,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		}
 	}
 
-	return
+	return a, nil
 }
 
 // read/write pool stat for an {allocation -> blobber}
