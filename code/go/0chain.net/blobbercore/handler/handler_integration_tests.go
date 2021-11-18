@@ -13,12 +13,16 @@ import (
 	"os"
 	"runtime/pprof"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/constants"
+
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"github.com/gorilla/mux"
 
@@ -39,7 +43,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/download/{allocation}", common.UserRateLimit(common.ToByteStream(WithConnection(DownloadHandler))))
 	r.HandleFunc("/v1/file/rename/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(RenameHandler))))
 	r.HandleFunc("/v1/file/copy/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CopyHandler))))
-	r.HandleFunc("/v1/file/attributes/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UpdateObjectAttributes))))
+	r.HandleFunc("/v1/file/attributes/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UpdateAttributesHandler))))
 
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitHandler))))
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
@@ -165,6 +169,26 @@ func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, er
 	return response, nil
 }
 
+func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+
+	response, err := storageHandler.AddCollaborator(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Msg string `json:"msg"`
+	}
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		result.Msg = "StorageTree is in Bad state"
+		return result, nil
+	}
+
+	return response, nil
+}
+
 func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 
@@ -187,8 +211,7 @@ func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 
 	var state = crpc.Client().State()
 	if state.StorageTree.IsBad(state, node.Self.ID) {
-		dr := response.(*DownloadResponse)
-		dr.Path = "/injection/" + dr.Path
+		return nil, common.NewError("download_file", "StorageTree is in Bad state")
 	}
 
 	return response, nil
@@ -290,8 +313,10 @@ func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	var state = crpc.Client().State()
 	if state.StorageTree.IsBad(state, node.Self.ID) {
-		ur := response.(*UploadResult)
-		ur.Filename = "/injected/" + ur.Filename
+		resp := response.(*blobberhttp.UploadResult)
+		ur := &blobberhttp.UploadResult{}
+		ur.Filename = "/injected/" + resp.Filename
+		return ur, nil
 	}
 
 	return response, nil
@@ -306,8 +331,10 @@ func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	var state = crpc.Client().State()
 	if state.StorageTree.IsBad(state, node.Self.ID) {
-		ur := response.(*UploadResult)
-		ur.Filename = "/injected/" + ur.Filename
+		resp := response.(*blobberhttp.UploadResult)
+		ur := &blobberhttp.UploadResult{}
+		ur.Filename = "/injected/" + resp.Filename
+		return ur, nil
 	}
 
 	return response, nil
@@ -324,6 +351,45 @@ func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	var state = crpc.Client().State()
 	if state.StorageTree.IsBad(state, node.Self.ID) {
 		response.Filename = "/injected/" + response.Filename
+	}
+
+	return response, nil
+}
+
+func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+	// The response represents the reading payer. It can be allocation owner
+	// or a 3rd party user.
+	// 0, file owner pays
+	// 1, 3rd party user pays
+	response, err := storageHandler.UpdateObjectAttributes(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		ur := reference.Attributes{
+			WhoPaysForReads: common.WhoPays(0),
+		}
+		return ur, nil
+	}
+
+	return response, nil
+}
+
+func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+	response, err := storageHandler.CalculateHash(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		result := make(map[string]interface{})
+		result["msg"] = "State is bad"
+		return result, nil
 	}
 
 	return response, nil
