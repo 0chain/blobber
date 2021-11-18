@@ -78,6 +78,26 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 	return &refs[0], nil
 }
 
+func PathExists(ctx context.Context, allocationID string, path string) (bool, error) {
+	path = filepath.Clean(path)
+
+	if path == "." || path == "/" {
+		return false, nil
+	}
+
+	var refs []Ref
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	ref := Ref{Path: path, AllocationID: allocationID}
+	err := db.Where(ref).Find(&refs).Error
+
+	if err != nil || len(refs) == 0 {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func GetObjectTree(ctx context.Context, allocationID string, path string) (*Ref, error) {
 	path = filepath.Clean(path)
 	var refs []Ref
