@@ -17,12 +17,12 @@ do
     esac
 done
 
-docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/ValidatorDockerfile . -t validator-integration
-docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/IntegrationTestsBlobberDockerfile . -t blobber-integration
+docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/ValidatorDockerfile . -t validator
+docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/IntegrationTestsBlobberDockerfile . -t blobber
 
 for i in $(seq 1 6);
 do
-  BLOBBER=$i docker-compose -p blobber$i -f docker.local/integration0docker-compose.yml build --force-rm
+  BLOBBER=$i docker-compose -p blobber$i -f docker.local/b0docker-compose.yml build --force-rm
 done
 
 docker.local/bin/sync_clock.sh
