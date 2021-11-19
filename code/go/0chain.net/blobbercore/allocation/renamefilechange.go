@@ -25,10 +25,16 @@ func (rf *RenameFileChange) DeleteTempFile() error {
 }
 
 func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+	isFilePresent, _ := reference.PathExists(ctx, rf.AllocationID, rf.NewName)
+	if isFilePresent {
+		return nil, common.NewError("invalid_reference_path", "file already exists")
+	}
+
 	affectedRef, err := reference.GetObjectTree(ctx, rf.AllocationID, rf.Path)
 	if err != nil {
 		return nil, err
 	}
+
 	path, _ := filepath.Split(affectedRef.Path)
 	path = filepath.Clean(path)
 	affectedRef.Name = rf.NewName
@@ -68,6 +74,12 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 			return nil, common.NewError("invalid_reference_path", "Invalid reference path from the blobber")
 		}
 	}
+
+	if len(dirRef.Children) == 0 {
+		Logger.Error("no files in root folder", zap.Any("change", rf))
+		return nil, common.NewError("file_not_found", "No files in root folder")
+	}
+
 	idx := -1
 	for i, child := range dirRef.Children {
 		if child.Path == rf.Path {
