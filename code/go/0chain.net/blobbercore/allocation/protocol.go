@@ -60,7 +60,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		First(a).Error
 
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, common.NewError("unexpected database error", err.Error()) // unexpected DB error
+		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
 	}
 
 	if err == nil {
@@ -70,7 +70,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 			Where("allocation_id = ?", a.ID).
 			Find(&terms).Error
 		if err != nil {
-			return nil, common.NewError("unexpected database error", err.Error()) // unexpected DB error
+			return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
 		}
 		a.Terms = terms // set field
 		return          // found in DB
@@ -93,7 +93,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		Where("id = ?", sa.ID).
 		First(a).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, common.NewError("unexpected database error", err.Error()) // unexpected
+		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
 	}
 
 	isExist = (a.ID != "")
@@ -140,10 +140,9 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		})
 	}
 
-	// TODO: Remove it after we are sure that readonly is not needed
-	// if readonly {
-	// 	return a, nil
-	// }
+	if readonly {
+		return a, nil
+	}
 
 	Logger.Info("Saving the allocation to DB")
 

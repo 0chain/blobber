@@ -3,11 +3,13 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
@@ -411,12 +413,9 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 
 func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*blobberhttp.ListResult, error) {
 
-	if r.Method == "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
-	}
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -426,7 +425,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	pathHash, err := pathHashFromReq(r, allocationID)
+	pathHash, path, err := getPathHash(r, allocationID)
 	if err != nil {
 		return nil, err
 	}
@@ -435,8 +434,16 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 
 	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Ignore any "+err.Error()+" for /")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// `/` always is valid even it doesn't exists in db. so ignore RecordNotFound error
+			if path != "/" {
+				return nil, common.NewError("invalid_parameters", "Invalid path "+err.Error())
+			}
+		} else {
+			return nil, common.NewError("bad_db_operation", err.Error())
+		}
 	}
+
 	authTokenString := r.FormValue("auth_token")
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
 		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
@@ -887,4 +894,19 @@ func pathHashFromReq(r *http.Request, allocationID string) (string, error) {
 	}
 
 	return pathHash, nil
+}
+
+func getPathHash(r *http.Request, allocationID string) (string, string, error) {
+	var (
+		pathHash = r.FormValue("path_hash")
+		path     = r.FormValue("path")
+	)
+	if len(pathHash) == 0 {
+		if len(path) == 0 {
+			return "", "", common.NewError("invalid_parameters", "Invalid path")
+		}
+		pathHash = reference.GetReferenceLookup(allocationID, path)
+	}
+
+	return pathHash, path, nil
 }
