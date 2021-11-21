@@ -87,7 +87,7 @@ jobs:
         repo: system_test
         github_token: ${{ secrets.SVC_ACCOUNT_SECRET }}
         workflow_file_name: ci.yml
-        ref: github.event.inputs.system_tests_branch
+        ref: ${{ github.event.inputs.system_tests_branch }}
         wait_interval: 60
         inputs: > 
            {
