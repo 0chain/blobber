@@ -4,19 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"time"
-
+	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"go.uber.org/zap"
-
 	"gorm.io/datatypes"
+	"runtime"
+	"time"
 )
 
 const DateTimeFormat = "2006-01-02T15:04:05"
@@ -60,9 +58,9 @@ type Stats struct {
 var LastMinioScan time.Time
 
 type MinioStats struct {
-	CloudFilesSize  int64  `json:"cloud_files_size"`
-	CloudTotalFiles int    `json:"cloud_total_files"`
-	LastMinioScan   string `json:"last_minio_scan"`
+	CloudFilesSize  int64     `json:"cloud_files_size"`
+	CloudTotalFiles int       `json:"cloud_total_files"`
+	LastMinioScan   time.Time `json:"last_minio_scan"`
 }
 
 type Duration int64
@@ -74,9 +72,14 @@ func (d Duration) String() string {
 type BlobberStats struct {
 	Stats
 	MinioStats
-	NumAllocation int64  `json:"num_of_allocations"`
-	ClientID      string `json:"-"`
-	PublicKey     string `json:"-"`
+	NumAllocation             int64             `json:"num_of_allocations"`
+	ClientID                  string            `json:"-"`
+	PublicKey                 string            `json:"-"`
+	InfraStats                InfraStats        `json:"-"`
+	DBStats                   *customDBStats    `json:"-"`
+	FailedChallengeList       []ChallengeEntity `json:"-"`
+	FailedChallengePagination Pagination        `json:"-"`
+	AllocationListPagination  Pagination        `json:"-"`
 
 	// configurations
 	Capacity                int64         `json:"capacity"`
@@ -103,6 +106,9 @@ func LoadBlobberStats(ctx context.Context) *BlobberStats {
 	fs := &BlobberStats{}
 	fs.loadBasicStats(ctx)
 	fs.loadDetailedStats(ctx)
+	fs.loadInfraStats(ctx)
+	fs.loadDBStats()
+	fs.loadFailedChallengeList(ctx)
 	return fs
 }
 
@@ -173,6 +179,53 @@ func (bs *BlobberStats) loadDetailedStats(ctx context.Context) {
 	}
 }
 
+func (bs *BlobberStats) loadInfraStats(ctx context.Context) {
+	healthIn := ctx.Value(HealthDataKey)
+	if healthIn == nil {
+		fmt.Println("loadInfraStats err: health should not be nil")
+		return
+	}
+	health := healthIn.(string)
+	memstats := runtime.MemStats{}
+	runtime.ReadMemStats(&memstats)
+	bs.InfraStats = InfraStats{
+		CPUs:               runtime.NumCPU(),
+		NumberOfGoroutines: runtime.NumGoroutine(),
+		HeapSys:            int64(memstats.HeapSys),
+		HeapAlloc:          int64(memstats.HeapAlloc),
+		ActiveOnChain:      health,
+	}
+}
+
+func (bs *BlobberStats) loadDBStats() {
+	dbstats, err := GetDBStats()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	bs.DBStats = dbstats
+	//bs.DBStats = myCustomDBStats
+}
+
+func (bs *BlobberStats) loadFailedChallengeList(ctx context.Context) {
+	fcrdI := ctx.Value(FailedChallengeRequestDataKey)
+	if fcrdI == nil {
+		fmt.Println("loadInfraStats err: fcrd should not be nil")
+		return
+	}
+	fcrd := fcrdI.(RequestData)
+
+	fcs, count, err := getAllFailedChallenges(fcrd.Offset, fcrd.Limit)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	bs.FailedChallengeList = fcs
+
+	pagination := GeneratePagination(fcrd.Page, fcrd.Limit, fcrd.Offset, count)
+	bs.FailedChallengePagination = *pagination
+}
+
 func (bs *BlobberStats) loadStats(ctx context.Context) {
 
 	const sel = `
@@ -232,7 +285,7 @@ func (bs *BlobberStats) loadMinioStats(ctx context.Context) {
 		return
 	}
 
-	bs.LastMinioScan = LastMinioScan.Format(DateTimeFormat)
+	bs.LastMinioScan = LastMinioScan
 }
 
 func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
@@ -244,7 +297,14 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 		err  error
 	)
 
-	rows, err = db.Table("reference_objects").
+	alrdI := ctx.Value(AllocationListRequestDataKey)
+	if alrdI == nil {
+		fmt.Println("loadAllocationStats err: alrd should not be nil")
+		return
+	}
+	alrd := alrdI.(RequestData)
+
+	rows, err = db.Table("reference_objects").Offset(alrd.Offset).Limit(alrd.Limit).
 		Select(`
             reference_objects.allocation_id,
             SUM(reference_objects.size) as files_size,
@@ -292,6 +352,16 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 			zap.Error(err))
 		return
 	}
+
+	var count int64
+	err = db.Table("reference_objects").Distinct("allocation_id").Count(&count).Error
+	if err != nil {
+		fmt.Println("loadAllocationStats err :", err)
+		return
+	}
+
+	pagination := GeneratePagination(alrd.Page, alrd.Limit, alrd.Offset, int(count))
+	bs.AllocationListPagination = *pagination
 }
 
 func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {

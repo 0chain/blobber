@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/challenge"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -11,6 +9,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/spf13/viper"
+	"time"
 )
 
 func setupWorkers() {
@@ -38,8 +37,22 @@ func keepAliveOnChain() {
 
 	for {
 		time.Sleep(REPEAT_DELAY * time.Second)
-		if err := healthCheckOnChain(); err != nil {
+		err := handler.HealthCheckOnChain()
+		handler.SetBlobberHealthError(err)
+		if err != nil {
 			continue // pass // required by linting
 		}
+	}
+}
+
+func collectDBStats() {
+	const REPEAT_DELAY_SECONDS = 60 // 1 minutes
+
+	for {
+		err := handler.SetDBStats()
+		if err != nil {
+			continue // pass // required by linting
+		}
+		time.Sleep(REPEAT_DELAY_SECONDS * time.Second)
 	}
 }

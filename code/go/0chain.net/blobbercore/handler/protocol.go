@@ -130,27 +130,6 @@ func BlobberAdd(ctx context.Context) (string, error) {
 // transactions.
 var ErrBlobberHasRemoved = errors.New("blobber has removed")
 
-func BlobberHealthCheck(ctx context.Context) (string, error) {
-	if config.Configuration.Capacity == 0 {
-		return "", ErrBlobberHasRemoved
-	}
-
-	txn, err := transaction.NewTransactionEntity()
-	if err != nil {
-		return "", err
-	}
-
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
-		transaction.BLOBBER_HEALTH_CHECK, "", 0)
-	if err != nil {
-		Logger.Info("Failed to health check on the blockchain",
-			zap.String("err:", err.Error()))
-		return "", err
-	}
-
-	return txn.Hash, nil
-}
-
 func TransactionVerify(txnHash string) (t *transaction.Transaction, err error) {
 
 	for i := 0; i < util.MAX_RETRIES; i++ {

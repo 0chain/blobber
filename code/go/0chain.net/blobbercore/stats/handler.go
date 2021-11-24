@@ -3,15 +3,14 @@ package stats
 import (
 	"context"
 	"fmt"
-	"html/template"
-	"net/http"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
-
 	"go.uber.org/zap"
+	"html/template"
+	"net/http"
+	"time"
 )
 
 func byteCountIEC(b int64) string {
@@ -39,146 +38,224 @@ var funcMap = template.FuncMap{
 	"write_size": func(readCount int64) string {
 		return byteCountIEC(readCount)
 	},
+	"byte_count_in_string": func(byteValue int64) string {
+		return byteCountIEC(byteValue)
+	},
+	"time_in_string": func(timeValue time.Time) string {
+		if timeValue.IsZero() {
+			return "-"
+		}
+		return timeValue.Format(DateTimeFormat)
+	},
 }
 
-const tpl = `<!DOCTYPE html>
-<html>
-  <head>
-    <title>Blobber Diagnostics</title>
-  </head>
-  <body>
-    <h1>
-      Blobber Stats
-    </h1>
-    <table border="1">
-      <tr>
-        <td>ID</td>
-        <td>{{ .ClientID }}</td>
-      </tr>
-      <tr>
-        <td>PublicKey</td>
-        <td>{{ .PublicKey }}</td>
-      </tr>
-      <tr>
-        <td>Allocations</td>
-        <td>{{ .NumAllocation }}</td>
-      </tr>
-      <tr>
-        <td>Allocated size (bytes)</td>
-        <td>{{ .AllocatedSize }}</td>
-      </tr>
-      <tr>
-        <td>Used Size (bytes)</td>
-        <td>{{ .UsedSize }}</td>
-      </tr>
-      <tr>
-        <td>Actual Disk Usage (bytes)</td>
-        <td>{{ .DiskSizeUsed }}</td>
-      </tr>
-      <tr>
-        <td>Cloud Files Size (bytes)</td>
-        <td>{{ .CloudFilesSize }}</td>
-      </tr>
-      <tr>
-        <td>Cloud Files Count</td>
-        <td>{{ .CloudTotalFiles }}</td>
-      </tr>
-      <tr>
-        <td>Last Minio Scan</td>
-        <td>{{ .LastMinioScan }}</td>
-      </tr>
-      <tr>
-        <td>Num of files</td>
-        <td>{{ .NumWrites }}</td>
-      </tr>
-	  <tr>
-        <td>Blocks Written</td>
-        <td>{{ .BlockWrites }}</td>
-      </tr>
-	  <tr>
-        <td>Blocks Read</td>
-        <td>{{ .NumReads }}</td>
-      </tr>
-      <tr>
-        <td>Total Challenges</td>
-        <td>{{ .TotalChallenges }}</td>
-      </tr>
-      <tr>
-        <td>Open Challenges</td>
-        <td>{{ .OpenChallenges }}</td>
-      </tr>
-      <tr>
-        <td>Passed Challenges</td>
-        <td>{{ .SuccessChallenges }}</td>
-      </tr>
-      <tr>
-        <td>Failed Challenges</td>
-        <td>{{ .FailedChallenges }}</td>
-      </tr>
-      <tr>
-        <td>Redeemed Challenges</td>
-        <td>{{ .RedeemedChallenges }}</td>
-      </tr>
-      <tr>
-        <td>Redeemed Challenges</td>
-        <td>{{ .RedeemedChallenges }}</td>
-      </tr>
-      <tr>
-        <table>
-          <tr><th colspan="2">Configurations</th></tr>
-          <tr><td>Capacity</td><td>{{ .Capacity }}</td></tr>
-          <tr><td>Read price</td><td>{{ .ReadPrice }}</td></tr>
-          <tr><td>Write price</td><td>{{ .WritePrice }}</td></tr>
-          <tr><td>Min lock demand</td><td>{{ .MinLockDemand }}</td></tr>
-          <tr><td>Max offer duration</td><td>{{ .MaxOfferDuration }}</td></tr>
-          <tr><td>Challenge completion_time</td><td>{{ .ChallengeCompletionTime }}</td></tr>
-          <tr><td>Read lock timeout</td><td>{{ .ReadLockTimeout }}</td></tr>
-          <tr><td>Write lock timeout</td><td>{{ .WriteLockTimeout }}</td></tr>
-        </table>
-      </tr>
-      <tr>
-        <table>
-          <tr><th colspan="2">Read markers</th></tr>
-          <tr>
-            <td>Pending</td>
-            <td>{{ .ReadMarkers.Pending }} <i>(64 KB blocks)</i></td>
-            <td>{{ read_size .ReadMarkers.Pending }}</td>
-          </tr>
-          <tr>
-            <td>Redeemed</td>
-            <td>{{ .ReadMarkers.Redeemed }} <i>(64 KB blocks)</i></td>
-            <td>{{ read_size .ReadMarkers.Redeemed }}</td>
-          </tr>
-        </table>
-      </tr>
-      <tr>
-        <table>
-          <tr><th colspan="3">Write markers</th></tr>
-          <tr>
-            <td>Accepted</td>
-            <td>{{ .WriteMarkers.Accepted.Count }} markers</td>
-            <td>{{ write_size .WriteMarkers.Accepted.Size }}</td>
-          </tr>
-          <tr>
-            <td>Committed</td>
-            <td>{{ .WriteMarkers.Committed.Count }} markers</td>
-            <td>{{ write_size .WriteMarkers.Committed.Size }}</td>
-          </tr>
-          <tr>
-            <td>Failed</td>
-            <td>{{ .WriteMarkers.Failed.Count }} markers</td>
-            <td>{{ write_size .WriteMarkers.Failed.Size }}</td>
-          </tr>
-        </table>
-      </tr>
-    </table>
+const tpl = `
+<table style='border-collapse: collapse;'>
+    <tr class='header'>
+        <td>Summary</td>
+        <td>Configurations</td>
+        <td>Markers</td>
+        <td>Infra Stats</td>
+        <td>Database</td>
+    </tr>
+    <tr>
+        <td>
+            <table class='menu' style='border-collapse: collapse;'>
+                <tr>
+                    <td>Allocations</td>
+                    <td>{{ .NumAllocation }}</td>
+                </tr>
+                <tr>
+                    <td>Allocated size</td>
+                    <td>{{ byte_count_in_string .AllocatedSize }}</td>
+                </tr>
+                <tr>
+                    <td>Used Size</td>
+                    <td>{{ byte_count_in_string .UsedSize }}</td>
+                </tr>
+                <tr>
+                    <td>Actual Disk Usage</td>
+                    <td>{{ byte_count_in_string .DiskSizeUsed }}</td>
+                </tr>
+                <tr>
+                    <td>Files Size</td>
+                    <td>{{ byte_count_in_string .FilesSize }}</td>
+                </tr>
+                <tr>
+                    <td>Cloud Files Size</td>
+                    <td>{{ byte_count_in_string .CloudFilesSize }}</td>
+                </tr>
+                <tr>
+                    <td>Cloud Files Count</td>
+                    <td>{{ .CloudTotalFiles }}</td>
+                </tr>
+                <tr>
+                    <td>Last Minio Scan</td>
+                    <td>{{ time_in_string .LastMinioScan }}</td>
+                </tr>
+                <tr>
+                    <td>Num of files</td>
+                    <td>{{ .NumWrites }}</td>
+                </tr>
+                <tr>
+                    <td>Blocks Written</td>
+                    <td>{{ .BlockWrites }}</td>
+                </tr>
+                <tr>
+                    <td>Blocks Read</td>
+                    <td>{{ .NumReads }}</td>
+                </tr>
+                <tr>
+                    <td>Total Challenges</td>
+                    <td>{{ .TotalChallenges }}</td>
+                </tr>
+                <tr>
+                    <td>Open Challenges</td>
+                    <td>{{ .OpenChallenges }}</td>
+                </tr>
+                <tr>
+                    <td>Passed Challenges</td>
+                    <td>{{ .SuccessChallenges }}</td>
+                </tr>
+                <tr>
+                    <td>Failed Challenges</td>
+                    <td>{{ .FailedChallenges }}</td>
+                </tr>
+                <tr>
+                    <td>Redeemed Challenges</td>
+                    <td>{{ .RedeemedChallenges }}</td>
+                </tr>
+                <tr>
+                    <td>Redeemed Challenges</td>
+                    <td>{{ .RedeemedChallenges }}</td>
+                </tr>
+            </table>
+        </td>
+        <td valign='top'>
+            <table class='menu' style='border-collapse: collapse;'>
+                <tr><td>Capacity</td><td>{{ byte_count_in_string .Capacity }}</td></tr>
+                <tr><td>Read price</td><td>{{ .ReadPrice }}</td></tr>
+                <tr><td>Write price</td><td>{{ .WritePrice }}</td></tr>
+                <tr><td>Min lock demand</td><td>{{ .MinLockDemand }}</td></tr>
+                <tr><td>Max offer duration</td><td>{{ .MaxOfferDuration }}</td></tr>
+                <tr><td>Challenge completion_time</td><td>{{ .ChallengeCompletionTime }}</td></tr>
+                <tr><td>Read lock timeout</td><td>{{ .ReadLockTimeout }}</td></tr>
+                <tr><td>Write lock timeout</td><td>{{ .WriteLockTimeout }}</td></tr>
+            </table>
+        </td>
+        <td valign='top'>
+            <table class='menu' style='border-collapse: collapse;'>
+                <tr><td colspan='3'>Read Markers</td></tr>
+                <tr>
+                    <td>Pending</td>
+                    <td>{{ .ReadMarkers.Pending }} <i>(64 KB blocks)</i></td>
+                    <td>{{ read_size .ReadMarkers.Pending }}</td>
+                </tr>
+                <tr>
+                    <td>Redeemed</td>
+                    <td>{{ .ReadMarkers.Redeemed }} <i>(64 KB blocks)</i></td>
+                    <td>{{ read_size .ReadMarkers.Redeemed }}</td>
+                </tr>
 
-    <h1>
-      Allocation Stats
-	</h1>
-	<p>Note: You might not see stats for all allocations. Allocations that have no data will not be collecting stats</p>
-    <table border="1">
-      <tr>
+                <tr><td colspan='3'></td></tr>
+                <tr><td colspan='3'>Write Markers</td></tr>
+                <tr>
+                    <td>Accepted</td>
+                    <td>{{ .WriteMarkers.Accepted.Count }} markers</td>
+                    <td>{{ write_size .WriteMarkers.Accepted.Size }}</td>
+                </tr>
+                <tr>
+                    <td>Committed</td>
+                    <td>{{ .WriteMarkers.Committed.Count }} markers</td>
+                    <td>{{ write_size .WriteMarkers.Committed.Size }}</td>
+                </tr>
+                <tr>
+                    <td>Failed</td>
+                    <td>{{ .WriteMarkers.Failed.Count }} markers</td>
+                    <td>{{ write_size .WriteMarkers.Failed.Size }}</td>
+                </tr>
+            </table>
+        </td>
+        <td valign='top'>
+            <table class='menu' style='border-collapse: collapse;'>
+                <tr>
+                    <td>CPU</td>
+                    <td>{{ .InfraStats.CPUs }}</td>
+                </tr>
+                <tr>
+                    <td>Go Routines</td>
+                    <td>{{ .InfraStats.NumberOfGoroutines }}</td>
+                </tr>
+                <tr>
+                    <td>Heap Sys</td>
+                    <td>{{ byte_count_in_string .InfraStats.HeapSys }}</td>
+                </tr>
+                <tr>
+                    <td>Heap Alloc</td>
+                    <td>{{ byte_count_in_string .InfraStats.HeapAlloc }}</td>
+                </tr>
+                <tr>
+                    <td>Is Active On Chain</td>
+                    <td>{{ .InfraStats.ActiveOnChain }}</td>
+                </tr>
+            </table>
+        </td>
+        <td valign='top'>
+            <table class='menu' style='border-collapse: collapse;'>
+                <tr>
+                    <td>Open Connections</td>
+                    <td>{{ .DBStats.OpenConnections }}</td>
+                </tr>
+                <tr>
+                    <td>Connections In Use</td>
+                    <td>{{ .DBStats.InUse }}</td>
+                </tr>
+                <tr>
+                    <td>Idle Connections</td>
+                    <td>{{ .DBStats.Idle }}</td>
+                </tr>
+                <tr>
+                    <td>Connection Wait Count</td>
+                    <td>{{ .DBStats.WaitCount }}</td>
+                </tr>
+                <tr>
+                    <td>Connection Wait Duration</td>
+                    <td>{{ .DBStats.WaitDuration }}</td>
+                </tr>
+                <tr>
+                    <td>Max Open Connections</td>
+                    <td>{{ .DBStats.MaxOpenConnections }}</td>
+                </tr>
+                <tr>
+                    <td>Connection Max Idle Closed</td>
+                    <td>{{ .DBStats.MaxIdleClosed }}</td>
+                </tr>
+                <tr>
+                    <td>Connection Max Idle Time Closed</td>
+                    <td>{{ .DBStats.MaxIdleTimeClosed }}</td>
+                </tr>
+                <tr>
+                    <td>Connection Max Lifetime Closed</td>
+                    <td>{{ .DBStats.MaxLifetimeClosed }}</td>
+                </tr>
+                <tr>
+                    <td>Database Status</td>
+                    <td>{{ .DBStats.Status }}</td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<h1>
+    Allocation Stats
+</h1>
+
+<p>Note: You might not see stats for all allocations. Allocations that have no data will not be collecting stats</p>
+
+<div style='position: absolute'>
+<table border="1">
+    <tr>
         <td>ID</td>
         <td>Used Size (bytes)</td>
         <td>Actual Disk Usage (bytes)</td>
@@ -192,14 +269,14 @@ const tpl = `<!DOCTYPE html>
         <td>Failed Challenges</td>
         <td>Redeemed Challenges</td>
         <td>Expiration</td>
-      </tr>
-      {{range .AllocationStats}}
+    </tr>
+    {{range .AllocationStats}}
 
-      <tr>
+    <tr>
         <td rowspan=2>{{ .AllocationID }}</td>
-        <td>{{ .UsedSize }}</td>
-        <td>{{ .DiskSizeUsed }}</td>
-        <td>{{ .TempFolderSize }}</td>
+        <td>{{ byte_count_in_string .UsedSize }}</td>
+        <td>{{ byte_count_in_string .DiskSizeUsed }}</td>
+        <td>{{ byte_count_in_string .TempFolderSize }}</td>
         <td>{{ .NumWrites }}</td>
         <td>{{ .BlockWrites }}</td>
         <td>{{ .NumReads }}</td>
@@ -209,68 +286,201 @@ const tpl = `<!DOCTYPE html>
         <td>{{ .FailedChallenges }}</td>
         <td>{{ .RedeemedChallenges }}</td>
         <td>{{ .Expiration }}</td>
-      </tr>
-      <tr>
+    </tr>
+    <tr>
         <td colspan=6>
-          <table>
-            {{ if .ReadMarkers }}
-              <tr><th colspan="2">Read markers</th></tr>
-              <tr>
-                <td>Pending</td>
-                <td>{{ .ReadMarkers.Pending }} <i>(64 KB blocks)</i></td>
-                <td>{{ read_size .ReadMarkers.Pending }}</td>
-              </tr>
-              <tr>
-                <td>Redeemed</td>
-                <td>{{ .ReadMarkers.Redeemed }} <i>(64 KB blocks)</i></td>
-                <td>{{ read_size .ReadMarkers.Redeemed }}</td>
-              </tr>
-            {{ else }}
-              <tr><th>No read markers yet.</th></tr>
-            {{ end }}
-          </table>
+            <table class='menu' style='border-collapse: collapse;'>
+                {{ if .ReadMarkers }}
+                <tr><th colspan="2">Read markers</th></tr>
+                <tr>
+                    <td>Pending</td>
+                    <td>{{ .ReadMarkers.Pending }} <i>(64 KB blocks)</i></td>
+                    <td>{{ read_size .ReadMarkers.Pending }}</td>
+                </tr>
+                <tr>
+                    <td>Redeemed</td>
+                    <td>{{ .ReadMarkers.Redeemed }} <i>(64 KB blocks)</i></td>
+                    <td>{{ read_size .ReadMarkers.Redeemed }}</td>
+                </tr>
+                {{ else }}
+                <tr><th>No read markers yet.</th></tr>
+                {{ end }}
+            </table>
         </td>
         <td colspan=6>
-          <table>
-            {{ if .WriteMarkers }}
-              <tr><th colspan="3">Write markers</th></tr>
-              <tr>
-                <td>Accepted</td>
-                <td>{{ .WriteMarkers.Accepted.Count }} markers</td>
-                <td>{{ write_size .WriteMarkers.Accepted.Size }}</td>
-              </tr>
-              <tr>
-                <td>Committed</td>
-                <td>{{ .WriteMarkers.Committed.Count }} markers</td>
-                <td>{{ write_size .WriteMarkers.Committed.Size }}</td>
-              </tr>
-              <tr>
-                <td>Failed</td>
-                <td>{{ .WriteMarkers.Failed.Count }} markers</td>
-                <td>{{ write_size .WriteMarkers.Failed.Size }}</td>
-              </tr>
-            {{ else }}
-              <tr><th>No write markers yet</th></tr>
-            {{ end }}
-          </table>
+            <table class='menu' style='border-collapse: collapse;'>
+                {{ if .WriteMarkers }}
+                <tr><th colspan="3">Write markers</th></tr>
+                <tr>
+                    <td>Accepted</td>
+                    <td>{{ .WriteMarkers.Accepted.Count }} markers</td>
+                    <td>{{ write_size .WriteMarkers.Accepted.Size }}</td>
+                </tr>
+                <tr>
+                    <td>Committed</td>
+                    <td>{{ .WriteMarkers.Committed.Count }} markers</td>
+                    <td>{{ write_size .WriteMarkers.Committed.Size }}</td>
+                </tr>
+                <tr>
+                    <td>Failed</td>
+                    <td>{{ .WriteMarkers.Failed.Count }} markers</td>
+                    <td>{{ write_size .WriteMarkers.Failed.Size }}</td>
+                </tr>
+                {{ else }}
+                <tr><th>No write markers yet</th></tr>
+                {{ end }}
+            </table>
         </td>
-      </tr>
-      {{end}}
-    </table>
-  </body>
-</html>
+    </tr>
+    {{end}}
+</table>
+
+<div style='margin-right: 25px'>
+	<ul class="pagination">
+	{{if .AllocationListPagination}}
+		{{if .AllocationListPagination.HasPrev}}
+		<li class="page-item">
+			<a class="page-link" href="?alp={{.AllocationListPagination.PrevPage}}"> << Previous </a>
+		</li>
+		{{end}}
+		{{if gt .AllocationListPagination.TotalPages 1}}
+		<li class="page-item">
+			<a class="page-link" href="?fcp={{.AllocationListPagination.CurrentPage}}"> {{.AllocationListPagination.CurrentPage}}/{{.AllocationListPagination.TotalPages}} </a>
+		</li>
+		{{end}}
+		{{if .AllocationListPagination.HasNext}}
+		<li class="page-item">
+			<a class="page-link" href="?alp={{.AllocationListPagination.NextPage}}"> Next >> </a>
+		</li>
+		{{end}}
+	{{end}}
+	</ul>
+</div>
+
+<br>
+
+<h1>
+    Failed Challenges
+</h1>
+
+<table style='border-collapse: collapse;'>
+	<tr class='header'>
+		<td>ID</td>
+		<td>Other IDs</td>
+		<td>Info</td>
+		<td>Failed At</td>
+		<td>Message</td>
+	</tr>
+	{{range .FailedChallengeList}}
+	<tr>
+		<td>{{ .ChallengeID }}</td>
+		<td align='center'>
+			<table class='menu' style='border-collapse: collapse;margin-top:10px;margin-bottom:10px;margin-left:5px;margin-right:5px'>
+				<tr>
+					<td>Allocation ID</td>
+					<td>{{ .AllocationID }}</td>
+				</tr>
+				<tr>
+					<td>Allocation Root</td>
+					<td>{{ .AllocationRoot }}</td>
+				</tr>
+				<tr>
+					<td>Previous Challenge ID</td>
+					<td>{{ .PrevChallengeID }}</td>
+				</tr>
+			</table>
+		</td>
+		<td align='center'>
+			<table class='menu' style='border-collapse: collapse;margin:5px'>
+				<tr>
+					<td>Block Number</td>
+					<td>{{ .BlockNum }}</td>
+				</tr>
+				<tr>
+					<td>Result</td>
+					<td>{{ .Result }}</td>
+				</tr>
+				<tr>
+					<td>Status</td>
+					<td>{{ .Status }}</td>
+				</tr>
+			</table>
+		</td>
+		<td>{{ time_in_string .UpdatedAt }}</td>
+		<td>{{ .StatusMessage }}</td>
+	</tr>
+	{{end}}
+	<tr>
+</table>
+
+<div style='margin-right: 25px'>
+	<ul class="pagination">
+	{{if .FailedChallengePagination}}
+		{{if .FailedChallengePagination.HasPrev}}
+		<li class="page-item">
+			<a class="page-link" href="?fcp={{.FailedChallengePagination.PrevPage}}"> << Previous </a>
+		</li>
+		{{end}}
+		{{if gt .FailedChallengePagination.TotalPages 1}}
+		<li class="page-item">
+			<a class="page-link" href="?fcp={{.FailedChallengePagination.CurrentPage}}"> {{.FailedChallengePagination.CurrentPage}}/{{.FailedChallengePagination.TotalPages}} </a>
+		</li>
+		{{end}}
+		{{if .FailedChallengePagination.HasNext}}
+		<li class="page-item">
+			<a class="page-link" href="?fcp={{.FailedChallengePagination.NextPage}}"> Next >> </a>
+		</li>
+		{{end}}
+	{{end}}
+	</ul>
+</div>
+
 `
 
 func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	t := template.Must(template.New("diagnostics").Funcs(funcMap).Parse(tpl))
 	ctx := datastore.GetStore().CreateTransaction(r.Context())
+	ctx = setStatsRequestDataInContext(r, ctx)
 	db := datastore.GetStore().GetTransaction(ctx)
 	defer db.Rollback()
 	bs := LoadBlobberStats(ctx)
+
 	err := t.Execute(w, bs)
 	if err != nil {
 		Logger.Error("Error in executing the template", zap.Error(err))
 	}
+}
+
+func setStatsRequestDataInContext(r *http.Request, ctx context.Context) context.Context {
+	ctx = context.WithValue(ctx, HealthDataKey, r.Header.Get(HealthDataKey.String()))
+
+	allocationPage := r.URL.Query().Get("alp")
+	alPageLimitOffset, err := GetPageLimitOffsetFromRequestData(allocationPage)
+	if err != nil {
+		fmt.Println(err)
+		return ctx
+	}
+	alrd := RequestData{
+		Page:   alPageLimitOffset.Page,
+		Limit:  alPageLimitOffset.Limit,
+		Offset: alPageLimitOffset.Offset,
+	}
+	ctx = context.WithValue(ctx, AllocationListRequestDataKey, alrd)
+
+	failedChallengePage := r.URL.Query().Get("fcp")
+	fcPageLimitOffset, err := GetPageLimitOffsetFromRequestData(failedChallengePage)
+	if err != nil {
+		fmt.Println(err)
+		return ctx
+	}
+	fcrd := RequestData{
+		Page:   fcPageLimitOffset.Page,
+		Limit:  fcPageLimitOffset.Limit,
+		Offset: fcPageLimitOffset.Offset,
+	}
+	ctx = context.WithValue(ctx, FailedChallengeRequestDataKey, fcrd)
+
+	return ctx
 }
 
 func StatsJSONHandler(ctx context.Context, r *http.Request) (interface{}, error) {
