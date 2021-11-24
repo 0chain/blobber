@@ -2,6 +2,9 @@ module github.com/0chain/blobber
 
 go 1.16
 
+// temporary, for development
+// replace github.com/0chain/gosdk => ../gosdk
+
 require (
 	github.com/0chain/errors v1.0.3
 	github.com/0chain/gosdk v1.5.1-0.20220211020847-2b54b2fa404f

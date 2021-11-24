@@ -29,6 +29,7 @@ type AuthTicket struct {
 	FileName        string           `json:"file_name"`
 	RefType         string           `json:"reference_type"`
 	Expiration      common.Timestamp `json:"expiration"`
+	Available       common.Timestamp `json:"available_after"`
 	Timestamp       common.Timestamp `json:"timestamp"`
 	ReEncryptionKey string           `json:"re_encryption_key"`
 	Signature       string           `json:"signature"`
@@ -36,7 +37,7 @@ type AuthTicket struct {
 }
 
 func (rm *AuthTicket) GetHashData() string {
-	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.ClientID, rm.OwnerID, rm.FilePathHash, rm.FileName, rm.RefType, rm.ReEncryptionKey, rm.Expiration, rm.Timestamp, rm.ActualFileHash, rm.Encrypted)
+	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v", rm.AllocationID, rm.ClientID, rm.OwnerID, rm.FilePathHash, rm.FileName, rm.RefType, rm.ReEncryptionKey, rm.Expiration, rm.Available, rm.Timestamp, rm.ActualFileHash, rm.Encrypted)
 	return hashData
 }
 
@@ -56,6 +57,14 @@ func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, client
 		if authToken.Timestamp+NinetyDays <= common.Now() {
 			return common.NewError("invalid_parameters", "Authticket expired")
 		}
+	}
+
+	if authToken.Available < authToken.Timestamp {
+		return common.NewError("invalid_parameters", "Invalid auth ticket. Available in the past")
+	}
+
+	if authToken.Available >= authToken.Expiration {
+		return common.NewError("invalid_parameters", "Invalid auth ticket. Available after or equal to Expiration")
 	}
 
 	if authToken.OwnerID != allocationObj.OwnerID {

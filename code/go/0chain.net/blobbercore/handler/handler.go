@@ -501,6 +501,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		ReEncryptionKey:           authTicket.ReEncryptionKey,
 		ClientEncryptionPublicKey: encryptionPublicKey,
 		ExpiryAt:                  common.ToTime(authTicket.Expiration),
+		AvailableAt:               common.ToTime(authTicket.Available),
 	}
 
 	existingShare, _ := reference.GetShareInfo(ctx, authTicket.ClientID, authTicket.FilePathHash)

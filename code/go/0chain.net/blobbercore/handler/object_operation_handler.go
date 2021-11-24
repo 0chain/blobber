@@ -282,6 +282,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			return nil, errors.New("client does not have permission to download the file. share revoked")
 		}
 
+		// we check if the file is available for download or not
+		if authToken.Available > common.Now() {
+			return nil, common.NewErrorf("download_file", "the requested file content is not available until %s", common.ToTime(authToken.Available).UTC().Format("2006-01-02T15:04:05"))
+		}
+
 		// set payer: check for command line payer flag (--rx_pay)
 		if r.FormValue("rx_pay") == "true" {
 			payerID = clientID
