@@ -59,7 +59,7 @@ func setupEncryptionScheme() {
 
 func setup(t *testing.T) {
 	// setup wallet
-	w, err := zcncrypto.NewBLS0ChainScheme().GenerateKeys()
+	w, err := zcncrypto.NewSignatureScheme("bls0chain").GenerateKeys()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 	setup(t)
 	setupEncryptionScheme()
 
-	sch := zcncrypto.NewBLS0ChainScheme()
+	sch := zcncrypto.NewSignatureScheme("bls0chain")
 	sch.Mnemonic = "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
 	_, err := sch.GenerateKeys()
 	if err != nil {
