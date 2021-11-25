@@ -118,8 +118,8 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 	setupEncryptionScheme()
 
 	sch := zcncrypto.NewSignatureScheme("bls0chain")
-	sch.Mnemonic = "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
-	_, err := sch.GenerateKeys()
+	mnemonic := "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
+	_, err := sch.RecoverKeys(mnemonic)
 	if err != nil {
 		t.Fatal(err)
 	}
