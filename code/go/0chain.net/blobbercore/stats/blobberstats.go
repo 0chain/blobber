@@ -201,10 +201,8 @@ func (bs *BlobberStats) loadDBStats() {
 	dbstats, err := GetDBStats()
 	if err != nil {
 		fmt.Println(err)
-		return
 	}
 	bs.DBStats = dbstats
-	//bs.DBStats = myCustomDBStats
 }
 
 func (bs *BlobberStats) loadFailedChallengeList(ctx context.Context) {
@@ -354,7 +352,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 	}
 
 	var count int64
-	err = db.Table("reference_objects").Distinct("allocation_id").Count(&count).Error
+	err = db.Table("reference_objects").Where("deleted_at is null").Count(&count).Error
 	if err != nil {
 		fmt.Println("loadAllocationStats err :", err)
 		return

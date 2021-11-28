@@ -27,30 +27,27 @@ type customDBStats struct {
 	Status            string
 }
 
-var myCustomDBStats *customDBStats
-
-func init() {
-	myCustomDBStats = &customDBStats{Status: "connecting"}
-}
-
-func SetDBStatStatusFail() {
-	myCustomDBStats = &customDBStats{Status: "✗"}
-}
-
-func SetDBStatStatusOK() {
-	myCustomDBStats.Status = "✔"
-}
-
-func ConvertSqlDBStatsToCustomDBStats(in *sql.DBStats) error {
-	err := toSubStruct(&in, myCustomDBStats)
+func GetDBStats() (*customDBStats, error) {
+	dbStats := &customDBStats{Status: "✗"}
+	db := datastore.GetStore().GetDB()
+	sqldb, err := db.DB()
 	if err != nil {
-		return common.NewErrorf("struct_copy_error", "Error copying struct: %v", err)
+		return dbStats, common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
 	}
 
-	return nil
+	sqlDBStats := sqldb.Stats()
+
+	err = ConvertSqlDBStatsToCustomDBStats(&sqlDBStats, dbStats)
+	if err != nil {
+		return dbStats, err
+	}
+
+	dbStats.Status = "✔"
+
+	return dbStats, nil
 }
 
-func toSubStruct(in, out interface{}) error {
+func ConvertSqlDBStatsToCustomDBStats(in *sql.DBStats, out *customDBStats) error {
 	b, err := json.Marshal(in)
 	if err != nil {
 		log.Println(err)
@@ -59,30 +56,8 @@ func toSubStruct(in, out interface{}) error {
 
 	err = json.Unmarshal(b, out)
 	if err != nil {
-		log.Println(err)
-		return err
+		return common.NewErrorf("struct_copy_error", "Error copying struct: %v", err)
 	}
 
 	return nil
-}
-
-func GetDBStats() (*customDBStats, error) {
-	db := datastore.GetStore().GetDB()
-	sqldb, err := db.DB()
-	if err != nil {
-		SetDBStatStatusFail()
-		return nil, common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
-	}
-
-	sqlDBStats := sqldb.Stats()
-
-	err = ConvertSqlDBStatsToCustomDBStats(&sqlDBStats)
-	if err != nil {
-		SetDBStatStatusFail()
-		return nil, err
-	}
-
-	SetDBStatStatusOK()
-
-	return myCustomDBStats, nil
 }

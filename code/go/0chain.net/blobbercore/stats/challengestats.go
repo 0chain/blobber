@@ -1,7 +1,6 @@
 package stats
 
 import (
-	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"gorm.io/datatypes"
@@ -36,24 +35,16 @@ type ChallengeEntity struct {
 }
 
 func getAllFailedChallenges(offset, limit int) ([]ChallengeEntity, int, error) {
-	//tx := datastore.GetStore().
-	//j, _ := json.Marshal(&cr.ObjectPathString)
-	// Logger.Info("Object path", zap.Any("objectpath", string(j)))
-	// Logger.Info("Object path object", zap.Any("object_path", cr.ObjectPath))
 	db := datastore.GetStore().GetDB()
 	crs := []ChallengeEntity{}
 	err := db.Offset(offset).Limit(limit).Order("challenge_id DESC").Table(ChallengeEntity{}.TableName()).Find(&crs, ChallengeEntity{Result: 2}).Error
-	//tx.Done()
 	if err != nil {
-		fmt.Println("1. getAllFailedChallenges err :", err)
 		return nil, 0, err
 	}
 
 	var count int64
 	err = db.Table(ChallengeEntity{}.TableName()).Where("result = ?", 2).Count(&count).Error
-	//tx.Done()
 	if err != nil {
-		fmt.Println("2. getAllFailedChallenges err :", err)
 		return nil, 0, err
 	}
 

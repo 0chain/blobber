@@ -69,8 +69,6 @@ func setupOnChain() {
 
 		go keepAliveOnChain()
 
-		go collectDBStats()
-
 		if config.Configuration.PriceInUSD {
 			go refreshPriceOnChain()
 		}
