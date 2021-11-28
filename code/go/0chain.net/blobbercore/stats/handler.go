@@ -457,7 +457,7 @@ func setStatsRequestDataInContext(r *http.Request, ctx context.Context) context.
 	allocationPage := r.URL.Query().Get("alp")
 	alPageLimitOffset, err := GetPageLimitOffsetFromRequestData(allocationPage)
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error("setStatsRequestDataInContext", zap.Error(err))
 		return ctx
 	}
 	alrd := RequestData{
@@ -470,7 +470,7 @@ func setStatsRequestDataInContext(r *http.Request, ctx context.Context) context.
 	failedChallengePage := r.URL.Query().Get("fcp")
 	fcPageLimitOffset, err := GetPageLimitOffsetFromRequestData(failedChallengePage)
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error("setStatsRequestDataInContext", zap.Error(err))
 		return ctx
 	}
 	fcrd := RequestData{

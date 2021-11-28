@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
@@ -182,7 +181,7 @@ func (bs *BlobberStats) loadDetailedStats(ctx context.Context) {
 func (bs *BlobberStats) loadInfraStats(ctx context.Context) {
 	healthIn := ctx.Value(HealthDataKey)
 	if healthIn == nil {
-		fmt.Println("loadInfraStats err: health should not be nil")
+		Logger.Error("loadInfraStats err where health value nil")
 		return
 	}
 	health := healthIn.(string)
@@ -198,24 +197,36 @@ func (bs *BlobberStats) loadInfraStats(ctx context.Context) {
 }
 
 func (bs *BlobberStats) loadDBStats() {
-	dbstats, err := GetDBStats()
+	dbStats := &customDBStats{Status: "✗"}
+	db := datastore.GetStore().GetDB()
+	sqldb, err := db.DB()
 	if err != nil {
-		fmt.Println(err)
+		bs.DBStats = dbStats
+		return
 	}
-	bs.DBStats = dbstats
+
+	sqlDBStats := sqldb.Stats()
+	err = convertSqlDBStatsToCustomDBStats(&sqlDBStats, dbStats)
+	if err != nil {
+		bs.DBStats = dbStats
+		return
+	}
+
+	dbStats.Status = "✔"
+	bs.DBStats = dbStats
 }
 
 func (bs *BlobberStats) loadFailedChallengeList(ctx context.Context) {
 	fcrdI := ctx.Value(FailedChallengeRequestDataKey)
 	if fcrdI == nil {
-		fmt.Println("loadInfraStats err: fcrd should not be nil")
+		Logger.Error("fcrd should not be nil")
 		return
 	}
 	fcrd := fcrdI.(RequestData)
 
 	fcs, count, err := getAllFailedChallenges(fcrd.Offset, fcrd.Limit)
 	if err != nil {
-		fmt.Println(err)
+		Logger.Error("", zap.Any("err", err))
 		return
 	}
 	bs.FailedChallengeList = fcs
@@ -297,7 +308,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 
 	alrdI := ctx.Value(AllocationListRequestDataKey)
 	if alrdI == nil {
-		fmt.Println("loadAllocationStats err: alrd should not be nil")
+		Logger.Error("loadAllocationStats err: alrd should not be nil", zap.Any("err", err))
 		return
 	}
 	alrd := alrdI.(RequestData)
@@ -354,7 +365,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 	var count int64
 	err = db.Table("reference_objects").Where("deleted_at is null").Count(&count).Error
 	if err != nil {
-		fmt.Println("loadAllocationStats err :", err)
+		Logger.Error("loadAllocationStats err where deleted_at is nul", zap.Any("err", err))
 		return
 	}
 

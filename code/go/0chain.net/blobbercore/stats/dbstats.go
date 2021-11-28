@@ -3,9 +3,9 @@ package stats
 import (
 	"database/sql"
 	"encoding/json"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"log"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -27,30 +27,10 @@ type customDBStats struct {
 	Status            string
 }
 
-func GetDBStats() (*customDBStats, error) {
-	dbStats := &customDBStats{Status: "✗"}
-	db := datastore.GetStore().GetDB()
-	sqldb, err := db.DB()
-	if err != nil {
-		return dbStats, common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
-	}
-
-	sqlDBStats := sqldb.Stats()
-
-	err = ConvertSqlDBStatsToCustomDBStats(&sqlDBStats, dbStats)
-	if err != nil {
-		return dbStats, err
-	}
-
-	dbStats.Status = "✔"
-
-	return dbStats, nil
-}
-
-func ConvertSqlDBStatsToCustomDBStats(in *sql.DBStats, out *customDBStats) error {
+func convertSqlDBStatsToCustomDBStats(in *sql.DBStats, out *customDBStats) error {
 	b, err := json.Marshal(in)
 	if err != nil {
-		log.Println(err)
+		logging.Logger.Error("Failed to marshal sql.DBStats", zap.Any("err", err))
 		return err
 	}
 
