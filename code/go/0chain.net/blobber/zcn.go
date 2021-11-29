@@ -67,7 +67,7 @@ func setupOnChain() {
 	if !isIntegrationTest {
 		go setupWorkers()
 
-		go keepAliveOnChain()
+		go healthCheckOnChain()
 
 		if config.Configuration.PriceInUSD {
 			go refreshPriceOnChain()

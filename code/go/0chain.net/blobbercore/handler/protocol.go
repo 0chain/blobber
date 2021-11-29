@@ -116,7 +116,7 @@ func BlobberAdd(ctx context.Context) (string, error) {
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
 		transaction.ADD_BLOBBER_SC_NAME, string(snBytes), 0)
 	if err != nil {
-		Logger.Info("Failed to set blobber on the blockchain",
+		Logger.Error("Failed to set blobber on the blockchain",
 			zap.String("err:", err.Error()))
 		return "", err
 	}

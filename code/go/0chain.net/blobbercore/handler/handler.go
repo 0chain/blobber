@@ -1,3 +1,4 @@
+//go:build !integration_tests
 // +build !integration_tests
 
 package handler
@@ -7,6 +8,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"runtime/pprof"
+	"time"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
@@ -23,10 +29,6 @@ import (
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"net/http"
-	"os"
-	"runtime/pprof"
-	"time"
 )
 
 var storageHandler StorageHandler
@@ -363,8 +365,6 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	err := GetBlobberHealthError()
 	if err != nil {
 		r.Header.Set(stats.HealthDataKey.String(), "✗")
-		//fmt.Fprintf(w, "<div>Blobber Heath Check: Failed</div>\n")
-		//fmt.Fprintf(w, "<div>Blobber Heath Check Error: %s</div>\n",err.Error())
 	} else {
 		r.Header.Set(stats.HealthDataKey.String(), "✔")
 	}

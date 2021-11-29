@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"runtime"
+	"time"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
@@ -12,8 +15,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"go.uber.org/zap"
 	"gorm.io/datatypes"
-	"runtime"
-	"time"
 )
 
 const DateTimeFormat = "2006-01-02T15:04:05"
@@ -75,7 +76,7 @@ type BlobberStats struct {
 	ClientID                  string            `json:"-"`
 	PublicKey                 string            `json:"-"`
 	InfraStats                InfraStats        `json:"-"`
-	DBStats                   *customDBStats    `json:"-"`
+	DBStats                   *DBStats          `json:"-"`
 	FailedChallengeList       []ChallengeEntity `json:"-"`
 	FailedChallengePagination Pagination        `json:"-"`
 	AllocationListPagination  Pagination        `json:"-"`
@@ -197,23 +198,18 @@ func (bs *BlobberStats) loadInfraStats(ctx context.Context) {
 }
 
 func (bs *BlobberStats) loadDBStats() {
-	dbStats := &customDBStats{Status: "✗"}
+	bs.DBStats = &DBStats{Status: "✗"}
+
 	db := datastore.GetStore().GetDB()
 	sqldb, err := db.DB()
 	if err != nil {
-		bs.DBStats = dbStats
 		return
 	}
 
-	sqlDBStats := sqldb.Stats()
-	err = convertSqlDBStatsToCustomDBStats(&sqlDBStats, dbStats)
-	if err != nil {
-		bs.DBStats = dbStats
-		return
-	}
+	dbStats := sqldb.Stats()
 
-	dbStats.Status = "✔"
-	bs.DBStats = dbStats
+	bs.DBStats.Status = "✔"
+	bs.DBStats.DBStats = dbStats
 }
 
 func (bs *BlobberStats) loadFailedChallengeList(ctx context.Context) {
