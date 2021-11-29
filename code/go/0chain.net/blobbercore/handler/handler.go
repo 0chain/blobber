@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"runtime/pprof"
+	"strconv"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -473,6 +474,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	encryptionPublicKey := r.FormValue("encryption_public_key")
 	authTicketString := r.FormValue("auth_ticket")
+	availableAfter := r.FormValue("available_after")
 	authTicket := &readmarker.AuthTicket{}
 
 	err = json.Unmarshal([]byte(authTicketString), &authTicket)
@@ -501,7 +503,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		ReEncryptionKey:           authTicket.ReEncryptionKey,
 		ClientEncryptionPublicKey: encryptionPublicKey,
 		ExpiryAt:                  common.ToTime(authTicket.Expiration),
-		AvailableAt:               common.ToTime(authTicket.Available),
+		AvailableAt:               common.ToTime(common.Timestamp(available)),
 	}
 
 	existingShare, _ := reference.GetShareInfo(ctx, authTicket.ClientID, authTicket.FilePathHash)
