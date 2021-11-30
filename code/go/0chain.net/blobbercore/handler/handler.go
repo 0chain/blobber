@@ -496,6 +496,17 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 
+	var available common.Timestamp
+	if len(availableAfter) == 0 {
+		available = common.Now()
+	} else {
+		a, err := strconv.ParseInt(availableAfter, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		available = common.Timestamp(a)
+	}
+
 	shareInfo := reference.ShareInfo{
 		OwnerID:                   authTicket.OwnerID,
 		ClientID:                  authTicket.ClientID,
@@ -503,7 +514,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		ReEncryptionKey:           authTicket.ReEncryptionKey,
 		ClientEncryptionPublicKey: encryptionPublicKey,
 		ExpiryAt:                  common.ToTime(authTicket.Expiration),
-		AvailableAt:               common.ToTime(common.Timestamp(available)),
+		AvailableAt:               common.ToTime(available),
 	}
 
 	existingShare, _ := reference.GetShareInfo(ctx, authTicket.ClientID, authTicket.FilePathHash)

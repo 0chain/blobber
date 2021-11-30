@@ -1177,6 +1177,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 					require.NoError(t, formWriter.WriteField("auth_ticket", authTicket))
+					require.NoError(t, formWriter.WriteField("available_after", "0"))
 					if err := formWriter.Close(); err != nil {
 						t.Fatal(err)
 					}
@@ -1237,7 +1238,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`INSERT INTO "marketplace_share_info"`).
-					WithArgs("2f34516ed8c567089b7b5572b12950db34a62a07e16770da14b15b170d0d60a9", "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c", "regenkey", aa, false, aa).
+					WithArgs("2f34516ed8c567089b7b5572b12950db34a62a07e16770da14b15b170d0d60a9", "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c", "regenkey", aa, false, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 			},
 			wantCode: http.StatusOK,
@@ -1266,6 +1267,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 					require.NoError(t, formWriter.WriteField("auth_ticket", authTicket))
+					require.NoError(t, formWriter.WriteField("available_after", "0"))
 					if err := formWriter.Close(); err != nil {
 						t.Fatal(err)
 					}
@@ -1329,7 +1331,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`UPDATE "marketplace_share_info"`).
-					WithArgs("regenkey", "kkk", false, aa, "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
+					WithArgs("regenkey", "kkk", false, aa, aa, "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
 					WillReturnResult(sqlmock.NewResult(0, 1))
 			},
 			wantCode: http.StatusOK,

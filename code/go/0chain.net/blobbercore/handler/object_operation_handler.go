@@ -385,6 +385,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 
 	chunkData, err := chunkEncoder.Encode(int(fileref.ChunkSize), respData)
 
+	if common.Timestamp(shareInfo.AvailableAt.Unix()) > common.Now() {
+		return nil, errors.New("the file is not available until: " + shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
+	}
+
 	if err != nil {
 		return nil, err
 	}
