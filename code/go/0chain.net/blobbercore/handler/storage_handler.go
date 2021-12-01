@@ -455,7 +455,15 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		}
 	}
 
-	dirref, err := reference.GetRefWithChildren(ctx, allocationID, fileref.Path)
+	// when '/' is not available in database we ignore 'record not found' error. which results into nil fileRef
+	// to handle that condition use filePath '/' while file ref is nil and path  is '/'
+	filePath := path
+	if fileref != nil {
+		filePath = fileref.Path
+	} else if path != "/" {
+		return nil, common.NewError("invalid_parameters", "Invalid path: ref not found ")
+	}
+	dirref, err := reference.GetRefWithChildren(ctx, allocationID, filePath)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 	}

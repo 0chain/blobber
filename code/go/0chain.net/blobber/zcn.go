@@ -67,7 +67,7 @@ func setupOnChain() {
 	if !isIntegrationTest {
 		go setupWorkers()
 
-		go keepAliveOnChain()
+		go healthCheckOnChain()
 
 		if config.Configuration.PriceInUSD {
 			go refreshPriceOnChain()
@@ -114,23 +114,4 @@ func setupServerChain() error {
 
 	fmt.Print("	[OK]\n")
 	return nil
-}
-
-func healthCheckOnChain() error {
-	txnHash, err := handler.BlobberHealthCheck(common.GetRootContext())
-	if err != nil {
-		if err == handler.ErrBlobberHasRemoved {
-			return nil
-		} else {
-			return err
-		}
-	}
-
-	if t, err := handler.TransactionVerify(txnHash); err != nil {
-		logging.Logger.Error("Failed to verify blobber health check", zap.Any("err", err), zap.String("txn.Hash", txnHash))
-	} else {
-		logging.Logger.Info("Verified blobber health check", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-	}
-
-	return err
 }
