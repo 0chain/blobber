@@ -881,6 +881,13 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
 
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
+					WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).
+					WillReturnRows(
+						sqlmock.NewRows([]string{}).
+							AddRow(),
+					)
+
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
@@ -900,11 +907,11 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(reference.DIRECTORY),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
-					WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					WithArgs(aa, aa).
 					WillReturnRows(
-						sqlmock.NewRows([]string{}).
-							AddRow(),
+						sqlmock.NewRows([]string{"type"}).
+							AddRow(reference.DIRECTORY),
 					)
 
 				mock.ExpectExec(`INSERT INTO "allocation_connections"`).
