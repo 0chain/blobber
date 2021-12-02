@@ -925,16 +925,9 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
 	}
 
-	destRef, err = reference.GetReference(ctx, allocationID, destPath)
-	if destRef != nil && destRef.Type != reference.DIRECTORY {
+	destRef, err = reference.Mkdir(ctx, allocationID, destPath)
+	if err != nil && destRef.Type != reference.DIRECTORY {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
-	}
-
-	if err != nil {
-		err = createDir(ctx, connectionID, allocationID, clientID, destPath)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
@@ -1044,9 +1037,33 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	err = createDir(ctx, connectionID, allocationID, clientID, dirPath)
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
-		return nil, common.NewError("upload_failed", "File upload failed "+err.Error())
+		return nil, common.NewError("meta_error", "Error reading metadata for connection")
+	}
+
+	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	allocationChange := &allocation.AllocationChange{}
+	allocationChange.ConnectionID = connectionObj.ConnectionID
+	allocationChange.Size = 0
+	allocationChange.Operation = constants.FileOperationCreateDir
+	connectionObj.Size += allocationChange.Size
+	var formData allocation.NewFileChange
+	formData.Filename = dirPath
+	formData.Path = dirPath
+	formData.AllocationID = allocationID
+	formData.ConnectionID = connectionID
+	formData.ActualHash = "-"
+	formData.ActualSize = 1
+
+	connectionObj.AddChange(allocationChange, &formData)
+
+	err = filestore.GetFileStore().CreateDir(dirPath)
+	if err != nil {
+		return nil, err
 	}
 
 	result := &blobberhttp.UploadResult{}
@@ -1179,37 +1196,4 @@ func getExistingFileRef(fsh *StorageHandler, ctx context.Context, r *http.Reques
 		}
 	}
 	return nil
-}
-
-func createDir(ctx context.Context, connectionID, allocationID, clientID, dirPath string) error {
-	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
-	if err != nil {
-		return common.NewError("meta_error", "Error reading metadata for connection")
-	}
-
-	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	allocationChange := &allocation.AllocationChange{}
-	allocationChange.ConnectionID = connectionObj.ConnectionID
-	allocationChange.Size = 0
-	allocationChange.Operation = constants.FileOperationCreateDir
-	connectionObj.Size += allocationChange.Size
-	var formData allocation.NewFileChange
-	formData.Filename = dirPath
-	formData.Path = dirPath
-	formData.AllocationID = allocationID
-	formData.ConnectionID = connectionID
-	formData.ActualHash = "-"
-	formData.ActualSize = 1
-
-	connectionObj.AddChange(allocationChange, &formData)
-
-	err = filestore.GetFileStore().CreateDir(dirPath)
-	if err != nil {
-		return err
-	}
-
-	return connectionObj.ApplyChanges(ctx, "/")
 }
