@@ -1063,6 +1063,11 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 	err = filestore.GetFileStore().CreateDir(dirPath)
 	if err != nil {
+		return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
+	}
+
+	err = connectionObj.ApplyChanges(ctx, "/")
+	if err != nil {
 		return nil, err
 	}
 
@@ -1085,7 +1090,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 
-	// verify allocation
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
