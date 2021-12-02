@@ -914,6 +914,15 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	if err != nil {
+		return nil, common.NewError("meta_error", "Error reading metadata for connection")
+	}
+
+	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
 
 	if err != nil {
@@ -926,18 +935,9 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	}
 
 	destRef, err = reference.Mkdir(ctx, allocationID, destPath)
-	if err != nil && destRef.Type != reference.DIRECTORY {
+	if err != nil || destRef.Type != reference.DIRECTORY {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 	}
-
-	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
-	if err != nil {
-		return nil, common.NewError("meta_error", "Error reading metadata for connection")
-	}
-
-	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
-	mutex.Lock()
-	defer mutex.Unlock()
 
 	allocationChange := &allocation.AllocationChange{}
 	allocationChange.ConnectionID = connectionObj.ConnectionID
@@ -1092,9 +1092,9 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	}
 
 	allocationID := allocationObj.ID
-	fileOperation := getFileOperation(r)                                                                     // check if we need to write update or delete file
-	existingFileRef := getExistingFileRef(fsh, ctx, r, allocationObj, fileOperation)                         // check if file is there in db which is nil
-	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID) // false
+	fileOperation := getFileOperation(r)
+	existingFileRef := getExistingFileRef(fsh, ctx, r, allocationObj, fileOperation)
+	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
 
 	if isCollaborator {
@@ -1115,7 +1115,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	if err := r.ParseMultipartForm(FormFileParseMaxMemory); err != nil { // read file from form
+	if err := r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
 		Logger.Info("Error Parsing the request", zap.Any("error", err))
 		return nil, common.NewError("request_parse_error", err.Error())
 	}
@@ -1125,7 +1125,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	cmd := createFileCommand(r) // no change required to create dir
+	cmd := createFileCommand(r)
 
 	err = cmd.IsAuthorized(ctx, r, allocationObj, clientID)
 
