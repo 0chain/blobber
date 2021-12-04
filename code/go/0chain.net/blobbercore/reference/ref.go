@@ -196,13 +196,13 @@ func Mkdir(ctx context.Context, allocationID string, destpath string) (*Ref, err
 
 		// dir doesn't exists , create it
 		newRef := NewDirectoryRef()
-		newRef.AllocationID = dirRef.AllocationID
+		newRef.AllocationID = allocationID
 		newRef.Path = currentPath
 		newRef.ParentPath = filepath.Join("/", filepath.Join(dirs[:i]...))
 		newRef.Name = dirs[i]
 		newRef.Type = DIRECTORY
 		newRef.PathLevel = i + 1
-		newRef.LookupHash = GetReferenceLookup(dirRef.AllocationID, newRef.Path)
+		newRef.LookupHash = GetReferenceLookup(allocationID, newRef.Path)
 		err = db.Create(newRef).Error
 		if err != nil {
 			return nil, err
