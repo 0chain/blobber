@@ -498,7 +498,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	var available common.Timestamp
 	if len(availableAfter) == 0 {
-		available = common.Now()
+		available = common.Timestamp(0)
 	} else {
 		a, err := strconv.ParseInt(availableAfter, 10, 64)
 		if err != nil {
