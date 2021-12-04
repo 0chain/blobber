@@ -57,10 +57,16 @@ func (nf *DeleteFileChange) ProcessChange(ctx context.Context, change *Allocatio
 			return nil, common.NewError("invalid_reference_path", "Invalid reference path from the blobber")
 		}
 	}
-	idx := -1
 	for i, child := range dirRef.Children {
+		if affectedRef.Path == "/" {
+			if err := reference.DeleteReference(ctx, child.ID, child.PathHash); err != nil {
+				Logger.Error("DeleteReference", zap.Int64("ref_id", child.ID), zap.Error(err))
+			}
+			nf.processChildren(ctx, affectedRef)
+			dirRef.RemoveChild(i)
+			continue
+		}
 		if child.Hash == nf.Hash && child.Hash == affectedRef.Hash {
-			idx = i
 			nf.ContentHash = make(map[string]bool)
 			if err := reference.DeleteReference(ctx, child.ID, child.PathHash); err != nil {
 				Logger.Error("DeleteReference", zap.Int64("ref_id", child.ID), zap.Error(err))
@@ -71,19 +77,17 @@ func (nf *DeleteFileChange) ProcessChange(ctx context.Context, change *Allocatio
 			} else {
 				nf.processChildren(ctx, affectedRef)
 			}
-			break
+			dirRef.RemoveChild(i)
+			_, err = rootRef.CalculateHash(ctx, true)
+			return nil, err
 		}
 	}
-	if idx < 0 {
+
+	if affectedRef.Path != "/" {
 		return nil, common.NewError("file_not_found", "Object to delete not found in blobber")
 	}
-
-	dirRef.RemoveChild(idx)
-	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+	_, err = rootRef.CalculateHash(ctx, true)
+	return nil, err
 }
 
 func (nf *DeleteFileChange) processChildren(ctx context.Context, curRef *reference.Ref) {
