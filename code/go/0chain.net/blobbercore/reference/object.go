@@ -16,12 +16,12 @@ func LoadObjectTree(ctx context.Context, allocationID, path string) (*Ref, error
 		GetTransaction(ctx)
 
 	if strings.HasSuffix(path, "/") {
-		db = db.Where("allocation_id = ? and deleted_at IS NULL and path LIKE ? ", (path + "%"), allocationID)
+		db = db.Where("allocation_id = ? and deleted_at IS NULL and path LIKE ? ", allocationID, (path + "%"))
 	} else {
-		db = db.Where("allocation_id = ? and deleted_at IS NULL and path LIKE ? ", (path + "/%"), allocationID)
+		db = db.Where("allocation_id = ? and deleted_at IS NULL and path LIKE ? ", allocationID, (path + "/%"))
 	}
 
-	db = db.Order("level desc, path")
+	db = db.Order("level desc, lookup_hash")
 
 	obejctTreeNodes := make(map[string][]*Ref)
 
@@ -81,9 +81,9 @@ func DeleteObject(ctx context.Context, allocationID string, path string) (*Ref, 
 	txDelete := db.Clauses(clause.Returning{Columns: []clause.Column{{Name: "content_hash"}, {Name: "type"}}})
 
 	if strings.HasSuffix(path, "/") {
-		txDelete = txDelete.Where("allocation_id = ? and deleted_at IS NULL and path LIKE ? ", (path + "%"), allocationID)
+		txDelete = txDelete.Where("allocation_id = ? and deleted_at IS NULL and (path LIKE ? or path = ?) and path != ? ", allocationID, (path + "%"), path, "/")
 	} else {
-		txDelete = txDelete.Where("allocation_id = ? and deleted_at IS NULL and path LIKE ? ", (path + "/%"), allocationID)
+		txDelete = txDelete.Where("allocation_id = ? and deleted_at IS NULL and (path LIKE ? or path = ?) and path != ? ", allocationID, (path + "/%"), path, "/")
 	}
 
 	err := txDelete.Delete(&deletedObjects).Error
