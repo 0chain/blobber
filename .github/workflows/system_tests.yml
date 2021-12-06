@@ -78,6 +78,7 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
 
     - name: "Deploy 0Chain"
+      if: ${{ github.event.inputs.skip_tests == 'FALSE' }}
       uses: 0chain/actions/deploy-0chain@master
       with:
         kube_config: ${{ secrets[format('DEV{0}KC', env.RUNNER_NUMBER)] }}
@@ -95,6 +96,7 @@ jobs:
         blobber_stake_image: latest
 
     - name: "Run System tests"
+      if: ${{ github.event.inputs.skip_tests == 'FALSE' }}
       uses: 0chain/actions/run-system-tests@master
       with:
         system_tests_branch: ${{ github.event.inputs.system_tests_branch }}
