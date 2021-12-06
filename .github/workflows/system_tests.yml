@@ -82,12 +82,12 @@ jobs:
       with:
         kube_config: ${{ secrets[format('DEV{0}KC', env.RUNNER_NUMBER)] }}
         teardown_condition: "TESTS_PASSED"
-        miner_image:  github.event.inputs.miner_image
-        sharder_image: github.event.inputs.sharder_image
-        blobber_image: github.event.inputs.blobber_image
-        validator_image: github.event.inputs.validator_image
-        zbox_image: github.event.inputs.zbox_image
-        zblock_image: github.event.inputs.zblock_image
+        miner_image:  ${{ github.event.inputs.miner_image }}
+        sharder_image: ${{ github.event.inputs.sharder_image }}
+        blobber_image: ${{ github.event.inputs.blobber_image }}
+        validator_image: ${{ github.event.inputs.validator_image }}
+        zbox_image: ${{ github.event.inputs.zbox_image }}
+        zblock_image: ${{ github.event.inputs.zblock_image }}
         zdns_image: staging
         explorer_image: latest
         zproxy_image: staging
@@ -97,10 +97,10 @@ jobs:
     - name: "Run System tests"
       uses: 0chain/actions/run-system-tests@master
       with:
-        system_tests_branch: github.event.inputs.system_tests_branch
-        network: env.NETWORK_URL
-        zbox_cli_branch: github.event.inputs.zbox_cli_branch
-        zwallet_cli_branch: github.event.inputs.zwallet_cli_branch
+        system_tests_branch: ${{ github.event.inputs.system_tests_branch }}
+        network: ${{ env.NETWORK_URL }}
+        zbox_cli_branch: ${{ github.event.inputs.zbox_cli_branch }}
+        zwallet_cli_branch: ${{ github.event.inputs.zwallet_cli_branch }}
         smart_contract_owner_wallet_json: ${{ secrets.SMART_CONTRACT_OWNER_WALLET_JSON }}
         svc_account_secret: ${{ github.token }}
         deploy_report_page: false
