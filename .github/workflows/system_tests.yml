@@ -5,38 +5,38 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
     inputs:
        system_tests_branch:
         description: 'system_tests branch. Containing the tests you wish to run'
         default: 'master'
         required: true
        blobber_image:
-         description: 'blobber DOCKER IMAGE to deploy'
-         default: 'staging'
-         required: true
+        description: 'blobber DOCKER IMAGE to deploy'
+        default: 'staging'
+        required: true
        validator_image:
-         description: 'validator DOCKER IMAGE to deploy'
-         default: 'staging'
-         required: true
+        description: 'validator DOCKER IMAGE to deploy'
+        default: 'staging'
+        required: true
        zbox_cli_branch:
-         description: '0Box CLI (branch or commit SHA) which the tests will use'
-         default: 'staging'
-         required: true
+        description: '0Box CLI (branch or commit SHA) which the tests will use'
+        default: 'staging'
+        required: true
        zwallet_cli_branch:
-         description: '0Wallet CLI (branch or commit SHA) which the tests will use'
-         default: 'staging'
-         required: true
+        description: '0Wallet CLI (branch or commit SHA) which the tests will use'
+        default: 'staging'
+        required: true
        miner_image:
-         description: 'miner DOCKER IMAGE to deploy'
-         default: 'staging'
-         required: true
+        description: 'miner DOCKER IMAGE to deploy'
+        default: 'staging'
+        required: true
        sharder_image:
-         description: 'sharder DOCKER IMAGE to deploy'
-         default: 'staging'
-         required: true
+        description: 'sharder DOCKER IMAGE to deploy'
+        default: 'staging'
+        required: true
        zbox_image:
-         description: '0box DOCKER IMAGE to deploy'
+        description: '0box DOCKER IMAGE to deploy'
         default: 'staging'
         required: true
        zblock_image:
