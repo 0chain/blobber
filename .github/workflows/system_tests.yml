@@ -108,6 +108,7 @@ jobs:
         deploy_report_page: false
         archive_results: true
         run_flaky_tests: false
+        retry_failures: true
         
     - name: "Set PR Status Success"
       if: ${{ success() && steps.findPr.outputs.number }}
