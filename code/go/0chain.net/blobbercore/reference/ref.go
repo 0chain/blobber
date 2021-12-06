@@ -131,7 +131,7 @@ type PaginatedRef struct { //Gorm smart select fields.
 }
 
 func (Ref) TableName() string {
-	return "reference_objects"
+	return TableNameReferenceObjects
 }
 
 // GetReferenceLookup hash(allocationID + ":" + path)
