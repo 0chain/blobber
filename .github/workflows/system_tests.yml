@@ -97,7 +97,7 @@ jobs:
     - name: "Run System tests"
       uses: 0chain/actions/run-system-tests@master
       with:
-        system_tests_branch: master
+        system_tests_branch: github.event.inputs.system_tests_branch
         network: env.NETWORK_URL
         zbox_cli_branch: github.event.inputs.zbox_cli_branch
         zwallet_cli_branch: github.event.inputs.zwallet_cli_branch
