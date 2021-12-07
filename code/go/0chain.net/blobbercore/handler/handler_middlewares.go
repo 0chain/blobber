@@ -29,7 +29,7 @@ func useCors(h http.Handler) http.Handler {
 
 		w.Header().Add("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
 		w.Header().Add("Access-Control-Allow-Origin", strings.Join(allowedOrigins, ", "))
-		w.Header().Add("Access-Control-Allow-Method", strings.Join(allowedMethods, ", "))
+		w.Header().Add("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
 		w.Header().Add("Access-Control-Allow-Credentials", "true")
 
 		// return directly for preflight request
