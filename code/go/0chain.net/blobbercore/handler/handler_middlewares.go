@@ -10,9 +10,9 @@ import (
 
 func useCors(h http.Handler) http.Handler {
 	allowedHeaders := []string{
-		"X-Requested-With", "X-App-Client-ID",
-		"X-App-Client-Key", "Content-Type",
-		"X-App-Client-Signature",
+		"X-Requested-With", "Content-Type",
+		"X-App-Client-ID", "X-App-Client-Key", "X-App-Client-Signature",
+		"Access-Control-Allow-origin", "Access-Control-Request-Method",
 	}
 
 	allowedOrigins := []string{"*"}
@@ -27,9 +27,9 @@ func useCors(h http.Handler) http.Handler {
 			}
 		}()
 
-		w.Header().Add("Access-Control-Request-Headers", strings.Join(allowedHeaders, ","))
-		w.Header().Add("Access-Control-Allow-Origin", strings.Join(allowedOrigins, ","))
-		w.Header().Add("Access-Control-Request-Method", strings.Join(allowedMethods, ","))
+		w.Header().Add("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
+		w.Header().Add("Access-Control-Allow-Origin", strings.Join(allowedOrigins, ", "))
+		w.Header().Add("Access-Control-Allow-Method", strings.Join(allowedMethods, ", "))
 		w.Header().Add("Access-Control-Allow-Credentials", "true")
 
 		// return directly for preflight request
@@ -41,7 +41,6 @@ func useCors(h http.Handler) http.Handler {
 
 		h.ServeHTTP(w, r)
 	})
-
 }
 
 func useRecovery(h http.Handler) http.Handler {
