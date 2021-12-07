@@ -27,16 +27,16 @@ func useCors(h http.Handler) http.Handler {
 			}
 		}()
 
-		if r.Method == http.MethodOptions {
+		w.Header().Add("Access-Control-Request-Headers", strings.Join(allowedHeaders, ","))
+		w.Header().Add("Access-Control-Allow-Origin", strings.Join(allowedOrigins, ","))
+		w.Header().Add("Access-Control-Request-Method", strings.Join(allowedMethods, ","))
+		w.Header().Add("Access-Control-Allow-Credentials", "true")
 
-			w.Header().Add("Access-Control-Request-Headers", strings.Join(allowedHeaders, ","))
-			w.Header().Add("Access-Control-Allow-Origin", strings.Join(allowedOrigins, ","))
-			w.Header().Add("Access-Control-Request-Method", strings.Join(allowedMethods, ","))
-			w.Header().Add("Access-Control-Allow-Credentials", "true")
+		// return directly for preflight request
+		if r.Method == http.MethodOptions {
 			w.Header().Add("Access-Control-Max-Age", "3600")
 			w.WriteHeader(http.StatusNoContent)
 			return
-
 		}
 
 		h.ServeHTTP(w, r)
