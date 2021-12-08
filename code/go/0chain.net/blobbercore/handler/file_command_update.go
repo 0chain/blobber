@@ -67,7 +67,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	result.Filename = cmd.fileChanger.Filename
 
 	// rejected it on first chunk if actualsize is greater than max_file_size
-	if config.Configuration.MaxFileSize > 0 && cmd.changeProcessor.ActualSize > config.Configuration.MaxFileSize {
+	if config.Configuration.MaxFileSize > 0 && cmd.fileChanger.ActualSize > config.Configuration.MaxFileSize {
 		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
 	}
 
