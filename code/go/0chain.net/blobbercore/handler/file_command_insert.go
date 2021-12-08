@@ -55,6 +55,7 @@ func (cmd *InsertFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 func (cmd *InsertFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
 
 	result := blobberhttp.UploadResult{}
+	result.Filename = cmd.changeProcessor.Filename
 
 	origfile, _, err := req.FormFile("uploadFile")
 	if err != nil {
@@ -62,13 +63,17 @@ func (cmd *InsertFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 	defer origfile.Close()
 
+	// rejected it on first chunk if actualsize is greater than max_file_size
+	if config.Configuration.MaxFileSize > 0 && cmd.changeProcessor.ActualSize > config.Configuration.MaxFileSize {
+		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
+	}
+
 	fileInputData := &filestore.FileInputData{Name: cmd.changeProcessor.Filename, Path: cmd.changeProcessor.Path, OnCloud: false}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
 
-	result.Filename = cmd.changeProcessor.Filename
 	result.Hash = fileOutputData.ContentHash
 	result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size

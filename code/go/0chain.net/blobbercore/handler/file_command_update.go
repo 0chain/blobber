@@ -64,6 +64,13 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	result := blobberhttp.UploadResult{}
 
+	result.Filename = cmd.fileChanger.Filename
+
+	// rejected it on first chunk if actualsize is greater than max_file_size
+	if config.Configuration.MaxFileSize > 0 && cmd.changeProcessor.ActualSize > config.Configuration.MaxFileSize {
+		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
+	}
+
 	origfile, _, err := req.FormFile("uploadFile")
 	if err != nil {
 		return result, common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
@@ -86,7 +93,6 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
 
-	result.Filename = cmd.fileChanger.Filename
 	result.Hash = fileOutputData.ContentHash
 	//result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
@@ -110,6 +116,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}
 
+	//max_file_size = 0 means file size is unlimited
 	if fileOutputData.Size > config.Configuration.MaxFileSize && config.Configuration.MaxFileSize > 0 {
 		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
 	}
