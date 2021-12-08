@@ -110,7 +110,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}
 
-	if fileOutputData.Size > config.Configuration.MaxFileSize {
+	if fileOutputData.Size > config.Configuration.MaxFileSize && config.Configuration.MaxFileSize > 0 {
 		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
 	}
 

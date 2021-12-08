@@ -79,7 +79,8 @@ func (cmd *InsertFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	if len(cmd.changeProcessor.MerkleRoot) > 0 && cmd.changeProcessor.MerkleRoot != fileOutputData.MerkleRoot {
 		return result, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
 	}
-	if fileOutputData.Size > config.Configuration.MaxFileSize {
+	//max_file_size = 0 means file size is unlimited
+	if fileOutputData.Size > config.Configuration.MaxFileSize && config.Configuration.MaxFileSize > 0 {
 		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
 	}
 
