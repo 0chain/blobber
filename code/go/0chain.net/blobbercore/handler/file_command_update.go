@@ -7,7 +7,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -66,11 +65,6 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	result.Filename = cmd.fileChanger.Filename
 
-	// rejected it on first chunk if actualsize is greater than max_file_size
-	if config.Configuration.MaxFileSize > 0 && cmd.fileChanger.ActualSize > config.Configuration.MaxFileSize {
-		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
-	}
-
 	origfile, _, err := req.FormFile("uploadFile")
 	if err != nil {
 		return result, common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
@@ -114,11 +108,6 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	if allocationObj.BlobberSizeUsed+(allocationSize-cmd.exisitingFileRef.Size) > allocationObj.BlobberSize {
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
-	}
-
-	//max_file_size = 0 means file size is unlimited
-	if fileOutputData.Size > config.Configuration.MaxFileSize && config.Configuration.MaxFileSize > 0 {
-		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
 	}
 
 	cmd.fileChanger.AllocationID = allocationObj.ID
