@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	bconfig "github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
@@ -110,7 +109,6 @@ func init() {
 	if _, err := filestore.SetupFSStoreI(dir+"/tmp", MockFileBlockGetter{}); err != nil {
 		panic(err)
 	}
-	bconfig.Configuration.MaxFileSize = int64(1 << 30)
 }
 
 func TestBlobberCore_RenameFile(t *testing.T) {

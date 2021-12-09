@@ -7,7 +7,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -63,11 +62,6 @@ func (cmd *InsertFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 	defer origfile.Close()
 
-	// rejected it on first chunk if actualsize is greater than max_file_size
-	if config.Configuration.MaxFileSize > 0 && cmd.fileChanger.ActualSize > config.Configuration.MaxFileSize {
-		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
-	}
-
 	fileInputData := &filestore.FileInputData{Name: cmd.fileChanger.Filename, Path: cmd.fileChanger.Path, OnCloud: false}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
 	if err != nil {
@@ -83,10 +77,6 @@ func (cmd *InsertFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 	if len(cmd.fileChanger.MerkleRoot) > 0 && cmd.fileChanger.MerkleRoot != fileOutputData.MerkleRoot {
 		return result, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
-	}
-	//max_file_size = 0 means file size is unlimited
-	if fileOutputData.Size > config.Configuration.MaxFileSize && config.Configuration.MaxFileSize > 0 {
-		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
 	}
 
 	cmd.fileChanger.Hash = fileOutputData.ContentHash
