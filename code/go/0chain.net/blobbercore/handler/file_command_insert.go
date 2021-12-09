@@ -7,7 +7,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -18,7 +17,7 @@ import (
 // InsertFileCommand command for inserting file
 type InsertFileCommand struct {
 	allocationChange *allocation.AllocationChange
-	changeProcessor  *allocation.UpdateFileChanger
+	fileChanger      *allocation.UpdateFileChanger
 }
 
 // IsAuthorized validate request.
@@ -28,25 +27,25 @@ func (cmd *InsertFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	changeProcessor := &allocation.UpdateFileChanger{}
+	fileChanger := &allocation.UpdateFileChanger{}
 
 	uploadMetaString := req.FormValue("uploadMeta")
-	err := json.Unmarshal([]byte(uploadMetaString), changeProcessor)
+	err := json.Unmarshal([]byte(uploadMetaString), fileChanger)
 	if err != nil {
 		return common.NewError("invalid_parameters",
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 	}
-	exisitingFileRef, _ := reference.GetReference(ctx, allocationObj.ID, changeProcessor.Path)
+	exisitingFileRef, _ := reference.GetReference(ctx, allocationObj.ID, fileChanger.Path)
 
 	if exisitingFileRef != nil {
 		return common.NewError("duplicate_file", "File at path already exists")
 	}
 
-	if changeProcessor.ChunkSize <= 0 {
-		changeProcessor.ChunkSize = fileref.CHUNK_SIZE
+	if fileChanger.ChunkSize <= 0 {
+		fileChanger.ChunkSize = fileref.CHUNK_SIZE
 	}
 
-	cmd.changeProcessor = changeProcessor
+	cmd.fileChanger = fileChanger
 
 	return nil
 }
@@ -55,6 +54,7 @@ func (cmd *InsertFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 func (cmd *InsertFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
 
 	result := blobberhttp.UploadResult{}
+	result.Filename = cmd.fileChanger.Filename
 
 	origfile, _, err := req.FormFile("uploadFile")
 	if err != nil {
@@ -62,31 +62,27 @@ func (cmd *InsertFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 	defer origfile.Close()
 
-	fileInputData := &filestore.FileInputData{Name: cmd.changeProcessor.Filename, Path: cmd.changeProcessor.Path, OnCloud: false}
+	fileInputData := &filestore.FileInputData{Name: cmd.fileChanger.Filename, Path: cmd.fileChanger.Path, OnCloud: false}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
 
-	result.Filename = cmd.changeProcessor.Filename
 	result.Hash = fileOutputData.ContentHash
 	result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
 
-	if len(cmd.changeProcessor.Hash) > 0 && cmd.changeProcessor.Hash != fileOutputData.ContentHash {
+	if len(cmd.fileChanger.Hash) > 0 && cmd.fileChanger.Hash != fileOutputData.ContentHash {
 		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
 	}
-	if len(cmd.changeProcessor.MerkleRoot) > 0 && cmd.changeProcessor.MerkleRoot != fileOutputData.MerkleRoot {
+	if len(cmd.fileChanger.MerkleRoot) > 0 && cmd.fileChanger.MerkleRoot != fileOutputData.MerkleRoot {
 		return result, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
 	}
-	if fileOutputData.Size > config.Configuration.MaxFileSize {
-		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
-	}
 
-	cmd.changeProcessor.Hash = fileOutputData.ContentHash
-	cmd.changeProcessor.MerkleRoot = fileOutputData.MerkleRoot
-	cmd.changeProcessor.AllocationID = allocationObj.ID
-	cmd.changeProcessor.Size = fileOutputData.Size
+	cmd.fileChanger.Hash = fileOutputData.ContentHash
+	cmd.fileChanger.MerkleRoot = fileOutputData.MerkleRoot
+	cmd.fileChanger.AllocationID = allocationObj.ID
+	cmd.fileChanger.Size = fileOutputData.Size
 
 	allocationSize := fileOutputData.Size
 
@@ -114,18 +110,18 @@ func (cmd *InsertFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 
 		defer thumbfile.Close()
 
-		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.changeProcessor.Path}
+		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
 		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, thumbInputData, thumbfile, connectionObj.ConnectionID)
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 		}
-		if len(cmd.changeProcessor.ThumbnailHash) > 0 && cmd.changeProcessor.ThumbnailHash != thumbOutputData.ContentHash {
+		if len(cmd.fileChanger.ThumbnailHash) > 0 && cmd.fileChanger.ThumbnailHash != thumbOutputData.ContentHash {
 			return common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the thumbnail content")
 		}
 
-		cmd.changeProcessor.ThumbnailHash = thumbOutputData.ContentHash
-		cmd.changeProcessor.ThumbnailSize = thumbOutputData.Size
-		cmd.changeProcessor.ThumbnailFilename = thumbInputData.Name
+		cmd.fileChanger.ThumbnailHash = thumbOutputData.ContentHash
+		cmd.fileChanger.ThumbnailSize = thumbOutputData.Size
+		cmd.fileChanger.ThumbnailFilename = thumbInputData.Name
 	}
 
 	return nil
@@ -134,6 +130,6 @@ func (cmd *InsertFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 
 // UpdateChange add NewFileChange in db
 func (cmd *InsertFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
-	connectionObj.AddChange(cmd.allocationChange, cmd.changeProcessor)
+	connectionObj.AddChange(cmd.allocationChange, cmd.fileChanger)
 	return connectionObj.Save(ctx)
 }
