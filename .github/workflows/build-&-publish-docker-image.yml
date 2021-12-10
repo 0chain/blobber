@@ -187,7 +187,7 @@ jobs:
   system-tests:
 #    needs: [publish_blobber, publish_validator]
     needs: [publish_blobber]
-    runs-on: [self-hosted]
+    runs-on: [ tests-suite ]
     steps:
       - name: Set GITHUB_ENV
         run: |
