@@ -183,3 +183,48 @@ jobs:
           SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
           docker tag validator:latest ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA
           docker push ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA
+
+  system-tests:
+    needs: [publish_blobber, publish_validator]
+    runs-on: [self-hosted]
+    steps:
+      - name: Set GITHUB_ENV
+        run: |
+          echo "SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)" >> $GITHUB_ENV
+          echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
+          echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+          echo "NETWORK_URL=$(echo dev-${RUNNER_NAME:(-1)}.devnet-0chain.net)" >> $GITHUB_ENV
+          echo "RUNNER_NUMBER=${RUNNER_NAME:(-1)}" >> $GITHUB_ENV
+
+      - name: "Deploy 0Chain"
+        if: ${{ github.event.inputs.skip_tests == 'FALSE' }}
+        uses: 0chain/actions/deploy-0chain@master
+        with:
+          kube_config: ${{ secrets[format('DEV{0}KC', env.RUNNER_NUMBER)] }}
+          teardown_condition: "TESTS_PASSED"
+          miner_image:  staging
+          sharder_image: staging
+          blobber_image: ${{ env.TAG }}-${{ env.SHORT_SHA }}
+          validator_image: ${{ env.TAG }}-${{ env.SHORT_SHA }}
+          zbox_image: staging
+          zblock_image: staging
+          zdns_image: staging
+          explorer_image: latest
+          zproxy_image: staging
+          zsearch_image: staging
+          blobber_stake_image: latest
+
+      - name: "Run System tests"
+        if: ${{ github.event.inputs.skip_tests == 'FALSE' }}
+        uses: 0chain/actions/run-system-tests@master
+        with:
+          system_tests_branch: master
+          network: ${{ env.NETWORK_URL }}
+          zbox_cli_branch: staging
+          zwallet_cli_branch: staging
+          smart_contract_owner_wallet_json: ${{ secrets.SMART_CONTRACT_OWNER_WALLET_JSON }}
+          svc_account_secret: ${{ github.token }}
+          deploy_report_page: false
+          archive_results: true
+          run_flaky_tests: false
+          retry_failures: true
