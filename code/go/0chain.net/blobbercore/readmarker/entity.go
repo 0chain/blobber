@@ -43,7 +43,7 @@ func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, client
 	if authToken.ClientID != clientID && len(authToken.ClientID) > 0 {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Client ID mismatch")
 	}
-	if authToken.Expiration < authToken.Timestamp || authToken.Expiration < common.Now() {
+if authToken.Expiration > 0 && (authToken.Expiration < authToken.Timestamp || authToken.Expiration < common.Now() ) {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Expired ticket")
 	}
 
