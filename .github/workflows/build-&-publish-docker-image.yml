@@ -190,6 +190,7 @@ jobs:
     steps:
       - name: Set GITHUB_ENV
         run: |
+          echo "Workflow is called: [${{ github.workflow }}]"
           echo "SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)" >> $GITHUB_ENV
           echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
           echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
