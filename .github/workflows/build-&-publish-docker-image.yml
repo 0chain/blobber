@@ -17,7 +17,7 @@ env:
 
 jobs:
   build_base:
-    runs-on: [self-hosted, build]
+    runs-on: [conductor-test, build]
     steps:
       - name: Set GITHUB_ENV
         run: |
@@ -42,7 +42,7 @@ jobs:
 
   build_blobber:
     needs: build_base
-    runs-on: [self-hosted, build]
+    runs-on: [conductor-test, build]
     steps:
       - name: Set GITHUB_ENV
         run: |
@@ -79,7 +79,7 @@ jobs:
        
   publish_blobber:
     needs: build_blobber
-    runs-on: [ conductor-test ]
+    runs-on: [conductor-test, build]
     steps:
       - name: Set GITHUB_ENV
         run: |
@@ -114,7 +114,7 @@ jobs:
 
   build_validator:
     needs: build_base
-    runs-on: [self-hosted, build]
+    runs-on: [conductor-test, build]
     steps:
       - name: Set GITHUB_ENV
         run: |
@@ -153,7 +153,7 @@ jobs:
        
   publish_validator:
     needs: build_validator
-    runs-on: [ conductor-test ]
+    runs-on: [conductor-test, build]
     steps:
       - name: Set GITHUB_ENV
         run: |
