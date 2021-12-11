@@ -27,7 +27,7 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	if err != nil {
 		return nil, err
 	}
-	destRef, err := reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
+	destRef, err := reference.Mkdir(ctx, rf.AllocationID, rf.DestPath)
 	if err != nil || destRef.Type != reference.DIRECTORY {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 	}

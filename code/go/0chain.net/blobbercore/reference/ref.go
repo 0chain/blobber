@@ -184,7 +184,6 @@ func Mkdir(ctx context.Context, allocationID string, destpath string) (*Ref, err
 		currentPath := filepath.Join("/", filepath.Join(dirs[:i+1]...))
 		ref, err := GetReference(ctx, allocationID, currentPath)
 		if err == nil {
-			ref.AddChild(dirRef)
 			dirRef = ref
 			continue
 		}
@@ -208,7 +207,6 @@ func Mkdir(ctx context.Context, allocationID string, destpath string) (*Ref, err
 			return nil, err
 		}
 
-		newRef.AddChild(dirRef)
 		dirRef = newRef
 	}
 
