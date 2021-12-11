@@ -63,7 +63,7 @@ jobs:
       run: |
         exit_code=0
         echo "Checking image [${{ env.TAG }}-${{ env.SHORT_SHA }}] is present..."
-        docker pull docker pull 0chaindev/blobber:${{ env.TAG }}-${{ env.SHORT_SHA }} || exit_code=$?
+        docker pull 0chaindev/blobber:${{ env.TAG }}-${{ env.SHORT_SHA }} || exit_code=$?
 
         if [[ $exit_code == 0 ]];
           then
@@ -71,7 +71,7 @@ jobs:
           else
             echo "docker image NOT found for [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
             echo "Checking image [merge-${{ env.SHORT_SHA }}] is present..."
-            docker pull docker pull 0chaindev/blobber:merge-${{ env.SHORT_SHA }} || { echo "Docker image for commit sha [${{ env.SHORT_SHA }}] could not be found for either this branch or PR. Please publish image manually and try again." && exit 1; }
+            docker pull 0chaindev/blobber:merge-${{ env.SHORT_SHA }} || { echo "Docker image for commit sha [${{ env.SHORT_SHA }}] could not be found for either this branch or PR. Please publish image manually and try again." && exit 1; }
             echo "docker image found for  [merge-${{ env.SHORT_SHA }}]"
             echo "TAG=merge" >> $GITHUB_ENV
         fi
