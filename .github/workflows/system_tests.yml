@@ -56,7 +56,11 @@ jobs:
         echo "SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)" >> $GITHUB_ENV
         echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
         echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+        echo "NETWORK_URL=$(echo dev-${RUNNER_NAME:(-1)}.devnet-0chain.net)" >> $GITHUB_ENV
+        echo "RUNNER_NUMBER=${RUNNER_NAME:(-1)}" >> $GITHUB_ENV
 
+    - name: "Find blobber image"
+      run: |
         exit_code=0
         echo "Checking image [${{ env.TAG }}-${{ env.SHORT_SHA }}] is present..."
         docker pull docker pull 0chaindev/blobber:${{ env.TAG }}-${{ env.SHORT_SHA }} || exit_code=$?
@@ -71,9 +75,6 @@ jobs:
             echo "docker image found for  [merge-${{ env.SHORT_SHA }}]"
             echo "TAG=merge" >> $GITHUB_ENV
         fi
-
-        echo "NETWORK_URL=$(echo dev-${RUNNER_NAME:(-1)}.devnet-0chain.net)" >> $GITHUB_ENV
-        echo "RUNNER_NUMBER=${RUNNER_NAME:(-1)}" >> $GITHUB_ENV
     
     - name: "Set PR Status Pending"
       uses: niteoweb/pull_request_status_action@v1.0.0
