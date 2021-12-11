@@ -1,4 +1,4 @@
-name: Dockerize
+name: "Build & Publish Docker Image"
 
 concurrency:
   group: "${{ github.ref }}"
