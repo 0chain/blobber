@@ -189,6 +189,7 @@ jobs:
           docker push ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA
 
   system-tests:
+    if: github.event_name != 'workflow_dispatch'
     needs: [publish_blobber, publish_validator]
     runs-on: [ tests-suite ]
     steps:

@@ -43,7 +43,6 @@ jobs:
   system-tests:  
     runs-on: [ tests-suite ]
     timeout-minutes: 90
-    if: github.event_name != 'workflow_dispatch'
     steps:
       
     - name: "Get current PR"
