@@ -907,6 +907,13 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(reference.DIRECTORY),
 					)
 
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					WithArgs(aa, aa).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"type"}).
+							AddRow(reference.DIRECTORY),
+					)
+
 				mock.ExpectExec(`INSERT INTO "allocation_connections"`).
 					WithArgs(aa, aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
