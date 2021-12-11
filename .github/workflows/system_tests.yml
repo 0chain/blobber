@@ -62,18 +62,37 @@ jobs:
     - name: "Find blobber image"
       run: |
         exit_code=0
-        echo "Checking image [${{ env.TAG }}-${{ env.SHORT_SHA }}] is present..."
+        echo "Checking blobber image [${{ env.TAG }}-${{ env.SHORT_SHA }}] is present..."
         docker pull 0chaindev/blobber:${{ env.TAG }}-${{ env.SHORT_SHA }} || exit_code=$?
 
         if [[ $exit_code == 0 ]];
           then
-            echo "docker image found for  [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
+            echo "blobber docker blobber image found for  [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
+            echo "BLOBBER_IMAGE=${{ env.TAG }}-${{ env.SHORT_SHA }}" >> $GITHUB_ENV
           else
-            echo "docker image NOT found for [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
-            echo "Checking image [merge-${{ env.SHORT_SHA }}] is present..."
-            docker pull 0chaindev/blobber:merge-${{ env.SHORT_SHA }} || { echo "Docker image for commit sha [${{ env.SHORT_SHA }}] could not be found for either this branch or PR. Please publish image manually and try again." && exit 1; }
-            echo "docker image found for  [merge-${{ env.SHORT_SHA }}]"
-            echo "TAG=merge" >> $GITHUB_ENV 
+            echo "blobber docker image NOT found for [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
+            echo "Checking blobber image [merge-${{ env.SHORT_SHA }}] is present..."
+            docker pull 0chaindev/blobber:merge-${{ env.SHORT_SHA }} || { echo "Docker image for blobber commit sha [${{ env.SHORT_SHA }}] could not be found for either this branch or PR. Please publish image manually and try again." && exit 1; }
+            echo "blobber docker image found for  [merge-${{ env.SHORT_SHA }}]"
+            echo "BLOBBER_IMAGE=merge-${{ env.SHORT_SHA }}" >> $GITHUB_ENV
+        fi
+
+    - name: "Find validator image"
+      run: |
+        exit_code=0
+        echo "Checking validator image [${{ env.TAG }}-${{ env.SHORT_SHA }}] is present..."
+        docker pull 0chaindev/validator:${{ env.TAG }}-${{ env.SHORT_SHA }} || exit_code=$?
+
+        if [[ $exit_code == 0 ]];
+          then
+            echo "validator docker image found for  [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
+            echo "VALIDATOR_IMAGE=${{ env.TAG }}-${{ env.SHORT_SHA }}" >> $GITHUB_ENV
+          else
+            echo "validator docker image NOT found for [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
+            echo "Checking validator image [merge-${{ env.SHORT_SHA }}] is present..."
+            docker pull 0chaindev/validator:merge-${{ env.SHORT_SHA }} || { echo "Docker image for validator commit sha [${{ env.SHORT_SHA }}] could not be found for either this branch or PR. Please publish image manually and try again." && exit 1; }
+            echo "validator docker image found for [merge-${{ env.SHORT_SHA }}]"
+            echo "VALIDATOR_IMAGE=merge-${{ env.SHORT_SHA }}" >> $GITHUB_ENV
         fi
     
     - name: "Set PR Status Pending"
@@ -97,8 +116,8 @@ jobs:
         teardown_condition: "TESTS_PASSED"
         miner_image:  ${{ github.event.inputs.miner_image }}
         sharder_image: ${{ github.event.inputs.sharder_image }}
-        blobber_image: ${{ github.event.inputs.blobber_image }}
-        validator_image: ${{ github.event.inputs.validator_image }}
+        blobber_image: ${{ env.BLOBBER_IMAGE }}
+        validator_image: ${{ env.VALIDATOR_IMAGE }}
         zbox_image: ${{ github.event.inputs.zbox_image }}
         zblock_image: ${{ github.event.inputs.zblock_image }}
         zdns_image: staging
