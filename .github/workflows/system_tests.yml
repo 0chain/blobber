@@ -59,6 +59,7 @@ jobs:
         echo "RUNNER_NUMBER=${RUNNER_NAME:(-1)}" >> $GITHUB_ENV
 
     - name: "Check blobber image has been published"
+      if: ${{ github.event.inputs.skip_tests == 'FALSE' }}
       run: |
         exit_code=0
         echo "Checking blobber image [${{ env.TAG }}-${{ env.SHORT_SHA }}] is present..."
@@ -83,6 +84,7 @@ jobs:
         fi
 
     - name: "Check validator image has been published"
+      if: ${{ github.event.inputs.skip_tests == 'FALSE' }}
       run: |
         exit_code=0
         echo "Checking valiator image [${{ env.TAG }}-${{ env.SHORT_SHA }}] is present..."
