@@ -11,14 +11,6 @@ on:
         description: 'system_tests branch. Containing the tests you wish to run'
         default: 'master'
         required: true
-       blobber_image:
-        description: 'blobber DOCKER IMAGE to deploy'
-        default: 'staging'
-        required: true
-       validator_image:
-        description: 'validator DOCKER IMAGE to deploy'
-        default: 'staging'
-        required: true
        zbox_cli_branch:
         description: '0Box CLI (branch or commit SHA) which the tests will use'
         default: 'staging'
@@ -57,10 +49,29 @@ jobs:
       uses: jwalton/gh-find-current-pr@v1
       id: findPr
       with:
-        github-token: ${{ github.token }} 
-        
+        github-token: ${{ github.token }}
+
     - name: "Setup Test Run"
       run: |
+        echo "SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)" >> $GITHUB_ENV
+        echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
+        echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+
+        exit_code=0
+        echo "Checking image [${{ env.TAG }}-${{ env.SHORT_SHA }}] is present..."
+        docker pull docker pull 0chaindev/blobber:${{ env.TAG }}-${{ env.SHORT_SHA }} || exit_code=$?
+
+        if [[ $exit_code == 0 ]];
+          then
+            echo "docker image found for  [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
+          else
+            echo "docker image NOT found for [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
+            echo "Checking image [merge-${{ env.SHORT_SHA }}] is present..."
+            docker pull docker pull 0chaindev/blobber:merge-${{ env.SHORT_SHA }} || { echo "Docker image for commit sha [${{ env.SHORT_SHA }}] could not be found for either this branch or PR. Please publish image manually and try again." && exit 1; }
+            echo "docker image found for  [merge-${{ env.SHORT_SHA }}]"
+            echo "TAG=merge" >> $GITHUB_ENV
+        fi
+
         echo "NETWORK_URL=$(echo dev-${RUNNER_NAME:(-1)}.devnet-0chain.net)" >> $GITHUB_ENV
         echo "RUNNER_NUMBER=${RUNNER_NAME:(-1)}" >> $GITHUB_ENV
     

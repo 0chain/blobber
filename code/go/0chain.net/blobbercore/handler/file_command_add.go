@@ -7,7 +7,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -93,10 +92,6 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 	// only update connection size when the chunk is uploaded by first time.
 	if !fileOutputData.ChunkUploaded {
 		allocationSize += fileOutputData.Size
-	}
-
-	if allocationSize > config.Configuration.MaxFileSize {
-		return result, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
 	}
 
 	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
