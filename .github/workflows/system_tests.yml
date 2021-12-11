@@ -42,7 +42,8 @@ on:
 jobs:
   system-tests:  
     runs-on: [ tests-suite ]
-    timeout-minutes: 40
+    timeout-minutes: 90
+    if: github.event_name != 'workflow_dispatch'
     steps:
       
     - name: "Get current PR"
@@ -58,7 +59,7 @@ jobs:
         echo "NETWORK_URL=$(echo dev-${RUNNER_NAME:(-1)}.devnet-0chain.net)" >> $GITHUB_ENV
         echo "RUNNER_NUMBER=${RUNNER_NAME:(-1)}" >> $GITHUB_ENV
 
-    - name: "Find blobber image"
+    - name: "Check blobber image has been published"
       run: |
         exit_code=0
         echo "Checking blobber image [${{ env.TAG }}-${{ env.SHORT_SHA }}] is present..."
@@ -82,7 +83,7 @@ jobs:
             echo "BLOBBER_IMAGE=merge-$MERGE_SHORT_SHA" >> $GITHUB_ENV
         fi
 
-    - name: "Find validator image"
+    - name: "Check validator image has been published"
       run: |
         exit_code=0
         echo "Checking valiator image [${{ env.TAG }}-${{ env.SHORT_SHA }}] is present..."
@@ -166,7 +167,7 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
 
     - name: "Set PR Status Failed"
-      if: ${{ always() && failure() && steps.findPr.outputs.number }}
+      if: ${{ failure() && steps.findPr.outputs.number }}
       uses: niteoweb/pull_request_status_action@v1.0.0
       with:
         pr_number: ${{ steps.findPr.outputs.pr }}
