@@ -69,10 +69,10 @@ jobs:
       if: steps.findPr.outputs.number
       with:
         pr_number: ${{ steps.findPr.outputs.pr }}
-        description: "System tests running"
+        description: "Manual system tests running"
         state: "pending"
         repository: ${{ github.repository }}
-        context: "system-tests"
+        context: "0Chain System Tests"
         target_url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
       env:
         GITHUB_TOKEN: ${{ github.token }}
@@ -115,23 +115,23 @@ jobs:
       uses: niteoweb/pull_request_status_action@v1.0.0
       with:
         pr_number: ${{ steps.findPr.outputs.pr }}
-        description: "System tests success"
+        description: "Manual system tests success"
         state: ${{ job.status }}
         repository: ${{ github.repository }}
-        context: "system-tests"
+        context: "0Chain System Tests"
         target_url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
       env:
         GITHUB_TOKEN: ${{ github.token }}
 
     - name: "Set PR Status Failed"
-      if: ${{ failure() && steps.findPr.outputs.number }}
+      if: ${{ always() && failure() && steps.findPr.outputs.number }}
       uses: niteoweb/pull_request_status_action@v1.0.0
       with:
         pr_number: ${{ steps.findPr.outputs.pr }}
-        description: "System tests failure"
+        description: "Manual system tests failure"
         state: ${{ job.status }}
         repository: ${{ github.repository }}
-        context: "system-tests"
+        context: "0Chain System Tests"
         target_url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
       env:
         GITHUB_TOKEN: ${{ github.token }}
