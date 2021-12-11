@@ -69,6 +69,10 @@ jobs:
             echo "blobber docker blobber image found for  [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
             echo "BLOBBER_IMAGE=${{ env.TAG }}-${{ env.SHORT_SHA }}" >> $GITHUB_ENV
           else
+            if [ -z "${{ steps.findPr.outputs.pr }}" ];
+              then
+                echo "blobber docker image NOT found for [${{ env.TAG }}-${{ env.SHORT_SHA }}] and PR not raised so will not check for PR merge image. Please publish image manually." && exit 1;
+            fi
             echo "blobber docker image NOT found for [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
             git fetch origin pull/${{ steps.findPr.outputs.pr }}/merge:merge && git checkout merge
             MERGE_SHORT_SHA=$(git rev-parse HEAD | head -c 8)
@@ -82,18 +86,22 @@ jobs:
       run: |
         exit_code=0
         echo "Checking valiator image [${{ env.TAG }}-${{ env.SHORT_SHA }}] is present..."
-        docker pull 0chaindev/valiator:${{ env.TAG }}-${{ env.SHORT_SHA }} || exit_code=$?
+        docker pull 0chaindev/validator:${{ env.TAG }}-${{ env.SHORT_SHA }} || exit_code=$?
 
         if [[ $exit_code == 0 ]];
           then
             echo "valiator docker valiator image found for  [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
             echo "VALIDATOR_IMAGE=${{ env.TAG }}-${{ env.SHORT_SHA }}" >> $GITHUB_ENV
           else
+            if [ -z "${{ steps.findPr.outputs.pr }}" ];
+              then
+                echo "valiator docker image NOT found for [${{ env.TAG }}-${{ env.SHORT_SHA }}] and PR not raised so will not check for PR merge image. Please publish image manually." && exit 1;
+            fi
             echo "valiator docker image NOT found for [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
             git fetch origin pull/${{ steps.findPr.outputs.pr }}/merge:merge && git checkout merge
             MERGE_SHORT_SHA=$(git rev-parse HEAD | head -c 8)
             echo "Checking valiator image [merge-$MERGE_SHORT_SHA] is present..."
-            docker pull 0chaindev/valiator:merge-$MERGE_SHORT_SHA || { echo "Docker image for valiator could not be found for either branch commit sha [${{ env.SHORT_SHA }}] or PR merge commit sha [$MERGE_SHORT_SHA]. Please publish image manually and try again." && exit 1; }
+            docker pull 0chaindev/validator:merge-$MERGE_SHORT_SHA || { echo "Docker image for valiator could not be found for either branch commit sha [${{ env.SHORT_SHA }}] or PR merge sha [$MERGE_SHORT_SHA]. Please publish image manually and try again." && exit 1; }
             echo "valiator docker image found for  [merge-$MERGE_SHORT_SHA]"
             echo "VALIDATOR_IMAGE=merge-$MERGE_SHORT_SHA" >> $GITHUB_ENV
         fi
