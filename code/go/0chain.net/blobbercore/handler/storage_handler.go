@@ -481,7 +481,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 			delete(result.Entities[idx], "path")
 		}
 
-		if child.Type == reference.DIRECTORY {
+		if child.Type == reference.DIRECTORY || clientID != allocationObj.OwnerID {
 			continue
 		}
 		// getting collaborators for sub dirs
