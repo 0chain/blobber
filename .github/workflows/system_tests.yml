@@ -67,7 +67,7 @@ jobs:
 
         if [[ $exit_code == 0 ]];
           then
-            echo "blobber docker blobber image found for  [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
+            echo "blobber docker image found for  [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
             echo "BLOBBER_IMAGE=${{ env.TAG }}-${{ env.SHORT_SHA }}" >> $GITHUB_ENV
           else
             if [ -z "${{ steps.findPr.outputs.pr }}" ];
@@ -92,7 +92,7 @@ jobs:
 
         if [[ $exit_code == 0 ]];
           then
-            echo "valiator docker valiator image found for  [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
+            echo "valiator docker image found for  [${{ env.TAG }}-${{ env.SHORT_SHA }}]"
             echo "VALIDATOR_IMAGE=${{ env.TAG }}-${{ env.SHORT_SHA }}" >> $GITHUB_ENV
           else
             if [ -z "${{ steps.findPr.outputs.pr }}" ];
