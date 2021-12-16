@@ -21,7 +21,6 @@ env:
 
 jobs:
   publish_blobber:
-    needs: build_base
     runs-on: [self-hosted, conductor-test]
     steps:
       - name: Set GITHUB_ENV
@@ -54,7 +53,6 @@ jobs:
           docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA  || { sleep 10 && docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA; }
 
   publish_validator:
-    needs: build_base
     runs-on: [self-hosted, conductor-test]
     steps:
       - name: Set GITHUB_ENV
