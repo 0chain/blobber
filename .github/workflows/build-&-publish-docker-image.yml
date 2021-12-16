@@ -44,7 +44,7 @@ jobs:
           name: blobber_base
           path: /tmp/0chain/blobber_base.tar
 
-  build_blobber:
+  publish_blobber:
     needs: build_base
     runs-on: [self-hosted, conductor-test]
     steps:
@@ -55,7 +55,6 @@ jobs:
       
       - name: Clone blobber
         uses: actions/checkout@v1
-
 
       - name: Download blobber_base
         uses: actions/download-artifact@v2
@@ -69,42 +68,13 @@ jobs:
 
       - name: Build blobber
         run: ./docker.local/bin/build.blobber.sh
-      
-      - name: Export blobber
-        run:  |
-          mkdir -p /tmp/0chain/
-          docker save "blobber" > /tmp/0chain/blobber.tar
-
-      - name: Upload blobber
-        uses: actions/upload-artifact@v2
-        with:
-          name: blobber
-          path: /tmp/0chain/blobber.tar
-       
-  publish_blobber:
-    needs: build_blobber
-    runs-on: [self-hosted, conductor-test]
-    steps:
-      - name: Set GITHUB_ENV
-        run: |
-          echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-
-      - name: Download blobber
-        uses: actions/download-artifact@v2
-        with:
-          name: blobber
-          path: /tmp/0chain
-
-      - name: Load blobber
-        run: |
-          docker load --input /tmp/0chain/blobber.tar
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
       - name: Push blobber
         run: |
           docker tag blobber:latest ${BLOBBER_REGISTRY}:$TAG
@@ -114,9 +84,7 @@ jobs:
           docker tag blobber:latest ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA
           docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA  
 
-        
-
-  build_validator:
+  publish_validator:
     needs: build_base
     runs-on: [self-hosted, conductor-test]
     steps:
@@ -128,7 +96,6 @@ jobs:
       - name: Clone blobber
         uses: actions/checkout@v1
 
-
       - name: Download blobber_base
         uses: actions/download-artifact@v2
         with:
@@ -138,47 +105,16 @@ jobs:
       - name: Load blobber_base
         run: |
           docker load --input /tmp/0chain/blobber_base.tar
-          
-        #docker image ls -a
 
       - name: Build validator
         run: ./docker.local/bin/build.validator.sh
-      
-      - name: Export validator
-        run:  |
-          mkdir -p /tmp/0chain/
-          docker save "validator" > /tmp/0chain/validator.tar
-
-      - name: Upload validator
-        uses: actions/upload-artifact@v2
-        with:
-          name: validator
-          path: /tmp/0chain/validator.tar
-       
-  publish_validator:
-    needs: build_validator
-    runs-on: [self-hosted, conductor-test]
-    steps:
-      - name: Set GITHUB_ENV
-        run: |
-          echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-    
-      - name: Download validator
-        uses: actions/download-artifact@v2
-        with:
-          name: validator
-          path: /tmp/0chain
-
-      - name: Load validator
-        run: |
-          docker load --input /tmp/0chain/validator.tar
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
       - name: Push validator
         run: |
           docker tag validator:latest ${VALIDATOR_REGISTRY}:$TAG
