@@ -44,7 +44,9 @@ jobs:
     runs-on: [ tests-suite ]
     timeout-minutes: 90
     steps:
-      
+
+    - uses: actions/checkout@v2
+        
     - name: "Get current PR"
       uses: jwalton/gh-find-current-pr@v1
       id: findPr
