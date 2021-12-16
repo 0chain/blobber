@@ -20,8 +20,8 @@ env:
   VALIDATOR_REGISTRY: ${{ secrets.VALIDATOR_REGISTRY }}
 
 jobs:
-  publish_blobber:
-    runs-on: [self-hosted, conductor-test]
+  build_and_publish_blobber:
+    runs-on: [self-hosted, build]
     steps:
       - name: Set GITHUB_ENV
         run: |
@@ -52,8 +52,8 @@ jobs:
           docker tag blobber:latest ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA
           docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA  || { sleep 10 && docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA; }
 
-  publish_validator:
-    runs-on: [self-hosted, conductor-test]
+  build_and_publish_validator:
+    runs-on: [self-hosted, build]
     steps:
       - name: Set GITHUB_ENV
         run: |
@@ -86,7 +86,7 @@ jobs:
 
   system-tests:
     if: github.event_name != 'workflow_dispatch'
-    needs: [publish_blobber, publish_validator]
+    needs: [build_and_publish_blobber, build_and_publish_validator]
     runs-on: [ tests-suite ]
     steps:
       - name: "Get current PR"
