@@ -28,6 +28,39 @@ func GetAllocationByID(ctx context.Context, allocID string) (
 	return
 }
 
+// GetAllocationByName from DB. This function doesn't load related terms.
+func GetAllocationByName(ctx context.Context, name string) (
+	a *Allocation, err error) {
+
+	var tx = datastore.GetStore().GetTransaction(ctx)
+
+	a = new(Allocation)
+	err = tx.Model(&Allocation{}).
+		Where(&Allocation{Name: name}).
+		First(a).Error
+	return
+}
+
+// UpdateAllocationName updates allocatio name in database.
+func UpdateAllocationName(ctx context.Context, allocID, name string) (
+	a *Allocation, err error) {
+
+	var tx = datastore.GetStore().GetTransaction(ctx).Debug()
+
+	a = new(Allocation)
+	err = tx.Model(&Allocation{}).
+		Where(&Allocation{ID: allocID}).
+		First(a).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	a.Name = name
+	err = tx.Save(a).Error
+	return a, err
+}
+
 // LoadTerms loads corresponding terms from DB. Since, the GetAllocationByID
 // doesn't loads up related Terms (isn't needed in most cases) this method
 // loads the Terms for an allocation.

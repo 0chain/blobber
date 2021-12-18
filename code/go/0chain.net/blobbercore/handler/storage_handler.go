@@ -107,6 +107,47 @@ func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Req
 	return allocationObj, nil
 }
 
+func (fsh *StorageHandler) AllocRename(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method != "POST" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+	}
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	name := r.FormValue("name")
+	if len(name) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid name for operation")
+	}
+	_, err = allocation.GetAllocationByName(ctx, name)
+	if err == gorm.ErrRecordNotFound {
+		return allocationObj, nil
+	}
+
+	return nil, err
+}
+
+func (fsh *StorageHandler) CommitAllocRename(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method != "POST" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+	}
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	name := r.FormValue("name")
+	if len(name) == 0 {
+		return nil, common.NewError("invalid_parameters", "Invalid name for operation")
+	}
+	_, err = allocation.UpdateAllocationName(ctx, allocationTx, name)
+
+	return allocationObj, err
+}
+
 func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *http.Request) (interface{}, error) {
 	if r.Method != "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")

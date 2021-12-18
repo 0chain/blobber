@@ -56,6 +56,8 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.ToJSONResponse(WithConnection(CommitMetaTxnHandler)))
 	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(CollaboratorHandler)))
 	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.ToJSONResponse(WithConnection(CalculateHashHandler)))
+	r.HandleFunc("/v1/allocation/rename/{allocation}", common.ToJSONResponse(WithConnection(AllocRenameHandler)))
+	r.HandleFunc("/v1/commit-alloc/rename/{allocation}", common.ToJSONResponse(WithConnection(CommitAllocRenameHandler)))
 
 	//object info related apis
 	r.HandleFunc("/allocation", common.ToJSONResponse(WithConnection(AllocationHandler)))
@@ -161,6 +163,28 @@ func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetAllocationDetails(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func AllocRenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+
+	response, err := storageHandler.AllocRename(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func CommitAllocRenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+
+	response, err := storageHandler.CommitAllocRename(ctx, r)
 	if err != nil {
 		return nil, err
 	}
