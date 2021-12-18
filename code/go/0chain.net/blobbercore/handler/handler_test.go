@@ -29,7 +29,6 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	bconfig "github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -85,7 +84,6 @@ func init() {
 	if _, err := filestore.SetupFSStoreI(dir+"/tmp", MockFileBlockGetter{}); err != nil {
 		panic(err)
 	}
-	bconfig.Configuration.MaxFileSize = int64(1 << 30)
 }
 
 func setup(t *testing.T) {

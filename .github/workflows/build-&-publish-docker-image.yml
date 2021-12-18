@@ -1,4 +1,8 @@
-name: Dockerize
+name: "Build & Publish Docker Image"
+
+concurrency:
+  group: "${{ github.ref }}"
+  cancel-in-progress: true
 
 on:
   push: 
@@ -16,104 +20,39 @@ env:
   VALIDATOR_REGISTRY: ${{ secrets.VALIDATOR_REGISTRY }}
 
 jobs:
-  build_base:
+  build_and_publish_blobber:
     runs-on: [self-hosted, build]
     steps:
       - name: Set GITHUB_ENV
         run: |
           echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
           echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+      
       - name: Clone blobber
-        uses: actions/checkout@v1     
-  
+        uses: actions/checkout@v1
+
       - name: Build blobber_base
         run: ./docker.local/bin/build.base.sh
 
-      - name: Export blobber_base
-        run:  |
-          mkdir -p /tmp/0chain/
-          docker save "blobber_base" > /tmp/0chain/blobber_base.tar
-
-      - name: Upload blobber_base
-        uses: actions/upload-artifact@v2
-        with:
-          name: blobber_base
-          path: /tmp/0chain/blobber_base.tar
-
-  build_blobber:
-    needs: build_base
-    runs-on: [self-hosted, build]
-    steps:
-      - name: Set GITHUB_ENV
-        run: |
-          echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-      
-      - name: Clone blobber
-        uses: actions/checkout@v1
-
-
-      - name: Download blobber_base
-        uses: actions/download-artifact@v2
-        with:
-          name: blobber_base
-          path: /tmp/0chain
-
-      - name: Load blobber_base
-        run: |
-          docker load --input /tmp/0chain/blobber_base.tar
-
       - name: Build blobber
         run: ./docker.local/bin/build.blobber.sh
-      
-      - name: Export blobber
-        run:  |
-          mkdir -p /tmp/0chain/
-          docker save "blobber" > /tmp/0chain/blobber.tar
-
-      - name: Upload blobber
-        uses: actions/upload-artifact@v2
-        with:
-          name: blobber
-          path: /tmp/0chain/blobber.tar
-       
-  publish_blobber:
-    needs: build_blobber
-    runs-on: [self-hosted]
-    steps:
-      - name: Set GITHUB_ENV
-        run: |
-          echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-    
-      - name: Download blobber
-        uses: actions/download-artifact@v2
-        with:
-          name: blobber
-          path: /tmp/0chain
-
-      - name: Load blobber
-        run: |
-          docker load --input /tmp/0chain/blobber.tar
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
       - name: Push blobber
         run: |
           docker tag blobber:latest ${BLOBBER_REGISTRY}:$TAG
-          docker push ${BLOBBER_REGISTRY}:$TAG
+          docker push ${BLOBBER_REGISTRY}:$TAG || { sleep 10 && docker push ${BLOBBER_REGISTRY}:$TAG; }
 
           SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
           docker tag blobber:latest ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA
-          docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA  
+          docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA  || { sleep 10 && docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA; }
 
-        
-
-  build_validator:
-    needs: build_base
+  build_and_publish_validator:
     runs-on: [self-hosted, build]
     steps:
       - name: Set GITHUB_ENV
@@ -124,62 +63,112 @@ jobs:
       - name: Clone blobber
         uses: actions/checkout@v1
 
-
-      - name: Download blobber_base
-        uses: actions/download-artifact@v2
-        with:
-          name: blobber_base
-          path: /tmp/0chain
-
-      - name: Load blobber_base
-        run: |
-          docker load --input /tmp/0chain/blobber_base.tar
-          
-        #docker image ls -a
+      - name: Build blobber_base
+        run: ./docker.local/bin/build.base.sh
 
       - name: Build validator
         run: ./docker.local/bin/build.validator.sh
-      
-      - name: Export validator
-        run:  |
-          mkdir -p /tmp/0chain/
-          docker save "validator" > /tmp/0chain/validator.tar
-
-      - name: Upload validator
-        uses: actions/upload-artifact@v2
-        with:
-          name: validator
-          path: /tmp/0chain/validator.tar
-       
-  publish_validator:
-    needs: build_validator
-    runs-on: [self-hosted]
-    steps:
-      - name: Set GITHUB_ENV
-        run: |
-          echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-    
-      - name: Download validator
-        uses: actions/download-artifact@v2
-        with:
-          name: validator
-          path: /tmp/0chain
-
-      - name: Load validator
-        run: |
-          docker load --input /tmp/0chain/validator.tar
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
       - name: Push validator
         run: |
           docker tag validator:latest ${VALIDATOR_REGISTRY}:$TAG
-          docker push ${VALIDATOR_REGISTRY}:$TAG
+          docker push ${VALIDATOR_REGISTRY}:$TAG || { sleep 10 && docker push ${VALIDATOR_REGISTRY}:$TAG; }
 
           SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
           docker tag validator:latest ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA
-          docker push ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA
+          docker push ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA || { sleep 10 && docker push ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA; }
+
+  system-tests:
+    if: github.event_name != 'workflow_dispatch'
+    needs: [build_and_publish_blobber, build_and_publish_validator]
+    runs-on: [ tests-suite ]
+    steps:
+      - name: "Get current PR"
+        uses: jwalton/gh-find-current-pr@v1
+        id: findPr
+        with:
+          github-token: ${{ github.token }}
+
+      - name: "Set PR Status Pending"
+        uses: niteoweb/pull_request_status_action@v1.0.0
+        if: steps.findPr.outputs.number
+        with:
+          pr_number: ${{ steps.findPr.outputs.pr }}
+          description: "System tests running with default config..."
+          state: "pending"
+          repository: ${{ github.repository }}
+          context: "0Chain System Tests"
+          target_url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: "Setup"
+        run: |
+          echo "SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)" >> $GITHUB_ENV
+          echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
+          echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+          echo "NETWORK_URL=$(echo dev-${RUNNER_NAME:(-1)}.devnet-0chain.net)" >> $GITHUB_ENV
+          echo "RUNNER_NUMBER=${RUNNER_NAME:(-1)}" >> $GITHUB_ENV
+
+      - name: "Deploy 0Chain"
+        uses: 0chain/actions/deploy-0chain@master
+        with:
+          kube_config: ${{ secrets[format('DEV{0}KC', env.RUNNER_NUMBER)] }}
+          teardown_condition: "TESTS_PASSED"
+          miner_image:  staging
+          sharder_image: staging
+          blobber_image: ${{ env.TAG }}-${{ env.SHORT_SHA }}
+          validator_image: ${{ env.TAG }}-${{ env.SHORT_SHA }}
+          zbox_image: staging
+          zblock_image: staging
+          zdns_image: staging
+          explorer_image: latest
+          zproxy_image: staging
+          zsearch_image: staging
+          blobber_stake_image: latest
+
+      - name: "Run System tests"
+        uses: 0chain/actions/run-system-tests@master
+        with:
+          system_tests_branch: master
+          network: ${{ env.NETWORK_URL }}
+          zbox_cli_branch: staging
+          zwallet_cli_branch: staging
+          smart_contract_owner_wallet_json: ${{ secrets.SMART_CONTRACT_OWNER_WALLET_JSON }}
+          svc_account_secret: ${{ github.token }}
+          deploy_report_page: false
+          archive_results: true
+          run_flaky_tests: false
+          retry_failures: true
+
+      - name: "Set PR Status Success"
+        if: ${{ success() && steps.findPr.outputs.number }}
+        uses: niteoweb/pull_request_status_action@v1.0.0
+        with:
+          pr_number: ${{ steps.findPr.outputs.pr }}
+          description: "System tests with default config completed successfully"
+          state: ${{ job.status }}
+          repository: ${{ github.repository }}
+          context: "0Chain System Tests"
+          target_url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: "Set PR Status Failed"
+        if: ${{ failure() && steps.findPr.outputs.number }}
+        uses: niteoweb/pull_request_status_action@v1.0.0
+        with:
+          pr_number: ${{ steps.findPr.outputs.pr }}
+          description: "System tests with default config failed. Try running manually with more specific config"
+          state: ${{ job.status }}
+          repository: ${{ github.repository }}
+          context: "0Chain System Tests"
+          target_url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
