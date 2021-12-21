@@ -15,9 +15,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/errors"
 	"go.uber.org/zap"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
@@ -267,14 +270,14 @@ func (fs *FileFSStore) SetupAllocation(allocationID string, skipCreate bool) (*S
 		return allocation, nil
 	}
 
-	//create the allocation object dirs
+	// create the allocation object dirs
 	err := createDirs(allocation.ObjectsPath)
 	if err != nil {
 		Logger.Error("allocation_objects_dir_creation_error", zap.Any("allocation_objects_dir_creation_error", err))
 		return nil, err
 	}
 
-	//create the allocation tmp object dirs
+	// create the allocation tmp object dirs
 	err = createDirs(allocation.TempObjectsPath)
 	if err != nil {
 		Logger.Error("allocation_temp_objects_dir_creation_error", zap.Any("allocation_temp_objects_dir_creation_error", err))
@@ -410,7 +413,7 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 		return false, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
 	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
-	//move file from tmp location to the objects folder
+	// move file from tmp location to the objects folder
 	dirPath, destFile := GetFilePathFromHash(fileData.Hash)
 	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
 	err = createDirs(fileObjectPath)
@@ -418,16 +421,16 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 		return false, common.NewError("blob_object_dir_creation_error", err.Error())
 	}
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
-	//if _, err := os.Stat(fileObjectPath); os.IsNotExist(err) {
+	// if _, err := os.Stat(fileObjectPath); os.IsNotExist(err) {
 	err = os.Rename(tempFilePath, fileObjectPath)
 
 	if err != nil {
 		return false, common.NewError("blob_object_creation_error", err.Error())
 	}
 	return true, nil
-	//}
+	// }
 
-	//return false, err
+	// return false, err
 }
 
 func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error {
@@ -458,14 +461,24 @@ func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) err
 	return nil
 }
 
-func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
-	infile multipart.File, connectionID string) (*FileOutputData, error) {
+func (fs *FileFSStore) WriteFile(allocationObj *allocation.Allocation, fileData *FileInputData,
+	infile multipart.File, connectionID string, fileOperation string, fSize int64) (*FileOutputData, error) {
 
 	if fileData.IsChunked {
-		return fs.WriteChunk(allocationID, fileData, infile, connectionID)
+		return fs.WriteChunk(allocationObj.ID, fileData, infile, connectionID)
 	}
 
-	allocation, err := fs.SetupAllocation(allocationID, false)
+	if fileOperation == allocation.INSERT_OPERATION {
+		rootPath, err := disk_balancer.GetDiskSelector().GetNextVolumePath(fSize)
+		if err != nil {
+			return nil, common.NewError("filestore_select_error", "Do not have enough disk space"+err.Error())
+		}
+
+		fs.RootDirectory = rootPath
+	}
+
+	allocation, err := fs.SetupAllocation(allocationObj.ID, false)
+
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}

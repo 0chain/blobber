@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 
+	"github.com/0chain/gosdk/constants"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/constants"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
