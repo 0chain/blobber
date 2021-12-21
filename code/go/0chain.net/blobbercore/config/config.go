@@ -5,11 +5,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/config"
 	"github.com/spf13/viper"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/config"
 )
 
-//SetupDefaultConfig - setup the default config options that can be overridden via the config file
+// SetupDefaultConfig - setup the default config options that can be overridden via the config file
 func SetupDefaultConfig() {
 	viper.SetDefault("logging.level", "info")
 	viper.SetDefault("contentref_cleaner.frequency", 30)
@@ -135,6 +136,16 @@ type Config struct {
 	MinSubmit int
 	// MinConfirmation minial confirmation from sharders
 	MinConfirmation int
+
+	// MinDiskSize minimum physical disk space.
+	MinDiskSize uint64
+	// CheckDisksPeriod disk check period.
+	CheckDisksTimeout time.Duration
+	// UseSystemDisk permission flag to write files to the system disk.
+	UseSystemDisk bool
+	// MountPoint is the mount point for storage disks.
+	MountPoint string
+	Strategy   string
 }
 
 /*Configuration of the system */

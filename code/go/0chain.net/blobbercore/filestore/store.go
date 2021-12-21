@@ -5,6 +5,8 @@ import (
 	"mime/multipart"
 
 	"github.com/0chain/gosdk/core/util"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 )
 
 const CHUNK_SIZE = 64 * 1024
@@ -17,13 +19,13 @@ type FileInputData struct {
 
 	// ChunkSize chunk size
 	ChunkSize int64
-	//IsChunked the request is chunked upload
+	// IsChunked the request is chunked upload
 	IsChunked bool
-	//UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
+	// UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
 	UploadLength int64
-	//Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
+	// Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
 	UploadOffset int64
-	//IsFinal  the request is final chunk
+	// IsFinal  the request is final chunk
 	IsFinal bool
 }
 
@@ -42,7 +44,7 @@ type FileObjectHandler func(contentHash string, contentSize int64)
 
 type FileStore interface {
 	// WriteFile write chunk file into disk
-	WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
+	WriteFile(allocationObj *allocation.Allocation, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
 	DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
 
 	CreateDir(dirName string) error

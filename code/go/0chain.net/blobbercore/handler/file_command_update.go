@@ -5,16 +5,17 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/0chain/gosdk/constants"
+	sdkConstants "github.com/0chain/gosdk/constants"
+	"github.com/0chain/gosdk/zboxcore/fileref"
+	"go.uber.org/zap"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/constants"
-	sdkConstants "github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/zboxcore/fileref"
-	"go.uber.org/zap"
 )
 
 // UpdateFileCommand command for updating file
@@ -82,13 +83,13 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		IsChunked:    cmd.fileChanger.ChunkSize > 0,
 		IsFinal:      cmd.fileChanger.IsFinal,
 	}
-	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
+	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj, fileInputData, origfile, connectionObj.ConnectionID)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
 
 	result.Hash = fileOutputData.ContentHash
-	//result.MerkleRoot = fileOutputData.MerkleRoot
+	// result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := connectionObj.Size
@@ -138,7 +139,7 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 		defer thumbfile.Close()
 
 		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
-		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, thumbInputData, thumbfile, connectionObj.ConnectionID)
+		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj, thumbInputData, thumbfile, connectionObj.ConnectionID)
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 		}
@@ -179,7 +180,7 @@ func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 			c.Size = connectionObj.Size
 			c.Input, _ = cmd.fileChanger.Marshal()
 
-			//c.ModelWithTS.UpdatedAt = time.Now()
+			// c.ModelWithTS.UpdatedAt = time.Now()
 			err := connectionObj.Save(ctx)
 			if err != nil {
 				return err
@@ -189,7 +190,7 @@ func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 		}
 	}
 
-	//NOT FOUND
+	// NOT FOUND
 	connectionObj.AddChange(cmd.allocationChange, cmd.fileChanger)
 
 	return connectionObj.Save(ctx)

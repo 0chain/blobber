@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/0chain/gosdk/constants"
+	"github.com/0chain/gosdk/zboxcore/fileref"
+	"go.uber.org/zap"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/zboxcore/fileref"
-	"go.uber.org/zap"
 )
 
 // AddFileCommand command for resuming file
@@ -42,8 +43,8 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 		return common.NewError("duplicate_file", "File at path already exists")
 	}
 
-	//create a FixedMerkleTree instance first, it will be reloaded from db in cmd.reloadChange if it is not first chunk
-	//cmd.fileChanger.FixedMerkleTree = &util.FixedMerkleTree{}
+	// create a FixedMerkleTree instance first, it will be reloaded from db in cmd.reloadChange if it is not first chunk
+	// cmd.fileChanger.FixedMerkleTree = &util.FixedMerkleTree{}
 
 	if fileChanger.ChunkSize <= 0 {
 		fileChanger.ChunkSize = fileref.CHUNK_SIZE
@@ -77,14 +78,14 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 		IsChunked:    true,
 		IsFinal:      cmd.fileChanger.IsFinal,
 	}
-	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
+	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj, fileInputData, origfile, connectionObj.ConnectionID)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
 
 	result.Filename = cmd.fileChanger.Filename
 	result.Hash = fileOutputData.ContentHash
-	//result.MerkleRoot = fileOutputData.MerkleRoot
+	// result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := connectionObj.Size
@@ -104,7 +105,7 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 
 	// Save client's ContentHash in database instead blobber's
 	// it saves time to read and compute hash of fragment from disk again
-	//cmd.fileChanger.Hash = fileOutputData.ContentHash
+	// cmd.fileChanger.Hash = fileOutputData.ContentHash
 
 	cmd.fileChanger.AllocationID = allocationObj.ID
 	cmd.fileChanger.Size = allocationSize
@@ -129,7 +130,7 @@ func (cmd *AddFileCommand) ProcessThumbnail(ctx context.Context, req *http.Reque
 		defer thumbfile.Close()
 
 		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
-		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, thumbInputData, thumbfile, connectionObj.ConnectionID)
+		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj, thumbInputData, thumbfile, connectionObj.ConnectionID)
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 		}
@@ -169,7 +170,7 @@ func (cmd *AddFileCommand) UpdateChange(ctx context.Context, connectionObj *allo
 			c.Size = connectionObj.Size
 			c.Input, _ = cmd.fileChanger.Marshal()
 
-			//c.ModelWithTS.UpdatedAt = time.Now()
+			// c.ModelWithTS.UpdatedAt = time.Now()
 			err := connectionObj.Save(ctx)
 			if err != nil {
 				return err
@@ -179,7 +180,7 @@ func (cmd *AddFileCommand) UpdateChange(ctx context.Context, connectionObj *allo
 		}
 	}
 
-	//NOT FOUND
+	// NOT FOUND
 	connectionObj.AddChange(cmd.allocationChange, cmd.fileChanger)
 
 	return connectionObj.Save(ctx)
