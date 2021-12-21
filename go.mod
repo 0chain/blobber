@@ -20,11 +20,13 @@ require (
 	github.com/remeh/sizedwaitgroup v0.0.0-20180822144253-5e7302b12cce
 	github.com/rs/cors v1.8.0 // indirect
 	github.com/selvatico/go-mocket v1.0.7
+	github.com/shirou/gopsutil v3.21.10+incompatible // indirect
 	github.com/spf13/viper v1.9.0
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/sys v0.0.0-20211101204403-39c9dd37992c // indirect
 	google.golang.org/genproto v0.0.0-20211101144312-62acf1d99145
 	google.golang.org/grpc v1.42.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
