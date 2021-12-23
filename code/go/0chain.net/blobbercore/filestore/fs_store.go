@@ -18,8 +18,6 @@ import (
 	"github.com/0chain/errors"
 	"go.uber.org/zap"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -39,6 +37,7 @@ const (
 	ObjectsDirName            = "objects"
 	TempObjectsDirName        = "tmp"
 	CurrentVersion            = "1.0"
+	UserFiles                 = "files"
 )
 
 type MinioConfiguration struct {
@@ -461,24 +460,14 @@ func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) err
 	return nil
 }
 
-func (fs *FileFSStore) WriteFile(allocationObj *allocation.Allocation, fileData *FileInputData,
-	infile multipart.File, connectionID string, fileOperation string, fSize int64) (*FileOutputData, error) {
+func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
+	infile multipart.File, connectionID string) (*FileOutputData, error) {
 
 	if fileData.IsChunked {
-		return fs.WriteChunk(allocationObj.ID, fileData, infile, connectionID)
+		return fs.WriteChunk(allocationID, fileData, infile, connectionID)
 	}
 
-	if fileOperation == allocation.INSERT_OPERATION {
-		rootPath, err := disk_balancer.GetDiskSelector().GetNextVolumePath(fSize)
-		if err != nil {
-			return nil, common.NewError("filestore_select_error", "Do not have enough disk space"+err.Error())
-		}
-
-		fs.RootDirectory = rootPath
-	}
-
-	allocation, err := fs.SetupAllocation(allocationObj.ID, false)
-
+	allocation, err := fs.SetupAllocation(allocationID, false)
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
@@ -621,4 +610,8 @@ func (fs *FileFSStore) RemoveFromCloud(fileHash string) error {
 		return fs.Minio.RemoveObject(MinioConfig.BucketName, fileHash)
 	}
 	return nil
+}
+
+func (fs *FileFSStore) SetRootDirectory(rootPath string) {
+	fs.RootDirectory = rootPath
 }

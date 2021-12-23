@@ -5,8 +5,6 @@ import (
 	"mime/multipart"
 
 	"github.com/0chain/gosdk/core/util"
-
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 )
 
 const CHUNK_SIZE = 64 * 1024
@@ -44,7 +42,7 @@ type FileObjectHandler func(contentHash string, contentSize int64)
 
 type FileStore interface {
 	// WriteFile write chunk file into disk
-	WriteFile(allocationObj *allocation.Allocation, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
+	WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
 	DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
 
 	CreateDir(dirName string) error
@@ -63,6 +61,7 @@ type FileStore interface {
 	UploadToCloud(fileHash, filePath string) error
 	DownloadFromCloud(fileHash, filePath string) error
 	SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)
+	SetRootDirectory(rootPath string)
 }
 
 var fileStore FileStore

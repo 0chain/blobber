@@ -5,19 +5,22 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/0chain/gosdk/constants"
+	"github.com/0chain/gosdk/zboxcore/zboxutil"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	"github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/zboxcore/zboxutil"
 
 	"gorm.io/gorm"
 
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
+
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 const (
@@ -211,6 +214,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 	defer commit(tx, &err)
 
 	var changed bool = a.Tx != sa.Tx
+	var changedSize bool = a.TotalSize < sa.Size
 
 	// transaction
 	a.Tx = sa.Tx
@@ -231,6 +235,20 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 			ReadPrice:    d.Terms.ReadPrice,
 			WritePrice:   d.Terms.WritePrice,
 		})
+	}
+
+	if changedSize {
+		mewAllocationRoot, err := disk_balancer.GetDiskSelector().GetAvailableDisk(a.AllocationRoot, a.TotalSize)
+		if err != nil {
+			return nil, err
+		}
+		if a.AllocationRoot != mewAllocationRoot {
+			err = disk_balancer.GetDiskSelector().MoveAllocation(a.AllocationRoot, mewAllocationRoot, a.ID)
+			if err != nil {
+				return nil, err
+			}
+			a.AllocationRoot = mewAllocationRoot
+		}
 	}
 
 	// save allocations

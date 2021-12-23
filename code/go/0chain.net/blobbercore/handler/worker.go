@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
@@ -15,8 +16,9 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
+
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 func SetupWorkers(ctx context.Context) {
@@ -93,7 +95,7 @@ func startCleanupTempFiles(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			//Logger.Info("Trying to redeem writemarkers.", zap.Any("iterInprogress", iterInprogress), zap.Any("numOfWorkers", numOfWorkers))
+			// Logger.Info("Trying to redeem writemarkers.", zap.Any("iterInprogress", iterInprogress), zap.Any("numOfWorkers", numOfWorkers))
 			if !iterInprogress {
 				iterInprogress = true //nolint:ineffassign // probably has something to do with goroutines
 				cleanupTempFiles(ctx)
@@ -138,6 +140,12 @@ func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize int64, limi
 
 			for _, fileRef := range fileRefs {
 				if fileRef.Type == reference.DIRECTORY {
+					continue
+				}
+
+				alloc, _ := allocation.VerifyAllocationTransaction(ctx, fileRef.AllocationID, true)
+				path := filepath.Join(alloc.AllocationRoot, fileRef.AllocationID[0:3], disk_balancer.TempAllocationFile)
+				if _, err = os.Stat(path); os.IsExist(err) {
 					continue
 				}
 

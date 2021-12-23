@@ -10,6 +10,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -63,8 +64,18 @@ func (cmd *InsertFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 	defer origfile.Close()
 
+	fileStore := filestore.GetFileStore()
+	if allocationObj.AllocationRoot == "" {
+		rootPath, err := disk_balancer.GetDiskSelector().GetNextDiskPath()
+		if err != nil {
+			return result, common.NewError("upload_error", "Failed select storage. "+err.Error())
+		}
+		fileStore.SetRootDirectory(rootPath)
+		allocationObj.AllocationRoot = rootPath
+	}
+
 	fileInputData := &filestore.FileInputData{Name: cmd.fileChanger.Filename, Path: cmd.fileChanger.Path, OnCloud: false}
-	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj, fileInputData, origfile, connectionObj.ConnectionID)
+	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
@@ -112,7 +123,7 @@ func (cmd *InsertFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 		defer thumbfile.Close()
 
 		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
-		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj, thumbInputData, thumbfile, connectionObj.ConnectionID)
+		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, thumbInputData, thumbfile, connectionObj.ConnectionID)
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 		}
