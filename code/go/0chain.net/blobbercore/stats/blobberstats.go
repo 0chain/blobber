@@ -77,9 +77,9 @@ type BlobberStats struct {
 	PublicKey                 string            `json:"-"`
 	InfraStats                InfraStats        `json:"-"`
 	DBStats                   *DBStats          `json:"-"`
-	FailedChallengeList       []ChallengeEntity `json:"-"`
-	FailedChallengePagination Pagination        `json:"-"`
-	AllocationListPagination  Pagination        `json:"-"`
+	FailedChallengeList       []ChallengeEntity `json:"failed_challenge_list"`
+	FailedChallengePagination Pagination        `json:"failed_challenge_pagination,omitempty"`
+	AllocationListPagination  Pagination        `json:"allocation_list_pagination,omitempty"`
 
 	// configurations
 	Capacity                int64         `json:"capacity"`
