@@ -3,10 +3,12 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"go.uber.org/zap"
@@ -23,19 +25,79 @@ type DeleteFileChange struct {
 }
 
 func (nf *DeleteFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+	affectedRef, err := reference.GetObjectTree(ctx, nf.AllocationID, nf.Path)
 
-	rootRef, contentHash, err := reference.DeleteObject(ctx, nf.AllocationID, nf.Path)
+	if err != nil {
+		return nil, err
+	}
+	path, _ := filepath.Split(nf.Path)
+	path = filepath.Clean(path)
+	tSubDirs := reference.GetSubDirsFromPath(path)
+	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, nf.Path)
 	if err != nil {
 		return nil, err
 	}
 
+	dirRef := rootRef
+	treelevel := 0
+	for treelevel < len(tSubDirs) {
+		found := false
+		for _, child := range dirRef.Children {
+			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
+				if child.Name == tSubDirs[treelevel] {
+					dirRef = child
+					found = true
+					break
+				}
+			}
+		}
+		if found {
+			treelevel++
+		} else {
+			return nil, common.NewError("invalid_reference_path", "Invalid reference path from the blobber")
+		}
+	}
+	idx := -1
+	for i, child := range dirRef.Children {
+		if child.Hash == nf.Hash && child.Hash == affectedRef.Hash {
+			idx = i
+			nf.ContentHash = make(map[string]bool)
+			if err := reference.DeleteReference(ctx, child.ID, child.PathHash); err != nil {
+				Logger.Error("DeleteReference", zap.Int64("ref_id", child.ID), zap.Error(err))
+			}
+			if child.Type == reference.FILE {
+				nf.ContentHash[child.ThumbnailHash] = true
+				nf.ContentHash[child.ContentHash] = true
+			} else {
+				nf.processChildren(ctx, affectedRef)
+			}
+			break
+		}
+	}
+	if idx < 0 {
+		return nil, common.NewError("file_not_found", "Object to delete not found in blobber")
+	}
+
+	dirRef.RemoveChild(idx)
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}
 
-	nf.ContentHash = contentHash
-
 	return nil, nil
+}
+
+func (nf *DeleteFileChange) processChildren(ctx context.Context, curRef *reference.Ref) {
+	for _, childRef := range curRef.Children {
+		if err := reference.DeleteReference(ctx, childRef.ID, childRef.PathHash); err != nil {
+			Logger.Error("DeleteReference", zap.Int64("ref_id", childRef.ID), zap.Error(err))
+		}
+		if childRef.Type == reference.FILE {
+			nf.ContentHash[childRef.ThumbnailHash] = true
+			nf.ContentHash[childRef.ContentHash] = true
+		} else if childRef.Type == reference.DIRECTORY {
+			nf.processChildren(ctx, childRef)
+		}
+	}
 }
 
 func (nf *DeleteFileChange) Marshal() (string, error) {
