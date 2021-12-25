@@ -9,7 +9,7 @@ on:
     inputs:
        system_tests_branch:
         description: 'system_tests branch. Containing the tests you wish to run'
-        default: 'master'
+        default: 'bug/blobber_401_copy_file_to_non_existing_dir'
         required: true
        zbox_cli_branch:
         description: '0Box CLI (branch or commit SHA) which the tests will use'
