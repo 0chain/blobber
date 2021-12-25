@@ -27,17 +27,24 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	if err != nil {
 		return nil, err
 	}
+
+	if rf.DestPath == "/" {
+		destRef, err := reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
+		if err != nil || destRef.Type != reference.DIRECTORY {
+			return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
+		}
+		rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
+
+		_, err = destRef.CalculateHash(ctx, true)
+		return destRef, err
+	}
+
 	destRef, err := reference.Mkdir(ctx, rf.AllocationID, rf.DestPath)
 	if err != nil || destRef.Type != reference.DIRECTORY {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 	}
 
 	rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
-
-	if destRef.ParentPath == "" {
-		_, err = destRef.CalculateHash(ctx, true)
-		return destRef, err
-	}
 
 	path, _ := filepath.Split(rf.DestPath)
 	path = filepath.Clean(path)
