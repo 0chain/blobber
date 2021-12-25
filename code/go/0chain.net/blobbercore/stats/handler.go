@@ -486,7 +486,6 @@ func setStatsRequestDataInContext(r *http.Request, ctx context.Context) context.
 func StatsJSONHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = datastore.GetStore().CreateTransaction(ctx)
 	db := datastore.GetStore().GetTransaction(ctx)
-	ctx = setStatsRequestDataInContext(r, ctx)
 	defer db.Rollback()
 	bs := LoadBlobberStats(ctx)
 	return bs, nil

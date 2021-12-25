@@ -77,9 +77,9 @@ type BlobberStats struct {
 	PublicKey                 string            `json:"-"`
 	InfraStats                InfraStats        `json:"-"`
 	DBStats                   *DBStats          `json:"-"`
-	FailedChallengeList       []ChallengeEntity `json:"failed_challenge_list"`
-	FailedChallengePagination Pagination        `json:"failed_challenge_pagination,omitempty"`
-	AllocationListPagination  Pagination        `json:"allocation_list_pagination,omitempty"`
+	FailedChallengeList       []ChallengeEntity `json:"-"`
+	FailedChallengePagination *Pagination       `json:"failed_challenge_pagination,omitempty"`
+	AllocationListPagination  *Pagination       `json:"allocation_list_pagination,omitempty"`
 
 	// configurations
 	Capacity                int64         `json:"capacity"`
@@ -182,7 +182,6 @@ func (bs *BlobberStats) loadDetailedStats(ctx context.Context) {
 func (bs *BlobberStats) loadInfraStats(ctx context.Context) {
 	healthIn := ctx.Value(HealthDataKey)
 	if healthIn == nil {
-		Logger.Error("loadInfraStats err where health value nil")
 		return
 	}
 	health := healthIn.(string)
@@ -215,7 +214,6 @@ func (bs *BlobberStats) loadDBStats() {
 func (bs *BlobberStats) loadFailedChallengeList(ctx context.Context) {
 	fcrdI := ctx.Value(FailedChallengeRequestDataKey)
 	if fcrdI == nil {
-		Logger.Error("fcrd should not be nil")
 		return
 	}
 	fcrd := fcrdI.(RequestData)
@@ -228,7 +226,7 @@ func (bs *BlobberStats) loadFailedChallengeList(ctx context.Context) {
 	bs.FailedChallengeList = fcs
 
 	pagination := GeneratePagination(fcrd.Page, fcrd.Limit, fcrd.Offset, count)
-	bs.FailedChallengePagination = *pagination
+	bs.FailedChallengePagination = pagination
 }
 
 func (bs *BlobberStats) loadStats(ctx context.Context) {
@@ -297,19 +295,25 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 	bs.AllocationStats = make([]*AllocationStats, 0)
 
 	var (
-		db   = datastore.GetStore().GetTransaction(ctx)
-		rows *sql.Rows
-		err  error
+		db            = datastore.GetStore().GetTransaction(ctx)
+		rows          *sql.Rows
+		err           error
+		requestData   *RequestData
+		offset, limit int
 	)
 
 	alrdI := ctx.Value(AllocationListRequestDataKey)
 	if alrdI == nil {
-		Logger.Error("loadAllocationStats err: alrd should not be nil", zap.Any("err", err))
-		return
+		offset = 0
+		limit = 20
+	} else {
+		alrd := alrdI.(RequestData)
+		requestData = &alrd
+		offset = requestData.Offset
+		limit = requestData.Limit
 	}
-	alrd := alrdI.(RequestData)
 
-	rows, err = db.Table("reference_objects").Offset(alrd.Offset).Limit(alrd.Limit).
+	rows, err = db.Table("reference_objects").Offset(offset).Limit(limit).
 		Select(`
             reference_objects.allocation_id,
             SUM(reference_objects.size) as files_size,
@@ -365,8 +369,10 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 		return
 	}
 
-	pagination := GeneratePagination(alrd.Page, alrd.Limit, alrd.Offset, int(count))
-	bs.AllocationListPagination = *pagination
+	if requestData != nil {
+		pagination := GeneratePagination(requestData.Page, requestData.Limit, requestData.Offset, int(count))
+		bs.AllocationListPagination = pagination
+	}
 }
 
 func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
