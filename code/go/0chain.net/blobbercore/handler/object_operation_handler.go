@@ -7,16 +7,20 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
-	"strings"
-
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
-	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
-
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"strings"
+
+	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
+
+	"github.com/0chain/gosdk/constants"
+	zfileref "github.com/0chain/gosdk/zboxcore/fileref"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -29,14 +33,13 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/gosdk/constants"
-	zfileref "github.com/0chain/gosdk/zboxcore/fileref"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
+
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
@@ -201,6 +204,10 @@ func (fsh *StorageHandler) DownloadFile(
 	if err != nil {
 		return nil, common.NewErrorf("download_file",
 			"invalid allocation id passed: %v", err)
+	}
+
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(ctx, alloc.ID, false); ok {
+		return nil, common.NewError("allocation transferred", "Please try again later.")
 	}
 
 	// get and parse file params
@@ -680,6 +687,10 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(ctx, allocationObj.ID, false); ok {
+		return nil, common.NewError("allocation transferred", "Please try again later.")
+	}
+
 	if allocationObj.IsImmutable {
 		return nil, common.NewError("immutable_allocation", "Cannot rename data in an immutable allocation")
 	}
@@ -775,6 +786,10 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 	if alloc, err = fsh.verifyAllocation(ctx, allocTx, false); err != nil {
 		return nil, common.NewErrorf("update_object_attributes",
 			"Invalid allocation ID passed: %v", err)
+	}
+
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(ctx, alloc.ID, false); ok {
+		return nil, common.NewError("allocation transferred", "Please try again later.")
 	}
 
 	valid, err := verifySignatureFromRequest(allocTx, r.Header.Get(common.ClientSignatureHeader), alloc.OwnerPublicKey)
@@ -875,6 +890,10 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(ctx, allocationObj.ID, false); ok {
+		return nil, common.NewError("allocation transferred", "Please try again later.")
 	}
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
@@ -1007,6 +1026,10 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
+	if ok, path := disk_balancer.GetDiskSelector().IsMoves(ctx, allocationObj.ID, true); ok {
+		allocationObj.AllocationRoot = path
+	}
+
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
@@ -1061,7 +1084,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 	connectionObj.AddChange(allocationChange, &formData)
 
-	err = filestore.GetFileStore().CreateDir(dirPath)
+	err = filestore.GetFileStore().CreateDir(allocationID, dirPath)
 	if err != nil {
 		return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
@@ -1080,7 +1103,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	return result, nil
 }
 
-//WriteFile stores the file into the blobber files system from the HTTP request
+// WriteFile stores the file into the blobber files system from the HTTP request
 func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
 
 	if r.Method == "GET" {
@@ -1093,6 +1116,18 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	if allocationObj.AllocationRoot == "" {
+		rootPath, err := disk_balancer.GetDiskSelector().GetNextDiskPath()
+		if err != nil {
+			return nil, common.NewError("upload_error", "Failed select storage. "+err.Error())
+		}
+		allocationObj.AllocationRoot = rootPath
+	}
+
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(ctx, allocationObj.ID, false); ok {
+		return nil, common.NewError("allocation transferred", "Please try again later.")
 	}
 
 	allocationID := allocationObj.ID
@@ -1162,7 +1197,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	if err != nil {
 		Logger.Error("Error in writing the connection meta data", zap.Error(err))
-		return nil, common.NewError("connection_write_error", err.Error()) //"Error writing the connection meta data")
+		return nil, common.NewError("connection_write_error", err.Error()) // "Error writing the connection meta data")
 	}
 
 	return &result, nil
@@ -1175,7 +1210,7 @@ func getFormFieldName(mode string) string {
 	// 	//formField = "updateMeta"
 	// }
 
-	//return formField
+	// return formField
 }
 
 func getFileOperation(r *http.Request) string {

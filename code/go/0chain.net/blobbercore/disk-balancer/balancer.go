@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
@@ -14,8 +15,10 @@ type (
 		GetAvailableDisk(path string, size int64) (diskPath string, err error)
 		// GetNextDiskPath selects a disk for storing data.
 		GetNextDiskPath() (string, error)
+		// IsMoves checks file transfers.
+		IsMoves(ctx context.Context, allocationID string, needPath bool) (bool, string)
 		// MoveAllocation moved allocation to another disk.
-		MoveAllocation(srcPath, destPath, transID string) error
+		MoveAllocation(allocation *allocation.Allocation, destPath, transID string)
 	}
 )
 
@@ -28,6 +31,7 @@ func StartDiskSelectorWorker(ctx context.Context) {
 		Logger.Error(fmt.Sprintf("StartDiskSelectorWorker() %v", err))
 		return
 	}
+	go dTier.checkUndeletedFiles()
 	diskSelector = dTier
 	return
 }

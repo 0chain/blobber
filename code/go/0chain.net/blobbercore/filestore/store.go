@@ -45,7 +45,7 @@ type FileStore interface {
 	WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
 	DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
 
-	CreateDir(dirName string) error
+	CreateDir(allocationID, dirName string) error
 	DeleteDir(allocationID, dirPath, connectionID string) error
 
 	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
@@ -61,7 +61,6 @@ type FileStore interface {
 	UploadToCloud(fileHash, filePath string) error
 	DownloadFromCloud(fileHash, filePath string) error
 	SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)
-	SetRootDirectory(rootPath string)
 }
 
 var fileStore FileStore

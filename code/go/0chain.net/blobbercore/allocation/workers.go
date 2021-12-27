@@ -243,11 +243,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 			return nil, err
 		}
 		if a.AllocationRoot != mewAllocationRoot {
-			err = disk_balancer.GetDiskSelector().MoveAllocation(a.AllocationRoot, mewAllocationRoot, a.ID)
-			if err != nil {
-				return nil, err
-			}
-			a.AllocationRoot = mewAllocationRoot
+			disk_balancer.GetDiskSelector().MoveAllocation(a, mewAllocationRoot, a.ID)
 		}
 	}
 

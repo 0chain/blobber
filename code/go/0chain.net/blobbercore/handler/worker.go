@@ -143,9 +143,7 @@ func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize int64, limi
 					continue
 				}
 
-				alloc, _ := allocation.VerifyAllocationTransaction(ctx, fileRef.AllocationID, true)
-				path := filepath.Join(alloc.AllocationRoot, fileRef.AllocationID[0:3], disk_balancer.TempAllocationFile)
-				if _, err = os.Stat(path); os.IsExist(err) {
+				if ok, _ := disk_balancer.GetDiskSelector().IsMoves(ctx, fileRef.AllocationID, false); ok {
 					continue
 				}
 

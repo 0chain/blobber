@@ -11,7 +11,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
-	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -78,16 +77,6 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 		UploadOffset: cmd.fileChanger.UploadOffset,
 		IsChunked:    true,
 		IsFinal:      cmd.fileChanger.IsFinal,
-	}
-
-	fileStore := filestore.GetFileStore()
-	if allocationObj.AllocationRoot == "" {
-		rootPath, err := disk_balancer.GetDiskSelector().GetNextDiskPath()
-		if err != nil {
-			return result, common.NewError("upload_error", "Failed select storage. "+err.Error())
-		}
-		fileStore.SetRootDirectory(rootPath)
-		allocationObj.AllocationRoot = rootPath
 	}
 
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)

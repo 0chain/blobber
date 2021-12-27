@@ -5,17 +5,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
-	"sync"
 	"time"
 
+	"github.com/shirou/gopsutil/disk"
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
 	"gorm.io/gorm"
-
-	"github.com/shirou/gopsutil/disk"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -32,7 +31,6 @@ type (
 		mountPoint     string
 		selectNextDisk func(partitions map[string]*partition) (string, error)
 		partitions     map[string]*partition
-		wg             sync.WaitGroup
 	}
 
 	partition struct {
@@ -169,28 +167,41 @@ func (d *diskTier) init(ctx context.Context) error {
 	return nil
 }
 
-// MoveAllocation implemented DiskSelector interface.
-func (d *diskTier) MoveAllocation(srcPath, destPath, transID string) error {
-	go func(ctx context.Context) error {
-		return d.moveAllocation(srcPath, destPath, transID, ctx)
-	}(common.GetRootContext())
+// IsMoves implemented DiskSelector interface.
+func (d *diskTier) IsMoves(ctx context.Context, allocationID string, needPath bool) (bool, string) {
+	alloc, _ := allocation.VerifyAllocationTransaction(ctx, allocationID, true)
+	path := filepath.Join(alloc.AllocationRoot, allocationID[:3], TempAllocationFile)
+	if _, err := os.Stat(path); os.IsExist(err) {
+		if needPath {
+			a := readFile(path)
+			return true, a.NewRoot
+		}
 
-	return nil
+		return true, ""
+	}
+
+	return false, ""
+}
+
+// MoveAllocation implemented DiskSelector interface.
+func (d *diskTier) MoveAllocation(allocation *allocation.Allocation, destPath, transID string) {
+	go d.moveAllocation(allocation, destPath, transID, common.GetRootContext())
 }
 
 // moveAllocation moved allocation.
-func (d *diskTier) moveAllocation(srcPath, destPath, transID string, ctx context.Context) error {
+func (d *diskTier) moveAllocation(alloc *allocation.Allocation, destPath, transID string, ctx context.Context) {
+	oldAllocationPath := d.generateAllocationPath(alloc.AllocationRoot, transID)
 	aInfo := newAllocationInfo(
-		d.generateAllocationPath(srcPath, transID),
+		oldAllocationPath,
 		d.generateAllocationPath(destPath, transID),
 	)
 
 	if err := aInfo.PrepareAllocation(); err != nil {
-		return err
+		Logger.Error("PrepareAllocation() failed", zap.Error(err))
 	}
 
 	if err := aInfo.Move(ctx); err != nil {
-		return err
+		Logger.Error("Move() failed", zap.Error(err))
 	}
 
 	ctx = datastore.GetStore().CreateTransaction(ctx)
@@ -202,7 +213,7 @@ func (d *diskTier) moveAllocation(srcPath, destPath, transID string, ctx context
 		First(a).Error
 
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return common.NewError("bad_db_operation", err.Error()) // unexpected DB error
+		Logger.Error("moveAllocation() bad_db_operation", zap.Error(err)) // unexpected DB error
 	}
 
 	a.AllocationRoot = destPath
@@ -210,17 +221,12 @@ func (d *diskTier) moveAllocation(srcPath, destPath, transID string, ctx context
 		Logger.Error("Failed to update allocation root path", zap.Error(err))
 		db.Rollback()
 		ctx.Done()
-		return err
 	}
 
 	db.Commit()
 	ctx.Done()
 
-	if err = os.RemoveAll(srcPath); err != nil {
-		return err
-	}
-
-	return nil
+	deleteAllocation(oldAllocationPath)
 }
 
 // selectStrategy registers a function for selecting directories for storage.
@@ -260,6 +266,27 @@ func (d *diskTier) updatePartitionInfo(volumePath string) (*partition, error) {
 	}
 
 	return vol, nil
+}
+
+func (d *diskTier) checkUndeletedFiles() {
+	for disk, _ := range d.partitions {
+		files, err := ioutil.ReadDir(disk)
+		if err != nil {
+			Logger.Error("Failed checkUndeletedFiles", zap.Error(err))
+		}
+		for _, alloc := range files {
+			if !alloc.IsDir() {
+				continue
+			}
+			fPath := filepath.Join(alloc.Name(), TempAllocationFile)
+			if _, err = os.Stat(fPath); os.IsExist(err) {
+				a := readFile(fPath)
+				if a.ForDelete {
+					deleteAllocation(alloc.Name())
+				}
+			}
+		}
+	}
 }
 
 // getAvailableSize gets information about the state of a directory.

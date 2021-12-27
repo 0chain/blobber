@@ -10,7 +10,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
-	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -63,16 +62,6 @@ func (cmd *InsertFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		return result, common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
 	}
 	defer origfile.Close()
-
-	fileStore := filestore.GetFileStore()
-	if allocationObj.AllocationRoot == "" {
-		rootPath, err := disk_balancer.GetDiskSelector().GetNextDiskPath()
-		if err != nil {
-			return result, common.NewError("upload_error", "Failed select storage. "+err.Error())
-		}
-		fileStore.SetRootDirectory(rootPath)
-		allocationObj.AllocationRoot = rootPath
-	}
 
 	fileInputData := &filestore.FileInputData{Name: cmd.fileChanger.Filename, Path: cmd.fileChanger.Path, OnCloud: false}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)

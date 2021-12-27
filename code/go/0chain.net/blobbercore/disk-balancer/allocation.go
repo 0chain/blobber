@@ -10,10 +10,11 @@ import (
 
 type (
 	allocationInfo struct {
-		Files    []string `json:"files"`
-		TempFile string   `json:"filepath"`
-		NewRoot  string   `json:"newRoot"`
-		OldRoot  string   `json:"oldRoot"`
+		Files     []string
+		TempFile  string
+		NewRoot   string `json:"newRoot"`
+		OldRoot   string
+		ForDelete bool `json:"forDelete"`
 	}
 )
 
@@ -24,12 +25,18 @@ func newAllocationInfo(oldRoot, newRoot string) *allocationInfo {
 	}
 }
 
+// copyFile copies the file to the specified directory. If the directory does not exist, it will create it.
 func (a *allocationInfo) copyFile(inFile, outFile string) error {
 	in, err := os.Open(inFile)
 	if err != nil {
 		return err
 	}
 	defer in.Close()
+
+	dir, _ := filepath.Split(outFile)
+	if err = a.createDirs(dir); err != nil {
+		return err
+	}
 
 	out, err := os.Create(outFile)
 	if err != nil {
@@ -44,6 +51,18 @@ func (a *allocationInfo) copyFile(inFile, outFile string) error {
 	return out.Close()
 }
 
+// createDirs creates all directories in the specified path if they do not exist.
+func (a *allocationInfo) createDirs(dir string) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0700)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Decode performs Unmarshal data.
 func (a *allocationInfo) Decode(b []byte) error {
 	if err := json.Unmarshal(b, a); err != nil {
 		return err
@@ -52,30 +71,25 @@ func (a *allocationInfo) Decode(b []byte) error {
 	return nil
 }
 
+// Encode performs Marshal data.
 func (a *allocationInfo) Encode() []byte {
 	jsonBody, _ := json.Marshal(a)
 	return jsonBody
 }
 
+// getFiles generates a list of the contents of the specified directory using filepath.Walk.
 func (a *allocationInfo) getFiles() error {
-	err := filepath.Walk(a.OldRoot,
+	return filepath.Walk(a.OldRoot,
 		func(file string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-			if !info.IsDir() {
-				a.Files = append(a.Files, file)
-			}
+			a.Files = append(a.Files, file)
 			return nil
 		})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
+// Move copies the files of the prepared allocation.
 func (a *allocationInfo) Move(ctx context.Context) error {
 	for _, file := range a.Files {
 		select {
@@ -83,19 +97,27 @@ func (a *allocationInfo) Move(ctx context.Context) error {
 			return nil
 		default:
 			newFile := filepath.Join(a.NewRoot, file)
-			if err := a.copyFile(file, newFile); err != nil {
-				return err
+			info, _ := os.Stat(file)
+			if info.IsDir() {
+				a.createDirs(newFile)
+				continue
 			}
-			if err := a.updateInfo(); err != nil {
+			oldFile := filepath.Join(a.OldRoot, file)
+			if err := a.copyFile(oldFile, newFile); err != nil {
 				return err
 			}
 			if len(a.Files) == 0 {
+				a.ForDelete = true
+				a.updateInfo()
 				break
 			}
 		}
 	}
+
+	return nil
 }
 
+// PrepareAllocation collects data and prepares allocation for relocation.
 func (a allocationInfo) PrepareAllocation() error {
 	if err := a.getFiles(); err != nil {
 		return err
@@ -113,6 +135,7 @@ func (a allocationInfo) PrepareAllocation() error {
 	return nil
 }
 
+// updateInfo updates the allocation information file.
 func (a *allocationInfo) updateInfo() error {
 	f, _ := os.Open(a.TempFile)
 	_, err := f.Write(a.Encode())
