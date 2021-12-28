@@ -12,6 +12,12 @@ import (
 )
 
 func deleteAllocation(path string) {
+	if err := os.RemoveAll(path); err != nil {
+		Logger.Error("deleteAllocation() failed to remove old allocation", zap.Error(err))
+	} else {
+		return
+	}
+
 	timer := time.NewTicker(5 * time.Minute)
 	ctx := common.GetRootContext()
 	for {
@@ -30,7 +36,7 @@ func deleteAllocation(path string) {
 
 func readFile(file string) *allocationInfo {
 	data, _ := os.ReadFile(file)
-	allocation := &allocationInfo{}
-	_ = json.Unmarshal(data, allocation)
-	return allocation
+	alloc := &allocationInfo{}
+	_ = json.Unmarshal(data, alloc)
+	return alloc
 }

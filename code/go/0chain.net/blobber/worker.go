@@ -1,18 +1,21 @@
 package main
 
 import (
+	"context"
 	"time"
+
+	"github.com/spf13/viper"
+	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/challenge"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/spf13/viper"
-	"go.uber.org/zap"
 )
 
 func setupWorkers() {
@@ -52,6 +55,23 @@ func healthCheckOnChain() {
 			}
 
 			handler.SetBlobberHealthError(err)
+		}
+	}
+}
+
+func startUpdateCapacity(ctx context.Context) {
+	capacity := disk_balancer.GetDiskSelector().GetCapacity()
+	ticker := time.NewTicker(config.Configuration.CheckDisksTimeout + (5 * time.Second))
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if capacity != disk_balancer.GetDiskSelector().GetCapacity() {
+				if err := registerBlobberOnChain(); err != nil {
+					logging.Logger.Error("refresh capacity on chain ", zap.Error(err))
+				}
+			}
 		}
 	}
 }

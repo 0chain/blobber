@@ -206,7 +206,7 @@ func (fsh *StorageHandler) DownloadFile(
 			"invalid allocation id passed: %v", err)
 	}
 
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(ctx, alloc.ID, false); ok {
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(alloc.AllocationRoot, alloc.ID, false); ok {
 		return nil, common.NewError("allocation transferred", "Please try again later.")
 	}
 
@@ -687,7 +687,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(ctx, allocationObj.ID, false); ok {
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(allocationObj.AllocationRoot, allocationObj.ID, false); ok {
 		return nil, common.NewError("allocation transferred", "Please try again later.")
 	}
 
@@ -788,7 +788,7 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 			"Invalid allocation ID passed: %v", err)
 	}
 
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(ctx, alloc.ID, false); ok {
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(alloc.AllocationRoot, alloc.ID, false); ok {
 		return nil, common.NewError("allocation transferred", "Please try again later.")
 	}
 
@@ -892,7 +892,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(ctx, allocationObj.ID, false); ok {
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(allocationObj.AllocationRoot, allocationObj.ID, false); ok {
 		return nil, common.NewError("allocation transferred", "Please try again later.")
 	}
 
@@ -1026,7 +1026,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if ok, path := disk_balancer.GetDiskSelector().IsMoves(ctx, allocationObj.ID, true); ok {
+	if ok, path := disk_balancer.GetDiskSelector().IsMoves(allocationObj.AllocationRoot, allocationObj.ID, true); ok {
 		allocationObj.AllocationRoot = path
 	}
 
@@ -1126,8 +1126,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		allocationObj.AllocationRoot = rootPath
 	}
 
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(ctx, allocationObj.ID, false); ok {
-		return nil, common.NewError("allocation transferred", "Please try again later.")
+	if ok, rootPath := disk_balancer.GetDiskSelector().IsMoves(allocationObj.AllocationRoot, allocationObj.ID, true); ok {
+		allocationObj.AllocationRoot = rootPath
 	}
 
 	allocationID := allocationObj.ID

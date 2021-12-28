@@ -5,9 +5,10 @@ import (
 	"log"
 	"time"
 
+	"github.com/spf13/viper"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	"github.com/spf13/viper"
 )
 
 func setupConfig() {
@@ -100,4 +101,10 @@ func setupConfig() {
 
 	transaction.MinConfirmation = config.Configuration.MinConfirmation
 	fmt.Print("		[OK]\n")
+
+	// Disk balancer
+	config.Configuration.MinDiskSize = viper.GetUint64("min_disk_size")
+	config.Configuration.CheckDisksTimeout = viper.GetDuration("check_disk_timeout")
+	config.Configuration.MountPoint = viper.GetString("mount_point")
+	config.Configuration.Strategy = viper.GetString("strategy")
 }

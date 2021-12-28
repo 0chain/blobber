@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 )
 
 type (
@@ -62,8 +63,8 @@ func (a *allocationInfo) createDirs(dir string) error {
 	return nil
 }
 
-// Decode performs Unmarshal data.
-func (a *allocationInfo) Decode(b []byte) error {
+// decode performs Unmarshal data.
+func (a *allocationInfo) decode(b []byte) error {
 	if err := json.Unmarshal(b, a); err != nil {
 		return err
 	}
@@ -71,8 +72,8 @@ func (a *allocationInfo) Decode(b []byte) error {
 	return nil
 }
 
-// Encode performs Marshal data.
-func (a *allocationInfo) Encode() []byte {
+// encode performs Marshal data.
+func (a *allocationInfo) encode() []byte {
 	jsonBody, _ := json.Marshal(a)
 	return jsonBody
 }
@@ -89,36 +90,36 @@ func (a *allocationInfo) getFiles() error {
 		})
 }
 
-// Move copies the files of the prepared allocation.
-func (a *allocationInfo) Move(ctx context.Context) error {
+// move copies the files of the prepared allocation.
+func (a *allocationInfo) move(ctx context.Context) error {
 	for _, file := range a.Files {
 		select {
 		case <-ctx.Done():
 			return nil
 		default:
-			newFile := filepath.Join(a.NewRoot, file)
+			reg := regexp.MustCompile(UserFiles)
+			loc := reg.FindStringIndex(file)
+			rezFile := file[loc[1]:]
+			newFile := filepath.Join(a.NewRoot, rezFile)
 			info, _ := os.Stat(file)
 			if info.IsDir() {
 				a.createDirs(newFile)
 				continue
 			}
-			oldFile := filepath.Join(a.OldRoot, file)
-			if err := a.copyFile(oldFile, newFile); err != nil {
+			if err := a.copyFile(file, newFile); err != nil {
 				return err
-			}
-			if len(a.Files) == 0 {
-				a.ForDelete = true
-				a.updateInfo()
-				break
 			}
 		}
 	}
 
+	a.ForDelete = true
+	a.updateInfo()
+
 	return nil
 }
 
-// PrepareAllocation collects data and prepares allocation for relocation.
-func (a allocationInfo) PrepareAllocation() error {
+// prepareAllocation collects data and prepares allocation for relocation.
+func (a *allocationInfo) prepareAllocation() error {
 	if err := a.getFiles(); err != nil {
 		return err
 	}
@@ -127,7 +128,7 @@ func (a allocationInfo) PrepareAllocation() error {
 	defer f.Close()
 	a.TempFile = fPath
 
-	_, err := f.Write(a.Encode())
+	_, err := f.Write(a.encode())
 	if err != nil {
 		return err
 	}
@@ -137,8 +138,9 @@ func (a allocationInfo) PrepareAllocation() error {
 
 // updateInfo updates the allocation information file.
 func (a *allocationInfo) updateInfo() error {
-	f, _ := os.Open(a.TempFile)
-	_, err := f.Write(a.Encode())
+	f, _ := os.Create(a.TempFile)
+	defer f.Close()
+	_, err := f.Write(a.encode())
 	if err != nil {
 		return err
 	}

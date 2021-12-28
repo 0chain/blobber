@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
@@ -64,7 +65,7 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn.ID = node.Self.ID
 	sn.BaseURL = node.Self.GetURLBase()
 	sn.Geolocation = transaction.StorageNodeGeolocation(config.Geolocation())
-	sn.Capacity = config.Configuration.Capacity
+	sn.Capacity = disk_balancer.GetDiskSelector().GetCapacity()
 	readPrice := config.Configuration.ReadPrice
 	writePrice := config.Configuration.WritePrice
 	if config.Configuration.PriceInUSD {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
@@ -13,12 +12,14 @@ type (
 	DiskSelector interface {
 		// GetAvailableDisk return available disk for allocation.
 		GetAvailableDisk(path string, size int64) (diskPath string, err error)
+		// GetCapacity returns physical disk space.
+		GetCapacity() int64
 		// GetNextDiskPath selects a disk for storing data.
 		GetNextDiskPath() (string, error)
 		// IsMoves checks file transfers.
-		IsMoves(ctx context.Context, allocationID string, needPath bool) (bool, string)
+		IsMoves(allocationRoot, allocationID string, needPath bool) (bool, string)
 		// MoveAllocation moved allocation to another disk.
-		MoveAllocation(allocation *allocation.Allocation, destPath, transID string)
+		MoveAllocation(srcPath, destPath, transID string) string
 	}
 )
 

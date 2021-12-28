@@ -14,12 +14,8 @@ import (
 	"github.com/shirou/gopsutil/disk"
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
-	"gorm.io/gorm"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
@@ -31,11 +27,13 @@ type (
 		mountPoint     string
 		selectNextDisk func(partitions map[string]*partition) (string, error)
 		partitions     map[string]*partition
+		physicalSize   int64
 	}
 
 	partition struct {
 		availableSize int64
 		path          string
+		physicalSize  int64
 	}
 )
 
@@ -44,6 +42,9 @@ const (
 	MinSizeFirst = "min_size_first"
 	// TempAllocationFile represent a name of the file controlling the transfer Allocation.
 	TempAllocationFile = "relocatable.json"
+
+	OSPathSeparator = string(os.PathSeparator)
+	UserFiles       = "files"
 )
 
 // canUsed check min disk size
@@ -66,26 +67,29 @@ func (d *diskTier) canUsed(path string) bool {
 func (d *diskTier) checkDisks() {
 	var dParts []string
 	partitions := make(map[string]*partition)
-	disks, _ := disk.Partitions(false)
+	partitionStats, _ := disk.Partitions(false)
 	reg := regexp.MustCompile(d.mountPoint)
-	for _, disk := range disks {
-		if reg.MatchString(disk.Mountpoint) {
-			if !d.canUsed(disk.Mountpoint) {
+	for _, partitionStat := range partitionStats {
+		if reg.MatchString(partitionStat.Mountpoint) {
+			if !d.canUsed(partitionStat.Mountpoint) {
 				continue
 			}
-			dirs := filepath.Join(disk.Mountpoint, filestore.UserFiles)
+			dirs := filepath.Join(partitionStat.Mountpoint, UserFiles)
 			if err := d.createDirs(dirs); err != nil {
 				continue
 			}
-			dParts = append(dParts, disk.Mountpoint)
+			dParts = append(dParts, dirs)
 		}
 	}
+	var physicalSize int64
 	for _, pathPartition := range dParts {
 		vol, err := d.updatePartitionInfo(pathPartition)
 		if err != nil {
 			continue
 		}
 		partitions[pathPartition] = vol
+		physicalSize += vol.physicalSize
+		d.physicalSize = physicalSize
 	}
 	if len(partitions) == 0 {
 		Logger.Error("checkDisks(): no disk for storage users files")
@@ -100,6 +104,7 @@ func (d *diskTier) checkDisks() {
 
 // checkDisksWorker checks disks on a schedule.
 func (d *diskTier) checkDisksWorker(ctx context.Context) {
+	fmt.Println("select disk worker is running")
 	timer := time.NewTicker(d.checkTimeOut)
 	for {
 		select {
@@ -107,6 +112,28 @@ func (d *diskTier) checkDisksWorker(ctx context.Context) {
 			d.checkDisks()
 		case <-ctx.Done():
 			return
+		}
+	}
+}
+
+// checkUndeletedFiles is run when disk balancer starts. Checks for unreleased copies of allocation and deletes them.
+func (d *diskTier) checkUndeletedFiles() {
+	for part := range d.partitions {
+		files, err := ioutil.ReadDir(part)
+		if err != nil {
+			Logger.Error("Failed checkUndeletedFiles", zap.Error(err))
+		}
+		for _, alloc := range files {
+			if !alloc.IsDir() {
+				continue
+			}
+			fPath := filepath.Join(alloc.Name(), TempAllocationFile)
+			if _, err = os.Stat(fPath); os.IsExist(err) {
+				a := readFile(fPath)
+				if a.ForDelete {
+					deleteAllocation(alloc.Name())
+				}
+			}
 		}
 	}
 }
@@ -124,10 +151,13 @@ func (d *diskTier) createDirs(dir string) error {
 // generateAllocationPath generated path to allocation be transaction ID.
 func (d *diskTier) generateAllocationPath(root, transID string) string {
 	var dir bytes.Buffer
-	fmt.Fprintf(&dir, "%s%s", root, filestore.OSPathSeperator)
-	fmt.Fprintf(&dir, "%s%s", filestore.OSPathSeperator, transID[0:3])
+	fmt.Fprintf(&dir, "%s%s", root, OSPathSeparator)
+	for i := 0; i < 3; i++ {
+		fmt.Fprintf(&dir, "%s%s", OSPathSeparator, transID[3*i:3*i+3])
+	}
+	fmt.Fprintf(&dir, "%s%s", OSPathSeparator, transID[9:])
 
-	return dir.String()
+	return filepath.Clean(dir.String())
 }
 
 // GetNextDiskPath implemented DiskSelector interface.
@@ -146,87 +176,73 @@ func (d *diskTier) GetAvailableDisk(path string, size int64) (string, error) {
 			return k, nil
 		}
 
-		// TODO what to do if there is a total disk space available
 		return "", errors.New("not enough disk spase")
 	}
 
 	return path, nil
 }
 
+func (d *diskTier) GetCapacity() int64 {
+	return d.physicalSize
+}
+
 // init initializes the listed directories and registers the write strategy.
 func (d *diskTier) init(ctx context.Context) error {
 	d.minDiskSize = config.Configuration.MinDiskSize
 	d.mountPoint = config.Configuration.MountPoint
+	d.checkTimeOut = config.Configuration.CheckDisksTimeout
 	d.selectNextDisk = d.selectStrategy(config.Configuration.Strategy)
+
 	d.checkDisks()
 	if len(d.partitions) == 0 {
 		return errors.New("init() no disk for storage users files")
 	}
-	d.checkDisksWorker(ctx)
+	go d.checkDisksWorker(ctx)
 
 	return nil
 }
 
 // IsMoves implemented DiskSelector interface.
-func (d *diskTier) IsMoves(ctx context.Context, allocationID string, needPath bool) (bool, string) {
-	alloc, _ := allocation.VerifyAllocationTransaction(ctx, allocationID, true)
-	path := filepath.Join(alloc.AllocationRoot, allocationID[:3], TempAllocationFile)
-	if _, err := os.Stat(path); os.IsExist(err) {
-		if needPath {
-			a := readFile(path)
-			return true, a.NewRoot
-		}
+func (d *diskTier) IsMoves(allocationRoot, allocationID string, needPath bool) (bool, string) {
+	path := d.generateAllocationPath(allocationRoot, allocationID)
+	fPath := filepath.Join(path, TempAllocationFile)
 
-		return true, ""
+	if _, err := os.Stat(fPath); os.IsNotExist(err) {
+		return false, allocationRoot
 	}
 
-	return false, ""
+	if needPath {
+		a := readFile(fPath)
+		return true, a.NewRoot
+	}
+
+	return true, ""
 }
 
 // MoveAllocation implemented DiskSelector interface.
-func (d *diskTier) MoveAllocation(allocation *allocation.Allocation, destPath, transID string) {
-	go d.moveAllocation(allocation, destPath, transID, common.GetRootContext())
+func (d *diskTier) MoveAllocation(srcPath, destPath, transID string) string {
+	return d.moveAllocation(srcPath, destPath, transID, common.GetRootContext())
 }
 
 // moveAllocation moved allocation.
-func (d *diskTier) moveAllocation(alloc *allocation.Allocation, destPath, transID string, ctx context.Context) {
-	oldAllocationPath := d.generateAllocationPath(alloc.AllocationRoot, transID)
+func (d *diskTier) moveAllocation(srcPath, destPath, transID string, ctx context.Context) string {
+	oldAllocationPath := d.generateAllocationPath(srcPath, transID)
 	aInfo := newAllocationInfo(
 		oldAllocationPath,
-		d.generateAllocationPath(destPath, transID),
+		destPath,
 	)
-
-	if err := aInfo.PrepareAllocation(); err != nil {
-		Logger.Error("PrepareAllocation() failed", zap.Error(err))
+	// d.generateAllocationPath(destPath, transID),
+	if err := aInfo.prepareAllocation(); err != nil {
+		Logger.Error("prepareAllocation() failed", zap.Error(err))
 	}
 
-	if err := aInfo.Move(ctx); err != nil {
-		Logger.Error("Move() failed", zap.Error(err))
+	if err := aInfo.move(ctx); err != nil {
+		Logger.Error("move() failed", zap.Error(err))
 	}
-
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-	db := datastore.GetStore().GetTransaction(ctx)
-
-	a := new(allocation.Allocation)
-	err := db.Model(&allocation.Allocation{}).
-		Where(&allocation.Allocation{Tx: transID}).
-		First(a).Error
-
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		Logger.Error("moveAllocation() bad_db_operation", zap.Error(err)) // unexpected DB error
-	}
-
-	a.AllocationRoot = destPath
-	if err = db.Save(a).Error; err != nil {
-		Logger.Error("Failed to update allocation root path", zap.Error(err))
-		db.Rollback()
-		ctx.Done()
-	}
-
-	db.Commit()
-	ctx.Done()
 
 	deleteAllocation(oldAllocationPath)
+
+	return aInfo.NewRoot
 }
 
 // selectStrategy registers a function for selecting directories for storage.
@@ -261,32 +277,11 @@ func (d *diskTier) selectStrategy(strategy string) func(partitions map[string]*p
 func (d *diskTier) updatePartitionInfo(volumePath string) (*partition, error) {
 	vol := &partition{path: volumePath}
 	if err := vol.getAvailableSize(); err != nil {
-		Logger.Error(fmt.Sprintf("checkDisks() filed %v", err))
+		Logger.Error(fmt.Sprintf("updatePartitionInfo() filed %v", err))
 		return nil, err
 	}
 
 	return vol, nil
-}
-
-func (d *diskTier) checkUndeletedFiles() {
-	for disk, _ := range d.partitions {
-		files, err := ioutil.ReadDir(disk)
-		if err != nil {
-			Logger.Error("Failed checkUndeletedFiles", zap.Error(err))
-		}
-		for _, alloc := range files {
-			if !alloc.IsDir() {
-				continue
-			}
-			fPath := filepath.Join(alloc.Name(), TempAllocationFile)
-			if _, err = os.Stat(fPath); os.IsExist(err) {
-				a := readFile(fPath)
-				if a.ForDelete {
-					deleteAllocation(alloc.Name())
-				}
-			}
-		}
-	}
 }
 
 // getAvailableSize gets information about the state of a directory.
@@ -297,7 +292,7 @@ func (p *partition) getAvailableSize() error {
 		Logger.Error(fmt.Sprintf("getAvailableSize() unix.Statfs %v", err))
 		return err
 	}
-
+	p.physicalSize = int64(volStat.Bavail * uint64(volStat.Bsize))
 	p.availableSize = int64(volStat.Bfree * uint64(volStat.Bsize))
 
 	return nil

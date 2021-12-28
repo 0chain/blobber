@@ -4,18 +4,19 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/0chain/gosdk/zcncore"
+	"go.uber.org/zap"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/gosdk/zcncore"
-	"go.uber.org/zap"
 )
 
 func setupOnChain() {
-	//wait http & grpc startup, and go to setup on chain
+	// wait http & grpc startup, and go to setup on chain
 	time.Sleep(1 * time.Second)
 	fmt.Println("[9/11] connecting to chain	")
 
@@ -68,6 +69,8 @@ func setupOnChain() {
 		go setupWorkers()
 
 		go healthCheckOnChain()
+
+		go startUpdateCapacity(common.GetRootContext())
 
 		if config.Configuration.PriceInUSD {
 			go refreshPriceOnChain()

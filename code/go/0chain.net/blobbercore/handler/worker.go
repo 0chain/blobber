@@ -10,6 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -143,7 +144,11 @@ func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize int64, limi
 					continue
 				}
 
-				if ok, _ := disk_balancer.GetDiskSelector().IsMoves(ctx, fileRef.AllocationID, false); ok {
+				a, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), fileRef.AllocationID, true)
+				if err != nil {
+					continue
+				}
+				if ok, _ := disk_balancer.GetDiskSelector().IsMoves(a.AllocationRoot, fileRef.AllocationID, false); ok {
 					continue
 				}
 

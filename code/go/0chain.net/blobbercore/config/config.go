@@ -42,6 +42,12 @@ func SetupDefaultConfig() {
 	viper.SetDefault("service_charge", 0.3)
 
 	viper.SetDefault("update_allocations_interval", time.Duration(-1))
+
+	// Disk balancer
+	viper.SetDefault("min_disk_size", 30*1024*1024*1024)
+	viper.SetDefault("check_disk_timeout", 60*time.Minute)
+	viper.SetDefault("mount_point", "/mnt")
+	viper.SetDefault("strategy", "min_size_first")
 }
 
 /*SetupConfig - setup the configuration system */
@@ -141,8 +147,6 @@ type Config struct {
 	MinDiskSize uint64
 	// CheckDisksPeriod disk check period.
 	CheckDisksTimeout time.Duration
-	// UseSystemDisk permission flag to write files to the system disk.
-	UseSystemDisk bool
 	// MountPoint is the mount point for storage disks.
 	MountPoint string
 	Strategy   string

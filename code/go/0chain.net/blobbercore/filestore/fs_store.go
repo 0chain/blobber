@@ -60,15 +60,19 @@ type FileBlockGetter struct {
 }
 
 func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
-	allocation, err := fs.SetupAllocation(allocationID, true)
+	alloc, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
 	}
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(common.GetRootContext(), allocationID, false); ok {
+	a, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), allocationID, true)
+	if err != nil {
+		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(a.AllocationRoot, a.ID, false); ok {
 		return nil, common.NewError("allocation_transferred", "Please try again later.")
 	}
 	dirPath, destFile := GetFilePathFromHash(fileData.Hash)
-	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
+	fileObjectPath := filepath.Join(alloc.ObjectsPath, dirPath)
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
 
 	file, err := os.Open(fileObjectPath)
@@ -204,7 +208,11 @@ func (fs *FileFSStore) GetTempPathSize(allocationID string) (int64, error) {
 	if err != nil {
 		return size, err
 	}
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(common.GetRootContext(), allocationID, false); ok {
+	a, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), allocationID, true)
+	if err != nil {
+		return 0, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(a.AllocationRoot, a.ID, false); ok {
 		return 0, common.NewError("allocation_transferred", "Please try again later.")
 	}
 	err = filepath.Walk(allocationObj.TempObjectsPath, func(_ string, info os.FileInfo, err error) error {
@@ -313,15 +321,19 @@ func (fs *FileFSStore) SetupAllocation(allocationID string, skipCreate bool) (*S
 }
 
 func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
-	allocation, err := fs.SetupAllocation(allocationID, true)
+	alloc, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return nil, nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
 	}
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(common.GetRootContext(), allocationID, false); ok {
+	a, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), allocationID, true)
+	if err != nil {
+		return nil, nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(a.AllocationRoot, a.ID, false); ok {
 		return nil, nil, common.NewError("allocation_transferred", "Please try again later.")
 	}
 	dirPath, destFile := GetFilePathFromHash(fileData.Hash)
-	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
+	fileObjectPath := filepath.Join(alloc.ObjectsPath, dirPath)
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
 
 	file, err := os.Open(fileObjectPath)
@@ -395,15 +407,19 @@ func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData
 }
 
 func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error {
-	allocation, err := fs.SetupAllocation(allocationID, true)
+	alloc, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		Logger.Warn("invalid_allocation", zap.String("allocationID", allocationID), zap.Error(err))
 		return nil
 	}
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(common.GetRootContext(), allocationID, false); ok {
+	a, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), allocationID, true)
+	if err != nil {
+		return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(a.AllocationRoot, a.ID, false); ok {
 		return common.NewError("allocation_transferred", "Please try again later.")
 	}
-	fileObjectPath := fs.generateTempPath(allocation, fileData, connectionID)
+	fileObjectPath := fs.generateTempPath(alloc, fileData, connectionID)
 
 	err = os.Remove(fileObjectPath)
 	if err != nil {
@@ -438,17 +454,21 @@ func (fs *FileFSStore) fileCopy(src, dst string) error { //nolint:unused,deadcod
 }
 
 func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error) {
-	allocation, err := fs.SetupAllocation(allocationID, true)
+	alloc, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return false, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(common.GetRootContext(), allocationID, false); ok {
+	a, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), allocationID, true)
+	if err != nil {
+		return false, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(a.AllocationRoot, a.ID, false); ok {
 		return false, common.NewError("allocation_transferred", "Please try again later.")
 	}
-	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
+	tempFilePath := fs.generateTempPath(alloc, fileData, connectionID)
 	// move file from tmp location to the objects folder
 	dirPath, destFile := GetFilePathFromHash(fileData.Hash)
-	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
+	fileObjectPath := filepath.Join(alloc.ObjectsPath, dirPath)
 	err = createDirs(fileObjectPath)
 	if err != nil {
 		return false, common.NewError("blob_object_dir_creation_error", err.Error())
@@ -467,16 +487,20 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 }
 
 func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error {
-	allocation, err := fs.SetupAllocation(allocationID, true)
+	alloc, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(common.GetRootContext(), allocationID, false); ok {
+	a, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), allocationID, true)
+	if err != nil {
+		return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(a.AllocationRoot, a.ID, false); ok {
 		return common.NewError("allocation_transferred", "Please try again later.")
 	}
 
 	dirPath, destFile := GetFilePathFromHash(contentHash)
-	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
+	fileObjectPath := filepath.Join(alloc.ObjectsPath, dirPath)
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
 
 	if config.Configuration.ColdStorageDeleteCloudCopy {
@@ -490,23 +514,30 @@ func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error
 }
 
 func (fs *FileFSStore) CreateDir(allocationID, dirName string) error {
-	allocation, err := fs.SetupAllocation(allocationID, false)
+	alloc, err := fs.SetupAllocation(allocationID, false)
 	if err != nil {
 		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
-
-	ok, root := disk_balancer.GetDiskSelector().IsMoves(common.GetRootContext(), allocationID, true)
+	a, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), allocationID, true)
+	if err != nil {
+		return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	ok, root := disk_balancer.GetDiskSelector().IsMoves(a.AllocationRoot, a.ID, true)
 	if ok {
 		dirPath := filepath.Join(root, dirName)
 		return createDirs(dirPath)
 	}
 
-	dirPath := filepath.Join(allocation.Path, dirName)
+	dirPath := filepath.Join(alloc.Path, dirName)
 	return createDirs(dirPath)
 }
 
 func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) error {
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(common.GetRootContext(), allocationID, false); ok {
+	a, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), allocationID, true)
+	if err != nil {
+		return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(a.AllocationRoot, a.ID, false); ok {
 		return common.NewError("allocation_transferred", "Please try again later.")
 	}
 	return nil
@@ -514,19 +545,24 @@ func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) err
 
 func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	infile multipart.File, connectionID string) (*FileOutputData, error) {
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(common.GetRootContext(), allocationID, false); ok {
-		return nil, common.NewError("allocation_transferred", "Please try again later.")
-	}
 	if fileData.IsChunked {
 		return fs.WriteChunk(allocationID, fileData, infile, connectionID)
 	}
 
-	allocation, err := fs.SetupAllocation(allocationID, false)
+	alloc, err := fs.SetupAllocation(allocationID, false)
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
 
-	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
+	a, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), allocationID, true)
+	if err != nil {
+		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(a.AllocationRoot, a.ID, false); ok {
+		return nil, common.NewError("allocation_transferred", "Please try again later.")
+	}
+
+	tempFilePath := fs.generateTempPath(alloc, fileData, connectionID)
 	dest, err := os.Create(tempFilePath)
 	if err != nil {
 		return nil, common.NewError("file_creation_error", err.Error())
@@ -588,15 +624,18 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 // WriteChunk append chunk to temp file
 func (fs *FileFSStore) WriteChunk(allocationID string, fileData *FileInputData,
 	infile multipart.File, connectionID string) (*FileOutputData, error) {
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(common.GetRootContext(), allocationID, false); ok {
-		return nil, common.NewError("allocation_transferred", "Please try again later.")
-	}
-	allocation, err := fs.SetupAllocation(allocationID, false)
+	alloc, err := fs.SetupAllocation(allocationID, false)
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
-
-	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
+	a, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), allocationID, true)
+	if err != nil {
+		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(a.AllocationRoot, a.ID, false); ok {
+		return nil, common.NewError("allocation_transferred", "Please try again later.")
+	}
+	tempFilePath := fs.generateTempPath(alloc, fileData, connectionID)
 	dest, err := NewChunkWriter(tempFilePath)
 	if err != nil {
 		return nil, common.NewError("file_creation_error", err.Error())
@@ -627,15 +666,20 @@ func (fs *FileFSStore) WriteChunk(allocationID string, fileData *FileInputData,
 }
 
 func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHandler) error {
-	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(common.GetRootContext(), allocationID, false); ok {
-		return common.NewError("allocation_transferred", "Please try again later.")
-	}
-	allocation, err := fs.SetupAllocation(allocationID, true)
+	alloc, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
 	}
-	return filepath.Walk(allocation.ObjectsPath, func(path string, info os.FileInfo, err error) error {
-		if err == nil && !info.IsDir() && !strings.HasPrefix(path, allocation.TempObjectsPath) {
+	a, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), allocationID, true)
+	if err != nil {
+		return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	if ok, _ := disk_balancer.GetDiskSelector().IsMoves(a.AllocationRoot, a.ID, false); ok {
+		return common.NewError("allocation_transferred", "Please try again later.")
+	}
+
+	return filepath.Walk(alloc.ObjectsPath, func(path string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() && !strings.HasPrefix(path, alloc.TempObjectsPath) {
 			f, err := os.Open(path)
 			if err != nil {
 				return nil

@@ -7,14 +7,16 @@ import (
 	"runtime"
 	"time"
 
+	"go.uber.org/zap"
+	"gorm.io/datatypes"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"go.uber.org/zap"
-	"gorm.io/datatypes"
 )
 
 const DateTimeFormat = "2006-01-02T15:04:05"
@@ -117,7 +119,7 @@ func (bs *BlobberStats) loadBasicStats(ctx context.Context) {
 	bs.ClientID = node.Self.ID
 	bs.PublicKey = node.Self.PublicKey
 	// configurations
-	bs.Capacity = config.Configuration.Capacity
+	bs.Capacity = disk_balancer.GetDiskSelector().GetCapacity()
 	bs.ReadPrice = config.Configuration.ReadPrice
 	bs.WritePrice = config.Configuration.WritePrice
 	bs.MinLockDemand = config.Configuration.MinLockDemand

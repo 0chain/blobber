@@ -2,9 +2,8 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 
-	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
@@ -19,8 +18,7 @@ func setupFileStore() (err error) {
 	if err != nil {
 		return err
 	}
-	dirs := filepath.Join(root, filestore.UserFiles)
-	fsStore, err = filestore.SetupFSStore(dirs)
+	fsStore, err = filestore.SetupFSStore(root)
 
 	fmt.Print("		[OK]\n")
 
