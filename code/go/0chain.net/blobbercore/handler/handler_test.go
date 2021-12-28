@@ -29,7 +29,6 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	bconfig "github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -85,7 +84,6 @@ func init() {
 	if _, err := filestore.SetupFSStoreI(dir+"/tmp", MockFileBlockGetter{}); err != nil {
 		panic(err)
 	}
-	bconfig.Configuration.MaxFileSize = int64(1 << 30)
 }
 
 func setup(t *testing.T) {
@@ -899,6 +897,13 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(aa, aa).
 					WillReturnError(errors.New(""))
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					WithArgs(aa, aa).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"type"}).
+							AddRow(reference.DIRECTORY),
+					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(aa, aa).

@@ -51,7 +51,6 @@ func setupConfig() {
 	config.Configuration.MinioUseSSL = viper.GetBool("minio.use_ssl")
 
 	config.Configuration.Capacity = viper.GetInt64("capacity")
-	config.Configuration.MaxFileSize = viper.GetInt64("max_file_size")
 
 	config.Configuration.DBHost = viper.GetString("db.host")
 	config.Configuration.DBName = viper.GetString("db.name")

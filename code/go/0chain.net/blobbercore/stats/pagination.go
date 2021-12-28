@@ -11,19 +11,19 @@ type RequestData struct {
 }
 
 type Pagination struct {
-	TotalItems             int
-	CurrentPage            int
-	Limit                  int
-	TotalPages             int
-	Offset                 int
-	PrevPage               int
-	NextPage               int
-	HasPrev                bool
-	HasNext                bool
-	HasDivider             bool
-	CurrentPageIsInDivider bool
-	FirstFew               []int
-	LastFew                []int
+	TotalItems             int   `json:"total_items"`
+	CurrentPage            int   `json:"current_page"`
+	Limit                  int   `json:"limit"`
+	TotalPages             int   `json:"total_pages"`
+	Offset                 int   `json:"offset"`
+	PrevPage               int   `json:"prev_page"`
+	NextPage               int   `json:"next_page"`
+	HasPrev                bool  `json:"-"`
+	HasNext                bool  `json:"-"`
+	HasDivider             bool  `json:"-"`
+	CurrentPageIsInDivider bool  `json:"-"`
+	FirstFew               []int `json:"-"`
+	LastFew                []int `json:"-"`
 }
 
 type PageLimitOffsetData struct {
