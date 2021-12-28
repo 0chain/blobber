@@ -47,12 +47,6 @@ jobs:
 
     - uses: actions/checkout@v2
 
-    - name: "Get current PR"
-      uses: jwalton/gh-find-current-pr@v1
-      id: findPr
-      with:
-        github-token: ${{ github.token }}
-
     - name: "Setup Test Run"
       run: |
         echo "SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)" >> $GITHUB_ENV
@@ -109,19 +103,19 @@ jobs:
             echo "valiator docker image found for  [merge-$MERGE_SHORT_SHA]"
             echo "VALIDATOR_IMAGE=merge-$MERGE_SHORT_SHA" >> $GITHUB_ENV
         fi
-    
+
     - name: "Set PR Status Pending"
-      uses: niteoweb/pull_request_status_action@v1.0.0
-      if: steps.findPr.outputs.number
+      uses: 0chain/actions/notify-pull-request@feature/notify-PR-convenience
+      continue-on-error: true
       with:
-        pr_number: ${{ steps.findPr.outputs.pr }}
-        description: "Manual system tests running"
         state: "pending"
-        repository: ${{ github.repository }}
-        context: "0Chain System Tests"
-        target_url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
+        message: "manual tests running"
+        system_tests_branch: ${{ github.event.inputs.system_tests_branch }}
+        zbox_cli_branch: ${{ github.event.inputs.zbox_cli_branch }}
+        zwallet_cli_branch: ${{ github.event.inputs.zwallet_cli_branch }}
+        zerochain_branch: ${{ github.event.inputs.miner_image }}
+        blobber_branch: ${{ env.BLOBBER_IMAGE }}
+        github_token: ${{ secrets.SVC_ACCOUNT_SECRET }}
 
     - name: "Deploy 0Chain"
       if: ${{ github.event.inputs.skip_tests == 'FALSE' }}
@@ -157,27 +151,31 @@ jobs:
         retry_failures: true
         
     - name: "Set PR Status Success"
-      if: ${{ success() && steps.findPr.outputs.number }}
-      uses: niteoweb/pull_request_status_action@v1.0.0
+      if: ${{ success() }}
+      uses: 0chain/actions/notify-pull-request@feature/notify-PR-convenience
+      continue-on-error: true
       with:
-        pr_number: ${{ steps.findPr.outputs.pr }}
-        description: "Manual system tests success"
         state: ${{ job.status }}
-        repository: ${{ github.repository }}
-        context: "0Chain System Tests"
-        target_url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
+        message: "manual tests failed"
+        system_tests_branch: ${{ github.event.inputs.system_tests_branch }}
+        zbox_cli_branch: ${{ github.event.inputs.zbox_cli_branch }}
+        zwallet_cli_branch: ${{ github.event.inputs.zwallet_cli_branch }}
+        gosdk_branch: staging
+        zerochain_branch: ${{ github.event.inputs.miner_image }}
+        blobber_branch: ${{ env.BLOBBER_IMAGE }}
+        github_token: ${{ secrets.SVC_ACCOUNT_SECRET }}
 
     - name: "Set PR Status Failed"
-      if: ${{ failure() && steps.findPr.outputs.number }}
-      uses: niteoweb/pull_request_status_action@v1.0.0
+      if: ${{ failure() }}
+      uses: 0chain/actions/notify-pull-request@feature/notify-PR-convenience
+      continue-on-error: true
       with:
-        pr_number: ${{ steps.findPr.outputs.pr }}
-        description: "Manual system tests failure"
         state: ${{ job.status }}
-        repository: ${{ github.repository }}
-        context: "0Chain System Tests"
-        target_url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
+        message: "manual tests success"
+        system_tests_branch: ${{ github.event.inputs.system_tests_branch }}
+        zbox_cli_branch: ${{ github.event.inputs.zbox_cli_branch }}
+        zwallet_cli_branch: ${{ github.event.inputs.zwallet_cli_branch }}
+        gosdk_branch: staging
+        zerochain_branch: ${{ github.event.inputs.miner_image }}
+        blobber_branch: ${{ env.BLOBBER_IMAGE }}
+        github_token: ${{ secrets.SVC_ACCOUNT_SECRET }}
