@@ -1,7 +1,7 @@
 name: "Build & Publish Docker Image"
 
 concurrency:
-  group: "${{ github.ref }}"
+  group: "publish-${{ github.ref }}"
   cancel-in-progress: true
 
 on:
