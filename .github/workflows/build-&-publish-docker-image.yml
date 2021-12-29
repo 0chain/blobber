@@ -25,8 +25,9 @@ jobs:
     steps:
       - name: Set GITHUB_ENV
         run: |
-          echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+        echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
+        echo "TAG=$(([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF) | sed 's/\//-/g')" >> $GITHUB_ENV
+        echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
       
       - name: Clone blobber
         uses: actions/checkout@v1
@@ -48,7 +49,7 @@ jobs:
           docker tag blobber:latest ${BLOBBER_REGISTRY}:$TAG
           docker push ${BLOBBER_REGISTRY}:$TAG || { sleep 10 && docker push ${BLOBBER_REGISTRY}:$TAG; }
 
-          SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
+          SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
           docker tag blobber:latest ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA
           docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA  || { sleep 10 && docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA; }
 
@@ -57,8 +58,9 @@ jobs:
     steps:
       - name: Set GITHUB_ENV
         run: |
-          echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+          echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
+          echo "TAG=$(([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF) | sed 's/\//-/g')" >> $GITHUB_ENV
+          echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
       
       - name: Clone blobber
         uses: actions/checkout@v1
@@ -80,7 +82,7 @@ jobs:
           docker tag validator:latest ${VALIDATOR_REGISTRY}:$TAG
           docker push ${VALIDATOR_REGISTRY}:$TAG || { sleep 10 && docker push ${VALIDATOR_REGISTRY}:$TAG; }
 
-          SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
+          SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
           docker tag validator:latest ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA
           docker push ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA || { sleep 10 && docker push ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA; }
 
@@ -110,9 +112,9 @@ jobs:
 
       - name: "Setup"
         run: |
-          echo "SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)" >> $GITHUB_ENV
-          echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+          echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
+          echo "SHORT_SHA=$(([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}') | head -c 8)" >> $GITHUB_ENV
+          echo "TAG=$(([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF) | sed 's/\//-/g')" >> $GITHUB_ENV
           echo "NETWORK_URL=$(echo dev-${RUNNER_NAME:(-1)}.devnet-0chain.net)" >> $GITHUB_ENV
           echo "RUNNER_NUMBER=${RUNNER_NAME:(-1)}" >> $GITHUB_ENV
 
