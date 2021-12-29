@@ -27,22 +27,16 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	if err != nil {
 		return nil, err
 	}
-
-	if rf.DestPath == "/" {
-		destRef, err := reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
-		if err != nil || destRef.Type != reference.DIRECTORY {
-			return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
-		}
-		rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
-
-		_, err = destRef.CalculateHash(ctx, true)
-		return destRef, err
-	}
-
-	// it will create new dir if it is not available in db
-	destRef, err := reference.Mkdir(ctx, rf.AllocationID, rf.DestPath)
+	destRef, err := reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
 	if err != nil || destRef.Type != reference.DIRECTORY {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
+	}
+
+	rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
+
+	if destRef.ParentPath == "" {
+		_, err = destRef.CalculateHash(ctx, true)
+		return destRef, err
 	}
 
 	path, _ := filepath.Split(rf.DestPath)
@@ -73,20 +67,19 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 			return nil, common.NewError("invalid_reference_path", "Invalid reference path from the blobber")
 		}
 	}
-	childIndex := -1
+	var foundRef *reference.Ref = nil
 	for i, child := range dirRef.Children {
 		if child.Path == rf.DestPath && child.Type == reference.DIRECTORY {
-			childIndex = i
+			foundRef = dirRef.Children[i]
+			dirRef.RemoveChild(i)
+			dirRef.AddChild(destRef)
 			break
 		}
 	}
 
-	if childIndex == -1 {
+	if foundRef == nil {
 		return nil, common.NewError("file_not_found", "Destination Object to copy to not found in blobber")
 	}
-
-	foundRef := dirRef.Children[childIndex]
-	rf.processCopyRefs(ctx, affectedRef, foundRef, allocationRoot)
 
 	_, err = rootRef.CalculateHash(ctx, true)
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"math"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -28,7 +27,6 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 	db := datastore.GetStore().GetTransaction(ctx)
 	pathsAdded := make(map[string]bool)
 	for _, path := range paths {
-		path = strings.TrimSuffix(path, "/")
 		if _, ok := pathsAdded[path]; !ok {
 			db = db.Where(Ref{ParentPath: path, AllocationID: allocationID})
 			pathsAdded[path] = true

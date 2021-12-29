@@ -934,6 +934,11 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
 	}
 
+	destRef, err = reference.Mkdir(ctx, allocationID, destPath)
+	if err != nil || destRef.Type != reference.DIRECTORY {
+		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
+	}
+
 	allocationChange := &allocation.AllocationChange{}
 	allocationChange.ConnectionID = connectionObj.ConnectionID
 	allocationChange.Size = objectRef.Size
