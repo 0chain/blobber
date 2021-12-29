@@ -12,7 +12,7 @@ on:
 jobs:
   unit_tests:
     name: "Unit Tests"
-    runs-on: [self-hosted, load-test]
+    runs-on: [self-hosted, build]
     steps:
       - name: Setup go 1.17
         uses: actions/setup-go@v2
@@ -68,7 +68,7 @@ jobs:
 
   golangci:
     name: lint
-    runs-on: [self-hosted, tests-suite]
+    runs-on: [self-hosted, build]
     steps:
       - name: Setup go 1.17
         uses: actions/setup-go@v2
@@ -83,7 +83,7 @@ jobs:
           args: --timeout=2m0s
 
   buf-build:
-    runs-on: [self-hosted, tests-suite]
+    runs-on: [self-hosted, build]
     steps:
       - name: Check out code
         uses: actions/checkout@master
