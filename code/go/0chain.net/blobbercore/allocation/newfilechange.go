@@ -6,42 +6,43 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/0chain/gosdk/constants"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/gosdk/constants"
 )
 
 type NewFileChange struct {
-	//client side: unmarshal them from 'updateMeta'/'uploadMeta'
+	// client side: unmarshal them from 'updateMeta'/'uploadMeta'
 	ConnectionID string `json:"connection_id" validation:"required"`
-	//client side:
+	// client side:
 	Filename string `json:"filename" validation:"required"`
-	//client side:
+	// client side:
 	Path string `json:"filepath" validation:"required"`
-	//client side:
+	// client side:
 	ActualHash string `json:"actual_hash,omitempty" `
-	//client side:
+	// client side:
 	ActualSize int64 `json:"actual_size,omitempty"`
-	//client side:
+	// client side:
 	ActualThumbnailSize int64 `json:"actual_thumb_size"`
-	//client side:
+	// client side:
 	ActualThumbnailHash string `json:"actual_thumb_hash"`
-	//client side:
+	// client side:
 	MimeType string `json:"mimetype,omitempty"`
-	//client side:
+	// client side:
 	Attributes reference.Attributes `json:"attributes,omitempty"`
-	//client side:
+	// client side:
 	MerkleRoot string `json:"merkle_root,omitempty"`
 
-	//server side: update them by ChangeProcessor
+	// server side: update them by ChangeProcessor
 	AllocationID string `json:"allocation_id"`
-	//client side:
+	// client side:
 	Hash string `json:"content_hash,omitempty"`
 	Size int64  `json:"size"`
-	//server side:
+	// server side:
 	ThumbnailHash     string `json:"thumbnail_content_hash,omitempty"`
 	ThumbnailSize     int64  `json:"thumbnail_size"`
 	ThumbnailFilename string `json:"thumbnail_filename"`
@@ -223,13 +224,21 @@ func (nf *NewFileChange) DeleteTempFile() error {
 	fileInputData.Name = nf.Filename
 	fileInputData.Path = nf.Path
 	fileInputData.Hash = nf.Hash
-	err := filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
+	alloc, err := VerifyAllocationTransaction(common.GetRootContext(), nf.AllocationID, true)
+	if err != nil {
+		return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	err = filestore.GetFileStore().DeleteTempFile(alloc.AllocationRoot, nf.AllocationID, fileInputData, nf.ConnectionID)
 	if nf.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{}
 		fileInputData.Name = nf.ThumbnailFilename
 		fileInputData.Path = nf.Path
 		fileInputData.Hash = nf.ThumbnailHash
-		err = filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
+		alloc, err := VerifyAllocationTransaction(common.GetRootContext(), nf.AllocationID, true)
+		if err != nil {
+			return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+		}
+		err = filestore.GetFileStore().DeleteTempFile(alloc.AllocationRoot, nf.AllocationID, fileInputData, nf.ConnectionID)
 	}
 	return err
 }
@@ -239,7 +248,11 @@ func (nfch *NewFileChange) CommitToFileStore(ctx context.Context) error {
 	fileInputData.Name = nfch.Filename
 	fileInputData.Path = nfch.Path
 	fileInputData.Hash = nfch.Hash
-	_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, fileInputData, nfch.ConnectionID)
+	alloc, err := VerifyAllocationTransaction(common.GetRootContext(), nfch.AllocationID, true)
+	if err != nil {
+		return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
+	_, err = filestore.GetFileStore().CommitWrite(alloc.AllocationRoot, nfch.AllocationID, fileInputData, nfch.ConnectionID)
 	if err != nil {
 		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 	}
@@ -248,7 +261,11 @@ func (nfch *NewFileChange) CommitToFileStore(ctx context.Context) error {
 		fileInputData.Name = nfch.ThumbnailFilename
 		fileInputData.Path = nfch.Path
 		fileInputData.Hash = nfch.ThumbnailHash
-		_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, fileInputData, nfch.ConnectionID)
+		alloc, err := VerifyAllocationTransaction(common.GetRootContext(), nfch.AllocationID, true)
+		if err != nil {
+			return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+		}
+		_, err = filestore.GetFileStore().CommitWrite(alloc.AllocationRoot, nfch.AllocationID, fileInputData, nfch.ConnectionID)
 		if err != nil {
 			return common.NewError("file_store_error", "Error committing thumbnail to file store. "+err.Error())
 		}

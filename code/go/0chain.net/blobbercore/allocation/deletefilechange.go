@@ -124,7 +124,11 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 		err := db.Table((&reference.Ref{}).TableName()).Where(&reference.Ref{ThumbnailHash: contenthash}).Or(&reference.Ref{ContentHash: contenthash}).Count(&count).Error
 		if err == nil && count == 0 {
 			Logger.Info("Deleting content file", zap.String("content_hash", contenthash))
-			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, contenthash); err != nil {
+			alloc, err := VerifyAllocationTransaction(common.GetRootContext(), nf.AllocationID, true)
+			if err != nil {
+				return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+			}
+			if err := filestore.GetFileStore().DeleteFile(alloc.AllocationRoot, nf.AllocationID, contenthash); err != nil {
 				Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
 			}
 		}

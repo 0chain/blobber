@@ -36,7 +36,7 @@ func CleanupDiskFiles(ctx context.Context) error {
 	for _, allocationObj := range allocations {
 		mutex := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
 		mutex.Lock()
-		_ = filestore.GetFileStore().IterateObjects(allocationObj.ID, func(contentHash string, contentSize int64) {
+		_ = filestore.GetFileStore().IterateObjects(allocationObj.AllocationRoot, allocationObj.ID, func(contentHash string, contentSize int64) {
 			var refs []reference.Ref
 			err := db.Table((reference.Ref{}).TableName()).Where(reference.Ref{ContentHash: contentHash, Type: reference.FILE}).Or(reference.Ref{ThumbnailHash: contentHash, Type: reference.FILE}).Find(&refs).Error
 			if err != nil {
@@ -45,7 +45,7 @@ func CleanupDiskFiles(ctx context.Context) error {
 			}
 			if len(refs) == 0 {
 				Logger.Info("hash has no references. Deleting from disk", zap.Any("count", len(refs)), zap.String("hash", contentHash))
-				if err := filestore.GetFileStore().DeleteFile(allocationObj.ID, contentHash); err != nil {
+				if err := filestore.GetFileStore().DeleteFile(allocationObj.AllocationRoot, allocationObj.ID, contentHash); err != nil {
 					Logger.Error("FileStore_DeleteFile", zap.String("content_hash", contentHash), zap.Error(err))
 				}
 			}
@@ -194,7 +194,11 @@ func startMoveColdDataToCloud(ctx context.Context) {
 
 func moveFileToCloud(ctx context.Context, fileRef *reference.Ref) {
 	fs := filestore.GetFileStore()
-	allocation, err := fs.SetupAllocation(fileRef.AllocationID, true)
+	alloc, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), fileRef.AllocationID, true)
+	if err != nil {
+		return
+	}
+	allocation, err := fs.SetupAllocation(alloc.AllocationRoot, fileRef.AllocationID, true)
 	if err != nil {
 		Logger.Error("Unable to fetch allocation with error", zap.Any("allocationID", fileRef.AllocationID), zap.Error(err))
 		return

@@ -79,7 +79,7 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 		IsFinal:      cmd.fileChanger.IsFinal,
 	}
 
-	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
+	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.AllocationRoot, allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
@@ -131,7 +131,7 @@ func (cmd *AddFileCommand) ProcessThumbnail(ctx context.Context, req *http.Reque
 		defer thumbfile.Close()
 
 		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
-		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, thumbInputData, thumbfile, connectionObj.ConnectionID)
+		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.AllocationRoot, allocationObj.ID, thumbInputData, thumbfile, connectionObj.ConnectionID)
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 		}

@@ -1,8 +1,9 @@
 package stats
 
 import (
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 )
 
 // Timestamp that implements standard fmt.Stringer interface.
@@ -15,6 +16,7 @@ func (t Timestamp) String() string {
 
 type AllocationStats struct {
 	AllocationID   string `json:"allocation_id"`
+	AllocationRoot string `json:"allocation_root"`
 	TempFolderSize int64  `json:"-"`
 	Stats
 	Expiration Timestamp `json:"expiration_date" gorm:"column:expiration_date"`
@@ -24,12 +26,12 @@ type AllocationStats struct {
 }
 
 func (fs *AllocationStats) loadAllocationDiskUsageStats() error {
-	du, err := filestore.GetFileStore().GetlDiskSizeUsed(fs.AllocationID)
+	du, err := filestore.GetFileStore().GetlDiskSizeUsed(fs.AllocationRoot, fs.AllocationID)
 	if err != nil {
 		du = -1
 	}
 	fs.DiskSizeUsed = du
-	tfs, err := filestore.GetFileStore().GetTempPathSize(fs.AllocationID)
+	tfs, err := filestore.GetFileStore().GetTempPathSize(fs.AllocationRoot, fs.AllocationID)
 	if err != nil {
 		tfs = -1
 	}

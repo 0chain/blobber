@@ -404,7 +404,7 @@ func (fsh *StorageHandler) DownloadFile(
 		fileData.Hash = fileref.ThumbnailHash
 		fileData.OnCloud = fileref.OnCloud
 		fileData.ChunkSize = fileref.ChunkSize
-		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID,
+		respData, err = filestore.GetFileStore().GetFileBlock(alloc.AllocationRoot, alloc.ID,
 			fileData, blockNum, numBlocks)
 		if err != nil {
 			return nil, common.NewErrorf("download_file",
@@ -418,7 +418,7 @@ func (fsh *StorageHandler) DownloadFile(
 		fileData.OnCloud = fileref.OnCloud
 		fileData.ChunkSize = fileref.ChunkSize
 
-		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID,
+		respData, err = filestore.GetFileStore().GetFileBlock(alloc.AllocationRoot, alloc.ID,
 			fileData, blockNum, numBlocks)
 		if err != nil {
 			return nil, common.NewErrorf("download_file",
@@ -1084,7 +1084,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 	connectionObj.AddChange(allocationChange, &formData)
 
-	err = filestore.GetFileStore().CreateDir(allocationID, dirPath)
+	err = filestore.GetFileStore().CreateDir(allocationObj.AllocationRoot, allocationID, dirPath)
 	if err != nil {
 		return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}

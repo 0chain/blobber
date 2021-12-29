@@ -26,7 +26,7 @@ func UseMock() {
 }
 
 // WriteFile write chunk file into disk
-func (ms *MockStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
+func (ms *MockStore) WriteFile(allocationRoot, allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
 	fileRef := &FileOutputData{}
 
 	fileRef.ChunkUploaded = true
@@ -53,41 +53,41 @@ func (ms *MockStore) WriteFile(allocationID string, fileData *FileInputData, inf
 
 	return fileRef, nil
 }
-func (ms *MockStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error {
+func (ms *MockStore) DeleteTempFile(allocationRoot, allocationID string, fileData *FileInputData, connectionID string) error {
 	return nil
 }
 
-func (ms *MockStore) CreateDir(dirName string) error {
+func (ms *MockStore) CreateDir(allocationRoot, allocationID, dirName string) error {
 	return nil
 }
-func (ms *MockStore) DeleteDir(allocationID, dirPath, connectionID string) error {
+func (ms *MockStore) DeleteDir(allocationRoot, allocationID, dirPath, connectionID string) error {
 	return nil
 }
 
-func (ms *MockStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
+func (ms *MockStore) GetFileBlock(allocationRoot, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
 	return nil, constants.ErrNotImplemented
 }
 
-func (ms *MockStore) CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error) {
+func (ms *MockStore) CommitWrite(allocationRoot, allocationID string, fileData *FileInputData, connectionID string) (bool, error) {
 	return true, nil
 }
 
-func (ms *MockStore) GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
+func (ms *MockStore) GetFileBlockForChallenge(allocationRoot, allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
 	return nil, nil, constants.ErrNotImplemented
 }
-func (ms *MockStore) DeleteFile(allocationID string, contentHash string) error {
+func (ms *MockStore) DeleteFile(allocationRoot, allocationID string, contentHash string) error {
 	return nil
 }
 func (ms *MockStore) GetTotalDiskSizeUsed() (int64, error) {
 	return 0, constants.ErrNotImplemented
 }
-func (ms *MockStore) GetlDiskSizeUsed(allocationID string) (int64, error) {
+func (ms *MockStore) GetlDiskSizeUsed(allocationRoot, allocationID string) (int64, error) {
 	return 0, constants.ErrNotImplemented
 }
-func (ms *MockStore) GetTempPathSize(allocationID string) (int64, error) {
+func (ms *MockStore) GetTempPathSize(allocationRoot, allocationID string) (int64, error) {
 	return 0, constants.ErrNotImplemented
 }
-func (ms *MockStore) IterateObjects(allocationID string, handler FileObjectHandler) error {
+func (ms *MockStore) IterateObjects(allocationRoot, allocationID string, handler FileObjectHandler) error {
 	return nil
 }
 func (ms *MockStore) UploadToCloud(fileHash, filePath string) error {
@@ -96,6 +96,6 @@ func (ms *MockStore) UploadToCloud(fileHash, filePath string) error {
 func (ms *MockStore) DownloadFromCloud(fileHash, filePath string) error {
 	return nil
 }
-func (ms *MockStore) SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error) {
+func (ms *MockStore) SetupAllocation(allocationRoot, allocationID string, skipCreate bool) (*StoreAllocation, error) {
 	return nil, constants.ErrNotImplemented
 }

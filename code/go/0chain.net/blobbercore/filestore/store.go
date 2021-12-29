@@ -42,25 +42,25 @@ type FileObjectHandler func(contentHash string, contentSize int64)
 
 type FileStore interface {
 	// WriteFile write chunk file into disk
-	WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
-	DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
+	WriteFile(allocationRoot, allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
+	DeleteTempFile(allocationRoot, allocationID string, fileData *FileInputData, connectionID string) error
 
-	CreateDir(allocationID, dirName string) error
-	DeleteDir(allocationID, dirPath, connectionID string) error
+	CreateDir(allocationRoot, allocationID, dirName string) error
+	DeleteDir(allocationRoot, allocationID, dirPath, connectionID string) error
 
-	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
+	GetFileBlock(allocationRoot, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
 
-	CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error)
+	CommitWrite(allocationRoot, allocationID string, fileData *FileInputData, connectionID string) (bool, error)
 
-	GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error)
-	DeleteFile(allocationID string, contentHash string) error
+	GetFileBlockForChallenge(allocationRoot, allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error)
+	DeleteFile(allocationRoot, allocationID string, contentHash string) error
 	GetTotalDiskSizeUsed() (int64, error)
-	GetlDiskSizeUsed(allocationID string) (int64, error)
-	GetTempPathSize(allocationID string) (int64, error)
-	IterateObjects(allocationID string, handler FileObjectHandler) error
+	GetlDiskSizeUsed(allocationRoot, allocationID string) (int64, error)
+	GetTempPathSize(allocationRoot, allocationID string) (int64, error)
+	IterateObjects(allocationRoot, allocationID string, handler FileObjectHandler) error
 	UploadToCloud(fileHash, filePath string) error
 	DownloadFromCloud(fileHash, filePath string) error
-	SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)
+	SetupAllocation(allocationRoot, allocationID string, skipCreate bool) (*StoreAllocation, error)
 }
 
 var fileStore FileStore

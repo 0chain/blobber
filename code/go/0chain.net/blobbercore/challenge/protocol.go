@@ -159,7 +159,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 		r := rand.New(rand.NewSource(cr.RandomNumber))
 		blockoffset := r.Intn(maxNumBlocks)
-		blockData, mt, err := filestore.GetFileStore().GetFileBlockForChallenge(cr.AllocationID, inputData, blockoffset)
+		blockData, mt, err := filestore.GetFileStore().GetFileBlockForChallenge(cr.AllocationRoot, cr.AllocationID, inputData, blockoffset)
 
 		if err != nil {
 			cr.ErrorChallenge(ctx, err)

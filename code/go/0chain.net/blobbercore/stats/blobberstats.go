@@ -324,7 +324,8 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
             SUM(reference_objects.num_of_blocks) as num_of_block_writes,
             COUNT(*) as num_of_writes,
             allocations.size AS allocated_size,
-            allocations.expiration_date AS expiration_date`).
+            allocations.expiration_date AS expiration_date
+			allocations.allocation_root AS allocation_root`).
 		Joins(`INNER JOIN file_stats
             ON reference_objects.id = file_stats.ref_id`).
 		Joins(`
