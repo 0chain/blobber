@@ -172,7 +172,7 @@ func (r *Ref) SetAttributes(attr *Attributes) (err error) {
 	return
 }
 
-// Mkdir create dirs if they don't exits. do nothing if dir exists. last dir will be returned
+// Mkdir create dirs if they don't exits. do nothing if dir exists. last dir will be return without child
 func Mkdir(ctx context.Context, allocationID string, destpath string) (*Ref, error) {
 	var dirRef *Ref
 	db := datastore.GetStore().GetTransaction(ctx)
@@ -184,7 +184,6 @@ func Mkdir(ctx context.Context, allocationID string, destpath string) (*Ref, err
 		currentPath := filepath.Join("/", filepath.Join(dirs[:i+1]...))
 		ref, err := GetReference(ctx, allocationID, currentPath)
 		if err == nil {
-			ref.AddChild(dirRef)
 			dirRef = ref
 			continue
 		}
@@ -208,7 +207,6 @@ func Mkdir(ctx context.Context, allocationID string, destpath string) (*Ref, err
 			return nil, err
 		}
 
-		newRef.AddChild(dirRef)
 		dirRef = newRef
 	}
 
