@@ -13,6 +13,37 @@ on:
   pull_request:
 
 jobs:
+  linter:
+    name: Buf & Golangci lint
+    runs-on: [self-hosted,conductor-test]
+    steps:
+      - name: Setup go 1.17
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.17' # The Go version to download (if necessary) and use.
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Clone blobber
+        uses: actions/checkout@v2
+
+      - name: Buf-lint
+        if: success()
+        run: make local
+
+      - name: Golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
+          args: --timeout=2m0s
+          skip-go-installation: true
+
+
   unit-tests:
     name: Unit Tests
     runs-on: [self-hosted,conductor-test]
@@ -31,17 +62,6 @@ jobs:
 
       - name: Clone blobber
         uses: actions/checkout@v2
-
-      - name: Golangci-lint
-        uses: golangci/golangci-lint-action@v2
-        with:
-          version: latest
-          args: --timeout=2m0s
-          skip-go-installation: true
-
-      - name: Buf-lint
-        if: success()
-        run: make local
 
       - name: Run tests
         run: |
