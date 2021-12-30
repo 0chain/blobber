@@ -10,7 +10,6 @@ on:
       - master
       - staging
     tags:
-      - "*"
   pull_request:
 
 jobs:
