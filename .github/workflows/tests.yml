@@ -15,7 +15,7 @@ on:
 jobs:
   linter:
     name: Buf & Golangci lint
-    runs-on: [self-hosted,conductor-test]
+    runs-on: [self-hosted,docker-builds]
     steps:
       - name: Setup go 1.17
         uses: actions/setup-go@v2
@@ -46,7 +46,7 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    runs-on: [self-hosted,conductor-test]
+    runs-on: [self-hosted,docker-builds]
     steps:
       - name: Setup go 1.17
         uses: actions/setup-go@v2

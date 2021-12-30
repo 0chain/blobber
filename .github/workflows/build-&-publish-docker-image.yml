@@ -20,7 +20,7 @@ env:
 
 jobs:
   build_and_publish_blobber:
-    runs-on: [self-hosted, conductor-test]
+    runs-on: [self-hosted, docker-builds]
     steps:
       - name: Set docker image tag 
         run: |
@@ -72,7 +72,7 @@ jobs:
           docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA  || { sleep 10 && docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA; }
 
   build_and_publish_validator:
-    runs-on: [self-hosted, conductor-test]
+    runs-on: [self-hosted, docker-builds]
     steps:
       - name: Set docker image tag 
         run: |
