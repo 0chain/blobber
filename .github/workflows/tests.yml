@@ -43,7 +43,6 @@ jobs:
 
   integration-tests:
     name: Integration Tests
-    needs: unit-tests
     runs-on: [ubuntu-20.04]
     timeout-minutes: 40
     steps:
