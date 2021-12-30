@@ -28,7 +28,7 @@ jobs:
 
           if [[ "${{github.ref}}" == "refs/pull/*" ]]; then
             tag=${GITHUB_REF/\/merge/}
-            echo "TAG=$(echo '${tag:10})" >> $GITHUB_ENV
+            echo "TAG=$(echo ${tag:10})" >> $GITHUB_ENV
           else
             echo "TAG=$(([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF) | sed 's/\//-/g')" >> $GITHUB_ENV
           fi
