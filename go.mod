@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.3.1-0.20211119021259-7c9c46917132
+	github.com/0chain/gosdk v1.4.1-0.20211230004341-97405e30f6ea
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.1
 	github.com/go-ini/ini v1.55.0 // indirect
@@ -24,8 +24,8 @@ require (
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.19.1
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
-	google.golang.org/genproto v0.0.0-20211101144312-62acf1d99145
+	golang.org/x/crypto v0.0.0-20211209193657-4570a0811e8b
+	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1
 	google.golang.org/grpc v1.42.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.27.1
