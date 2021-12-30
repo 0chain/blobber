@@ -30,6 +30,7 @@ jobs:
         with:
           version: latest
           args: --timeout=2m0s
+          skip-go-installation: true
 
       - name: Buf-lint
         if: success()
