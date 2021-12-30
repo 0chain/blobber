@@ -24,10 +24,10 @@ jobs:
 
       - uses: actions/cache@v2
         with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
       - name: Clone blobber
         uses: actions/checkout@v2
@@ -57,13 +57,13 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: '1.17' # The Go version to download (if necessary) and use.
-          
+
       - uses: actions/cache@v2
         with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
       - name: Clone Blobber
         uses: actions/checkout@v1
