@@ -13,6 +13,7 @@ import (
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"gorm.io/driver/postgres"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -56,7 +57,7 @@ func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClien
 	var conn *grpc.ClientConn
 	var err error
 	for i := 0; i < RetryAttempts; i++ {
-		conn, err = grpc.Dial(BlobberTestAddr, grpc.WithInsecure())
+		conn, err = grpc.Dial(BlobberTestAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			log.Println(err)
 			<-time.After(time.Second * RetryTimeout)
