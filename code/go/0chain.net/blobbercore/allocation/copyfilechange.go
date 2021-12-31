@@ -45,6 +45,11 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 	}
 
+	destRef, err = reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
+	if err != nil || destRef.Type != reference.DIRECTORY {
+		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
+	}
+
 	path, _ := filepath.Split(rf.DestPath)
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
@@ -85,8 +90,9 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 		return nil, common.NewError("file_not_found", "Destination Object to copy to not found in blobber")
 	}
 
-	foundRef := dirRef.Children[childIndex]
-	rf.processCopyRefs(ctx, affectedRef, foundRef, allocationRoot)
+	dirRef.RemoveChild(childIndex)
+	rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
+	dirRef.AddChild(destRef)
 
 	_, err = rootRef.CalculateHash(ctx, true)
 
