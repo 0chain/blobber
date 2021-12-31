@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"path/filepath"
 	"reflect"
@@ -131,7 +132,7 @@ type PaginatedRef struct { //Gorm smart select fields.
 }
 
 func (Ref) TableName() string {
-	return "reference_objects"
+	return TableNameReferenceObjects
 }
 
 // GetReferenceLookup hash(allocationID + ":" + path)
@@ -323,6 +324,7 @@ func (fr *Ref) GetFileHashData() string {
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
+	fmt.Println("file hash", fr.Path, fr.Hash)
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
 	fr.PathHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	fr.PathLevel = len(GetSubDirsFromPath(fr.Path)) + 1
@@ -360,7 +362,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	}
 
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
-
+	fmt.Println("ref hash", r.Path, r.Hash)
 	r.NumBlocks = refNumBlocks
 	r.Size = size
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
