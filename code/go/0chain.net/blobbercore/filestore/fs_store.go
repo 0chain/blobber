@@ -451,7 +451,7 @@ func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error
 }
 
 func (fs *FileFSStore) CreateDir(dirName string) error {
-	return createDirs(dirName)
+	return nil // createDirs(dirName)
 }
 
 func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) error {
