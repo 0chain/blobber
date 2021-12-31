@@ -1,7 +1,7 @@
 name: "Build & Publish Docker Image"
 
 concurrency:
-  group: "${{ github.ref }}"
+  group: "publish-${{ github.ref }}"
   cancel-in-progress: true
 
 on:
@@ -9,7 +9,6 @@ on:
     branches:
       - staging
     tags: 
-      - '*'
   pull_request:
 
   workflow_dispatch:
@@ -20,14 +19,34 @@ env:
   VALIDATOR_REGISTRY: ${{ secrets.VALIDATOR_REGISTRY }}
 
 jobs:
-  build_and_publish_blobber:
+  blobber:
     runs-on: [self-hosted, build]
     steps:
-      - name: Set GITHUB_ENV
+      - name: Set docker image tag 
         run: |
-          echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-      
+          if [[ "${{github.ref}}" == refs/pull/* ]]; then
+            tag=${GITHUB_REF/\/merge/}
+            echo "TAG=$(echo pr-${tag:10})" >> $GITHUB_ENV
+          else
+            echo "TAG=$(echo ${GITHUB_REF#refs/*/} | sed 's/\//-/g')" >> $GITHUB_ENV
+          fi
+
+          echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
+          echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
+
+      - name: Setup go 1.17
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.17' # The Go version to download (if necessary) and use.
+
+      # - uses: actions/cache@v2
+      #   with:
+      #     path: ~/go/pkg/mod
+      #     key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-go-
+
+
       - name: Clone blobber
         uses: actions/checkout@v1
 
@@ -48,18 +67,37 @@ jobs:
           docker tag blobber:latest ${BLOBBER_REGISTRY}:$TAG
           docker push ${BLOBBER_REGISTRY}:$TAG || { sleep 10 && docker push ${BLOBBER_REGISTRY}:$TAG; }
 
-          SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
+          SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
           docker tag blobber:latest ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA
           docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA  || { sleep 10 && docker push ${BLOBBER_REGISTRY}:$TAG-$SHORT_SHA; }
 
-  build_and_publish_validator:
+  validator:
     runs-on: [self-hosted, build]
     steps:
-      - name: Set GITHUB_ENV
+      - name: Set docker image tag 
         run: |
-          echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-      
+          if [[ "${{github.ref}}" == refs/pull/* ]]; then
+            tag=${GITHUB_REF/\/merge/}
+            echo "TAG=$(echo pr-${tag:10})" >> $GITHUB_ENV
+          else
+            echo "TAG=$(echo ${GITHUB_REF#refs/*/} | sed 's/\//-/g')" >> $GITHUB_ENV
+          fi
+
+          echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
+          echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
+
+      - name: Setup go 1.17
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.17' # The Go version to download (if necessary) and use.
+
+      # - uses: actions/cache@v2
+      #   with:
+      #     path: ~/go/pkg/mod
+      #     key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-go-
+
       - name: Clone blobber
         uses: actions/checkout@v1
 
@@ -80,13 +118,13 @@ jobs:
           docker tag validator:latest ${VALIDATOR_REGISTRY}:$TAG
           docker push ${VALIDATOR_REGISTRY}:$TAG || { sleep 10 && docker push ${VALIDATOR_REGISTRY}:$TAG; }
 
-          SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
+          SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
           docker tag validator:latest ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA
           docker push ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA || { sleep 10 && docker push ${VALIDATOR_REGISTRY}:$TAG-$SHORT_SHA; }
 
   system-tests:
     if: github.event_name != 'workflow_dispatch'
-    needs: [build_and_publish_blobber, build_and_publish_validator]
+    needs: [blobber, validator]
     runs-on: [ tests-suite ]
     steps:
       - name: "Get current PR"
@@ -95,7 +133,7 @@ jobs:
         with:
           github-token: ${{ github.token }}
 
-      - name: "Set PR Status Pending"
+      - name: "Set PR status as pending"
         uses: niteoweb/pull_request_status_action@v1.0.0
         if: steps.findPr.outputs.number
         with:
@@ -110,9 +148,15 @@ jobs:
 
       - name: "Setup"
         run: |
-          echo "SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)" >> $GITHUB_ENV
-          echo "BRANCH=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
-          echo "TAG=$(echo ${GITHUB_REF##*/} | sed 's/\//-/g' )" >> $GITHUB_ENV
+          if [[ "${{github.ref}}" == refs/pull/* ]]; then
+            tag=${GITHUB_REF/\/merge/}
+            echo "TAG=$(echo pr-${tag:10})" >> $GITHUB_ENV
+          else
+            echo "TAG=$(echo ${GITHUB_REF#refs/*/} | sed 's/\//-/g')" >> $GITHUB_ENV
+          fi
+
+          echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
+          echo "SHORT_SHA=$(([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}') | head -c 8)" >> $GITHUB_ENV
           echo "NETWORK_URL=$(echo dev-${RUNNER_NAME:(-1)}.devnet-0chain.net)" >> $GITHUB_ENV
           echo "RUNNER_NUMBER=${RUNNER_NAME:(-1)}" >> $GITHUB_ENV
 
@@ -147,25 +191,12 @@ jobs:
           run_flaky_tests: false
           retry_failures: true
 
-      - name: "Set PR Status Success"
-        if: ${{ success() && steps.findPr.outputs.number }}
+      - name: "Set PR status as ${{ job.status }}"
+        if: ${{ (success() || failure()) && steps.findPr.outputs.number }}
         uses: niteoweb/pull_request_status_action@v1.0.0
         with:
           pr_number: ${{ steps.findPr.outputs.pr }}
-          description: "System tests with default config completed successfully"
-          state: ${{ job.status }}
-          repository: ${{ github.repository }}
-          context: "0Chain System Tests"
-          target_url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: "Set PR Status Failed"
-        if: ${{ failure() && steps.findPr.outputs.number }}
-        uses: niteoweb/pull_request_status_action@v1.0.0
-        with:
-          pr_number: ${{ steps.findPr.outputs.pr }}
-          description: "System tests with default config failed. Try running manually with more specific config"
+          description: "System tests with default config ${{ job.status }}"
           state: ${{ job.status }}
           repository: ${{ github.repository }}
           context: "0Chain System Tests"

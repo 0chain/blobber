@@ -1,23 +1,64 @@
 name: Tests
 
+concurrency:
+  group: "tests-${{ github.ref }}"
+  cancel-in-progress: true
+
 on:
   push: 
     branches:
       - master
       - staging
     tags:
-      - "*"
   pull_request:
 
 jobs:
-  unit_tests:
-    name: "Unit Tests"
-    runs-on: [self-hosted, load-test]
+  linter:
+    name: Buf & Golangci lint
+    runs-on: [self-hosted,docker-builds]
     steps:
       - name: Setup go 1.17
         uses: actions/setup-go@v2
         with:
           go-version: '1.17' # The Go version to download (if necessary) and use.
+
+      # - uses: actions/cache@v2
+      #   with:
+      #     path: ~/go/pkg/mod
+      #     key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-go-
+
+      - name: Clone blobber
+        uses: actions/checkout@v2
+
+      - name: Buf-lint
+        if: success()
+        run: make local
+
+      - name: Golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
+          args: --timeout=2m0s
+          skip-go-installation: true
+
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: [self-hosted,docker-builds]
+    steps:
+      - name: Setup go 1.17
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.17' # The Go version to download (if necessary) and use.
+
+      # - uses: actions/cache@v2
+      #   with:
+      #     path: ~/go/pkg/mod
+      #     key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-go-
 
       - name: Clone blobber
         uses: actions/checkout@v2
@@ -27,17 +68,22 @@ jobs:
           cd $GITHUB_WORKSPACE/code/go/0chain.net/ 
           CGO_ENABLED=1 go test -tags bn256 -race -coverprofile=coverage.txt -covermode=atomic ./...
 
-  integration_test:
-    name: "Integration Tests"
-    needs: unit_tests
+  integration-tests:
+    name: Integration Tests
     runs-on: [ubuntu-20.04]
     timeout-minutes: 40
     steps:
-  
       - name: Setup go 1.17
         uses: actions/setup-go@v2
         with:
           go-version: '1.17' # The Go version to download (if necessary) and use.
+
+      # - uses: actions/cache@v2
+      #   with:
+      #     path: ~/go/pkg/mod
+      #     key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-go-
 
       - name: Clone Blobber
         uses: actions/checkout@v1
@@ -65,36 +111,3 @@ jobs:
           go17=$(which go)
           root=$(pwd)
           sudo CGO_ENABLED=1 root=$root integration=1 $go17 test -tags bn256  ./...
-
-  golangci:
-    name: lint
-    runs-on: [self-hosted, tests-suite]
-    steps:
-      - name: Setup go 1.17
-        uses: actions/setup-go@v2
-        with:
-          go-version: '1.17' # The Go version to download (if necessary) and use.
-      - uses: actions/checkout@v2
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
-        with:
-          version: latest
-          args: --timeout=2m0s
-
-  buf-build:
-    runs-on: [self-hosted, tests-suite]
-    steps:
-      - name: Check out code
-        uses: actions/checkout@master
-        with:
-          fetch-depth: 1
-
-      - name: setup golang
-        if: success()
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.17.x
-      - name: run buf commands
-        if: success()
-        run: make local
