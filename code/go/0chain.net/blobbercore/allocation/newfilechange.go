@@ -94,16 +94,9 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 		}
 	}
 
-	var newDir = reference.NewDirectoryRef()
-	newDir.ActualFileSize = 0
-	newDir.AllocationID = dirRef.AllocationID
-	newDir.MerkleRoot = nf.MerkleRoot
-	newDir.Name = dirName
-	newDir.Size = 0
-	newDir.NumBlocks = 0
-	newDir.ParentPath = dirRef.Path
-	newDir.WriteMarker = allocationRoot
-	dirRef.AddChild(newDir)
+	// adding nil to make childLoaded as true so we can have hash calculated in CalculateHas.
+	// without has commit fails
+	dirRef.AddChild(nil)
 
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
