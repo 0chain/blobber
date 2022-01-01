@@ -490,6 +490,9 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 			Logger.Error("Failed to get collaborators from refID", zap.Error(err), zap.Any("ref_id", dirref.ID))
 			return nil, err
 		}
+		if result.Meta["collaborators"] == nil {
+			result.Meta["collaborators"] = []reference.Collaborator{}
+		}
 		result.Meta["collaborators"] = append(result.Meta["collaborators"].([]reference.Collaborator), collaborators...)
 
 	}
