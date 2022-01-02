@@ -480,6 +480,21 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		if clientID != allocationObj.OwnerID {
 			delete(result.Entities[idx], "path")
 		}
+
+		if child.Type == reference.DIRECTORY || clientID != allocationObj.OwnerID {
+			continue
+		}
+		// getting collaborators for sub dirs
+		collaborators, err := reference.GetCollaborators(ctx, child.ID)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			Logger.Error("Failed to get collaborators from refID", zap.Error(err), zap.Any("ref_id", dirref.ID))
+			return nil, err
+		}
+		if result.Meta["collaborators"] == nil {
+			result.Meta["collaborators"] = []reference.Collaborator{}
+		}
+		result.Meta["collaborators"] = append(result.Meta["collaborators"].([]reference.Collaborator), collaborators...)
+
 	}
 
 	return &result, nil
