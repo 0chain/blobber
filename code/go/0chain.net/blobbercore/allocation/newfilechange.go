@@ -109,7 +109,10 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 		return nil, err
 	}
 
-	stats.NewDirCreated(ctx, dirRef.ID)
+	if err := stats.NewDirCreated(ctx, dirRef.ID); err != nil {
+		return nil, err
+	}
+
 	return rootRef, nil
 }
 
