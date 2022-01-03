@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"gorm.io/datatypes"
@@ -95,8 +96,30 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	dirRef.AddChild(destRef)
 
 	_, err = rootRef.CalculateHash(ctx, true)
+	if err != nil {
+		return nil, err
+	}
+
+	err = rf.updateWriteMarker(ctx, destRef, affectedRef)
 
 	return rootRef, err
+}
+
+func (rf *CopyFileChange) updateWriteMarker(ctx context.Context, destRef, affectedRef *reference.Ref) error {
+	ref := destRef
+	if affectedRef != nil {
+		for _, r := range destRef.Children {
+			if affectedRef.Name == r.Name {
+				ref = r
+			}
+		}
+	}
+
+	if ref.Type == reference.FILE {
+		return stats.NewDirCreated(ctx, ref.ID)
+	}
+
+	return rf.updateWriteMarker(ctx, ref, nil)
 }
 
 func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef *reference.Ref, destRef *reference.Ref, allocationRoot string) {
