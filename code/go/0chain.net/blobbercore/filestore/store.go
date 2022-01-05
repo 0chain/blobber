@@ -45,7 +45,6 @@ type FileStore interface {
 	WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
 	DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
 
-	CreateDir(dirName string) error
 	DeleteDir(allocationID, dirPath, connectionID string) error
 
 	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)

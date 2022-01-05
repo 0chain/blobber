@@ -450,10 +450,6 @@ func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error
 	return os.Remove(fileObjectPath)
 }
 
-func (fs *FileFSStore) CreateDir(dirName string) error {
-	return nil // createDirs(dirName)
-}
-
 func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) error {
 	return nil
 }
