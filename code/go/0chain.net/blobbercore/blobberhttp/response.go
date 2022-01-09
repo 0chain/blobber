@@ -40,6 +40,7 @@ type RefResult struct {
 	OffsetDate string                    `json:"offset_date,omitempty"` //used for pagination; idex for updated_at is created in database
 	Refs       *[]reference.PaginatedRef `json:"refs"`
 	LatestWM   *writemarker.WriteMarker  `json:"latest_write_marker"`
+	LatestRM   *readmarker.ReadMarker    `json:"latest_read_marker,omitempty"`
 }
 
 type ObjectPathResult struct {
