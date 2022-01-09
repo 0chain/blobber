@@ -889,17 +889,11 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		}
 	}
 
-	var latestRM *readmarker.ReadMarker
-	if latestRME, err := readmarker.GetLatestReadMarkerEntity(ctx, clientID); err == nil && latestRME != nil {
-		latestRM = latestRME.LatestRM
-	}
-
 	var refResult blobberhttp.RefResult
 	refResult.Refs = refs
 	refResult.TotalPages = totalPages
 	refResult.OffsetPath = newOffsetPath
 	refResult.OffsetDate = newOffsetDate
-	refResult.LatestRM = latestRM
 	if latestWM != nil {
 		refResult.LatestWM = &latestWM.WM
 	}
