@@ -742,17 +742,28 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if len(clientID) == 0 {
+		return nil, common.NewError("invalid_operation", "Client id is required")
+	}
+
+	publicKey, _ := ctx.Value(constants.ContextKeyClientKey).(string)
+	if publicKey == "" {
+		if clientID == allocationObj.OwnerID {
+			publicKey = allocationObj.OwnerPublicKey
+		} else {
+			return nil, common.NewError("empty_public_key", "public key is required")
+		}
+	}
+
 	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
 	allocationID := allocationObj.ID
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
 
 	path := r.FormValue("path")
 	authTokenStr := r.FormValue("auth_token")
@@ -789,6 +800,14 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 			return nil, common.NewError("json_unmarshall_error", fmt.Sprintf("error parsing authticket: %v", authTokenStr))
 		}
 
+		shareInfo, err := reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
+		if err != nil {
+			return nil, fsh.convertGormError(err)
+		}
+		if shareInfo.Revoked {
+			return nil, common.NewError("share_revoked", "client no longer has permission to requested resource")
+		}
+
 		if err := authToken.Verify(allocationObj, clientID); err != nil {
 			return nil, err
 		}
@@ -805,7 +824,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 			}
 			matched, _ := regexp.MatchString(fmt.Sprintf("^%v", authTokenRef.Path), pathRef.Path)
 			if !matched {
-				return nil, common.NewError("invalid_authticket", "auth ticked is not valid for requested resource")
+				return nil, common.NewError("invalid_authticket", "auth ticket is not valid for requested resource")
 			}
 		}
 	default:
