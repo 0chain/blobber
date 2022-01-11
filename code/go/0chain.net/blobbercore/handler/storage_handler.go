@@ -769,7 +769,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	authTokenStr := r.FormValue("auth_token")
 	pathHash := r.FormValue("path_hash")
 
-	if !(path == "" || authTokenStr == "" || pathHash == "") {
+	if path == "" && authTokenStr == "" && pathHash == "" {
 		return nil, common.NewError("invalid_parameters", "empty path and authtoken")
 	}
 
