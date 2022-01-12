@@ -39,6 +39,12 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	// EncryptionOverHead takes blockSize increment when data is incremented.
+	// messageCheckSum(128) + overallChecksum(128) + ","(1) + data-size-increment(16)
+	EncryptionOverHead = 273
+)
+
 func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	numBlocks, pendNumBlocks int64, payerID string) (err error) {
 
@@ -464,9 +470,8 @@ func (fsh *StorageHandler) DownloadFile(
 			encMsg := &zencryption.EncryptedMessage{}
 			chunkData := respData[i:int64(math.Min(float64(i+int(fileref.ChunkSize)), float64(totalSize)))]
 
-			encMsg.EncryptedData = chunkData[(2 * 1024):]
+			headerBytes := chunkData[:EncryptionOverHead]
 
-			headerBytes := chunkData[:(2 * 1024)]
 			headerBytes = bytes.Trim(headerBytes, "\x00")
 			headerString := string(headerBytes)
 
@@ -476,6 +481,7 @@ func (fsh *StorageHandler) DownloadFile(
 				return nil, errors.New("Block has invalid header for request " + r.URL.String())
 			}
 
+			encMsg.EncryptedData = chunkData[EncryptionOverHead:]
 			encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
 			encMsg.EncryptedKey = encscheme.GetEncryptedKey()
 
