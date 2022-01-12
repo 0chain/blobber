@@ -15,7 +15,6 @@ require (
 	github.com/herumi/bls-go-binary v1.0.1-0.20210830012634-a8e769d3b872
 	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/jackc/pgx/v4 v4.14.1 // indirect
-	github.com/jinzhu/now v1.1.4 // indirect
 	github.com/koding/cache v0.0.0-20161222233015-e8a81b0b3f20
 	github.com/minio/minio-go v6.0.14+incompatible
 	github.com/mitchellh/mapstructure v1.4.3
@@ -38,7 +37,7 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gorm.io/datatypes v0.0.0-20200806042100-bc394008dd0d
 	gorm.io/driver/postgres v1.2.3
-	gorm.io/gorm v1.22.4
+	gorm.io/gorm v1.22.5
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
