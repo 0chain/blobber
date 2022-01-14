@@ -309,11 +309,6 @@ func (fsh *StorageHandler) DownloadFile(
 			payerID = clientID
 		}
 
-		if json.Unmarshal([]byte(authTokenString), &readmarker.AuthTicket{}) != nil {
-			return nil, common.NewErrorf("download_file",
-				"error parsing the auth ticket for download: %v", err)
-		}
-
 		// we only check content hash if its authticket is referring to a file
 		if authToken.RefType == zfileref.FILE && authToken.ActualFileHash != fileref.ActualFileHash {
 			return nil, errors.New("content hash does not match the requested file content hash")
