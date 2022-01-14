@@ -25,10 +25,15 @@ func startHttpServer() {
 		mode = "test net"
 	}
 
-	logging.Logger.Info("Starting blobber", zap.Int("available_cpus", runtime.NumCPU()), zap.Int("port", httpPort), zap.String("chain_id", config.GetServerChainID()), zap.String("mode", mode))
+	portToUse := httpsPort
+	if portToUse == 0 {
+		portToUse = httpPort
+	}
+
+	logging.Logger.Info("Starting blobber", zap.Int("available_cpus", runtime.NumCPU()), zap.Int("port", portToUse), zap.String("chain_id", config.GetServerChainID()), zap.String("mode", mode))
 
 	//address := publicIP + ":" + portString
-	address := ":" + strconv.Itoa(httpPort)
+	address := ":" + strconv.Itoa(portToUse)
 	var server *http.Server
 
 	common.ConfigRateLimits()
@@ -59,7 +64,11 @@ func startHttpServer() {
 	logging.Logger.Info("Ready to listen to the requests")
 	fmt.Println("[11/11] start http server	[OK]")
 
-	log.Fatal(server.ListenAndServe())
+	if portToUse == httpsPort {
+		log.Fatal(server.ListenAndServeTLS(httpsCertFile, httpsKeyFile))
+	} else {
+		log.Fatal(server.ListenAndServe())
+	}
 }
 
 func initHandlers(r *mux.Router) {

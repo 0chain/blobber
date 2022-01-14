@@ -18,6 +18,9 @@ var (
 	configDir         string
 	grpcPort          int
 	isIntegrationTest bool
+	httpsPort         int
+	httpsKeyFile      string
+	httpsCertFile     string
 )
 
 func init() {
@@ -29,6 +32,9 @@ func init() {
 	flag.StringVar(&metadataDB, "db_dir", "", "db_dir")
 	flag.StringVar(&logDir, "log_dir", "", "log_dir")
 	flag.IntVar(&httpPort, "port", 0, "port")
+	flag.IntVar(&httpsPort, "https-port", 0, "https-port")
+	flag.StringVar(&httpsCertFile, "https-cert-file", "", "https-cert-file")
+	flag.StringVar(&httpsKeyFile, "https-key-file", "", "https-key-file")
 	flag.StringVar(&hostname, "hostname", "", "hostname")
 	flag.StringVar(&configDir, "config_dir", "./config", "config_dir")
 
@@ -51,10 +57,14 @@ func parseFlags() {
 		panic("Please specify --hostname which is the public hostname")
 	}
 
-	if httpPort <= 0 {
-		panic("Please specify --port which is the port on which requests are accepted")
+	if httpPort <= 0 && httpsPort <= 0 {
+		panic("Please specify --port or --https-port which is the port on which requests are accepted")
 	}
 	isIntegrationTest = os.Getenv("integration") == "1"
+
+	if httpsPort > 0 && (httpsCertFile == "" || httpsKeyFile == "") {
+		panic("Please specify --https-cert-file and --https-key-file if you are using --https-port")
+	}
 
 	fmt.Print("		[OK]\n")
 }
