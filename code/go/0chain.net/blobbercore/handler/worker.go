@@ -86,19 +86,13 @@ func cleanupTempFiles(ctx context.Context) {
 }
 
 func startCleanupTempFiles(ctx context.Context) {
-	var iterInprogress = false
 	ticker := time.NewTicker(time.Duration(config.Configuration.OpenConnectionWorkerFreq) * time.Second)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			//Logger.Info("Trying to redeem writemarkers.", zap.Any("iterInprogress", iterInprogress), zap.Any("numOfWorkers", numOfWorkers))
-			if !iterInprogress {
-				iterInprogress = true //nolint:ineffassign // probably has something to do with goroutines
-				cleanupTempFiles(ctx)
-				iterInprogress = false
-			}
+			cleanupTempFiles(ctx)
 		}
 	}
 }
