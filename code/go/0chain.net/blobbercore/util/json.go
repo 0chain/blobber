@@ -2,12 +2,13 @@ package util
 
 import (
 	"fmt"
-	"github.com/0chain/gosdk/zboxcore/fileref"
 	"reflect"
 	"strings"
+
+	"github.com/0chain/gosdk/zboxcore/fileref"
 )
 
-// Validate unmarshalled data with tag-based rules
+// UnmarshalValidation Validate unmarshalled data with tag-based rules
 // Example:
 // struct {
 //	Name string `json:"name" validation:"required"`
@@ -20,7 +21,7 @@ func UnmarshalValidation(v interface{}) error {
 		if strings.Contains(validation, "required") && fields.Field(i).IsZero() {
 			// todo: better try this first:
 			// jsonFieldName := fields.Type().Field(i).Tag.Get("json")
-			return fmt.Errorf("The '%s' field is required", fields.Type().Field(i).Name)
+			return fmt.Errorf("the '%s' field is required", fields.Type().Field(i).Name)
 		}
 	}
 
@@ -32,7 +33,7 @@ func GetParentPathHashes(allocationTx string, filePath string) []string {
 	pathHashes := []string{}
 
 	for i := 0; i < len(splitted); i++ {
-		path := strings.Join(splitted[:len(splitted) - i], "/")
+		path := strings.Join(splitted[:len(splitted)-i], "/")
 		if path == "" {
 			path = "/"
 		}

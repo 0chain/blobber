@@ -83,7 +83,7 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context,
 		return // not committed or a deleting marker
 	}
 
-	// work on pre-redeemd tokens and write-pools balances tracking
+	// work on pre-redeemed tokens and write-pools balances tracking
 
 	var pend *allocation.Pending
 	pend, err = allocation.GetPending(db, wm.WM.ClientID, wm.WM.AllocationID,

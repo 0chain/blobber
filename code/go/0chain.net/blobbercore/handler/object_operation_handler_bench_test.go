@@ -56,7 +56,7 @@ func BenchmarkUploadFileWithDisk(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.Name, func(b *testing.B) {
 
-			fileName := strings.Replace(bm.Name, " ", "_", -1) + ".txt"
+			fileName := strings.ReplaceAll(bm.Name, " ", "_") + ".txt"
 			chunkBytes := mock.GenerateRandomBytes(bm.ChunkSize)
 			fileMeta := &sdk.FileMeta{
 				Path:       "/tmp/" + fileName,
@@ -147,7 +147,7 @@ func BenchmarkUploadFileWithNoDisk(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.Name, func(b *testing.B) {
 
-			fileName := strings.Replace(bm.Name, " ", "_", -1) + ".txt"
+			fileName := strings.ReplaceAll(bm.Name, " ", "_") + ".txt"
 			chunkBytes := mock.GenerateRandomBytes(bm.ChunkSize)
 			fileMeta := &sdk.FileMeta{
 				Path:       "/tmp/" + fileName,

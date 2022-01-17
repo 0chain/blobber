@@ -72,7 +72,7 @@ func GeneratePagination(page, limit, offset, totalItems int) *Pagination {
 
 	p.TotalPages = totalItems / limit
 	if totalItems%limit > 0 {
-		p.TotalPages = p.TotalPages + 1
+		p.TotalPages++
 	}
 
 	if p.TotalPages > p.CurrentPage {

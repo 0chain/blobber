@@ -61,12 +61,10 @@ func LoadObjectTree(ctx context.Context, allocationID, path string) (*Ref, error
 	}
 
 	return nil, common.NewError("invalid_ref_tree", "/ is missing")
-
 }
 
 // DeleteObject delete object from tree, and return tree root and deleted content hash list
 func DeleteObject(ctx context.Context, allocationID string, path string) (*Ref, map[string]bool, error) {
-
 	rootRef, err := LoadObjectTree(ctx, allocationID, "/")
 	if err != nil {
 		return nil, nil, err

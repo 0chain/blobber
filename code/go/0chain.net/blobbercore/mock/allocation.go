@@ -1,7 +1,7 @@
 package mock
 
 import (
-	"github.com/selvatico/go-mocket"
+	gomocket "github.com/selvatico/go-mocket"
 )
 
 func MockGetAllocationByID(allocationID string, allocation map[string]interface{}) {

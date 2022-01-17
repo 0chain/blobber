@@ -7,7 +7,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/config"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	zLogger "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/herumi/bls-go-binary/bls"
@@ -66,7 +66,7 @@ func MiraclToHerumiPK(pk string) string {
 	var p bls.PublicKey
 	err := p.SetHexString("1 " + n2 + " " + n1 + " " + n4 + " " + n3)
 	if err != nil {
-		Logger.Error("MiraclToHerumiPK: " + err.Error())
+		zLogger.Logger.Error("MiraclToHerumiPK: " + err.Error())
 	}
 	return p.SerializeToHexStr()
 }
@@ -95,7 +95,7 @@ func MiraclToHerumiSig(sig string) string {
 	var sign bls.Sign
 	err := sign.SetHexString("1 " + n1 + " " + n2)
 	if err != nil {
-		Logger.Error("MiraclToHerumiSig: " + err.Error())
+		zLogger.Logger.Error("MiraclToHerumiSig: " + err.Error())
 	}
 	return sign.SerializeToHexStr()
 }

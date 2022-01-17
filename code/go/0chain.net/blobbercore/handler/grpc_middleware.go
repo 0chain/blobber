@@ -49,7 +49,7 @@ func unaryDatabaseTransactionInjector() grpc.UnaryServerInterceptor {
 
 func unaryTimeoutInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		deadline := time.Now().Add(time.Duration(TIMEOUT_SECONDS * time.Second))
+		deadline := time.Now().Add(TIMEOUT_SECONDS * time.Second)
 		ctx, canceler := context.WithDeadline(ctx, deadline)
 		defer canceler()
 

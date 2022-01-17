@@ -61,14 +61,11 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationObj *allocation.A
 			Where("allocation_root = ? AND allocation_root = latest_redeemed_write_marker", allocationObj.AllocationRoot).
 			Update("is_redeem_required", false)
 	}
-	//Logger.Info("Returning from redeem", zap.Any("wm", latestWmEntity), zap.Any("allocation", allocationID))
 	return nil
 }
 
 func startRedeemWriteMarkers(ctx context.Context) {
-	var ticker = time.NewTicker(
-		time.Duration(config.Configuration.WMRedeemFreq) * time.Second,
-	)
+	ticker := time.NewTicker(time.Duration(config.Configuration.WMRedeemFreq) * time.Second)
 	for {
 		select {
 		case <-ctx.Done():

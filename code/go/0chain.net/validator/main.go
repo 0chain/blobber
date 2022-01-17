@@ -30,8 +30,10 @@ import (
 	"go.uber.org/zap"
 )
 
-var startTime time.Time
-var serverChain *chain.Chain
+var (
+	startTime   time.Time
+	serverChain *chain.Chain
+)
 
 func initHandlers(r *mux.Router) {
 	r.HandleFunc("/", HomePageHandler)
@@ -90,7 +92,7 @@ func main() {
 	reader.Close()
 	node.Self.SetKeys(publicKey, privateKey)
 
-	port, err := strconv.Atoi(*portString) //fmt.Sprintf(":%v", port) // node.Self.Port
+	port, err := strconv.Atoi(*portString) // node.Self.Port
 	if err != nil {
 		Logger.Panic("Port specified is not Int " + *portString)
 		return

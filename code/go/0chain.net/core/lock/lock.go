@@ -5,10 +5,8 @@ import (
 	"time"
 )
 
-var (
-	// MutexCleanInterval start to clean unsed mutex at specified interval
-	MutexCleanInterval = 10 * time.Minute
-)
+// MutexCleanInterval start to clean unused mutex at specified interval
+var MutexCleanInterval = 10 * time.Minute
 
 var (
 	lockPool  = make(map[string]*Mutex)

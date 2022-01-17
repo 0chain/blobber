@@ -8,7 +8,6 @@ import (
 )
 
 func TestLock(t *testing.T) {
-
 	max := 100
 
 	for i := 0; i < max; i++ {
@@ -39,5 +38,4 @@ func TestLock(t *testing.T) {
 		_, ok := lockPool["testlock:"+strconv.Itoa(i)]
 		require.Equal(t, false, ok)
 	}
-
 }

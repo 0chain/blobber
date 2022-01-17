@@ -243,7 +243,7 @@ func TestObjectPath_Parse(t *testing.T) {
 				"hash": "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
 				"type": "d",
 				"list": []map[string]interface{}{
-					map[string]interface{}{
+					{
 						"path": "file.txt",
 						"hash": "b25a7f67d4206d77fca08a48a06eba893c59077ea61435f71b31d098ea2f7991",
 						"type": "f",

@@ -95,8 +95,8 @@ func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileDa
 	if blockNum > maxBlockNum || blockNum < 1 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number")
 	}
-	buffer := make([]byte, int64(fileData.ChunkSize)*numBlocks)
-	n, err := file.ReadAt(buffer, ((blockNum - 1) * int64(fileData.ChunkSize)))
+	buffer := make([]byte, fileData.ChunkSize*numBlocks)
+	n, err := file.ReadAt(buffer, ((blockNum - 1) * fileData.ChunkSize))
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
@@ -547,7 +547,7 @@ func (fs *FileFSStore) WriteChunk(allocationID string, fileData *FileInputData,
 
 	fileRef := &FileOutputData{}
 
-	// the chunk has been rewitten. but it is lost when network is broken, and it is not save in db
+	// the chunk has been rewritten. but it is lost when network is broken, and it is not save in db
 	if dest.size > fileData.UploadOffset {
 		fileRef.ChunkUploaded = true
 	}

@@ -9,14 +9,12 @@ import (
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
 
-var (
-	Logger *zap.Logger
-)
+var Logger *zap.Logger
 
 func InitLogging(mode string, logDir string, logFile string) {
-	var logName = logDir + "/" + logFile
+	logName := logDir + "/" + logFile
 
-	var logWriter = getWriteSyncer(logName)
+	logWriter := getWriteSyncer(logName)
 
 	var cfg zap.Config
 	if mode != "development" {
@@ -64,11 +62,11 @@ func SetOutput(ws zapcore.WriteSyncer, conf zap.Config) zap.Option {
 }
 
 func getWriteSyncer(logName string) zapcore.WriteSyncer {
-	var ioWriter = &lumberjack.Logger{
+	ioWriter := &lumberjack.Logger{
 		Filename:   logName,
 		MaxSize:    10, // MB
 		MaxBackups: 3,  // number of backups
-		MaxAge:     28, //days
+		MaxAge:     28, // days
 		LocalTime:  true,
 		Compress:   false, // disabled by default
 	}

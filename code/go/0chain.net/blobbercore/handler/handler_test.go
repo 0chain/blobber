@@ -51,7 +51,7 @@ func (MockFileBlockGetter) GetFileBlock(
 	fileData *filestore.FileInputData,
 	blockNum int64,
 	numBlocks int64) ([]byte, error) {
-	return []byte(mockFileBlock), nil
+	return mockFileBlock, nil
 }
 
 func setMockFileBlock(data []byte) {
@@ -1827,7 +1827,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					t.Fatal(err)
 				}
 				header := make([]byte, 2*1024)
-				copy(header[:], encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},
@@ -1966,7 +1966,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					t.Fatal(err)
 				}
 				header := make([]byte, 2*1024)
-				copy(header[:], encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},
@@ -2113,7 +2113,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					t.Fatal(err)
 				}
 				header := make([]byte, 2*1024)
-				copy(header[:], encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},
@@ -2260,7 +2260,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					t.Fatal(err)
 				}
 				header := make([]byte, 2*1024)
-				copy(header[:], encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},

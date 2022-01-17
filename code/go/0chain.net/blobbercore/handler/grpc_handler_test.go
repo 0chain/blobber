@@ -135,7 +135,7 @@ func Test_GetAllocation(t *testing.T) {
 			wantAlloc:    convert.AllocationToGRPCAllocation(alloc),
 		},
 		{
-			name: "Commiting_Transaction_ERR",
+			name: "Committing_Transaction_ERR",
 			mockSetup: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 

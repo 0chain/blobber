@@ -35,7 +35,6 @@ func (e *Entity) SetState(state *State) {
 
 // NewEntity creates RPC client for integration tests.
 func NewEntity(id string) (e *Entity) {
-
 	var (
 		client, err = newClient(viper.GetString("integration_tests.address"))
 		interval    = viper.GetDuration("integration_tests.lock_interval")
@@ -80,7 +79,7 @@ func (e *Entity) pollState() {
 			return
 		default:
 		}
-		var state, err = e.client.state(e.id)
+		state, err := e.client.state(e.id)
 		if err != nil {
 			log.Printf("polling State: %v", err)
 			continue
@@ -96,7 +95,7 @@ func (e *Entity) Shutdown() {
 }
 
 func (e *Entity) isMonitor() bool { //nolint:unused,deadcode // might be used later?
-	var state = e.State()
+	state := e.State()
 	return state != nil && state.IsMonitor
 }
 

@@ -207,7 +207,7 @@ func (op *ObjectPath) VerifyBlockNum(challengeRand int64) error {
 	r := rand.New(rand.NewSource(challengeRand))
 	//rand.Seed(challengeRand)
 	blockNum := r.Int63n(op.RootObject.NumBlocks)
-	blockNum = blockNum + 1
+	blockNum++
 
 	if op.RootObject.NumBlocks < blockNum {
 		return common.NewError("invalid_block_num", fmt.Sprintf("Invalid block number %d/%d", op.RootObject.NumBlocks, blockNum))
@@ -224,7 +224,7 @@ func (op *ObjectPath) VerifyBlockNum(challengeRand int64) error {
 		}
 		for _, child := range curRef.(*DirMetaData).Children {
 			if child.GetNumBlocks() < remainingBlocks {
-				remainingBlocks = remainingBlocks - child.GetNumBlocks()
+				remainingBlocks -= child.GetNumBlocks()
 				continue
 			}
 			if child.GetType() == FILE {

@@ -153,7 +153,7 @@ func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize int64, limi
 					moveFileToCloud(ctx, fileRef)
 				}
 			}
-			offset = offset + limit
+			offset += limit
 		}
 		db.Commit()
 		rctx.Done()

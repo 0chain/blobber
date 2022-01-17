@@ -60,7 +60,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 		for idx, child := range curRef.Children {
 
 			if child.NumBlocks < remainingBlocks {
-				remainingBlocks = remainingBlocks - child.NumBlocks
+				remainingBlocks -= child.NumBlocks
 				continue
 			}
 			if child.Type == FILE {

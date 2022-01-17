@@ -15,8 +15,7 @@ func Host(address string) (addr string, err error) {
 	if host != "host.docker.internal" {
 		return address, nil // return the passed
 	}
-	var cmd = exec.Command("sh", "-c",
-		"ip -4 route list match 0/0 | cut -d' ' -f3")
+	cmd := exec.Command("sh", "-c", "ip -4 route list match 0/0 | cut -d' ' -f3")
 	var stdout []byte
 	if stdout, err = cmd.Output(); err != nil {
 		return
