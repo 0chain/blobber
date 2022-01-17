@@ -96,7 +96,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 
 	rootRef, err := reference.GetReference(ctx, cr.AllocationID, "/")
-	blockNum := int64(0)
+	var blockNum int64
 	if rootRef.NumBlocks > 0 {
 		r := rand.New(rand.NewSource(cr.RandomNumber))
 		blockNum = r.Int63n(rootRef.NumBlocks)
