@@ -178,8 +178,7 @@ type PoolStat struct {
 	ExpireAt common.Timestamp `json:"expire_at"`
 }
 
-func RequestReadPools(clientID, allocationID string) (
-	rps []*ReadPool, err error) {
+func RequestReadPools(clientID, allocationID string) (rps []*ReadPool, err error) {
 
 	Logger.Info("request read pools")
 
@@ -187,16 +186,13 @@ func RequestReadPools(clientID, allocationID string) (
 		blobberID = node.Self.ID
 		resp      []byte
 	)
+	params := map[string]string{
+		"client_id":     clientID,
+		"allocation_id": allocationID,
+		"blobber_id":    blobberID,
+	}
 
-	resp, err = transaction.MakeSCRestAPICall(
-		transaction.STORAGE_CONTRACT_ADDRESS,
-		"/getReadPoolAllocBlobberStat",
-		map[string]string{
-			"client_id":     clientID,
-			"allocation_id": allocationID,
-			"blobber_id":    blobberID,
-		},
-		chain.GetServerChain())
+	resp, err = transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getReadPoolAllocBlobberStat", params, chain.GetServerChain())
 	if err != nil {
 		return nil, fmt.Errorf("requesting read pools stat: %v", err)
 	}

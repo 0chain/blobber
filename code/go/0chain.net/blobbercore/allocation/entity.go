@@ -254,8 +254,7 @@ func (*WritePool) TableName() string {
 	return "write_pools"
 }
 
-func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string,
-	rps []*ReadPool) (err error) {
+func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string, rps []*ReadPool) (err error) {
 
 	// cleanup and batch insert (remove old pools, add / update new)
 
