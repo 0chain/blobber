@@ -96,11 +96,11 @@ type StorageAllocation struct {
 	Size           int64                `json:"size"`
 	UsedSize       int64                `json:"used_size"`
 	Expiration     common.Timestamp     `json:"expiration_date"`
+	CCT            time.Duration        `json:"challenge_completion_time"`
+	TimeUnit       time.Duration        `json:"time_unit"`
 	Blobbers       []*StorageNode       `json:"blobbers"`
 	BlobberDetails []*BlobberAllocation `json:"blobber_details"`
 	Finalized      bool                 `json:"finalized"`
-	CCT            time.Duration        `json:"challenge_completion_time"`
-	TimeUnit       time.Duration        `json:"time_unit"`
 	IsImmutable    bool                 `json:"is_immutable"`
 }
 

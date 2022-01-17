@@ -82,12 +82,12 @@ func TestDownloadFile(t *testing.T) {
 			isOwner         bool
 			isCollaborator  bool
 			useAuthTicket   bool
-			attribute       common.WhoPays
-			payerId         client.Client
 			isRevoked       bool
 			isFundedBlobber bool
 			isFunded0Chain  bool
 			rxPay           bool
+			attribute       common.WhoPays
+			payerId         client.Client
 
 			// client input from gosdk's BlockDownloadRequest,
 			inData blockDownloadRequest

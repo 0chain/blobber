@@ -76,19 +76,21 @@ type GeolocationConfig struct {
 
 type Config struct {
 	*config.Config
-	DBHost                        string
-	DBPort                        string
-	DBName                        string
-	DBUserName                    string
-	DBPassword                    string
+	DBHost     string
+	DBPort     string
+	DBName     string
+	DBUserName string
+	DBPassword string
+	// DelegateWallet for pool owner.
+	DelegateWallet                string `json:"delegate_wallet"`
 	ContentRefWorkerFreq          int64
 	ContentRefWorkerTolerance     int64
 	OpenConnectionWorkerFreq      int64
 	OpenConnectionWorkerTolerance int64
 	WMRedeemFreq                  int64
 	WMRedeemNumWorkers            int
-	RMRedeemFreq                  int64
 	RMRedeemNumWorkers            int
+	RMRedeemFreq                  int64
 	ChallengeResolveFreq          int64
 	ChallengeResolveNumWorkers    int
 	ChallengeMaxRetires           int
@@ -103,8 +105,8 @@ type Config struct {
 	ColdStorageDeleteCloudCopy   bool
 
 	MinioStart      bool
-	MinioWorkerFreq int64
 	MinioUseSSL     bool
+	MinioWorkerFreq int64
 
 	ReadPrice               float64
 	WritePrice              float64
@@ -118,19 +120,17 @@ type Config struct {
 
 	UpdateAllocationsInterval time.Duration
 
-	// DelegateWallet for pool owner.
-	DelegateWallet string `json:"delegate_wallet"`
 	// MinStake allowed.
 	MinStake int64 `json:"min_stake"`
 	// MaxStake allowed.
 	MaxStake int64 `json:"max_stake"`
-	// NumDelegates maximum allowed.
-	NumDelegates int `json:"num_delegates"`
 	// ServiceCharge for blobber.
 	ServiceCharge float64 `json:"service_charge"`
 
 	Geolocation GeolocationConfig `mapstructure:"geolocation"`
 
+	// NumDelegates maximum allowed.
+	NumDelegates int `json:"num_delegates"`
 	// MinSubmit minial submit from miners
 	MinSubmit int
 	// MinConfirmation minial confirmation from sharders
