@@ -89,7 +89,7 @@ func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString
 		}
 
 		if matched, _ := regexp.MatchString(fmt.Sprintf("^%v", authTokenRef.Path), refRequested.Path); matched {
-			return nil, common.NewError("invalid_authticket", "auth ticket is not valid for requested resource")
+			return nil, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
 		}
 	}
 

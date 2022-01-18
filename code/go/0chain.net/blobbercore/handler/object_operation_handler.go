@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math"
 	"strings"
 
@@ -230,7 +229,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	if numBlocksStr != "" {
 		numBlocks, err = strconv.ParseInt(numBlocksStr, 10, 64)
 		if err != nil || numBlocks <= 0 {
-			return nil, common.NewError(InvalidBlockNum, "invalid number of blocks")
+			return nil, common.NewError("download_file", "invalid number of blocks")
 		}
 	}
 
@@ -282,20 +281,20 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		}
 
 		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
-			return nil, common.NewError("verify_auth_token_failed", fmt.Sprint(err))
+			return nil, common.NewErrorf("download_file", "cannot verify auth ticket: %v", err)
 		}
 
 		shareInfo, err = reference.GetShareInfo(ctx, readMarker.ClientID, authToken.FilePathHash)
 		if err != nil {
-			return nil, fsh.convertGormError(err)
+			return nil, errors.New("client does not have permission to download the file. share does not exist")
 		}
 
 		if shareInfo == nil {
-			return nil, common.NewError("share_info_not_found", "Share info was not found in the database")
+			return nil, errors.New("client does not have permission to download the file. share does not exist")
 		}
 
 		if shareInfo.Revoked {
-			return nil, common.NewError("share_revoked", "Share token has been revoked")
+			return nil, errors.New("client does not have permission to download the file. share revoked")
 		}
 
 		// set payer: check for command line payer flag (--rx_pay)
@@ -427,7 +426,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			headerChecksums := strings.Split(headerString, ",")
 			if len(headerChecksums) != 2 {
 				Logger.Error("Block has invalid header", zap.String("request Url", r.URL.String()))
-				return nil, common.NewError(InvalidBlockHeader, "checksum headers are invalid")
+				return nil, errors.New("Block has invalid header for request " + r.URL.String())
 			}
 
 			encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
