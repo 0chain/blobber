@@ -41,6 +41,7 @@ const (
 	// EncryptionOverHead takes blockSize increment when data is incremented.
 	// messageCheckSum(128) + overallChecksum(128) + ","(1) + data-size-increment(16)
 	EncryptionOverHead = 273
+	HeaderChecksumSize = 257
 )
 
 func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks, pendNumBlocks int64, payerID string) (err error) {
@@ -419,7 +420,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			encMsg := &zencryption.EncryptedMessage{}
 			chunkData := respData[i:int64(math.Min(float64(i+int(fileref.ChunkSize)), float64(totalSize)))]
 
-			headerBytes := chunkData[:EncryptionOverHead]
+			headerBytes := chunkData[:HeaderChecksumSize]
 			headerBytes = bytes.Trim(headerBytes, "\x00")
 			headerString := string(headerBytes)
 
@@ -430,7 +431,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			}
 
 			encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
-			encMsg.EncryptedData = chunkData[EncryptionOverHead:]
+			encMsg.EncryptedData = chunkData[HeaderChecksumSize:]
 			encMsg.EncryptedKey = encscheme.GetEncryptedKey()
 
 			reEncMsg, err := encscheme.ReEncrypt(encMsg, shareInfo.ReEncryptionKey, buyerEncryptionPublicKey)
