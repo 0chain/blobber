@@ -1,0 +1,30 @@
+package handler
+
+// Error codes
+const (
+	AuthTicketVerificationFailed = "auth_verification_failed"
+	InvalidClient                = "invalid_client"
+	InvalidAllocation            = "invalid_allocation"
+	InvalidOperation             = "invalid_operation"
+	InvalidParameters            = "invalid_parameters"
+	InvalidFile                  = "invalid_file"
+	InvalidPath                  = "invalid_path"
+	InvalidBlockNum              = "invalid_block_num"
+	InvalidSignature             = "invalid_signature"
+	DuplicateFile                = "duplicate_file"
+	UploadError                  = "upload_error"
+	MaxAllocationSizeReached     = "max_allocation_size"
+	ContentHashMismatch          = "content_hash_mismatch"
+	ContentMerkleRootMismatch    = "content_merkle_root_mismatch"
+	CommitError                  = "commit_error"
+	ShareInfoInsertFailed        = "share_info_insert_failed"
+	ReadPreRedeemError           = "read_pre_redeem_error"
+	WritePreRedeemError          = "write_pre_redeem_error"
+	UnmarshallError              = "json_unmarshall_error"
+	InvalidReadMarker            = "invalid_read_marker"
+	ShareInfoNotFound            = "share_info_not_found"
+	ShareRevoked                 = "share_revoked"
+	AttributeGetError            = "attribute_get_error"
+	PermissionDenied             = "permission_denied"
+	InvalidBlockHeader           = "invalid_block_header"
+)
