@@ -275,7 +275,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 
 	var authToken *readmarker.AuthTicket
 	var shareInfo *reference.ShareInfo
-	if !isOwner && !isRepairer && !isCollaborator {
+	if !isOwner {
 		authTokenString := r.FormValue("auth_token")
 		if authTokenString == "" {
 			return nil, common.NewError("invalid_client", "client must be one of owner, repairer, collaborator and shared user")
@@ -327,7 +327,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		// check for file payer flag
 		if fileAttrs, err := fileref.GetAttributes(); err != nil {
 			return nil, common.NewErrorf("download_file", "error getting file attributes: %v", err)
-		} else if fileAttrs.WhoPaysForReads == common.WhoPays3rdParty {
+		} else if fileAttrs.WhoPaysForReads == common.WhoPays3rdParty && !(isCollaborator || isRepairer) {
 			payerID = clientID
 		}
 	}
@@ -340,7 +340,8 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 
 	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, common.NewErrorf("download_file", "couldn't get read marker from DB: %v", err)
+		Logger.Error(err.Error())
+		return nil, common.NewErrorf("download_file", "couldn't get read marker from DB")
 	}
 
 	if rme != nil {
