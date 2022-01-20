@@ -50,9 +50,15 @@ block_worker: https://beta.0chain.net/dns
 
 
 ` command: ./bin/blobber --port 505${BLOBBER} --hostname < public ip here > --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keysconfig/minio_config.txt `
- 
 
-5. Go to git/blobber directory to build containers using 
+
+5. To listen on tls network add `--https-port`, `--https-cert-file` (certificate file) and `--https-key-file` (key file)
+
+
+` command: ./bin/blobber --port 505${BLOBBER} --https-port 506${BLOBBER} --https-cert-file < certificate file > --https-key-file < key file > --hostname < public ip here > --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keysconfig/minio_config.txt `
+
+
+6. Go to git/blobber directory to build containers using 
   
 
 ```
@@ -62,7 +68,7 @@ $ ./docker.local/bin/build.blobber.sh
 ```
   
 
-6. After building the container for blobber, go to Blobber1 directory (git/blobber/docker.local/blobber1) and run the container using
+7. After building the container for blobber, go to Blobber1 directory (git/blobber/docker.local/blobber1) and run the container using
 
   
 
