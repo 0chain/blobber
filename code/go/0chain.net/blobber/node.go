@@ -30,7 +30,12 @@ func setupNode() error {
 		logging.Logger.Info("self identity", zap.Any("id", node.Self.ID))
 	}
 
-	node.Self.SetHostURL(hostname, httpPort)
+	if httpsPort > 0 {
+		node.Self.SetHostURL("https", hostname, httpsPort)
+	} else {
+		node.Self.SetHostURL("http", hostname, httpPort)
+	}
+
 	logging.Logger.Info(" Base URL" + node.Self.GetURLBase())
 	fmt.Print("		[OK]\n")
 	return nil

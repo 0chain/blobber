@@ -96,7 +96,7 @@ func main() {
 		return
 	}
 
-	node.Self.SetHostURL(*hostname, port)
+	node.Self.SetHostURL("http", *hostname, port)
 	Logger.Info(" Base URL" + node.Self.GetURLBase())
 
 	config.SetServerChainID(config.Configuration.ChainID)
