@@ -539,7 +539,7 @@ func TestDownloadFile(t *testing.T) {
 			},
 			want: want{
 				err:    true,
-				errMsg: "invalid_client: in abscence of authticket, client must be owner",
+				errMsg: "invalid_client: authticket is required",
 			},
 		},
 		{
@@ -645,7 +645,7 @@ func TestDownloadFile(t *testing.T) {
 			},
 			want: want{
 				err:    true,
-				errMsg: "invalid_client: in abscence of authticket, client must be owner",
+				errMsg: "invalid_client: authticket is required",
 			},
 		},
 	}

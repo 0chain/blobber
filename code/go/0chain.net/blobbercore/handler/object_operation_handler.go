@@ -238,7 +238,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	readMarkerString := r.FormValue("read_marker")
 	readMarker := new(readmarker.ReadMarker)
 
-	err = json.Unmarshal([]byte(readMarkerString), &readMarker)
+	err = json.Unmarshal([]byte(readMarkerString), readMarker)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid parameters, "+
 			"error parsing the readmarker for download: %v", err)
@@ -278,7 +278,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	if !isOwner {
 		authTokenString := r.FormValue("auth_token")
 		if authTokenString == "" {
-			return nil, common.NewError("invalid_client", "in abscence of authticket, client must be owner")
+			return nil, common.NewError("invalid_client", "authticket is required")
 		}
 
 		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
@@ -399,7 +399,8 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	readMarker.PayerID = payerID
 	err = readmarker.SaveLatestReadMarker(ctx, readMarker, latestRM == nil)
 	if err != nil {
-		return nil, common.NewErrorf("download_file", "couldn't save latest read marker: %v", err)
+		Logger.Error(err.Error())
+		return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
 	}
 
 	if fileref.EncryptedKey != "" && authToken != nil {
