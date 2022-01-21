@@ -497,11 +497,28 @@ func TestDownloadFile(t *testing.T) {
 			},
 		},
 		{
-			name: "ok_collaborator",
+			name: "err_collaborator_without_authticket",
 			parameters: parameters{
 				isOwner:         false,
 				isCollaborator:  true,
 				useAuthTicket:   false,
+				attribute:       common.WhoPays3rdParty,
+				isRevoked:       false,
+				isFundedBlobber: true,
+				isFunded0Chain:  true,
+				rxPay:           false,
+			},
+			want: want{
+				err:    true,
+				errMsg: "invalid_client: in abscence of authticket, client must be owner",
+			},
+		},
+		{
+			name: "ok_collaborator_with_authticket",
+			parameters: parameters{
+				isOwner:         false,
+				isCollaborator:  true,
+				useAuthTicket:   true,
 				attribute:       common.WhoPays3rdParty,
 				isRevoked:       false,
 				isFundedBlobber: true,
