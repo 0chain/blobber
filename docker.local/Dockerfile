@@ -23,7 +23,7 @@ RUN CGO_ENABLED=1 go build -v -tags "bn256 development" -ldflags "-X github.com/
 
 # Copy the build artifact into a minimal runtime image:
 FROM alpine:3.14
-RUN apk add gmp gmp-dev openssl-dev git
+RUN apk add gmp gmp-dev openssl-dev
 COPY --from=blobber_build  /usr/local/lib/libmcl*.so \
                         /usr/local/lib/libbls*.so \
                         /usr/local/lib/
