@@ -39,7 +39,7 @@ func init() {
 	flag.StringVar(&hostname, "hostname", "", "hostname")
 	flag.StringVar(&configDir, "config_dir", "./config", "config_dir")
 
-	flag.StringVar(&hostUrl, "hosturl", "register url on blockchain instead of [schema://hostname+port] if it has value")
+	flag.StringVar(&hostUrl, "hosturl", "", "register url on blockchain instead of [schema://hostname+port] if it has value")
 
 	flag.IntVar(&grpcPort, "grpc_port", 0, "grpc_port")
 }
