@@ -158,7 +158,7 @@ func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationC
 	for _, c := range connectionObj.Changes {
 		if c.Operation == constants.FileOperationUpdate {
 
-			dbFileChanger := &allocation.AddFileChanger{}
+			dbFileChanger := &allocation.UpdateFileChanger{}
 
 			err := dbFileChanger.Unmarshal(c.Input)
 			if err != nil {
@@ -167,6 +167,9 @@ func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationC
 
 			// reload uploaded size from db, it was chunk size from client
 			cmd.fileChanger.Size = dbFileChanger.Size
+			cmd.fileChanger.ThumbnailFilename = dbFileChanger.ThumbnailFilename
+			cmd.fileChanger.ThumbnailSize = dbFileChanger.ThumbnailSize
+			cmd.fileChanger.ThumbnailHash = dbFileChanger.Hash
 			return
 		}
 	}
