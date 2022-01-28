@@ -404,7 +404,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	if fileref.EncryptedKey != "" && authToken != nil {
-		buyerEncryptionPublicKey := shareInfo.ClientEncryptionPublicKey
 		encscheme := zencryption.NewEncryptionScheme()
 		// reEncrypt does not require pub / private key,
 		// we could probably make it a classless function
@@ -436,7 +435,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			encMsg.EncryptedData = chunkData[HeaderChecksumSize:]
 			encMsg.EncryptedKey = encscheme.GetEncryptedKey()
 
-			reEncMsg, err := encscheme.ReEncrypt(encMsg, shareInfo.ReEncryptionKey, buyerEncryptionPublicKey)
+			reEncMsg, err := encscheme.ReEncrypt(encMsg, shareInfo.ReEncryptionKey, shareInfo.ClientEncryptionPublicKey)
 			if err != nil {
 				return nil, err
 			}
