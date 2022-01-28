@@ -1,7 +1,7 @@
 package filestore
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -31,7 +31,7 @@ func (ms *MockStore) WriteFile(allocationID string, fileData *FileInputData, inf
 
 	fileRef.ChunkUploaded = true
 
-	h := sha1.New()
+	h := sha256.New()
 	reader := io.TeeReader(infile, h)
 	fileSize := int64(0)
 	for {

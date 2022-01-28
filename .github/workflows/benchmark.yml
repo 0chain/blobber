@@ -1,4 +1,4 @@
-name: Benchmark tests
+name: Benchmark
 
 concurrency:
   group: "benchmark-${{ github.ref }}"
