@@ -128,7 +128,7 @@ type PaginatedRef struct { //Gorm smart select fields.
 	UpdatedAt time.Time      `gorm:"column:updated_at" json:"updated_at,omitempty"`
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"-"` // soft deletion
 
-	ChunkSize int64 `gorm:"column:chunk_size" dirlist:"chunk_size" filelist:"chunk_size"`
+	ChunkSize int64 `gorm:"column:chunk_size" json:"chunk_size"`
 }
 
 func (Ref) TableName() string {

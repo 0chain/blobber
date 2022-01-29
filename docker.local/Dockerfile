@@ -19,18 +19,14 @@ WORKDIR $SRC_DIR/code/go/0chain.net/blobber
 
 ARG GIT_COMMIT
 ENV GIT_COMMIT=$GIT_COMMIT
-RUN CGO_ENABLED=1 go build -v -tags "bn256 development" -gcflags "all=-N -l" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=$GIT_COMMIT"
+RUN CGO_ENABLED=1 go build -v -tags "bn256 development" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=$GIT_COMMIT"
 
 # Copy the build artifact into a minimal runtime image:
-FROM golang:1.17.1-alpine3.14
-RUN apk add gmp gmp-dev openssl-dev git
+FROM alpine:3.14
+RUN apk add gmp gmp-dev openssl-dev
 COPY --from=blobber_build  /usr/local/lib/libmcl*.so \
                         /usr/local/lib/libbls*.so \
                         /usr/local/lib/
-
-RUN git clone --branch v1.4.1 https://github.com/go-delve/delve
-WORKDIR ./delve
-RUN go install ./cmd/dlv
 
 ENV APP_DIR=/blobber
 WORKDIR $APP_DIR

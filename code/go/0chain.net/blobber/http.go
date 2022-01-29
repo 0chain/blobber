@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"runtime"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -25,15 +26,37 @@ func startHttpServer() {
 		mode = "test net"
 	}
 
-	logging.Logger.Info("Starting blobber", zap.Int("available_cpus", runtime.NumCPU()), zap.Int("port", httpPort), zap.String("chain_id", config.GetServerChainID()), zap.String("mode", mode))
-
-	//address := publicIP + ":" + portString
-	address := ":" + strconv.Itoa(httpPort)
-	var server *http.Server
-
 	common.ConfigRateLimits()
 	r := mux.NewRouter()
 	initHandlers(r)
+
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+	// start http server
+	go startServer(&wg, r, mode, httpPort, false)
+	// start https server
+	go startServer(&wg, r, mode, httpsPort, true)
+
+	logging.Logger.Info("Ready to listen to the requests")
+	fmt.Println("[11/11] start http server	[OK]")
+
+	wg.Wait()
+
+}
+
+func startServer(wg *sync.WaitGroup, r *mux.Router, mode string, port int, isTls bool) {
+	defer wg.Done()
+
+	if port <= 0 {
+		return
+	}
+
+	logging.Logger.Info("Starting blobber", zap.Int("available_cpus", runtime.NumCPU()), zap.Int("port", port), zap.Bool("is-tls", isTls), zap.String("chain_id", config.GetServerChainID()), zap.String("mode", mode))
+
+	//address := publicIP + ":" + portString
+	address := ":" + strconv.Itoa(port)
+	var server *http.Server
 
 	if config.Development() {
 		// No WriteTimeout setup to enable pprof
@@ -56,10 +79,11 @@ func startHttpServer() {
 	common.HandleShutdown(server)
 	handler.HandleShutdown(common.GetRootContext())
 
-	logging.Logger.Info("Ready to listen to the requests")
-	fmt.Println("[11/11] start http server	[OK]")
-
-	log.Fatal(server.ListenAndServe())
+	if isTls {
+		log.Fatal(server.ListenAndServeTLS(httpsCertFile, httpsKeyFile))
+	} else {
+		log.Fatal(server.ListenAndServe())
+	}
 }
 
 func initHandlers(r *mux.Router) {

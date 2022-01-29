@@ -24,6 +24,7 @@ type BaseFileChanger struct {
 	ActualThumbnailSize int64 `json:"actual_thumb_size"`
 	//client side:
 	ActualThumbnailHash string `json:"actual_thumb_hash"`
+
 	//client side:
 	MimeType string `json:"mimetype,omitempty"`
 	//client side:

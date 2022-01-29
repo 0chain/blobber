@@ -18,6 +18,10 @@ var (
 	configDir         string
 	grpcPort          int
 	isIntegrationTest bool
+	httpsPort         int
+	httpsKeyFile      string
+	httpsCertFile     string
+	hostUrl           string
 )
 
 func init() {
@@ -29,8 +33,13 @@ func init() {
 	flag.StringVar(&metadataDB, "db_dir", "", "db_dir")
 	flag.StringVar(&logDir, "log_dir", "", "log_dir")
 	flag.IntVar(&httpPort, "port", 0, "port")
+	flag.IntVar(&httpsPort, "https_port", 0, "https_port")
+	flag.StringVar(&httpsCertFile, "https_cert_file", "", "https_cert_file")
+	flag.StringVar(&httpsKeyFile, "https_key_file", "", "https_key_file")
 	flag.StringVar(&hostname, "hostname", "", "hostname")
 	flag.StringVar(&configDir, "config_dir", "./config", "config_dir")
+
+	flag.StringVar(&hostUrl, "hosturl", "", "register url on blockchain instead of [schema://hostname+port] if it has value")
 
 	flag.IntVar(&grpcPort, "grpc_port", 0, "grpc_port")
 }
@@ -51,10 +60,14 @@ func parseFlags() {
 		panic("Please specify --hostname which is the public hostname")
 	}
 
-	if httpPort <= 0 {
-		panic("Please specify --port which is the port on which requests are accepted")
+	if httpPort <= 0 && httpsPort <= 0 {
+		panic("Please specify --port or --https-port which is the port on which requests are accepted")
 	}
 	isIntegrationTest = os.Getenv("integration") == "1"
+
+	if httpsPort > 0 && (httpsCertFile == "" || httpsKeyFile == "") {
+		panic("Please specify --https-cert-file and --https-key-file if you are using --https-port")
+	}
 
 	fmt.Print("		[OK]\n")
 }

@@ -3,7 +3,7 @@ package filestore
 import (
 	"bytes"
 	"context"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -450,10 +450,6 @@ func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error
 	return os.Remove(fileObjectPath)
 }
 
-func (fs *FileFSStore) CreateDir(dirName string) error {
-	return createDirs(dirName)
-}
-
 func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) error {
 	return nil
 }
@@ -479,7 +475,7 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 
 	fileRef := &FileOutputData{}
 
-	h := sha1.New()
+	h := sha256.New()
 	bytesBuffer := bytes.NewBuffer(nil)
 	multiHashWriter := io.MultiWriter(h, bytesBuffer)
 	tReader := io.TeeReader(infile, multiHashWriter)
@@ -552,7 +548,7 @@ func (fs *FileFSStore) WriteChunk(allocationID string, fileData *FileInputData,
 		fileRef.ChunkUploaded = true
 	}
 
-	h := sha1.New()
+	h := sha256.New()
 	size, err := dest.WriteChunk(context.TODO(), fileData.UploadOffset, io.TeeReader(infile, h))
 
 	if err != nil {
@@ -580,7 +576,7 @@ func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHan
 				return nil
 			}
 			defer f.Close()
-			h := sha1.New()
+			h := sha256.New()
 			if _, err := io.Copy(h, f); err != nil {
 				return nil
 			}

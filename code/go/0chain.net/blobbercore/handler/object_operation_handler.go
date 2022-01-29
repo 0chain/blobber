@@ -315,11 +315,6 @@ func (fsh *StorageHandler) DownloadFile(
 			payerID = clientID
 		}
 
-		if json.Unmarshal([]byte(authTokenString), &readmarker.AuthTicket{}) != nil {
-			return nil, common.NewErrorf("download_file",
-				"error parsing the auth ticket for download: %v", err)
-		}
-
 		// we only check content hash if its authticket is referring to a file
 		if authToken.RefType == zfileref.FILE && authToken.ActualFileHash != fileref.ActualFileHash {
 			return nil, errors.New("content hash does not match the requested file content hash")
@@ -1061,11 +1056,6 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	formData.ActualSize = 1
 
 	connectionObj.AddChange(allocationChange, &formData)
-
-	err = filestore.GetFileStore().CreateDir(dirPath)
-	if err != nil {
-		return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
-	}
 
 	err = connectionObj.ApplyChanges(ctx, "/")
 	if err != nil {

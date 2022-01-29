@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -54,6 +56,16 @@ func (fsh *StorageHandler) verifyAllocation(ctx context.Context, tx string,
 	}
 
 	return
+}
+
+func (fsh *StorageHandler) convertGormError(err error) error {
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return common.NewError("invalid_path", "path does not exist")
+		}
+		return common.NewError("db_error", err.Error())
+	}
+	return err
 }
 
 func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (bool, error) {
@@ -730,25 +742,100 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if len(clientID) == 0 {
+		return nil, common.NewError("invalid_operation", "Client id is required")
+	}
+
+	publicKey, _ := ctx.Value(constants.ContextKeyClientKey).(string)
+	if publicKey == "" {
+		if clientID == allocationObj.OwnerID {
+			publicKey = allocationObj.OwnerPublicKey
+		} else {
+			return nil, common.NewError("empty_public_key", "public key is required")
+		}
+	}
+
 	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
 	allocationID := allocationObj.ID
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
+
 	path := r.FormValue("path")
-	if len(path) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
+	authTokenStr := r.FormValue("auth_token")
+	pathHash := r.FormValue("path_hash")
+
+	if path == "" && authTokenStr == "" && pathHash == "" {
+		return nil, common.NewError("invalid_parameters", "empty path and authtoken")
 	}
 
+	var pathRef *reference.Ref
+	switch {
+	case path != "":
+		pathHash = reference.GetReferenceLookup(allocationID, path)
+		fallthrough
+	case pathHash != "":
+		pathRef, err = reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, common.NewError("invalid_path", "")
+			}
+			return nil, err
+		}
+
+		if clientID == allocationObj.OwnerID || clientID == allocationObj.RepairerID || reference.IsACollaborator(ctx, pathRef.ID, clientID) {
+			break
+		}
+		if authTokenStr == "" {
+			return nil, common.NewError("unauthorized_request", "client is not authorized for the requested resource")
+		}
+		fallthrough
+	case authTokenStr != "":
+		authToken := &readmarker.AuthTicket{}
+		if err := json.Unmarshal([]byte(authTokenStr), authToken); err != nil {
+			return nil, common.NewError("json_unmarshall_error", fmt.Sprintf("error parsing authticket: %v", authTokenStr))
+		}
+
+		shareInfo, err := reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
+		if err != nil {
+			return nil, fsh.convertGormError(err)
+		}
+		if shareInfo.Revoked {
+			return nil, common.NewError("share_revoked", "client no longer has permission to requested resource")
+		}
+
+		if err := authToken.Verify(allocationObj, clientID); err != nil {
+			return nil, err
+		}
+
+		if pathRef == nil {
+			pathRef, err = reference.GetReferenceFromLookupHash(ctx, allocationID, authToken.FilePathHash)
+			if err != nil {
+				return nil, fsh.convertGormError(err)
+			}
+		} else if pathHash != authToken.FilePathHash {
+			authTokenRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, authToken.FilePathHash)
+			if err != nil {
+				return nil, fsh.convertGormError(err)
+			}
+			matched, _ := regexp.MatchString(fmt.Sprintf("^%v", authTokenRef.Path), pathRef.Path)
+			if !matched {
+				return nil, common.NewError("invalid_authticket", "auth ticket is not valid for requested resource")
+			}
+		}
+	default:
+		return nil, common.NewError("incomplete_request", "path, pathHash or authTicket is required")
+
+	}
+
+	path = pathRef.Path
 	pageLimitStr := r.FormValue("pageLimit")
 	var pageLimit int
-	if len(pageLimitStr) == 0 {
+	if pageLimitStr == "" {
 		pageLimit = PageLimit
 	} else {
 		o, err := strconv.Atoi(pageLimitStr)
@@ -763,6 +850,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 			pageLimit = o
 		}
 	}
+
 	offsetPath := r.FormValue("offsetPath")
 	offsetDate := r.FormValue("offsetDate")
 	updatedDate := r.FormValue("updatedDate")
