@@ -157,6 +157,10 @@ func (cmd *AddFileCommand) reloadChange(connectionObj *allocation.AllocationChan
 			}
 
 			cmd.fileChanger.Size = dbChangeProcessor.Size
+			cmd.fileChanger.ThumbnailFilename = dbChangeProcessor.ThumbnailFilename
+			cmd.fileChanger.ThumbnailSize = dbChangeProcessor.ThumbnailSize
+			cmd.fileChanger.ThumbnailHash = dbChangeProcessor.Hash
+
 			return
 		}
 	}

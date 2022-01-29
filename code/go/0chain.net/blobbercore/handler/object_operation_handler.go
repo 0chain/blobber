@@ -1012,11 +1012,6 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 	connectionObj.AddChange(allocationChange, &formData)
 
-	err = filestore.GetFileStore().CreateDir(dirPath)
-	if err != nil {
-		return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
-	}
-
 	err = connectionObj.ApplyChanges(ctx, "/")
 	if err != nil {
 		return nil, err

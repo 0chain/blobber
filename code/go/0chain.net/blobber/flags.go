@@ -21,6 +21,7 @@ var (
 	httpsPort         int
 	httpsKeyFile      string
 	httpsCertFile     string
+	hostUrl           string
 )
 
 func init() {
@@ -32,11 +33,13 @@ func init() {
 	flag.StringVar(&metadataDB, "db_dir", "", "db_dir")
 	flag.StringVar(&logDir, "log_dir", "", "log_dir")
 	flag.IntVar(&httpPort, "port", 0, "port")
-	flag.IntVar(&httpsPort, "https-port", 0, "https-port")
-	flag.StringVar(&httpsCertFile, "https-cert-file", "", "https-cert-file")
-	flag.StringVar(&httpsKeyFile, "https-key-file", "", "https-key-file")
+	flag.IntVar(&httpsPort, "https_port", 0, "https_port")
+	flag.StringVar(&httpsCertFile, "https_cert_file", "", "https_cert_file")
+	flag.StringVar(&httpsKeyFile, "https_key_file", "", "https_key_file")
 	flag.StringVar(&hostname, "hostname", "", "hostname")
 	flag.StringVar(&configDir, "config_dir", "./config", "config_dir")
+
+	flag.StringVar(&hostUrl, "hosturl", "", "register url on blockchain instead of [schema://hostname+port] if it has value")
 
 	flag.IntVar(&grpcPort, "grpc_port", 0, "grpc_port")
 }
