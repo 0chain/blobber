@@ -72,8 +72,10 @@ func signHash(client *client.Client, hash string) (string, error) {
 	retSignature := ""
 	for _, kv := range client.Keys {
 		ss := zcncrypto.NewSignatureScheme("bls0chain")
-		ss.SetPrivateKey(kv.PrivateKey)
-		var err error
+		err := ss.SetPrivateKey(kv.PrivateKey)
+		if err != nil {
+			return "", err
+		}
 		if len(retSignature) == 0 {
 			retSignature, err = ss.Sign(hash)
 		} else {
@@ -1185,7 +1187,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 
 					hash := encryption.Hash(alloc.Tx)
-					sch.SetPublicKey(ownerClient.Keys[0].PublicKey)
 					sign, err := sch.Sign(hash)
 					if err != nil {
 						t.Fatal(err)
@@ -1274,7 +1275,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 
 					hash := encryption.Hash(alloc.Tx)
-					sch.SetPublicKey(ownerClient.Keys[0].PublicKey)
 					sign, err := sch.Sign(hash)
 					if err != nil {
 						t.Fatal(err)
