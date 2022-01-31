@@ -41,7 +41,7 @@ const (
 	// EncryptionOverHead takes blockSize increment when data is incremented.
 	// messageCheckSum(128) + overallChecksum(128) + ","(1) + data-size-increment(16)
 	EncryptionOverHead = 273
-	HeaderChecksumSize = 257
+	HeaderChecksumSize = 2048
 )
 
 func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks, pendNumBlocks int64, payerID string) (err error) {
