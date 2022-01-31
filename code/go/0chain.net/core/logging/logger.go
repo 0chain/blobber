@@ -31,7 +31,6 @@ func InitLogging(mode, logDir, logFile string) {
 		cfg.EncoderConfig.StacktraceKey = "stacktrace"
 
 		logWriter = zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), logWriter)
-
 	}
 	_ = cfg.Level.UnmarshalText([]byte(viper.GetString("logging.level")))
 	cfg.Encoding = "console"

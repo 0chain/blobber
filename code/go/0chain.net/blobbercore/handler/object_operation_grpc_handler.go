@@ -88,7 +88,6 @@ func (b *blobberGRPCService) DownloadFile(ctx context.Context, req *blobbergrpc.
 }
 
 func (b *blobberGRPCService) UploadFile(ctx context.Context, req *blobbergrpc.UploadFileRequest) (*blobbergrpc.UploadFileResponse, error) {
-
 	r, err := convert.WriteFileGRPCToHTTP(req)
 	if err != nil {
 		return nil, err

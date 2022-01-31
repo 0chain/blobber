@@ -68,7 +68,6 @@ func (r *DirMetaData) GetHash() string {
 }
 
 func (r *DirMetaData) CalculateHash() string {
-
 	childHashes := make([]string, len(r.Children))
 	for index, childRef := range r.Children {
 		childHashes[index] = childRef.GetHash()

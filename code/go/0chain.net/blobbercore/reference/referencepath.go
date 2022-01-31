@@ -64,7 +64,6 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 	refMap := make(map[string]*Ref)
 	refMap[rootRef.Path] = rootRef
 	for i := 1; i < len(refs); i++ {
-
 		if _, ok := refMap[refs[i].ParentPath]; !ok {
 			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
 		}
@@ -182,7 +181,6 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 	refs = &pRefs
 	if len(pRefs) > 0 {
 		newOffsetPath = pRefs[len(pRefs)-1].Path
-
 	}
 	totalPages = int(math.Ceil(float64(totalRows) / float64(pageLimit)))
 	return
@@ -282,7 +280,6 @@ func GetDeletedRefs(ctx context.Context, allocationID, updatedDate, offsetPath, 
 	}()
 
 	go func() {
-
 		db2 = db2.Model(&Ref{}).Unscoped().Where("allocation_id = ?", allocationID)
 
 		if updatedDate == "" {
@@ -299,7 +296,6 @@ func GetDeletedRefs(ctx context.Context, allocationID, updatedDate, offsetPath, 
 		lastIdx := len(pRefs) - 1
 		newOffsetDate = pRefs[lastIdx].DeletedAt.Time.Format(dateLayOut)
 		newOffsetPath = pRefs[lastIdx].Path
-
 	}
 	refs = &pRefs
 	totalPages = int(math.Ceil(float64(totalRows) / float64(pageLimit)))

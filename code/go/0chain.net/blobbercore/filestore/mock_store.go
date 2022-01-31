@@ -19,7 +19,6 @@ var mockStore *MockStore
 func UseMock() {
 	if mockStore == nil {
 		mockStore = &MockStore{}
-
 	}
 
 	fileStore = mockStore
@@ -35,7 +34,6 @@ func (ms *MockStore) WriteFile(allocationID string, fileData *FileInputData, inf
 	reader := io.TeeReader(infile, h)
 	fileSize := int64(0)
 	for {
-
 		written, err := io.CopyN(io.Discard, reader, fileData.ChunkSize)
 
 		fileSize += written

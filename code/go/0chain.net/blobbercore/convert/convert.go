@@ -477,7 +477,6 @@ func WriteFileGRPCToHTTP(req *blobbergrpc.UploadFileRequest) (*http.Request, err
 			return nil, err
 		}
 		r.Header.Set("Content-Type", writer.FormDataContentType())
-
 	}
 
 	return r, nil

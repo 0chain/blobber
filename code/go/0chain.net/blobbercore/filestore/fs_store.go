@@ -247,7 +247,6 @@ func GetFilePathFromHash(h string) (string, string) {
 }
 
 func (fs *FileFSStore) generateTransactionPath(transID string) string {
-
 	var dir bytes.Buffer
 	fmt.Fprintf(&dir, "%s%s", fs.RootDirectory, OSPathSeperator)
 	for i := 0; i < 3; i++ {
@@ -358,9 +357,7 @@ func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *F
 }
 
 func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
-
 	return fs.fileBlockGetter.GetFileBlock(fs, allocationID, fileData, blockNum, numBlocks)
-
 }
 
 func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error {
@@ -454,9 +451,7 @@ func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) err
 	return nil
 }
 
-func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
-	infile multipart.File, connectionID string) (*FileOutputData, error) {
-
+func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
 	if fileData.IsChunked {
 		return fs.WriteChunk(allocationID, fileData, infile, connectionID)
 	}
@@ -486,7 +481,6 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	}
 	fileSize := int64(0)
 	for {
-
 		written, err := io.CopyN(dest, tReader, CHUNK_SIZE)
 
 		if err != io.EOF && err != nil {
@@ -526,9 +520,7 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 }
 
 // WriteChunk append chunk to temp file
-func (fs *FileFSStore) WriteChunk(allocationID string, fileData *FileInputData,
-	infile multipart.File, connectionID string) (*FileOutputData, error) {
-
+func (fs *FileFSStore) WriteChunk(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
 	allocation, err := fs.SetupAllocation(allocationID, false)
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())

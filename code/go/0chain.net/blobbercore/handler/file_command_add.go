@@ -52,7 +52,6 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 	cmd.fileChanger = fileChanger
 
 	return nil
-
 }
 
 // ProcessContent flush file to FileStorage
@@ -121,11 +120,9 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 
 // ProcessThumbnail flush thumbnail file to FileStorage if it has.
 func (cmd *AddFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
-
 	thumbfile, thumbHeader, _ := req.FormFile("uploadThumbnailFile")
 
 	if thumbHeader != nil {
-
 		defer thumbfile.Close()
 
 		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}

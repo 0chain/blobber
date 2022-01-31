@@ -36,9 +36,7 @@ const (
 type StorageHandler struct{}
 
 // verifyAllocation try to get allocation from postgres.if it doesn't exists, get it from sharders, and insert it into postgres.
-func (fsh *StorageHandler) verifyAllocation(ctx context.Context, tx string,
-	readonly bool) (alloc *allocation.Allocation, err error) {
-
+func (fsh *StorageHandler) verifyAllocation(ctx context.Context, tx string, readonly bool) (alloc *allocation.Allocation, err error) {
 	if tx == "" {
 		return nil, common.NewError("verify_allocation",
 			"invalid allocation id")
@@ -424,7 +422,6 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 }
 
 func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*blobberhttp.ListResult, error) {
-
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
@@ -506,7 +503,6 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 			result.Meta["collaborators"] = []reference.Collaborator{}
 		}
 		result.Meta["collaborators"] = append(result.Meta["collaborators"].([]reference.Collaborator), collaborators...)
-
 	}
 
 	return &result, nil
@@ -829,7 +825,6 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		}
 	default:
 		return nil, common.NewError("incomplete_request", "path, pathHash or authTicket is required")
-
 	}
 
 	path = pathRef.Path

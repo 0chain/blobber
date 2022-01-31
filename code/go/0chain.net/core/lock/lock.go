@@ -76,8 +76,6 @@ func cleanUnusedMutexs() {
 func startWorker() {
 	for {
 		time.Sleep(MutexCleanInterval)
-
 		cleanUnusedMutexs()
-
 	}
 }

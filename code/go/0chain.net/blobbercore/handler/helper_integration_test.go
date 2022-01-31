@@ -33,7 +33,6 @@ const RetryAttempts = 8
 const RetryTimeout = 3
 
 func randString(n int) string {
-
 	const hexLetters = "abcdef0123456789"
 
 	var sb strings.Builder
@@ -503,7 +502,6 @@ VALUES (1234,'exampleId','exampleId:examplePath','exampleId:examplePath','d','ro
 }
 
 func GeneratePubPrivateKey(t *testing.T) (pubKey, privateKey string, signScheme zcncrypto.SignatureScheme) {
-
 	signScheme = zcncrypto.NewSignatureScheme("bls0chain")
 	wallet, err := signScheme.GenerateKeys()
 	if err != nil {
@@ -516,7 +514,6 @@ func GeneratePubPrivateKey(t *testing.T) (pubKey, privateKey string, signScheme 
 }
 
 func setupIntegrationTestConfig(t *testing.T) {
-
 	pwd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)

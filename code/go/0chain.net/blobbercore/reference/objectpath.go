@@ -19,7 +19,6 @@ type ObjectPath struct {
 
 // TODO needs to be refactored, current implementation can probably be heavily simplified
 func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*ObjectPath, error) {
-
 	rootRef, err := GetRefWithSortedChildren(ctx, allocationID, "/")
 	if err != nil {
 		return nil, common.NewError("invalid_dir_struct", "Allocation root corresponds to an invalid directory structure")
@@ -58,7 +57,6 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 		}
 		curResult["list"] = list
 		for idx, child := range curRef.Children {
-
 			if child.NumBlocks < remainingBlocks {
 				remainingBlocks -= child.NumBlocks
 				continue

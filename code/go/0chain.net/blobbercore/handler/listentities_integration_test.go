@@ -86,5 +86,4 @@ func TestBlobberGRPCService_ListEntities(t *testing.T) {
 			t.Fatal("unexpected path from ListEntities rpc")
 		}
 	}
-
 }

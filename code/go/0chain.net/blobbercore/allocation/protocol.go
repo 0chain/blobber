@@ -16,9 +16,7 @@ import (
 )
 
 // GetAllocationByID from DB. This function doesn't load related terms.
-func GetAllocationByID(ctx context.Context, allocID string) (
-	a *Allocation, err error) {
-
+func GetAllocationByID(ctx context.Context, allocID string) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
 	a = new(Allocation)
@@ -49,9 +47,7 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 }
 
 // VerifyAllocationTransaction try to get allocation from postgres.if it doesn't exists, get it from sharders, and insert it into postgres.
-func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
-	readonly bool) (a *Allocation, err error) {
-
+func VerifyAllocationTransaction(ctx context.Context, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
 	a = new(Allocation)
@@ -179,9 +175,7 @@ type PoolStat struct {
 	ExpireAt common.Timestamp `json:"expire_at"`
 }
 
-func RequestReadPools(clientID, allocationID string) (
-	rps []*ReadPool, err error) {
-
+func RequestReadPools(clientID, allocationID string) (rps []*ReadPool, err error) {
 	Logger.Info("request read pools")
 
 	var (
@@ -228,9 +222,7 @@ func RequestReadPools(clientID, allocationID string) (
 	return // got them
 }
 
-func RequestWritePools(clientID, allocationID string) (
-	wps []*WritePool, err error) {
-
+func RequestWritePools(clientID, allocationID string) (wps []*WritePool, err error) {
 	Logger.Info("request write pools")
 
 	var (

@@ -39,9 +39,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
-	numBlocks, pendNumBlocks int64, payerID string) (err error) {
-
+func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks, pendNumBlocks int64, payerID string) (err error) {
 	if numBlocks == 0 {
 		return
 	}
@@ -105,9 +103,7 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	return
 }
 
-func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
-	writeMarker *writemarker.WriteMarker, payerID string) (err error) {
-
+func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMarker *writemarker.WriteMarker, payerID string) (err error) {
 	// check out read pool tokens if read_price > 0
 	var (
 		db        = datastore.GetStore().GetTransaction(ctx)
@@ -178,11 +174,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	return
 }
 
-func (fsh *StorageHandler) DownloadFile(
-	ctx context.Context,
-	r *http.Request,
-) (resp interface{}, err error) {
-
+func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (resp interface{}, err error) {
 	// get client and allocation ids
 	var (
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
@@ -359,9 +351,7 @@ func (fsh *StorageHandler) DownloadFile(
 		}
 	}
 
-	if latestRM != nil &&
-		latestRM.ReadCounter+(numBlocks) != readMarker.ReadCounter {
-
+	if latestRM != nil && latestRM.ReadCounter+(numBlocks) != readMarker.ReadCounter {
 		var response = &blobberhttp.DownloadResponse{
 			Success:      false,
 			LatestRM:     latestRM,
@@ -433,7 +423,6 @@ func (fsh *StorageHandler) DownloadFile(
 	}
 
 	if len(fileref.EncryptedKey) > 0 && authToken != nil {
-
 		// should not happen, just in case
 		if shareInfo == nil {
 			return nil, errors.New("client does not have permission to download the file. share does not exist")
@@ -491,10 +480,10 @@ func (fsh *StorageHandler) DownloadFile(
 }
 
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
-
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
 	}
+
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
@@ -752,9 +741,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	return result, nil
 }
 
-func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
-	r *http.Request) (resp interface{}, err error) {
-
+func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.Request) (resp interface{}, err error) {
 	if r.Method != http.MethodPost {
 		return nil, common.NewError("update_object_attributes",
 			"Invalid method used. Use POST instead")
@@ -1067,7 +1054,6 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 //WriteFile stores the file into the blobber files system from the HTTP request
 func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
-
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE / PATCH instead")
 	}

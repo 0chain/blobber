@@ -46,7 +46,6 @@ func (cmd *FileCommandDelete) UpdateChange(ctx context.Context, connectionObj *a
 
 // ProcessContent flush file to FileStorage
 func (cmd *FileCommandDelete) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
-
 	deleteSize := cmd.exisitingFileRef.Size
 
 	cmd.changeProcessor = &allocation.DeleteFileChange{ConnectionID: connectionObj.ConnectionID,
@@ -67,7 +66,6 @@ func (cmd *FileCommandDelete) ProcessContent(ctx context.Context, req *http.Requ
 	connectionObj.Size += cmd.allocationChange.Size
 
 	return result, nil
-
 }
 
 // ProcessThumbnail no thumbnail should be processed for delete. A deffered delete command has been added on ProcessContent

@@ -31,7 +31,6 @@ type Sqlmock struct {
 }
 
 func (store *Sqlmock) Open() error {
-
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		return err
@@ -57,7 +56,6 @@ func (store *Sqlmock) Open() error {
 
 func (store *Sqlmock) Close() {
 	if store.db != nil {
-
 		if db, _ := store.db.DB(); db != nil {
 			db.Close()
 		}

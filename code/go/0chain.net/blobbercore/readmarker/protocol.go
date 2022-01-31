@@ -70,7 +70,6 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 // returns difference between latest redeemed read marker and current one
 // (till not redeemed).
 func (rme *ReadMarkerEntity) PendNumBlocks() (pendNumBlocks int64, err error) {
-
 	if !rme.RedeemRequired {
 		return // (0, nil), everything is already redeemed
 	}
@@ -94,13 +93,11 @@ func (rme *ReadMarkerEntity) PendNumBlocks() (pendNumBlocks int64, err error) {
 
 	pendNumBlocks = rme.LatestRM.ReadCounter - prev.ReadCounter
 	return
-
 }
 
 // getNumBlocks to redeem (difference between the previous RM and the
 // current one)
 func (rme *ReadMarkerEntity) getNumBlocks() (numBlocks int64, err error) {
-
 	if rme.LatestRM == nil {
 		return 0, common.NewErrorf("rme_get_num_blocks",
 			"missing latest read marker (nil)")
@@ -126,10 +123,7 @@ func (rme *ReadMarkerEntity) getNumBlocks() (numBlocks int64, err error) {
 // a redeeming transaction regarding cache, pending reads (regardless since
 // pending reads is what we are going to redeem) and requesting 0chain to
 // refresh read pools
-func (rme *ReadMarkerEntity) preRedeem(ctx context.Context,
-	alloc *allocation.Allocation, numBlocks int64) (
-	rps []*allocation.ReadPool, err error) {
-
+func (rme *ReadMarkerEntity) preRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks int64) (rps []*allocation.ReadPool, err error) {
 	// check out read pool tokens if read_price > 0
 	var (
 		db        = datastore.GetStore().GetTransaction(ctx)
@@ -198,9 +192,7 @@ func (rme *ReadMarkerEntity) preRedeem(ctx context.Context,
 }
 
 // RedeemReadMarker redeems the read marker.
-func (rme *ReadMarkerEntity) RedeemReadMarker(ctx context.Context) (
-	err error) {
-
+func (rme *ReadMarkerEntity) RedeemReadMarker(ctx context.Context) (err error) {
 	if rme.LatestRM.Suspend == rme.LatestRM.ReadCounter {
 		// suspended read marker, no tokens in related read pools
 		// don't request 0chain to refresh the read pools; let user

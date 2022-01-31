@@ -41,9 +41,7 @@ func SendMultiPostRequest(urls []string, data []byte) {
 	wg.Wait()
 }
 
-func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) (
-	body []byte, err error) {
-
+func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) (body []byte, err error) {
 	if wg != nil {
 		defer wg.Done()
 	}

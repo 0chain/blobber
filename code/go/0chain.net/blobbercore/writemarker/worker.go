@@ -78,5 +78,4 @@ func startRedeemWriteMarkers(ctx context.Context) {
 			redeemWriteMarker(ctx)
 		}
 	}
-
 }

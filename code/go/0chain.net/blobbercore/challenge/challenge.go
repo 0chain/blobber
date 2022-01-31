@@ -43,7 +43,6 @@ func syncOpenChallenges(ctx context.Context) {
 	if err != nil {
 		logging.Logger.Error("[challenge]open: ", zap.Error(err))
 	} else {
-
 		bytesReader := bytes.NewBuffer(retBytes)
 
 		d := json.NewDecoder(bytesReader)
@@ -65,7 +64,6 @@ func syncOpenChallenges(ctx context.Context) {
 
 				// challenge is not synced in db yet
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-
 					latestChallenge, err := GetLastChallengeEntity(tx)
 
 					if err != nil {
@@ -90,13 +88,11 @@ func syncOpenChallenges(ctx context.Context) {
 					} else {
 						logging.Logger.Error("[challenge]Challenge chain is not valid")
 					}
-
 				}
 				db.Commit()
 				tx.Done()
 			}
 		}
-
 	}
 }
 
@@ -136,7 +132,6 @@ func processAccepted(ctx context.Context) {
 					logging.Logger.Error("[challenge]db: ", zap.Any("challenge_id", challengeEntity.ChallengeID), zap.Error(err))
 					return
 				}
-
 			}(ctx, openchallenge)
 		}
 		swg.Wait()

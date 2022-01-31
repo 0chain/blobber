@@ -128,7 +128,6 @@ func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet, err string)
 }
 
 func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (string, error) {
-
 	wcb := &WalletCallback{}
 	wcb.wg = &sync.WaitGroup{}
 	wcb.wg.Add(1)

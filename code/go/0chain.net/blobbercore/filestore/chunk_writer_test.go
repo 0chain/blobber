@@ -15,7 +15,6 @@ import (
 )
 
 func TestWrite(t *testing.T) {
-
 	fileName := filepath.Join(os.TempDir(), "testwrite_"+strconv.FormatInt(time.Now().Unix(), 10))
 
 	content := "this is full content"
@@ -46,7 +45,6 @@ func TestWrite(t *testing.T) {
 }
 
 func TestWriteChunk(t *testing.T) {
-
 	chunk1 := "this is 1st chunked"
 
 	tempFile, err := ioutil.TempFile("", "")

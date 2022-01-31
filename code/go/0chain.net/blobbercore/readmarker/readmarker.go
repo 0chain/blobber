@@ -16,7 +16,6 @@ func redeemReadMarker(ctx context.Context) {
 		if r := recover(); r != nil {
 			logging.Logger.Error("[recover] redeemReadMarker", zap.Any("err", r))
 		}
-
 	}()
 
 	if !iterInprogress {

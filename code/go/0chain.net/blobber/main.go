@@ -46,5 +46,4 @@ func main() {
 	startGRPCServer()
 
 	startHttpServer()
-
 }

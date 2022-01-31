@@ -152,5 +152,4 @@ func Transfer(token float64, clientID string) error {
 		return common.NewError("call_transfer_failed", "Failed to verify send transaction with statusBar success failed")
 	}
 	return nil
-
 }

@@ -212,7 +212,6 @@ func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
 	}
 
 	return dirRef, nil
-
 }
 
 // GetReference get FileRef with allcationID and path from postgres
@@ -499,7 +498,6 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 				for k, v := range listMap {
 					result[k] = v
 				}
-
 			}
 		} else {
 			fieldValue := v.FieldByName(field.Name).Interface()
@@ -508,7 +506,6 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 			}
 			result[tag] = fieldValue
 		}
-
 	}
 	return result
 }

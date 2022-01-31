@@ -51,10 +51,7 @@ func (WriteMarkerEntity) TableName() string {
 	return "write_markers"
 }
 
-func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context,
-	status WriteMarkerStatus, statusMessage string, redeemTxn string) (
-	err error) {
-
+func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarkerStatus, statusMessage, redeemTxn string) (err error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	statusBytes, _ := json.Marshal(statusMessage)
 

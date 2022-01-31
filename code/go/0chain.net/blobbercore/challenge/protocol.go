@@ -28,7 +28,6 @@ type ChallengeResponse struct {
 }
 
 func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transaction.Transaction, error) {
-
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		return nil, err
@@ -254,7 +253,6 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 }
 
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
-
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
 			Logger.Info("[challenge]commit: Verifying the transaction : " + lastTxn)

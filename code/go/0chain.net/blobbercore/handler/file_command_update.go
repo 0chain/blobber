@@ -60,7 +60,6 @@ func (cmd *UpdateFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 
 // ProcessContent flush file to FileStorage
 func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
-
 	result := blobberhttp.UploadResult{}
 
 	result.Filename = cmd.fileChanger.Filename
@@ -125,16 +124,13 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 
 	return result, nil
-
 }
 
 // ProcessThumbnail flush thumbnail file to FileStorage if it has.
 func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
-
 	thumbfile, thumbHeader, _ := req.FormFile("uploadThumbnailFile")
 
 	if thumbHeader != nil {
-
 		defer thumbfile.Close()
 
 		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
@@ -151,7 +147,6 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 	}
 
 	return nil
-
 }
 
 func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {

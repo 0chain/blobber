@@ -73,7 +73,6 @@ func (wm *WriteMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.Al
 }
 
 func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
-
 	if len(wm.CloseTxnID) > 0 {
 		t, err := transaction.VerifyTransaction(wm.CloseTxnID, chain.GetServerChain())
 		if err == nil {

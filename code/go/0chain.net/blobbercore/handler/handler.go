@@ -40,7 +40,6 @@ func GetMetaDataStore() datastore.Store {
 
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
-
 	r.Use(useRecovery, useCors, common.UseUserRateLimit)
 
 	//object operations
@@ -90,9 +89,7 @@ func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF
 }
 
 func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
-	return func(ctx context.Context, r *http.Request) (
-		resp interface{}, err error) {
-
+	return func(ctx context.Context, r *http.Request) (resp interface{}, err error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
 		resp, err = handler(ctx, r)
 

@@ -87,7 +87,6 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 	}
 
 	for _, sharder := range selectedSharders {
-
 		u := fmt.Sprintf("%v/%v%v%v", sharder, SC_REST_API_URL, scAddress, relativePath)
 
 		urls = append(urls, u+"?"+q.Encode())
@@ -109,7 +108,6 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 	var msgList = make([]string, 1, numSharders)
 
 	r := resty.New(transport, func(req *http.Request, resp *http.Response, cancelFunc context.CancelFunc, err error) error {
-
 		if err != nil { //network issue
 			msgList = append(msgList, err.Error())
 			return err
@@ -123,7 +121,6 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			msgList = append(msgList, errorMsg)
 
 			return errors.Throw(ErrBadRequest, errorMsg)
-
 		}
 
 		hash := fnv.New32() //use fnv for better performance
@@ -135,7 +132,6 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			errorMsg := "[sharder]body: " + url + " " + err.Error()
 			msgList = append(msgList, errorMsg)
 			return errors.Throw(ErrBadRequest, errorMsg)
-
 		}
 
 		hashString := hex.EncodeToString(hash.Sum(nil))
@@ -171,16 +167,13 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		urls = []string{
 			fmt.Sprintf("%v/%v%v%v", network.Sharders[n], SC_REST_API_URL, scAddress, relativePath) + "?" + q.Encode(),
 		}
-
 	}
 
 	if hashMaxCounter < minNumConfirmation {
-
 		msgList[0] = fmt.Sprintf("min_confirmation is %v%%, but got %v/%v sharders", MinConfirmation, hashMaxCounter, numSharders)
 
 		return nil, errors.Throw(ErrTooLessConfirmation, msgList...)
 	}
 
 	return resMaxCounterBody, nil
-
 }

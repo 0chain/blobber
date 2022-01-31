@@ -45,13 +45,11 @@ func setupOnChain() {
 			fmt.Print("	[SKIP]\n")
 			break
 		} else {
-
 			if err := registerBlobberOnChain(); err != nil {
 				if i == 10 { // no more attempts
 					panic(err)
 				}
 				fmt.Print("\n		", err.Error()+"\n")
-
 			} else {
 				fmt.Print("	[OK]\n")
 				break
@@ -62,7 +60,6 @@ func setupOnChain() {
 				fmt.Printf("\r	- wait %v seconds to retry", ATTEMPT_DELAY-n)
 			}
 		}
-
 	}
 	if !isIntegrationTest {
 		go setupWorkers()
