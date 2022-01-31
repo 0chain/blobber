@@ -291,11 +291,8 @@ func (fsh *StorageHandler) DownloadFile(
 		var authTokenString = r.FormValue("auth_token")
 
 		// check auth token
-		if isAuthorized, err := fsh.verifyAuthTicket(ctx,
-			authTokenString, alloc, fileref, clientID,
-		); !isAuthorized {
-			return nil, common.NewErrorf("download_file",
-				"cannot verify auth ticket: %v", err)
+		if authToken, err := fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
+			return nil, common.NewErrorf("download_file", "cannot verify auth ticket: %v", err)
 		}
 
 		authToken = &readmarker.AuthTicket{}
