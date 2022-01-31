@@ -969,7 +969,7 @@ func verifySignatureFromRequest(alloc, sign, pbK string) (bool, error) {
 }
 
 // pathsFromReq retrieves paths value from request which can be represented as single "path" value or "paths" values,
-// marshalled to json.
+// marshaled to json.
 func pathsFromReq(r *http.Request) ([]string, error) {
 	var (
 		pathsStr = r.FormValue("paths")

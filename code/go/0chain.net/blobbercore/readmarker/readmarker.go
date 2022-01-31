@@ -42,7 +42,7 @@ func redeemReadMarker(ctx context.Context) {
 					db := datastore.GetStore().GetTransaction(redeemCtx)
 					err = db.Commit().Error
 					if err != nil {
-						logging.Logger.Error("Error commiting the readmarker redeem", zap.Error(err))
+						logging.Logger.Error("Error committing the readmarker redeem", zap.Error(err))
 					}
 					swg.Done()
 				}(ctx, rmEntity)

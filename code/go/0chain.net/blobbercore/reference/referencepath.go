@@ -130,7 +130,7 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 	return &refs[0], nil
 }
 
-//This function retrieves refrence_objects tables rows with pagination. Check for issue https://github.com/0chain/gosdk/issues/117
+//This function retrieves reference_objects tables rows with pagination. Check for issue https://github.com/0chain/gosdk/issues/117
 //Might need to consider covering index for efficient search https://blog.crunchydata.com/blog/why-covering-indexes-are-incredibly-helpful
 //To retrieve refs efficiently form pagination index is created in postgresql on path column so it can be used to paginate refs
 //very easily and effectively; Same case for offsetDate.

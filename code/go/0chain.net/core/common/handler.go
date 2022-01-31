@@ -22,7 +22,7 @@ const (
 	ClientSignatureHeader = "X-App-Client-Signature"
 )
 
-/*ReqRespHandlerf - a type for the default hanlder signature */
+/*ReqRespHandlerf - a type for the default handler signature */
 type ReqRespHandlerf func(w http.ResponseWriter, r *http.Request)
 
 /*JSONResponderF - a handler that takes standard request (non-json) and responds with a json response
