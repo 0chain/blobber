@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-//SetupDefaultConfig - setup the default config options that can be overridden via the config file
+// SetupDefaultConfig - setup the default config options that can be overridden via the config file
 func SetupDefaultConfig() {
 	viper.SetDefault("logging.level", "info")
 	viper.SetDefault("contentref_cleaner.frequency", 30)

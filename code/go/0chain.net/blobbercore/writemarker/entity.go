@@ -109,7 +109,7 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMa
 	return wm, nil
 }
 
-func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAllocationRoot string, endAllocationRoot string) ([]*WriteMarkerEntity, error) {
+func GetWriteMarkersInRange(ctx context.Context, allocationID, startAllocationRoot, endAllocationRoot string) ([]*WriteMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	var seqRange []int64
 	err := db.Table((WriteMarkerEntity{}).TableName()).

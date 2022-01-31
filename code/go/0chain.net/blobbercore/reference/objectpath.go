@@ -60,7 +60,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 		for idx, child := range curRef.Children {
 
 			if child.NumBlocks < remainingBlocks {
-				remainingBlocks = remainingBlocks - child.NumBlocks
+				remainingBlocks -= child.NumBlocks
 				continue
 			}
 			if child.Type == FILE {
@@ -69,7 +69,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 				break
 			}
 			curRef, err = GetRefWithSortedChildren(ctx, allocationID, child.Path)
-			if err != nil || len(curRef.Hash) == 0 {
+			if err != nil || curRef.Hash == "" {
 				return nil, common.NewError("failed_object_path", "Failed to get the object path")
 			}
 			curResult = list[idx]

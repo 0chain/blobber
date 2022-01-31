@@ -8,7 +8,6 @@ import (
 
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -129,7 +128,7 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 
 		hash := fnv.New32() //use fnv for better performance
 		teeReader := io.TeeReader(resp.Body, hash)
-		resBody, err := ioutil.ReadAll(teeReader)
+		resBody, err := io.ReadAll(teeReader)
 		resp.Body.Close()
 
 		if err != nil {

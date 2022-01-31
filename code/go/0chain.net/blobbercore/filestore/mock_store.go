@@ -64,7 +64,7 @@ func (ms *MockStore) DeleteDir(allocationID, dirPath, connectionID string) error
 	return nil
 }
 
-func (ms *MockStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
+func (ms *MockStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
 	return nil, constants.ErrNotImplemented
 }
 
@@ -75,7 +75,7 @@ func (ms *MockStore) CommitWrite(allocationID string, fileData *FileInputData, c
 func (ms *MockStore) GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
 	return nil, nil, constants.ErrNotImplemented
 }
-func (ms *MockStore) DeleteFile(allocationID string, contentHash string) error {
+func (ms *MockStore) DeleteFile(allocationID, contentHash string) error {
 	return nil
 }
 func (ms *MockStore) GetTotalDiskSizeUsed() (int64, error) {

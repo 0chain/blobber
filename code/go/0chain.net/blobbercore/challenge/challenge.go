@@ -54,7 +54,7 @@ func syncOpenChallenges(ctx context.Context) {
 			logging.Logger.Error("[challenge]json: ", zap.Error(errd))
 		} else {
 			for _, challengeObj := range blobberChallenges.Challenges {
-				if challengeObj == nil || len(challengeObj.ChallengeID) == 0 {
+				if challengeObj == nil || challengeObj.ChallengeID == "" {
 					logging.Logger.Info("[challenge]open: No challenge entity from the challenge map")
 					continue
 				}
@@ -75,7 +75,7 @@ func syncOpenChallenges(ctx context.Context) {
 						}
 					}
 
-					isFirstChallengeInDatabase := len(challengeObj.PrevChallengeID) == 0 || latestChallenge == nil
+					isFirstChallengeInDatabase := challengeObj.PrevChallengeID == "" || latestChallenge == nil
 					isNextChallengeOnChain := latestChallenge == nil || latestChallenge.ChallengeID == challengeObj.PrevChallengeID
 
 					if isFirstChallengeInDatabase || isNextChallengeOnChain {

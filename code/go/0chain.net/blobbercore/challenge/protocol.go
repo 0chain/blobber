@@ -100,7 +100,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	if rootRef.NumBlocks > 0 {
 		r := rand.New(rand.NewSource(cr.RandomNumber))
 		blockNum = r.Int63n(rootRef.NumBlocks)
-		blockNum = blockNum + 1
+		blockNum++
 		cr.BlockNum = blockNum
 	} else {
 		err = common.NewError("allocation_is_blank", "Got a challenge for a blank allocation")

@@ -40,7 +40,7 @@ func (m *Mutex) Unlock() {
 }
 
 // GetMutex get mutex by table and key
-func GetMutex(tablename string, key string) *Mutex {
+func GetMutex(tablename, key string) *Mutex {
 	lockKey := tablename + ":" + key
 	lockMutex.Lock()
 

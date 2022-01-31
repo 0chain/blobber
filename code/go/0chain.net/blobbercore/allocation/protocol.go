@@ -101,14 +101,15 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	if !isExist {
 		foundBlobber := false
 		for _, blobberConnection := range sa.Blobbers {
-			if blobberConnection.ID == node.Self.ID {
-				foundBlobber = true
-				a.AllocationRoot = ""
-				a.BlobberSize = (sa.Size + int64(len(sa.Blobbers)-1)) /
-					int64(len(sa.Blobbers))
-				a.BlobberSizeUsed = 0
-				break
+			if blobberConnection.ID != node.Self.ID {
+				continue
 			}
+			foundBlobber = true
+			a.AllocationRoot = ""
+			a.BlobberSize = (sa.Size + int64(len(sa.Blobbers)-1)) /
+				int64(len(sa.Blobbers))
+			a.BlobberSizeUsed = 0
+			break
 		}
 		if !foundBlobber {
 			return nil, common.NewError("invalid_blobber",

@@ -29,7 +29,7 @@ type WalletCallback struct {
 	err string
 }
 
-func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet string, err string) {
+func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet, err string) {
 	wb.err = err
 	wb.wg.Done()
 }

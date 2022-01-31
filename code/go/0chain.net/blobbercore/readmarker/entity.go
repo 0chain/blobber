@@ -191,7 +191,7 @@ func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context,
 		return common.NewErrorf("rme_update_status",
 			"marshaling latest RM: %v", err)
 	}
-	if len(latestRMBytes) == 0 || string(latestRMBytes) == "" {
+	if len(latestRMBytes) == 0 {
 		latestRMBytes = []byte("{}")
 	}
 	rmUpdates["latest_redeemed_rm"] = latestRMBytes

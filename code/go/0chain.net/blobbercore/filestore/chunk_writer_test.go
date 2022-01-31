@@ -55,7 +55,7 @@ func TestWriteChunk(t *testing.T) {
 		require.Error(t, err, "failed to create tempfile")
 		return
 	}
-	offset, err := tempFile.Write([]byte(chunk1))
+	offset, err := tempFile.WriteString(chunk1)
 	if err != nil {
 		require.Error(t, err, "failed to write first chunk to tempfile")
 		return

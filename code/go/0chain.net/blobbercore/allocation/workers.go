@@ -234,7 +234,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 	}
 
 	// save allocations
-	if err = tx.Save(a).Error; err != nil {
+	if err := tx.Save(a).Error; err != nil {
 		return nil, err
 	}
 
@@ -244,7 +244,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 
 	// save allocation terms
 	for _, t := range a.Terms {
-		if err = tx.Save(t).Error; err != nil {
+		if err := tx.Save(t).Error; err != nil {
 			return nil, err
 		}
 	}

@@ -147,40 +147,42 @@ func (cmd *AddFileCommand) ProcessThumbnail(ctx context.Context, req *http.Reque
 
 func (cmd *AddFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
-		if c.Operation == constants.FileOperationInsert {
-
-			dbChangeProcessor := &allocation.AddFileChanger{}
-
-			err := dbChangeProcessor.Unmarshal(c.Input)
-			if err != nil {
-				logging.Logger.Error("reloadChange", zap.Error(err))
-			}
-
-			cmd.fileChanger.Size = dbChangeProcessor.Size
-			cmd.fileChanger.ThumbnailFilename = dbChangeProcessor.ThumbnailFilename
-			cmd.fileChanger.ThumbnailSize = dbChangeProcessor.ThumbnailSize
-			cmd.fileChanger.ThumbnailHash = dbChangeProcessor.Hash
-
-			return
+		if c.Operation != constants.FileOperationInsert {
+			continue
 		}
+
+		dbChangeProcessor := &allocation.AddFileChanger{}
+
+		err := dbChangeProcessor.Unmarshal(c.Input)
+		if err != nil {
+			logging.Logger.Error("reloadChange", zap.Error(err))
+		}
+
+		cmd.fileChanger.Size = dbChangeProcessor.Size
+		cmd.fileChanger.ThumbnailFilename = dbChangeProcessor.ThumbnailFilename
+		cmd.fileChanger.ThumbnailSize = dbChangeProcessor.ThumbnailSize
+		cmd.fileChanger.ThumbnailHash = dbChangeProcessor.Hash
+
+		return
 	}
 }
 
 // UpdateChange replace AddFileChange in db
 func (cmd *AddFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	for _, c := range connectionObj.Changes {
-		if c.Operation == constants.FileOperationInsert {
-			c.Size = connectionObj.Size
-			c.Input, _ = cmd.fileChanger.Marshal()
-
-			//c.ModelWithTS.UpdatedAt = time.Now()
-			err := connectionObj.Save(ctx)
-			if err != nil {
-				return err
-			}
-
-			return c.Save(ctx)
+		if c.Operation != constants.FileOperationInsert {
+			continue
 		}
+		c.Size = connectionObj.Size
+		c.Input, _ = cmd.fileChanger.Marshal()
+
+		//c.ModelWithTS.UpdatedAt = time.Now()
+		err := connectionObj.Save(ctx)
+		if err != nil {
+			return err
+		}
+
+		return c.Save(ctx)
 	}
 
 	//NOT FOUND

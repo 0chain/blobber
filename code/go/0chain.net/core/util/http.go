@@ -3,7 +3,7 @@ package util
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -19,7 +19,7 @@ import (
 const MAX_RETRIES = 5
 const SLEEP_BETWEEN_RETRIES = 5
 
-func NewHTTPRequest(method string, url string, data []byte) (*http.Request, context.Context, context.CancelFunc, error) {
+func NewHTTPRequest(method, url string, data []byte) (*http.Request, context.Context, context.CancelFunc, error) {
 	requestHash := encryption.Hash(data)
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(data))
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
@@ -63,7 +63,7 @@ func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) (
 			if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
 				break
 			}
-			body, _ = ioutil.ReadAll(resp.Body)
+			body, _ = io.ReadAll(resp.Body)
 			if resp.Body != nil {
 				resp.Body.Close()
 			}
@@ -83,6 +83,6 @@ func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) (
 		defer resp.Body.Close()
 	}
 
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
 	return body, err
 }

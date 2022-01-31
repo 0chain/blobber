@@ -2,12 +2,12 @@ package common
 
 import "fmt"
 
-/*IsEmpty checks whether the input string is empty or not */
+// IsEmpty checks whether the input string is empty or not
 func IsEmpty(s string) bool {
-	return len(s) == 0
+	return s == ""
 }
 
-/*ToKey - takes an interface and returns a Key */
+// ToKey - takes an interface and returns a Key
 func ToKey(key interface{}) string {
 	switch v := key.(type) {
 	case string:
@@ -19,6 +19,6 @@ func ToKey(key interface{}) string {
 	}
 }
 
-func IsEqual(key1 string, key2 string) bool {
+func IsEqual(key1, key2 string) bool {
 	return key1 == key2
 }

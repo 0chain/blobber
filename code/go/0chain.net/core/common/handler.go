@@ -50,10 +50,8 @@ func Respond(w http.ResponseWriter, data interface{}, err error) {
 		buf := bytes.NewBuffer(nil)
 		json.NewEncoder(buf).Encode(data) //nolint:errcheck // checked in previous step
 		http.Error(w, buf.String(), 400)
-	} else {
-		if data != nil {
-			json.NewEncoder(w).Encode(data) //nolint:errcheck // checked in previous step
-		}
+	} else if data != nil {
+		json.NewEncoder(w).Encode(data) //nolint:errcheck // checked in previous step
 	}
 }
 
@@ -79,16 +77,14 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 				http.Error(w, err.Error(), 400)
 			}
 
-		} else {
-			if data != nil {
-				rawdata, ok := data.([]byte)
-				if ok {
-					w.Header().Set("Content-Type", "application/octet-stream")
-					w.Write(rawdata) //nolint:errcheck
-				} else {
-					w.Header().Set("Content-Type", "application/json")
-					json.NewEncoder(w).Encode(data) //nolint:errcheck
-				}
+		} else if data != nil {
+			rawdata, ok := data.([]byte)
+			if ok {
+				w.Header().Set("Content-Type", "application/octet-stream")
+				w.Write(rawdata) //nolint:errcheck
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(data) //nolint:errcheck
 			}
 		}
 	}

@@ -18,7 +18,7 @@ type ReferencePath struct {
 	Ref  *Ref
 }
 
-func GetReferencePath(ctx context.Context, allocationID string, path string) (*Ref, error) {
+func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, error) {
 	return GetReferencePathFromPaths(ctx, allocationID, []string{path})
 }
 
@@ -80,7 +80,7 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 	return &refs[0], nil
 }
 
-func PathExists(ctx context.Context, allocationID string, path string) (bool, error) {
+func PathExists(ctx context.Context, allocationID, path string) (bool, error) {
 	path = filepath.Clean(path)
 
 	if path == "." || path == "/" {
@@ -100,7 +100,7 @@ func PathExists(ctx context.Context, allocationID string, path string) (bool, er
 	return true, nil
 }
 
-func GetObjectTree(ctx context.Context, allocationID string, path string) (*Ref, error) {
+func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error) {
 	path = filepath.Clean(path)
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)

@@ -428,7 +428,7 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	if clientID != allocationObj.OwnerID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
-	err = reference.DeleteShareInfo(ctx, reference.ShareInfo{
+	err = reference.DeleteShareInfo(ctx, &reference.ShareInfo{
 		ClientID:     refereeClientID,
 		FilePathHash: filePathHash,
 	})

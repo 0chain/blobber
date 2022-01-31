@@ -103,7 +103,7 @@ func startCleanupTempFiles(ctx context.Context) {
 	}
 }
 
-func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize int64, limit int64) {
+func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize, limit int64) {
 	defer func() {
 		if r := recover(); r != nil {
 			Logger.Error("[recover] moveColdDataToCloud", zap.Any("err", r))
@@ -153,7 +153,7 @@ func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize int64, limi
 					moveFileToCloud(ctx, fileRef)
 				}
 			}
-			offset = offset + limit
+			offset += limit
 		}
 		db.Commit()
 		rctx.Done()

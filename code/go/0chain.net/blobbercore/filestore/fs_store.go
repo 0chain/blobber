@@ -55,7 +55,7 @@ type IFileBlockGetter interface {
 type FileBlockGetter struct {
 }
 
-func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
+func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
 	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
@@ -237,13 +237,13 @@ func (fs *FileFSStore) GetlDiskSizeUsed(allocationID string) (int64, error) {
 	return size, err
 }
 
-func GetFilePathFromHash(hash string) (string, string) {
+func GetFilePathFromHash(h string) (string, string) {
 	var dir bytes.Buffer
-	fmt.Fprintf(&dir, "%s", hash[0:3])
+	fmt.Fprintf(&dir, "%s", h[0:3])
 	for i := 1; i < 3; i++ {
-		fmt.Fprintf(&dir, "%s%s", string(os.PathSeparator), hash[3*i:3*i+3])
+		fmt.Fprintf(&dir, "%s%s", string(os.PathSeparator), h[3*i:3*i+3])
 	}
-	return dir.String(), hash[9:]
+	return dir.String(), h[9:]
 }
 
 func (fs *FileFSStore) generateTransactionPath(transID string) string {
@@ -357,7 +357,7 @@ func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *F
 	return returnBytes, fmt.GetMerkleTree(), nil
 }
 
-func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
+func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
 
 	return fs.fileBlockGetter.GetFileBlock(fs, allocationID, fileData, blockNum, numBlocks)
 
@@ -430,7 +430,7 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 	//return false, err
 }
 
-func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error {
+func (fs *FileFSStore) DeleteFile(allocationID, contentHash string) error {
 	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())

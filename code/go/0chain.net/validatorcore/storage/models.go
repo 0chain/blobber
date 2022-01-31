@@ -98,17 +98,19 @@ type FileMetaData struct {
 
 func (fr *FileMetaData) GetHashData() string {
 	hashArray := make([]string, 0)
-	hashArray = append(hashArray, fr.AllocationID)
-	hashArray = append(hashArray, fr.Type)
-	hashArray = append(hashArray, fr.Name)
-	hashArray = append(hashArray, fr.Path)
-	hashArray = append(hashArray, strconv.FormatInt(fr.Size, 10))
-	hashArray = append(hashArray, fr.ContentHash)
-	hashArray = append(hashArray, fr.MerkleRoot)
-	hashArray = append(hashArray, strconv.FormatInt(fr.ActualFileSize, 10))
-	hashArray = append(hashArray, fr.ActualFileHash)
-	hashArray = append(hashArray, fr.Attributes.String())
-	hashArray = append(hashArray, strconv.FormatInt(fr.ChunkSize, 10))
+	hashArray = append(hashArray,
+		fr.AllocationID,
+		fr.Type,
+		fr.Name,
+		fr.Path,
+		strconv.FormatInt(fr.Size, 10),
+		fr.ContentHash,
+		fr.MerkleRoot,
+		strconv.FormatInt(fr.ActualFileSize, 10),
+		fr.ActualFileHash,
+		fr.Attributes.String(),
+		strconv.FormatInt(fr.ChunkSize, 10),
+	)
 	return strings.Join(hashArray, ":")
 }
 
@@ -207,7 +209,7 @@ func (op *ObjectPath) VerifyBlockNum(challengeRand int64) error {
 	r := rand.New(rand.NewSource(challengeRand))
 	//rand.Seed(challengeRand)
 	blockNum := r.Int63n(op.RootObject.NumBlocks)
-	blockNum = blockNum + 1
+	blockNum++
 
 	if op.RootObject.NumBlocks < blockNum {
 		return common.NewError("invalid_block_num", fmt.Sprintf("Invalid block number %d/%d", op.RootObject.NumBlocks, blockNum))
@@ -224,7 +226,7 @@ func (op *ObjectPath) VerifyBlockNum(challengeRand int64) error {
 		}
 		for _, child := range curRef.(*DirMetaData).Children {
 			if child.GetNumBlocks() < remainingBlocks {
-				remainingBlocks = remainingBlocks - child.GetNumBlocks()
+				remainingBlocks -= child.GetNumBlocks()
 				continue
 			}
 			if child.GetType() == FILE {

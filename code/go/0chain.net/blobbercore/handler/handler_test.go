@@ -128,8 +128,8 @@ func setup(t *testing.T) {
 	}
 }
 
-func setupHandlers() (*mux.Router, map[string]string) {
-	router := mux.NewRouter()
+func setupHandlers() (router *mux.Router, opMap map[string]string) {
+	router = mux.NewRouter()
 
 	opPath := "/v1/file/objectpath/{allocation}"
 	opName := "Object_Path"
@@ -264,7 +264,7 @@ func isEndpointAllowGetReq(name string) bool {
 	}
 }
 
-func GetAuthTicketForEncryptedFile(allocationID string, remotePath string, fileHash string, clientID string, encPublicKey string) (string, error) {
+func GetAuthTicketForEncryptedFile(allocationID, remotePath, fileHash, clientID, encPublicKey string) (string, error) {
 	at := &marker.AuthTicket{}
 	at.AllocationID = allocationID
 	at.OwnerID = client.GetClientID()
@@ -371,7 +371,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if !isEndpointAllowGetReq(name) {
 						method = http.MethodPost
 					}
-					r, err := http.NewRequest(method, url.String(), nil)
+					r, err := http.NewRequest(method, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -400,7 +400,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if !isEndpointAllowGetReq(name) {
 						method = http.MethodPost
 					}
-					r, err := http.NewRequest(method, url.String(), nil)
+					r, err := http.NewRequest(method, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -441,7 +441,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("path", path)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+					r, err := http.NewRequest(http.MethodGet, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -501,7 +501,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("path", path)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+					r, err := http.NewRequest(http.MethodGet, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -561,7 +561,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("path", path)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
+					r, err := http.NewRequest(http.MethodPost, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -632,7 +632,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("path", path)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+					r, err := http.NewRequest(http.MethodGet, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -693,7 +693,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("collab_id", "collab id")
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+					r, err := http.NewRequest(http.MethodGet, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -762,7 +762,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("connection_id", connectionID)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
+					r, err := http.NewRequest(http.MethodPost, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -842,7 +842,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("dest", "dest")
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
+					r, err := http.NewRequest(http.MethodPost, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -933,7 +933,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("attributes", string(attrBytes))
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
+					r, err := http.NewRequest(http.MethodPost, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1827,7 +1827,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					t.Fatal(err)
 				}
 				header := make([]byte, 2*1024)
-				copy(header[:], encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},
@@ -1966,7 +1966,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					t.Fatal(err)
 				}
 				header := make([]byte, 2*1024)
-				copy(header[:], encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},
@@ -2113,7 +2113,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					t.Fatal(err)
 				}
 				header := make([]byte, 2*1024)
-				copy(header[:], encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},
@@ -2260,7 +2260,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					t.Fatal(err)
 				}
 				header := make([]byte, 2*1024)
-				copy(header[:], encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},

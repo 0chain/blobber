@@ -25,7 +25,7 @@ func (cmd *FileCommandDelete) IsAuthorized(ctx context.Context, req *http.Reques
 	}
 
 	path := req.FormValue("path")
-	if len(path) == 0 {
+	if path == "" {
 		return common.NewError("invalid_parameters", "Invalid path")
 	}
 	cmd.exisitingFileRef, _ = reference.GetReference(ctx, allocationObj.ID, path)

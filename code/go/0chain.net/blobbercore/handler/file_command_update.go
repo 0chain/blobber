@@ -156,40 +156,43 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 
 func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
-		if c.Operation == constants.FileOperationUpdate {
-
-			dbFileChanger := &allocation.UpdateFileChanger{}
-
-			err := dbFileChanger.Unmarshal(c.Input)
-			if err != nil {
-				logging.Logger.Error("reloadChange", zap.Error(err))
-			}
-
-			// reload uploaded size from db, it was chunk size from client
-			cmd.fileChanger.Size = dbFileChanger.Size
-			cmd.fileChanger.ThumbnailFilename = dbFileChanger.ThumbnailFilename
-			cmd.fileChanger.ThumbnailSize = dbFileChanger.ThumbnailSize
-			cmd.fileChanger.ThumbnailHash = dbFileChanger.Hash
-			return
+		if c.Operation != constants.FileOperationUpdate {
+			continue
 		}
+
+		dbFileChanger := &allocation.UpdateFileChanger{}
+
+		err := dbFileChanger.Unmarshal(c.Input)
+		if err != nil {
+			logging.Logger.Error("reloadChange", zap.Error(err))
+		}
+
+		// reload uploaded size from db, it was chunk size from client
+		cmd.fileChanger.Size = dbFileChanger.Size
+		cmd.fileChanger.ThumbnailFilename = dbFileChanger.ThumbnailFilename
+		cmd.fileChanger.ThumbnailSize = dbFileChanger.ThumbnailSize
+		cmd.fileChanger.ThumbnailHash = dbFileChanger.Hash
+		return
 	}
 }
 
 // UpdateChange add UpdateFileChanger in db
 func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	for _, c := range connectionObj.Changes {
-		if c.Operation == constants.FileOperationUpdate {
-			c.Size = connectionObj.Size
-			c.Input, _ = cmd.fileChanger.Marshal()
-
-			//c.ModelWithTS.UpdatedAt = time.Now()
-			err := connectionObj.Save(ctx)
-			if err != nil {
-				return err
-			}
-
-			return c.Save(ctx)
+		if c.Operation != constants.FileOperationUpdate {
+			continue
 		}
+
+		c.Size = connectionObj.Size
+		c.Input, _ = cmd.fileChanger.Marshal()
+
+		//c.ModelWithTS.UpdatedAt = time.Now()
+		err := connectionObj.Save(ctx)
+		if err != nil {
+			return err
+		}
+
+		return c.Save(ctx)
 	}
 
 	//NOT FOUND

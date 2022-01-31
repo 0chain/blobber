@@ -36,12 +36,12 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 	}
 
 	clientPublicKey := ctx.Value(constants.ContextKeyClientKey).(string)
-	if len(clientPublicKey) == 0 || clientPublicKey != rm.LatestRM.ClientPublicKey {
+	if clientPublicKey == "" || clientPublicKey != rm.LatestRM.ClientPublicKey {
 		return common.NewError("read_marker_validation_failed", "Could not get the public key of the client")
 	}
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if len(clientID) == 0 || clientID != rm.LatestRM.ClientID {
+	if clientID == "" || clientID != rm.LatestRM.ClientID {
 		return common.NewError("read_marker_validation_failed", "Read Marker clientID does not match request clientID")
 	}
 	currentTS := common.Now()

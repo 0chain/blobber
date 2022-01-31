@@ -192,7 +192,7 @@ func (fsh *StorageHandler) DownloadFile(
 	)
 
 	// check client
-	if len(clientID) == 0 {
+	if clientID == "" {
 		return nil, common.NewError("download_file", "invalid client")
 	}
 
@@ -204,7 +204,7 @@ func (fsh *StorageHandler) DownloadFile(
 	}
 
 	// get and parse file params
-	if err = r.ParseMultipartForm(FormFileParseMaxMemory); nil != err {
+	if err = r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
 		Logger.Info("download_file - request_parse_error", zap.Error(err))
 		return nil, common.NewErrorf("download_file",
 			"request_parse_error: %v", err)
@@ -216,7 +216,7 @@ func (fsh *StorageHandler) DownloadFile(
 	}
 
 	var blockNumStr = r.FormValue("block_num")
-	if len(blockNumStr) == 0 {
+	if blockNumStr == "" {
 		return nil, common.NewError("download_file", "no block number")
 	}
 
@@ -227,7 +227,7 @@ func (fsh *StorageHandler) DownloadFile(
 	}
 
 	var numBlocksStr = r.FormValue("num_blocks")
-	if len(numBlocksStr) == 0 {
+	if numBlocksStr == "" {
 		numBlocksStr = "1"
 	}
 
@@ -333,10 +333,8 @@ func (fsh *StorageHandler) DownloadFile(
 		if fileAttrs, err := fileref.GetAttributes(); err != nil {
 			return nil, common.NewErrorf("download_file",
 				"error getting file attributes: %v", err)
-		} else {
-			if fileAttrs.WhoPaysForReads == common.WhoPays3rdParty {
-				payerID = clientID
-			}
+		} else if fileAttrs.WhoPaysForReads == common.WhoPays3rdParty {
+			payerID = clientID
 		}
 	}
 
@@ -514,7 +512,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	allocationID := allocationObj.ID
 
 	connectionID := r.FormValue("connection_id")
-	if len(connectionID) == 0 {
+	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
@@ -534,21 +532,23 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	var isCollaborator bool
 	for _, change := range connectionObj.Changes {
-		if change.Operation == constants.FileOperationUpdate {
-			updateFileChange := new(allocation.UpdateFileChanger)
-			if err := updateFileChange.Unmarshal(change.Input); err != nil {
-				return nil, err
-			}
-			fileRef, err := reference.GetReference(ctx, allocationID, updateFileChange.Path)
-			if err != nil {
-				return nil, err
-			}
-			isCollaborator = reference.IsACollaborator(ctx, fileRef.ID, clientID)
-			break
+		if change.Operation != constants.FileOperationUpdate {
+			continue
 		}
+
+		updateFileChange := new(allocation.UpdateFileChanger)
+		if err := updateFileChange.Unmarshal(change.Input); err != nil {
+			return nil, err
+		}
+		fileRef, err := reference.GetReference(ctx, allocationID, updateFileChange.Path)
+		if err != nil {
+			return nil, err
+		}
+		isCollaborator = reference.IsACollaborator(ctx, fileRef.ID, clientID)
+		break
 	}
 
-	if len(clientID) == 0 || len(clientKey) == 0 {
+	if clientID == "" || clientKey == "" {
 		return nil, common.NewError("invalid_params", "Please provide clientID and clientKey")
 	}
 
@@ -556,7 +556,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	if err = r.ParseMultipartForm(FormFileParseMaxMemory); nil != err {
+	if err = r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
 		Logger.Info("Error Parsing the request", zap.Any("error", err))
 		return nil, common.NewError("request_parse_error", err.Error())
 	}
@@ -577,7 +577,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	var result blobberhttp.CommitResult
 	var latestWM *writemarker.WriteMarkerEntity
-	if len(allocationObj.AllocationRoot) == 0 {
+	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
 		latestWM, err = writemarker.GetWriteMarkerEntity(ctx,
@@ -607,7 +607,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		clientIDForWriteRedeem = allocationObj.OwnerID
 	}
 
-	if err = writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
+	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
 		return nil, err
 	}
 
@@ -689,12 +689,12 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	if len(clientID) == 0 {
+	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Invalid client")
 	}
 
 	new_name := r.FormValue("new_name")
-	if len(new_name) == 0 {
+	if new_name == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid name")
 	}
 
@@ -703,12 +703,12 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, err
 	}
 
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+	if clientID == "" || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	connectionID := r.FormValue("connection_id")
-	if len(connectionID) == 0 {
+	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
@@ -886,12 +886,12 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 
 	allocationID := allocationObj.ID
 
-	if len(clientID) == 0 {
+	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Invalid client")
 	}
 
 	destPath := r.FormValue("dest")
-	if len(destPath) == 0 {
+	if destPath == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
 	}
 
@@ -900,12 +900,12 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, err
 	}
 
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+	if clientID == "" || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	connectionID := r.FormValue("connection_id")
-	if len(connectionID) == 0 {
+	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
@@ -956,7 +956,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 
 func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*blobberhttp.UploadResult, error) {
 	path := r.FormValue("path")
-	if len(path) == 0 {
+	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 
@@ -1004,12 +1004,12 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 	allocationID := allocationObj.ID
 
-	if len(clientID) == 0 {
+	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
 	dirPath := r.FormValue("dir_path")
-	if len(dirPath) == 0 {
+	if dirPath == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
 	}
 
@@ -1023,7 +1023,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	}
 
 	connectionID := r.FormValue("connection_id")
-	if len(connectionID) == 0 {
+	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
@@ -1100,7 +1100,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("immutable_allocation", "Cannot write to an immutable allocation")
 	}
 
-	if len(clientID) == 0 {
+	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
@@ -1110,7 +1110,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	}
 
 	connectionID := r.FormValue("connection_id")
-	if len(connectionID) == 0 {
+	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 

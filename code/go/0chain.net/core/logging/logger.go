@@ -13,7 +13,7 @@ var (
 	Logger *zap.Logger
 )
 
-func InitLogging(mode string, logDir string, logFile string) {
+func InitLogging(mode, logDir, logFile string) {
 	var logName = logDir + "/" + logFile
 
 	var logWriter = getWriteSyncer(logName)

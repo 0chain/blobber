@@ -502,9 +502,9 @@ VALUES (1234,'exampleId','exampleId:examplePath','exampleId:examplePath','d','ro
 	return nil
 }
 
-func GeneratePubPrivateKey(t *testing.T) (string, string, zcncrypto.SignatureScheme) {
+func GeneratePubPrivateKey(t *testing.T) (pubKey, privateKey string, signScheme zcncrypto.SignatureScheme) {
 
-	signScheme := zcncrypto.NewSignatureScheme("bls0chain")
+	signScheme = zcncrypto.NewSignatureScheme("bls0chain")
 	wallet, err := signScheme.GenerateKeys()
 	if err != nil {
 		t.Fatal(err)
