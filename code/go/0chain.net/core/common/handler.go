@@ -55,11 +55,6 @@ func Respond(w http.ResponseWriter, data interface{}, err error) {
 	}
 }
 
-func getContext(r *http.Request) (context.Context, error) { //nolint:unused,deadcode // might be used later?
-	ctx := r.Context()
-	return ctx, nil
-}
-
 var domainRE = regexp.MustCompile(`^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)`) //nolint:unused,deadcode,varcheck // might be used later?
 
 func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
