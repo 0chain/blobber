@@ -11,11 +11,11 @@ func IsEmpty(s string) bool {
 func ToKey(key interface{}) string {
 	switch v := key.(type) {
 	case string:
-		return string(v)
+		return v
 	case []byte:
 		return string(v)
 	default:
-		return string(fmt.Sprintf("%v", v))
+		return fmt.Sprintf("%v", v)
 	}
 }
 
