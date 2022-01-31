@@ -1,8 +1,9 @@
 package stats
 
 import (
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 )
 
 // Timestamp that implements standard fmt.Stringer interface.
