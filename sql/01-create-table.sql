@@ -11,16 +11,23 @@ $$ language 'plpgsql';
 
 CREATE TABLE allocations(
     id VARCHAR (64) PRIMARY KEY,
+    tx VARCHAR (64) NOT NULL,
     size BIGINT NOT NULL DEFAULT 0,
     used_size BIGINT NOT NULL DEFAULT 0,
     owner_id VARCHAR(64) NOT NULL,
-    owner_public_key VARCHAR(256) NOT NULL,
+    payer_id VARCHAR(64) NOT NULL,
+    repairer_id VARCHAR(64) NOT NULL,
+    owner_public_key VARCHAR(512) NOT NULL,
     expiration_date BIGINT NOT NULL,
     allocation_root VARCHAR(255) NOT NULL DEFAULT '',
     blobber_size BIGINT NOT NULL DEFAULT 0,
     blobber_size_used BIGINT NOT NULL DEFAULT 0,
     latest_redeemed_write_marker VARCHAR(255),
     is_redeem_required BOOLEAN,
+    is_immutable BOOLEAN NOT NULL,
+    cleaned_up BOOLEAN NOT NULL DEFAULT FALSE,
+    finalized BOOLEAN NOT NULL DEFAULT FALSE,
+    time_unit BIGINT NOT NULL DEFAULT 172800000000000,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -52,6 +59,49 @@ CREATE TABLE allocation_changes(
 
 CREATE TRIGGER allocation_changes_modtime BEFORE UPDATE ON allocation_changes FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();
 
+CREATE TABLE terms (
+    id             bigserial,
+    blobber_id     varchar(64) NOT NULL,
+    allocation_id  varchar(64) REFERENCES allocations (id),
+    read_price     bigint NOT NULL,
+    write_price    bigint NOT NULL,
+
+    PRIMARY KEY (id)
+);
+
+-- clients' pending reads / writes
+CREATE TABLE pendings (
+    id             bigserial,
+    client_id      varchar(64) NOT NULL,
+    allocation_id  varchar(64) NOT NULL,
+    blobber_id     varchar(64) NOT NULL,
+    pending_write  bigint NOT NULL DEFAULT 0, -- number of pending bytes
+
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE read_pools (
+    pool_id        text NOT NULL, -- unique
+    client_id      varchar(64) NOT NULL,
+    blobber_id     varchar(64) NOT NULL,
+    allocation_id  varchar(64) NOT NULL,
+    balance        bigint NOT NULL,
+    expire_at      bigint NOT NULL,
+
+    PRIMARY KEY (pool_id)
+);
+
+CREATE TABLE write_pools (
+    pool_id        text NOT NULL, -- unique
+    client_id      varchar(64) NOT NULL,
+    blobber_id     varchar(64) NOT NULL,
+    allocation_id  varchar(64) NOT NULL,
+    balance        bigint NOT NULL,
+    expire_at      bigint NOT NULL,
+
+    PRIMARY KEY (pool_id)
+);
+
 CREATE TABLE reference_objects (
     id BIGSERIAL PRIMARY KEY,
     lookup_hash VARCHAR (64) NOT NULL,
@@ -67,6 +117,7 @@ CREATE TABLE reference_objects (
     custom_meta TEXT NOT NULL,
     content_hash VARCHAR(64) NOT NULL,
     size BIGINT NOT NULL DEFAULT 0,
+    chunk_size INT NOT NULL DEFAULT 65536,
     merkle_root VARCHAR(64) NOT NULL,
     actual_file_size BIGINT NOT NULL DEFAULT 0,
     actual_file_hash VARCHAR(64) NOT NULL,
@@ -77,6 +128,8 @@ CREATE TABLE reference_objects (
     actual_thumbnail_size BIGINT NOT NULL DEFAULT 0,
     actual_thumbnail_hash VARCHAR(64) NOT NULL,
     encrypted_key TEXT,
+    attributes JSON DEFAULT '{}'::jsonb,
+    on_cloud BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMP
@@ -98,7 +151,7 @@ CREATE TABLE write_markers (
     redeem_retries INT NOT NULL DEFAULT 0,
     close_txn_id VARCHAR(64),
     connection_id VARCHAR(64) NOT NULL,
-    client_key VARCHAR(256) NOT NULL,
+    client_key VARCHAR(512) NOT NULL,
     sequence BIGSERIAL UNIQUE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -108,12 +161,15 @@ CREATE TRIGGER write_markers_modtime BEFORE UPDATE ON write_markers FOR EACH ROW
 
 CREATE TABLE read_markers (
     client_id VARCHAR(64) NOT NULL PRIMARY KEY,
-    client_public_key VARCHAR(256) NOT NULL,
+    client_public_key VARCHAR(512) NOT NULL,
     blobber_id VARCHAR(64) NOT NULL,
     allocation_id VARCHAR(64) NOT NULL,
     owner_id VARCHAR(64) NOT NULL,
+    payer_id VARCHAR(64) NOT NULL,
+    auth_ticket JSON,
     timestamp BIGINT NOT NULL,
     counter BIGINT NOT NULL DEFAULT 0,
+    suspend BIGINT NOT NULL DEFAULT -1,
     signature VARCHAR(256) NOT NULL,
     latest_redeemed_rm JSON,
     redeem_required boolean,
@@ -163,3 +219,30 @@ CREATE TABLE file_stats (
 );
 
 CREATE TRIGGER file_stats_modtime BEFORE UPDATE ON file_stats FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();
+
+CREATE TABLE commit_meta_txns (
+    ref_id BIGSERIAL NOT NULL,
+    txn_id VARCHAR(64) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE collaborators (
+    ref_id BIGSERIAL NOT NULL,
+    client_id VARCHAR(64) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE marketplace_share_info (
+    id BIGSERIAL PRIMARY KEY,
+    owner_id VARCHAR(64) NOT NULL,
+    client_id VARCHAR(64) NOT NULL,
+    file_path_hash TEXT NOT NULL,
+    re_encryption_key TEXT NOT NULL,
+    client_encryption_public_key TEXT NOT NULL,
+    expiry_at TIMESTAMP NULL,
+    revoked BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TRIGGER share_info_modtime BEFORE UPDATE ON marketplace_share_info FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();
