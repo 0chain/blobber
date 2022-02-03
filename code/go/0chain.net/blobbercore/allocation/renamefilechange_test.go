@@ -38,7 +38,7 @@ func (MockFileBlockGetter) GetFileBlock(
 	fileData *filestore.FileInputData,
 	blockNum int64,
 	numBlocks int64) ([]byte, error) {
-	return []byte(mockFileBlock), nil
+	return mockFileBlock, nil
 }
 
 func resetMockFileBlock() {

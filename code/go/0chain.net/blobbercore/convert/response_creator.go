@@ -2,6 +2,7 @@ package convert
 
 import (
 	"encoding/json"
+
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -28,7 +29,8 @@ func GetFileMetaDataResponseCreator(httpResp interface{}) *blobbergrpc.GetFileMe
 
 	var resp blobbergrpc.GetFileMetaDataResponse
 	collaborators, _ := r["collaborators"].([]reference.Collaborator)
-	for _, c := range collaborators {
+	for i := 0; i < len(collaborators); i++ {
+		c := collaborators[i]
 		resp.Collaborators = append(resp.Collaborators, CollaboratorToGRPCCollaborator(&c))
 	}
 
@@ -170,7 +172,8 @@ func CollaboratorResponseCreator(r interface{}) *blobbergrpc.CollaboratorRespons
 	}
 
 	collabs, _ := r.([]reference.Collaborator)
-	for _, c := range collabs {
+	for i := 0; i < len(collabs); i++ {
+		c := collabs[i]
 		resp.Collaborators = append(resp.Collaborators, CollaboratorToGRPCCollaborator(&c))
 	}
 

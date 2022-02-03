@@ -83,7 +83,7 @@ func (sp *ValidatorProtocolImpl) VerifyAllocationTransaction(ctx context.Context
 
 func (sp *ValidatorProtocolImpl) VerifyChallengeTransaction(ctx context.Context, challengeRequest *ChallengeRequest) (*Challenge, error) {
 	blobberID := ctx.Value(constants.ContextKeyClient).(string)
-	if len(blobberID) == 0 {
+	if blobberID == "" {
 		return nil, common.NewError("invalid_client", "Call from an invalid client")
 	}
 	params := make(map[string]string)
@@ -122,13 +122,12 @@ type WalletCallback struct {
 	err string
 }
 
-func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet string, err string) {
+func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet, err string) {
 	wb.err = err
 	wb.wg.Done()
 }
 
 func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (string, error) {
-
 	wcb := &WalletCallback{}
 	wcb.wg = &sync.WaitGroup{}
 	wcb.wg.Add(1)

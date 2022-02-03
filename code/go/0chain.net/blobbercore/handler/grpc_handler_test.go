@@ -123,7 +123,6 @@ func Test_GetAllocation(t *testing.T) {
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
@@ -135,7 +134,7 @@ func Test_GetAllocation(t *testing.T) {
 			wantAlloc:    convert.AllocationToGRPCAllocation(alloc),
 		},
 		{
-			name: "Commiting_Transaction_ERR",
+			name: "Committing_Transaction_ERR",
 			mockSetup: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
@@ -154,7 +153,6 @@ func Test_GetAllocation(t *testing.T) {
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
@@ -185,7 +183,6 @@ func Test_GetAllocation(t *testing.T) {
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(expiredAlloc.Terms[0].ID, expiredAlloc.Terms[0].AllocationID),
 					)
-
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{

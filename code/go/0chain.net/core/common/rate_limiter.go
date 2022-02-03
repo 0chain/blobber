@@ -54,7 +54,6 @@ func (r *GRPCRateLimiter) Limit() bool {
 
 //UserRateLimit - rate limiting for end user handlers
 func UserRateLimit(handler ReqRespHandlerf) ReqRespHandlerf {
-
 	if !userRateLimit.RateLimit {
 		return handler
 	}

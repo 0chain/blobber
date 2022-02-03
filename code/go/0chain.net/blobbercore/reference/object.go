@@ -28,13 +28,11 @@ func LoadObjectTree(ctx context.Context, allocationID, path string) (*Ref, error
 	err := db.FindInBatches(&objects, 100, func(tx *gorm.DB, batch int) error {
 		// batch processing found records
 		for _, object := range objects {
-
 			obejctTreeNodes[object.ParentPath] = append(obejctTreeNodes[object.ParentPath], object)
 
 			for _, child := range obejctTreeNodes[object.Path] {
 				object.AddChild(child)
 			}
-
 		}
 
 		return nil
@@ -57,16 +55,13 @@ func LoadObjectTree(ctx context.Context, allocationID, path string) (*Ref, error
 		}
 
 		return nil, common.NewError("invalid_ref_tree", "/ is missing or invalid")
-
 	}
 
 	return nil, common.NewError("invalid_ref_tree", "/ is missing")
-
 }
 
 // DeleteObject delete object from tree, and return tree root and deleted content hash list
-func DeleteObject(ctx context.Context, allocationID string, path string) (*Ref, map[string]bool, error) {
-
+func DeleteObject(ctx context.Context, allocationID, path string) (*Ref, map[string]bool, error) {
 	rootRef, err := LoadObjectTree(ctx, allocationID, "/")
 	if err != nil {
 		return nil, nil, err
@@ -126,5 +121,4 @@ func DeleteObject(ctx context.Context, allocationID string, path string) (*Ref, 
 		}
 	}
 	return nil, nil, common.NewError("invalid_reference_path", "Invalid reference path from the blobber")
-
 }

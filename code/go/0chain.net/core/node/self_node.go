@@ -20,7 +20,7 @@ type SelfNode struct {
 }
 
 /*SetKeys - setter */
-func (sn *SelfNode) SetKeys(publicKey string, privateKey string) {
+func (sn *SelfNode) SetKeys(publicKey, privateKey string) {
 	publicKeyBytes, err := hex.DecodeString(publicKey)
 	if err != nil {
 		panic(err)

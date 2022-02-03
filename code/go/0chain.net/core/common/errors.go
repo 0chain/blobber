@@ -15,12 +15,12 @@ func (err *Error) Error() string {
 }
 
 /*NewError - create a new error */
-func NewError(code string, msg string) *Error {
+func NewError(code, msg string) *Error {
 	return &Error{Code: code, Msg: msg}
 }
 
 /*NewErrorf - create a new error with format */
-func NewErrorf(code string, format string, args ...interface{}) *Error {
+func NewErrorf(code, format string, args ...interface{}) *Error {
 	return &Error{Code: code, Msg: fmt.Sprintf(format, args...)}
 }
 

@@ -2,13 +2,14 @@ package handler
 
 import (
 	"context"
+	"net/http"
+
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
-	"net/http"
 )
 
 func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, req *blobbergrpc.UpdateObjectAttributesRequest) (*blobbergrpc.UpdateObjectAttributesResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
+	r, err := http.NewRequest("POST", "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +30,7 @@ func (b *blobberGRPCService) UpdateObjectAttributes(ctx context.Context, req *bl
 }
 
 func (b *blobberGRPCService) CopyObject(ctx context.Context, req *blobbergrpc.CopyObjectRequest) (*blobbergrpc.CopyObjectResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
+	r, err := http.NewRequest("POST", "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func (b *blobberGRPCService) CopyObject(ctx context.Context, req *blobbergrpc.Co
 }
 
 func (b *blobberGRPCService) RenameObject(ctx context.Context, req *blobbergrpc.RenameObjectRequest) (*blobbergrpc.RenameObjectResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
+	r, err := http.NewRequest("POST", "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +88,6 @@ func (b *blobberGRPCService) DownloadFile(ctx context.Context, req *blobbergrpc.
 }
 
 func (b *blobberGRPCService) UploadFile(ctx context.Context, req *blobbergrpc.UploadFileRequest) (*blobbergrpc.UploadFileResponse, error) {
-
 	r, err := convert.WriteFileGRPCToHTTP(req)
 	if err != nil {
 		return nil, err

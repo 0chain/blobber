@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	// MutexCleanInterval start to clean unsed mutex at specified interval
+	// MutexCleanInterval start to clean unused mutex at specified interval
 	MutexCleanInterval = 10 * time.Minute
 )
 
@@ -40,7 +40,7 @@ func (m *Mutex) Unlock() {
 }
 
 // GetMutex get mutex by table and key
-func GetMutex(tablename string, key string) *Mutex {
+func GetMutex(tablename, key string) *Mutex {
 	lockKey := tablename + ":" + key
 	lockMutex.Lock()
 
@@ -76,8 +76,6 @@ func cleanUnusedMutexs() {
 func startWorker() {
 	for {
 		time.Sleep(MutexCleanInterval)
-
 		cleanUnusedMutexs()
-
 	}
 }

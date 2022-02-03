@@ -152,8 +152,8 @@ func setup(t *testing.T) {
 	}
 }
 
-func setupHandlers() (*mux.Router, map[string]string) {
-	router := mux.NewRouter()
+func setupHandlers() (router *mux.Router, opMap map[string]string) {
+	router = mux.NewRouter()
 
 	opPath := "/v1/file/objectpath/{allocation}"
 	opName := "Object_Path"
@@ -418,7 +418,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if !isEndpointAllowGetReq(name) {
 						method = http.MethodPost
 					}
-					r, err := http.NewRequest(method, url.String(), nil)
+					r, err := http.NewRequest(method, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -447,7 +447,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if !isEndpointAllowGetReq(name) {
 						method = http.MethodPost
 					}
-					r, err := http.NewRequest(method, url.String(), nil)
+					r, err := http.NewRequest(method, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -488,7 +488,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("path", path)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+					r, err := http.NewRequest(http.MethodGet, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -548,7 +548,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("path", path)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+					r, err := http.NewRequest(http.MethodGet, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -608,7 +608,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("path", path)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
+					r, err := http.NewRequest(http.MethodPost, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -679,7 +679,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("path", path)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+					r, err := http.NewRequest(http.MethodGet, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -740,7 +740,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("collab_id", "collab id")
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+					r, err := http.NewRequest(http.MethodGet, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -809,7 +809,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("connection_id", connectionID)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
+					r, err := http.NewRequest(http.MethodPost, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -889,7 +889,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("dest", "dest")
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
+					r, err := http.NewRequest(http.MethodPost, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -980,7 +980,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("attributes", string(attrBytes))
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
+					r, err := http.NewRequest(http.MethodPost, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1408,7 +1408,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				mock.ExpectExec(regexp.QuoteMeta(`UPDATE "marketplace_share_info"`)).
 					WithArgs(true, "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77", filePathHash).
 					WillReturnResult(sqlmock.NewResult(0, 1))
-
 			},
 			wantCode: http.StatusOK,
 			wantBody: "{\"message\":\"Path successfully removed from allocation\",\"status\":204}\n",
@@ -1488,7 +1487,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				mock.ExpectExec(regexp.QuoteMeta(`UPDATE "marketplace_share_info"`)).
 					WithArgs(true, "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77", filePathHash).
 					WillReturnResult(sqlmock.NewResult(0, 0))
-
 			},
 			wantCode: http.StatusOK,
 			wantBody: "{\"message\":\"Path not found\",\"status\":404}\n",
@@ -1573,7 +1571,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).WillReturnError(gorm.ErrRecordNotFound)
-
 			},
 			wantCode: http.StatusBadRequest,
 			wantBody: "{\"code\":\"download_file\",\"error\":\"download_file: invalid file path: record not found\"}\n\n",
@@ -2382,7 +2379,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path"}).
 							AddRow("/folder1", "d", rootPathHash, rootPathHash, "content_hash", "", "/"),
 					)
-
 			},
 			wantCode: http.StatusBadRequest,
 			wantBody: "{\"code\":\"download_file\",\"error\":\"download_file: cannot verify auth ticket: invalid_parameters: Auth ticket is not valid for the resource being requested\"}\n\n",

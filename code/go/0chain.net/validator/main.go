@@ -162,7 +162,6 @@ func main() {
 }
 
 func RegisterValidator() {
-
 	registrationRetries := 0
 	//ctx := badgerdbstore.GetStorageProvider().WithConnection(common.GetRootContext())
 	for registrationRetries < 10 {

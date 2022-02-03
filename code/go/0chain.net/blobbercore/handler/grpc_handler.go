@@ -2,9 +2,10 @@ package handler
 
 import (
 	"context"
-	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"net/http"
 	"strings"
+
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
 )
@@ -18,7 +19,7 @@ func newGRPCBlobberService() *blobberGRPCService {
 }
 
 func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobbergrpc.GetAllocationRequest) (*blobbergrpc.GetAllocationResponse, error) {
-	r, err := http.NewRequest("GET", "", nil)
+	r, err := http.NewRequest("GET", "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +35,7 @@ func (b *blobberGRPCService) GetAllocation(ctx context.Context, request *blobber
 }
 
 func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergrpc.GetFileMetaDataRequest) (*blobbergrpc.GetFileMetaDataResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
+	r, err := http.NewRequest("POST", "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +55,7 @@ func (b *blobberGRPCService) GetFileMetaData(ctx context.Context, req *blobbergr
 }
 
 func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.GetFileStatsRequest) (*blobbergrpc.GetFileStatsResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
+	r, err := http.NewRequest("POST", "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +74,7 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 }
 
 func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.ListEntitiesRequest) (*blobbergrpc.ListEntitiesResponse, error) {
-	r, err := http.NewRequest("", "", nil)
+	r, err := http.NewRequest("", "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +94,7 @@ func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.
 }
 
 func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc.GetObjectPathRequest) (*blobbergrpc.GetObjectPathResponse, error) {
-	r, err := http.NewRequest("", "", nil)
+	r, err := http.NewRequest("", "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +113,7 @@ func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc
 }
 
 func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobbergrpc.GetReferencePathRequest) (*blobbergrpc.GetReferencePathResponse, error) {
-	r, err := http.NewRequest("", "", nil)
+	r, err := http.NewRequest("", "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +132,7 @@ func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobberg
 }
 
 func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc.GetObjectTreeRequest) (*blobbergrpc.GetObjectTreeResponse, error) {
-	r, err := http.NewRequest("", "", nil)
+	r, err := http.NewRequest("", "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +150,7 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 }
 
 func (b *blobberGRPCService) CalculateHash(ctx context.Context, req *blobbergrpc.CalculateHashRequest) (*blobbergrpc.CalculateHashResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
+	r, err := http.NewRequest("POST", "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +169,7 @@ func (b *blobberGRPCService) CalculateHash(ctx context.Context, req *blobbergrpc
 }
 
 func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, req *blobbergrpc.CommitMetaTxnRequest) (*blobbergrpc.CommitMetaTxnResponse, error) {
-	r, err := http.NewRequest("POST", "", nil)
+	r, err := http.NewRequest("POST", "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +190,7 @@ func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, req *blobbergrpc
 }
 
 func (b *blobberGRPCService) Collaborator(ctx context.Context, req *blobbergrpc.CollaboratorRequest) (*blobbergrpc.CollaboratorResponse, error) {
-	r, err := http.NewRequest(strings.ToUpper(req.Method), "", nil)
+	r, err := http.NewRequest(strings.ToUpper(req.Method), "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
