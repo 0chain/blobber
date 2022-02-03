@@ -11,7 +11,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 
 	"net/http"
@@ -30,7 +29,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/constants"
-	zfileref "github.com/0chain/gosdk/zboxcore/fileref"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -267,53 +265,41 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	isCollaborator := reference.IsACollaborator(ctx, fileref.ID, clientID)
 
 	var authToken *readmarker.AuthTicket
+	var shareInfo *reference.ShareInfo
 
-	if (!isOwner && !isRepairer && !isCollaborator) || r.FormValue("auth_token") != "" {
-		var authTokenString = r.FormValue("auth_token")
+	if !isOwner {
+		authTokenString := r.FormValue("auth_token")
+		if authTokenString == "" {
+			return nil, common.NewError("invalid_client", "authticket is required")
+		}
 
-		// check auth token
-		if authToken, err := fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
+		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
 			return nil, common.NewErrorf("download_file", "cannot verify auth ticket: %v", err)
 		}
 
-		authToken = &readmarker.AuthTicket{}
-		err = json.Unmarshal([]byte(authTokenString), &authToken)
-		if err != nil {
-			return nil, common.NewErrorf("download_file", "error parsing the auth ticket for download: %v", err)
+		shareInfo, err = reference.GetShareInfo(ctx, readMarker.ClientID, authToken.FilePathHash)
+		if err != nil || shareInfo == nil {
+			return nil, errors.New("client does not have permission to download the file. share does not exist")
 		}
+
+		if shareInfo.Revoked {
+			return nil, errors.New("client does not have permission to download the file. share revoked")
+		}
+
 		// set payer: check for command line payer flag (--rx_pay)
 		if r.FormValue("rx_pay") == "true" {
 			payerID = clientID
 		}
 
-		// we only check content hash if its authticket is referring to a file
-		if authToken.RefType == zfileref.FILE && authToken.ActualFileHash != fileref.ActualFileHash {
-			return nil, errors.New("content hash does not match the requested file content hash")
-		}
-
-		if authToken.RefType == zfileref.DIRECTORY {
-			hashes := util.GetParentPathHashes(allocationTx, fileref.Path)
-			found := false
-			for _, hash := range hashes {
-				if hash == authToken.FilePathHash {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return nil, errors.New("auth ticket is not authorized to download file specified")
-			}
-		}
 		readMarker.AuthTicket = datatypes.JSON(authTokenString)
 
 		// check for file payer flag
 		if fileAttrs, err := fileref.GetAttributes(); err != nil {
 			return nil, common.NewErrorf("download_file", "error getting file attributes: %v", err)
-		} else if fileAttrs.WhoPaysForReads == common.WhoPays3rdParty {
+		} else if fileAttrs.WhoPaysForReads == common.WhoPays3rdParty && !(isCollaborator || isRepairer) {
 			payerID = clientID
 		}
 	}
-
 	// create read marker
 	var (
 		rme           *readmarker.ReadMarkerEntity
@@ -381,37 +367,16 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	readMarker.PayerID = payerID
 	err = readmarker.SaveLatestReadMarker(ctx, readMarker, latestRM == nil)
 	if err != nil {
-		return nil, common.NewErrorf("download_file",
-			"couldn't save latest read marker: %v", err)
-	}
-
-	var shareInfo *reference.ShareInfo
-	if authToken != nil {
-		shareInfo, err = reference.GetShareInfo(
-			ctx,
-			readMarker.ClientID,
-			authToken.FilePathHash,
-		)
-
-		if err == nil && shareInfo.Revoked {
-			return nil, errors.New("client does not have permission to download the file. share revoked")
-		}
+		Logger.Error(err.Error())
+		return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
 	}
 
 	if fileref.EncryptedKey != "" && authToken != nil {
-		// should not happen, just in case
-		if shareInfo == nil {
-			return nil, errors.New("client does not have permission to download the file. share does not exist")
-		}
-
-		buyerEncryptionPublicKey := shareInfo.ClientEncryptionPublicKey
 		encscheme := zencryption.NewEncryptionScheme()
-		// reEncrypt does not require pub / private key,
-		// we could probably make it a classless function
-
 		if _, err := encscheme.Initialize(""); err != nil {
 			return nil, err
 		}
+
 		if err := encscheme.InitForDecryption("filetype:audio", fileref.EncryptedKey); err != nil {
 			return nil, err
 		}
@@ -419,7 +384,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		totalSize := len(respData)
 		result := []byte{}
 		for i := 0; i < totalSize; i += int(fileref.ChunkSize) {
-			encMsg := &zencryption.EncryptedMessage{}
+			encMsg := new(zencryption.EncryptedMessage)
 			chunkData := respData[i:int64(math.Min(float64(i+int(fileref.ChunkSize)), float64(totalSize)))]
 
 			encMsg.EncryptedData = chunkData[HeaderChecksumSize:]
@@ -437,7 +402,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
 			encMsg.EncryptedKey = encscheme.GetEncryptedKey()
 
-			reEncMsg, err := encscheme.ReEncrypt(encMsg, shareInfo.ReEncryptionKey, buyerEncryptionPublicKey)
+			reEncMsg, err := encscheme.ReEncrypt(encMsg, shareInfo.ReEncryptionKey, shareInfo.ClientEncryptionPublicKey)
 			if err != nil {
 				return nil, err
 			}
