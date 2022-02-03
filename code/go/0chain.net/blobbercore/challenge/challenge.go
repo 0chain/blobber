@@ -43,7 +43,6 @@ func syncOpenChallenges(ctx context.Context) {
 	if err != nil {
 		logging.Logger.Error("[challenge]open: ", zap.Error(err))
 	} else {
-
 		bytesReader := bytes.NewBuffer(retBytes)
 
 		d := json.NewDecoder(bytesReader)
@@ -54,7 +53,7 @@ func syncOpenChallenges(ctx context.Context) {
 			logging.Logger.Error("[challenge]json: ", zap.Error(errd))
 		} else {
 			for _, challengeObj := range blobberChallenges.Challenges {
-				if challengeObj == nil || len(challengeObj.ChallengeID) == 0 {
+				if challengeObj == nil || challengeObj.ChallengeID == "" {
 					logging.Logger.Info("[challenge]open: No challenge entity from the challenge map")
 					continue
 				}
@@ -65,7 +64,6 @@ func syncOpenChallenges(ctx context.Context) {
 
 				// challenge is not synced in db yet
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-
 					latestChallenge, err := GetLastChallengeEntity(tx)
 
 					if err != nil {
@@ -75,7 +73,7 @@ func syncOpenChallenges(ctx context.Context) {
 						}
 					}
 
-					isFirstChallengeInDatabase := len(challengeObj.PrevChallengeID) == 0 || latestChallenge == nil
+					isFirstChallengeInDatabase := challengeObj.PrevChallengeID == "" || latestChallenge == nil
 					isNextChallengeOnChain := latestChallenge == nil || latestChallenge.ChallengeID == challengeObj.PrevChallengeID
 
 					if isFirstChallengeInDatabase || isNextChallengeOnChain {
@@ -90,13 +88,11 @@ func syncOpenChallenges(ctx context.Context) {
 					} else {
 						logging.Logger.Error("[challenge]Challenge chain is not valid")
 					}
-
 				}
 				db.Commit()
 				tx.Done()
 			}
 		}
-
 	}
 }
 
@@ -136,7 +132,6 @@ func processAccepted(ctx context.Context) {
 					logging.Logger.Error("[challenge]db: ", zap.Any("challenge_id", challengeEntity.ChallengeID), zap.Error(err))
 					return
 				}
-
 			}(ctx, openchallenge)
 		}
 		swg.Wait()

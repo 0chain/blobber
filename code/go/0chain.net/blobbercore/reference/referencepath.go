@@ -18,7 +18,7 @@ type ReferencePath struct {
 	Ref  *Ref
 }
 
-func GetReferencePath(ctx context.Context, allocationID string, path string) (*Ref, error) {
+func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, error) {
 	return GetReferencePathFromPaths(ctx, allocationID, []string{path})
 }
 
@@ -64,7 +64,6 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 	refMap := make(map[string]*Ref)
 	refMap[rootRef.Path] = rootRef
 	for i := 1; i < len(refs); i++ {
-
 		if _, ok := refMap[refs[i].ParentPath]; !ok {
 			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
 		}
@@ -80,7 +79,7 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 	return &refs[0], nil
 }
 
-func PathExists(ctx context.Context, allocationID string, path string) (bool, error) {
+func PathExists(ctx context.Context, allocationID, path string) (bool, error) {
 	path = filepath.Clean(path)
 
 	if path == "." || path == "/" {
@@ -100,7 +99,7 @@ func PathExists(ctx context.Context, allocationID string, path string) (bool, er
 	return true, nil
 }
 
-func GetObjectTree(ctx context.Context, allocationID string, path string) (*Ref, error) {
+func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error) {
 	path = filepath.Clean(path)
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
@@ -130,7 +129,7 @@ func GetObjectTree(ctx context.Context, allocationID string, path string) (*Ref,
 	return &refs[0], nil
 }
 
-//This function retrieves refrence_objects tables rows with pagination. Check for issue https://github.com/0chain/gosdk/issues/117
+//This function retrieves reference_objects tables rows with pagination. Check for issue https://github.com/0chain/gosdk/issues/117
 //Might need to consider covering index for efficient search https://blog.crunchydata.com/blog/why-covering-indexes-are-incredibly-helpful
 //To retrieve refs efficiently form pagination index is created in postgresql on path column so it can be used to paginate refs
 //very easily and effectively; Same case for offsetDate.
@@ -182,7 +181,6 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 	refs = &pRefs
 	if len(pRefs) > 0 {
 		newOffsetPath = pRefs[len(pRefs)-1].Path
-
 	}
 	totalPages = int(math.Ceil(float64(totalRows) / float64(pageLimit)))
 	return
@@ -282,7 +280,6 @@ func GetDeletedRefs(ctx context.Context, allocationID, updatedDate, offsetPath, 
 	}()
 
 	go func() {
-
 		db2 = db2.Model(&Ref{}).Unscoped().Where("allocation_id = ?", allocationID)
 
 		if updatedDate == "" {
@@ -299,7 +296,6 @@ func GetDeletedRefs(ctx context.Context, allocationID, updatedDate, offsetPath, 
 		lastIdx := len(pRefs) - 1
 		newOffsetDate = pRefs[lastIdx].DeletedAt.Time.Format(dateLayOut)
 		newOffsetPath = pRefs[lastIdx].Path
-
 	}
 	refs = &pRefs
 	totalPages = int(math.Ceil(float64(totalRows) / float64(pageLimit)))

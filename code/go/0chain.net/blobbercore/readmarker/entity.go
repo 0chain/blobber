@@ -126,7 +126,6 @@ func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, isCreate bool) er
 
 // Sync read marker with 0chain to be sure its correct.
 func (rm *ReadMarkerEntity) Sync(ctx context.Context) (err error) {
-
 	var db = datastore.GetStore().GetTransaction(ctx)
 
 	//////////////////////////////////////////////////////////////////////////////
@@ -166,11 +165,8 @@ func (rm *ReadMarkerEntity) Sync(ctx context.Context) (err error) {
 	return
 }
 
-// UpdateStatus updates read marker status and all related on successful
-// redeeming.
-func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context,
-	rps []*allocation.ReadPool, txOutput, redeemTxn string) (err error) {
-
+// UpdateStatus updates read marker status and all related on successful redeeming.
+func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context, rps []*allocation.ReadPool, txOutput, redeemTxn string) (err error) {
 	var redeems []allocation.ReadPoolRedeem
 	if err = json.Unmarshal([]byte(txOutput), &redeems); err != nil {
 		Logger.Error("update read redeeming status: can't decode transaction"+
@@ -191,7 +187,7 @@ func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context,
 		return common.NewErrorf("rme_update_status",
 			"marshaling latest RM: %v", err)
 	}
-	if len(latestRMBytes) == 0 || string(latestRMBytes) == "" {
+	if len(latestRMBytes) == 0 {
 		latestRMBytes = []byte("{}")
 	}
 	rmUpdates["latest_redeemed_rm"] = latestRMBytes

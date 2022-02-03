@@ -15,7 +15,6 @@ import (
 )
 
 func TestWrite(t *testing.T) {
-
 	fileName := filepath.Join(os.TempDir(), "testwrite_"+strconv.FormatInt(time.Now().Unix(), 10))
 
 	content := "this is full content"
@@ -46,7 +45,6 @@ func TestWrite(t *testing.T) {
 }
 
 func TestWriteChunk(t *testing.T) {
-
 	chunk1 := "this is 1st chunked"
 
 	tempFile, err := ioutil.TempFile("", "")
@@ -55,7 +53,7 @@ func TestWriteChunk(t *testing.T) {
 		require.Error(t, err, "failed to create tempfile")
 		return
 	}
-	offset, err := tempFile.Write([]byte(chunk1))
+	offset, err := tempFile.WriteString(chunk1)
 	if err != nil {
 		require.Error(t, err, "failed to write first chunk to tempfile")
 		return

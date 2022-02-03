@@ -60,7 +60,6 @@ func (cmd *UpdateFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 
 // ProcessContent flush file to FileStorage
 func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
-
 	result := blobberhttp.UploadResult{}
 
 	result.Filename = cmd.fileChanger.Filename
@@ -125,16 +124,13 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 
 	return result, nil
-
 }
 
 // ProcessThumbnail flush thumbnail file to FileStorage if it has.
 func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
-
 	thumbfile, thumbHeader, _ := req.FormFile("uploadThumbnailFile")
 
 	if thumbHeader != nil {
-
 		defer thumbfile.Close()
 
 		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
@@ -151,45 +147,47 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 	}
 
 	return nil
-
 }
 
 func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
-		if c.Operation == constants.FileOperationUpdate {
-
-			dbFileChanger := &allocation.UpdateFileChanger{}
-
-			err := dbFileChanger.Unmarshal(c.Input)
-			if err != nil {
-				logging.Logger.Error("reloadChange", zap.Error(err))
-			}
-
-			// reload uploaded size from db, it was chunk size from client
-			cmd.fileChanger.Size = dbFileChanger.Size
-			cmd.fileChanger.ThumbnailFilename = dbFileChanger.ThumbnailFilename
-			cmd.fileChanger.ThumbnailSize = dbFileChanger.ThumbnailSize
-			cmd.fileChanger.ThumbnailHash = dbFileChanger.Hash
-			return
+		if c.Operation != constants.FileOperationUpdate {
+			continue
 		}
+
+		dbFileChanger := &allocation.UpdateFileChanger{}
+
+		err := dbFileChanger.Unmarshal(c.Input)
+		if err != nil {
+			logging.Logger.Error("reloadChange", zap.Error(err))
+		}
+
+		// reload uploaded size from db, it was chunk size from client
+		cmd.fileChanger.Size = dbFileChanger.Size
+		cmd.fileChanger.ThumbnailFilename = dbFileChanger.ThumbnailFilename
+		cmd.fileChanger.ThumbnailSize = dbFileChanger.ThumbnailSize
+		cmd.fileChanger.ThumbnailHash = dbFileChanger.Hash
+		return
 	}
 }
 
 // UpdateChange add UpdateFileChanger in db
 func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	for _, c := range connectionObj.Changes {
-		if c.Operation == constants.FileOperationUpdate {
-			c.Size = connectionObj.Size
-			c.Input, _ = cmd.fileChanger.Marshal()
-
-			//c.ModelWithTS.UpdatedAt = time.Now()
-			err := connectionObj.Save(ctx)
-			if err != nil {
-				return err
-			}
-
-			return c.Save(ctx)
+		if c.Operation != constants.FileOperationUpdate {
+			continue
 		}
+
+		c.Size = connectionObj.Size
+		c.Input, _ = cmd.fileChanger.Marshal()
+
+		//c.ModelWithTS.UpdatedAt = time.Now()
+		err := connectionObj.Save(ctx)
+		if err != nil {
+			return err
+		}
+
+		return c.Save(ctx)
 	}
 
 	//NOT FOUND

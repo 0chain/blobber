@@ -16,7 +16,6 @@ import (
 )
 
 func BenchmarkUploadFileWithDisk(b *testing.B) {
-
 	KB := 1024
 	MB := 1024 * KB
 	//GB := 1024 * MB
@@ -55,7 +54,6 @@ func BenchmarkUploadFileWithDisk(b *testing.B) {
 
 	for _, bm := range benchmarks {
 		b.Run(bm.Name, func(b *testing.B) {
-
 			fileName := strings.Replace(bm.Name, " ", "_", -1) + ".txt"
 			chunkBytes := mock.GenerateRandomBytes(bm.ChunkSize)
 			fileMeta := &sdk.FileMeta{
@@ -98,15 +96,12 @@ func BenchmarkUploadFileWithDisk(b *testing.B) {
 					b.Fatal(err)
 					return
 				}
-
 			}
 		})
 	}
-
 }
 
 func BenchmarkUploadFileWithNoDisk(b *testing.B) {
-
 	KB := 1024
 	MB := 1024 * KB
 	//GB := 1024 * MB
@@ -146,7 +141,6 @@ func BenchmarkUploadFileWithNoDisk(b *testing.B) {
 
 	for _, bm := range benchmarks {
 		b.Run(bm.Name, func(b *testing.B) {
-
 			fileName := strings.Replace(bm.Name, " ", "_", -1) + ".txt"
 			chunkBytes := mock.GenerateRandomBytes(bm.ChunkSize)
 			fileMeta := &sdk.FileMeta{
@@ -180,7 +174,6 @@ func BenchmarkUploadFileWithNoDisk(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-
 				ctx := GetMetaDataStore().CreateTransaction(context.TODO())
 
 				ctx = mock.SetupHandlerContext(ctx, req, allocationID)
@@ -190,9 +183,7 @@ func BenchmarkUploadFileWithNoDisk(b *testing.B) {
 					b.Fatal(err)
 					return
 				}
-
 			}
 		})
 	}
-
 }

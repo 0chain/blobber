@@ -22,9 +22,7 @@ type AttributesChange struct {
 }
 
 // ProcessChange processes the attributes changes.
-func (ac *AttributesChange) ProcessChange(ctx context.Context,
-	_ *AllocationChange, allocRoot string) (ref *reference.Ref, err error) {
-
+func (ac *AttributesChange) ProcessChange(ctx context.Context, _ *AllocationChange, allocRoot string) (ref *reference.Ref, err error) {
 	var path, _ = filepath.Split(ac.Path)
 	path = filepath.Clean(path)
 

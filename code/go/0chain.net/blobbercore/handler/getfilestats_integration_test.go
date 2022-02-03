@@ -82,5 +82,4 @@ func TestGetFilestats_IntegrationTest(t *testing.T) {
 			t.Fatal("unexpected file name from GetFileStats rpc")
 		}
 	}
-
 }

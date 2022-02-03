@@ -51,10 +51,7 @@ func (WriteMarkerEntity) TableName() string {
 	return "write_markers"
 }
 
-func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context,
-	status WriteMarkerStatus, statusMessage string, redeemTxn string) (
-	err error) {
-
+func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarkerStatus, statusMessage, redeemTxn string) (err error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	statusBytes, _ := json.Marshal(statusMessage)
 
@@ -83,7 +80,7 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context,
 		return // not committed or a deleting marker
 	}
 
-	// work on pre-redeemd tokens and write-pools balances tracking
+	// work on pre-redeemed tokens and write-pools balances tracking
 
 	var pend *allocation.Pending
 	pend, err = allocation.GetPending(db, wm.WM.ClientID, wm.WM.AllocationID,
@@ -109,7 +106,7 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMa
 	return wm, nil
 }
 
-func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAllocationRoot string, endAllocationRoot string) ([]*WriteMarkerEntity, error) {
+func GetWriteMarkersInRange(ctx context.Context, allocationID, startAllocationRoot, endAllocationRoot string) ([]*WriteMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	var seqRange []int64
 	err := db.Table((WriteMarkerEntity{}).TableName()).

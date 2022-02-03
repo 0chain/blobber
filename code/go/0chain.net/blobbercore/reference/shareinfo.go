@@ -28,7 +28,7 @@ func AddShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 	return db.Table(TableName()).Create(shareInfo).Error
 }
 
-func DeleteShareInfo(ctx context.Context, shareInfo ShareInfo) error {
+func DeleteShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	result := db.Table(TableName()).
@@ -64,7 +64,7 @@ func UpdateShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 		Error
 }
 
-func GetShareInfo(ctx context.Context, clientID string, filePathHash string) (*ShareInfo, error) {
+func GetShareInfo(ctx context.Context, clientID, filePathHash string) (*ShareInfo, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	shareInfo := &ShareInfo{}
 	err := db.Table(TableName()).

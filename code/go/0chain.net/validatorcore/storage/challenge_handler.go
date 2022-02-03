@@ -109,5 +109,4 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 
 	lru.Add(challengeHash, &validationTicket) //nolint:errcheck // never returns an error anyway
 	return &validationTicket, nil
-
 }

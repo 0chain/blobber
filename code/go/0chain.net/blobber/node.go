@@ -16,7 +16,6 @@ func setupNode() error {
 
 	reader, err := os.Open(keysFile)
 	if err != nil {
-
 		return err
 	}
 	defer reader.Close()
