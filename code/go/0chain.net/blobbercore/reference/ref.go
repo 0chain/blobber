@@ -280,7 +280,8 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*
 	var refs []*Ref
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
-	err := db.Order("level, lookup_hash").Find(&refs).Error
+	//err := db.Order("level, lookup_hash").Find(&refs).Error
+	err := db.Order("level, path").Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +333,8 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	var err error
 	if saveToDB {
-		err = fr.Save(ctx)
+		//err = fr.Save(ctx)
+		err = fr.SaveFile(ctx)
 	}
 	return fr.Hash, err
 }
@@ -345,17 +347,21 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	sort.SliceStable(r.Children, func(i, j int) bool {
 		return strings.Compare(r.Children[i].LookupHash, r.Children[j].LookupHash) == -1
 	})
-	for _, childRef := range r.Children {
-		_, err := childRef.CalculateHash(ctx, saveToDB)
-		if err != nil {
-			return "", err
-		}
-	}
+	//for _, childRef := range r.Children {
+	//	_, err := childRef.CalculateHash(ctx, saveToDB)
+	//	if err != nil {
+	//		return "", err
+	//	}
+	//}
 	childHashes := make([]string, len(r.Children))
 	childPathHashes := make([]string, len(r.Children))
 	var refNumBlocks int64
 	var size int64
 	for index, childRef := range r.Children {
+		_, err := childRef.CalculateHash(ctx, saveToDB)
+		if err != nil {
+			return "", err
+		}
 		childHashes[index] = childRef.Hash
 		childPathHashes[index] = childRef.PathHash
 		refNumBlocks += childRef.NumBlocks
@@ -372,7 +378,8 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 
 	var err error
 	if saveToDB {
-		err = r.Save(ctx)
+		//err = r.Save(ctx)
+		err = r.SaveDir(ctx)
 	}
 
 	return r.Hash, err
@@ -420,6 +427,27 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 	}
 	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Where("path_hash = ?", pathHash).Delete(&Ref{ID: refID}).Error
+}
+
+func (r *Ref) SaveFile(ctx context.Context) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	return db.Where("id = ?", r.ID).
+		Update("hash = ?", r.Hash).
+		Update("num_of_blocks = ?", r.NumBlocks).
+		Update("path_hash = ?", r.PathHash).
+		Update("level = ?", r.PathLevel).
+		Update("lookup_hash = ?", r.LookupHash).Error
+}
+
+func (r *Ref) SaveDir(ctx context.Context) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	return db.Where("id = ?", r.ID).
+		Update("hash = ?", r.Hash).
+		Update("num_of_blocks = ?", r.NumBlocks).
+		Update("path_hash = ?", r.PathHash).
+		Update("level = ?", r.PathLevel).
+		Update("size = ?", r.Size).
+		Update("lookup_hash = ?", r.LookupHash).Error
 }
 
 func (r *Ref) Save(ctx context.Context) error {
