@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"gorm.io/gorm"
@@ -66,41 +65,33 @@ func (fsh *StorageHandler) convertGormError(err error) error {
 	return err
 }
 
-func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (bool, error) {
+// verifyAuthTicket verifies authTicket and returns authToken and error if any. For any error authToken is nil
+func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (*readmarker.AuthTicket, error) {
 	if authTokenString == "" {
-		return false, common.NewError("invalid_parameters", "Auth ticket required if data read by anyone other than owner.")
+		return nil, common.NewError("invalid_parameters", "Auth ticket is required")
 	}
+
 	authToken := &readmarker.AuthTicket{}
-	err := json.Unmarshal([]byte(authTokenString), &authToken)
-	if err != nil {
-		return false, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
+	if err := json.Unmarshal([]byte(authTokenString), &authToken); err != nil {
+		return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
 	}
-	err = authToken.Verify(allocationObj, clientID)
-	if err != nil {
-		return false, err
+
+	if err := authToken.Verify(allocationObj, clientID); err != nil {
+		return nil, err
 	}
+
 	if refRequested.LookupHash != authToken.FilePathHash {
 		authTokenRef, err := reference.GetReferenceFromLookupHash(ctx, authToken.AllocationID, authToken.FilePathHash)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 
-		parentPath := refRequested.ParentPath
-		if !strings.HasPrefix(parentPath, "/") {
-			parentPath = "/" + parentPath
-		}
-
-		authRefPath := authTokenRef.Path
-		if strings.HasPrefix(authRefPath, ".") || authRefPath == "/" {
-			authRefPath = ""
-		}
-
-		if refRequested.ParentPath != authTokenRef.Path && !strings.HasPrefix(parentPath, authRefPath+"/") {
-			return false, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
+		if matched, _ := regexp.MatchString(fmt.Sprintf("^%v", authTokenRef.Path), refRequested.Path); !matched {
+			return nil, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
 		}
 	}
 
-	return true, nil
+	return authToken, nil
 }
 
 func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -206,11 +197,8 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		var authTokenString = r.FormValue("auth_token")
 
 		// check auth token
-		if isAuthorized, err := fsh.verifyAuthTicket(ctx,
-			authTokenString, alloc, fileref, clientID,
-		); !isAuthorized {
-			return nil, common.NewErrorf("file_meta",
-				"cannot verify auth ticket: %v", err)
+		if authToken, err := fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
+			return nil, common.NewErrorf("file_meta", "cannot verify auth ticket: %v", err)
 		}
 
 		delete(result, "path")
@@ -255,11 +243,11 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 	authTokenString := r.FormValue("auth_token")
 
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
+		authToken, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err
 		}
-		if !authTicketVerified {
+		if authToken == nil {
 			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
 		}
 	}
@@ -455,11 +443,11 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 
 	authTokenString := r.FormValue("auth_token")
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
+		authToken, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err
 		}
-		if !authTicketVerified {
+		if authToken == nil {
 			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
 		}
 	}
