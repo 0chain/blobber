@@ -431,23 +431,14 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 
 func (r *Ref) SaveFile(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Where("id = ?", r.ID).
-		Update("hash = ?", r.Hash).
-		Update("num_of_blocks = ?", r.NumBlocks).
-		Update("path_hash = ?", r.PathHash).
-		Update("level = ?", r.PathLevel).
-		Update("lookup_hash = ?", r.LookupHash).Error
+	return db.Model(r).Select("hash", "num_of_blocks", "path_hash", "level", "lookup_hash").
+		Updates(Ref{Hash: r.Hash, NumBlocks: r.NumBlocks, PathHash: r.PathHash, PathLevel: r.PathLevel, LookupHash: r.LookupHash}).Error
 }
 
 func (r *Ref) SaveDir(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Where("id = ?", r.ID).
-		Update("hash = ?", r.Hash).
-		Update("num_of_blocks = ?", r.NumBlocks).
-		Update("path_hash = ?", r.PathHash).
-		Update("level = ?", r.PathLevel).
-		Update("size = ?", r.Size).
-		Update("lookup_hash = ?", r.LookupHash).Error
+	return db.Model(r).Select("hash", "num_of_blocks", "path_hash", "level", "size", "lookup_hash").
+		Updates(Ref{Hash: r.Hash, NumBlocks: r.NumBlocks, PathHash: r.PathHash, PathLevel: r.PathLevel, Size: r.Size, LookupHash: r.LookupHash}).Error
 }
 
 func (r *Ref) Save(ctx context.Context) error {
