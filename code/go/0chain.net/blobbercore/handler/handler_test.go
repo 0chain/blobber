@@ -2145,7 +2145,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path", "chunk_size"}).
-							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", encscheme.GetEncryptedKey(), "/folder1/subfolder1", filestore.CHUNK_SIZE),
+							AddRow("/folder1/subfolder1/file.txt", "f", filePathHash, filePathHash, "content_hash", encscheme.GetEncryptedKey(), "/folder1/subfolder1", filestore.CHUNK_SIZE),
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
