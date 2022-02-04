@@ -479,8 +479,8 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 
-	authTicketVerified, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileref, authTicket.ClientID)
-	if !authTicketVerified {
+	authToken, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileref, authTicket.ClientID)
+	if authToken == nil {
 		return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket. "+err.Error())
 	}
 
