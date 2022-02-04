@@ -2,6 +2,7 @@ package reference
 
 import (
 	"context"
+	"log"
 	"math"
 	"path/filepath"
 	"strings"
@@ -22,10 +23,73 @@ func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, err
 	return GetReferencePathFromPaths(ctx, allocationID, []string{path})
 }
 
+func GetReferenceForCalculateHash(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
+	var refs []Ref
+	db := datastore.GetStore().GetTransaction(ctx)
+	db = db.Select("allocation_id", "type", "name", "path", "size", "content_hash", "merkle_root", "actual_file_size", "actual_file_hash", "attributes", "chunk_size")
+	pathsAdded := make(map[string]bool)
+	for _, path := range paths {
+		path = strings.TrimSuffix(path, "/")
+		if _, ok := pathsAdded[path]; !ok {
+			db = db.Where(Ref{ParentPath: path, AllocationID: allocationID})
+			pathsAdded[path] = true
+		}
+		depth := len(GetSubDirsFromPath(path)) + 1
+		curPath := filepath.Dir(path)
+		for i := 0; i < depth-1; i++ {
+			if _, ok := pathsAdded[curPath]; !ok {
+				db = db.Or(Ref{ParentPath: curPath, AllocationID: allocationID})
+				pathsAdded[curPath] = true
+			}
+			curPath = filepath.Dir(curPath)
+		}
+	}
+	// root reference_objects with parent_path=""
+	db = db.Or("parent_path = ? AND allocation_id = ?", "", allocationID)
+	//err := db.Order("level, lookup_hash").Find(&refs).Error
+	err := db.Order("level, path").Find(&refs).Error
+
+	if err != nil {
+		log.Println("Error in Query 1: ", err)
+		return nil, err
+	}
+	// there is no any child reference_objects for affected path, and instert root reference_objects
+	if len(refs) == 0 {
+		log.Println("Passed Here !")
+		return &Ref{Type: DIRECTORY, AllocationID: allocationID, Name: "/", Path: "/", ParentPath: "", PathLevel: 1}, nil
+	}
+
+	rootRef := &refs[0]
+	if rootRef.Path != "/" {
+		log.Println("Error in Query 2 !!!")
+		return nil, common.NewError("invalid_dir_tree", "DB has invalid tree. Root not found in DB")
+	}
+
+	// valdiate dir tree, and populate Ref's children for CalculateHash
+	refMap := make(map[string]*Ref)
+	refMap[rootRef.Path] = rootRef
+	for i := 1; i < len(refs); i++ {
+		if _, ok := refMap[refs[i].ParentPath]; !ok {
+			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
+		}
+		if _, ok := refMap[refs[i].Path]; !ok {
+			refMap[refs[i].ParentPath].AddChild(&refs[i])
+			refMap[refs[i].Path] = &refs[i]
+		}
+	}
+
+	if _, err := refs[0].CalculateHash(ctx, false); err != nil {
+		return nil, common.NewError("Ref_CalculateHash", err.Error())
+	}
+	log.Println("Finished Here")
+	return &refs[0], nil
+}
+
 // GetReferencePathFromPaths validate and build full dir tree from db, and CalculateHash and return root Ref
 func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
+	//db = db.Select("allocation_id", "type", "name", "path", "size", "content_hash", "merkle_root", "actual_file_size", "actual_file_hash", "attributes", "chunk_size")
 	pathsAdded := make(map[string]bool)
 	for _, path := range paths {
 		path = strings.TrimSuffix(path, "/")
@@ -46,7 +110,9 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 
 	// root reference_objects with parent_path=""
 	db = db.Or("parent_path = ? AND allocation_id = ?", "", allocationID)
-	err := db.Order("level, lookup_hash").Find(&refs).Error
+	//err := db.Order("level, lookup_hash").Find(&refs).Error
+	err := db.Order("level, path").Find(&refs).Error
+
 	if err != nil {
 		return nil, err
 	}
@@ -105,12 +171,13 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Where(Ref{Path: path, AllocationID: allocationID})
 	if path != "/" {
-		db = db.Or("path LIKE ? AND allocation_id = ?", (path + "/%"), allocationID)
+		db = db.Or("path LIKE ? AND allocation_id = ?", path+"/%", allocationID)
 	} else {
-		db = db.Or("path LIKE ? AND allocation_id = ?", (path + "%"), allocationID)
+		db = db.Or("path LIKE ? AND allocation_id = ?", path+"%", allocationID)
 	}
 
-	err := db.Order("level, lookup_hash").Find(&refs).Error
+	//err := db.Order("level, lookup_hash").Find(&refs).Error
+	err := db.Order("level, path").Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +213,7 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 	wg.Add(2)
 	go func() {
 		db1 = db1.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-			Where(db1.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+			Where(db1.Where("path = ?", path).Or("path LIKE ?", path+"%"))
 		if _type != "" {
 			db1 = db1.Where("type = ?", _type)
 		}
@@ -163,7 +230,7 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 
 	go func() {
 		db2 = db2.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-			Where(db2.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+			Where(db2.Where("path = ?", path).Or("path LIKE ?", path+"%"))
 		if _type != "" {
 			db2 = db2.Where("type = ?", _type)
 		}
@@ -199,7 +266,7 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, 
 
 	go func() {
 		db1 = db1.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-			Where(db1.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+			Where(db1.Where("path = ?", path).Or("path LIKE ?", path+"%"))
 		if _type != "" {
 			db1 = db1.Where("type = ?", _type)
 		}
@@ -221,7 +288,7 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, 
 
 	go func() {
 		db2 = db2.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-			Where(db2.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+			Where(db2.Where("path = ?", path).Or("path LIKE ?", path+"%"))
 		if _type != "" {
 			db2 = db2.Where("type > ?", level)
 		}

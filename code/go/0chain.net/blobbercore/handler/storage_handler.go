@@ -937,7 +937,8 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 		return nil, err
 	}
 
-	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
+	// Here we need to update the Reference Method to get only the Columns we require.
+	rootRef, err := reference.GetReferenceForCalculateHash(ctx, allocationID, paths)
 	if err != nil {
 		return nil, err
 	}
