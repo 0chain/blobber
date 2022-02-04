@@ -60,7 +60,6 @@ func (s *State) copy() (cp *State) { //nolint:unused,deadcode // might be used l
 	cp = new(State)
 	(*cp) = (*s)
 	return
-
 }
 
 func (s *State) send(poll chan *State) { //nolint:unused,deadcode // might be used later?

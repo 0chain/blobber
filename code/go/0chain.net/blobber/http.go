@@ -18,7 +18,6 @@ import (
 )
 
 func startHttpServer() {
-
 	mode := "main net"
 	if config.Development() {
 		mode = "development"
@@ -42,7 +41,6 @@ func startHttpServer() {
 	fmt.Println("[11/11] start http server	[OK]")
 
 	wg.Wait()
-
 }
 
 func startServer(wg *sync.WaitGroup, r *mux.Router, mode string, port int, isTls bool) {

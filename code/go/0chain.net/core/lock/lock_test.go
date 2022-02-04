@@ -8,11 +8,9 @@ import (
 )
 
 func TestLock(t *testing.T) {
-
 	max := 100
 
 	for i := 0; i < max; i++ {
-
 		lock1 := GetMutex("testlock", strconv.Itoa(i))
 
 		lock1.Lock()
@@ -39,5 +37,4 @@ func TestLock(t *testing.T) {
 		_, ok := lockPool["testlock:"+strconv.Itoa(i)]
 		require.Equal(t, false, ok)
 	}
-
 }

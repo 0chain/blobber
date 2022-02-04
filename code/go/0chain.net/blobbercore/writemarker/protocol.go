@@ -50,12 +50,12 @@ func (wm *WriteMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.Al
 	}
 
 	clientPublicKey := ctx.Value(constants.ContextKeyClientKey).(string)
-	if len(clientPublicKey) == 0 {
+	if clientPublicKey == "" {
 		return common.NewError("write_marker_validation_failed", "Could not get the public key of the client")
 	}
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if len(clientID) == 0 || clientID != wm.WM.ClientID || clientID != co.ClientID || co.ClientID != wm.WM.ClientID {
+	if clientID == "" || clientID != wm.WM.ClientID || clientID != co.ClientID || co.ClientID != wm.WM.ClientID {
 		return common.NewError("write_marker_validation_failed", "Write Marker is not by the same client who uploaded")
 	}
 
@@ -73,7 +73,6 @@ func (wm *WriteMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.Al
 }
 
 func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
-
 	if len(wm.CloseTxnID) > 0 {
 		t, err := transaction.VerifyTransaction(wm.CloseTxnID, chain.GetServerChain())
 		if err == nil {

@@ -40,7 +40,6 @@ func GetMetaDataStore() datastore.Store {
 
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
-
 	r.Use(useRecovery, useCors, common.UseUserRateLimit)
 
 	//object operations
@@ -92,9 +91,7 @@ func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF
 }
 
 func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
-	return func(ctx context.Context, r *http.Request) (
-		resp interface{}, err error) {
-
+	return func(ctx context.Context, r *http.Request) (resp interface{}, err error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
 		resp, err = handler(ctx, r)
 
@@ -452,7 +449,7 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	if clientID != allocationObj.OwnerID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
-	err = reference.DeleteShareInfo(ctx, reference.ShareInfo{
+	err = reference.DeleteShareInfo(ctx, &reference.ShareInfo{
 		ClientID:     refereeClientID,
 		FilePathHash: filePathHash,
 	})

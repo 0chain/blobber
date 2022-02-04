@@ -25,7 +25,7 @@ func (zcn *ZCNStatus) OnBalanceAvailable(status int, value int64, info string) {
 	zcn.balance = value
 }
 
-func (zcn *ZCNStatus) OnInfoAvailable(op int, status int, info string, err string) {
+func (zcn *ZCNStatus) OnInfoAvailable(op, status int, info, err string) {
 	defer zcn.wg.Done()
 	if status == zcncore.StatusSuccess {
 		zcn.success = true
@@ -152,5 +152,4 @@ func Transfer(token float64, clientID string) error {
 		return common.NewError("call_transfer_failed", "Failed to verify send transaction with statusBar success failed")
 	}
 	return nil
-
 }

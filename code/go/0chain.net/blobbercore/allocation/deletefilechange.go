@@ -23,7 +23,6 @@ type DeleteFileChange struct {
 }
 
 func (nf *DeleteFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
-
 	rootRef, contentHash, err := reference.DeleteObject(ctx, nf.AllocationID, nf.Path)
 	if err != nil {
 		return nil, err

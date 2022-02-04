@@ -1,15 +1,12 @@
 package stats
 
 import (
+	"time"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"gorm.io/datatypes"
-	"time"
 )
-
-func (ChallengeEntity) TableName() string {
-	return "challenges"
-}
 
 type ChallengeEntity struct {
 	ChallengeID             string                `json:"id" gorm:"column:challenge_id;primary_key"`
@@ -34,6 +31,9 @@ type ChallengeEntity struct {
 	UpdatedAt               time.Time             `gorm:"updated_at"`
 }
 
+func (ChallengeEntity) TableName() string {
+	return "challenges"
+}
 func getAllFailedChallenges(offset, limit int) ([]ChallengeEntity, int, error) {
 	db := datastore.GetStore().GetDB()
 	crs := []ChallengeEntity{}

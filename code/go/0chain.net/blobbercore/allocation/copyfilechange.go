@@ -99,7 +99,7 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	return rootRef, err
 }
 
-func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef *reference.Ref, destRef *reference.Ref, allocationRoot string) {
+func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, destRef *reference.Ref, allocationRoot string) {
 	if affectedRef.Type == reference.DIRECTORY {
 		newRef := reference.NewDirectoryRef()
 		newRef.AllocationID = rf.AllocationID

@@ -17,9 +17,7 @@ func SetupWorkers(ctx context.Context) {
 	go startRedeemMarkers(ctx)
 }
 
-func RedeemReadMarker(ctx context.Context, rmEntity *ReadMarkerEntity) (
-	err error) {
-
+func RedeemReadMarker(ctx context.Context, rmEntity *ReadMarkerEntity) (err error) {
 	Logger.Info("Redeeming the read marker", zap.Any("rm", rmEntity.LatestRM))
 
 	var params = make(map[string]string)
@@ -38,13 +36,10 @@ func RedeemReadMarker(ctx context.Context, rmEntity *ReadMarkerEntity) (
 	if err != nil {
 		Logger.Error("Error from sc rest api call", zap.Error(err))
 		return // error
-
 	} else if err = json.Unmarshal(latestRMBytes, &latestRM); err != nil {
 		Logger.Error("Error from unmarshal of rm bytes", zap.Error(err))
 		return // error
-
 	} else if latestRM.ReadCounter > 0 && latestRM.ReadCounter >= rmEntity.LatestRM.ReadCounter {
-
 		Logger.Info("updating the local state to match the block chain")
 		if err = SaveLatestReadMarker(ctx, &latestRM, false); err != nil {
 			return // error
@@ -87,5 +82,4 @@ func startRedeemMarkers(ctx context.Context) {
 			redeemReadMarker(ctx)
 		}
 	}
-
 }

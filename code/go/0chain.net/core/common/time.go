@@ -16,7 +16,7 @@ func Now() Timestamp {
 }
 
 /*Within ensures a given timestamp is within certain number of seconds */
-func Within(ts int64, seconds int64) bool {
+func Within(ts, seconds int64) bool {
 	now := time.Now().Unix()
 	return now > ts-seconds && now < ts+seconds
 }

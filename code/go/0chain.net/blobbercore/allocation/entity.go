@@ -50,9 +50,7 @@ func (Allocation) TableName() string {
 
 // RestDurationInTimeUnits returns number (float point) of time units until
 // allocation ends.
-func (a *Allocation) RestDurationInTimeUnits(wmt common.Timestamp) (
-	rdtu float64) {
-
+func (a *Allocation) RestDurationInTimeUnits(wmt common.Timestamp) (rdtu float64) {
 	var (
 		wmtt = time.Unix(int64(wmt), 0)
 		expt = time.Unix(int64(a.Expiration), 0)
@@ -93,9 +91,7 @@ type WantWriter interface {
 // WantWrite returns amount of tokens (by current terms of the allocations that
 // should be loaded) by given size for given blobber. E.g. want is tokens
 // wanted.
-func (a *Allocation) WantWrite(blobberID string, size int64,
-	wmt common.Timestamp) (value int64) {
-
+func (a *Allocation) WantWrite(blobberID string, size int64, wmt common.Timestamp) (value int64) {
 	if size < 0 {
 		return // deleting, ignore
 	}
@@ -112,9 +108,7 @@ func (a *Allocation) WantWrite(blobberID string, size int64,
 }
 
 // ReadPools from DB cache.
-func ReadPools(tx *gorm.DB, clientID, allocID, blobberID string,
-	until common.Timestamp) (rps []*ReadPool, err error) {
-
+func ReadPools(tx *gorm.DB, clientID, allocID, blobberID string, until common.Timestamp) (rps []*ReadPool, err error) {
 	const query = `client_id = ? AND
         allocation_id = ? AND
         blobber_id = ? AND
@@ -128,9 +122,7 @@ func ReadPools(tx *gorm.DB, clientID, allocID, blobberID string,
 
 // HaveRead is sum of read pools (the list should be filtered by query
 // excluding pools expired and pools going to expired soon) minus pending reads.
-func (a *Allocation) HaveRead(rps []*ReadPool, blobberID string,
-	pendNumBlocks int64) (have int64) {
-
+func (a *Allocation) HaveRead(rps []*ReadPool, blobberID string, pendNumBlocks int64) (have int64) {
 	for _, rp := range rps {
 		have += rp.Balance
 	}
@@ -151,9 +143,7 @@ func (*Pending) TableName() string {
 	return "pendings"
 }
 
-func GetPending(tx *gorm.DB, clientID, allocationID, blobberID string) (
-	p *Pending, err error) {
-
+func GetPending(tx *gorm.DB, clientID, allocationID, blobberID string) (p *Pending, err error) {
 	const query = `client_id = ? AND
         allocation_id = ? AND
         blobber_id = ?`
@@ -181,9 +171,7 @@ func (p *Pending) SubPendingWrite(size int64) {
 	}
 }
 
-func (p *Pending) WritePools(tx *gorm.DB, blobberID string,
-	until common.Timestamp) (wps []*WritePool, err error) {
-
+func (p *Pending) WritePools(tx *gorm.DB, blobberID string, until common.Timestamp) (wps []*WritePool, err error) {
 	const query = `client_id = ? AND
         allocation_id = ? AND
         blobber_id = ? AND
@@ -195,9 +183,7 @@ func (p *Pending) WritePools(tx *gorm.DB, blobberID string,
 	return
 }
 
-func (p *Pending) HaveWrite(wps []*WritePool, ww WantWriter,
-	wmt common.Timestamp) (have int64) {
-
+func (p *Pending) HaveWrite(wps []*WritePool, ww WantWriter, wmt common.Timestamp) (have int64) {
 	for _, wp := range wps {
 		have += wp.Balance
 	}
@@ -255,11 +241,8 @@ func (*WritePool) TableName() string {
 	return "write_pools"
 }
 
-func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string,
-	rps []*ReadPool) (err error) {
-
+func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string, rps []*ReadPool) (err error) {
 	// cleanup and batch insert (remove old pools, add / update new)
-
 	const query = `client_id = ? AND
         allocation_id = ? AND
         blobber_id = ?`
@@ -283,9 +266,7 @@ func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string,
 	return
 }
 
-func SetWritePools(db *gorm.DB, clientID, allocationID, blobberID string,
-	wps []*WritePool) (err error) {
-
+func SetWritePools(db *gorm.DB, clientID, allocationID, blobberID string, wps []*WritePool) (err error) {
 	const query = `client_id = ? AND
         allocation_id = ? AND
         blobber_id = ?`
@@ -320,7 +301,6 @@ type ReadPoolRedeem struct {
 
 // SubReadRedeemed subtracts tokens redeemed from read pools.
 func SubReadRedeemed(rps []*ReadPool, redeems []ReadPoolRedeem) {
-
 	var rm = make(map[string]int64)
 
 	for _, rd := range redeems {

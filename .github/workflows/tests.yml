@@ -14,7 +14,7 @@ on:
 
 jobs:
   linter:
-    name: Buf & Golangci lint
+    name: Lints
     runs-on: [self-hosted,docker-builds]
     steps:
       - name: Setup go 1.17

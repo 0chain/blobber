@@ -73,7 +73,6 @@ func waitOrQuit(ctx context.Context, d time.Duration) (quit bool) {
 }
 
 func updateWork(ctx context.Context) {
-
 	defer func() {
 		if r := recover(); r != nil {
 			Logger.Error("[recover] updateWork", zap.Any("err", r))
@@ -91,7 +90,6 @@ func updateWork(ctx context.Context) {
 	// iterate all in loop accepting allocations with limit
 
 	for start := true; start || (offset < count); start = false {
-
 		allocs, count, err = findAllocations(ctx, offset)
 		if err != nil {
 			Logger.Error("finding allocations in DB", zap.Error(err))
@@ -113,9 +111,7 @@ func updateWork(ctx context.Context) {
 }
 
 // not finalized, not cleaned up
-func findAllocations(ctx context.Context, offset int64) (
-	allocs []*Allocation, count int64, err error) {
-
+func findAllocations(ctx context.Context, offset int64) (allocs []*Allocation, count int64, err error) {
 	const query = `finalized = false AND cleaned_up = false`
 
 	ctx = datastore.GetStore().CreateTransaction(ctx)
@@ -144,7 +140,6 @@ func shouldFinalize(sa *transaction.StorageAllocation) bool {
 }
 
 func updateAllocation(ctx context.Context, a *Allocation) {
-
 	if a.Finalized {
 		cleanupAllocation(ctx, a)
 		return
@@ -174,12 +169,9 @@ func updateAllocation(ctx context.Context, a *Allocation) {
 	if a.Finalized && !a.CleanedUp {
 		cleanupAllocation(ctx, a)
 	}
-
 }
 
-func requestAllocation(allocID string) (
-	sa *transaction.StorageAllocation, err error) {
-
+func requestAllocation(allocID string) (sa *transaction.StorageAllocation, err error) {
 	var b []byte
 	b, err = transaction.MakeSCRestAPICall(
 		transaction.STORAGE_CONTRACT_ADDRESS,
@@ -202,9 +194,7 @@ func commit(tx *gorm.DB, err *error) {
 	(*err) = tx.Commit().Error
 }
 
-func updateAllocationInDB(ctx context.Context, a *Allocation,
-	sa *transaction.StorageAllocation) (ua *Allocation, err error) {
-
+func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.StorageAllocation) (ua *Allocation, err error) {
 	ctx = datastore.GetStore().CreateTransaction(ctx)
 
 	var tx = datastore.GetStore().GetTransaction(ctx)
@@ -234,7 +224,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 	}
 
 	// save allocations
-	if err = tx.Save(a).Error; err != nil {
+	if err := tx.Save(a).Error; err != nil {
 		return nil, err
 	}
 
@@ -244,7 +234,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation,
 
 	// save allocation terms
 	for _, t := range a.Terms {
-		if err = tx.Save(t).Error; err != nil {
+		if err := tx.Save(t).Error; err != nil {
 			return nil, err
 		}
 	}
@@ -265,7 +255,6 @@ func (fr *finalizeRequest) marshal() string {
 }
 
 func sendFinalizeAllocation(a *Allocation) {
-
 	var tx, err = transaction.NewTransactionEntity()
 	if err != nil {
 		Logger.Error("creating new transaction entity", zap.Error(err))
@@ -287,7 +276,6 @@ func sendFinalizeAllocation(a *Allocation) {
 }
 
 func cleanupAllocation(ctx context.Context, a *Allocation) {
-
 	var err error
 	if err = deleteInFakeConnection(ctx, a); err != nil {
 		Logger.Error("cleaning finalized allocation", zap.Error(err))
@@ -330,9 +318,7 @@ func deleteInFakeConnection(ctx context.Context, a *Allocation) (err error) {
 }
 
 // delete references
-func deleteFiles(ctx context.Context, allocID string,
-	conn *AllocationChangeCollector) (err error) {
-
+func deleteFiles(ctx context.Context, allocID string, conn *AllocationChangeCollector) (err error) {
 	var (
 		tx   = datastore.GetStore().GetTransaction(ctx)
 		refs = make([]*reference.Ref, 0)
@@ -355,9 +341,7 @@ func deleteFiles(ctx context.Context, allocID string,
 }
 
 // delete reference
-func deleteFile(ctx context.Context, path string,
-	conn *AllocationChangeCollector) (err error) {
-
+func deleteFile(ctx context.Context, path string, conn *AllocationChangeCollector) (err error) {
 	var fileRef *reference.Ref
 	fileRef, err = reference.GetReference(ctx, conn.AllocationID, path)
 	if err != nil {

@@ -9,7 +9,6 @@ import (
 )
 
 func SetupHandlerContext(ctx context.Context, r *http.Request, allocation string) context.Context {
-
 	ctx = context.WithValue(ctx, constants.ContextKeyClient,
 		r.Header.Get(common.ClientHeader))
 	ctx = context.WithValue(ctx, constants.ContextKeyClientKey,

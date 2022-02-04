@@ -26,7 +26,6 @@ func startCommitProcessed(ctx context.Context) {
 }
 
 func startProcessAccepted(ctx context.Context) {
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -39,7 +38,6 @@ func startProcessAccepted(ctx context.Context) {
 
 // startSyncOpen
 func startSyncOpen(ctx context.Context) {
-
 	for {
 		select {
 		case <-ctx.Done():
