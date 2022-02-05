@@ -48,12 +48,8 @@ func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, client
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Client ID mismatch")
 	}
 
-	if authToken.Expiration < authToken.Timestamp {
-		return common.NewError("invalid_parameters", "Invalid auth ticket. Expired ticket")
-	}
-
 	if authToken.Expiration > 0 {
-		if authToken.Expiration < common.Now() {
+		if authToken.Expiration < authToken.Timestamp || authToken.Expiration <= common.Now() {
 			return common.NewError("invalid_parameters", "Invalid auth ticket. Expired ticket")
 		}
 	} else { // check for default 90 days expiration time
