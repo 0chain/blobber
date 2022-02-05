@@ -10,11 +10,10 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	zLogger "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
-	"gorm.io/datatypes"
-
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
+	"gorm.io/datatypes"
 )
 
 const (
@@ -186,7 +185,7 @@ func (rm *ReadMarkerEntity) Sync(ctx context.Context) (err error) {
 func (rm *ReadMarkerEntity) UpdateStatus(ctx context.Context, rps []*allocation.ReadPool, txOutput, redeemTxn string) (err error) {
 	var redeems []allocation.ReadPoolRedeem
 	if err = json.Unmarshal([]byte(txOutput), &redeems); err != nil {
-		Logger.Error("update read redeeming status: can't decode transaction"+
+		zLogger.Logger.Error("update read redeeming status: can't decode transaction"+
 			" output", zap.Error(err))
 		return common.NewErrorf("rme_update_status",
 			"can't decode transaction output: %v", err)
