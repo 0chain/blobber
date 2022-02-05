@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -14,6 +15,10 @@ import (
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
+)
+
+const (
+	NinetyDays = common.Timestamp(90 * 24 * time.Hour)
 )
 
 type AuthTicket struct {
@@ -40,11 +45,22 @@ func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, client
 	if authToken.AllocationID != allocationObj.ID {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Allocation id mismatch")
 	}
-	if authToken.ClientID != clientID && len(authToken.ClientID) > 0 {
+	if authToken.ClientID != "" && authToken.ClientID != clientID {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Client ID mismatch")
 	}
-	if authToken.Expiration > 0 && (authToken.Expiration < authToken.Timestamp || authToken.Expiration < common.Now()) {
+
+	if authToken.Expiration < authToken.Timestamp {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Expired ticket")
+	}
+
+	if authToken.Expiration > 0 {
+		if authToken.Expiration < common.Now() {
+			return common.NewError("invalid_parameters", "Invalid auth ticket. Expired ticket")
+		}
+	} else { // check for default 90 days expiration time
+		if authToken.Timestamp+NinetyDays <= common.Now() {
+			return common.NewError("invalid_parameters", "Authticket expired")
+		}
 	}
 
 	if authToken.OwnerID != allocationObj.OwnerID {
@@ -60,6 +76,7 @@ func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, client
 	if err != nil || !sigOK {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Signature verification failed")
 	}
+
 	return nil
 }
 
