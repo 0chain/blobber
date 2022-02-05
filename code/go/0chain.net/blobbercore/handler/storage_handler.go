@@ -925,7 +925,7 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 		return nil, err
 	}
 
-	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
+	rootRef, err := reference.GetReferenceForCalculateHash(ctx, allocationID, paths)
 	if err != nil {
 		return nil, err
 	}
