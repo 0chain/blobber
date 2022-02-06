@@ -450,7 +450,12 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 
-	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
+	var (
+		allocationID = ctx.Value(constants.ContextKeyAllocation).(string)
+		publicKey    = ctx.Value(constants.ContextKeyClientKey).(string)
+		clientID     = ctx.Value(constants.ContextKeyClient).(string)
+	)
+
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -458,7 +463,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
 
-	valid, err := verifySignatureFromRequest(allocationID, sign, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationID, sign, publicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -475,6 +480,10 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, authTicket.FilePathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	if !(clientID == allocationObj.OwnerID || reference.IsACollaborator(ctx, fileref.ID, clientID)) {
+		return nil, common.NewError("invalid_client", "Client should be either owner or collaborator")
 	}
 
 	authToken, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileref, authTicket.ClientID)
