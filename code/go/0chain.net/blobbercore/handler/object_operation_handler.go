@@ -977,6 +977,12 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	allocationID := allocationObj.ID
 	fileOperation := getFileOperation(r)
+
+	isUploadPathFile := isUploadPathAFile(ctx, r, allocationObj, fileOperation)
+	if isUploadPathFile {
+		return nil, common.NewError("invalid_parameters", "Invalid remote path is passed")
+	}
+
 	existingFileRef := getExistingFileRef(fsh, ctx, r, allocationObj, fileOperation)
 	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
@@ -1080,4 +1086,25 @@ func getExistingFileRef(fsh *StorageHandler, ctx context.Context, r *http.Reques
 		}
 	}
 	return nil
+}
+
+// check upload path is a file
+// ex := /path1/path2/path3/name
+// checking if /path1/path2/path3 is a file or dir
+func isUploadPathAFile(ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) bool {
+	if fileOperation == constants.FileOperationInsert {
+		var formData allocation.UpdateFileChanger
+		uploadMetaString := r.FormValue(getFormFieldName(fileOperation))
+		err := json.Unmarshal([]byte(uploadMetaString), &formData)
+		if err == nil {
+			fileDir := filepath.Dir(formData.Path)
+			if fileDir != "/" && fileDir != "" {
+				dirReference, _ := reference.GetReference(ctx, allocationObj.ID, fileDir)
+				if dirReference != nil && dirReference.Type == reference.FILE {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
