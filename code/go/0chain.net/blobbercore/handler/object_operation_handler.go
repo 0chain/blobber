@@ -48,53 +48,49 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks,
 	var (
 		db        = datastore.GetStore().GetTransaction(ctx)
 		blobberID = node.Self.ID
-		until     = common.Now() +
-			common.Timestamp(config.Configuration.ReadLockTimeout)
+		until     = common.Now() + common.Timestamp(config.Configuration.ReadLockTimeout)
 
-		want = alloc.WantRead(blobberID, numBlocks)
+		currentReadSize = numBlocks * allocation.CHUNK_SIZE // currently only default size is used as chunk size
 
 		rps []*allocation.ReadPool
 	)
 
-	if want == 0 {
+	if currentReadSize == 0 {
 		return // skip if read price is zero
 	}
 
-	rps, err = allocation.ReadPools(db, payerID, alloc.ID,
-		blobberID, until)
+	//Updated read pool balance calculation
+	//
+	readPoolsBalance, err := allocation.GetReadPoolsBalance(db, alloc.ID, payerID, until)
 	if err != nil {
-		return common.NewErrorf("read_pre_redeem",
-			"can't get read pools from DB: %v", err)
+		return common.NewError("read_pre_redeem", "database error while reading read pools balance")
 	}
 
-	var have = alloc.HaveRead(rps, blobberID, pendNumBlocks)
-
-	if have < want {
-		rps, err = allocation.RequestReadPools(payerID,
-			alloc.ID)
-		if err != nil {
-			return common.NewErrorf("read_pre_redeem",
-				"can't request read pools from sharders: %v", err)
-		}
-
-		err = allocation.SetReadPools(db, payerID,
-			alloc.ID, blobberID, rps)
-		if err != nil {
-			return common.NewErrorf("read_pre_redeem",
-				"can't save requested read pools: %v", err)
-		}
-
-		rps, err = allocation.ReadPools(db, payerID, alloc.ID, blobberID,
-			until)
-		if err != nil {
-			return common.NewErrorf("read_pre_redeem",
-				"can't get read pools from DB: %v", err)
-		}
-
-		have = alloc.HaveRead(rps, blobberID, pendNumBlocks)
+	pendingReadSize, err := allocation.GetPendingRead(db, payerID, alloc.ID)
+	if err != nil {
+		return common.NewError("read_pre_redeem", "database error while reading pending read size")
 	}
 
-	if have < want {
+	requiredBalance := alloc.GetRequiredReadBalance(blobberID, pendingReadSize+currentReadSize)
+	//
+
+	if readPoolsBalance < requiredBalance {
+		rps, err = allocation.RequestReadPools(payerID, alloc.ID)
+		if err != nil {
+			return common.NewErrorf("read_pre_redeem", "can't request read pools from sharders: %v", err)
+		}
+
+		if err := allocation.SetReadPools(db, payerID, alloc.ID, blobberID, rps); err != nil {
+			return common.NewErrorf("read_pre_redeem", "can't save requested read pools: %v", err)
+		}
+
+		readPoolsBalance, err = allocation.GetReadPoolsBalance(db, alloc.ID, payerID, until)
+		if err != nil {
+			return common.NewError("read_pre_redeem", "database error while reading read pools balance")
+		}
+	}
+
+	if readPoolsBalance < requiredBalance {
 		return common.NewError("read_pre_redeem", "not enough "+
 			"tokens in client's read pools associated with the"+
 			" allocation->blobber")
