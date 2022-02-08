@@ -452,7 +452,6 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	var (
 		allocationID = ctx.Value(constants.ContextKeyAllocation).(string)
-		publicKey    = ctx.Value(constants.ContextKeyClientKey).(string)
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
 	)
 
@@ -463,9 +462,13 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
 
-	valid, err := verifySignatureFromRequest(allocationID, sign, publicKey)
+	valid, err := verifySignatureFromRequest(allocationID, sign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_client", "Client has no access to share file")
 	}
 
 	encryptionPublicKey := r.FormValue("encryption_public_key")
