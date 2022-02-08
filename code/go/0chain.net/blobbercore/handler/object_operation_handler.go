@@ -267,7 +267,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	var authToken *readmarker.AuthTicket
 	var shareInfo *reference.ShareInfo
 
-	if !isOwner {
+	if !(isOwner || isCollaborator) {
 		authTokenString := r.FormValue("auth_token")
 		if authTokenString == "" {
 			return nil, common.NewError("invalid_client", "authticket is required")
