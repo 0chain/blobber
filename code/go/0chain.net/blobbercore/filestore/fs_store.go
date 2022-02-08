@@ -3,7 +3,7 @@ package filestore
 import (
 	"bytes"
 	"context"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -55,7 +55,7 @@ type IFileBlockGetter interface {
 type FileBlockGetter struct {
 }
 
-func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
+func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
 	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
@@ -95,8 +95,8 @@ func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileDa
 	if blockNum > maxBlockNum || blockNum < 1 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number")
 	}
-	buffer := make([]byte, int64(fileData.ChunkSize)*numBlocks)
-	n, err := file.ReadAt(buffer, ((blockNum - 1) * int64(fileData.ChunkSize)))
+	buffer := make([]byte, fileData.ChunkSize*numBlocks)
+	n, err := file.ReadAt(buffer, ((blockNum - 1) * fileData.ChunkSize))
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
@@ -237,17 +237,16 @@ func (fs *FileFSStore) GetlDiskSizeUsed(allocationID string) (int64, error) {
 	return size, err
 }
 
-func GetFilePathFromHash(hash string) (string, string) {
+func GetFilePathFromHash(h string) (string, string) {
 	var dir bytes.Buffer
-	fmt.Fprintf(&dir, "%s", hash[0:3])
+	fmt.Fprintf(&dir, "%s", h[0:3])
 	for i := 1; i < 3; i++ {
-		fmt.Fprintf(&dir, "%s%s", string(os.PathSeparator), hash[3*i:3*i+3])
+		fmt.Fprintf(&dir, "%s%s", string(os.PathSeparator), h[3*i:3*i+3])
 	}
-	return dir.String(), hash[9:]
+	return dir.String(), h[9:]
 }
 
 func (fs *FileFSStore) generateTransactionPath(transID string) string {
-
 	var dir bytes.Buffer
 	fmt.Fprintf(&dir, "%s%s", fs.RootDirectory, OSPathSeperator)
 	for i := 0; i < 3; i++ {
@@ -357,10 +356,8 @@ func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *F
 	return returnBytes, fmt.GetMerkleTree(), nil
 }
 
-func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
-
+func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
 	return fs.fileBlockGetter.GetFileBlock(fs, allocationID, fileData, blockNum, numBlocks)
-
 }
 
 func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error {
@@ -430,7 +427,7 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 	//return false, err
 }
 
-func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error {
+func (fs *FileFSStore) DeleteFile(allocationID, contentHash string) error {
 	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
@@ -450,17 +447,11 @@ func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error
 	return os.Remove(fileObjectPath)
 }
 
-func (fs *FileFSStore) CreateDir(dirName string) error {
-	return createDirs(dirName)
-}
-
 func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) error {
 	return nil
 }
 
-func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
-	infile multipart.File, connectionID string) (*FileOutputData, error) {
-
+func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
 	if fileData.IsChunked {
 		return fs.WriteChunk(allocationID, fileData, infile, connectionID)
 	}
@@ -479,7 +470,7 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 
 	fileRef := &FileOutputData{}
 
-	h := sha1.New()
+	h := sha256.New()
 	bytesBuffer := bytes.NewBuffer(nil)
 	multiHashWriter := io.MultiWriter(h, bytesBuffer)
 	tReader := io.TeeReader(infile, multiHashWriter)
@@ -490,7 +481,6 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	}
 	fileSize := int64(0)
 	for {
-
 		written, err := io.CopyN(dest, tReader, CHUNK_SIZE)
 
 		if err != io.EOF && err != nil {
@@ -530,9 +520,7 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 }
 
 // WriteChunk append chunk to temp file
-func (fs *FileFSStore) WriteChunk(allocationID string, fileData *FileInputData,
-	infile multipart.File, connectionID string) (*FileOutputData, error) {
-
+func (fs *FileFSStore) WriteChunk(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
 	allocation, err := fs.SetupAllocation(allocationID, false)
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
@@ -547,12 +535,12 @@ func (fs *FileFSStore) WriteChunk(allocationID string, fileData *FileInputData,
 
 	fileRef := &FileOutputData{}
 
-	// the chunk has been rewitten. but it is lost when network is broken, and it is not save in db
+	// the chunk has been rewritten. but it is lost when network is broken, and it is not save in db
 	if dest.size > fileData.UploadOffset {
 		fileRef.ChunkUploaded = true
 	}
 
-	h := sha1.New()
+	h := sha256.New()
 	size, err := dest.WriteChunk(context.TODO(), fileData.UploadOffset, io.TeeReader(infile, h))
 
 	if err != nil {
@@ -580,7 +568,7 @@ func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHan
 				return nil
 			}
 			defer f.Close()
-			h := sha1.New()
+			h := sha256.New()
 			if _, err := io.Copy(h, f); err != nil {
 				return nil
 			}

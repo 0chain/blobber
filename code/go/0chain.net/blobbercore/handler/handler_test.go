@@ -51,7 +51,7 @@ func (MockFileBlockGetter) GetFileBlock(
 	fileData *filestore.FileInputData,
 	blockNum int64,
 	numBlocks int64) ([]byte, error) {
-	return []byte(mockFileBlock), nil
+	return mockFileBlock, nil
 }
 
 func setMockFileBlock(data []byte) {
@@ -128,8 +128,8 @@ func setup(t *testing.T) {
 	}
 }
 
-func setupHandlers() (*mux.Router, map[string]string) {
-	router := mux.NewRouter()
+func setupHandlers() (router *mux.Router, opMap map[string]string) {
+	router = mux.NewRouter()
 
 	opPath := "/v1/file/objectpath/{allocation}"
 	opName := "Object_Path"
@@ -264,7 +264,7 @@ func isEndpointAllowGetReq(name string) bool {
 	}
 }
 
-func GetAuthTicketForEncryptedFile(allocationID string, remotePath string, fileHash string, clientID string, encPublicKey string) (string, error) {
+func GetAuthTicketForEncryptedFile(allocationID, remotePath, fileHash, clientID, encPublicKey string) (string, error) {
 	at := &marker.AuthTicket{}
 	at.AllocationID = allocationID
 	at.OwnerID = client.GetClientID()
@@ -371,7 +371,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if !isEndpointAllowGetReq(name) {
 						method = http.MethodPost
 					}
-					r, err := http.NewRequest(method, url.String(), nil)
+					r, err := http.NewRequest(method, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -400,7 +400,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if !isEndpointAllowGetReq(name) {
 						method = http.MethodPost
 					}
-					r, err := http.NewRequest(method, url.String(), nil)
+					r, err := http.NewRequest(method, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -441,7 +441,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("path", path)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+					r, err := http.NewRequest(http.MethodGet, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -501,7 +501,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("path", path)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+					r, err := http.NewRequest(http.MethodGet, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -561,7 +561,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("path", path)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
+					r, err := http.NewRequest(http.MethodPost, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -632,7 +632,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("path", path)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+					r, err := http.NewRequest(http.MethodGet, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -693,7 +693,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("collab_id", "collab id")
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+					r, err := http.NewRequest(http.MethodGet, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -762,7 +762,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("connection_id", connectionID)
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
+					r, err := http.NewRequest(http.MethodPost, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -842,7 +842,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("dest", "dest")
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
+					r, err := http.NewRequest(http.MethodPost, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -933,7 +933,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("attributes", string(attrBytes))
 					url.RawQuery = q.Encode()
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
+					r, err := http.NewRequest(http.MethodPost, url.String(), http.NoBody)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1361,7 +1361,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				mock.ExpectExec(regexp.QuoteMeta(`UPDATE "marketplace_share_info"`)).
 					WithArgs(true, "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77", filePathHash).
 					WillReturnResult(sqlmock.NewResult(0, 1))
-
 			},
 			wantCode: http.StatusOK,
 			wantBody: "{\"message\":\"Path successfully removed from allocation\",\"status\":204}\n",
@@ -1441,7 +1440,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				mock.ExpectExec(regexp.QuoteMeta(`UPDATE "marketplace_share_info"`)).
 					WithArgs(true, "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77", filePathHash).
 					WillReturnResult(sqlmock.NewResult(0, 0))
-
 			},
 			wantCode: http.StatusOK,
 			wantBody: "{\"message\":\"Path not found\",\"status\":404}\n",
@@ -1526,7 +1524,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).WillReturnError(gorm.ErrRecordNotFound)
-
 			},
 			wantCode: http.StatusBadRequest,
 			wantBody: "{\"code\":\"download_file\",\"error\":\"download_file: invalid file path: record not found\"}\n\n",
@@ -1827,7 +1824,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					t.Fatal(err)
 				}
 				header := make([]byte, 2*1024)
-				copy(header[:], encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},
@@ -1966,7 +1963,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					t.Fatal(err)
 				}
 				header := make([]byte, 2*1024)
-				copy(header[:], encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},
@@ -2113,7 +2110,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					t.Fatal(err)
 				}
 				header := make([]byte, 2*1024)
-				copy(header[:], encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},
@@ -2148,7 +2145,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path", "chunk_size"}).
-							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", encscheme.GetEncryptedKey(), "/folder1/subfolder1", filestore.CHUNK_SIZE),
+							AddRow("/folder1/subfolder1/file.txt", "f", filePathHash, filePathHash, "content_hash", encscheme.GetEncryptedKey(), "/folder1/subfolder1", filestore.CHUNK_SIZE),
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
@@ -2260,7 +2257,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					t.Fatal(err)
 				}
 				header := make([]byte, 2*1024)
-				copy(header[:], encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},
@@ -2305,7 +2302,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path"}).
 							AddRow("/folder1", "d", rootPathHash, rootPathHash, "content_hash", "", "/"),
 					)
-
 			},
 			wantCode: http.StatusBadRequest,
 			wantBody: "{\"code\":\"download_file\",\"error\":\"download_file: cannot verify auth ticket: invalid_parameters: Auth ticket is not valid for the resource being requested\"}\n\n",

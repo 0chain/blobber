@@ -589,7 +589,6 @@ func TestDownloadFile(t *testing.T) {
 					require.EqualValues(t, test.want.errMsg, err.Error())
 					return
 				}
-
 			},
 		)
 	}

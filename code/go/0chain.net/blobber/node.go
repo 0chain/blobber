@@ -16,7 +16,6 @@ func setupNode() error {
 
 	reader, err := os.Open(keysFile)
 	if err != nil {
-
 		return err
 	}
 	defer reader.Close()
@@ -30,7 +29,16 @@ func setupNode() error {
 		logging.Logger.Info("self identity", zap.Any("id", node.Self.ID))
 	}
 
-	node.Self.SetHostURL(hostname, httpPort)
+	if len(hostUrl) > 0 {
+		node.Self.URL = hostUrl
+	} else {
+		if httpsPort > 0 {
+			node.Self.SetHostURL("https", hostname, httpsPort)
+		} else {
+			node.Self.SetHostURL("http", hostname, httpPort)
+		}
+	}
+
 	logging.Logger.Info(" Base URL" + node.Self.GetURLBase())
 	fmt.Print("		[OK]\n")
 	return nil

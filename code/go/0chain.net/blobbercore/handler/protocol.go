@@ -29,7 +29,7 @@ type WalletCallback struct {
 	err string
 }
 
-func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet string, err string) {
+func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet, err string) {
 	wb.err = err
 	wb.wg.Done()
 }
@@ -94,7 +94,6 @@ func getStorageNode() (*transaction.StorageNode, error) {
 
 // Add or update blobber on blockchain
 func BlobberAdd(ctx context.Context) (string, error) {
-
 	// initialize storage node (ie blobber)
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
@@ -131,7 +130,6 @@ func BlobberAdd(ctx context.Context) (string, error) {
 var ErrBlobberHasRemoved = errors.New("blobber has removed")
 
 func TransactionVerify(txnHash string) (t *transaction.Transaction, err error) {
-
 	for i := 0; i < util.MAX_RETRIES; i++ {
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 		if t, err = transaction.VerifyTransaction(txnHash, chain.GetServerChain()); err == nil {

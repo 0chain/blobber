@@ -128,7 +128,7 @@ type PaginatedRef struct { //Gorm smart select fields.
 	UpdatedAt time.Time      `gorm:"column:updated_at" json:"updated_at,omitempty"`
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"-"` // soft deletion
 
-	ChunkSize int64 `gorm:"column:chunk_size" dirlist:"chunk_size" filelist:"chunk_size"`
+	ChunkSize int64 `gorm:"column:chunk_size" json:"chunk_size"`
 }
 
 func (Ref) TableName() string {
@@ -136,7 +136,7 @@ func (Ref) TableName() string {
 }
 
 // GetReferenceLookup hash(allocationID + ":" + path)
-func GetReferenceLookup(allocationID string, path string) string {
+func GetReferenceLookup(allocationID, path string) string {
 	return encryption.Hash(allocationID + ":" + path)
 }
 
@@ -174,7 +174,7 @@ func (r *Ref) SetAttributes(attr *Attributes) (err error) {
 }
 
 // Mkdir create dirs if they don't exits. do nothing if dir exists. last dir will be return without child
-func Mkdir(ctx context.Context, allocationID string, destpath string) (*Ref, error) {
+func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
 	var dirRef *Ref
 	db := datastore.GetStore().GetTransaction(ctx)
 	// cleaning path to avoid edge case issues: append '/' prefix if not added and removing suffix '/' if added
@@ -212,11 +212,10 @@ func Mkdir(ctx context.Context, allocationID string, destpath string) (*Ref, err
 	}
 
 	return dirRef, nil
-
 }
 
 // GetReference get FileRef with allcationID and path from postgres
-func GetReference(ctx context.Context, allocationID string, path string) (*Ref, error) {
+func GetReference(ctx context.Context, allocationID, path string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
@@ -226,7 +225,7 @@ func GetReference(ctx context.Context, allocationID string, path string) (*Ref, 
 	return nil, err
 }
 
-func GetReferenceFromLookupHash(ctx context.Context, allocationID string, path_hash string) (*Ref, error) {
+func GetReferenceFromLookupHash(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
@@ -252,7 +251,7 @@ func GetSubDirsFromPath(p string) []string {
 	return subDirs
 }
 
-func GetRefWithChildren(ctx context.Context, allocationID string, path string) (*Ref, error) {
+func GetRefWithChildren(ctx context.Context, allocationID, path string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
@@ -277,7 +276,7 @@ func GetRefWithChildren(ctx context.Context, allocationID string, path string) (
 	return &refs[0], nil
 }
 
-func GetRefWithSortedChildren(ctx context.Context, allocationID string, path string) (*Ref, error) {
+func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*Ref, error) {
 	var refs []*Ref
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
@@ -307,17 +306,19 @@ func (fr *Ref) GetFileHashData() string {
 		fr.Attributes = datatypes.JSON("{}")
 	}
 	hashArray := make([]string, 0, 11)
-	hashArray = append(hashArray, fr.AllocationID)
-	hashArray = append(hashArray, fr.Type)
-	hashArray = append(hashArray, fr.Name)
-	hashArray = append(hashArray, fr.Path)
-	hashArray = append(hashArray, strconv.FormatInt(fr.Size, 10))
-	hashArray = append(hashArray, fr.ContentHash)
-	hashArray = append(hashArray, fr.MerkleRoot)
-	hashArray = append(hashArray, strconv.FormatInt(fr.ActualFileSize, 10))
-	hashArray = append(hashArray, fr.ActualFileHash)
-	hashArray = append(hashArray, string(fr.Attributes))
-	hashArray = append(hashArray, strconv.FormatInt(fr.ChunkSize, 10))
+	hashArray = append(hashArray,
+		fr.AllocationID,
+		fr.Type,
+		fr.Name,
+		fr.Path,
+		strconv.FormatInt(fr.Size, 10),
+		fr.ContentHash,
+		fr.MerkleRoot,
+		strconv.FormatInt(fr.ActualFileSize, 10),
+		fr.ActualFileHash,
+		string(fr.Attributes),
+		strconv.FormatInt(fr.ChunkSize, 10),
+	)
 
 	return strings.Join(hashArray, ":")
 }
@@ -406,7 +407,7 @@ func (r *Ref) RemoveChild(idx int) {
 	r.childrenLoaded = true
 }
 
-func (r *Ref) UpdatePath(newPath string, parentPath string) {
+func (r *Ref) UpdatePath(newPath, parentPath string) {
 	r.Path = newPath
 	r.ParentPath = parentPath
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1 //strings.Count(r.Path, "/")
@@ -497,7 +498,6 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 				for k, v := range listMap {
 					result[k] = v
 				}
-
 			}
 		} else {
 			fieldValue := v.FieldByName(field.Name).Interface()
@@ -506,7 +506,6 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 			}
 			result[tag] = fieldValue
 		}
-
 	}
 	return result
 }

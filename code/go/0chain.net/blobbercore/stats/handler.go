@@ -3,14 +3,15 @@ package stats
 import (
 	"context"
 	"fmt"
+	"html/template"
+	"net/http"
+	"time"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
 	"go.uber.org/zap"
-	"html/template"
-	"net/http"
-	"time"
 )
 
 func byteCountIEC(b int64) string {
@@ -35,12 +36,8 @@ var funcMap = template.FuncMap{
 	"read_size": func(readCount int64) string {
 		return byteCountIEC(readCount * readBlockSize)
 	},
-	"write_size": func(readCount int64) string {
-		return byteCountIEC(readCount)
-	},
-	"byte_count_in_string": func(byteValue int64) string {
-		return byteCountIEC(byteValue)
-	},
+	"write_size":           byteCountIEC,
+	"byte_count_in_string": byteCountIEC,
 	"time_in_string": func(timeValue time.Time) string {
 		if timeValue.IsZero() {
 			return "-"
@@ -499,7 +496,7 @@ func GetStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 	defer db.Rollback()
 	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
 	bs := &BlobberStats{}
-	if len(allocationID) != 0 {
+	if allocationID != "" {
 		// TODO: Get only the allocation info from DB
 		bs.loadDetailedStats(ctx)
 		for _, allocStat := range bs.AllocationStats {
@@ -510,7 +507,7 @@ func GetStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 		return nil, common.NewError("allocation_stats_not_found", "Stats for allocation not found")
 	}
 	allocations := q.Get("allocations")
-	if len(allocations) != 0 {
+	if allocations != "" {
 		return loadAllocationList(ctx)
 	}
 	bs.loadBasicStats(ctx)

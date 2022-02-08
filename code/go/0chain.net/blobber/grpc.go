@@ -18,7 +18,6 @@ import (
 )
 
 func startGRPCServer() {
-
 	common.ConfigRateLimits()
 	r := mux.NewRouter()
 	initHandlers(r)

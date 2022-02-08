@@ -122,7 +122,7 @@ func (rf *CopyFileChange) updateWriteMarker(ctx context.Context, destRef, affect
 	return rf.updateWriteMarker(ctx, ref, nil)
 }
 
-func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef *reference.Ref, destRef *reference.Ref, allocationRoot string) {
+func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, destRef *reference.Ref, allocationRoot string) {
 	if affectedRef.Type == reference.DIRECTORY {
 		newRef := reference.NewDirectoryRef()
 		newRef.AllocationID = rf.AllocationID

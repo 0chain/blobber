@@ -20,7 +20,7 @@ type SelfNode struct {
 }
 
 /*SetKeys - setter */
-func (sn *SelfNode) SetKeys(publicKey string, privateKey string) {
+func (sn *SelfNode) SetKeys(publicKey, privateKey string) {
 	publicKeyBytes, err := hex.DecodeString(publicKey)
 	if err != nil {
 		panic(err)
@@ -38,11 +38,16 @@ func (sn *SelfNode) SetKeys(publicKey string, privateKey string) {
 }
 
 /*SetHostURL - setter for Host and Port */
-func (sn *SelfNode) SetHostURL(address string, port int) {
+func (sn *SelfNode) SetHostURL(schema, address string, port int) {
 	if address == "" {
 		address = "localhost"
 	}
-	sn.URL = fmt.Sprintf("http://%v:%v", address, port)
+
+	if schema == "" {
+		schema = "http"
+	}
+
+	sn.URL = fmt.Sprintf("%v://%v:%v", schema, address, port)
 }
 
 /*GetURLBase - get the end point base */

@@ -41,7 +41,7 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationObj *allocation.A
 		if wm.WM.PreviousAllocationRoot == allocationObj.LatestRedeemedWM && !startredeem {
 			startredeem = true
 		}
-		if startredeem || len(allocationObj.LatestRedeemedWM) == 0 {
+		if startredeem || allocationObj.LatestRedeemedWM == "" {
 			err := wm.RedeemMarker(rctx)
 			if err != nil {
 				Logger.Error("Error redeeming the write marker.", zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
@@ -61,7 +61,6 @@ func RedeemMarkersForAllocation(ctx context.Context, allocationObj *allocation.A
 			Where("allocation_root = ? AND allocation_root = latest_redeemed_write_marker", allocationObj.AllocationRoot).
 			Update("is_redeem_required", false)
 	}
-	//Logger.Info("Returning from redeem", zap.Any("wm", latestWmEntity), zap.Any("allocation", allocationID))
 	return nil
 }
 
@@ -79,5 +78,4 @@ func startRedeemWriteMarkers(ctx context.Context) {
 			redeemWriteMarker(ctx)
 		}
 	}
-
 }

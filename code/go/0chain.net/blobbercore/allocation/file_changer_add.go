@@ -19,9 +19,7 @@ type AddFileChanger struct {
 }
 
 // ProcessChange update references, and create a new FileRef
-func (nf *AddFileChanger) ProcessChange(ctx context.Context,
-	change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
-
+func (nf *AddFileChanger) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 	path, _ := filepath.Split(nf.Path)
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)

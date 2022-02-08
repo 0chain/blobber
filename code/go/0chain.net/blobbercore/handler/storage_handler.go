@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"gorm.io/gorm"
@@ -34,10 +35,8 @@ const (
 type StorageHandler struct{}
 
 // verifyAllocation try to get allocation from postgres.if it doesn't exists, get it from sharders, and insert it into postgres.
-func (fsh *StorageHandler) verifyAllocation(ctx context.Context, tx string,
-	readonly bool) (alloc *allocation.Allocation, err error) {
-
-	if len(tx) == 0 {
+func (fsh *StorageHandler) verifyAllocation(ctx context.Context, tx string, readonly bool) (alloc *allocation.Allocation, err error) {
+	if tx == "" {
 		return nil, common.NewError("verify_allocation",
 			"invalid allocation id")
 	}
@@ -56,41 +55,43 @@ func (fsh *StorageHandler) verifyAllocation(ctx context.Context, tx string,
 	return
 }
 
-func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (bool, error) {
-	if len(authTokenString) == 0 {
-		return false, common.NewError("invalid_parameters", "Auth ticket required if data read by anyone other than owner.")
+func (fsh *StorageHandler) convertGormError(err error) error {
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return common.NewError("invalid_path", "path does not exist")
+		}
+		return common.NewError("db_error", err.Error())
 	}
+	return err
+}
+
+// verifyAuthTicket verifies authTicket and returns authToken and error if any. For any error authToken is nil
+func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (*readmarker.AuthTicket, error) {
+	if authTokenString == "" {
+		return nil, common.NewError("invalid_parameters", "Auth ticket is required")
+	}
+
 	authToken := &readmarker.AuthTicket{}
-	err := json.Unmarshal([]byte(authTokenString), &authToken)
-	if err != nil {
-		return false, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
+	if err := json.Unmarshal([]byte(authTokenString), &authToken); err != nil {
+		return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
 	}
-	err = authToken.Verify(allocationObj, clientID)
-	if err != nil {
-		return false, err
+
+	if err := authToken.Verify(allocationObj, clientID); err != nil {
+		return nil, err
 	}
+
 	if refRequested.LookupHash != authToken.FilePathHash {
 		authTokenRef, err := reference.GetReferenceFromLookupHash(ctx, authToken.AllocationID, authToken.FilePathHash)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 
-		parentPath := refRequested.ParentPath
-		if !strings.HasPrefix(parentPath, "/") {
-			parentPath = "/" + parentPath
-		}
-
-		authRefPath := authTokenRef.Path
-		if strings.HasPrefix(authRefPath, ".") || authRefPath == "/" {
-			authRefPath = ""
-		}
-
-		if refRequested.ParentPath != authTokenRef.Path && !strings.HasPrefix(parentPath, authRefPath+"/") {
-			return false, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
+		if matched, _ := regexp.MatchString(fmt.Sprintf("^%v", authTokenRef.Path), refRequested.Path); !matched {
+			return nil, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
 		}
 	}
 
-	return true, nil
+	return authToken, nil
 }
 
 func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -123,7 +124,7 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 	return allocationObj, nil
 }
 
-func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID string, path string) *reference.Ref {
+func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID, path string) *reference.Ref {
 	fileReference, err := reference.GetReference(ctx, allocationID, path)
 	if err != nil {
 		return nil
@@ -144,7 +145,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	allocationID := alloc.ID
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if len(clientID) == 0 {
+	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
@@ -196,11 +197,8 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		var authTokenString = r.FormValue("auth_token")
 
 		// check auth token
-		if isAuthorized, err := fsh.verifyAuthTicket(ctx,
-			authTokenString, alloc, fileref, clientID,
-		); !isAuthorized {
-			return nil, common.NewErrorf("file_meta",
-				"cannot verify auth ticket: %v", err)
+		if authToken, err := fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
+			return nil, common.NewErrorf("file_meta", "cannot verify auth ticket: %v", err)
 		}
 
 		delete(result, "path")
@@ -222,7 +220,7 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 	allocationID := allocationObj.ID
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if len(clientID) == 0 {
+	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
@@ -245,17 +243,17 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 	authTokenString := r.FormValue("auth_token")
 
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
+		authToken, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err
 		}
-		if !authTicketVerified {
+		if authToken == nil {
 			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
 		}
 	}
 
 	txnID := r.FormValue("txn_id")
-	if len(txnID) == 0 {
+	if txnID == "" {
 		return nil, common.NewError("invalid_parameter", "TxnID not present in the params")
 	}
 
@@ -305,7 +303,7 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 	}
 
 	collabClientID := r.FormValue("collab_id")
-	if len(collabClientID) == 0 {
+	if collabClientID == "" {
 		return nil, common.NewError("invalid_parameter", "collab_id not present in the params")
 	}
 
@@ -315,7 +313,7 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 
 	switch r.Method {
 	case http.MethodPost:
-		if len(clientID) == 0 || clientID != allocationObj.OwnerID {
+		if clientID == "" || clientID != allocationObj.OwnerID {
 			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 		}
 
@@ -339,7 +337,7 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 		return collaborators, nil
 
 	case http.MethodDelete:
-		if len(clientID) == 0 || clientID != allocationObj.OwnerID {
+		if clientID == "" || clientID != allocationObj.OwnerID {
 			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 		}
 
@@ -374,7 +372,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+	if clientID == "" || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
@@ -402,7 +400,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 	var statsMap map[string]interface{}
 	statsBytes, _ := json.Marshal(fileStats)
-	if err = json.Unmarshal(statsBytes, &statsMap); err != nil {
+	if err := json.Unmarshal(statsBytes, &statsMap); err != nil {
 		return nil, err
 	}
 	for k, v := range statsMap {
@@ -412,7 +410,6 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 }
 
 func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*blobberhttp.ListResult, error) {
-
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
@@ -421,7 +418,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	}
 	allocationID := allocationObj.ID
 
-	if len(clientID) == 0 {
+	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
@@ -446,11 +443,11 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 
 	authTokenString := r.FormValue("auth_token")
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		authTicketVerified, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
+		authToken, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
 		if err != nil {
 			return nil, err
 		}
-		if !authTicketVerified {
+		if authToken == nil {
 			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
 		}
 	}
@@ -494,7 +491,6 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 			result.Meta["collaborators"] = []reference.Collaborator{}
 		}
 		result.Meta["collaborators"] = append(result.Meta["collaborators"].([]reference.Collaborator), collaborators...)
-
 	}
 
 	return &result, nil
@@ -539,7 +535,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	}
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if len(clientID) == 0 {
+	if clientID == "" {
 		errCh <- common.NewError("invalid_operation", "Please pass clientID in the header")
 		return
 	}
@@ -576,7 +572,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	}
 
 	var latestWM *writemarker.WriteMarkerEntity
-	if len(allocationObj.AllocationRoot) == 0 {
+	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
 		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
@@ -612,16 +608,16 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (
 	}
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+	if clientID == "" || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 	path := r.FormValue("path")
-	if len(path) == 0 {
+	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 
 	blockNumStr := r.FormValue("block_num")
-	if len(blockNumStr) == 0 {
+	if blockNumStr == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 
@@ -636,7 +632,7 @@ func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (
 	}
 
 	var latestWM *writemarker.WriteMarkerEntity
-	if len(allocationObj.AllocationRoot) == 0 {
+	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
 		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
@@ -671,11 +667,11 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	}
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+	if clientID == "" || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 	path := r.FormValue("path")
-	if len(path) == 0 {
+	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 
@@ -703,7 +699,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	}
 
 	var latestWM *writemarker.WriteMarkerEntity
-	if len(allocationObj.AllocationRoot) == 0 {
+	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
 		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
@@ -730,25 +726,99 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID == "" {
+		return nil, common.NewError("invalid_operation", "Client id is required")
+	}
+
+	publicKey, _ := ctx.Value(constants.ContextKeyClientKey).(string)
+	if publicKey == "" {
+		if clientID == allocationObj.OwnerID {
+			publicKey = allocationObj.OwnerPublicKey
+		} else {
+			return nil, common.NewError("empty_public_key", "public key is required")
+		}
+	}
+
 	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
 	allocationID := allocationObj.ID
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
+
 	path := r.FormValue("path")
-	if len(path) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
+	authTokenStr := r.FormValue("auth_token")
+	pathHash := r.FormValue("path_hash")
+
+	if path == "" && authTokenStr == "" && pathHash == "" {
+		return nil, common.NewError("invalid_parameters", "empty path and authtoken")
 	}
 
+	var pathRef *reference.Ref
+	switch {
+	case path != "":
+		pathHash = reference.GetReferenceLookup(allocationID, path)
+		fallthrough
+	case pathHash != "":
+		pathRef, err = reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, common.NewError("invalid_path", "")
+			}
+			return nil, err
+		}
+
+		if clientID == allocationObj.OwnerID || clientID == allocationObj.RepairerID || reference.IsACollaborator(ctx, pathRef.ID, clientID) {
+			break
+		}
+		if authTokenStr == "" {
+			return nil, common.NewError("unauthorized_request", "client is not authorized for the requested resource")
+		}
+		fallthrough
+	case authTokenStr != "":
+		authToken := &readmarker.AuthTicket{}
+		if err := json.Unmarshal([]byte(authTokenStr), authToken); err != nil {
+			return nil, common.NewError("json_unmarshall_error", fmt.Sprintf("error parsing authticket: %v", authTokenStr))
+		}
+
+		shareInfo, err := reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
+		if err != nil {
+			return nil, fsh.convertGormError(err)
+		}
+		if shareInfo.Revoked {
+			return nil, common.NewError("share_revoked", "client no longer has permission to requested resource")
+		}
+
+		if err := authToken.Verify(allocationObj, clientID); err != nil {
+			return nil, err
+		}
+
+		if pathRef == nil {
+			pathRef, err = reference.GetReferenceFromLookupHash(ctx, allocationID, authToken.FilePathHash)
+			if err != nil {
+				return nil, fsh.convertGormError(err)
+			}
+		} else if pathHash != authToken.FilePathHash {
+			authTokenRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, authToken.FilePathHash)
+			if err != nil {
+				return nil, fsh.convertGormError(err)
+			}
+			matched, _ := regexp.MatchString(fmt.Sprintf("^%v", authTokenRef.Path), pathRef.Path)
+			if !matched {
+				return nil, common.NewError("invalid_authticket", "auth ticket is not valid for requested resource")
+			}
+		}
+	default:
+		return nil, common.NewError("incomplete_request", "path, pathHash or authTicket is required")
+	}
+
+	path = pathRef.Path
 	pageLimitStr := r.FormValue("pageLimit")
 	var pageLimit int
-	if len(pageLimitStr) == 0 {
+	if pageLimitStr == "" {
 		pageLimit = PageLimit
 	} else {
 		o, err := strconv.Atoi(pageLimitStr)
@@ -763,6 +833,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 			pageLimit = o
 		}
 	}
+
 	offsetPath := r.FormValue("offsetPath")
 	offsetDate := r.FormValue("offsetDate")
 	updatedDate := r.FormValue("updatedDate")
@@ -777,7 +848,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	fileType := r.FormValue("fileType")
 	levelStr := r.FormValue("level")
 	var level int
-	if len(levelStr) != 0 {
+	if levelStr != "" {
 		level, err = strconv.Atoi(levelStr)
 		if err != nil {
 			return nil, common.NewError("invalid_parameters", err.Error())
@@ -811,7 +882,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		return nil, err
 	}
 	var latestWM *writemarker.WriteMarkerEntity
-	if len(allocationObj.AllocationRoot) == 0 {
+	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
 		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
@@ -845,7 +916,7 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 	allocationID := allocationObj.ID
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+	if clientID == "" || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
@@ -869,19 +940,19 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 }
 
 // verifySignatureFromRequest verifies signature passed as common.ClientSignatureHeader header.
-func verifySignatureFromRequest(allocation, sign, pbK string) (bool, error) {
+func verifySignatureFromRequest(alloc, sign, pbK string) (bool, error) {
 	sign = encryption.MiraclToHerumiSig(sign)
 
 	if len(sign) < 64 {
 		return false, nil
 	}
 
-	hash := encryption.Hash(allocation)
+	hash := encryption.Hash(alloc)
 	return encryption.Verify(pbK, sign, hash)
 }
 
 // pathsFromReq retrieves paths value from request which can be represented as single "path" value or "paths" values,
-// marshalled to json.
+// marshaled to json.
 func pathsFromReq(r *http.Request) ([]string, error) {
 	var (
 		pathsStr = r.FormValue("paths")
@@ -889,8 +960,8 @@ func pathsFromReq(r *http.Request) ([]string, error) {
 		paths    = make([]string, 0)
 	)
 
-	if len(pathsStr) == 0 {
-		if len(path) == 0 {
+	if pathsStr == "" {
+		if path == "" {
 			return nil, common.NewError("invalid_parameters", "Invalid path")
 		}
 
@@ -909,8 +980,8 @@ func pathHashFromReq(r *http.Request, allocationID string) (string, error) {
 		pathHash = r.FormValue("path_hash")
 		path     = r.FormValue("path")
 	)
-	if len(pathHash) == 0 {
-		if len(path) == 0 {
+	if pathHash == "" {
+		if path == "" {
 			return "", common.NewError("invalid_parameters", "Invalid path")
 		}
 		pathHash = reference.GetReferenceLookup(allocationID, path)
@@ -919,13 +990,12 @@ func pathHashFromReq(r *http.Request, allocationID string) (string, error) {
 	return pathHash, nil
 }
 
-func getPathHash(r *http.Request, allocationID string) (string, string, error) {
-	var (
-		pathHash = r.FormValue("path_hash")
-		path     = r.FormValue("path")
-	)
-	if len(pathHash) == 0 {
-		if len(path) == 0 {
+func getPathHash(r *http.Request, allocationID string) (pathHash, path string, err error) {
+	pathHash = r.FormValue("path_hash")
+	path = r.FormValue("path")
+
+	if pathHash == "" {
+		if path == "" {
 			return "", "", common.NewError("invalid_parameters", "Invalid path")
 		}
 		pathHash = reference.GetReferenceLookup(allocationID, path)

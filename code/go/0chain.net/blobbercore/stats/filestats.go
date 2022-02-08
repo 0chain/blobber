@@ -17,8 +17,6 @@ type FileStats struct {
 	LastChallengeResponseTxn string `gorm:"column:last_challenge_txn" json:"last_challenge_txn"`
 	WriteMarkerRedeemTxn     string `gorm:"-" json:"write_marker_txn"`
 	datastore.ModelWithTS
-
-	//NumBlockWrites           int64  `gorm:"column:num_of_block_writes" json:"num_of_block_writes"`
 }
 
 func (FileStats) TableName() string {
