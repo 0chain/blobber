@@ -485,10 +485,6 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 
-	if !(clientID == allocationObj.OwnerID || reference.IsACollaborator(ctx, fileref.ID, clientID)) {
-		return nil, common.NewError("invalid_client", "Client should be either owner or collaborator")
-	}
-
 	authToken, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileref, authTicket.ClientID)
 	if authToken == nil {
 		return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket. "+err.Error())
