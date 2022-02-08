@@ -538,8 +538,7 @@ func TestDownloadFile(t *testing.T) {
 				rxPay:           false,
 			},
 			want: want{
-				err:    true,
-				errMsg: "invalid_client: authticket is required",
+				err: false,
 			},
 		},
 		{
