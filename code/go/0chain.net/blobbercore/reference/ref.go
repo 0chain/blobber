@@ -367,8 +367,8 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 
 	var err error
 	if saveToDB {
-		//err = r.Save(ctx)
-		err = r.SaveDir(ctx)
+		err = r.Save(ctx)
+		//err = r.SaveDir(ctx)
 	}
 
 	return r.Hash, err
