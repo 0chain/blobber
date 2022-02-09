@@ -568,28 +568,24 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			alloc: alloc,
 			setupDbMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
 					WithArgs(alloc.Tx).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id"}).
 							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID),
 					)
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
 					WithArgs(alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","level","parent_path","path_hash","lookup_hash","encrypted_key" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, path, alloc.ID, "/", "", alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path"}).
 							AddRow("/"),
 					)
-
 				mock.ExpectCommit()
 			},
 			wantCode: http.StatusOK,

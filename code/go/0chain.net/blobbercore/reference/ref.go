@@ -84,11 +84,10 @@ type Ref struct {
 	Attributes          datatypes.JSON `gorm:"column:attributes" filelist:"attributes"`
 	Children            []*Ref         `gorm:"-"`
 	childrenLoaded      bool
-
-	OnCloud        bool            `gorm:"column:on_cloud" filelist:"on_cloud"`
-	CommitMetaTxns []CommitMetaTxn `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
-	CreatedAt      time.Time       `gorm:"column:created_at" dirlist:"created_at" filelist:"created_at"`
-	UpdatedAt      time.Time       `gorm:"column:updated_at" dirlist:"updated_at" filelist:"updated_at"`
+	OnCloud             bool            `gorm:"column:on_cloud" filelist:"on_cloud"`
+	CommitMetaTxns      []CommitMetaTxn `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
+	CreatedAt           time.Time       `gorm:"column:created_at" dirlist:"created_at" filelist:"created_at"`
+	UpdatedAt           time.Time       `gorm:"column:updated_at" dirlist:"updated_at" filelist:"updated_at"`
 
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
 
