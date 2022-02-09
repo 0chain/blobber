@@ -4,8 +4,8 @@ go 1.16
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.5.1-0.20220204133607-7d7503e0eed7
-    github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/0chain/gosdk v1.5.1-0.20220209204221-1b327a5e68c6
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.1
 	github.com/go-ini/ini v1.55.0 // indirect
 	github.com/gorilla/handlers v1.5.1
@@ -41,4 +41,4 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
-//replace github.com/0chain/gosdk => ../gosdk
+replace github.com/0chain/gosdk => ../gosdk

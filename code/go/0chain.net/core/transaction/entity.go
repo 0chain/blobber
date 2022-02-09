@@ -127,6 +127,12 @@ const (
 
 const STORAGE_CONTRACT_ADDRESS = "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d7"
 
+var cache *zcncore.NonceCache
+
+func init() {
+	cache = zcncore.NewNonceCache()
+}
+
 func NewTransactionEntity() (*Transaction, error) {
 	txn := &Transaction{}
 	txn.Version = "1.0"
@@ -145,14 +151,18 @@ func NewTransactionEntity() (*Transaction, error) {
 
 func (t *Transaction) ExecuteSmartContract(address, methodName, input string, val int64) error {
 	t.wg.Add(1)
+	nonce := cache.GetNextNonce(t.ClientID)
+	_ = t.zcntxn.SetTransactionNonce(nonce)
 	err := t.zcntxn.ExecuteSmartContract(address, methodName, input, val)
 	if err != nil {
 		t.wg.Done()
+		cache.Evict(t.ClientID)
 		return err
 	}
 	t.wg.Wait()
 	t.Hash = t.zcntxn.GetTransactionHash()
 	if len(t.zcntxn.GetTransactionError()) > 0 {
+		cache.Evict(t.ClientID)
 		return common.NewError("transaction_send_error", t.zcntxn.GetTransactionError())
 	}
 	return nil
@@ -166,10 +176,12 @@ func (t *Transaction) Verify() error {
 	err := t.zcntxn.Verify()
 	if err != nil {
 		t.wg.Done()
+		cache.Evict(t.ClientID)
 		return err
 	}
 	t.wg.Wait()
 	if len(t.zcntxn.GetVerifyError()) > 0 {
+		cache.Evict(t.ClientID)
 		return common.NewError("transaction_verify_error", t.zcntxn.GetVerifyError())
 	}
 	output := t.zcntxn.GetVerifyOutput()
