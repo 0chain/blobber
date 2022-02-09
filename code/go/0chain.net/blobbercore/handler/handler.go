@@ -450,7 +450,11 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 
-	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
+	var (
+		allocationID = ctx.Value(constants.ContextKeyAllocation).(string)
+		clientID     = ctx.Value(constants.ContextKeyClient).(string)
+	)
+
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -461,6 +465,10 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	valid, err := verifySignatureFromRequest(allocationID, sign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_client", "Client has no access to share file")
 	}
 
 	encryptionPublicKey := r.FormValue("encryption_public_key")
