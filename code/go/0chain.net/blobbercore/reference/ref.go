@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math"
 	"path/filepath"
 	"reflect"
@@ -326,7 +325,6 @@ func (fr *Ref) GetFileHashData() string {
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
-	fmt.Println("file hash", fr.Path, fr.Hash)
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
 	fr.PathHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	fr.PathLevel = len(GetSubDirsFromPath(fr.Path)) + 1
@@ -334,8 +332,6 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 	var err error
 	if saveToDB {
 		err = fr.Save(ctx)
-		//err = fr.SaveFile(ctx)
-		fmt.Println("The Error in CalculateFileHash in Saving is: ", err)
 	}
 	return fr.Hash, err
 }
@@ -348,12 +344,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	sort.SliceStable(r.Children, func(i, j int) bool {
 		return strings.Compare(r.Children[i].LookupHash, r.Children[j].LookupHash) == -1
 	})
-	//for _, childRef := range r.Children {
-	//	_, err := childRef.CalculateHash(ctx, saveToDB)
-	//	if err != nil {
-	//		return "", err
-	//	}
-	//}
 	childHashes := make([]string, len(r.Children))
 	childPathHashes := make([]string, len(r.Children))
 	var refNumBlocks int64
@@ -370,7 +360,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	}
 
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
-	fmt.Println("ref hash", r.Path, r.Hash)
 	r.NumBlocks = refNumBlocks
 	r.Size = size
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
@@ -379,9 +368,8 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 
 	var err error
 	if saveToDB {
-		err = r.Save(ctx)
-		//err = r.SaveDir(ctx)
-		fmt.Println("The Error in CalculateDirHash in Saving is: ", err)
+		//err = r.Save(ctx)
+		err = r.SaveDir(ctx)
 	}
 
 	return r.Hash, err
@@ -431,238 +419,32 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 	return db.Where("path_hash = ?", pathHash).Delete(&Ref{ID: refID}).Error
 }
 
-func (r *Ref) SaveFile(ctx context.Context) error {
-	fmt.Println("---------------------------------------------------")
-	fmt.Println("Inside SaveFile:")
-	fmt.Println("The Id of Reference is: ", r.ID)
-	fmt.Println("---------------------------------------------------")
-	fmt.Println("---------------------------------------------------")
-	fmt.Println("The Reference is: ")
-	fmt.Println("ID :", r.ID)
-	fmt.Println("Type :", r.Type)
-	fmt.Println("AllocationID :", r.AllocationID)
-	fmt.Println("LookupHash :", r.LookupHash)
-	fmt.Println("Name :", r.Name)
-	fmt.Println("Path :", r.Path)
-	fmt.Println("Hash :", r.Hash)
-	fmt.Println("NumBlocks :", r.NumBlocks)
-	fmt.Println("PathHash :", r.PathHash)
-	fmt.Println("ParentPath :", r.ParentPath)
-	fmt.Println("PathLevel :", r.PathLevel)
-	fmt.Println("CustomMeta :", r.CustomMeta)
-	fmt.Println("ContentHash :", r.ContentHash)
-	fmt.Println("Size :", r.Size)
-	fmt.Println("MerkleRoot :", r.MerkleRoot)
-	fmt.Println("ActualFileSize :", r.ActualFileSize)
-	fmt.Println("ActualFileHash :", r.ActualFileHash)
-	fmt.Println("MimeType :", r.MimeType)
-	fmt.Println("WriteMarker :", r.WriteMarker)
-	fmt.Println("ThumbnailSize :", r.ThumbnailSize)
-	fmt.Println("ThumbnailHash :", r.ThumbnailHash)
-	fmt.Println("ActualThumbnailSize :", r.ActualThumbnailSize)
-	fmt.Println("ActualThumbnailHash :", r.ActualThumbnailHash)
-	fmt.Println("EncryptedKey :", r.EncryptedKey)
-	fmt.Println("Attributes :", r.Attributes)
-	fmt.Println("Children :", r.Children)
-	fmt.Println("childrenLoaded :", r.childrenLoaded)
-	fmt.Println("OnCloud :", r.OnCloud)
-	fmt.Println("CommitMetaTxns :", r.CommitMetaTxns)
-	fmt.Println("CreatedAt :", r.CreatedAt)
-	fmt.Println("UpdatedAt :", r.UpdatedAt)
-	fmt.Println("DeletedAt :", r.DeletedAt)
-	fmt.Println("ChunkSize :", r.ChunkSize)
-	db := datastore.GetStore().GetTransaction(ctx)
-	// Update First
-	err := db.Model(&Ref{}).Where("id = ?", r.ID).Updates(map[string]interface{}{
-		"type":                  r.Type,
-		"allocation_id":         r.AllocationID,
-		"lookup_hash":           r.LookupHash,
-		"name":                  r.Name,
-		"path":                  r.Path,
-		"hash":                  r.Hash,
-		"num_of_blocks":         r.NumBlocks,
-		"path_hash":             r.PathHash,
-		"parent_path":           r.ParentPath,
-		"level":                 r.PathLevel,
-		"custom_meta":           r.CustomMeta,
-		"content_hash":          r.ContentHash,
-		"size":                  r.Size,
-		"merkle_root":           r.MerkleRoot,
-		"actual_file_size":      r.ActualFileSize,
-		"actual_file_hash":      r.ActualFileHash,
-		"mimetype":              r.MimeType,
-		"write_marker":          r.WriteMarker,
-		"thumbnail_size":        r.ThumbnailSize,
-		"thumbnail_hash":        r.ThumbnailHash,
-		"actual_thumbnail_size": r.ActualThumbnailSize,
-		"actual_thumbnail_hash": r.ActualThumbnailHash,
-		"encrypted_key":         r.EncryptedKey,
-		"attributes":            r.Attributes,
-		"on_cloud":              r.OnCloud,
-		//"ref_id":                r.CommitMetaTxns,
-		"created_at": r.CreatedAt,
-		"updated_at": r.UpdatedAt,
-		"deleted_at": r.DeletedAt,
-		"chunk_size": r.ChunkSize,
-	}).Error
-	// Create if Err != nil
-	if err != nil {
-		return db.Model(&Ref{}).Create(map[string]interface{}{
-			"type":                  r.Type,
-			"allocation_id":         r.AllocationID,
-			"lookup_hash":           r.LookupHash,
-			"name":                  r.Name,
-			"path":                  r.Path,
-			"hash":                  r.Hash,
-			"num_of_blocks":         r.NumBlocks,
-			"path_hash":             r.PathHash,
-			"parent_path":           r.ParentPath,
-			"level":                 r.PathLevel,
-			"custom_meta":           r.CustomMeta,
-			"content_hash":          r.ContentHash,
-			"size":                  r.Size,
-			"merkle_root":           r.MerkleRoot,
-			"actual_file_size":      r.ActualFileSize,
-			"actual_file_hash":      r.ActualFileHash,
-			"mimetype":              r.MimeType,
-			"write_marker":          r.WriteMarker,
-			"thumbnail_size":        r.ThumbnailSize,
-			"thumbnail_hash":        r.ThumbnailHash,
-			"actual_thumbnail_size": r.ActualThumbnailSize,
-			"actual_thumbnail_hash": r.ActualThumbnailHash,
-			"encrypted_key":         r.EncryptedKey,
-			"attributes":            r.Attributes,
-			"on_cloud":              r.OnCloud,
-			// No Ref ID
-			//"ref_id":                r.CommitMetaTxns,
-			"created_at": r.CreatedAt,
-			"updated_at": r.UpdatedAt,
-			"deleted_at": r.DeletedAt,
-			"chunk_size": r.ChunkSize,
-		}).Error
-	}
-	return err
-}
-
 func (r *Ref) SaveDir(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	// Update First
 	err := db.Model(&Ref{}).Where("id = ?", r.ID).Updates(map[string]interface{}{
-		"type":                  r.Type,
-		"allocation_id":         r.AllocationID,
-		"lookup_hash":           r.LookupHash,
-		"name":                  r.Name,
-		"path":                  r.Path,
-		"hash":                  r.Hash,
-		"num_of_blocks":         r.NumBlocks,
-		"path_hash":             r.PathHash,
-		"parent_path":           r.ParentPath,
-		"level":                 r.PathLevel,
-		"custom_meta":           r.CustomMeta,
-		"content_hash":          r.ContentHash,
-		"size":                  r.Size,
-		"merkle_root":           r.MerkleRoot,
-		"actual_file_size":      r.ActualFileSize,
-		"actual_file_hash":      r.ActualFileHash,
-		"mimetype":              r.MimeType,
-		"write_marker":          r.WriteMarker,
-		"thumbnail_size":        r.ThumbnailSize,
-		"thumbnail_hash":        r.ThumbnailHash,
-		"actual_thumbnail_size": r.ActualThumbnailSize,
-		"actual_thumbnail_hash": r.ActualThumbnailHash,
-		"encrypted_key":         r.EncryptedKey,
-		"attributes":            r.Attributes,
-		"on_cloud":              r.OnCloud,
-		//"ref_id":                r.CommitMetaTxns,
-		"created_at": r.CreatedAt,
-		"updated_at": r.UpdatedAt,
-		"deleted_at": r.DeletedAt,
-		"chunk_size": r.ChunkSize,
+		"allocation_id": r.AllocationID,
+		"lookup_hash":   r.LookupHash,
+		"name":          r.Name,
+		"path":          r.Path,
+		"hash":          r.Hash,
+		"num_of_blocks": r.NumBlocks,
+		"path_hash":     r.PathHash,
+		"parent_path":   r.ParentPath,
+		"level":         r.PathLevel,
+		"size":          r.Size,
+		"attributes":    r.Attributes,
+		"on_cloud":      r.OnCloud,
+		"updated_at":    r.UpdatedAt,
+		"deleted_at":    r.DeletedAt,
 	}).Error
-	// Create if Err != nil
 	if err != nil {
-		return db.Model(&Ref{}).Create(map[string]interface{}{
-			"type":                  r.Type,
-			"allocation_id":         r.AllocationID,
-			"lookup_hash":           r.LookupHash,
-			"name":                  r.Name,
-			"path":                  r.Path,
-			"hash":                  r.Hash,
-			"num_of_blocks":         r.NumBlocks,
-			"path_hash":             r.PathHash,
-			"parent_path":           r.ParentPath,
-			"level":                 r.PathLevel,
-			"custom_meta":           r.CustomMeta,
-			"content_hash":          r.ContentHash,
-			"size":                  r.Size,
-			"merkle_root":           r.MerkleRoot,
-			"actual_file_size":      r.ActualFileSize,
-			"actual_file_hash":      r.ActualFileHash,
-			"mimetype":              r.MimeType,
-			"write_marker":          r.WriteMarker,
-			"thumbnail_size":        r.ThumbnailSize,
-			"thumbnail_hash":        r.ThumbnailHash,
-			"actual_thumbnail_size": r.ActualThumbnailSize,
-			"actual_thumbnail_hash": r.ActualThumbnailHash,
-			"encrypted_key":         r.EncryptedKey,
-			"attributes":            r.Attributes,
-			"on_cloud":              r.OnCloud,
-			// No Ref ID
-			//"ref_id":                r.CommitMetaTxns,
-			"created_at": r.CreatedAt,
-			"updated_at": r.UpdatedAt,
-			"deleted_at": r.DeletedAt,
-			"chunk_size": r.ChunkSize,
-		}).Error
+		err = db.Save(r).Error
 	}
 	return err
 }
 
 func (r *Ref) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	//fmt.Println("---------------------------------------------------")
-	//fmt.Println("Inside Save:")
-	//fmt.Println("The Id of Reference is: ", r.ID)
-	//fmt.Println("---------------------------------------------------")
-	//fmt.Println("---------------------------------------------------")
-	//fmt.Println("The Reference is: ")
-	//fmt.Println("ID :", r.ID)
-	//fmt.Println("Type :", r.Type)
-	//fmt.Println("AllocationID :", r.AllocationID)
-	//fmt.Println("LookupHash :", r.LookupHash)
-	//fmt.Println("Name :", r.Name)
-	//fmt.Println("Path :", r.Path)
-	//fmt.Println("Hash :", r.Hash)
-	//fmt.Println("NumBlocks :", r.NumBlocks)
-	//fmt.Println("PathHash :", r.PathHash)
-	//fmt.Println("ParentPath :", r.ParentPath)
-	//fmt.Println("PathLevel :", r.PathLevel)
-	//fmt.Println("CustomMeta :", r.CustomMeta)
-	//fmt.Println("ContentHash :", r.ContentHash)
-	//fmt.Println("Size :", r.Size)
-	//fmt.Println("MerkleRoot :", r.MerkleRoot)
-	//fmt.Println("ActualFileSize :", r.ActualFileSize)
-	//fmt.Println("ActualFileHash :", r.ActualFileHash)
-	//fmt.Println("MimeType :", r.MimeType)
-	//fmt.Println("WriteMarker :", r.WriteMarker)
-	//fmt.Println("ThumbnailSize :", r.ThumbnailSize)
-	//fmt.Println("ThumbnailHash :", r.ThumbnailHash)
-	//fmt.Println("ActualThumbnailSize :", r.ActualThumbnailSize)
-	//fmt.Println("ActualThumbnailHash :", r.ActualThumbnailHash)
-	//fmt.Println("EncryptedKey :", r.EncryptedKey)
-	//fmt.Println("Attributes :", r.Attributes)
-	//fmt.Println("Children :", r.Children)
-	//fmt.Println("childrenLoaded :", r.childrenLoaded)
-	//fmt.Println("OnCloud :", r.OnCloud)
-	//fmt.Println("CommitMetaTxns :", r.CommitMetaTxns)
-	//fmt.Println("CreatedAt :", r.CreatedAt)
-	//fmt.Println("UpdatedAt :", r.UpdatedAt)
-	//fmt.Println("DeletedAt :", r.DeletedAt)
-	//fmt.Println("ChunkSize :", r.ChunkSize)
-	//
-	//fmt.Println("---------------------------------------------------")
-	//fmt.Println("---------------------------------------------------")
-
 	return db.Save(r).Error
 }
 
