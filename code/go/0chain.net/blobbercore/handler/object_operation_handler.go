@@ -11,7 +11,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 
 	"net/http"
@@ -30,13 +29,19 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/constants"
-	zfileref "github.com/0chain/gosdk/zboxcore/fileref"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
+)
+
+const (
+	// EncryptionOverHead takes blockSize increment when data is incremented.
+	// messageCheckSum(128) + overallChecksum(128) + ","(1) + data-size-increment(16)
+	EncryptionOverHead = 273
+	HeaderChecksumSize = 2048 // Change it to 257 after header size is fixed in chunked upload as well
 )
 
 func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks, pendNumBlocks int64, payerID string) (err error) {
@@ -179,27 +184,21 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	var (
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
-		_            = ctx.Value(constants.ContextKeyClientKey).(string) // runtime type check
 		alloc        *allocation.Allocation
 	)
 
-	// check client
 	if clientID == "" {
 		return nil, common.NewError("download_file", "invalid client")
 	}
 
-	// get and check allocation
 	alloc, err = fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
-		return nil, common.NewErrorf("download_file",
-			"invalid allocation id passed: %v", err)
+		return nil, common.NewErrorf("download_file", "invalid allocation id passed: %v", err)
 	}
 
-	// get and parse file params
 	if err = r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
 		Logger.Info("download_file - request_parse_error", zap.Error(err))
-		return nil, common.NewErrorf("download_file",
-			"request_parse_error: %v", err)
+		return nil, common.NewErrorf("download_file", "request_parse_error: %v", err)
 	}
 
 	pathHash, err := pathHashFromReq(r, alloc.ID)
@@ -214,119 +213,93 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 
 	var blockNum int64
 	blockNum, err = strconv.ParseInt(blockNumStr, 10, 64)
-	if err != nil || blockNum < 0 {
+	if err != nil || blockNum < 1 {
 		return nil, common.NewError("download_file", "invalid block number")
 	}
 
-	var numBlocksStr = r.FormValue("num_blocks")
-	if numBlocksStr == "" {
-		numBlocksStr = "1"
+	numBlocks := int64(1)
+	numBlocksStr := r.FormValue("num_blocks")
+
+	if numBlocksStr != "" {
+		numBlocks, err = strconv.ParseInt(numBlocksStr, 10, 64)
+		if err != nil || numBlocks <= 0 {
+			return nil, common.NewError("download_file", "invalid number of blocks")
+		}
 	}
 
-	var numBlocks int64
-	numBlocks, err = strconv.ParseInt(numBlocksStr, 10, 64)
-	if err != nil || numBlocks < 0 {
-		return nil, common.NewError("download_file",
-			"invalid number of blocks")
-	}
+	readMarkerString := r.FormValue("read_marker")
+	readMarker := new(readmarker.ReadMarker)
 
-	// get read marker
-	var (
-		readMarkerString = r.FormValue("read_marker")
-		readMarker       = &readmarker.ReadMarker{}
-	)
-	err = json.Unmarshal([]byte(readMarkerString), &readMarker)
-	if err != nil {
+	if err := json.Unmarshal([]byte(readMarkerString), readMarker); err != nil {
 		return nil, common.NewErrorf("download_file", "invalid parameters, "+
 			"error parsing the readmarker for download: %v", err)
 	}
 
-	var rmObj = &readmarker.ReadMarkerEntity{}
+	rmObj := new(readmarker.ReadMarkerEntity)
 	rmObj.LatestRM = readMarker
 
 	if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
-		return nil, common.NewErrorf("download_file", "invalid read marker, "+
-			"failed to verify the read marker: %v", err)
+		return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
 	}
 
 	// get file reference
-	var fileref *reference.Ref
-	fileref, err = reference.GetReferenceFromLookupHash(ctx, alloc.ID, pathHash)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, alloc.ID, pathHash)
 	if err != nil {
-		return nil, common.NewErrorf("download_file",
-			"invalid file path: %v", err)
+		return nil, common.NewErrorf("download_file", "invalid file path: %v", err)
 	}
 
 	if fileref.Type != reference.FILE {
-		return nil, common.NewErrorf("download_file",
-			"path is not a file: %v", err)
+		return nil, common.NewErrorf("download_file", "path is not a file: %v", err)
 	}
 
 	// set payer: default
-	var payerID = alloc.OwnerID
+	payerID := alloc.OwnerID
 
 	// set payer: check for explicit allocation payer value
-	if len(alloc.PayerID) > 0 {
+	if alloc.PayerID != "" {
 		payerID = alloc.PayerID
 	}
 
-	// authorize file access
-	var (
-		isOwner        = clientID == alloc.OwnerID
-		isRepairer     = clientID == alloc.RepairerID
-		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
-	)
+	isOwner := clientID == alloc.OwnerID
+	isRepairer := clientID == alloc.RepairerID
+	isCollaborator := reference.IsACollaborator(ctx, fileref.ID, clientID)
 
-	var authToken *readmarker.AuthTicket = nil
+	var authToken *readmarker.AuthTicket
+	var shareInfo *reference.ShareInfo
 
-	if (!isOwner && !isRepairer && !isCollaborator) || len(r.FormValue("auth_token")) > 0 {
-		var authTokenString = r.FormValue("auth_token")
+	if !(isOwner || isCollaborator) {
+		authTokenString := r.FormValue("auth_token")
+		if authTokenString == "" {
+			return nil, common.NewError("invalid_client", "authticket is required")
+		}
 
-		// check auth token
-		if authToken, err := fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
+		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
 			return nil, common.NewErrorf("download_file", "cannot verify auth ticket: %v", err)
 		}
 
-		authToken = &readmarker.AuthTicket{}
-		err = json.Unmarshal([]byte(authTokenString), &authToken)
-		if err != nil {
-			return nil, common.NewErrorf("download_file",
-				"error parsing the auth ticket for download: %v", err)
+		shareInfo, err = reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
+		if err != nil || shareInfo == nil {
+			return nil, errors.New("client does not have permission to download the file. share does not exist")
 		}
+
+		if shareInfo.Revoked {
+			return nil, errors.New("client does not have permission to download the file. share revoked")
+		}
+
 		// set payer: check for command line payer flag (--rx_pay)
 		if r.FormValue("rx_pay") == "true" {
 			payerID = clientID
 		}
 
-		// we only check content hash if its authticket is referring to a file
-		if authToken.RefType == zfileref.FILE && authToken.ActualFileHash != fileref.ActualFileHash {
-			return nil, errors.New("content hash does not match the requested file content hash")
-		}
-
-		if authToken.RefType == zfileref.DIRECTORY {
-			hashes := util.GetParentPathHashes(allocationTx, fileref.Path)
-			found := false
-			for _, hash := range hashes {
-				if hash == authToken.FilePathHash {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return nil, errors.New("auth ticket is not authorized to download file specified")
-			}
-		}
 		readMarker.AuthTicket = datatypes.JSON(authTokenString)
 
 		// check for file payer flag
 		if fileAttrs, err := fileref.GetAttributes(); err != nil {
-			return nil, common.NewErrorf("download_file",
-				"error getting file attributes: %v", err)
-		} else if fileAttrs.WhoPaysForReads == common.WhoPays3rdParty {
+			return nil, common.NewErrorf("download_file", "error getting file attributes: %v", err)
+		} else if fileAttrs.WhoPaysForReads == common.WhoPays3rdParty && !(isCollaborator || isRepairer) {
 			payerID = clientID
 		}
 	}
-
 	// create read marker
 	var (
 		rme           *readmarker.ReadMarkerEntity
@@ -336,33 +309,29 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 
 	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, common.NewErrorf("download_file",
-			"couldn't get read marker from DB: %v", err)
+		return nil, common.NewErrorf("download_file", "couldn't get read marker from DB: %v", err)
 	}
 
 	if rme != nil {
 		latestRM = rme.LatestRM
 		if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
-			return nil, common.NewErrorf("download_file",
-				"couldn't get number of blocks pending redeeming: %v", err)
+			return nil, common.NewErrorf("download_file", "couldn't get number of blocks pending redeeming: %v", err)
 		}
 	}
 
 	if latestRM != nil && latestRM.ReadCounter+(numBlocks) != readMarker.ReadCounter {
-		var response = &blobberhttp.DownloadResponse{
+		return &blobberhttp.DownloadResponse{
 			Success:      false,
 			LatestRM:     latestRM,
 			Path:         fileref.Path,
 			AllocationID: fileref.AllocationID,
-		}
-		return response, nil
+		}, nil
 	}
 
 	// check out read pool tokens if read_price > 0
 	err = readPreRedeem(ctx, alloc, numBlocks, pendNumBlocks, payerID)
 	if err != nil {
-		return nil, common.NewErrorf("download_file",
-			"pre-redeeming read marker: %v", err)
+		return nil, common.NewErrorf("download_file", "pre-redeeming read marker: %v", err)
 	}
 
 	// reading is allowed
@@ -370,18 +339,16 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		downloadMode = r.FormValue("content")
 		respData     []byte
 	)
-	if len(downloadMode) > 0 && downloadMode == DownloadContentThumb {
+	if downloadMode == DownloadContentThumb {
 		var fileData = &filestore.FileInputData{}
 		fileData.Name = fileref.Name
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ThumbnailHash
 		fileData.OnCloud = fileref.OnCloud
 		fileData.ChunkSize = fileref.ChunkSize
-		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID,
-			fileData, blockNum, numBlocks)
+		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID, fileData, blockNum, numBlocks)
 		if err != nil {
-			return nil, common.NewErrorf("download_file",
-				"couldn't get thumbnail block: %v", err)
+			return nil, common.NewErrorf("download_file", "couldn't get thumbnail block: %v", err)
 		}
 	} else {
 		var fileData = &filestore.FileInputData{}
@@ -391,48 +358,25 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		fileData.OnCloud = fileref.OnCloud
 		fileData.ChunkSize = fileref.ChunkSize
 
-		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID,
-			fileData, blockNum, numBlocks)
+		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID, fileData, blockNum, numBlocks)
 		if err != nil {
-			return nil, common.NewErrorf("download_file",
-				"couldn't get file block: %v", err)
+			return nil, common.NewErrorf("download_file", "couldn't get file block: %v", err)
 		}
 	}
 
 	readMarker.PayerID = payerID
 	err = readmarker.SaveLatestReadMarker(ctx, readMarker, latestRM == nil)
 	if err != nil {
-		return nil, common.NewErrorf("download_file",
-			"couldn't save latest read marker: %v", err)
+		Logger.Error(err.Error())
+		return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
 	}
 
-	var shareInfo *reference.ShareInfo
-	if authToken != nil {
-		shareInfo, err = reference.GetShareInfo(
-			ctx,
-			readMarker.ClientID,
-			authToken.FilePathHash,
-		)
-
-		if err == nil && shareInfo.Revoked {
-			return nil, errors.New("client does not have permission to download the file. share revoked")
-		}
-	}
-
-	if len(fileref.EncryptedKey) > 0 && authToken != nil {
-		// should not happen, just in case
-		if shareInfo == nil {
-			return nil, errors.New("client does not have permission to download the file. share does not exist")
-		}
-
-		buyerEncryptionPublicKey := shareInfo.ClientEncryptionPublicKey
+	if fileref.EncryptedKey != "" && authToken != nil {
 		encscheme := zencryption.NewEncryptionScheme()
-		// reEncrypt does not require pub / private key,
-		// we could probably make it a classless function
-
 		if _, err := encscheme.Initialize(""); err != nil {
 			return nil, err
 		}
+
 		if err := encscheme.InitForDecryption("filetype:audio", fileref.EncryptedKey); err != nil {
 			return nil, err
 		}
@@ -440,12 +384,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		totalSize := len(respData)
 		result := []byte{}
 		for i := 0; i < totalSize; i += int(fileref.ChunkSize) {
-			encMsg := &zencryption.EncryptedMessage{}
+			encMsg := new(zencryption.EncryptedMessage)
 			chunkData := respData[i:int64(math.Min(float64(i+int(fileref.ChunkSize)), float64(totalSize)))]
 
-			encMsg.EncryptedData = chunkData[(2 * 1024):]
+			encMsg.EncryptedData = chunkData[HeaderChecksumSize:]
 
-			headerBytes := chunkData[:(2 * 1024)]
+			headerBytes := chunkData[:HeaderChecksumSize]
 			headerBytes = bytes.Trim(headerBytes, "\x00")
 			headerString := string(headerBytes)
 
@@ -458,7 +402,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
 			encMsg.EncryptedKey = encscheme.GetEncryptedKey()
 
-			reEncMsg, err := encscheme.ReEncrypt(encMsg, shareInfo.ReEncryptionKey, buyerEncryptionPublicKey)
+			reEncMsg, err := encscheme.ReEncrypt(encMsg, shareInfo.ReEncryptionKey, shareInfo.ClientEncryptionPublicKey)
 			if err != nil {
 				return nil, err
 			}

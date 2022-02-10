@@ -81,13 +81,14 @@ func TestDownloadFile(t *testing.T) {
 		parameters struct {
 			isOwner         bool
 			isCollaborator  bool
+			isRepairer      bool
 			useAuthTicket   bool
-			attribute       common.WhoPays
-			payerId         client.Client
 			isRevoked       bool
 			isFundedBlobber bool
 			isFunded0Chain  bool
 			rxPay           bool
+			attribute       common.WhoPays
+			payerId         client.Client
 
 			// client input from gosdk's BlockDownloadRequest,
 			inData blockDownloadRequest
@@ -199,18 +200,34 @@ func TestDownloadFile(t *testing.T) {
 		p parameters,
 		rm marker.ReadMarker,
 	) {
-		mocket.Catcher.NewMock().OneTime().WithQuery(
-			`SELECT * FROM "allocations" WHERE`,
-		).WithArgs(
-			"mock_allocation_Tx",
-		).OneTime().WithReply(
-			[]map[string]interface{}{{
-				"id":               p.allocation.ID,
-				"expiration_date":  mockLongTimeInFuture,
-				"owner_id":         mockOwner.ClientID,
-				"owner_public_key": mockOwner.ClientKey,
-			}},
-		)
+		if p.isRepairer {
+			mocket.Catcher.NewMock().OneTime().WithQuery(
+				`SELECT * FROM "allocations" WHERE`,
+			).WithArgs(
+				"mock_allocation_Tx",
+			).OneTime().WithReply(
+				[]map[string]interface{}{{
+					"id":               p.allocation.ID,
+					"expiration_date":  mockLongTimeInFuture,
+					"owner_id":         mockOwner.ClientID,
+					"owner_public_key": mockOwner.ClientKey,
+					"repairer_id":      mockClient.ClientID,
+				}},
+			)
+		} else {
+			mocket.Catcher.NewMock().OneTime().WithQuery(
+				`SELECT * FROM "allocations" WHERE`,
+			).WithArgs(
+				"mock_allocation_Tx",
+			).OneTime().WithReply(
+				[]map[string]interface{}{{
+					"id":               p.allocation.ID,
+					"expiration_date":  mockLongTimeInFuture,
+					"owner_id":         mockOwner.ClientID,
+					"owner_public_key": mockOwner.ClientKey,
+				}},
+			)
+		}
 
 		mocket.Catcher.NewMock().OneTime().WithQuery(
 			`SELECT * FROM "terms" WHERE`,
@@ -436,9 +453,17 @@ func TestDownloadFile(t *testing.T) {
 			numBlocks:      10240,
 			rxPay:          p.rxPay,
 		}
-		p.allocation = allocation.Allocation{
-			ID: mockAllocationId,
-			Tx: mockAllocationTx,
+		if p.isRepairer {
+			p.allocation = allocation.Allocation{
+				ID:         mockAllocationId,
+				Tx:         mockAllocationTx,
+				RepairerID: mockClient.ClientID,
+			}
+		} else {
+			p.allocation = allocation.Allocation{
+				ID: mockAllocationId,
+				Tx: mockAllocationTx,
+			}
 		}
 		require.True(t, (p.isOwner && !p.isCollaborator && !p.useAuthTicket) || !p.isOwner)
 		require.True(t, p.attribute == common.WhoPays3rdParty || p.attribute == common.WhoPaysOwner)
@@ -458,6 +483,7 @@ func TestDownloadFile(t *testing.T) {
 			parameters: parameters{
 				isOwner:         true,
 				isCollaborator:  false,
+				isRepairer:      false,
 				useAuthTicket:   false,
 				attribute:       common.WhoPays3rdParty,
 				isRevoked:       false,
@@ -471,6 +497,7 @@ func TestDownloadFile(t *testing.T) {
 			parameters: parameters{
 				isOwner:         true,
 				isCollaborator:  false,
+				isRepairer:      false,
 				useAuthTicket:   false,
 				attribute:       common.WhoPays3rdParty,
 				isRevoked:       false,
@@ -484,6 +511,7 @@ func TestDownloadFile(t *testing.T) {
 			parameters: parameters{
 				isOwner:         true,
 				isCollaborator:  false,
+				isRepairer:      false,
 				useAuthTicket:   false,
 				attribute:       common.WhoPays3rdParty,
 				isRevoked:       false,
@@ -497,11 +525,29 @@ func TestDownloadFile(t *testing.T) {
 			},
 		},
 		{
-			name: "ok_collaborator",
+			name: "err_collaborator_without_authticket",
 			parameters: parameters{
 				isOwner:         false,
 				isCollaborator:  true,
+				isRepairer:      false,
 				useAuthTicket:   false,
+				attribute:       common.WhoPays3rdParty,
+				isRevoked:       false,
+				isFundedBlobber: true,
+				isFunded0Chain:  true,
+				rxPay:           false,
+			},
+			want: want{
+				err: false,
+			},
+		},
+		{
+			name: "ok_collaborator_with_authticket",
+			parameters: parameters{
+				isOwner:         false,
+				isCollaborator:  true,
+				isRepairer:      false,
+				useAuthTicket:   true,
 				attribute:       common.WhoPays3rdParty,
 				isRevoked:       false,
 				isFundedBlobber: true,
@@ -514,6 +560,7 @@ func TestDownloadFile(t *testing.T) {
 			parameters: parameters{
 				isOwner:         false,
 				isCollaborator:  false,
+				isRepairer:      false,
 				useAuthTicket:   true,
 				attribute:       common.WhoPaysOwner,
 				isRevoked:       false,
@@ -527,6 +574,7 @@ func TestDownloadFile(t *testing.T) {
 			parameters: parameters{
 				isOwner:         false,
 				isCollaborator:  false,
+				isRepairer:      false,
 				useAuthTicket:   true,
 				attribute:       common.WhoPays3rdParty,
 				isRevoked:       false,
@@ -540,6 +588,7 @@ func TestDownloadFile(t *testing.T) {
 			parameters: parameters{
 				isOwner:         false,
 				isCollaborator:  false,
+				isRepairer:      false,
 				useAuthTicket:   true,
 				attribute:       common.WhoPays3rdParty,
 				isRevoked:       true,
@@ -557,12 +606,45 @@ func TestDownloadFile(t *testing.T) {
 			parameters: parameters{
 				isOwner:         false,
 				isCollaborator:  false,
+				isRepairer:      false,
 				useAuthTicket:   true,
 				attribute:       common.WhoPaysOwner,
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
 				rxPay:           true,
+			},
+		},
+		{
+			name: "ok_repairer_with_authticket",
+			parameters: parameters{
+				isOwner:         false,
+				isCollaborator:  false,
+				isRepairer:      true,
+				useAuthTicket:   true,
+				attribute:       common.WhoPaysOwner,
+				isRevoked:       false,
+				isFundedBlobber: false,
+				isFunded0Chain:  true,
+				rxPay:           true,
+			},
+		},
+		{
+			name: "err_repairer_without_authticket",
+			parameters: parameters{
+				isOwner:         false,
+				isCollaborator:  false,
+				isRepairer:      true,
+				useAuthTicket:   false,
+				attribute:       common.WhoPaysOwner,
+				isRevoked:       false,
+				isFundedBlobber: false,
+				isFunded0Chain:  true,
+				rxPay:           true,
+			},
+			want: want{
+				err:    true,
+				errMsg: "invalid_client: authticket is required",
 			},
 		},
 	}
@@ -589,6 +671,7 @@ func TestDownloadFile(t *testing.T) {
 					require.EqualValues(t, test.want.errMsg, err.Error())
 					return
 				}
+
 			},
 		)
 	}
