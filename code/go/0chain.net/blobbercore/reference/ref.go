@@ -423,6 +423,8 @@ func (r *Ref) SaveFile(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	//"type":                  r.Type, at first
 	//"created_at":            r.CreatedAt, before updated_at
+	//"updated_at":            r.UpdatedAt, Before deleted_at
+	//"deleted_at":            r.DeletedAt, Before chunk_size
 	//"mimetype":              r.MimeType, After Actual File Hash and Before Write Marker
 	err := db.Model(&Ref{}).Where("id = ?", r.ID).Updates(map[string]interface{}{
 		"allocation_id":         r.AllocationID,
@@ -448,8 +450,6 @@ func (r *Ref) SaveFile(ctx context.Context) error {
 		"encrypted_key":         r.EncryptedKey,
 		"attributes":            r.Attributes,
 		"on_cloud":              r.OnCloud,
-		"updated_at":            r.UpdatedAt,
-		"deleted_at":            r.DeletedAt,
 		"chunk_size":            r.ChunkSize,
 	}).Error
 	if err != nil {
@@ -465,6 +465,8 @@ func (r *Ref) SaveDir(ctx context.Context) error {
 	//"mimetype":              r.MimeType, After Actual File Hash and Before Write Marker
 	//"actual_file_size":      r.ActualFileSize, After Merkle Root And Before Actual File Hash
 	//"actual_file_hash":      r.ActualFileHash, After Actual File Hash And Before Write Marker
+	//"updated_at":            r.UpdatedAt, Before deleted_at
+	//"deleted_at":            r.DeletedAt, Before chunk_size
 	err := db.Model(&Ref{}).Where("id = ?", r.ID).Updates(map[string]interface{}{
 		"allocation_id":         r.AllocationID,
 		"lookup_hash":           r.LookupHash,
@@ -487,8 +489,6 @@ func (r *Ref) SaveDir(ctx context.Context) error {
 		"encrypted_key":         r.EncryptedKey,
 		"attributes":            r.Attributes,
 		"on_cloud":              r.OnCloud,
-		"updated_at":            r.UpdatedAt,
-		"deleted_at":            r.DeletedAt,
 		"chunk_size":            r.ChunkSize,
 	}).Error
 	if err != nil {
