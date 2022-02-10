@@ -26,16 +26,16 @@ func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, err
 func GetReferenceForCalculateHash(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "type", "allocation_id", "lookup_hash",
-		"name", "path", "hash", "num_of_blocks",
-		"path_hash", "parent_path", "level", "custom_meta",
-		"content_hash", "size", "merkle_root", "actual_file_size",
-		"actual_file_hash", "mimetype", "write_marker", "thumbnail_size",
-		"thumbnail_hash", "actual_thumbnail_size", "actual_thumbnail_hash",
-		"encrypted_key", "attributes", "on_cloud",
-		"created_at", "updated_at", "deleted_at",
-		"chunk_size",
-	)
+	//db = db.Select("id", "type", "allocation_id", "lookup_hash",
+	//	"name", "path", "hash", "num_of_blocks",
+	//	"path_hash", "parent_path", "level", "custom_meta",
+	//	"content_hash", "size", "merkle_root", "actual_file_size",
+	//	"actual_file_hash", "mimetype", "write_marker", "thumbnail_size",
+	//	"thumbnail_hash", "actual_thumbnail_size", "actual_thumbnail_hash",
+	//	"encrypted_key", "attributes", "on_cloud",
+	//	"created_at", "updated_at", "deleted_at",
+	//	"chunk_size",
+	//)
 	pathsAdded := make(map[string]bool)
 	for _, path := range paths {
 		path = strings.TrimSuffix(path, "/")

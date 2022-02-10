@@ -330,7 +330,8 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	var err error
 	if saveToDB {
-		err = fr.Save(ctx)
+		//err = fr.Save(ctx)
+		err = fr.SaveFile(ctx)
 	}
 	return fr.Hash, err
 }
@@ -418,11 +419,12 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 	return db.Where("path_hash = ?", pathHash).Delete(&Ref{ID: refID}).Error
 }
 
-func (r *Ref) SaveDir(ctx context.Context) error {
+func (r *Ref) SaveFile(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	// "type":                  r.Type,
+	//"type":                  r.Type, at first
+	//"created_at":            r.CreatedAt, before updated_at
+	//"mimetype":              r.MimeType, After Actual File Hash and Before Write Marker
 	err := db.Model(&Ref{}).Where("id = ?", r.ID).Updates(map[string]interface{}{
-
 		"allocation_id":         r.AllocationID,
 		"lookup_hash":           r.LookupHash,
 		"name":                  r.Name,
@@ -438,7 +440,6 @@ func (r *Ref) SaveDir(ctx context.Context) error {
 		"merkle_root":           r.MerkleRoot,
 		"actual_file_size":      r.ActualFileSize,
 		"actual_file_hash":      r.ActualFileHash,
-		"mimetype":              r.MimeType,
 		"write_marker":          r.WriteMarker,
 		"thumbnail_size":        r.ThumbnailSize,
 		"thumbnail_hash":        r.ThumbnailHash,
@@ -447,7 +448,45 @@ func (r *Ref) SaveDir(ctx context.Context) error {
 		"encrypted_key":         r.EncryptedKey,
 		"attributes":            r.Attributes,
 		"on_cloud":              r.OnCloud,
-		"created_at":            r.CreatedAt,
+		"updated_at":            r.UpdatedAt,
+		"deleted_at":            r.DeletedAt,
+		"chunk_size":            r.ChunkSize,
+	}).Error
+	if err != nil {
+		err = db.Save(r).Error
+	}
+	return err
+}
+
+func (r *Ref) SaveDir(ctx context.Context) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	//"type":                  r.Type, at first
+	//"created_at":            r.CreatedAt, before updated_at
+	//"mimetype":              r.MimeType, After Actual File Hash and Before Write Marker
+	//"actual_file_size":      r.ActualFileSize, After Merkle Root And Before Actual File Hash
+	//"actual_file_hash":      r.ActualFileHash, After Actual File Hash And Before Write Marker
+	err := db.Model(&Ref{}).Where("id = ?", r.ID).Updates(map[string]interface{}{
+		"allocation_id":         r.AllocationID,
+		"lookup_hash":           r.LookupHash,
+		"name":                  r.Name,
+		"path":                  r.Path,
+		"hash":                  r.Hash,
+		"num_of_blocks":         r.NumBlocks,
+		"path_hash":             r.PathHash,
+		"parent_path":           r.ParentPath,
+		"level":                 r.PathLevel,
+		"custom_meta":           r.CustomMeta,
+		"content_hash":          r.ContentHash,
+		"size":                  r.Size,
+		"merkle_root":           r.MerkleRoot,
+		"write_marker":          r.WriteMarker,
+		"thumbnail_size":        r.ThumbnailSize,
+		"thumbnail_hash":        r.ThumbnailHash,
+		"actual_thumbnail_size": r.ActualThumbnailSize,
+		"actual_thumbnail_hash": r.ActualThumbnailHash,
+		"encrypted_key":         r.EncryptedKey,
+		"attributes":            r.Attributes,
+		"on_cloud":              r.OnCloud,
 		"updated_at":            r.UpdatedAt,
 		"deleted_at":            r.DeletedAt,
 		"chunk_size":            r.ChunkSize,
