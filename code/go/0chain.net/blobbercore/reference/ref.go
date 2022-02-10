@@ -330,8 +330,8 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	var err error
 	if saveToDB {
-		//err = fr.Save(ctx)
-		err = fr.SaveFile(ctx)
+		err = fr.Save(ctx)
+		//err = fr.SaveFile(ctx)
 	}
 	return fr.Hash, err
 }
@@ -368,8 +368,8 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 
 	var err error
 	if saveToDB {
-		//err = r.Save(ctx)
-		err = r.SaveDir(ctx)
+		err = r.Save(ctx)
+		//err = r.SaveDir(ctx)
 	}
 
 	return r.Hash, err
