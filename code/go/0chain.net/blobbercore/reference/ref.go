@@ -367,8 +367,8 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 
 	var err error
 	if saveToDB {
-		err = r.Save(ctx)
-		//err = r.SaveDir(ctx)
+		//err = r.Save(ctx)
+		err = r.SaveDir(ctx)
 	}
 
 	return r.Hash, err
@@ -420,21 +420,37 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 
 func (r *Ref) SaveDir(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
+	// "type":                  r.Type,
 	err := db.Model(&Ref{}).Where("id = ?", r.ID).Updates(map[string]interface{}{
-		"allocation_id": r.AllocationID,
-		"lookup_hash":   r.LookupHash,
-		"name":          r.Name,
-		"path":          r.Path,
-		"hash":          r.Hash,
-		"num_of_blocks": r.NumBlocks,
-		"path_hash":     r.PathHash,
-		"parent_path":   r.ParentPath,
-		"level":         r.PathLevel,
-		"size":          r.Size,
-		"attributes":    r.Attributes,
-		"on_cloud":      r.OnCloud,
-		"updated_at":    r.UpdatedAt,
-		"deleted_at":    r.DeletedAt,
+
+		"allocation_id":         r.AllocationID,
+		"lookup_hash":           r.LookupHash,
+		"name":                  r.Name,
+		"path":                  r.Path,
+		"hash":                  r.Hash,
+		"num_of_blocks":         r.NumBlocks,
+		"path_hash":             r.PathHash,
+		"parent_path":           r.ParentPath,
+		"level":                 r.PathLevel,
+		"custom_meta":           r.CustomMeta,
+		"content_hash":          r.ContentHash,
+		"size":                  r.Size,
+		"merkle_root":           r.MerkleRoot,
+		"actual_file_size":      r.ActualFileSize,
+		"actual_file_hash":      r.ActualFileHash,
+		"mimetype":              r.MimeType,
+		"write_marker":          r.WriteMarker,
+		"thumbnail_size":        r.ThumbnailSize,
+		"thumbnail_hash":        r.ThumbnailHash,
+		"actual_thumbnail_size": r.ActualThumbnailSize,
+		"actual_thumbnail_hash": r.ActualThumbnailHash,
+		"encrypted_key":         r.EncryptedKey,
+		"attributes":            r.Attributes,
+		"on_cloud":              r.OnCloud,
+		"created_at":            r.CreatedAt,
+		"updated_at":            r.UpdatedAt,
+		"deleted_at":            r.DeletedAt,
+		"chunk_size":            r.ChunkSize,
 	}).Error
 	if err != nil {
 		err = db.Save(r).Error
