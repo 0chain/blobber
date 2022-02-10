@@ -149,10 +149,11 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		inputData.ChunkSize = objectPath.ChunkSize
 
 		maxNumBlocks := 1024
+		merkleChunkSize := 64
 
 		// the file is too small, some of 1024 blocks is not filled
 		if objectPath.Size < objectPath.ChunkSize {
-			merkleChunkSize := objectPath.ChunkSize / 1024
+
 			maxNumBlocks = int(math.Ceil(float64(objectPath.Size) / float64(merkleChunkSize)))
 		}
 

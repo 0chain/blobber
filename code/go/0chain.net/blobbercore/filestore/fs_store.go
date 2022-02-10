@@ -333,7 +333,7 @@ func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *F
 				return nil, nil, errors.ThrowLog(err2.Error(), constants.ErrUnableHash)
 			}
 
-			merkleChunkSize := int(fileData.ChunkSize / 1024)
+			merkleChunkSize := 64
 			for i := 0; i < len(dataBytes); i += merkleChunkSize {
 				end := i + merkleChunkSize
 				if end > len(dataBytes) {
