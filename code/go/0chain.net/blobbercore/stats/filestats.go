@@ -23,12 +23,12 @@ func (FileStats) TableName() string {
 	return "file_stats"
 }
 
-func NewDirCreated(ctx context.Context, refID int64) {
+func NewDirCreated(ctx context.Context, refID int64) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
 	stats.NumBlockDownloads = 0
 	stats.NumUpdates = 1
-	db.Save(stats)
+	return db.Save(stats).Error
 }
 
 func NewFileCreated(ctx context.Context, refID int64) {

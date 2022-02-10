@@ -405,11 +405,8 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
-	allocation, ok := mux.Vars(r)["allocation"]
-	if !ok {
-		return false, common.NewError("invalid_params", "Missing allocation tx")
-	}
-	valid, err := verifySignatureFromRequest(allocation, sign, allocationObj.OwnerPublicKey)
+
+	valid, err := verifySignatureFromRequest(allocationID, sign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -421,10 +418,12 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
+
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	if clientID != allocationObj.OwnerID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
+
 	err = reference.DeleteShareInfo(ctx, &reference.ShareInfo{
 		ClientID:     refereeClientID,
 		FilePathHash: filePathHash,
@@ -436,9 +435,11 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		}
 		return resp, nil
 	}
+
 	if err != nil {
 		return nil, err
 	}
+
 	resp := map[string]interface{}{
 		"status":  http.StatusNoContent,
 		"message": "Path successfully removed from allocation",
@@ -449,20 +450,25 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 
-	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
+	var (
+		allocationID = ctx.Value(constants.ContextKeyAllocation).(string)
+		clientID     = ctx.Value(constants.ContextKeyClient).(string)
+	)
+
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
-	allocation, ok := mux.Vars(r)["allocation"]
-	if !ok {
-		return false, common.NewError("invalid_params", "Missing allocation tx")
-	}
-	valid, err := verifySignatureFromRequest(allocation, sign, allocationObj.OwnerPublicKey)
+
+	valid, err := verifySignatureFromRequest(allocationID, sign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_client", "Client has no access to share file")
 	}
 
 	encryptionPublicKey := r.FormValue("encryption_public_key")
@@ -488,11 +494,6 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 
-	// dummy, to avoid input and sql error
-	if len(authTicket.ClientID) != 64 || len(authTicket.OwnerID) != 64 {
-		return nil, common.NewError("share_info_insert", "Wrong ownerID or clientID")
-	}
-
 	shareInfo := reference.ShareInfo{
 		OwnerID:                   authTicket.OwnerID,
 		ClientID:                  authTicket.ClientID,
@@ -509,15 +510,13 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	} else {
 		err = reference.AddShareInfo(ctx, shareInfo)
 	}
+
 	if err != nil {
+		Logger.Info(err.Error())
 		return nil, common.NewError("share_info_insert", "Unable to save share info")
 	}
 
-	resp := map[string]interface{}{
-		"message": "Share info added successfully",
-	}
-
-	return resp, nil
+	return map[string]interface{}{"message": "Share info added successfully"}, nil
 }
 
 func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interface{}, error) {
