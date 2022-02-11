@@ -26,7 +26,7 @@ func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, err
 func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	//db = db.Select("id", "allocation_id", "type", "name", "path", "size", "content_hash", "merkle_root", "actual_file_size", "actual_file_hash", "attributes", "chunk_size")
+	db = db.Select("id", "allocation_id", "type", "name", "path", "size", "content_hash", "merkle_root", "actual_file_size", "actual_file_hash", "attributes", "chunk_size")
 	pathsAdded := make(map[string]bool)
 	for _, path := range paths {
 		path = strings.TrimSuffix(path, "/")
@@ -90,7 +90,7 @@ func PathExists(ctx context.Context, allocationID, path string) (bool, error) {
 
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-
+	db = db.Select("id", "allocation_id", "type", "name", "path", "size", "content_hash", "merkle_root", "actual_file_size", "actual_file_hash", "attributes", "chunk_size")
 	ref := Ref{Path: path, AllocationID: allocationID}
 	err := db.Where(ref).Find(&refs).Error
 
@@ -105,7 +105,7 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 	path = filepath.Clean(path)
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	//db = db.Select("id", "allocation_id", "type", "name", "path", "size", "content_hash", "merkle_root", "actual_file_size", "actual_file_hash", "attributes", "chunk_size")
+	db = db.Select("id", "allocation_id", "type", "name", "path", "size", "content_hash", "merkle_root", "actual_file_size", "actual_file_hash", "attributes", "chunk_size")
 	db = db.Where(Ref{Path: path, AllocationID: allocationID})
 	if path != "/" {
 		db = db.Or("path LIKE ? AND allocation_id = ?", path+"/%", allocationID)
@@ -143,6 +143,7 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 	path = filepath.Clean(path)
 
 	db := datastore.GetStore().GetDB()
+	db = db.Select("id", "allocation_id", "type", "name", "path", "size", "content_hash", "merkle_root", "actual_file_size", "actual_file_hash", "attributes", "chunk_size")
 	db1 := db.Session(&gorm.Session{})
 	db2 := db.Session(&gorm.Session{})
 
@@ -195,6 +196,7 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, 
 	var totalRows int64
 	var pRefs []PaginatedRef
 	db := datastore.GetStore().GetDB()
+	db = db.Select("id", "allocation_id", "type", "name", "path", "size", "content_hash", "merkle_root", "actual_file_size", "actual_file_hash", "attributes", "chunk_size")
 	db1 := db.Session(&gorm.Session{}) //TODO Might need to use transaction from db1/db2 to avoid injection attack
 	db2 := db.Session(&gorm.Session{})
 
@@ -258,6 +260,7 @@ func GetDeletedRefs(ctx context.Context, allocationID, updatedDate, offsetPath, 
 	var totalRows int64
 	var pRefs []PaginatedRef
 	db := datastore.GetStore().GetDB()
+	db = db.Select("id", "allocation_id", "type", "name", "path", "size", "content_hash", "merkle_root", "actual_file_size", "actual_file_hash", "attributes", "chunk_size")
 
 	db1 := db.Session(&gorm.Session{})
 	db2 := db.Session(&gorm.Session{})
