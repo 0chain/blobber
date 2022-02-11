@@ -447,6 +447,9 @@ func (r *Ref) SaveFile(ctx context.Context) error {
 		"num_of_blocks": r.NumBlocks,
 		"path_hash":     r.PathHash,
 		"level":         r.PathLevel,
+		"name":          r.Name,
+		"parent_path":   r.ParentPath,
+		"path":          r.Path,
 	}).Error
 	if err != nil {
 		err = db.Save(r).Error
@@ -463,6 +466,9 @@ func (r *Ref) SaveDir(ctx context.Context) error {
 		"path_hash":     r.PathHash,
 		"level":         r.PathLevel,
 		"size":          r.Size,
+		"name":          r.Name,
+		"parent_path":   r.ParentPath,
+		"path":          r.Path,
 	}).Error
 	if err != nil {
 		err = db.Save(r).Error
