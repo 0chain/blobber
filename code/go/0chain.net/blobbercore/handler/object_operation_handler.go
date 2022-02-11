@@ -470,11 +470,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		if err := updateFileChange.Unmarshal(change.Input); err != nil {
 			return nil, err
 		}
-		fileRef, err := reference.GetReference(ctx, allocationID, updateFileChange.Path)
+		fileRef, err := reference.GetReferenceID(ctx, allocationID, updateFileChange.Path)
 		if err != nil {
 			return nil, err
 		}
-		isCollaborator = reference.IsACollaborator(ctx, fileRef.ID, clientID)
+		isCollaborator = reference.IsACollaborator(ctx, fileRef, clientID)
 		break
 	}
 
@@ -545,12 +545,12 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err != nil {
 		return nil, err
 	}
-	rootRef, err := reference.GetReference(ctx, allocationID, "/")
+	rootRef, err := reference.GetReferenceHash(ctx, allocationID, "/")
 	if err != nil {
 		return nil, err
 	}
 
-	allocationRoot := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
+	allocationRoot := encryption.Hash(rootRef + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
 
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot

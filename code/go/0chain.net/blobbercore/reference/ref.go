@@ -212,6 +212,26 @@ func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
 	return dirRef, nil
 }
 
+func GetReferenceHash(ctx context.Context, allocationID, path string) (string, error) {
+	var hash string
+	db := datastore.GetStore().GetTransaction(ctx)
+	err := db.Table(TableNameReferenceObjects).Select("hash").Where(map[string]interface{}{"allocation_id": allocationID, "path": path}).Scan(&hash).Error
+	if err == nil {
+		return hash, nil
+	}
+	return "", err
+}
+
+func GetReferenceID(ctx context.Context, allocationID, path string) (int64, error) {
+	var id int64
+	db := datastore.GetStore().GetTransaction(ctx)
+	err := db.Table(TableNameReferenceObjects).Select("id").Where(map[string]interface{}{"allocation_id": allocationID, "path": path}).Scan(&id).Error
+	if err == nil {
+		return id, nil
+	}
+	return 0, err
+}
+
 // GetReference get FileRef with allcationID and path from postgres
 func GetReference(ctx context.Context, allocationID, path string) (*Ref, error) {
 	ref := &Ref{}
@@ -330,8 +350,8 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	var err error
 	if saveToDB {
-		err = fr.Save(ctx)
-		//err = fr.SaveFile(ctx)
+		//err = fr.Save(ctx)
+		err = fr.SaveFile(ctx)
 	}
 	return fr.Hash, err
 }
@@ -368,8 +388,8 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 
 	var err error
 	if saveToDB {
-		err = r.Save(ctx)
-		//err = r.SaveDir(ctx)
+		//err = r.Save(ctx)
+		err = r.SaveDir(ctx)
 	}
 
 	return r.Hash, err
@@ -421,36 +441,12 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 
 func (r *Ref) SaveFile(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	//"type":                  r.Type, at first
-	//"created_at":            r.CreatedAt, before updated_at
-	//"updated_at":            r.UpdatedAt, Before deleted_at
-	//"deleted_at":            r.DeletedAt, Before chunk_size
-	//"mimetype":              r.MimeType, After Actual File Hash and Before Write Marker
-	err := db.Model(&Ref{}).Where("id = ?", r.ID).Updates(map[string]interface{}{
-		"allocation_id":         r.AllocationID,
-		"lookup_hash":           r.LookupHash,
-		"name":                  r.Name,
-		"path":                  r.Path,
-		"hash":                  r.Hash,
-		"num_of_blocks":         r.NumBlocks,
-		"path_hash":             r.PathHash,
-		"parent_path":           r.ParentPath,
-		"level":                 r.PathLevel,
-		"custom_meta":           r.CustomMeta,
-		"content_hash":          r.ContentHash,
-		"size":                  r.Size,
-		"merkle_root":           r.MerkleRoot,
-		"actual_file_size":      r.ActualFileSize,
-		"actual_file_hash":      r.ActualFileHash,
-		"write_marker":          r.WriteMarker,
-		"thumbnail_size":        r.ThumbnailSize,
-		"thumbnail_hash":        r.ThumbnailHash,
-		"actual_thumbnail_size": r.ActualThumbnailSize,
-		"actual_thumbnail_hash": r.ActualThumbnailHash,
-		"encrypted_key":         r.EncryptedKey,
-		"attributes":            r.Attributes,
-		"on_cloud":              r.OnCloud,
-		"chunk_size":            r.ChunkSize,
+	err := db.Model(r).Where(Ref{ID: r.ID}).Updates(map[string]interface{}{
+		"lookup_hash":   r.LookupHash,
+		"hash":          r.Hash,
+		"num_of_blocks": r.NumBlocks,
+		"path_hash":     r.PathHash,
+		"level":         r.PathLevel,
 	}).Error
 	if err != nil {
 		err = db.Save(r).Error
@@ -460,36 +456,13 @@ func (r *Ref) SaveFile(ctx context.Context) error {
 
 func (r *Ref) SaveDir(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	//"type":                  r.Type, at first
-	//"created_at":            r.CreatedAt, before updated_at
-	//"mimetype":              r.MimeType, After Actual File Hash and Before Write Marker
-	//"actual_file_size":      r.ActualFileSize, After Merkle Root And Before Actual File Hash
-	//"actual_file_hash":      r.ActualFileHash, After Actual File Hash And Before Write Marker
-	//"updated_at":            r.UpdatedAt, Before deleted_at
-	//"deleted_at":            r.DeletedAt, Before chunk_size
-	err := db.Model(&Ref{}).Where("id = ?", r.ID).Updates(map[string]interface{}{
-		"allocation_id":         r.AllocationID,
-		"lookup_hash":           r.LookupHash,
-		"name":                  r.Name,
-		"path":                  r.Path,
-		"hash":                  r.Hash,
-		"num_of_blocks":         r.NumBlocks,
-		"path_hash":             r.PathHash,
-		"parent_path":           r.ParentPath,
-		"level":                 r.PathLevel,
-		"custom_meta":           r.CustomMeta,
-		"content_hash":          r.ContentHash,
-		"size":                  r.Size,
-		"merkle_root":           r.MerkleRoot,
-		"write_marker":          r.WriteMarker,
-		"thumbnail_size":        r.ThumbnailSize,
-		"thumbnail_hash":        r.ThumbnailHash,
-		"actual_thumbnail_size": r.ActualThumbnailSize,
-		"actual_thumbnail_hash": r.ActualThumbnailHash,
-		"encrypted_key":         r.EncryptedKey,
-		"attributes":            r.Attributes,
-		"on_cloud":              r.OnCloud,
-		"chunk_size":            r.ChunkSize,
+	err := db.Model(r).Where(Ref{ID: r.ID}).Updates(map[string]interface{}{
+		"lookup_hash":   r.LookupHash,
+		"hash":          r.Hash,
+		"num_of_blocks": r.NumBlocks,
+		"path_hash":     r.PathHash,
+		"level":         r.PathLevel,
+		"size":          r.Size,
 	}).Error
 	if err != nil {
 		err = db.Save(r).Error
