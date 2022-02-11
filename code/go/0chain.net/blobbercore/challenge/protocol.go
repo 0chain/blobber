@@ -150,6 +150,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 		maxNumBlocks := 1024
 		merkleChunkSize := objectPath.ChunkSize / 1024
+		// chunksize is less than 1024
 		if merkleChunkSize == 0 {
 			merkleChunkSize = 1
 		}
