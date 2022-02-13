@@ -138,7 +138,7 @@ func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (string,
 
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
-	txn, err := transaction.NewTransactionEntity()
+	txn, err := transaction.NewTransactionEntityWithFee(config.Configuration.MinTxnFee)
 	if err != nil {
 		return "", err
 	}

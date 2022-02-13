@@ -7,11 +7,10 @@ import (
 
 	"github.com/0chain/gosdk/zcncore"
 
-	bConfig "github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	vConfig "github.com/0chain/blobber/code/go/0chain.net/validatorcore/config"
 )
 
 //Transaction entity that encapsulates the transaction related data and meta data
@@ -129,16 +128,6 @@ const (
 
 const STORAGE_CONTRACT_ADDRESS = "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d7"
 
-var MIN_TXN_FEE = minTxnFee()
-
-func minTxnFee() int64 {
-	if bConfig.Configuration.Config != nil {
-		return bConfig.Configuration.MinTxnFee
-	} else {
-		return vConfig.Configuration.MinTxnFee
-	}
-}
-
 func NewTransactionEntity() (*Transaction, error) {
 	txn := &Transaction{}
 	txn.Version = "1.0"
@@ -147,7 +136,23 @@ func NewTransactionEntity() (*Transaction, error) {
 	txn.ChainID = chain.GetServerChain().ID
 	txn.PublicKey = node.Self.PublicKey
 	txn.wg = &sync.WaitGroup{}
-	zcntxn, err := zcncore.NewTransaction(txn, MIN_TXN_FEE)
+	zcntxn, err := zcncore.NewTransaction(txn, config.Configuration.MinTxnFee)
+	if err != nil {
+		return nil, err
+	}
+	txn.zcntxn = zcntxn
+	return txn, nil
+}
+
+func NewTransactionEntityWithFee(fee int64) (*Transaction, error) {
+	txn := &Transaction{}
+	txn.Version = "1.0"
+	txn.ClientID = node.Self.ID
+	txn.CreationDate = common.Now()
+	txn.ChainID = chain.GetServerChain().ID
+	txn.PublicKey = node.Self.PublicKey
+	txn.wg = &sync.WaitGroup{}
+	zcntxn, err := zcncore.NewTransaction(txn, fee)
 	if err != nil {
 		return nil, err
 	}
