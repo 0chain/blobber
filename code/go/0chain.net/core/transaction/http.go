@@ -49,6 +49,20 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 	return txn, nil
 }
 
+func VerifyATransactionWithFee(txnHash string, chain *chain.Chain, fee int64) (*Transaction, error) {
+	txn, err := NewTransactionEntityWithFee(fee)
+	if err != nil {
+		return nil, err
+	}
+
+	txn.Hash = txnHash
+	err = txn.Verify()
+	if err != nil {
+		return nil, err
+	}
+	return txn, nil
+}
+
 // MakeSCRestAPICall execute api reqeust from sharders, and parse and return result
 func makeSCRestAPICall(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) ([]byte, error) {
 	var resMaxCounterBody []byte
