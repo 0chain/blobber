@@ -27,7 +27,9 @@ const SC_REST_API_URL = "v1/screst/"
 const REGISTER_CLIENT = "v1/client/put"
 
 const (
-	SLEEP_FOR_TXN_CONFIRMATION = 5
+	// Transaction is kept in miner's transaction pool for upto 32 seconds. After this time this transaction is not
+	// executed.
+	SLEEP_FOR_TXN_CONFIRMATION = 32
 )
 
 var ErrNoTxnDetail = common.NewError("missing_transaction_detail", "No transaction detail was found on any of the sharders")
