@@ -61,6 +61,7 @@ func main() {
 
 	config.Configuration.ChainID = viper.GetString("server_chain.id")
 	config.Configuration.SignatureScheme = viper.GetString("server_chain.signature_scheme")
+	config.Configuration.MinTxnFee = viper.GetInt64("server_chain.transaction.min_fee")
 
 	// delegate
 	config.Configuration.DelegateWallet =
