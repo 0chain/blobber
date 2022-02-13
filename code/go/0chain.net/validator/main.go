@@ -172,7 +172,7 @@ func RegisterValidator() {
 		verifyRetries := 0
 		for verifyRetries < util.MAX_RETRIES {
 			time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
+			t, err := transaction.VerifyATransactionWithFee(txnHash, chain.GetServerChain(), config.Configuration.MinTxnFee)
 			if err == nil {
 				Logger.Info("Transaction for adding validator accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
 				return
