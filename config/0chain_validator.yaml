@@ -28,3 +28,5 @@ server_chain:
   network:
     relay_time: 100 # milliseconds
   signature_scheme: "bls0chain"
+  transaction:
+    min_fee: 0 # to be set the same as in 0chain.yaml:server_chain.transaction.min_fee
