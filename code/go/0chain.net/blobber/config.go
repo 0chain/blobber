@@ -22,6 +22,7 @@ func setupConfig() {
 	config.Configuration.DeploymentMode = byte(deploymentMode)
 	config.Configuration.ChainID = viper.GetString("server_chain.id")
 	config.Configuration.SignatureScheme = viper.GetString("server_chain.signature_scheme")
+	config.Configuration.MinTxnFee = viper.GetInt64("server_chain.transaction.min_fee")
 
 	config.Configuration.ContentRefWorkerFreq = viper.GetInt64("contentref_cleaner.frequency")
 	config.Configuration.ContentRefWorkerTolerance = viper.GetInt64("contentref_cleaner.tolerance")

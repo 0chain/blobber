@@ -8,6 +8,7 @@ type Config struct {
 	Capacity        int64
 	DeploymentMode  byte
 	SignatureScheme string
+	MinTxnFee       int64
 }
 
 var Configuration Config
