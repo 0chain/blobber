@@ -3,7 +3,6 @@ package handler
 import (
 	"bytes"
 	"errors"
-	"strings"
 
 	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 )
@@ -62,14 +61,12 @@ func (r *PREChunkEncoder) Encode(chunkSize int, data []byte) ([]byte, error) {
 
 		headerBytes := chunkData[:EncryptionHeaderSize]
 		headerBytes = bytes.Trim(headerBytes, "\x00")
-		headerString := string(headerBytes)
 
-		headerChecksums := strings.Split(headerString, ",")
-		if len(headerChecksums) != 2 {
+		if len(headerBytes) != EncryptionHeaderSize {
 			return nil, errors.New("Block has invalid encryption header")
 		}
 
-		encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
+		encMsg.MessageChecksum, encMsg.OverallChecksum = string(headerBytes[:128]), string(headerBytes[128:])
 		encMsg.EncryptedKey = encscheme.GetEncryptedKey()
 
 		reEncMsg, err := encscheme.ReEncrypt(encMsg, r.ReEncryptionKey, r.ClientEncryptionPublicKey)
