@@ -10,7 +10,7 @@ import (
 )
 
 func setupMinio() error {
-	fmt.Print("[4/11] setup minio")
+	fmt.Print("[4/12] setup minio")
 	reader, err := os.Open(minioFile)
 	if err != nil {
 		return err

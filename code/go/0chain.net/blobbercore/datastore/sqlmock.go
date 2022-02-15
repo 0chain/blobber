@@ -79,3 +79,7 @@ func (store *Sqlmock) GetTransaction(ctx context.Context) *gorm.DB {
 func (store *Sqlmock) GetDB() *gorm.DB {
 	return store.db
 }
+
+func (store *Sqlmock) AutoMigrate() error {
+	return nil
+}
