@@ -2,12 +2,14 @@ package datastore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -59,10 +61,51 @@ func (store *postgresStore) GetTransaction(ctx context.Context) *gorm.DB {
 	if conn != nil {
 		return conn.(*gorm.DB)
 	}
-	Logger.Error("No connection in the context.")
+	logging.Logger.Error("No connection in the context.")
 	return nil
 }
 
 func (store *postgresStore) GetDB() *gorm.DB {
 	return store.db
+}
+
+func (store *postgresStore) AutoMigrate() error {
+
+	err := store.db.AutoMigrate(&Migration{})
+	if err != nil {
+		logging.Logger.Error("[db]", zap.Error(err))
+	}
+
+	latest := &Migration{}
+	result := store.db.Raw(`select * from "migrations" order by "version" desc limit 1`).First(latest)
+
+	if result.Error != nil {
+		if errors.Is(gorm.ErrRecordNotFound, result.Error) {
+			latest.Version = "0.0.0"
+			latest.CreatedAt = time.Date(2021, 10, 14, 0, 0, 0, 0, time.UTC)
+			err = store.db.Create(latest).Error
+
+			if err != nil {
+				logging.Logger.Error("[db]"+latest.Version, zap.Error(err))
+				return err
+			}
+		} else {
+			logging.Logger.Error("[db]", zap.Error(result.Error))
+			return err
+		}
+	}
+
+	for i := 0; i < len(releases); i++ {
+		v := releases[i]
+		if v.After(latest) {
+			err = v.Migrate(store.db)
+			if err != nil {
+				logging.Logger.Error("[db]"+v.Version, zap.Error(err))
+				return err
+			} else {
+				logging.Logger.Info("[db]" + v.Version + " migrated")
+			}
+		}
+	}
+	return nil
 }
