@@ -100,7 +100,11 @@ func (store *postgresStore) AutoMigrate() error {
 
 	for i := 0; i < len(releases); i++ {
 		v := releases[i]
-		if v.After(latest) {
+		shouldMigrated, err := v.After(latest)
+		if err != nil {
+			return err
+		}
+		if shouldMigrated {
 			err = v.Migrate(store.db)
 			if err != nil {
 				logging.Logger.Error("[db]"+v.Version, zap.Error(err))
@@ -108,6 +112,7 @@ func (store *postgresStore) AutoMigrate() error {
 			} else {
 				logging.Logger.Info("[db]" + v.Version + " migrated")
 			}
+
 		}
 	}
 	return nil

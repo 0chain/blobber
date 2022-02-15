@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,17 +24,28 @@ type Migration struct {
 }
 
 // After check if migrate is newer than latest
-func (m *Migration) After(latest *Migration) bool {
+func (m *Migration) After(latest *Migration) (bool, error) {
 	currentVersions := strings.Split(m.Version, ".")
 	latestVersions := strings.Split(latest.Version, ".")
 
 	for i := 0; i < 3; i++ {
-		if currentVersions[i] > latestVersions[i] {
-			return true
+		c, err := strconv.Atoi(currentVersions[i])
+		if err != nil {
+			return false, err
+		}
+
+		l, err := strconv.Atoi(latestVersions[i])
+
+		if err != nil {
+			return false, err
+		}
+
+		if c > l {
+			return false, nil
 		}
 	}
 
-	return false
+	return false, nil
 }
 
 // Migrate migrate database
