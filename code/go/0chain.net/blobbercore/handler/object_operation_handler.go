@@ -651,7 +651,8 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	// Changed From GetReferenceFromLookupHash To GetReferencePathFromLookupHash
+	objectRef, err := reference.GetReferencePathFromLookupHash(ctx, allocationID, pathHash)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())

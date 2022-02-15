@@ -545,7 +545,6 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 		errCh <- err
 		return
 	}
-	// Changed Here GetReferencePathFromPaths To GetReferenceForCalculateHash
 	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
 	if err != nil {
 		errCh <- err

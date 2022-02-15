@@ -246,7 +246,8 @@ func TestDownloadFile(t *testing.T) {
 		})
 		require.NoError(t, err)
 		mocket.Catcher.NewMock().OneTime().WithQuery(
-			`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`,
+			`SELECT * FROM "reference_objects" WHERE`,
+			//`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`,
 		).WithArgs(
 			"mock_allocation_id", p.inData.pathHash,
 		).WithReply(
@@ -340,7 +341,8 @@ func TestDownloadFile(t *testing.T) {
 
 		if p.useAuthTicket {
 			mocket.Catcher.NewMock().OneTime().WithQuery(
-				`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`,
+				`SELECT * FROM "reference_objects" WHERE`,
+				//`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`,
 			).WithCallback(func(_ string, args []driver.NamedValue) {
 				require.EqualValues(t, p.payerId.ClientID, args[0].Value)
 				require.EqualValues(t, mockAllocationId, args[1].Value)
