@@ -80,7 +80,7 @@ func (store *postgresStore) AutoMigrate() error {
 	}
 
 	latest := &Migration{}
-	result := store.db.Raw(`select * from "migrations" order by "version" desc limit 1`).First(latest)
+	result := store.db.Raw(`select * from "migrations" order by "created_at" desc limit 1`).First(latest)
 
 	if result.Error != nil {
 		if errors.Is(gorm.ErrRecordNotFound, result.Error) {
