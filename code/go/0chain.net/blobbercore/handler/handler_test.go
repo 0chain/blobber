@@ -1877,7 +1877,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}
 
 				header := make([]byte, EncryptionHeaderSize)
-				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				fmt.Println("Encrypted data: ", string(data))
 				setMockFileBlock(data)
@@ -2029,7 +2029,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}
 
 				header := make([]byte, EncryptionHeaderSize)
-				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},
@@ -2184,7 +2184,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}
 
 				header := make([]byte, EncryptionHeaderSize)
-				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},
@@ -2339,7 +2339,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				}
 
 				header := make([]byte, EncryptionHeaderSize)
-				copy(header, encMsg.MessageChecksum+","+encMsg.OverallChecksum)
+				copy(header, encMsg.MessageChecksum+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
 				setMockFileBlock(data)
 			},
