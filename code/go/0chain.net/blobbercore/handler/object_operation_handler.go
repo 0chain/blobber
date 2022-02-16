@@ -288,6 +288,13 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			payerID = clientID
 		}
 
+		d := (60 * time.Second)
+		// we use Truncate because we work with UTC in the first place.
+		availableTime := shareInfo.AvailableAt.Truncate(d).Unix()
+		if common.Timestamp(availableTime) > common.Now() {
+			return nil, errors.New("the file is not available until: " + shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
+		}
+
 		readMarker.AuthTicket = datatypes.JSON(authTokenString)
 
 		// check for file payer flag
@@ -375,25 +382,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			ReEncryptionKey:           shareInfo.ReEncryptionKey,
 			ClientEncryptionPublicKey: shareInfo.ClientEncryptionPublicKey,
 		}
-
-		d := (60 * time.Second)
-		// we use Truncate because we work with UTC in the first place.
-		availableTime := shareInfo.AvailableAt.Truncate(d).Unix()
-		if common.Timestamp(availableTime) > common.Now() {
-			return nil, errors.New("the file is not available until: " + shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
-		}
 	} else {
 		chunkEncoder = &RawChunkEncoder{}
 	}
 
 	chunkData, err := chunkEncoder.Encode(int(fileref.ChunkSize), respData)
-
-	d := (60 * time.Second)
-	// we use Truncate because we work with UTC in the first place.
-	availableTime := shareInfo.AvailableAt.Truncate(d).Unix()
-	if err == nil && common.Timestamp(availableTime) > common.Now() {
-		return nil, errors.New("the file is not available until: " + shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
-	}
 
 	if err != nil {
 		return nil, err
