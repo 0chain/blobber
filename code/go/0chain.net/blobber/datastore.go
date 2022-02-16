@@ -28,13 +28,13 @@ func setupDatabase() error {
 		time.Sleep(1 * time.Second)
 	}
 
-	fmt.Print("\r[8/12] auto migrate datastore")
+	fmt.Println("\r[8/12] auto migrate datastore")
 	err := datastore.GetStore().AutoMigrate()
 	if err != nil {
 		logging.Logger.Error("Failed to migrate to the database.")
 		return err
 	}
-	fmt.Print("	[OK]\n")
+	//fmt.Print("	[OK]\n")
 
 	return nil
 }

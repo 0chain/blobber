@@ -2,7 +2,6 @@ package datastore
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -79,41 +78,48 @@ func (store *postgresStore) AutoMigrate() error {
 		logging.Logger.Error("[db]", zap.Error(err))
 	}
 
-	latest := &Migration{}
-	result := store.db.Raw(`select * from "migrations" order by "created_at" desc limit 1`).First(latest)
-
-	if result.Error != nil {
-		if errors.Is(gorm.ErrRecordNotFound, result.Error) {
-			latest.Version = "0.0.0"
-			latest.CreatedAt = time.Date(2021, 10, 14, 0, 0, 0, 0, time.UTC)
-			err = store.db.Create(latest).Error
-
-			if err != nil {
-				logging.Logger.Error("[db]"+latest.Version, zap.Error(err))
-				return err
-			}
-		} else {
-			logging.Logger.Error("[db]", zap.Error(result.Error))
-			return err
-		}
+	if len(releases) == 0 {
+		fmt.Print("	+ No releases 	[SKIP]\n")
+		return nil
 	}
 
 	for i := 0; i < len(releases); i++ {
 		v := releases[i]
-		shouldMigrated, err := v.After(latest)
+		fmt.Print("\r	+ ", v.Version, "	")
+		hasMigrated, err := store.HasMigrated(v)
 		if err != nil {
 			return err
 		}
-		if shouldMigrated {
+		if hasMigrated {
+			fmt.Print("	[SKIP]\n")
+		} else {
 			err = v.Migrate(store.db)
 			if err != nil {
 				logging.Logger.Error("[db]"+v.Version, zap.Error(err))
 				return err
 			} else {
 				logging.Logger.Info("[db]" + v.Version + " migrated")
+				fmt.Print("	[OK]\n")
 			}
-
 		}
 	}
 	return nil
+}
+
+func (store *postgresStore) HasMigrated(m Migration) (bool, error) {
+	var version string
+	err := store.db.
+		Raw(`select version from "migrations" where version=?`, m.Version).
+		Pluck("version", &version).
+		Error
+
+	if err == nil {
+		return false, nil
+	}
+
+	if err == gorm.ErrRecordNotFound {
+		return false, nil
+	}
+
+	return false, err
 }
