@@ -14,7 +14,7 @@ NB: current schema that is created by sql scripts is versioned as `0.0.0`.
 ### Migrate table/column in gorm.AutoMigrate
  if migration works with gorm.AutoMigrate, please use it to migrate. It works without releasing new `Version` 
  - update your model
- - added your model in [AutoMigrate](migration.go#L63) if it doesn't exists
+ - added your model in [AutoMigrate](postgres_releases.go#L4) if it doesn't exists
   ```
    db.AutoMigrate(&Migration{},&YourModel{})
   ```
