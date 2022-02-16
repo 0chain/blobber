@@ -86,7 +86,7 @@ func (store *postgresStore) AutoMigrate() error {
 	for i := 0; i < len(releases); i++ {
 		v := releases[i]
 		fmt.Print("\r	+ ", v.Version, "	")
-		hasMigrated, err := store.HasMigrated(v)
+		hasMigrated, err := store.IsMigrated(v)
 		if err != nil {
 			return err
 		}
@@ -106,7 +106,7 @@ func (store *postgresStore) AutoMigrate() error {
 	return nil
 }
 
-func (store *postgresStore) HasMigrated(m Migration) (bool, error) {
+func (store *postgresStore) IsMigrated(m Migration) (bool, error) {
 	var version string
 	err := store.db.
 		Raw(`select version from "migrations" where version=?`, m.Version).
