@@ -86,22 +86,24 @@ func (store *postgresStore) AutoMigrate() error {
 	for i := 0; i < len(releases); i++ {
 		v := releases[i]
 		fmt.Print("\r	+ ", v.Version, "	")
-		hasMigrated, err := store.IsMigrated(v)
+		isMigrated, err := store.IsMigrated(v)
 		if err != nil {
 			return err
 		}
-		if hasMigrated {
+		if isMigrated {
 			fmt.Print("	[SKIP]\n")
-		} else {
-			err = v.Migrate(store.db)
-			if err != nil {
-				logging.Logger.Error("[db]"+v.Version, zap.Error(err))
-				return err
-			} else {
-				logging.Logger.Info("[db]" + v.Version + " migrated")
-				fmt.Print("	[OK]\n")
-			}
+			continue
 		}
+
+		err = v.Migrate(store.db)
+		if err != nil {
+			logging.Logger.Error("[db]"+v.Version, zap.Error(err))
+			return err
+		}
+
+		logging.Logger.Info("[db]" + v.Version + " migrated")
+		fmt.Print("	[OK]\n")
+
 	}
 	return nil
 }
