@@ -20,7 +20,6 @@ import (
 	"go.uber.org/zap"
 
 	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
@@ -53,7 +52,7 @@ type MinioConfiguration struct {
 var MinioConfig MinioConfiguration
 
 type IFileBlockGetter interface {
-	GetFileBlock(fsStore *FileFSStore, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
+	GetFileBlock(fsStore *FileFSStore, allocationRoot, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
 }
 
 type FileBlockGetter struct {
