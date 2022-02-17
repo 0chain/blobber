@@ -98,7 +98,7 @@ func Test_MoveAllocation(t *testing.T) {
 	d := &diskTier{}
 	dirs := d.generateAllocationPath(blobberPart_1, allocationID)
 	fPath := filepath.Join(dirs, testFile)
-	os.MkdirAll(dirs, 0777)
+	_ = os.MkdirAll(dirs, 0777)
 	if err := createFile(fPath, 2*1024); err != nil {
 		t.Fatal("createFile() filed")
 	}
@@ -194,7 +194,7 @@ func Test_diskTier_IsMoves(t *testing.T) {
 
 	d := &diskTier{}
 	allocPath := d.generateAllocationPath(blobberPart_1, allocationID)
-	os.MkdirAll(allocPath, 0777)
+	_ = os.MkdirAll(allocPath, 0777)
 	a := &allocationInfo{OldRoot: allocPath, NewRoot: blobberPart_2, ForDelete: true}
 	if err := a.prepareAllocation(); err != nil {
 		t.Fatalf("prepareAllocation() error %v", err)
@@ -279,7 +279,7 @@ func Test_GetCapacity(t *testing.T) {
 }
 
 func createFile(path string, size uint64) error {
-	data := make([]byte, int(size), int(size)) // Initialize an empty byte slice
+	data := make([]byte, int(size)) // Initialize an empty byte slice
 	f, err := os.Create(path)
 	if err != nil {
 		fmt.Printf("Error: %s", err)

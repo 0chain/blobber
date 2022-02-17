@@ -241,8 +241,9 @@ func (nf *NewFileChange) DeleteTempFile() error {
 		if err != nil {
 			return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
 		}
-		err = filestore.GetFileStore().DeleteTempFile(alloc.AllocationRoot, nf.AllocationID, fileInputData, nf.ConnectionID)
+		return filestore.GetFileStore().DeleteTempFile(alloc.AllocationRoot, nf.AllocationID, fileInputData, nf.ConnectionID)
 	}
+
 	return err
 }
 

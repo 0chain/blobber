@@ -98,8 +98,6 @@ func (d *diskTier) checkDisks() {
 	}
 
 	d.partitions = partitions
-
-	return
 }
 
 // checkDisksWorker checks disks on a schedule.

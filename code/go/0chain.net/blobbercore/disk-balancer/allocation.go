@@ -63,15 +63,6 @@ func (a *allocationInfo) createDirs(dir string) error {
 	return nil
 }
 
-// decode performs Unmarshal data.
-func (a *allocationInfo) decode(b []byte) error {
-	if err := json.Unmarshal(b, a); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // encode performs Marshal data.
 func (a *allocationInfo) encode() []byte {
 	jsonBody, _ := json.Marshal(a)
@@ -103,7 +94,7 @@ func (a *allocationInfo) move(ctx context.Context) error {
 			newFile := filepath.Join(a.NewRoot, rezFile)
 			info, _ := os.Stat(file)
 			if info.IsDir() {
-				a.createDirs(newFile)
+				_ = a.createDirs(newFile)
 				continue
 			}
 			if err := a.copyFile(file, newFile); err != nil {
@@ -113,7 +104,7 @@ func (a *allocationInfo) move(ctx context.Context) error {
 	}
 
 	a.ForDelete = true
-	a.updateInfo()
+	_ = a.updateInfo()
 
 	return nil
 }

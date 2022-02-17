@@ -34,7 +34,6 @@ func StartDiskSelectorWorker(ctx context.Context) {
 	}
 	go dTier.checkUndeletedFiles()
 	diskSelector = dTier
-	return
 }
 
 func GetDiskSelector() DiskSelector {
