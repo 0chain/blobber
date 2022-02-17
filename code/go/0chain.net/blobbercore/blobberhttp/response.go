@@ -2,7 +2,6 @@ package blobberhttp
 
 import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -54,11 +53,10 @@ type ListResult struct {
 }
 
 type DownloadResponse struct {
-	Success      bool                   `json:"success"`
-	Data         []byte                 `json:"data"`
-	AllocationID string                 `json:"-"`
-	Path         string                 `json:"-"`
-	LatestRM     *readmarker.ReadMarker `json:"latest_rm"`
+	Success      bool   `json:"success"`
+	Data         []byte `json:"data"`
+	AllocationID string `json:"-"`
+	Path         string `json:"-"`
 }
 
 type UpdateObjectAttributesResponse struct {

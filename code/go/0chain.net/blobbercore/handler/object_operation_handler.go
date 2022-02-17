@@ -39,7 +39,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks, pendNumBlocks int64, payerID string) (err error) {
+func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks int64, payerID string) (err error) {
 	if numBlocks == 0 {
 		return
 	}
@@ -55,7 +55,7 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks,
 		rps []*allocation.ReadPool
 	)
 
-	if currentReadSize == 0 {
+	if currentReadSize == 0 || !(alloc.GetRequiredReadBalance(blobberID, currentReadSize) > 0) {
 		return // skip if read price is zero
 	}
 
@@ -84,9 +84,12 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks,
 			return common.NewErrorf("read_pre_redeem", "can't save requested read pools: %v", err)
 		}
 
-		readPoolsBalance, err = allocation.GetReadPoolsBalance(db, alloc.ID, payerID, until)
-		if err != nil {
-			return common.NewError("read_pre_redeem", "database error while reading read pools balance")
+		readPoolsBalance = 0
+		for _, rp := range rps {
+			if rp.ExpireAt < until {
+				continue
+			}
+			readPoolsBalance += rp.Balance
 		}
 	}
 
@@ -104,69 +107,63 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 	var (
 		db        = datastore.GetStore().GetTransaction(ctx)
 		blobberID = node.Self.ID
-		until     = common.Now() +
-			common.Timestamp(config.Configuration.WriteLockTimeout)
+		until     = common.Now() + common.Timestamp(config.Configuration.WriteLockTimeout)
 
-		want = alloc.WantWrite(blobberID, writeMarker.Size,
-			writeMarker.Timestamp)
+		requiredBalance = alloc.GetRequiredWriteBalance(blobberID, writeMarker.Size, writeMarker.Timestamp)
 
-		pend *allocation.Pending
-		wps  []*allocation.WritePool
+		wps []*allocation.WritePool
 	)
 
-	if writeMarker.Size <= 0 || want <= 0 {
-		return // skip if write price is zero or it's about deleting
+	if writeMarker.Size <= 0 || !(requiredBalance > 0) {
+		return
 	}
 
-	pend, err = allocation.GetPending(db, payerID,
-		alloc.ID, blobberID)
+	writePoolBalance, err := allocation.GetWritePoolsBalance(db, writeMarker.ClientID, alloc.ID, until)
 	if err != nil {
-		return common.NewErrorf("write_pre_redeem",
-			"can't get pending payments: %v", err)
+		Logger.Error(err.Error())
+		return common.NewError("write_pre_redeem", "database error while getting write pool balance")
 	}
 
-	wps, err = pend.WritePools(db, blobberID, until)
+	pendingWriteSize, err := allocation.GetPendingWrite(db, writeMarker.ClientID, alloc.ID)
 	if err != nil {
-		return common.NewErrorf("write_pre_redeem",
-			"can't get read pools from DB: %v", err)
+		Logger.Error(err.Error())
+		return common.NewError("write_pre_redeem", "database error while getting pending writes")
 	}
 
-	var have = pend.HaveWrite(wps, alloc, writeMarker.Timestamp)
-	if have < want {
-		wps, err = allocation.RequestWritePools(payerID,
-			alloc.ID)
+	requiredBalance = alloc.GetRequiredWriteBalance(blobberID, pendingWriteSize+writeMarker.Size, writeMarker.Timestamp)
+
+	if writePoolBalance < requiredBalance {
+		wps, err = allocation.RequestWritePools(payerID, alloc.ID)
 		if err != nil {
-			return common.NewErrorf("write_pre_redeem",
-				"can't request write pools from sharders: %v", err)
+			return common.NewErrorf("write_pre_redeem", "can't request write pools from sharders: %v", err)
 		}
-		err = allocation.SetWritePools(db, payerID,
-			alloc.ID, blobberID, wps)
+
+		err = allocation.SetWritePools(db, payerID, alloc.ID, blobberID, wps)
 		if err != nil {
-			return common.NewErrorf("write_pre_redeem",
-				"can't save requested write pools: %v", err)
+			return common.NewErrorf("write_pre_redeem", "can't save requested write pools: %v", err)
 		}
-		wps, err = pend.WritePools(db, blobberID, until)
-		if err != nil {
-			return common.NewErrorf("write_pre_redeem",
-				"can't get write pools from DB: %v", err)
+
+		writePoolBalance = 0
+		for _, wp := range wps {
+			if wp.ExpireAt < until {
+				continue
+			}
+			writePoolBalance += wp.Balance
 		}
-		have = pend.HaveWrite(wps, alloc, writeMarker.Timestamp)
 	}
 
-	if have < want {
+	if writePoolBalance < requiredBalance {
 		return common.NewErrorf("write_pre_redeem", "not enough "+
 			"tokens in write pools (client -> allocation ->  blobber)"+
-			"(%s -> %s -> %s), have %d, want %d", payerID,
-			alloc.ID, writeMarker.BlobberID, have, want)
+			"(%s -> %s -> %s), available balance %d, required balance %d", payerID,
+			alloc.ID, writeMarker.BlobberID, writePoolBalance, requiredBalance)
 	}
 
-	// update pending writes: add size to redeem to (not tokens)
-	pend.AddPendingWrite(writeMarker.Size)
-	if err = pend.Save(db); err != nil {
-		return common.NewErrorf("write_pre_redeem",
-			"can't save pending writes in DB: %v", err)
-	}
+	if err := allocation.AddToPending(db, writeMarker.ClientID, alloc.ID, writeMarker.Size, 0); err != nil {
+		Logger.Error(err.Error())
+		return common.NewErrorf("write_pre_redeem", "can't save pending writes in DB")
 
+	}
 	return
 }
 
@@ -238,7 +235,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	var rmObj = &readmarker.ReadMarkerEntity{}
-	rmObj.LatestRM = readMarker
+	rmObj.ReadMarker = readMarker
 
 	if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
 		return nil, common.NewErrorf("download_file", "invalid read marker, "+
@@ -323,39 +320,8 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		}
 	}
 
-	// create read marker
-	var (
-		rme           *readmarker.ReadMarkerEntity
-		latestRM      *readmarker.ReadMarker
-		pendNumBlocks int64
-	)
-
-	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, common.NewErrorf("download_file",
-			"couldn't get read marker from DB: %v", err)
-	}
-
-	if rme != nil {
-		latestRM = rme.LatestRM
-		if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
-			return nil, common.NewErrorf("download_file",
-				"couldn't get number of blocks pending redeeming: %v", err)
-		}
-	}
-
-	if latestRM != nil && latestRM.ReadCounter+(numBlocks) != readMarker.ReadCounter {
-		var response = &blobberhttp.DownloadResponse{
-			Success:      false,
-			LatestRM:     latestRM,
-			Path:         fileref.Path,
-			AllocationID: fileref.AllocationID,
-		}
-		return response, nil
-	}
-
 	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, alloc, numBlocks, pendNumBlocks, payerID)
+	err = readPreRedeem(ctx, alloc, numBlocks, payerID)
 	if err != nil {
 		return nil, common.NewErrorf("download_file",
 			"pre-redeeming read marker: %v", err)
@@ -396,7 +362,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	readMarker.PayerID = payerID
-	err = readmarker.SaveLatestReadMarker(ctx, readMarker, latestRM == nil)
+	err = readmarker.SaveReadMarker(ctx, readMarker)
 	if err != nil {
 		return nil, common.NewErrorf("download_file",
 			"couldn't save latest read marker: %v", err)

@@ -71,19 +71,16 @@ CREATE TABLE terms (
 
 -- clients' pending reads / writes
 CREATE TABLE pendings (
-    id             bigserial,
-    client_id      varchar(64) NOT NULL,
-    allocation_id  varchar(64) NOT NULL,
-    blobber_id     varchar(64) NOT NULL,
-    pending_write  bigint NOT NULL DEFAULT 0, -- number of pending bytes
-
+    id             VARCHAR(129) PRIMARY KEY, -- combination of client_id:allocation_id
+    pending_write  bigint NOT NULL DEFAULT 0, -- number of pending write bytes
+    pending_read bigint NOT NULL DEFAULT 0, -- number of pending read bytes
     PRIMARY KEY (id)
 );
 
 CREATE TABLE read_pools (
     pool_id        text NOT NULL, -- unique
     client_id      varchar(64) NOT NULL,
-    blobber_id     varchar(64) NOT NULL,
+    -- blobber_id     varchar(64) NOT NULL,
     allocation_id  varchar(64) NOT NULL,
     balance        bigint NOT NULL,
     expire_at      bigint NOT NULL,
@@ -94,7 +91,7 @@ CREATE TABLE read_pools (
 CREATE TABLE write_pools (
     pool_id        text NOT NULL, -- unique
     client_id      varchar(64) NOT NULL,
-    blobber_id     varchar(64) NOT NULL,
+    -- blobber_id     varchar(64) NOT NULL,
     allocation_id  varchar(64) NOT NULL,
     balance        bigint NOT NULL,
     expire_at      bigint NOT NULL,
@@ -160,17 +157,18 @@ CREATE TABLE write_markers (
 CREATE TRIGGER write_markers_modtime BEFORE UPDATE ON write_markers FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();
 
 CREATE TABLE read_markers (
-    client_id VARCHAR(64) NOT NULL PRIMARY KEY,
-    client_public_key VARCHAR(512) NOT NULL,
-    blobber_id VARCHAR(64) NOT NULL,
+    id INT PRIMARY KEY,
+    client_id VARCHAR(64) NOT NULL,
+    client_public_key VARCHAR(128) NOT NULL,
+    -- blobber_id VARCHAR(64) NOT NULL,
     allocation_id VARCHAR(64) NOT NULL,
     owner_id VARCHAR(64) NOT NULL,
     payer_id VARCHAR(64) NOT NULL,
     auth_ticket JSON,
     timestamp BIGINT NOT NULL,
-    counter BIGINT NOT NULL DEFAULT 0,
-    suspend BIGINT NOT NULL DEFAULT -1,
-    signature VARCHAR(256) NOT NULL,
+    read_blocks INT NOT NULL,
+    is_suspend Boolean,
+    signature VARCHAR(64) NOT NULL,
     latest_redeemed_rm JSON,
     redeem_required boolean,
     latest_redeem_txn_id VARCHAR(64),
