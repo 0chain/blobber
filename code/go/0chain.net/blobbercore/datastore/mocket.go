@@ -84,3 +84,7 @@ func (store *Mocket) GetTransaction(ctx context.Context) *gorm.DB {
 func (store *Mocket) GetDB() *gorm.DB {
 	return store.db
 }
+
+func (store *Mocket) AutoMigrate() error {
+	return nil
+}
