@@ -34,7 +34,7 @@ var mockFileBlock []byte
 
 func (MockFileBlockGetter) GetFileBlock(
 	fsStore *filestore.FileFSStore,
-	allocationID string,
+	allocationRoot, allocationID string,
 	fileData *filestore.FileInputData,
 	blockNum int64,
 	numBlocks int64) ([]byte, error) {

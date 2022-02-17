@@ -45,7 +45,7 @@ type MockFileBlockGetter struct {
 
 var mockFileBlock []byte
 
-func (MockFileBlockGetter) GetFileBlock(fsStore *filestore.FileFSStore, allocationID string, fileData *filestore.FileInputData, blockNum, numBlocks int64) ([]byte, error) {
+func (MockFileBlockGetter) GetFileBlock(fsStore *filestore.FileFSStore, allocationRoot, allocationID string, fileData *filestore.FileInputData, blockNum, numBlocks int64) ([]byte, error) {
 	return mockFileBlock, nil
 }
 
