@@ -24,6 +24,7 @@ type Store interface {
 
 	Open() error
 	Close()
+	AutoMigrate() error
 }
 
 var instance Store
