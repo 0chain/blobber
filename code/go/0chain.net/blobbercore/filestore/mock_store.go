@@ -1,7 +1,7 @@
 package filestore
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -19,7 +19,6 @@ var mockStore *MockStore
 func UseMock() {
 	if mockStore == nil {
 		mockStore = &MockStore{}
-
 	}
 
 	fileStore = mockStore
@@ -31,11 +30,10 @@ func (ms *MockStore) WriteFile(allocationRoot, allocationID string, fileData *Fi
 
 	fileRef.ChunkUploaded = true
 
-	h := sha1.New()
+	h := sha256.New()
 	reader := io.TeeReader(infile, h)
 	fileSize := int64(0)
 	for {
-
 		written, err := io.CopyN(io.Discard, reader, fileData.ChunkSize)
 
 		fileSize += written
@@ -64,7 +62,7 @@ func (ms *MockStore) DeleteDir(allocationRoot, allocationID, dirPath, connection
 	return nil
 }
 
-func (ms *MockStore) GetFileBlock(allocationRoot, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
+func (ms *MockStore) GetFileBlock(allocationRoot, allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
 	return nil, constants.ErrNotImplemented
 }
 
@@ -75,7 +73,7 @@ func (ms *MockStore) CommitWrite(allocationRoot, allocationID string, fileData *
 func (ms *MockStore) GetFileBlockForChallenge(allocationRoot, allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
 	return nil, nil, constants.ErrNotImplemented
 }
-func (ms *MockStore) DeleteFile(allocationRoot, allocationID string, contentHash string) error {
+func (ms *MockStore) DeleteFile(allocationRoot, allocationID, contentHash string) error {
 	return nil
 }
 func (ms *MockStore) GetTotalDiskSizeUsed() (int64, error) {

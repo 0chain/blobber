@@ -1,3 +1,4 @@
+//go:build !integration_tests
 // +build !integration_tests
 
 package main
@@ -18,7 +19,6 @@ import (
 )
 
 func startGRPCServer() {
-
 	common.ConfigRateLimits()
 	r := mux.NewRouter()
 	initHandlers(r)
@@ -39,7 +39,7 @@ func startGRPCServer() {
 		panic(err)
 	}
 
-	fmt.Println("[10/11] starting grpc server	[OK]")
+	fmt.Println("[11/12] starting grpc server	[OK]")
 	go func() {
 		log.Fatal(grpcServer.Serve(lis))
 	}()

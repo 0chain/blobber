@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"gorm.io/datatypes"
@@ -41,6 +42,11 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 
 	// it will create new dir if it is not available in db
 	destRef, err := reference.Mkdir(ctx, rf.AllocationID, rf.DestPath)
+	if err != nil || destRef.Type != reference.DIRECTORY {
+		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
+	}
+
+	destRef, err = reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
 	if err != nil || destRef.Type != reference.DIRECTORY {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 	}
@@ -85,15 +91,38 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 		return nil, common.NewError("file_not_found", "Destination Object to copy to not found in blobber")
 	}
 
-	foundRef := dirRef.Children[childIndex]
-	rf.processCopyRefs(ctx, affectedRef, foundRef, allocationRoot)
+	dirRef.RemoveChild(childIndex)
+	rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
+	dirRef.AddChild(destRef)
 
 	_, err = rootRef.CalculateHash(ctx, true)
+	if err != nil {
+		return nil, err
+	}
+
+	err = rf.updateWriteMarker(ctx, destRef, affectedRef)
 
 	return rootRef, err
 }
 
-func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef *reference.Ref, destRef *reference.Ref, allocationRoot string) {
+func (rf *CopyFileChange) updateWriteMarker(ctx context.Context, destRef, affectedRef *reference.Ref) error {
+	ref := destRef
+	if affectedRef != nil {
+		for _, r := range destRef.Children {
+			if affectedRef.Name == r.Name {
+				ref = r
+			}
+		}
+	}
+
+	if ref.Type == reference.FILE {
+		return stats.NewDirCreated(ctx, ref.ID)
+	}
+
+	return rf.updateWriteMarker(ctx, ref, nil)
+}
+
+func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, destRef *reference.Ref, allocationRoot string) {
 	if affectedRef.Type == reference.DIRECTORY {
 		newRef := reference.NewDirectoryRef()
 		newRef.AllocationID = rf.AllocationID

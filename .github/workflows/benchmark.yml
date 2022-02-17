@@ -1,4 +1,8 @@
-name: Benchmark tests
+name: Benchmark
+
+concurrency:
+  group: "benchmark-${{ github.ref }}"
+  cancel-in-progress: true
 
 on:
   push:
@@ -6,43 +10,15 @@ on:
 
 jobs:
   benchmark:
-    runs-on: [self-hosted, load-test]
+    runs-on: [self-hosted, conductor-test]
     steps:
-      - name: Setup go 1.16
+      - name: Setup go 1.17
         uses: actions/setup-go@v2
         with:
-          go-version: '1.16' # The Go version to download (if necessary) and use.
+          go-version: '1.17' # The Go version to download (if necessary) and use.
 
       - name: Clone blobber
         uses: actions/checkout@v2
 
-      - name: Set GITHUB_ENV
-        run: |
-            echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
-            echo "GOSDK=$(echo $(dirname $(pwd)))/gosdk" >> $GITHUB_ENV
-            echo "TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g' )" >> $GITHUB_ENV
-
-
-      # - name: Clone gosdk
-      #   run: |
-      #     [ -d $GOSDK ] && rm -rf $GOSDK
-      #     git clone https://github.com/0chain/gosdk.git $GOSDK
-      #     cd $GOSDK
-      #     git checkout $BRANCH
-
       - name: Run benchmark
         run: CGO_ENABLED=1 go test -tags bn256 -benchmem -run="BenchmarkUploadFile*" -bench="BenchmarkUploadFile*"   ./... | tee benchmark.txt
- 
-      # Run `github-action-benchmark` action
-      # - name: Push benchmark report
-      #   uses: cnlangzi/github-action-benchmark@v1
-      #   with:
-      #     name: 0chain/gosdk Benchmark
-      #     tool: 'go'
-      #     benchmark-data-dir-path: ${{ env.TAG }}/bench
-      #     output-file-path: benchmark.txt
-      #     # Personal access token to deploy GitHub Pages branch
-      #     github-token: ${{ secrets.GOSDK }}
-      #     #github-token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
-      #     # Push and deploy GitHub pages branch automatically
-      #     auto-push: true

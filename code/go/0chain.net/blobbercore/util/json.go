@@ -2,9 +2,10 @@ package util
 
 import (
 	"fmt"
-	"github.com/0chain/gosdk/zboxcore/fileref"
 	"reflect"
 	"strings"
+
+	"github.com/0chain/gosdk/zboxcore/fileref"
 )
 
 // Validate unmarshalled data with tag-based rules
@@ -27,12 +28,12 @@ func UnmarshalValidation(v interface{}) error {
 	return nil
 }
 
-func GetParentPathHashes(allocationTx string, filePath string) []string {
+func GetParentPathHashes(allocationTx, filePath string) []string {
 	splitted := strings.Split(filePath, "/")
 	pathHashes := []string{}
 
 	for i := 0; i < len(splitted); i++ {
-		path := strings.Join(splitted[:len(splitted) - i], "/")
+		path := strings.Join(splitted[:len(splitted)-i], "/")
 		if path == "" {
 			path = "/"
 		}

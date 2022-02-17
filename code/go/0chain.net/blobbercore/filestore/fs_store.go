@@ -3,7 +3,7 @@ package filestore
 import (
 	"bytes"
 	"context"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/errors"
 	"go.uber.org/zap"
 
@@ -52,13 +53,13 @@ type MinioConfiguration struct {
 var MinioConfig MinioConfiguration
 
 type IFileBlockGetter interface {
-	GetFileBlock(fsStore *FileFSStore, allocationRoot, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
+	GetFileBlock(fsStore *FileFSStore, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
 }
 
 type FileBlockGetter struct {
 }
 
-func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationRoot, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
+func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationRoot, allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
 	alloc, err := fs.SetupAllocation(allocationRoot, allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
@@ -101,8 +102,8 @@ func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationRoot, allocationI
 	if blockNum > maxBlockNum || blockNum < 1 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number")
 	}
-	buffer := make([]byte, int64(fileData.ChunkSize)*numBlocks)
-	n, err := file.ReadAt(buffer, ((blockNum - 1) * int64(fileData.ChunkSize)))
+	buffer := make([]byte, fileData.ChunkSize*numBlocks)
+	n, err := file.ReadAt(buffer, ((blockNum - 1) * fileData.ChunkSize))
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
@@ -246,17 +247,16 @@ func (fs *FileFSStore) GetlDiskSizeUsed(allocationRoot, allocationID string) (in
 	return size, err
 }
 
-func GetFilePathFromHash(hash string) (string, string) {
+func GetFilePathFromHash(h string) (string, string) {
 	var dir bytes.Buffer
-	fmt.Fprintf(&dir, "%s", hash[0:3])
+	fmt.Fprintf(&dir, "%s", h[0:3])
 	for i := 1; i < 3; i++ {
-		fmt.Fprintf(&dir, "%s%s", string(os.PathSeparator), hash[3*i:3*i+3])
+		fmt.Fprintf(&dir, "%s%s", string(os.PathSeparator), h[3*i:3*i+3])
 	}
-	return dir.String(), hash[9:]
+	return dir.String(), h[9:]
 }
 
 func (fs *FileFSStore) generateTransactionPath(allocationRoot, transID string) string {
-
 	var dir bytes.Buffer
 	fmt.Fprintf(&dir, "%s%s", allocationRoot, OSPathSeperator)
 	for i := 0; i < 3; i++ {
@@ -276,14 +276,14 @@ func (fs *FileFSStore) SetupAllocation(allocationRoot, allocationID string, skip
 		return allocation, nil
 	}
 
-	// create the allocation object dirs
+	//create the allocation object dirs
 	err := createDirs(allocation.ObjectsPath)
 	if err != nil {
 		Logger.Error("allocation_objects_dir_creation_error", zap.Any("allocation_objects_dir_creation_error", err))
 		return nil, err
 	}
 
-	// create the allocation tmp object dirs
+	//create the allocation tmp object dirs
 	err = createDirs(allocation.TempObjectsPath)
 	if err != nil {
 		Logger.Error("allocation_temp_objects_dir_creation_error", zap.Any("allocation_temp_objects_dir_creation_error", err))
@@ -346,16 +346,27 @@ func (fs *FileFSStore) GetFileBlockForChallenge(allocationRoot, allocationID str
 				return nil, nil, errors.ThrowLog(err2.Error(), constants.ErrUnableHash)
 			}
 
-			merkleChunkSize := int(fileData.ChunkSize / 1024)
+			merkleChunkSize := int(fileData.ChunkSize) / 1024
+
+			if merkleChunkSize == 0 {
+				merkleChunkSize = 1
+			}
+
+			offset := 0
+
 			for i := 0; i < len(dataBytes); i += merkleChunkSize {
 				end := i + merkleChunkSize
 				if end > len(dataBytes) {
 					end = len(dataBytes)
 				}
-				offset := i / merkleChunkSize
 
 				if offset == blockoffset {
 					returnBytes = append(returnBytes, dataBytes[i:end]...)
+				}
+
+				offset++
+				if offset >= 1024 {
+					offset = 1
 				}
 			}
 			bytesBuf.Reset()
@@ -369,10 +380,8 @@ func (fs *FileFSStore) GetFileBlockForChallenge(allocationRoot, allocationID str
 	return returnBytes, fmt.GetMerkleTree(), nil
 }
 
-func (fs *FileFSStore) GetFileBlock(allocationRoot, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
-
+func (fs *FileFSStore) GetFileBlock(allocationRoot, allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
 	return fs.fileBlockGetter.GetFileBlock(fs, allocationRoot, allocationID, fileData, blockNum, numBlocks)
-
 }
 
 func (fs *FileFSStore) DeleteTempFile(allocationRoot, allocationID string, fileData *FileInputData, connectionID string) error {
@@ -435,19 +444,19 @@ func (fs *FileFSStore) CommitWrite(allocationRoot, allocationID string, fileData
 		return false, common.NewError("blob_object_dir_creation_error", err.Error())
 	}
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
-	// if _, err := os.Stat(fileObjectPath); os.IsNotExist(err) {
+	//if _, err := os.Stat(fileObjectPath); os.IsNotExist(err) {
 	err = os.Rename(tempFilePath, fileObjectPath)
 
 	if err != nil {
 		return false, common.NewError("blob_object_creation_error", err.Error())
 	}
 	return true, nil
-	// }
+	//}
 
-	// return false, err
+	//return false, err
 }
 
-func (fs *FileFSStore) DeleteFile(allocationRoot, allocationID string, contentHash string) error {
+func (fs *FileFSStore) DeleteFile(allocationRoot, allocationID, contentHash string) error {
 	alloc, err := fs.SetupAllocation(allocationRoot, allocationID, true)
 	if err != nil {
 		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
@@ -470,27 +479,11 @@ func (fs *FileFSStore) DeleteFile(allocationRoot, allocationID string, contentHa
 	return os.Remove(fileObjectPath)
 }
 
-func (fs *FileFSStore) CreateDir(allocationRoot, allocationID, dirName string) error {
-	alloc, err := fs.SetupAllocation(allocationRoot, allocationID, false)
-	if err != nil {
-		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
-	}
-	ok, root := disk_balancer.GetDiskSelector().IsMoves(allocationRoot, allocationID, true)
-	if ok {
-		dirPath := filepath.Join(root, dirName)
-		return createDirs(dirPath)
-	}
-
-	dirPath := filepath.Join(alloc.Path, dirName)
-	return createDirs(dirPath)
-}
-
 func (fs *FileFSStore) DeleteDir(allocationRoot, allocationID, dirPath, connectionID string) error {
 	return nil
 }
 
-func (fs *FileFSStore) WriteFile(allocationRoot, allocationID string, fileData *FileInputData,
-	infile multipart.File, connectionID string) (*FileOutputData, error) {
+func (fs *FileFSStore) WriteFile(allocationRoot, allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
 	if fileData.IsChunked {
 		return fs.WriteChunk(allocationRoot, allocationID, fileData, infile, connectionID)
 	}
@@ -512,7 +505,7 @@ func (fs *FileFSStore) WriteFile(allocationRoot, allocationID string, fileData *
 
 	fileRef := &FileOutputData{}
 
-	h := sha1.New()
+	h := sha256.New()
 	bytesBuffer := bytes.NewBuffer(nil)
 	multiHashWriter := io.MultiWriter(h, bytesBuffer)
 	tReader := io.TeeReader(infile, multiHashWriter)
@@ -523,7 +516,6 @@ func (fs *FileFSStore) WriteFile(allocationRoot, allocationID string, fileData *
 	}
 	fileSize := int64(0)
 	for {
-
 		written, err := io.CopyN(dest, tReader, CHUNK_SIZE)
 
 		if err != io.EOF && err != nil {
@@ -581,12 +573,12 @@ func (fs *FileFSStore) WriteChunk(allocationRoot, allocationID string, fileData 
 
 	fileRef := &FileOutputData{}
 
-	// the chunk has been rewitten. but it is lost when network is broken, and it is not save in db
+	// the chunk has been rewritten. but it is lost when network is broken, and it is not save in db
 	if dest.size > fileData.UploadOffset {
 		fileRef.ChunkUploaded = true
 	}
 
-	h := sha1.New()
+	h := sha256.New()
 	size, err := dest.WriteChunk(context.TODO(), fileData.UploadOffset, io.TeeReader(infile, h))
 
 	if err != nil {
@@ -618,7 +610,7 @@ func (fs *FileFSStore) IterateObjects(allocationRoot, allocationID string, handl
 				return nil
 			}
 			defer f.Close()
-			h := sha1.New()
+			h := sha256.New()
 			if _, err := io.Copy(h, f); err != nil {
 				return nil
 			}

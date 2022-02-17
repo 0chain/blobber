@@ -232,7 +232,6 @@ func (bs *BlobberStats) loadFailedChallengeList(ctx context.Context) {
 }
 
 func (bs *BlobberStats) loadStats(ctx context.Context) {
-
 	const sel = `
 	COALESCE (SUM (reference_objects.size), 0) AS files_size,
 	COALESCE (SUM (reference_objects.thumbnail_size), 0) AS thumbnails_size,
@@ -269,7 +268,6 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 }
 
 func (bs *BlobberStats) loadMinioStats(ctx context.Context) {
-
 	var (
 		db  = datastore.GetStore().GetTransaction(ctx)
 		row *sql.Row
@@ -379,7 +377,6 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 }
 
 func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
-
 	var (
 		db   = datastore.GetStore().GetTransaction(ctx)
 		rows *sql.Rows
@@ -432,7 +429,6 @@ func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
 			zap.Error(err))
 		return
 	}
-
 }
 
 func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
@@ -502,11 +498,9 @@ func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
 			zap.Error(err))
 		return
 	}
-
 }
 
 func loadAllocationList(ctx context.Context) (interface{}, error) {
-
 	var (
 		allocations = make([]AllocationId, 0)
 		db          = datastore.GetStore().GetTransaction(ctx)
@@ -553,9 +547,7 @@ type ReadMarkerEntity struct {
 	RedeemRequired       bool           `gorm:"column:redeem_required"`
 }
 
-func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (
-	rms *ReadMarkersStat, err error) {
-
+func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (rms *ReadMarkersStat, err error) {
 	var (
 		db  = datastore.GetStore().GetTransaction(ctx)
 		rme ReadMarkerEntity
@@ -604,9 +596,7 @@ const (
 	Failed                             // 2
 )
 
-func loadAllocWriteMarkerStat(ctx context.Context, allocationID string) (
-	wms *WriteMarkersStat, err error) {
-
+func loadAllocWriteMarkerStat(ctx context.Context, allocationID string) (wms *WriteMarkersStat, err error) {
 	var (
 		db   = datastore.GetStore().GetTransaction(ctx)
 		rows *sql.Rows

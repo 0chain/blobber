@@ -69,8 +69,8 @@ func cleanupTempFiles(ctx context.Context) {
 
 	var openConnectionsToDelete []allocation.AllocationChangeCollector
 	db.Table((&allocation.AllocationChangeCollector{}).TableName()).Where("updated_at < ? AND status IN (?,?)", then, allocation.NewConnection, allocation.InProgressConnection).Preload("Changes").Find(&openConnectionsToDelete)
-	for _, connection := range openConnectionsToDelete {
 
+	for _, connection := range openConnectionsToDelete {
 		Logger.Info("Deleting temp files for the connection", zap.Any("connection", connection.ConnectionID))
 		connection.ComputeProperties()
 		nctx := datastore.GetStore().CreateTransaction(ctx)
@@ -106,7 +106,7 @@ func startCleanupTempFiles(ctx context.Context) {
 	}
 }
 
-func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize int64, limit int64) {
+func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize, limit int64) {
 	defer func() {
 		if r := recover(); r != nil {
 			Logger.Error("[recover] moveColdDataToCloud", zap.Any("err", r))
@@ -164,7 +164,7 @@ func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize int64, limi
 					moveFileToCloud(ctx, fileRef)
 				}
 			}
-			offset = offset + limit
+			offset += limit
 		}
 		db.Commit()
 		rctx.Done()
@@ -182,7 +182,6 @@ func startMoveColdDataToCloud(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if !iterInprogress {
-
 				moveColdDataToCloud(ctx, coldStorageMinFileSize, limit)
 				iterInprogress = false
 				stats.LastMinioScan = time.Now()

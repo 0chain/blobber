@@ -16,7 +16,6 @@ func redeemReadMarker(ctx context.Context) {
 		if r := recover(); r != nil {
 			logging.Logger.Error("[recover] redeemReadMarker", zap.Any("err", r))
 		}
-
 	}()
 
 	if !iterInprogress {
@@ -42,7 +41,7 @@ func redeemReadMarker(ctx context.Context) {
 					db := datastore.GetStore().GetTransaction(redeemCtx)
 					err = db.Commit().Error
 					if err != nil {
-						logging.Logger.Error("Error commiting the readmarker redeem", zap.Error(err))
+						logging.Logger.Error("Error committing the readmarker redeem", zap.Error(err))
 					}
 					swg.Done()
 				}(ctx, rmEntity)

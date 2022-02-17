@@ -70,7 +70,7 @@ func (change *AllocationChange) Save(ctx context.Context) error {
 // GetAllocationChanges reload connection's changes in allocation from postgres.
 //	1. update connection's status with NewConnection if connection_id is not found in postgres
 //  2. mark as NewConnection if connection_id is marked as DeleteConnection
-func GetAllocationChanges(ctx context.Context, connectionID string, allocationID string, clientID string) (*AllocationChangeCollector, error) {
+func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clientID string) (*AllocationChangeCollector, error) {
 	cc := &AllocationChangeCollector{}
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Where("connection_id = ? and allocation_id = ? and client_id = ? and status <> ?",
@@ -103,7 +103,6 @@ func (cc *AllocationChangeCollector) AddChange(allocationChange *AllocationChang
 }
 
 func (cc *AllocationChangeCollector) Save(ctx context.Context) error {
-
 	db := datastore.GetStore().GetTransaction(ctx)
 	if cc.Status == NewConnection {
 		cc.Status = InProgressConnection
@@ -120,7 +119,7 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 		var acp AllocationChangeProcessor
 		switch change.Operation {
 		case constants.FileOperationInsert:
-			acp = new(NewFileChange)
+			acp = new(AddFileChanger)
 		case constants.FileOperationUpdate:
 			acp = new(UpdateFileChanger)
 		case constants.FileOperationDelete:
@@ -131,7 +130,6 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 			acp = new(CopyFileChange)
 		case constants.FileOperationUpdateAttrs:
 			acp = new(AttributesChange)
-
 		}
 
 		if acp == nil {

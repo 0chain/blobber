@@ -38,7 +38,7 @@ func (MockFileBlockGetter) GetFileBlock(
 	fileData *filestore.FileInputData,
 	blockNum int64,
 	numBlocks int64) ([]byte, error) {
-	return []byte(mockFileBlock), nil
+	return mockFileBlock, nil
 }
 
 func resetMockFileBlock() {
@@ -58,7 +58,7 @@ func setupEncryptionScheme() {
 
 func setup(t *testing.T) {
 	// setup wallet
-	w, err := zcncrypto.NewBLS0ChainScheme().GenerateKeys()
+	w, err := zcncrypto.NewSignatureScheme("bls0chain").GenerateKeys()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,9 +115,9 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 	setup(t)
 	setupEncryptionScheme()
 
-	sch := zcncrypto.NewBLS0ChainScheme()
-	sch.Mnemonic = "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
-	_, err := sch.GenerateKeys()
+	sch := zcncrypto.NewSignatureScheme("bls0chain")
+	mnemonic := "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
+	_, err := sch.RecoverKeys(mnemonic)
 	if err != nil {
 		t.Fatal(err)
 	}

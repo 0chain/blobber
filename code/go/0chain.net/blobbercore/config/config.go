@@ -171,7 +171,6 @@ func Geolocation() GeolocationConfig {
 	if g.Latitude > 90.00 || g.Latitude < -90.00 ||
 		g.Longitude > 180.00 || g.Longitude < -180.00 {
 		panic("Fatal error in config file")
-
 	}
 	return g
 }

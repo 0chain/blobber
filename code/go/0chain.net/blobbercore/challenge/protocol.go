@@ -28,7 +28,6 @@ type ChallengeResponse struct {
 }
 
 func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transaction.Transaction, error) {
-
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		return nil, err
@@ -100,7 +99,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	if rootRef.NumBlocks > 0 {
 		r := rand.New(rand.NewSource(cr.RandomNumber))
 		blockNum = r.Int63n(rootRef.NumBlocks)
-		blockNum = blockNum + 1
+		blockNum++
 		cr.BlockNum = blockNum
 	} else {
 		err = common.NewError("allocation_is_blank", "Got a challenge for a blank allocation")
@@ -150,10 +149,15 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		inputData.ChunkSize = objectPath.ChunkSize
 
 		maxNumBlocks := 1024
+		merkleChunkSize := objectPath.ChunkSize / 1024
+		// chunksize is less than 1024
+		if merkleChunkSize == 0 {
+			merkleChunkSize = 1
+		}
 
 		// the file is too small, some of 1024 blocks is not filled
 		if objectPath.Size < objectPath.ChunkSize {
-			merkleChunkSize := objectPath.ChunkSize / 1024
+
 			maxNumBlocks = int(math.Ceil(float64(objectPath.Size) / float64(merkleChunkSize)))
 		}
 
@@ -254,7 +258,6 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 }
 
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
-
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
 			Logger.Info("[challenge]commit: Verifying the transaction : " + lastTxn)

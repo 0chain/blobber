@@ -5,16 +5,15 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/zboxcore/fileref"
-	"go.uber.org/zap"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/constants"
+	"github.com/0chain/gosdk/zboxcore/fileref"
+	"go.uber.org/zap"
 )
 
 // AddFileCommand command for resuming file
@@ -43,8 +42,8 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 		return common.NewError("duplicate_file", "File at path already exists")
 	}
 
-	// create a FixedMerkleTree instance first, it will be reloaded from db in cmd.reloadChange if it is not first chunk
-	// cmd.fileChanger.FixedMerkleTree = &util.FixedMerkleTree{}
+	//create a FixedMerkleTree instance first, it will be reloaded from db in cmd.reloadChange if it is not first chunk
+	//cmd.fileChanger.FixedMerkleTree = &util.FixedMerkleTree{}
 
 	if fileChanger.ChunkSize <= 0 {
 		fileChanger.ChunkSize = fileref.CHUNK_SIZE
@@ -53,7 +52,6 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 	cmd.fileChanger = fileChanger
 
 	return nil
-
 }
 
 // ProcessContent flush file to FileStorage
@@ -86,7 +84,7 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 
 	result.Filename = cmd.fileChanger.Filename
 	result.Hash = fileOutputData.ContentHash
-	// result.MerkleRoot = fileOutputData.MerkleRoot
+	//result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := connectionObj.Size
@@ -106,7 +104,7 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 
 	// Save client's ContentHash in database instead blobber's
 	// it saves time to read and compute hash of fragment from disk again
-	// cmd.fileChanger.Hash = fileOutputData.ContentHash
+	//cmd.fileChanger.Hash = fileOutputData.ContentHash
 
 	cmd.fileChanger.AllocationID = allocationObj.ID
 	cmd.fileChanger.Size = allocationSize
@@ -123,11 +121,9 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 
 // ProcessThumbnail flush thumbnail file to FileStorage if it has.
 func (cmd *AddFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
-
 	thumbfile, thumbHeader, _ := req.FormFile("uploadThumbnailFile")
 
 	if thumbHeader != nil {
-
 		defer thumbfile.Close()
 
 		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
@@ -149,39 +145,45 @@ func (cmd *AddFileCommand) ProcessThumbnail(ctx context.Context, req *http.Reque
 
 func (cmd *AddFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
-		if c.Operation == constants.FileOperationInsert {
-
-			dbChangeProcessor := &allocation.AddFileChanger{}
-
-			err := dbChangeProcessor.Unmarshal(c.Input)
-			if err != nil {
-				logging.Logger.Error("reloadChange", zap.Error(err))
-			}
-
-			cmd.fileChanger.Size = dbChangeProcessor.Size
-			return
+		if c.Operation != constants.FileOperationInsert {
+			continue
 		}
+
+		dbChangeProcessor := &allocation.AddFileChanger{}
+
+		err := dbChangeProcessor.Unmarshal(c.Input)
+		if err != nil {
+			logging.Logger.Error("reloadChange", zap.Error(err))
+		}
+
+		cmd.fileChanger.Size = dbChangeProcessor.Size
+		cmd.fileChanger.ThumbnailFilename = dbChangeProcessor.ThumbnailFilename
+		cmd.fileChanger.ThumbnailSize = dbChangeProcessor.ThumbnailSize
+		cmd.fileChanger.ThumbnailHash = dbChangeProcessor.Hash
+
+		return
 	}
 }
 
 // UpdateChange replace AddFileChange in db
 func (cmd *AddFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	for _, c := range connectionObj.Changes {
-		if c.Operation == constants.FileOperationInsert {
-			c.Size = connectionObj.Size
-			c.Input, _ = cmd.fileChanger.Marshal()
-
-			// c.ModelWithTS.UpdatedAt = time.Now()
-			err := connectionObj.Save(ctx)
-			if err != nil {
-				return err
-			}
-
-			return c.Save(ctx)
+		if c.Operation != constants.FileOperationInsert {
+			continue
 		}
+		c.Size = connectionObj.Size
+		c.Input, _ = cmd.fileChanger.Marshal()
+
+		//c.ModelWithTS.UpdatedAt = time.Now()
+		err := connectionObj.Save(ctx)
+		if err != nil {
+			return err
+		}
+
+		return c.Save(ctx)
 	}
 
-	// NOT FOUND
+	//NOT FOUND
 	connectionObj.AddChange(cmd.allocationChange, cmd.fileChanger)
 
 	return connectionObj.Save(ctx)

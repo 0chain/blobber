@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"gorm.io/gorm"
@@ -47,7 +48,7 @@ func makeTestClient() (blobbergrpc.BlobberServiceClient, *grpc.ClientConn, error
 			return lis.Dial()
 		}
 	)
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -122,7 +123,6 @@ func Test_GetAllocation(t *testing.T) {
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
@@ -134,7 +134,7 @@ func Test_GetAllocation(t *testing.T) {
 			wantAlloc:    convert.AllocationToGRPCAllocation(alloc),
 		},
 		{
-			name: "Commiting_Transaction_ERR",
+			name: "Committing_Transaction_ERR",
 			mockSetup: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
@@ -153,7 +153,6 @@ func Test_GetAllocation(t *testing.T) {
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
@@ -184,7 +183,6 @@ func Test_GetAllocation(t *testing.T) {
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(expiredAlloc.Terms[0].ID, expiredAlloc.Terms[0].AllocationID),
 					)
-
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{

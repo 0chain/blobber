@@ -33,7 +33,6 @@ type Mocket struct {
 }
 
 func (store *Mocket) Open() error {
-
 	mocket.Catcher.Reset()
 	mocket.Catcher.Register()
 	mocket.Catcher.Logging = store.logging
@@ -62,7 +61,6 @@ func (store *Mocket) Open() error {
 
 func (store *Mocket) Close() {
 	if store.db != nil {
-
 		if db, _ := store.db.DB(); db != nil {
 			db.Close()
 		}
@@ -85,4 +83,8 @@ func (store *Mocket) GetTransaction(ctx context.Context) *gorm.DB {
 
 func (store *Mocket) GetDB() *gorm.DB {
 	return store.db
+}
+
+func (store *Mocket) AutoMigrate() error {
+	return nil
 }

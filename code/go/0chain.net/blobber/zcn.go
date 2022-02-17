@@ -18,7 +18,7 @@ import (
 func setupOnChain() {
 	// wait http & grpc startup, and go to setup on chain
 	time.Sleep(1 * time.Second)
-	fmt.Println("[9/11] connecting to chain	")
+	fmt.Println("[10/12] connecting to chain	")
 
 	const ATTEMPT_DELAY = 60 * 1
 
@@ -46,13 +46,11 @@ func setupOnChain() {
 			fmt.Print("	[SKIP]\n")
 			break
 		} else {
-
 			if err := registerBlobberOnChain(); err != nil {
 				if i == 10 { // no more attempts
 					panic(err)
 				}
 				fmt.Print("\n		", err.Error()+"\n")
-
 			} else {
 				fmt.Print("	[OK]\n")
 				break
@@ -63,7 +61,6 @@ func setupOnChain() {
 				fmt.Printf("\r	- wait %v seconds to retry", ATTEMPT_DELAY-n)
 			}
 		}
-
 	}
 	if !isIntegrationTest {
 		go setupWorkers()

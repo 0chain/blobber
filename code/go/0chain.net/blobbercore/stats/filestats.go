@@ -2,6 +2,7 @@ package stats
 
 import (
 	"context"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"gorm.io/gorm"
 )
@@ -16,20 +17,18 @@ type FileStats struct {
 	LastChallengeResponseTxn string `gorm:"column:last_challenge_txn" json:"last_challenge_txn"`
 	WriteMarkerRedeemTxn     string `gorm:"-" json:"write_marker_txn"`
 	datastore.ModelWithTS
-
-	//NumBlockWrites           int64  `gorm:"column:num_of_block_writes" json:"num_of_block_writes"`
 }
 
 func (FileStats) TableName() string {
 	return "file_stats"
 }
 
-func NewDirCreated(ctx context.Context, refID int64) {
+func NewDirCreated(ctx context.Context, refID int64) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
 	stats.NumBlockDownloads = 0
 	stats.NumUpdates = 1
-	db.Save(stats)
+	return db.Save(stats).Error
 }
 
 func NewFileCreated(ctx context.Context, refID int64) {

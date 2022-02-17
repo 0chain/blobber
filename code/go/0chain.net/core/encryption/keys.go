@@ -15,7 +15,7 @@ import (
 
 /*ReadKeys - reads a publicKey and a privateKey from a Reader.
 They are assumed to be in two separate lines one followed by the other*/
-func ReadKeys(reader io.Reader) (publicKey string, privateKey string, publicIp string, port string) {
+func ReadKeys(reader io.Reader) (publicKey, privateKey, publicIp, port string) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Scan()
 	publicKey = scanner.Text()
@@ -29,8 +29,8 @@ func ReadKeys(reader io.Reader) (publicKey string, privateKey string, publicIp s
 	return publicKey, privateKey, publicIp, port
 }
 
-//Verify - given a public key and a signature and the hash used to create the signature, verify the signature
-func Verify(publicKey string, signature string, hash string) (bool, error) {
+// Verify - given a public key and a signature and the hash used to create the signature, verify the signature
+func Verify(publicKey, signature, hash string) (bool, error) {
 	publicKey = MiraclToHerumiPK(publicKey)
 	signature = MiraclToHerumiSig(signature)
 	signScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)

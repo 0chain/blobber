@@ -31,7 +31,6 @@ type Sqlmock struct {
 }
 
 func (store *Sqlmock) Open() error {
-
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		return err
@@ -57,7 +56,6 @@ func (store *Sqlmock) Open() error {
 
 func (store *Sqlmock) Close() {
 	if store.db != nil {
-
 		if db, _ := store.db.DB(); db != nil {
 			db.Close()
 		}
@@ -80,4 +78,8 @@ func (store *Sqlmock) GetTransaction(ctx context.Context) *gorm.DB {
 
 func (store *Sqlmock) GetDB() *gorm.DB {
 	return store.db
+}
+
+func (store *Sqlmock) AutoMigrate() error {
+	return nil
 }

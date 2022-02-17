@@ -96,7 +96,7 @@ func main() {
 		return
 	}
 
-	node.Self.SetHostURL(*hostname, port)
+	node.Self.SetHostURL("http", *hostname, port)
 	Logger.Info(" Base URL" + node.Self.GetURLBase())
 
 	config.SetServerChainID(config.Configuration.ChainID)
@@ -162,7 +162,6 @@ func main() {
 }
 
 func RegisterValidator() {
-
 	registrationRetries := 0
 	//ctx := badgerdbstore.GetStorageProvider().WithConnection(common.GetRootContext())
 	for registrationRetries < 10 {

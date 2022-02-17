@@ -11,7 +11,7 @@ import (
 var fsStore filestore.FileStore //nolint:unused // global which might be needed somewhere
 
 func setupFileStore() (err error) {
-	fmt.Print("[8/11] setup file store")
+	fmt.Print("[9/12] setup file store")
 
 	disk_balancer.StartDiskSelectorWorker(common.GetRootContext())
 	root, err := disk_balancer.GetDiskSelector().GetNextDiskPath()

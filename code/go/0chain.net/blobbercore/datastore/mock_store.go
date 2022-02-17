@@ -26,7 +26,6 @@ func MocketTheStore(t *testing.T, logging bool) {
 
 	gdb, err := gorm.Open(dialect, new(gorm.Config))
 	require.NoError(t, err)
-	//setDB(gdb)
 
 	instance = &postgresStore{
 		db: gdb,

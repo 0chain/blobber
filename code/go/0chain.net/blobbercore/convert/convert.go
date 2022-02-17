@@ -441,7 +441,7 @@ func WriteFileGRPCToHTTP(req *blobbergrpc.UploadFileRequest) (*http.Request, err
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 	}
 
-	r, err := http.NewRequest(req.Method, "", nil)
+	r, err := http.NewRequest(req.Method, "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -477,7 +477,6 @@ func WriteFileGRPCToHTTP(req *blobbergrpc.UploadFileRequest) (*http.Request, err
 			return nil, err
 		}
 		r.Header.Set("Content-Type", writer.FormDataContentType())
-
 	}
 
 	return r, nil

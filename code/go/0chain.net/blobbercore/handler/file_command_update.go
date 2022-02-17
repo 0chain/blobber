@@ -5,17 +5,16 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/0chain/gosdk/constants"
-	sdkConstants "github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/zboxcore/fileref"
-	"go.uber.org/zap"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/constants"
+	sdkConstants "github.com/0chain/gosdk/constants"
+	"github.com/0chain/gosdk/zboxcore/fileref"
+	"go.uber.org/zap"
 )
 
 // UpdateFileCommand command for updating file
@@ -61,7 +60,6 @@ func (cmd *UpdateFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 
 // ProcessContent flush file to FileStorage
 func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
-
 	result := blobberhttp.UploadResult{}
 
 	result.Filename = cmd.fileChanger.Filename
@@ -90,7 +88,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 
 	result.Hash = fileOutputData.ContentHash
-	// result.MerkleRoot = fileOutputData.MerkleRoot
+	//result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := connectionObj.Size
@@ -127,16 +125,13 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 
 	return result, nil
-
 }
 
 // ProcessThumbnail flush thumbnail file to FileStorage if it has.
 func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
-
 	thumbfile, thumbHeader, _ := req.FormFile("uploadThumbnailFile")
 
 	if thumbHeader != nil {
-
 		defer thumbfile.Close()
 
 		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
@@ -153,45 +148,50 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 	}
 
 	return nil
-
 }
 
 func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
-		if c.Operation == constants.FileOperationUpdate {
-
-			dbFileChanger := &allocation.AddFileChanger{}
-
-			err := dbFileChanger.Unmarshal(c.Input)
-			if err != nil {
-				logging.Logger.Error("reloadChange", zap.Error(err))
-			}
-
-			// reload uploaded size from db, it was chunk size from client
-			cmd.fileChanger.Size = dbFileChanger.Size
-			return
+		if c.Operation != constants.FileOperationUpdate {
+			continue
 		}
+
+		dbFileChanger := &allocation.UpdateFileChanger{}
+
+		err := dbFileChanger.Unmarshal(c.Input)
+		if err != nil {
+			logging.Logger.Error("reloadChange", zap.Error(err))
+		}
+
+		// reload uploaded size from db, it was chunk size from client
+		cmd.fileChanger.Size = dbFileChanger.Size
+		cmd.fileChanger.ThumbnailFilename = dbFileChanger.ThumbnailFilename
+		cmd.fileChanger.ThumbnailSize = dbFileChanger.ThumbnailSize
+		cmd.fileChanger.ThumbnailHash = dbFileChanger.Hash
+		return
 	}
 }
 
 // UpdateChange add UpdateFileChanger in db
 func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	for _, c := range connectionObj.Changes {
-		if c.Operation == constants.FileOperationUpdate {
-			c.Size = connectionObj.Size
-			c.Input, _ = cmd.fileChanger.Marshal()
-
-			// c.ModelWithTS.UpdatedAt = time.Now()
-			err := connectionObj.Save(ctx)
-			if err != nil {
-				return err
-			}
-
-			return c.Save(ctx)
+		if c.Operation != constants.FileOperationUpdate {
+			continue
 		}
+
+		c.Size = connectionObj.Size
+		c.Input, _ = cmd.fileChanger.Marshal()
+
+		//c.ModelWithTS.UpdatedAt = time.Now()
+		err := connectionObj.Save(ctx)
+		if err != nil {
+			return err
+		}
+
+		return c.Save(ctx)
 	}
 
-	// NOT FOUND
+	//NOT FOUND
 	connectionObj.AddChange(cmd.allocationChange, cmd.fileChanger)
 
 	return connectionObj.Save(ctx)
