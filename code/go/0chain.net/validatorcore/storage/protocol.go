@@ -69,7 +69,7 @@ func GetProtocolImpl() *ValidatorProtocolImpl {
 // }
 
 func (sp *ValidatorProtocolImpl) VerifyAllocationTransaction(ctx context.Context, allocationID string) (*Allocation, error) {
-	t, err := transaction.VerifyTransaction(allocationID, sp.ServerChain)
+	t, err := transaction.VerifyATransactionWithFee(allocationID, sp.ServerChain, config.Configuration.MinTxnFee)
 	if err != nil {
 		return nil, common.NewError("invalid_allocation", "Invalid Allocation id. Allocation not found in blockchain. "+err.Error())
 	}
