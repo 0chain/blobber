@@ -1,5 +1,7 @@
 FROM blobber_base as blobber_build
 
+RUN mkdir -p /mnt/Blobber_P1
+
 RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep
 
 ENV SRC_DIR=/blobber
