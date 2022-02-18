@@ -16,9 +16,9 @@ import (
 )
 
 func Test_SelectDisk(t *testing.T) {
-	// This test requires 2 disks of approximately the same size.
+	// This test requires 2 disks of approximately the same size ( 4 GB & 3 GB).
 	// Disk paths must be specified in blobberPart_1 and blobberPart_2.
-
+	t.Skip()
 	setConfig()
 	common.SetupRootContext(node.GetNodeContext())
 	StartDiskSelectorWorker(common.GetRootContext())
@@ -85,7 +85,7 @@ func Test_SelectDisk(t *testing.T) {
 func Test_MoveAllocation(t *testing.T) {
 	// This test requires 2 disks of approximately the same size.
 	// Disk paths must be specified in blobberPart_1 and blobberPart_2.
-
+	t.Skip()
 	setConfig()
 	common.SetupRootContext(node.GetNodeContext())
 	StartDiskSelectorWorker(common.GetRootContext())
@@ -120,13 +120,13 @@ func Test_MoveAllocation(t *testing.T) {
 }
 
 func Test_GetAvailableDisk(t *testing.T) {
-	// This test requires 2 disks of different sizes. (10 GB and 15 GB, for example)
+	// This test requires 2 disks of different sizes. (4 GB and 6, for example)
 	// Disk paths must be specified in blobberPart_1 and blobberPart_2.
 	// The size field must be specified like this:
-	// For "SELECT CURRENT ROOT": size <blobberPart_1
-	// For "SELECT NOT CURRENT ROOT": size <blobberPart_2 && size> blobberPart_1
-	// For "NOT ENOUGH DISK SPASE": size> blobberPart_2
-
+	// For "DON'T CHANGE CURRENT ROOT": size <blobberPart_1
+	// For "MOVE TO ANOTHER ROOT": size <blobberPart_2 && size> blobberPart_1
+	// For "NOT ENOUGH DISK SPACE": size> blobberPart_2
+	t.Skip()
 	setConfig()
 	common.SetupRootContext(node.GetNodeContext())
 	StartDiskSelectorWorker(common.GetRootContext())
@@ -144,21 +144,21 @@ func Test_GetAvailableDisk(t *testing.T) {
 		{
 			name:      "DON'T CHANGE CURRENT ROOT",
 			path:      blobberPart_1,
-			size:      20 * 1024 * 1024 * 1024,
+			size:      3 * 1024 * 1024 * 1024,
 			wantPath:  blobberPart_1,
 			wantError: false,
 		},
 		{
 			name:      "MOVE TO ANOTHER ROOT",
 			path:      blobberPart_1,
-			size:      55 * 1024 * 1024 * 1024,
+			size:      5 * 1024 * 1024 * 1024,
 			wantPath:  blobberPart_2,
 			wantError: false,
 		},
 		{
-			name:      "ERR NOT ENOUGH DISK SPASE",
+			name:      "ERR NOT ENOUGH DISK SPACE",
 			path:      blobberPart_1,
-			size:      155 * 1024 * 1024 * 1024,
+			size:      10 * 1024 * 1024 * 1024,
 			wantPath:  "",
 			wantError: true,
 		},
@@ -183,7 +183,7 @@ func Test_GetAvailableDisk(t *testing.T) {
 func Test_diskTier_IsMoves(t *testing.T) {
 	// This test requires 1 disk.
 	// Disk path must be specified in blobberPart_1.
-
+	t.Skip()
 	setConfig()
 	common.SetupRootContext(node.GetNodeContext())
 	StartDiskSelectorWorker(common.GetRootContext())
@@ -251,7 +251,8 @@ func Test_diskTier_IsMoves(t *testing.T) {
 }
 
 func Test_GetCapacity(t *testing.T) {
-	// FFor this test, in the wantSize field, you must specify the total free disk space that will be used for user files.
+	// For this test, in the wantSize field, you must specify the total free disk space that will be used for user files.
+	t.Skip()
 	setConfig()
 	common.SetupRootContext(node.GetNodeContext())
 	StartDiskSelectorWorker(common.GetRootContext())
@@ -262,7 +263,7 @@ func Test_GetCapacity(t *testing.T) {
 	}{
 		{
 			name:     "OK",
-			wantSize: 188955623424,
+			wantSize: 9219424256,
 		},
 	}
 
