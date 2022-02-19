@@ -603,8 +603,11 @@ func (fs *FileFSStore) DownloadFromCloud(fileHash, filePath string) error {
 }
 
 func (fs *FileFSStore) RemoveFromCloud(fileHash string) error {
-	if _, err := fs.Minio.StatObject(MinioConfig.BucketName, fileHash, minio.StatObjectOptions{}); err == nil {
-		return fs.Minio.RemoveObject(MinioConfig.BucketName, fileHash)
+	if fs != nil && fs.Minio != nil {
+		_, err := fs.Minio.StatObject(MinioConfig.BucketName, fileHash, minio.StatObjectOptions{})
+		if err == nil {
+			return fs.Minio.RemoveObject(MinioConfig.BucketName, fileHash)
+		}
 	}
 	return nil
 }
