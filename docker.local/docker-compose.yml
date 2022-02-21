@@ -48,7 +48,7 @@ services:
         ipv4_address: 198.18.0.6${BLOBBER}
 
   blobber:
-    image: blobber
+    build : blobber
     depends_on:
       - validator
     links:
