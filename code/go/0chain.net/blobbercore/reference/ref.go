@@ -232,6 +232,17 @@ func GetReferenceID(ctx context.Context, allocationID, path string) (int64, erro
 	return 0, err
 }
 
+func GetOnlyReferencePathFromLookupHash(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
+	ref := &Ref{}
+	db := datastore.GetStore().GetTransaction(ctx)
+	db = db.Select("id", "path")
+	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
+	if err == nil {
+		return ref, nil
+	}
+	return nil, err
+}
+
 // GetReference get FileRef with allcationID and path from postgres
 func GetReference(ctx context.Context, allocationID, path string) (*Ref, error) {
 	ref := &Ref{}
@@ -246,7 +257,51 @@ func GetReference(ctx context.Context, allocationID, path string) (*Ref, error) 
 func GetReferencePathFromLookupHash(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
+	db = db.Select("id", "name", "path", "hash", "size", "merkle_root")
+	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
+	if err == nil {
+		return ref, nil
+	}
+	return nil, err
+}
+
+func GetReferenceForCopyFromLookupHash(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
+	ref := &Ref{}
+	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Select("id", "path", "hash", "size", "merkle_root")
+	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
+	if err == nil {
+		return ref, nil
+	}
+	return nil, err
+}
+
+func GetReferenceForVerifyAuthTicketFromLookupHash(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
+	ref := &Ref{}
+	db := datastore.GetStore().GetTransaction(ctx)
+	db = db.Select("id", "path", "lookup_hash", "type", "name")
+	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
+	if err == nil {
+		return ref, nil
+	}
+	return nil, err
+}
+
+func GetReferenceForFileStatsFromLookupHash(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
+	ref := &Ref{}
+	db := datastore.GetStore().GetTransaction(ctx)
+	db = db.Select("id", "path", "lookup_hash", "type", "name", "write_marker")
+	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
+	if err == nil {
+		return ref, nil
+	}
+	return nil, err
+}
+
+func GetReferenceFromLookupHashForAddCollaborator(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
+	ref := &Ref{}
+	db := datastore.GetStore().GetTransaction(ctx)
+	db = db.Select("id", "type")
 	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
 	if err == nil {
 		return ref, nil
@@ -309,7 +364,38 @@ func GetRefWithChildren(ctx context.Context, allocationID, path string) (*Ref, e
 func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*Ref, error) {
 	var refs []*Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	//db = db.Select("id", "allocation_id", "type", "name", "path", "size", "content_hash", "merkle_root", "actual_file_size", "actual_file_hash", "attributes", "chunk_size")
+	db = db.Select("id", "allocation_id", "type", "hash", "path_hash",
+		"name", "path", "parent_path", "lookup_hash", "level", "num_of_blocks", "write_marker",
+		"size", "content_hash", "merkle_root", "actual_file_size", "custom_meta",
+		"actual_file_hash", "thumbnail_size", "thumbnail_hash", "attributes",
+		"actual_thumbnail_size", "actual_thumbnail_hash", "encrypted_key", "on_cloud", "chunk_size")
+	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
+	//err := db.Order("level, lookup_hash").Find(&refs).Error
+	err := db.Order("level, path").Find(&refs).Error
+	if err != nil {
+		return nil, err
+	}
+	if len(refs) == 0 {
+		return &Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID}, nil
+	}
+	curRef := refs[0]
+	if curRef.Path != path {
+		return nil, common.NewError("invalid_dir_tree", "DB has invalid tree. Root not found in DB")
+	}
+	for i := 1; i < len(refs); i++ {
+		if refs[i].ParentPath == curRef.Path {
+			curRef.Children = append(curRef.Children, refs[i])
+		} else {
+			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
+		}
+	}
+	return refs[0], nil
+}
+
+func GetRefWithSortedChildrenForObjectPath(ctx context.Context, allocationID, path string) (*Ref, error) {
+	var refs []*Ref
+	db := datastore.GetStore().GetTransaction(ctx)
+	db = db.Select("id", "path", "parent_path", "num_of_blocks", "hash", "type", "name")
 	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
 	//err := db.Order("level, lookup_hash").Find(&refs).Error
 	err := db.Order("level, path").Find(&refs).Error
@@ -356,11 +442,13 @@ func (fr *Ref) GetFileHashData() string {
 }
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
+
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
 	fr.PathHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 	fr.PathLevel = len(GetSubDirsFromPath(fr.Path)) + 1
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
+
 	var err error
 	if saveToDB {
 		//err = fr.Save(ctx)
@@ -371,6 +459,7 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 
 func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, error) {
 	// empty directory, return hash directly
+
 	if len(r.Children) == 0 && !r.childrenLoaded {
 		return r.Hash, nil
 	}
@@ -398,7 +487,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
-
 	var err error
 	if saveToDB {
 		//err = r.Save(ctx)
@@ -454,7 +542,7 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 
 func (r *Ref) SaveFile(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	rows := db.Model(r).Where(Ref{ID: r.ID}).Updates(map[string]interface{}{
+	rows := db.Model(r).Where("id = ?", r.ID).Updates(map[string]interface{}{
 		"allocation_id":         r.AllocationID,
 		"lookup_hash":           r.LookupHash,
 		"name":                  r.Name,
@@ -480,6 +568,7 @@ func (r *Ref) SaveFile(ctx context.Context) error {
 		"on_cloud":              r.OnCloud,
 		"chunk_size":            r.ChunkSize,
 	}).RowsAffected
+	// "updated_at": r.UpdatedAt,
 	if rows == 0 {
 		err := db.Create(r).Error
 		return err
@@ -489,7 +578,7 @@ func (r *Ref) SaveFile(ctx context.Context) error {
 
 func (r *Ref) SaveDir(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	rows := db.Model(r).Where(Ref{ID: r.ID}).Updates(map[string]interface{}{
+	rows := db.Model(r).Where("id = ?", r.ID).Updates(map[string]interface{}{
 		"allocation_id":         r.AllocationID,
 		"lookup_hash":           r.LookupHash,
 		"name":                  r.Name,
@@ -503,8 +592,6 @@ func (r *Ref) SaveDir(ctx context.Context) error {
 		"content_hash":          r.ContentHash,
 		"size":                  r.Size,
 		"merkle_root":           r.MerkleRoot,
-		"actual_file_size":      r.ActualFileSize,
-		"actual_file_hash":      r.ActualFileHash,
 		"write_marker":          r.WriteMarker,
 		"thumbnail_size":        r.ThumbnailSize,
 		"thumbnail_hash":        r.ThumbnailHash,
@@ -515,6 +602,9 @@ func (r *Ref) SaveDir(ctx context.Context) error {
 		"on_cloud":              r.OnCloud,
 		"chunk_size":            r.ChunkSize,
 	}).RowsAffected
+	// "updated_at": r.UpdatedAt,
+	//		"actual_file_size":      r.ActualFileSize,
+	//		"actual_file_hash":      r.ActualFileHash,
 	if rows == 0 {
 		err := db.Create(r).Error
 		return err

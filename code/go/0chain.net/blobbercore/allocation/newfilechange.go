@@ -119,6 +119,7 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 }
 
 func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+
 	if change.Operation == constants.FileOperationCreateDir {
 		err := nf.Unmarshal(change.Input)
 		if err != nil {
@@ -197,6 +198,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationCh
 	}
 
 	dirRef.AddChild(newFile)
+
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}

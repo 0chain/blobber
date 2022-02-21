@@ -186,7 +186,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
 		alloc        *allocation.Allocation
 	)
-
 	if clientID == "" {
 		return nil, common.NewError("download_file", "invalid client")
 	}
@@ -540,7 +539,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
 		return nil, err
 	}
-
 	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot)
 	if err != nil {
 		return nil, err
@@ -651,7 +649,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	// Changed From GetReferenceFromLookupHash To GetReferencePathFromLookupHash
+	// Changed From GetReferenceFromLookupHash To GetReferenceForHashCalculationFromPaths
 	objectRef, err := reference.GetReferencePathFromLookupHash(ctx, allocationID, pathHash)
 
 	if err != nil {
@@ -760,7 +758,8 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.R
 	defer mutex.Unlock()
 
 	var ref *reference.Ref
-	ref, err = reference.GetReferenceFromLookupHash(ctx, alloc.ID, pathHash)
+	// Update GetReferenceFromLookupHash to GetOnlyReferencePathFromLookupHash
+	ref, err = reference.GetOnlyReferencePathFromLookupHash(ctx, alloc.ID, pathHash)
 	if err != nil {
 		return nil, common.NewErrorf("update_object_attributes",
 			"invalid file path: %v", err)
@@ -847,7 +846,8 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	// Update GetReferenceFromLookupHash To GetReferenceForCopyFromLookupHash
+	objectRef, err := reference.GetReferenceForCopyFromLookupHash(ctx, allocationID, pathHash)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -941,13 +941,13 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	if dirPath == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
 	}
-
-	exisitingRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
+	// Update checkIfFileAlreadyExists to checkIfFileRefAlreadyExists
+	exisitingRef := fsh.checkIfFileRefAlreadyExists(ctx, allocationID, dirPath)
 	if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	if exisitingRef != nil {
+	if exisitingRef != 0 {
 		return nil, common.NewError("duplicate_file", "File at path already exists")
 	}
 

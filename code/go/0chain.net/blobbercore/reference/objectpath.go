@@ -19,7 +19,8 @@ type ObjectPath struct {
 
 // TODO needs to be refactored, current implementation can probably be heavily simplified
 func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*ObjectPath, error) {
-	rootRef, err := GetRefWithSortedChildren(ctx, allocationID, "/")
+	// Update GetRefWithSortedChildren to GetRefWithSortedChildrenForObjectPath
+	rootRef, err := GetRefWithSortedChildrenForObjectPath(ctx, allocationID, "/")
 	if err != nil {
 		return nil, common.NewError("invalid_dir_struct", "Allocation root corresponds to an invalid directory structure")
 	}
@@ -66,7 +67,8 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 				curRef = child
 				break
 			}
-			curRef, err = GetRefWithSortedChildren(ctx, allocationID, child.Path)
+			// Update GetRefWithSortedChildren to GetRefWithSortedChildrenForObjectPath
+			curRef, err = GetRefWithSortedChildrenForObjectPath(ctx, allocationID, child.Path)
 			if err != nil || curRef.Hash == "" {
 				return nil, common.NewError("failed_object_path", "Failed to get the object path")
 			}

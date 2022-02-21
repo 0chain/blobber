@@ -64,7 +64,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/objectpath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler)))
 	r.HandleFunc("/v1/file/referencepath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))
 	r.HandleFunc("/v1/file/objecttree/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ObjectTreeHandler)))
-	r.HandleFunc("/v1/file/refs/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(RefsHandler))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/file/refs/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(RefsHandler))).Methods(http.MethodGet, http.MethodOptions) // no db optimization yet.
 	//admin related
 	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
 	r.HandleFunc("/_config", common.ToJSONResponse(GetConfig))
@@ -161,7 +161,6 @@ func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
@@ -172,7 +171,6 @@ func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
@@ -183,7 +181,6 @@ func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, er
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
@@ -194,30 +191,25 @@ func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, err
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
-
 	response, err := storageHandler.GetFileStats(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 /*DownloadHandler is the handler to respond to download requests from clients*/
 func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
-
 	response, err := storageHandler.DownloadFile(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
@@ -229,7 +221,6 @@ func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
@@ -241,7 +232,6 @@ func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
@@ -255,7 +245,6 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
@@ -266,96 +255,95 @@ func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
-
 	response, err := storageHandler.GetObjectTree(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetRefs(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.RenameObject(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.CopyObject(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 /*CreateDirHandler is the handler to respond to create dir for allocation*/
 func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.CreateDir(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 /*UploadHandler is the handler to respond to upload requests fro clients*/
 func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.WriteFile(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Println("The Response:\n", *response)
 	return response, nil
 }
 
 func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.UpdateObjectAttributes(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.CalculateHash(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func StatsHandler(w http.ResponseWriter, r *http.Request) {
+
 	HTMLHeader(w, "Blobber Diagnostics")
 	PrintCSS(w)
 	HomepageHandler(w, r)
@@ -372,6 +360,7 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 
 //nolint:gosimple // need more time to verify
 func HandleShutdown(ctx context.Context) {
+
 	go func() {
 		select {
 		case <-ctx.Done():
@@ -382,20 +371,24 @@ func HandleShutdown(ctx context.Context) {
 }
 
 func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	_ = pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 	return "success", nil
 }
 
 func GetConfig(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	return config.Configuration, nil
 }
 
 func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	err := CleanupDiskFiles(ctx)
 	return "cleanup", err
 }
 
 func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
@@ -448,6 +441,7 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 }
 
 func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	var (
@@ -520,6 +514,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 }
 
 func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	if r.Method == "DELETE" {
 		return RevokeShare(ctx, r)
 	}
