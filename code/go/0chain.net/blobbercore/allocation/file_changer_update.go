@@ -68,13 +68,7 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 		nf.deleteHash[existingRef.ThumbnailHash] = true
 	}
 	if existingRef.ContentHash != "" && existingRef.ContentHash != nf.Hash {
-		nf.deleteHash[existingRef.ThumbnailHash] = true
-	}
-
-	err = nf.removeOldFiles(ctx)
-	if err != nil {
-		Logger.Error("error in old file remove", zap.Any("change", nf))
-		return nil, common.NewError("olc_file_not_removed", "Not able to remove old file")
+		nf.deleteHash[existingRef.ContentHash] = true
 	}
 
 	existingRef.ActualFileHash = nf.ActualHash
@@ -102,19 +96,19 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 	return rootRef, err
 }
 
-func (nf *UpdateFileChanger) removeOldFiles(ctx context.Context) error {
+func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	for contenthash := range nf.deleteHash {
 		var count int64
 		err := db.Table((&reference.Ref{}).TableName()).Where(db.Where(&reference.Ref{ThumbnailHash: contenthash}).Or(&reference.Ref{ContentHash: contenthash})).Where("deleted_at IS null").Where(&reference.Ref{AllocationID: nf.AllocationID}).Count(&count).Error
-		if err == nil && count == 1 {
+		if err == nil && count == 0 {
 			Logger.Info("Deleting content file", zap.String("content_hash", contenthash))
 			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, contenthash); err != nil {
 				Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
 			}
 		}
 	}
-	return nil
+	return nf.BaseFileChanger.CommitToFileStore(ctx)
 }
 
 func (nf *UpdateFileChanger) Marshal() (string, error) {
