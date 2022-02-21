@@ -18,6 +18,10 @@ const (
 	CHUNK_SIZE = 64 * KB
 )
 
+const (
+	TableNameAllocation = "allocations"
+)
+
 type Allocation struct {
 	ID             string           `gorm:"column:id;primary_key"`
 	Tx             string           `gorm:"column:tx"`
@@ -44,7 +48,7 @@ type Allocation struct {
 }
 
 func (Allocation) TableName() string {
-	return "allocations"
+	return TableNameAllocation
 }
 
 // RestDurationInTimeUnits returns number (float point) of time units until

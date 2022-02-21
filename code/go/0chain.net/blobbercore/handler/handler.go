@@ -75,6 +75,11 @@ func SetupHandlers(r *mux.Router) {
 
 	//marketplace related
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(MarketPlaceShareInfoHandler)))
+
+	// lightweight http handler without heavy postgres transaction for performance improvement
+
+	r.HandleFunc("/v1/{allocation}/writemarker/locks", WithHandler(LockWriteMarker)).Methods(http.MethodPost)
+	r.HandleFunc("/v1/{allocation}/writemarker/locks", WithHandler(UnlockWriteMarker)).Methods(http.MethodDelete)
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {

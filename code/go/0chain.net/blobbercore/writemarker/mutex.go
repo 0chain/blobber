@@ -116,7 +116,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, sessionID string, reques
 
 }
 
-func (*Mutex) Unlock(allocationID string, sessionID string) error {
+func (*Mutex) Unlock(ctx context.Context, allocationID string, sessionID string) error {
 
 	if len(allocationID) == 0 {
 		return nil
