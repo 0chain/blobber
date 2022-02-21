@@ -1,0 +1,199 @@
+package writemarker
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	gomocket "github.com/selvatico/go-mocket"
+	"github.com/stretchr/testify/require"
+)
+
+func TestMutext_LockShouldWork(t *testing.T) {
+
+	datastore.UseMocket(true)
+
+	config.Configuration.WriteMarkerLockTimeout = 30 * time.Second
+
+	m := &Mutex{}
+	now := time.Now()
+
+	tests := []struct {
+		name         string
+		allocationID string
+		sessionID    string
+		requestTime  time.Time
+		mock         func()
+		assert       func(*testing.T, *LockResult, error)
+	}{
+		{
+			name:         "Lock should work",
+			allocationID: "lock_allocation_id",
+			sessionID:    "lock_session_id",
+			requestTime:  now,
+			mock: func() {
+
+			},
+			assert: func(test *testing.T, r *LockResult, err error) {
+				require.Nil(test, err)
+				require.Equal(test, LockStatusOK, r.Status)
+			},
+		},
+		{
+			name:         "retry lock by same request should work if it is not timeout",
+			allocationID: "lock_same_allocation_id",
+			sessionID:    "lock_same_session_id",
+			requestTime:  now,
+			mock: func() {
+				gomocket.Catcher.NewMock().
+					WithQuery(`SELECT * FROM "write_locks" WHERE allocation_id=$1 ORDER BY "write_locks"."allocation_id" LIMIT 1`).
+					WithArgs("lock_same_allocation_id").
+					WithReply([]map[string]interface{}{
+						{
+							"allocation_id": "lock_same_allocation_id",
+							"session_id":    "lock_same_session_id",
+							"created_at":    now,
+						},
+					})
+			},
+			assert: func(test *testing.T, r *LockResult, err error) {
+				require.Nil(test, err)
+				require.Equal(test, LockStatusOK, r.Status)
+			},
+		},
+		{
+			name:         "lock should be pending if it already is locked by other session ",
+			allocationID: "lock_allocation_id",
+			sessionID:    "lock_pending_session_id",
+			requestTime:  time.Now(),
+			mock: func() {
+				gomocket.Catcher.NewMock().
+					WithQuery(`SELECT * FROM "write_locks" WHERE allocation_id=$1 ORDER BY "write_locks"."allocation_id" LIMIT 1`).
+					WithArgs("lock_allocation_id").
+					WithReply([]map[string]interface{}{
+						{
+							"allocation_id": "lock_allocation_id",
+							"session_id":    "lock_session_id",
+							"created_at":    time.Now().Add(-5 * time.Second),
+						},
+					})
+			},
+			assert: func(test *testing.T, r *LockResult, err error) {
+				require.Nil(test, err)
+				require.Equal(test, LockStatusPending, r.Status)
+			},
+		},
+		{
+			name:         "lock should ok if it is timeout",
+			allocationID: "lock_timeout_allocation_id",
+			sessionID:    "lock_timeout_2nd_session_id",
+			requestTime:  now,
+			mock: func() {
+				gomocket.Catcher.NewMock().
+					WithQuery(`SELECT * FROM "write_locks" WHERE allocation_id=$1 ORDER BY "write_locks"."allocation_id" LIMIT 1`).
+					WithArgs("lock_timeout_allocation_id").
+					WithReply([]map[string]interface{}{
+						{
+							"allocation_id": "lock_timeout_allocation_id",
+							"session_id":    "lock_timeout_1st_session_id",
+							"created_at":    time.Now().Add(31 * time.Second),
+						},
+					})
+			},
+			assert: func(test *testing.T, r *LockResult, err error) {
+				require.Nil(test, err)
+				require.Equal(test, LockStatusPending, r.Status)
+			},
+		},
+	}
+
+	for _, it := range tests {
+
+		t.Run(it.name,
+			func(test *testing.T) {
+				if it.mock != nil {
+					it.mock()
+				}
+				r, err := m.Lock(context.TODO(), it.allocationID, it.sessionID, it.requestTime)
+
+				it.assert(test, r, err)
+
+			},
+		)
+
+	}
+
+}
+
+func TestMutext_LockShouldNotWork(t *testing.T) {
+
+	datastore.UseMocket(true)
+
+	config.Configuration.WriteMarkerLockTimeout = 30 * time.Second
+
+	m := &Mutex{}
+	now := time.Now()
+
+	tests := []struct {
+		name         string
+		allocationID string
+		sessionID    string
+		requestTime  time.Time
+		mock         func()
+		assert       func(*testing.T, *LockResult, error)
+	}{
+		{
+			name:         "Lock should not work if request_time is timeout",
+			allocationID: "lock_allocation_id",
+			sessionID:    "lock_session_id",
+			requestTime:  time.Now().Add(31 * time.Second),
+			mock: func() {
+				config.Configuration.WriteMarkerLockTimeout = 30 * time.Second
+			},
+			assert: func(test *testing.T, r *LockResult, err error) {
+				require.Nil(test, r)
+				require.NotNil(test, err)
+			},
+		},
+		{
+			name:         "retry lock by same request should not work if it is timeout",
+			allocationID: "lock_same_timeout_allocation_id",
+			sessionID:    "lock_same_timeout_session_id",
+			requestTime:  now,
+			mock: func() {
+				gomocket.Catcher.NewMock().
+					WithQuery(`SELECT * FROM "write_locks" WHERE allocation_id=$1 ORDER BY "write_locks"."allocation_id" LIMIT 1`).
+					WithArgs("lock_same_timeout_allocation_id").
+					WithReply([]map[string]interface{}{
+						{
+							"allocation_id": "lock_same_timeout_allocation_id",
+							"session_id":    "lock_same_timeout_session_id",
+							"created_at":    now.Add(-config.Configuration.WriteMarkerLockTimeout),
+						},
+					})
+			},
+			assert: func(test *testing.T, r *LockResult, err error) {
+				require.NotNil(test, err)
+				require.Nil(test, r)
+			},
+		},
+	}
+
+	for _, it := range tests {
+
+		t.Run(it.name,
+			func(test *testing.T) {
+				if it.mock != nil {
+					it.mock()
+				}
+				r, err := m.Lock(context.TODO(), it.allocationID, it.sessionID, it.requestTime)
+
+				it.assert(test, r, err)
+
+			},
+		)
+
+	}
+}

@@ -73,6 +73,8 @@ func setupConfig() {
 		viper.GetDuration("write_lock_timeout") / time.Second,
 	)
 
+	config.Configuration.WriteMarkerLockTimeout = viper.GetDuration("write_marker_lock_timeout")
+
 	config.Configuration.UpdateAllocationsInterval =
 		viper.GetDuration("update_allocations_interval")
 
