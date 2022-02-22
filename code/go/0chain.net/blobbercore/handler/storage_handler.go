@@ -134,11 +134,11 @@ func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocat
 }
 
 func (fsh *StorageHandler) checkIfFileRefAlreadyExists(ctx context.Context, allocationID, path string) int64 {
-	id, err := reference.GetReferenceID(ctx, allocationID, path)
+	ref, err := reference.GetReferenceID(ctx, allocationID, path)
 	if err != nil {
 		return 0
 	}
-	return id
+	return ref.ID
 }
 
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {

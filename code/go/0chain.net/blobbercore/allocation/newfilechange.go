@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -106,6 +107,8 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 	newDir.ParentPath = dirRef.Path
 	newDir.WriteMarker = allocationRoot
 	dirRef.AddChild(newDir)
+
+	fmt.Println("The New File Change Allocation Root is: ", allocationRoot, " || New Dir WriteMarker :", newDir.WriteMarker, " || Dir WriteMarker: ", dirRef.WriteMarker)
 
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
