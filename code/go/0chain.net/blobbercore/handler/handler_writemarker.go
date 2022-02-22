@@ -14,7 +14,7 @@ func LockWriteMarker(ctx *Context) (interface{}, error) {
 	sessionID := ctx.FormValue("session_id")
 	requestTime := ctx.FormTime("request_time")
 
-	result, err := WriteMarkerMutext.Lock(ctx, ctx.AllocationTx, sessionID, *requestTime)
+	result, err := WriteMarkerMutext.Lock(ctx, ctx.AllocationTx, sessionID, requestTime)
 	if err != nil {
 		return nil, err
 	}

@@ -23,8 +23,8 @@ type HashNode struct {
 	ActualFileSize int64          `gorm:"column:actual_file_size" json:"actual_file_size,omitempty"`
 
 	// other data
-	ParentPath string      `gorm:"parent_path" json:"parent_path,omitempty"`
-	Children   []*HashNode `gorm:"-", json:"children"`
+	ParentPath string      `gorm:"parent_path" json:"-"`
+	Children   []*HashNode `gorm:"-" json:"children,omitempty"`
 }
 
 // TableName get table name of Ref

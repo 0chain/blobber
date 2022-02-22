@@ -200,6 +200,10 @@ func (p *Pending) Save(tx *gorm.DB) error {
 	return tx.Save(p).Error
 }
 
+const (
+	TableNameTerms = "terms"
+)
+
 // Terms for allocation by its Tx.
 type Terms struct {
 	ID           int64  `gorm:"column:id;primary_key"`
@@ -211,7 +215,7 @@ type Terms struct {
 }
 
 func (*Terms) TableName() string {
-	return "terms"
+	return TableNameTerms
 }
 
 type ReadPool struct {

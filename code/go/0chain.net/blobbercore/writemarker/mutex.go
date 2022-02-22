@@ -7,6 +7,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/constants"
@@ -23,8 +24,9 @@ const (
 )
 
 type LockResult struct {
-	Status    LockStatus `json:"status"`
-	CreatedAt time.Time  `json:"created_at"`
+	Status    LockStatus          `json:"status,omitempty"`
+	CreatedAt time.Time           `json:"created_at,omitempty"`
+	RootNode  *reference.HashNode `json:"root_node,omitempty"`
 }
 
 // Mutex WriteMarker mutex
@@ -33,7 +35,7 @@ type Mutex struct {
 }
 
 // Lock
-func (m *Mutex) Lock(ctx context.Context, allocationID, sessionID string, requestTime time.Time) (*LockResult, error) {
+func (m *Mutex) Lock(ctx context.Context, allocationID, sessionID string, requestTime *time.Time) (*LockResult, error) {
 	m.Mutex.Lock()
 	defer m.Mutex.Unlock()
 
@@ -43,6 +45,10 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, sessionID string, reques
 
 	if len(sessionID) == 0 {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "sessionID")
+	}
+
+	if requestTime == nil {
+		return nil, errors.Throw(constants.ErrInvalidParameter, "requestTime")
 	}
 
 	now := time.Now()
@@ -60,7 +66,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, sessionID string, reques
 			lock = datastore.WriteLock{
 				AllocationID: allocationID,
 				SessionID:    sessionID,
-				CreatedAt:    requestTime,
+				CreatedAt:    *requestTime,
 			}
 
 			err = db.Create(&lock).Error
@@ -68,9 +74,15 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, sessionID string, reques
 				return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
 			}
 
+			rootNode, err := reference.LoadRootNode(ctx, allocationID)
+			if err != nil {
+				return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
+			}
+
 			return &LockResult{
 				Status:    LockStatusOK,
 				CreatedAt: lock.CreatedAt,
+				RootNode:  rootNode,
 			}, nil
 
 		}
@@ -86,9 +98,14 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, sessionID string, reques
 	if now.After(timeout) {
 
 		lock.SessionID = sessionID
-		lock.CreatedAt = requestTime
+		lock.CreatedAt = *requestTime
 
 		err = db.Save(&lock).Error
+		if err != nil {
+			return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
+		}
+
+		rootNode, err := reference.LoadRootNode(ctx, allocationID)
 		if err != nil {
 			return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
 		}
@@ -96,15 +113,22 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, sessionID string, reques
 		return &LockResult{
 			Status:    LockStatusOK,
 			CreatedAt: lock.CreatedAt,
+			RootNode:  rootNode,
 		}, nil
 
 	}
 
 	//try lock by same session, return old lock directly
-	if lock.SessionID == sessionID && lock.CreatedAt.Equal(requestTime) {
+	if lock.SessionID == sessionID && lock.CreatedAt.Equal(*requestTime) {
+		rootNode, err := reference.LoadRootNode(ctx, allocationID)
+		if err != nil {
+			return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
+		}
+
 		return &LockResult{
 			Status:    LockStatusOK,
 			CreatedAt: lock.CreatedAt,
+			RootNode:  rootNode,
 		}, nil
 	}
 

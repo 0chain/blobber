@@ -71,18 +71,34 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 			return
 		}
 
-		ctx, err := WithAuth(r)
+		if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch {
+			ct := r.Header.Get("Content-Type")
+			if ct == "application/x-www-form-urlencoded" {
+				r.ParseForm() //nolint: errcheck
+			} else {
+				r.ParseMultipartForm(FormFileParseMaxMemory) //nolint: errcheck
+			}
 
-		var result interface{}
-		if err == nil {
-			r.ParseForm() //nolint: errcheck
-			result, err = handler(ctx)
 		}
-
-		statusCode := ctx.StatusCode
 
 		w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
 		w.Header().Set("Content-Type", "application/json")
+
+		ctx, err := WithAuth(r)
+		statusCode := ctx.StatusCode
+
+		if err != nil {
+			if statusCode == 0 {
+				statusCode = http.StatusInternalServerError
+			}
+
+			buf, _ := json.Marshal(err)
+			http.Error(w, string(buf), statusCode)
+			return
+		}
+
+		result, err := handler(ctx)
+		statusCode = ctx.StatusCode
 
 		if err != nil {
 			if statusCode == 0 {

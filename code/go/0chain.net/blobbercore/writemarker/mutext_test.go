@@ -13,7 +13,7 @@ import (
 
 func TestMutext_LockShouldWork(t *testing.T) {
 
-	datastore.UseMocket(true)
+	datastore.UseMocket(false)
 
 	config.Configuration.WriteMarkerLockTimeout = 30 * time.Second
 
@@ -116,7 +116,7 @@ func TestMutext_LockShouldWork(t *testing.T) {
 				if it.mock != nil {
 					it.mock()
 				}
-				r, err := m.Lock(context.TODO(), it.allocationID, it.sessionID, it.requestTime)
+				r, err := m.Lock(context.TODO(), it.allocationID, it.sessionID, &it.requestTime)
 
 				it.assert(test, r, err)
 
@@ -188,7 +188,7 @@ func TestMutext_LockShouldNotWork(t *testing.T) {
 				if it.mock != nil {
 					it.mock()
 				}
-				r, err := m.Lock(context.TODO(), it.allocationID, it.sessionID, it.requestTime)
+				r, err := m.Lock(context.TODO(), it.allocationID, it.sessionID, &it.requestTime)
 
 				it.assert(test, r, err)
 

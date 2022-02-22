@@ -9,8 +9,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// LoadHashTree
-func LoadHashTree(ctx context.Context, allocationID string) (*HashNode, error) {
+// LoadRootNode load root node with its descendant nodes
+func LoadRootNode(ctx context.Context, allocationID string) (*HashNode, error) {
+
 	db := datastore.GetStore().GetDB()
 
 	db = db.Where("allocation_id = ? and deleted_at IS NULL", allocationID)
@@ -40,7 +41,7 @@ func LoadHashTree(ctx context.Context, allocationID string) (*HashNode, error) {
 
 	// create empty dir if root is missing
 	if len(dict) == 0 {
-		return &HashNode{Type: DIRECTORY, Path: "/", Name: "/", ParentPath: ""}, nil
+		return &HashNode{AllocationID: allocationID, Type: DIRECTORY, Path: "/", Name: "/", ParentPath: ""}, nil
 	}
 
 	rootNodes, ok := dict[""]
@@ -50,10 +51,10 @@ func LoadHashTree(ctx context.Context, allocationID string) (*HashNode, error) {
 			return rootNodes[0], nil
 		}
 
-		return nil, common.NewError("invalid_ref_tree", "/ is missing or invalid")
+		return nil, errors.Throw(common.ErrInternal, "invalid_ref_tree: / is missing or invalid")
 	}
 
-	return nil, common.NewError("invalid_ref_tree", "/ is missing")
+	return nil, errors.Throw(common.ErrInternal, "invalid_ref_tree: / is missing or invalid")
 }
 
 const (
