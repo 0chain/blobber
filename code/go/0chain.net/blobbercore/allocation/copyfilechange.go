@@ -53,7 +53,7 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
 
-	rootRef, err := reference.GetReferencePath(ctx, rf.AllocationID, path)
+	rootRef, err := reference.GetReferencePath2(ctx, rf.AllocationID, path)
 	if err != nil {
 		return nil, err
 	}

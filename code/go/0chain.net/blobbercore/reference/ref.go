@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"path/filepath"
 	"reflect"
@@ -268,7 +269,7 @@ func GetReferencePathFromLookupHash(ctx context.Context, allocationID, path_hash
 func GetReferenceForCopyFromLookupHash(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "path", "hash", "size", "merkle_root")
+	db = db.Select("id", "name", "path", "hash", "size", "merkle_root")
 	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
 	if err == nil {
 		return ref, nil
@@ -364,11 +365,6 @@ func GetRefWithChildren(ctx context.Context, allocationID, path string) (*Ref, e
 func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*Ref, error) {
 	var refs []*Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "allocation_id", "type", "hash", "path_hash",
-		"name", "path", "parent_path", "lookup_hash", "level", "num_of_blocks", "write_marker",
-		"size", "content_hash", "merkle_root", "actual_file_size", "custom_meta",
-		"actual_file_hash", "thumbnail_size", "thumbnail_hash", "attributes",
-		"actual_thumbnail_size", "actual_thumbnail_hash", "encrypted_key", "on_cloud", "chunk_size")
 	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
 	//err := db.Order("level, lookup_hash").Find(&refs).Error
 	err := db.Order("level, path").Find(&refs).Error
@@ -487,6 +483,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
+	fmt.Println("Number of Blocks is: ", r.NumBlocks)
 	var err error
 	if saveToDB {
 		//err = r.Save(ctx)
@@ -552,27 +549,29 @@ func (r *Ref) SaveFile(ctx context.Context) error {
 		"path_hash":             r.PathHash,
 		"parent_path":           r.ParentPath,
 		"level":                 r.PathLevel,
+		"write_marker":          r.WriteMarker,
+		"mimetype":              r.MimeType,
 		"custom_meta":           r.CustomMeta,
+		"thumbnail_hash":        r.ThumbnailHash,
+		"thumbnail_size":        r.ThumbnailSize,
+		"actual_thumbnail_hash": r.ActualThumbnailHash,
+		"actual_thumbnail_size": r.ActualThumbnailSize,
+		"encrypted_key":         r.EncryptedKey,
 		"content_hash":          r.ContentHash,
 		"size":                  r.Size,
 		"merkle_root":           r.MerkleRoot,
 		"actual_file_size":      r.ActualFileSize,
 		"actual_file_hash":      r.ActualFileHash,
-		"write_marker":          r.WriteMarker,
-		"thumbnail_size":        r.ThumbnailSize,
-		"thumbnail_hash":        r.ThumbnailHash,
-		"actual_thumbnail_size": r.ActualThumbnailSize,
-		"actual_thumbnail_hash": r.ActualThumbnailHash,
-		"encrypted_key":         r.EncryptedKey,
 		"attributes":            r.Attributes,
-		"on_cloud":              r.OnCloud,
 		"chunk_size":            r.ChunkSize,
 	}).RowsAffected
 	// "updated_at": r.UpdatedAt,
 	if rows == 0 {
 		err := db.Create(r).Error
+		fmt.Println("Save Reference in Hash Computation Called To Create File !!!")
 		return err
 	}
+	fmt.Println("Save Reference in Hash Computation Called To Update File Data")
 	return nil
 }
 
@@ -588,18 +587,18 @@ func (r *Ref) SaveDir(ctx context.Context) error {
 		"path_hash":             r.PathHash,
 		"parent_path":           r.ParentPath,
 		"level":                 r.PathLevel,
+		"write_marker":          r.WriteMarker,
+		"mimetype":              r.MimeType,
 		"custom_meta":           r.CustomMeta,
+		"thumbnail_hash":        r.ThumbnailHash,
+		"thumbnail_size":        r.ThumbnailSize,
+		"actual_thumbnail_hash": r.ActualThumbnailHash,
+		"actual_thumbnail_size": r.ActualThumbnailSize,
+		"encrypted_key":         r.EncryptedKey,
 		"content_hash":          r.ContentHash,
 		"size":                  r.Size,
 		"merkle_root":           r.MerkleRoot,
-		"write_marker":          r.WriteMarker,
-		"thumbnail_size":        r.ThumbnailSize,
-		"thumbnail_hash":        r.ThumbnailHash,
-		"actual_thumbnail_size": r.ActualThumbnailSize,
-		"actual_thumbnail_hash": r.ActualThumbnailHash,
-		"encrypted_key":         r.EncryptedKey,
 		"attributes":            r.Attributes,
-		"on_cloud":              r.OnCloud,
 		"chunk_size":            r.ChunkSize,
 	}).RowsAffected
 	// "updated_at": r.UpdatedAt,
@@ -607,13 +606,16 @@ func (r *Ref) SaveDir(ctx context.Context) error {
 	//		"actual_file_hash":      r.ActualFileHash,
 	if rows == 0 {
 		err := db.Create(r).Error
+		fmt.Println("Save Reference in Hash Computation Called To Create Dir !!!")
 		return err
 	}
+	fmt.Println("Save Reference in Hash Computation Called To Update Dir Data")
 	return nil
 }
 
 func (r *Ref) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
+	fmt.Println("Called Save Reference !!! ", r.Type)
 	return db.Save(r).Error
 }
 

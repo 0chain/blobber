@@ -105,6 +105,7 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 
 		if err != nil {
 			Logger.Error("Error in handling the request." + err.Error())
+			fmt.Println("response is: ", resp)
 			return
 		}
 		err = GetMetaDataStore().GetTransaction(ctx).Commit().Error
@@ -161,6 +162,7 @@ func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The AllocationHandler Response:\n", response)
 	return response, nil
 }
 
@@ -171,6 +173,7 @@ func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The FileMetaHandler Response:\n", response)
 	return response, nil
 }
 
@@ -181,6 +184,7 @@ func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, er
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The CommitMetaTxnHandler Response:\n", response)
 	return response, nil
 }
 
@@ -191,6 +195,7 @@ func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, err
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The CollaboratorHandler Response:\n", response)
 	return response, nil
 }
 
@@ -200,6 +205,7 @@ func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The FileStatsHandler Response:\n", response)
 	return response, nil
 }
 
@@ -210,6 +216,7 @@ func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The DownloadHandler Response:\n", response)
 	return response, nil
 }
 
@@ -221,6 +228,7 @@ func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The ListHandler Response:\n", *response)
 	return response, nil
 }
 
@@ -232,6 +240,7 @@ func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The CommitHandler Response:\n", *response)
 	return response, nil
 }
 
@@ -245,6 +254,7 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The ReferencePathHandler Response:\n", *response)
 	return response, nil
 }
 
@@ -255,6 +265,7 @@ func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The ObjectPathHandler Response:\n", *response)
 	return response, nil
 }
 
@@ -264,6 +275,7 @@ func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The ObjectTreeHandler Response:\n", *response)
 	return response, nil
 }
 
@@ -275,6 +287,7 @@ func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The RefsHandler Response:\n", *response)
 	return response, nil
 }
 
@@ -285,6 +298,7 @@ func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The RenameHandler Response:\n", response)
 	return response, nil
 }
 
@@ -295,6 +309,7 @@ func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The CopyHandler Response:\n", response)
 	return response, nil
 }
 
@@ -306,6 +321,7 @@ func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The CreateDirHandler Response:\n", *response)
 	return response, nil
 }
 
@@ -317,7 +333,7 @@ func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("The Response:\n", *response)
+	fmt.Println("The UploadHandler Response:\n", *response)
 	return response, nil
 }
 
@@ -328,6 +344,7 @@ func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{},
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("The UpdateAttributesHandler Response:\n", response)
 	return response, nil
 }
 

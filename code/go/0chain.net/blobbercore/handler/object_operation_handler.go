@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 
@@ -541,20 +542,23 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot)
 	if err != nil {
+		fmt.Println("Apply Changed Error in Commit !!!", err.Error())
 		return nil, err
 	}
 	rootRef, err := reference.GetReferenceHash(ctx, allocationID, "/")
 	if err != nil {
+		fmt.Println("GetReferenceHash Error in Commit !!!", err.Error())
 		return nil, err
 	}
 
 	allocationRoot := encryption.Hash(rootRef + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
-
+	fmt.Println(allocationRoot, " || ", writeMarker.AllocationRoot)
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		if latestWM != nil {
 			result.WriteMarker = &latestWM.WM
 		}
+		fmt.Println("Error here in Allocation Root in Commit !!!")
 		result.Success = false
 		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root. Expected hash: " + allocationRoot
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
@@ -677,6 +681,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	result.Hash = objectRef.Hash
 	result.MerkleRoot = objectRef.MerkleRoot
 	result.Size = objectRef.Size
+	fmt.Println("The RenameHandler Response 1:\n", *result)
 
 	return result, nil
 }
@@ -977,9 +982,9 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	formData.ConnectionID = connectionID
 	formData.ActualHash = "-"
 	formData.ActualSize = 1
-
+	// We Need to do a Proper Look here
 	connectionObj.AddChange(allocationChange, &formData)
-
+	// And Here
 	err = connectionObj.ApplyChanges(ctx, "/")
 	if err != nil {
 		return nil, err
@@ -1010,8 +1015,10 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	allocationID := allocationObj.ID
 	fileOperation := getFileOperation(r)
-	existingFileRef := getExistingFileRef(fsh, ctx, r, allocationObj, fileOperation)
-	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
+	//existingFileRef := getExistingFileRef(fsh, ctx, r, allocationObj, fileOperation)
+	existingFileRefID := getExistingFileRefID(fsh, ctx, r, allocationObj, fileOperation)
+	//isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
+	isCollaborator := existingFileRefID != 0 && reference.IsACollaborator(ctx, existingFileRefID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
 
 	if isCollaborator {
@@ -1113,4 +1120,17 @@ func getExistingFileRef(fsh *StorageHandler, ctx context.Context, r *http.Reques
 		}
 	}
 	return nil
+}
+
+func getExistingFileRefID(fsh *StorageHandler, ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) int64 {
+	if fileOperation == constants.FileOperationInsert || fileOperation == constants.FileOperationUpdate {
+		var formData allocation.UpdateFileChanger
+		uploadMetaString := r.FormValue(getFormFieldName(fileOperation))
+		err := json.Unmarshal([]byte(uploadMetaString), &formData)
+
+		if err == nil {
+			return fsh.checkIfFileRefAlreadyExists(ctx, allocationObj.ID, formData.Path)
+		}
+	}
+	return 0
 }

@@ -394,7 +394,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 		return nil, err
 	}
 	// Update GetReferenceFromLookupHash to GetReferenceForFileStatsFromLookupHash
-	fileref, err := reference.GetReferenceForFileStatsFromLookupHash(ctx, allocationID, pathHash)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -440,7 +440,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 
 	Logger.Info("Path Hash for list dir :" + pathHash)
 	// Update GetReferenceFromLookupHash to GetReferenceForVerifyAuthTicketFromLookupHash
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	fileref, err := reference.GetReferenceForVerifyAuthTicketFromLookupHash(ctx, allocationID, pathHash)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// `/` always is valid even it doesn't exists in db. so ignore RecordNotFound error
@@ -557,7 +557,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 		return
 	}
 	// Change The GetReferencePathFromPaths to GetReferenceForHashCalculationFromPaths
-	rootRef, err := reference.GetReferenceForHashCalculationFromPaths(ctx, allocationID, paths)
+	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
 	if err != nil {
 		errCh <- err
 		return

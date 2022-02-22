@@ -18,9 +18,9 @@ type ReferencePath struct {
 	Ref  *Ref
 }
 
-func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, error) {
-	return GetReferencePathFromPaths(ctx, allocationID, []string{path})
-}
+//func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, error) {
+//	return GetReferencePathFromPaths(ctx, allocationID, []string{path})
+//}
 
 func GetReferencePath2(ctx context.Context, allocationID, path string) (*Ref, error) {
 	return GetReferenceForHashCalculationFromPaths(ctx, allocationID, []string{path})
@@ -30,8 +30,11 @@ func GetReferencePath2(ctx context.Context, allocationID, path string) (*Ref, er
 func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx) //"created_at", "updated_at",
-	db = db.Select("id", "allocation_id", "type", "name", "path", "parent_path", "size", "hash", "num_of_blocks",
-		"content_hash", "merkle_root", "actual_file_size", "actual_file_hash", "attributes", "chunk_size", "lookup_hash")
+	db = db.Select("id", "allocation_id", "type", "name", "path",
+		"parent_path", "size", "hash", "path_hash", "content_hash", "merkle_root",
+		"write_marker", "mimetype", "custom_meta", "thumbnail_hash", "thumbnail_size",
+		"actual_thumbnail_hash", "actual_thumbnail_size", "encrypted_key",
+		"actual_file_size", "actual_file_hash", "attributes", "chunk_size")
 	pathsAdded := make(map[string]bool)
 	for _, path := range paths {
 		path = strings.TrimSuffix(path, "/")
@@ -90,11 +93,11 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "allocation_id", "type", "hash", "path_hash",
-		"name", "path", "parent_path", "lookup_hash", "level", "num_of_blocks", "write_marker",
-		"size", "content_hash", "merkle_root", "actual_file_size", "custom_meta",
-		"actual_file_hash", "thumbnail_size", "thumbnail_hash", "attributes",
-		"actual_thumbnail_size", "actual_thumbnail_hash", "encrypted_key", "on_cloud", "chunk_size")
+	//db = db.Select("id", "allocation_id", "type", "hash", "path_hash",
+	//	"name", "path", "parent_path", "lookup_hash", "level", "num_of_blocks", "write_marker",
+	//	"size", "content_hash", "merkle_root", "actual_file_size", "custom_meta",
+	//	"actual_file_hash", "thumbnail_size", "thumbnail_hash", "attributes",
+	//	"actual_thumbnail_size", "actual_thumbnail_hash", "encrypted_key", "on_cloud", "chunk_size")
 	pathsAdded := make(map[string]bool)
 	for _, path := range paths {
 		path = strings.TrimSuffix(path, "/")
@@ -173,11 +176,11 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 	path = filepath.Clean(path)
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "allocation_id", "type", "hash", "path_hash",
-		"name", "path", "parent_path", "lookup_hash", "level", "num_of_blocks", "write_marker",
-		"size", "content_hash", "merkle_root", "actual_file_size", "custom_meta",
-		"actual_file_hash", "thumbnail_size", "thumbnail_hash", "attributes",
-		"actual_thumbnail_size", "actual_thumbnail_hash", "encrypted_key", "on_cloud", "chunk_size")
+	//db = db.Select("id", "allocation_id", "type", "hash", "path_hash",
+	//	"name", "path", "parent_path", "lookup_hash", "level", "num_of_blocks", "write_marker",
+	//	"size", "content_hash", "merkle_root", "actual_file_size", "custom_meta",
+	//	"actual_file_hash", "thumbnail_size", "thumbnail_hash", "attributes",
+	//	"actual_thumbnail_size", "actual_thumbnail_hash", "encrypted_key", "on_cloud", "chunk_size")
 	db = db.Where(Ref{Path: path, AllocationID: allocationID})
 	if path != "/" {
 		db = db.Or("path LIKE ? AND allocation_id = ?", path+"/%", allocationID)
