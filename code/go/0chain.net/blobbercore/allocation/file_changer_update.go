@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"path/filepath"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
@@ -15,6 +17,7 @@ import (
 )
 
 type UpdateFileChanger struct {
+	deleteHash map[string]bool
 	BaseFileChanger
 }
 
@@ -59,6 +62,15 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 		return nil, common.NewError("file_not_found", "File to update not found in blobber")
 	}
 	existingRef := dirRef.Children[idx]
+	// remove changed thumbnail and files
+	nf.deleteHash = make(map[string]bool)
+	if existingRef.ThumbnailHash != "" && existingRef.ThumbnailHash != nf.ThumbnailHash {
+		nf.deleteHash[existingRef.ThumbnailHash] = true
+	}
+	if existingRef.ContentHash != "" && existingRef.ContentHash != nf.Hash {
+		nf.deleteHash[existingRef.ContentHash] = true
+	}
+
 	existingRef.ActualFileHash = nf.ActualHash
 	existingRef.ActualFileSize = nf.ActualSize
 	existingRef.MimeType = nf.MimeType
@@ -82,6 +94,21 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 	_, err = rootRef.CalculateHash(ctx, true)
 	stats.FileUpdated(ctx, existingRef.ID)
 	return rootRef, err
+}
+
+func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	for contenthash := range nf.deleteHash {
+		var count int64
+		err := db.Table((&reference.Ref{}).TableName()).Where(db.Where(&reference.Ref{ThumbnailHash: contenthash}).Or(&reference.Ref{ContentHash: contenthash})).Where("deleted_at IS null").Where(&reference.Ref{AllocationID: nf.AllocationID}).Count(&count).Error
+		if err == nil && count == 0 {
+			Logger.Info("Deleting content file", zap.String("content_hash", contenthash))
+			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, contenthash); err != nil {
+				Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
+			}
+		}
+	}
+	return nf.BaseFileChanger.CommitToFileStore(ctx)
 }
 
 func (nf *UpdateFileChanger) Marshal() (string, error) {
