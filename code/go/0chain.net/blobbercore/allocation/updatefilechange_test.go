@@ -2,7 +2,6 @@ package allocation
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -10,9 +9,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
@@ -23,21 +20,10 @@ import (
 )
 
 func init() {
-	resetMockFileBlock()
-	common.ConfigRateLimits()
-	chain.SetServerChain(&chain.Chain{})
-	config.Configuration.SignatureScheme = "bls0chain"
 	logging.Logger = zap.NewNop()
-
-	dir, _ := os.Getwd()
-	if _, err := filestore.SetupFSStoreI(dir+"/tmp", MockFileBlockGetter{}); err != nil {
-		panic(err)
-	}
 }
 
 func TestBlobberCore_UpdateFile(t *testing.T) {
-	setup(t)
-	setupEncryptionScheme()
 
 	sch := zcncrypto.NewSignatureScheme("bls0chain")
 	mnemonic := "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
