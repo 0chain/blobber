@@ -980,6 +980,20 @@ func pathHashFromReq(r *http.Request, allocationID string) (pathHash string, err
 	return
 }
 
+func getPathHashFromHeader(r *http.Request, allocationID string) (pathHash, path string, err error) {
+	pathHash = r.Header.Get("path_hash")
+	path = r.Header.Get("path")
+
+	if pathHash == "" {
+		if path == "" {
+			return "", "", common.NewError("invalid_parameters", "Invalid path")
+		}
+		pathHash = reference.GetReferenceLookup(allocationID, path)
+	}
+
+	return pathHash, path, nil
+}
+
 func getPathHash(r *http.Request, allocationID string) (pathHash, path string, err error) {
 	pathHash = r.FormValue("path_hash")
 	path = r.FormValue("path")

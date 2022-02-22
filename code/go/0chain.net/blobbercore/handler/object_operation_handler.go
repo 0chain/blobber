@@ -192,17 +192,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		return nil, common.NewErrorf("download_file", "invalid allocation id passed: %v", err)
 	}
 
-	if err = r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
-		Logger.Info("download_file - request_parse_error", zap.Error(err))
-		return nil, common.NewErrorf("download_file", "request_parse_error: %v", err)
-	}
-
-	pathHash, err := pathHashFromReq(r, alloc.ID)
+	pathHash, _, err := getPathHashFromHeader(r, alloc.ID)
 	if err != nil {
 		return nil, common.NewError("download_file", "invalid path")
 	}
 
-	var blockNumStr = r.FormValue("block_num")
+	var blockNumStr = r.Header.Get("block_num")
 	if blockNumStr == "" {
 		return nil, common.NewError("download_file", "no block number")
 	}
@@ -214,7 +209,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	numBlocks := int64(1)
-	numBlocksStr := r.FormValue("num_blocks")
+	numBlocksStr := r.Header.Get("num_blocks")
 
 	if numBlocksStr != "" {
 		numBlocks, err = strconv.ParseInt(numBlocksStr, 10, 64)
@@ -223,7 +218,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		}
 	}
 
-	readMarkerString := r.FormValue("read_marker")
+	readMarkerString := r.Header.Get("read_marker")
 	readMarker := new(readmarker.ReadMarker)
 
 	if err := json.Unmarshal([]byte(readMarkerString), readMarker); err != nil {
@@ -264,7 +259,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	var shareInfo *reference.ShareInfo
 
 	if !(isOwner || isCollaborator) {
-		authTokenString := r.FormValue("auth_token")
+		authTokenString := r.Header.Get("auth_token")
 		if authTokenString == "" {
 			return nil, common.NewError("invalid_client", "authticket is required")
 		}
@@ -283,7 +278,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		}
 
 		// set payer: check for command line payer flag (--rx_pay)
-		if r.FormValue("rx_pay") == "true" {
+		if r.Header.Get("rx_pay") == "true" {
 			payerID = clientID
 		}
 
@@ -332,7 +327,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 
 	// reading is allowed
 	var (
-		downloadMode = r.FormValue("content")
+		downloadMode = r.Header.Get("content")
 		respData     []byte
 	)
 	if downloadMode == DownloadContentThumb {
