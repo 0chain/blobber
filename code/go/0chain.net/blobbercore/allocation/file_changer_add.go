@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -89,8 +88,6 @@ func (nf *AddFileChanger) ProcessChange(ctx context.Context, change *AllocationC
 			"setting file attributes: %v", err)
 	}
 	dirRef.AddChild(newFile)
-	fmt.Println("File Changer Add !!! Adding New File Data So we need to Make a Create in Calculate Hash and DB Save !!!")
-	fmt.Println("The File Changer Add Allocation Root is: ", allocationRoot, " || New File WriteMarker is: ", newFile.WriteMarker, " || Dir WriteMarker: ", dirRef.WriteMarker)
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}

@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
@@ -914,7 +913,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	if exisitingRef != 0 {
+	if exisitingRef != -1 {
 		return nil, common.NewError("duplicate_file", "File at path already exists")
 	}
 
@@ -957,7 +956,6 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	result.Hash = ""
 	result.MerkleRoot = ""
 	result.Size = 0
-
 	return result, nil
 }
 
@@ -980,7 +978,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	//existingFileRef := getExistingFileRef(fsh, ctx, r, allocationObj, fileOperation)
 	existingFileRefID := getExistingFileRefID(fsh, ctx, r, allocationObj, fileOperation)
 	//isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
-	isCollaborator := existingFileRefID != 0 && reference.IsACollaborator(ctx, existingFileRefID, clientID)
+	isCollaborator := existingFileRefID != -1 && reference.IsACollaborator(ctx, existingFileRefID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
 
 	if isCollaborator {
@@ -1094,5 +1092,5 @@ func getExistingFileRefID(fsh *StorageHandler, ctx context.Context, r *http.Requ
 			return fsh.checkIfFileRefAlreadyExists(ctx, allocationObj.ID, formData.Path)
 		}
 	}
-	return 0
+	return -1
 }
