@@ -1,12 +1,10 @@
 package handler
 
 import (
-	"bytes"
 	"context"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
-	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -111,7 +109,7 @@ func TestDownloadFile(t *testing.T) {
 	// reuse code from GOSDK, https://github.com/0chain/gosdk/blob/staging/zboxcore/sdk/blockdownloadworker.go#L150
 	var addToForm = func(
 		t *testing.T,
-		formWriter *multipart.Writer,
+		req *http.Request,
 		p parameters,
 	) *marker.ReadMarker {
 		rm := &marker.ReadMarker{}
@@ -126,14 +124,14 @@ func TestDownloadFile(t *testing.T) {
 		require.NoError(t, err)
 		rmData, err := json.Marshal(rm)
 		require.NoError(t, err)
-		require.NoError(t, formWriter.WriteField("path_hash", p.inData.pathHash))
-		require.NoError(t, formWriter.WriteField("path", p.inData.remotefilepath))
+		req.Header.Set("path_hash", p.inData.pathHash)
+		req.Header.Set("path", p.inData.remotefilepath)
 		if p.inData.rxPay {
-			require.NoError(t, formWriter.WriteField("rx_pay", "true"))
+			req.Header.Set("rx_pay", "true")
 		}
-		require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", p.inData.blockNum)))
-		require.NoError(t, formWriter.WriteField("num_blocks", fmt.Sprintf("%d", p.inData.numBlocks)))
-		require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
+		req.Header.Set("block_num", fmt.Sprintf("%d", p.inData.blockNum))
+		req.Header.Set("num_blocks", fmt.Sprintf("%d", p.inData.numBlocks))
+		req.Header.Set("read_marker", string(rmData))
 		if p.useAuthTicket {
 			authTicket := &marker.AuthTicket{
 				AllocationID: p.inData.allocationID,
@@ -147,12 +145,11 @@ func TestDownloadFile(t *testing.T) {
 			require.NoError(t, authTicket.Sign())
 			require.NoError(t, client.PopulateClient(mockClientWallet, "bls0chain"))
 			authTicketBytes, _ := json.Marshal(authTicket)
-			require.NoError(t, formWriter.WriteField("auth_token", string(authTicketBytes)))
+			req.Header.Set("auth_token", string(authTicketBytes))
 		}
 		if len(p.inData.contentMode) > 0 {
-			require.NoError(t, formWriter.WriteField("content", p.inData.contentMode))
+			req.Header.Set("content", p.inData.contentMode)
 		}
-		require.NoError(t, formWriter.Close())
 		return rm
 	}
 
@@ -432,12 +429,8 @@ func TestDownloadFile(t *testing.T) {
 	}
 
 	setupRequest := func(p parameters) (*http.Request, *marker.ReadMarker) {
-		body := new(bytes.Buffer)
-		formWriter := multipart.NewWriter(body)
-		rm := addToForm(t, formWriter, p)
-		req := httptest.NewRequest(http.MethodGet, "/v1/file/download/", body)
-		require.NoError(t, req.ParseForm())
-		req.Header.Add("Content-Type", formWriter.FormDataContentType())
+		req := httptest.NewRequest(http.MethodGet, "/v1/file/download/", nil)
+		rm := addToForm(t, req, p)
 		return req, rm
 	}
 
