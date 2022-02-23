@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"mime/multipart"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
@@ -483,57 +482,19 @@ func WriteFileGRPCToHTTP(req *blobbergrpc.UploadFileRequest) (*http.Request, err
 }
 
 func DownloadFileGRPCToHTTP(req *blobbergrpc.DownloadFileRequest) (*http.Request, error) {
-	body := bytes.NewBuffer([]byte{})
-	writer := multipart.NewWriter(body)
 
-	err := writer.WriteField("path", req.Path)
+	r, err := http.NewRequest("GET", "", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	err = writer.WriteField("path_hash", req.PathHash)
-	if err != nil {
-		return nil, err
-	}
-
-	err = writer.WriteField("rx_pay", req.RxPay)
-	if err != nil {
-		return nil, err
-	}
-
-	err = writer.WriteField("block_num", req.BlockNum)
-	if err != nil {
-		return nil, err
-	}
-
-	err = writer.WriteField("num_blocks", req.NumBlocks)
-	if err != nil {
-		return nil, err
-	}
-
-	err = writer.WriteField("read_marker", req.ReadMarker)
-	if err != nil {
-		return nil, err
-	}
-
-	err = writer.WriteField("auth_token", req.AuthToken)
-	if err != nil {
-		return nil, err
-	}
-
-	err = writer.WriteField("content", req.Content)
-	if err != nil {
-		return nil, err
-	}
-
-	writer.Close()
-
-	r, err := http.NewRequest("POST", "", strings.NewReader(body.String()))
-	if err != nil {
-		return nil, err
-	}
-
-	r.Header.Set("Content-Type", writer.FormDataContentType())
-
+	r.Header.Set("path", req.Path)
+	r.Header.Set("path_hash", req.PathHash)
+	r.Header.Set("rx_pay", req.RxPay)
+	r.Header.Set("block_num", req.BlockNum)
+	r.Header.Set("num_blocks", req.NumBlocks)
+	r.Header.Set("read_marker", req.ReadMarker)
+	r.Header.Set("auth_token", req.AuthToken)
+	r.Header.Set("content", req.Content)
 	return r, nil
 }
