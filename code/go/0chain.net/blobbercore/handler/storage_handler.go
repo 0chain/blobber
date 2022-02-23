@@ -125,13 +125,13 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 	return allocationObj, nil
 }
 
-func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID, path string) *reference.Ref {
-	fileReference, err := reference.GetReference(ctx, allocationID, path)
-	if err != nil {
-		return nil
-	}
-	return fileReference
-}
+//func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID, path string) *reference.Ref {
+//	fileReference, err := reference.GetReference(ctx, allocationID, path)
+//	if err != nil {
+//		return nil
+//	}
+//	return fileReference
+//}
 
 func (fsh *StorageHandler) checkIfFileRefAlreadyExists(ctx context.Context, allocationID, path string) int64 {
 	ref, err := reference.GetReferenceID(ctx, allocationID, path)
