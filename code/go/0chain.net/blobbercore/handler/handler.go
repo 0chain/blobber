@@ -406,7 +406,8 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	path := r.FormValue("path")
 	refereeClientID := r.FormValue("refereeClientID")
 	filePathHash := fileref.GetReferenceLookup(allocationID, path)
-	_, err = reference.GetReferenceFromLookupHash(ctx, allocationID, filePathHash)
+	// Update GetReferenceFromLookupHash to GetReferenceFromLookupHashForAddCollaborator
+	_, err = reference.GetReferenceFromLookupHashForAddCollaborator(ctx, allocationID, filePathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -472,13 +473,13 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return false, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
 	}
-
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, authTicket.FilePathHash)
+	// Update GetReferenceFromLookupHash to GetReferenceForVerifyAuthTicketFromLookupHash
+	fileRef, err := reference.GetReferenceForVerifyAuthTicketFromLookupHash(ctx, allocationID, authTicket.FilePathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 
-	authToken, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileref, authTicket.ClientID)
+	authToken, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileRef, authTicket.ClientID)
 	if authToken == nil {
 		return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket. "+err.Error())
 	}

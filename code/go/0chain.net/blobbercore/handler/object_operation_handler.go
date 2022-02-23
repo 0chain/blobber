@@ -1103,18 +1103,18 @@ func getFileOperation(r *http.Request) string {
 	return mode
 }
 
-func getExistingFileRef(fsh *StorageHandler, ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) *reference.Ref {
-	if fileOperation == constants.FileOperationInsert || fileOperation == constants.FileOperationUpdate {
-		var formData allocation.UpdateFileChanger
-		uploadMetaString := r.FormValue(getFormFieldName(fileOperation))
-		err := json.Unmarshal([]byte(uploadMetaString), &formData)
-
-		if err == nil {
-			return fsh.checkIfFileAlreadyExists(ctx, allocationObj.ID, formData.Path)
-		}
-	}
-	return nil
-}
+//func getExistingFileRef(fsh *StorageHandler, ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) *reference.Ref {
+//	if fileOperation == constants.FileOperationInsert || fileOperation == constants.FileOperationUpdate {
+//		var formData allocation.UpdateFileChanger
+//		uploadMetaString := r.FormValue(getFormFieldName(fileOperation))
+//		err := json.Unmarshal([]byte(uploadMetaString), &formData)
+//
+//		if err == nil {
+//			return fsh.checkIfFileAlreadyExists(ctx, allocationObj.ID, formData.Path)
+//		}
+//	}
+//	return nil
+//}
 
 func getExistingFileRefID(fsh *StorageHandler, ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) int64 {
 	if fileOperation == constants.FileOperationInsert || fileOperation == constants.FileOperationUpdate {

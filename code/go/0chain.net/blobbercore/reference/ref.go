@@ -289,16 +289,16 @@ func GetReferenceForVerifyAuthTicketFromLookupHash(ctx context.Context, allocati
 	return nil, err
 }
 
-func GetReferenceForFileStatsFromLookupHash(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
-	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "path", "lookup_hash", "type", "name", "write_marker")
-	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
-	if err == nil {
-		return ref, nil
-	}
-	return nil, err
-}
+//func GetReferenceForFileStatsFromLookupHash(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
+//	ref := &Ref{}
+//	db := datastore.GetStore().GetTransaction(ctx)
+//	db = db.Select("id", "path", "lookup_hash", "type", "name", "write_marker")
+//	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
+//	if err == nil {
+//		return ref, nil
+//	}
+//	return nil, err
+//}
 
 func GetReferenceFromLookupHashForAddCollaborator(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
 	ref := &Ref{}
