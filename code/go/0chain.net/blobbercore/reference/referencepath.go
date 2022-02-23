@@ -33,7 +33,7 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 	db = db.Select("id", "allocation_id", "type", "name", "path",
 		"parent_path", "size", "hash", "path_hash", "content_hash", "merkle_root",
 		"actual_file_size", "actual_file_hash", "attributes", "chunk_size",
-		"lookup_hash")
+		"lookup_hash", "thumbnail_hash")
 	// , "thumbnail_size", "thumbnail_hash", "actual_thumbnail_size",
 	//		"actual_thumbnail_hash"
 	pathsAdded := make(map[string]bool)
