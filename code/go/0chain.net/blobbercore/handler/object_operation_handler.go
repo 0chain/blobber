@@ -1,17 +1,13 @@
 package handler
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"math"
-	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
-	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 
 	"net/http"
 	"path/filepath"
@@ -38,10 +34,10 @@ import (
 )
 
 const (
-	// EncryptionOverHead takes blockSize increment when data is incremented.
-	// messageCheckSum(128) + overallChecksum(128) + ","(1) + data-size-increment(16)
-	EncryptionOverHead = 273
-	HeaderChecksumSize = 2048 // Change it to 257 after header size is fixed in chunked upload as well
+	// EncryptionHeaderSize encryption header size in chunk: PRE.MessageChecksum(128)"+PRE.OverallChecksum(128)
+	EncryptionHeaderSize = 128 + 128
+	// ReEncryptionHeaderSize re-encryption header size in chunk
+	ReEncryptionHeaderSize = 256
 )
 
 func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks, pendNumBlocks int64, payerID string) (err error) {
@@ -370,53 +366,25 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
 	}
 
-	if fileref.EncryptedKey != "" && authToken != nil {
-		encscheme := zencryption.NewEncryptionScheme()
-		if _, err := encscheme.Initialize(""); err != nil {
-			return nil, err
+	var chunkEncoder ChunkEncoder
+	if len(fileref.EncryptedKey) > 0 && authToken != nil {
+		chunkEncoder = &PREChunkEncoder{
+			EncryptedKey:              fileref.EncryptedKey,
+			ReEncryptionKey:           shareInfo.ReEncryptionKey,
+			ClientEncryptionPublicKey: shareInfo.ClientEncryptionPublicKey,
 		}
+	} else {
+		chunkEncoder = &RawChunkEncoder{}
+	}
 
-		if err := encscheme.InitForDecryption("filetype:audio", fileref.EncryptedKey); err != nil {
-			return nil, err
-		}
+	chunkData, err := chunkEncoder.Encode(int(fileref.ChunkSize), respData)
 
-		totalSize := len(respData)
-		result := []byte{}
-		for i := 0; i < totalSize; i += int(fileref.ChunkSize) {
-			encMsg := new(zencryption.EncryptedMessage)
-			chunkData := respData[i:int64(math.Min(float64(i+int(fileref.ChunkSize)), float64(totalSize)))]
-
-			encMsg.EncryptedData = chunkData[HeaderChecksumSize:]
-
-			headerBytes := chunkData[:HeaderChecksumSize]
-			headerBytes = bytes.Trim(headerBytes, "\x00")
-			headerString := string(headerBytes)
-
-			headerChecksums := strings.Split(headerString, ",")
-			if len(headerChecksums) != 2 {
-				Logger.Error("Block has invalid header", zap.String("request Url", r.URL.String()))
-				return nil, errors.New("Block has invalid header for request " + r.URL.String())
-			}
-
-			encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
-			encMsg.EncryptedKey = encscheme.GetEncryptedKey()
-
-			reEncMsg, err := encscheme.ReEncrypt(encMsg, shareInfo.ReEncryptionKey, shareInfo.ClientEncryptionPublicKey)
-			if err != nil {
-				return nil, err
-			}
-
-			encData, err := reEncMsg.Marshal()
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, encData...)
-		}
-		respData = result
+	if err != nil {
+		return nil, err
 	}
 
 	stats.FileBlockDownloaded(ctx, fileref.ID)
-	return respData, nil
+	return chunkData, nil
 }
 
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {

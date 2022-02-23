@@ -33,6 +33,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("challenge_completion_time", time.Duration(-1))
 	viper.SetDefault("read_lock_timeout", time.Duration(-1))
 	viper.SetDefault("write_lock_timeout", time.Duration(-1))
+	viper.SetDefault("write_marker_lock_timeout", time.Second*30)
 
 	viper.SetDefault("delegate_wallet", "")
 	viper.SetDefault("min_stake", 1.0)
@@ -115,6 +116,8 @@ type Config struct {
 
 	ReadLockTimeout  int64 // seconds
 	WriteLockTimeout int64 // seconds
+	// WriteMarkerLockTimeout lock is released automatically if it is timeout
+	WriteMarkerLockTimeout time.Duration
 
 	UpdateAllocationsInterval time.Duration
 

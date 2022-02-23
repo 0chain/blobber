@@ -83,6 +83,7 @@ func (ms *MockStore) DeleteFile(allocationID, contentHash string) error {
 	delete(ms.d[allocationID], contentHash)
 	return nil
 }
+
 func (ms *MockStore) GetTotalDiskSizeUsed() (int64, error) {
 	return 0, constants.ErrNotImplemented
 }
