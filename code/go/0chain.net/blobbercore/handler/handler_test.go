@@ -1506,12 +1506,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal()
 					}
 
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
 					remotePath := "/file.txt"
 
-					require.NoError(t, formWriter.WriteField("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath)))
-					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
 					rm := &marker.ReadMarker{}
 					rm.ClientID = ownerClient.ClientID
 					rm.ClientPublicKey = ownerClient.ClientKey
@@ -1524,14 +1520,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 					rmData, err := json.Marshal(rm)
 					require.NoError(t, err)
-					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
-					r, err := http.NewRequest(http.MethodPost, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
+					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
 					if err != nil {
-						t.Fatal(err)
+						require.NoError(t, err)
 					}
 
 					hash := encryption.Hash(alloc.Tx)
@@ -1540,7 +1531,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					r.Header.Set("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
+					r.Header.Set("block_num", fmt.Sprintf("%d", 1))
+					r.Header.Set("read_marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
@@ -1591,12 +1584,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal()
 					}
 
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
 					remotePath := "/file.txt"
 
-					require.NoError(t, formWriter.WriteField("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath)))
-					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
 					rm := &marker.ReadMarker{}
 					rm.ClientID = ownerClient.ClientID
 					rm.ClientPublicKey = ownerClient.ClientKey
@@ -1610,12 +1599,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 					rmData, err := json.Marshal(rm)
 					require.NoError(t, err)
-					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
-					r, err := http.NewRequest(http.MethodPost, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
+					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1626,7 +1610,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					r.Header.Set("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
+					r.Header.Set("block_num", fmt.Sprintf("%d", 1))
+					r.Header.Set("read_marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
@@ -1699,19 +1685,14 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal()
 					}
 
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
 					remotePath := "/file.txt"
 
 					pathHash := fileref.GetReferenceLookup(alloc.Tx, remotePath)
-					require.NoError(t, formWriter.WriteField("path_hash", pathHash))
-					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
 					authTicket, err := GetAuthTicketForEncryptedFile(ownerClient, alloc.ID, remotePath, pathHash, guestClient.ClientID, ownerClient.Keys[0].PublicKey)
 					if err != nil {
 						t.Fatal(err)
 					}
 
-					require.NoError(t, formWriter.WriteField("auth_token", authTicket))
 					rm := &marker.ReadMarker{}
 					rm.ClientID = guestClient.ClientID
 					rm.ClientPublicKey = guestClient.ClientKey
@@ -1725,12 +1706,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 					rmData, err := json.Marshal(rm)
 					require.NoError(t, err)
-					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
-					r, err := http.NewRequest(http.MethodPost, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
+					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1741,7 +1717,10 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					r.Header.Set("read_marker", string(rmData))
+					r.Header.Set("path_hash", pathHash)
+					r.Header.Set("block_num", fmt.Sprintf("%d", 1))
+					r.Header.Set("auth_token", authTicket)
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -1819,18 +1798,13 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal()
 					}
 
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
 					remotePath := "/file.txt"
 
 					pathHash := fileref.GetReferenceLookup(alloc.Tx, remotePath)
-					require.NoError(t, formWriter.WriteField("path_hash", pathHash))
-					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
 					authTicket, err := GetAuthTicketForEncryptedFile(ownerClient, alloc.ID, remotePath, pathHash, guestClient.ClientID, "")
 					if err != nil {
 						t.Fatal(err)
 					}
-					require.NoError(t, formWriter.WriteField("auth_token", authTicket))
 					rm := &marker.ReadMarker{}
 					rm.ClientID = guestClient.ClientID
 					rm.ClientPublicKey = guestClient.ClientKey
@@ -1844,12 +1818,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 					rmData, err := json.Marshal(rm)
 					require.NoError(t, err)
-					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
-					r, err := http.NewRequest(http.MethodPost, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
+					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1860,7 +1829,10 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					r.Header.Set("read_marker", string(rmData))
+					r.Header.Set("path_hash", pathHash)
+					r.Header.Set("block_num", fmt.Sprintf("%d", 1))
+					r.Header.Set("auth_token", authTicket)
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -1966,21 +1938,14 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal()
 					}
 
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
-
 					remotePath := "/"
 					pathHash := fileref.GetReferenceLookup(alloc.Tx, remotePath)
 
 					filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
-					require.NoError(t, formWriter.WriteField("path_hash", filePathHash))
-
-					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
 					authTicket, err := GetAuthTicketForEncryptedFile(ownerClient, alloc.ID, remotePath, pathHash, guestClient.ClientID, "")
 					if err != nil {
 						t.Fatal(err)
 					}
-					require.NoError(t, formWriter.WriteField("auth_token", authTicket))
 					rm := &marker.ReadMarker{}
 					rm.ClientID = guestClient.ClientID
 					rm.ClientPublicKey = guestClient.ClientKey
@@ -1995,13 +1960,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					rmData, err := json.Marshal(rm)
 					require.NoError(t, err)
-					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
+					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -2012,7 +1972,10 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					r.Header.Set("path_hash", filePathHash)
+					r.Header.Set("block_num", fmt.Sprintf("%d", 1))
+					r.Header.Set("auth_token", authTicket)
+					r.Header.Set("read_marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -2121,21 +2084,14 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal()
 					}
 
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
-
 					remotePath := "/folder1"
 					pathHash := fileref.GetReferenceLookup(alloc.Tx, remotePath)
 
 					filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder1/subfolder1/file.txt")
-					require.NoError(t, formWriter.WriteField("path_hash", filePathHash))
-
-					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
 					authTicket, err := GetAuthTicketForEncryptedFile(ownerClient, alloc.ID, remotePath, pathHash, guestClient.ClientID, "")
 					if err != nil {
 						t.Fatal(err)
 					}
-					require.NoError(t, formWriter.WriteField("auth_token", authTicket))
 					rm := &marker.ReadMarker{}
 					rm.ClientID = guestClient.ClientID
 					rm.ClientPublicKey = guestClient.ClientKey
@@ -2150,13 +2106,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					rmData, err := json.Marshal(rm)
 					require.NoError(t, err)
-					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
+					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -2167,7 +2118,10 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					r.Header.Set("path_hash", filePathHash)
+					r.Header.Set("block_num", fmt.Sprintf("%d", 1))
+					r.Header.Set("auth_token", authTicket)
+					r.Header.Set("read_marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -2276,21 +2230,14 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal()
 					}
 
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
-
 					remotePath := "/folder1"
 					pathHash := fileref.GetReferenceLookup(alloc.Tx, remotePath)
 
 					filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder2/subfolder1/file.txt")
-					require.NoError(t, formWriter.WriteField("path_hash", filePathHash))
-
-					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
 					authTicket, err := GetAuthTicketForEncryptedFile(ownerClient, alloc.ID, remotePath, pathHash, guestClient.ClientID, "")
 					if err != nil {
 						t.Fatal(err)
 					}
-					require.NoError(t, formWriter.WriteField("auth_token", authTicket))
 					rm := &marker.ReadMarker{}
 					rm.ClientID = guestClient.ClientID
 					rm.ClientPublicKey = guestClient.ClientKey
@@ -2305,13 +2252,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					rmData, err := json.Marshal(rm)
 					require.NoError(t, err)
-					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
 
-					r, err := http.NewRequest(http.MethodPost, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
+					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -2322,7 +2264,10 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					r.Header.Set("read_marker", string(rmData))
+					r.Header.Set("path_hash", filePathHash)
+					r.Header.Set("block_num", fmt.Sprintf("%d", 1))
+					r.Header.Set("auth_token", authTicket)
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
