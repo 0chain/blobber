@@ -204,6 +204,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 
 				//query := `SELECT * FROM "reference_objects" WHERE`
 				query := `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash","thumbnail_hash" FROM "reference_objects" WHERE`
+
 				mocket.Catcher.NewMock().WithQuery(query).WithReply(
 					[]map[string]interface{}{
 						{

@@ -437,7 +437,7 @@ func TestDownloadFile(t *testing.T) {
 		body := new(bytes.Buffer)
 		formWriter := multipart.NewWriter(body)
 		rm := addToForm(t, formWriter, p)
-		req := httptest.NewRequest(http.MethodPost, "/v1/file/download/", body)
+		req := httptest.NewRequest(http.MethodGet, "/v1/file/download/", body)
 		require.NoError(t, req.ParseForm())
 		req.Header.Add("Content-Type", formWriter.FormDataContentType())
 		return req, rm

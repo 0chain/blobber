@@ -8,6 +8,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"path/filepath"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
@@ -64,6 +66,7 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 		return nil, common.NewError("file_not_found", "File to update not found in blobber")
 	}
 	existingRef := dirRef.Children[idx]
+
 	nf.deleteHash = make(map[string]bool)
 	if existingRef.ThumbnailHash != "" && existingRef.ThumbnailHash != nf.ThumbnailHash {
 		nf.deleteHash[existingRef.ThumbnailHash] = true

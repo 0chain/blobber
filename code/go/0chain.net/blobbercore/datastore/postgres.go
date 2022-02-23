@@ -7,7 +7,8 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -22,7 +23,10 @@ func (store *postgresStore) Open() error {
 		"host=%v port=%v user=%v dbname=%v password=%v sslmode=disable",
 		config.Configuration.DBHost, config.Configuration.DBPort,
 		config.Configuration.DBUserName, config.Configuration.DBName,
-		config.Configuration.DBPassword)), &gorm.Config{})
+		config.Configuration.DBPassword)), &gorm.Config{
+		SkipDefaultTransaction: true, // https://gorm.io/docs/performance.html#Disable-Default-Transaction
+		PrepareStmt:            true, //https://gorm.io/docs/performance.html#Caches-Prepared-Statement
+	})
 	if err != nil {
 		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
 	}
@@ -59,10 +63,65 @@ func (store *postgresStore) GetTransaction(ctx context.Context) *gorm.DB {
 	if conn != nil {
 		return conn.(*gorm.DB)
 	}
-	Logger.Error("No connection in the context.")
+	logging.Logger.Error("No connection in the context.")
 	return nil
 }
 
 func (store *postgresStore) GetDB() *gorm.DB {
 	return store.db
+}
+
+func (store *postgresStore) AutoMigrate() error {
+
+	err := store.db.AutoMigrate(&Migration{}, &WriteLock{})
+	if err != nil {
+		logging.Logger.Error("[db]", zap.Error(err))
+	}
+
+	if len(releases) == 0 {
+		fmt.Print("	+ No releases 	[SKIP]\n")
+		return nil
+	}
+
+	for i := 0; i < len(releases); i++ {
+		v := releases[i]
+		fmt.Print("\r	+ ", v.Version, "	")
+		isMigrated, err := store.IsMigrated(v)
+		if err != nil {
+			return err
+		}
+		if isMigrated {
+			fmt.Print("	[SKIP]\n")
+			continue
+		}
+
+		err = v.Migrate(store.db)
+		if err != nil {
+			logging.Logger.Error("[db]"+v.Version, zap.Error(err))
+			return err
+		}
+
+		logging.Logger.Info("[db]" + v.Version + " migrated")
+		fmt.Print("	[OK]\n")
+
+	}
+	return nil
+}
+
+func (store *postgresStore) IsMigrated(m Migration) (bool, error) {
+	var version string
+	err := store.db.
+		Raw(`select version from "migrations" where version=?`, m.Version).
+		Pluck("version", &version).
+		Error
+
+	if err == nil {
+		return false, nil
+	}
+
+	if err == gorm.ErrRecordNotFound {
+		return false, nil
+	}
+
+	return false, err
 }
