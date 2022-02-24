@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"mime/multipart"
 
@@ -12,15 +13,17 @@ import (
 )
 
 type MockStore struct {
+	d map[string]map[string]bool
 }
 
 var mockStore *MockStore
 
-func UseMock() {
+func UseMock(initData map[string]map[string]bool) {
 	if mockStore == nil {
-		mockStore = &MockStore{}
+		mockStore = &MockStore{d: initData}
 	}
 
+	mockStore.d = initData
 	fileStore = mockStore
 }
 
@@ -67,15 +70,23 @@ func (ms *MockStore) GetFileBlock(allocationRoot, allocationID string, fileData 
 }
 
 func (ms *MockStore) CommitWrite(allocationRoot, allocationID string, fileData *FileInputData, connectionID string) (bool, error) {
+	ms.addFileInDataObj(allocationID, fileData.Hash)
 	return true, nil
 }
 
 func (ms *MockStore) GetFileBlockForChallenge(allocationRoot, allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
 	return nil, nil, constants.ErrNotImplemented
 }
+
 func (ms *MockStore) DeleteFile(allocationRoot, allocationID, contentHash string) error {
+	if ms.d == nil || ms.d[allocationID] == nil || !ms.d[allocationID][contentHash] {
+		return errors.New("file not available related to content")
+	}
+	delete(ms.d[allocationID], contentHash)
+
 	return nil
 }
+
 func (ms *MockStore) GetTotalDiskSizeUsed() (int64, error) {
 	return 0, constants.ErrNotImplemented
 }
@@ -96,4 +107,15 @@ func (ms *MockStore) DownloadFromCloud(fileHash, filePath string) error {
 }
 func (ms *MockStore) SetupAllocation(allocationRoot, allocationID string, skipCreate bool) (*StoreAllocation, error) {
 	return nil, constants.ErrNotImplemented
+}
+
+func (ms *MockStore) addFileInDataObj(allocationID, contentHash string) {
+	if contentHash == "" {
+		return
+	}
+	if ms.d == nil {
+		ms.d = make(map[string]map[string]bool, 0)
+	}
+	dataObj := ms.d[allocationID]
+	dataObj[contentHash] = true
 }
