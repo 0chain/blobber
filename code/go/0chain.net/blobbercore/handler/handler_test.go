@@ -2337,7 +2337,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	}
 
 	tests := append(positiveTests, negativeTests...)
-	// tests := positiveTests
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

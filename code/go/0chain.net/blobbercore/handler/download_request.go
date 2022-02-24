@@ -19,7 +19,7 @@ type DownloadRequest struct {
 	Path         string
 	BlockNum     int64
 	NumBlocks    int64
-	ReadMarker   *readmarker.ReadMarker
+	ReadMarker   readmarker.ReadMarker
 	AuthToken    string
 	RxPay        bool
 	DownloadMode string
@@ -70,7 +70,7 @@ func (dr *DownloadRequest) Parse() error {
 	}
 	dr.BlockNum = blockNum
 
-	numBlocks := dr.GetInt64("num_blocks", -1)
+	numBlocks := dr.GetInt64("num_blocks", 1)
 	if numBlocks <= 0 {
 		return errors.Throw(common.ErrInvalidParameter, "num_blocks")
 	}
@@ -82,16 +82,12 @@ func (dr *DownloadRequest) Parse() error {
 		return errors.Throw(common.ErrInvalidParameter, "read_marker")
 	}
 
-	err := json.Unmarshal([]byte(readMarker), dr.ReadMarker)
+	err := json.Unmarshal([]byte(readMarker), &dr.ReadMarker)
 	if err != nil {
 		return errors.Throw(common.ErrInvalidParameter, "read_marker")
 	}
 
-	authToken := dr.Get("auth_token")
-	if authToken == "" {
-		return errors.Throw(common.ErrInvalidParameter, "auth_token")
-	}
-	dr.AuthToken = authToken
+	dr.AuthToken = dr.Get("auth_token")
 
 	dr.RxPay = dr.Get("rx_pay") == "true"
 	dr.DownloadMode = dr.Get("content")

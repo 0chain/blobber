@@ -198,7 +198,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	rmObj := new(readmarker.ReadMarkerEntity)
-	rmObj.LatestRM = dr.ReadMarker
+	rmObj.LatestRM = &dr.ReadMarker
 
 	if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
 		return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
@@ -327,7 +327,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	dr.ReadMarker.PayerID = payerID
-	err = readmarker.SaveLatestReadMarker(ctx, dr.ReadMarker, latestRM == nil)
+	err = readmarker.SaveLatestReadMarker(ctx, &dr.ReadMarker, latestRM == nil)
 	if err != nil {
 		Logger.Error(err.Error())
 		return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
