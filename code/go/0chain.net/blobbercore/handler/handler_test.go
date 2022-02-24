@@ -1602,7 +1602,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					rm.ClientPublicKey = ownerClient.ClientKey
 					rm.BlobberID = ""
 					rm.AllocationID = alloc.ID
-					rm.ReadCounter = 1
+					rm.ReadSize = 64 * KB
 					rm.OwnerID = ownerClient.ClientID
 					rm.Signature, err = signHash(ownerClient, rm.GetHash())
 					if err != nil {
@@ -1717,7 +1717,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					rm.ClientPublicKey = guestClient.ClientKey
 					rm.BlobberID = ""
 					rm.AllocationID = alloc.ID
-					rm.ReadCounter = 1
+					rm.ReadSize = 64 * KB
 					rm.OwnerID = ownerClient.ClientID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
@@ -1836,7 +1836,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					rm.ClientPublicKey = guestClient.ClientKey
 					rm.BlobberID = ""
 					rm.AllocationID = alloc.ID
-					rm.ReadCounter = 1
+					rm.ReadSize = 64 * KB
 					rm.OwnerID = ownerClient.ClientID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
@@ -1986,7 +1986,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					rm.ClientPublicKey = guestClient.ClientKey
 					rm.BlobberID = ""
 					rm.AllocationID = alloc.ID
-					rm.ReadCounter = 1
+					rm.ReadSize = 64 * KB
 					rm.OwnerID = ownerClient.ClientID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
@@ -2141,7 +2141,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					rm.ClientPublicKey = guestClient.ClientKey
 					rm.BlobberID = ""
 					rm.AllocationID = alloc.ID
-					rm.ReadCounter = 1
+					rm.ReadSize = 64 * KB
 					rm.OwnerID = alloc.OwnerID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
@@ -2296,7 +2296,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					rm.ClientPublicKey = guestClient.ClientKey
 					rm.BlobberID = ""
 					rm.AllocationID = alloc.ID
-					rm.ReadCounter = 1
+					rm.ReadSize = 64 * KB
 					rm.OwnerID = alloc.OwnerID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
