@@ -81,7 +81,8 @@ func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString
 	}
 
 	if refRequested.LookupHash != authToken.FilePathHash {
-		authTokenRef, err := reference.GetReferenceFromLookupHash(ctx, authToken.AllocationID, authToken.FilePathHash)
+		// Update GetReferenceFromLookupHash to GetOnlyReferencePathFromLookupHash
+		authTokenRef, err := reference.GetOnlyReferencePathFromLookupHash(ctx, authToken.AllocationID, authToken.FilePathHash)
 		if err != nil {
 			return nil, err
 		}
@@ -124,12 +125,20 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 	return allocationObj, nil
 }
 
-func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID, path string) *reference.Ref {
-	fileReference, err := reference.GetReference(ctx, allocationID, path)
+//func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID, path string) *reference.Ref {
+//	fileReference, err := reference.GetReference(ctx, allocationID, path)
+//	if err != nil {
+//		return nil
+//	}
+//	return fileReference
+//}
+
+func (fsh *StorageHandler) checkIfFileRefAlreadyExists(ctx context.Context, allocationID, path string) int64 {
+	ref, err := reference.GetReferenceID(ctx, allocationID, path)
 	if err != nil {
-		return nil
+		return -1
 	}
-	return fileReference
+	return ref.ID
 }
 
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -153,7 +162,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	if err != nil {
 		return nil, err
 	}
-
+	// Update GetReferenceFromLookupHash to GetReferenceForVerifyAuthTicketFromLookupHash
 	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -231,7 +240,8 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 		return nil, err
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	// Update GetReferenceFromLookupHash to GetReferenceForVerifyAuthTicketFromLookupHash
+	fileref, err := reference.GetReferenceForVerifyAuthTicketFromLookupHash(ctx, allocationID, pathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -293,7 +303,8 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 		return nil, err
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	// Update GetReferenceFromLookupHash to GetReferenceFromLookupHashForAddCollaborator
+	fileref, err := reference.GetReferenceFromLookupHashForAddCollaborator(ctx, allocationID, pathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -382,7 +393,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, err
 	}
-
+	// Update GetReferenceFromLookupHash to GetReferenceForFileStatsFromLookupHash
 	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -428,8 +439,8 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	}
 
 	Logger.Info("Path Hash for list dir :" + pathHash)
-
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	// Update GetReferenceFromLookupHash to GetReferenceForVerifyAuthTicketFromLookupHash
+	fileref, err := reference.GetReferenceForVerifyAuthTicketFromLookupHash(ctx, allocationID, pathHash)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// `/` always is valid even it doesn't exists in db. so ignore RecordNotFound error
@@ -545,7 +556,6 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 		errCh <- err
 		return
 	}
-
 	// Change The GetReferencePathFromPaths to GetReferenceForHashCalculationFromPaths
 	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
 	if err != nil {
@@ -926,7 +936,8 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 		return nil, err
 	}
 
-	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
+	// Update GetReferencePathFromPaths to GetReferenceForHashCalculationFromPaths
+	rootRef, err := reference.GetReferenceForHashCalculationFromPaths(ctx, allocationID, paths)
 	if err != nil {
 		return nil, err
 	}

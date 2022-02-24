@@ -28,14 +28,13 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	if err != nil {
 		return nil, err
 	}
-
 	if rf.DestPath == "/" {
 		destRef, err := reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
 		if err != nil || destRef.Type != reference.DIRECTORY {
 			return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 		}
-		rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 
+		rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 		_, err = destRef.CalculateHash(ctx, true)
 		return destRef, err
 	}
@@ -45,7 +44,6 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	if err != nil || destRef.Type != reference.DIRECTORY {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 	}
-
 	destRef, err = reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
 	if err != nil || destRef.Type != reference.DIRECTORY {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
@@ -55,7 +53,7 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
 
-	rootRef, err := reference.GetReferencePath(ctx, rf.AllocationID, path)
+	rootRef, err := reference.GetReferencePath2(ctx, rf.AllocationID, path)
 	if err != nil {
 		return nil, err
 	}
@@ -92,6 +90,7 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	}
 
 	dirRef.RemoveChild(childIndex)
+
 	rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 	dirRef.AddChild(destRef)
 

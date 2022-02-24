@@ -156,7 +156,7 @@ func PathExists(ctx context.Context, allocationID, path string) (bool, error) {
 
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-
+	db = db.Select("id")
 	ref := Ref{Path: path, AllocationID: allocationID}
 	err := db.Where(ref).Find(&refs).Error
 
@@ -173,9 +173,9 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Where(Ref{Path: path, AllocationID: allocationID})
 	if path != "/" {
-		db = db.Or("path LIKE ? AND allocation_id = ?", (path + "/%"), allocationID)
+		db = db.Or("path LIKE ? AND allocation_id = ?", path+"/%", allocationID)
 	} else {
-		db = db.Or("path LIKE ? AND allocation_id = ?", (path + "%"), allocationID)
+		db = db.Or("path LIKE ? AND allocation_id = ?", path+"%", allocationID)
 	}
 
 	//err := db.Order("level, lookup_hash").Find(&refs).Error
@@ -215,7 +215,7 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 	wg.Add(2)
 	go func() {
 		db1 = db1.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-			Where(db1.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+			Where(db1.Where("path = ?", path).Or("path LIKE ?", path+"%"))
 		if _type != "" {
 			db1 = db1.Where("type = ?", _type)
 		}
@@ -232,7 +232,7 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 
 	go func() {
 		db2 = db2.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-			Where(db2.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+			Where(db2.Where("path = ?", path).Or("path LIKE ?", path+"%"))
 		if _type != "" {
 			db2 = db2.Where("type = ?", _type)
 		}
@@ -268,7 +268,7 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, 
 
 	go func() {
 		db1 = db1.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-			Where(db1.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+			Where(db1.Where("path = ?", path).Or("path LIKE ?", path+"%"))
 		if _type != "" {
 			db1 = db1.Where("type = ?", _type)
 		}
@@ -290,7 +290,7 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, 
 
 	go func() {
 		db2 = db2.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-			Where(db2.Where("path = ?", path).Or("path LIKE ?", (path + "%")))
+			Where(db2.Where("path = ?", path).Or("path LIKE ?", path+"%"))
 		if _type != "" {
 			db2 = db2.Where("type > ?", level)
 		}

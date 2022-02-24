@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/DATA-DOG/go-sqlmock"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -21,7 +22,6 @@ import (
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"github.com/0chain/gosdk/zboxcore/marker"
 	"github.com/0chain/gosdk/zcncore"
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -522,7 +522,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-
+				// "id","allocation_id","type","name","path","parent_path","size","hash","num_of_blocks","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash"
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path","parent_path","num_of_blocks","hash","type","name" FROM "reference_objects" WHERE`)).
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","hash","path_hash","name","path","parent_path","lookup_hash","level","num_of_blocks","write_marker","size","content_hash","merkle_root","actual_file_size","custom_meta","actual_file_hash","thumbnail_size","thumbnail_hash","attributes","actual_thumbnail_size","actual_thumbnail_hash","encrypted_key","on_cloud","chunk_size" FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, "/", reference.DIRECTORY, alloc.ID, "/").
 					WillReturnRows(
@@ -568,28 +570,26 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			alloc: alloc,
 			setupDbMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
 					WithArgs(alloc.Tx).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id"}).
 							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID),
 					)
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
 					WithArgs(alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","num_of_blocks","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash" FROM "reference_objects" WHERE`)).
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","level","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, path, alloc.ID, "/", "", alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path"}).
 							AddRow("/"),
 					)
-
 				mock.ExpectCommit()
 			},
 			wantCode: http.StatusOK,
@@ -644,7 +644,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path","lookup_hash","type","name","write_marker" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
@@ -714,6 +716,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
 
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","hash","path_hash","name","path","parent_path","lookup_hash","level","num_of_blocks","write_marker","size","content_hash","merkle_root","actual_file_size","custom_meta","actual_file_hash","thumbnail_size","thumbnail_hash","attributes","actual_thumbnail_size","actual_thumbnail_hash","encrypted_key","on_cloud","chunk_size" FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, path, path+"/%", alloc.ID).
 					WillReturnRows(
@@ -776,7 +779,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`)).
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","type" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
@@ -852,7 +857,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","name","path","hash","size","merkle_root" FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","num_of_blocks","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
@@ -934,13 +941,16 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","name","path","hash","size","merkle_root" FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
 							AddRow(reference.FILE),
 					)
 
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash" FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(aa, aa).
 					WillReturnError(errors.New(""))
@@ -1025,7 +1035,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","num_of_blocks","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
@@ -1131,7 +1143,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects"`)).
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects"`)).
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id" FROM "reference_objects" WHERE`)).
 					WithArgs(aa).
 					WillReturnError(gorm.ErrRecordNotFound)
 
@@ -1224,7 +1238,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path","lookup_hash","type","name" FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.Tx, "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "lookup_hash"}).
@@ -1313,7 +1328,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path","lookup_hash","type","name" FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.Tx, "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "lookup_hash"}).
@@ -1400,7 +1416,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","type" FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.Tx, filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "lookup_hash"}).
@@ -1480,7 +1497,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","type" FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.Tx, filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "lookup_hash"}).
@@ -1573,6 +1591,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).WillReturnError(gorm.ErrRecordNotFound)
 
@@ -1659,6 +1678,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
@@ -1775,6 +1795,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
 
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
@@ -1909,6 +1930,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
@@ -2060,7 +2082,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","num_of_blocks","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path", "chunk_size"}).
@@ -2072,7 +2096,10 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					WillReturnError(gorm.ErrRecordNotFound)
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","num_of_blocks","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, rootPathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path"}).
@@ -2215,7 +2242,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder1/subfolder1/file.txt")
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","num_of_blocks","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path", "chunk_size"}).
@@ -2227,7 +2256,10 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					WillReturnError(gorm.ErrRecordNotFound)
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder1")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`)).
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","num_of_blocks","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, rootPathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path"}).
@@ -2370,7 +2402,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder2/subfolder1/file.txt")
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","num_of_blocks","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path", "chunk_size"}).
@@ -2378,7 +2412,10 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder1")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects" WHERE`)).
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","num_of_blocks","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, rootPathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path"}).

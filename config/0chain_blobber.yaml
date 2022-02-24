@@ -41,7 +41,7 @@ write_lock_timeout: 1m
 update_allocations_interval: 1m
 
 # delegate wallet (must be set)
-delegate_wallet: '2f34516ed8c567089b7b5572b12950db34a62a07e16770da14b15b170d0d60a9'
+delegate_wallet: 'ffb5f45e78cefc18e5b1c3fcdc9b0c87450dedc38d48abc7589e8f3af41a56c2'
 # min stake allowed, tokens
 min_stake: 1.0
 # max stake allowed, tokens

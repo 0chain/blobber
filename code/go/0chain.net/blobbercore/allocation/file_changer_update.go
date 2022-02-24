@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -22,6 +23,7 @@ type UpdateFileChanger struct {
 }
 
 func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+
 	path, _ := filepath.Split(nf.Path)
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
@@ -63,7 +65,7 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 		return nil, common.NewError("file_not_found", "File to update not found in blobber")
 	}
 	existingRef := dirRef.Children[idx]
-	// remove changed thumbnail and files
+
 	nf.deleteHash = make(map[string]bool)
 	if existingRef.ThumbnailHash != "" && existingRef.ThumbnailHash != nf.ThumbnailHash {
 		nf.deleteHash[existingRef.ThumbnailHash] = true
@@ -71,7 +73,6 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 	if existingRef.ContentHash != "" && existingRef.ContentHash != nf.Hash {
 		nf.deleteHash[existingRef.ContentHash] = true
 	}
-
 	existingRef.ActualFileHash = nf.ActualHash
 	existingRef.ActualFileSize = nf.ActualSize
 	existingRef.MimeType = nf.MimeType
@@ -91,7 +92,7 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 		return nil, common.NewErrorf("process_update_file_change",
 			"setting file attributes: %v", err)
 	}
-
+	fmt.Println("Calculate Hash Need To Update Data !!!")
 	_, err = rootRef.CalculateHash(ctx, true)
 	stats.FileUpdated(ctx, existingRef.ID)
 	return rootRef, err

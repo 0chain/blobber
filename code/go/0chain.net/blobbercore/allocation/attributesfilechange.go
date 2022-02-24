@@ -27,7 +27,8 @@ func (ac *AttributesChange) ProcessChange(ctx context.Context, _ *AllocationChan
 	path = filepath.Clean(path)
 
 	// root reference
-	ref, err = reference.GetReferencePath(ctx, ac.AllocationID, ac.Path)
+	ref, err = reference.GetReferencePath2(ctx, ac.AllocationID, ac.Path)
+
 	if err != nil {
 		return nil, common.NewErrorf("process_attrs_update",
 			"getting root reference path: %v", err)
@@ -78,7 +79,7 @@ func (ac *AttributesChange) ProcessChange(ctx context.Context, _ *AllocationChan
 			"setting new attributes: %v", err)
 	}
 
-	if _, err = ref.CalculateHash(ctx, true); err != nil {
+	if _, err := ref.CalculateHash(ctx, true); err != nil {
 		return nil, common.NewErrorf("process_attrs_update",
 			"saving updated reference: %v", err)
 	}

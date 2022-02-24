@@ -20,6 +20,7 @@ type AddFileChanger struct {
 
 // ProcessChange update references, and create a new FileRef
 func (nf *AddFileChanger) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+
 	path, _ := filepath.Split(nf.Path)
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
@@ -29,7 +30,6 @@ func (nf *AddFileChanger) ProcessChange(ctx context.Context, change *AllocationC
 	if err != nil {
 		return nil, err
 	}
-
 	dirRef := rootRef
 	treelevel := 0
 	for {
@@ -83,12 +83,10 @@ func (nf *AddFileChanger) ProcessChange(ctx context.Context, change *AllocationC
 	newFile.ActualThumbnailSize = nf.ActualThumbnailSize
 	newFile.EncryptedKey = nf.EncryptedKey
 	newFile.ChunkSize = nf.ChunkSize
-
 	if err = newFile.SetAttributes(&nf.Attributes); err != nil {
 		return nil, common.NewErrorf("process_new_file_change",
 			"setting file attributes: %v", err)
 	}
-
 	dirRef.AddChild(newFile)
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
