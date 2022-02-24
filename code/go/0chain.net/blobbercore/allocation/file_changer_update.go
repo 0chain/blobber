@@ -98,12 +98,16 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 
 func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
+	alloc, err := VerifyAllocationTransaction(common.GetRootContext(), nf.AllocationID, true)
+	if err != nil {
+		return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+	}
 	for contenthash := range nf.deleteHash {
 		var count int64
 		err := db.Table((&reference.Ref{}).TableName()).Where(db.Where(&reference.Ref{ThumbnailHash: contenthash}).Or(&reference.Ref{ContentHash: contenthash})).Where("deleted_at IS null").Where(&reference.Ref{AllocationID: nf.AllocationID}).Count(&count).Error
 		if err == nil && count == 0 {
 			Logger.Info("Deleting content file", zap.String("content_hash", contenthash))
-			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, contenthash); err != nil {
+			if err := filestore.GetFileStore().DeleteFile(alloc.AllocationRoot, nf.AllocationID, contenthash); err != nil {
 				Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
 			}
 		}
