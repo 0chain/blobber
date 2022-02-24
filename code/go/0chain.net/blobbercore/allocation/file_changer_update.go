@@ -26,7 +26,8 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
 
-	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, nf.Path)
+	// Maybe Change this from GetReferencePath to GetReferencePath2
+	rootRef, err := reference.GetReferencePath2(ctx, nf.AllocationID, nf.Path)
 	if err != nil {
 		return nil, err
 	}
