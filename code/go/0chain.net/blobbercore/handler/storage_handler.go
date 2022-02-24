@@ -975,19 +975,9 @@ func pathsFromReq(r *http.Request) ([]string, error) {
 	return paths, nil
 }
 
-func pathHashFromReq(r *http.Request, allocationID string) (string, error) {
-	var (
-		pathHash = r.FormValue("path_hash")
-		path     = r.FormValue("path")
-	)
-	if pathHash == "" {
-		if path == "" {
-			return "", common.NewError("invalid_parameters", "Invalid path")
-		}
-		pathHash = reference.GetReferenceLookup(allocationID, path)
-	}
-
-	return pathHash, nil
+func pathHashFromReq(r *http.Request, allocationID string) (pathHash string, err error) {
+	pathHash, _, err = getPathHash(r, allocationID)
+	return
 }
 
 func getPathHash(r *http.Request, allocationID string) (pathHash, path string, err error) {

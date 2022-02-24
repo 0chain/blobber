@@ -333,16 +333,27 @@ func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *F
 				return nil, nil, errors.ThrowLog(err2.Error(), constants.ErrUnableHash)
 			}
 
-			merkleChunkSize := int(fileData.ChunkSize / 1024)
+			merkleChunkSize := int(fileData.ChunkSize) / 1024
+
+			if merkleChunkSize == 0 {
+				merkleChunkSize = 1
+			}
+
+			offset := 0
+
 			for i := 0; i < len(dataBytes); i += merkleChunkSize {
 				end := i + merkleChunkSize
 				if end > len(dataBytes) {
 					end = len(dataBytes)
 				}
-				offset := i / merkleChunkSize
 
 				if offset == blockoffset {
 					returnBytes = append(returnBytes, dataBytes[i:end]...)
+				}
+
+				offset++
+				if offset >= 1024 {
+					offset = 1
 				}
 			}
 			bytesBuf.Reset()
@@ -592,8 +603,11 @@ func (fs *FileFSStore) DownloadFromCloud(fileHash, filePath string) error {
 }
 
 func (fs *FileFSStore) RemoveFromCloud(fileHash string) error {
-	if _, err := fs.Minio.StatObject(MinioConfig.BucketName, fileHash, minio.StatObjectOptions{}); err == nil {
-		return fs.Minio.RemoveObject(MinioConfig.BucketName, fileHash)
+	if fs != nil && fs.Minio != nil {
+		_, err := fs.Minio.StatObject(MinioConfig.BucketName, fileHash, minio.StatObjectOptions{})
+		if err == nil {
+			return fs.Minio.RemoveObject(MinioConfig.BucketName, fileHash)
+		}
 	}
 	return nil
 }

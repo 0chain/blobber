@@ -26,6 +26,10 @@ const (
 // client1:alloc1 --> lock for writing read/write pendings
 var pendingMapLock common.MapLocker
 
+const (
+	TableNameAllocation = "allocations"
+)
+
 type Allocation struct {
 	ID             string           `gorm:"column:id;primary_key"`
 	Tx             string           `gorm:"column:tx"`
@@ -52,7 +56,7 @@ type Allocation struct {
 }
 
 func (Allocation) TableName() string {
-	return "allocations"
+	return TableNameAllocation
 }
 
 // RestDurationInTimeUnits returns number (float point) of time units until
@@ -204,6 +208,10 @@ func (p *Pending) Save(tx *gorm.DB) error {
 	return tx.Save(p).Error
 }
 
+const (
+	TableNameTerms = "terms"
+)
+
 // Terms for allocation by its Tx.
 type Terms struct {
 	ID           int64  `gorm:"column:id;primary_key"`
@@ -215,7 +223,7 @@ type Terms struct {
 }
 
 func (*Terms) TableName() string {
-	return "terms"
+	return TableNameTerms
 }
 
 type ReadPool struct {

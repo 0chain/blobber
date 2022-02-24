@@ -71,7 +71,7 @@ func DeleteObject(ctx context.Context, allocationID, path string) (*Ref, map[str
 		GetTransaction(ctx)
 
 	var deletedObjects []*Ref
-	txDelete := db.Clauses(clause.Returning{Columns: []clause.Column{{Name: "content_hash"}, {Name: "type"}}})
+	txDelete := db.Clauses(clause.Returning{Columns: []clause.Column{{Name: "content_hash"}, {Name: "thumbnail_hash"}, {Name: "type"}}})
 
 	path = filepath.Join("/", path)
 	txDelete = txDelete.Where("allocation_id = ? and deleted_at IS NULL and (path LIKE ? or path = ?) and path != ? ", allocationID, (path + "%"), path, "/")
@@ -85,6 +85,9 @@ func DeleteObject(ctx context.Context, allocationID, path string) (*Ref, map[str
 	for _, it := range deletedObjects {
 		if it.Type == FILE {
 			deletedFiles[it.ContentHash] = true
+			if it.ThumbnailHash != "" {
+				deletedFiles[it.ThumbnailHash] = true
+			}
 		}
 	}
 

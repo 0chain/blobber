@@ -44,7 +44,7 @@ func SetupHandlers(r *mux.Router) {
 
 	//object operations
 	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONResponse(WithConnection(UploadHandler)))
-	r.HandleFunc("/v1/file/download/{allocation}", common.ToByteStream(WithConnection(DownloadHandler))).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/v1/file/download/{allocation}", common.ToByteStream(WithConnection(DownloadHandler))).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/v1/file/rename/{allocation}", common.ToJSONResponse(WithConnection(RenameHandler))).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/v1/file/copy/{allocation}", common.ToJSONResponse(WithConnection(CopyHandler)))
 	r.HandleFunc("/v1/file/attributes/{allocation}", common.ToJSONResponse(WithConnection(UpdateAttributesHandler)))
@@ -75,6 +75,11 @@ func SetupHandlers(r *mux.Router) {
 
 	//marketplace related
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(MarketPlaceShareInfoHandler)))
+
+	// lightweight http handler without heavy postgres transaction to improve performance
+
+	r.HandleFunc("/v1/writemarker/lock/{allocation}", WithHandler(LockWriteMarker)).Methods(http.MethodPost)
+	r.HandleFunc("/v1/writemarker/lock/{allocation}", WithHandler(UnlockWriteMarker)).Methods(http.MethodDelete)
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
@@ -450,7 +455,11 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 
-	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
+	var (
+		allocationID = ctx.Value(constants.ContextKeyAllocation).(string)
+		clientID     = ctx.Value(constants.ContextKeyClient).(string)
+	)
+
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -461,6 +470,10 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	valid, err := verifySignatureFromRequest(allocationID, sign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_client", "Client has no access to share file")
 	}
 
 	encryptionPublicKey := r.FormValue("encryption_public_key")
