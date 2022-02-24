@@ -225,6 +225,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	rmObj := new(readmarker.ReadMarkerEntity)
+	rmObj.ReadMarker = readMarker
 
 	if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
 		return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
