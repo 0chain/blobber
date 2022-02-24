@@ -177,6 +177,7 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 	} else {
 		db = db.Or("path LIKE ? AND allocation_id = ?", path+"%", allocationID)
 	}
+
 	//err := db.Order("level, lookup_hash").Find(&refs).Error
 	err := db.Order("level, path").Find(&refs).Error
 	if err != nil {

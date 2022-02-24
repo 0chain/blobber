@@ -389,33 +389,6 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*
 	return refs[0], nil
 }
 
-func GetRefWithSortedChildrenForObjectPath(ctx context.Context, allocationID, path string) (*Ref, error) {
-	var refs []*Ref
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "path", "parent_path", "num_of_blocks", "hash", "type", "name")
-	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
-	//err := db.Order("level, lookup_hash").Find(&refs).Error
-	err := db.Order("level, path").Find(&refs).Error
-	if err != nil {
-		return nil, err
-	}
-	if len(refs) == 0 {
-		return &Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID}, nil
-	}
-	curRef := refs[0]
-	if curRef.Path != path {
-		return nil, common.NewError("invalid_dir_tree", "DB has invalid tree. Root not found in DB")
-	}
-	for i := 1; i < len(refs); i++ {
-		if refs[i].ParentPath == curRef.Path {
-			curRef.Children = append(curRef.Children, refs[i])
-		} else {
-			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
-		}
-	}
-	return refs[0], nil
-}
-
 func (fr *Ref) GetFileHashData() string {
 	if len(fr.Attributes) == 0 {
 		fr.Attributes = datatypes.JSON("{}")

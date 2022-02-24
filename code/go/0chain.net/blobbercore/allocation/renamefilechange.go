@@ -51,6 +51,7 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
 
+	// Maybe Change this from GetReferencePath to GetReferencePath2
 	rootRef, err := reference.GetReferencePath2(ctx, rf.AllocationID, rf.Path)
 	if err != nil {
 		return nil, err
