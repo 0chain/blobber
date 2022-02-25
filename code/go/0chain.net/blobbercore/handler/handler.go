@@ -160,6 +160,10 @@ func HomepageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called AllocationHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call AllocationHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetAllocationDetails(ctx, r)
@@ -170,6 +174,10 @@ func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error
 }
 
 func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called FileMetaHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call FileMetaHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetFileMeta(ctx, r)
@@ -180,6 +188,10 @@ func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 }
 
 func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called CommitMetaTxnHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call CommitMetaTxnHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.AddCommitMetaTxn(ctx, r)
@@ -190,6 +202,10 @@ func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, er
 }
 
 func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called CollaboratorHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call CollaboratorHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.AddCollaborator(ctx, r)
@@ -200,6 +216,10 @@ func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, err
 }
 
 func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called FileStatsHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call FileStatsHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.GetFileStats(ctx, r)
 	if err != nil {
@@ -210,6 +230,10 @@ func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error)
 
 /*DownloadHandler is the handler to respond to download requests from clients*/
 func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called DownloadHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call DownloadHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.DownloadFile(ctx, r)
 	if err != nil {
@@ -220,6 +244,10 @@ func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 
 /*ListHandler is the handler to respond to upload requests fro clients*/
 func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called ListHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call ListHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.ListEntities(ctx, r)
@@ -231,6 +259,10 @@ func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 /*CommitHandler is the handler to respond to upload requests fro clients*/
 func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called CommitHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call CommitHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.CommitWrite(ctx, r)
@@ -241,6 +273,10 @@ func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 }
 
 func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called ReferencePathHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call ReferencePathHandler !!!")
+	}()
 	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
 	defer canceler()
 
@@ -254,6 +290,10 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 }
 
 func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called ObjectPathHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call ObjectPathHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetObjectPath(ctx, r)
@@ -264,6 +304,10 @@ func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error
 }
 
 func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called ObjectTreeHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call ObjectTreeHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.GetObjectTree(ctx, r)
 	if err != nil {
@@ -273,6 +317,10 @@ func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, error
 }
 
 func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called RefsHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call RefsHandler !!!")
+	}()
 
 	ctx = setupHandlerContext(ctx, r)
 
@@ -284,6 +332,10 @@ func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 }
 
 func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called RenameHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call RenameHandler !!!")
+	}()
 
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.RenameObject(ctx, r)
@@ -294,7 +346,10 @@ func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 }
 
 func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
+	fmt.Println("Called CopyHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call CopyHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.CopyObject(ctx, r)
 	if err != nil {
@@ -305,7 +360,10 @@ func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 /*CreateDirHandler is the handler to respond to create dir for allocation*/
 func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
+	fmt.Println("Called CreateDirHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call CreateDirHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.CreateDir(ctx, r)
 	if err != nil {
@@ -316,7 +374,10 @@ func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error)
 
 /*UploadHandler is the handler to respond to upload requests fro clients*/
 func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
+	fmt.Println("Called UploadHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call UploadHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.WriteFile(ctx, r)
 	if err != nil {
@@ -326,7 +387,10 @@ func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 }
 
 func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
+	fmt.Println("Called UpdateAttributesHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call UpdateAttributesHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.UpdateObjectAttributes(ctx, r)
 	if err != nil {
@@ -336,7 +400,10 @@ func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{},
 }
 
 func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
+	fmt.Println("Called CalculateHashHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call CalculateHashHandler !!!")
+	}()
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.CalculateHash(ctx, r)
@@ -347,7 +414,10 @@ func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, er
 }
 
 func StatsHandler(w http.ResponseWriter, r *http.Request) {
-
+	fmt.Println("Called StatsHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call StatsHandler !!!")
+	}()
 	HTMLHeader(w, "Blobber Diagnostics")
 	PrintCSS(w)
 	HomepageHandler(w, r)
@@ -364,7 +434,10 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 
 //nolint:gosimple // need more time to verify
 func HandleShutdown(ctx context.Context) {
-
+	fmt.Println("Called HandleShutdown !!!")
+	defer func() {
+		fmt.Println("Finished Call HandleShutdown !!!")
+	}()
 	go func() {
 		select {
 		case <-ctx.Done():
@@ -519,7 +592,10 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 }
 
 func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
+	fmt.Println("Called MarketPlaceShareInfoHandler !!!")
+	defer func() {
+		fmt.Println("Finished Call MarketPlaceShareInfoHandler !!!")
+	}()
 	if r.Method == "DELETE" {
 		return RevokeShare(ctx, r)
 	}

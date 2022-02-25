@@ -343,7 +343,8 @@ func deleteFiles(ctx context.Context, allocID string, conn *AllocationChangeColl
 // delete reference
 func deleteFile(ctx context.Context, path string, conn *AllocationChangeCollector) (err error) {
 	var fileRef *reference.Ref
-	fileRef, err = reference.GetReference(ctx, conn.AllocationID, path)
+	//fileRef, err = reference.GetReference(ctx, conn.AllocationID, path)
+	fileRef, err = reference.GetReferenceDelete(ctx, conn.AllocationID, path)
 	if err != nil {
 		return
 	}

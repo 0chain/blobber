@@ -950,8 +950,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(reference.FILE),
 					)
 
-				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash" FROM "reference_objects" WHERE`)).
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash","thumbnail_hash" FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id" FROM "reference_objects" WHERE`)).
+					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(aa, aa).
 					WillReturnError(errors.New(""))
 

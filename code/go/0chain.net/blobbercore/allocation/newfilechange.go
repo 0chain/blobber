@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -55,12 +56,13 @@ type NewFileChange struct {
 func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, allocationRoot string) (*reference.Ref, error) {
 	path := filepath.Clean(dirName)
 	tSubDirs := reference.GetSubDirsFromPath(path)
-
+	fmt.Println("Step 1 CreateDir NewFileChange !!!")
 	// Maybe Change this from GetReferencePath to GetReferencePath2
 	rootRef, err := reference.GetReferencePath2(ctx, nf.AllocationID, nf.Path)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("Step 2 CreateDir NewFileChange !!!")
 
 	dirRef := rootRef
 	treelevel := 0
@@ -94,6 +96,7 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 			break
 		}
 	}
+	fmt.Println("Step 3 CreateDir NewFileChange !!!")
 
 	// adding nil to make childLoaded as true so we can have hash calculated in CalculateHas.
 	// without has commit fails
@@ -107,14 +110,17 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 	newDir.ParentPath = dirRef.Path
 	newDir.WriteMarker = allocationRoot
 	dirRef.AddChild(newDir)
+	fmt.Println("Step 4 CreateDir NewFileChange !!!")
 
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}
+	fmt.Println("Step 5 CreateDir NewFileChange !!!")
 
 	if err := stats.NewDirCreated(ctx, dirRef.ID); err != nil {
 		return nil, err
 	}
+	fmt.Println("Step 6 CreateDir NewFileChange !!!")
 
 	return rootRef, nil
 }
@@ -122,10 +128,12 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 
 	if change.Operation == constants.FileOperationCreateDir {
+		fmt.Println("Entered If in NewFileChange ProcessChange !!!")
 		err := nf.Unmarshal(change.Input)
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println("Passed Unmarshal NewFileChange ProcessChange !!!")
 
 		return nf.CreateDir(ctx, nf.AllocationID, nf.Path, allocationRoot)
 	}

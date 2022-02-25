@@ -212,10 +212,10 @@ func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
 	return dirRef, nil
 }
 
-func GetReferenceHash(ctx context.Context, allocationID, path string) (*Ref, error) {
+// GetReference get FileRef with allcationID and path from postgres
+func GetReference(ctx context.Context, allocationID, path string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("hash")
 	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
 	if err == nil {
 		return ref, nil
@@ -223,6 +223,7 @@ func GetReferenceHash(ctx context.Context, allocationID, path string) (*Ref, err
 	return nil, err
 }
 
+// GetReferenceID get FileRef ID with allcationID and path from postgres
 func GetReferenceID(ctx context.Context, allocationID, path string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
@@ -234,10 +235,23 @@ func GetReferenceID(ctx context.Context, allocationID, path string) (*Ref, error
 	return nil, err
 }
 
-// GetReference get FileRef with allcationID and path from postgres
-func GetReference(ctx context.Context, allocationID, path string) (*Ref, error) {
+// GetReferenceHash get FileRef ID with allcationID and path from postgres
+func GetReferenceHash(ctx context.Context, allocationID, path string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
+	db = db.Select("hash")
+	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
+	if err == nil {
+		return ref, nil
+	}
+	return nil, err
+}
+
+// GetReferenceDelete get FileRef ID with allcationID and path from postgres
+func GetReferenceDelete(ctx context.Context, allocationID, path string) (*Ref, error) {
+	ref := &Ref{}
+	db := datastore.GetStore().GetTransaction(ctx)
+	db = db.Select("path", "name", "size", "hash", "merkle_root")
 	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
 	if err == nil {
 		return ref, nil
@@ -537,13 +551,13 @@ func (r *Ref) SaveFile(ctx context.Context) error {
 		"actual_file_hash":      r.ActualFileHash,
 		"attributes":            r.Attributes,
 		"chunk_size":            r.ChunkSize,
-	}).RowsAffected
+	})
 	// "updated_at": r.UpdatedAt,
-	if rows == 0 {
+	if errors.Is(rows.Error, gorm.ErrRecordNotFound) {
 		err := db.Create(r).Error
 		return err
 	}
-	return nil
+	return rows.Error
 }
 
 func (r *Ref) SaveDir(ctx context.Context) error {
@@ -559,15 +573,15 @@ func (r *Ref) SaveDir(ctx context.Context) error {
 		"parent_path":   r.ParentPath,
 		"level":         r.PathLevel,
 		"write_marker":  r.WriteMarker,
-		"mimetype":      r.MimeType,
-		"custom_meta":   r.CustomMeta,
-		"encrypted_key": r.EncryptedKey,
 		"content_hash":  r.ContentHash,
 		"size":          r.Size,
 		"merkle_root":   r.MerkleRoot,
 		"attributes":    r.Attributes,
 		"chunk_size":    r.ChunkSize,
-	}).RowsAffected
+	})
+	// "mimetype":      r.MimeType,
+	//	"custom_meta":   r.CustomMeta,
+	//	"encrypted_key": r.EncryptedKey,
 	// 		"updated_at": r.UpdatedAt,
 	//		"actual_file_size":      r.ActualFileSize,
 	//		"actual_file_hash":      r.ActualFileHash,
@@ -576,11 +590,11 @@ func (r *Ref) SaveDir(ctx context.Context) error {
 	//	"actual_thumbnail_hash": r.ActualThumbnailHash,
 	//	"actual_thumbnail_size": r.ActualThumbnailSize,
 	//
-	if rows == 0 {
+	if errors.Is(rows.Error, gorm.ErrRecordNotFound) {
 		err := db.Create(r).Error
 		return err
 	}
-	return nil
+	return rows.Error
 }
 
 func (r *Ref) Save(ctx context.Context) error {
