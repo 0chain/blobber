@@ -43,7 +43,7 @@ func (cmd *UpdateFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 		cmd.fileChanger.ChunkSize = fileref.CHUNK_SIZE
 	}
 	// Update GetReference to GetReferenceID
-	cmd.exisitingFileRef, _ = reference.GetReferenceID(ctx, allocationObj.ID, cmd.fileChanger.Path)
+	cmd.exisitingFileRef, _ = reference.GetReference(ctx, allocationObj.ID, cmd.fileChanger.Path)
 
 	if cmd.exisitingFileRef == nil {
 		return common.NewError("invalid_file_update", "File at path does not exist for update")
