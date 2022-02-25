@@ -1520,7 +1520,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 					rmData, err := json.Marshal(rm)
 					require.NoError(t, err)
-					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
+					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
 					if err != nil {
 						require.NoError(t, err)
 					}
