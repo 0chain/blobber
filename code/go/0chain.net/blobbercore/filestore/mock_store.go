@@ -119,3 +119,5 @@ func (ms *MockStore) addFileInDataObj(allocationID, contentHash string) {
 	dataObj := ms.d[allocationID]
 	dataObj[contentHash] = true
 }
+
+func (ms *MockStore) SetRootPath(rootPath string) {}
