@@ -339,13 +339,14 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	_, _ = ownerScheme, guestScheme
 	// require.NoError(t, client.PopulateClient(clientJson, "bls0chain"))
 	// setupEncryptionScheme()
 
 	router, handlers := setupHandlers()
 
 	sch := zcncrypto.NewSignatureScheme("bls0chain")
-	//sch.Mnemonic = "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
 	_, err = sch.RecoverKeys("expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe")
 	if err != nil {
 		t.Fatal(err)
@@ -1670,18 +1671,11 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					WithArgs(ownerClient.ClientID).
 					WillReturnError(gorm.ErrRecordNotFound)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(ownerClient.ClientID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(ownerClient.ClientID),
-					)
-
 				aa := sqlmock.AnyArg()
 
-				mock.ExpectExec(`(UPDATE "read_markers" SET)(.+)`).
-					WithArgs(ownerClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectQuery(`INSERT INTO "read_markers"`).
+					WithArgs(ownerClient.ClientID, ownerClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa, aa, aa).
+					WillReturnRows(sqlmock.NewRows([]string{}))
 
 				mock.ExpectCommit()
 			},
@@ -1786,17 +1780,10 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					WithArgs(client.GetClientID()).
 					WillReturnError(gorm.ErrRecordNotFound)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(client.GetClientID()).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(client.GetClientID()),
-					)
-
 				aa := sqlmock.AnyArg()
 
-				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(client.GetClientPublicKey(), alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa).
+				mock.ExpectExec(`INSERT INTO "read_markers"`).
+					WithArgs(client.GetClientID(), client.GetClientPublicKey(), alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
@@ -1929,7 +1916,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				fmt.Printf("\n\nencryptedKey: %v\tgpbk: %v\treKey: %v\n\n", ownerScheme.GetEncryptedKey(), guestPublicEncryptedKey, reEncryptionKey)
+
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
 					WithArgs(guestClient.ClientID, filePathHash).
 					WillReturnRows(
@@ -1937,18 +1924,11 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(reEncryptionKey, guestPublicEncryptedKey),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(guestClient.ClientID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(guestClient.ClientID),
-					)
-
 				aa := sqlmock.AnyArg()
 
-				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectQuery(`INSERT INTO "read_markers"`).
+					WithArgs(guestClient.ClientID, guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa, aa, aa).
+					WillReturnRows(sqlmock.NewRows([]string{}))
 
 				mock.ExpectCommit()
 			},
@@ -2092,18 +2072,11 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(reEncryptionKey, gpbk),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(guestClient.ClientID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(guestClient.ClientID),
-					)
-
 				aa := sqlmock.AnyArg()
 
-				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectQuery(`INSERT INTO "read_markers"`).
+					WithArgs(guestClient.ClientID, guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa, aa, aa).
+					WillReturnRows(sqlmock.NewRows([]string{}))
 
 				mock.ExpectCommit()
 			},
@@ -2247,18 +2220,11 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(reEncryptionKey, gpbk),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(guestClient.ClientID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(guestClient.ClientID),
-					)
-
 				aa := sqlmock.AnyArg()
 
-				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectQuery(`INSERT INTO "read_markers"`).
+					WithArgs(guestClient.ClientID, guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa, aa, aa).
+					WillReturnRows(sqlmock.NewRows([]string{}))
 
 				mock.ExpectCommit()
 			},
@@ -2392,7 +2358,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	}
 
 	tests := append(positiveTests, negativeTests...)
-	// tests := positiveTests
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
