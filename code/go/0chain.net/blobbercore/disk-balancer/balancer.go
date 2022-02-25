@@ -16,6 +16,8 @@ type (
 		GetCapacity() int64
 		// GetNextDiskPath selects a disk for storing data.
 		GetNextDiskPath() (string, error)
+		// GetListDisks return mount partitions.
+		GetListDisks() []string
 		// IsMoves checks file transfers.
 		IsMoves(allocationRoot, allocationID string, needPath bool) (bool, string)
 		// MoveAllocation moved allocation to another disk.

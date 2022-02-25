@@ -113,61 +113,65 @@ func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize, limit int6
 		}
 	}()
 
-	fs := filestore.GetFileStore()
-	totalDiskSizeUsed, err := fs.GetTotalDiskSizeUsed()
-	if err != nil {
-		Logger.Error("Unable to get total disk size used from the file store", zap.Error(err))
-		return
-	}
-
-	// Check if capacity exceded the start capacity size
-	if totalDiskSizeUsed > config.Configuration.ColdStorageStartCapacitySize {
-		rctx := datastore.GetStore().CreateTransaction(ctx)
-		db := datastore.GetStore().GetTransaction(rctx)
-		// Get total number of fileRefs with size greater than limit and on_cloud = false
-		var totalRecords int64
-		db.Table((&reference.Ref{}).TableName()).
-			Where("size > ? AND on_cloud = ?", coldStorageMinFileSize, false).
-			Count(&totalRecords)
-
-		offset := int64(0)
-		for offset < totalRecords {
-			// Get all fileRefs with size greater than limit and on_cloud false
-			var fileRefs []*reference.Ref
-			db.Offset(int(offset)).Limit(int(limit)).
-				Table((&reference.Ref{}).TableName()).
-				Where("size > ? AND on_cloud = ?", coldStorageMinFileSize, false).
-				Find(&fileRefs)
-
-			for _, fileRef := range fileRefs {
-				if fileRef.Type == reference.DIRECTORY {
-					continue
-				}
-
-				a, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), fileRef.AllocationID, true)
-				if err != nil {
-					continue
-				}
-				if ok, _ := disk_balancer.GetDiskSelector().IsMoves(a.AllocationRoot, fileRef.AllocationID, false); ok {
-					continue
-				}
-
-				fileStat, err := stats.GetFileStats(rctx, fileRef.ID)
-				if err != nil {
-					Logger.Error("Unable to find filestats for fileRef with", zap.Any("reID", fileRef.ID))
-					continue
-				}
-
-				timeToAdd := time.Duration(config.Configuration.ColdStorageTimeLimitInHours) * time.Hour
-				if fileStat.UpdatedAt.Before(time.Now().Add(-1 * timeToAdd)) {
-					Logger.Info("Moving file to cloud", zap.Any("path", fileRef.Path), zap.Any("allocation", fileRef.AllocationID))
-					moveFileToCloud(ctx, fileRef)
-				}
-			}
-			offset += limit
+	listRootPathDisks := disk_balancer.GetDiskSelector().GetListDisks()
+	for _, rootPathDisk := range listRootPathDisks {
+		fs := filestore.GetFileStore()
+		fs.SetRootPath(rootPathDisk)
+		totalDiskSizeUsed, err := fs.GetTotalDiskSizeUsed()
+		if err != nil {
+			Logger.Error("Unable to get total disk size used from the file store", zap.Error(err))
+			return
 		}
-		db.Commit()
-		rctx.Done()
+
+		// Check if capacity exceded the start capacity size
+		if totalDiskSizeUsed > config.Configuration.ColdStorageStartCapacitySize {
+			rctx := datastore.GetStore().CreateTransaction(ctx)
+			db := datastore.GetStore().GetTransaction(rctx)
+			// Get total number of fileRefs with size greater than limit and on_cloud = false
+			var totalRecords int64
+			db.Table((&reference.Ref{}).TableName()).
+				Where("size > ? AND on_cloud = ?", coldStorageMinFileSize, false).
+				Count(&totalRecords)
+
+			offset := int64(0)
+			for offset < totalRecords {
+				// Get all fileRefs with size greater than limit and on_cloud false
+				var fileRefs []*reference.Ref
+				db.Offset(int(offset)).Limit(int(limit)).
+					Table((&reference.Ref{}).TableName()).
+					Where("size > ? AND on_cloud = ?", coldStorageMinFileSize, false).
+					Find(&fileRefs)
+
+				for _, fileRef := range fileRefs {
+					if fileRef.Type == reference.DIRECTORY {
+						continue
+					}
+
+					a, err := allocation.VerifyAllocationTransaction(common.GetRootContext(), fileRef.AllocationID, true)
+					if err != nil {
+						continue
+					}
+					if ok, _ := disk_balancer.GetDiskSelector().IsMoves(a.AllocationRoot, fileRef.AllocationID, false); ok {
+						continue
+					}
+
+					fileStat, err := stats.GetFileStats(rctx, fileRef.ID)
+					if err != nil {
+						Logger.Error("Unable to find filestats for fileRef with", zap.Any("reID", fileRef.ID))
+						continue
+					}
+
+					timeToAdd := time.Duration(config.Configuration.ColdStorageTimeLimitInHours) * time.Hour
+					if fileStat.UpdatedAt.Before(time.Now().Add(-1 * timeToAdd)) {
+						Logger.Info("Moving file to cloud", zap.Any("path", fileRef.Path), zap.Any("allocation", fileRef.AllocationID))
+						moveFileToCloud(ctx, fileRef)
+					}
+				}
+				offset += limit
+			}
+			db.Commit()
+			rctx.Done()
+		}
 	}
 }
 

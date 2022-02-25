@@ -15,9 +15,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/errors"
 	"go.uber.org/zap"
+
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
 
@@ -275,14 +276,14 @@ func (fs *FileFSStore) SetupAllocation(allocationRoot, allocationID string, skip
 		return allocation, nil
 	}
 
-	//create the allocation object dirs
+	// create the allocation object dirs
 	err := createDirs(allocation.ObjectsPath)
 	if err != nil {
 		Logger.Error("allocation_objects_dir_creation_error", zap.Any("allocation_objects_dir_creation_error", err))
 		return nil, err
 	}
 
-	//create the allocation tmp object dirs
+	// create the allocation tmp object dirs
 	err = createDirs(allocation.TempObjectsPath)
 	if err != nil {
 		Logger.Error("allocation_temp_objects_dir_creation_error", zap.Any("allocation_temp_objects_dir_creation_error", err))
@@ -443,16 +444,16 @@ func (fs *FileFSStore) CommitWrite(allocationRoot, allocationID string, fileData
 		return false, common.NewError("blob_object_dir_creation_error", err.Error())
 	}
 	fileObjectPath = filepath.Join(fileObjectPath, destFile)
-	//if _, err := os.Stat(fileObjectPath); os.IsNotExist(err) {
+	// if _, err := os.Stat(fileObjectPath); os.IsNotExist(err) {
 	err = os.Rename(tempFilePath, fileObjectPath)
 
 	if err != nil {
 		return false, common.NewError("blob_object_creation_error", err.Error())
 	}
 	return true, nil
-	//}
+	// }
 
-	//return false, err
+	// return false, err
 }
 
 func (fs *FileFSStore) DeleteFile(allocationRoot, allocationID, contentHash string) error {
@@ -640,4 +641,8 @@ func (fs *FileFSStore) RemoveFromCloud(fileHash string) error {
 		}
 	}
 	return nil
+}
+
+func (fs *FileFSStore) SetRootPath(rootPath string) {
+	fs.RootDirectory = rootPath
 }

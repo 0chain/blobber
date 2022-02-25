@@ -17,13 +17,13 @@ type FileInputData struct {
 
 	// ChunkSize chunk size
 	ChunkSize int64
-	//IsChunked the request is chunked upload
+	// IsChunked the request is chunked upload
 	IsChunked bool
-	//UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
+	// UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
 	UploadLength int64
-	//Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
+	// Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
 	UploadOffset int64
-	//IsFinal  the request is final chunk
+	// IsFinal  the request is final chunk
 	IsFinal bool
 }
 
@@ -60,6 +60,7 @@ type FileStore interface {
 	UploadToCloud(fileHash, filePath string) error
 	DownloadFromCloud(fileHash, filePath string) error
 	SetupAllocation(allocationRoot, allocationID string, skipCreate bool) (*StoreAllocation, error)
+	SetRootPath(rootPath string)
 }
 
 var fileStore FileStore

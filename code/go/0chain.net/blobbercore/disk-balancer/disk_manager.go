@@ -163,6 +163,16 @@ func (d *diskTier) GetNextDiskPath() (string, error) {
 	return d.selectNextDisk(d.partitions)
 }
 
+// GetListDisks implemented DiskSelector interface.
+func (d *diskTier) GetListDisks() []string {
+	var s []string
+	for _, p := range d.partitions {
+		s = append(s, p.path)
+	}
+
+	return s
+}
+
 // GetAvailableDisk implemented DiskSelector interface.
 func (d *diskTier) GetAvailableDisk(path string, size int64) (string, error) {
 	vol := d.partitions[path]
@@ -294,4 +304,9 @@ func (p *partition) getAvailableSize() error {
 	p.availableSize = int64(volStat.Bfree * uint64(volStat.Bsize))
 
 	return nil
+}
+
+func (p *partition) GetPartitionPath() string {
+
+	return ""
 }
