@@ -24,7 +24,7 @@ const (
 // eg: client1:alloc1:read --> lock for read pendings
 // client1:alloc1:write --> lock for write pendings
 // client1:alloc1 --> lock for writing read/write pendings
-var pendingMapLock common.MapLocker
+var pendingMapLock = common.GetLocker()
 
 const (
 	TableNameAllocation = "allocations"
@@ -270,11 +270,19 @@ func GetReadPools(db *gorm.DB, allocationID, clientID string, until common.Times
 }
 
 func GetReadPoolsBalance(db *gorm.DB, allocationID, clientID string, until common.Timestamp) (balance int64, err error) {
+	var b *int64 // pointer to int64 for possible total sum as null
 	err = db.Model(&ReadPool{}).Select("sum(balance) as tot_balance").Where(
 		"client_id = ? AND "+
 			"allocation_id = ? AND "+
-			"expire_at > ?", clientID, allocationID, until).Scan(&balance).Error
-	return
+			"expire_at > ?", clientID, allocationID, until).Scan(&b).Error
+
+	if err != nil {
+		return 0, err
+	}
+	if b == nil {
+		return 0, nil
+	}
+	return *b, nil
 }
 
 func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string, rps []*ReadPool) (err error) {

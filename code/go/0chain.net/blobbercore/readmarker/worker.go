@@ -59,7 +59,18 @@ func RedeemReadMarker(ctx context.Context, db *gorm.DB, rme *ReadMarkerEntity) e
 }
 
 func redeemReadMarkers(ctx context.Context) {
-	rms, err := GetRedeemRequiringRMEntities(ctx)
+	var err error
+	rctx := datastore.GetStore().CreateTransaction(ctx)
+
+	defer func() {
+		if err != nil {
+			datastore.GetStore().GetTransaction(rctx).Rollback()
+		} else {
+			datastore.GetStore().GetTransaction(rctx).Commit()
+		}
+	}()
+
+	rms, err := GetRedeemRequiringRMEntities(rctx)
 	if err != nil {
 		zLogger.Logger.Error(err.Error())
 		return
@@ -76,7 +87,6 @@ func redeemReadMarkers(ctx context.Context) {
 				wg.Done()
 			}()
 
-			rctx := datastore.GetStore().CreateTransaction(ctx)
 			db := datastore.GetStore().GetTransaction(rctx)
 
 			if err := RedeemReadMarker(rctx, db, rme); err != nil {
