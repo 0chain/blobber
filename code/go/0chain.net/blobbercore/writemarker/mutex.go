@@ -24,7 +24,7 @@ const (
 
 type LockResult struct {
 	Status    LockStatus `json:"status,omitempty"`
-	CreatedAt time.Time  `json:"created_at,omitempty"`
+	CreatedAt int64      `json:"created_at,omitempty"`
 }
 
 // Mutex WriteMarker mutex
@@ -74,7 +74,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 
 			return &LockResult{
 				Status:    LockStatusOK,
-				CreatedAt: lock.CreatedAt,
+				CreatedAt: lock.CreatedAt.Unix(),
 			}, nil
 
 		}
@@ -99,7 +99,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 
 		return &LockResult{
 			Status:    LockStatusOK,
-			CreatedAt: lock.CreatedAt,
+			CreatedAt: lock.CreatedAt.Unix(),
 		}, nil
 
 	}
@@ -108,14 +108,14 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 	if lock.ConnectionID == connectionID && lock.CreatedAt.Equal(*requestTime) {
 		return &LockResult{
 			Status:    LockStatusOK,
-			CreatedAt: lock.CreatedAt,
+			CreatedAt: lock.CreatedAt.Unix(),
 		}, nil
 	}
 
 	// pending
 	return &LockResult{
 		Status:    LockStatusPending,
-		CreatedAt: lock.CreatedAt,
+		CreatedAt: lock.CreatedAt.Unix(),
 	}, nil
 
 }
