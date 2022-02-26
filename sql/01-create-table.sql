@@ -71,7 +71,7 @@ CREATE TABLE terms (
 
 -- clients' pending reads / writes
 CREATE TABLE pendings (
-    id             VARCHAR(129) PRIMARY KEY, -- combination of client_id:allocation_id
+    id             VARCHAR(129), -- combination of client_id:allocation_id
     pending_write  bigint NOT NULL DEFAULT 0, -- number of pending write bytes
     pending_read bigint NOT NULL DEFAULT 0, -- number of pending read bytes
     PRIMARY KEY (id)
