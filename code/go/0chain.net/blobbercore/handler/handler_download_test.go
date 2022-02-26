@@ -91,12 +91,6 @@ func TestHandlers_Download_Requiring_Signature(t *testing.T) {
 	alloc.OwnerPublicKey = ownerClient.Keys[0].PublicKey
 	alloc.OwnerID = ownerClient.ClientID
 
-	const (
-		path         = "/path"
-		newName      = "new name"
-		connectionID = "connection id"
-	)
-
 	type (
 		args struct {
 			w *httptest.ResponseRecorder
