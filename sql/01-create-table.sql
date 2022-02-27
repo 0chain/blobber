@@ -157,7 +157,7 @@ CREATE TABLE write_markers (
 CREATE TRIGGER write_markers_modtime BEFORE UPDATE ON write_markers FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();
 
 CREATE TABLE read_markers (
-    id INT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     client_id VARCHAR(64) NOT NULL,
     client_public_key VARCHAR(128) NOT NULL,
     -- blobber_id VARCHAR(64) NOT NULL,
@@ -166,7 +166,7 @@ CREATE TABLE read_markers (
     payer_id VARCHAR(64) NOT NULL,
     auth_ticket JSON,
     timestamp BIGINT NOT NULL,
-    read_blocks INT NOT NULL,
+    read_size BIGINT NOT NULL,
     is_suspend Boolean,
     signature VARCHAR(64) NOT NULL,
     latest_redeemed_rm JSON,
