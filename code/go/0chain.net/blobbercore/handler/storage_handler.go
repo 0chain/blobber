@@ -984,6 +984,11 @@ func getPathHash(r *http.Request, allocationID string) (pathHash, path string, e
 	pathHash = r.FormValue("path_hash")
 	path = r.FormValue("path")
 
+	if pathHash == "" && path == "" {
+		pathHash = r.Header.Get("path_hash")
+		path = r.Header.Get("path")
+	}
+
 	if pathHash == "" {
 		if path == "" {
 			return "", "", common.NewError("invalid_parameters", "Invalid path")
