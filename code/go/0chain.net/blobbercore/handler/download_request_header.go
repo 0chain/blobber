@@ -11,8 +11,8 @@ import (
 	"github.com/0chain/errors"
 )
 
-// DownloadRequest metedata of download request
-type DownloadRequest struct {
+// DownloadRequestHeader metedata of download request
+type DownloadRequestHeader struct {
 	req          *http.Request
 	allocationID string
 	PathHash     string
@@ -25,7 +25,7 @@ type DownloadRequest struct {
 	DownloadMode string
 }
 
-func FromDownloadRequest(allocationID string, req *http.Request) (*DownloadRequest, error) {
+func FromDownloadRequest(allocationID string, req *http.Request) (*DownloadRequestHeader, error) {
 	if allocationID == "" {
 		return nil, errors.Throw(common.ErrInvalidParameter, "allocationID")
 	}
@@ -34,7 +34,7 @@ func FromDownloadRequest(allocationID string, req *http.Request) (*DownloadReque
 		return nil, errors.Throw(common.ErrInvalidParameter, "req")
 	}
 
-	dr := &DownloadRequest{
+	dr := &DownloadRequestHeader{
 		allocationID: allocationID,
 		req:          req,
 	}
@@ -47,16 +47,16 @@ func FromDownloadRequest(allocationID string, req *http.Request) (*DownloadReque
 	return dr, nil
 }
 
-func (dr *DownloadRequest) Parse() error {
+func (dr *DownloadRequestHeader) Parse() error {
 	if dr.req == nil {
 		return errors.Throw(common.ErrInvalidParameter, "req")
 	}
 
-	pathHash := dr.Get("path_hash")
-	path := dr.Get("path")
+	pathHash := dr.Get("X-Path-Hash")
+	path := dr.Get("X-Path")
 	if pathHash == "" {
 		if path == "" {
-			return errors.Throw(common.ErrInvalidParameter, "path")
+			return errors.Throw(common.ErrInvalidParameter, "X-Path")
 		}
 		pathHash = reference.GetReferenceLookup(dr.allocationID, path)
 	}
@@ -64,52 +64,45 @@ func (dr *DownloadRequest) Parse() error {
 	dr.PathHash = pathHash
 	dr.Path = path
 
-	blockNum := dr.GetInt64("block_num", -1)
+	blockNum := dr.GetInt64("X-Block-Num", -1)
 	if blockNum <= 0 {
-		return errors.Throw(common.ErrInvalidParameter, "block_num")
+		return errors.Throw(common.ErrInvalidParameter, "X-Block-Num")
 	}
 	dr.BlockNum = blockNum
 
-	numBlocks := dr.GetInt64("num_blocks", 1)
+	numBlocks := dr.GetInt64("X-Num-Blocks", 1)
 	if numBlocks <= 0 {
-		return errors.Throw(common.ErrInvalidParameter, "num_blocks")
+		return errors.Throw(common.ErrInvalidParameter, "X-Num-Blocks")
 	}
 	dr.NumBlocks = numBlocks
 
-	readMarker := dr.Get("read_marker")
+	readMarker := dr.Get("X-Read-Marker")
 
 	if readMarker == "" {
-		return errors.Throw(common.ErrInvalidParameter, "read_marker")
+		return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
 	}
 
 	err := json.Unmarshal([]byte(readMarker), &dr.ReadMarker)
 	if err != nil {
-		return errors.Throw(common.ErrInvalidParameter, "read_marker")
+		return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
 	}
 
-	dr.AuthToken = dr.Get("auth_token")
+	dr.AuthToken = dr.Get("X-Auth-Token")
 
-	dr.RxPay = dr.Get("rx_pay") == "true"
-	dr.DownloadMode = dr.Get("content")
+	dr.RxPay = dr.Get("X-Rxpay") == "true"
+	dr.DownloadMode = dr.Get("X-Mode")
 
 	return nil
 }
 
-func (dr *DownloadRequest) Get(key string) string {
+func (dr *DownloadRequestHeader) Get(key string) string {
 	if dr.req == nil {
 		return ""
 	}
-	v := dr.req.Header.Get(key)
-
-	if v == "" {
-		v = dr.req.FormValue(key)
-	}
-
-	return v
-
+	return dr.req.Header.Get(key)
 }
 
-func (dr *DownloadRequest) GetInt64(key string, defaultValue int64) int64 {
+func (dr *DownloadRequestHeader) GetInt64(key string, defaultValue int64) int64 {
 	v := dr.Get(key)
 	i, err := strconv.ParseInt(v, 10, 64)
 	if err != nil {
