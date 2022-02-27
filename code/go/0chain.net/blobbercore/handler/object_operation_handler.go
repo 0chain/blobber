@@ -224,6 +224,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			"error parsing the readmarker for download: %v", err)
 	}
 
+	if readMarker.ReadSize < numBlocks*allocation.CHUNK_SIZE {
+		return nil, common.NewError("download_file", "size requested is greater than size signed in readmarker")
+	}
+
 	rmObj := new(readmarker.ReadMarkerEntity)
 	rmObj.ReadMarker = readMarker
 
@@ -330,7 +334,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	err = readmarker.SaveReadMarker(ctx, readMarker)
 	if err != nil {
 		Logger.Error(err.Error())
-		return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
+		return nil, common.NewErrorf("download_file", "couldn't save read marker")
 	}
 
 	var chunkEncoder ChunkEncoder
