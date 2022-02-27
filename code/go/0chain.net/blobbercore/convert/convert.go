@@ -488,13 +488,13 @@ func DownloadFileGRPCToHTTP(req *blobbergrpc.DownloadFileRequest) (*http.Request
 		return nil, err
 	}
 
-	r.Header.Set("path", req.Path)
-	r.Header.Set("path_hash", req.PathHash)
-	r.Header.Set("rx_pay", req.RxPay)
-	r.Header.Set("block_num", req.BlockNum)
-	r.Header.Set("num_blocks", req.NumBlocks)
-	r.Header.Set("read_marker", req.ReadMarker)
-	r.Header.Set("auth_token", req.AuthToken)
-	r.Header.Set("content", req.Content)
+	r.Header.Set("X-Path", req.Path)
+	r.Header.Set("X-Path-Hash", req.PathHash)
+	r.Header.Set("X-Rxpay", req.RxPay)
+	r.Header.Set("X-Block-Num", req.BlockNum)
+	r.Header.Set("X-Num-Blocks", req.NumBlocks)
+	r.Header.Set("X-Read-Marker", req.ReadMarker)
+	r.Header.Set("X-Auth-Token", req.AuthToken)
+	r.Header.Set("X-Mode", req.Content)
 	return r, nil
 }

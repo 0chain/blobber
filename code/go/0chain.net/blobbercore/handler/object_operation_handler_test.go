@@ -124,14 +124,14 @@ func TestDownloadFile(t *testing.T) {
 		require.NoError(t, err)
 		rmData, err := json.Marshal(rm)
 		require.NoError(t, err)
-		req.Header.Set("path_hash", p.inData.pathHash)
-		req.Header.Set("path", p.inData.remotefilepath)
+		req.Header.Set("X-Path-Hash", p.inData.pathHash)
+		req.Header.Set("X-Path", p.inData.remotefilepath)
 		if p.inData.rxPay {
-			req.Header.Set("rx_pay", "true")
+			req.Header.Set("X-Rxpay", "true")
 		}
-		req.Header.Set("block_num", fmt.Sprintf("%d", p.inData.blockNum))
-		req.Header.Set("num_blocks", fmt.Sprintf("%d", p.inData.numBlocks))
-		req.Header.Set("read_marker", string(rmData))
+		req.Header.Set("X-Block-Num", fmt.Sprintf("%d", p.inData.blockNum))
+		req.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", p.inData.numBlocks))
+		req.Header.Set("X-Read-Marker", string(rmData))
 		if p.useAuthTicket {
 			authTicket := &marker.AuthTicket{
 				AllocationID: p.inData.allocationID,
@@ -145,10 +145,10 @@ func TestDownloadFile(t *testing.T) {
 			require.NoError(t, authTicket.Sign())
 			require.NoError(t, client.PopulateClient(mockClientWallet, "bls0chain"))
 			authTicketBytes, _ := json.Marshal(authTicket)
-			req.Header.Set("auth_token", string(authTicketBytes))
+			req.Header.Set("X-Auth-Token", string(authTicketBytes))
 		}
 		if len(p.inData.contentMode) > 0 {
-			req.Header.Set("content", p.inData.contentMode)
+			req.Header.Set("X-Mode", p.inData.contentMode)
 		}
 		return rm
 	}

@@ -238,9 +238,9 @@ func TestHandlers_Download_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
-					r.Header.Set("block_num", fmt.Sprintf("%d", 1))
-					r.Header.Set("read_marker", string(rmData))
+					r.Header.Set("X-Path-Hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
+					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
@@ -317,9 +317,9 @@ func TestHandlers_Download_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
-					r.Header.Set("block_num", fmt.Sprintf("%d", 1))
-					r.Header.Set("read_marker", string(rmData))
+					r.Header.Set("X-Path-Hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
+					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
@@ -424,10 +424,10 @@ func TestHandlers_Download_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("read_marker", string(rmData))
-					r.Header.Set("path_hash", pathHash)
-					r.Header.Set("block_num", fmt.Sprintf("%d", 1))
-					r.Header.Set("auth_token", authTicket)
+					r.Header.Set("X-Read-Marker", string(rmData))
+					r.Header.Set("X-Path-Hash", pathHash)
+					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Auth-Token", authTicket)
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -536,10 +536,10 @@ func TestHandlers_Download_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("read_marker", string(rmData))
-					r.Header.Set("path_hash", pathHash)
-					r.Header.Set("block_num", fmt.Sprintf("%d", 1))
-					r.Header.Set("auth_token", authTicket)
+					r.Header.Set("X-Read-Marker", string(rmData))
+					r.Header.Set("X-Path-Hash", pathHash)
+					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Auth-Token", authTicket)
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -679,10 +679,10 @@ func TestHandlers_Download_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("path_hash", filePathHash)
-					r.Header.Set("block_num", fmt.Sprintf("%d", 1))
-					r.Header.Set("auth_token", authTicket)
-					r.Header.Set("read_marker", string(rmData))
+					r.Header.Set("X-Path-Hash", filePathHash)
+					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Auth-Token", authTicket)
+					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -825,10 +825,10 @@ func TestHandlers_Download_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("path_hash", filePathHash)
-					r.Header.Set("block_num", fmt.Sprintf("%d", 1))
-					r.Header.Set("auth_token", authTicket)
-					r.Header.Set("read_marker", string(rmData))
+					r.Header.Set("X-Path-Hash", filePathHash)
+					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Auth-Token", authTicket)
+					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -971,10 +971,10 @@ func TestHandlers_Download_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("read_marker", string(rmData))
-					r.Header.Set("path_hash", filePathHash)
-					r.Header.Set("block_num", fmt.Sprintf("%d", 1))
-					r.Header.Set("auth_token", authTicket)
+					r.Header.Set("X-Read-Marker", string(rmData))
+					r.Header.Set("X-Path-Hash", filePathHash)
+					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Auth-Token", authTicket)
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
