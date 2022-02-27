@@ -179,14 +179,14 @@ func RequestReadPools(clientID, allocationID string) (rps []*ReadPool, err error
 	Logger.Info("request read pools")
 
 	var (
-		// blobberID = node.Self.ID
-		resp []byte
+		blobberID = node.Self.ID
+		resp      []byte
 	)
 
 	params := map[string]string{
 		"client_id":     clientID,
 		"allocation_id": allocationID,
-		// "blobber_id":    blobberID,
+		"blobber_id":    blobberID,
 	}
 	resp, err = transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getReadPoolAllocBlobberStat", params, chain.GetServerChain())
 	if err != nil {
