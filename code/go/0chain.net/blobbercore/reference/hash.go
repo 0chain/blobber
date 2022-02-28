@@ -14,47 +14,54 @@ func LoadRootNode(ctx context.Context, allocationID string) (*HashNode, error) {
 
 	db := datastore.GetStore().GetDB()
 
-	db = db.Where("allocation_id = ? and deleted_at IS NULL", allocationID)
+	db = db.Raw(`
+SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, attributes, chunk_size,size,actual_file_size, parent_path
+FROM reference_objects
+WHERE allocation_id = ? and deleted_at IS NULL
+ORDER BY level desc, path`, allocationID)
 
-	db = db.Order("level desc, path")
-
-	dict := make(map[string][]*HashNode)
-
-	var nodes []*HashNode
-	// it is better to load them in batched if there are a lot of objects in db
-	err := db.FindInBatches(&nodes, 100, func(tx *gorm.DB, batch int) error {
-		// batch processing found records
-		for _, object := range nodes {
-			dict[object.ParentPath] = append(dict[object.ParentPath], object)
-
-			for _, child := range dict[object.Path] {
-				object.AddChild(child)
-			}
-		}
-
-		return nil
-	}).Error
-
+	rows, err := db.Rows()
 	if err != nil {
 		return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
 	}
 
+	defer rows.Close()
+
+	nodes := make(map[string]*HashNode)
+	for rows.Next() {
+
+		node := &HashNode{}
+		err = db.ScanRows(rows, node)
+		if err != nil {
+			return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
+		}
+
+		_, ok := nodes[node.Path]
+		if ok {
+			return nil, common.ErrDuplicatedNode
+		}
+
+		nodes[node.Path] = node
+
+		parent, ok := nodes[node.ParentPath]
+		if ok {
+			parent.AddChild(node)
+		}
+
+	}
+
 	// create empty dir if root is missing
-	if len(dict) == 0 {
+	if len(nodes) == 0 {
 		return &HashNode{AllocationID: allocationID, Type: DIRECTORY, Path: "/", Name: "/", ParentPath: ""}, nil
 	}
 
-	rootNodes, ok := dict[""]
+	root, ok := nodes["/"]
 
 	if ok {
-		if len(rootNodes) == 1 {
-			return rootNodes[0], nil
-		}
-
-		return nil, errors.Throw(common.ErrInternal, "invalid_ref_tree: / is missing or invalid")
+		return root, nil
 	}
 
-	return nil, errors.Throw(common.ErrInternal, "invalid_ref_tree: / is missing or invalid")
+	return nil, common.ErrMissingRootNode
 }
 
 const (
