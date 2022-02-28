@@ -128,5 +128,5 @@ integration_tests:
   min_disk_size: 1073741824
   check_disk_timeout: 60000000000
   use_system_disk: false
-  mount_point: /mnt/
+  mount_point: /mnt/Blobber_
   strategy: min_size_first
