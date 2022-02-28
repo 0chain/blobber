@@ -71,15 +71,7 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 			return
 		}
 
-		if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch {
-			ct := r.Header.Get("Content-Type")
-			if ct == "application/x-www-form-urlencoded" {
-				r.ParseForm() //nolint: errcheck
-			} else {
-				r.ParseMultipartForm(FormFileParseMaxMemory) //nolint: errcheck
-			}
-
-		}
+		TryParseForm(r)
 
 		w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
 		w.Header().Set("Content-Type", "application/json")
