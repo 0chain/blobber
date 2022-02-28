@@ -62,14 +62,18 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 		ctx := r.Context()
 		data, err := handler(ctx, r)
 		if err != nil {
+			statusCode := 400
 			if cerr, ok := err.(*Error); ok {
 				w.Header().Set(AppErrorHeader, cerr.Code)
+				if cerr.StatusCode != 0 {
+					statusCode = cerr.StatusCode
+				}
 			}
 			if data != nil {
 				responseString, _ := json.Marshal(data)
-				http.Error(w, string(responseString), 400)
+				http.Error(w, string(responseString), statusCode)
 			} else {
-				http.Error(w, err.Error(), 400)
+				http.Error(w, err.Error(), statusCode)
 			}
 		} else if data != nil {
 			rawdata, ok := data.([]byte)

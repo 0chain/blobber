@@ -12,7 +12,7 @@ import (
 )
 
 func setupNode() error {
-	fmt.Print("[5/11] setup blobber")
+	fmt.Print("[5/12] setup blobber")
 
 	reader, err := os.Open(keysFile)
 	if err != nil {

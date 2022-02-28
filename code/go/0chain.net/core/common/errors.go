@@ -6,8 +6,9 @@ import (
 
 /*Error type for a new application error */
 type Error struct {
-	Code string `json:"code,omitempty"`
-	Msg  string `json:"msg"`
+	Code       string `json:"code,omitempty"`
+	Msg        string `json:"msg"`
+	StatusCode int    `json:"status_code,omitempty"`
 }
 
 func (err *Error) Error() string {
@@ -22,6 +23,11 @@ func NewError(code, msg string) *Error {
 /*NewErrorf - create a new error with format */
 func NewErrorf(code, format string, args ...interface{}) *Error {
 	return &Error{Code: code, Msg: fmt.Sprintf(format, args...)}
+}
+
+/*NewErrorf - create a new error with format */
+func NewErrorfWithStatusCode(statusCode int, errCode, format string, args ...interface{}) *Error {
+	return &Error{StatusCode: statusCode, Code: errCode, Msg: fmt.Sprintf(format, args...)}
 }
 
 /*InvalidRequest - create error messages that are needed when validating request input */
