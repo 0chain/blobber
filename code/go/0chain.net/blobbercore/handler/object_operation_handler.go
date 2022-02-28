@@ -100,7 +100,7 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks 
 		}
 	}
 
-	return
+	return allocation.AddToPending(db, payerID, alloc.ID, 0, currentReadSize)
 }
 
 func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMarker *writemarker.WriteMarker, payerID string) (err error) {
