@@ -34,8 +34,6 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 		"parent_path", "size", "hash", "path_hash", "content_hash", "merkle_root",
 		"actual_file_size", "actual_file_hash", "attributes", "chunk_size",
 		"lookup_hash", "thumbnail_hash")
-	// , "thumbnail_size", "thumbnail_hash", "actual_thumbnail_size",
-	//		"actual_thumbnail_hash"
 	pathsAdded := make(map[string]bool)
 	for _, path := range paths {
 		path = strings.TrimSuffix(path, "/")

@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
@@ -889,55 +888,46 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	fmt.Println("Step 1 CreateDir !!!")
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-	fmt.Println("Step 2 CreateDir !!!")
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
-	fmt.Println("Step 3 CreateDir !!!")
 
 	allocationID := allocationObj.ID
 
 	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
-	fmt.Println("Step 4 CreateDir !!!")
 
 	dirPath := r.FormValue("dir_path")
 	if dirPath == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
 	}
-	fmt.Println("Step 5 CreateDir !!!")
 
 	// Update checkIfFileAlreadyExists to checkIfFileRefIDAlreadyExists
 	exisitingRef := fsh.checkIfFileRefIDAlreadyExists(ctx, allocationID, dirPath)
 	if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
-	fmt.Println("Step 6 CreateDir !!!")
 
 	if exisitingRef != nil {
 		return nil, common.NewError("duplicate_file", "File at path already exists")
 	}
-	fmt.Println("Step 7 CreateDir !!!")
 
 	connectionID := r.FormValue("connection_id")
 	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
-	fmt.Println("Step 8 CreateDir !!!")
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
-	fmt.Println("Step 9 CreateDir !!!")
 
 	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
 	mutex.Lock()
@@ -959,11 +949,9 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	connectionObj.AddChange(allocationChange, &formData)
 	// And Here
 	err = connectionObj.ApplyChanges(ctx, "/")
-	fmt.Println("Step 10 CreateDir !!!")
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Step 11 CreateDir !!!")
 
 	result := &blobberhttp.UploadResult{}
 	result.Filename = dirPath

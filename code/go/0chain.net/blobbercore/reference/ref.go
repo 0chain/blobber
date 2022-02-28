@@ -435,8 +435,8 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 
 	var err error
 	if saveToDB {
-		err = fr.Save(ctx)
-		//err = fr.SaveFile(ctx)
+		//err = fr.Save(ctx)
+		err = fr.SaveFile(ctx)
 	}
 	return fr.Hash, err
 }
@@ -473,8 +473,8 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
 	var err error
 	if saveToDB {
-		err = r.Save(ctx)
-		//err = r.SaveDir(ctx)
+		//err = r.Save(ctx)
+		err = r.SaveDir(ctx)
 	}
 
 	return r.Hash, err
@@ -526,7 +526,7 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 
 func (r *Ref) SaveFile(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	rows := db.Model(r).Where("id = ?", r.ID).Updates(map[string]interface{}{
+	db = db.Model(r).Where("id = ?", r.ID).Updates(map[string]interface{}{
 		"allocation_id":         r.AllocationID,
 		"lookup_hash":           r.LookupHash,
 		"name":                  r.Name,
@@ -552,17 +552,17 @@ func (r *Ref) SaveFile(ctx context.Context) error {
 		"attributes":            r.Attributes,
 		"chunk_size":            r.ChunkSize,
 	})
-	// "updated_at": r.UpdatedAt,
-	if errors.Is(rows.Error, gorm.ErrRecordNotFound) {
-		err := db.Create(r).Error
+	if errors.Is(db.Error, gorm.ErrRecordNotFound) || db.RowsAffected == 0 {
+		err := db.Save(r).Error
 		return err
+	} else {
+		return db.Error
 	}
-	return rows.Error
 }
 
 func (r *Ref) SaveDir(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	rows := db.Model(r).Where("id = ?", r.ID).Updates(map[string]interface{}{
+	db = db.Model(r).Where("id = ?", r.ID).Updates(map[string]interface{}{
 		"allocation_id": r.AllocationID,
 		"lookup_hash":   r.LookupHash,
 		"name":          r.Name,
@@ -590,11 +590,12 @@ func (r *Ref) SaveDir(ctx context.Context) error {
 	//	"actual_thumbnail_hash": r.ActualThumbnailHash,
 	//	"actual_thumbnail_size": r.ActualThumbnailSize,
 	//
-	if errors.Is(rows.Error, gorm.ErrRecordNotFound) {
-		err := db.Create(r).Error
+	if errors.Is(db.Error, gorm.ErrRecordNotFound) || db.RowsAffected == 0 {
+		err := db.Save(r).Error
 		return err
+	} else {
+		return db.Error
 	}
-	return rows.Error
 }
 
 func (r *Ref) Save(ctx context.Context) error {
