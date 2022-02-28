@@ -169,7 +169,6 @@ CREATE TABLE read_markers (
     read_size BIGINT NOT NULL,
     is_suspend Boolean,
     signature VARCHAR(64) NOT NULL,
-    latest_redeemed_rm JSON,
     redeem_required boolean,
     latest_redeem_txn_id VARCHAR(64),
     status_message TEXT,
