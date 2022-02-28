@@ -49,7 +49,7 @@ func RedeemReadMarker(ctx context.Context, db *gorm.DB, rme *ReadMarkerEntity) e
 
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
-	tx, err = transaction.VerifyTransaction(tx.Hash, chain.GetServerChain())
+	_, err = transaction.VerifyTransaction(tx.Hash, chain.GetServerChain())
 	if err != nil {
 		zLogger.Logger.Error("Error verifying the read redeem transaction", zap.Error(err), zap.String("txn", tx.Hash))
 		return common.NewErrorf("redeem_read_marker", "verifying transaction: %v", err)
@@ -79,6 +79,7 @@ func redeemReadMarkers(ctx context.Context) {
 	guideCh := make(chan struct{}, config.Configuration.RMRedeemNumWorkers)
 	wg := sync.WaitGroup{}
 	for _, rme := range rms {
+		rme.ReadMarker.BlobberID = node.Self.ID
 		guideCh <- struct{}{}
 		wg.Add(1)
 		go func(rme *ReadMarkerEntity) {
@@ -86,14 +87,17 @@ func redeemReadMarkers(ctx context.Context) {
 				<-guideCh
 				wg.Done()
 			}()
+			ctx, ctxCncl := context.WithCancel(rctx)
+			defer ctxCncl()
 
-			db := datastore.GetStore().GetTransaction(rctx)
+			ctx = datastore.GetStore().CreateTransaction(ctx)
+			db := datastore.GetStore().GetTransaction(ctx)
 
-			if err := RedeemReadMarker(rctx, db, rme); err != nil {
+			if err := RedeemReadMarker(ctx, db, rme); err != nil {
 				zLogger.Logger.Error(err.Error())
-				rme.UpdateStatus(rctx, true, true)
+				rme.UpdateStatus(ctx, true, true)
 			} else {
-				rme.UpdateStatus(rctx, false, false)
+				rme.UpdateStatus(ctx, false, false)
 				allocation.AddToPending(db, rme.ReadMarker.ClientID, rme.ReadMarker.AllocationID, 0, -rme.ReadMarker.ReadSize)
 			}
 
@@ -111,7 +115,9 @@ func startRedeemMarkers(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			redeemReadMarkers(ctx)
+			newCtx, ctxCncl := context.WithCancel(ctx)
+			redeemReadMarkers(newCtx)
+			ctxCncl()
 		}
 	}
 }
