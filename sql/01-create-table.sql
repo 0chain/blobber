@@ -240,6 +240,7 @@ CREATE TABLE marketplace_share_info (
     re_encryption_key TEXT NOT NULL,
     client_encryption_public_key TEXT NOT NULL,
     expiry_at TIMESTAMP NULL,
+    available_at TIMESTAMP NULL,
     revoked BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
