@@ -177,7 +177,7 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite, pend
 	defer lock.Unlock()
 
 	pending := new(Pending)
-	err = db.Model(&Pending{}).Where("id=?", clientID+":"+allocationID).First(pending).Error
+	err = db.Model(&Pending{}).Where("id=?", key).First(pending).Error
 	if err == nil && pending != nil {
 		pending.PendingWrite += pendingWrite
 		pending.PendingRead += pendingRead
