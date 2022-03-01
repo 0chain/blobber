@@ -142,7 +142,7 @@ FROM reference_objects`).
 					it.mock()
 				}
 
-				r, err := LoadRoot(context.TODO(), it.allocationID)
+				r, err := LoadRootHashnode(context.TODO(), it.allocationID)
 
 				it.assert(test, it.allocationID, r, err)
 
@@ -378,7 +378,7 @@ FROM reference_objects`).
 					it.mock()
 				}
 
-				r, err := LoadRoot(context.TODO(), it.allocationID)
+				r, err := LoadRootHashnode(context.TODO(), it.allocationID)
 
 				it.assert(test, it.allocationID, r, err)
 
