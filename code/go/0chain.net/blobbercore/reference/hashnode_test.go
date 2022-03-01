@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHashabelNode_Should_Work(t *testing.T) {
+func TestHashnode_Should_Work(t *testing.T) {
 
 	datastore.UseMocket(true)
 
@@ -153,7 +153,7 @@ FROM reference_objects`).
 
 }
 
-func TestHashabelNode_Should_Not_Work(t *testing.T) {
+func TestHashnode_Should_Not_Work(t *testing.T) {
 
 	datastore.UseMocket(true)
 
