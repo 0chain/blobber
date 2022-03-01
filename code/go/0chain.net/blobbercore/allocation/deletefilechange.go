@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"os"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
@@ -56,15 +57,19 @@ func (nf *DeleteFileChange) DeleteTempFile() error {
 
 func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
+	var finalErr error
 	for contenthash := range nf.ContentHash {
 		var count int64
 		err := db.Table((&reference.Ref{}).TableName()).Where(db.Where(&reference.Ref{ThumbnailHash: contenthash}).Or(&reference.Ref{ContentHash: contenthash})).Where("deleted_at IS null").Where(&reference.Ref{AllocationID: nf.AllocationID}).Count(&count).Error
 		if err == nil && count == 0 {
 			Logger.Info("Deleting content file", zap.String("content_hash", contenthash))
 			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, contenthash); err != nil {
+				if os.IsNotExist(err) {
+					finalErr = err
+				}
 				Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
 			}
 		}
 	}
-	return nil
+	return finalErr
 }
