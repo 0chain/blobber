@@ -90,6 +90,7 @@ func redeemReadMarkers(ctx context.Context) {
 			ctx, ctxCncl := context.WithCancel(rctx)
 			defer ctxCncl()
 
+			// Only updateStatus will use separate transaction because readmarkers are independent of each other
 			ctx = datastore.GetStore().CreateTransaction(ctx)
 			db := datastore.GetStore().GetTransaction(ctx)
 
@@ -98,7 +99,13 @@ func redeemReadMarkers(ctx context.Context) {
 				rme.UpdateStatus(ctx, true, true)
 			} else {
 				rme.UpdateStatus(ctx, false, false)
-				allocation.AddToPending(db, rme.ReadMarker.ClientID, rme.ReadMarker.AllocationID, 0, -rme.ReadMarker.ReadSize)
+				// dbForPending uses same transaction for all pending operations as each operation can depend on each other
+				// if pending.id is same
+				dbForPending := datastore.GetStore().GetTransaction(rctx)
+				err = allocation.AddToPending(dbForPending, rme.ReadMarker.ClientID, rme.ReadMarker.AllocationID, 0, -rme.ReadMarker.ReadSize)
+				if err != nil {
+					zLogger.Logger.Error(err.Error())
+				}
 			}
 
 			db.Commit()
