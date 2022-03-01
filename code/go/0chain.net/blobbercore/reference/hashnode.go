@@ -6,11 +6,10 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/errors"
-	"gorm.io/gorm"
 )
 
-// LoadRootNode load root node with its descendant nodes
-func LoadRootNode(ctx context.Context, allocationID string) (*HashNode, error) {
+// LoadRootHashnode load root node with its descendant nodes
+func LoadRootHashnode(ctx context.Context, allocationID string) (*Hashnode, error) {
 
 	db := datastore.GetStore().GetDB()
 
@@ -27,10 +26,10 @@ ORDER BY level desc, path`, allocationID)
 
 	defer rows.Close()
 
-	nodes := make(map[string]*HashNode)
+	nodes := make(map[string]*Hashnode)
 	for rows.Next() {
 
-		node := &HashNode{}
+		node := &Hashnode{}
 		err = db.ScanRows(rows, node)
 		if err != nil {
 			return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
@@ -52,7 +51,7 @@ ORDER BY level desc, path`, allocationID)
 
 	// create empty dir if root is missing
 	if len(nodes) == 0 {
-		return &HashNode{AllocationID: allocationID, Type: DIRECTORY, Path: "/", Name: "/", ParentPath: ""}, nil
+		return &Hashnode{AllocationID: allocationID, Type: DIRECTORY, Path: "/", Name: "/", ParentPath: ""}, nil
 	}
 
 	root, ok := nodes["/"]
@@ -62,19 +61,4 @@ ORDER BY level desc, path`, allocationID)
 	}
 
 	return nil, common.ErrMissingRootNode
-}
-
-const (
-	SQLWhereGetByAllocationTxAndPath = "reference_objects.allocation_id = ? and reference_objects.path = ? and deleted_at is NULL"
-)
-
-// DryRun  Creates a prepared statement when executing any SQL and caches them to speed up future calls
-// https://gorm.io/docs/performance.html#Caches-Prepared-Statement
-func DryRun(db *gorm.DB) {
-
-	// https://gorm.io/docs/session.html#DryRun
-	// Session mode
-	//tx := db.Session(&gorm.Session{PrepareStmt: true, DryRun: true})
-
-	// use Table instead of Model to reduce reflect times
 }
