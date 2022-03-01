@@ -63,7 +63,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			lock = datastore.WriteLock{
 				AllocationID: allocationID,
-				ConnectionID: connectionID,
+				SessionID:    connectionID,
 				CreatedAt:    *requestTime,
 			}
 
@@ -89,7 +89,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 	// locked, but it is timeout
 	if now.After(timeout) {
 
-		lock.ConnectionID = connectionID
+		lock.SessionID = connectionID
 		lock.CreatedAt = *requestTime
 
 		err = db.Save(&lock).Error
@@ -105,7 +105,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 	}
 
 	//try lock by same session, return old lock directly
-	if lock.ConnectionID == connectionID && lock.CreatedAt.Equal(*requestTime) {
+	if lock.SessionID == connectionID && lock.CreatedAt.Equal(*requestTime) {
 		return &LockResult{
 			Status:    LockStatusOK,
 			CreatedAt: lock.CreatedAt.Unix(),
