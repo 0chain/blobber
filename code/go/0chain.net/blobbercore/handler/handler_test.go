@@ -17,7 +17,6 @@ import (
 
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
-	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"github.com/0chain/gosdk/zboxcore/marker"
 	"github.com/0chain/gosdk/zcncore"
@@ -86,15 +85,6 @@ func signHash(client *client.Client, hash string) (string, error) {
 		}
 	}
 	return retSignature, nil
-}
-
-func getEncryptionScheme(mnemonic string) (zencryption.EncryptionScheme, error) {
-	encscheme := zencryption.NewEncryptionScheme()
-	if _, err := encscheme.Initialize(mnemonic); err != nil {
-		return nil, err
-	}
-	encscheme.InitForEncryption("filetype:audio")
-	return encscheme, nil
 }
 
 func init() {

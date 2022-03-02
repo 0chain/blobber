@@ -185,58 +185,24 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		return nil, common.NewErrorf("download_file", "invalid allocation id passed: %v", err)
 	}
 
-	if err = r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
-		Logger.Info("download_file - request_parse_error", zap.Error(err))
-		return nil, common.NewErrorf("download_file", "request_parse_error: %v", err)
-	}
-
-	pathHash, err := pathHashFromReq(r, alloc.ID)
+	dr, err := FromDownloadRequest(allocationTx, r)
 	if err != nil {
-		return nil, common.NewError("download_file", "invalid path")
+		return nil, err
 	}
 
-	var blockNumStr = r.FormValue("block_num")
-	if blockNumStr == "" {
-		return nil, common.NewError("download_file", "no block number")
-	}
-
-	var blockNum int64
-	blockNum, err = strconv.ParseInt(blockNumStr, 10, 64)
-	if err != nil || blockNum < 1 {
-		return nil, common.NewError("download_file", "invalid block number")
-	}
-
-	numBlocks := int64(1)
-	numBlocksStr := r.FormValue("num_blocks")
-
-	if numBlocksStr != "" {
-		numBlocks, err = strconv.ParseInt(numBlocksStr, 10, 64)
-		if err != nil || numBlocks <= 0 {
-			return nil, common.NewError("download_file", "invalid number of blocks")
-		}
-	}
-
-	readMarkerString := r.FormValue("read_marker")
-	readMarker := new(readmarker.ReadMarker)
-
-	if err := json.Unmarshal([]byte(readMarkerString), readMarker); err != nil {
-		return nil, common.NewErrorf("download_file", "invalid parameters, "+
-			"error parsing the readmarker for download: %v", err)
-	}
-
-	if readMarker.ReadSize < numBlocks*allocation.CHUNK_SIZE {
+	if dr.ReadMarker.ReadSize < dr.NumBlocks*allocation.CHUNK_SIZE {
 		return nil, common.NewError("download_file", "size requested is greater than size signed in readmarker")
 	}
 
 	rmObj := new(readmarker.ReadMarkerEntity)
-	rmObj.ReadMarker = readMarker
+	rmObj.ReadMarker = &dr.ReadMarker
 
 	if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
 		return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
 	}
 
 	// get file reference
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, alloc.ID, pathHash)
+	fileref, err := reference.GetReferenceFromLookupHash(ctx, alloc.ID, dr.PathHash)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid file path: %v", err)
 	}
@@ -261,7 +227,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	var shareInfo *reference.ShareInfo
 
 	if !(isOwner || isCollaborator) {
-		authTokenString := r.FormValue("auth_token")
+		authTokenString := dr.AuthToken
 		if authTokenString == "" {
 			return nil, common.NewError("invalid_client", "authticket is required")
 		}
@@ -280,11 +246,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		}
 
 		// set payer: check for command line payer flag (--rx_pay)
-		if r.FormValue("rx_pay") == "true" {
+		if dr.RxPay {
 			payerID = clientID
 		}
 
-		readMarker.AuthTicket = datatypes.JSON(authTokenString)
+		dr.ReadMarker.AuthTicket = datatypes.JSON(authTokenString)
 
 		// check for file payer flag
 		if fileAttrs, err := fileref.GetAttributes(); err != nil {
@@ -295,14 +261,14 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, alloc, numBlocks, payerID)
+	err = readPreRedeem(ctx, alloc, dr.NumBlocks, payerID)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "pre-redeeming read marker: %v", err)
 	}
 
 	// reading is allowed
 	var (
-		downloadMode = r.FormValue("content")
+		downloadMode = dr.DownloadMode
 		respData     []byte
 	)
 	if downloadMode == DownloadContentThumb {
@@ -312,7 +278,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		fileData.Hash = fileref.ThumbnailHash
 		fileData.OnCloud = fileref.OnCloud
 		fileData.ChunkSize = fileref.ChunkSize
-		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID, fileData, blockNum, numBlocks)
+		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID, fileData, dr.BlockNum, dr.NumBlocks)
 		if err != nil {
 			return nil, common.NewErrorf("download_file", "couldn't get thumbnail block: %v", err)
 		}
@@ -324,14 +290,14 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		fileData.OnCloud = fileref.OnCloud
 		fileData.ChunkSize = fileref.ChunkSize
 
-		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID, fileData, blockNum, numBlocks)
+		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID, fileData, dr.BlockNum, dr.NumBlocks)
 		if err != nil {
 			return nil, common.NewErrorf("download_file", "couldn't get file block: %v", err)
 		}
 	}
 
-	readMarker.PayerID = payerID
-	err = readmarker.SaveReadMarker(ctx, readMarker)
+	dr.ReadMarker.PayerID = payerID
+	err = readmarker.SaveReadMarker(ctx, &dr.ReadMarker)
 	if err != nil {
 		Logger.Error(err.Error())
 		return nil, common.NewErrorf("download_file", "couldn't save read marker")
