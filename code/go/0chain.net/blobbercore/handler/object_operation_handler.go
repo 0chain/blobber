@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"os"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
@@ -516,10 +515,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, common.NewErrorfWithStatusCode(204, "invalid_file", "File does not exist at path")
+		if !errors.Is(common.ErrFileWasDeleted, err) {
+			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 		}
-		return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 	}
 
 	result.Changes = connectionObj.Changes
@@ -533,6 +531,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	result.Success = true
 	result.ErrorMessage = ""
 
+	if errors.Is(common.ErrFileWasDeleted, err) {
+		return &result, err
+	}
 	return &result, nil
 }
 

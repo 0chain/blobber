@@ -51,7 +51,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/dir/{allocation}", common.ToJSONResponse(WithConnection(CreateDirHandler))).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/v1/dir/{allocation}", common.ToJSONResponse(WithConnection(CreateDirHandler))).Methods(http.MethodDelete, http.MethodOptions)
 
-	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToJSONResponse(WithConnection(CommitHandler)))
+	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToStatusCode(WithStatusConnection(CommitHandler)))
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.ToJSONResponse(WithConnection(CommitMetaTxnHandler)))
 	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(CollaboratorHandler)))
 	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.ToJSONResponse(WithConnection(CalculateHashHandler)))
@@ -115,6 +115,34 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 		err = GetMetaDataStore().GetTransaction(ctx).Commit().Error
 		if err != nil {
 			return resp, common.NewErrorf("commit_error",
+				"error committing to meta store: %v", err)
+		}
+		return
+	}
+}
+
+func WithStatusConnection(handler common.StatusCodeResponderF) common.StatusCodeResponderF {
+	return func(ctx context.Context, r *http.Request) (resp interface{}, statusCode int, err error) {
+		ctx = GetMetaDataStore().CreateTransaction(ctx)
+		resp, statusCode, err = handler(ctx, r)
+
+		defer func() {
+			if err != nil {
+				var rollErr = GetMetaDataStore().GetTransaction(ctx).
+					Rollback().Error
+				if rollErr != nil {
+					Logger.Error("couldn't rollback", zap.Error(err))
+				}
+			}
+		}()
+
+		if err != nil {
+			Logger.Error("Error in handling the request." + err.Error())
+			return
+		}
+		err = GetMetaDataStore().GetTransaction(ctx).Commit().Error
+		if err != nil {
+			return resp, statusCode, common.NewErrorf("commit_error",
 				"error committing to meta store: %v", err)
 		}
 		return
@@ -239,15 +267,20 @@ func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 }
 
 /*CommitHandler is the handler to respond to upload requests fro clients*/
-func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+func CommitHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.CommitWrite(ctx, r)
+
 	if err != nil {
-		return nil, err
+
+		if errors.Is(common.ErrFileWasDeleted, err) {
+			return response, http.StatusNoContent, nil
+		}
+		return nil, http.StatusBadRequest, err
 	}
 
-	return response, nil
+	return response, http.StatusOK, nil
 }
 
 func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {

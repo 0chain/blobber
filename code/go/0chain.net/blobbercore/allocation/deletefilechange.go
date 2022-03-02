@@ -8,6 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"go.uber.org/zap"
@@ -57,7 +58,7 @@ func (nf *DeleteFileChange) DeleteTempFile() error {
 
 func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	var finalErr error
+	var errFileWasDeleted error
 	for contenthash := range nf.ContentHash {
 		var count int64
 		err := db.Table((&reference.Ref{}).TableName()).Where(db.Where(&reference.Ref{ThumbnailHash: contenthash}).Or(&reference.Ref{ContentHash: contenthash})).Where("deleted_at IS null").Where(&reference.Ref{AllocationID: nf.AllocationID}).Count(&count).Error
@@ -65,11 +66,12 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 			Logger.Info("Deleting content file", zap.String("content_hash", contenthash))
 			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, contenthash); err != nil {
 				if os.IsNotExist(err) {
-					finalErr = err
+					errFileWasDeleted = common.ErrFileWasDeleted
+					continue
 				}
 				Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
 			}
 		}
 	}
-	return finalErr
+	return errFileWasDeleted
 }
