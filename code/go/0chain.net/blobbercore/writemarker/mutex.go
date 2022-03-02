@@ -67,7 +67,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 				CreatedAt:    *requestTime,
 			}
 
-			err = db.Create(&lock).Error
+			err = db.Table(datastore.TableNameWriteLock).Create(&lock).Error
 			if err != nil {
 				return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
 			}
@@ -92,7 +92,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 		lock.ConnectionID = connectionID
 		lock.CreatedAt = *requestTime
 
-		err = db.Save(&lock).Error
+		err = db.Table(datastore.TableNameWriteLock).Where("allocation_id=?", allocationID).Save(&lock).Error
 		if err != nil {
 			return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
 		}
