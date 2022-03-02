@@ -38,4 +38,6 @@ var (
 
 	// ErrDuplicatedNode  duplicated nodes
 	ErrDuplicatedNode = errors.New("duplicated nodes")
+	// ErrFileWasDeleted file already was deleted
+	ErrFileWasDeleted = errors.New("file was deleted")
 )
