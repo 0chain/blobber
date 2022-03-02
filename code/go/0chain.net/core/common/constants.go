@@ -32,4 +32,7 @@ var (
 
 	// ErrEntityNotFound entity can't found in db
 	ErrEntityNotFound = errors.New("entity not found")
+
+	// ErrFileWasDeleted file already was deleted
+	ErrFileWasDeleted = errors.New("file was deleted")
 )
