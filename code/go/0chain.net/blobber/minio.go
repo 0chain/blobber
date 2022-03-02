@@ -5,12 +5,19 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
 func setupMinio() error {
 	fmt.Print("[4/12] setup minio")
+
+	if config.Configuration.MinioStart {
+		fmt.Print("	+ No minio 	[SKIP]\n")
+		return nil
+	}
+
 	reader, err := os.Open(minioFile)
 	if err != nil {
 		return err
