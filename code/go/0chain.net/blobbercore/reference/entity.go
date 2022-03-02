@@ -1,14 +1,11 @@
 package reference
 
 import (
-	"strconv"
-	"strings"
-
 	"gorm.io/datatypes"
 )
 
-// HashNode ref node in hash tree
-type HashNode struct {
+// Hashnode ref node in hash tree
+type Hashnode struct {
 	// hash data
 	AllocationID   string         `gorm:"column:allocation_id" json:"allocation_id,omitempty"`
 	Type           string         `gorm:"column:type" json:"type,omitempty"`
@@ -24,46 +21,23 @@ type HashNode struct {
 
 	// other data
 	ParentPath string      `gorm:"parent_path" json:"-"`
-	Children   []*HashNode `gorm:"-" json:"children,omitempty"`
+	Children   []*Hashnode `gorm:"-" json:"children,omitempty"`
 }
 
 // TableName get table name of Ref
-func (HashNode) TableName() string {
+func (Hashnode) TableName() string {
 	return TableNameReferenceObjects
 }
 
-func (n *HashNode) AddChild(c *HashNode) {
+func (n *Hashnode) AddChild(c *Hashnode) {
 	if n.Children == nil {
-		n.Children = make([]*HashNode, 0, 10)
+		n.Children = make([]*Hashnode, 0, 10)
 	}
 
 	n.Children = append(n.Children, c)
 }
 
 // GetLookupHash get lookuphash
-func (n *HashNode) GetLookupHash() string {
+func (n *Hashnode) GetLookupHash() string {
 	return GetReferenceLookup(n.AllocationID, n.Path)
-}
-
-// GetHashCode get hash code
-func (n *HashNode) GetHashCode() string {
-
-	if len(n.Attributes) == 0 {
-		n.Attributes = datatypes.JSON("{}")
-	}
-	hashArray := []string{
-		n.AllocationID,
-		n.Type,
-		n.Name,
-		n.Path,
-		strconv.FormatInt(n.Size, 10),
-		n.ContentHash,
-		n.MerkleRoot,
-		strconv.FormatInt(n.ActualFileSize, 10),
-		n.ActualFileHash,
-		string(n.Attributes),
-		strconv.FormatInt(n.ChunkSize, 10),
-	}
-
-	return strings.Join(hashArray, ":")
 }

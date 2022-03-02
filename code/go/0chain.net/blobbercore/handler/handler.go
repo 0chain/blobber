@@ -78,8 +78,10 @@ func SetupHandlers(r *mux.Router) {
 
 	// lightweight http handler without heavy postgres transaction to improve performance
 
-	r.HandleFunc("/v1/writemarker/lock/{allocation}", WithHandler(LockWriteMarker)).Methods(http.MethodPost)
-	r.HandleFunc("/v1/writemarker/lock/{allocation}", WithHandler(UnlockWriteMarker)).Methods(http.MethodDelete)
+	r.HandleFunc("/v1/writemarker/lock/{allocation}", WithHandler(LockWriteMarker)).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/v1/writemarker/lock/{allocation}", WithHandler(UnlockWriteMarker)).Methods(http.MethodDelete, http.MethodOptions)
+
+	r.HandleFunc("/v1/hashnode/root/{allocation}", WithHandler(LoadRootHashnode)).Methods(http.MethodGet, http.MethodOptions)
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {

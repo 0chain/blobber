@@ -67,7 +67,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 				CreatedAt:    *requestTime,
 			}
 
-			err = db.Create(&lock).Error
+			err = db.Table(datastore.TableNameWriteLock).Create(&lock).Error
 			if err != nil {
 				return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
 			}
@@ -92,7 +92,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 		lock.ConnectionID = connectionID
 		lock.CreatedAt = *requestTime
 
-		err = db.Save(&lock).Error
+		err = db.Table(datastore.TableNameWriteLock).Where("allocation_id=?", allocationID).Save(&lock).Error
 		if err != nil {
 			return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
 		}
@@ -120,19 +120,19 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 
 }
 
-func (*Mutex) Unlock(ctx context.Context, allocationID string, sessionID string) error {
+func (*Mutex) Unlock(ctx context.Context, allocationID string, connectionID string) error {
 
 	if len(allocationID) == 0 {
 		return nil
 	}
 
-	if len(sessionID) == 0 {
+	if len(connectionID) == 0 {
 		return nil
 	}
 
 	db := datastore.GetStore().GetDB()
 
-	err := db.Where("allocation_id =  ? and session_id =? ", allocationID, sessionID).Delete(&datastore.WriteLock{}).Error
+	err := db.Where("allocation_id = ? and connection_id = ? ", allocationID, connectionID).Delete(&datastore.WriteLock{}).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil

@@ -61,6 +61,7 @@ func TestMutext_LockShouldWork(t *testing.T) {
 			assert: func(test *testing.T, r *LockResult, err error) {
 				require.Nil(test, err)
 				require.Equal(test, LockStatusOK, r.Status)
+				require.EqualValues(test, now.Unix(), r.CreatedAt)
 			},
 		},
 		{
@@ -86,7 +87,7 @@ func TestMutext_LockShouldWork(t *testing.T) {
 			},
 		},
 		{
-			name:         "lock should ok if it is timeout",
+			name:         "lock should be ok if it is timeout",
 			allocationID: "lock_timeout_allocation_id",
 			connectionID: "lock_timeout_2nd_connection_id",
 			requestTime:  now,
@@ -105,6 +106,28 @@ func TestMutext_LockShouldWork(t *testing.T) {
 			assert: func(test *testing.T, r *LockResult, err error) {
 				require.Nil(test, err)
 				require.Equal(test, LockStatusPending, r.Status)
+			},
+		},
+		{
+			name:         "retry lock by same request should work if it is timeout",
+			allocationID: "lock_same_timeout_allocation_id",
+			connectionID: "lock_same_timeout_connection_id",
+			requestTime:  now,
+			mock: func() {
+				gomocket.Catcher.NewMock().
+					WithQuery(`SELECT * FROM "write_locks" WHERE allocation_id=$1 ORDER BY "write_locks"."allocation_id" LIMIT 1`).
+					WithArgs("lock_same_timeout_allocation_id").
+					WithReply([]map[string]interface{}{
+						{
+							"allocation_id": "lock_same_timeout_allocation_id",
+							"connection_id": "lock_same_timeout_connection_id",
+							"created_at":    now.Add(-config.Configuration.WriteMarkerLockTimeout),
+						},
+					})
+			},
+			assert: func(test *testing.T, r *LockResult, err error) {
+				require.Nil(test, err)
+				require.NotNil(test, r)
 			},
 		},
 	}
@@ -134,7 +157,6 @@ func TestMutext_LockShouldNotWork(t *testing.T) {
 	config.Configuration.WriteMarkerLockTimeout = 30 * time.Second
 
 	m := &Mutex{}
-	now := time.Now()
 
 	tests := []struct {
 		name         string
@@ -155,28 +177,6 @@ func TestMutext_LockShouldNotWork(t *testing.T) {
 			assert: func(test *testing.T, r *LockResult, err error) {
 				require.Nil(test, r)
 				require.NotNil(test, err)
-			},
-		},
-		{
-			name:         "retry lock by same request should not work if it is timeout",
-			allocationID: "lock_same_timeout_allocation_id",
-			connectionID: "lock_same_timeout_connection_id",
-			requestTime:  now,
-			mock: func() {
-				gomocket.Catcher.NewMock().
-					WithQuery(`SELECT * FROM "write_locks" WHERE allocation_id=$1 ORDER BY "write_locks"."allocation_id" LIMIT 1`).
-					WithArgs("lock_same_timeout_allocation_id").
-					WithReply([]map[string]interface{}{
-						{
-							"allocation_id": "lock_same_timeout_allocation_id",
-							"connection_id": "lock_same_timeout_connection_id",
-							"created_at":    now.Add(-config.Configuration.WriteMarkerLockTimeout),
-						},
-					})
-			},
-			assert: func(test *testing.T, r *LockResult, err error) {
-				require.NotNil(test, err)
-				require.Nil(test, r)
 			},
 		},
 	}

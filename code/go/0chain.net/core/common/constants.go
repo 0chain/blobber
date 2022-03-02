@@ -33,6 +33,11 @@ var (
 	// ErrEntityNotFound entity can't found in db
 	ErrEntityNotFound = errors.New("entity not found")
 
+	// ErrMissingRootNode  root node is missing
+	ErrMissingRootNode = errors.New("root node is missing")
+
+	// ErrDuplicatedNode  duplicated nodes
+	ErrDuplicatedNode = errors.New("duplicated nodes")
 	// ErrFileWasDeleted file already was deleted
 	ErrFileWasDeleted = errors.New("file was deleted")
 )
