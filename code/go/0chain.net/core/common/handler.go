@@ -44,12 +44,16 @@ func Respond(w http.ResponseWriter, data interface{}, err error) {
 	if err != nil {
 		data := make(map[string]interface{}, 2)
 		data["error"] = err.Error()
+		statusCode := 400
 		if cerr, ok := err.(*Error); ok {
 			data["code"] = cerr.Code
+			if cerr.StatusCode != 0 {
+				statusCode = cerr.StatusCode
+			}
 		}
 		buf := bytes.NewBuffer(nil)
 		json.NewEncoder(buf).Encode(data) //nolint:errcheck // checked in previous step
-		http.Error(w, buf.String(), 400)
+		http.Error(w, buf.String(), statusCode)
 	} else if data != nil {
 		json.NewEncoder(w).Encode(data) //nolint:errcheck // checked in previous step
 	}
