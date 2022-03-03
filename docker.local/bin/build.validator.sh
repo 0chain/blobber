@@ -4,21 +4,12 @@ set -e
 GIT_COMMIT=$(git rev-list -1 HEAD)
 echo $GIT_COMMIT
 
-cmd="build"
+if [ -z "$DOCKER_BUILD" ]; then  
+    if [ "x86_64" != "$(uname -m)" ]; then
+        DOCKER_BUILD="buildx build --platform linux/arm64"
+    else
+        DOCKER_BUILD="build"
+    fi
+fi
 
-for arg in "$@"
-do
-    case $arg in
-        -m1|--m1|m1)
-        echo "The build will be performed for Apple M1 chip"
-        cmd="buildx build --platform linux/amd64"
-        shift
-        ;;
-    esac
-done
-
-# [ -d ./gosdk ] && rm -rf gosdk
-# cp -r ../gosdk ./
-
-docker $cmd  --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/validator.Dockerfile . -t validator
-
+docker $DOCKER_BUILD  --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/validator.Dockerfile . -t validator
