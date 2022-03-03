@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
@@ -875,15 +877,6 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
 	}
 
-	exisitingRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
-	if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
-	}
-
-	if exisitingRef != nil {
-		return nil, common.NewError("duplicate_file", "File at path already exists")
-	}
-
 	connectionID := r.FormValue("connection_id")
 	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
@@ -892,6 +885,18 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
+	}
+
+	isRefExist, err := reference.IsRefExist(ctx, allocationID, dirPath)
+	if err != nil {
+		logging.Logger.Error(err.Error())
+		return nil, common.NewError("database_error", "Got error while getting ref from database")
+	}
+
+	if isRefExist {
+		return nil, common.NewError("duplicate_file", "File at path already exists")
+	} else if err := validateParentPathType(ctx, allocationID, dirPath); err != nil {
+		return nil, err
 	}
 
 	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
@@ -1046,4 +1051,40 @@ func getExistingFileRef(fsh *StorageHandler, ctx context.Context, r *http.Reques
 		}
 	}
 	return nil
+}
+
+// validateParentPathType validates against any parent path not being directory.
+func validateParentPathType(ctx context.Context, allocationID, fPath string) error {
+	fPath = filepath.Clean(fPath)
+	if !filepath.IsAbs(fPath) {
+		return fmt.Errorf("filepath %v is not absolute path", fPath)
+	}
+
+	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, getParentPaths(fPath))
+	if err != nil {
+		logging.Logger.Error(err.Error())
+		return common.NewError("database_error", "Got error while getting parent refs")
+	}
+
+	for _, ref := range refs {
+		if ref == nil {
+			continue
+		}
+		if ref.Type == reference.FILE {
+			return common.NewError("invalid_path", fmt.Sprintf("parent path %v is of file type", ref.Path))
+		}
+	}
+	return nil
+}
+
+// getParentPaths For path /a/b/c.txt, will return [/a,/a/b]
+func getParentPaths(fPath string) []string {
+	splittedPaths := strings.Split(fPath, "/")
+	var paths []string
+
+	for i := 0; i < len(splittedPaths); i++ {
+		subPath := strings.Join(splittedPaths[0:i], "/")
+		paths = append(paths, subPath)
+	}
+	return paths[2:]
 }
