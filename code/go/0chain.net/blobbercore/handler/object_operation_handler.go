@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
@@ -23,6 +25,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/constants"
 
@@ -889,6 +892,10 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("duplicate_file", "File at path already exists")
 	}
 
+	if err := validateParentPathType(ctx, allocationID, dirPath); err != nil {
+		return nil, err
+	}
+
 	connectionID := r.FormValue("connection_id")
 	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
@@ -948,7 +955,21 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	allocationID := allocationObj.ID
 	fileOperation := getFileOperation(r)
-	existingFileRef := getExistingFileRef(fsh, ctx, r, allocationObj, fileOperation)
+	formData := getFormData(ctx, r, allocationObj, fileOperation)
+	var existingFileRef *reference.Ref
+	if formData != nil {
+		existingFileRef, err = reference.GetRefWithID(ctx, allocationID, formData.Path)
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			logging.Logger.Error(err.Error())
+			return nil, common.NewError("database_error", "Got error while getting ref from database")
+		}
+
+		if err := validateParentPathType(ctx, allocationID, formData.Path); err != nil {
+			return nil, err
+		}
+
+	}
+
 	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
 
@@ -1040,15 +1061,55 @@ func getFileOperation(r *http.Request) string {
 	return mode
 }
 
-func getExistingFileRef(fsh *StorageHandler, ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) *reference.Ref {
+func getFormData(ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) *allocation.UpdateFileChanger {
 	if fileOperation == constants.FileOperationInsert || fileOperation == constants.FileOperationUpdate {
 		var formData allocation.UpdateFileChanger
 		uploadMetaString := r.FormValue(getFormFieldName(fileOperation))
 		err := json.Unmarshal([]byte(uploadMetaString), &formData)
 
-		if err == nil {
-			return fsh.checkIfFileAlreadyExists(ctx, allocationObj.ID, formData.Path)
+		if err != nil {
+			return nil
+		}
+		return &formData
+	}
+	return nil
+}
+
+// validateParentPathType validates against any parent path not being directory.
+func validateParentPathType(ctx context.Context, allocationID, fPath string) error {
+	if fPath == "" {
+		return nil
+	}
+
+	fPath = filepath.Clean(fPath)
+	if !filepath.IsAbs(fPath) {
+		return fmt.Errorf("filepath %v is not absolute path", fPath)
+	}
+	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, getParentPaths(fPath))
+	if err != nil {
+		logging.Logger.Error(err.Error())
+		return common.NewError("database_error", "Got error while getting parent refs")
+	}
+
+	for _, ref := range refs {
+		if ref == nil {
+			continue
+		}
+		if ref.Type == reference.FILE {
+			return common.NewError("invalid_path", fmt.Sprintf("parent path %v is of file type", ref.Path))
 		}
 	}
 	return nil
+}
+
+// getParentPaths For path /a/b/c.txt, will return [/a,/a/b]
+func getParentPaths(fPath string) []string {
+	splittedPaths := strings.Split(fPath, "/")
+	var paths []string
+
+	for i := 0; i < len(splittedPaths); i++ {
+		subPath := strings.Join(splittedPaths[0:i], "/")
+		paths = append(paths, subPath)
+	}
+	return paths[2:]
 }
