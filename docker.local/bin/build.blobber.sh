@@ -6,6 +6,7 @@ echo $GIT_COMMIT
 
 if [ -z "$DOCKER_BUILD" ]; then  
     if [ "x86_64" != "$(uname -m)" ]; then
+        docker buildx create --use
         DOCKER_BUILD="buildx build --platform linux/arm64"
     else
         DOCKER_BUILD="build"
