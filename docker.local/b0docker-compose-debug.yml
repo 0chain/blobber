@@ -55,9 +55,8 @@ services:
     links:
       - validator:validator
     volumes:
-      -  /mnt/:/mnt
       - ../config:/blobber/config
-      - ./blobber${BLOBBER}/files:/blobber/files
+      - /mnt:/blobber/files
       - ./blobber${BLOBBER}/data:/blobber/data
       - ./blobber${BLOBBER}/log:/blobber/log
       - ./keys_config:/blobber/keysconfig
