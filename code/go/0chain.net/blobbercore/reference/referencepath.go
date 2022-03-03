@@ -19,9 +19,9 @@ type ReferencePath struct {
 	Ref  *Ref
 }
 
-func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, error) {
-	return GetReferencePathFromPaths(ctx, allocationID, []string{path})
-}
+//func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, error) {
+//	return GetReferencePathFromPaths(ctx, allocationID, []string{path})
+//}
 
 func GetReferencePath2(ctx context.Context, allocationID, path string) (*Ref, error) {
 	return GetReferenceForHashCalculationFromPaths(ctx, allocationID, []string{path})

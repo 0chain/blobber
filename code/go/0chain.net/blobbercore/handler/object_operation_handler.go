@@ -955,20 +955,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	}
 
 	allocationID := allocationObj.ID
-	//fileOperation := getFileOperation(r)
-	//existingFileRef, err := getExistingFileRefID(ctx, r, allocationObj, fileOperation)
-	//if err != nil {
-	//	Logger.Info("Error file reference", zap.Any("error", err))
-	//}
-	//if existingFileRef != nil {
-	//	return nil, common.NewError("duplicate_file", "File at path already exists")
-	//}
-	//isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
-
-	//if isCollaborator {
-	//	publicKey = ctx.Value(constants.ContextKeyClientKey).(string)
-	//}
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
 
@@ -1033,39 +1020,4 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	}
 
 	return &result, nil
-}
-
-func getFormFieldName(mode string) string {
-	return "uploadMeta"
-	//	formField := "uploadMeta"
-	// if mode == constants.FileOperationUpdate {
-	// 	//formField = "updateMeta"
-	// }
-
-	//return formField
-}
-
-func getFileOperation(r *http.Request) string {
-	mode := constants.FileOperationInsert
-	if r.Method == "PUT" {
-		mode = constants.FileOperationUpdate
-	} else if r.Method == "DELETE" {
-		mode = constants.FileOperationDelete
-	}
-
-	return mode
-}
-
-func getExistingFileRefID(ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) (*reference.Ref, error) {
-	if fileOperation == constants.FileOperationInsert || fileOperation == constants.FileOperationUpdate {
-		var formData allocation.UpdateFileChanger
-		uploadMetaString := r.FormValue(getFormFieldName(fileOperation))
-		err := json.Unmarshal([]byte(uploadMetaString), &formData)
-		if err == nil {
-			return reference.GetReferenceID(ctx, allocationObj.ID, formData.Path)
-		} else {
-			return nil, err
-		}
-	}
-	return nil, common.NewError("file_ref_error", "Error reading file operation.")
 }
