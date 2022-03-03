@@ -133,12 +133,8 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 //	return fileReference
 //}
 
-func (fsh *StorageHandler) checkIfFileRefIDAlreadyExists(ctx context.Context, allocationID, path string) *reference.Ref {
-	fileReference, err := reference.GetReferenceID(ctx, allocationID, path)
-	if err != nil {
-		return nil
-	}
-	return fileReference
+func (fsh *StorageHandler) checkIfFileRefIDAlreadyExists(ctx context.Context, allocationID, path string) (*reference.Ref, error) {
+	return reference.GetReferenceID(ctx, allocationID, path)
 }
 
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {

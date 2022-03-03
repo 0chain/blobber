@@ -23,19 +23,16 @@ func (cmd *FileCommandDelete) IsAuthorized(ctx context.Context, req *http.Reques
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
-
 	path := req.FormValue("path")
 	if path == "" {
 		return common.NewError("invalid_parameters", "Invalid path")
 	}
-	// Update GetReference to GetReferenceID
-	cmd.exisitingFileRef, _ = reference.GetReference(ctx, allocationObj.ID, path)
-
+	var err error
+	cmd.exisitingFileRef, err = reference.GetReferenceDelete(ctx, allocationObj.ID, path)
 	if cmd.exisitingFileRef == nil {
 		return common.NewErrorfWithStatusCode(204, "invalid_file", "File does not exist at path")
 	}
-
-	return nil
+	return err
 }
 
 // UpdateChange add DeleteFileChange in db

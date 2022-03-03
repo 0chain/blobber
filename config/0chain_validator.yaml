@@ -1,7 +1,7 @@
 version: 1.0
 
 # delegate wallet (must be set)
-delegate_wallet: 'ffb5f45e78cefc18e5b1c3fcdc9b0c87450dedc38d48abc7589e8f3af41a56c2'
+delegate_wallet: 'a7f2c5472f336b28b83b26581070a880924b32ea0766157dadff2d01a3dd8593'
 # min stake allowed, tokens
 min_stake: 1.0
 # max stake allowed, tokens

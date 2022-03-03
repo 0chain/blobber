@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -26,6 +27,8 @@ type UpdateFileCommand struct {
 
 // IsAuthorized validate request.
 func (cmd *UpdateFileCommand) IsAuthorized(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
+	fmt.Println("Called UpdateFileCommand IsAuthorized !!!")
+	defer func() { fmt.Println("Ended UpdateFileCommand IsAuthorized Call !!!") }()
 	uploadMetaString := req.FormValue("uploadMeta")
 
 	if uploadMetaString == "" {
@@ -42,7 +45,6 @@ func (cmd *UpdateFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 	if cmd.fileChanger.ChunkSize <= 0 {
 		cmd.fileChanger.ChunkSize = fileref.CHUNK_SIZE
 	}
-	// Update GetReference to GetReferenceID
 	cmd.exisitingFileRef, _ = reference.GetReference(ctx, allocationObj.ID, cmd.fileChanger.Path)
 
 	if cmd.exisitingFileRef == nil {
@@ -60,6 +62,8 @@ func (cmd *UpdateFileCommand) IsAuthorized(ctx context.Context, req *http.Reques
 
 // ProcessContent flush file to FileStorage
 func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
+	fmt.Println("Called UpdateFileCommand ProcessContent !!!")
+	defer func() { fmt.Println("Ended UpdateFileCommand ProcessContent Call !!!") }()
 	result := blobberhttp.UploadResult{}
 
 	result.Filename = cmd.fileChanger.Filename
@@ -128,6 +132,8 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 // ProcessThumbnail flush thumbnail file to FileStorage if it has.
 func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
+	fmt.Println("Called UpdateFileCommand ProcessThumbnail !!!")
+	defer func() { fmt.Println("Ended UpdateFileCommand ProcessThumbnail Call !!!") }()
 	thumbfile, thumbHeader, _ := req.FormFile("uploadThumbnailFile")
 
 	if thumbHeader != nil {
@@ -150,6 +156,8 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 }
 
 func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
+	fmt.Println("Called UpdateFileCommand reloadChange !!!")
+	defer func() { fmt.Println("Ended UpdateFileCommand reloadChange Call !!!") }()
 	for _, c := range connectionObj.Changes {
 		if c.Operation != constants.FileOperationUpdate {
 			continue
@@ -173,6 +181,8 @@ func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationC
 
 // UpdateChange add UpdateFileChanger in db
 func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
+	fmt.Println("Called UpdateFileCommand UpdateChange !!!")
+	defer func() { fmt.Println("Ended UpdateFileCommand UpdateChange Call !!!") }()
 	for _, c := range connectionObj.Changes {
 		if c.Operation != constants.FileOperationUpdate {
 			continue

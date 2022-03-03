@@ -3,12 +3,13 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"net/http"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
@@ -24,6 +25,10 @@ type AddFileCommand struct {
 
 // IsAuthorized validate request.
 func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
+	fmt.Println("Start Is Authorized !!!")
+	defer func() {
+		fmt.Println("End Is Authorized !!!")
+	}()
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
@@ -37,9 +42,9 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 	}
 	// Update GetReference to GetReferenceID
-	exisitingFileRef, _ := reference.GetReferenceID(ctx, allocationObj.ID, fileChanger.Path)
+	existingFileRef, _ := reference.GetReferenceID(ctx, allocationObj.ID, fileChanger.Path)
 
-	if exisitingFileRef != nil {
+	if existingFileRef != nil {
 		return common.NewError("duplicate_file", "File at path already exists")
 	}
 

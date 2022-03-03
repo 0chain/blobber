@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
@@ -353,6 +354,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 }
 
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
+	fmt.Println("Called StorageHandler CommitWrite !!!")
+	defer func() { fmt.Println("Ended StorageHandler CommitWrite Call !!!") }()
+
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
 	}
@@ -529,6 +533,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 }
 
 func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called StorageHandler RenameObject !!!")
+	defer func() { fmt.Println("Ended StorageHandler RenameObject Call !!!") }()
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
@@ -723,6 +729,8 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.R
 }
 
 func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Called StorageHandler CopyObject !!!")
+	defer func() { fmt.Println("Ended StorageHandler CopyObject Call !!!") }()
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
@@ -875,8 +883,10 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
 	}
 
-	// Update checkIfFileAlreadyExists to checkIfFileRefIDAlreadyExists
-	exisitingRef := fsh.checkIfFileRefIDAlreadyExists(ctx, allocationID, dirPath)
+	exisitingRef, err := fsh.checkIfFileRefIDAlreadyExists(ctx, allocationID, dirPath)
+	if err != nil {
+		Logger.Info("Error file reference", zap.Any("error", err))
+	}
 	if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
@@ -911,9 +921,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	formData.ConnectionID = connectionID
 	formData.ActualHash = "-"
 	formData.ActualSize = 1
-	// We Need to do a Proper Look here
 	connectionObj.AddChange(allocationChange, &formData)
-	// And Here
 	err = connectionObj.ApplyChanges(ctx, "/")
 	if err != nil {
 		return nil, err
@@ -942,16 +950,20 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	}
 
 	allocationID := allocationObj.ID
-	fileOperation := getFileOperation(r)
-	//existingFileRef := getExistingFileRef(fsh, ctx, r, allocationObj, fileOperation)
-	existingFileRef := getExistingFileRefID(fsh, ctx, r, allocationObj, fileOperation)
-	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
-	//isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef, clientID)
+	//fileOperation := getFileOperation(r)
+	//existingFileRef, err := getExistingFileRefID(ctx, r, allocationObj, fileOperation)
+	//if err != nil {
+	//	Logger.Info("Error file reference", zap.Any("error", err))
+	//}
+	//if existingFileRef != nil {
+	//	return nil, common.NewError("duplicate_file", "File at path already exists")
+	//}
+	//isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
 
-	if isCollaborator {
-		publicKey = ctx.Value(constants.ContextKeyClientKey).(string)
-	}
+	//if isCollaborator {
+	//	publicKey = ctx.Value(constants.ContextKeyClientKey).(string)
+	//}
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
 
@@ -978,8 +990,10 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	}
 
 	cmd := createFileCommand(r)
-
+	fmt.Println("Method is: ", r.Method)
+	fmt.Println("Calling AddFileCommand IsAuthorized !!!")
 	err = cmd.IsAuthorized(ctx, r, allocationObj, clientID)
+	fmt.Println("Ended AddFileCommand IsAuthorized !!!")
 
 	if err != nil {
 		return nil, err
@@ -1037,28 +1051,16 @@ func getFileOperation(r *http.Request) string {
 	return mode
 }
 
-//func getExistingFileRef(fsh *StorageHandler, ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) *reference.Ref {
-//	if fileOperation == constants.FileOperationInsert || fileOperation == constants.FileOperationUpdate {
-//		var formData allocation.UpdateFileChanger
-//		uploadMetaString := r.FormValue(getFormFieldName(fileOperation))
-//		err := json.Unmarshal([]byte(uploadMetaString), &formData)
-//
-//		if err == nil {
-//			return fsh.checkIfFileAlreadyExists(ctx, allocationObj.ID, formData.Path)
-//		}
-//	}
-//	return nil
-//}
-
-func getExistingFileRefID(fsh *StorageHandler, ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) *reference.Ref {
+func getExistingFileRefID(ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) (*reference.Ref, error) {
 	if fileOperation == constants.FileOperationInsert || fileOperation == constants.FileOperationUpdate {
 		var formData allocation.UpdateFileChanger
 		uploadMetaString := r.FormValue(getFormFieldName(fileOperation))
 		err := json.Unmarshal([]byte(uploadMetaString), &formData)
-
 		if err == nil {
-			return fsh.checkIfFileRefIDAlreadyExists(ctx, allocationObj.ID, formData.Path)
+			return reference.GetReferenceID(ctx, allocationObj.ID, formData.Path)
+		} else {
+			return nil, err
 		}
 	}
-	return nil
+	return nil, common.NewError("file_ref_error", "Error reading file operation.")
 }
