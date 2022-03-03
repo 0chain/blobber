@@ -25,10 +25,10 @@ RUN apk add --update --no-cache build-base linux-headers git cmake bash perl gre
 RUN apk add gmp gmp-dev openssl-dev 
 
 WORKDIR /tmp
-RUN wget https://github.com/herumi/mcl/archive/master.tar.gz
+RUN rm -rf master.tar.gz && wget https://github.com/herumi/mcl/archive/master.tar.gz
 RUN tar zxvf master.tar.gz &&  mv mcl* mcl
 
-RUN wget  https://github.com/herumi/bls/archive/master.tar.gz 
+RUN rm -rf master.tar.gz && wget https://github.com/herumi/bls/archive/master.tar.gz 
 RUN tar zxvf master.tar.gz && && mv bls* bls  
 
 RUN make -C mcl -j $(nproc) lib/libmclbn256.so install 
