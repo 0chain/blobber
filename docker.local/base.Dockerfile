@@ -38,4 +38,4 @@ RUN cd /tmp && \
 RUN cd /tmp && \
     make MCL_DIR=$(pwd)/mcl -C bls -j $(nproc) install 
 
-RUN cd /tmp && rm -R /tmp/mcl && rm -R /tmp/bls
+RUN rm -R /tmp/mcl && rm -R /tmp/bls
