@@ -31,14 +31,11 @@ func (cmd *FileCommandDelete) IsAuthorized(ctx context.Context, req *http.Reques
 	}
 	var err error
 	cmd.exisitingFileRef, err = reference.GetReferenceDelete(ctx, allocationObj.ID, path)
-  if err != nil {
+	if err != nil {
 		if errors.Is(gorm.ErrRecordNotFound, err) {
 			return common.ErrFileWasDeleted
 		}
 		return common.NewError("bad_db_operation", err.Error())
-	}
-	if cmd.exisitingFileRef == nil {
-		return common.NewErrorfWithStatusCode(204, "invalid_file", "File does not exist at path")
 	}
 	return nil
 }
