@@ -24,9 +24,9 @@ func LockWriteMarker(ctx *Context) (interface{}, error) {
 
 // UnlockWriteMarker release WriteMarkerMutex
 func UnlockWriteMarker(ctx *Context) (interface{}, error) {
-	sessionID := ctx.FormValue("connection_id")
+	connectionID := ctx.FormValue("connection_id")
 
-	err := WriteMarkerMutext.Unlock(ctx, ctx.AllocationTx, sessionID)
+	err := WriteMarkerMutext.Unlock(ctx, ctx.AllocationTx, connectionID)
 	if err != nil {
 		return nil, err
 	}
