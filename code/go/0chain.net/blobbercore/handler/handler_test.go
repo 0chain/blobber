@@ -1034,7 +1034,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 
 					q := url.Query()
-					formFieldByt, err := json.Marshal(&allocation.UpdateFileChanger{})
+					formFieldByt, err := json.Marshal(&allocation.UpdateFileChanger{BaseFileChanger: allocation.BaseFileChanger{Path: path}})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1079,6 +1079,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					r.Header.Set("Content-Type", formWriter.FormDataContentType())
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
 
 					return r
 				}(),
@@ -1109,9 +1110,14 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects"`)).
-					WithArgs(aa).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id" FROM "reference_objects"`)).
+					WithArgs(aa, aa).
 					WillReturnError(gorm.ErrRecordNotFound)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "path","type" FROM "reference_objects"`)).
+					WillReturnRows(
+						sqlmock.NewRows([]string{}).AddRow(),
+					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
 					WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).
@@ -1490,7 +1496,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				test.end()
 			}
 
-			fmt.Printf("\nResponse body: %v", test.args.w.Body.String())
+			fmt.Printf("\nResponse body for test %v: %v", test.name, test.args.w.Body.String())
 			assert.Equal(t, test.wantCode, test.args.w.Result().StatusCode)
 			if test.wantCode != http.StatusOK || test.wantBody != "" {
 				assert.Equal(t, test.wantBody, test.args.w.Body.String())
