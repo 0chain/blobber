@@ -10,16 +10,7 @@ on:
       - staging
     tags: 
       - 'v*.*.*'
-      
   pull_request:
-
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'build and publish blobber/validator images on tag:'
-        default: ''
-        required: true
-
 
 env:
   BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY }}
