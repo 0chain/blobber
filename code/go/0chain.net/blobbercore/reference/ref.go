@@ -247,10 +247,14 @@ func GetRefType(ctx context.Context, allocationID, path string) (string, error) 
 }
 
 // GetRefWithID Return Ref with only ID selected in sql query
-func GetRefWithID(ctx context.Context, allocationID, path string) (ref *Ref, err error) {
+func GetRefWithID(ctx context.Context, allocationID, path string) (*Ref, error) {
+	ref := new(Ref)
 	db := datastore.GetStore().GetTransaction(ctx)
-	err = db.Select("id").Where("allocation_id=? && path=?", allocationID, path).First(ref).Error
-	return
+	err := db.Select("id").Where("allocation_id=? && path=?", allocationID, path).First(ref).Error
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
 }
 
 // IsRefExist checks if ref with given path exists and returns error other than gorm.ErrRecordNotFound
