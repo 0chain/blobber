@@ -11,11 +11,11 @@ RUN echo "https://mirrors.aliyun.com/alpine/v3.14/community" >> /etc/apk/reposit
 RUN echo "https://sjc.edge.kernel.org/alpine/v3.14/main" >> /etc/apk/repositories
 RUN echo "https://sjc.edge.kernel.org/alpine/v3.14/community" >> /etc/apk/repositories
 
-# RUN echo "https://uk.alpinelinux.org/alpine/v3.14/main" >> /etc/apk/repositories
-# RUN echo "https://uk.alpinelinux.org/alpine/v3.14/community" >> /etc/apk/repositories
+RUN echo "https://uk.alpinelinux.org/alpine/v3.14/main" >> /etc/apk/repositories
+RUN echo "https://uk.alpinelinux.org/alpine/v3.14/community" >> /etc/apk/repositories
 
-# RUN echo "https://dl-4.alpinelinux.org/alpine/v3.14/main" >> /etc/apk/repositories
-# RUN echo "https://dl-4.alpinelinux.org/alpine/v3.14/community" >> /etc/apk/repositories
+RUN echo "https://dl-4.alpinelinux.org/alpine/v3.14/main" >> /etc/apk/repositories
+RUN echo "https://dl-4.alpinelinux.org/alpine/v3.14/community" >> /etc/apk/repositories
 
 
 
