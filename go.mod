@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.7.1-0.20220219170933-3eac488a6f15
+	github.com/0chain/gosdk v1.7.3-0.20220302075118-819a9fe8d1da
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-ini/ini v1.55.0 // indirect
@@ -38,7 +38,7 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gorm.io/datatypes v0.0.0-20200806042100-bc394008dd0d
 	gorm.io/driver/postgres v1.3.1
-	gorm.io/gorm v1.23.1
+	gorm.io/gorm v1.23.2
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
