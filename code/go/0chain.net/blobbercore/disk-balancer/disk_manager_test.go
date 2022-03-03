@@ -294,7 +294,7 @@ func createFile(path string, size uint64) error {
 	return nil
 }
 
-func setConfig() {
+func setConfig() { // nolint
 	config.SetupDefaultConfig()
 	// Disk balancer
 	config.Configuration.MinDiskSize = viper.GetUint64("min_disk_size")

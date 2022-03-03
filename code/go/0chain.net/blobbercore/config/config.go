@@ -47,7 +47,7 @@ func SetupDefaultConfig() {
 	// Disk balancer
 	viper.SetDefault("min_disk_size", 1*1024*1024*1024)
 	viper.SetDefault("check_disk_timeout", 60*time.Minute)
-	viper.SetDefault("mount_point", "/mnt")
+	viper.SetDefault("mount_point", "/blobber/files")
 	viper.SetDefault("strategy", "min_size_first")
 }
 
