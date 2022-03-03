@@ -57,6 +57,13 @@ min_confirmation: 50
 
 block_worker: http://198.18.0.98:9091
 
+#disk balancer
+min_disk_size: 1073741824
+check_disk_timeout: 60000000000
+use_system_disk: false
+mount_point: /blobber/files
+strategy: min_size_first
+
 handlers:
   rate_limit: 0 # 10 per second . it can't too small one if a large file is download with blocks
 
@@ -123,10 +130,3 @@ integration_tests:
   # lock_interval used by nodes to request server to connect to blockchain
   # after start
   lock_interval: 1s
-
-  #disk balancer
-  min_disk_size: 1073741824
-  check_disk_timeout: 60000000000
-  use_system_disk: false
-  mount_point: /blobber/files
-  strategy: min_size_first
