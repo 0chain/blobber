@@ -29,7 +29,7 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 )
 
@@ -329,7 +329,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	dr.ReadMarker.PayerID = payerID
 	err = readmarker.SaveLatestReadMarker(ctx, &dr.ReadMarker, latestRM == nil)
 	if err != nil {
-		Logger.Error(err.Error())
+		logging.Logger.Error(err.Error())
 		return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
 	}
 
@@ -421,7 +421,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	if err = r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
-		Logger.Info("Error Parsing the request", zap.Any("error", err))
+		logging.Logger.Info("Error Parsing the request", zap.Any("error", err))
 		return nil, common.NewError("request_parse_error", err.Error())
 	}
 
@@ -603,7 +603,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 
 	err = connectionObj.Save(ctx)
 	if err != nil {
-		Logger.Error("Error in writing the connection meta data", zap.Error(err))
+		logging.Logger.Error("Error in writing the connection meta data", zap.Error(err))
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
 	}
 
@@ -714,7 +714,7 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.R
 
 	err = conn.Save(ctx)
 	if err != nil {
-		Logger.Error("update_object_attributes: "+
+		logging.Logger.Error("update_object_attributes: "+
 			"error in writing the connection meta data", zap.Error(err))
 		return nil, common.NewError("update_object_attributes",
 			"error writing the connection meta data")
@@ -803,7 +803,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 
 	err = connectionObj.Save(ctx)
 	if err != nil {
-		Logger.Error("Error in writing the connection meta data", zap.Error(err))
+		logging.Logger.Error("Error in writing the connection meta data", zap.Error(err))
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
 	}
 
@@ -966,7 +966,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	}
 
 	if err := r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
-		Logger.Info("Error Parsing the request", zap.Any("error", err))
+		logging.Logger.Info("Error Parsing the request", zap.Any("error", err))
 		return nil, common.NewError("request_parse_error", err.Error())
 	}
 
@@ -1007,7 +1007,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	err = cmd.UpdateChange(ctx, connectionObj)
 
 	if err != nil {
-		Logger.Error("Error in writing the connection meta data", zap.Error(err))
+		logging.Logger.Error("Error in writing the connection meta data", zap.Error(err))
 		return nil, common.NewError("connection_write_error", err.Error()) //"Error writing the connection meta data")
 	}
 
