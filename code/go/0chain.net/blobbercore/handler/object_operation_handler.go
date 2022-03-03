@@ -945,26 +945,41 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	clientPbk := ctx.Value(constants.ContextKeyClientKey).(string)
 
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), clientPbk)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
 
 	allocationID := allocationObj.ID
 	fileOperation := getFileOperation(r)
-	existingFileRef := getExistingFileRef(fsh, ctx, r, allocationObj, fileOperation)
-	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
-	publicKey := allocationObj.OwnerPublicKey
+	formData, err := getFormData(r, fileOperation)
+	if err != nil {
+		return nil, err
+	}
+	_ = formData
 
-	if isCollaborator {
-		publicKey = ctx.Value(constants.ContextKeyClientKey).(string)
+	existingFileRef, err := reference.GetRefWithID(ctx, allocationID, formData.Path)
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		logging.Logger.Error(err.Error())
+		return nil, common.NewError("database_error", "Got error while getting ref from database")
 	}
 
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
+	if existingFileRef == nil {
+		if err := validateParentPathType(ctx, allocationID, formData.Path); err != nil {
+			return nil, err
+		}
+	}
 
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
+
+	if !(clientID == allocationObj.OwnerID || isCollaborator) {
+		return nil, common.NewError("invalid_access", "Operation needs to be performed by owner or collaborator")
 	}
 
 	if allocationObj.IsImmutable {
@@ -1045,17 +1060,18 @@ func getFileOperation(r *http.Request) string {
 	return mode
 }
 
-func getExistingFileRef(fsh *StorageHandler, ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) *reference.Ref {
-	if fileOperation == constants.FileOperationInsert || fileOperation == constants.FileOperationUpdate {
-		var formData allocation.UpdateFileChanger
-		uploadMetaString := r.FormValue(getFormFieldName(fileOperation))
-		err := json.Unmarshal([]byte(uploadMetaString), &formData)
-
-		if err == nil {
-			return fsh.checkIfFileAlreadyExists(ctx, allocationObj.ID, formData.Path)
-		}
+func getFormData(r *http.Request, fileOperation string) (formData *allocation.UpdateFileChanger, err error) {
+	if !(fileOperation == constants.FileOperationInsert || fileOperation == constants.FileOperationUpdate) {
+		return nil, nil
 	}
-	return nil
+	uploadMetaString := r.FormValue(getFormFieldName(fileOperation))
+	err = json.Unmarshal([]byte(uploadMetaString), &formData)
+	if err != nil {
+		fmt.Printf("\n\n FormData error: %v\n\n", uploadMetaString)
+		return nil, common.NewError("unmarshall_error", err.Error())
+	}
+
+	return
 }
 
 // validateParentPathType validates against any parent path not being directory.
@@ -1064,7 +1080,6 @@ func validateParentPathType(ctx context.Context, allocationID, fPath string) err
 	if !filepath.IsAbs(fPath) {
 		return fmt.Errorf("filepath %v is not absolute path", fPath)
 	}
-
 	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, getParentPaths(fPath))
 	if err != nil {
 		logging.Logger.Error(err.Error())
