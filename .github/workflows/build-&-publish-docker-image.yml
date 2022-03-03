@@ -51,13 +51,13 @@ jobs:
       - name: Build blobber_base
         run: |
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64"
-          docker buildx create --name blobber_buildx --use
+          docker buildx use blobber_buildx || docker buildx create --name blobber_buildx --use
           ./docker.local/bin/build.base.sh
 
       - name: Build blobber
         run: |
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64"
-          docker buildx create --name blobber_buildx --use
+          docker buildx use blobber_buildx || docker buildx create --name blobber_buildx --use
           ./docker.local/bin/build.blobber.sh
 
       - name: Login to Docker Hub
@@ -108,13 +108,13 @@ jobs:
       - name: Build blobber_base
         run: |
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64"
-          docker buildx create --name blobber_buildx --use
+          docker buildx use blobber_buildx || docker buildx create --name blobber_buildx --use
           ./docker.local/bin/build.base.sh
 
       - name: Build validator
         run: |
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64"
-          docker buildx create --name blobber_buildx --use
+          docker buildx use blobber_buildx || docker buildx create --name blobber_buildx --use
           ./docker.local/bin/build.validator.sh
 
       - name: Login to Docker Hub
