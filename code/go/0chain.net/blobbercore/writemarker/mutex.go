@@ -7,7 +7,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/constants"
@@ -24,9 +23,8 @@ const (
 )
 
 type LockResult struct {
-	Status    LockStatus          `json:"status,omitempty"`
-	CreatedAt time.Time           `json:"created_at,omitempty"`
-	RootNode  *reference.HashNode `json:"root_node,omitempty"`
+	Status    LockStatus `json:"status,omitempty"`
+	CreatedAt int64      `json:"created_at,omitempty"`
 }
 
 // Mutex WriteMarker mutex
@@ -35,7 +33,7 @@ type Mutex struct {
 }
 
 // Lock
-func (m *Mutex) Lock(ctx context.Context, allocationID, sessionID string, requestTime *time.Time) (*LockResult, error) {
+func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, requestTime *time.Time) (*LockResult, error) {
 	m.Mutex.Lock()
 	defer m.Mutex.Unlock()
 
@@ -43,8 +41,8 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, sessionID string, reques
 		return nil, errors.Throw(constants.ErrInvalidParameter, "allocationID")
 	}
 
-	if len(sessionID) == 0 {
-		return nil, errors.Throw(constants.ErrInvalidParameter, "sessionID")
+	if len(connectionID) == 0 {
+		return nil, errors.Throw(constants.ErrInvalidParameter, "connectionID")
 	}
 
 	if requestTime == nil {
@@ -65,24 +63,18 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, sessionID string, reques
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			lock = datastore.WriteLock{
 				AllocationID: allocationID,
-				SessionID:    sessionID,
+				ConnectionID: connectionID,
 				CreatedAt:    *requestTime,
 			}
 
-			err = db.Create(&lock).Error
-			if err != nil {
-				return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
-			}
-
-			rootNode, err := reference.LoadRootNode(ctx, allocationID)
+			err = db.Table(datastore.TableNameWriteLock).Create(&lock).Error
 			if err != nil {
 				return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
 			}
 
 			return &LockResult{
 				Status:    LockStatusOK,
-				CreatedAt: lock.CreatedAt,
-				RootNode:  rootNode,
+				CreatedAt: lock.CreatedAt.Unix(),
 			}, nil
 
 		}
@@ -97,62 +89,50 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, sessionID string, reques
 	// locked, but it is timeout
 	if now.After(timeout) {
 
-		lock.SessionID = sessionID
+		lock.ConnectionID = connectionID
 		lock.CreatedAt = *requestTime
 
-		err = db.Save(&lock).Error
-		if err != nil {
-			return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
-		}
-
-		rootNode, err := reference.LoadRootNode(ctx, allocationID)
+		err = db.Table(datastore.TableNameWriteLock).Where("allocation_id=?", allocationID).Save(&lock).Error
 		if err != nil {
 			return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
 		}
 
 		return &LockResult{
 			Status:    LockStatusOK,
-			CreatedAt: lock.CreatedAt,
-			RootNode:  rootNode,
+			CreatedAt: lock.CreatedAt.Unix(),
 		}, nil
 
 	}
 
 	//try lock by same session, return old lock directly
-	if lock.SessionID == sessionID && lock.CreatedAt.Equal(*requestTime) {
-		rootNode, err := reference.LoadRootNode(ctx, allocationID)
-		if err != nil {
-			return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
-		}
-
+	if lock.ConnectionID == connectionID && lock.CreatedAt.Equal(*requestTime) {
 		return &LockResult{
 			Status:    LockStatusOK,
-			CreatedAt: lock.CreatedAt,
-			RootNode:  rootNode,
+			CreatedAt: lock.CreatedAt.Unix(),
 		}, nil
 	}
 
 	// pending
 	return &LockResult{
 		Status:    LockStatusPending,
-		CreatedAt: lock.CreatedAt,
+		CreatedAt: lock.CreatedAt.Unix(),
 	}, nil
 
 }
 
-func (*Mutex) Unlock(ctx context.Context, allocationID string, sessionID string) error {
+func (*Mutex) Unlock(ctx context.Context, allocationID string, connectionID string) error {
 
 	if len(allocationID) == 0 {
 		return nil
 	}
 
-	if len(sessionID) == 0 {
+	if len(connectionID) == 0 {
 		return nil
 	}
 
 	db := datastore.GetStore().GetDB()
 
-	err := db.Where("allocation_id =  ? and session_id =? ", allocationID, sessionID).Delete(&datastore.WriteLock{}).Error
+	err := db.Where("allocation_id = ? and connection_id = ? ", allocationID, connectionID).Delete(&datastore.WriteLock{}).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil

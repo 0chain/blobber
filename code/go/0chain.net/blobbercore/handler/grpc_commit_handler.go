@@ -31,7 +31,7 @@ func (b *blobberGRPCService) Commit(ctx context.Context, req *blobbergrpc.Commit
 	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
 	r.Header.Set("Content-Type", writer.FormDataContentType())
 
-	resp, err := CommitHandler(ctx, r)
+	resp, _, err := CommitHandler(ctx, r)
 	if err != nil {
 		return nil, err
 	}

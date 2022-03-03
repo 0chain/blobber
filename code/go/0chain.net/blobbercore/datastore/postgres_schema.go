@@ -9,7 +9,7 @@ const (
 // WriteLock WriteMarker lock
 type WriteLock struct {
 	AllocationID string    `gorm:"primaryKey, column:allocation_id"`
-	SessionID    string    `gorm:"column:session_id"`
+	ConnectionID string    `gorm:"column:connection_id"`
 	CreatedAt    time.Time `gorm:"column:created_at"`
 }
 

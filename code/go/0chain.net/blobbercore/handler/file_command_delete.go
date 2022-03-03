@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -9,6 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/gosdk/constants"
+	"gorm.io/gorm"
 )
 
 // FileCommandDelete command for deleting file
@@ -29,10 +31,16 @@ func (cmd *FileCommandDelete) IsAuthorized(ctx context.Context, req *http.Reques
 	}
 	var err error
 	cmd.exisitingFileRef, err = reference.GetReferenceDelete(ctx, allocationObj.ID, path)
+  if err != nil {
+		if errors.Is(gorm.ErrRecordNotFound, err) {
+			return common.ErrFileWasDeleted
+		}
+		return common.NewError("bad_db_operation", err.Error())
+	}
 	if cmd.exisitingFileRef == nil {
 		return common.NewErrorfWithStatusCode(204, "invalid_file", "File does not exist at path")
 	}
-	return err
+	return nil
 }
 
 // UpdateChange add DeleteFileChange in db
