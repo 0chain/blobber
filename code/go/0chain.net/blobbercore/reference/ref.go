@@ -239,7 +239,7 @@ func GetReferenceFromLookupHash(ctx context.Context, allocationID, path_hash str
 func GetRefType(ctx context.Context, allocationID, path string) (string, error) {
 	ref := new(Ref)
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Select("type").Where("allocation_id=? && path=?", allocationID, path).First(ref).Error
+	err := db.Select("type").Where("allocation_id=? AND path=?", allocationID, path).First(ref).Error
 	if err != nil {
 		return "", err
 	}
@@ -250,7 +250,7 @@ func GetRefType(ctx context.Context, allocationID, path string) (string, error) 
 func GetRefWithID(ctx context.Context, allocationID, path string) (*Ref, error) {
 	ref := new(Ref)
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Select("id").Where("allocation_id=? && path=?", allocationID, path).First(ref).Error
+	err := db.Select("id").Where("allocation_id=? AND path=?", allocationID, path).First(ref).Error
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +261,7 @@ func GetRefWithID(ctx context.Context, allocationID, path string) (*Ref, error) 
 func IsRefExist(ctx context.Context, allocationID, path string) (bool, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	ref := new(Ref)
-	err := db.Select("path").Where("allocation_id=? && path=?", allocationID, path).First(ref).Error
+	err := db.Select("path").Where("allocation_id=? AND path=?", allocationID, path).First(ref).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil
