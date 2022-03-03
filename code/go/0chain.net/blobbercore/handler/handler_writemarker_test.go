@@ -28,7 +28,7 @@ func TestWriteMarkerHandlers_Lock(t *testing.T) {
 
 	now := time.Now()
 
-	formWriter.WriteField("session_id", "session_id")                        //nolint: errcheck
+	formWriter.WriteField("connection_id", "connection_id")                  //nolint: errcheck
 	formWriter.WriteField("request_time", strconv.FormatInt(now.Unix(), 10)) //nolint: errcheck
 	formWriter.Close()
 
@@ -68,7 +68,7 @@ func TestWriteMarkerHandlers_Unlock(t *testing.T) {
 
 	now := time.Now()
 
-	formWriter.WriteField("session_id", "session_id")                        //nolint: errcheck
+	formWriter.WriteField("connection_id", "connection_id")                  //nolint: errcheck
 	formWriter.WriteField("request_time", strconv.FormatInt(now.Unix(), 10)) //nolint: errcheck
 	formWriter.Close()
 

@@ -23,7 +23,7 @@ func TestMutext_LockShouldWork(t *testing.T) {
 	tests := []struct {
 		name         string
 		allocationID string
-		sessionID    string
+		connectionID string
 		requestTime  time.Time
 		mock         func()
 		assert       func(*testing.T, *LockResult, error)
@@ -31,7 +31,7 @@ func TestMutext_LockShouldWork(t *testing.T) {
 		{
 			name:         "Lock should work",
 			allocationID: "lock_allocation_id",
-			sessionID:    "lock_session_id",
+			connectionID: "lock_connection_id",
 			requestTime:  now,
 			mock: func() {
 
@@ -44,7 +44,7 @@ func TestMutext_LockShouldWork(t *testing.T) {
 		{
 			name:         "retry lock by same request should work if it is not timeout",
 			allocationID: "lock_same_allocation_id",
-			sessionID:    "lock_same_session_id",
+			connectionID: "lock_same_connection_id",
 			requestTime:  now,
 			mock: func() {
 				gomocket.Catcher.NewMock().
@@ -53,7 +53,7 @@ func TestMutext_LockShouldWork(t *testing.T) {
 					WithReply([]map[string]interface{}{
 						{
 							"allocation_id": "lock_same_allocation_id",
-							"session_id":    "lock_same_session_id",
+							"connection_id": "lock_same_connection_id",
 							"created_at":    now,
 						},
 					})
@@ -61,12 +61,13 @@ func TestMutext_LockShouldWork(t *testing.T) {
 			assert: func(test *testing.T, r *LockResult, err error) {
 				require.Nil(test, err)
 				require.Equal(test, LockStatusOK, r.Status)
+				require.EqualValues(test, now.Unix(), r.CreatedAt)
 			},
 		},
 		{
 			name:         "lock should be pending if it already is locked by other session ",
 			allocationID: "lock_allocation_id",
-			sessionID:    "lock_pending_session_id",
+			connectionID: "lock_pending_connection_id",
 			requestTime:  time.Now(),
 			mock: func() {
 				gomocket.Catcher.NewMock().
@@ -75,7 +76,7 @@ func TestMutext_LockShouldWork(t *testing.T) {
 					WithReply([]map[string]interface{}{
 						{
 							"allocation_id": "lock_allocation_id",
-							"session_id":    "lock_session_id",
+							"connection_id": "lock_connection_id",
 							"created_at":    time.Now().Add(-5 * time.Second),
 						},
 					})
@@ -86,9 +87,9 @@ func TestMutext_LockShouldWork(t *testing.T) {
 			},
 		},
 		{
-			name:         "lock should ok if it is timeout",
+			name:         "lock should be ok if it is timeout",
 			allocationID: "lock_timeout_allocation_id",
-			sessionID:    "lock_timeout_2nd_session_id",
+			connectionID: "lock_timeout_2nd_connection_id",
 			requestTime:  now,
 			mock: func() {
 				gomocket.Catcher.NewMock().
@@ -97,7 +98,7 @@ func TestMutext_LockShouldWork(t *testing.T) {
 					WithReply([]map[string]interface{}{
 						{
 							"allocation_id": "lock_timeout_allocation_id",
-							"session_id":    "lock_timeout_1st_session_id",
+							"connection_id": "lock_timeout_1st_connection_id",
 							"created_at":    time.Now().Add(31 * time.Second),
 						},
 					})
@@ -105,6 +106,28 @@ func TestMutext_LockShouldWork(t *testing.T) {
 			assert: func(test *testing.T, r *LockResult, err error) {
 				require.Nil(test, err)
 				require.Equal(test, LockStatusPending, r.Status)
+			},
+		},
+		{
+			name:         "retry lock by same request should work if it is timeout",
+			allocationID: "lock_same_timeout_allocation_id",
+			connectionID: "lock_same_timeout_connection_id",
+			requestTime:  now,
+			mock: func() {
+				gomocket.Catcher.NewMock().
+					WithQuery(`SELECT * FROM "write_locks" WHERE allocation_id=$1 ORDER BY "write_locks"."allocation_id" LIMIT 1`).
+					WithArgs("lock_same_timeout_allocation_id").
+					WithReply([]map[string]interface{}{
+						{
+							"allocation_id": "lock_same_timeout_allocation_id",
+							"connection_id": "lock_same_timeout_connection_id",
+							"created_at":    now.Add(-config.Configuration.WriteMarkerLockTimeout),
+						},
+					})
+			},
+			assert: func(test *testing.T, r *LockResult, err error) {
+				require.Nil(test, err)
+				require.NotNil(test, r)
 			},
 		},
 	}
@@ -116,7 +139,7 @@ func TestMutext_LockShouldWork(t *testing.T) {
 				if it.mock != nil {
 					it.mock()
 				}
-				r, err := m.Lock(context.TODO(), it.allocationID, it.sessionID, &it.requestTime)
+				r, err := m.Lock(context.TODO(), it.allocationID, it.connectionID, &it.requestTime)
 
 				it.assert(test, r, err)
 
@@ -134,12 +157,11 @@ func TestMutext_LockShouldNotWork(t *testing.T) {
 	config.Configuration.WriteMarkerLockTimeout = 30 * time.Second
 
 	m := &Mutex{}
-	now := time.Now()
 
 	tests := []struct {
 		name         string
 		allocationID string
-		sessionID    string
+		connectionID string
 		requestTime  time.Time
 		mock         func()
 		assert       func(*testing.T, *LockResult, error)
@@ -147,7 +169,7 @@ func TestMutext_LockShouldNotWork(t *testing.T) {
 		{
 			name:         "Lock should not work if request_time is timeout",
 			allocationID: "lock_allocation_id",
-			sessionID:    "lock_session_id",
+			connectionID: "lock_connection_id",
 			requestTime:  time.Now().Add(31 * time.Second),
 			mock: func() {
 				config.Configuration.WriteMarkerLockTimeout = 30 * time.Second
@@ -155,28 +177,6 @@ func TestMutext_LockShouldNotWork(t *testing.T) {
 			assert: func(test *testing.T, r *LockResult, err error) {
 				require.Nil(test, r)
 				require.NotNil(test, err)
-			},
-		},
-		{
-			name:         "retry lock by same request should not work if it is timeout",
-			allocationID: "lock_same_timeout_allocation_id",
-			sessionID:    "lock_same_timeout_session_id",
-			requestTime:  now,
-			mock: func() {
-				gomocket.Catcher.NewMock().
-					WithQuery(`SELECT * FROM "write_locks" WHERE allocation_id=$1 ORDER BY "write_locks"."allocation_id" LIMIT 1`).
-					WithArgs("lock_same_timeout_allocation_id").
-					WithReply([]map[string]interface{}{
-						{
-							"allocation_id": "lock_same_timeout_allocation_id",
-							"session_id":    "lock_same_timeout_session_id",
-							"created_at":    now.Add(-config.Configuration.WriteMarkerLockTimeout),
-						},
-					})
-			},
-			assert: func(test *testing.T, r *LockResult, err error) {
-				require.NotNil(test, err)
-				require.Nil(test, r)
 			},
 		},
 	}
@@ -188,7 +188,7 @@ func TestMutext_LockShouldNotWork(t *testing.T) {
 				if it.mock != nil {
 					it.mock()
 				}
-				r, err := m.Lock(context.TODO(), it.allocationID, it.sessionID, &it.requestTime)
+				r, err := m.Lock(context.TODO(), it.allocationID, it.connectionID, &it.requestTime)
 
 				it.assert(test, r, err)
 

@@ -84,8 +84,7 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 				statusCode = http.StatusInternalServerError
 			}
 
-			buf, _ := json.Marshal(err)
-			http.Error(w, string(buf), statusCode)
+			http.Error(w, err.Error(), statusCode)
 			return
 		}
 
@@ -97,8 +96,7 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 				statusCode = http.StatusInternalServerError
 			}
 
-			buf, _ := json.Marshal(err)
-			http.Error(w, string(buf), statusCode)
+			http.Error(w, err.Error(), statusCode)
 			return
 		}
 
