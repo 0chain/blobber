@@ -84,6 +84,7 @@ func (d *diskTier) checkDisks() {
 			dParts = append(dParts, dirs)
 		}
 	}
+
 	var physicalSize int64
 	for _, pathPartition := range dParts {
 		vol, err := d.updatePartitionInfo(pathPartition)
