@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -69,7 +70,10 @@ func (d *diskTier) checkDisks() {
 	partitions := make(map[string]*partition)
 	partitionStats, _ := disk.Partitions(false)
 	reg := regexp.MustCompile(d.mountPoint)
+	log.Println("REG = ", reg)
 	for _, partitionStat := range partitionStats {
+		log.Println(partitionStat)
+		log.Println(partitionStat.Mountpoint)
 		if reg.MatchString(partitionStat.Mountpoint) {
 			if !d.canUsed(partitionStat.Mountpoint) {
 				continue
