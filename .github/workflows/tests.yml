@@ -96,16 +96,6 @@ jobs:
           docker ps
       - name: Run Tests
         run: |
-        # ===== create partitions for the disc balancer =====
-          sudo dd if=/dev/zero of=VHD1.img bs=1M count=4000
-          sudo mkfs -t ext4 VHD1.img
-          sudo mkdir /mnt/Blobber_P1/
-          sudo mount -t auto -o loop VHD1.img /mnt/Blobber_P1/
-          sudo dd if=/dev/zero of=VHD2.img bs=1M count=3000
-          sudo mkfs -t ext4 VHD2.img
-          sudo mkdir /mnt/Blobber_P2/
-          sudo mount -t auto -o loop VHD2.img /mnt/Blobber_P2/
-        # ==================================================      
           make local-build
           sudo make local-run &
           sleep 15
