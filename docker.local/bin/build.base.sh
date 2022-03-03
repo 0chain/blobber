@@ -13,4 +13,8 @@ if [ -z "$DOCKER_BUILD" ]; then
     fi
 fi
 
+[ ! -f ./docker.local/bin/mcl-master.tar.gz ] && wget -O ./docker.local/bin/mcl-master.tar.gz https://github.com/herumi/mcl/archive/master.tar.gz 
+
+[ ! -f ./docker.local/bin/bls-master.tar.gz ] && wget -O ./docker.local/bin/bls-master.tar.gz https://github.com/herumi/bls/archive/master.tar.gz 
+
 docker $DOCKER_BUILD --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/base.Dockerfile . -t blobber_base
