@@ -15,7 +15,7 @@ import (
 
 // FileCommandDelete command for deleting file
 type FileCommandDelete struct {
-	exisitingFileRef *reference.Ref
+	existingFileRef  *reference.Ref
 	changeProcessor  *allocation.DeleteFileChange
 	allocationChange *allocation.AllocationChange
 }
@@ -30,7 +30,7 @@ func (cmd *FileCommandDelete) IsAuthorized(ctx context.Context, req *http.Reques
 		return common.NewError("invalid_parameters", "Invalid path")
 	}
 	var err error
-	cmd.exisitingFileRef, err = reference.GetReferenceDelete(ctx, allocationObj.ID, path)
+	cmd.existingFileRef, err = reference.GetReferenceDelete(ctx, allocationObj.ID, path)
 	if err != nil {
 		if errors.Is(gorm.ErrRecordNotFound, err) {
 			return common.ErrFileWasDeleted
@@ -49,17 +49,17 @@ func (cmd *FileCommandDelete) UpdateChange(ctx context.Context, connectionObj *a
 
 // ProcessContent flush file to FileStorage
 func (cmd *FileCommandDelete) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
-	deleteSize := cmd.exisitingFileRef.Size
+	deleteSize := cmd.existingFileRef.Size
 
 	cmd.changeProcessor = &allocation.DeleteFileChange{ConnectionID: connectionObj.ConnectionID,
-		AllocationID: connectionObj.AllocationID, Name: cmd.exisitingFileRef.Name,
-		Hash: cmd.exisitingFileRef.Hash, Path: cmd.exisitingFileRef.Path, Size: deleteSize}
+		AllocationID: connectionObj.AllocationID, Name: cmd.existingFileRef.Name,
+		Hash: cmd.existingFileRef.Hash, Path: cmd.existingFileRef.Path, Size: deleteSize}
 
 	result := blobberhttp.UploadResult{}
-	result.Filename = cmd.exisitingFileRef.Name
-	result.Hash = cmd.exisitingFileRef.Hash
-	result.MerkleRoot = cmd.exisitingFileRef.MerkleRoot
-	result.Size = cmd.exisitingFileRef.Size
+	result.Filename = cmd.existingFileRef.Name
+	result.Hash = cmd.existingFileRef.Hash
+	result.MerkleRoot = cmd.existingFileRef.MerkleRoot
+	result.Size = cmd.existingFileRef.Size
 
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionObj.ConnectionID

@@ -19,6 +19,7 @@ import (
 
 // AddFileCommand command for resuming file
 type AddFileCommand struct {
+	existingFileRef  *reference.Ref
 	allocationChange *allocation.AllocationChange
 	fileChanger      *allocation.AddFileChanger
 }
@@ -37,14 +38,15 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 
 	uploadMetaString := req.FormValue("uploadMeta")
 	err := json.Unmarshal([]byte(uploadMetaString), fileChanger)
+	fmt.Println("IsAuthorized : uploadMetaString: ", uploadMetaString)
 	if err != nil {
 		return common.NewError("invalid_parameters",
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 	}
 	// Update GetReference to GetReferenceID
-	existingFileRef, _ := reference.GetReferenceID(ctx, allocationObj.ID, fileChanger.Path)
+	cmd.existingFileRef, err = reference.GetReferenceID(ctx, allocationObj.ID, fileChanger.Path)
 
-	if existingFileRef != nil {
+	if cmd.existingFileRef != nil {
 		return common.NewError("duplicate_file", "File at path already exists")
 	}
 

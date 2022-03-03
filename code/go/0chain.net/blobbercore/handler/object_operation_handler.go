@@ -955,7 +955,25 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	}
 
 	allocationID := allocationObj.ID
+	cmd := createFileCommand(r)
+	err2 := cmd.IsAuthorized(ctx, r, allocationObj, clientID)
+
+	var existingFileRef *reference.Ref
+	switch cmd.(type) {
+	case *AddFileCommand:
+		existingFileRef = cmd.(*AddFileCommand).existingFileRef
+	case *UpdateFileCommand:
+		existingFileRef = cmd.(*UpdateFileCommand).existingFileRef
+	case *FileCommandDelete:
+		existingFileRef = cmd.(*FileCommandDelete).existingFileRef
+
+	}
+	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
+
+	if isCollaborator {
+		publicKey = ctx.Value(constants.ContextKeyClientKey).(string)
+	}
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
 
@@ -981,14 +999,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	cmd := createFileCommand(r)
-	fmt.Println("Method is: ", r.Method)
-	fmt.Println("Calling AddFileCommand IsAuthorized !!!")
-	err = cmd.IsAuthorized(ctx, r, allocationObj, clientID)
-	fmt.Println("Ended AddFileCommand IsAuthorized !!!")
-
-	if err != nil {
-		return nil, err
+	if err2 != nil {
+		return nil, err2
 	}
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
