@@ -1109,8 +1109,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects"`)).
-					WithArgs(aa).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id" FROM "reference_objects"`)).
+					WithArgs(aa, aa).
 					WillReturnError(gorm.ErrRecordNotFound)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
@@ -1490,7 +1490,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				test.end()
 			}
 
-			fmt.Printf("\nResponse body: %v", test.args.w.Body.String())
+			fmt.Printf("\nResponse body for test %v: %v", test.name, test.args.w.Body.String())
 			assert.Equal(t, test.wantCode, test.args.w.Result().StatusCode)
 			if test.wantCode != http.StatusOK || test.wantBody != "" {
 				assert.Equal(t, test.wantBody, test.args.w.Body.String())
