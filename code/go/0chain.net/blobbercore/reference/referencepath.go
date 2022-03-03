@@ -36,23 +36,45 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 		"actual_file_size", "actual_file_hash", "attributes", "chunk_size",
 		"lookup_hash", "thumbnail_hash")
 	pathsAdded := make(map[string]bool)
+	//for _, path := range paths {
+	//	splitPaths := strings.Split(path, "/")
+	//	fmt.Println(splitPaths)
+	//	for i := 0; i < len(splitPaths); i++ {
+	//		var newPath string
+	//		if splitPaths[0] == "." {
+	//			newPath = strings.Join(splitPaths[1:i+1], "/")
+	//			db = db.Or(Ref{ParentPath: newPath, AllocationID: allocationID})
+	//		} else {
+	//			newPath = strings.Join(splitPaths[0:i+1], "/")
+	//			if _, ok := pathsAdded[newPath]; !ok {
+	//				db = db.Or(Ref{ParentPath: newPath, AllocationID: allocationID})
+	//				pathsAdded["/"] = true
+	//			}
+	//		}
+	//		if newPath != "" {
+	//			if _, ok := pathsAdded[newPath]; !ok {
+	//				db = db.Or(Ref{ParentPath: newPath, AllocationID: allocationID})
+	//				pathsAdded[newPath] = true
+	//			}
+	//		}
+	//	}
+	//}
 	for _, path := range paths {
-		splitPaths := strings.Split(path, "/")
-		pathsAdded["/"] = true
-		for i := 0; i < len(splitPaths); i++ {
-			newPath := strings.Join(splitPaths[0:i], "/")
-			if newPath != "" {
-				if _, ok := pathsAdded[newPath]; !ok {
-					db = db.Or(Ref{ParentPath: newPath, AllocationID: allocationID})
-					pathsAdded[newPath] = true
-				}
+		path = strings.TrimSuffix(path, "/")
+		if _, ok := pathsAdded[path]; !ok {
+			db = db.Where(Ref{ParentPath: path, AllocationID: allocationID})
+			pathsAdded[path] = true
+		}
+		depth := len(GetSubDirsFromPath(path)) + 1
+		curPath := filepath.Dir(path)
+		for i := 0; i < depth-1; i++ {
+			if _, ok := pathsAdded[curPath]; !ok {
+				db = db.Or(Ref{ParentPath: curPath, AllocationID: allocationID})
+				pathsAdded[curPath] = true
 			}
+			curPath = filepath.Dir(curPath)
 		}
 	}
-	for k, v := range pathsAdded {
-		fmt.Println(k, " => ", v)
-	}
-
 	// root reference_objects with parent_path=""
 	db = db.Or("parent_path = ? AND allocation_id = ?", "", allocationID)
 	err := db.Order("path, level").Find(&refs).Error
@@ -160,7 +182,7 @@ func PathExists(ctx context.Context, allocationID, path string) (bool, error) {
 	if err != nil || len(refs) == 0 {
 		return false, err
 	}
-
+	fmt.Println("Path Exists !!!")
 	return true, nil
 }
 
@@ -174,12 +196,12 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 	} else {
 		db = db.Or("path LIKE ? AND allocation_id = ?", path+"%", allocationID)
 	}
-
 	err := db.Order("path, level").Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}
 	if len(refs) == 0 {
+		fmt.Println("Error: ", path)
 		return nil, common.NewError("invalid_parameters", "Invalid path. Could not find object tree")
 	}
 	childMap := make(map[string]*Ref)
