@@ -120,7 +120,7 @@ func TestDownloadFile(t *testing.T) {
 		rm.OwnerID = mockOwner.ClientID
 		rm.Timestamp = now
 		// set another value to size
-		rm.ReadSize = p.inData.numBlocks
+		rm.ReadSize = p.inData.numBlocks * 64 * KB
 		err := rm.Sign()
 		require.NoError(t, err)
 		rmData, err := json.Marshal(rm)
@@ -429,7 +429,7 @@ func TestDownloadFile(t *testing.T) {
 			blockNum:       mockBlockNumber,
 			encryptedKey:   mockEncryptKey,
 			contentMode:    "",
-			numBlocks:      10240,
+			numBlocks:      1,
 			rxPay:          p.rxPay,
 		}
 		if p.isRepairer {
