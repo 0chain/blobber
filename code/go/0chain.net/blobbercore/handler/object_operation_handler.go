@@ -959,7 +959,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	var existingFileRef *reference.Ref
 	if formData != nil {
 		existingFileRef, err = reference.GetRefWithID(ctx, allocationID, formData.Path)
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			logging.Logger.Error(err.Error())
 			return nil, common.NewError("database_error", "Got error while getting ref from database")
 		}
