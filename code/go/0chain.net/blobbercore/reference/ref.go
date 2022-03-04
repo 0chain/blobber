@@ -453,12 +453,12 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	var refNumBlocks int64
 	var size int64
 	for index, childRef := range r.Children {
-		//if childRef.HashToBeComputed {
-		_, err := childRef.CalculateHash(ctx, saveToDB)
-		if err != nil {
-			return "", err
+		if childRef.HashToBeComputed {
+			_, err := childRef.CalculateHash(ctx, saveToDB)
+			if err != nil {
+				return "", err
+			}
 		}
-		//}
 		childHashes[index] = childRef.Hash
 		childPathHashes[index] = childRef.PathHash
 		refNumBlocks += childRef.NumBlocks
