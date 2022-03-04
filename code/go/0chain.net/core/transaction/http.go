@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"hash/fnv"
@@ -109,7 +110,7 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 	//leave first item for ErrTooLessConfirmation
 	var msgList = make([]string, 1, numSharders)
 
-	r := resty.New(transport, func(req *http.Request, resp *http.Response, cancelFunc context.CancelFunc, err error) error {
+	r := resty.New(transport, func(req *http.Request, resp *http.Response, respBody []byte, cancelFunc context.CancelFunc, err error) error {
 		if err != nil { //network issue
 			msgList = append(msgList, err.Error())
 			return err
@@ -118,7 +119,6 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		url := req.URL.String()
 
 		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
 			errorMsg := "[sharder]" + resp.Status + ": " + url
 			msgList = append(msgList, errorMsg)
 
@@ -126,9 +126,9 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		}
 
 		hash := fnv.New32() //use fnv for better performance
-		teeReader := io.TeeReader(resp.Body, hash)
+
+		teeReader := io.TeeReader(bytes.NewReader(respBody), hash)
 		resBody, err := io.ReadAll(teeReader)
-		resp.Body.Close()
 
 		if err != nil {
 			errorMsg := "[sharder]body: " + url + " " + err.Error()

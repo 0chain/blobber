@@ -485,7 +485,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
-		return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+		if !errors.Is(common.ErrFileWasDeleted, err) {
+			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+		}
 	}
 
 	result.Changes = connectionObj.Changes
@@ -499,6 +501,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	result.Success = true
 	result.ErrorMessage = ""
 
+	if errors.Is(common.ErrFileWasDeleted, err) {
+		return &result, err
+	}
 	return &result, nil
 }
 
