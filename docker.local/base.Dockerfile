@@ -37,3 +37,5 @@ RUN cp mcl/lib/libmclbn256.so /usr/local/lib
 RUN make MCL_DIR=$(pwd)/mcl -C bls -j $(nproc) install 
 
 RUN rm -R /tmp/mcl && rm -R /tmp/bls
+
+#ENV GOPROXY=https://goproxy.cn

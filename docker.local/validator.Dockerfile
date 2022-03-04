@@ -1,9 +1,11 @@
-FROM blobber_base as validator_build
+# syntax=docker/dockerfile:1
+ARG DOCKER_IMAGE_BASE
+FROM $DOCKER_IMAGE_BASE as validator_build
 
 LABEL zchain="validator"
 
 
-ENV SRC_DIR=/blobber
+ENV SRC_DIR=/0chain
 ENV GO111MODULE=on
 #ENV GOPROXY=https://goproxy.cn,direct 
 
@@ -25,6 +27,6 @@ RUN apk add gmp gmp-dev openssl-dev
 COPY --from=validator_build  /usr/local/lib/libmcl*.so \
                         /usr/local/lib/libbls*.so \
                         /usr/local/lib/
-ENV APP_DIR=/blobber
+ENV APP_DIR=/validator
 WORKDIR $APP_DIR
-COPY --from=validator_build $APP_DIR/code/go/0chain.net/validator/validator $APP_DIR/bin/validator
+COPY --from=validator_build /0chain/code/go/0chain.net/validator/validator $APP_DIR/bin/validator
