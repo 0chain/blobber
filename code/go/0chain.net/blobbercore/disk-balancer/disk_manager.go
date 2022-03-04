@@ -247,7 +247,6 @@ func (d *diskTier) moveAllocation(srcPath, destPath, transID string, ctx context
 	if err := aInfo.prepareAllocation(); err != nil {
 		Logger.Error("prepareAllocation() failed", zap.Error(err))
 	}
-
 	if err := aInfo.move(ctx); err != nil {
 		Logger.Error("move() failed", zap.Error(err))
 	}
