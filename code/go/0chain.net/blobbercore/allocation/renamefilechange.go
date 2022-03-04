@@ -31,7 +31,6 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	if err != nil {
 		fmt.Println("Error in Rename File Change Process Change : ", err.Error())
 	}
-	fmt.Println(isFilePresent, err)
 	if isFilePresent {
 		return nil, common.NewError("invalid_reference_path", "file already exists")
 	}
@@ -40,7 +39,7 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	if err != nil {
 		return nil, err
 	}
-
+	affectedRef.HashToBeComputed = true
 	path, _ := filepath.Split(affectedRef.Path)
 	path = filepath.Clean(path)
 	affectedRef.Name = rf.NewName
@@ -62,7 +61,7 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	if err != nil {
 		return nil, err
 	}
-
+	rootRef.HashToBeComputed = true
 	dirRef := rootRef
 	treelevel := 0
 	for treelevel < len(tSubDirs) {
@@ -71,6 +70,7 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef = child
+					dirRef.HashToBeComputed = true
 					found = true
 					break
 				}

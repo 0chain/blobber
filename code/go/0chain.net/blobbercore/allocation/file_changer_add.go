@@ -31,6 +31,7 @@ func (nf *AddFileChanger) ProcessChange(ctx context.Context, change *AllocationC
 		return nil, err
 	}
 	dirRef := rootRef
+	rootRef.HashToBeComputed = true
 	treelevel := 0
 	for {
 		found := false
@@ -38,6 +39,7 @@ func (nf *AddFileChanger) ProcessChange(ctx context.Context, change *AllocationC
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef = child
+					dirRef.HashToBeComputed = true
 					found = true
 					break
 				}
@@ -54,6 +56,7 @@ func (nf *AddFileChanger) ProcessChange(ctx context.Context, change *AllocationC
 			newRef.ParentPath = "/" + strings.Join(tSubDirs[:treelevel], "/")
 			newRef.Name = tSubDirs[treelevel]
 			newRef.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, newRef.Path)
+			newRef.HashToBeComputed = true
 			dirRef.AddChild(newRef)
 			dirRef = newRef
 			treelevel++
@@ -83,6 +86,7 @@ func (nf *AddFileChanger) ProcessChange(ctx context.Context, change *AllocationC
 	newFile.ActualThumbnailSize = nf.ActualThumbnailSize
 	newFile.EncryptedKey = nf.EncryptedKey
 	newFile.ChunkSize = nf.ChunkSize
+	newFile.HashToBeComputed = true
 	if err = newFile.SetAttributes(&nf.Attributes); err != nil {
 		return nil, common.NewErrorf("process_new_file_change",
 			"setting file attributes: %v", err)

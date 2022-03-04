@@ -33,7 +33,7 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 	if err != nil {
 		return nil, err
 	}
-
+	rootRef.HashToBeComputed = true
 	dirRef := rootRef
 	treelevel := 0
 	for treelevel < len(tSubDirs) {
@@ -42,6 +42,7 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef = child
+					dirRef.HashToBeComputed = true
 					found = true
 					break
 				}
@@ -65,7 +66,7 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 		return nil, common.NewError("file_not_found", "File to update not found in blobber")
 	}
 	existingRef := dirRef.Children[idx]
-
+	existingRef.HashToBeComputed = true
 	nf.deleteHash = make(map[string]bool)
 	if existingRef.ThumbnailHash != "" && existingRef.ThumbnailHash != nf.ThumbnailHash {
 		nf.deleteHash[existingRef.ThumbnailHash] = true

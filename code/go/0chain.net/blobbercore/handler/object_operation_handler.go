@@ -966,7 +966,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		existingFileRef = cmd.(*UpdateFileCommand).existingFileRef
 	case *FileCommandDelete:
 		existingFileRef = cmd.(*FileCommandDelete).existingFileRef
-
 	}
 	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey

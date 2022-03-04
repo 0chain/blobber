@@ -36,29 +36,6 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 		"actual_file_size", "actual_file_hash", "attributes", "chunk_size",
 		"lookup_hash", "thumbnail_hash")
 	pathsAdded := make(map[string]bool)
-	//for _, path := range paths {
-	//	splitPaths := strings.Split(path, "/")
-	//	fmt.Println(splitPaths)
-	//	for i := 0; i < len(splitPaths); i++ {
-	//		var newPath string
-	//		if splitPaths[0] == "." {
-	//			newPath = strings.Join(splitPaths[1:i+1], "/")
-	//			db = db.Or(Ref{ParentPath: newPath, AllocationID: allocationID})
-	//		} else {
-	//			newPath = strings.Join(splitPaths[0:i+1], "/")
-	//			if _, ok := pathsAdded[newPath]; !ok {
-	//				db = db.Or(Ref{ParentPath: newPath, AllocationID: allocationID})
-	//				pathsAdded["/"] = true
-	//			}
-	//		}
-	//		if newPath != "" {
-	//			if _, ok := pathsAdded[newPath]; !ok {
-	//				db = db.Or(Ref{ParentPath: newPath, AllocationID: allocationID})
-	//				pathsAdded[newPath] = true
-	//			}
-	//		}
-	//	}
-	//}
 	for _, path := range paths {
 		path = strings.TrimSuffix(path, "/")
 		if _, ok := pathsAdded[path]; !ok {

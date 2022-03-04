@@ -60,7 +60,7 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 	if err != nil {
 		return nil, err
 	}
-
+	rootRef.HashToBeComputed = true
 	dirRef := rootRef
 	treelevel := 0
 	for {
@@ -69,6 +69,7 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef = child
+					dirRef.HashToBeComputed = true
 					found = true
 					break
 				}
@@ -85,6 +86,7 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 			newRef.ParentPath = "/" + strings.Join(tSubDirs[:treelevel], "/")
 			newRef.Name = tSubDirs[treelevel]
 			newRef.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, newRef.Path)
+			newRef.HashToBeComputed = true
 			dirRef.AddChild(newRef)
 			dirRef = newRef
 			treelevel++
@@ -105,6 +107,7 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 	newDir.NumBlocks = 0
 	newDir.ParentPath = dirRef.Path
 	newDir.WriteMarker = allocationRoot
+	newDir.HashToBeComputed = true
 	dirRef.AddChild(newDir)
 
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
@@ -138,7 +141,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationCh
 	if err != nil {
 		return nil, err
 	}
-
+	rootRef.HashToBeComputed = true
 	dirRef := rootRef
 	treelevel := 0
 	for {
@@ -147,6 +150,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationCh
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef = child
+					dirRef.HashToBeComputed = true
 					found = true
 					break
 				}
@@ -163,6 +167,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationCh
 			newRef.ParentPath = "/" + strings.Join(tSubDirs[:treelevel], "/")
 			newRef.Name = tSubDirs[treelevel]
 			newRef.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, newRef.Path)
+			newRef.HashToBeComputed = true
 			dirRef.AddChild(newRef)
 			dirRef = newRef
 			treelevel++
@@ -192,6 +197,7 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationCh
 	newFile.ActualThumbnailSize = nf.ActualThumbnailSize
 	newFile.EncryptedKey = nf.EncryptedKey
 	newFile.ChunkSize = nf.ChunkSize
+	newFile.HashToBeComputed = true
 
 	if err = newFile.SetAttributes(&nf.Attributes); err != nil {
 		return nil, common.NewErrorf("process_new_file_change",

@@ -39,13 +39,14 @@ func (ac *AttributesChange) ProcessChange(ctx context.Context, _ *AllocationChan
 		dirRef    = ref
 		treelevel = 0
 	)
-
+	dirRef.HashToBeComputed = true
 	for treelevel < len(tSubDirs) {
 		var found bool
 		for _, child := range dirRef.Children {
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef, found = child, true
+					dirRef.HashToBeComputed = true
 					break
 				}
 			}
@@ -78,6 +79,8 @@ func (ac *AttributesChange) ProcessChange(ctx context.Context, _ *AllocationChan
 		return nil, common.NewErrorf("process_attrs_update",
 			"setting new attributes: %v", err)
 	}
+
+	existingRef.HashToBeComputed = true
 
 	if _, err := ref.CalculateHash(ctx, true); err != nil {
 		return nil, common.NewErrorf("process_attrs_update",

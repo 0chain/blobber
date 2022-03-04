@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"path/filepath"
 	"reflect"
@@ -91,7 +92,8 @@ type Ref struct {
 
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
 
-	ChunkSize int64 `gorm:"column:chunk_size" dirlist:"chunk_size" filelist:"chunk_size"`
+	ChunkSize        int64 `gorm:"column:chunk_size" dirlist:"chunk_size" filelist:"chunk_size"`
+	HashToBeComputed bool
 }
 
 type PaginatedRef struct { //Gorm smart select fields.
@@ -445,17 +447,17 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	if len(r.Children) == 0 && !r.childrenLoaded {
 		return r.Hash, nil
 	}
-	//sort.SliceStable(r.Children, func(i, j int) bool {
-	//	return strings.Compare(r.Children[i].LookupHash, r.Children[j].LookupHash) == -1
-	//})
+
 	childHashes := make([]string, len(r.Children))
 	childPathHashes := make([]string, len(r.Children))
 	var refNumBlocks int64
 	var size int64
 	for index, childRef := range r.Children {
-		_, err := childRef.CalculateHash(ctx, saveToDB)
-		if err != nil {
-			return "", err
+		if childRef.HashToBeComputed {
+			_, err := childRef.CalculateHash(ctx, saveToDB)
+			if err != nil {
+				return "", err
+			}
 		}
 		childHashes[index] = childRef.Hash
 		childPathHashes[index] = childRef.PathHash
@@ -478,6 +480,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 }
 
 func (r *Ref) CalculateHash(ctx context.Context, saveToDB bool) (string, error) {
+	fmt.Println("Ref: ", r.ID, " || HashToBeComputed: ", r.HashToBeComputed, " || Path: ", r.Path)
 	if r.Type == DIRECTORY {
 		return r.CalculateDirHash(ctx, saveToDB)
 	}

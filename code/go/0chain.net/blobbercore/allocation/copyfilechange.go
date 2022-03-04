@@ -28,12 +28,13 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	if err != nil {
 		return nil, err
 	}
+	affectedRef.HashToBeComputed = true
 	if rf.DestPath == "/" {
 		destRef, err := reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
 		if err != nil || destRef.Type != reference.DIRECTORY {
 			return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 		}
-
+		destRef.HashToBeComputed = true
 		rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 		_, err = destRef.CalculateHash(ctx, true)
 		return destRef, err
@@ -57,7 +58,7 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	if err != nil {
 		return nil, err
 	}
-
+	rootRef.HashToBeComputed = true
 	dirRef := rootRef
 	treelevel := 0
 	for treelevel < len(tSubDirs) {
@@ -66,6 +67,7 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef = child
+					dirRef.HashToBeComputed = true
 					found = true
 					break
 				}
@@ -93,7 +95,6 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 
 	rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 	dirRef.AddChild(destRef)
-
 	_, err = rootRef.CalculateHash(ctx, true)
 	if err != nil {
 		return nil, err

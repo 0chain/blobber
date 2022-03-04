@@ -17,7 +17,7 @@ func LoadObjectTree(ctx context.Context, allocationID, path string) (*Ref, error
 		GetTransaction(ctx)
 
 	path = filepath.Join("/", path)
-	db = db.Where("allocation_id = ? and deleted_at IS NULL and path LIKE ? ", allocationID, (path + "%"))
+	db = db.Where("allocation_id = ? and deleted_at IS NULL and path LIKE ? ", allocationID, path+"%")
 
 	db = db.Order("level desc, lookup_hash")
 
@@ -74,7 +74,7 @@ func DeleteObject(ctx context.Context, allocationID, path string) (*Ref, map[str
 	txDelete := db.Clauses(clause.Returning{Columns: []clause.Column{{Name: "content_hash"}, {Name: "thumbnail_hash"}, {Name: "type"}}})
 
 	path = filepath.Join("/", path)
-	txDelete = txDelete.Where("allocation_id = ? and deleted_at IS NULL and (path LIKE ? or path = ?) and path != ? ", allocationID, (path + "%"), path, "/")
+	txDelete = txDelete.Where("allocation_id = ? and deleted_at IS NULL and (path LIKE ? or path = ?) and path != ? ", allocationID, path+"%", path, "/")
 
 	err = txDelete.Delete(&deletedObjects).Error
 	if err != nil {
@@ -99,7 +99,7 @@ func DeleteObject(ctx context.Context, allocationID, path string) (*Ref, map[str
 
 	path = strings.TrimSuffix(path, "/")
 	tSubDirs := GetSubDirsFromPath(path)
-
+	rootRef.HashToBeComputed = true
 	dirRef := rootRef
 	treelevel := 0
 	for treelevel < len(tSubDirs)-1 {
@@ -107,6 +107,7 @@ func DeleteObject(ctx context.Context, allocationID, path string) (*Ref, map[str
 		for _, child := range dirRef.Children {
 			if child.Name == tSubDirs[treelevel] && child.Type == DIRECTORY {
 				dirRef = child
+				dirRef.HashToBeComputed = true
 				found = true
 				break
 			}
