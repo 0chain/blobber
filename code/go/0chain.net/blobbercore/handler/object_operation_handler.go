@@ -964,6 +964,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 			return nil, common.NewError("database_error", "Got error while getting ref from database")
 		}
 
+		fmt.Printf("\nFormData path is %v\nexistingRef is %v", formData.Path, existingFileRef)
 		if err := validateParentPathType(ctx, allocationID, formData.Path); err != nil {
 			return nil, err
 		}
