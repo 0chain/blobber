@@ -150,3 +150,57 @@ func JSONString(json map[string]interface{}, field string, required bool) (strin
 		return fmt.Sprintf("%v", sval), nil
 	}
 }
+
+type StatusCodeResponderF func(ctx context.Context, r *http.Request) (interface{}, int, error)
+
+func ToStatusCode(handler StatusCodeResponderF) ReqRespHandlerf {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
+		if r.Method == "OPTIONS" {
+			SetupCORSResponse(w, r)
+			return
+		}
+
+		ctx := r.Context()
+
+		data, statusCode, err := handler(ctx, r)
+
+		if err != nil {
+			if statusCode == 0 {
+				statusCode = http.StatusBadRequest
+			}
+
+			w.WriteHeader(statusCode)
+			w.Header().Set("Content-Type", "application/json")
+
+			if data != nil {
+				json.NewEncoder(w).Encode(data) //nolint:errcheck
+			} else {
+				//nolint:errcheck
+				json.NewEncoder(w).Encode(map[string]string{
+					"error": err.Error(),
+				})
+			}
+
+			return
+		}
+
+		if statusCode == 0 {
+			statusCode = http.StatusOK
+		}
+
+		w.WriteHeader(statusCode)
+
+		if data != nil {
+
+			rawdata, ok := data.([]byte)
+			if ok {
+				w.Header().Set("Content-Type", "application/octet-stream")
+				w.Write(rawdata) //nolint:errcheck
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(data) //nolint:errcheck
+			}
+		}
+	}
+}

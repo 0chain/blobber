@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -9,6 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/gosdk/constants"
+	"gorm.io/gorm"
 )
 
 // FileCommandDelete command for deleting file
@@ -28,11 +30,16 @@ func (cmd *FileCommandDelete) IsAuthorized(ctx context.Context, req *http.Reques
 	if path == "" {
 		return common.NewError("invalid_parameters", "Invalid path")
 	}
-	cmd.exisitingFileRef, _ = reference.GetReference(ctx, allocationObj.ID, path)
 
-	if cmd.exisitingFileRef == nil {
-		return common.NewError("invalid_file", "File does not exist at path")
+	fileRef, err := reference.GetReference(ctx, allocationObj.ID, path)
+	if err != nil {
+		if errors.Is(gorm.ErrRecordNotFound, err) {
+			return common.ErrFileWasDeleted
+		}
+		return common.NewError("bad_db_operation", err.Error())
 	}
+
+	cmd.exisitingFileRef = fileRef
 
 	return nil
 }
