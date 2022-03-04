@@ -5,14 +5,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"path/filepath"
+	"strconv"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	disk_balancer "github.com/0chain/blobber/code/go/0chain.net/blobbercore/disk-balancer"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
-	"net/http"
-	"path/filepath"
-	"strconv"
+	"github.com/0chain/gosdk/constants"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -25,13 +26,13 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/gosdk/constants"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
+
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 const (
@@ -939,7 +940,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 	connectionObj.AddChange(allocationChange, &formData)
 
-	err = connectionObj.ApplyChanges(ctx, "/")
+	err = connectionObj.ApplyChanges(ctx, allocationObj.AllocationRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -953,7 +954,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	return result, nil
 }
 
-//WriteFile stores the file into the blobber files system from the HTTP request
+// WriteFile stores the file into the blobber files system from the HTTP request
 func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE / PATCH instead")
@@ -1046,7 +1047,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	if err != nil {
 		Logger.Error("Error in writing the connection meta data", zap.Error(err))
-		return nil, common.NewError("connection_write_error", err.Error()) //"Error writing the connection meta data")
+		return nil, common.NewError("connection_write_error", err.Error()) // "Error writing the connection meta data")
 	}
 
 	return &result, nil
@@ -1059,7 +1060,7 @@ func getFormFieldName(mode string) string {
 	// 	//formField = "updateMeta"
 	// }
 
-	//return formField
+	// return formField
 }
 
 func getFileOperation(r *http.Request) string {
