@@ -57,7 +57,7 @@ jobs:
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
         
           export DOCKER_IMAGE_BASE="${BLOBBER_REGISTRY}:base"
-          export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:$TAG -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
+          export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
 
           ./docker.local/bin/build.blobber.sh
@@ -102,7 +102,7 @@ jobs:
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
         
           export DOCKER_IMAGE_BASE="${VALIDATOR_REGISTRY}:base"
-          export DOCKER_IMAGE_BLOBBER="-t ${VALIDATOR_REGISTRY}:$TAG -t ${VALIDATOR_REGISTRY}:${TAG}-${SHORT_SHA}"
+          export DOCKER_IMAGE_BLOBBER="-t ${VALIDATOR_REGISTRY}:${TAG} -t ${VALIDATOR_REGISTRY}:${TAG}-${SHORT_SHA}"
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
     
           ./docker.local/bin/build.validator.sh
