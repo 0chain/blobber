@@ -19,7 +19,7 @@ RUN echo "https://dl-4.alpinelinux.org/alpine/v3.14/community" >> /etc/apk/repos
 
 
 
-RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep add gmp gmp-dev openssl-dev 
+RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep gmp gmp-dev openssl-dev 
 
 # Install Herumi's cryptography
 WORKDIR /tmp
