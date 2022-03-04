@@ -107,14 +107,14 @@ jobs:
 
       - name: Build blobber_base
         run: |
-          export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64"
-          docker buildx use blobber_buildx --default || docker buildx create --name blobber_buildx --use --default
+          export DOCKER_BUILD="buildx build --platform linux/arm64 --cache-to=type=gha"
+          docker buildx use blobber_buildx || docker buildx create --name blobber_buildx --use
           ./docker.local/bin/build.base.sh
 
       - name: Build validator
         run: |
-          export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64"
-          docker buildx use blobber_buildx --default || docker buildx create --name blobber_buildx --use --default
+          export DOCKER_BUILD="buildx build --platform linux/arm64 --cache-from=type=gha"
+          docker buildx use blobber_buildx || docker buildx create --name blobber_buildx --use
   
           ./docker.local/bin/build.validator.sh
 
