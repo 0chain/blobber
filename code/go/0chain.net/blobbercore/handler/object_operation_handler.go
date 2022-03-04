@@ -959,12 +959,12 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	err2 := cmd.IsAuthorized(ctx, r, allocationObj, clientID)
 
 	var existingFileRef *reference.Ref
-	switch cmd.(type) {
-	case *AddFileCommand:
+	switch cmd {
+	case &AddFileCommand{}:
 		existingFileRef = cmd.(*AddFileCommand).existingFileRef
-	case *UpdateFileCommand:
+	case &UpdateFileCommand{}:
 		existingFileRef = cmd.(*UpdateFileCommand).existingFileRef
-	case *FileCommandDelete:
+	case &FileCommandDelete{}:
 		existingFileRef = cmd.(*FileCommandDelete).existingFileRef
 	}
 	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)

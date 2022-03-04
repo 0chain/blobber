@@ -93,7 +93,7 @@ type Ref struct {
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
 
 	ChunkSize        int64 `gorm:"column:chunk_size" dirlist:"chunk_size" filelist:"chunk_size"`
-	HashToBeComputed bool
+	HashToBeComputed bool  `gorm:"-"`
 }
 
 type PaginatedRef struct { //Gorm smart select fields.
@@ -435,7 +435,7 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 
 	var err error
-	if saveToDB {
+	if saveToDB && fr.HashToBeComputed {
 		err = fr.SaveFileRef(ctx)
 	}
 	return fr.Hash, err
@@ -453,12 +453,12 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	var refNumBlocks int64
 	var size int64
 	for index, childRef := range r.Children {
-		if childRef.HashToBeComputed {
-			_, err := childRef.CalculateHash(ctx, saveToDB)
-			if err != nil {
-				return "", err
-			}
+		//if childRef.HashToBeComputed {
+		_, err := childRef.CalculateHash(ctx, saveToDB)
+		if err != nil {
+			return "", err
 		}
+		//}
 		childHashes[index] = childRef.Hash
 		childPathHashes[index] = childRef.PathHash
 		refNumBlocks += childRef.NumBlocks
@@ -472,7 +472,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
 	var err error
-	if saveToDB {
+	if saveToDB && r.HashToBeComputed {
 		err = r.SaveDirRef(ctx)
 	}
 
