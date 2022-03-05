@@ -164,7 +164,13 @@ func WithAuth(r *http.Request) (*Context, error) {
 
 		ctx.Allocation = alloc
 
-		valid, err := verifySignatureFromRequest(ctx.AllocationTx, ctx.Signature, alloc.OwnerPublicKey)
+		publicKey := alloc.OwnerPublicKey
+
+		// request by collaborator
+		if alloc.OwnerID != ctx.ClientID {
+			publicKey = ctx.ClientKey
+		}
+		valid, err := verifySignatureFromRequest(ctx.AllocationTx, ctx.Signature, publicKey)
 
 		if !valid {
 			ctx.StatusCode = http.StatusBadRequest
