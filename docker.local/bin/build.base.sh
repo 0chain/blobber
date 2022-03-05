@@ -22,9 +22,9 @@ echo "  DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE"
 echo ""
 echo "2> download herumi"
 
-[ ! -f ./docker.local/bin/mcl-master.tar.gz ] && wget -O ./docker.local/bin/mcl-master.tar.gz https://github.com/herumi/mcl/archive/master.tar.gz 
+[ ! -f ./docker.local/bin/mcl.tar.gz ] && wget -O ./docker.local/bin/mcl.tar.gz https://github.com/herumi/mcl/archive/refs/tags/v1.57.tar.gz 
 
-[ ! -f ./docker.local/bin/bls-master.tar.gz ] && wget -O ./docker.local/bin/bls-master.tar.gz https://github.com/herumi/bls/archive/master.tar.gz 
+[ ! -f ./docker.local/bin/bls.tar.gz ] && wget -O ./docker.local/bin/bls.tar.gz https://github.com/herumi/bls/archive/refs/tags/v1.22.tar.gz
 
 echo ""
 echo "3> docker build"

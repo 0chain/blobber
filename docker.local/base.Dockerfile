@@ -24,12 +24,12 @@ RUN apk add --update --no-cache build-base linux-headers git cmake bash perl gre
 # Install Herumi's cryptography
 WORKDIR /tmp
 
-COPY ./docker.local/bin/mcl-master.tar.gz ./
-COPY ./docker.local/bin/bls-master.tar.gz ./
+COPY ./docker.local/bin/mcl.tar.gz ./
+COPY ./docker.local/bin/bls.tar.gz ./
 
-RUN tar zxvf mcl-master.tar.gz && mv mcl-master mcl
+RUN tar zxvf mcl.tar.gz && rm mcl.tar.gz && mv mcl* mcl
 
-RUN tar zxvf bls-master.tar.gz && mv bls-master bls  
+RUN tar zxvf bls.tar.gz && rm bls.tar.gz && mv bls* bls  
 
 RUN make -C mcl -j $(nproc) lib/libmclbn256.so install 
 RUN cp mcl/lib/libmclbn256.so /usr/local/lib 
