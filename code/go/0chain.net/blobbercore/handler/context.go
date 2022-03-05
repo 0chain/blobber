@@ -30,19 +30,36 @@ type Context struct {
 
 	Allocation *allocation.Allocation
 
+	// Vars route variables
+	Vars map[string]string
+
 	Store   datastore.Store
 	Request *http.Request
 
 	StatusCode int
 }
 
+func (c *Context) Var(key string) string {
+	if c == nil || c.Vars == nil {
+		return ""
+	}
+
+	return c.Vars[key]
+}
+
 // FormValue get value from form data
 func (c *Context) FormValue(key string) string {
+	if c == nil || c.Vars == nil {
+		return ""
+	}
 	return c.Request.FormValue(key)
 }
 
 // FormTime get time from form data
 func (c *Context) FormTime(key string) *time.Time {
+	if c == nil || c.Vars == nil {
+		return nil
+	}
 	value := c.Request.FormValue(key)
 	if len(value) == 0 {
 		return nil
@@ -121,11 +138,14 @@ func WithAuth(r *http.Request) (*Context, error) {
 		Store:   datastore.GetStore(),
 	}
 
-	var vars = mux.Vars(r)
+	ctx.Vars = mux.Vars(r)
+	if ctx.Vars == nil {
+		ctx.Vars = make(map[string]string)
+	}
 
 	ctx.ClientID = r.Header.Get(common.ClientHeader)
 	ctx.ClientKey = r.Header.Get(common.ClientKeyHeader)
-	ctx.AllocationTx = vars["allocation"]
+	ctx.AllocationTx = ctx.Vars["allocation"]
 	ctx.Signature = r.Header.Get(common.ClientSignatureHeader)
 
 	if len(ctx.AllocationTx) > 0 {
@@ -144,7 +164,13 @@ func WithAuth(r *http.Request) (*Context, error) {
 
 		ctx.Allocation = alloc
 
-		valid, err := verifySignatureFromRequest(ctx.AllocationTx, ctx.Signature, alloc.OwnerPublicKey)
+		publicKey := alloc.OwnerPublicKey
+
+		// request by collaborator
+		if alloc.OwnerID != ctx.ClientID {
+			publicKey = ctx.ClientKey
+		}
+		valid, err := verifySignatureFromRequest(ctx.AllocationTx, ctx.Signature, publicKey)
 
 		if !valid {
 			ctx.StatusCode = http.StatusBadRequest

@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -53,40 +54,44 @@ type BaseFileChanger struct {
 	UploadOffset int64  `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
 }
 
-func (nf *BaseFileChanger) DeleteTempFile() error {
+func (fc *BaseFileChanger) DeleteTempFile() error {
 	fileInputData := &filestore.FileInputData{}
-	fileInputData.Name = nf.Filename
-	fileInputData.Path = nf.Path
-	fileInputData.Hash = nf.Hash
-	err := filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
-	if nf.ThumbnailSize > 0 {
+	fileInputData.Name = fc.Filename
+	fileInputData.Path = fc.Path
+	fileInputData.Hash = fc.Hash
+	err := filestore.GetFileStore().DeleteTempFile(fc.AllocationID, fileInputData, fc.ConnectionID)
+	if fc.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{}
-		fileInputData.Name = nf.ThumbnailFilename
-		fileInputData.Path = nf.Path
-		fileInputData.Hash = nf.ThumbnailHash
-		err = filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
+		fileInputData.Name = fc.ThumbnailFilename
+		fileInputData.Path = fc.Path
+		fileInputData.Hash = fc.ThumbnailHash
+		err = filestore.GetFileStore().DeleteTempFile(fc.AllocationID, fileInputData, fc.ConnectionID)
 	}
 	return err
 }
 
-func (nfch *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
+func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 	fileInputData := &filestore.FileInputData{}
-	fileInputData.Name = nfch.Filename
-	fileInputData.Path = nfch.Path
-	fileInputData.Hash = nfch.Hash
-	_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, fileInputData, nfch.ConnectionID)
+	fileInputData.Name = fc.Filename
+	fileInputData.Path = fc.Path
+	fileInputData.Hash = fc.Hash
+	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fileInputData, fc.ConnectionID)
 	if err != nil {
 		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 	}
-	if nfch.ThumbnailSize > 0 {
+	if fc.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{}
-		fileInputData.Name = nfch.ThumbnailFilename
-		fileInputData.Path = nfch.Path
-		fileInputData.Hash = nfch.ThumbnailHash
-		_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, fileInputData, nfch.ConnectionID)
+		fileInputData.Name = fc.ThumbnailFilename
+		fileInputData.Path = fc.Path
+		fileInputData.Hash = fc.ThumbnailHash
+		_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fileInputData, fc.ConnectionID)
 		if err != nil {
 			return common.NewError("file_store_error", "Error committing thumbnail to file store. "+err.Error())
 		}
 	}
+
+	// release WriteMarkerMutex
+	datastore.GetStore().GetTransaction(ctx).Exec("DELETE FROM write_locks WHERE allocation_id = ? and connection_id = ? ", fc.AllocationID, fc.ConnectionID)
+
 	return nil
 }
