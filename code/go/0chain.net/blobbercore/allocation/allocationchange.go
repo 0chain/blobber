@@ -52,7 +52,7 @@ type AllocationChange struct {
 	Size         int64  `gorm:"column:size"`
 	Operation    string `gorm:"column:operation"`
 	ConnectionID string `gorm:"column:connection_id"`
-	Input        string `gorm:"column:input" json:"input"`
+	Input        string `gorm:"column:input"`
 	datastore.ModelWithTS
 }
 
