@@ -497,6 +497,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 	writemarkerObj.ConnectionID = connectionObj.ConnectionID
 	writemarkerObj.ClientPublicKey = clientKey
+	writemarkerObj.WM.LookupHash = rootRef.LookupHash
 	err = writemarkerObj.Save(ctx)
 	if err != nil {
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")

@@ -19,6 +19,9 @@ type WriteMarker struct {
 	Timestamp              common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
 	ClientID               string           `gorm:"column:client_id" json:"client_id"`
 	Signature              string           `gorm:"column:signature" json:"signature"`
+	Name                   string           `gorm:"column:name" json:"name"`
+	LookupHash             string           `gorm:"column:lookup_hash" json:"lookup_hash"`
+	ContentHash            string           `gorm:"column:content_hash" json:"content_hash"`
 }
 
 func (wm *WriteMarker) GetHashData() string {
