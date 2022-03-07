@@ -10,6 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
+	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -31,12 +32,12 @@ func CleanupDiskFiles(ctx context.Context) error {
 	var allocations []allocation.Allocation
 	db.Find(&allocations)
 	for _, allocationObj := range allocations {
-		cleanupAllocationFiles(&allocationObj)
+		cleanupAllocationFiles(db, &allocationObj)
 	}
 	return nil
 }
 
-func cleanupAllocationFiles(allocationObj *allocation.Allocation) {
+func cleanupAllocationFiles(db *gorm.DB, allocationObj *allocation.Allocation) {
 	mutex := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
 	mutex.Lock()
 	defer mutex.Unlock()
