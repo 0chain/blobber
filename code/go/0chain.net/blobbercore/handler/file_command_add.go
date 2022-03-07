@@ -67,7 +67,7 @@ func (cmd *AddFileCommand) validatePath(ctx context.Context, allocationObj *allo
 	items := strings.Split(path.Clean(filePath), "/")
 
 	// only 1 directory level deep: ["", "file"]
-	if len(items) == 2 {
+	if len(items) <= 2 {
 		return nil
 	}
 
@@ -78,6 +78,11 @@ func (cmd *AddFileCommand) validatePath(ctx context.Context, allocationObj *allo
 
 	for walker.Back() {
 		currentPath := walker.Path()
+
+		if currentPath == "/" {
+			return nil
+		}
+
 		lookupHash := reference.GetReferenceLookup(allocationObj.ID, currentPath)
 
 		var fileType string
