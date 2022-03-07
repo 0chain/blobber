@@ -105,10 +105,15 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		"Access-Control-Allow-Origin": "*",
 	}
 
+	options := []resty.Option{
+		resty.WithTransport(transport),
+		resty.WithHeader(header),
+	}
+
 	//leave first item for ErrTooLessConfirmation
 	var msgList = make([]string, 1, numSharders)
 
-	r := resty.New(transport, func(req *http.Request, resp *http.Response, respBody []byte, cancelFunc context.CancelFunc, err error) error {
+	r := resty.New(options...).Then(func(req *http.Request, resp *http.Response, respBody []byte, cancelFunc context.CancelFunc, err error) error {
 		if err != nil { //network issue
 			msgList = append(msgList, err.Error())
 			return err
@@ -143,10 +148,7 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		}
 
 		return nil
-	},
-		resty.WithTimeout(resty.DefaultRequestTimeout),
-		resty.WithRetry(resty.DefaultRetry),
-		resty.WithHeader(header))
+	})
 
 	for {
 		r.DoGet(context.TODO(), urls...)
