@@ -56,7 +56,7 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks 
 		rps []*allocation.ReadPool
 	)
 
-	if currentReadSize == 0 || !(alloc.GetRequiredReadBalance(blobberID, currentReadSize) > 0) {
+	if alloc.GetRequiredReadBalance(blobberID, currentReadSize) <= 0 {
 		return // skip if read price is zero
 	}
 
@@ -115,17 +115,17 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 		wps []*allocation.WritePool
 	)
 
-	if writeMarker.Size <= 0 || !(requiredBalance > 0) {
+	if writeMarker.Size <= 0 || requiredBalance <= 0 {
 		return
 	}
 
-	writePoolBalance, err := allocation.GetWritePoolsBalance(db, writeMarker.ClientID, alloc.ID, until)
+	writePoolBalance, err := allocation.GetWritePoolsBalance(db, payerID, alloc.ID, until)
 	if err != nil {
 		Logger.Error(err.Error())
 		return common.NewError("write_pre_redeem", "database error while getting write pool balance")
 	}
 
-	pendingWriteSize, err := allocation.GetPendingWrite(db, writeMarker.ClientID, alloc.ID)
+	pendingWriteSize, err := allocation.GetPendingWrite(db, payerID, alloc.ID)
 	if err != nil {
 		Logger.Error(err.Error())
 		return common.NewError("write_pre_redeem", "database error while getting pending writes")
@@ -160,7 +160,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 			alloc.ID, writeMarker.BlobberID, writePoolBalance, requiredBalance)
 	}
 
-	if err := allocation.AddToPending(db, writeMarker.ClientID, alloc.ID, writeMarker.Size, 0); err != nil {
+	if err := allocation.AddToPending(db, payerID, alloc.ID, writeMarker.Size, 0); err != nil {
 		Logger.Error(err.Error())
 		return common.NewErrorf("write_pre_redeem", "can't save pending writes in DB")
 

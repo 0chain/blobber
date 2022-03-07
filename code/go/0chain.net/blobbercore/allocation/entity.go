@@ -79,7 +79,6 @@ func (a *Allocation) GetRequiredReadBalance(blobberID string, readSize int64) (v
 	for _, d := range a.Terms {
 		if d.BlobberID == blobberID {
 			value = sizeInGB(readSize) * float64(d.ReadPrice)
-			fmt.Printf("\nValue is: %v\nReadPrice: %v\n", value, d.ReadPrice)
 			break
 		}
 	}
@@ -178,19 +177,18 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite, pend
 
 	pending := new(Pending)
 	err = db.Model(&Pending{}).Where("id=?", key).First(pending).Error
-	if err == nil && pending != nil {
+	switch {
+	case err == nil:
 		pending.PendingWrite += pendingWrite
 		pending.PendingRead += pendingRead
-	} else {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			pending.ID = clientID + ":" + allocationID
-			pending.PendingWrite = pendingWrite
-			pending.PendingRead = pendingRead
-			err = nil
-		} else {
-			return err
-		}
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		pending.ID = key
+		pending.PendingWrite = pendingWrite
+		pending.PendingRead = pendingRead
+	default:
+		return err
 	}
+
 	db.Save(pending)
 
 	return nil
