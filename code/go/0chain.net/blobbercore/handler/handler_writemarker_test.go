@@ -72,7 +72,7 @@ func TestWriteMarkerHandlers_Unlock(t *testing.T) {
 	formWriter.WriteField("request_time", strconv.FormatInt(now.Unix(), 10)) //nolint: errcheck
 	formWriter.Close()
 
-	req, err := http.NewRequest(http.MethodDelete, "/v1/writemarker/lock/{allocation}", body)
+	req, err := http.NewRequest(http.MethodDelete, "/v1/writemarker/lock/{allocation}/{connection}", body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,6 +82,7 @@ func TestWriteMarkerHandlers_Unlock(t *testing.T) {
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(WithHandler(func(ctx *Context) (interface{}, error) {
 		ctx.AllocationTx = "TestHandlers_Unlock_allocation_id"
+		ctx.Vars["connection"] = "connection_id"
 		return UnlockWriteMarker(ctx)
 	}))
 

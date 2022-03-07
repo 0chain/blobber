@@ -1,4 +1,6 @@
-FROM blobber_base as blobber_build
+# syntax=docker/dockerfile:1
+ARG DOCKER_IMAGE_BASE
+FROM $DOCKER_IMAGE_BASE  as blobber_build
 LABEL zchain="blobber"
 
 ENV SRC_DIR=/0chain
