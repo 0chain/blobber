@@ -1113,6 +1113,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					WithArgs(aa).
 					WillReturnError(gorm.ErrRecordNotFound)
 
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT 'type' FROM "reference_objects" WHERE`)).
+					WillReturnError(gorm.ErrRecordNotFound)
+
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
 					WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).
 					WillReturnRows(

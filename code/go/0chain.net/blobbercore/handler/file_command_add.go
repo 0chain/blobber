@@ -76,7 +76,7 @@ func (cmd *AddFileCommand) validatePath(ctx context.Context, allocationObj *allo
 
 	db := datastore.GetStore().GetTransaction(ctx)
 	var fileType string
-	err := db.Raw("select type from reference_objects where lookup_hash = ?", lookupHash).Pluck("type", &fileType).Error
+	err := db.Raw(`SELECT 'type' FROM "reference_objects" WHERE lookup_hash = ?`, lookupHash).Pluck("type", &fileType).Error
 	if err != nil {
 		if errors.Is(gorm.ErrRecordNotFound, err) {
 			return nil
