@@ -67,6 +67,7 @@ func DeleteObject(ctx context.Context, allocationID, path string) (*Ref, map[str
 		return nil, nil, err
 	}
 
+	rootRef.HashToBeComputed = true
 	db := datastore.GetStore().
 		GetTransaction(ctx)
 
@@ -99,7 +100,6 @@ func DeleteObject(ctx context.Context, allocationID, path string) (*Ref, map[str
 
 	path = strings.TrimSuffix(path, "/")
 	tSubDirs := GetSubDirsFromPath(path)
-	rootRef.HashToBeComputed = true
 	dirRef := rootRef
 	treelevel := 0
 	for treelevel < len(tSubDirs)-1 {

@@ -526,38 +526,38 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 
 func (r *Ref) SaveFileRef(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Model(r).Where("id = ?", r.ID).Updates(map[string]interface{}{
-		"allocation_id":         r.AllocationID,
-		"lookup_hash":           r.LookupHash,
-		"name":                  r.Name,
-		"path":                  r.Path,
-		"hash":                  r.Hash,
-		"num_of_blocks":         r.NumBlocks,
-		"path_hash":             r.PathHash,
-		"parent_path":           r.ParentPath,
-		"level":                 r.PathLevel,
-		"write_marker":          r.WriteMarker,
-		"mimetype":              r.MimeType,
-		"custom_meta":           r.CustomMeta,
-		"thumbnail_hash":        r.ThumbnailHash,
-		"thumbnail_size":        r.ThumbnailSize,
-		"actual_thumbnail_hash": r.ActualThumbnailHash,
-		"actual_thumbnail_size": r.ActualThumbnailSize,
-		"encrypted_key":         r.EncryptedKey,
-		"content_hash":          r.ContentHash,
-		"size":                  r.Size,
-		"merkle_root":           r.MerkleRoot,
-		"actual_file_size":      r.ActualFileSize,
-		"actual_file_hash":      r.ActualFileHash,
-		"attributes":            r.Attributes,
-		"chunk_size":            r.ChunkSize,
-	})
-	if errors.Is(db.Error, gorm.ErrRecordNotFound) || db.RowsAffected == 0 {
-		err := db.Save(r).Error
-		return err
-	} else {
-		return db.Error
-	}
+	//db = db.Model(r).Where("id = ?", r.ID).Updates(map[string]interface{}{
+	//	"allocation_id":         r.AllocationID,
+	//	"lookup_hash":           r.LookupHash,
+	//	"name":                  r.Name,
+	//	"path":                  r.Path,
+	//	"hash":                  r.Hash,
+	//	"num_of_blocks":         r.NumBlocks,
+	//	"path_hash":             r.PathHash,
+	//	"parent_path":           r.ParentPath,
+	//	"level":                 r.PathLevel,
+	//	"write_marker":          r.WriteMarker,
+	//	"mimetype":              r.MimeType,
+	//	"custom_meta":           r.CustomMeta,
+	//	"thumbnail_hash":        r.ThumbnailHash,
+	//	"thumbnail_size":        r.ThumbnailSize,
+	//	"actual_thumbnail_hash": r.ActualThumbnailHash,
+	//	"actual_thumbnail_size": r.ActualThumbnailSize,
+	//	"encrypted_key":         r.EncryptedKey,
+	//	"content_hash":          r.ContentHash,
+	//	"size":                  r.Size,
+	//	"merkle_root":           r.MerkleRoot,
+	//	"actual_file_size":      r.ActualFileSize,
+	//	"actual_file_hash":      r.ActualFileHash,
+	//	"attributes":            r.Attributes,
+	//	"chunk_size":            r.ChunkSize,
+	//})
+	//if errors.Is(db.Error, gorm.ErrRecordNotFound) || db.RowsAffected == 0 {
+	err := db.Save(r).Error
+	return err
+	//} else {
+	//	return db.Error
+	//}
 }
 
 func (r *Ref) SaveDirRef(ctx context.Context) error {

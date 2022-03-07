@@ -404,10 +404,12 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 		updateFileChange := new(allocation.UpdateFileChanger)
 		if err := updateFileChange.Unmarshal(change.Input); err != nil {
+			fmt.Println("Error 1 inside Commit Write !!!", err)
 			return nil, err
 		}
 		fileRef, err := reference.GetReferenceID(ctx, allocationID, updateFileChange.Path)
 		if err != nil {
+			fmt.Println("Error 2 inside Commit Write !!!", err)
 			return nil, err
 		}
 		isCollaborator = reference.IsACollaborator(ctx, fileRef.ID, clientID)
@@ -474,14 +476,17 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
+		fmt.Println("Error 3 inside Commit Write !!!", err)
 		return nil, err
 	}
 	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot)
 	if err != nil {
+		fmt.Println("Error 4 inside Commit Write !!!", err)
 		return nil, err
 	}
 	rootRef, err := reference.GetReferenceHash(ctx, allocationID, "/")
 	if err != nil {
+		fmt.Println("Error 5 inside Commit Write !!!", err)
 		return nil, err
 	}
 
@@ -532,6 +537,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	result.ErrorMessage = ""
 
 	if errors.Is(common.ErrFileWasDeleted, err) {
+		fmt.Println("Error 6 inside Commit Write !!!", err)
 		return &result, err
 	}
 	return &result, nil
@@ -793,11 +799,15 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 
 	// Update GetReferenceFromLookupHash To GetReferenceForCopyFromLookupHash
 	objectRef, err := reference.GetReferenceForCopyFromLookupHash(ctx, allocationID, pathHash)
+	fmt.Println("CopyFile Error 1 is: ", err)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
+	fmt.Println("CopyFile ObjectRef is: ", objectRef)
+
 	newPath := filepath.Join(destPath, objectRef.Name)
+	fmt.Println("NewPath is: ", newPath)
 	//destRef, _ := reference.GetReference(ctx, allocationID, newPath)
 	destRef, _ := reference.GetReferenceID(ctx, allocationID, newPath)
 	if destRef != nil {
@@ -830,13 +840,18 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 }
 
 func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*blobberhttp.UploadResult, error) {
+	fmt.Println("Start Delete File in Object Operation Handler File !!!")
+	defer func() {
+		fmt.Println("End Delete File in Object Operation Handler File !!!")
+	}()
 	path := r.FormValue("path")
 	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 
 	//fileRef, _ := reference.GetReference(ctx, connectionObj.AllocationID, path)
-	fileRef, _ := reference.GetReferenceDelete(ctx, connectionObj.AllocationID, path)
+	fileRef, err := reference.GetReferenceDelete(ctx, connectionObj.AllocationID, path)
+	fmt.Println("Error is: ", err)
 	_ = ctx.Value(constants.ContextKeyClientKey).(string)
 	if fileRef != nil {
 		deleteSize := fileRef.Size
@@ -961,10 +976,13 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	var existingFileRef *reference.Ref
 	switch cmd {
 	case &AddFileCommand{}:
+		fmt.Println("AddFileCommand Into WriteFile !!!")
 		existingFileRef = cmd.(*AddFileCommand).existingFileRef
 	case &UpdateFileCommand{}:
+		fmt.Println("UpdateFileCommand Into WriteFile !!!")
 		existingFileRef = cmd.(*UpdateFileCommand).existingFileRef
 	case &FileCommandDelete{}:
+		fmt.Println("FileCommandDelete Into WriteFile !!!")
 		existingFileRef = cmd.(*FileCommandDelete).existingFileRef
 	}
 	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)

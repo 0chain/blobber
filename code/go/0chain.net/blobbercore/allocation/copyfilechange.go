@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -28,15 +29,19 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("Process Change In CopyFileChange !!!")
 	affectedRef.HashToBeComputed = true
 	if rf.DestPath == "/" {
+		fmt.Println("Entered Racine !!!")
 		destRef, err := reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
+		fmt.Println("Error 1 Racine: ", err)
 		if err != nil || destRef.Type != reference.DIRECTORY {
 			return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 		}
 		destRef.HashToBeComputed = true
 		rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 		_, err = destRef.CalculateHash(ctx, true)
+		fmt.Println("Error 2 Racine: ", err)
 		return destRef, err
 	}
 
@@ -55,6 +60,7 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	tSubDirs := reference.GetSubDirsFromPath(path)
 
 	rootRef, err := reference.GetReferencePath2(ctx, rf.AllocationID, path)
+	fmt.Println("Error 1 Not Racine: ", err)
 	if err != nil {
 		return nil, err
 	}
@@ -96,12 +102,13 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 	dirRef.AddChild(destRef)
 	_, err = rootRef.CalculateHash(ctx, true)
+	fmt.Println("Error 2 Not Racine: ", err)
 	if err != nil {
 		return nil, err
 	}
 
 	err = rf.updateWriteMarker(ctx, destRef, affectedRef)
-
+	fmt.Println("Error 3 Not Racine: ", err)
 	return rootRef, err
 }
 
@@ -131,6 +138,7 @@ func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, dest
 		newRef.Name = affectedRef.Name
 		newRef.LookupHash = reference.GetReferenceLookup(newRef.AllocationID, newRef.Path)
 		newRef.Attributes = datatypes.JSON(string(affectedRef.Attributes))
+		newRef.HashToBeComputed = true
 		destRef.AddChild(newRef)
 		for _, childRef := range affectedRef.Children {
 			rf.processCopyRefs(ctx, childRef, newRef, allocationRoot)
@@ -157,7 +165,7 @@ func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, dest
 		newFile.EncryptedKey = affectedRef.EncryptedKey
 		newFile.Attributes = datatypes.JSON(string(affectedRef.Attributes))
 		newFile.ChunkSize = affectedRef.ChunkSize
-
+		newFile.HashToBeComputed = true
 		destRef.AddChild(newFile)
 	}
 }

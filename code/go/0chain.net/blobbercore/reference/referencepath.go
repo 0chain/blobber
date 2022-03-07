@@ -31,10 +31,10 @@ func GetReferencePath2(ctx context.Context, allocationID, path string) (*Ref, er
 func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "allocation_id", "type", "name", "path",
-		"parent_path", "size", "hash", "path_hash", "content_hash", "merkle_root",
-		"actual_file_size", "actual_file_hash", "attributes", "chunk_size",
-		"lookup_hash", "thumbnail_hash")
+	//db = db.Select("id", "allocation_id", "type", "name", "path",
+	//	"parent_path", "size", "hash", "path_hash", "content_hash", "merkle_root",
+	//	"actual_file_size", "actual_file_hash", "attributes", "chunk_size",
+	//	"lookup_hash", "thumbnail_hash")
 	pathsAdded := make(map[string]bool)
 	for _, path := range paths {
 		path = strings.TrimSuffix(path, "/")
