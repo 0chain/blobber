@@ -63,7 +63,7 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 }
 
 func (cmd *AddFileCommand) validatePath(ctx context.Context, allocationObj *allocation.Allocation, path string) error {
-	files := util.SplitFiles(path)
+	files := util.SplitPath(path)
 
 	// only 1 directory level deep
 	if len(files) == 1 {

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSplitFiles(t *testing.T) {
+func TestSplitPath(t *testing.T) {
 
 	tests := []struct {
 		name  string
