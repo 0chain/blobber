@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -13,7 +14,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
@@ -62,30 +62,36 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 	return nil
 }
 
-func (cmd *AddFileCommand) validatePath(ctx context.Context, allocationObj *allocation.Allocation, path string) error {
-	files := util.SplitPath(path)
+func (cmd *AddFileCommand) validatePath(ctx context.Context, allocationObj *allocation.Allocation, filePath string) error {
 
-	// only 1 directory level deep
-	if len(files) == 1 {
+	items := strings.Split(path.Clean(filePath), "/")
+
+	// only 1 directory level deep: ["", "file"]
+	if len(items) == 2 {
 		return nil
 	}
 
-	parentPath := "/" + strings.Join(files[:len(files)-1], "/")
+	walker := reference.NewRefWalker(items)
 
-	lookupHash := reference.GetReferenceLookup(allocationObj.ID, parentPath)
-
+	walker.Last()
 	db := datastore.GetStore().GetTransaction(ctx)
-	var fileType string
-	err := db.Raw(`SELECT 'type' FROM "reference_objects" WHERE lookup_hash = ?`, lookupHash).Pluck("type", &fileType).Error
-	if err != nil {
-		if errors.Is(gorm.ErrRecordNotFound, err) {
-			return nil
-		}
-		return err
-	}
 
-	if fileType == fileref.FILE {
-		return common.NewError("invalid_path", fmt.Sprintf("parent path %v is of file type", parentPath))
+	for walker.Back() {
+		currentPath := walker.Path()
+		lookupHash := reference.GetReferenceLookup(allocationObj.ID, currentPath)
+
+		var fileType string
+		err := db.Raw(`SELECT type FROM "reference_objects" WHERE lookup_hash = ?`, lookupHash).Pluck("type", &fileType).Error
+		if err != nil {
+			if errors.Is(gorm.ErrRecordNotFound, err) {
+				return nil
+			}
+			return err
+		}
+
+		if fileType == fileref.FILE {
+			return common.NewError("invalid_path", fmt.Sprintf("parent path %v is of file type", currentPath))
+		}
 	}
 
 	return nil
