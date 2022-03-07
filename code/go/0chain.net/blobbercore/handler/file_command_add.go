@@ -70,7 +70,7 @@ func (cmd *AddFileCommand) validatePath(ctx context.Context, allocationObj *allo
 		return nil
 	}
 
-	parentPath := "/" + strings.Join(files, "/")
+	parentPath := "/" + strings.Join(files[:len(files)-1], "/")
 
 	lookupHash := reference.GetReferenceLookup(allocationObj.ID, parentPath)
 
