@@ -3,17 +3,23 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 // AddFileCommand command for resuming file
@@ -42,14 +48,45 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 		return common.NewError("duplicate_file", "File at path already exists")
 	}
 
-	//create a FixedMerkleTree instance first, it will be reloaded from db in cmd.reloadChange if it is not first chunk
-	//cmd.fileChanger.FixedMerkleTree = &util.FixedMerkleTree{}
+	err = cmd.validatePath(ctx, allocationObj, fileChanger.Path)
+	if err != nil {
+		return err
+	}
 
 	if fileChanger.ChunkSize <= 0 {
 		fileChanger.ChunkSize = fileref.CHUNK_SIZE
 	}
 
 	cmd.fileChanger = fileChanger
+
+	return nil
+}
+
+func (cmd *AddFileCommand) validatePath(ctx context.Context, allocationObj *allocation.Allocation, path string) error {
+	files := util.SplitFiles(path)
+
+	// only 1 directory level deep
+	if len(files) == 1 {
+		return nil
+	}
+
+	parentPath := "/" + strings.Join(files, "/")
+
+	lookupHash := reference.GetReferenceLookup(allocationObj.ID, parentPath)
+
+	db := datastore.GetStore().GetTransaction(ctx)
+	var fileType string
+	err := db.Raw("select type from reference_objects where lookup_hash = ?", lookupHash).Pluck("type", &fileType).Error
+	if err != nil {
+		if errors.Is(gorm.ErrRecordNotFound, err) {
+			return nil
+		}
+		return err
+	}
+
+	if fileType == fileref.FILE {
+		return common.NewError("invalid_path", fmt.Sprintf("parent path %v is of file type", parentPath))
+	}
 
 	return nil
 }
