@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"path"
-	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
@@ -64,20 +62,18 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 
 func (cmd *AddFileCommand) validatePath(ctx context.Context, allocationObj *allocation.Allocation, filePath string) error {
 
-	items := strings.Split(path.Clean(filePath), "/")
+	walker := reference.NewRefWalkerFromPath(filePath)
 
 	// only 1 directory level deep: ["", "file"]
-	if len(items) <= 2 {
-		return nil
-	}
+	if walker.Length() <= 2 {
 
-	walker := reference.NewRefWalker(items)
+	}
 
 	walker.Last()
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	for walker.Back() {
-		currentPath := walker.Path()
+		currentPath, _ := walker.Path()
 
 		if currentPath == "/" {
 			return nil

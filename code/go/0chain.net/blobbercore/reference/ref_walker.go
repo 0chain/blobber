@@ -26,53 +26,53 @@ type RefWalker struct {
 }
 
 // Name get current dir name
-func (d *RefWalker) Name() string {
+func (d *RefWalker) Name() (string, bool) {
 	if d == nil {
-		return "/"
+		return "", false
 	}
 
 	// current is root
 	if d.index == 0 {
-		return "/"
+		return "/", true
 	}
 
 	if d.index < d.length {
-		return d.items[d.index]
+		return d.items[d.index], true
 	}
 
-	return "/"
+	return "", false
 }
 
 // Path get current dir path
-func (d *RefWalker) Path() string {
+func (d *RefWalker) Path() (string, bool) {
 	if d == nil {
-		return ""
+		return "", false
 	}
 
 	// current is root
 	if d.index == 0 {
-		return "/"
+		return "/", true
 	}
 
 	if d.index < d.length {
-		return "/" + path.Join(d.items[:d.index+1]...)
+		return "/" + path.Join(d.items[:d.index+1]...), true
 	}
 
-	return ""
+	return "", false
 }
 
 // Parent get curerent parent path
-func (d *RefWalker) Parent() string {
+func (d *RefWalker) Parent() (string, bool) {
 	if d == nil {
-		return ""
+		return "", false
 	}
 
 	// current is root
 	if d.index == 0 {
-		return ""
+		return "", true
 	}
 
-	return "/" + path.Join(d.items[:d.index]...)
+	return "/" + path.Join(d.items[:d.index]...), true
 }
 
 // Level get current dir level
@@ -82,6 +82,15 @@ func (d *RefWalker) Level() int {
 	}
 
 	return d.index + 1
+}
+
+// Level get the numbers of dir
+func (d *RefWalker) Length() int {
+	if d == nil {
+		return 0
+	}
+
+	return len(d.items)
 }
 
 // Top move to root dir

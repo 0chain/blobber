@@ -57,6 +57,12 @@ func TestRefWalker(t *testing.T) {
 			w.Back()
 			return w.Back()
 		}, WalkResult: true, Name: "d1", Level: 2, Path: "/d1", Parent: "/"},
+
+		{TestName: "back_3_with_invalid_dir", TestPath: `/d1///d2/d3`, WalkFunc: func(w *RefWalker) bool {
+			w.Last()
+			w.Back()
+			return w.Back()
+		}, WalkResult: true, Name: "d1", Level: 2, Path: "/d1", Parent: "/"},
 	}
 
 	for _, it := range list {
@@ -70,10 +76,19 @@ func TestRefWalker(t *testing.T) {
 			r := require.New(test)
 
 			r.Equal(it.WalkResult, result)
-			r.Equal(it.Name, rw.Name())
+			name, ok := rw.Name()
+			r.True(ok)
+			r.Equal(it.Name, name)
+
 			r.Equal(it.Level, rw.Level())
-			r.Equal(it.Path, rw.Path())
-			r.Equal(it.Parent, rw.Parent())
+
+			path, ok := rw.Path()
+			r.True(ok)
+			r.Equal(it.Path, path)
+
+			parentPath, ok := rw.Parent()
+			r.True(ok)
+			r.Equal(it.Parent, parentPath)
 
 		})
 	}
