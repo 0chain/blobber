@@ -974,29 +974,16 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	err2 := cmd.IsAuthorized(ctx, r, allocationObj, clientID)
 
 	var existingFileRef *reference.Ref
-	switch cmd {
-	case &AddFileCommand{}:
-		fmt.Println("AddFileCommand Into WriteFile !!!")
-		existingFileRef = cmd.(*AddFileCommand).existingFileRef
-	case &UpdateFileCommand{}:
-		fmt.Println("UpdateFileCommand Into WriteFile !!!")
-		existingFileRef = cmd.(*UpdateFileCommand).existingFileRef
-	case &FileCommandDelete{}:
-		fmt.Println("FileCommandDelete Into WriteFile !!!")
-		existingFileRef = cmd.(*FileCommandDelete).existingFileRef
-	default:
-		fmt.Println("Default File Command No Action Done !!!")
-	}
-	switch cmd.(type) {
+	switch rCmd := cmd.(type) {
 	case *AddFileCommand:
 		fmt.Println("AddFileCommand 2 Into WriteFile !!!")
-		existingFileRef = cmd.(*AddFileCommand).existingFileRef
+		existingFileRef = rCmd.existingFileRef
 	case *UpdateFileCommand:
 		fmt.Println("UpdateFileCommand 2 Into WriteFile !!!")
-		existingFileRef = cmd.(*UpdateFileCommand).existingFileRef
+		existingFileRef = rCmd.existingFileRef
 	case *FileCommandDelete:
 		fmt.Println("FileCommandDelete 2 Into WriteFile !!!")
-		existingFileRef = cmd.(*FileCommandDelete).existingFileRef
+		existingFileRef = rCmd.existingFileRef
 	default:
 		fmt.Println("Default 2 File Command No Action Done !!!")
 	}
