@@ -889,6 +889,10 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("duplicate_file", "File at path already exists")
 	}
 
+	if err := validateParentPathType(ctx, allocationID, dirPath); err != nil {
+		return nil, err
+	}
+
 	connectionID := r.FormValue("connection_id")
 	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
