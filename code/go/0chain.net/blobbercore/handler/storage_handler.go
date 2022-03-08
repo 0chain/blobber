@@ -558,6 +558,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 		errCh <- err
 		return
 	}
+	fmt.Println("The RootRef ID is: ", rootRef.ID, " || The RootRef Hash: ", rootRef.Hash)
 
 	refPath := &reference.ReferencePath{Ref: rootRef}
 

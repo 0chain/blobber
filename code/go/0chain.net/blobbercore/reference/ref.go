@@ -435,15 +435,18 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
 
 	var err error
+	fmt.Println("The File Reference ID before Saving to DB is: ", fr.ID)
 	if saveToDB && fr.HashToBeComputed {
-		err = fr.SaveFileRef(ctx)
+		//err = fr.SaveFileRef(ctx)
+		err = fr.Save(ctx)
 	}
+	fmt.Println("The File Reference ID after Saving to DB is: ", fr.ID, " || The Hash is: ", fr.Hash)
 	return fr.Hash, err
 }
 
 func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, error) {
 	// empty directory, return hash directly
-
+	fmt.Println("Children Loaded: ", r.childrenLoaded)
 	if len(r.Children) == 0 && !r.childrenLoaded {
 		return r.Hash, nil
 	}
@@ -453,6 +456,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	var refNumBlocks int64
 	var size int64
 	for index, childRef := range r.Children {
+		fmt.Println("Child: ", childRef.ID, " || Name: ", childRef.Name, " || To be Computed: ", childRef.HashToBeComputed)
 		if childRef.HashToBeComputed {
 			_, err := childRef.CalculateHash(ctx, saveToDB)
 			if err != nil {
@@ -472,10 +476,11 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
 	var err error
+	fmt.Println("The Dir Reference ID before Saving to DB is: ", r.ID)
 	if saveToDB && r.HashToBeComputed {
 		err = r.SaveDirRef(ctx)
 	}
-
+	fmt.Println("The Dir Reference ID after Saving to DB is: ", r.ID, " || The Hash is: ", r.Hash)
 	return r.Hash, err
 }
 

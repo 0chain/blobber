@@ -2,6 +2,7 @@ package stats
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"gorm.io/gorm"
@@ -25,6 +26,7 @@ func (FileStats) TableName() string {
 
 func NewDirCreated(ctx context.Context, refID int64) error {
 	db := datastore.GetStore().GetTransaction(ctx)
+	fmt.Println("File Stats RefID: ", refID)
 	stats := &FileStats{RefID: refID}
 	stats.NumBlockDownloads = 0
 	stats.NumUpdates = 1

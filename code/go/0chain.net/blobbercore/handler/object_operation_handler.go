@@ -835,7 +835,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	result.Hash = objectRef.Hash
 	result.MerkleRoot = objectRef.MerkleRoot
 	result.Size = objectRef.Size
-
+	fmt.Println("All Fine If Here, & File Name is: ", result.Filename)
 	return result, nil
 }
 
@@ -984,6 +984,21 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	case &FileCommandDelete{}:
 		fmt.Println("FileCommandDelete Into WriteFile !!!")
 		existingFileRef = cmd.(*FileCommandDelete).existingFileRef
+	default:
+		fmt.Println("Default File Command No Action Done !!!")
+	}
+	switch cmd.(type) {
+	case *AddFileCommand:
+		fmt.Println("AddFileCommand 2 Into WriteFile !!!")
+		existingFileRef = cmd.(*AddFileCommand).existingFileRef
+	case *UpdateFileCommand:
+		fmt.Println("UpdateFileCommand 2 Into WriteFile !!!")
+		existingFileRef = cmd.(*UpdateFileCommand).existingFileRef
+	case *FileCommandDelete:
+		fmt.Println("FileCommandDelete 2 Into WriteFile !!!")
+		existingFileRef = cmd.(*FileCommandDelete).existingFileRef
+	default:
+		fmt.Println("Default 2 File Command No Action Done !!!")
 	}
 	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
@@ -995,6 +1010,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
 
 	if !valid || err != nil {
+		fmt.Println("Entered to Here : ", valid, err)
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
