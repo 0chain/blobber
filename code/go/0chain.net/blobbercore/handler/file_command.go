@@ -2,10 +2,15 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 // FileCommand execute command for a file operation
@@ -36,4 +41,31 @@ func createFileCommand(req *http.Request) FileCommand {
 	default:
 		return &AddFileCommand{}
 	}
+}
+
+// validateParentPathType validates against any parent path not being directory.
+func validateParentPathType(ctx context.Context, allocationID, fPath string) error {
+	if fPath == "" {
+		return nil
+	}
+
+	fPath = filepath.Clean(fPath)
+	if !filepath.IsAbs(fPath) {
+		return fmt.Errorf("filepath %v is not absolute path", fPath)
+	}
+	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, common.GetParentPaths(fPath))
+	if err != nil {
+		logging.Logger.Error(err.Error())
+		return common.NewError("database_error", "Got error while getting parent refs")
+	}
+
+	for _, ref := range refs {
+		if ref == nil {
+			continue
+		}
+		if ref.Type == reference.FILE {
+			return common.NewError("invalid_path", fmt.Sprintf("parent path %v is of file type", ref.Path))
+		}
+	}
+	return nil
 }
