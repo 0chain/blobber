@@ -2,7 +2,6 @@ package reference
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"path/filepath"
 	"strings"
@@ -58,7 +57,7 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 	if err != nil {
 		return nil, err
 	}
-	// there is no any child reference_objects for affected path, and instert root reference_objects
+	// there is no any child reference_objects for affected path, and insert root reference_objects
 	if len(refs) == 0 {
 		return &Ref{Type: DIRECTORY, AllocationID: allocationID, Name: "/", Path: "/", ParentPath: "", PathLevel: 1}, nil
 	}
@@ -114,7 +113,7 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 	if err != nil {
 		return nil, err
 	}
-	// there is no any child reference_objects for affected path, and instert root reference_objects
+	// there is no any child reference_objects for affected path, and insert root reference_objects
 	if len(refs) == 0 {
 		return &Ref{Type: DIRECTORY, AllocationID: allocationID, Name: "/", Path: "/", ParentPath: "", PathLevel: 1}, nil
 	}
@@ -159,7 +158,6 @@ func PathExists(ctx context.Context, allocationID, path string) (bool, error) {
 	if err != nil || len(refs) == 0 {
 		return false, err
 	}
-	fmt.Println("Path Exists !!!")
 	return true, nil
 }
 
@@ -178,7 +176,6 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 		return nil, err
 	}
 	if len(refs) == 0 {
-		fmt.Println("Error: ", path)
 		return nil, common.NewError("invalid_parameters", "Invalid path. Could not find object tree")
 	}
 	childMap := make(map[string]*Ref)

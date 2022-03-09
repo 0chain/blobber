@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -28,7 +27,6 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
 
-	// Maybe Change this from GetReferencePath to GetReferencePath2
 	rootRef, err := reference.GetReferencePath2(ctx, nf.AllocationID, nf.Path)
 	if err != nil {
 		return nil, err
@@ -93,7 +91,6 @@ func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *Allocati
 		return nil, common.NewErrorf("process_update_file_change",
 			"setting file attributes: %v", err)
 	}
-	fmt.Println("Calculate Hash Need To Update Data !!!")
 	_, err = rootRef.CalculateHash(ctx, true)
 	stats.FileUpdated(ctx, existingRef.ID)
 	return rootRef, err

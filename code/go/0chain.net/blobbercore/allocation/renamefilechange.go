@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -28,9 +27,7 @@ func (rf *RenameFileChange) DeleteTempFile() error {
 func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 
 	isFilePresent, err := reference.PathExists(ctx, rf.AllocationID, rf.NewName)
-	if err != nil {
-		fmt.Println("Error in Rename File Change Process Change : ", err.Error())
-	}
+
 	if isFilePresent {
 		return nil, common.NewError("invalid_reference_path", "file already exists")
 	}
@@ -55,8 +52,6 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
 
-	// Maybe Change this from GetReferencePath to GetReferencePath2
-	fmt.Println("The Path is: ", rf.Path)
 	rootRef, err := reference.GetReferencePath2(ctx, rf.AllocationID, rf.Path)
 	if err != nil {
 		return nil, err
@@ -82,7 +77,6 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 			return nil, common.NewError("invalid_reference_path", "Invalid reference path from the blobber")
 		}
 	}
-	fmt.Println("The Length of the Directory Reference Children is: ", len(dirRef.Children))
 	if len(dirRef.Children) == 0 {
 		Logger.Error("no files in root folder", zap.Any("change", rf))
 		return nil, common.NewError("file_not_found", "No files in root folder")

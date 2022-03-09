@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"net/http"
 
@@ -26,10 +25,7 @@ type AddFileCommand struct {
 
 // IsAuthorized validate request.
 func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
-	fmt.Println("Start Is Authorized !!!")
-	defer func() {
-		fmt.Println("End Is Authorized !!!")
-	}()
+
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
@@ -38,12 +34,10 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 
 	uploadMetaString := req.FormValue("uploadMeta")
 	err := json.Unmarshal([]byte(uploadMetaString), fileChanger)
-	fmt.Println("IsAuthorized : uploadMetaString: ", uploadMetaString)
 	if err != nil {
 		return common.NewError("invalid_parameters",
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 	}
-	// Update GetReference to GetReferenceID
 	cmd.existingFileRef, _ = reference.GetReferenceID(ctx, allocationObj.ID, fileChanger.Path)
 
 	if cmd.existingFileRef != nil {

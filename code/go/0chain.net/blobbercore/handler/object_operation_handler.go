@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
@@ -354,8 +353,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 }
 
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
-	fmt.Println("Called StorageHandler CommitWrite !!!")
-	defer func() { fmt.Println("Ended StorageHandler CommitWrite Call !!!") }()
 
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
@@ -404,12 +401,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 		updateFileChange := new(allocation.UpdateFileChanger)
 		if err := updateFileChange.Unmarshal(change.Input); err != nil {
-			fmt.Println("Error 1 inside Commit Write !!!", err)
 			return nil, err
 		}
 		fileRef, err := reference.GetReferenceID(ctx, allocationID, updateFileChange.Path)
 		if err != nil {
-			fmt.Println("Error 2 inside Commit Write !!!", err)
 			return nil, err
 		}
 		isCollaborator = reference.IsACollaborator(ctx, fileRef.ID, clientID)
@@ -476,17 +471,14 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
-		fmt.Println("Error 3 inside Commit Write !!!", err)
 		return nil, err
 	}
 	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot)
 	if err != nil {
-		fmt.Println("Error 4 inside Commit Write !!!", err)
 		return nil, err
 	}
 	rootRef, err := reference.GetReferenceHash(ctx, allocationID, "/")
 	if err != nil {
-		fmt.Println("Error 5 inside Commit Write !!!", err)
 		return nil, err
 	}
 
@@ -537,15 +529,12 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	result.ErrorMessage = ""
 
 	if errors.Is(common.ErrFileWasDeleted, err) {
-		fmt.Println("Error 6 inside Commit Write !!!", err)
 		return &result, err
 	}
 	return &result, nil
 }
 
 func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (interface{}, error) {
-	fmt.Println("Called StorageHandler RenameObject !!!")
-	defer func() { fmt.Println("Ended StorageHandler RenameObject Call !!!") }()
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
@@ -707,7 +696,6 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.R
 	defer mutex.Unlock()
 
 	var ref *reference.Ref
-	// Update GetReferenceFromLookupHash to GetOnlyReferencePathFromLookupHash
 	ref, err = reference.GetOnlyReferencePathFromLookupHash(ctx, alloc.ID, pathHash)
 	if err != nil {
 		return nil, common.NewErrorf("update_object_attributes",
@@ -740,8 +728,6 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.R
 }
 
 func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
-	fmt.Println("Called StorageHandler CopyObject !!!")
-	defer func() { fmt.Println("Ended StorageHandler CopyObject Call !!!") }()
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
@@ -797,18 +783,13 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	// Update GetReferenceFromLookupHash To GetReferenceForCopyFromLookupHash
 	objectRef, err := reference.GetReferenceForCopyFromLookupHash(ctx, allocationID, pathHash)
-	fmt.Println("CopyFile Error 1 is: ", err)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
-	fmt.Println("CopyFile ObjectRef is: ", objectRef)
 
 	newPath := filepath.Join(destPath, objectRef.Name)
-	fmt.Println("NewPath is: ", newPath)
-	//destRef, _ := reference.GetReference(ctx, allocationID, newPath)
 	destRef, _ := reference.GetReferenceID(ctx, allocationID, newPath)
 	if destRef != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
@@ -835,24 +816,17 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	result.Hash = objectRef.Hash
 	result.MerkleRoot = objectRef.MerkleRoot
 	result.Size = objectRef.Size
-	fmt.Println("All Fine If Here, & File Name is: ", result.Filename)
 	return result, nil
 }
 
 func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*blobberhttp.UploadResult, error) {
-	fmt.Println("Start Delete File in Object Operation Handler File !!!")
-	defer func() {
-		fmt.Println("End Delete File in Object Operation Handler File !!!")
-	}()
+
 	path := r.FormValue("path")
 	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 
-	//fileRef, _ := reference.GetReference(ctx, connectionObj.AllocationID, path)
-	fileRef, err := reference.GetReferenceDelete(ctx, connectionObj.AllocationID, path)
-	fmt.Println("Error is: ", err)
-	_ = ctx.Value(constants.ContextKeyClientKey).(string)
+	fileRef, _ := reference.GetReferenceDelete(ctx, connectionObj.AllocationID, path)
 	if fileRef != nil {
 		deleteSize := fileRef.Size
 
@@ -976,16 +950,12 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	var existingFileRef *reference.Ref
 	switch rCmd := cmd.(type) {
 	case *AddFileCommand:
-		fmt.Println("AddFileCommand 2 Into WriteFile !!!")
 		existingFileRef = rCmd.existingFileRef
 	case *UpdateFileCommand:
-		fmt.Println("UpdateFileCommand 2 Into WriteFile !!!")
 		existingFileRef = rCmd.existingFileRef
 	case *FileCommandDelete:
-		fmt.Println("FileCommandDelete 2 Into WriteFile !!!")
 		existingFileRef = rCmd.existingFileRef
 	default:
-		fmt.Println("Default 2 File Command No Action Done !!!")
 	}
 	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
@@ -997,7 +967,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
 
 	if !valid || err != nil {
-		fmt.Println("Entered to Here : ", valid, err)
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 

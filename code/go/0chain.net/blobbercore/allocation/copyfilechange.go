@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -29,19 +28,15 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Process Change In CopyFileChange !!! AllocationRoot is: ", allocationRoot, " || Reference ID is: ", affectedRef.ID, affectedRef.WriteMarker)
 	affectedRef.HashToBeComputed = true
 	if rf.DestPath == "/" {
-		fmt.Println("Entered Racine !!!")
 		destRef, err := reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
-		fmt.Println("Error 1 Racine: ", err)
 		if err != nil || destRef.Type != reference.DIRECTORY {
 			return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 		}
 		destRef.HashToBeComputed = true
 		rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 		_, err = destRef.CalculateHash(ctx, true)
-		fmt.Println("Error 2 Racine: ", err)
 		return destRef, err
 	}
 
@@ -50,23 +45,18 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	if err != nil || destRef.Type != reference.DIRECTORY {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 	}
-	fmt.Println("The DestRef Mkdir is: ", destRef.ID)
 	destRef, err = reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
 	if err != nil || destRef.Type != reference.DIRECTORY {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 	}
-	fmt.Println("The DestRef GetRefWithSortedChildren is: ", destRef.ID)
 	destRef.HashToBeComputed = true
 	path, _ := filepath.Split(rf.DestPath)
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
-	fmt.Println("The DestPath is: ", rf.DestPath, " || The Source Path is: ", rf.SrcPath, " || Path is: ", path)
 	rootRef, err := reference.GetReferencePath2(ctx, rf.AllocationID, path)
-	fmt.Println("Error 1 Not Racine: ", err)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Reference Copy File Change: ")
 	rootRef.HashToBeComputed = true
 	dirRef := rootRef
 	treelevel := 0
@@ -104,31 +94,19 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 
 	rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 	dirRef.AddChild(destRef)
-	fmt.Println("The DirRef is: ", dirRef.ID, " || The RootRef is: ", rootRef.ID, " || DestRef: ", destRef.ID)
 	_, err = rootRef.CalculateHash(ctx, true)
-	fmt.Println("Error 2 Not Racine: ", err)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("Dest Reference is: ", destRef.ID)
-
 	err = rf.updateWriteMarker(ctx, destRef, affectedRef)
-	fmt.Println("Error 3 Not Racine: ", err)
 	return rootRef, err
 }
 
 func (rf *CopyFileChange) updateWriteMarker(ctx context.Context, destRef, affectedRef *reference.Ref) error {
 	ref := destRef
 	if affectedRef != nil {
-		fmt.Println("Affected Reference is: ", affectedRef.ID)
-		// Added to see log
 		for _, r := range destRef.Children {
-			fmt.Println("R => ID: ", r.ID, " || R => Name: ", r.Name, " || affectedRef => ID: ", affectedRef.ID, " || affectedRef => Name: ", affectedRef.Name)
-		}
-		// Ended Here
-		for _, r := range destRef.Children {
-			fmt.Println("R => ID: ", r.ID, " || R => Name: ", r.Name, " || affectedRef => ID: ", affectedRef.ID, " || affectedRef => Name: ", affectedRef.Name)
 			if affectedRef.Name == r.Name {
 				ref = r
 			}
@@ -136,10 +114,8 @@ func (rf *CopyFileChange) updateWriteMarker(ctx context.Context, destRef, affect
 	}
 
 	if ref.Type == reference.FILE {
-		fmt.Println("Inside IF File Update Write Marker !!!!!", ref.ID)
 		return stats.NewDirCreated(ctx, ref.ID)
 	}
-	fmt.Println("Passed The If for : ", ref.ID)
 	return rf.updateWriteMarker(ctx, ref, nil)
 }
 
