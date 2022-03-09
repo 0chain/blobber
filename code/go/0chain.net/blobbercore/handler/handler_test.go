@@ -3,7 +3,6 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -864,7 +863,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("path", path)
 					q.Set("new_name", newName)
 					q.Set("connection_id", connectionID)
-					q.Set("dest", "dest")
+					q.Set("dest", "/dest")
 					url.RawQuery = q.Encode()
 
 					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
@@ -915,13 +914,15 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"type"}).
-							AddRow(reference.FILE),
+						sqlmock.NewRows([]string{"type", "name"}).
+							AddRow(reference.FILE, "path"),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(aa, aa).
-					WillReturnError(errors.New(""))
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "path","type" FROM "reference_objects" WHERE`)).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"path", "type"}).
+							AddRow("/dest", reference.DIRECTORY),
+					)
 
 				mock.ExpectExec(`INSERT INTO "allocation_connections"`).
 					WithArgs(aa, aa, aa, aa, aa, aa, aa).
