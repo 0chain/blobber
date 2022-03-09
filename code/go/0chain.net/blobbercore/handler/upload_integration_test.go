@@ -25,7 +25,8 @@ func TestBlobberGRPCService_UploadFile(t *testing.T) {
 	pubKeyBytes, _ := hex.DecodeString(pubKey)
 	clientId := encryption.Hash(pubKeyBytes)
 
-	formFieldByt, err := json.Marshal(&allocation.UpdateFileChanger{BaseFileChanger: allocation.BaseFileChanger{Filename: `helper_integration_test.go`}})
+	path := "/some_file"
+	formFieldByt, err := json.Marshal(&allocation.UpdateFileChanger{BaseFileChanger: allocation.BaseFileChanger{Filename: `helper_integration_test.go`, Path: path}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +69,7 @@ func TestBlobberGRPCService_UploadFile(t *testing.T) {
 
 			input: &blobbergrpc.UploadFileRequest{
 				Allocation:          allocationTx,
-				Path:                "/some_file",
+				Path:                path,
 				ConnectionId:        "connection_id",
 				Method:              "POST",
 				UploadMeta:          string(formFieldByt),
