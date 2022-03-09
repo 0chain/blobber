@@ -1035,7 +1035,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 
 					q := url.Query()
-					formFieldByt, err := json.Marshal(&allocation.UpdateFileChanger{})
+					formFieldByt, err := json.Marshal(
+						&allocation.UpdateFileChanger{
+							BaseFileChanger: allocation.BaseFileChanger{Path: path}})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1111,8 +1113,15 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects"`)).
-					WithArgs(aa).
+					WithArgs(aa, aa).
 					WillReturnError(gorm.ErrRecordNotFound)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects"`)).
+					WithArgs(aa, aa).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"count"}).
+							AddRow(0),
+					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
 					WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).

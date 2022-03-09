@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
@@ -45,15 +44,12 @@ func createFileCommand(req *http.Request) FileCommand {
 
 // validateParentPathType validates against any parent path not being directory.
 func validateParentPathType(ctx context.Context, allocationID, fPath string) error {
-	if fPath == "" {
-		return nil
+	paths, err := common.GetParentPaths(fPath)
+	if err != nil {
+		return err
 	}
 
-	fPath = filepath.Clean(fPath)
-	if !filepath.IsAbs(fPath) {
-		return fmt.Errorf("filepath %v is not absolute path", fPath)
-	}
-	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, common.GetParentPaths(fPath))
+	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, paths)
 	if err != nil {
 		logging.Logger.Error(err.Error())
 		return common.NewError("database_error", "Got error while getting parent refs")

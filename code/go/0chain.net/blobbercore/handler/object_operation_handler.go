@@ -793,7 +793,11 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	}
 
 	newPath := filepath.Join(destPath, objectRef.Name)
-	paths := common.GetParentPaths(newPath)
+	paths, err := common.GetParentPaths(newPath)
+	if err != nil {
+		return nil, err
+	}
+
 	paths = append(paths, newPath)
 
 	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, paths)
@@ -895,6 +899,10 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	dirPath := r.FormValue("dir_path")
 	if dirPath == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
+	}
+
+	if !filepath.IsAbs(dirPath) {
+		return nil, common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", dirPath))
 	}
 
 	exisitingRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
