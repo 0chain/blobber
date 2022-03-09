@@ -265,7 +265,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 
 			if tc.expectingError && strings.Contains(tc.expectedMessage, err.Error()) {
 				t.Fatal("expected error " + tc.expectedMessage)
-				break
+				//break
 			}
 
 			continue

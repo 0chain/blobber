@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -147,7 +146,6 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 		changeProcessor := cc.AllocationChanges[idx]
 		_, err := changeProcessor.ProcessChange(ctx, change, allocationRoot)
 		if err != nil {
-			fmt.Println("The Error in ApplyChanges is: ", err.Error())
 			return err
 		}
 	}

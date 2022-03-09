@@ -826,7 +826,11 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 
-	fileRef, _ := reference.GetReferenceDelete(ctx, connectionObj.AllocationID, path)
+	fileRef, err := reference.GetReferenceDelete(ctx, connectionObj.AllocationID, path)
+	if err != nil {
+		Logger.Info("invalid_file", zap.Any("error", err))
+	}
+	_ = ctx.Value(constants.ContextKeyClientKey).(string)
 	if fileRef != nil {
 		deleteSize := fileRef.Size
 
@@ -955,7 +959,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		existingFileRef = rCmd.existingFileRef
 	case *FileCommandDelete:
 		existingFileRef = rCmd.existingFileRef
-	default:
 	}
 	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
