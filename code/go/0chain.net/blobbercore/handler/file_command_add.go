@@ -40,10 +40,9 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 
 	if exisitingFileRef != nil {
 		return common.NewError("duplicate_file", "File at path already exists")
+	} else if err := validateParentPathType(ctx, allocationObj.ID, fileChanger.Path); err != nil {
+		return err
 	}
-	// else if err := validateParentPathType(ctx, allocationObj.ID, fileChanger.Path); err != nil {
-	// 	return err
-	// }
 
 	//create a FixedMerkleTree instance first, it will be reloaded from db in cmd.reloadChange if it is not first chunk
 	//cmd.fileChanger.FixedMerkleTree = &util.FixedMerkleTree{}
