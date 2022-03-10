@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.7.3-0.20220302075118-819a9fe8d1da
+	github.com/0chain/gosdk v1.7.3-0.20220310041509-fd5b77effae1
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-ini/ini v1.55.0 // indirect
@@ -19,6 +19,7 @@ require (
 	github.com/minio/minio-go v6.0.14+incompatible
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/remeh/sizedwaitgroup v0.0.0-20180822144253-5e7302b12cce
+	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/rs/cors v1.8.0 // indirect
 	github.com/selvatico/go-mocket v1.0.7
 	github.com/spf13/afero v1.7.1 // indirect
