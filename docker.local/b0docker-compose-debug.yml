@@ -34,10 +34,10 @@ services:
     links:
       - postgres-post:postgres-post
     volumes:
-      - ../config:/blobber/config
-      - ./blobber${BLOBBER}/data:/blobber/data
-      - ./blobber${BLOBBER}/log:/blobber/log
-      - ./keys_config:/blobber/keysconfig
+      - ../config:/validator/config
+      - ./blobber${BLOBBER}/data:/validator/data
+      - ./blobber${BLOBBER}/log:/validator/log
+      - ./keys_config:/validator/keysconfig
     ports:
       - "506${BLOBBER}:506${BLOBBER}"
     command: ./bin/validator --port 506${BLOBBER} --hostname 198.18.0.6${BLOBBER} --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --log_dir /blobber/log
