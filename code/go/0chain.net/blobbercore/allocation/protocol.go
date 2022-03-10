@@ -183,15 +183,12 @@ func RequestReadPools(clientID, allocationID string) (rps []*ReadPool, err error
 		resp      []byte
 	)
 
-	resp, err = transaction.MakeSCRestAPICall(
-		transaction.STORAGE_CONTRACT_ADDRESS,
-		"/getReadPoolAllocBlobberStat",
-		map[string]string{
-			"client_id":     clientID,
-			"allocation_id": allocationID,
-			"blobber_id":    blobberID,
-		},
-		chain.GetServerChain())
+	params := map[string]string{
+		"client_id":     clientID,
+		"allocation_id": allocationID,
+		"blobber_id":    blobberID,
+	}
+	resp, err = transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getReadPoolAllocBlobberStat", params, chain.GetServerChain())
 	if err != nil {
 		return nil, fmt.Errorf("requesting read pools stat: %v", err)
 	}
@@ -211,7 +208,6 @@ func RequestReadPools(clientID, allocationID string) (rps []*ReadPool, err error
 			PoolID: ps.PoolID,
 
 			ClientID:     clientID,
-			BlobberID:    blobberID,
 			AllocationID: allocationID,
 
 			Balance:  ps.Balance,
@@ -230,15 +226,12 @@ func RequestWritePools(clientID, allocationID string) (wps []*WritePool, err err
 		resp      []byte
 	)
 
-	resp, err = transaction.MakeSCRestAPICall(
-		transaction.STORAGE_CONTRACT_ADDRESS,
-		"/getWritePoolAllocBlobberStat",
-		map[string]string{
-			"client_id":     clientID,
-			"allocation_id": allocationID,
-			"blobber_id":    blobberID,
-		},
-		chain.GetServerChain())
+	params := map[string]string{
+		"client_id":     clientID,
+		"allocation_id": allocationID,
+		"blobber_id":    blobberID,
+	}
+	resp, err = transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getWritePoolAllocBlobberStat", params, chain.GetServerChain())
 	if err != nil {
 		return nil, fmt.Errorf("requesting write pools stat: %v", err)
 	}
@@ -258,7 +251,6 @@ func RequestWritePools(clientID, allocationID string) (wps []*WritePool, err err
 			PoolID: ps.PoolID,
 
 			ClientID:     clientID,
-			BlobberID:    blobberID,
 			AllocationID: allocationID,
 
 			Balance:  ps.Balance,
