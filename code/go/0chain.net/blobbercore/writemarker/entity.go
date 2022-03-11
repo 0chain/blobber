@@ -10,6 +10,11 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
+// register writeMarker for auto-migration
+func init() {
+	datastore.GetStore().RegisterModel(&WriteMarker{})
+}
+
 type WriteMarker struct {
 	AllocationRoot         string           `gorm:"column:allocation_root;primary_key" json:"allocation_root"`
 	PreviousAllocationRoot string           `gorm:"column:prev_allocation_root" json:"prev_allocation_root"`
@@ -19,9 +24,9 @@ type WriteMarker struct {
 	Timestamp              common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
 	ClientID               string           `gorm:"column:client_id" json:"client_id"`
 	Signature              string           `gorm:"column:signature" json:"signature"`
-	Name                   string           `gorm:"column:name" json:"name"`
 	LookupHash             string           `gorm:"column:lookup_hash" json:"lookup_hash"`
-	ContentHash            string           `gorm:"column:content_hash" json:"content_hash"`
+	Name                   string           `gorm:"-" json:"name"`
+	ContentHash            string           `gorm:"-" json:"content_hash"`
 }
 
 func (wm *WriteMarker) GetHashData() string {

@@ -15,8 +15,11 @@ import (
 
 // postgresStore store implementation for postgres
 type postgresStore struct {
-	db *gorm.DB
+	db      *gorm.DB
+	modeles []interface{}
 }
+
+func (store *postgresStore) RegisterModel(i interface{}) { store.modeles = append(store.modeles, i) }
 
 func (store *postgresStore) Open() error {
 	db, err := gorm.Open(postgres.Open(fmt.Sprintf(
@@ -73,7 +76,7 @@ func (store *postgresStore) GetDB() *gorm.DB {
 
 func (store *postgresStore) AutoMigrate() error {
 
-	err := store.db.AutoMigrate(&Migration{}, &WriteLock{})
+	err := store.db.AutoMigrate(store.modeles...)
 	if err != nil {
 		logging.Logger.Error("[db]", zap.Error(err))
 	}

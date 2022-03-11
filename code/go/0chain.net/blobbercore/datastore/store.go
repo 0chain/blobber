@@ -25,12 +25,15 @@ type Store interface {
 	Open() error
 	Close()
 	AutoMigrate() error
+	RegisterModel(i interface{})
 }
 
 var instance Store
 
 func init() {
-	instance = &postgresStore{}
+	instance = &postgresStore{
+		modeles: []interface{}{&Migration{}, &WriteLock{}},
+	}
 }
 
 func GetStore() Store {

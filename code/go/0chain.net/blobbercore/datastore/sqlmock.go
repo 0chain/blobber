@@ -80,6 +80,8 @@ func (store *Sqlmock) GetDB() *gorm.DB {
 	return store.db
 }
 
+func (store *Sqlmock) RegisterModel(interface{}) {}
+
 func (store *Sqlmock) AutoMigrate() error {
 	return nil
 }

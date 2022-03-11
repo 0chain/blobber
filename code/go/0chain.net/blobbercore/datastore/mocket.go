@@ -85,6 +85,8 @@ func (store *Mocket) GetDB() *gorm.DB {
 	return store.db
 }
 
+func (store *Mocket) RegisterModel(interface{}) {}
+
 func (store *Mocket) AutoMigrate() error {
 	return nil
 }
