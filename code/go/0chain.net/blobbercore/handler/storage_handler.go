@@ -125,7 +125,7 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 	return allocationObj, nil
 }
 
-func (fsh *StorageHandler) checkIfFileRefIDAlreadyExists(ctx context.Context, allocationID, path string) (*reference.Ref, error) {
+func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID, path string) (*reference.Ref, error) {
 	//return reference.GetReferenceID(ctx, allocationID, path)
 	return reference.GetLimitedRefFieldsByPath(ctx, allocationID, path, []string{"id"})
 }

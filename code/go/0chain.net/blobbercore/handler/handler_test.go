@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"io"
@@ -928,18 +929,18 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				//
-        //mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash","thumbnail_hash" FROM "reference_objects" WHERE`)).
+				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash","thumbnail_hash" FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id" FROM "reference_objects" WHERE`)).
 					//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(aa, aa).
 					WillReturnError(errors.New(""))
-			//
-        mock.ExpectQuery(regexp.QuoteMeta(`SELECT "path","type" FROM "reference_objects" WHERE`)).
+				//
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "path","type" FROM "reference_objects" WHERE`)).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type"}).
 							AddRow("/dest", reference.DIRECTORY),
 					)
-//
+				//
 				mock.ExpectExec(`INSERT INTO "allocation_connections"`).
 					WithArgs(aa, aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
@@ -1133,8 +1134,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects"`)).
 				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id" FROM "reference_objects" WHERE`)).
-					WithArgs(aa).
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects"`)).
 					WithArgs(aa, aa).
 					WillReturnError(gorm.ErrRecordNotFound)
 

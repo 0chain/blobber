@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"path/filepath"
 	"reflect"
@@ -252,6 +253,7 @@ func GetLimitedRefFieldsByPath(ctx context.Context, allocationID, path string, s
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Select(selectedFields)
+	fmt.Println(selectedFields)
 	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
 	if err == nil {
 		return ref, nil
@@ -335,28 +337,6 @@ func GetReferenceByLookupHash(ctx context.Context, allocationID, pathHash string
 		return ref, nil
 	}
 	return nil, err
-}
-
-// GetRefType Select type from ref and return it
-func GetRefType(ctx context.Context, allocationID, path string) (string, error) {
-	ref := new(Ref)
-	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Select("type").Where("allocation_id=? AND path=?", allocationID, path).First(ref).Error
-	if err != nil {
-		return "", err
-	}
-	return ref.Type, nil
-}
-
-// GetRefWithID Return Ref with only ID selected in sql query
-func GetRefWithID(ctx context.Context, allocationID, path string) (*Ref, error) {
-	ref := new(Ref)
-	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Select("id").Where("allocation_id=? AND path=?", allocationID, path).First(ref).Error
-	if err != nil {
-		return nil, err
-	}
-	return ref, nil
 }
 
 // IsRefExist checks if ref with given path exists and returns error other than gorm.ErrRecordNotFound

@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"net/http"
 	"path/filepath"
 
@@ -46,7 +46,8 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 		logging.Logger.Info("error_db", zap.Any("error", err))
 	}
 	if cmd.existingFileRef != nil {
-
+		return common.NewError("duplicate_file", "File at path already exists")
+	}
 
 	if !filepath.IsAbs(fileChanger.Path) {
 		return common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", fileChanger.Path))
