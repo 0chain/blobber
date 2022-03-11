@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"fmt"
 	"net/http"
+	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
@@ -44,7 +46,24 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 		logging.Logger.Info("error_db", zap.Any("error", err))
 	}
 	if cmd.existingFileRef != nil {
+
+
+	if !filepath.IsAbs(fileChanger.Path) {
+		return common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", fileChanger.Path))
+	}
+
+	isExist, err := reference.IsRefExist(ctx, allocationObj.ID, fileChanger.Path)
+	if err != nil {
+		logging.Logger.Error(err.Error())
+		return common.NewError("database_error", "Got db error while getting ref")
+	}
+
+	if isExist {
 		return common.NewError("duplicate_file", "File at path already exists")
+	}
+
+	if err := validateParentPathType(ctx, allocationObj.ID, fileChanger.Path); err != nil {
+		return err
 	}
 
 	//create a FixedMerkleTree instance first, it will be reloaded from db in cmd.reloadChange if it is not first chunk

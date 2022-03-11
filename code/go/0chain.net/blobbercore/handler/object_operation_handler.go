@@ -5,6 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+// issue/524
+//
+	"fmt"
+
+// staging
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
@@ -793,11 +798,36 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	}
 
 	newPath := filepath.Join(destPath, objectRef.Name)
-	//destRef, _ := reference.GetReferenceID(ctx, allocationID, newPath)
+//
+  //destRef, _ := reference.GetReferenceID(ctx, allocationID, newPath)
 	destRef, _ := reference.GetLimitedRefFieldsByPath(ctx, allocationID, newPath, []string{"id"})
 	if destRef != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
+//
+    paths, err := common.GetParentPaths(newPath)
+	if err != nil {
+		return nil, err
 	}
+
+	paths = append(paths, newPath)
+
+	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, paths)
+	if err != nil {
+		Logger.Error("Database error", zap.Error(err))
+		return nil, common.NewError("database_error", fmt.Sprintf("Got db error while getting refs for %v", paths))
+	}
+
+	for _, ref := range refs {
+		switch ref.Path {
+		case newPath:
+			return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
+		default:
+			if ref.Type == reference.FILE {
+				return nil, common.NewError("invalid_path", fmt.Sprintf("%v is of file type", ref.Path))
+			}
+		}
+//
+  }
 
 	allocationChange := &allocation.AllocationChange{}
 	allocationChange.ConnectionID = connectionObj.ConnectionID
@@ -886,16 +916,28 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
 	}
 
+//
 	exisitingRef, err := fsh.checkIfFileRefIDAlreadyExists(ctx, allocationID, dirPath)
 	if err != nil {
 		Logger.Info("Error file reference", zap.Any("error", err))
 	}
+//
+	if !filepath.IsAbs(dirPath) {
+		return nil, common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", dirPath))
+	}
+
+	exisitingRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
+//
 	if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
 	if exisitingRef != nil {
 		return nil, common.NewError("duplicate_file", "File at path already exists")
+	}
+
+	if err := validateParentPathType(ctx, allocationID, dirPath); err != nil {
+		return nil, err
 	}
 
 	connectionID := r.FormValue("connection_id")
