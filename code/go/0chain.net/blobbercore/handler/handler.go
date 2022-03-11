@@ -438,8 +438,8 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	path := r.FormValue("path")
 	refereeClientID := r.FormValue("refereeClientID")
 	filePathHash := fileref.GetReferenceLookup(allocationID, path)
-	// Update GetReferenceFromLookupHash to GetReferenceFromLookupHashForAddCollaborator
-	_, err = reference.GetReferenceFromLookupHashForAddCollaborator(ctx, allocationID, filePathHash)
+	//_, err = reference.GetReferenceByLookupHashForAddCollaborator(ctx, allocationID, filePathHash)
+	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -505,8 +505,9 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return false, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
 	}
-	// Update GetReferenceFromLookupHash to GetReferenceForVerifyAuthTicketFromLookupHash
-	fileRef, err := reference.GetReferenceForVerifyAuthTicketFromLookupHash(ctx, allocationID, authTicket.FilePathHash)
+	// Update GetReferenceByLookupHash to GetReferenceForVerifyAuthTicketByLookupHash
+	//fileRef, err := reference.GetReferenceForVerifyAuthTicketByLookupHash(ctx, allocationID, authTicket.FilePathHash)
+	fileRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, authTicket.FilePathHash, []string{"id", "path", "lookup_hash", "type", "name"})
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}

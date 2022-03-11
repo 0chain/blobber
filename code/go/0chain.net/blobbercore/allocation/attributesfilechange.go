@@ -27,7 +27,7 @@ func (ac *AttributesChange) ProcessChange(ctx context.Context, _ *AllocationChan
 	path = filepath.Clean(path)
 
 	// root reference
-	ref, err = reference.GetReferencePath2(ctx, ac.AllocationID, ac.Path)
+	ref, err = reference.GetReferencePath(ctx, ac.AllocationID, ac.Path)
 
 	if err != nil {
 		return nil, common.NewErrorf("process_attrs_update",

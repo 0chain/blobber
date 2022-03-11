@@ -202,8 +202,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
 	}
 
-	// get file reference
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, alloc.ID, dr.PathHash)
+	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid file path: %v", err)
 	}
@@ -403,7 +402,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		if err := updateFileChange.Unmarshal(change.Input); err != nil {
 			return nil, err
 		}
-		fileRef, err := reference.GetReferenceID(ctx, allocationID, updateFileChange.Path)
+		//fileRef, err := reference.GetReferenceID(ctx, allocationID, updateFileChange.Path)
+		fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, updateFileChange.Path, []string{"id"})
 		if err != nil {
 			return nil, err
 		}
@@ -477,7 +477,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err != nil {
 		return nil, err
 	}
-	rootRef, err := reference.GetReferenceHash(ctx, allocationID, "/")
+	//rootRefHash, err := reference.GetReferenceHash(ctx, allocationID, "/")
+	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash"})
 	if err != nil {
 		return nil, err
 	}
@@ -587,8 +588,8 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	// Changed From GetReferenceFromLookupHash To GetReferenceForHashCalculationFromPaths
-	objectRef, err := reference.GetReferencePathFromLookupHash(ctx, allocationID, pathHash)
+	//objectRef, err := reference.GetReferencePathFromLookupHash(ctx, allocationID, pathHash)
+	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "merkle_root"})
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -696,7 +697,8 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.R
 	defer mutex.Unlock()
 
 	var ref *reference.Ref
-	ref, err = reference.GetOnlyReferencePathFromLookupHash(ctx, alloc.ID, pathHash)
+	//ref, err = reference.GetReferencePathByLookupHash(ctx, alloc.ID, pathHash)
+	ref, err = reference.GetLimitedRefFieldsByLookupHash(ctx, alloc.ID, pathHash, []string{"id", "path"})
 	if err != nil {
 		return nil, common.NewErrorf("update_object_attributes",
 			"invalid file path: %v", err)
@@ -783,14 +785,16 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	objectRef, err := reference.GetReferenceForCopyFromLookupHash(ctx, allocationID, pathHash)
+	//objectRef, err := reference.GetReferencePathFromLookupHash(ctx, allocationID, pathHash)
+	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "merkle_root"})
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 
 	newPath := filepath.Join(destPath, objectRef.Name)
-	destRef, _ := reference.GetReferenceID(ctx, allocationID, newPath)
+	//destRef, _ := reference.GetReferenceID(ctx, allocationID, newPath)
+	destRef, _ := reference.GetLimitedRefFieldsByPath(ctx, allocationID, newPath, []string{"id"})
 	if destRef != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
 	}
@@ -825,8 +829,9 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
-
-	fileRef, err := reference.GetReferenceDelete(ctx, connectionObj.AllocationID, path)
+	// "path", "name", "size", "hash", "merkle_root"
+	//fileRef, err := reference.GetReferenceForDelete(ctx, connectionObj.AllocationID, path)
+	fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, connectionObj.AllocationID, path, []string{"path", "name", "size", "hash", "merkle_root"})
 	if err != nil {
 		Logger.Info("invalid_file", zap.Any("error", err))
 	}

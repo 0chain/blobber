@@ -2,6 +2,7 @@ package reference
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"path/filepath"
 	"strings"
@@ -18,11 +19,7 @@ type ReferencePath struct {
 	Ref  *Ref
 }
 
-//func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, error) {
-//	return GetReferencePathFromPaths(ctx, allocationID, []string{path})
-//}
-
-func GetReferencePath2(ctx context.Context, allocationID, path string) (*Ref, error) {
+func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, error) {
 	return GetReferenceForHashCalculationFromPaths(ctx, allocationID, []string{path})
 }
 
@@ -34,6 +31,7 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 		"parent_path", "size", "hash", "path_hash", "content_hash", "merkle_root",
 		"actual_file_size", "actual_file_hash", "attributes", "chunk_size",
 		"lookup_hash", "thumbnail_hash")
+	db = db.Model(&Ref{})
 	pathsAdded := make(map[string]bool)
 	for _, path := range paths {
 		path = strings.TrimSuffix(path, "/")
@@ -53,7 +51,9 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 	}
 	// root reference_objects with parent_path=""
 	db = db.Or("parent_path = ? AND allocation_id = ?", "", allocationID)
-	err := db.Order("path, level").Find(&refs).Error
+	//err := db.Order("path, level").Find(&refs).Error
+	err := db.Order("path").Find(&refs).Error
+	fmt.Println("Error is: ", err, len(refs))
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 	if len(refs) == 0 {
 		return &Ref{Type: DIRECTORY, AllocationID: allocationID, Name: "/", Path: "/", ParentPath: "", PathLevel: 1}, nil
 	}
-
+	fmt.Println("Path :", refs[0].Path)
 	rootRef := &refs[0]
 	if rootRef.Path != "/" {
 		return nil, common.NewError("invalid_dir_tree", "DB has invalid tree. Root not found in DB")
@@ -79,9 +79,10 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 			refMap[refs[i].Path] = &refs[i]
 		}
 	}
-	if _, err := refs[0].CalculateHash(ctx, false); err != nil {
-		return nil, common.NewError("Ref_CalculateHash", err.Error())
-	}
+	//if _, err := r.CalculateHash(ctx, false); err != nil {
+	//	return nil, common.NewError("Ref_CalculateHash", err.Error())
+	//}
+
 	return &refs[0], nil
 }
 
@@ -109,7 +110,8 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 
 	// root reference_objects with parent_path=""
 	db = db.Or("parent_path = ? AND allocation_id = ?", "", allocationID)
-	err := db.Order("path, level").Find(&refs).Error
+	//err := db.Order("path, level").Find(&refs).Error
+	err := db.Order("path").Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}
@@ -136,9 +138,9 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 		}
 	}
 
-	if _, err := refs[0].CalculateHash(ctx, false); err != nil {
-		return nil, common.NewError("Ref_CalculateHash", err.Error())
-	}
+	//if _, err := refs[0].CalculateHash(ctx, false); err != nil {
+	//	return nil, common.NewError("Ref_CalculateHash", err.Error())
+	//}
 	return &refs[0], nil
 }
 
@@ -171,7 +173,8 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 	} else {
 		db = db.Or("path LIKE ? AND allocation_id = ?", path+"%", allocationID)
 	}
-	err := db.Order("path, level").Find(&refs).Error
+	//err := db.Order("path, level").Find(&refs).Error
+	err := db.Order("path").Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,6 @@ import (
 	"math"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -224,11 +223,35 @@ func GetReference(ctx context.Context, allocationID, path string) (*Ref, error) 
 	return nil, err
 }
 
-// GetReferenceID get FileRef ID with allcationID and path from postgres
-func GetReferenceID(ctx context.Context, allocationID, path string) (*Ref, error) {
+//// GetReferenceID get FileRef ID with allcationID and path from postgres
+//func GetReferenceID(ctx context.Context, allocationID, path string) (*Ref, error) {
+//	ref := &Ref{}
+//	db := datastore.GetStore().GetTransaction(ctx)
+//	db = db.Select("id")
+//	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
+//	if err == nil {
+//		return ref, nil
+//	}
+//	return nil, err
+//}
+//
+//// GetReferenceHash get FileRef Hash with allcationID and path from postgres
+//func GetReferenceHash(ctx context.Context, allocationID, path string) (*Ref, error) {
+//	ref := &Ref{}
+//	db := datastore.GetStore().GetTransaction(ctx)
+//	db = db.Select("hash")
+//	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
+//	if err == nil {
+//		return ref, nil
+//	}
+//	return nil, err
+//}
+
+// GetLimitedRefFieldsByPath get FileRef selected fields with allocationID and path from postgres
+func GetLimitedRefFieldsByPath(ctx context.Context, allocationID, path string, selectedFields []string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id")
+	db = db.Select(selectedFields)
 	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
 	if err == nil {
 		return ref, nil
@@ -236,101 +259,78 @@ func GetReferenceID(ctx context.Context, allocationID, path string) (*Ref, error
 	return nil, err
 }
 
-// GetReferenceFileUpdate get FileRef with allcationID and path from postgres
-func GetReferenceFileUpdate(ctx context.Context, allocationID, path string) (*Ref, error) {
+//// GetReferenceForDelete get some FileRef attributes for Reference Deletion with allcationID and path from postgres
+//func GetReferenceForDelete(ctx context.Context, allocationID, path string) (*Ref, error) {
+//	ref := &Ref{}
+//	db := datastore.GetStore().GetTransaction(ctx)
+//	db = db.Select("path", "name", "size", "hash", "merkle_root")
+//	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
+//	if err == nil {
+//		return ref, nil
+//	}
+//	return nil, err
+//}
+
+// GetLimitedRefFieldsByLookupHash get FileRef selected fields with allocationID and lookupHash from postgres
+func GetLimitedRefFieldsByLookupHash(ctx context.Context, allocationID, lookupHash string, selectedFields []string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "on_cloud", "size")
-	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
+	db = db.Select(selectedFields)
+	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: lookupHash}).First(ref).Error
 	if err == nil {
 		return ref, nil
 	}
 	return nil, err
 }
 
-// GetReferenceHash get FileRef ID with allcationID and path from postgres
-func GetReferenceHash(ctx context.Context, allocationID, path string) (*Ref, error) {
-	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("hash")
-	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
-	if err == nil {
-		return ref, nil
-	}
-	return nil, err
-}
+//func GetReferencePathByLookupHash(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
+//	ref := &Ref{}
+//	db := datastore.GetStore().GetTransaction(ctx)
+//	db = db.Select("id", "path")
+//	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
+//	if err == nil {
+//		return ref, nil
+//	}
+//	return nil, err
+//}
+//
+//func GetReferencePathFromLookupHash(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
+//	ref := &Ref{}
+//	db := datastore.GetStore().GetTransaction(ctx)
+//	db = db.Select("id", "name", "path", "hash", "size", "merkle_root")
+//	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
+//	if err == nil {
+//		return ref, nil
+//	}
+//	return nil, err
+//}
+//
+//func GetReferenceForVerifyAuthTicketByLookupHash(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
+//	ref := &Ref{}
+//	db := datastore.GetStore().GetTransaction(ctx)
+//	db = db.Select("id", "path", "lookup_hash", "type", "name")
+//	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
+//	if err == nil {
+//		return ref, nil
+//	}
+//	return nil, err
+//}
+//
+//func GetReferenceByLookupHashForAddCollaborator(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
+//	ref := &Ref{}
+//	db := datastore.GetStore().GetTransaction(ctx)
+//	db = db.Select("id", "type")
+//	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
+//	if err == nil {
+//		return ref, nil
+//	}
+//	return nil, err
+//}
 
-// GetReferenceDelete get FileRef ID with allcationID and path from postgres
-func GetReferenceDelete(ctx context.Context, allocationID, path string) (*Ref, error) {
+func GetReferenceByLookupHash(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("path", "name", "size", "hash", "merkle_root")
-	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
-	if err == nil {
-		return ref, nil
-	}
-	return nil, err
-}
-
-func GetOnlyReferencePathFromLookupHash(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
-	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "path")
-	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
-	if err == nil {
-		return ref, nil
-	}
-	return nil, err
-}
-
-func GetReferencePathFromLookupHash(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
-	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "name", "path", "hash", "size", "merkle_root")
-	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
-	if err == nil {
-		return ref, nil
-	}
-	return nil, err
-}
-
-func GetReferenceForCopyFromLookupHash(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
-	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "name", "path", "hash", "size", "merkle_root")
-	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
-	if err == nil {
-		return ref, nil
-	}
-	return nil, err
-}
-
-func GetReferenceForVerifyAuthTicketFromLookupHash(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
-	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "path", "lookup_hash", "type", "name")
-	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
-	if err == nil {
-		return ref, nil
-	}
-	return nil, err
-}
-
-func GetReferenceFromLookupHashForAddCollaborator(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
-	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "type")
-	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
-	if err == nil {
-		return ref, nil
-	}
-	return nil, err
-}
-
-func GetReferenceFromLookupHash(ctx context.Context, allocationID, path_hash string) (*Ref, error) {
-	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: path_hash}).First(ref).Error
+	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
 	if err == nil {
 		return ref, nil
 	}
@@ -382,7 +382,8 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*
 	var refs []*Ref
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
-	err := db.Order("path, level").Find(&refs).Error
+	//err := db.Order("path, level").Find(&refs).Error
+	err := db.Order("path").Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}
@@ -488,9 +489,9 @@ func (r *Ref) AddChild(child *Ref) {
 		r.Children = make([]*Ref, 0)
 	}
 	r.Children = append(r.Children, child)
-	sort.SliceStable(r.Children, func(i, j int) bool {
-		return strings.Compare(r.Children[i].LookupHash, r.Children[j].LookupHash) == -1
-	})
+	//sort.SliceStable(r.Children, func(i, j int) bool {
+	//	return strings.Compare(r.Children[i].LookupHash, r.Children[j].LookupHash) == -1
+	//})
 	r.childrenLoaded = true
 }
 
@@ -499,9 +500,9 @@ func (r *Ref) RemoveChild(idx int) {
 		return
 	}
 	r.Children = append(r.Children[:idx], r.Children[idx+1:]...)
-	sort.SliceStable(r.Children, func(i, j int) bool {
-		return strings.Compare(r.Children[i].LookupHash, r.Children[j].LookupHash) == -1
-	})
+	//sort.SliceStable(r.Children, func(i, j int) bool {
+	//	return strings.Compare(r.Children[i].LookupHash, r.Children[j].LookupHash) == -1
+	//})
 	r.childrenLoaded = true
 }
 

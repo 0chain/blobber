@@ -55,8 +55,7 @@ type NewFileChange struct {
 func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, allocationRoot string) (*reference.Ref, error) {
 	path := filepath.Clean(dirName)
 	tSubDirs := reference.GetSubDirsFromPath(path)
-	// Maybe Change this from GetReferencePath to GetReferencePath2
-	rootRef, err := reference.GetReferencePath2(ctx, nf.AllocationID, nf.Path)
+	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, nf.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -136,8 +135,8 @@ func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationCh
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
 
-	// Maybe Change this from GetReferencePath to GetReferencePath2
-	rootRef, err := reference.GetReferencePath2(ctx, nf.AllocationID, nf.Path)
+	// Maybe Change this from GetReferencePath to GetReferencePath
+	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, nf.Path)
 	if err != nil {
 		return nil, err
 	}

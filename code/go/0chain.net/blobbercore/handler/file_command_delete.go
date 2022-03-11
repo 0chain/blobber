@@ -30,7 +30,8 @@ func (cmd *FileCommandDelete) IsAuthorized(ctx context.Context, req *http.Reques
 		return common.NewError("invalid_parameters", "Invalid path")
 	}
 	var err error
-	cmd.existingFileRef, err = reference.GetReferenceDelete(ctx, allocationObj.ID, path)
+	//cmd.existingFileRef, err = reference.GetReferenceForDelete(ctx, allocationObj.ID, path)
+	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByPath(ctx, allocationObj.ID, path, []string{"path", "name", "size", "hash", "merkle_root"})
 	if err != nil {
 		if errors.Is(gorm.ErrRecordNotFound, err) {
 			return common.ErrFileWasDeleted
