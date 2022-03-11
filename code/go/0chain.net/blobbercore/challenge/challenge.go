@@ -10,7 +10,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/remeh/sizedwaitgroup"
@@ -142,9 +141,6 @@ func processAccepted(ctx context.Context) {
 
 // loadValidationTickets load validation tickets for challenge
 func loadValidationTickets(ctx context.Context, challengeObj *ChallengeEntity) error {
-	mutex := lock.GetMutex(challengeObj.TableName(), challengeObj.ChallengeID)
-	mutex.Lock()
-
 	defer func() {
 		if r := recover(); r != nil {
 			logging.Logger.Error("[recover]LoadValidationTickets", zap.Any("err", r))
@@ -179,8 +175,7 @@ func commitProcessed(ctx context.Context) {
 		if err := openchallenge.UnmarshalFields(); err != nil {
 			logging.Logger.Error("ChallengeEntity_UnmarshalFields", zap.String("challenge_id", openchallenge.ChallengeID), zap.Error(err))
 		}
-		mutex := lock.GetMutex(openchallenge.TableName(), openchallenge.ChallengeID)
-		mutex.Lock()
+
 		redeemCtx := datastore.GetStore().CreateTransaction(ctx)
 		err := openchallenge.CommitChallenge(redeemCtx, false)
 		if err != nil {
@@ -188,7 +183,7 @@ func commitProcessed(ctx context.Context) {
 				zap.Error(err),
 				zap.String("challenge_id", openchallenge.ChallengeID))
 		}
-		mutex.Unlock()
+
 		db := datastore.GetStore().GetTransaction(redeemCtx)
 		db.Commit()
 		if err == nil && openchallenge.Status == Committed {

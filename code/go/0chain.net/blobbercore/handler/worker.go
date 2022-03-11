@@ -10,6 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
+	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -31,25 +32,30 @@ func CleanupDiskFiles(ctx context.Context) error {
 	var allocations []allocation.Allocation
 	db.Find(&allocations)
 	for _, allocationObj := range allocations {
-		mutex := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
-		mutex.Lock()
-		_ = filestore.GetFileStore().IterateObjects(allocationObj.ID, func(contentHash string, contentSize int64) {
-			var refs []reference.Ref
-			err := db.Table((reference.Ref{}).TableName()).Where(reference.Ref{ContentHash: contentHash, Type: reference.FILE}).Or(reference.Ref{ThumbnailHash: contentHash, Type: reference.FILE}).Find(&refs).Error
-			if err != nil {
-				Logger.Error("Error in cleanup of disk files.", zap.Error(err))
-				return
-			}
-			if len(refs) == 0 {
-				Logger.Info("hash has no references. Deleting from disk", zap.Any("count", len(refs)), zap.String("hash", contentHash))
-				if err := filestore.GetFileStore().DeleteFile(allocationObj.ID, contentHash); err != nil {
-					Logger.Error("FileStore_DeleteFile", zap.String("content_hash", contentHash), zap.Error(err))
-				}
-			}
-		})
-		mutex.Unlock()
+		cleanupAllocationFiles(db, &allocationObj)
 	}
 	return nil
+}
+
+func cleanupAllocationFiles(db *gorm.DB, allocationObj *allocation.Allocation) {
+	mutex := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
+	mutex.Lock()
+	defer mutex.Unlock()
+	_ = filestore.GetFileStore().IterateObjects(allocationObj.ID, func(contentHash string, contentSize int64) {
+		var refs []reference.Ref
+		err := db.Table((reference.Ref{}).TableName()).Where(reference.Ref{ContentHash: contentHash, Type: reference.FILE}).Or(reference.Ref{ThumbnailHash: contentHash, Type: reference.FILE}).Find(&refs).Error
+		if err != nil {
+			Logger.Error("Error in cleanup of disk files.", zap.Error(err))
+			return
+		}
+		if len(refs) == 0 {
+			Logger.Info("hash has no references. Deleting from disk", zap.Any("count", len(refs)), zap.String("hash", contentHash))
+			if err := filestore.GetFileStore().DeleteFile(allocationObj.ID, contentHash); err != nil {
+				Logger.Error("FileStore_DeleteFile", zap.String("content_hash", contentHash), zap.Error(err))
+			}
+		}
+	})
+
 }
 
 func cleanupTempFiles(ctx context.Context) {
