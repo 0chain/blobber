@@ -41,22 +41,24 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 	}
 	//cmd.existingFileRef, err = reference.GetReferenceID(ctx, allocationObj.ID, fileChanger.Path)
-	cmd.existingFileRef, _ = reference.GetLimitedRefFieldsByPath(ctx, allocationObj.ID, fileChanger.Path, []string{"id"})
-	//if err != nil {
-	//	logging.Logger.Info("error_db", zap.Any("error", err))
-	//}
+	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByPath(ctx, allocationObj.ID, fileChanger.Path, []string{"id"})
+	if err != nil {
+		logging.Logger.Info("error_db", zap.Any("error", err))
+	}
 
 	if !filepath.IsAbs(fileChanger.Path) {
 		return common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", fileChanger.Path))
 	}
 
 	isExist, err := reference.IsRefExist(ctx, allocationObj.ID, fileChanger.Path)
-	//if cmd.existingFileRef != nil {
-	//	return common.NewError("duplicate_file", "File at path already exists")
-	//}
+
 	if err != nil {
 		logging.Logger.Error(err.Error())
 		return common.NewError("database_error", "Got db error while getting ref")
+	}
+
+	if cmd.existingFileRef != nil {
+		return common.NewError("duplicate_file", "File at path already exists")
 	}
 
 	if isExist {
