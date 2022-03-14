@@ -492,13 +492,21 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		if latestWM != nil {
 			result.WriteMarker = &latestWM.WM
 		}
-		result.Success = false
-		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root. Expected hash: " + allocationRoot
-		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
+
 	}
+
+	fileRef, err := reference.GetReferenceFromLookupHash(ctx, writeMarker.AllocationID, writeMarker.LookupHash)
+	if err != nil {
+		result.Success = false
+		result.ErrorMessage = "No reference available for given lookup_hash in wrtie_marker " + writeMarker.LookupHash
+		return &result, common.NewError("Invalid lookup_hash in write_marker", result.ErrorMessage)
+	}
+
+	writeMarker.Name = fileRef.Name
+	writeMarker.ContentHash = fileRef.ContentHash
+
 	writemarkerObj.ConnectionID = connectionObj.ConnectionID
 	writemarkerObj.ClientPublicKey = clientKey
-	writemarkerObj.WM.LookupHash = rootRef.LookupHash
 	err = writemarkerObj.Save(ctx)
 	if err != nil {
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
