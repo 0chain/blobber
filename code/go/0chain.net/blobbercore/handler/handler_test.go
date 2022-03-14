@@ -1110,7 +1110,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectBegin()
-
+				fmt.Println("Step 1")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
 					WithArgs(alloc.Tx).
 					WillReturnRows(
@@ -1123,43 +1123,44 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
 							),
 					)
-
+				fmt.Println("Step 2")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
 					WithArgs(alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-
+				fmt.Println("Step 3")
 				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","allocation_id","type","name","path","size","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size" FROM "reference_objects"`)).
 				//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id" FROM "reference_objects" WHERE`)).
 					WithArgs(aa, aa).
 					WillReturnError(gorm.ErrRecordNotFound)
-
+				fmt.Println("Step 4")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects"`)).
 					WithArgs(aa, aa).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"count"}).
 							AddRow(0),
 					)
-
+				fmt.Println("Step 5")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
 					WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).
 					WillReturnRows(
 						sqlmock.NewRows([]string{}).
 							AddRow(),
 					)
-
+				fmt.Println("Step 6")
 				mock.ExpectExec(`INSERT INTO "allocation_connections"`).
 					WithArgs(aa, aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
-
+				fmt.Println("Step 7")
 				mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "allocation_changes"`)).
 					WithArgs(aa, aa, aa, aa, aa, aa).
 					WillReturnRows(
 						sqlmock.NewRows([]string{}),
 					)
+				fmt.Println("Step 8")
 			},
 			wantCode: http.StatusOK,
 		},
