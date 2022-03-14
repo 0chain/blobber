@@ -54,10 +54,6 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 		return common.NewError("write_marker_validation_failed", "Write Marker is not by the same client who uploaded")
 	}
 
-	if err := AllocationRootMustUnique(ctx, wme.WM.AllocationRoot); err != nil {
-		return err
-	}
-
 	hashData := wme.WM.GetHashData()
 	signatureHash := encryption.Hash(hashData)
 	sigOK, err := encryption.Verify(clientPublicKey, wme.WM.Signature, signatureHash)
@@ -66,6 +62,10 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 	}
 	if !sigOK {
 		return common.NewError("write_marker_validation_failed", "Write marker signature is not valid")
+	}
+
+	if err := AllocationRootMustUnique(ctx, wme.WM.AllocationRoot); err != nil {
+		return err
 	}
 
 	return nil
