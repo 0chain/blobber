@@ -25,7 +25,7 @@ func NewBlobberClient() *blobber.Blobber {
 	if err != nil {
 		panic("mock: z.InitWallet " + err.Error())
 	}
-	z := sdks.New("9a566aa4f8e8c342fed97c8928040a21f21b8f574e5782c28568635ba9c75a85", "40cd10039913ceabacf05a7c60e1ad69bb2964987bc50f77495e514dc451f907c3d8ebcdab20eedde9c8f39b9a1d66609a637352f318552fb69d4b3672516d1a", "bls0chain")
+	z := sdks.New("9a566aa4f8e8c342fed97c8928040a21f21b8f574e5782c28568635ba9c75a85", "40cd10039913ceabacf05a7c60e1ad69bb2964987bc50f77495e514dc451f907c3d8ebcdab20eedde9c8f39b9a1d66609a637352f318552fb69d4b3672516d1a", "bls0chain", wallet)
 
 	z.NewRequest = func(method, url string, body io.Reader) (*http.Request, error) {
 		return httptest.NewRequest(method, url, body), nil
