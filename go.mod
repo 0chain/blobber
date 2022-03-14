@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.7.3-0.20220310041509-fd5b77effae1
+	github.com/0chain/gosdk v1.7.7-0.20220314114047-acc35aac8853
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-ini/ini v1.55.0 // indirect
@@ -19,7 +19,6 @@ require (
 	github.com/minio/minio-go v6.0.14+incompatible
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/remeh/sizedwaitgroup v0.0.0-20180822144253-5e7302b12cce
-	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/rs/cors v1.8.0 // indirect
 	github.com/selvatico/go-mocket v1.0.7
 	github.com/spf13/afero v1.7.1 // indirect
@@ -27,8 +26,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.21.0
-	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
-	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
+	golang.org/x/crypto v0.0.0-20220307211146-efcb8507fb70
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	google.golang.org/genproto v0.0.0-20220302033224-9aa15565e42a
 	google.golang.org/grpc v1.44.0
