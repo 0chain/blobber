@@ -235,6 +235,55 @@ func GetReferenceFromLookupHash(ctx context.Context, allocationID, path_hash str
 	return nil, err
 }
 
+// GetRefType Select type from ref and return it
+func GetRefType(ctx context.Context, allocationID, path string) (string, error) {
+	ref := new(Ref)
+	db := datastore.GetStore().GetTransaction(ctx)
+	err := db.Select("type").Where("allocation_id=? AND path=?", allocationID, path).First(ref).Error
+	if err != nil {
+		return "", err
+	}
+	return ref.Type, nil
+}
+
+// GetRefWithID Return Ref with only ID selected in sql query
+func GetRefWithID(ctx context.Context, allocationID, path string) (*Ref, error) {
+	ref := new(Ref)
+	db := datastore.GetStore().GetTransaction(ctx)
+	err := db.Select("id").Where("allocation_id=? AND path=?", allocationID, path).First(ref).Error
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
+}
+
+// IsRefExist checks if ref with given path exists and returns error other than gorm.ErrRecordNotFound
+func IsRefExist(ctx context.Context, allocationID, path string) (bool, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	var count int64
+	if err := db.Model(&Ref{}).Where("allocation_id=? AND path=?", allocationID, path).Count(&count).Error; err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+// GetRefsTypeFromPaths Give list of paths it will return refs of respective path with only Type and Path selected in sql query
+func GetRefsTypeFromPaths(ctx context.Context, allocationID string, paths []string) (refs []*Ref, err error) {
+	if len(paths) == 0 {
+		return
+	}
+
+	db := datastore.GetStore().GetTransaction(ctx)
+	db = db.Select("path", "type")
+	for _, p := range paths {
+		db = db.Or(Ref{AllocationID: allocationID, Path: p})
+	}
+
+	err = db.Find(&refs).Error
+	return
+}
+
 func GetSubDirsFromPath(p string) []string {
 	path := p
 	parent, cur := filepath.Split(path)
