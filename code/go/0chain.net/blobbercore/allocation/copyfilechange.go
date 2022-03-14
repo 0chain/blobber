@@ -23,7 +23,7 @@ func (rf *CopyFileChange) DeleteTempFile() error {
 	return OperationNotApplicable
 }
 
-func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 	affectedRef, err := reference.GetObjectTree(ctx, rf.AllocationID, rf.SrcPath)
 	if err != nil {
 		return nil, err
@@ -34,9 +34,20 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 		if err != nil || destRef.Type != reference.DIRECTORY {
 			return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 		}
-		rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
+		fileRef := rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 
 		_, err = destRef.CalculateHash(ctx, true)
+		if err != nil {
+			return nil, err
+		}
+
+		if fileRef != nil {
+			stats.NewFileCreated(ctx, fileRef.ID)
+		}
+		if fileRef != nil {
+			stats.NewFileCreated(ctx, fileRef.ID)
+		}
+
 		return destRef, err
 	}
 
@@ -92,7 +103,7 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 	}
 
 	dirRef.RemoveChild(childIndex)
-	rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
+	fileRef := rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 	dirRef.AddChild(destRef)
 
 	_, err = rootRef.CalculateHash(ctx, true)
@@ -100,29 +111,14 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 		return nil, err
 	}
 
-	err = rf.updateWriteMarker(ctx, destRef, affectedRef)
+	if fileRef != nil {
+		stats.NewFileCreated(ctx, fileRef.ID)
+	}
 
 	return rootRef, err
 }
 
-func (rf *CopyFileChange) updateWriteMarker(ctx context.Context, destRef, affectedRef *reference.Ref) error {
-	ref := destRef
-	if affectedRef != nil {
-		for _, r := range destRef.Children {
-			if affectedRef.Name == r.Name {
-				ref = r
-			}
-		}
-	}
-
-	if ref.Type == reference.FILE {
-		return stats.NewDirCreated(ctx, ref.ID)
-	}
-
-	return rf.updateWriteMarker(ctx, ref, nil)
-}
-
-func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, destRef *reference.Ref, allocationRoot string) {
+func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, destRef *reference.Ref, allocationRoot string) *reference.Ref {
 	if affectedRef.Type == reference.DIRECTORY {
 		newRef := reference.NewDirectoryRef()
 		newRef.AllocationID = rf.AllocationID
@@ -132,34 +128,38 @@ func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, dest
 		newRef.LookupHash = reference.GetReferenceLookup(newRef.AllocationID, newRef.Path)
 		newRef.Attributes = datatypes.JSON(string(affectedRef.Attributes))
 		destRef.AddChild(newRef)
+
 		for _, childRef := range affectedRef.Children {
 			rf.processCopyRefs(ctx, childRef, newRef, allocationRoot)
 		}
-	} else {
-		newFile := reference.NewFileRef()
-		newFile.ActualFileHash = affectedRef.ActualFileHash
-		newFile.ActualFileSize = affectedRef.ActualFileSize
-		newFile.AllocationID = affectedRef.AllocationID
-		newFile.ContentHash = affectedRef.ContentHash
-		newFile.CustomMeta = affectedRef.CustomMeta
-		newFile.MerkleRoot = affectedRef.MerkleRoot
-		newFile.Name = affectedRef.Name
-		newFile.ParentPath = destRef.Path
-		newFile.Path = filepath.Join(destRef.Path, affectedRef.Name)
-		newFile.LookupHash = reference.GetReferenceLookup(newFile.AllocationID, newFile.Path)
-		newFile.Size = affectedRef.Size
-		newFile.MimeType = affectedRef.MimeType
-		newFile.WriteMarker = allocationRoot
-		newFile.ThumbnailHash = affectedRef.ThumbnailHash
-		newFile.ThumbnailSize = affectedRef.ThumbnailSize
-		newFile.ActualThumbnailHash = affectedRef.ActualThumbnailHash
-		newFile.ActualThumbnailSize = affectedRef.ActualThumbnailSize
-		newFile.EncryptedKey = affectedRef.EncryptedKey
-		newFile.Attributes = datatypes.JSON(string(affectedRef.Attributes))
-		newFile.ChunkSize = affectedRef.ChunkSize
-
-		destRef.AddChild(newFile)
 	}
+
+	newFile := reference.NewFileRef()
+	newFile.ActualFileHash = affectedRef.ActualFileHash
+	newFile.ActualFileSize = affectedRef.ActualFileSize
+	newFile.AllocationID = affectedRef.AllocationID
+	newFile.ContentHash = affectedRef.ContentHash
+	newFile.CustomMeta = affectedRef.CustomMeta
+	newFile.MerkleRoot = affectedRef.MerkleRoot
+	newFile.Name = affectedRef.Name
+	newFile.ParentPath = destRef.Path
+	newFile.Path = filepath.Join(destRef.Path, affectedRef.Name)
+	newFile.LookupHash = reference.GetReferenceLookup(newFile.AllocationID, newFile.Path)
+	newFile.Size = affectedRef.Size
+	newFile.MimeType = affectedRef.MimeType
+	newFile.WriteMarker = allocationRoot
+	newFile.ThumbnailHash = affectedRef.ThumbnailHash
+	newFile.ThumbnailSize = affectedRef.ThumbnailSize
+	newFile.ActualThumbnailHash = affectedRef.ActualThumbnailHash
+	newFile.ActualThumbnailSize = affectedRef.ActualThumbnailSize
+	newFile.EncryptedKey = affectedRef.EncryptedKey
+	newFile.Attributes = datatypes.JSON(string(affectedRef.Attributes))
+	newFile.ChunkSize = affectedRef.ChunkSize
+
+	destRef.AddChild(newFile)
+
+	return newFile
+
 }
 
 func (rf *CopyFileChange) Marshal() (string, error) {

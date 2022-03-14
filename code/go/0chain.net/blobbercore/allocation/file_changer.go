@@ -8,8 +8,8 @@ import (
 
 // FileChanger file change processor
 type FileChanger interface {
-	// ProcessChange process change and save them on reference_objects
-	ProcessChange(ctx context.Context,
+	// ApplyChange process change and save them on reference_objects
+	ApplyChange(ctx context.Context,
 		change *AllocationChange, allocationRoot string) (*reference.Ref, error)
 	// Marshal marshal change as JSON string
 	Marshal() (string, error)
