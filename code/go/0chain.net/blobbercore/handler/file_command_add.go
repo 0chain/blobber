@@ -41,7 +41,7 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 	}
 	//cmd.existingFileRef, err = reference.GetReferenceID(ctx, allocationObj.ID, fileChanger.Path)
-	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByPath(ctx, allocationObj.ID, fileChanger.Path, []string{"id"})
+	cmd.existingFileRef, _ = reference.GetLimitedRefFieldsByPath(ctx, allocationObj.ID, fileChanger.Path, []string{"id"})
 	//if err != nil {
 	//	logging.Logger.Info("error_db", zap.Any("error", err))
 	//}
