@@ -132,7 +132,7 @@ func (*Mutex) Unlock(ctx context.Context, allocationID string, connectionID stri
 
 	db := datastore.GetStore().GetDB()
 
-	err := db.Where("allocation_id = ? and connection_id = ? ", allocationID, connectionID).Delete(&datastore.WriteLock{}).Error
+	err := db.Exec("DELETE FROM write_locks WHERE allocation_id = ? and connection_id = ? ", allocationID, connectionID).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil
