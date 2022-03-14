@@ -44,9 +44,6 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 		if fileRef != nil {
 			stats.NewFileCreated(ctx, fileRef.ID)
 		}
-		if fileRef != nil {
-			stats.NewFileCreated(ctx, fileRef.ID)
-		}
 
 		return destRef, err
 	}
