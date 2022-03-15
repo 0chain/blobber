@@ -20,7 +20,7 @@ type CopyFileChange struct {
 }
 
 func (rf *CopyFileChange) DeleteTempFile() error {
-	return OperationNotApplicable
+	return nil
 }
 
 func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
