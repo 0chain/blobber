@@ -33,9 +33,6 @@ type Context struct {
 	// Vars route variables
 	Vars map[string]string
 
-	// IsCollaborator current visitor is a collaborator
-	IsCollaborator bool
-
 	Store   datastore.Store
 	Request *http.Request
 
@@ -96,7 +93,7 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 		w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
 		w.Header().Set("Content-Type", "application/json")
 
-		ctx, err := WithAuth(context.TODO(), r)
+		ctx, err := WithAuth(r)
 		statusCode := ctx.StatusCode
 
 		if err != nil {
@@ -133,63 +130,58 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 }
 
 // WithAuth verify alloation and signature
-func WithAuth(ctx context.Context, r *http.Request) (*Context, error) {
+func WithAuth(r *http.Request) (*Context, error) {
 
-	if ctx == nil {
-		ctx = context.TODO()
-	}
-
-	zctx := &Context{
-		Context: ctx,
+	ctx := &Context{
+		Context: context.TODO(),
 		Request: r,
 		Store:   datastore.GetStore(),
 	}
 
-	zctx.Vars = mux.Vars(r)
-	if zctx.Vars == nil {
-		zctx.Vars = make(map[string]string)
+	ctx.Vars = mux.Vars(r)
+	if ctx.Vars == nil {
+		ctx.Vars = make(map[string]string)
 	}
 
-	zctx.ClientID = r.Header.Get(common.ClientHeader)
-	zctx.ClientKey = r.Header.Get(common.ClientKeyHeader)
-	zctx.AllocationTx = zctx.Vars["allocation"]
-	zctx.Signature = r.Header.Get(common.ClientSignatureHeader)
+	ctx.ClientID = r.Header.Get(common.ClientHeader)
+	ctx.ClientKey = r.Header.Get(common.ClientKeyHeader)
+	ctx.AllocationTx = ctx.Vars["allocation"]
+	ctx.Signature = r.Header.Get(common.ClientSignatureHeader)
 
-	if len(zctx.AllocationTx) > 0 {
-		alloc, err := allocation.GetOrCreate(zctx, zctx.Store, zctx.AllocationTx)
+	if len(ctx.AllocationTx) > 0 {
+		alloc, err := allocation.GetOrCreate(ctx, ctx.Store, ctx.AllocationTx)
 
 		if err != nil {
 			if errors.Is(common.ErrBadRequest, err) {
-				zctx.StatusCode = http.StatusBadRequest
+				ctx.StatusCode = http.StatusBadRequest
 
 			} else {
-				zctx.StatusCode = http.StatusInternalServerError
+				ctx.StatusCode = http.StatusInternalServerError
 			}
 
-			return zctx, err
+			return ctx, err
 		}
 
-		zctx.Allocation = alloc
+		ctx.Allocation = alloc
 
 		publicKey := alloc.OwnerPublicKey
 
 		// request by collaborator
-		if alloc.OwnerID != zctx.ClientID {
-			publicKey = zctx.ClientKey
-			zctx.IsCollaborator = true
+		if alloc.OwnerID != ctx.ClientID {
+			publicKey = ctx.ClientKey
 		}
-		valid, err := verifySignatureFromRequest(zctx.AllocationTx, zctx.Signature, publicKey)
+		valid, err := verifySignatureFromRequest(ctx.AllocationTx, ctx.Signature, publicKey)
 
 		if !valid {
-			zctx.StatusCode = http.StatusBadRequest
-			return zctx, errors.Throw(common.ErrBadRequest, "invalid signature "+zctx.Signature)
+			ctx.StatusCode = http.StatusBadRequest
+			return ctx, errors.Throw(common.ErrBadRequest, "invalid signature "+ctx.Signature)
 		}
 
 		if err != nil {
-			zctx.StatusCode = http.StatusInternalServerError
-			return zctx, errors.ThrowLog(err.Error(), common.ErrInternal, "invalid signature "+zctx.Signature)
+			ctx.StatusCode = http.StatusInternalServerError
+			return ctx, errors.ThrowLog(err.Error(), common.ErrInternal, "invalid signature "+ctx.Signature)
 		}
 	}
 
-	return zctx, nil
+	return ctx, nil
 }
