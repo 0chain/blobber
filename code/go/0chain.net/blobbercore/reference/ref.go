@@ -7,6 +7,7 @@ import (
 	"math"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -435,9 +436,9 @@ func (r *Ref) AddChild(child *Ref) {
 		r.Children = make([]*Ref, 0)
 	}
 	r.Children = append(r.Children, child)
-	//sort.SliceStable(r.Children, func(i, j int) bool {
-	//	return strings.Compare(r.Children[i].LookupHash, r.Children[j].LookupHash) == -1
-	//})
+	sort.SliceStable(r.Children, func(i, j int) bool {
+		return strings.Compare(r.Children[i].Path, r.Children[j].Path) == -1
+	})
 	r.childrenLoaded = true
 }
 
