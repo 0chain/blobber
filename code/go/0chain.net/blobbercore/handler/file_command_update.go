@@ -100,10 +100,6 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
 	}
 
-	// if len(cmd.fileChanger.MerkleRoot) > 0 && cmd.fileChanger.MerkleRoot != fileOutputData.MerkleRoot {
-	// 	return result, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
-	// }
-
 	if allocationObj.BlobberSizeUsed+(allocationSize-cmd.existingFileRef.Size) > allocationObj.BlobberSize {
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}

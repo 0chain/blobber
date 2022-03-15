@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math"
 	"path/filepath"
 	"reflect"
@@ -225,54 +224,17 @@ func GetReference(ctx context.Context, allocationID, path string) (*Ref, error) 
 	return nil, err
 }
 
-//// GetReferenceID get FileRef ID with allcationID and path from postgres
-//func GetReferenceID(ctx context.Context, allocationID, path string) (*Ref, error) {
-//	ref := &Ref{}
-//	db := datastore.GetStore().GetTransaction(ctx)
-//	db = db.Select("id")
-//	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
-//	if err == nil {
-//		return ref, nil
-//	}
-//	return nil, err
-//}
-//
-//// GetReferenceHash get FileRef Hash with allcationID and path from postgres
-//func GetReferenceHash(ctx context.Context, allocationID, path string) (*Ref, error) {
-//	ref := &Ref{}
-//	db := datastore.GetStore().GetTransaction(ctx)
-//	db = db.Select("hash")
-//	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
-//	if err == nil {
-//		return ref, nil
-//	}
-//	return nil, err
-//}
-
 // GetLimitedRefFieldsByPath get FileRef selected fields with allocationID and path from postgres
 func GetLimitedRefFieldsByPath(ctx context.Context, allocationID, path string, selectedFields []string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Select(selectedFields)
-	fmt.Println(selectedFields)
 	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
 	if err == nil {
 		return ref, nil
 	}
 	return nil, err
 }
-
-//// GetReferenceForDelete get some FileRef attributes for Reference Deletion with allcationID and path from postgres
-//func GetReferenceForDelete(ctx context.Context, allocationID, path string) (*Ref, error) {
-//	ref := &Ref{}
-//	db := datastore.GetStore().GetTransaction(ctx)
-//	db = db.Select("path", "name", "size", "hash", "merkle_root")
-//	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
-//	if err == nil {
-//		return ref, nil
-//	}
-//	return nil, err
-//}
 
 // GetLimitedRefFieldsByLookupHash get FileRef selected fields with allocationID and lookupHash from postgres
 func GetLimitedRefFieldsByLookupHash(ctx context.Context, allocationID, lookupHash string, selectedFields []string) (*Ref, error) {
@@ -285,50 +247,6 @@ func GetLimitedRefFieldsByLookupHash(ctx context.Context, allocationID, lookupHa
 	}
 	return nil, err
 }
-
-//func GetReferencePathByLookupHash(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
-//	ref := &Ref{}
-//	db := datastore.GetStore().GetTransaction(ctx)
-//	db = db.Select("id", "path")
-//	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
-//	if err == nil {
-//		return ref, nil
-//	}
-//	return nil, err
-//}
-//
-//func GetReferencePathFromLookupHash(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
-//	ref := &Ref{}
-//	db := datastore.GetStore().GetTransaction(ctx)
-//	db = db.Select("id", "name", "path", "hash", "size", "merkle_root")
-//	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
-//	if err == nil {
-//		return ref, nil
-//	}
-//	return nil, err
-//}
-//
-//func GetReferenceForVerifyAuthTicketByLookupHash(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
-//	ref := &Ref{}
-//	db := datastore.GetStore().GetTransaction(ctx)
-//	db = db.Select("id", "path", "lookup_hash", "type", "name")
-//	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
-//	if err == nil {
-//		return ref, nil
-//	}
-//	return nil, err
-//}
-//
-//func GetReferenceByLookupHashForAddCollaborator(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
-//	ref := &Ref{}
-//	db := datastore.GetStore().GetTransaction(ctx)
-//	db = db.Select("id", "type")
-//	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
-//	if err == nil {
-//		return ref, nil
-//	}
-//	return nil, err
-//}
 
 func GetReferenceByLookupHash(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
 	ref := &Ref{}
@@ -412,7 +330,6 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*
 	var refs []*Ref
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
-	//err := db.Order("path, level").Find(&refs).Error
 	err := db.Order("path").Find(&refs).Error
 	if err != nil {
 		return nil, err
@@ -530,9 +447,6 @@ func (r *Ref) RemoveChild(idx int) {
 		return
 	}
 	r.Children = append(r.Children[:idx], r.Children[idx+1:]...)
-	//sort.SliceStable(r.Children, func(i, j int) bool {
-	//	return strings.Compare(r.Children[i].LookupHash, r.Children[j].LookupHash) == -1
-	//})
 	r.childrenLoaded = true
 }
 

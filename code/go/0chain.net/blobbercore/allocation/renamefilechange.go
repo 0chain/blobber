@@ -95,7 +95,6 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 		Logger.Error("error in file rename", zap.Any("change", rf))
 		return nil, common.NewError("file_not_found", "File to rename not found in blobber")
 	}
-	//dirRef.Children[idx] = affectedRef
 	dirRef.RemoveChild(idx)
 	dirRef.AddChild(affectedRef)
 	_, err = rootRef.CalculateHash(ctx, true)

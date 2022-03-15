@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -193,7 +192,6 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 				)
 				mocket.Catcher.NewMock().WithQuery(`INSERT INTO "reference_objects"`).
 					WithID(1)
-				fmt.Println("Step 1")
 			},
 		},
 		{
@@ -205,7 +203,6 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 			expectedMessage: "",
 			expectingError:  false,
 			setupDbMock: func() {
-				fmt.Println("Step 2")
 				mocket.Catcher.Reset()
 				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%!!(string=allocation id)!(string=old_file.pdf/%!)(MISSING)!(string=old_file.pdf)(EXTRA string=allocation id)`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).
@@ -268,7 +265,6 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 
 			if tc.expectingError && strings.Contains(tc.expectedMessage, err.Error()) {
 				t.Fatal("expected error " + tc.expectedMessage)
-				//break
 			}
 
 			continue

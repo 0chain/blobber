@@ -81,7 +81,6 @@ func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString
 	}
 
 	if refRequested.LookupHash != authToken.FilePathHash {
-		//authTokenRef, err := reference.GetReferencePathByLookupHash(ctx, authToken.AllocationID, authToken.FilePathHash)
 		authTokenRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, authToken.AllocationID, authToken.FilePathHash, []string{"id", "path"})
 		if err != nil {
 			return nil, err
@@ -126,7 +125,6 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 }
 
 func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID, path string) (*reference.Ref, error) {
-	//return reference.GetReferenceID(ctx, allocationID, path)
 	return reference.GetLimitedRefFieldsByPath(ctx, allocationID, path, []string{"id"})
 }
 
@@ -228,7 +226,6 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 		return nil, err
 	}
 
-	//fileref, err := reference.GetReferenceForVerifyAuthTicketByLookupHash(ctx, allocationID, pathHash)
 	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "path", "lookup_hash", "type", "name"})
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -291,7 +288,6 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 		return nil, err
 	}
 
-	//fileref, err := reference.GetReferenceByLookupHashForAddCollaborator(ctx, allocationID, pathHash)
 	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "type"})
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -426,7 +422,6 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	}
 
 	Logger.Info("Path Hash for list dir :" + pathHash)
-	//fileref, err := reference.GetReferenceForVerifyAuthTicketByLookupHash(ctx, allocationID, pathHash)
 	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "path", "lookup_hash", "type", "name"})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -926,7 +921,6 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 	if err != nil {
 		return nil, err
 	}
-	//rootRef.HashToBeComputed = true
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}

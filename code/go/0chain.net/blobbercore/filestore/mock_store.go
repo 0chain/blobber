@@ -22,6 +22,7 @@ func UseMock(initData map[string]map[string]bool) {
 	if mockStore == nil {
 		mockStore = &MockStore{d: initData}
 	}
+
 	mockStore.d = initData
 	fileStore = mockStore
 }

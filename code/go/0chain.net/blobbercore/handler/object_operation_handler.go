@@ -404,7 +404,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		if err := updateFileChange.Unmarshal(change.Input); err != nil {
 			return nil, err
 		}
-		//fileRef, err := reference.GetReferenceID(ctx, allocationID, updateFileChange.Path)
 		fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, updateFileChange.Path, []string{"id"})
 		if err != nil {
 			return nil, err
@@ -476,19 +475,14 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, err
 	}
 	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot)
-	fmt.Println("Error of ApplyChanges is: ", err)
 	if err != nil {
 		return nil, err
 	}
-	//rootRefHash, err := reference.GetReferenceHash(ctx, allocationID, "/")
 	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash"})
-	fmt.Println("Error of GetLimitedRefFieldsByPath is: ", err)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("The RootRef Hash is: ", rootRef.Hash)
 	allocationRoot := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
-	fmt.Println("AllocationRoot is: ", allocationRoot, " || WriteMarker Allocation Root is: ", writeMarker.AllocationRoot)
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		if latestWM != nil {
@@ -593,7 +587,6 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	//objectRef, err := reference.GetReferencePathFromLookupHash(ctx, allocationID, pathHash)
 	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "merkle_root"})
 
 	if err != nil {
@@ -702,7 +695,6 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.R
 	defer mutex.Unlock()
 
 	var ref *reference.Ref
-	//ref, err = reference.GetReferencePathByLookupHash(ctx, alloc.ID, pathHash)
 	ref, err = reference.GetLimitedRefFieldsByLookupHash(ctx, alloc.ID, pathHash, []string{"id", "path"})
 	if err != nil {
 		return nil, common.NewErrorf("update_object_attributes",
@@ -790,7 +782,6 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	//objectRef, err := reference.GetReferencePathFromLookupHash(ctx, allocationID, pathHash)
 	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "merkle_root"})
 
 	if err != nil {
@@ -798,7 +789,6 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	}
 
 	newPath := filepath.Join(destPath, objectRef.Name)
-	//destRef, _ := reference.GetReferenceID(ctx, allocationID, newPath)
 	destRef, _ := reference.GetLimitedRefFieldsByPath(ctx, allocationID, newPath, []string{"id"})
 	if destRef != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
@@ -857,8 +847,6 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
-	// "path", "name", "size", "hash", "merkle_root"
-	//fileRef, err := reference.GetReferenceForDelete(ctx, connectionObj.AllocationID, path)
 	fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, connectionObj.AllocationID, path, []string{"path", "name", "size", "hash", "merkle_root"})
 	if err != nil {
 		Logger.Info("invalid_file", zap.Any("error", err))
@@ -996,7 +984,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	var existingFileRef *reference.Ref
 	switch rCmd := cmd.(type) {
 	case *AddFileCommand:
-		existingFileRef = rCmd.existingFileRef
+		existingFileRef = nil
 	case *UpdateFileCommand:
 		existingFileRef = rCmd.existingFileRef
 	case *FileCommandDelete:

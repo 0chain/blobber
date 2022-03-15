@@ -20,7 +20,6 @@ import (
 
 // AddFileCommand command for resuming file
 type AddFileCommand struct {
-	existingFileRef  *reference.Ref
 	allocationChange *allocation.AllocationChange
 	fileChanger      *allocation.AddFileChanger
 }
@@ -40,11 +39,6 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 		return common.NewError("invalid_parameters",
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 	}
-	//cmd.existingFileRef, err = reference.GetReferenceID(ctx, allocationObj.ID, fileChanger.Path)
-	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByPath(ctx, allocationObj.ID, fileChanger.Path, []string{"id"})
-	if err != nil {
-		logging.Logger.Info("error_db", zap.Any("error", err))
-	}
 
 	if !filepath.IsAbs(fileChanger.Path) {
 		return common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", fileChanger.Path))
@@ -57,10 +51,6 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 		return common.NewError("database_error", "Got db error while getting ref")
 	}
 
-	if cmd.existingFileRef != nil {
-		return common.NewError("duplicate_file", "File at path already exists")
-	}
-
 	if isExist {
 		return common.NewError("duplicate_file", "File at path already exists")
 	}
@@ -68,9 +58,6 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 	if err := validateParentPathType(ctx, allocationObj.ID, fileChanger.Path); err != nil {
 		return err
 	}
-
-	//create a FixedMerkleTree instance first, it will be reloaded from db in cmd.reloadChange if it is not first chunk
-	//cmd.fileChanger.FixedMerkleTree = &util.FixedMerkleTree{}
 
 	if fileChanger.ChunkSize <= 0 {
 		fileChanger.ChunkSize = fileref.CHUNK_SIZE
