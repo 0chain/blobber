@@ -732,28 +732,28 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.R
 
 func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
 
-	zctx, err := WithAuth(ctx, r)
-
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
-		return nil, err
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if zctx.Allocation == nil {
-		return nil, common.NewError("invalid_operation", "Invalid allocation id passed")
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	if zctx.Allocation.IsImmutable {
+	if allocationObj.IsImmutable {
 		return nil, common.NewError("immutable_allocation", "Cannot copy data in an immutable allocation")
 	}
 
-	clientID := zctx.ClientID
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	_ = ctx.Value(constants.ContextKeyClientKey).(string)
+
+	allocationID := allocationObj.ID
 
 	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Invalid client")
-	}
-
-	if zctx.Allocation.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	destPath := r.FormValue("dest")
@@ -761,9 +761,13 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
 	}
 
-	pathHash, err := pathHashFromReq(r, zctx.AllocationTx)
+	pathHash, err := pathHashFromReq(r, allocationID)
 	if err != nil {
 		return nil, err
+	}
+
+	if clientID == "" || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	connectionID := r.FormValue("connection_id")
@@ -771,21 +775,19 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, zctx.AllocationTx, clientID)
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
-
 	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	objectRef, err := reference.GetReferenceFromLookupHash(ctx, zctx.AllocationTx, pathHash)
+	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
-
 	newPath := filepath.Join(destPath, objectRef.Name)
 	paths, err := common.GetParentPaths(newPath)
 	if err != nil {
@@ -794,7 +796,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 
 	paths = append(paths, newPath)
 
-	refs, err := reference.GetRefsTypeFromPaths(ctx, zctx.AllocationTx, paths)
+	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, paths)
 	if err != nil {
 		Logger.Error("Database error", zap.Error(err))
 		return nil, common.NewError("database_error", fmt.Sprintf("Got db error while getting refs for %v", paths))
