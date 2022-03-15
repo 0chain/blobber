@@ -2,6 +2,8 @@ package datastore
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -26,6 +28,7 @@ func (store *postgresStore) Open() error {
 		config.Configuration.DBPassword)), &gorm.Config{
 		SkipDefaultTransaction: true, // https://gorm.io/docs/performance.html#Disable-Default-Transaction
 		PrepareStmt:            true, //https://gorm.io/docs/performance.html#Caches-Prepared-Statement
+		DisableAutomaticPing:   false,
 	})
 	if err != nil {
 		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
@@ -33,6 +36,10 @@ func (store *postgresStore) Open() error {
 
 	sqldb, err := db.DB()
 	if err != nil {
+		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
+	}
+
+	if err := sqldb.Ping(); err != nil {
 		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
 	}
 
@@ -111,15 +118,15 @@ func (store *postgresStore) AutoMigrate() error {
 func (store *postgresStore) IsMigrated(m Migration) (bool, error) {
 	var version string
 	err := store.db.
-		Raw(`select version from "migrations" where version=?`, m.Version).
-		Pluck("version", &version).
-		Error
+		Raw(`SELECT version FROM "migrations" WHERE version=?`, m.Version).
+		Row().
+		Scan(&version)
 
 	if err == nil {
 		return false, nil
 	}
 
-	if err == gorm.ErrRecordNotFound {
+	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
 
