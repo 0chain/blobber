@@ -34,14 +34,14 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 		if err != nil || destRef.Type != reference.DIRECTORY {
 			return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 		}
-		fileRef := rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
+		fileRefs := rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 
 		_, err = destRef.CalculateHash(ctx, true)
 		if err != nil {
 			return nil, err
 		}
 
-		if fileRef != nil {
+		for _, fileRef := range fileRefs {
 			stats.NewFileCreated(ctx, fileRef.ID)
 		}
 
@@ -100,7 +100,7 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 	}
 
 	dirRef.RemoveChild(childIndex)
-	fileRef := rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
+	filerefs := rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 	dirRef.AddChild(destRef)
 
 	_, err = rootRef.CalculateHash(ctx, true)
@@ -108,14 +108,17 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 		return nil, err
 	}
 
-	if fileRef != nil {
+	for _, fileRef := range filerefs {
 		stats.NewFileCreated(ctx, fileRef.ID)
 	}
 
 	return rootRef, err
 }
 
-func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, destRef *reference.Ref, allocationRoot string) *reference.Ref {
+func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, destRef *reference.Ref, allocationRoot string) []*reference.Ref {
+
+	var files []*reference.Ref
+
 	if affectedRef.Type == reference.DIRECTORY {
 		newRef := reference.NewDirectoryRef()
 		newRef.AllocationID = rf.AllocationID
@@ -127,35 +130,37 @@ func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, dest
 		destRef.AddChild(newRef)
 
 		for _, childRef := range affectedRef.Children {
-			rf.processCopyRefs(ctx, childRef, newRef, allocationRoot)
+			files = append(files, rf.processCopyRefs(ctx, childRef, newRef, allocationRoot)...)
 		}
+	} else if affectedRef.Type == reference.FILE {
+		newFile := reference.NewFileRef()
+		newFile.ActualFileHash = affectedRef.ActualFileHash
+		newFile.ActualFileSize = affectedRef.ActualFileSize
+		newFile.AllocationID = affectedRef.AllocationID
+		newFile.ContentHash = affectedRef.ContentHash
+		newFile.CustomMeta = affectedRef.CustomMeta
+		newFile.MerkleRoot = affectedRef.MerkleRoot
+		newFile.Name = affectedRef.Name
+		newFile.ParentPath = destRef.Path
+		newFile.Path = filepath.Join(destRef.Path, affectedRef.Name)
+		newFile.LookupHash = reference.GetReferenceLookup(newFile.AllocationID, newFile.Path)
+		newFile.Size = affectedRef.Size
+		newFile.MimeType = affectedRef.MimeType
+		newFile.WriteMarker = allocationRoot
+		newFile.ThumbnailHash = affectedRef.ThumbnailHash
+		newFile.ThumbnailSize = affectedRef.ThumbnailSize
+		newFile.ActualThumbnailHash = affectedRef.ActualThumbnailHash
+		newFile.ActualThumbnailSize = affectedRef.ActualThumbnailSize
+		newFile.EncryptedKey = affectedRef.EncryptedKey
+		newFile.Attributes = datatypes.JSON(string(affectedRef.Attributes))
+		newFile.ChunkSize = affectedRef.ChunkSize
+
+		destRef.AddChild(newFile)
+
+		files = append(files, newFile)
 	}
 
-	newFile := reference.NewFileRef()
-	newFile.ActualFileHash = affectedRef.ActualFileHash
-	newFile.ActualFileSize = affectedRef.ActualFileSize
-	newFile.AllocationID = affectedRef.AllocationID
-	newFile.ContentHash = affectedRef.ContentHash
-	newFile.CustomMeta = affectedRef.CustomMeta
-	newFile.MerkleRoot = affectedRef.MerkleRoot
-	newFile.Name = affectedRef.Name
-	newFile.ParentPath = destRef.Path
-	newFile.Path = filepath.Join(destRef.Path, affectedRef.Name)
-	newFile.LookupHash = reference.GetReferenceLookup(newFile.AllocationID, newFile.Path)
-	newFile.Size = affectedRef.Size
-	newFile.MimeType = affectedRef.MimeType
-	newFile.WriteMarker = allocationRoot
-	newFile.ThumbnailHash = affectedRef.ThumbnailHash
-	newFile.ThumbnailSize = affectedRef.ThumbnailSize
-	newFile.ActualThumbnailHash = affectedRef.ActualThumbnailHash
-	newFile.ActualThumbnailSize = affectedRef.ActualThumbnailSize
-	newFile.EncryptedKey = affectedRef.EncryptedKey
-	newFile.Attributes = datatypes.JSON(string(affectedRef.Attributes))
-	newFile.ChunkSize = affectedRef.ChunkSize
-
-	destRef.AddChild(newFile)
-
-	return newFile
+	return files
 
 }
 
