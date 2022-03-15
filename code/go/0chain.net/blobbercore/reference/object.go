@@ -19,7 +19,8 @@ func LoadObjectTree(ctx context.Context, allocationID, path string) (*Ref, error
 	path = filepath.Join("/", path)
 	db = db.Where("allocation_id = ? and deleted_at IS NULL and path LIKE ? ", allocationID, path+"%")
 
-	db = db.Order("level desc, lookup_hash")
+	//db = db.Order("level desc, lookup_hash")
+	db = db.Order("path")
 
 	obejctTreeNodes := make(map[string][]*Ref)
 
