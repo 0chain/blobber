@@ -476,16 +476,19 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, err
 	}
 	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot)
+	fmt.Println("Error of ApplyChanges is: ", err)
 	if err != nil {
 		return nil, err
 	}
 	//rootRefHash, err := reference.GetReferenceHash(ctx, allocationID, "/")
 	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash"})
+	fmt.Println("Error of GetLimitedRefFieldsByPath is: ", err)
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Println("The RootRef Hash is: ", rootRef.Hash)
 	allocationRoot := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
+	fmt.Println("AllocationRoot is: ", allocationRoot, " || WriteMarker Allocation Root is: ", writeMarker.AllocationRoot)
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		if latestWM != nil {

@@ -30,7 +30,7 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 	db = db.Select("id", "allocation_id", "type", "name", "path",
 		"parent_path", "size", "hash", "path_hash", "content_hash", "merkle_root",
 		"actual_file_size", "actual_file_hash", "attributes", "chunk_size",
-		"lookup_hash", "thumbnail_hash")
+		"lookup_hash", "thumbnail_hash", "write_marker")
 	db = db.Model(&Ref{})
 	pathsAdded := make(map[string]bool)
 	for _, path := range paths {
@@ -79,7 +79,7 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 			refMap[refs[i].Path] = &refs[i]
 		}
 	}
-	//if _, err := r.CalculateHash(ctx, false); err != nil {
+	//if _, err := refs[0].CalculateHash(ctx, false); err != nil {
 	//	return nil, common.NewError("Ref_CalculateHash", err.Error())
 	//}
 

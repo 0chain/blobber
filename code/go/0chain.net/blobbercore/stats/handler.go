@@ -481,6 +481,10 @@ func setStatsRequestDataInContext(r *http.Request, ctx context.Context) context.
 }
 
 func StatsJSONHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("StatsJSONHandler Start !!!")
+	defer func() {
+		fmt.Println("StatsJSONHandler End !!!")
+	}()
 	ctx = datastore.GetStore().CreateTransaction(ctx)
 	db := datastore.GetStore().GetTransaction(ctx)
 	defer db.Rollback()
@@ -489,6 +493,10 @@ func StatsJSONHandler(ctx context.Context, r *http.Request) (interface{}, error)
 }
 
 func GetStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("GetStatsHandler Start !!!")
+	defer func() {
+		fmt.Println("GetStatsHandler End !!!")
+	}()
 	q := r.URL.Query()
 	ctx = context.WithValue(ctx, constants.ContextKeyAllocation, q.Get("allocation_id"))
 	ctx = datastore.GetStore().CreateTransaction(ctx)
