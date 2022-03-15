@@ -2,8 +2,6 @@ package datastore
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -92,10 +90,8 @@ func (store *postgresStore) AutoMigrate() error {
 	for i := 0; i < len(releases); i++ {
 		v := releases[i]
 		fmt.Print("\r	+ ", v.Version, "	")
-		isMigrated, err := store.IsMigrated(v)
-		if err != nil {
-			return err
-		}
+		isMigrated := store.IsMigrated(v)
+
 		if isMigrated {
 			fmt.Print("	[SKIP]\n")
 			continue
@@ -114,20 +110,11 @@ func (store *postgresStore) AutoMigrate() error {
 	return nil
 }
 
-func (store *postgresStore) IsMigrated(m Migration) (bool, error) {
-	var version string
-	err := store.db.
-		Raw(`SELECT version FROM "migrations" WHERE version=?`, m.Version).
-		Row().
-		Scan(&version)
+func (store *postgresStore) IsMigrated(m Migration) bool {
 
-	if err == nil {
-		return false, nil
-	}
+	var c int64
+	store.db.
+		Raw(`SELECT 1 FROM "migrations" WHERE version=?`, m.Version).Count(&c)
 
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, nil
-	}
-
-	return false, err
+	return c > 0
 }
