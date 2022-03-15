@@ -28,7 +28,6 @@ func (store *postgresStore) Open() error {
 		config.Configuration.DBPassword)), &gorm.Config{
 		SkipDefaultTransaction: true, // https://gorm.io/docs/performance.html#Disable-Default-Transaction
 		PrepareStmt:            true, //https://gorm.io/docs/performance.html#Caches-Prepared-Statement
-		DisableAutomaticPing:   false,
 	})
 	if err != nil {
 		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
