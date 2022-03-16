@@ -157,40 +157,47 @@ func commitProcessed(ctx context.Context) {
 		}
 	}()
 
-	rctx := datastore.GetStore().CreateTransaction(ctx)
-	db := datastore.GetStore().GetTransaction(rctx)
-	openchallenges := make([]*ChallengeEntity, 0)
+	db := datastore.GetStore().GetDB()
+	var challenges []*ChallengeEntity
 
 	db.Where(ChallengeEntity{Status: Processed}).
 		Order("sequence").
-		Find(&openchallenges)
+		Find(&challenges)
 
-	for _, openchallenge := range openchallenges {
-		logging.Logger.Info("Attempting to commit challenge", zap.Any("challenge_id", openchallenge.ChallengeID), zap.Any("openchallenge", openchallenge))
-		if err := openchallenge.UnmarshalFields(); err != nil {
-			logging.Logger.Error("ChallengeEntity_UnmarshalFields", zap.String("challenge_id", openchallenge.ChallengeID), zap.Error(err))
-		}
-
-		redeemCtx := datastore.GetStore().CreateTransaction(ctx)
-		err := openchallenge.CommitChallenge(redeemCtx, false)
-		if err != nil {
-			logging.Logger.Error("Error committing to blockchain",
-				zap.Error(err),
-				zap.String("challenge_id", openchallenge.ChallengeID))
-		}
-
-		db := datastore.GetStore().GetTransaction(redeemCtx)
-		db.Commit()
-		if err == nil && openchallenge.Status == Committed {
-			logging.Logger.Info("Challenge has been submitted to blockchain",
-				zap.Any("id", openchallenge.ChallengeID),
-				zap.String("txn", openchallenge.CommitTxnID))
-		} else {
-			logging.Logger.Info("Challenge was not committed", zap.Any("challenge_id", openchallenge.ChallengeID))
-			break
-		}
+	for _, challenge := range challenges {
+		commitChallenge(challenge)
 	}
 
-	db.Rollback()
-	rctx.Done()
+}
+
+func commitChallenge(openchallenge *ChallengeEntity) {
+	logging.Logger.Info("Attempting to commit challenge", zap.Any("challenge_id", openchallenge.ChallengeID), zap.Any("openchallenge", openchallenge))
+	if err := openchallenge.UnmarshalFields(); err != nil {
+		logging.Logger.Error("ChallengeEntity_UnmarshalFields", zap.String("challenge_id", openchallenge.ChallengeID), zap.Error(err))
+	}
+
+	ctx := datastore.GetStore().CreateTransaction(context.TODO())
+	defer ctx.Done()
+
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	if err := openchallenge.CommitChallenge(ctx, false); err != nil {
+		logging.Logger.Error("Error committing to blockchain",
+			zap.Error(err),
+			zap.String("challenge_id", openchallenge.ChallengeID))
+		db.Rollback()
+		return
+	}
+
+	if err := db.Commit(); err != nil {
+		logging.Logger.Info("Challenge was not committed", zap.Any("challenge_id", openchallenge.ChallengeID))
+		db.Rollback()
+		return
+	}
+
+	if openchallenge.Status == Committed {
+		logging.Logger.Info("Challenge has been submitted to blockchain",
+			zap.Any("id", openchallenge.ChallengeID),
+			zap.String("txn", openchallenge.CommitTxnID))
+	}
 }
