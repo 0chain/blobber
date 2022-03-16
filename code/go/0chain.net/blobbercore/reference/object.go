@@ -2,6 +2,7 @@ package reference
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -13,6 +14,10 @@ import (
 
 // LoadObjectTree
 func LoadObjectTree(ctx context.Context, allocationID, path string) (*Ref, error) {
+	fmt.Println("Inside LoadObjectTree !!!")
+	defer func() {
+		fmt.Println("Finished From LoadObjectTree !!!")
+	}()
 	db := datastore.GetStore().
 		GetTransaction(ctx)
 
@@ -20,7 +25,7 @@ func LoadObjectTree(ctx context.Context, allocationID, path string) (*Ref, error
 	db = db.Where("allocation_id = ? and deleted_at IS NULL and path LIKE ? ", allocationID, path+"%")
 
 	//db = db.Order("level desc, lookup_hash")
-	db = db.Order("path")
+	db = db.Order("path desc")
 
 	obejctTreeNodes := make(map[string][]*Ref)
 
