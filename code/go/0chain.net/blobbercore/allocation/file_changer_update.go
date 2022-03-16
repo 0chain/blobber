@@ -22,8 +22,7 @@ type UpdateFileChanger struct {
 	BaseFileChanger
 }
 
-func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
-
+func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 	path, _ := filepath.Split(nf.Path)
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)

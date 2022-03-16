@@ -24,12 +24,13 @@ func (rf *RenameFileChange) DeleteTempFile() error {
 	return OperationNotApplicable
 }
 
-func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 
 	isFilePresent, err := reference.IsRefExist(ctx, rf.AllocationID, rf.NewName)
 	if err != nil {
 		Logger.Info("invalid_reference_path", zap.Any("error", err))
 	}
+
 	if isFilePresent {
 		return nil, common.NewError("invalid_reference_path", "file already exists")
 	}

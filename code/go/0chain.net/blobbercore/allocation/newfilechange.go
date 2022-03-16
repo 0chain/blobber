@@ -120,8 +120,7 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 	return rootRef, nil
 }
 
-func (nf *NewFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
-
+func (nf *NewFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 	if change.Operation == constants.FileOperationCreateDir {
 		err := nf.Unmarshal(change.Input)
 		if err != nil {
