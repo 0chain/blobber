@@ -181,22 +181,6 @@ func GetChallengeEntity(ctx context.Context, challengeID string) (*ChallengeEnti
 	return cr, nil
 }
 
-func getLastChallengeEntity(db *gorm.DB) (*ChallengeEntity, error) {
-	if db == nil {
-		return nil, constants.ErrInvalidParameter
-	}
-	cr := &ChallengeEntity{}
-	err := db.Order("sequence desc").First(cr).Error
-	if err != nil {
-		return nil, err
-	}
-	err = cr.UnmarshalFields()
-	if err != nil {
-		return nil, err
-	}
-	return cr, nil
-}
-
 func getLastChallengeID(db *gorm.DB) (string, error) {
 	if db == nil {
 		return "", constants.ErrInvalidParameter

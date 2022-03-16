@@ -110,8 +110,8 @@ func processAccepted(ctx context.Context) {
 			logging.Logger.Error("[recover]challenge", zap.Any("err", r))
 		}
 	}()
-	rctx := datastore.GetStore().CreateTransaction(ctx)
-	db := datastore.GetStore().GetTransaction(rctx)
+
+	db := datastore.GetStore().GetDB()
 	openchallenges := make([]*ChallengeEntity, 0)
 	db.Where(ChallengeEntity{Status: Accepted}).Find(&openchallenges)
 	if len(openchallenges) > 0 {
@@ -124,47 +124,30 @@ func processAccepted(ctx context.Context) {
 				continue
 			}
 			swg.Add()
-			go func(redeemCtx context.Context, challengeEntity *ChallengeEntity) {
-				defer swg.Done()
-				redeemCtx = datastore.GetStore().CreateTransaction(redeemCtx)
-				defer func() {
-					redeemCtx.Done()
-					db.Rollback()
-				}()
-
-				err := loadValidationTickets(redeemCtx, challengeEntity)
-				if err != nil {
-					logging.Logger.Error("[challenge]validate: ", zap.Any("challenge_id", challengeEntity.ChallengeID), zap.Error(err))
-					return
-				}
-				db := datastore.GetStore().GetTransaction(redeemCtx)
-				err = db.Commit().Error
-				if err != nil {
-					logging.Logger.Error("[challenge]db: ", zap.Any("challenge_id", challengeEntity.ChallengeID), zap.Error(err))
-					return
-				}
-			}(ctx, openchallenge)
+			go validateChallenge(&swg, openchallenge)
 		}
 		swg.Wait()
 	}
-	db.Rollback()
-	rctx.Done()
 }
 
-// loadValidationTickets load validation tickets for challenge
-func loadValidationTickets(ctx context.Context, challengeObj *ChallengeEntity) error {
-	defer func() {
-		if r := recover(); r != nil {
-			logging.Logger.Error("[recover]LoadValidationTickets", zap.Any("err", r))
-		}
-	}()
+func validateChallenge(swg *sizedwaitgroup.SizedWaitGroup, challengeObj *ChallengeEntity) {
+	defer swg.Done()
 
-	err := challengeObj.LoadValidationTickets(ctx)
-	if err != nil {
-		logging.Logger.Error("[challenge]load: ", zap.String("challenge_id", challengeObj.ChallengeID), zap.Error(err))
+	ctx := datastore.GetStore().CreateTransaction(context.TODO())
+	defer ctx.Done()
+
+	db := datastore.GetStore().GetTransaction(ctx)
+	if err := challengeObj.LoadValidationTickets(ctx); err != nil {
+		logging.Logger.Error("[challenge]validate: ", zap.Any("challenge_id", challengeObj.ChallengeID), zap.Error(err))
+		db.Rollback()
+		return
 	}
 
-	return err
+	if err := db.Commit().Error; err != nil {
+		logging.Logger.Error("[challenge]db: ", zap.Any("challenge_id", challengeObj.ChallengeID), zap.Error(err))
+		db.Rollback()
+		return
+	}
 }
 
 func commitProcessed(ctx context.Context) {
