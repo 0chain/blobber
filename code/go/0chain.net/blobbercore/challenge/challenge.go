@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -41,58 +40,67 @@ func syncOpenChallenges(ctx context.Context) {
 
 	if err != nil {
 		logging.Logger.Error("[challenge]open: ", zap.Error(err))
-	} else {
-		bytesReader := bytes.NewBuffer(retBytes)
-
-		d := json.NewDecoder(bytesReader)
-		d.UseNumber()
-		errd := d.Decode(&blobberChallenges)
-
-		if errd != nil {
-			logging.Logger.Error("[challenge]json: ", zap.Error(errd))
-		} else {
-			for _, challengeObj := range blobberChallenges.Challenges {
-				if challengeObj == nil || challengeObj.ChallengeID == "" {
-					logging.Logger.Info("[challenge]open: No challenge entity from the challenge map")
-					continue
-				}
-
-				tx := datastore.GetStore().CreateTransaction(ctx)
-				db := datastore.GetStore().GetTransaction(tx)
-				_, err := GetChallengeEntity(tx, challengeObj.ChallengeID)
-
-				// challenge is not synced in db yet
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					latestChallenge, err := GetLastChallengeEntity(tx)
-
-					if err != nil {
-						if !errors.Is(err, gorm.ErrRecordNotFound) {
-							logging.Logger.Error("[challenge]db: ", zap.Error(err))
-							continue
-						}
-					}
-
-					isFirstChallengeInDatabase := challengeObj.PrevChallengeID == "" || latestChallenge == nil
-					isNextChallengeOnChain := latestChallenge == nil || latestChallenge.ChallengeID == challengeObj.PrevChallengeID
-
-					if isFirstChallengeInDatabase || isNextChallengeOnChain {
-						logging.Logger.Info("[challenge]add: ", zap.String("challenge_id", challengeObj.ChallengeID))
-						challengeObj.Status = Accepted
-						challengeObj.CreatedAt = common.ToTime(challengeObj.Created)
-						challengeObj.UpdatedAt = challengeObj.CreatedAt
-
-						if err := challengeObj.Save(tx); err != nil {
-							logging.Logger.Error("[challenge]db: ", zap.String("challenge_id", challengeObj.ChallengeID), zap.Error(err))
-						}
-					} else {
-						logging.Logger.Error("[challenge]Challenge chain is not valid")
-					}
-				}
-				db.Commit()
-				tx.Done()
-			}
-		}
+		return
 	}
+
+	bytesReader := bytes.NewBuffer(retBytes)
+	d := json.NewDecoder(bytesReader)
+	d.UseNumber()
+	if err := d.Decode(&blobberChallenges); err != nil {
+		logging.Logger.Error("[challenge]json: ", zap.Error(err))
+		return
+	}
+
+	for _, challengeObj := range blobberChallenges.Challenges {
+
+		if challengeObj == nil || challengeObj.ChallengeID == "" {
+			logging.Logger.Info("[challenge]open: No challenge entity from the challenge map")
+			continue
+		}
+
+		saveNewChallenge(challengeObj, ctx)
+	}
+
+}
+
+func saveNewChallenge(nextChallenge *ChallengeEntity, ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Logger.Error("[recover]challenge", zap.Any("err", r))
+		}
+	}()
+
+	db := datastore.GetStore().GetDB()
+	if Exists(db, nextChallenge.ChallengeID) {
+		return
+	}
+
+	lastChallengeID, err := getLastChallengeID(db)
+
+	if err != nil {
+		logging.Logger.Error("[challenge]db: ", zap.Error(err))
+		return
+	}
+
+	isValid := nextChallenge.PrevChallengeID == "" || lastChallengeID == nextChallenge.PrevChallengeID
+
+	// it is not First and Next challenge
+	if !isValid {
+		logging.Logger.Error("[challenge]Challenge chain is not valid")
+		return
+	}
+
+	logging.Logger.Info("[challenge]add: ", zap.String("challenge_id", nextChallenge.ChallengeID))
+	nextChallenge.Status = Accepted
+	nextChallenge.CreatedAt = common.ToTime(nextChallenge.Created)
+	nextChallenge.UpdatedAt = nextChallenge.CreatedAt
+
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		return nextChallenge.SaveWith(tx)
+	}); err != nil {
+		logging.Logger.Error("[challenge]db: ", zap.String("challenge_id", nextChallenge.ChallengeID), zap.Error(err))
+	}
+
 }
 
 // processAccepted read accepted challenge from db, and send them to validator to pass challenge
@@ -119,7 +127,11 @@ func processAccepted(ctx context.Context) {
 			go func(redeemCtx context.Context, challengeEntity *ChallengeEntity) {
 				defer swg.Done()
 				redeemCtx = datastore.GetStore().CreateTransaction(redeemCtx)
-				defer redeemCtx.Done()
+				defer func() {
+					redeemCtx.Done()
+					db.Rollback()
+				}()
+
 				err := loadValidationTickets(redeemCtx, challengeEntity)
 				if err != nil {
 					logging.Logger.Error("[challenge]validate: ", zap.Any("challenge_id", challengeEntity.ChallengeID), zap.Error(err))

@@ -2,7 +2,9 @@ package challenge
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,8 +12,10 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/gosdk/constants"
 
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 type (
@@ -107,6 +111,11 @@ func unMarshalField(stringObj datatypes.JSON, dest interface{}) error {
 }
 
 func (cr *ChallengeEntity) Save(ctx context.Context) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	return cr.SaveWith(db)
+}
+
+func (cr *ChallengeEntity) SaveWith(db *gorm.DB) error {
 	err := marshalField(cr.Validators, &cr.ValidatorsString)
 	if err != nil {
 		return err
@@ -124,7 +133,6 @@ func (cr *ChallengeEntity) Save(ctx context.Context) error {
 		return err
 	}
 
-	db := datastore.GetStore().GetTransaction(ctx)
 	err = db.Save(cr).Error
 	return err
 }
@@ -173,8 +181,10 @@ func GetChallengeEntity(ctx context.Context, challengeID string) (*ChallengeEnti
 	return cr, nil
 }
 
-func GetLastChallengeEntity(ctx context.Context) (*ChallengeEntity, error) {
-	db := datastore.GetStore().GetTransaction(ctx)
+func getLastChallengeEntity(db *gorm.DB) (*ChallengeEntity, error) {
+	if db == nil {
+		return nil, constants.ErrInvalidParameter
+	}
 	cr := &ChallengeEntity{}
 	err := db.Order("sequence desc").First(cr).Error
 	if err != nil {
@@ -185,4 +195,30 @@ func GetLastChallengeEntity(ctx context.Context) (*ChallengeEntity, error) {
 		return nil, err
 	}
 	return cr, nil
+}
+
+func getLastChallengeID(db *gorm.DB) (string, error) {
+	if db == nil {
+		return "", constants.ErrInvalidParameter
+	}
+
+	var challengeID string
+
+	err := db.Raw("SELECT challenge_id FROM challenges ORDER BY sequence DESC LIMIT 1").Row().Scan(&challengeID)
+
+	if err == nil || errors.Is(err, sql.ErrNoRows) {
+		return challengeID, nil
+	}
+
+	return "", err
+}
+
+// Exists check challenge if exists in db
+func Exists(db *gorm.DB, challengeID string) bool {
+
+	var count int64
+	db.Raw("SELECT 1 FROM challenges WHERE challenge_id=?", challengeID).Count(&count)
+
+	return count > 0
+
 }
