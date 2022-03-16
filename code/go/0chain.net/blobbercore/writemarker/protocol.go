@@ -24,29 +24,24 @@ type CommitConnection struct {
 	WriteMarker        *WriteMarker `json:"write_marker"`
 }
 
-func (wm *WriteMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.Allocation, co *allocation.AllocationChangeCollector) error {
-	if wm == nil {
+// VerifyMarker verify WriteMarker's hash and check allocation_root if it is unique
+func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *allocation.Allocation, co *allocation.AllocationChangeCollector) error {
+	if wme == nil {
 		return common.NewError("invalid_write_marker", "No Write Marker was found")
 	}
-	if wm.WM.PreviousAllocationRoot != sa.AllocationRoot {
+	if wme.WM.PreviousAllocationRoot != dbAllocation.AllocationRoot {
 		return common.NewError("invalid_write_marker", "Invalid write marker. Prev Allocation root does not match the allocation root on record")
 	}
-	if wm.WM.BlobberID != node.Self.ID {
+	if wme.WM.BlobberID != node.Self.ID {
 		return common.NewError("write_marker_validation_failed", "Write Marker is not for the blobber")
 	}
 
-	wmEntity, err := GetWriteMarkerEntity(ctx, wm.WM.AllocationRoot)
-
-	if err == nil && wmEntity.Status != Failed {
-		return common.NewError("write_marker_validation_failed", "Duplicate write marker. Validation failed")
-	}
-
-	if wm.WM.AllocationID != sa.ID {
+	if wme.WM.AllocationID != dbAllocation.ID {
 		return common.NewError("write_marker_validation_failed", "Write Marker is not for the same allocation transaction")
 	}
 
-	if wm.WM.Size != co.Size {
-		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker size %v does not match the connection size %v", wm.WM.Size, co.Size))
+	if wme.WM.Size != co.Size {
+		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker size %v does not match the connection size %v", wme.WM.Size, co.Size))
 	}
 
 	clientPublicKey := ctx.Value(constants.ContextKeyClientKey).(string)
@@ -55,13 +50,13 @@ func (wm *WriteMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.Al
 	}
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if clientID == "" || clientID != wm.WM.ClientID || clientID != co.ClientID || co.ClientID != wm.WM.ClientID {
+	if clientID == "" || clientID != wme.WM.ClientID || clientID != co.ClientID || co.ClientID != wme.WM.ClientID {
 		return common.NewError("write_marker_validation_failed", "Write Marker is not by the same client who uploaded")
 	}
 
-	hashData := wm.WM.GetHashData()
+	hashData := wme.WM.GetHashData()
 	signatureHash := encryption.Hash(hashData)
-	sigOK, err := encryption.Verify(clientPublicKey, wm.WM.Signature, signatureHash)
+	sigOK, err := encryption.Verify(clientPublicKey, wme.WM.Signature, signatureHash)
 	if err != nil {
 		return common.NewError("write_marker_validation_failed", "Error during verifying signature. "+err.Error())
 	}
@@ -69,43 +64,47 @@ func (wm *WriteMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.Al
 		return common.NewError("write_marker_validation_failed", "Write marker signature is not valid")
 	}
 
+	if err := AllocationRootMustUnique(ctx, wme.WM.AllocationRoot); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
-	if len(wm.CloseTxnID) > 0 {
-		t, err := transaction.VerifyTransaction(wm.CloseTxnID, chain.GetServerChain())
+func (wme *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
+	if len(wme.CloseTxnID) > 0 {
+		t, err := transaction.VerifyTransaction(wme.CloseTxnID, chain.GetServerChain())
 		if err == nil {
-			wm.Status = Committed
-			wm.StatusMessage = t.TransactionOutput
-			wm.CloseTxnID = t.Hash
-			err = wm.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
+			wme.Status = Committed
+			wme.StatusMessage = t.TransactionOutput
+			wme.CloseTxnID = t.Hash
+			err = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
 			return err
 		}
 	}
 
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
-		wm.StatusMessage = "Error creating transaction entity. " + err.Error()
-		wm.ReedeemRetries++
-		if err := wm.UpdateStatus(ctx, Failed, "Error creating transaction entity. "+err.Error(), ""); err != nil {
+		wme.StatusMessage = "Error creating transaction entity. " + err.Error()
+		wme.ReedeemRetries++
+		if err := wme.UpdateStatus(ctx, Failed, "Error creating transaction entity. "+err.Error(), ""); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
 		return err
 	}
 
 	sn := &CommitConnection{}
-	sn.AllocationRoot = wm.WM.AllocationRoot
-	sn.PrevAllocationRoot = wm.WM.PreviousAllocationRoot
-	sn.WriteMarker = &wm.WM
+	sn.AllocationRoot = wme.WM.AllocationRoot
+	sn.PrevAllocationRoot = wme.WM.PreviousAllocationRoot
+	sn.WriteMarker = &wme.WM
 
 	snBytes, err := json.Marshal(sn)
 	if err != nil {
 		Logger.Error("Error encoding sc input", zap.String("err:", err.Error()), zap.Any("scdata", sn))
-		wm.Status = Failed
-		wm.StatusMessage = "Error encoding sc input. " + err.Error()
-		wm.ReedeemRetries++
-		if err := wm.UpdateStatus(ctx, Failed, "Error encoding sc input. "+err.Error(), ""); err != nil {
+		wme.Status = Failed
+		wme.StatusMessage = "Error encoding sc input. " + err.Error()
+		wme.ReedeemRetries++
+		if err := wme.UpdateStatus(ctx, Failed, "Error encoding sc input. "+err.Error(), ""); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
 		return err
@@ -114,10 +113,10 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CLOSE_CONNECTION_SC_NAME, string(snBytes), 0)
 	if err != nil {
 		Logger.Error("Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))
-		wm.Status = Failed
-		wm.StatusMessage = "Failed during sending close connection to the miner. " + err.Error()
-		wm.ReedeemRetries++
-		if err := wm.UpdateStatus(ctx, Failed, "Failed during sending close connection to the miner. "+err.Error(), ""); err != nil {
+		wme.Status = Failed
+		wme.StatusMessage = "Failed during sending close connection to the miner. " + err.Error()
+		wme.ReedeemRetries++
+		if err := wme.UpdateStatus(ctx, Failed, "Failed during sending close connection to the miner. "+err.Error(), ""); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
 		return err
@@ -127,18 +126,18 @@ func (wm *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
 	if err != nil {
 		Logger.Error("Error verifying the close connection transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
-		wm.Status = Failed
-		wm.StatusMessage = "Error verifying the close connection transaction." + err.Error()
-		wm.ReedeemRetries++
-		wm.CloseTxnID = txn.Hash
-		if err := wm.UpdateStatus(ctx, Failed, "Error verifying the close connection transaction."+err.Error(), txn.Hash); err != nil {
+		wme.Status = Failed
+		wme.StatusMessage = "Error verifying the close connection transaction." + err.Error()
+		wme.ReedeemRetries++
+		wme.CloseTxnID = txn.Hash
+		if err := wme.UpdateStatus(ctx, Failed, "Error verifying the close connection transaction."+err.Error(), txn.Hash); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
 		return err
 	}
-	wm.Status = Committed
-	wm.StatusMessage = t.TransactionOutput
-	wm.CloseTxnID = t.Hash
-	err = wm.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
+	wme.Status = Committed
+	wme.StatusMessage = t.TransactionOutput
+	wme.CloseTxnID = t.Hash
+	err = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
 	return err
 }

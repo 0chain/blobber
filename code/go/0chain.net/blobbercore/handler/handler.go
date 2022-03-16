@@ -46,7 +46,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONResponse(WithConnection(UploadHandler)))
 	r.HandleFunc("/v1/file/download/{allocation}", common.ToByteStream(WithConnection(DownloadHandler))).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/v1/file/rename/{allocation}", common.ToJSONResponse(WithConnection(RenameHandler))).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/v1/file/copy/{allocation}", common.ToJSONResponse(WithConnection(CopyHandler)))
+	r.HandleFunc("/v1/file/copy/{allocation}", common.ToJSONResponse(WithConnection(CopyHandler))).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/v1/file/attributes/{allocation}", common.ToJSONResponse(WithConnection(UpdateAttributesHandler)))
 	r.HandleFunc("/v1/dir/{allocation}", common.ToJSONResponse(WithConnection(CreateDirHandler))).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/v1/dir/{allocation}", common.ToJSONResponse(WithConnection(CreateDirHandler))).Methods(http.MethodDelete, http.MethodOptions)
