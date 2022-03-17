@@ -916,11 +916,11 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 	if err != nil {
 		return nil, err
 	}
-
 	rootRef, err := reference.GetReferenceForHashCalculationFromPaths(ctx, allocationID, paths)
 	if err != nil {
 		return nil, err
 	}
+	rootRef.HashToBeComputed = true
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}

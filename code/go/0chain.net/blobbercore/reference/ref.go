@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -394,7 +392,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, erro
 	if len(r.Children) == 0 && !r.childrenLoaded {
 		return r.Hash, nil
 	}
-
 	childHashes := make([]string, len(r.Children))
 	childPathHashes := make([]string, len(r.Children))
 	var refNumBlocks int64
@@ -436,26 +433,7 @@ func (r *Ref) AddChild(child *Ref) {
 	if r.Children == nil {
 		r.Children = make([]*Ref, 0)
 	}
-	fmt.Println("Starting...\nBefore Adding Child !!!")
-	fmt.Println("Parent level is: ", r.PathLevel, " || Parent Path is: ", r.Path)
-	for _, v := range r.Children {
-		fmt.Println("Child level is: ", v.PathLevel, " || Child Path is: ", v.Path)
-	}
 	r.Children = append(r.Children, child)
-	fmt.Println("After Adding Child !!!")
-	fmt.Println("Parent level is: ", r.PathLevel, " || Parent Path is: ", r.Path)
-	for _, v := range r.Children {
-		fmt.Println("Child level is: ", v.PathLevel, " || Child Path is: ", v.Path)
-	}
-	fmt.Println("Sorting !!!")
-	sort.SliceStable(r.Children, func(i, j int) bool {
-		return strings.Compare(r.Children[i].Path, r.Children[j].Path) == -1
-	})
-	fmt.Println("Parent level is: ", r.PathLevel, " || Parent Path is: ", r.Path)
-	for _, v := range r.Children {
-		fmt.Println("Child level is: ", v.PathLevel, " || Child Path is: ", v.Path)
-	}
-	fmt.Println("Finished Sorting!!!\nEnding...")
 	r.childrenLoaded = true
 }
 
