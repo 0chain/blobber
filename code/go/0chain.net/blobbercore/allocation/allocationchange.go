@@ -32,12 +32,26 @@ type AllocationChangeProcessor interface {
 	Unmarshal(string) error
 }
 
+type AllocationChange struct {
+	ChangeID   int64                     `gorm:"column:id;primaryKey"`
+	Size       int64                     `gorm:"column:size"`
+	Operation  string                    `gorm:"column:operation"`
+	CnxnID     string                    `gorm:"column:connection_id"`
+	Connection AllocationChangeCollector `gorm:"foreignKey:CnxnID"`
+	Input      string                    `gorm:"column:input"`
+	datastore.ModelWithTS
+}
+
+func (AllocationChange) TableName() string {
+	return "allocation_changes"
+}
+
 type AllocationChangeCollector struct {
 	ConnectionID      string                      `gorm:"column:connection_id;primary_key"`
 	AllocationID      string                      `gorm:"column:allocation_id"`
 	ClientID          string                      `gorm:"column:client_id"`
 	Size              int64                       `gorm:"column:size"`
-	Changes           []*AllocationChange         `gorm:"ForeignKey:connection_id;AssociationForeignKey:connection_id"`
+	Changes           []*AllocationChange         `gorm:"-"`
 	AllocationChanges []AllocationChangeProcessor `gorm:"-"`
 	Status            int                         `gorm:"column:status"`
 	datastore.ModelWithTS
@@ -45,19 +59,6 @@ type AllocationChangeCollector struct {
 
 func (AllocationChangeCollector) TableName() string {
 	return "allocation_connections"
-}
-
-type AllocationChange struct {
-	ChangeID     int64  `gorm:"column:id;primary_key"`
-	Size         int64  `gorm:"column:size"`
-	Operation    string `gorm:"column:operation"`
-	ConnectionID string `gorm:"column:connection_id"`
-	Input        string `gorm:"column:input"`
-	datastore.ModelWithTS
-}
-
-func (AllocationChange) TableName() string {
-	return "allocation_changes"
 }
 
 func (change *AllocationChange) Save(ctx context.Context) error {
