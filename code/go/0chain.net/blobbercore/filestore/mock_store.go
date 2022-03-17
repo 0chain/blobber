@@ -112,7 +112,7 @@ func (ms *MockStore) addFileInDataObj(allocationID, contentHash string) {
 		return
 	}
 	if ms.d == nil {
-		ms.d = make(map[string]map[string]bool, 0)
+		ms.d = make(map[string]map[string]bool)
 	}
 	dataObj := ms.d[allocationID]
 	dataObj[contentHash] = true
