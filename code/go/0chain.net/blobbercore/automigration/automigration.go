@@ -12,6 +12,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -67,11 +68,11 @@ type ShareInfoWithIndexes struct {
 }
 
 var tables = []interface{}{
-	new(ReferenceObjectsWithIndexes),
+	getReferenceObjectModel(),
 	new(reference.CommitMetaTxn),
 	new(reference.ShareInfo),
 	new(challenge.ChallengeEntity),
-	new(AllocationsWithIndexes),
+	new(allocation.Allocation),
 	new(allocation.AllocationChange),
 	new(allocation.AllocationChangeCollector),
 	new(allocation.Pending),
@@ -90,4 +91,44 @@ func AutomigrateSchema(db *gorm.DB) error {
 	}
 
 	return nil
+}
+
+func getReferenceObjectModel() interface{} {
+	type Ref struct {
+		reference.Ref
+		ID                  int64          `gorm:"column:id;primary_key"`
+		Type                string         `gorm:"column;size:1"`
+		AllocationID        string         `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_lookup_hash_alloc,priority:1"`
+		LookupHash          string         `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash_alloc,priority:2"`
+		Name                string         `gorm:"column:name;size:255;not null"`
+		Path                string         `gorm:"column:path;size:255;not null;index:idx_path_alloc,priority:2;index:path_idx"`
+		Hash                string         `gorm:"column:hash;size:64;not null"`
+		NumBlocks           int64          `gorm:"column:num_of_blocks;not null;default:0"`
+		PathHash            string         `gorm:"column:path_hash;size:64;not null"`
+		ParentPath          string         `gorm:"column:parent_path;size:255"`
+		PathLevel           int8           `gorm:"column:level;not null;default:0"`
+		CustomMeta          string         `gorm:"column:custom_meta;not null"`
+		ContentHash         string         `gorm:"column:content_hash;size:64;not null"`
+		Size                int64          `gorm:"column:size;not null;default:0"`
+		MerkleRoot          string         `gorm:"column:merkle_root;size:64;not null"`
+		ActualFileSize      int64          `gorm:"column:actual_file_size;not null;default:0"`
+		ActualFileHash      string         `gorm:"column:actual_file_hash;size:64;not null"`
+		MimeType            string         `gorm:"column:mimetype;size:64;not null"`
+		WriteMarker         string         `gorm:"column:write_marker;size:64;not null"`
+		ThumbnailSize       int64          `gorm:"column:thumbnail_size;not null;default:0"`
+		ThumbnailHash       string         `gorm:"column:thumbnail_hash;size:64;not null"`
+		ActualThumbnailSize int64          `gorm:"column:actual_thumbnail_size;not null;default:0"`
+		ActualThumbnailHash string         `gorm:"column:actual_thumbnail_hash;size:64;not null"`
+		EncryptedKey        string         `gorm:"column:encrypted_key;size:64"`
+		Attributes          datatypes.JSON `gorm:"column:attributes"`
+
+		OnCloud        bool                      `gorm:"column:on_cloud"`
+		CommitMetaTxns []reference.CommitMetaTxn `gorm:"foreignkey:ref_id"`
+		CreatedAt      time.Time                 `gorm:"column:created_at;not null;default:now()"`
+		UpdatedAt      time.Time                 `gorm:"column:updated_at;not null;default:now();index:idx_updated_at;"`
+
+		ChunkSize int64 `gorm:"column:chunk_size;not null;default:65536"`
+	}
+
+	return new(Ref)
 }

@@ -59,41 +59,53 @@ func (a *Attributes) Validate() (err error) {
 
 type Ref struct {
 	ID                  int64          `gorm:"column:id;primary_key"`
-	Type                string         `gorm:"column:type" dirlist:"type" filelist:"type"`
-	AllocationID        string         `gorm:"column:allocation_id"`
-	LookupHash          string         `gorm:"column:lookup_hash" dirlist:"lookup_hash" filelist:"lookup_hash"`
-	Name                string         `gorm:"column:name" dirlist:"name" filelist:"name"`
-	Path                string         `gorm:"column:path" dirlist:"path" filelist:"path"`
-	Hash                string         `gorm:"column:hash" dirlist:"hash" filelist:"hash"`
-	NumBlocks           int64          `gorm:"column:num_of_blocks" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
-	PathHash            string         `gorm:"column:path_hash" dirlist:"path_hash" filelist:"path_hash"`
-	ParentPath          string         `gorm:"column:parent_path"`
-	PathLevel           int            `gorm:"column:level"`
-	CustomMeta          string         `gorm:"column:custom_meta" filelist:"custom_meta"`
-	ContentHash         string         `gorm:"column:content_hash" filelist:"content_hash"`
-	Size                int64          `gorm:"column:size" dirlist:"size" filelist:"size"`
-	MerkleRoot          string         `gorm:"column:merkle_root" filelist:"merkle_root"`
-	ActualFileSize      int64          `gorm:"column:actual_file_size" filelist:"actual_file_size"`
-	ActualFileHash      string         `gorm:"column:actual_file_hash" filelist:"actual_file_hash"`
-	MimeType            string         `gorm:"column:mimetype" filelist:"mimetype"`
-	WriteMarker         string         `gorm:"column:write_marker"`
-	ThumbnailSize       int64          `gorm:"column:thumbnail_size" filelist:"thumbnail_size"`
-	ThumbnailHash       string         `gorm:"column:thumbnail_hash" filelist:"thumbnail_hash"`
-	ActualThumbnailSize int64          `gorm:"column:actual_thumbnail_size" filelist:"actual_thumbnail_size"`
-	ActualThumbnailHash string         `gorm:"column:actual_thumbnail_hash" filelist:"actual_thumbnail_hash"`
-	EncryptedKey        string         `gorm:"column:encrypted_key" filelist:"encrypted_key"`
+	Type                string         `gorm:"column:type;size:1" dirlist:"type" filelist:"type"`
+	AllocationID        string         `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_lookup_hash_alloc,priority:1"`
+	LookupHash          string         `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash_alloc,priority:2" dirlist:"lookup_hash" filelist:"lookup_hash"`
+	Name                string         `gorm:"column:name;size:255;not null" dirlist:"name" filelist:"name"`
+	Path                string         `gorm:"column:path;size:255;not null;index:idx_path_alloc,priority:2;index:path_idx" dirlist:"path" filelist:"path"`
+	Hash                string         `gorm:"column:hash;size:64;not null" dirlist:"hash" filelist:"hash"`
+	NumBlocks           int64          `gorm:"column:num_of_blocks;not null;default:0" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
+	PathHash            string         `gorm:"column:path_hash;size:64;not null" dirlist:"path_hash" filelist:"path_hash"`
+	ParentPath          string         `gorm:"column:parent_path;size:255"`
+	PathLevel           int            `gorm:"column:level;not null;default:0"`
+	CustomMeta          string         `gorm:"column:custom_meta;not null" filelist:"custom_meta"`
+	ContentHash         string         `gorm:"column:content_hash;size:64;not null" filelist:"content_hash"`
+	Size                int64          `gorm:"column:size;not null;default:0" dirlist:"size" filelist:"size"`
+	MerkleRoot          string         `gorm:"column:merkle_root;size:64;not null" filelist:"merkle_root"`
+	ActualFileSize      int64          `gorm:"column:actual_file_size;not null;default:0" filelist:"actual_file_size"`
+	ActualFileHash      string         `gorm:"column:actual_file_hash;size:64;not null" filelist:"actual_file_hash"`
+	MimeType            string         `gorm:"column:mimetype;size:64;not null" filelist:"mimetype"`
+	WriteMarker         string         `gorm:"column:write_marker;size:64;not null"`
+	ThumbnailSize       int64          `gorm:"column:thumbnail_size;not null;default:0" filelist:"thumbnail_size"`
+	ThumbnailHash       string         `gorm:"column:thumbnail_hash;size:64;not null" filelist:"thumbnail_hash"`
+	ActualThumbnailSize int64          `gorm:"column:actual_thumbnail_size;not null;default:0" filelist:"actual_thumbnail_size"`
+	ActualThumbnailHash string         `gorm:"column:actual_thumbnail_hash;size:64;not null" filelist:"actual_thumbnail_hash"`
+	EncryptedKey        string         `gorm:"column:encrypted_key;size:64" filelist:"encrypted_key"`
 	Attributes          datatypes.JSON `gorm:"column:attributes" filelist:"attributes"`
 	Children            []*Ref         `gorm:"-"`
 	childrenLoaded      bool
+	OnCloud             bool `gorm:"column:on_cloud;default:false" filelist:"on_cloud"`
 
-	OnCloud        bool            `gorm:"column:on_cloud" filelist:"on_cloud"`
 	CommitMetaTxns []CommitMetaTxn `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
-	CreatedAt      time.Time       `gorm:"column:created_at" dirlist:"created_at" filelist:"created_at"`
-	UpdatedAt      time.Time       `gorm:"column:updated_at" dirlist:"updated_at" filelist:"updated_at"`
+	CreatedAt      time.Time       `gorm:"column:created_at;type:timestamp without time zone;not null;default:now()" dirlist:"created_at" filelist:"created_at"`
+	UpdatedAt      time.Time       `gorm:"column:updated_at;type:timestamp without time zone;not null;default:now();index:idx_updated_at;" dirlist:"updated_at" filelist:"updated_at"`
 
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
 
-	ChunkSize int64 `gorm:"column:chunk_size" dirlist:"chunk_size" filelist:"chunk_size"`
+	ChunkSize int64 `gorm:"column:chunk_size;not null;default:65536" dirlist:"chunk_size" filelist:"chunk_size"`
+}
+
+// BeforeCreate Hook that gets executed to update create and update date
+func (ref *Ref) BeforeCreate(tx *gorm.DB) (err error) {
+	ref.CreatedAt = time.Now()
+	ref.UpdatedAt = time.Now()
+	return nil
+}
+
+func (ref *Ref) BeforeSave(tx *gorm.DB) (err error) {
+	ref.UpdatedAt = time.Now()
+	return nil
 }
 
 type PaginatedRef struct { //Gorm smart select fields.

@@ -8,7 +8,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -77,36 +76,38 @@ func (store *postgresStore) GetDB() *gorm.DB {
 
 func (store *postgresStore) AutoMigrate() error {
 
-	err := store.db.AutoMigrate(&Migration{}, &WriteLock{})
-	if err != nil {
-		logging.Logger.Error("[db]", zap.Error(err))
-	}
+	// err := store.db.AutoMigrate(&Migration{}, &WriteLock{})
+	// if err != nil {
+	// 	logging.Logger.Error("[db]", zap.Error(err))
+	// }
 
-	if len(releases) == 0 {
-		fmt.Print("	+ No releases 	[SKIP]\n")
-		return nil
-	}
+	// if len(releases) == 0 {
+	// 	fmt.Print("	+ No releases 	[SKIP]\n")
+	// 	return nil
+	// }
 
-	for i := 0; i < len(releases); i++ {
-		v := releases[i]
-		fmt.Print("\r	+ ", v.Version, "	")
-		isMigrated := store.IsMigrated(v)
+	// for i := 0; i < len(releases); i++ {
+	// 	v := releases[i]
+	// 	fmt.Print("\r	+ ", v.Version, "	")
+	// 	isMigrated, err := store.IsMigrated(v)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	if isMigrated {
+	// 		fmt.Print("	[SKIP]\n")
+	// 		continue
+	// 	}
 
-		if isMigrated {
-			fmt.Print("	[SKIP]\n")
-			continue
-		}
+	// 	err = v.Migrate(store.db)
+	// 	if err != nil {
+	// 		logging.Logger.Error("[db]"+v.Version, zap.Error(err))
+	// 		return err
+	// 	}
 
-		err = v.Migrate(store.db)
-		if err != nil {
-			logging.Logger.Error("[db]"+v.Version, zap.Error(err))
-			return err
-		}
+	// 	logging.Logger.Info("[db]" + v.Version + " migrated")
+	// 	fmt.Print("	[OK]\n")
 
-		logging.Logger.Info("[db]" + v.Version + " migrated")
-		fmt.Print("	[OK]\n")
-
-	}
+	// }
 	return nil
 }
 

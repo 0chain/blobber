@@ -60,16 +60,16 @@ type ValidationNode struct {
 }
 
 type ChallengeEntity struct {
-	ChallengeID             string                `gorm:"column:challenge_id;primary_key" json:"id"`
-	PrevChallengeID         string                `gorm:"column:prev_challenge_id" json:"prev_id"`
-	RandomNumber            int64                 `gorm:"column:seed" json:"seed"`
-	AllocationID            string                `gorm:"column:allocation_id" json:"allocation_id"`
-	AllocationRoot          string                `gorm:"column:allocation_root" json:"allocation_root"`
-	RespondedAllocationRoot string                `gorm:"column:responded_allocation_root" json:"responded_allocation_root"`
-	Status                  ChallengeStatus       `gorm:"column:status" json:"status"`
-	Result                  ChallengeResult       `gorm:"column:result" json:"result"`
+	ChallengeID             string                `gorm:"column:challenge_id;size:64;primary_key" json:"id"`
+	PrevChallengeID         string                `gorm:"column:prev_challenge_id;size:64" json:"prev_id"`
+	RandomNumber            int64                 `gorm:"column:seed;not null;default:0" json:"seed"`
+	AllocationID            string                `gorm:"column:allocation_id;size64;not null" json:"allocation_id"`
+	AllocationRoot          string                `gorm:"column:allocation_root;size:64" json:"allocation_root"`
+	RespondedAllocationRoot string                `gorm:"column:responded_allocation_root;size:64" json:"responded_allocation_root"`
+	Status                  ChallengeStatus       `gorm:"column:status;type:integer;not null;default:0" json:"status"`
+	Result                  ChallengeResult       `gorm:"column:result;type:integer;not null;default:0" json:"result"`
 	StatusMessage           string                `gorm:"column:status_message" json:"status_message"`
-	CommitTxnID             string                `gorm:"column:commit_txn_id" json:"commit_txn_id"`
+	CommitTxnID             string                `gorm:"column:commit_txn_id;size:64" json:"commit_txn_id"`
 	BlockNum                int64                 `gorm:"column:block_num" json:"block_num"`
 	ValidatorsString        datatypes.JSON        `gorm:"column:validators" json:"-"`
 	ValidationTicketsString datatypes.JSON        `gorm:"column:validation_tickets" json:"-"`
@@ -82,12 +82,23 @@ type ChallengeEntity struct {
 	ObjectPath              *reference.ObjectPath `gorm:"-" json:"object_path"`
 	Created                 common.Timestamp      `gorm:"-" json:"created"`
 
-	CreatedAt time.Time `gorm:"created_at"`
-	UpdatedAt time.Time `gorm:"updated_at"`
+	CreatedAt time.Time `gorm:"created_at;type:timestamp without time zone;not null;default:now()"`
+	UpdatedAt time.Time `gorm:"updated_at;type:timestamp without time zone;not null;default:now()"`
 }
 
 func (ChallengeEntity) TableName() string {
 	return "challenges"
+}
+
+func (c *ChallengeEntity) BeforeCreate(tx *gorm.DB) error {
+	c.CreatedAt = time.Now()
+	c.UpdatedAt = c.CreatedAt
+	return nil
+}
+
+func (c *ChallengeEntity) BeforeSave(tx *gorm.DB) error {
+	c.UpdatedAt = time.Now()
+	return nil
 }
 
 func marshalField(obj interface{}, dest *datatypes.JSON) error {
