@@ -96,24 +96,6 @@ func (a *Allocation) GetRequiredWriteBalance(blobberID string, writeSize int64, 
 	return
 }
 
-// WantWrite returns amount of tokens (by current terms of the allocations that
-// should be loaded) by given size for given blobber. E.g. want is tokens
-// wanted.
-func (a *Allocation) WantWrite(blobberID string, size int64, wmt common.Timestamp) (value int64) {
-	if size < 0 {
-		return // deleting, ignore
-	}
-
-	for _, d := range a.Terms {
-		if d.BlobberID == blobberID {
-			value = int64(sizeInGB(size) * float64(d.WritePrice) * a.RestDurationInTimeUnits(wmt))
-			break
-		}
-	}
-
-	return
-}
-
 type Pending struct {
 	// ID of format client_id:allocation_id
 	ID string `gorm:"column:id;primary_key"`
@@ -125,16 +107,6 @@ type Pending struct {
 
 func (*Pending) TableName() string {
 	return "pendings"
-}
-
-func GetPending(tx *gorm.DB, clientID, allocationID, blobberID string) (p *Pending, err error) {
-	p = new(Pending)
-	err = tx.Model(&Pending{}).Where("id=?", clientID+":"+allocationID).First(p).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = tx.Create(p).Error
-	}
-
-	return
 }
 
 // GetPendingWrite Get write size that is not yet redeemed
@@ -283,7 +255,7 @@ func GetReadPoolsBalance(db *gorm.DB, allocationID, clientID string, until commo
 	return *b, nil
 }
 
-func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string, rps []*ReadPool) (err error) {
+func SetReadPools(db *gorm.DB, clientID, allocationID string, rps []*ReadPool) (err error) {
 	// cleanup and batch insert (remove old pools, add / update new)
 	const query = `client_id = ? AND
 			allocation_id = ?`
@@ -307,14 +279,13 @@ func SetReadPools(db *gorm.DB, clientID, allocationID, blobberID string, rps []*
 	return
 }
 
-func SetWritePools(db *gorm.DB, clientID, allocationID, blobberID string, wps []*WritePool) (err error) {
+func SetWritePools(db *gorm.DB, clientID, allocationID string, wps []*WritePool) (err error) {
 	const query = `client_id = ? AND
-				allocation_id = ? AND
-				blobber_id = ?`
+				allocation_id = ?`
 
 	var stub []*WritePool
 	err = db.Model(&WritePool{}).
-		Where(query, clientID, allocationID, blobberID).
+		Where(query, clientID, allocationID).
 		Delete(&stub).Error
 	if err != nil {
 		return

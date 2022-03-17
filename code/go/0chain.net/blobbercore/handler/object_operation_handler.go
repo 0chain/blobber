@@ -82,7 +82,7 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks 
 			return common.NewErrorf("read_pre_redeem", "can't request read pools from sharders: %v", err)
 		}
 
-		if err := allocation.SetReadPools(db, payerID, alloc.ID, blobberID, rps); err != nil {
+		if err := allocation.SetReadPools(db, payerID, alloc.ID, rps); err != nil {
 			return common.NewErrorf("read_pre_redeem", "can't save requested read pools: %v", err)
 		}
 
@@ -140,7 +140,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 			return common.NewErrorf("write_pre_redeem", "can't request write pools from sharders: %v", err)
 		}
 
-		err = allocation.SetWritePools(db, payerID, alloc.ID, blobberID, wps)
+		err = allocation.SetWritePools(db, payerID, alloc.ID, wps)
 		if err != nil {
 			return common.NewErrorf("write_pre_redeem", "can't save requested write pools: %v", err)
 		}
