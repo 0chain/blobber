@@ -96,9 +96,9 @@ func redeemReadMarkers(ctx context.Context) {
 
 			if err := RedeemReadMarker(ctx, db, rme); err != nil {
 				zLogger.Logger.Error(err.Error())
-				rme.UpdateStatus(ctx, true, true)
+				_ = rme.UpdateStatus(ctx, true, true)
 			} else {
-				rme.UpdateStatus(ctx, false, false)
+				_ = rme.UpdateStatus(ctx, false, false)
 				// dbForPending uses same transaction for all pending operations as each operation can depend on each other
 				// if pending.id is same
 				dbForPending := datastore.GetStore().GetTransaction(rctx)
