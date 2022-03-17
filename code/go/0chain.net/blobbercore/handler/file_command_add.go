@@ -124,7 +124,7 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 	cmd.fileChanger.Size = allocationSize
 
 	cmd.allocationChange = &allocation.AllocationChange{}
-	cmd.allocationChange.ConnectionID = connectionObj.ConnectionID
+	cmd.allocationChange.CnxnID = connectionObj.ConnectionID
 	cmd.allocationChange.Size = allocationSize
 	cmd.allocationChange.Operation = constants.FileOperationInsert
 

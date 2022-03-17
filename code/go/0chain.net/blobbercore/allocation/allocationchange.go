@@ -27,9 +27,23 @@ var OperationNotApplicable = common.NewError("operation_not_valid", "Not an appl
 type AllocationChangeProcessor interface {
 	CommitToFileStore(ctx context.Context) error
 	DeleteTempFile() error
-	ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error)
+	ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error)
 	Marshal() (string, error)
 	Unmarshal(string) error
+}
+
+type AllocationChange struct {
+	ChangeID   int64                     `gorm:"column:id;primaryKey"`
+	Size       int64                     `gorm:"column:size"`
+	Operation  string                    `gorm:"column:operation"`
+	CnxnID     string                    `gorm:"column:connection_id"`
+	Connection AllocationChangeCollector `gorm:"foreignKey:CnxnID"`
+	Input      string                    `gorm:"column:input"`
+	datastore.ModelWithTS
+}
+
+func (AllocationChange) TableName() string {
+	return "allocation_changes"
 }
 
 type AllocationChangeCollector struct {
@@ -37,7 +51,7 @@ type AllocationChangeCollector struct {
 	AllocationID      string                      `gorm:"column:allocation_id"`
 	ClientID          string                      `gorm:"column:client_id"`
 	Size              int64                       `gorm:"column:size"`
-	Changes           []*AllocationChange         `gorm:"ForeignKey:connection_id;AssociationForeignKey:connection_id"`
+	Changes           []*AllocationChange         `gorm:"-"`
 	AllocationChanges []AllocationChangeProcessor `gorm:"-"`
 	Status            int                         `gorm:"column:status"`
 	datastore.ModelWithTS
@@ -45,19 +59,6 @@ type AllocationChangeCollector struct {
 
 func (AllocationChangeCollector) TableName() string {
 	return "allocation_connections"
-}
-
-type AllocationChange struct {
-	ChangeID     int64  `gorm:"column:id;primary_key"`
-	Size         int64  `gorm:"column:size"`
-	Operation    string `gorm:"column:operation"`
-	ConnectionID string `gorm:"column:connection_id"`
-	Input        string `gorm:"column:input"`
-	datastore.ModelWithTS
-}
-
-func (AllocationChange) TableName() string {
-	return "allocation_changes"
 }
 
 func (change *AllocationChange) Save(ctx context.Context) error {
@@ -142,10 +143,11 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 	}
 }
 
+//
 func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot string) error {
 	for idx, change := range cc.Changes {
 		changeProcessor := cc.AllocationChanges[idx]
-		_, err := changeProcessor.ProcessChange(ctx, change, allocationRoot)
+		_, err := changeProcessor.ApplyChange(ctx, change, allocationRoot)
 		if err != nil {
 			return err
 		}

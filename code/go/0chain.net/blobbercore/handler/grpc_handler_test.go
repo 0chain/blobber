@@ -59,7 +59,7 @@ func makeTestClient() (blobbergrpc.BlobberServiceClient, *grpc.ClientConn, error
 func makeTestAllocation(exp common.Timestamp) *allocation.Allocation {
 	allocID := "allocation id"
 	alloc := allocation.Allocation{
-		Tx: "allocation tx",
+		Tx: "allocation id",
 		ID: allocID,
 		Terms: []*allocation.Terms{
 			{
