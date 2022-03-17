@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -26,6 +27,7 @@ type DeleteFileChange struct {
 
 func (nf *DeleteFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 	rootRef, contentHash, err := reference.DeleteObject(ctx, nf.AllocationID, nf.Path)
+	fmt.Println("Error inside DeleteFileChange is: ", err)
 	if err != nil {
 		return nil, err
 	}

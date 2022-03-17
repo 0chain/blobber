@@ -25,7 +25,7 @@ func LoadObjectTree(ctx context.Context, allocationID, path string) (*Ref, error
 	db = db.Where("allocation_id = ? and deleted_at IS NULL and path LIKE ? ", allocationID, path+"%")
 
 	//db = db.Order("level desc, lookup_hash")
-	db = db.Order("path desc")
+	db = db.Order("level desc, path")
 
 	obejctTreeNodes := make(map[string][]*Ref)
 
@@ -34,9 +34,11 @@ func LoadObjectTree(ctx context.Context, allocationID, path string) (*Ref, error
 	err := db.FindInBatches(&objects, 100, func(tx *gorm.DB, batch int) error {
 		// batch processing found records
 		for _, object := range objects {
+			fmt.Println("Object Path is: ", object.Path)
 			obejctTreeNodes[object.ParentPath] = append(obejctTreeNodes[object.ParentPath], object)
 
 			for _, child := range obejctTreeNodes[object.Path] {
+				fmt.Println("Child Path is: ", child.Path)
 				object.AddChild(child)
 			}
 		}
@@ -44,6 +46,12 @@ func LoadObjectTree(ctx context.Context, allocationID, path string) (*Ref, error
 		return nil
 	}).Error
 
+	fmt.Println("Error inside LoadObjectTree is: ", err)
+	for k, v := range obejctTreeNodes {
+		for k1, v1 := range v {
+			fmt.Println(k, "=>", k1, "=>", v1.Path)
+		}
+	}
 	if err != nil {
 		return nil, common.NewError("bad_db_operation", err.Error())
 	}
@@ -111,6 +119,7 @@ func DeleteObject(ctx context.Context, allocationID, path string) (*Ref, map[str
 	for treelevel < len(tSubDirs)-1 {
 		found := false
 		for _, child := range dirRef.Children {
+			fmt.Println("the Child Path is: ", child.Path)
 			if child.Name == tSubDirs[treelevel] && child.Type == DIRECTORY {
 				dirRef = child
 				dirRef.HashToBeComputed = true
@@ -126,6 +135,7 @@ func DeleteObject(ctx context.Context, allocationID, path string) (*Ref, map[str
 
 	for i, child := range dirRef.Children {
 		if child.Path == path {
+			fmt.Println("Delete File With Path: ", dirRef.Children[i].Path)
 			dirRef.RemoveChild(i)
 			return rootRef, deletedFiles, nil
 		}

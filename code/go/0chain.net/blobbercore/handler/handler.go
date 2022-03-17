@@ -274,7 +274,7 @@ func CommitHandler(ctx context.Context, r *http.Request) (interface{}, int, erro
 	response, err := storageHandler.CommitWrite(ctx, r)
 
 	if err != nil {
-
+		fmt.Println("The Error is not nil: ", err)
 		if errors.Is(common.ErrFileWasDeleted, err) {
 			return response, http.StatusNoContent, nil
 		}

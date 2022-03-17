@@ -527,7 +527,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	result.WriteMarker = &writeMarker
 	result.Success = true
 	result.ErrorMessage = ""
-
+	fmt.Println("Error inside Commit is: ", err, " || ", common.ErrFileWasDeleted)
 	if errors.Is(common.ErrFileWasDeleted, err) {
 		return &result, err
 	}
