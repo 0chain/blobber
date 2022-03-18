@@ -153,16 +153,15 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite, pend
 	case err == nil:
 		pending.PendingWrite += pendingWrite
 		pending.PendingRead += pendingRead
+		db.Save(pending)
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		pending.ID = key
 		pending.PendingWrite = pendingWrite
 		pending.PendingRead = pendingRead
+		db.Create(pending)
 	default:
 		return err
 	}
-
-	db.Save(pending)
-
 	return nil
 }
 
