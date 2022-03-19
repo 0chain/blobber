@@ -36,6 +36,10 @@ func (store *postgresStore) Open() error {
 		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
 	}
 
+	if err := sqldb.Ping(); err != nil {
+		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
+	}
+
 	sqldb.SetMaxIdleConns(100)
 	sqldb.SetMaxOpenConns(200)
 	sqldb.SetConnMaxLifetime(30 * time.Second)
@@ -86,10 +90,8 @@ func (store *postgresStore) AutoMigrate() error {
 	for i := 0; i < len(releases); i++ {
 		v := releases[i]
 		fmt.Print("\r	+ ", v.Version, "	")
-		isMigrated, err := store.IsMigrated(v)
-		if err != nil {
-			return err
-		}
+		isMigrated := store.IsMigrated(v)
+
 		if isMigrated {
 			fmt.Print("	[SKIP]\n")
 			continue
@@ -108,20 +110,11 @@ func (store *postgresStore) AutoMigrate() error {
 	return nil
 }
 
-func (store *postgresStore) IsMigrated(m Migration) (bool, error) {
-	var version string
-	err := store.db.
-		Raw(`select version from "migrations" where version=?`, m.Version).
-		Pluck("version", &version).
-		Error
+func (store *postgresStore) IsMigrated(m Migration) bool {
 
-	if err == nil {
-		return false, nil
-	}
+	var c int64
+	store.db.
+		Raw(`SELECT 1 FROM "migrations" WHERE version=?`, m.Version).Count(&c)
 
-	if err == gorm.ErrRecordNotFound {
-		return false, nil
-	}
-
-	return false, err
+	return c > 0
 }
