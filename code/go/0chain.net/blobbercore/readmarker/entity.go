@@ -14,6 +14,7 @@ import (
 
 	"go.uber.org/zap"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 const (
@@ -76,16 +77,16 @@ func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, client
 }
 
 type ReadMarker struct {
-	ClientID        string           `gorm:"column:client_id;primary_key" json:"client_id"`
-	ClientPublicKey string           `gorm:"column:client_public_key" json:"client_public_key"`
-	BlobberID       string           `gorm:"column:blobber_id" json:"blobber_id"`
-	AllocationID    string           `gorm:"column:allocation_id" json:"allocation_id"`
-	OwnerID         string           `gorm:"column:owner_id" json:"owner_id"`
+	ClientID        string           `gorm:"column:client_id;size:64;primary_key" json:"client_id"`
+	ClientPublicKey string           `gorm:"column:client_public_key;size:512;not null" json:"client_public_key"`
+	BlobberID       string           `gorm:"column:blobber_id;size:64;not null" json:"blobber_id"`
+	AllocationID    string           `gorm:"column:allocation_id;size:64;not null" json:"allocation_id"`
+	OwnerID         string           `gorm:"column:owner_id;size:64;not null" json:"owner_id"`
 	Timestamp       common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
-	ReadCounter     int64            `gorm:"column:counter" json:"counter"`
-	Signature       string           `gorm:"column:signature" json:"signature"`
-	Suspend         int64            `gorm:"column:suspend" json:"suspend"`
-	PayerID         string           `gorm:"column:payer_id" json:"payer_id"`
+	ReadCounter     int64            `gorm:"column:counter;not null;default:0" json:"counter"`
+	Signature       string           `gorm:"column:signature;size:256;not null" json:"signature"`
+	Suspend         int64            `gorm:"column:suspend;not null;default:-1" json:"suspend"`
+	PayerID         string           `gorm:"column:payer_id;size:64;not null" json:"payer_id"`
 	AuthTicket      datatypes.JSON   `gorm:"column:auth_ticket" json:"auth_ticket"`
 }
 
@@ -100,13 +101,24 @@ type ReadMarkerEntity struct {
 	LatestRM             *ReadMarker    `gorm:"embedded" json:"latest_read_marker,omitempty"`
 	LatestRedeemedRMBlob datatypes.JSON `gorm:"column:latest_redeemed_rm"`
 	RedeemRequired       bool           `gorm:"column:redeem_required"`
-	LastRedeemTxnID      string         `gorm:"column:latest_redeem_txn_id" json:"last_redeem_txn_id"`
+	LastRedeemTxnID      string         `gorm:"column:latest_redeem_txn_id;size:64" json:"last_redeem_txn_id"`
 	StatusMessage        string         `gorm:"column:status_message" json:"status_message"`
 	datastore.ModelWithTS
 }
 
 func (ReadMarkerEntity) TableName() string {
 	return "read_markers"
+}
+
+func (r *ReadMarkerEntity) BeforeCreate(tx *gorm.DB) error {
+	r.CreatedAt = time.Now()
+	r.UpdatedAt = r.CreatedAt
+	return nil
+}
+
+func (r *ReadMarkerEntity) BeforeSave(tx *gorm.DB) error {
+	r.UpdatedAt = time.Now()
+	return nil
 }
 
 func GetLatestReadMarkerEntity(ctx context.Context, clientID string) (*ReadMarkerEntity, error) {

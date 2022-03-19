@@ -9,9 +9,10 @@ import (
 )
 
 type ShareInfo struct {
+	ID                        int       `gorm:"column:id;primarkKey"`
 	OwnerID                   string    `gorm:"column:owner_id;size:64;not null;index:idx_marketplace_share_info_for_owner,priority:1" json:"owner_id,omitempty"`
 	ClientID                  string    `gorm:"column:client_id;size:64;not null;index:idx_marketplace_share_info_for_client,priority:1" json:"client_id"`
-	FilePathHash              string    `gorm:"column:file_path_hash;size:64;not nullindex:idx_marketplace_share_info_for_owner,priority:2;index:idx_marketplace_share_info_for_client,priority:2" json:"file_path_hash,omitempty"`
+	FilePathHash              string    `gorm:"column:file_path_hash;size:64;not null;index:idx_marketplace_share_info_for_owner,priority:2;index:idx_marketplace_share_info_for_client,priority:2" json:"file_path_hash,omitempty"`
 	ReEncryptionKey           string    `gorm:"column:re_encryption_key;not null" json:"re_encryption_key,omitempty"`
 	ClientEncryptionPublicKey string    `gorm:"column:client_encryption_public_key;not null" json:"client_encryption_public_key,omitempty"`
 	Revoked                   bool      `gorm:"column:revoked;not null" json:"revoked"`

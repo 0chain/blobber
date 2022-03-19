@@ -25,8 +25,8 @@ const (
 type Allocation struct {
 	ID             string           `gorm:"column:id;size:64;primary_key"`
 	Tx             string           `gorm:"column:tx;size:64;not null;unique;index:idx_unique_allocations_tx,unique"`
-	TotalSize      int64            `gorm:"column:size;not null"`
-	UsedSize       int64            `gorm:"column:used_size;not null"`
+	TotalSize      int64            `gorm:"column:size;not null;default:0"`
+	UsedSize       int64            `gorm:"column:used_size;not null;default:0"`
 	OwnerID        string           `gorm:"column:owner_id;size:64;not null"`
 	OwnerPublicKey string           `gorm:"column:owner_public_key;size:512;not null"`
 	RepairerID     string           `gorm:"column:repairer_id;size:64;not null"`
@@ -34,15 +34,15 @@ type Allocation struct {
 	Expiration     common.Timestamp `gorm:"column:expiration_date;not null"`
 	// AllocationRoot allcation_root of last write_marker
 	AllocationRoot   string        `gorm:"column:allocation_root;size:64;not null"`
-	BlobberSize      int64         `gorm:"column:blobber_size;not null"`
-	BlobberSizeUsed  int64         `gorm:"column:blobber_size_used;not null"`
+	BlobberSize      int64         `gorm:"column:blobber_size;not null;default:0"`
+	BlobberSizeUsed  int64         `gorm:"column:blobber_size_used;not null;default:0"`
 	LatestRedeemedWM string        `gorm:"column:latest_redeemed_write_marker;size:64"`
 	IsRedeemRequired bool          `gorm:"column:is_redeem_required"`
-	TimeUnit         time.Duration `gorm:"column:time_unit;not null"`
+	TimeUnit         time.Duration `gorm:"column:time_unit;not null;default:172800000000000"`
 	IsImmutable      bool          `gorm:"is_immutable;not null"`
 	// Ending and cleaning
-	CleanedUp bool `gorm:"column:cleaned_up;not null"`
-	Finalized bool `gorm:"column:finalized;not null"`
+	CleanedUp bool `gorm:"column:cleaned_up;not null;false"`
+	Finalized bool `gorm:"column:finalized;not null;false"`
 	// Has many terms
 	Terms []*Terms `gorm:"-"`
 }
@@ -134,7 +134,7 @@ func (a *Allocation) HaveRead(rps []*ReadPool, blobberID string, pendNumBlocks i
 
 type Pending struct {
 	ID           int64  `gorm:"column:id;primary_key"`
-	ClientID     string `gorm:"column:client_id;size:64;not null;index:idx_pendings_cab,priority:1"`
+	ClientID     string `gorm:"column:client_id;size:64;not null;index:idx_pendings_cab,priority:1,unique"`
 	AllocationID string `gorm:"column:allocation_id;size:64;not null;index:idx_pendings_cab,priority:2"`
 	BlobberID    string `gorm:"column:blobber_id;size:64;not null;index:idx_pendings_cab,priority:3"`
 	PendingWrite int64  `gorm:"column:pending_write;not null;default:0;"`
@@ -204,12 +204,13 @@ const (
 
 // Terms for allocation by its Tx.
 type Terms struct {
-	ID           int64  `gorm:"column:id;primary_key"`
-	BlobberID    string `gorm:"blobber_id"`
-	AllocationID string `gorm:"allocation_id"`
+	ID           int64      `gorm:"column:id;primary_key"`
+	BlobberID    string     `gorm:"blobber_id;size:64;not null"`
+	AllocationID string     `gorm:"allocation_id;size:64;not null"`
+	Allocation   Allocation `gorm:"foreignKey:AllocationID"` // references allocations(id)
 
-	ReadPrice  int64 `gorm:"read_price"`
-	WritePrice int64 `gorm:"write_price"`
+	ReadPrice  int64 `gorm:"read_price;not null"`
+	WritePrice int64 `gorm:"write_price;not null"`
 }
 
 func (*Terms) TableName() string {

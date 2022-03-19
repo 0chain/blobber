@@ -82,7 +82,7 @@ type Ref struct {
 	ActualThumbnailSize int64          `gorm:"column:actual_thumbnail_size;not null;default:0" filelist:"actual_thumbnail_size"`
 	ActualThumbnailHash string         `gorm:"column:actual_thumbnail_hash;size:64;not null" filelist:"actual_thumbnail_hash"`
 	EncryptedKey        string         `gorm:"column:encrypted_key;size:64" filelist:"encrypted_key"`
-	Attributes          datatypes.JSON `gorm:"column:attributes" filelist:"attributes"`
+	Attributes          datatypes.JSON `gorm:"column:attributes;default:'{}'" filelist:"attributes"`
 	Children            []*Ref         `gorm:"-"`
 	childrenLoaded      bool
 	OnCloud             bool `gorm:"column:on_cloud;default:false" filelist:"on_cloud"`

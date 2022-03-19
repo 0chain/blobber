@@ -4,21 +4,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"gorm.io/gorm"
 )
 
 type WriteMarker struct {
-	AllocationRoot         string           `gorm:"column:allocation_root;primary_key" json:"allocation_root"`
-	PreviousAllocationRoot string           `gorm:"column:prev_allocation_root" json:"prev_allocation_root"`
-	AllocationID           string           `gorm:"column:allocation_id" json:"allocation_id"`
-	Size                   int64            `gorm:"column:size" json:"size"`
-	BlobberID              string           `gorm:"column:blobber_id" json:"blobber_id"`
-	Timestamp              common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
-	ClientID               string           `gorm:"column:client_id" json:"client_id"`
-	Signature              string           `gorm:"column:signature" json:"signature"`
+	AllocationRoot         string           `gorm:"column:allocation_root;size:64;primary_key" json:"allocation_root"`
+	PreviousAllocationRoot string           `gorm:"column:prev_allocation_root;size:64;not null" json:"prev_allocation_root"`
+	AllocationID           string           `gorm:"column:allocation_id;size:64;not null" json:"allocation_id"`
+	Size                   int64            `gorm:"column:size;not null;default:0" json:"size"`
+	BlobberID              string           `gorm:"column:blobber_id;size:64;not null" json:"blobber_id"`
+	Timestamp              common.Timestamp `gorm:"column:timestamp;not null" json:"timestamp"`
+	ClientID               string           `gorm:"column:client_id;size:64;not null" json:"client_id"`
+	Signature              string           `gorm:"column:signature;size:256;not null" json:"signature"`
 }
 
 func (wm *WriteMarker) GetHashData() string {
@@ -39,17 +41,28 @@ const (
 type WriteMarkerEntity struct {
 	// WM new WriteMarker from client
 	WM              WriteMarker       `gorm:"embedded"`
-	Status          WriteMarkerStatus `gorm:"column:status"`
+	Status          WriteMarkerStatus `gorm:"column:status;not null;default:0"`
 	StatusMessage   string            `gorm:"column:status_message"`
-	ReedeemRetries  int64             `gorm:"column:redeem_retries"`
-	CloseTxnID      string            `gorm:"column:close_txn_id"`
-	ConnectionID    string            `gorm:"column:connection_id"`
-	ClientPublicKey string            `gorm:"column:client_key"`
+	ReedeemRetries  int64             `gorm:"column:redeem_retries;not null;default:0"`
+	CloseTxnID      string            `gorm:"column:close_txn_id;size:64"`
+	ConnectionID    string            `gorm:"column:connection_id;size:64"`
+	ClientPublicKey string            `gorm:"column:client_key;size:256"`
 	datastore.ModelWithTS
 }
 
 func (WriteMarkerEntity) TableName() string {
 	return "write_markers"
+}
+
+func (w *WriteMarkerEntity) BeforeCreate(tx *gorm.DB) error {
+	w.CreatedAt = time.Now()
+	w.UpdatedAt = w.CreatedAt
+	return nil
+}
+
+func (w *WriteMarkerEntity) BeforeSave(tx *gorm.DB) error {
+	w.UpdatedAt = time.Now()
+	return nil
 }
 
 func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarkerStatus, statusMessage, redeemTxn string) (err error) {

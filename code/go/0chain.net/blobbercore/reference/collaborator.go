@@ -5,16 +5,22 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"gorm.io/gorm"
 )
 
 type Collaborator struct {
-	RefID     int64     `gorm:"ref_id" json:"ref_id"`
-	ClientID  string    `gorm:"client_id" json:"client_id"`
-	CreatedAt time.Time `gorm:"created_at" json:"created_at"`
+	RefID     int64     `gorm:"ref_id;not null" json:"ref_id"`
+	ClientID  string    `gorm:"client_id;size:64;not null" json:"client_id"`
+	CreatedAt time.Time `gorm:"created_at;timestamp without time zone;not null;default:now()" json:"created_at"`
 }
 
 func (Collaborator) TableName() string {
 	return "collaborators"
+}
+
+func (c *Collaborator) BeforeCreate(tx *gorm.DB) error {
+	c.CreatedAt = time.Now()
+	return nil
 }
 
 func AddCollaborator(ctx context.Context, refID int64, clientID string) error {

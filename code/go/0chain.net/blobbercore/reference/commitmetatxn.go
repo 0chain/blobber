@@ -15,18 +15,18 @@ import (
 // }
 
 type CommitMetaTxn struct {
-	RefID     int64     `gorm:"ref_id" json:"ref_id"`
-	TxnID     string    `gorm:"txn_id" json:"txn_id"`
-	CreatedAt time.Time `gorm:"created_at" json:"created_at"`
+	RefID     int64     `gorm:"ref_id;not null" json:"ref_id"`
+	TxnID     string    `gorm:"txn_id;size:64;not null" json:"txn_id"`
+	CreatedAt time.Time `gorm:"created_at;timestamp without time zone;not null;default:now()" json:"created_at"`
+}
+
+func (CommitMetaTxn) TableName() string {
+	return "commit_meta_txns"
 }
 
 func (c *CommitMetaTxn) BeforeCreate(tx *gorm.DB) error {
 	c.CreatedAt = time.Now()
 	return nil
-}
-
-func (CommitMetaTxn) TableName() string {
-	return "commit_meta_txns"
 }
 
 func AddCommitMetaTxn(ctx context.Context, refID int64, txnID string) error {
