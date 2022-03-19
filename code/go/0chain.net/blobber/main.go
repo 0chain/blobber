@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/automigration"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
@@ -27,8 +28,8 @@ func main() {
 		panic(err)
 	}
 
-	if err := setupDatabase(); err != nil {
-		logging.Logger.Error("Error setting up data store" + err.Error())
+	if err := automigration.MigrateSchema(); err != nil {
+		logging.Logger.Error("Error while automigrating schema: " + err.Error())
 		panic(err)
 	}
 
