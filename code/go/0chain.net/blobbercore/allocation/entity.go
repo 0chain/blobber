@@ -44,6 +44,7 @@ type Allocation struct {
 	CleanedUp bool `gorm:"column:cleaned_up;not null;false"`
 	Finalized bool `gorm:"column:finalized;not null;false"`
 	// Has many terms
+	// If Preload("Terms") is required replace tag `gorm:"-"` with `gorm:"foreignKey:AllocationID"`
 	Terms []*Terms `gorm:"-"`
 }
 

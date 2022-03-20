@@ -47,6 +47,7 @@ type WriteMarkerEntity struct {
 	CloseTxnID      string            `gorm:"column:close_txn_id;size:64"`
 	ConnectionID    string            `gorm:"column:connection_id;size:64"`
 	ClientPublicKey string            `gorm:"column:client_key;size:256"`
+	Sequence        int64             `gorm:"column:sequence;unique;type:bigserial"`
 	datastore.ModelWithTS
 }
 

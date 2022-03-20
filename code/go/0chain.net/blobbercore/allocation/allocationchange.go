@@ -63,7 +63,7 @@ type AllocationChangeCollector struct {
 	AllocationID      string                      `gorm:"column:allocation_id;size:64;not null"`
 	ClientID          string                      `gorm:"column:client_id;size:64;not null"`
 	Size              int64                       `gorm:"column:size;not null;default:0"`
-	Changes           []*AllocationChange         `gorm:"-"`
+	Changes           []*AllocationChange         `gorm:"foreignKey:CnxnID"`
 	AllocationChanges []AllocationChangeProcessor `gorm:"-"`
 	Status            int                         `gorm:"column:status;not null;default:0"`
 	datastore.ModelWithTS
