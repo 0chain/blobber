@@ -34,6 +34,7 @@ var tables = []interface{}{
 
 func MigrateSchema() error {
 	db := datastore.GetStore().GetDB()
+
 	// Delete all tables, its indexes and constraints
 	if err := db.Migrator().DropTable(tables...); err != nil {
 		return err

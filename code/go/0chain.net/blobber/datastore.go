@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/automigration"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
@@ -29,12 +30,9 @@ func setupDatabase() error {
 	}
 
 	fmt.Println("\r[8/12] auto migrate datastore")
-	err := datastore.GetStore().AutoMigrate()
-	if err != nil {
-		logging.Logger.Error("Failed to migrate to the database.")
-		return err
+	if err := automigration.MigrateSchema(); err != nil {
+		return fmt.Errorf("error while migrating schema: %v", err)
 	}
-	//fmt.Print("	[OK]\n")
 
 	return nil
 }
