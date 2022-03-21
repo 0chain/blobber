@@ -27,7 +27,7 @@ var OperationNotApplicable = common.NewError("operation_not_valid", "Not an appl
 type AllocationChangeProcessor interface {
 	CommitToFileStore(ctx context.Context) error
 	DeleteTempFile() error
-	ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error)
+	ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error)
 	Marshal() (string, error)
 	Unmarshal(string) error
 }
@@ -142,10 +142,11 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 	}
 }
 
+//
 func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot string) error {
 	for idx, change := range cc.Changes {
 		changeProcessor := cc.AllocationChanges[idx]
-		_, err := changeProcessor.ProcessChange(ctx, change, allocationRoot)
+		_, err := changeProcessor.ApplyChange(ctx, change, allocationRoot)
 		if err != nil {
 			return err
 		}

@@ -10,6 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
@@ -21,7 +22,7 @@ type UpdateFileChanger struct {
 	BaseFileChanger
 }
 
-func (nf *UpdateFileChanger) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 	path, _ := filepath.Split(nf.Path)
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
@@ -108,6 +109,7 @@ func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
 			}
 		}
 	}
+
 	return nf.BaseFileChanger.CommitToFileStore(ctx)
 }
 

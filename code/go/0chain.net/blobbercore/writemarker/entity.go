@@ -37,6 +37,7 @@ const (
 )
 
 type WriteMarkerEntity struct {
+	// WM new WriteMarker from client
 	WM              WriteMarker       `gorm:"embedded"`
 	Status          WriteMarkerStatus `gorm:"column:status"`
 	StatusMessage   string            `gorm:"column:status_message"`
@@ -104,6 +105,21 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMa
 		return nil, err
 	}
 	return wm, nil
+}
+
+// AllocationRootMustUnique allocation_root must be unique in write_markers
+func AllocationRootMustUnique(ctx context.Context, allocation_root string) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	var c int64
+	db.Raw("SELECT 1 FROM write_markers WHERE allocation_root = ? and status<>2 ", allocation_root).
+		Count(&c)
+
+	if c > 0 {
+		return common.NewError("write_marker_validation_failed", "Duplicate write marker. Validation failed")
+	}
+
+	return nil
 }
 
 func GetWriteMarkersInRange(ctx context.Context, allocationID, startAllocationRoot, endAllocationRoot string) ([]*WriteMarkerEntity, error) {

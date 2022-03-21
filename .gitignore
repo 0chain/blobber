@@ -14,3 +14,4 @@ __debug_bin
 dev.local/data
 out/
 **/tmp/
+*.tar.gz

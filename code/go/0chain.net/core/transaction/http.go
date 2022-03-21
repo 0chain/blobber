@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"hash/fnv"
@@ -8,7 +9,6 @@ import (
 
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 
@@ -92,13 +92,6 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		urls = append(urls, u+"?"+q.Encode())
 	}
 
-	transport := &http.Transport{
-		Dial: (&net.Dialer{
-			Timeout: resty.DefaultDialTimeout,
-		}).Dial,
-		TLSHandshakeTimeout: resty.DefaultDialTimeout,
-	}
-
 	header := map[string]string{
 		"Content-Type":                "application/json; charset=utf-8",
 		"Access-Control-Allow-Origin": "*",
@@ -107,7 +100,7 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 	//leave first item for ErrTooLessConfirmation
 	var msgList = make([]string, 1, numSharders)
 
-	r := resty.New(transport, func(req *http.Request, resp *http.Response, cancelFunc context.CancelFunc, err error) error {
+	r := resty.New(resty.WithHeader(header)).Then(func(req *http.Request, resp *http.Response, respBody []byte, cancelFunc context.CancelFunc, err error) error {
 		if err != nil { //network issue
 			msgList = append(msgList, err.Error())
 			return err
@@ -116,7 +109,6 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		url := req.URL.String()
 
 		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
 			errorMsg := "[sharder]" + resp.Status + ": " + url
 			msgList = append(msgList, errorMsg)
 
@@ -124,9 +116,9 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		}
 
 		hash := fnv.New32() //use fnv for better performance
-		teeReader := io.TeeReader(resp.Body, hash)
+
+		teeReader := io.TeeReader(bytes.NewReader(respBody), hash)
 		resBody, err := io.ReadAll(teeReader)
-		resp.Body.Close()
 
 		if err != nil {
 			errorMsg := "[sharder]body: " + url + " " + err.Error()
@@ -143,10 +135,7 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		}
 
 		return nil
-	},
-		resty.WithTimeout(resty.DefaultRequestTimeout),
-		resty.WithRetry(resty.DefaultRetry),
-		resty.WithHeader(header))
+	})
 
 	for {
 		r.DoGet(context.TODO(), urls...)

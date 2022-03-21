@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
@@ -448,11 +449,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	var result blobberhttp.CommitResult
-	var latestWM *writemarker.WriteMarkerEntity
+	var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
 	if allocationObj.AllocationRoot == "" {
-		latestWM = nil
+		latestWriteMarkerEntity = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx,
+		latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
 			allocationObj.AllocationRoot)
 		if err != nil {
 			return nil, common.NewErrorf("latest_write_marker_read_error",
@@ -460,16 +461,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		}
 	}
 
-	writemarkerObj := &writemarker.WriteMarkerEntity{}
-	writemarkerObj.WM = writeMarker
+	writemarkerEntity := &writemarker.WriteMarkerEntity{}
+	writemarkerEntity.WM = writeMarker
 
-	err = writemarkerObj.VerifyMarker(ctx, allocationObj, connectionObj)
+	err = writemarkerEntity.VerifyMarker(ctx, allocationObj, connectionObj)
 	if err != nil {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		result.ErrorMessage = "Verification of write marker failed: " + err.Error()
 		result.Success = false
-		if latestWM != nil {
-			result.WriteMarker = &latestWM.WM
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = &latestWriteMarkerEntity.WM
 		}
 		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
 	}
@@ -496,16 +497,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
-		if latestWM != nil {
-			result.WriteMarker = &latestWM.WM
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = &latestWriteMarkerEntity.WM
 		}
 		result.Success = false
 		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root. Expected hash: " + allocationRoot
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
-	writemarkerObj.ConnectionID = connectionObj.ConnectionID
-	writemarkerObj.ClientPublicKey = clientKey
-	err = writemarkerObj.Save(ctx)
+	writemarkerEntity.ConnectionID = connectionObj.ConnectionID
+	writemarkerEntity.ClientPublicKey = clientKey
+	err = writemarkerEntity.Save(ctx)
 	if err != nil {
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
 	}
@@ -523,7 +524,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
-		return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+		if !errors.Is(common.ErrFileWasDeleted, err) {
+			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+		}
 	}
 
 	result.Changes = connectionObj.Changes
@@ -537,6 +540,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	result.Success = true
 	result.ErrorMessage = ""
 
+	if errors.Is(common.ErrFileWasDeleted, err) {
+		return &result, err
+	}
 	return &result, nil
 }
 
@@ -733,9 +739,7 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.R
 }
 
 func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
+
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
@@ -783,7 +787,6 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
-
 	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -794,9 +797,28 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 	newPath := filepath.Join(destPath, objectRef.Name)
-	destRef, _ := reference.GetReference(ctx, allocationID, newPath)
-	if destRef != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
+	paths, err := common.GetParentPaths(newPath)
+	if err != nil {
+		return nil, err
+	}
+
+	paths = append(paths, newPath)
+
+	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, paths)
+	if err != nil {
+		Logger.Error("Database error", zap.Error(err))
+		return nil, common.NewError("database_error", fmt.Sprintf("Got db error while getting refs for %v", paths))
+	}
+
+	for _, ref := range refs {
+		switch ref.Path {
+		case newPath:
+			return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
+		default:
+			if ref.Type == reference.FILE {
+				return nil, common.NewError("invalid_path", fmt.Sprintf("%v is of file type", ref.Path))
+			}
+		}
 	}
 
 	allocationChange := &allocation.AllocationChange{}
@@ -883,6 +905,10 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
 	}
 
+	if !filepath.IsAbs(dirPath) {
+		return nil, common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", dirPath))
+	}
+
 	exisitingRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
 	if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
@@ -890,6 +916,10 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 	if exisitingRef != nil {
 		return nil, common.NewError("duplicate_file", "File at path already exists")
+	}
+
+	if err := validateParentPathType(ctx, allocationID, dirPath); err != nil {
+		return nil, err
 	}
 
 	connectionID := r.FormValue("connection_id")

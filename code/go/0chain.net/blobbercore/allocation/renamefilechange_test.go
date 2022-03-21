@@ -263,7 +263,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 		ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
 
 		change := &RenameFileChange{AllocationID: alloc.ID, Path: tc.path, NewName: tc.newName}
-		response, err := change.ProcessChange(ctx, tc.allocChange, tc.allocRoot)
+		response, err := change.ApplyChange(ctx, tc.allocChange, tc.allocRoot)
 
 		if err != nil {
 			if !tc.expectingError {

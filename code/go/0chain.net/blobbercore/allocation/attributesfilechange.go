@@ -21,8 +21,8 @@ type AttributesChange struct {
 	Attributes   *reference.Attributes `json:"attributes"` // new attributes
 }
 
-// ProcessChange processes the attributes changes.
-func (ac *AttributesChange) ProcessChange(ctx context.Context, _ *AllocationChange, allocRoot string) (ref *reference.Ref, err error) {
+// ApplyChange processes the attributes changes.
+func (ac *AttributesChange) ApplyChange(ctx context.Context, _ *AllocationChange, allocRoot string) (ref *reference.Ref, err error) {
 	var path, _ = filepath.Split(ac.Path)
 	path = filepath.Clean(path)
 
