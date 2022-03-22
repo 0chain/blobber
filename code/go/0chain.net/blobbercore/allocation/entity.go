@@ -33,7 +33,7 @@ type Allocation struct {
 	PayerID        string           `gorm:"column:payer_id;size:64;not null"`
 	Expiration     common.Timestamp `gorm:"column:expiration_date;not null"`
 	// AllocationRoot allcation_root of last write_marker
-	AllocationRoot   string        `gorm:"column:allocation_root;size:64;not null"`
+	AllocationRoot   string        `gorm:"column:allocation_root;size:64;not null;default:''"`
 	BlobberSize      int64         `gorm:"column:blobber_size;not null;default:0"`
 	BlobberSizeUsed  int64         `gorm:"column:blobber_size_used;not null;default:0"`
 	LatestRedeemedWM string        `gorm:"column:latest_redeemed_write_marker;size:64"`
@@ -41,8 +41,8 @@ type Allocation struct {
 	TimeUnit         time.Duration `gorm:"column:time_unit;not null;default:172800000000000"`
 	IsImmutable      bool          `gorm:"is_immutable;not null"`
 	// Ending and cleaning
-	CleanedUp bool `gorm:"column:cleaned_up;not null;false"`
-	Finalized bool `gorm:"column:finalized;not null;false"`
+	CleanedUp bool `gorm:"column:cleaned_up;not null;default:false"`
+	Finalized bool `gorm:"column:finalized;not null;default:false"`
 	// Has many terms
 	// If Preload("Terms") is required replace tag `gorm:"-"` with `gorm:"foreignKey:AllocationID"`
 	Terms []*Terms `gorm:"-"`
