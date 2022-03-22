@@ -76,6 +76,7 @@ func (store *postgresStore) GetDB() *gorm.DB {
 }
 
 func (store *postgresStore) AutoMigrate() error {
+	time.Sleep(20 * time.Second)
 	err := store.db.AutoMigrate(&Migration{}, &WriteLock{})
 	if err != nil {
 		logging.Logger.Error("[db]", zap.Error(err))
