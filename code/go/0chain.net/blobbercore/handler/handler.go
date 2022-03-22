@@ -75,7 +75,8 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/getstats", common.ToJSONResponse(stats.GetStatsHandler))
 
 	//marketplace related
-	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(MarketPlaceShareInfoHandler)))
+	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(InsertShare))).Methods(http.MethodOptions, http.MethodPost)
+	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(RevokeShare))).Methods(http.MethodOptions, http.MethodDelete)
 
 	// lightweight http handler without heavy postgres transaction to improve performance
 
@@ -570,18 +571,6 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 
 	return map[string]interface{}{"message": "Share info added successfully"}, nil
-}
-
-func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "DELETE" {
-		return RevokeShare(ctx, r)
-	}
-
-	if r.Method == "POST" {
-		return InsertShare(ctx, r)
-	}
-
-	return nil, errors.New("invalid request method, only POST is allowed")
 }
 
 //PrintCSS - print the common css elements
