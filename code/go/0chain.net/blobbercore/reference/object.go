@@ -11,65 +11,9 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// LoadObjectTree
-func LoadObjectTree(ctx context.Context, allocationID, path string) (*Ref, error) {
-	return GetObjectTree(ctx, allocationID, path)
-	//db := datastore.GetStore().
-	//	GetTransaction(ctx)
-	//
-	//path = filepath.Join("/", path)
-	//db = db.Where("allocation_id = ? and deleted_at IS NULL and path LIKE ? ", allocationID, path+"%")
-	//var objects []*Ref
-	////db = db.Order("level desc, lookup_hash")
-	//db = db.Order("level desc, path") //.Find(&objects).Error
-	//
-	//obejctTreeNodes := make(map[string][]*Ref)
-	//
-	//// it is better to load them in batched if there are a lot of objects in db
-	//err := db.FindInBatches(&objects, 100, func(tx *gorm.DB, batch int) error {
-	//	// batch processing found records
-	//	for _, object := range objects {
-	//		obejctTreeNodes[object.ParentPath] = append(obejctTreeNodes[object.ParentPath], object)
-	//
-	//		for _, child := range obejctTreeNodes[object.Path] {
-	//			object.AddChild(child)
-	//		}
-	//	}
-	//
-	//	return nil
-	//}).Error
-	////for _, object := range objects {
-	////	obejctTreeNodes[object.ParentPath] = append(obejctTreeNodes[object.ParentPath], object)
-	////
-	////	for _, child := range obejctTreeNodes[object.Path] {
-	////		object.AddChild(child)
-	////	}
-	////}
-	//if err != nil {
-	//	return nil, common.NewError("bad_db_operation", err.Error())
-	//}
-	//
-	//// create empty dir if root is missing
-	//if len(obejctTreeNodes) == 0 {
-	//	return &Ref{Type: DIRECTORY, Path: "/", Name: "/", ParentPath: "", PathLevel: 1}, nil
-	//}
-	//
-	//rootNodes, ok := obejctTreeNodes[""]
-	//
-	//if ok {
-	//	if len(rootNodes) == 1 {
-	//		return rootNodes[0], nil
-	//	}
-	//
-	//	return nil, common.NewError("invalid_ref_tree", "/ is missing or invalid")
-	//}
-	//
-	//return nil, common.NewError("invalid_ref_tree", "/ is missing")
-}
-
 // DeleteObject delete object from tree, and return tree root and deleted content hash list
 func DeleteObject(ctx context.Context, allocationID, path string) (*Ref, map[string]bool, error) {
-	rootRef, err := LoadObjectTree(ctx, allocationID, "/")
+	rootRef, err := GetObjectTree(ctx, allocationID, "/")
 	if err != nil {
 		return nil, nil, err
 	}
