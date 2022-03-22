@@ -73,6 +73,17 @@ func (AllocationChangeCollector) TableName() string {
 	return "allocation_connections"
 }
 
+func (ac *AllocationChangeCollector) BeforeCreate(tx *gorm.DB) error {
+	ac.CreatedAt = time.Now()
+	ac.UpdatedAt = ac.CreatedAt
+	return nil
+}
+
+func (ac *AllocationChangeCollector) BeforeSave(tx *gorm.DB) error {
+	ac.UpdatedAt = time.Now()
+	return nil
+}
+
 func (change *AllocationChange) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 
