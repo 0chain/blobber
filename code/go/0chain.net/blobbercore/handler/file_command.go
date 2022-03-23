@@ -14,8 +14,8 @@ import (
 
 // FileCommand execute command for a file operation
 type FileCommand interface {
-	// IsAuthorized validate request, and try build ChangeProcesser instance
-	IsAuthorized(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error
+	// IsValidated validate request, and try build ChangeProcesser instance
+	IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error
 
 	// ProcessContent flush file to FileStorage
 	ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error)
@@ -31,14 +31,14 @@ type FileCommand interface {
 func createFileCommand(req *http.Request) FileCommand {
 	switch req.Method {
 	case http.MethodPost:
-		return &AddFileCommand{}
+		return &UploadFileCommand{}
 	case http.MethodPut:
 		return &UpdateFileCommand{}
 	case http.MethodDelete:
 		return &FileCommandDelete{}
 
 	default:
-		return &AddFileCommand{}
+		return &UploadFileCommand{}
 	}
 }
 
