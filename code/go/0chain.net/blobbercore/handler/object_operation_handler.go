@@ -844,7 +844,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 	}
 	fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, connectionObj.AllocationID, path, []string{"path", "name", "size", "hash", "merkle_root"})
 	if err != nil {
-		Logger.Info("invalid_file", zap.Any("error", err))
+		Logger.Info("invalid_file", zap.Error(err))
 	}
 	_ = ctx.Value(constants.ContextKeyClientKey).(string)
 	if fileRef != nil {
@@ -899,7 +899,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 	exisitingRef, err := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
 	if err != nil {
-		Logger.Info("Error file reference", zap.Any("error", err))
+		Logger.Info("Error file reference", zap.Error(err))
 	}
 
 	if !filepath.IsAbs(dirPath) {
@@ -974,7 +974,11 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	allocationID := allocationObj.ID
 	cmd := createFileCommand(r)
-	err2 := cmd.IsAuthorized(ctx, r, allocationObj, clientID)
+	err = cmd.IsAuthorized(ctx, r, allocationObj, clientID)
+
+	if err != nil {
+		return nil, err
+	}
 
 	var existingFileRef *reference.Ref
 	switch rCmd := cmd.(type) {
@@ -1014,10 +1018,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	connectionID := r.FormValue("connection_id")
 	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
-	}
-
-	if err2 != nil {
-		return nil, err2
 	}
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)

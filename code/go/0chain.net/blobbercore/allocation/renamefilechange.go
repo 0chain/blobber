@@ -28,7 +28,7 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 
 	isFilePresent, err := reference.IsRefExist(ctx, rf.AllocationID, rf.NewName)
 	if err != nil {
-		Logger.Info("invalid_reference_path", zap.Any("error", err))
+		Logger.Info("invalid_reference_path", zap.Error(err))
 	}
 
 	if isFilePresent {

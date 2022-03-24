@@ -217,10 +217,10 @@ func GetReference(ctx context.Context, allocationID, path string) (*Ref, error) 
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
-	if err == nil {
-		return ref, nil
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	return ref, nil
 }
 
 // GetLimitedRefFieldsByPath get FileRef selected fields with allocationID and path from postgres
@@ -229,10 +229,10 @@ func GetLimitedRefFieldsByPath(ctx context.Context, allocationID, path string, s
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Select(selectedFields)
 	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
-	if err == nil {
-		return ref, nil
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	return ref, nil
 }
 
 // GetLimitedRefFieldsByLookupHash get FileRef selected fields with allocationID and lookupHash from postgres
@@ -241,20 +241,20 @@ func GetLimitedRefFieldsByLookupHash(ctx context.Context, allocationID, lookupHa
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Select(selectedFields)
 	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: lookupHash}).First(ref).Error
-	if err == nil {
-		return ref, nil
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	return ref, nil
 }
 
 func GetReferenceByLookupHash(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
-	if err == nil {
-		return ref, nil
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	return ref, nil
 }
 
 // IsRefExist checks if ref with given path exists and returns error other than gorm.ErrRecordNotFound
