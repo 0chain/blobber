@@ -284,7 +284,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 		}
 
 		_, err := func() (*reference.Ref, error) {
-			resp, err := change.ProcessChange(ctx, tc.allocChange, tc.allocRoot)
+			resp, err := change.ApplyChange(ctx, tc.allocChange, tc.allocRoot)
 			if err != nil {
 				return nil, err
 			}

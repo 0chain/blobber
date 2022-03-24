@@ -11,6 +11,7 @@ on:
     tags: 
       - '*'
   pull_request:
+  workflow_dispatch:
 
 env:
   BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY }}

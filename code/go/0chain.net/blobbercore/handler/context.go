@@ -82,15 +82,16 @@ type ErrorResponse struct {
 func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
 		if r.Method == "OPTIONS" {
-			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-			w.Header().Set("Access-Control-Allow-Headers", "*")
+			w.Header().Add("Access-Control-Max-Age", "3600")
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
 		TryParseForm(r)
 
-		w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
 		w.Header().Set("Content-Type", "application/json")
 
 		ctx, err := WithAuth(r)

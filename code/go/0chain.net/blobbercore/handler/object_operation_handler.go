@@ -254,6 +254,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			payerID = clientID
 		}
 
+		availableAt := shareInfo.AvailableAt.Unix()
+		if common.Timestamp(availableAt) > common.Now() {
+			return nil, common.NewErrorf("download_file", "the file is not available until: %v", shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
+		}
+
 		dr.ReadMarker.AuthTicket = datatypes.JSON(authTokenString)
 
 		// check for file payer flag
@@ -441,11 +446,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	var result blobberhttp.CommitResult
-	var latestWM *writemarker.WriteMarkerEntity
+	var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
 	if allocationObj.AllocationRoot == "" {
-		latestWM = nil
+		latestWriteMarkerEntity = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx,
+		latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
 			allocationObj.AllocationRoot)
 		if err != nil {
 			return nil, common.NewErrorf("latest_write_marker_read_error",
@@ -453,16 +458,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		}
 	}
 
-	writemarkerObj := &writemarker.WriteMarkerEntity{}
-	writemarkerObj.WM = writeMarker
+	writemarkerEntity := &writemarker.WriteMarkerEntity{}
+	writemarkerEntity.WM = writeMarker
 
-	err = writemarkerObj.VerifyMarker(ctx, allocationObj, connectionObj)
+	err = writemarkerEntity.VerifyMarker(ctx, allocationObj, connectionObj)
 	if err != nil {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		result.ErrorMessage = "Verification of write marker failed: " + err.Error()
 		result.Success = false
-		if latestWM != nil {
-			result.WriteMarker = &latestWM.WM
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = &latestWriteMarkerEntity.WM
 		}
 		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
 	}
@@ -489,16 +494,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
-		if latestWM != nil {
-			result.WriteMarker = &latestWM.WM
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = &latestWriteMarkerEntity.WM
 		}
 		result.Success = false
 		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root. Expected hash: " + allocationRoot
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
-	writemarkerObj.ConnectionID = connectionObj.ConnectionID
-	writemarkerObj.ClientPublicKey = clientKey
-	err = writemarkerObj.Save(ctx)
+	writemarkerEntity.ConnectionID = connectionObj.ConnectionID
+	writemarkerEntity.ClientPublicKey = clientKey
+	err = writemarkerEntity.Save(ctx)
 	if err != nil {
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
 	}
@@ -731,9 +736,7 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.R
 }
 
 func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
+
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
@@ -781,7 +784,6 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
-
 	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -791,7 +793,6 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
-
 	newPath := filepath.Join(destPath, objectRef.Name)
 	paths, err := common.GetParentPaths(newPath)
 	if err != nil {
