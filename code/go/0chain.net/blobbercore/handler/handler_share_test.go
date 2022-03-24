@@ -254,7 +254,7 @@ func TestHandlers_Share(t *testing.T) {
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path","lookup_hash","type","name" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.Tx, "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "lookup_hash"}).
@@ -343,7 +343,7 @@ func TestHandlers_Share(t *testing.T) {
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path","lookup_hash","type","name" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.Tx, "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "lookup_hash"}).
@@ -429,7 +429,7 @@ func TestHandlers_Share(t *testing.T) {
 					)
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","type" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.Tx, filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "lookup_hash"}).
@@ -508,7 +508,7 @@ func TestHandlers_Share(t *testing.T) {
 					)
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","type" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.Tx, filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "lookup_hash"}).
