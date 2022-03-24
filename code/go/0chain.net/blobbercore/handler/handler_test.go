@@ -402,15 +402,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if err != nil {
 						t.Fatal()
 					}
-
-					method := http.MethodGet
-					if !isEndpointAllowGetReq(name) {
-						method = http.MethodPost
-					}
-					r, err := http.NewRequest(method, url.String(), nil)
-					if err != nil {
-						t.Fatal(err)
-					}
 					q := url.Query()
 					formFieldByt, err := json.Marshal(
 						&allocation.AddFileChanger{
@@ -445,7 +436,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if err := formWriter.Close(); err != nil {
 						t.Fatal(err)
 					}
-					r, err = http.NewRequest(http.MethodPost, url.String(), body)
+					r, err := http.NewRequest(http.MethodPost, url.String(), body)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -472,16 +463,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if err != nil {
 						t.Fatal()
 					}
-
-					method := http.MethodGet
-					if !isEndpointAllowGetReq(name) {
-						method = http.MethodPost
-					}
-					r, err := http.NewRequest(method, url.String(), nil)
-					if err != nil {
-						t.Fatal(err)
-					}
-
 					q := url.Query()
 					formFieldByt, err := json.Marshal(
 						&allocation.AddFileChanger{
@@ -516,7 +497,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if err := formWriter.Close(); err != nil {
 						t.Fatal(err)
 					}
-					r, err = http.NewRequest(http.MethodPost, url.String(), body)
+					r, err := http.NewRequest(http.MethodPost, url.String(), body)
 					if err != nil {
 						t.Fatal(err)
 					}
