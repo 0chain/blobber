@@ -17,6 +17,7 @@ type Migration struct {
 	//  + increase index version if any index is changed
 	//  + increase column version if any column/constraint is changed
 	Version   string    `gorm:"column:version;primary_key"`
+	Remark    string    `gorm:"column:remark"`
 	CreatedAt time.Time `gorm:"column:created_at"`
 	Scripts   []string  `gorm:"-"`
 }

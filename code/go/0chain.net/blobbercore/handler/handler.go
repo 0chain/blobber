@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"runtime/pprof"
+	"strconv"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -74,7 +75,8 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/getstats", common.ToJSONResponse(stats.GetStatsHandler))
 
 	//marketplace related
-	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(MarketPlaceShareInfoHandler)))
+	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(InsertShare))).Methods(http.MethodOptions, http.MethodPost)
+	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(RevokeShare))).Methods(http.MethodOptions, http.MethodDelete)
 
 	// lightweight http handler without heavy postgres transaction to improve performance
 
@@ -517,6 +519,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	encryptionPublicKey := r.FormValue("encryption_public_key")
 	authTicketString := r.FormValue("auth_ticket")
+	availableAfter := r.FormValue("available_after")
 	authTicket := &readmarker.AuthTicket{}
 
 	err = json.Unmarshal([]byte(authTicketString), &authTicket)
@@ -537,6 +540,16 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 
+	availableAt := common.Now()
+
+	if len(availableAfter) > 0 {
+		a, err := strconv.ParseInt(availableAfter, 10, 64)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid available_after: "+err.Error())
+		}
+		availableAt = common.Timestamp(a)
+	}
+
 	shareInfo := reference.ShareInfo{
 		OwnerID:                   authTicket.OwnerID,
 		ClientID:                  authTicket.ClientID,
@@ -544,6 +557,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		ReEncryptionKey:           authTicket.ReEncryptionKey,
 		ClientEncryptionPublicKey: encryptionPublicKey,
 		ExpiryAt:                  common.ToTime(authTicket.Expiration),
+		AvailableAt:               common.ToTime(availableAt),
 	}
 
 	existingShare, _ := reference.GetShareInfo(ctx, authTicket.ClientID, authTicket.FilePathHash)
@@ -560,18 +574,6 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 
 	return map[string]interface{}{"message": "Share info added successfully"}, nil
-}
-
-func MarketPlaceShareInfoHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "DELETE" {
-		return RevokeShare(ctx, r)
-	}
-
-	if r.Method == "POST" {
-		return InsertShare(ctx, r)
-	}
-
-	return nil, errors.New("invalid request method, only POST is allowed")
 }
 
 //PrintCSS - print the common css elements

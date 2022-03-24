@@ -252,6 +252,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			payerID = clientID
 		}
 
+		availableAt := shareInfo.AvailableAt.Unix()
+		if common.Timestamp(availableAt) > common.Now() {
+			return nil, common.NewErrorf("download_file", "the file is not available until: %v", shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
+		}
+
 		dr.ReadMarker.AuthTicket = datatypes.JSON(authTokenString)
 
 		// check for file payer flag

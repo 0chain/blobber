@@ -224,37 +224,17 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	),
 	).Name(uName)
 
-	dPath := "/v1/file/download/{allocation}"
-	dName := "Download"
-	router.HandleFunc(dPath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithConnection(DownloadHandler),
-		),
-	),
-	).Name(dName)
-
-	sharePath := "/v1/marketplace/shareinfo/{allocation}"
-	shareName := "Share"
-	router.HandleFunc(sharePath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithReadOnlyConnection(MarketPlaceShareInfoHandler),
-		),
-	),
-	).Name(shareName)
-
 	return router,
 		map[string]string{
-			opPath:    opName,
-			rpPath:    rpName,
-			sPath:     sName,
-			otPath:    otName,
-			collPath:  collName,
-			rPath:     rName,
-			cPath:     cName,
-			aPath:     aName,
-			uPath:     uName,
-			sharePath: shareName,
-			dPath:     dName,
+			opPath:   opName,
+			rpPath:   rpName,
+			sPath:    sName,
+			otPath:   otName,
+			collPath: collName,
+			rPath:    rName,
+			cPath:    cName,
+			aPath:    aName,
+			uPath:    uName,
 		}
 }
 
@@ -278,7 +258,7 @@ func isEndpointUpload(name string) bool {
 
 func isEndpointAllowGetReq(name string) bool {
 	switch name {
-	case "Stats", "Rename", "Copy", "Attributes", "Upload", "Share", "Download":
+	case "Stats", "Rename", "Copy", "Attributes", "Upload", "Download":
 		return false
 	default:
 		return true
@@ -1334,6 +1314,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			},
 			wantCode: http.StatusOK,
 		},
+		//<<<<<<< HEAD
 		{
 			name: "InsertShareInfo_OK_New_Share",
 			args: args{
@@ -1675,6 +1656,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			wantCode: http.StatusOK,
 			wantBody: "{\"message\":\"Path not found\",\"status\":404}\n",
 		},
+		//=======
+		//>>>>>>> staging
 	}
 	tests := append(positiveTests, negativeTests...)
 	tests = append(tests, uploadNegativeTests...)
