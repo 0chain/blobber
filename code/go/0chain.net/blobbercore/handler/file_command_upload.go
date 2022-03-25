@@ -21,7 +21,7 @@ import (
 // UploadFileCommand command for resuming file
 type UploadFileCommand struct {
 	allocationChange *allocation.AllocationChange
-	fileChanger      *allocation.AddFileChanger
+	fileChanger      *allocation.UploadFileChanger
 }
 
 // IsValidated validate request.
@@ -30,7 +30,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	fileChanger := &allocation.AddFileChanger{}
+	fileChanger := &allocation.UploadFileChanger{}
 
 	uploadMetaString := req.FormValue("uploadMeta")
 	err := json.Unmarshal([]byte(uploadMetaString), fileChanger)
@@ -98,7 +98,6 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	result.Filename = cmd.fileChanger.Filename
 	result.Hash = fileOutputData.ContentHash
-	//result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := connectionObj.Size
@@ -112,7 +111,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}
 
-	if len(cmd.fileChanger.ChunkHash) > 0 && cmd.fileChanger.ChunkHash != fileOutputData.ContentHash {
+	if len(cmd.fileChanger.ChunksHash) > 0 && cmd.fileChanger.ChunksHash != fileOutputData.ContentHash {
 		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
 	}
 
@@ -163,7 +162,7 @@ func (cmd *UploadFileCommand) reloadChange(connectionObj *allocation.AllocationC
 			continue
 		}
 
-		dbChangeProcessor := &allocation.AddFileChanger{}
+		dbChangeProcessor := &allocation.UploadFileChanger{}
 
 		err := dbChangeProcessor.Unmarshal(c.Input)
 		if err != nil {

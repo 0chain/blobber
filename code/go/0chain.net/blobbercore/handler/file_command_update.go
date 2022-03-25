@@ -97,7 +97,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		allocationSize += fileOutputData.Size
 	}
 
-	if len(cmd.fileChanger.ChunkHash) > 0 && cmd.fileChanger.ChunkHash != fileOutputData.ContentHash {
+	if len(cmd.fileChanger.ChunksHash) > 0 && cmd.fileChanger.ChunksHash != fileOutputData.ContentHash {
 		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
 	}
 
