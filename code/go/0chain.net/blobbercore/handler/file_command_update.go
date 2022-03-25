@@ -78,7 +78,6 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		OnCloud: cmd.exisitingFileRef.OnCloud,
 
 		UploadOffset: cmd.fileChanger.UploadOffset,
-		IsChunked:    cmd.fileChanger.ChunkSize > 0,
 		IsFinal:      cmd.fileChanger.IsFinal,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
@@ -97,7 +96,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		allocationSize += fileOutputData.Size
 	}
 
-	if len(cmd.fileChanger.ChunksHash) > 0 && cmd.fileChanger.ChunksHash != fileOutputData.ContentHash {
+	if len(cmd.fileChanger.ChunkHash) > 0 && cmd.fileChanger.ChunkHash != fileOutputData.ContentHash {
 		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
 	}
 

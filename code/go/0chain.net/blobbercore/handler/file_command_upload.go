@@ -88,7 +88,6 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 		ChunkSize:    cmd.fileChanger.ChunkSize,
 		UploadOffset: cmd.fileChanger.UploadOffset,
-		IsChunked:    true,
 		IsFinal:      cmd.fileChanger.IsFinal,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
@@ -111,7 +110,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}
 
-	if len(cmd.fileChanger.ChunksHash) > 0 && cmd.fileChanger.ChunksHash != fileOutputData.ContentHash {
+	if len(cmd.fileChanger.ChunkHash) > 0 && cmd.fileChanger.ChunkHash != fileOutputData.ContentHash {
 		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
 	}
 
