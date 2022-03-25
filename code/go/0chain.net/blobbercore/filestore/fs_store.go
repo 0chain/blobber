@@ -546,7 +546,7 @@ func (fs *FileFSStore) WriteChunk(allocationID string, fileData *FileInputData, 
 
 	fileRef := &FileOutputData{}
 
-	// the chunk has been rewritten. but it is lost when network is broken, and it is not save in db
+	// the chunk has been rewritten. but network was broken, and it is not save in db
 	if dest.size > fileData.UploadOffset {
 		fileRef.ChunkUploaded = true
 	}
