@@ -69,7 +69,7 @@ func BenchmarkUploadFileWithDisk(b *testing.B) {
 			hasher := sdk.CreateHasher(bm.ChunkSize)
 			isFinal := false
 
-			body, formData, _ := formBuilder.Build(fileMeta, hasher, strconv.FormatInt(time.Now().UnixNano(), 10), int64(bm.ChunkSize), 0, isFinal, "", chunkBytes, nil)
+			body, formData, _ := formBuilder.Build(fileMeta, hasher, strconv.FormatInt(time.Now().UnixNano(), 10), int64(bm.ChunkSize), 0, 0, isFinal, "", chunkBytes, nil)
 
 			req, err := blobber.NewRequest(http.MethodPost, "http://127.0.0.1:5051/v1/file/upload/benchmark_upload", body)
 
