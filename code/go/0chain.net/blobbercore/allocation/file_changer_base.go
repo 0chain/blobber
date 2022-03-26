@@ -49,9 +49,10 @@ type BaseFileChanger struct {
 	ChunkSize int64 `json:"chunk_size,omitempty"` // the size of achunk. 64*1024 is default
 	IsFinal   bool  `json:"is_final,omitempty"`   // current chunk is last or not
 
-	ChunkIndex   int    `json:"chunk_index,omitempty"` // the seq of current chunk. all chunks MUST be uploaded one by one because of CompactMerkleTree
-	ChunkHash    string `json:"chunk_hash,omitempty"`
-	UploadOffset int64  `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
+	ChunkStartIndex int    `json:"chunk_start_index,omitempty"` // start index of chunks.
+	ChunkEndIndex   int    `json:"chunk_end_index,omitempty"`   // end index of chunks. all chunks MUST be uploaded one by one because of CompactMerkleTree
+	ChunkHash       string `json:"chunk_hash,omitempty"`
+	UploadOffset    int64  `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
 }
 
 func (fc *BaseFileChanger) DeleteTempFile() error {
