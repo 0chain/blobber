@@ -20,8 +20,8 @@ type FileCommandDelete struct {
 	allocationChange *allocation.AllocationChange
 }
 
-// IsAuthorized validate request.
-func (cmd *FileCommandDelete) IsAuthorized(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
+// IsValidated validate request.
+func (cmd *FileCommandDelete) IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}

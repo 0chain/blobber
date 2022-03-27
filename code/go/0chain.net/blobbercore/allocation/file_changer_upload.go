@@ -13,13 +13,13 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
-// AddFileChanger file change processor for continuous upload in INIT/APPEND/FINALIZE
-type AddFileChanger struct {
+// UploadFileChanger file change processor for continuous upload in INIT/APPEND/FINALIZE
+type UploadFileChanger struct {
 	BaseFileChanger
 }
 
 // ApplyChange update references, and create a new FileRef
-func (nf *AddFileChanger) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 	path, _ := filepath.Split(nf.Path)
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
@@ -97,7 +97,7 @@ func (nf *AddFileChanger) ApplyChange(ctx context.Context, change *AllocationCha
 }
 
 // Marshal marshal and change to persistent to postgres
-func (nf *AddFileChanger) Marshal() (string, error) {
+func (nf *UploadFileChanger) Marshal() (string, error) {
 	ret, err := json.Marshal(nf)
 	if err != nil {
 		return "", err
@@ -106,7 +106,7 @@ func (nf *AddFileChanger) Marshal() (string, error) {
 }
 
 // Unmarshal reload and unmarshal change from allocation_changes.input on postgres
-func (nf *AddFileChanger) Unmarshal(input string) error {
+func (nf *UploadFileChanger) Unmarshal(input string) error {
 	if err := json.Unmarshal([]byte(input), nf); err != nil {
 		return err
 	}

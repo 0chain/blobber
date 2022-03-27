@@ -982,7 +982,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	cmd := createFileCommand(r)
 
-	err = cmd.IsAuthorized(ctx, r, allocationObj, clientID)
+	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
 
 	if err != nil {
 		return nil, err
