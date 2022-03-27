@@ -73,7 +73,7 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 		ClientID:        clientId,
 		OwnerID:         clientId,
 		Timestamp:       now,
-		//ReadCounter:     1337,
+		ReadSize:        64 * KB,
 	}
 
 	rmSig, err := signScheme.Sign(encryption.Hash(rm.GetHashData()))
