@@ -17,8 +17,6 @@ type FileInputData struct {
 
 	// ChunkSize chunk size
 	ChunkSize int64
-	//IsChunked the request is chunked upload
-	IsChunked bool
 	//UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
 	UploadLength int64
 	//Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.

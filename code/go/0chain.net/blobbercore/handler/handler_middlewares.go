@@ -9,13 +9,6 @@ import (
 )
 
 func useCors(h http.Handler) http.Handler {
-	allowedHeaders := []string{
-		"X-Requested-With", "Content-Type",
-		"X-App-Client-ID", "X-App-Client-Key", "X-App-Client-Signature",
-		"Access-Control-Allow-origin", "Access-Control-Request-Method",
-	}
-
-	allowedOrigins := []string{"*"}
 
 	allowedMethods := []string{"GET", "HEAD", "POST", "PUT",
 		"DELETE", "OPTIONS"}
@@ -27,10 +20,9 @@ func useCors(h http.Handler) http.Handler {
 			}
 		}()
 
-		w.Header().Add("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
-		w.Header().Add("Access-Control-Allow-Origin", strings.Join(allowedOrigins, ", "))
+		w.Header().Add("Access-Control-Allow-Headers", "*")
+		w.Header().Add("Access-Control-Allow-Origin", "*")
 		w.Header().Add("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
-		w.Header().Add("Access-Control-Allow-Credentials", "true")
 
 		// return directly for preflight request
 		if r.Method == http.MethodOptions {

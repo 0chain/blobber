@@ -18,19 +18,19 @@ import (
 	"go.uber.org/zap"
 )
 
-// AddFileCommand command for resuming file
-type AddFileCommand struct {
+// UploadFileCommand command for resuming file
+type UploadFileCommand struct {
 	allocationChange *allocation.AllocationChange
-	fileChanger      *allocation.AddFileChanger
+	fileChanger      *allocation.UploadFileChanger
 }
 
-// IsAuthorized validate request.
-func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
+// IsValidated validate request.
+func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	fileChanger := &allocation.AddFileChanger{}
+	fileChanger := &allocation.UploadFileChanger{}
 
 	uploadMetaString := req.FormValue("uploadMeta")
 	err := json.Unmarshal([]byte(uploadMetaString), fileChanger)
@@ -70,7 +70,7 @@ func (cmd *AddFileCommand) IsAuthorized(ctx context.Context, req *http.Request, 
 }
 
 // ProcessContent flush file to FileStorage
-func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
+func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
 	result := blobberhttp.UploadResult{}
 
 	origfile, _, err := req.FormFile("uploadFile")
@@ -88,7 +88,6 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 
 		ChunkSize:    cmd.fileChanger.ChunkSize,
 		UploadOffset: cmd.fileChanger.UploadOffset,
-		IsChunked:    true,
 		IsFinal:      cmd.fileChanger.IsFinal,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ConnectionID)
@@ -98,7 +97,6 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 
 	result.Filename = cmd.fileChanger.Filename
 	result.Hash = fileOutputData.ContentHash
-	//result.MerkleRoot = fileOutputData.MerkleRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := connectionObj.Size
@@ -134,7 +132,7 @@ func (cmd *AddFileCommand) ProcessContent(ctx context.Context, req *http.Request
 }
 
 // ProcessThumbnail flush thumbnail file to FileStorage if it has.
-func (cmd *AddFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
+func (cmd *UploadFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
 	thumbfile, thumbHeader, _ := req.FormFile("uploadThumbnailFile")
 
 	if thumbHeader != nil {
@@ -157,13 +155,13 @@ func (cmd *AddFileCommand) ProcessThumbnail(ctx context.Context, req *http.Reque
 	return nil
 }
 
-func (cmd *AddFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
+func (cmd *UploadFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
 		if c.Operation != constants.FileOperationInsert {
 			continue
 		}
 
-		dbChangeProcessor := &allocation.AddFileChanger{}
+		dbChangeProcessor := &allocation.UploadFileChanger{}
 
 		err := dbChangeProcessor.Unmarshal(c.Input)
 		if err != nil {
@@ -180,7 +178,7 @@ func (cmd *AddFileCommand) reloadChange(connectionObj *allocation.AllocationChan
 }
 
 // UpdateChange replace AddFileChange in db
-func (cmd *AddFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
+func (cmd *UploadFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	for _, c := range connectionObj.Changes {
 		if c.Operation != constants.FileOperationInsert {
 			continue

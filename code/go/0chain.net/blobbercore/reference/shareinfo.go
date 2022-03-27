@@ -17,6 +17,7 @@ type ShareInfo struct {
 	ClientEncryptionPublicKey string    `gorm:"column:client_encryption_public_key;not null" json:"client_encryption_public_key,omitempty"`
 	Revoked                   bool      `gorm:"column:revoked;not null" json:"revoked"`
 	ExpiryAt                  time.Time `gorm:"column:expiry_at;not null" json:"expiry_at,omitempty"`
+	AvailableAt               time.Time `gorm:"column:available_at;type:timestamp without time zone;not null;default:now()" json:"available_at,omitempty"`
 }
 
 func TableName() string {
@@ -60,7 +61,7 @@ func UpdateShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 			ClientID:     shareInfo.ClientID,
 			FilePathHash: shareInfo.FilePathHash,
 		}).
-		Select("Revoked", "ReEncryptionKey", "ExpiryAt", "ClientEncryptionPublicKey").
+		Select("Revoked", "ReEncryptionKey", "ExpiryAt", "AvailableAt", "ClientEncryptionPublicKey").
 		Updates(shareInfo).
 		Error
 }

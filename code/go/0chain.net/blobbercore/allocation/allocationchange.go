@@ -142,7 +142,7 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 		var acp AllocationChangeProcessor
 		switch change.Operation {
 		case constants.FileOperationInsert:
-			acp = new(AddFileChanger)
+			acp = new(UploadFileChanger)
 		case constants.FileOperationUpdate:
 			acp = new(UpdateFileChanger)
 		case constants.FileOperationDelete:
