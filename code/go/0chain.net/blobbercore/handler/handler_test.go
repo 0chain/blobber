@@ -404,7 +404,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 					q := url.Query()
 					formFieldByt, err := json.Marshal(
-						&allocation.AddFileChanger{
+						&allocation.UploadFileChanger{
 							BaseFileChanger: allocation.BaseFileChanger{Path: path}})
 					if err != nil {
 						t.Fatal(err)
@@ -465,7 +465,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 					q := url.Query()
 					formFieldByt, err := json.Marshal(
-						&allocation.AddFileChanger{
+						&allocation.UploadFileChanger{
 							BaseFileChanger: allocation.BaseFileChanger{Path: path}})
 					if err != nil {
 						t.Fatal(err)
@@ -1200,7 +1200,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					//	&allocation.UpdateFileChanger{
 					//		BaseFileChanger: allocation.BaseFileChanger{Path: path}})
 					formFieldByt, err := json.Marshal(
-						&allocation.AddFileChanger{
+						&allocation.UploadFileChanger{
 							BaseFileChanger: allocation.BaseFileChanger{Path: path}})
 					if err != nil {
 						t.Fatal(err)
