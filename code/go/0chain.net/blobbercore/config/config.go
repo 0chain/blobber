@@ -138,6 +138,14 @@ type Config struct {
 	MinSubmit int
 	// MinConfirmation minial confirmation from sharders
 	MinConfirmation int
+
+	Name string
+
+	LogoUrl string
+
+	Description string
+
+	WebsiteUrl string
 }
 
 /*Configuration of the system */

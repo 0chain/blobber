@@ -4,6 +4,13 @@ logging:
   level: "error"
   console: true # printing log to console is only supported in development mode
 
+info:
+  name: my_blobber
+  logo_url: https://google.com
+  description: this is my test blobber
+  website_url: https://google.com
+
+
 # for testing
 #  500 MB - 536870912
 #    1 GB - 1073741824
