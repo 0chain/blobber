@@ -3,7 +3,6 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -1066,9 +1065,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						sqlmock.NewRows([]string{"type", "name"}).
 							AddRow(reference.FILE, "path"),
 					)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id" FROM "reference_objects" WHERE`)).
-					WithArgs(aa, aa).
-					WillReturnError(errors.New(""))
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "path","type" FROM "reference_objects" WHERE`)).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type"}).

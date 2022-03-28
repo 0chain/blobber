@@ -759,10 +759,6 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 	newPath := filepath.Join(destPath, objectRef.Name)
-	destRef, _ := reference.GetLimitedRefFieldsByPath(ctx, allocationID, newPath, []string{"id"})
-	if destRef != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
-	}
 	paths, err := common.GetParentPaths(newPath)
 	if err != nil {
 		return nil, err
