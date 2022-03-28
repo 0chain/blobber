@@ -54,17 +54,6 @@ func resetMockFileBlock() {
 	mockFileBlock = []byte("mock")
 }
 
-// var encscheme zencryption.EncryptionScheme
-
-// func setupEncryptionScheme() {
-// 	encscheme = zencryption.NewEncryptionScheme()
-// 	mnemonic := client.GetClient().Mnemonic
-// 	if _, err := encscheme.Initialize(mnemonic); err != nil {
-// 		panic("initialize encscheme")
-// 	}
-// 	encscheme.InitForEncryption("filetype:audio")
-// }
-
 func signHash(client *client.Client, hash string) (string, error) {
 	retSignature := ""
 	for _, kv := range client.Keys {
@@ -1196,9 +1185,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 
 					q := url.Query()
-					//formFieldByt, err := json.Marshal(
-					//	&allocation.UpdateFileChanger{
-					//		BaseFileChanger: allocation.BaseFileChanger{Path: path}})
 					formFieldByt, err := json.Marshal(
 						&allocation.UploadFileChanger{
 							BaseFileChanger: allocation.BaseFileChanger{Path: path}})
