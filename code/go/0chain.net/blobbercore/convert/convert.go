@@ -144,27 +144,26 @@ func WriteMarkerGRPCToWriteMarker(wm *blobbergrpc.WriteMarker) *writemarker.Writ
 	}
 }
 
-func ReadMarkerToReadMarkerGRPC(rm *readmarker.ReadMarker) *blobbergrpc.ReadMaker {
+func ReadMarkerToReadMarkerGRPC(rm *readmarker.ReadMarker) *blobbergrpc.ReadMarker {
 	if rm == nil {
 		return nil
 	}
 
-	return &blobbergrpc.ReadMaker{
+	return &blobbergrpc.ReadMarker{
 		ClientId:        rm.ClientID,
 		ClientPublicKey: rm.ClientPublicKey,
 		BlobberId:       rm.BlobberID,
 		AllocationId:    rm.AllocationID,
 		OwnerId:         rm.OwnerID,
 		Timestamp:       int64(rm.Timestamp),
-		Counter:         rm.ReadCounter,
+		ReadSize:        rm.ReadSize,
 		Signature:       rm.Signature,
-		Suspend:         rm.Suspend,
 		PayerId:         rm.PayerID,
 		AuthTicket:      rm.AuthTicket,
 	}
 }
 
-func ReadMakerGRPCToReadMaker(rm *blobbergrpc.ReadMaker) *readmarker.ReadMarker {
+func ReadMakerGRPCToReadMaker(rm *blobbergrpc.ReadMarker) *readmarker.ReadMarker {
 	if rm == nil {
 		return nil
 	}
@@ -176,9 +175,8 @@ func ReadMakerGRPCToReadMaker(rm *blobbergrpc.ReadMaker) *readmarker.ReadMarker 
 		AllocationID:    rm.AllocationId,
 		OwnerID:         rm.OwnerId,
 		Timestamp:       common.Timestamp(rm.Timestamp),
-		ReadCounter:     rm.Counter,
+		ReadSize:        rm.ReadSize,
 		Signature:       rm.Signature,
-		Suspend:         rm.Suspend,
 		PayerID:         rm.PayerId,
 		AuthTicket:      rm.AuthTicket,
 	}
