@@ -64,7 +64,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ListHandler))).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/v1/file/objectpath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler)))
 	r.HandleFunc("/v1/file/referencepath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))
-	r.HandleFunc("/v1/file/objecttree/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ObjectTreeHandler)))
+	r.HandleFunc("/v1/file/objecttree/{allocation}", common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler))).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/v1/file/refs/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(RefsHandler))).Methods(http.MethodGet, http.MethodOptions)
 	//admin related
 	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
@@ -150,6 +150,17 @@ func WithStatusConnection(handler common.StatusCodeResponderF) common.StatusCode
 				"error committing to meta store: %v", err)
 		}
 		return
+	}
+}
+
+func WithStatusReadOnlyConnection(handler common.StatusCodeResponderF) common.StatusCodeResponderF {
+	return func(ctx context.Context, r *http.Request) (interface{}, int, error) {
+		ctx = GetMetaDataStore().CreateTransaction(ctx)
+		resp, statusCode, err := handler(ctx, r)
+		defer func() {
+			GetMetaDataStore().GetTransaction(ctx).Rollback()
+		}()
+		return resp, statusCode, err
 	}
 }
 
@@ -312,15 +323,18 @@ func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error
 	return response, nil
 }
 
-func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetObjectTree(ctx, r)
 	if err != nil {
-		return nil, err
+		if errors.Is(common.ErrNotFound, err) {
+			return response, http.StatusNoContent, nil
+		}
+		return nil, http.StatusBadRequest, err
 	}
 
-	return response, nil
+	return response, http.StatusOK, nil
 }
 
 func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
