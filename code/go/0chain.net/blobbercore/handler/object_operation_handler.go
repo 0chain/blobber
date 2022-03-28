@@ -876,12 +876,23 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", dirPath))
 	}
 
+	result := &blobberhttp.UploadResult{}
+	result.Filename = dirPath
+	result.Hash = ""
+	result.MerkleRoot = ""
+	result.Size = 0
+
 	exisitingRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
 	if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
 	if exisitingRef != nil {
+		// target directory exists, return StatusOK
+		if exisitingRef.Type == reference.DIRECTORY {
+			return result, nil
+		}
+
 		return nil, common.NewError("duplicate_file", "File at path already exists")
 	}
 
@@ -913,8 +924,8 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	formData.Path = dirPath
 	formData.AllocationID = allocationID
 	formData.ConnectionID = connectionID
-	formData.ActualHash = "-"
-	formData.ActualSize = 1
+	formData.ActualHash = ""
+	formData.ActualSize = 0
 
 	connectionObj.AddChange(allocationChange, &formData)
 
@@ -922,12 +933,6 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	if err != nil {
 		return nil, err
 	}
-
-	result := &blobberhttp.UploadResult{}
-	result.Filename = dirPath
-	result.Hash = ""
-	result.MerkleRoot = ""
-	result.Size = 0
 
 	return result, nil
 }
