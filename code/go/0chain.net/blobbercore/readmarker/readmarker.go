@@ -20,20 +20,16 @@ type ReadRedeem struct {
 }
 
 type ReadMarker struct {
-	ClientID        string           `gorm:"column:client_id" json:"client_id"`
-	ClientPublicKey string           `gorm:"column:client_public_key" json:"client_public_key"`
-	BlobberID       string           `gorm:"-" json:"blobber_id"`
-	AllocationID    string           `gorm:"column:allocation_id" json:"allocation_id"`
-	OwnerID         string           `gorm:"column:owner_id" json:"owner_id"`
+	ClientID        string           `gorm:"column:client_id;size:64;primary_key" json:"client_id"`
+	ClientPublicKey string           `gorm:"column:client_public_key;size:512;not null" json:"client_public_key"`
+	BlobberID       string           `gorm:"column:blobber_id;size:64;not null" json:"blobber_id"`
+	AllocationID    string           `gorm:"column:allocation_id;size:64;not null" json:"allocation_id"`
+	OwnerID         string           `gorm:"column:owner_id;size:64;not null" json:"owner_id"`
 	Timestamp       common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
-
-	ReadSize int64 `gorm:"column:read_size" json:"read_size"`
-
-	Signature string `gorm:"column:signature" json:"signature"`
-	PayerID   string `gorm:"column:payer_id" json:"payer_id"`
-
-	// Remove this as well
-	AuthTicket datatypes.JSON `gorm:"column:auth_ticket" json:"auth_ticket"`
+	ReadSize        int64            `gorm:"column:read_size" json:"read_size"`
+	Signature       string           `gorm:"column:signature;size:256;not null" json:"signature"`
+	PayerID         string           `gorm:"column:payer_id;size:64;not null" json:"payer_id"`
+	AuthTicket      datatypes.JSON   `gorm:"column:auth_ticket" json:"auth_ticket"`
 }
 
 func (rm *ReadMarker) GetHashData() string {
