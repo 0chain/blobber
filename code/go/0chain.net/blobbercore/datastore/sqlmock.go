@@ -76,6 +76,10 @@ func (store *Sqlmock) GetTransaction(ctx context.Context) *gorm.DB {
 	return nil
 }
 
+func (store *Sqlmock) GetPgDB() (*gorm.DB, error) {
+	return store.db, nil
+}
+
 func (store *Sqlmock) GetDB() *gorm.DB {
 	return store.db
 }

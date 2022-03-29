@@ -81,6 +81,10 @@ func (store *Mocket) GetTransaction(ctx context.Context) *gorm.DB {
 	return nil
 }
 
+func (store *Mocket) GetPgDB() (*gorm.DB, error) {
+	return store.db, nil
+}
+
 func (store *Mocket) GetDB() *gorm.DB {
 	return store.db
 }

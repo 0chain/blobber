@@ -31,7 +31,6 @@ func main() {
 		logging.Logger.Error("Error setting up data store" + err.Error())
 		panic(err)
 	}
-
 	// Initialize after server chain is setup.
 	if err := setupFileStore(); err != nil {
 		logging.Logger.Error("Error setting up file store" + err.Error())

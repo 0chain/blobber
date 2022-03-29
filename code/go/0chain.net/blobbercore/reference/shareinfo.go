@@ -20,20 +20,20 @@ type ShareInfo struct {
 	AvailableAt               time.Time `gorm:"column:available_at;type:timestamp without time zone;not null;default:now()" json:"available_at,omitempty"`
 }
 
-func TableName() string {
+func (ShareInfo) TableName() string {
 	return "marketplace_share_info"
 }
 
 // add share if it already doesnot exist
 func AddShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Table(TableName()).Create(shareInfo).Error
+	return db.Model(&ShareInfo{}).Create(shareInfo).Error
 }
 
 func DeleteShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 
-	result := db.Table(TableName()).
+	result := db.Model(&ShareInfo{}).
 		Where(&ShareInfo{
 			ClientID:     shareInfo.ClientID,
 			FilePathHash: shareInfo.FilePathHash,
@@ -56,7 +56,7 @@ func DeleteShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
 func UpdateShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 
-	return db.Table(TableName()).
+	return db.Model(&ShareInfo{}).
 		Where(&ShareInfo{
 			ClientID:     shareInfo.ClientID,
 			FilePathHash: shareInfo.FilePathHash,
@@ -69,7 +69,7 @@ func UpdateShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 func GetShareInfo(ctx context.Context, clientID, filePathHash string) (*ShareInfo, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	shareInfo := &ShareInfo{}
-	err := db.Table(TableName()).
+	err := db.Model(&ShareInfo{}).
 		Where(&ShareInfo{
 			ClientID:     clientID,
 			FilePathHash: filePathHash,
