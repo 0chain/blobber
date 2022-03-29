@@ -237,7 +237,12 @@ func isEndpointRequireSignature(name string) bool {
 }
 
 func isEndpointUpload(name string) bool {
-	return name == "Upload"
+	switch name {
+	case "Upload":
+		return true
+	default:
+		return false
+	}
 }
 
 func isEndpointAllowGetReq(name string) bool {
