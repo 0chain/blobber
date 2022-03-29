@@ -119,7 +119,8 @@ func TestDownloadFile(t *testing.T) {
 		rm.AllocationID = p.inData.allocationID
 		rm.OwnerID = mockOwner.ClientID
 		rm.Timestamp = now
-		rm.ReadCounter = p.inData.numBlocks
+		// set another value to size
+		rm.ReadSize = p.inData.numBlocks * 64 * KB
 		err := rm.Sign()
 		require.NoError(t, err)
 		rmData, err := json.Marshal(rm)
@@ -242,6 +243,7 @@ func TestDownloadFile(t *testing.T) {
 			WhoPaysForReads: p.attribute,
 		})
 		require.NoError(t, err)
+
 		mocket.Catcher.NewMock().OneTime().WithQuery(
 			`SELECT * FROM "reference_objects" WHERE`,
 		).WithArgs(
@@ -267,71 +269,55 @@ func TestDownloadFile(t *testing.T) {
 			[]map[string]interface{}{{"count": collaboratorRtv}},
 		)
 
-		mocket.Catcher.NewMock().OneTime().WithQuery(
-			`SELECT * FROM "read_markers" WHERE`,
-		).WithCallback(func(par1 string, args []driver.NamedValue) {
-			require.EqualValues(t, p.payerId.ClientID, args[0].Value)
-		}).WithArgs(
-			p.payerId.ClientID,
-		).WithReply(
-			[]map[string]interface{}{{
-				"client_id":       p.allocation.ID,
-				"redeem_required": false,
-			}},
-		)
+		// mocket.Catcher.NewMock().OneTime().WithQuery(
+		// 	`SELECT * FROM "read_markers" WHERE`,
+		// ).WithCallback(func(par1 string, args []driver.NamedValue) {
+		// 	require.EqualValues(t, p.payerId.ClientID, args[0].Value)
+		// }).WithArgs(
+		// 	p.payerId.ClientID,
+		// ).WithReply(
+		// 	[]map[string]interface{}{{
+		// 		"client_id":       p.allocation.ID,
+		// 		"redeem_required": false,
+		// 	}},
+		// )
 
-		mocket.Catcher.NewMock().OneTime().WithQuery(
-			`SELECT * FROM "read_markers" WHERE`,
-		).WithCallback(func(par1 string, args []driver.NamedValue) {
-			//require.EqualValues(t, p.payerId.ClientID, args[0].Value)
-			require.EqualValues(t, client.GetClientID(), args[0].Value)
-		}).WithReply(
-			[]map[string]interface{}{{
-				"client_id":       p.allocation.ID,
-				"redeem_required": false,
-			}},
-		)
+		// mocket.Catcher.NewMock().OneTime().WithQuery(
+		// 	`SELECT * FROM "read_markers" WHERE`,
+		// ).WithCallback(func(par1 string, args []driver.NamedValue) {
+		// 	//require.EqualValues(t, p.payerId.ClientID, args[0].Value)
+		// 	require.EqualValues(t, client.GetClientID(), args[0].Value)
+		// }).WithReply(
+		// 	[]map[string]interface{}{{
+		// 		"client_id":       p.allocation.ID,
+		// 		"redeem_required": false,
+		// 	}},
+		// )
 
 		var funds int64
 		if p.isFundedBlobber || p.isFunded0Chain {
 			funds = mockBigBalance
 		}
 
-		fundedPool := []map[string]interface{}{{
-			"pool_id":       "",
-			"client_id":     p.payerId.ClientID,
-			"blobber_id":    mockBlobberId,
-			"allocation_id": mockAllocationId,
-			"balance":       funds,
-			"expire_at":     mockLongTimeInFuture,
-		}}
+		// fundedPool := []map[string]interface{}{{
+		// 	"pool_id":       "",
+		// 	"client_id":     p.payerId.ClientID,
+		// 	"blobber_id":    mockBlobberId,
+		// 	"allocation_id": mockAllocationId,
+		// 	"balance":       funds,
+		// 	"expire_at":     mockLongTimeInFuture,
+		// }}
 		if p.isFundedBlobber {
 			mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
-				require.EqualValues(t, p.payerId.ClientID, args[0].Value)
-				require.EqualValues(t, mockAllocationId, args[1].Value)
-				require.EqualValues(t, mockBlobberId, args[2].Value)
-			}).OneTime().WithQuery(`SELECT * FROM "read_pools" WHERE`).WithReply(
-				fundedPool,
+			}).OneTime().WithQuery(`SELECT sum(balance) as tot_balance FROM "read_pools" WHERE`).WithReply(
+				[]map[string]interface{}{{"tot_balance": funds}},
 			)
 		} else {
-			mocket.Catcher.NewMock().OneTime().WithQuery(
-				`SELECT * FROM "read_pools" WHERE`,
-			).WithCallback(func(_ string, args []driver.NamedValue) {
-				require.EqualValues(t, p.payerId.ClientID, args[0].Value)
-				require.EqualValues(t, mockAllocationId, args[1].Value)
-				require.EqualValues(t, mockBlobberId, args[2].Value)
-			}).WithReply(
-				[]map[string]interface{}{},
-			)
-
-			mocket.Catcher.NewMock().OneTime().WithQuery(
-				`SELECT * FROM "read_pools" WHERE`,
-			).WithCallback(func(_ string, args []driver.NamedValue) {
-				require.EqualValues(t, p.payerId.ClientID, args[0].Value)
-				require.EqualValues(t, mockAllocationId, args[1].Value)
-				require.EqualValues(t, mockBlobberId, args[2].Value)
-			}).WithReply(
-				fundedPool,
+			mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
+			}).OneTime().WithQuery(`SELECT sum(balance) as tot_balance FROM "read_pools" WHERE`).WithReply(
+				[]map[string]interface{}{
+					{"tot_balance": funds},
+				},
 			)
 		}
 
@@ -375,7 +361,7 @@ func TestDownloadFile(t *testing.T) {
 		).WithCallback(func(par1 string, args []driver.NamedValue) {
 			require.EqualValues(t, p.payerId.ClientID, args[0].Value)
 			require.EqualValues(t, mockAllocationId, args[1].Value)
-			require.EqualValues(t, mockBlobberId, args[2].Value)
+			// require.EqualValues(t, mockBlobberId, args[2].Value)
 		}).WithID(17)
 
 		var funds int64
@@ -387,31 +373,31 @@ func TestDownloadFile(t *testing.T) {
 		).WithCallback(func(par1 string, args []driver.NamedValue) {
 			require.EqualValues(t, mockPoolId, args[0].Value)
 			require.EqualValues(t, p.payerId.ClientID, args[1].Value)
-			require.EqualValues(t, mockBlobberId, args[2].Value)
-			require.EqualValues(t, mockAllocationId, args[3].Value)
-			require.EqualValues(t, funds, args[4].Value)
-			require.EqualValues(t, mockLongTimeInFuture, args[5].Value)
+			// require.EqualValues(t, mockBlobberId, args[2].Value)
+			require.EqualValues(t, mockAllocationId, args[2].Value)
+			require.EqualValues(t, funds, args[3].Value)
+			require.EqualValues(t, mockLongTimeInFuture, args[4].Value)
 		}).WithID(23)
 
 		mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
 			require.EqualValues(t, client.GetClientID(), args[0].Value)
 			require.EqualValues(t, client.GetClientPublicKey(), args[1].Value)
-			require.EqualValues(t, mockBlobberId, args[2].Value)
-			require.EqualValues(t, mockAllocationId, args[3].Value)
-			require.EqualValues(t, mockOwner.ClientID, args[4].Value)
-			require.EqualValues(t, now, args[5].Value)
-			require.EqualValues(t, p.inData.numBlocks, args[6].Value)
+			// require.EqualValues(t, mockBlobberId, args[2].Value)
+			require.EqualValues(t, mockAllocationId, args[2].Value)
+			require.EqualValues(t, mockOwner.ClientID, args[3].Value)
+			require.EqualValues(t, now, args[4].Value)
+			require.EqualValues(t, p.inData.numBlocks*64*KB, args[5].Value)
 		}).WithQuery(`INSERT INTO "read_markers"`).WithID(11)
 
 		mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
 			//require.EqualValues(t, p.payerId.ClientKey, args[0].Value)
 			require.EqualValues(t, client.GetClientPublicKey(), args[0].Value)
-			require.EqualValues(t, mockBlobberId, args[1].Value)
-			require.EqualValues(t, mockAllocationId, args[2].Value)
-			require.EqualValues(t, mockOwner.ClientID, args[3].Value)
-			require.EqualValues(t, now, args[4].Value)
-			require.EqualValues(t, p.inData.numBlocks, args[5].Value)
-			require.EqualValues(t, p.payerId.ClientID, args[7].Value)
+			// require.EqualValues(t, mockBlobberId, args[1].Value)
+			require.EqualValues(t, mockAllocationId, args[1].Value)
+			require.EqualValues(t, mockOwner.ClientID, args[2].Value)
+			require.EqualValues(t, now, args[3].Value)
+			require.EqualValues(t, p.inData.numBlocks, args[4].Value)
+			require.EqualValues(t, p.payerId.ClientID, args[6].Value)
 		}).WithQuery(`UPDATE "read_markers" SET`).WithID(1)
 
 		mocket.Catcher.NewMock().WithQuery(`UPDATE "file_stats" SET`).WithID(1)
@@ -443,7 +429,7 @@ func TestDownloadFile(t *testing.T) {
 			blockNum:       mockBlockNumber,
 			encryptedKey:   mockEncryptKey,
 			contentMode:    "",
-			numBlocks:      10240,
+			numBlocks:      1,
 			rxPay:          p.rxPay,
 		}
 		if p.isRepairer {
@@ -659,6 +645,9 @@ func TestDownloadFile(t *testing.T) {
 				var sh StorageHandler
 				_, err := sh.DownloadFile(setupCtx(test.parameters), request)
 
+				if (test.want.err) != (err != nil) {
+					fmt.Printf("\n\n%v --> Error occurred: %v\n\n", test.name, err)
+				}
 				require.EqualValues(t, test.want.err, err != nil)
 				if err != nil {
 					require.EqualValues(t, test.want.errMsg, err.Error())

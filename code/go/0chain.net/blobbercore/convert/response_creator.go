@@ -238,7 +238,6 @@ func DownloadFileResponseCreator(r interface{}) *blobbergrpc.DownloadFileRespons
 			Data:         httpResp.Data,
 			AllocationId: httpResp.AllocationID,
 			Path:         httpResp.Path,
-			LatestRm:     ReadMarkerToReadMarkerGRPC(httpResp.LatestRM),
 		}
 	}
 

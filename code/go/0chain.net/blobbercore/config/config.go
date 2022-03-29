@@ -143,6 +143,15 @@ type Config struct {
 	MinSubmit int
 	// MinConfirmation minial confirmation from sharders
 	MinConfirmation int
+
+	// Name the name of blobber
+	Name string
+	// LogoUrl logo of blobber
+	LogoUrl string
+	// Description general information of blobber
+	Description string
+	// WebsiteUrl the website of blobber (if any)
+	WebsiteUrl string
 }
 
 /*Configuration of the system */

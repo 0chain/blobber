@@ -106,5 +106,11 @@ func setupConfig() {
 	}
 
 	transaction.MinConfirmation = config.Configuration.MinConfirmation
+
+	config.Configuration.Name = viper.GetString("name")
+	config.Configuration.WebsiteUrl = viper.GetString("website_url")
+	config.Configuration.LogoUrl = viper.GetString("logo_url")
+	config.Configuration.Description = viper.GetString("description")
+	
 	fmt.Print("		[OK]\n")
 }
