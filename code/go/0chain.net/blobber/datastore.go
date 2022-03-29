@@ -30,8 +30,6 @@ func setupDatabase() error {
 
 		time.Sleep(1 * time.Second)
 		fmt.Print("	[OK]\n")
-		break
-
 	}
 
 	fmt.Println("\r[8/12] auto migrate datastore")
