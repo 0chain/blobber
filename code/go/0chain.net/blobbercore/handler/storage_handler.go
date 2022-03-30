@@ -552,7 +552,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 
 	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
 	if !valid || err != nil {
-		errCh <- common.NewError("invalid_signature", "Invalid signature")
+		errCh <- common.NewError("invalid_signature", "could not verify the allocation owner or colloborator")
 		return
 	}
 
