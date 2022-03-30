@@ -153,15 +153,6 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	),
 	).Name(opName)
 
-	rpPath := "/v1/file/referencepath/{allocation}"
-	rpName := "Reference_Path"
-	router.HandleFunc(rpPath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithReadOnlyConnection(ReferencePathHandler),
-		),
-	),
-	).Name(rpName)
-
 	sPath := "/v1/file/stats/{allocation}"
 	sName := "Stats"
 	router.HandleFunc(sPath, common.UserRateLimit(
@@ -219,7 +210,6 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	return router,
 		map[string]string{
 			opPath:   opName,
-			rpPath:   rpName,
 			sPath:    sName,
 			collPath: collName,
 			rPath:    rName,
@@ -365,6 +355,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if !isEndpointAllowGetReq(name) {
 						method = http.MethodPost
 					}
+
 					r, err := http.NewRequest(method, url.String(), nil)
 					if err != nil {
 						t.Fatal(err)
