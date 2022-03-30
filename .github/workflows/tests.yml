@@ -57,7 +57,7 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           fail_ci_if_error: true
-          files: $GITHUB_WORKSPACE/code/go/0chain.net/coverage.txt
+          files: ./code/go/0chain.net/coverage.txt
           flags: unittests
           verbose: true
     
