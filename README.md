@@ -1,6 +1,6 @@
 
 [![Build](https://github.com/0chain/blobber/actions/workflows/build-&-publish-docker-image.yml/badge.svg)](https://github.com/0chain/blobber/actions/workflows/build-&-publish-docker-image.yml)
-[![Test](https://github.com/0chain/blobber/actions/workflows/test.yml/badge.svg)](https://github.com/0chain/blobber/actions/workflows/tests.yml)
+[![Test](https://github.com/0chain/blobber/actions/workflows/tests.yml/badge.svg)](https://github.com/0chain/blobber/actions/workflows/tests.yml)
 [![GoDoc](https://godoc.org/github.com/0chain/blobber?status.png)](https://godoc.org/github.com/0chain/blobber)
 [![codecov](https://codecov.io/gh/0chain/blobber/branch/main/graph/badge.svg)](https://codecov.io/gh/0chain/blobber)
 
