@@ -56,12 +56,11 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
         with:
-          directory: ./code/go/0chain.net/ 
           fail_ci_if_error: true
-          files: ./coverage.txt
+          files: $GITHUB_WORKSPACE/code/go/0chain.net/coverage.txt
+          flags: unittests
           verbose: true
     
-
   integration-tests:
     name: Integration Tests
     runs-on: [ubuntu-20.04]
