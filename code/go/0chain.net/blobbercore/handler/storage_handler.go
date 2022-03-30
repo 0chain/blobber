@@ -9,8 +9,12 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"gorm.io/gorm"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+
+	"github.com/0chain/gosdk/constants"
+	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
@@ -20,8 +24,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/constants"
-	"go.uber.org/zap"
 )
 
 const (
@@ -125,7 +127,7 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 }
 
 func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID, path string) (*reference.Ref, error) {
-	return reference.GetLimitedRefFieldsByPath(ctx, allocationID, path, []string{"id"})
+	return reference.GetLimitedRefFieldsByPath(ctx, allocationID, path, []string{"id", "type"})
 }
 
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
