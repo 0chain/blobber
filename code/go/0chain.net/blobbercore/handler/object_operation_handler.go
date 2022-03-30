@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/0chain/gosdk/constants"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -25,13 +27,13 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/gosdk/constants"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
+
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 const (
@@ -877,11 +879,25 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", dirPath))
 	}
 
+	//<<<<<<< HEAD
+	//=======
+	result := &blobberhttp.UploadResult{}
+	result.Filename = dirPath
+	result.Hash = ""
+	result.MerkleRoot = ""
+	result.Size = 0
+
+	//>>>>>>> staging
 	if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
 	if exisitingRef != nil {
+		// target directory exists, return StatusOK
+		if exisitingRef.Type == reference.DIRECTORY {
+			return result, nil
+		}
+
 		return nil, common.NewError("duplicate_file", "File at path already exists")
 	}
 
@@ -913,19 +929,28 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	formData.Path = dirPath
 	formData.AllocationID = allocationID
 	formData.ConnectionID = connectionID
-	formData.ActualHash = "-"
-	formData.ActualSize = 1
+	//<<<<<<< HEAD
+	//	formData.ActualHash = "-"
+	//	formData.ActualSize = 1
+	//=======
+	formData.ActualHash = ""
+	formData.ActualSize = 0
+
+	//>>>>>>> staging
 	connectionObj.AddChange(allocationChange, &formData)
 	err = connectionObj.ApplyChanges(ctx, "/")
 	if err != nil {
 		return nil, err
 	}
 
-	result := &blobberhttp.UploadResult{}
-	result.Filename = dirPath
-	result.Hash = ""
-	result.MerkleRoot = ""
-	result.Size = 0
+	//<<<<<<< HEAD
+	//	result := &blobberhttp.UploadResult{}
+	//	result.Filename = dirPath
+	//	result.Hash = ""
+	//	result.MerkleRoot = ""
+	//	result.Size = 0
+	//=======
+	//>>>>>>> staging
 	return result, nil
 }
 

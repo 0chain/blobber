@@ -73,6 +73,13 @@ type StorageNodeGeolocation struct {
 	Longitude float64 `json:"longitude"`
 }
 
+type Info struct {
+	Name        string `json:"name"`
+	WebsiteUrl  string `json:"website_url"`
+	LogoUrl     string `json:"logo_url"`
+	Description string `json:"description"`
+}
+
 type StorageNode struct {
 	ID                string                 `json:"id"`
 	BaseURL           string                 `json:"url"`
@@ -81,6 +88,7 @@ type StorageNode struct {
 	Capacity          int64                  `json:"capacity"`
 	PublicKey         string                 `json:"-"`
 	StakePoolSettings StakePoolSettings      `json:"stake_pool_settings"`
+	Information       Info                   `json:"info"`
 }
 
 type BlobberAllocation struct {
