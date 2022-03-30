@@ -90,12 +90,26 @@ challenge_response:
   frequency: 10
   num_workers: 5
   max_retries: 20
+pg:
+  user: postgres
+  password: password
 db:
   name: blobber_meta
   user: blobber_user
   password: blobber
   host: postgres
   port: 5432
+  drop_all: true # true will drop all the tables to be migrated and migrate schema
+  # If drop_all if false then it takes lists from drop_tables to drop them. If table does not exist error is returned
+  drop_tables:
+    - reference_objects
+    - allocation_changes
+  # If drop_all is true then it takes list of tables from except_tables to leave as is. If table does not exist error
+  # is returned.
+  # 
+  except_tables:
+    - allocations
+    - terms
 
 geolocation:
   latitude: 0
