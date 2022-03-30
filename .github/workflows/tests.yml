@@ -22,13 +22,6 @@ jobs:
         with:
           go-version: '1.17' # The Go version to download (if necessary) and use.
 
-      # - uses: actions/cache@v2
-      #   with:
-      #     path: ~/go/pkg/mod
-      #     key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-go-
-
       - name: Clone blobber
         uses: actions/checkout@v2
 
@@ -53,13 +46,6 @@ jobs:
         with:
           go-version: '1.17' # The Go version to download (if necessary) and use.
 
-      # - uses: actions/cache@v2
-      #   with:
-      #     path: ~/go/pkg/mod
-      #     key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-go-
-
       - name: Clone blobber
         uses: actions/checkout@v2
 
@@ -67,7 +53,14 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/code/go/0chain.net/ 
           CGO_ENABLED=1 go test -tags bn256 -race -coverprofile=coverage.txt -covermode=atomic ./...
-
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          # fail_ci_if_error: true
+          files: ./code/go/0chain.net/coverage.txt
+          flags: Unit-Tests
+          verbose: true
+    
   integration-tests:
     name: Integration Tests
     runs-on: [ubuntu-20.04]
