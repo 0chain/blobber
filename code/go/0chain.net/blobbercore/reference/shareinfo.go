@@ -9,30 +9,31 @@ import (
 )
 
 type ShareInfo struct {
-	OwnerID                   string    `gorm:"owner_id" json:"owner_id,omitempty"`
-	ClientID                  string    `gorm:"client_id" json:"client_id"`
-	FilePathHash              string    `gorm:"file_path_hash" json:"file_path_hash,omitempty"`
-	ReEncryptionKey           string    `gorm:"re_encryption_key" json:"re_encryption_key,omitempty"`
-	ClientEncryptionPublicKey string    `gorm:"client_encryption_public_key" json:"client_encryption_public_key,omitempty"`
-	Revoked                   bool      `gorm:"revoked" json:"revoked"`
-	ExpiryAt                  time.Time `gorm:"expiry_at" json:"expiry_at,omitempty"`
-	AvailableAt               time.Time `gorm:"available_at" json:"available_at,omitempty"`
+	ID                        int       `gorm:"column:id;primaryKey"`
+	OwnerID                   string    `gorm:"column:owner_id;size:64;not null;index:idx_marketplace_share_info_for_owner,priority:1" json:"owner_id,omitempty"`
+	ClientID                  string    `gorm:"column:client_id;size:64;not null;index:idx_marketplace_share_info_for_client,priority:1" json:"client_id"`
+	FilePathHash              string    `gorm:"column:file_path_hash;size:64;not null;index:idx_marketplace_share_info_for_owner,priority:2;index:idx_marketplace_share_info_for_client,priority:2" json:"file_path_hash,omitempty"`
+	ReEncryptionKey           string    `gorm:"column:re_encryption_key;not null" json:"re_encryption_key,omitempty"`
+	ClientEncryptionPublicKey string    `gorm:"column:client_encryption_public_key;not null" json:"client_encryption_public_key,omitempty"`
+	Revoked                   bool      `gorm:"column:revoked;not null" json:"revoked"`
+	ExpiryAt                  time.Time `gorm:"column:expiry_at;not null" json:"expiry_at,omitempty"`
+	AvailableAt               time.Time `gorm:"column:available_at;type:timestamp without time zone;not null;default:now()" json:"available_at,omitempty"`
 }
 
-func TableName() string {
+func (ShareInfo) TableName() string {
 	return "marketplace_share_info"
 }
 
 // add share if it already doesnot exist
 func AddShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Table(TableName()).Create(shareInfo).Error
+	return db.Model(&ShareInfo{}).Create(shareInfo).Error
 }
 
 func DeleteShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 
-	result := db.Table(TableName()).
+	result := db.Model(&ShareInfo{}).
 		Where(&ShareInfo{
 			ClientID:     shareInfo.ClientID,
 			FilePathHash: shareInfo.FilePathHash,
@@ -55,7 +56,7 @@ func DeleteShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
 func UpdateShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 
-	return db.Table(TableName()).
+	return db.Model(&ShareInfo{}).
 		Where(&ShareInfo{
 			ClientID:     shareInfo.ClientID,
 			FilePathHash: shareInfo.FilePathHash,
@@ -68,7 +69,7 @@ func UpdateShareInfo(ctx context.Context, shareInfo ShareInfo) error {
 func GetShareInfo(ctx context.Context, clientID, filePathHash string) (*ShareInfo, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	shareInfo := &ShareInfo{}
-	err := db.Table(TableName()).
+	err := db.Model(&ShareInfo{}).
 		Where(&ShareInfo{
 			ClientID:     clientID,
 			FilePathHash: filePathHash,

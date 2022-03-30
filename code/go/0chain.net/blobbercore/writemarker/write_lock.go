@@ -1,4 +1,4 @@
-package datastore
+package writemarker
 
 import "time"
 
@@ -8,7 +8,7 @@ const (
 
 // WriteLock WriteMarker lock
 type WriteLock struct {
-	AllocationID string    `gorm:"primaryKey, column:allocation_id"`
+	AllocationID string    `gorm:"column:allocation_id;primaryKey"`
 	ConnectionID string    `gorm:"column:connection_id"`
 	CreatedAt    time.Time `gorm:"column:created_at"`
 }

@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"gorm.io/gorm"
 )
 
 type WriteMarker struct {
@@ -39,17 +41,29 @@ const (
 type WriteMarkerEntity struct {
 	// WM new WriteMarker from client
 	WM              WriteMarker       `gorm:"embedded"`
-	Status          WriteMarkerStatus `gorm:"column:status"`
+	Status          WriteMarkerStatus `gorm:"column:status;not null;default:0"`
 	StatusMessage   string            `gorm:"column:status_message"`
-	ReedeemRetries  int64             `gorm:"column:redeem_retries"`
-	CloseTxnID      string            `gorm:"column:close_txn_id"`
-	ConnectionID    string            `gorm:"column:connection_id"`
-	ClientPublicKey string            `gorm:"column:client_key"`
+	ReedeemRetries  int64             `gorm:"column:redeem_retries;not null;default:0"`
+	CloseTxnID      string            `gorm:"column:close_txn_id;size:64"`
+	ConnectionID    string            `gorm:"column:connection_id;size:64"`
+	ClientPublicKey string            `gorm:"column:client_key;size:256"`
+	Sequence        int64             `gorm:"column:sequence;unique;type:bigserial"`
 	datastore.ModelWithTS
 }
 
 func (WriteMarkerEntity) TableName() string {
 	return "write_markers"
+}
+
+func (w *WriteMarkerEntity) BeforeCreate(tx *gorm.DB) error {
+	w.CreatedAt = time.Now()
+	w.UpdatedAt = w.CreatedAt
+	return nil
+}
+
+func (w *WriteMarkerEntity) BeforeSave(tx *gorm.DB) error {
+	w.UpdatedAt = time.Now()
+	return nil
 }
 
 func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarkerStatus, statusMessage, redeemTxn string) (err error) {

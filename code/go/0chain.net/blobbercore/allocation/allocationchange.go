@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -33,13 +34,13 @@ type AllocationChangeProcessor interface {
 }
 
 type AllocationChangeCollector struct {
-	ConnectionID      string                      `gorm:"column:connection_id;primary_key"`
-	AllocationID      string                      `gorm:"column:allocation_id"`
-	ClientID          string                      `gorm:"column:client_id"`
-	Size              int64                       `gorm:"column:size"`
-	Changes           []*AllocationChange         `gorm:"ForeignKey:connection_id;AssociationForeignKey:connection_id"`
+	ConnectionID      string                      `gorm:"column:connection_id;primaryKey"`
+	AllocationID      string                      `gorm:"column:allocation_id;size:64;not null"`
+	ClientID          string                      `gorm:"column:client_id;size:64;not null"`
+	Size              int64                       `gorm:"column:size;not null;default:0"`
+	Changes           []*AllocationChange         `gorm:"foreignKey:CnxnID"`
 	AllocationChanges []AllocationChangeProcessor `gorm:"-"`
-	Status            int                         `gorm:"column:status"`
+	Status            int                         `gorm:"column:status;not null;default:0"`
 	datastore.ModelWithTS
 }
 
@@ -47,17 +48,40 @@ func (AllocationChangeCollector) TableName() string {
 	return "allocation_connections"
 }
 
+func (ac *AllocationChangeCollector) BeforeCreate(tx *gorm.DB) error {
+	ac.CreatedAt = time.Now()
+	ac.UpdatedAt = ac.CreatedAt
+	return nil
+}
+
+func (ac *AllocationChangeCollector) BeforeSave(tx *gorm.DB) error {
+	ac.UpdatedAt = time.Now()
+	return nil
+}
+
 type AllocationChange struct {
-	ChangeID     int64  `gorm:"column:id;primary_key"`
-	Size         int64  `gorm:"column:size"`
-	Operation    string `gorm:"column:operation"`
-	ConnectionID string `gorm:"column:connection_id"`
-	Input        string `gorm:"column:input"`
+	ChangeID   int64                     `gorm:"column:id;primaryKey"`
+	Size       int64                     `gorm:"column:size;not null;default:0"`
+	Operation  string                    `gorm:"column:operation;size:20;not null"`
+	CnxnID     string                    `gorm:"column:connection_id;size:64;not null"`
+	Connection AllocationChangeCollector `gorm:"foreignKey:CnxnID"` // References allocation_connections(connection_id)
+	Input      string                    `gorm:"column:input"`
 	datastore.ModelWithTS
 }
 
 func (AllocationChange) TableName() string {
 	return "allocation_changes"
+}
+
+func (ac *AllocationChange) BeforeCreate(tx *gorm.DB) error {
+	ac.CreatedAt = time.Now()
+	ac.UpdatedAt = ac.CreatedAt
+	return nil
+}
+
+func (ac *AllocationChange) BeforeSave(tx *gorm.DB) error {
+	ac.UpdatedAt = time.Now()
+	return nil
 }
 
 func (change *AllocationChange) Save(ctx context.Context) error {

@@ -8,9 +8,9 @@ import (
 )
 
 type Collaborator struct {
-	RefID     int64     `gorm:"ref_id" json:"ref_id"`
-	ClientID  string    `gorm:"client_id" json:"client_id"`
-	CreatedAt time.Time `gorm:"created_at" json:"created_at"`
+	RefID     int64     `gorm:"ref_id;not null" json:"ref_id"`
+	ClientID  string    `gorm:"client_id;size:64;not null" json:"client_id"`
+	CreatedAt time.Time `gorm:"created_at;timestamp without time zone;not null;default:now()" json:"created_at"`
 }
 
 func (Collaborator) TableName() string {
