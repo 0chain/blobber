@@ -527,12 +527,13 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	}
 	allocationID := allocationObj.ID
 
-	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		errCh <- common.NewError("invalid_signature", "Invalid signature")
+	paths, err := pathsFromReq(r)
+	if err != nil {
+		errCh <- err
 		return
 	}
+
+	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	if clientID == "" {
@@ -540,9 +541,18 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 		return
 	}
 
-	paths, err := pathsFromReq(r)
-	if err != nil {
-		errCh <- err
+	publicKey := allocationObj.OwnerPublicKey
+
+	// it is not owner, check if it is a colloborator
+	if allocationObj.OwnerID != clientID && len(clientID) > 0 {
+		if reference.IsCollaboratorInAllPaths(ctx, allocationID, paths, clientID) {
+			publicKey = ctx.Value(constants.ContextKeyClientKey).(string)
+		}
+	}
+
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
+	if !valid || err != nil {
+		errCh <- common.NewError("invalid_signature", "Invalid signature")
 		return
 	}
 
