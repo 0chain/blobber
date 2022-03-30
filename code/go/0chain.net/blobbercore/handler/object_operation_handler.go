@@ -879,15 +879,12 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", dirPath))
 	}
 
-	//<<<<<<< HEAD
-	//=======
 	result := &blobberhttp.UploadResult{}
 	result.Filename = dirPath
 	result.Hash = ""
 	result.MerkleRoot = ""
 	result.Size = 0
 
-	//>>>>>>> staging
 	if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
@@ -929,28 +926,15 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	formData.Path = dirPath
 	formData.AllocationID = allocationID
 	formData.ConnectionID = connectionID
-	//<<<<<<< HEAD
-	//	formData.ActualHash = "-"
-	//	formData.ActualSize = 1
-	//=======
 	formData.ActualHash = ""
 	formData.ActualSize = 0
 
-	//>>>>>>> staging
 	connectionObj.AddChange(allocationChange, &formData)
 	err = connectionObj.ApplyChanges(ctx, "/")
 	if err != nil {
 		return nil, err
 	}
 
-	//<<<<<<< HEAD
-	//	result := &blobberhttp.UploadResult{}
-	//	result.Filename = dirPath
-	//	result.Hash = ""
-	//	result.MerkleRoot = ""
-	//	result.Size = 0
-	//=======
-	//>>>>>>> staging
 	return result, nil
 }
 
