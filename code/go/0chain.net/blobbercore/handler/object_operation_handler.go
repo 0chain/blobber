@@ -817,7 +817,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 	}
 	fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, connectionObj.AllocationID, path, []string{"path", "name", "size", "hash", "merkle_root"})
 	if err != nil {
-		Logger.Info("invalid_file", zap.Error(err))
+		Logger.Error("invalid_file", zap.Error(err))
 	}
 	_ = ctx.Value(constants.ContextKeyClientKey).(string)
 	if fileRef != nil {
