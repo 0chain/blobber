@@ -962,12 +962,12 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	var existingFileRef *reference.Ref
 	switch rCmd := cmd.(type) {
-	case *UploadFileCommand:
-		existingFileRef = nil
 	case *UpdateFileCommand:
 		existingFileRef = rCmd.existingFileRef
 	case *FileCommandDelete:
 		existingFileRef = rCmd.existingFileRef
+	default:
+		existingFileRef = nil
 	}
 	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
