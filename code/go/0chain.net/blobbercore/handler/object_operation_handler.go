@@ -398,7 +398,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	if err = r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
-		Logger.Info("Error Parsing the request", zap.Any("error", err))
+		Logger.Error("Error Parsing the request", zap.Any("error", err))
 		return nil, common.NewError("request_parse_error", err.Error())
 	}
 
@@ -872,7 +872,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 	exisitingRef, err := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
 	if err != nil {
-		Logger.Info("Error file reference", zap.Error(err))
+		Logger.Error("Error file reference", zap.Error(err))
 	}
 
 	if !filepath.IsAbs(dirPath) {
@@ -991,7 +991,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	}
 
 	if err := r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
-		Logger.Info("Error Parsing the request", zap.Any("error", err))
+		Logger.Error("Error Parsing the request", zap.Any("error", err))
 		return nil, common.NewError("request_parse_error", err.Error())
 	}
 
