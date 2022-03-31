@@ -141,7 +141,7 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 		"path": {req.Path},
 	}
 
-	resp, err := ObjectTreeHandler(ctx, r)
+	resp, _, err := ObjectTreeHandler(ctx, r)
 	if err != nil {
 		return nil, err
 	}

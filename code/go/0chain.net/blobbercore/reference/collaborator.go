@@ -56,3 +56,18 @@ func IsACollaborator(ctx context.Context, refID int64, clientID string) bool {
 	}
 	return collaboratorCount > 0
 }
+
+func IsCollaboratorInAllPaths(ctx context.Context, allocationID string, paths []string, clientID string) bool {
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	var list []int64
+	db.Select(&Ref{}).Where("allocation_id = ? and path in ?", allocationID, paths).Pluck("id", &list)
+
+	for _, refID := range list {
+		if !IsACollaborator(ctx, refID, clientID) {
+			return false
+		}
+	}
+
+	return true
+}

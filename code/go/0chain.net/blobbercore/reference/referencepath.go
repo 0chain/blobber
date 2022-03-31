@@ -115,7 +115,12 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 		return nil, err
 	}
 	if len(refs) == 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid path. Could not find object tree")
+		// root is not created if it is new empty allocation
+		if path == "/" {
+			return &Ref{Type: DIRECTORY, Path: "/", Name: "/", ParentPath: "", PathLevel: 1}, nil
+		}
+
+		return nil, common.ErrNotFound
 	}
 	childMap := make(map[string]*Ref)
 	childMap[refs[0].Path] = &refs[0]
