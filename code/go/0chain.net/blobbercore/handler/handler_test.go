@@ -153,15 +153,6 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	),
 	).Name(opName)
 
-	rpPath := "/v1/file/referencepath/{allocation}"
-	rpName := "Reference_Path"
-	router.HandleFunc(rpPath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithReadOnlyConnection(ReferencePathHandler),
-		),
-	),
-	).Name(rpName)
-
 	sPath := "/v1/file/stats/{allocation}"
 	sName := "Stats"
 	router.HandleFunc(sPath, common.UserRateLimit(
@@ -219,7 +210,6 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	return router,
 		map[string]string{
 			opPath:   opName,
-			rpPath:   rpName,
 			sPath:    sName,
 			collPath: collName,
 			rPath:    rName,
@@ -365,6 +355,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if !isEndpointAllowGetReq(name) {
 						method = http.MethodPost
 					}
+
 					r, err := http.NewRequest(method, url.String(), nil)
 					if err != nil {
 						t.Fatal(err)
@@ -472,66 +463,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, "/", reference.DIRECTORY, alloc.ID, "/").
-					WillReturnRows(
-						sqlmock.NewRows([]string{"path"}).
-							AddRow("/"),
-					)
-
-				mock.ExpectCommit()
-			},
-			wantCode: http.StatusOK,
-		},
-		{
-			name: "Reference_Path_OK",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: func() *http.Request {
-					handlerName := handlers["/v1/file/referencepath/{allocation}"]
-					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
-					if err != nil {
-						t.Fatal()
-					}
-					q := url.Query()
-					q.Set("path", path)
-					url.RawQuery = q.Encode()
-
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					r.Header.Set(common.ClientSignatureHeader, sign)
-					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-
-					return r
-				}(),
-			},
-			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectBegin()
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
-					WithArgs(alloc.Tx).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id"}).
-							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
-					WithArgs(alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "allocation_id"}).
-							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, path, alloc.ID, "/", "", alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path"}).
 							AddRow("/"),
