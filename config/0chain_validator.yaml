@@ -1,4 +1,4 @@
-version: 1.0
+version: 1.0 
 
 # delegate wallet (must be set)
 delegate_wallet: '86b147de5be951a5ab0c6b1732596686185c5e11c3bdf76a112183f828f39ba1'
