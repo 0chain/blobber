@@ -40,4 +40,7 @@ var (
 	ErrDuplicatedNode = errors.New("duplicated nodes")
 	// ErrFileWasDeleted file already was deleted
 	ErrFileWasDeleted = errors.New("file was deleted")
+
+	// ErrNotFound ref is not found
+	ErrNotFound = errors.New("ref is not found")
 )

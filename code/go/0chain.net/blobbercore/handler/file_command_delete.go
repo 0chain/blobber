@@ -5,12 +5,13 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/0chain/gosdk/constants"
+	"gorm.io/gorm"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/gosdk/constants"
-	"gorm.io/gorm"
 )
 
 // FileCommandDelete command for deleting file
@@ -25,6 +26,7 @@ func (cmd *FileCommandDelete) IsValidated(ctx context.Context, req *http.Request
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
+
 	path := req.FormValue("path")
 	if path == "" {
 		return common.NewError("invalid_parameters", "Invalid path")
