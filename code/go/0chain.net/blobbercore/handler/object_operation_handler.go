@@ -573,7 +573,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	}
 
 	allocationChange := &allocation.AllocationChange{}
-	allocationChange.CnxnID = connectionObj.ConnectionID
+	allocationChange.ConnID = connectionObj.ConnectionID
 	allocationChange.Size = 0
 	allocationChange.Operation = constants.FileOperationRename
 	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ConnectionID,
@@ -681,7 +681,7 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.R
 	}
 
 	var change = new(allocation.AllocationChange)
-	change.CnxnID = conn.ConnectionID
+	change.ConnID = conn.ConnectionID
 	change.Operation = constants.FileOperationUpdateAttrs
 
 	var uafc = &allocation.AttributesChange{
@@ -789,7 +789,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	}
 
 	allocationChange := &allocation.AllocationChange{}
-	allocationChange.CnxnID = connectionObj.ConnectionID
+	allocationChange.ConnID = connectionObj.ConnectionID
 	allocationChange.Size = objectRef.Size
 	allocationChange.Operation = constants.FileOperationCopy
 	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ConnectionID,
@@ -825,7 +825,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		deleteSize := fileRef.Size
 
 		allocationChange := &allocation.AllocationChange{}
-		allocationChange.CnxnID = connectionObj.ConnectionID
+		allocationChange.ConnID = connectionObj.ConnectionID
 		allocationChange.Size = 0 - deleteSize
 		allocationChange.Operation = constants.FileOperationDelete
 		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ConnectionID,
@@ -915,7 +915,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	defer mutex.Unlock()
 
 	allocationChange := &allocation.AllocationChange{}
-	allocationChange.CnxnID = connectionObj.ConnectionID
+	allocationChange.ConnID = connectionObj.ConnectionID
 	allocationChange.Size = 0
 	allocationChange.Operation = constants.FileOperationCreateDir
 	connectionObj.Size += allocationChange.Size

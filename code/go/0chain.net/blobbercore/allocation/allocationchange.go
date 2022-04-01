@@ -38,7 +38,7 @@ type AllocationChangeCollector struct {
 	AllocationID      string                      `gorm:"column:allocation_id;size:64;not null"`
 	ClientID          string                      `gorm:"column:client_id;size:64;not null"`
 	Size              int64                       `gorm:"column:size;not null;default:0"`
-	Changes           []*AllocationChange         `gorm:"foreignKey:CnxnID"`
+	Changes           []*AllocationChange         `gorm:"foreignKey:ConnID"`
 	AllocationChanges []AllocationChangeProcessor `gorm:"-"`
 	Status            int                         `gorm:"column:status;not null;default:0"`
 	datastore.ModelWithTS
@@ -63,8 +63,8 @@ type AllocationChange struct {
 	ChangeID   int64                     `gorm:"column:id;primaryKey"`
 	Size       int64                     `gorm:"column:size;not null;default:0"`
 	Operation  string                    `gorm:"column:operation;size:20;not null"`
-	CnxnID     string                    `gorm:"column:connection_id;size:64;not null"`
-	Connection AllocationChangeCollector `gorm:"foreignKey:CnxnID"` // References allocation_connections(connection_id)
+	ConnID     string                    `gorm:"column:connection_id;size:64;not null"`
+	Connection AllocationChangeCollector `gorm:"foreignKey:ConnID"` // References allocation_connections(connection_id)
 	Input      string                    `gorm:"column:input"`
 	datastore.ModelWithTS
 }

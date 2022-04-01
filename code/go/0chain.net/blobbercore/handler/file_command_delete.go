@@ -66,7 +66,7 @@ func (cmd *FileCommandDelete) ProcessContent(ctx context.Context, req *http.Requ
 	result.Size = cmd.exisitingFileRef.Size
 
 	cmd.allocationChange = &allocation.AllocationChange{}
-	cmd.allocationChange.CnxnID = connectionObj.ConnectionID
+	cmd.allocationChange.ConnID = connectionObj.ConnectionID
 	cmd.allocationChange.Size = 0 - deleteSize
 	cmd.allocationChange.Operation = constants.FileOperationDelete
 
