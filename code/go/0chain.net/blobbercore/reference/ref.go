@@ -99,7 +99,7 @@ type Ref struct {
 // BeforeCreate Hook that gets executed to update create and update date
 func (ref *Ref) BeforeCreate(tx *gorm.DB) (err error) {
 	ref.CreatedAt = time.Now()
-	ref.UpdatedAt = time.Now()
+	ref.UpdatedAt = ref.CreatedAt
 	return nil
 }
 
