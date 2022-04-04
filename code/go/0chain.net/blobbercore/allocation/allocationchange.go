@@ -34,11 +34,11 @@ type AllocationChangeProcessor interface {
 }
 
 type AllocationChangeCollector struct {
-	ConnectionID      string                      `gorm:"column:connection_id;primaryKey"`
+	ID                string                      `gorm:"column:id;primaryKey"`
 	AllocationID      string                      `gorm:"column:allocation_id;size:64;not null"`
 	ClientID          string                      `gorm:"column:client_id;size:64;not null"`
 	Size              int64                       `gorm:"column:size;not null;default:0"`
-	Changes           []*AllocationChange         `gorm:"foreignKey:ConnID"`
+	Changes           []*AllocationChange         `gorm:"foreignKey:ConnectionID"`
 	AllocationChanges []AllocationChangeProcessor `gorm:"-"`
 	Status            int                         `gorm:"column:status;not null;default:0"`
 	datastore.ModelWithTS
@@ -60,12 +60,12 @@ func (ac *AllocationChangeCollector) BeforeSave(tx *gorm.DB) error {
 }
 
 type AllocationChange struct {
-	ChangeID   int64                     `gorm:"column:id;primaryKey"`
-	Size       int64                     `gorm:"column:size;not null;default:0"`
-	Operation  string                    `gorm:"column:operation;size:20;not null"`
-	ConnID     string                    `gorm:"column:connection_id;size:64;not null"`
-	Connection AllocationChangeCollector `gorm:"foreignKey:ConnID"` // References allocation_connections(connection_id)
-	Input      string                    `gorm:"column:input"`
+	ChangeID     int64                     `gorm:"column:id;primaryKey"`
+	Size         int64                     `gorm:"column:size;not null;default:0"`
+	Operation    string                    `gorm:"column:operation;size:20;not null"`
+	ConnectionID string                    `gorm:"column:connection_id;size:64;not null"`
+	Connection   AllocationChangeCollector `gorm:"foreignKey:ConnectionID"` // References allocation_connections(id)
+	Input        string                    `gorm:"column:input"`
 	datastore.ModelWithTS
 }
 
@@ -110,7 +110,7 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 
 	// It is a bug when connetion_id was marked as DeletedConnection
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		cc.ConnectionID = connectionID
+		cc.ID = connectionID
 		cc.AllocationID = allocationID
 		cc.ClientID = clientID
 		cc.Status = NewConnection
