@@ -28,8 +28,8 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	if err != nil {
 		return nil, err
 	}
-
 	dirRef := rootRef
+	rootRef.HashToBeComputed = true
 	treelevel := 0
 	for {
 		found := false
@@ -37,6 +37,7 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef = child
+					dirRef.HashToBeComputed = true
 					found = true
 					break
 				}
@@ -53,6 +54,7 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 			newRef.ParentPath = "/" + strings.Join(tSubDirs[:treelevel], "/")
 			newRef.Name = tSubDirs[treelevel]
 			newRef.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, newRef.Path)
+			newRef.HashToBeComputed = true
 			dirRef.AddChild(newRef)
 			dirRef = newRef
 			treelevel++
@@ -82,12 +84,11 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	newFile.ActualThumbnailSize = nf.ActualThumbnailSize
 	newFile.EncryptedKey = nf.EncryptedKey
 	newFile.ChunkSize = nf.ChunkSize
-
+	newFile.HashToBeComputed = true
 	if err = newFile.SetAttributes(&nf.Attributes); err != nil {
 		return nil, common.NewErrorf("process_new_file_change",
 			"setting file attributes: %v", err)
 	}
-
 	dirRef.AddChild(newFile)
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err

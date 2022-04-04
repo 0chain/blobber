@@ -31,7 +31,7 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	if err != nil {
 		return nil, err
 	}
-
+	rootRef.HashToBeComputed = true
 	dirRef := rootRef
 	treelevel := 0
 	for treelevel < len(tSubDirs) {
@@ -40,6 +40,7 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef = child
+					dirRef.HashToBeComputed = true
 					found = true
 					break
 				}
@@ -63,7 +64,7 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 		return nil, common.NewError("file_not_found", "File to update not found in blobber")
 	}
 	existingRef := dirRef.Children[idx]
-	// remove changed thumbnail and files
+	existingRef.HashToBeComputed = true
 	nf.deleteHash = make(map[string]bool)
 	if existingRef.ThumbnailHash != "" && existingRef.ThumbnailHash != nf.ThumbnailHash {
 		nf.deleteHash[existingRef.ThumbnailHash] = true
@@ -71,7 +72,6 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	if existingRef.ContentHash != "" && existingRef.ContentHash != nf.Hash {
 		nf.deleteHash[existingRef.ContentHash] = true
 	}
-
 	existingRef.ActualFileHash = nf.ActualHash
 	existingRef.ActualFileSize = nf.ActualSize
 	existingRef.MimeType = nf.MimeType
@@ -91,7 +91,6 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 		return nil, common.NewErrorf("process_update_file_change",
 			"setting file attributes: %v", err)
 	}
-
 	_, err = rootRef.CalculateHash(ctx, true)
 	stats.FileUpdated(ctx, existingRef.ID)
 	return rootRef, err
