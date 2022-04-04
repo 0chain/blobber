@@ -77,6 +77,7 @@ type GeolocationConfig struct {
 
 type Config struct {
 	*config.Config
+	AutoMigrate                   bool
 	DBHost                        string
 	PGUserName                    string
 	PGPassword                    string
@@ -84,7 +85,6 @@ type Config struct {
 	DBName                        string
 	DBUserName                    string
 	DBPassword                    string
-	DBDropAllTables               bool
 	DBTablesToDrop                []string
 	DBTablesToKeep                []string
 	ContentRefWorkerFreq          int64

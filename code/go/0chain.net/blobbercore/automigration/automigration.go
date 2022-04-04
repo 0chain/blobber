@@ -128,25 +128,33 @@ func grantPrivileges(db *gorm.DB) error {
 }
 
 func migrateSchema(db *gorm.DB) error {
-	if config.Configuration.DBDropAllTables {
-		tablesToKeep := make(map[string]struct{})
-		for _, tableName := range config.Configuration.DBTablesToKeep {
-			tablesToKeep[tableName] = struct{}{}
+	tableModelNames := make(map[string]struct{})
+	tablesToKeep := make(map[string]struct{})
+	tablesTodrop := make(map[string]struct{})
+
+	for _, tb := range tableModels {
+		tableModelNames[tb.TableName()] = struct{}{}
+	}
+
+	for _, tb := range config.Configuration.DBTablesToKeep {
+		tablesToKeep[tb] = struct{}{}
+	}
+
+	for _, tb := range config.Configuration.DBTablesToDrop {
+		if _, ok := tableModelNames[tb]; !ok {
+			return fmt.Errorf("table %s has no model listed to automigrate", tb)
 		}
 
-		for _, tbMdl := range tableModels {
-			if _, ok := tablesToKeep[tbMdl.TableName()]; ok {
-				continue
-			}
-			if err := db.Migrator().DropTable(tbMdl); err != nil {
-				return err
-			}
+		if _, ok := tablesToKeep[tb]; ok {
+			continue
 		}
-	} else {
-		for _, tableName := range config.Configuration.DBTablesToDrop {
-			if err := db.Migrator().DropTable(tableName); err != nil {
-				return err
-			}
+
+		tablesTodrop[tb] = struct{}{}
+	}
+
+	for _, tableName := range tablesTodrop {
+		if err := db.Migrator().DropTable(tableName); err != nil {
+			return err
 		}
 	}
 
