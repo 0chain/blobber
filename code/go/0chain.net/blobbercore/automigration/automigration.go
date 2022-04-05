@@ -152,7 +152,7 @@ func migrateSchema(db *gorm.DB) error {
 		tablesTodrop[tb] = struct{}{}
 	}
 
-	for _, tableName := range tablesTodrop {
+	for tableName := range tablesTodrop {
 		if err := db.Migrator().DropTable(tableName); err != nil {
 			return err
 		}
