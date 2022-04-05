@@ -104,7 +104,6 @@ type StorageAllocation struct {
 	Size           int64                `json:"size"`
 	UsedSize       int64                `json:"used_size"`
 	Expiration     common.Timestamp     `json:"expiration_date"`
-	Blobbers       []*StorageNode       `json:"blobbers"`
 	BlobberDetails []*BlobberAllocation `json:"blobber_details"`
 	Finalized      bool                 `json:"finalized"`
 	CCT            time.Duration        `json:"challenge_completion_time"`
