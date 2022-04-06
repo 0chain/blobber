@@ -9,8 +9,12 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"gorm.io/gorm"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+
+	"github.com/0chain/gosdk/constants"
+	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
@@ -20,8 +24,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/constants"
-	"go.uber.org/zap"
 )
 
 const (
@@ -81,7 +83,7 @@ func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString
 	}
 
 	if refRequested.LookupHash != authToken.FilePathHash {
-		authTokenRef, err := reference.GetReferenceFromLookupHash(ctx, authToken.AllocationID, authToken.FilePathHash)
+		authTokenRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, authToken.AllocationID, authToken.FilePathHash, []string{"id", "path"})
 		if err != nil {
 			return nil, err
 		}
@@ -124,12 +126,8 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 	return allocationObj, nil
 }
 
-func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID, path string) *reference.Ref {
-	fileReference, err := reference.GetReference(ctx, allocationID, path)
-	if err != nil {
-		return nil
-	}
-	return fileReference
+func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID, path string) (*reference.Ref, error) {
+	return reference.GetLimitedRefFieldsByPath(ctx, allocationID, path, []string{"id", "type"})
 }
 
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -153,8 +151,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	if err != nil {
 		return nil, err
 	}
-
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	fileref, err := reference.GetReferenceByLookupHash(ctx, allocationID, pathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -231,7 +228,7 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 		return nil, err
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "path", "lookup_hash", "type", "name"})
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -293,7 +290,7 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 		return nil, err
 	}
 
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "type"})
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -382,8 +379,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, err
 	}
-
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	fileref, err := reference.GetReferenceByLookupHash(ctx, allocationID, pathHash)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -428,8 +424,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	}
 
 	Logger.Info("Path Hash for list dir :" + pathHash)
-
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "path", "lookup_hash", "type", "name"})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// `/` always is valid even it doesn't exists in db. so ignore RecordNotFound error
@@ -555,7 +550,6 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 		errCh <- common.NewError("invalid_signature", "could not verify the allocation owner or colloborator")
 		return
 	}
-
 	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
 	if err != nil {
 		errCh <- err
@@ -771,7 +765,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		pathHash = reference.GetReferenceLookup(allocationID, path)
 		fallthrough
 	case pathHash != "":
-		pathRef, err = reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+		pathRef, err = reference.GetReferenceByLookupHash(ctx, allocationID, pathHash)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil, common.NewError("invalid_path", "")
@@ -805,12 +799,12 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		}
 
 		if pathRef == nil {
-			pathRef, err = reference.GetReferenceFromLookupHash(ctx, allocationID, authToken.FilePathHash)
+			pathRef, err = reference.GetReferenceByLookupHash(ctx, allocationID, authToken.FilePathHash)
 			if err != nil {
 				return nil, fsh.convertGormError(err)
 			}
 		} else if pathHash != authToken.FilePathHash {
-			authTokenRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, authToken.FilePathHash)
+			authTokenRef, err := reference.GetReferenceByLookupHash(ctx, allocationID, authToken.FilePathHash)
 			if err != nil {
 				return nil, fsh.convertGormError(err)
 			}
@@ -932,12 +926,11 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 	if err != nil {
 		return nil, err
 	}
-
-	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
+	rootRef, err := reference.GetReferenceForHashCalculationFromPaths(ctx, allocationID, paths)
 	if err != nil {
 		return nil, err
 	}
-
+	rootRef.HashToBeComputed = true
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}

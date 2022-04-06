@@ -729,7 +729,7 @@ func TestHandlers_Download(t *testing.T) {
 					WillReturnError(gorm.ErrRecordNotFound)
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, rootPathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path"}).
@@ -868,7 +868,7 @@ func TestHandlers_Download(t *testing.T) {
 					WillReturnError(gorm.ErrRecordNotFound)
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder1")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, rootPathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path"}).
@@ -1003,7 +1003,7 @@ func TestHandlers_Download(t *testing.T) {
 					)
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder1")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, rootPathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path"}).

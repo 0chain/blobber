@@ -19,7 +19,7 @@ import (
 
 // UpdateFileCommand command for updating file
 type UpdateFileCommand struct {
-	exisitingFileRef *reference.Ref
+	existingFileRef  *reference.Ref
 	fileChanger      *allocation.UpdateFileChanger
 	allocationChange *allocation.AllocationChange
 }
@@ -42,16 +42,15 @@ func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request
 	if cmd.fileChanger.ChunkSize <= 0 {
 		cmd.fileChanger.ChunkSize = fileref.CHUNK_SIZE
 	}
+	cmd.existingFileRef, _ = reference.GetReference(ctx, allocationObj.ID, cmd.fileChanger.Path)
 
-	cmd.exisitingFileRef, _ = reference.GetReference(ctx, allocationObj.ID, cmd.fileChanger.Path)
-
-	if cmd.exisitingFileRef == nil {
+	if cmd.existingFileRef == nil {
 		return common.NewError("invalid_file_update", "File at path does not exist for update")
 	}
 
 	if allocationObj.OwnerID != clientID &&
 		allocationObj.RepairerID != clientID &&
-		!reference.IsACollaborator(ctx, cmd.exisitingFileRef.ID, clientID) {
+		!reference.IsACollaborator(ctx, cmd.existingFileRef.ID, clientID) {
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner, collaborator or the payer of the allocation")
 	}
 
@@ -75,7 +74,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	fileInputData := &filestore.FileInputData{
 		Name:    cmd.fileChanger.Filename,
 		Path:    cmd.fileChanger.Path,
-		OnCloud: cmd.exisitingFileRef.OnCloud,
+		OnCloud: cmd.existingFileRef.OnCloud,
 
 		UploadOffset: cmd.fileChanger.UploadOffset,
 		IsFinal:      cmd.fileChanger.IsFinal,
@@ -100,11 +99,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
 	}
 
-	// if len(cmd.fileChanger.MerkleRoot) > 0 && cmd.fileChanger.MerkleRoot != fileOutputData.MerkleRoot {
-	// 	return result, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
-	// }
-
-	if allocationObj.BlobberSizeUsed+(allocationSize-cmd.exisitingFileRef.Size) > allocationObj.BlobberSize {
+	if allocationObj.BlobberSizeUsed+(allocationSize-cmd.existingFileRef.Size) > allocationObj.BlobberSize {
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}
 
@@ -113,11 +108,11 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionObj.ConnectionID
-	cmd.allocationChange.Size = allocationSize - cmd.exisitingFileRef.Size
+	cmd.allocationChange.Size = allocationSize - cmd.existingFileRef.Size
 	cmd.allocationChange.Operation = sdkConstants.FileOperationUpdate
 
 	if cmd.fileChanger.IsFinal {
-		connectionObj.Size = allocationSize - cmd.exisitingFileRef.Size
+		connectionObj.Size = allocationSize - cmd.existingFileRef.Size
 	} else {
 		connectionObj.Size = allocationSize
 	}

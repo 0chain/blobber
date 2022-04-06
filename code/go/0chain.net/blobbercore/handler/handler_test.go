@@ -3,7 +3,6 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -14,17 +13,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
+
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"github.com/0chain/gosdk/zboxcore/marker"
 	"github.com/0chain/gosdk/zcncore"
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -54,17 +53,6 @@ func setMockFileBlock(data []byte) {
 func resetMockFileBlock() {
 	mockFileBlock = []byte("mock")
 }
-
-// var encscheme zencryption.EncryptionScheme
-
-// func setupEncryptionScheme() {
-// 	encscheme = zencryption.NewEncryptionScheme()
-// 	mnemonic := client.GetClient().Mnemonic
-// 	if _, err := encscheme.Initialize(mnemonic); err != nil {
-// 		panic("initialize encscheme")
-// 	}
-// 	encscheme.InitForEncryption("filetype:audio")
-// }
 
 func signHash(client *client.Client, hash string) (string, error) {
 	retSignature := ""
@@ -228,6 +216,10 @@ func isEndpointRequireSignature(name string) bool {
 	}
 }
 
+func isEndpointUpload(name string) bool {
+	return name == "Upload"
+}
+
 func isEndpointAllowGetReq(name string) bool {
 	switch name {
 	case "Stats", "Rename", "Copy", "Attributes", "Upload", "Download":
@@ -315,9 +307,186 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			wantBody    string
 		}
 	)
+	uploadNegativeTests := make([]test, 0)
+	for _, name := range handlers {
+		if !isEndpointRequireSignature(name) || !isEndpointUpload(name) {
+			continue
+		}
+
+		baseSetupDbMock := func(mock sqlmock.Sqlmock) {
+			aa := sqlmock.AnyArg()
+
+			mock.ExpectBegin()
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
+				WithArgs(alloc.Tx).
+				WillReturnRows(
+					sqlmock.NewRows(
+						[]string{
+							"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
+						},
+					).
+						AddRow(
+							alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
+						),
+				)
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
+				WithArgs(alloc.ID).
+				WillReturnRows(
+					sqlmock.NewRows([]string{"id", "allocation_id"}).
+						AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
+				)
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects"`)).
+				WithArgs(aa, aa).
+				WillReturnRows(
+					sqlmock.NewRows([]string{"count"}).
+						AddRow(0),
+				)
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
+				WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).
+				WillReturnRows(
+					sqlmock.NewRows([]string{}).
+						AddRow(),
+				)
+			mock.ExpectExec(`INSERT INTO "allocation_connections"`).
+				WithArgs(aa, aa, aa, aa, aa, aa, aa).
+				WillReturnResult(sqlmock.NewResult(0, 0))
+			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "allocation_changes"`)).
+				WithArgs(aa, aa, aa, aa, aa, aa).
+				WillReturnRows(
+					sqlmock.NewRows([]string{}),
+				)
+		}
+
+		emptySignature := test{
+			name: name + "_Empty_Signature",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: func() *http.Request {
+					url, err := router.Get(name).URL("allocation", alloc.Tx)
+					if err != nil {
+						t.Fatal()
+					}
+					q := url.Query()
+					formFieldByt, err := json.Marshal(
+						&allocation.UploadFileChanger{
+							BaseFileChanger: allocation.BaseFileChanger{Path: path}})
+					if err != nil {
+						t.Fatal(err)
+					}
+					q.Set("uploadMeta", string(formFieldByt))
+					q.Set("path", path)
+					q.Set("new_name", newName)
+					q.Set("connection_id", connectionID)
+					url.RawQuery = q.Encode()
+
+					body := bytes.NewBuffer(nil)
+					formWriter := multipart.NewWriter(body)
+					root, _ := os.Getwd()
+					file, err := os.Open(root + "/handler_test.go")
+					if err != nil {
+						t.Fatal(err)
+					}
+					fileField, err := formWriter.CreateFormFile("uploadFile", file.Name())
+					if err != nil {
+						t.Fatal(err)
+					}
+					fileB := make([]byte, 0)
+					if _, err := io.ReadFull(file, fileB); err != nil {
+						t.Fatal(err)
+					}
+					if _, err := fileField.Write(fileB); err != nil {
+						t.Fatal(err)
+					}
+					if err := formWriter.Close(); err != nil {
+						t.Fatal(err)
+					}
+					r, err := http.NewRequest(http.MethodPost, url.String(), body)
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+
+					return r
+				}(),
+			},
+			alloc:       alloc,
+			setupDbMock: baseSetupDbMock,
+			wantCode:    http.StatusBadRequest,
+			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n\n",
+		}
+		uploadNegativeTests = append(uploadNegativeTests, emptySignature)
+
+		wrongSignature := test{
+			name: name + "_Wrong_Signature",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: func() *http.Request {
+					url, err := router.Get(name).URL("allocation", alloc.Tx)
+					if err != nil {
+						t.Fatal()
+					}
+					q := url.Query()
+					formFieldByt, err := json.Marshal(
+						&allocation.UploadFileChanger{
+							BaseFileChanger: allocation.BaseFileChanger{Path: path}})
+					if err != nil {
+						t.Fatal(err)
+					}
+					q.Set("uploadMeta", string(formFieldByt))
+					q.Set("path", path)
+					q.Set("new_name", newName)
+					q.Set("connection_id", connectionID)
+					url.RawQuery = q.Encode()
+
+					body := bytes.NewBuffer(nil)
+					formWriter := multipart.NewWriter(body)
+					root, _ := os.Getwd()
+					file, err := os.Open(root + "/handler_test.go")
+					if err != nil {
+						t.Fatal(err)
+					}
+					fileField, err := formWriter.CreateFormFile("uploadFile", file.Name())
+					if err != nil {
+						t.Fatal(err)
+					}
+					fileB := make([]byte, 0)
+					if _, err := io.ReadFull(file, fileB); err != nil {
+						t.Fatal(err)
+					}
+					if _, err := fileField.Write(fileB); err != nil {
+						t.Fatal(err)
+					}
+					if err := formWriter.Close(); err != nil {
+						t.Fatal(err)
+					}
+					r, err := http.NewRequest(http.MethodPost, url.String(), body)
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					hash := encryption.Hash("another data")
+					sign, err := sch.Sign(hash)
+					if err != nil {
+						t.Fatal(err)
+					}
+					r.Header.Set(common.ClientSignatureHeader, sign)
+					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+					return r
+				}(),
+			},
+			alloc:       alloc,
+			setupDbMock: baseSetupDbMock,
+			wantCode:    http.StatusBadRequest,
+			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n\n",
+		}
+		uploadNegativeTests = append(uploadNegativeTests, wrongSignature)
+	}
 	negativeTests := make([]test, 0)
 	for _, name := range handlers {
-		if !isEndpointRequireSignature(name) {
+		if !isEndpointRequireSignature(name) || isEndpointUpload(name) {
 			continue
 		}
 
@@ -460,7 +629,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, "/", reference.DIRECTORY, alloc.ID, "/").
 					WillReturnRows(
@@ -594,7 +762,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","type" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
@@ -670,7 +838,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","name","path","hash","size","merkle_root" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
@@ -752,19 +920,17 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","name","path","hash","size","merkle_root" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type", "name"}).
 							AddRow(reference.FILE, "path"),
 					)
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "path","type" FROM "reference_objects" WHERE`)).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type"}).
 							AddRow("/dest", reference.DIRECTORY),
 					)
-
 				mock.ExpectExec(`INSERT INTO "allocation_connections"`).
 					WithArgs(aa, aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
@@ -845,7 +1011,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
@@ -877,7 +1043,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					q := url.Query()
 					formFieldByt, err := json.Marshal(
-						&allocation.UpdateFileChanger{
+						&allocation.UploadFileChanger{
 							BaseFileChanger: allocation.BaseFileChanger{Path: path}})
 					if err != nil {
 						t.Fatal(err)
@@ -923,7 +1089,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					r.Header.Set("Content-Type", formWriter.FormDataContentType())
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-
 					return r
 				}(),
 			},
@@ -932,7 +1097,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectBegin()
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
 					WithArgs(alloc.Tx).
 					WillReturnRows(
@@ -945,36 +1109,27 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
 							),
 					)
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
 					WithArgs(alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects"`)).
-					WithArgs(aa, aa).
-					WillReturnError(gorm.ErrRecordNotFound)
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects"`)).
 					WithArgs(aa, aa).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"count"}).
 							AddRow(0),
 					)
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
 					WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).
 					WillReturnRows(
 						sqlmock.NewRows([]string{}).
 							AddRow(),
 					)
-
 				mock.ExpectExec(`INSERT INTO "allocation_connections"`).
 					WithArgs(aa, aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
-
 				mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "allocation_changes"`)).
 					WithArgs(aa, aa, aa, aa, aa, aa).
 					WillReturnRows(
@@ -984,9 +1139,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			wantCode: http.StatusOK,
 		},
 	}
-
 	tests := append(positiveTests, negativeTests...)
-
+	tests = append(tests, uploadNegativeTests...)
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)
@@ -1000,12 +1154,12 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				test.end()
 			}
 
-			fmt.Printf("\nResponse body: %v", test.args.w.Body.String())
 			assert.Equal(t, test.wantCode, test.args.w.Result().StatusCode)
 			if test.wantCode != http.StatusOK || test.wantBody != "" {
 				assert.Equal(t, test.wantBody, test.args.w.Body.String())
 			}
 		})
+
 	}
 
 	curDir, err := os.Getwd()
