@@ -279,7 +279,6 @@ validator:
 
   # affinity: {}
             EOF
-      - ma
       
       - name:  update values.yaml
          if: steps.changed-files-specific.outputs.any_changed == 'true'
