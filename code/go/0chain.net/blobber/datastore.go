@@ -34,7 +34,7 @@ func setupDatabase() error {
 
 	}
 
-	if !config.Configuration.AutoMigrate {
+	if !config.Configuration.DBAutoMigrate {
 		logging.Logger.Info("Automigration is skipped")
 		return nil
 	}

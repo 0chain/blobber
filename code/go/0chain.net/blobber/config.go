@@ -52,16 +52,15 @@ func setupConfig() {
 
 	config.Configuration.Capacity = viper.GetInt64("capacity")
 
-	config.Configuration.AutoMigrate = viper.GetBool("db.automigrate")
-	config.Configuration.PGUserName = viper.GetString("db.pg.user")
-	config.Configuration.PGPassword = viper.GetString("db.pg.password")
+	config.Configuration.DBAutoMigrate = viper.GetBool("db.automigrate")
+	config.Configuration.PGUserName = viper.GetString("pg.user")
+	config.Configuration.PGPassword = viper.GetString("pg.password")
 	config.Configuration.DBHost = viper.GetString("db.host")
 	config.Configuration.DBName = viper.GetString("db.name")
 	config.Configuration.DBPort = viper.GetString("db.port")
 	config.Configuration.DBUserName = viper.GetString("db.user")
 	config.Configuration.DBPassword = viper.GetString("db.password")
-	config.Configuration.DBTablesToDrop = viper.GetStringSlice("db.drop_tables")
-	config.Configuration.DBTablesToKeep = viper.GetStringSlice("db.except_tables")
+	config.Configuration.DBTablesToKeep = viper.GetStringSlice("db.keep_tables")
 
 	config.Configuration.Capacity = viper.GetInt64("capacity")
 	config.Configuration.ReadPrice = viper.GetFloat64("read_price")

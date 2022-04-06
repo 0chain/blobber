@@ -128,32 +128,20 @@ func grantPrivileges(db *gorm.DB) error {
 }
 
 func migrateSchema(db *gorm.DB) error {
-	tableModelNames := make(map[string]struct{})
 	tablesToKeep := make(map[string]struct{})
-	tablesTodrop := make(map[string]struct{})
-
-	for _, tb := range tableModels {
-		tableModelNames[tb.TableName()] = struct{}{}
-	}
 
 	for _, tb := range config.Configuration.DBTablesToKeep {
 		tablesToKeep[tb] = struct{}{}
 	}
 
-	for _, tb := range config.Configuration.DBTablesToDrop {
-		if _, ok := tableModelNames[tb]; !ok {
-			return fmt.Errorf("table %s has no model listed to automigrate", tb)
-		}
-
-		if _, ok := tablesToKeep[tb]; ok {
+	for _, tblMdl := range tableModels {
+		tableName := tblMdl.TableName()
+		if _, ok := tablesToKeep[tableName]; ok {
 			continue
 		}
 
-		tablesTodrop[tb] = struct{}{}
-	}
-
-	for tableName := range tablesTodrop {
-		if err := db.Migrator().DropTable(tableName); err != nil {
+		err := db.Migrator().DropTable(tableName)
+		if err != nil {
 			return err
 		}
 	}

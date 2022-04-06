@@ -90,25 +90,22 @@ challenge_response:
   frequency: 10
   num_workers: 5
   max_retries: 20
+pg:
+  user: postgres
+  password: password
 db:
-  automigrate: false # true to automigrate with gorm's Automigration
-  pg:
-    user: postgres
-    password: password
+  automigrate: true # true to automigrate with gorm's Automigration
   name: blobber_meta
   user: blobber_user
   password: blobber
   host: postgres
   port: 5432
-  # keep_tables list won't be automigrated. If table name is in both keep_tables and drop_tables
-  # table will be considered to not automigrate.
-  keep_tables:
-    - allocations
-    - terms
-  # Drop table and automigrate
-  drop_tables:
-    - reference_objects
-    - allocation_changes
+  # keep_tables list won't be automigrated if table exists. If table name is in both keep_tables.
+  # table will be considered to not automigrate. Other tables will be dropped regardless and schema is migrated
+  # Example:
+  # keep_tables:
+  #   - allocations
+  #   - terms
  
 
 geolocation:
