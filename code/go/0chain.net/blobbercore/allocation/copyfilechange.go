@@ -28,19 +28,18 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 	if err != nil {
 		return nil, err
 	}
-
+	affectedRef.HashToBeComputed = true
 	if rf.DestPath == "/" {
 		destRef, err := reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
 		if err != nil || destRef.Type != reference.DIRECTORY {
 			return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 		}
+		destRef.HashToBeComputed = true
 		fileRefs := rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
-
 		_, err = destRef.CalculateHash(ctx, true)
 		if err != nil {
 			return nil, err
 		}
-
 		for _, fileRef := range fileRefs {
 			stats.NewFileCreated(ctx, fileRef.ID)
 		}
@@ -53,21 +52,19 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 	if err != nil || destRef.Type != reference.DIRECTORY {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 	}
-
 	destRef, err = reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
 	if err != nil || destRef.Type != reference.DIRECTORY {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
 	}
-
+	destRef.HashToBeComputed = true
 	path, _ := filepath.Split(rf.DestPath)
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
-
 	rootRef, err := reference.GetReferencePath(ctx, rf.AllocationID, path)
 	if err != nil {
 		return nil, err
 	}
-
+	rootRef.HashToBeComputed = true
 	dirRef := rootRef
 	treelevel := 0
 	for treelevel < len(tSubDirs) {
@@ -76,6 +73,7 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef = child
+					dirRef.HashToBeComputed = true
 					found = true
 					break
 				}
@@ -102,7 +100,6 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 	dirRef.RemoveChild(childIndex)
 	filerefs := rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 	dirRef.AddChild(destRef)
-
 	_, err = rootRef.CalculateHash(ctx, true)
 	if err != nil {
 		return nil, err
@@ -111,7 +108,6 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 	for _, fileRef := range filerefs {
 		stats.NewFileCreated(ctx, fileRef.ID)
 	}
-
 	return rootRef, err
 }
 
@@ -127,6 +123,7 @@ func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, dest
 		newRef.Name = affectedRef.Name
 		newRef.LookupHash = reference.GetReferenceLookup(newRef.AllocationID, newRef.Path)
 		newRef.Attributes = datatypes.JSON(string(affectedRef.Attributes))
+		newRef.HashToBeComputed = true
 		destRef.AddChild(newRef)
 
 		for _, childRef := range affectedRef.Children {
@@ -154,7 +151,7 @@ func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, dest
 		newFile.EncryptedKey = affectedRef.EncryptedKey
 		newFile.Attributes = datatypes.JSON(string(affectedRef.Attributes))
 		newFile.ChunkSize = affectedRef.ChunkSize
-
+		newFile.HashToBeComputed = true
 		destRef.AddChild(newFile)
 
 		files = append(files, newFile)

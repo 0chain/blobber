@@ -14,6 +14,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/0chain/gosdk/constants"
+	"github.com/0chain/gosdk/zboxcore/fileref"
+	"github.com/0chain/gosdk/zcncore"
+	"github.com/gorilla/mux"
+	"go.uber.org/zap"
+	"gorm.io/gorm"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
@@ -24,12 +31,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/zboxcore/fileref"
-	"github.com/0chain/gosdk/zcncore"
-	"github.com/gorilla/mux"
-	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 var storageHandler StorageHandler
@@ -203,102 +204,100 @@ func HomepageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetAllocationDetails(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetFileMeta(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.AddCommitMetaTxn(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.AddCollaborator(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
 
+	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.GetFileStats(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 /*DownloadHandler is the handler to respond to download requests from clients*/
 func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
 
+	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.DownloadFile(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 /*ListHandler is the handler to respond to upload requests fro clients*/
 func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.ListEntities(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 /*CommitHandler is the handler to respond to upload requests fro clients*/
 func CommitHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.CommitWrite(ctx, r)
 
 	if err != nil {
-
 		if errors.Is(common.ErrFileWasDeleted, err) {
 			return response, http.StatusNoContent, nil
 		}
 		return nil, http.StatusBadRequest, err
 	}
-
 	return response, http.StatusOK, nil
 }
 
 func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
 	defer canceler()
 
@@ -308,24 +307,22 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetObjectPath(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
 	ctx = setupHandlerContext(ctx, r)
-
 	response, err := storageHandler.GetObjectTree(ctx, r)
 	if err != nil {
 		if errors.Is(common.ErrNotFound, err) {
@@ -338,80 +335,81 @@ func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, int, 
 }
 
 func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetRefs(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.RenameObject(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.CopyObject(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 /*CreateDirHandler is the handler to respond to create dir for allocation*/
 func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.CreateDir(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 /*UploadHandler is the handler to respond to upload requests fro clients*/
 func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.WriteFile(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.UpdateObjectAttributes(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.CalculateHash(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return response, nil
 }
 
 func StatsHandler(w http.ResponseWriter, r *http.Request) {
+
 	HTMLHeader(w, "Blobber Diagnostics")
 	PrintCSS(w)
 	HomepageHandler(w, r)
@@ -428,6 +426,7 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 
 //nolint:gosimple // need more time to verify
 func HandleShutdown(ctx context.Context) {
+
 	go func() {
 		select {
 		case <-ctx.Done():
@@ -438,20 +437,24 @@ func HandleShutdown(ctx context.Context) {
 }
 
 func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	_ = pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 	return "success", nil
 }
 
 func GetConfig(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	return config.Configuration, nil
 }
 
 func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	err := CleanupDiskFiles(ctx)
 	return "cleanup", err
 }
 
 func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
@@ -470,7 +473,8 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	path := r.FormValue("path")
 	refereeClientID := r.FormValue("refereeClientID")
 	filePathHash := fileref.GetReferenceLookup(allocationID, path)
-	_, err = reference.GetReferenceFromLookupHash(ctx, allocationID, filePathHash)
+	//_, err = reference.GetReferenceByLookupHashForAddCollaborator(ctx, allocationID, filePathHash)
+	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
@@ -504,6 +508,7 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 }
 
 func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	ctx = setupHandlerContext(ctx, r)
 
 	var (
@@ -536,13 +541,12 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return false, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
 	}
-
-	fileref, err := reference.GetReferenceFromLookupHash(ctx, allocationID, authTicket.FilePathHash)
+	fileRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, authTicket.FilePathHash, []string{"id", "path", "lookup_hash", "type", "name"})
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 
-	authToken, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileref, authTicket.ClientID)
+	authToken, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileRef, authTicket.ClientID)
 	if authToken == nil {
 		return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket. "+err.Error())
 	}

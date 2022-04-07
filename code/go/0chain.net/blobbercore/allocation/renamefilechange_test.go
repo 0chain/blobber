@@ -159,8 +159,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 			expectingError:  false,
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
-
-				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY level, lookup_hash%!!(string=allocation id)!(string=/old_dir/%!)(MISSING)!(string=/old_dir)(EXTRA string=allocation id)`
+				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%!!(string=allocation id)!(string=/old_dir/%!)(MISSING)!(string=/old_dir)(EXTRA string=allocation id)`
 				mocket.Catcher.NewMock().OneTime().WithQuery(
 					`SELECT * FROM "reference_objects" WHERE`,
 				).WithQuery(query).
@@ -172,10 +171,9 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 							"path":        "/old_dir",
 						}},
 					)
-
-				query = `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY level, lookup_hash%!!(string=allocation id)!(string=)!(string=/)!(string=allocation id)!(string=/old_dir)(EXTRA string=allocation id)`
+				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%!!(string=allocation id)!(string=)!(string=/)!(string=allocation id)!(string=/old_dir)(EXTRA string=allocation id)`
 				mocket.Catcher.NewMock().OneTime().WithQuery(
-					`SELECT * FROM "reference_objects" WHERE`,
+					`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE`,
 				).WithQuery(query).WithReply(
 					[]map[string]interface{}{{
 						"id":          1,
@@ -192,7 +190,6 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 							"parent_path": "/",
 						}},
 				)
-
 				mocket.Catcher.NewMock().WithQuery(`INSERT INTO "reference_objects"`).
 					WithID(1)
 			},
@@ -207,8 +204,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 			expectingError:  false,
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
-
-				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY level, lookup_hash%!!(string=allocation id)!(string=old_file.pdf/%!)(MISSING)!(string=old_file.pdf)(EXTRA string=allocation id)`
+				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%!!(string=allocation id)!(string=old_file.pdf/%!)(MISSING)!(string=old_file.pdf)(EXTRA string=allocation id)`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).
 					WithReply(
 						[]map[string]interface{}{{
@@ -218,8 +214,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 							"path":        "old_file.pdf",
 						}},
 					)
-
-				query = `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY level, lookup_hash%!!(string=allocation id)!(string=)!(string=.)!(string=allocation id)!(string=old_file.pdf)(EXTRA string=allocation id)`
+				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%!!(string=allocation id)!(string=)!(string=.)!(string=allocation id)!(string=old_file.pdf)(EXTRA string=allocation id)`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).WithReply(
 					[]map[string]interface{}{{
 						"id":          1,
@@ -236,8 +231,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 							"parent_path": "/",
 						}},
 				)
-
-				query = `SELECT * FROM "reference_objects" WHERE "id" = $1 AND "reference_objects"."deleted_at" IS NULL ORDER BY "reference_objects"."id" LIMIT 1%!(EXTRA int64=1)`
+				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE "id" = $1 AND "reference_objects"."deleted_at" IS NULL ORDER BY "reference_objects"."id" LIMIT 1%!(EXTRA int64=1)`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).
 					WithReply(
 						[]map[string]interface{}{{
@@ -261,10 +255,8 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 		ctx := context.TODO()
 		db := datastore.GetStore().GetDB().Begin()
 		ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
-
 		change := &RenameFileChange{AllocationID: alloc.ID, Path: tc.path, NewName: tc.newName}
 		response, err := change.ApplyChange(ctx, tc.allocChange, tc.allocRoot)
-
 		if err != nil {
 			if !tc.expectingError {
 				t.Fatal(err)
@@ -272,7 +264,6 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 
 			if tc.expectingError && strings.Contains(tc.expectedMessage, err.Error()) {
 				t.Fatal("expected error " + tc.expectedMessage)
-				break
 			}
 
 			continue
@@ -281,7 +272,6 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 		if tc.expectingError {
 			t.Fatal("expected error")
 		}
-
 		require.EqualValues(t, len(response.Children), 1)
 		require.EqualValues(t, response.Children[0].Path, tc.newName)
 	}
