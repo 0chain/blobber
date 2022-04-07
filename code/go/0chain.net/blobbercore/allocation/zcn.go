@@ -28,13 +28,13 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 	alloc := &Allocation{}
 
 	belongToThisBlobber := false
-	for _, blobberConnection := range sa.Blobbers {
-		if blobberConnection.ID == node.Self.ID {
+	for _, blobberConnection := range sa.BlobberDetails {
+		if blobberConnection.BlobberID == node.Self.ID {
 			belongToThisBlobber = true
 
 			alloc.AllocationRoot = ""
-			alloc.BlobberSize = (sa.Size + int64(len(sa.Blobbers)-1)) /
-				int64(len(sa.Blobbers))
+			alloc.BlobberSize = (sa.Size + int64(len(sa.BlobberDetails)-1)) /
+				int64(len(sa.BlobberDetails))
 			alloc.BlobberSizeUsed = 0
 
 			break

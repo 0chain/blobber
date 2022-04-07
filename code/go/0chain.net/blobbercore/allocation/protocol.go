@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -94,16 +94,22 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 
 	isExist = (a.ID != "")
 
+	Logger.Info("VerifyAllocationTransaction",
+		zap.Bool("isExist", isExist),
+		zap.Any("allocation", a),
+		zap.Any("storageAllocation", sa),
+		zap.String("node.Self.ID", node.Self.ID))
+
 	if !isExist {
 		foundBlobber := false
-		for _, blobberConnection := range sa.Blobbers {
-			if blobberConnection.ID != node.Self.ID {
+		for _, blobberConnection := range sa.BlobberDetails {
+			if blobberConnection.BlobberID != node.Self.ID {
 				continue
 			}
 			foundBlobber = true
 			a.AllocationRoot = ""
-			a.BlobberSize = (sa.Size + int64(len(sa.Blobbers)-1)) /
-				int64(len(sa.Blobbers))
+			a.BlobberSize = (sa.Size + int64(len(sa.BlobberDetails)-1)) /
+				int64(len(sa.BlobberDetails))
 			a.BlobberSizeUsed = 0
 			break
 		}
