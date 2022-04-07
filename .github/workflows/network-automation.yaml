@@ -18,10 +18,10 @@ jobs:
         with:
           fetch-depth: 0  # OR "2" -> To retrieve the preceding commit.
       
-       - name: Get config map changed files
-         id: changed-files-specific
-         uses: tj-actions/changed-files@v18.6
-         with:
+      - name: Get config map changed files
+        id: changed-files-specific
+        uses: tj-actions/changed-files@v18.6
+        with:
            files: |
              docker.local/config/0chain.yaml
              docker.local/config/sc.yaml
@@ -285,7 +285,7 @@ validator:
          run: |
            echo "updated values.yaml."
            sed -i -e 's/^/    /' config/0chain_blobber.yaml &&  sed -i '29  r config/0chain_blobber.yaml' values.yaml
-           sed -i -e 's/^/    /' config/0chain_validator.yaml &&  sed -i '29  r config/0chain_validator.yaml' values.yaml
+           sed -i -e 's/^/    /' config/0chain_validator.yaml &&  sed -i '173  r config/0chain_validator.yaml' values.yaml
 
 #       - name: update config map command 
 #         if: steps.changed-files-specific.outputs.any_changed == 'true'
