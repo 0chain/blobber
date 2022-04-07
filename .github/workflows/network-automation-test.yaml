@@ -23,8 +23,8 @@ jobs:
         uses: tj-actions/changed-files@v18.6
         with:
            files: |
-             docker.local/config/0chain.yaml
-             docker.local/config/sc.yaml
+             config/0chain_blobber.yaml
+             config/0chain_validator.yaml
       
       - name: Create values.yaml file for blobber deployment.
         if: steps.changed-files-specific.outputs.any_changed == 'true'
