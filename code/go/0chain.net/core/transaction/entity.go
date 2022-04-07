@@ -73,6 +73,13 @@ type StorageNodeGeolocation struct {
 	Longitude float64 `json:"longitude"`
 }
 
+type Info struct {
+	Name        string `json:"name"`
+	WebsiteUrl  string `json:"website_url"`
+	LogoUrl     string `json:"logo_url"`
+	Description string `json:"description"`
+}
+
 type StorageNode struct {
 	ID                string                 `json:"id"`
 	BaseURL           string                 `json:"url"`
@@ -81,6 +88,7 @@ type StorageNode struct {
 	Capacity          int64                  `json:"capacity"`
 	PublicKey         string                 `json:"-"`
 	StakePoolSettings StakePoolSettings      `json:"stake_pool_settings"`
+	Information       Info                   `json:"info"`
 }
 
 type BlobberAllocation struct {
@@ -96,7 +104,6 @@ type StorageAllocation struct {
 	Size           int64                `json:"size"`
 	UsedSize       int64                `json:"used_size"`
 	Expiration     common.Timestamp     `json:"expiration_date"`
-	Blobbers       []*StorageNode       `json:"blobbers"`
 	BlobberDetails []*BlobberAllocation `json:"blobber_details"`
 	Finalized      bool                 `json:"finalized"`
 	CCT            time.Duration        `json:"challenge_completion_time"`

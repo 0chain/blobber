@@ -28,6 +28,7 @@ func (ac *AttributesChange) ApplyChange(ctx context.Context, _ *AllocationChange
 
 	// root reference
 	ref, err = reference.GetReferencePath(ctx, ac.AllocationID, ac.Path)
+
 	if err != nil {
 		return nil, common.NewErrorf("process_attrs_update",
 			"getting root reference path: %v", err)
@@ -38,13 +39,14 @@ func (ac *AttributesChange) ApplyChange(ctx context.Context, _ *AllocationChange
 		dirRef    = ref
 		treelevel = 0
 	)
-
+	dirRef.HashToBeComputed = true
 	for treelevel < len(tSubDirs) {
 		var found bool
 		for _, child := range dirRef.Children {
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef, found = child, true
+					dirRef.HashToBeComputed = true
 					break
 				}
 			}
@@ -78,7 +80,9 @@ func (ac *AttributesChange) ApplyChange(ctx context.Context, _ *AllocationChange
 			"setting new attributes: %v", err)
 	}
 
-	if _, err = ref.CalculateHash(ctx, true); err != nil {
+	existingRef.HashToBeComputed = true
+
+	if _, err := ref.CalculateHash(ctx, true); err != nil {
 		return nil, common.NewErrorf("process_attrs_update",
 			"saving updated reference: %v", err)
 	}

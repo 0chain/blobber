@@ -89,6 +89,11 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn.StakePoolSettings.MaxStake = config.Configuration.MaxStake
 	sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
 	sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
+
+	sn.Information.Name = config.Configuration.Name
+	sn.Information.Description = config.Configuration.Description
+	sn.Information.WebsiteUrl = config.Configuration.WebsiteUrl
+	sn.Information.LogoUrl = config.Configuration.LogoUrl
 	return sn, nil
 }
 

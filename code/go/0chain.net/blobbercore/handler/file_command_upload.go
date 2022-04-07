@@ -7,10 +7,11 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
@@ -44,6 +45,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 	}
 
 	isExist, err := reference.IsRefExist(ctx, allocationObj.ID, fileChanger.Path)
+
 	if err != nil {
 		logging.Logger.Error(err.Error())
 		return common.NewError("database_error", "Got db error while getting ref")
@@ -53,12 +55,14 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return common.NewError("duplicate_file", "File at path already exists")
 	}
 
+	if allocationObj.OwnerID != clientID &&
+		allocationObj.RepairerID != clientID {
+		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+	}
+
 	if err := validateParentPathType(ctx, allocationObj.ID, fileChanger.Path); err != nil {
 		return err
 	}
-
-	//create a FixedMerkleTree instance first, it will be reloaded from db in cmd.reloadChange if it is not first chunk
-	//cmd.fileChanger.FixedMerkleTree = &util.FixedMerkleTree{}
 
 	if fileChanger.ChunkSize <= 0 {
 		fileChanger.ChunkSize = fileref.CHUNK_SIZE
