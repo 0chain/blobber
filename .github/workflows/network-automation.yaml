@@ -26,273 +26,273 @@ jobs:
              docker.local/config/0chain.yaml
              docker.local/config/sc.yaml
       
-      - name: Create values.yaml file for blobber.
+      - name: Create values.yaml file for blobber deployment.
         if: steps.changed-files-specific.outputs.any_changed == 'true'
         run: | 
             echo <<\EOF > values.yaml
-serviceAccount:
-  # Specifies whether a service account should be created
-  create: true
-  # Annotations to add to the service account
-  annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  name: ""
+            serviceAccount:
+              # Specifies whether a service account should be created
+              create: true
+              # Annotations to add to the service account
+              annotations: {}
+              # The name of the service account to use.
+              # If not set and create is true, a name is generated using the fullname template
+              name: ""
 
-zminer: false #Enable to make the deployment for 0miners also set blockWorker URL in config.
-affinity:
-  blobber:
-    storageOptimize: false #Enable this to schedule the blobbers preferrablly over to the nodes with labels bound:high-storage.
+            zminer: false #Enable to make the deployment for 0miners also set blockWorker URL in config.
+            affinity:
+              blobber:
+                storageOptimize: false #Enable this to schedule the blobbers preferrablly over to the nodes with labels bound:high-storage.
 
-blobber:
-  blobberCount: 6
-  replicaCount: 1
+            blobber:
+              blobberCount: 6
+              replicaCount: 1
 
-  hostName: helm
-  host: 0chain.net
+              hostName: testing
+              host: devnet-0chain.net
 
-  minioConfig:
-    bucketUrl: s3.amazonaws.com
-    accessKeyId: ajkfjasdfsdv
-    secretAccessKey: davddcasdc
-    bucketName: blobber
-    bucketRegion: us-east-2
+              minioConfig:
+                bucketUrl: s3.amazonaws.com
+                accessKeyId: ajkfjasdfsdv
+                secretAccessKey: davddcasdc
+                bucketName: blobber
+                bucketRegion: us-east-2
 
-  config:
-   
+              config:
 
-  image:
-    repository: 0chaindev/blobber
-    pullPolicy: Always
-    tag: staging
 
-  imagePullSecrets: 
-    - name: regcred
+              image:
+                repository: 0chaindev/blobber
+                pullPolicy: Always
+                tag: staging
 
-  nameOverride: ""
+              imagePullSecrets: 
+                - name: regcred
 
-  fullnameOverride: ""
+              nameOverride: ""
 
-  podAnnotations: {}
+              fullnameOverride: ""
 
-  podSecurityContext: {}
-    # fsGroup: 2000
+              podAnnotations: {}
 
-  securityContext: {}
-    # capabilities:
-    #   drop:
-    #   - ALL
-    # readOnlyRootFilesystem: true
-    # runAsNonRoot: true
-    # runAsUser: 1000
+              podSecurityContext: {}
+                # fsGroup: 2000
 
-  env:
-    DOCKER: "true"
-    DB_NAME: blobber_meta
-    DB_USER: blobber_user
-    DB_PASSWORD: blobber
-    DB_PORT: "5432"
+              securityContext: {}
+                # capabilities:
+                #   drop:
+                #   - ALL
+                # readOnlyRootFilesystem: true
+                # runAsNonRoot: true
+                # runAsUser: 1000
 
-  resources:
-    requests:
-      cpu: "128m"
-      memory: "512Mi"
-    limits:
-      cpu: "256m"
-      memory: "1024Mi"
+              env:
+                DOCKER: "true"
+                DB_NAME: blobber_meta
+                DB_USER: blobber_user
+                DB_PASSWORD: blobber
+                DB_PORT: "5432"
 
-  service:
-    type: NodePort
-    port: 313
-    nodePort: 313
+              resources:
+                requests:
+                  cpu: "128m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "256m"
+                  memory: "1024Mi"
 
-  autoscaling:
-    enabled: false
-    minReplicas: 1
-    maxReplicas: 3
-    targetCPUUtilizationPercentage: 75
-    targetMemoryUtilizationPercentage: 75
+              service:
+                type: NodePort
+                port: 313
+                nodePort: 313
 
-  grpcService:
-    type: NodePort
-    port: 315
-    nodePort: 315
+              autoscaling:
+                enabled: false
+                minReplicas: 1
+                maxReplicas: 3
+                targetCPUUtilizationPercentage: 75
+                targetMemoryUtilizationPercentage: 75
 
-  jobImage:
-    repository: 0chaindev/stake
-    pullPolicy: Always
-    tag: latest
+              grpcService:
+                type: NodePort
+                port: 315
+                nodePort: 315
 
-  # nodeSelector: {}
+              jobImage:
+                repository: 0chaindev/stake
+                pullPolicy: Always
+                tag: latest
 
-  # tolerations: []
+              # nodeSelector: {}
 
-  # affinity: {}
+              # tolerations: []
 
-  postgresImage:
-    repository: postgres
-    tag: 11
+              # affinity: {}
 
-  postgresResources:
-    requests:
-      cpu: "128m"
-      memory: "512Mi"
-    limits:
-      cpu: "256m"
-      memory: "1024Mi"
+              postgresImage:
+                repository: postgres
+                tag: 11
 
-  postgresEnv:
-    POSTGRES_HOST_AUTH_METHOD: trust
+              postgresResources:
+                requests:
+                  cpu: "128m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "256m"
+                  memory: "1024Mi"
 
-  postgresJobEnv:
-    POSTGRES_HOST_AUTH_METHOD: trust
-    POSTGRES_PORT: "5432"
-    POSTGRES_USER: postgres
+              postgresEnv:
+                POSTGRES_HOST_AUTH_METHOD: trust
 
-  postgresService:
-    port: 5432
+              postgresJobEnv:
+                POSTGRES_HOST_AUTH_METHOD: trust
+                POSTGRES_PORT: "5432"
+                POSTGRES_USER: postgres
 
-  postgresAutoscaling:
-    enabled: false
-    minReplicas: 1
-    maxReplicas: 3
-    targetCPUUtilizationPercentage: 75
-    targetMemoryUtilizationPercentage: 75
+              postgresService:
+                port: 5432
 
-  persistence:
-    enabled: false
+              postgresAutoscaling:
+                enabled: false
+                minReplicas: 1
+                maxReplicas: 3
+                targetCPUUtilizationPercentage: 75
+                targetMemoryUtilizationPercentage: 75
 
-    ## A manually managed Persistent Volume and Claim
-    ## Requires persistence.enabled: true
-    ## If defined, PVC must be created manually before volume will be bound
-    # existingClaim:
-    storageClassName: openebs-hostpath
-    ## rabbitmq data Persistent Volume Storage Class
-    ## If defined, storageClassName: <storageClass>
-    ## If set to "-", storageClassName: "", which disables dynamic provisioning
-    ## If undefined (the default) or set to null, no storageClassName spec is
-    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
-    ##   GKE, AWS & OpenStack)
-    
-    ######### PV HostPath ###########
-    pvHostPath: "/mnt/kubernetes/"
-    
-    ####### PVs & PVCs #######
-    storageClassNameFiles: blob-files-pv-
-    accessModeFilesPv: ReadWriteOnce
-    storageFiles: 20Gi
+              persistence:
+                enabled: false
 
-    storageClassNameData: blob-valid-data-pv-
-    accessModeDataPv: ReadWriteOnce
-    storageData: 30Gi
+                ## A manually managed Persistent Volume and Claim
+                ## Requires persistence.enabled: true
+                ## If defined, PVC must be created manually before volume will be bound
+                # existingClaim:
+                storageClassName: openebs-hostpath
+                ## rabbitmq data Persistent Volume Storage Class
+                ## If defined, storageClassName: <storageClass>
+                ## If set to "-", storageClassName: "", which disables dynamic provisioning
+                ## If undefined (the default) or set to null, no storageClassName spec is
+                ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+                ##   GKE, AWS & OpenStack)
 
-    storageClassNameTmp: blob-tmp-pv-
-    accessModeTmpPv: ReadWriteOnce
-    storageTmp: 5Gi
+                ######### PV HostPath ###########
+                pvHostPath: "/mnt/kubernetes/"
 
-    storageClassNameLog: blob-valid-log-pv-
-    accessModeLogPv: ReadWriteOnce
-    storageLog: 3Gi
+                ####### PVs & PVCs #######
+                storageClassNameFiles: blob-files-pv-
+                accessModeFilesPv: ReadWriteOnce
+                storageFiles: 20Gi
 
-validator:
-  validatorCount: 6
-  replicaCount: 1
+                storageClassNameData: blob-valid-data-pv-
+                accessModeDataPv: ReadWriteOnce
+                storageData: 30Gi
 
-  hostName: helm
-  host: 0chain.net
-  
-  config:
-    
-  
-  image:
-    repository: 0chaindev/validator
-    pullPolicy: Always
-    tag: staging
+                storageClassNameTmp: blob-tmp-pv-
+                accessModeTmpPv: ReadWriteOnce
+                storageTmp: 5Gi
 
-  imagePullSecrets: 
-    - name: regcred
+                storageClassNameLog: blob-valid-log-pv-
+                accessModeLogPv: ReadWriteOnce
+                storageLog: 3Gi
 
-  nameOverride: ""
+            validator:
+              validatorCount: 6
+              replicaCount: 1
 
-  fullnameOverride: ""
+              hostName: testing
+              host: devnet-0chain.net
 
-  env:
-    DOCKER: "true"
+              config:
 
-  # persistence:
-  #   enabled: false
 
-  #   ## A manually managed Persistent Volume and Claim
-  #   ## Requires persistence.enabled: true
-  #   ## If defined, PVC must be created manually before volume will be bound
-  #   # existingClaim:
+              image:
+                repository: 0chaindev/validator
+                pullPolicy: Always
+                tag: staging
 
-  #   ## rabbitmq data Persistent Volume Storage Class
-  #   ## If defined, storageClassName: <storageClass>
-  #   ## If set to "-", storageClassName: "", which disables dynamic provisioning
-  #   ## If undefined (the default) or set to null, no storageClassName spec is
-  #   ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
-  #   ##   GKE, AWS & OpenStack)
-  #   ##
-  #   # storageClass: "-"
-  #   # accessMode: ReadWriteOnce
-  #   # size: 20Gi
+              imagePullSecrets: 
+                - name: regcred
 
-  # podAnnotations: {}
+              nameOverride: ""
 
-  # podSecurityContext: {}
-  #   # fsGroup: 2000
+              fullnameOverride: ""
 
-  # securityContext: {}
-  #   # capabilities:
-  #   #   drop:
-  #   #   - ALL
-  #   # readOnlyRootFilesystem: true
-  #   # runAsNonRoot: true
-  #   # runAsUser: 1000
+              env:
+                DOCKER: "true"
 
-  service:
-    type: NodePort
-    port: 314
-    nodePort: 314
+              # persistence:
+              #   enabled: false
 
-  resources:
-    requests:
-      cpu: "128m"
-      memory: "512Mi"
-    limits:
-      cpu: "256m"
-      memory: "1024Mi"
+              #   ## A manually managed Persistent Volume and Claim
+              #   ## Requires persistence.enabled: true
+              #   ## If defined, PVC must be created manually before volume will be bound
+              #   # existingClaim:
 
-  autoscaling:
-    enabled: false
-    minReplicas: 1
-    maxReplicas: 3
-    targetCPUUtilizationPercentage: 75
-    targetMemoryUtilizationPercentage: 75
-  
-  # resources: {}
+              #   ## rabbitmq data Persistent Volume Storage Class
+              #   ## If defined, storageClassName: <storageClass>
+              #   ## If set to "-", storageClassName: "", which disables dynamic provisioning
+              #   ## If undefined (the default) or set to null, no storageClassName spec is
+              #   ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+              #   ##   GKE, AWS & OpenStack)
+              #   ##
+              #   # storageClass: "-"
+              #   # accessMode: ReadWriteOnce
+              #   # size: 20Gi
 
-  # nodeSelector: {}
+              # podAnnotations: {}
 
-  # tolerations: []
+              # podSecurityContext: {}
+              #   # fsGroup: 2000
 
-  # affinity: {}
+              # securityContext: {}
+              #   # capabilities:
+              #   #   drop:
+              #   #   - ALL
+              #   # readOnlyRootFilesystem: true
+              #   # runAsNonRoot: true
+              #   # runAsUser: 1000
+
+              service:
+                type: NodePort
+                port: 314
+                nodePort: 314
+
+              resources:
+                requests:
+                  cpu: "128m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "256m"
+                  memory: "1024Mi"
+
+              autoscaling:
+                enabled: false
+                minReplicas: 1
+                maxReplicas: 3
+                targetCPUUtilizationPercentage: 75
+                targetMemoryUtilizationPercentage: 75
+
+              # resources: {}
+
+              # nodeSelector: {}
+
+              # tolerations: []
+
+              # affinity: {}
             EOF
       
-      - name:  update values.yaml
-         if: steps.changed-files-specific.outputs.any_changed == 'true'
-         run: |
+      - name: update config map in values.yaml.
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        run: |
            echo "updated values.yaml."
            sed -i -e 's/^/    /' config/0chain_blobber.yaml &&  sed -i '29  r config/0chain_blobber.yaml' values.yaml
            sed -i -e 's/^/    /' config/0chain_validator.yaml &&  sed -i '173  r config/0chain_validator.yaml' values.yaml
-
+           cat values.yaml
+           
 #       - name: update config map command 
 #         if: steps.changed-files-specific.outputs.any_changed == 'true'
 #         run: |
 #           echo "0chain config maps updated ."
 #           curl -X POST -H 'Content-type: application/json' --data '{"text":"0chain config map updated."}' ${{ secrets.TEST_WEBHOOK_URL }}
-
       
       - name: Get changed files 
         id: changed-files
@@ -317,7 +317,8 @@ validator:
          echo "NAME=$TAG-$SHORT_SHA" >> $GITHUB_ENV 
          
       - name: update image on network  
+        id: update_image
         run: |
           echo "Sharder/Miner:${{ env.NAME }} updated to the network."
-          helm upgrade --install --wait 0chain -n testing --set sharder.image.tag=${{ env.NAME }} --set miner.image.tag=${{ env.NAME }} 0chain-helm/zchain --kubeconfig "./kube/config" 
+          helm upgrade --install --wait -n testing blobber --set blobber.image.tag=${{ env.NAME }} --set validator.image.tag=${{ env.NAME }} --set blobber.config.blockWorker=https://${{ secrets.NETWORK_URL }}/dns --set validator.config.blockWorker=https://${{ secrets.NETWORK_URL }}/dns 0chain-helm/blobber -f values.yaml --kubeconfig "./kube/config" 
           curl -X POST -H 'Content-type: application/json' --data '{"text":"Sharder/Miner:${{ env.NAME }} image updated on network ${{ secrets.NETWORK_URL }}."}' ${{ secrets.TEST_WEBHOOK_URL }}
