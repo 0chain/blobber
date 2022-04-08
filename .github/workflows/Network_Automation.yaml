@@ -1,0 +1,319 @@
+name: Network Automation
+
+on:
+  push:
+   branches: 
+     - staging
+ 
+jobs:
+  test:
+    runs-on: docker-builds  
+    steps:
+      - name: get docker image name
+        id: get_info
+        run: |
+          if [[ "${{github.ref}}" == refs/pull/* ]]; then
+            tag=${GITHUB_REF/\/merge/}
+            echo "TAG=$(echo pr-${tag:10})" >> $GITHUB_ENV
+          else
+            echo "TAG=$(echo ${GITHUB_REF#refs/*/} | sed 's/\//-/g')" >> $GITHUB_ENV
+          fi
+          echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
+          echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
+    
+      - name: image name 
+        id: image_name
+        run: |
+          SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
+          echo "NAME=$TAG-$SHORT_SHA" >> $GITHUB_ENV  
+
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0  # OR "2" -> To retrieve the preceding commit. 0 indicates all history for all branches and tags.
+      
+      - name: Get config map changed files
+        id: changed-files-specific
+        uses: tj-actions/changed-files@v18.6
+        with:
+            files: |
+              config/0chain_blobber.yaml
+              config/0chain_validator.yaml
+      
+      - name: Create dev-values.yaml file for blobber deployment.
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        run: | 
+          cat <<\EOF > dev-values.yaml
+          serviceAccount:
+            # Specifies whether a service account should be created
+            create: true
+            # Annotations to add to the service account
+            annotations: {}
+            # The name of the service account to use.
+            # If not set and create is true, a name is generated using the fullname template
+            name: ""
+
+          zminer: false #Enable to make the deployment for 0miners also set blockWorker URL in config.
+          affinity:
+            blobber:
+              storageOptimize: false #Enable this to schedule the blobbers preferrablly over to the nodes with labels bound:high-storage.
+
+          blobber:
+            blobberCount: 6
+            replicaCount: 1
+
+            hostName: testing
+            host: devnet-0chain.net
+
+            minioConfig:
+              bucketUrl: s3.amazonaws.com
+              accessKeyId: ajkfjasdfsdv
+              secretAccessKey: davddcasdc
+              bucketName: blobber
+              bucketRegion: us-east-2
+
+            config:
+
+
+            image:
+              repository: 0chaindev/blobber
+              pullPolicy: Always
+              tag: ${{ env.NAME }}
+
+            imagePullSecrets: 
+              - name: regcred
+
+            nameOverride: ""
+
+            fullnameOverride: ""
+
+            podAnnotations: {}
+
+            podSecurityContext: {}
+              # fsGroup: 2000
+
+            securityContext: {}
+              # capabilities:
+              #   drop:
+              #   - ALL
+              # readOnlyRootFilesystem: true
+              # runAsNonRoot: true
+              # runAsUser: 1000
+
+            env:
+              DOCKER: "true"
+              DB_NAME: blobber_meta
+              DB_USER: blobber_user
+              DB_PASSWORD: blobber
+              DB_PORT: "5432"
+
+            resources:
+              requests:
+                cpu: "128m"
+                memory: "512Mi"
+              limits:
+                cpu: "256m"
+                memory: "1024Mi"
+
+            service:
+              type: NodePort
+              port: 313
+              nodePort: 313
+
+            autoscaling:
+              enabled: false
+              minReplicas: 1
+              maxReplicas: 3
+              targetCPUUtilizationPercentage: 75
+              targetMemoryUtilizationPercentage: 75
+
+            grpcService:
+              type: NodePort
+              port: 315
+              nodePort: 315
+
+            jobImage:
+              repository: 0chaindev/stake
+              pullPolicy: Always
+              tag: latest
+
+            # nodeSelector: {}
+
+            # tolerations: []
+
+            # affinity: {}
+
+            postgresImage:
+              repository: postgres
+              tag: 11
+
+            postgresResources:
+              requests:
+                cpu: "128m"
+                memory: "512Mi"
+              limits:
+                cpu: "256m"
+                memory: "1024Mi"
+
+            postgresEnv:
+              POSTGRES_HOST_AUTH_METHOD: trust
+
+            postgresJobEnv:
+              POSTGRES_HOST_AUTH_METHOD: trust
+              POSTGRES_PORT: "5432"
+              POSTGRES_USER: postgres
+
+            postgresService:
+              port: 5432
+
+            postgresAutoscaling:
+              enabled: false
+              minReplicas: 1
+              maxReplicas: 3
+              targetCPUUtilizationPercentage: 75
+              targetMemoryUtilizationPercentage: 75
+
+            persistence:
+              enabled: false
+
+              ## A manually managed Persistent Volume and Claim
+              ## Requires persistence.enabled: true
+              ## If defined, PVC must be created manually before volume will be bound
+              # existingClaim:
+              storageClassName: openebs-hostpath
+              ## rabbitmq data Persistent Volume Storage Class
+              ## If defined, storageClassName: <storageClass>
+              ## If set to "-", storageClassName: "", which disables dynamic provisioning
+              ## If undefined (the default) or set to null, no storageClassName spec is
+              ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+              ##   GKE, AWS & OpenStack)
+
+              ######### PV HostPath ###########
+              pvHostPath: "/mnt/kubernetes/"
+
+              ####### PVs & PVCs #######
+              storageClassNameFiles: blob-files-pv-
+              accessModeFilesPv: ReadWriteOnce
+              storageFiles: 20Gi
+
+              storageClassNameData: blob-valid-data-pv-
+              accessModeDataPv: ReadWriteOnce
+              storageData: 30Gi
+
+              storageClassNameTmp: blob-tmp-pv-
+              accessModeTmpPv: ReadWriteOnce
+              storageTmp: 5Gi
+
+              storageClassNameLog: blob-valid-log-pv-
+              accessModeLogPv: ReadWriteOnce
+              storageLog: 3Gi
+
+          validator:
+            validatorCount: 6
+            replicaCount: 1
+
+            hostName: testing
+            host: devnet-0chain.net
+
+            image:
+              repository: 0chaindev/validator
+              pullPolicy: Always
+              tag: ${{ env.NAME }}
+
+            imagePullSecrets: 
+              - name: regcred
+
+            nameOverride: ""
+
+            fullnameOverride: ""
+
+            env:
+              DOCKER: "true"
+
+            # persistence:
+            #   enabled: false
+
+            #   ## A manually managed Persistent Volume and Claim
+            #   ## Requires persistence.enabled: true
+            #   ## If defined, PVC must be created manually before volume will be bound
+            #   # existingClaim:
+
+            #   ## rabbitmq data Persistent Volume Storage Class
+            #   ## If defined, storageClassName: <storageClass>
+            #   ## If set to "-", storageClassName: "", which disables dynamic provisioning
+            #   ## If undefined (the default) or set to null, no storageClassName spec is
+            #   ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+            #   ##   GKE, AWS & OpenStack)
+            #   ##
+            #   # storageClass: "-"
+            #   # accessMode: ReadWriteOnce
+            #   # size: 20Gi
+
+            # podAnnotations: {}
+
+            # podSecurityContext: {}
+            #   # fsGroup: 2000
+
+            # securityContext: {}
+            #   # capabilities:
+            #   #   drop:
+            #   #   - ALL
+            #   # readOnlyRootFilesystem: true
+            #   # runAsNonRoot: true
+            #   # runAsUser: 1000
+
+            service:
+              type: NodePort
+              port: 314
+              nodePort: 314
+
+            resources:
+              requests:
+                cpu: "128m"
+                memory: "512Mi"
+              limits:
+                cpu: "256m"
+                memory: "1024Mi"
+
+            autoscaling:
+              enabled: false
+              minReplicas: 1
+              maxReplicas: 3
+              targetCPUUtilizationPercentage: 75
+              targetMemoryUtilizationPercentage: 75
+
+            # resources: {}
+
+            # nodeSelector: {}
+
+            # tolerations: []
+
+            # affinity: {}
+            
+            config:
+          EOF
+      
+      - name: update config map in dev-values.yaml.
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        run: |
+          echo "updated dev-values.yaml."
+          sed -i -e 's/^/    /' config/0chain_blobber.yaml &&  sed -i '29  r config/0chain_blobber.yaml' dev-values.yaml
+          sed -i -e 's/^/    /' config/0chain_validator.yaml && cat config/0chain_validator.yaml >> dev-values.yaml
+          cat dev-values.yaml
+          mkdir ../update
+          cp dev-values.yaml ../update
+
+      - name: Pushes to another repository
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        run: |
+          cd ../update
+          git clone https://github.com/${{ secrets.REPO_NAME_NETAUTO }}
+          cd 0helm
+          git checkout network-automation
+          cp ../dev-values.yaml blobber/
+          git config --global user.email "${{ secrets.USER_EMAIL_NETAUTO }}"
+          git config --global user.name "${{ secrets.USER_NAME_NETAUTO }}"
+          git add blobber/dev-values.yaml
+          git commit -m "update config to dev-values.yaml"
+          git push --prune https://token:${{ secrets.API_TOKEN_GITHUB }}@github.com/${{ secrets.REPO_NAME_NETAUTO }}
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"blobber dev-values.yaml file updated in network-automation branch of 0helm repo."}' ${{ secrets.TEST_WEBHOOK_URL }}    
+
