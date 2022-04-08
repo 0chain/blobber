@@ -22,7 +22,8 @@ func (l *Lock) Lock() {
 	for {
 		l.actualLock.Lock()
 		if l.stale {
-			*l = *l.pMap.GetLock(l.key) // It is safe as it copies lock but address of actual lock
+			newLock, _ := l.pMap.GetLock(l.key)
+			*l = *newLock // It is safe as it copies lock but address of actual lock
 			continue
 		}
 		break
@@ -46,7 +47,7 @@ type MapLocker struct {
 	mu *sync.Mutex
 }
 
-func (m *MapLocker) GetLock(key string) (l *Lock) {
+func (m *MapLocker) GetLock(key string) (l *Lock, isNew bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	valueI, ok := m.m.Load(key)
@@ -65,7 +66,7 @@ func (m *MapLocker) GetLock(key string) (l *Lock) {
 		actualLock: new(sync.Mutex),
 		countMu:    new(sync.Mutex),
 	}
-
+	isNew = true
 	m.m.Store(key, l)
 	return
 }
