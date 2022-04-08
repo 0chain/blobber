@@ -73,7 +73,6 @@ CREATE TABLE terms (
 CREATE TABLE pendings (
     id             VARCHAR(129), -- combination of client_id:allocation_id
     pending_write  bigint NOT NULL DEFAULT 0, -- number of pending write bytes
-    pending_read bigint NOT NULL DEFAULT 0, -- number of pending read bytes
     PRIMARY KEY (id)
 );
 
@@ -166,7 +165,7 @@ CREATE TABLE read_markers (
     payer_id VARCHAR(64) NOT NULL,
     auth_ticket JSON,
     timestamp BIGINT NOT NULL,
-    read_size BIGINT NOT NULL,
+    read_counter BIGINT NOT NULL,
     is_suspend Boolean,
     signature VARCHAR(64) NOT NULL,
     redeem_required boolean,
