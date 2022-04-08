@@ -75,10 +75,10 @@ func sizeInGB(size int64) float64 {
 }
 
 // GetRequiredReadBalance Get tokens required to read the given size
-func (a *Allocation) GetRequiredReadBalance(blobberID string, readSize int64) (value float64) {
+func (a *Allocation) GetRequiredReadBalance(blobberID string, numBlocks int64) (value float64) {
 	for _, d := range a.Terms {
 		if d.BlobberID == blobberID {
-			value = sizeInGB(readSize) * float64(d.ReadPrice)
+			value = sizeInGB(numBlocks*CHUNK_SIZE) * float64(d.ReadPrice)
 			break
 		}
 	}
