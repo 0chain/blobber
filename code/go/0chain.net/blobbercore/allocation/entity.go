@@ -101,8 +101,6 @@ type Pending struct {
 	ID string `gorm:"column:id;primary_key"`
 
 	PendingWrite int64 `gorm:"column:pending_write"` // size
-	// PendingRead client's pending token redeeming
-	PendingRead int64 `gorm:"column:pending_read"` // size
 }
 
 func (*Pending) TableName() string {
@@ -139,11 +137,11 @@ func GetPendingRead(db *gorm.DB, clientID, allocationID string) (pendingReadSize
 	return
 }
 
-func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite, pendingRead int64) (err error) {
+func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite int64) (err error) {
 	key := clientID + ":" + allocationID
 	// Lock is required because two process can simultaneously call this function and read pending data
 	// thus giving same value leading to inconsistent data
-	lock := pendingMapLock.GetLock(key)
+	lock, _ := pendingMapLock.GetLock(key)
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -152,12 +150,10 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite, pend
 	switch {
 	case err == nil:
 		pending.PendingWrite += pendingWrite
-		pending.PendingRead += pendingRead
 		db.Save(pending)
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		pending.ID = key
 		pending.PendingWrite = pendingWrite
-		pending.PendingRead = pendingRead
 		db.Create(pending)
 	default:
 		return err
