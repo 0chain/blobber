@@ -108,7 +108,7 @@ func (ac *AttributesChange) Unmarshal(val string) (err error) {
 
 // The DeleteTempFile returns OperationNotApplicable error.
 func (ac *AttributesChange) DeleteTempFile() (err error) {
-	return OperationNotApplicable
+	return nil
 }
 
 // The CommitToFileStore does nothing.
