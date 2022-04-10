@@ -221,7 +221,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.BlobberID = ""
 					rm.AllocationID = alloc.ID
 					rm.OwnerID = ownerClient.ClientID
-					rm.ReadSize = 64 * KB
+					rm.ReadCounter = 1
 					rm.Signature, err = signHash(ownerClient, rm.GetHash())
 					if err != nil {
 						t.Fatal(err)
@@ -299,7 +299,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.ClientPublicKey = ownerClient.ClientKey
 					rm.BlobberID = ""
 					rm.AllocationID = alloc.ID
-					rm.ReadSize = 64 * KB
+					rm.ReadCounter = 1
 					rm.OwnerID = ownerClient.ClientID
 					rm.Signature, err = signHash(ownerClient, rm.GetHash())
 					if err != nil {
@@ -364,11 +364,18 @@ func TestHandlers_Download(t *testing.T) {
 					WithArgs(ownerClient.ClientID).
 					WillReturnError(gorm.ErrRecordNotFound)
 
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
+					WithArgs(ownerClient.ClientID).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"client_id"}).
+							AddRow(ownerClient.ClientID),
+					)
+
 				aa := sqlmock.AnyArg()
 
-				mock.ExpectQuery(`INSERT INTO "read_markers"`).
-					WithArgs(ownerClient.ClientID, ownerClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa, aa, aa).
-					WillReturnRows(sqlmock.NewRows([]string{}))
+				mock.ExpectExec(`UPDATE "read_markers"`).
+					WithArgs(ownerClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa).
+					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectCommit()
 			},
@@ -399,7 +406,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.ClientPublicKey = guestClient.ClientKey
 					rm.BlobberID = ""
 					rm.AllocationID = alloc.ID
-					rm.ReadSize = 64 * KB
+					rm.ReadCounter = 1
 					rm.OwnerID = ownerClient.ClientID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
@@ -511,7 +518,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.ClientPublicKey = guestClient.ClientKey
 					rm.BlobberID = ""
 					rm.AllocationID = alloc.ID
-					rm.ReadSize = 64 * KB
+					rm.ReadCounter = 1
 					rm.OwnerID = ownerClient.ClientID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
@@ -610,11 +617,18 @@ func TestHandlers_Download(t *testing.T) {
 							AddRow(reEncryptionKey, guestPublicEncryptedKey),
 					)
 
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
+					WithArgs(guestClient.ClientID).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"client_id"}).
+							AddRow(guestClient.ClientID),
+					)
+
 				aa := sqlmock.AnyArg()
 
-				mock.ExpectQuery(`INSERT INTO "read_markers"`).
-					WithArgs(guestClient.ClientID, guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa, aa, aa).
-					WillReturnRows(sqlmock.NewRows([]string{}))
+				mock.ExpectExec(`UPDATE "read_markers"`).
+					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa).
+					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectCommit()
 			},
@@ -645,7 +659,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.ClientPublicKey = guestClient.ClientKey
 					rm.BlobberID = ""
 					rm.AllocationID = alloc.ID
-					rm.ReadSize = 64 * KB
+					rm.ReadCounter = 1
 					rm.OwnerID = ownerClient.ClientID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
@@ -749,11 +763,18 @@ func TestHandlers_Download(t *testing.T) {
 							AddRow(reEncryptionKey, gpbk),
 					)
 
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
+					WithArgs(guestClient.ClientID).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"client_id"}).
+							AddRow(guestClient.ClientID),
+					)
+
 				aa := sqlmock.AnyArg()
 
-				mock.ExpectQuery(`INSERT INTO "read_markers"`).
-					WithArgs(guestClient.ClientID, guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa, aa, aa).
-					WillReturnRows(sqlmock.NewRows([]string{}))
+				mock.ExpectExec(`UPDATE "read_markers"`).
+					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa).
+					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectCommit()
 			},
@@ -784,7 +805,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.ClientPublicKey = guestClient.ClientKey
 					rm.BlobberID = ""
 					rm.AllocationID = alloc.ID
-					rm.ReadSize = 64 * KB
+					rm.ReadCounter = 1
 					rm.OwnerID = alloc.OwnerID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
@@ -888,11 +909,18 @@ func TestHandlers_Download(t *testing.T) {
 							AddRow(reEncryptionKey, gpbk),
 					)
 
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
+					WithArgs(guestClient.ClientID).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"client_id"}).
+							AddRow(guestClient.ClientID),
+					)
+
 				aa := sqlmock.AnyArg()
 
-				mock.ExpectQuery(`INSERT INTO "read_markers"`).
-					WithArgs(guestClient.ClientID, guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa, aa, aa).
-					WillReturnRows(sqlmock.NewRows([]string{}))
+				mock.ExpectExec(`UPDATE "read_markers"`).
+					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa).
+					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectCommit()
 			},
@@ -923,7 +951,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.ClientPublicKey = guestClient.ClientKey
 					rm.BlobberID = ""
 					rm.AllocationID = alloc.ID
-					rm.ReadSize = 64 * KB
+					rm.ReadCounter = 1
 					rm.OwnerID = alloc.OwnerID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
