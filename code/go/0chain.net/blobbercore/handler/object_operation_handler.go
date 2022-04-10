@@ -278,7 +278,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			LatestRM:     latestRM,
 			Path:         fileref.Path,
 			AllocationID: fileref.AllocationID,
-		}, nil
+		}, common.NewError("stale_read_marker", "")
 	}
 
 	// check out read pool tokens if read_price > 0
