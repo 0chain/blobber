@@ -53,7 +53,7 @@ func (nf *DeleteFileChange) Unmarshal(input string) error {
 }
 
 func (nf *DeleteFileChange) DeleteTempFile() error {
-	return OperationNotApplicable
+	return nil
 }
 
 func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {

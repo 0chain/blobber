@@ -21,7 +21,7 @@ type RenameFileChange struct {
 }
 
 func (rf *RenameFileChange) DeleteTempFile() error {
-	return OperationNotApplicable
+	return nil
 }
 
 func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
