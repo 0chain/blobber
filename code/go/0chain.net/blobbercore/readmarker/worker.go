@@ -10,6 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
 	"go.uber.org/zap"
@@ -76,7 +77,7 @@ func redeemReadMarkers(ctx context.Context) {
 
 	rctx := datastore.GetStore().CreateTransaction(ctx)
 	db := datastore.GetStore().GetTransaction(rctx)
-	readMarkers, err := GetRedeemRequiringRMEntities(ctx)
+	readMarkers, err := GetRedeemRequiringRMEntities(rctx)
 	if err != nil {
 		logging.Logger.Error("redeem_readmarker", zap.Any("database_error", err))
 		return
@@ -89,6 +90,7 @@ func redeemReadMarkers(ctx context.Context) {
 		guideCh <- struct{}{}
 		wg.Add(1)
 
+		rmEntity.LatestRM.BlobberID = node.Self.ID
 		go func(redeemCtx context.Context, rmEntity *ReadMarkerEntity, wg *sync.WaitGroup, ch <-chan struct{}) {
 			defer func() {
 				<-ch
