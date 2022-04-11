@@ -164,7 +164,7 @@ CREATE TABLE read_markers (
     payer_id VARCHAR(64) NOT NULL,
     auth_ticket JSON,
     timestamp BIGINT NOT NULL,
-    read_counter BIGINT NOT NULL,
+    counter BIGINT NOT NULL,
     signature VARCHAR(64) NOT NULL,
     redeem_required boolean,
     latest_redeemed_rc BIGINT,

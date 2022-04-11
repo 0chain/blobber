@@ -112,7 +112,7 @@ func GetLatestReadMarkerEntity(ctx context.Context, clientID string) (*ReadMarke
 func GetRedeemRequiringRMEntities(ctx context.Context) ([]*ReadMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	var rms []*ReadMarkerEntity
-	err := db.Model(&ReadMarkerEntity{}).Where("read_counter <> latest_redeemed_rc").Order("created_at asc").Find(&rms).Error
+	err := db.Model(&ReadMarkerEntity{}).Where("counter <> latest_redeemed_rc").Order("created_at asc").Find(&rms).Error
 	if err != nil {
 		return nil, err
 	}
