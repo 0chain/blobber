@@ -156,7 +156,7 @@ CREATE TABLE write_markers (
 CREATE TRIGGER write_markers_modtime BEFORE UPDATE ON write_markers FOR EACH ROW EXECUTE PROCEDURE  update_modified_column();
 
 CREATE TABLE read_markers (
-    client_id VARCHAR(64) PRIMARY KEYL,
+    client_id VARCHAR(64) PRIMARY KEY,
     client_public_key VARCHAR(128) NOT NULL,
     -- blobber_id VARCHAR(64) NOT NULL,
     allocation_id VARCHAR(64) NOT NULL,
@@ -167,7 +167,7 @@ CREATE TABLE read_markers (
     read_counter BIGINT NOT NULL,
     signature VARCHAR(64) NOT NULL,
     redeem_required boolean,
-    latest_redeem_rc BIGINT,
+    latest_redeemed_rc BIGINT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
