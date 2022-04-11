@@ -261,11 +261,7 @@ func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error)
 func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
-	response, err := storageHandler.DownloadFile(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
+	return storageHandler.DownloadFile(ctx, r)
 }
 
 /*ListHandler is the handler to respond to upload requests fro clients*/
