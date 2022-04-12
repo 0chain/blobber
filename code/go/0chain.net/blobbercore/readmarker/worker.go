@@ -52,11 +52,6 @@ func redeemReadMarker(ctx context.Context, rmEntity *ReadMarkerEntity) (err erro
 		return // synced from blockchain, no redeeming needed
 	}
 
-	if latestRM.ReadCounter == rmEntity.LatestRM.ReadCounter {
-		_ = SaveLatestReadMarker(ctx, &latestRM, latestRM.ReadCounter, false)
-		return // nothing to redeem
-	}
-
 	// so, now the latestRM.ReadCounter is less than rmEntity.LatestRM.ReadCounter
 
 	if err = rmEntity.RedeemReadMarker(ctx); err != nil {
