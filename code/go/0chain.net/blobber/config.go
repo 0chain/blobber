@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-func setupConfig() {
-	fmt.Print("[2/12] load config")
+func setupConfig(step int, configDir string, deploymentMode int) {
+	fmt.Printf("[%v/%v] load config", step, totalSteps)
 	// setup default
 	config.SetupDefaultConfig()
 
@@ -106,6 +106,13 @@ func setupConfig() {
 	config.Configuration.WebsiteUrl = viper.GetString("website_url")
 	config.Configuration.LogoUrl = viper.GetString("logo_url")
 	config.Configuration.Description = viper.GetString("description")
-	
+
+	fmt.Print("		[OK]\n")
+}
+
+// reloadConfig reload config from database
+func reloadConfigFromDatastore(step int) {
+	fmt.Printf("[%v/%v] reload config", step, totalSteps)
+
 	fmt.Print("		[OK]\n")
 }

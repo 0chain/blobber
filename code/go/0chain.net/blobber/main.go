@@ -5,14 +5,23 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
 
+const totalSteps = 13
+
 func main() {
-	parseFlags()
+	parseFlags(1)
 
-	setupConfig()
+	setupConfig(2, configDir, deploymentMode)
 
-	setupLogging()
+	if err := setupDatabase(3); err != nil {
+		logging.Logger.Error("Error setting up data store" + err.Error())
+		panic(err)
+	}
 
-	if err := setupMinio(); err != nil {
+	reloadConfigFromDatastore(4)
+
+	setupLogging(5)
+
+	if err := setupMinio(6); err != nil {
 		logging.Logger.Error("Error setting up minio " + err.Error())
 		panic(err)
 	}
@@ -24,11 +33,6 @@ func main() {
 
 	if err := setupServerChain(); err != nil {
 		logging.Logger.Error("Error setting up server chain" + err.Error())
-		panic(err)
-	}
-
-	if err := setupDatabase(); err != nil {
-		logging.Logger.Error("Error setting up data store" + err.Error())
 		panic(err)
 	}
 

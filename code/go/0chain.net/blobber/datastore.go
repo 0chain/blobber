@@ -8,12 +8,12 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
-func setupDatabase() error {
-	fmt.Print("\r[7/12] connect data store")
+func setupDatabase(step int) error {
+	fmt.Printf("\r[%v/%v] connect data store", step, totalSteps)
 	// check for database connection
 	for i := 0; i < 600; i++ {
 		if i > 0 {
-			fmt.Printf("\r[7/12] connect(%v) data store", i)
+			fmt.Printf("\r[%v/%v] connect(%v) data store", step, totalSteps, i)
 		}
 
 		if err := datastore.GetStore().Open(); err == nil {
@@ -28,7 +28,7 @@ func setupDatabase() error {
 		time.Sleep(1 * time.Second)
 	}
 
-	fmt.Println("\r[8/12] auto migrate datastore")
+	fmt.Println("\r	 auto migrate datastore")
 	err := datastore.GetStore().AutoMigrate()
 	if err != nil {
 		logging.Logger.Error("Failed to migrate to the database.")

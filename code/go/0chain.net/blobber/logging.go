@@ -8,8 +8,8 @@ import (
 	"github.com/0chain/gosdk/zcncore"
 )
 
-func setupLogging() {
-	fmt.Print("[3/12] init logging")
+func setupLogging(step int) {
+	fmt.Printf("[%v/%v] init logging", step, totalSteps)
 
 	if config.Development() {
 		logging.InitLogging("development", logDir, "0chainBlobber.log")

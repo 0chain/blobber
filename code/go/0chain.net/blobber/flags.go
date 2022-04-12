@@ -43,8 +43,8 @@ func init() {
 	flag.IntVar(&grpcPort, "grpc_port", 0, "grpc_port")
 }
 
-func parseFlags() {
-	fmt.Print("[1/12] load flags")
+func parseFlags(step int) {
+	fmt.Printf("[%v/%v] load flags", step, totalSteps)
 	flag.Parse()
 
 	if filesDir == "" {
