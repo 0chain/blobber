@@ -53,7 +53,7 @@ func redeemReadMarker(ctx context.Context, rmEntity *ReadMarkerEntity) (err erro
 	}
 
 	if latestRM.ReadCounter == rmEntity.LatestRM.ReadCounter {
-		SaveLatestReadMarker(ctx, &latestRM, latestRM.ReadCounter, false)
+		_ = SaveLatestReadMarker(ctx, &latestRM, latestRM.ReadCounter, false)
 		return // nothing to redeem
 	}
 

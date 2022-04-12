@@ -23,7 +23,7 @@ func (l *Lock) Lock() {
 		l.actualLock.Lock()
 		if l.stale {
 			newLock, _ := l.pMap.GetLock(l.key)
-			*l = *newLock // It is safe as it copies lock but address of actual lock
+			*l = *newLock // nolint // Its safe as it copies address of lock
 			continue
 		}
 		break
