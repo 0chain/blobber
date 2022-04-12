@@ -322,7 +322,7 @@ func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, int, 
 	response, err := storageHandler.GetObjectTree(ctx, r)
 	if err != nil {
 		if errors.Is(common.ErrNotFound, err) {
-			return response, http.StatusNoContent, nil
+			return response, http.StatusNotFound, nil
 		}
 		return nil, http.StatusBadRequest, err
 	}

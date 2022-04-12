@@ -6,7 +6,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
 
@@ -20,8 +19,6 @@ const (
 	CommittedConnection  = 2
 	DeletedConnection    = 3
 )
-
-var OperationNotApplicable = common.NewError("operation_not_valid", "Not an applicable operation")
 
 // AllocationChangeProcessor request transaction of file operation. it is president in postgres, and can be rebuilt for next http reqeust(eg CommitHandler)
 type AllocationChangeProcessor interface {
