@@ -147,6 +147,12 @@ type Config struct {
 	Description string
 	// WebsiteUrl the website of blobber (if any)
 	WebsiteUrl string
+
+	// MountPoint is where allocation files are stored. This is basically arranged in RAID5.
+	MountPoint string
+	// AutomacitUpdate Whether to automatically update blobber updates to blockchain
+	AutomaticUpdate       bool
+	BlobberUpdateInterval time.Duration
 }
 
 /*Configuration of the system */

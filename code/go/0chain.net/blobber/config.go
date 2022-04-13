@@ -39,6 +39,14 @@ func setupConfig() {
 	config.Configuration.ChallengeResolveNumWorkers = viper.GetInt("challenge_response.num_workers")
 	config.Configuration.ChallengeMaxRetires = viper.GetInt("challenge_response.max_retries")
 
+	config.Configuration.MountPoint = viper.GetString("storage.mount_point")
+	config.Configuration.AutomaticUpdate = viper.GetBool("disk_update.automatic_update")
+	blobberUpdateIntrv := viper.GetInt("disk_update.blobber_update_interval")
+	if blobberUpdateIntrv <= 0 {
+		blobberUpdateIntrv = 5
+	}
+	config.Configuration.BlobberUpdateInterval = time.Minute * time.Duration(blobberUpdateIntrv)
+
 	config.Configuration.ColdStorageMinimumFileSize = viper.GetInt64("cold_storage.min_file_size")
 	config.Configuration.ColdStorageTimeLimitInHours = viper.GetInt64("cold_storage.file_time_limit_in_hours")
 	config.Configuration.ColdStorageJobQueryLimit = viper.GetInt64("cold_storage.job_query_limit")
@@ -106,6 +114,6 @@ func setupConfig() {
 	config.Configuration.WebsiteUrl = viper.GetString("website_url")
 	config.Configuration.LogoUrl = viper.GetString("logo_url")
 	config.Configuration.Description = viper.GetString("description")
-	
+
 	fmt.Print("		[OK]\n")
 }

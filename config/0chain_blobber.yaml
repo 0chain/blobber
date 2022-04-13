@@ -101,6 +101,9 @@ geolocation:
   latitude: 0
   longitude: 0
 
+storage:
+  mount_point: "/path/to/hdd"
+
 minio:
   # Enable or disable minio backup service
   start: false
@@ -123,6 +126,9 @@ cold_storage:
   # Delete cloud copy if the file is deleted from the blobber by user/other process
   delete_cloud_copy: true
 
+disk_update:
+  automatic_update: true # defaults to true. If false, blobber has to manually update blobber's capacity upon increase/decrease
+  blobber_update_interval: 5 # In minutes
 # integration tests related configurations
 integration_tests:
   # address of the server

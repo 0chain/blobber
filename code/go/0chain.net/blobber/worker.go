@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/challenge"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
@@ -21,8 +23,10 @@ func setupWorkers() {
 	challenge.SetupWorkers(root)
 	readmarker.SetupWorkers(root)
 	writemarker.SetupWorkers(root)
-	allocation.StartUpdateWorker(root,
-		config.Configuration.UpdateAllocationsInterval)
+	allocation.StartUpdateWorker(root, config.Configuration.UpdateAllocationsInterval)
+	if config.Configuration.AutomaticUpdate {
+		go StartUpdateWorker(root, config.Configuration.BlobberUpdateInterval)
+	}
 }
 
 func refreshPriceOnChain() {
@@ -54,4 +58,34 @@ func healthCheckOnChain() {
 			handler.SetBlobberHealthError(err)
 		}
 	}
+}
+
+func StartUpdateWorker(ctx context.Context, interval time.Duration) {
+	err := filestore.CalculateCurrentDiskCapacity()
+	if err != nil {
+		panic(err)
+	}
+	currentCapacity := filestore.GetCurrentDiskCapacity()
+
+	ticker := time.NewTicker(config.Configuration.BlobberUpdateInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			err := filestore.CalculateCurrentDiskCapacity()
+			if err != nil {
+				logging.Logger.Error("Error while getting capacity", zap.Error(err))
+				break
+			}
+			if currentCapacity != filestore.GetCurrentDiskCapacity() {
+
+				err := registerBlobberOnChain()
+				if err != nil {
+					logging.Logger.Error("Error while updating blobber updates on chain", zap.Error(err))
+				}
+			}
+		}
+	}
+
 }
