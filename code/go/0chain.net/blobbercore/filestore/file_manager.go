@@ -8,7 +8,7 @@ package filestore
 // Using multiple indexes is manageable if allocation size would be fixed during its life time, but its not. It can decrease and
 // increase. Also the blobber's size can increase or decrease. Thus, managing files using numerical indexes will be complex.
 //
-// To deal with it, we can use lookuphash of some file so that files are distributed randomly. Randomness seems to distribute files
+// To deal with it, we can use contentHash of some file so that files are distributed randomly. Randomness seems to distribute files
 // close to evenly. So if we have an lookup hash of a file "4c9bad252272bc6e3969be637610d58f3ab2ff8ca336ea2fadd6171fc68fdd56" then we
 // can store this file in following directory:
 // `base_path/{allocation_id}/4/c/9/b/a/d252272bc6e3969be637610d58f3ab2ff8ca336ea2fadd6171fc68fdd56`
@@ -157,13 +157,13 @@ func (ref) TableName() string {
 	return "reference_objects"
 }
 
-func getPathForFile(allocID, lookuphash string) (string, error) {
-	if len(allocID) != 64 || len(lookuphash) != 64 {
-		return "", errors.New("length of allocationID/lookuphash must be 64")
+func GetPathForFile(allocID, contentHash string) (string, error) {
+	if len(allocID) != 64 || len(contentHash) != 64 {
+		return "", errors.New("length of allocationID/contentHash must be 64")
 	}
 
 	allocDir := filepath.Join(getMountPoint(), getPath(allocID, getDirLevelsForAllocations()))
-	return filepath.Join(allocDir, getPath(lookuphash, getDirLevelsForFiles())), nil
+	return filepath.Join(allocDir, getPath(contentHash, getDirLevelsForFiles())), nil
 }
 
 func getDirLevelsForFiles() []int {
