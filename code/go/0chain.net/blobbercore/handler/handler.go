@@ -173,6 +173,12 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 		r.Header.Get(common.ClientKeyHeader))
 	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
 		vars["allocation"])
+	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
+		vars["path"])
+	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
+		vars["collab_id"])
+	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
+		vars["refereeClientID"])
 	// signature is not requered for all requests, but if header is empty it won`t affect anything
 	ctx = context.WithValue(ctx, constants.ContextKeyClientSignatureHeaderKey, r.Header.Get(common.ClientSignatureHeader))
 	return ctx
@@ -470,8 +476,8 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	path := r.FormValue("path")
-	refereeClientID := r.FormValue("refereeClientID")
+	path := ctx.Value(constants.ContextKeyObjectPath).(string)
+	refereeClientID := ctx.Value(constants.ContextKeyRefereeClientID).(string)
 	filePathHash := fileref.GetReferenceLookup(allocationID, path)
 	//_, err = reference.GetReferenceByLookupHashForAddCollaborator(ctx, allocationID, filePathHash)
 	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})
