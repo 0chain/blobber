@@ -299,7 +299,7 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 		return nil, common.NewError("invalid_parameters", "Path is not a file.")
 	}
 
-	collabClientID := r.FormValue("collab_id")
+	collabClientID := ctx.Value(constants.ContextKeyCollabClientID).(string)
 	if collabClientID == "" {
 		return nil, common.NewError("invalid_parameter", "collab_id not present in the params")
 	}
