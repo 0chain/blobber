@@ -57,7 +57,8 @@ type FileStore interface {
 	IterateObjects(allocationID string, handler FileObjectHandler) error
 	UploadToCloud(fileHash, filePath string) error
 	DownloadFromCloud(fileHash, filePath string) error
-	SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)
+	RemoveFromCloud(fileHash string) error
+	// SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)
 }
 
 var fileStore FileStore

@@ -54,14 +54,10 @@ type FileBlockGetter struct {
 }
 
 func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
-	allocation, err := fs.SetupAllocation(allocationID, true)
+	fileObjectPath, err := GetPathForFile(allocationID, fileData.Hash)
 	if err != nil {
-		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+		return nil, common.NewError("get_file_path_error", err.Error())
 	}
-	dirPath, destFile := GetFilePathFromHash(fileData.Hash)
-	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
-	fileObjectPath = filepath.Join(fileObjectPath, destFile)
-
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
 		if os.IsNotExist(err) && fileData.OnCloud {
@@ -190,21 +186,7 @@ func createDirs(dir string) error {
 }
 
 func (fs *FileFSStore) GetTempPathSize(allocationID string) (int64, error) {
-	var size int64
-	allocationObj, err := fs.SetupAllocation(allocationID, true)
-	if err != nil {
-		return size, err
-	}
-	err = filepath.Walk(allocationObj.TempObjectsPath, func(_ string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			size += info.Size()
-		}
-		return err
-	})
-	return size, err
+	return int64(getTempFilesSize(allocationID)), nil
 }
 
 func (fs *FileFSStore) GetTotalDiskSizeUsed() (int64, error) {
@@ -254,41 +236,11 @@ func (fs *FileFSStore) generateTransactionPath(transID string) string {
 	return dir.String()
 }
 
-func (fs *FileFSStore) SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error) {
-	allocation := &StoreAllocation{ID: allocationID}
-	allocation.Path = fs.generateTransactionPath(allocationID)
-	allocation.ObjectsPath = fmt.Sprintf("%s%s%s", allocation.Path, OSPathSeperator, ObjectsDirName)
-	allocation.TempObjectsPath = filepath.Join(allocation.ObjectsPath, TempObjectsDirName)
-
-	if skipCreate {
-		return allocation, nil
-	}
-
-	//create the allocation object dirs
-	err := createDirs(allocation.ObjectsPath)
-	if err != nil {
-		Logger.Error("allocation_objects_dir_creation_error", zap.Any("allocation_objects_dir_creation_error", err))
-		return nil, err
-	}
-
-	//create the allocation tmp object dirs
-	err = createDirs(allocation.TempObjectsPath)
-	if err != nil {
-		Logger.Error("allocation_temp_objects_dir_creation_error", zap.Any("allocation_temp_objects_dir_creation_error", err))
-		return nil, err
-	}
-
-	return allocation, nil
-}
-
 func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
-	allocation, err := fs.SetupAllocation(allocationID, true)
+	fileObjectPath, err := GetPathForFile(allocationID, fileData.Hash)
 	if err != nil {
-		return nil, nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+		return nil, nil, common.NewError("get_file_path_error", err.Error())
 	}
-	dirPath, destFile := GetFilePathFromHash(fileData.Hash)
-	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
-	fileObjectPath = filepath.Join(fileObjectPath, destFile)
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
@@ -370,81 +322,61 @@ func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData
 }
 
 func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error {
-	allocation, err := fs.SetupAllocation(allocationID, true)
+	fileObjectPath := getTempPathForFile(allocationID, fileData.Name, encryption.Hash(fileData.Path), connectionID)
+
+	finfo, err := os.Stat(fileObjectPath)
 	if err != nil {
-		Logger.Warn("invalid_allocation", zap.String("allocationID", allocationID), zap.Error(err))
-		return nil
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
 	}
 
-	fileObjectPath := fs.generateTempPath(allocation, fileData, connectionID)
-
+	size := finfo.Size()
 	err = os.Remove(fileObjectPath)
 	if err != nil {
 		Logger.Warn("invalid_path", zap.String("fileObjectPath", fileObjectPath), zap.Error(err))
+		return err
 	}
+
+	updateAllocTempFileSize(allocationID, -size)
 
 	return nil
 }
 
-func (fs *FileFSStore) generateTempPath(allocation *StoreAllocation, fileData *FileInputData, connectionID string) string {
-	return filepath.Join(allocation.TempObjectsPath, fileData.Name+"."+encryption.Hash(fileData.Path)+"."+connectionID)
-}
-
-func (fs *FileFSStore) fileCopy(src, dst string) error { //nolint:unused,deadcode // might be used later?
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, in)
-	if err != nil {
-		return err
-	}
-	return out.Close()
-}
-
 func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error) {
-	allocation, err := fs.SetupAllocation(allocationID, true)
+	tempFilePath := getTempPathForFile(allocationID, fileData.Name, encryption.Hash(fileData.Path), connectionID)
+	finfo, err := os.Stat(tempFilePath)
 	if err != nil {
-		return false, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
+		return false, common.NewError("stat_error", err.Error())
 	}
-	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
-	//move file from tmp location to the objects folder
-	dirPath, destFile := GetFilePathFromHash(fileData.Hash)
-	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
-	err = createDirs(fileObjectPath)
+	fileSize := finfo.Size()
+	fileObjectPath, err := GetPathForFile(allocationID, fileData.Hash)
+	if err != nil {
+		return false, common.NewError("get_file_path_error", err.Error())
+	}
+	err = createDirs(filepath.Dir(fileObjectPath))
 	if err != nil {
 		return false, common.NewError("blob_object_dir_creation_error", err.Error())
 	}
-	fileObjectPath = filepath.Join(fileObjectPath, destFile)
-	//if _, err := os.Stat(fileObjectPath); os.IsNotExist(err) {
+
+	//move file from tmp location to the objects folder
 	err = os.Rename(tempFilePath, fileObjectPath)
 
 	if err != nil {
 		return false, common.NewError("blob_object_creation_error", err.Error())
 	}
-	return true, nil
-	//}
 
-	//return false, err
+	updateAllocTempFileSize(allocationID, -fileSize)
+	updateAllocFileSize(allocationID, fileSize)
+	return true, nil
 }
 
 func (fs *FileFSStore) DeleteFile(allocationID, contentHash string) error {
-	allocation, err := fs.SetupAllocation(allocationID, true)
+	fileObjectPath, err := GetPathForFile(allocationID, contentHash)
 	if err != nil {
-		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
+		return common.NewError("get_file_path_error", err.Error())
 	}
-
-	dirPath, destFile := GetFilePathFromHash(contentHash)
-	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
-	fileObjectPath = filepath.Join(fileObjectPath, destFile)
 
 	if config.Configuration.ColdStorageDeleteCloudCopy {
 		err = fs.RemoveFromCloud(contentHash)
@@ -461,12 +393,7 @@ func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) err
 }
 
 func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
-	allocation, err := fs.SetupAllocation(allocationID, false)
-	if err != nil {
-		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
-	}
-
-	tempFilePath := fs.generateTempPath(allocation, fileData, connectionID)
+	tempFilePath := getTempPathForFile(allocationID, fileData.Name, encryption.Hash(fileData.Path), connectionID)
 	dest, err := NewChunkWriter(tempFilePath)
 	if err != nil {
 		return nil, common.NewError("file_creation_error", err.Error())
@@ -487,6 +414,8 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, i
 		return nil, errors.ThrowLog(err.Error(), constants.ErrUnableWriteFile)
 	}
 
+	updateAllocTempFileSize(allocationID, size)
+
 	fileRef.Size = size
 	fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
 
@@ -497,12 +426,10 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, i
 }
 
 func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHandler) error {
-	allocation, err := fs.SetupAllocation(allocationID, true)
-	if err != nil {
-		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
-	}
-	return filepath.Walk(allocation.ObjectsPath, func(path string, info os.FileInfo, err error) error {
-		if err == nil && !info.IsDir() && !strings.HasPrefix(path, allocation.TempObjectsPath) {
+	allocDir := getAllocDir(allocationID)
+	tmpPrefix := filepath.Join(allocDir, TempDir)
+	return filepath.Walk(allocDir, func(path string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() && !strings.HasPrefix(path, tmpPrefix) {
 			f, err := os.Open(path)
 			if err != nil {
 				return nil

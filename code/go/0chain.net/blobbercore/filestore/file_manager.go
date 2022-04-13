@@ -43,6 +43,7 @@ import (
 const (
 	MaxFilesInADir   = 1000
 	SmallestFileSize = 64 * 1024
+	TempDir          = "tmp"
 )
 
 var currentDiskCapacity uint64
@@ -53,6 +54,9 @@ type allocation struct {
 	allocatedSize uint64
 	filesNumber   uint64
 	filesSize     uint64
+
+	tmpMU       *sync.Mutex
+	tmpFileSize uint64
 }
 
 type fileManager struct {
@@ -94,6 +98,7 @@ func InitManager(ctx context.Context, mp string) error {
 		a := allocation{
 			allocatedSize: uint64(alloc.BlobberSize),
 			mu:            &sync.Mutex{},
+			tmpMU:         &sync.Mutex{},
 		}
 
 		fm.Allocations[alloc.ID] = &a
@@ -157,13 +162,16 @@ func (ref) TableName() string {
 	return "reference_objects"
 }
 
+func getAllocDir(allocID string) string {
+	return filepath.Join(getMountPoint(), getPath(allocID, getDirLevelsForAllocations()))
+}
+
 func GetPathForFile(allocID, contentHash string) (string, error) {
 	if len(allocID) != 64 || len(contentHash) != 64 {
 		return "", errors.New("length of allocationID/contentHash must be 64")
 	}
 
-	allocDir := filepath.Join(getMountPoint(), getPath(allocID, getDirLevelsForAllocations()))
-	return filepath.Join(allocDir, getPath(contentHash, getDirLevelsForFiles())), nil
+	return filepath.Join(getAllocDir(allocID), getPath(contentHash, getDirLevelsForFiles())), nil
 }
 
 func getDirLevelsForFiles() []int {
@@ -227,4 +235,44 @@ func CalculateCurrentDiskCapacity() error {
 
 	currentDiskCapacity = volStat.Bavail * uint64(volStat.Bsize)
 	return nil
+}
+
+func updateAllocFileSize(allocID string, size int64) {
+	alloc := fm.Allocations[allocID]
+	alloc.mu.Lock()
+	defer alloc.mu.Unlock()
+
+	if size < 0 {
+		alloc.filesSize -= uint64(size)
+	} else {
+		alloc.filesSize += uint64(size)
+	}
+}
+
+/*****************************************Temporary files management*****************************************/
+func getAllocTempDir(allocID string) string {
+	return filepath.Join(getAllocDir(allocID), TempDir)
+}
+
+func getTempPathForFile(allocId, fileName, pathHash, connectionID string) string {
+	return filepath.Join(getAllocTempDir(allocId), fileName+"."+pathHash+"."+connectionID)
+}
+
+func updateAllocTempFileSize(allocID string, size int64) {
+	alloc := fm.Allocations[allocID]
+	alloc.tmpMU.Lock()
+	defer alloc.tmpMU.Unlock()
+	if size < 0 {
+		alloc.tmpFileSize -= uint64(size)
+	} else {
+		alloc.tmpFileSize += uint64(size)
+	}
+}
+
+func getTempFilesSize(allocID string) uint64 {
+	alloc := fm.Allocations[allocID]
+	if alloc != nil {
+		return alloc.tmpFileSize
+	}
+	return 0
 }

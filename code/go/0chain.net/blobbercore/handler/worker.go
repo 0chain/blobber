@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
@@ -187,21 +186,28 @@ func startMoveColdDataToCloud(ctx context.Context) {
 }
 
 func moveFileToCloud(ctx context.Context, fileRef *reference.Ref) {
-	fs := filestore.GetFileStore()
-	allocation, err := fs.SetupAllocation(fileRef.AllocationID, true)
+	fileObjectPath, err := filestore.GetPathForFile(fileRef.AllocationID, fileRef.ContentHash)
 	if err != nil {
-		Logger.Error("Unable to fetch allocation with error", zap.Any("allocationID", fileRef.AllocationID), zap.Error(err))
-		return
+		Logger.Error("Error while getting path of file", zap.Error(err))
 	}
-
-	dirPath, destFile := filestore.GetFilePathFromHash(fileRef.ContentHash)
-	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
-	fileObjectPath = filepath.Join(fileObjectPath, destFile)
-
+	fs := filestore.GetFileStore()
 	err = fs.UploadToCloud(fileRef.ContentHash, fileObjectPath)
 	if err != nil {
 		Logger.Error("Error uploading cold data to cloud", zap.Error(err), zap.Any("file_name", fileRef.Name), zap.Any("file_path", fileObjectPath))
 		return
+	}
+
+	if fileRef.ThumbnailHash != "" {
+		thumbnailPath := ""
+		if err := fs.UploadToCloud(fileRef.ThumbnailHash, thumbnailPath); err != nil {
+			Logger.Error("Error uploading cold thumbnail data to cloud", zap.Error(err))
+
+			Logger.Info("Removing file from cloud")
+			if err := fs.RemoveFromCloud(fileRef.ContentHash); err != nil {
+				Logger.Debug("Got Error while remove file from cloud", zap.String("file", fileRef.ContentHash))
+			}
+			return
+		}
 	}
 
 	fileRef.OnCloud = true
