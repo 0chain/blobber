@@ -88,12 +88,12 @@ func (change *AllocationChange) Save(ctx context.Context) error {
 }
 
 // GetAllocationChanges reload connection's changes in allocation from postgres.
-//	1. update connection's status with NewConnection if connection_id is not found in postgres
-//  2. mark as NewConnection if connection_id is marked as DeleteConnection
+//	1. update connection's status with NewConnection if id is not found in postgres
+//  2. mark as NewConnection if id is marked as DeleteConnection
 func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clientID string) (*AllocationChangeCollector, error) {
 	cc := &AllocationChangeCollector{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where("connection_id = ? and allocation_id = ? and client_id = ? and status <> ?",
+	err := db.Where("id = ? and allocation_id = ? and client_id = ? and status <> ?",
 		connectionID,
 		allocationID,
 		clientID,
