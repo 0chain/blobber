@@ -73,7 +73,8 @@ func cleanupTempFiles(ctx context.Context) {
 	var openConnectionsToDelete []allocation.AllocationChangeCollector
 	db.Table((&allocation.AllocationChangeCollector{}).TableName()).Where("updated_at < ? AND status IN (?,?)", then, allocation.NewConnection, allocation.InProgressConnection).Preload("Changes").Find(&openConnectionsToDelete)
 
-	for _, connection := range openConnectionsToDelete {
+	for i := 0; i < len(openConnectionsToDelete); i++ {
+		connection := &openConnectionsToDelete[i]
 		Logger.Info("Deleting temp files for the connection", zap.Any("connection", connection.ID))
 		connection.ComputeProperties()
 		nctx := datastore.GetStore().CreateTransaction(ctx)
