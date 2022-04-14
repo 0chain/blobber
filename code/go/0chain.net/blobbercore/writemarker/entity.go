@@ -13,14 +13,14 @@ import (
 )
 
 type WriteMarker struct {
-	AllocationRoot         string           `gorm:"column:allocation_root;primaryKey" json:"allocation_root"`
-	PreviousAllocationRoot string           `gorm:"column:prev_allocation_root" json:"prev_allocation_root"`
-	AllocationID           string           `gorm:"column:allocation_id" json:"allocation_id"`
+	AllocationRoot         string           `gorm:"column:allocation_root;size:64;primaryKey" json:"allocation_root"`
+	PreviousAllocationRoot string           `gorm:"column:prev_allocation_root;size:64" json:"prev_allocation_root"`
+	AllocationID           string           `gorm:"column:allocation_id;size:64" json:"allocation_id"`
 	Size                   int64            `gorm:"column:size" json:"size"`
-	BlobberID              string           `gorm:"column:blobber_id" json:"blobber_id"`
+	BlobberID              string           `gorm:"column:blobber_id;size:64" json:"blobber_id"`
 	Timestamp              common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
-	ClientID               string           `gorm:"column:client_id" json:"client_id"`
-	Signature              string           `gorm:"column:signature" json:"signature"`
+	ClientID               string           `gorm:"column:client_id;size:64" json:"client_id"`
+	Signature              string           `gorm:"column:signature;size:64" json:"signature"`
 }
 
 func (wm *WriteMarker) GetHashData() string {
