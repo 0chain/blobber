@@ -13,7 +13,7 @@ import (
 )
 
 type WriteMarker struct {
-	AllocationRoot         string           `gorm:"column:allocation_root;primary_key" json:"allocation_root"`
+	AllocationRoot         string           `gorm:"column:allocation_root;primaryKey" json:"allocation_root"`
 	PreviousAllocationRoot string           `gorm:"column:prev_allocation_root" json:"prev_allocation_root"`
 	AllocationID           string           `gorm:"column:allocation_id" json:"allocation_id"`
 	Size                   int64            `gorm:"column:size" json:"size"`
