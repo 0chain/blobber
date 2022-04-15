@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"math"
 	"mime/multipart"
@@ -14,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/errors"
 	"go.uber.org/zap"
 
@@ -45,6 +44,7 @@ type MinioConfiguration struct {
 }
 
 var MinioConfig MinioConfiguration
+var contentHashMapLock = common.GetLocker()
 
 type IFileBlockGetter interface {
 	GetFileBlock(fsStore *FileFSStore, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
@@ -104,22 +104,7 @@ type FileFSStore struct {
 	fileBlockGetter IFileBlockGetter
 }
 
-type StoreAllocation struct {
-	ID              string
-	Path            string
-	ObjectsPath     string
-	TempObjectsPath string
-}
-
 var fileFSStore *FileFSStore
-
-func UseDisk() {
-	if fileFSStore == nil {
-		panic("UseDisk: please SetupFSStore first")
-	}
-
-	fileStore = fileFSStore
-}
 
 func SetupFSStore(rootDir string) (FileStore, error) {
 	if err := createDirs(rootDir); err != nil {
@@ -130,7 +115,6 @@ func SetupFSStore(rootDir string) (FileStore, error) {
 
 func SetupFSStoreI(rootDir string, fileBlockGetter IFileBlockGetter) (FileStore, error) {
 	fileFSStore = &FileFSStore{
-		RootDirectory:   rootDir,
 		Minio:           intializeMinio(),
 		fileBlockGetter: fileBlockGetter,
 	}
@@ -151,7 +135,7 @@ func intializeMinio() *minio.Client {
 		config.Configuration.MinioUseSSL,
 	)
 	if err != nil {
-		Logger.Panic("Unable to initiaze minio cliet", zap.Error(err))
+		logging.Logger.Panic("Unable to initiaze minio cliet", zap.Error(err))
 		panic(err)
 	}
 
@@ -162,16 +146,16 @@ func intializeMinio() *minio.Client {
 func checkBucket(minioClient *minio.Client, bucketName string) {
 	err := minioClient.MakeBucket(bucketName, MinioConfig.BucketLocation)
 	if err != nil {
-		Logger.Error("Error with make bucket, Will check if bucket exists", zap.Error(err))
+		logging.Logger.Error("Error with make bucket, Will check if bucket exists", zap.Error(err))
 		exists, errBucketExists := minioClient.BucketExists(bucketName)
 		if errBucketExists == nil && exists {
-			Logger.Info("We already own ", zap.Any("bucket_name", bucketName))
+			logging.Logger.Info("We already own ", zap.Any("bucket_name", bucketName))
 		} else {
-			Logger.Error("Minio bucket error", zap.Error(errBucketExists), zap.Any("bucket_name", bucketName))
+			logging.Logger.Error("Minio bucket error", zap.Error(errBucketExists), zap.Any("bucket_name", bucketName))
 			panic(errBucketExists)
 		}
 	} else {
-		Logger.Info(bucketName + " bucket successfully created")
+		logging.Logger.Info(bucketName + " bucket successfully created")
 	}
 }
 
@@ -190,50 +174,12 @@ func (fs *FileFSStore) GetTempPathSize(allocationID string) (int64, error) {
 }
 
 func (fs *FileFSStore) GetTotalDiskSizeUsed() (int64, error) {
-	var size int64
-	err := filepath.Walk(fs.RootDirectory, func(_ string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			size += info.Size()
-		}
-		return err
-	})
-	return size, err
+	return int64(getDiskUsedByAllocations()), nil
+
 }
 
 func (fs *FileFSStore) GetlDiskSizeUsed(allocationID string) (int64, error) {
-	var size int64
-	err := filepath.Walk(fs.generateTransactionPath(allocationID), func(_ string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			size += info.Size()
-		}
-		return err
-	})
-	return size, err
-}
-
-func GetFilePathFromHash(h string) (string, string) {
-	var dir bytes.Buffer
-	fmt.Fprintf(&dir, "%s", h[0:3])
-	for i := 1; i < 3; i++ {
-		fmt.Fprintf(&dir, "%s%s", string(os.PathSeparator), h[3*i:3*i+3])
-	}
-	return dir.String(), h[9:]
-}
-
-func (fs *FileFSStore) generateTransactionPath(transID string) string {
-	var dir bytes.Buffer
-	fmt.Fprintf(&dir, "%s%s", fs.RootDirectory, OSPathSeperator)
-	for i := 0; i < 3; i++ {
-		fmt.Fprintf(&dir, "%s%s", OSPathSeperator, transID[3*i:3*i+3])
-	}
-	fmt.Fprintf(&dir, "%s%s", OSPathSeperator, transID[9:])
-	return dir.String()
+	return int64(getAllocationSpaceUser(allocationID)), nil
 }
 
 func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
@@ -335,7 +281,7 @@ func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputDa
 	size := finfo.Size()
 	err = os.Remove(fileObjectPath)
 	if err != nil {
-		Logger.Warn("invalid_path", zap.String("fileObjectPath", fileObjectPath), zap.Error(err))
+		logging.Logger.Warn("invalid_path", zap.String("fileObjectPath", fileObjectPath), zap.Error(err))
 		return err
 	}
 
@@ -368,7 +314,14 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 	}
 
 	updateAllocTempFileSize(allocationID, -fileSize)
-	updateAllocFileSize(allocationID, fileSize)
+	// Each commit write should add 1 to file number because of the following:
+	// 1. NewFile: Obvioulsy needs to increment by 1
+	// 2. UpdateFile: First it will delete, decrements file number by 1 and will Call CommitWrite
+	// 3. Rename: Doesn't call CommitWrite i.e. doesn't do anything with file data
+	// 4. Copy: Doesn't call CommitWrite. Same as Rename
+	// 5. Move: It is Copy + Delete. Delete will not delete file if ref exists in database. i.e. copy would create
+	// ref that refers to this file therefore it will be skipped
+	updateAllocFileStat(allocationID, fileSize, 1)
 	return true, nil
 }
 
@@ -381,11 +334,22 @@ func (fs *FileFSStore) DeleteFile(allocationID, contentHash string) error {
 	if config.Configuration.ColdStorageDeleteCloudCopy {
 		err = fs.RemoveFromCloud(contentHash)
 		if err != nil {
-			Logger.Error("Unable to delete object from minio", zap.Error(err))
+			logging.Logger.Error("Unable to delete object from minio", zap.Error(err))
 		}
 	}
 
-	return os.Remove(fileObjectPath)
+	finfo, err := os.Stat(fileObjectPath)
+	if err != nil {
+		return err
+	}
+	size := finfo.Size()
+	err = os.Remove(fileObjectPath)
+	if err != nil {
+		return err
+	}
+
+	updateAllocFileStat(allocationID, -size, -1)
+	return nil
 }
 
 func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) error {
@@ -401,6 +365,9 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, i
 	defer dest.Close()
 
 	fileRef := &FileOutputData{}
+	/* Todos
+	   cloud object inconsistency due to same content hash
+	*/
 
 	// the chunk has been rewritten. but network was broken, and it is not save in db
 	if dest.size > fileData.UploadOffset {

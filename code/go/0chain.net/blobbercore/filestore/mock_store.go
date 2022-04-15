@@ -106,9 +106,6 @@ func (ms *MockStore) DownloadFromCloud(fileHash, filePath string) error {
 func (ms *MockStore) RemoveFromCloud(fileHash string) error {
 	return nil
 }
-func (ms *MockStore) SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error) {
-	return nil, constants.ErrNotImplemented
-}
 
 func (ms *MockStore) addFileInDataObj(allocationID, contentHash string) {
 	if contentHash == "" {

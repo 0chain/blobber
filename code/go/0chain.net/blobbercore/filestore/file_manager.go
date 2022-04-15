@@ -28,6 +28,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,7 +66,14 @@ type fileManager struct {
 
 var fm fileManager
 
-func InitManager(ctx context.Context, mp string) error {
+func InitManager(mp string) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = r.(error)
+		}
+	}()
+
+	// TODO Also check if mp is base point
 	finfo, err := os.Stat(mp)
 	if err != nil {
 		return err
@@ -80,19 +88,27 @@ func InitManager(ctx context.Context, mp string) error {
 
 	getMountPoint = func() string { return mp }
 
+	ctx, cnCl := context.WithCancel(context.Background())
+	defer cnCl()
+
+	ctx = datastore.GetStore().CreateTransaction(ctx)
 	db := datastore.GetStore().GetTransaction(ctx)
+
 	if db == nil {
 		return errors.New("could not get db client")
 	}
 
-	var allocations []*dbAlloc
-	if err := db.Model(&dbAlloc{}).Find(&allocations).Error; err != nil {
+	var allocations []*dbAllocation
+	if err := db.Model(&dbAllocation{}).Find(&allocations).Error; err != nil {
 		return err
 	}
 
 	fm = fileManager{
 		Allocations: make(map[string]*allocation),
 	}
+
+	limitCh := make(chan struct{}, 50)
+	wg := &sync.WaitGroup{}
 
 	for _, alloc := range allocations {
 		a := allocation{
@@ -104,14 +120,79 @@ func InitManager(ctx context.Context, mp string) error {
 		fm.Allocations[alloc.ID] = &a
 
 		err := getStorageDetails(ctx, &a, alloc.ID)
+
 		if err != nil {
 			return err
 		}
+
+		limitCh <- struct{}{}
+		wg.Add(1)
+		go getTemporaryStorageDetails(ctx, &a, alloc.ID, limitCh, wg)
+
 	}
 
+	wg.Wait()
 	return nil
 }
 
+func getTemporaryStorageDetails(ctx context.Context, a *allocation, ID string, ch <-chan struct{}, wg *sync.WaitGroup) {
+
+	defer func() {
+		wg.Done()
+		<-ch
+	}()
+
+	var err error
+	defer func() {
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	tempDir := getAllocTempDir(ID)
+
+	finfo, err := os.Stat(tempDir)
+	if errors.Is(err, os.ErrNotExist) {
+		err = nil
+		return
+	} else if err != nil {
+		return
+	}
+
+	if !finfo.IsDir() {
+		err = fmt.Errorf("path %s is of type file", tempDir)
+		return
+	}
+
+	var totalSize uint64
+	err = filepath.Walk(tempDir, func(path string, info fs.FileInfo, err error) error {
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+		default:
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+		totalSize += uint64(info.Size())
+		return nil
+	})
+
+	if err != nil {
+		return
+	}
+
+	a.tmpMU.Lock()
+	defer a.tmpMU.Unlock()
+
+	a.tmpFileSize = totalSize
+
+}
 func getStorageDetails(ctx context.Context, a *allocation, ID string) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	r := map[string]interface{}{
@@ -135,7 +216,7 @@ func getStorageDetails(ctx context.Context, a *allocation, ID string) error {
 	return nil
 }
 
-type dbAlloc struct {
+type dbAllocation struct {
 	ID              string           `gorm:"column:id"`
 	Expiration      common.Timestamp `gorm:"column:expiration_date"`
 	BlobberSize     int64            `gorm:"column:blobber_size"`
@@ -147,7 +228,7 @@ type dbAlloc struct {
 	Finalized bool `gorm:"column:finalized"`
 }
 
-func (dbAlloc) TableName() string {
+func (dbAllocation) TableName() string {
 	return "allocations"
 }
 
@@ -237,6 +318,24 @@ func CalculateCurrentDiskCapacity() error {
 	return nil
 }
 
+func updateAllocFileStat(allocID string, size int64, fileNumber int64) {
+	alloc := fm.Allocations[allocID]
+	alloc.mu.Lock()
+	defer alloc.mu.Unlock()
+
+	if size < 0 {
+		alloc.filesSize -= uint64(size)
+	} else {
+		alloc.filesSize += uint64(size)
+	}
+
+	if fileNumber < 0 {
+		alloc.filesNumber -= uint64(fileNumber)
+	} else {
+		alloc.filesNumber += uint64(fileNumber)
+	}
+}
+
 func updateAllocFileSize(allocID string, size int64) {
 	alloc := fm.Allocations[allocID]
 	alloc.mu.Lock()
@@ -247,6 +346,21 @@ func updateAllocFileSize(allocID string, size int64) {
 	} else {
 		alloc.filesSize += uint64(size)
 	}
+}
+
+func getAllocationSpaceUser(allocID string) uint64 {
+	alloc := fm.Allocations[allocID]
+	if alloc != nil {
+		return alloc.filesSize
+	}
+	return 0
+}
+
+func getDiskUsedByAllocations() (s uint64) {
+	for _, alloc := range fm.Allocations {
+		s += alloc.filesSize + alloc.tmpFileSize
+	}
+	return
 }
 
 /*****************************************Temporary files management*****************************************/
@@ -276,3 +390,13 @@ func getTempFilesSize(allocID string) uint64 {
 	}
 	return 0
 }
+
+/* Todos
+filenumbers update, filesize update
+temporary file size update
+
+clound object inconsistency due to same content hash
+
+
+manage fs_store removals
+*/
