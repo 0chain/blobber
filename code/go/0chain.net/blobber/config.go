@@ -18,6 +18,15 @@ func setupConfig() {
 	// setup config file
 	config.SetupConfig(configDir)
 
+	if mountPoint != "" {
+		config.Configuration.MountPoint = mountPoint
+	} else {
+		config.Configuration.MountPoint = viper.GetString("storage.mount_point")
+	}
+
+	if config.Configuration.MountPoint == "" {
+		panic("Please specify mount point in flag or config file")
+	}
 	// load config
 	config.Configuration.DeploymentMode = byte(deploymentMode)
 	config.Configuration.ChainID = viper.GetString("server_chain.id")
@@ -39,7 +48,6 @@ func setupConfig() {
 	config.Configuration.ChallengeResolveNumWorkers = viper.GetInt("challenge_response.num_workers")
 	config.Configuration.ChallengeMaxRetires = viper.GetInt("challenge_response.max_retries")
 
-	config.Configuration.MountPoint = viper.GetString("storage.mount_point")
 	config.Configuration.AutomaticUpdate = viper.GetBool("disk_update.automatic_update")
 	blobberUpdateIntrv := viper.GetInt("disk_update.blobber_update_interval")
 	if blobberUpdateIntrv <= 0 {
@@ -49,7 +57,7 @@ func setupConfig() {
 
 	config.Configuration.ColdStorageMinimumFileSize = viper.GetInt64("cold_storage.min_file_size")
 	config.Configuration.ColdStorageTimeLimitInHours = viper.GetInt64("cold_storage.file_time_limit_in_hours")
-	config.Configuration.ColdStorageJobQueryLimit = viper.GetInt64("cold_storage.job_query_limit")
+	config.Configuration.ColdStorageJobQueryLimit = viper.GetInt("cold_storage.job_query_limit")
 	config.Configuration.ColdStorageStartCapacitySize = viper.GetInt64("cold_storage.start_capacity_size")
 	config.Configuration.ColdStorageDeleteLocalCopy = viper.GetBool("cold_storage.delete_local_copy")
 	config.Configuration.ColdStorageDeleteCloudCopy = viper.GetBool("cold_storage.delete_cloud_copy")

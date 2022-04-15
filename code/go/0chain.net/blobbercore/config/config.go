@@ -98,7 +98,7 @@ type Config struct {
 
 	ColdStorageMinimumFileSize   int64
 	ColdStorageTimeLimitInHours  int64
-	ColdStorageJobQueryLimit     int64
+	ColdStorageJobQueryLimit     int
 	ColdStorageStartCapacitySize int64
 	ColdStorageDeleteLocalCopy   bool
 	ColdStorageDeleteCloudCopy   bool

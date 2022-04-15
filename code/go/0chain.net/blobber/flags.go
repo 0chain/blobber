@@ -10,7 +10,7 @@ var (
 	deploymentMode    int
 	keysFile          string
 	minioFile         string
-	filesDir          string
+	mountPoint        string
 	metadataDB        string
 	logDir            string
 	httpPort          int
@@ -28,7 +28,7 @@ func init() {
 	flag.IntVar(&deploymentMode, "deployment_mode", 2, "deployment mode: 0=dev,1=test, 2=mainnet")
 	flag.StringVar(&keysFile, "keys_file", "", "keys_file")
 	flag.StringVar(&minioFile, "minio_file", "", "minio_file")
-	flag.StringVar(&filesDir, "files_dir", "", "files_dir")
+	flag.StringVar(&mountPoint, "mount_point", "", "Mounted partition where all files will be stored")
 	flag.StringVar(&metadataDB, "db_dir", "", "db_dir")
 	flag.StringVar(&logDir, "log_dir", "", "log_dir")
 	flag.IntVar(&httpPort, "port", 0, "port")
@@ -46,10 +46,6 @@ func init() {
 func parseFlags() {
 	fmt.Print("[1/12] load flags")
 	flag.Parse()
-
-	if filesDir == "" {
-		panic("Please specify --files_dir absolute folder name option where uploaded files can be stored")
-	}
 
 	if metadataDB == "" {
 		panic("Please specify --db_dir absolute folder name option where meta data db can be stored")
