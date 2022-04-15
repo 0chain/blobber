@@ -25,7 +25,7 @@ func (ShareInfo) TableName() string {
 }
 
 // add share if it already doesnot exist
-func AddShareInfo(ctx context.Context, shareInfo ShareInfo) error {
+func AddShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Model(&ShareInfo{}).Create(shareInfo).Error
 }
@@ -53,7 +53,7 @@ func DeleteShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
 	return nil
 }
 
-func UpdateShareInfo(ctx context.Context, shareInfo ShareInfo) error {
+func UpdateShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	return db.Model(&ShareInfo{}).

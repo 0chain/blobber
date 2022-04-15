@@ -578,9 +578,9 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	existingShare, _ := reference.GetShareInfo(ctx, authTicket.ClientID, authTicket.FilePathHash)
 
 	if existingShare != nil && len(existingShare.OwnerID) > 0 {
-		err = reference.UpdateShareInfo(ctx, shareInfo)
+		err = reference.UpdateShareInfo(ctx, &shareInfo)
 	} else {
-		err = reference.AddShareInfo(ctx, shareInfo)
+		err = reference.AddShareInfo(ctx, &shareInfo)
 	}
 
 	if err != nil {
