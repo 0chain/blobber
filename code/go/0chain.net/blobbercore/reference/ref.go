@@ -60,12 +60,12 @@ type Ref struct {
 	Type                string         `gorm:"column:type;size:1" dirlist:"type" filelist:"type"`
 	AllocationID        string         `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_lookup_hash_alloc,priority:1"`
 	LookupHash          string         `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash_alloc,priority:2" dirlist:"lookup_hash" filelist:"lookup_hash"`
-	Name                string         `gorm:"column:name;size:255;not null" dirlist:"name" filelist:"name"`
-	Path                string         `gorm:"column:path;size:255;not null;index:idx_path_alloc,priority:2;index:path_idx" dirlist:"path" filelist:"path"`
+	Name                string         `gorm:"column:name;size:100;not null" dirlist:"name" filelist:"name"`
+	Path                string         `gorm:"column:path;size:1000;not null;index:idx_path_alloc,priority:2;index:path_idx" dirlist:"path" filelist:"path"`
 	Hash                string         `gorm:"column:hash;size:64;not null" dirlist:"hash" filelist:"hash"`
 	NumBlocks           int64          `gorm:"column:num_of_blocks;not null;default:0" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
 	PathHash            string         `gorm:"column:path_hash;size:64;not null" dirlist:"path_hash" filelist:"path_hash"`
-	ParentPath          string         `gorm:"column:parent_path;size:255"`
+	ParentPath          string         `gorm:"column:parent_path;size:999s"`
 	PathLevel           int            `gorm:"column:level;not null;default:0"`
 	CustomMeta          string         `gorm:"column:custom_meta;not null" filelist:"custom_meta"`
 	ContentHash         string         `gorm:"column:content_hash;size:64;not null" filelist:"content_hash"`
