@@ -564,7 +564,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 	}
 
 	_, err = tx.Exec(`
-INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
+INSERT INTO allocation_connections (id, allocation_id, client_id, size, status)
 VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
 `)
 	if err != nil {
@@ -640,7 +640,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 	}
 
 	_, err = tx.Exec(`
-INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
+INSERT INTO allocation_connections (id, allocation_id, client_id, size, status)
 VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
 `)
 	if err != nil {
@@ -700,7 +700,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 	}
 
 	_, err = tx.Exec(`
-INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
+INSERT INTO allocation_connections (id, allocation_id, client_id, size, status)
 VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
 `)
 	if err != nil {
@@ -760,7 +760,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 	}
 
 	_, err = tx.Exec(`
-INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
+INSERT INTO allocation_connections (id, allocation_id, client_id, size, status)
 VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
 `)
 	if err != nil {
@@ -820,7 +820,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 	}
 
 	_, err = tx.Exec(`
-INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
+INSERT INTO allocation_connections (id, allocation_id, client_id, size, status)
 VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
 `)
 	if err != nil {

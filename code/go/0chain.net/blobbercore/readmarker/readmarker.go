@@ -20,17 +20,17 @@ type ReadRedeem struct {
 }
 
 type ReadMarker struct {
-	ClientID        string           `gorm:"column:client_id" json:"client_id"`
-	ClientPublicKey string           `gorm:"column:client_public_key" json:"client_public_key"`
+	ClientID        string           `gorm:"column:client_id;size:64" json:"client_id"`
+	ClientPublicKey string           `gorm:"column:client_public_key;size:128" json:"client_public_key"`
 	BlobberID       string           `gorm:"-" json:"blobber_id"`
-	AllocationID    string           `gorm:"column:allocation_id" json:"allocation_id"`
-	OwnerID         string           `gorm:"column:owner_id" json:"owner_id"`
+	AllocationID    string           `gorm:"column:allocation_id;size:64" json:"allocation_id"`
+	OwnerID         string           `gorm:"column:owner_id;size:64" json:"owner_id"`
 	Timestamp       common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
 
 	ReadSize int64 `gorm:"column:read_size" json:"read_size"`
 
-	Signature string `gorm:"column:signature" json:"signature"`
-	PayerID   string `gorm:"column:payer_id" json:"payer_id"`
+	Signature string `gorm:"column:signature;size:64" json:"signature"`
+	PayerID   string `gorm:"column:payer_id;size:64" json:"payer_id"`
 
 	// Remove this as well
 	AuthTicket datatypes.JSON `gorm:"column:auth_ticket" json:"auth_ticket"`
