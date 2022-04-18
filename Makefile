@@ -56,7 +56,7 @@ local-run:
 	--hostname 127.0.0.1 \
 	--deployment_mode 0 \
 	--keys_file ../docker.local/keys_config/b0bnode1_keys.txt  \
-	--files_dir ./data/blobber/files \
+	--mount_point ./data/blobber/files \
 	--log_dir ./data/blobber/log \
 	--db_dir ./data/blobber/data  \
 	--minio_file ../docker.local/keys_config/minio_config.txt \

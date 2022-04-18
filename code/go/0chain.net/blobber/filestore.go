@@ -9,6 +9,8 @@ import (
 
 func setupFileStore() (err error) {
 	fmt.Print("[9/12] setup file store")
-
+	if isIntegrationTest {
+		filestore.SetIsMountPointFunc(func(s string) bool { return true })
+	}
 	return filestore.SetupFSStore(config.Configuration.MountPoint)
 }
