@@ -353,12 +353,12 @@ func deleteFile(ctx context.Context, path string, conn *AllocationChangeCollecto
 		change     = new(AllocationChange)
 	)
 
-	change.ConnectionID = conn.ConnectionID
+	change.ConnectionID = conn.ID
 	change.Size = 0 - deleteSize
 	change.Operation = constants.FileOperationDelete
 
 	var dfc = &DeleteFileChange{
-		ConnectionID: conn.ConnectionID,
+		ConnectionID: conn.ID,
 		AllocationID: conn.AllocationID,
 		Name:         fileRef.Name,
 		Hash:         fileRef.Hash,

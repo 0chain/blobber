@@ -30,6 +30,10 @@ type Sqlmock struct {
 	Sqlmock sqlmock.Sqlmock
 }
 
+func (store *Sqlmock) GetPgDB() (*gorm.DB, error) {
+	return store.db, nil
+}
+
 func (store *Sqlmock) Open() error {
 	db, mock, err := sqlmock.New()
 	if err != nil {
