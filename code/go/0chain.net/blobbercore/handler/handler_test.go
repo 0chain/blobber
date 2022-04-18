@@ -123,9 +123,12 @@ func init() {
 		panic(err)
 	}
 
+	filestore.SetIsMountPointFunc(func(s string) bool { return true })
+
 	if _, err := filestore.SetupFSStoreI(tDir, MockFileBlockGetter{}); err != nil {
 		panic(err)
 	}
+
 }
 
 func setup(t *testing.T) {

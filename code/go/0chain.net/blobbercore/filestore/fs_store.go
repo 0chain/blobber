@@ -132,6 +132,11 @@ func SetupFSStoreI(mp string, fileBlockGetter IFileBlockGetter) (FileStore, erro
 	return fileStore, nil
 }
 
+// SetIsMountPointFunc should be used with unit testing
+func SetIsMountPointFunc(f func(string) bool) {
+	isMountPoint = f
+}
+
 func intializeMinio() (*minio.Client, error) {
 	if !config.Configuration.MinioStart {
 		return nil, nil

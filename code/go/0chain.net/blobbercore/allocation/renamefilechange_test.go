@@ -145,6 +145,8 @@ func init() {
 		panic(err)
 	}
 
+	filestore.SetIsMountPointFunc(func(s string) bool { return true })
+
 	if _, err := filestore.SetupFSStoreI(tDir, MockFileBlockGetter{}); err != nil {
 		panic(err)
 	}
@@ -290,7 +292,6 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		continue
 		datastore.MocketTheStore(t, true)
 		tc.setupDbMock()
 

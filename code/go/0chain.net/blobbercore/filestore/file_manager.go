@@ -33,6 +33,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -50,6 +51,35 @@ const (
 
 var currentDiskCapacity uint64
 var getMountPoint func() string
+var isMountPoint func(mp string) bool = func(mp string) bool {
+	if !filepath.IsAbs(mp) {
+		logging.Logger.Error(fmt.Sprintf("%s is not absolute path", mp))
+		return false
+	}
+
+	realMP, err := filepath.EvalSymlinks(mp)
+	if err != nil {
+		logging.Logger.Error(err.Error())
+		return false
+	}
+
+	finfo, err := os.Lstat(realMP)
+	if err != nil {
+		logging.Logger.Error(err.Error())
+		return false
+	}
+
+	pinfo, err := os.Lstat(filepath.Dir(realMP))
+	if err != nil {
+		logging.Logger.Error(err.Error())
+		return false
+	}
+
+	dev := finfo.Sys().(*syscall.Stat_t).Dev
+	pDev := pinfo.Sys().(*syscall.Stat_t).Dev
+
+	return dev != pDev
+}
 
 type allocation struct {
 	mu            *sync.Mutex
@@ -137,6 +167,10 @@ func initManager(mp string) (err error) {
 	}()
 
 	// TODO Also check if mp is base point
+	if !isMountPoint(mp) {
+		return fmt.Errorf("%s is not a mount point", mp)
+	}
+
 	finfo, err := os.Stat(mp)
 	if err != nil {
 		return err
