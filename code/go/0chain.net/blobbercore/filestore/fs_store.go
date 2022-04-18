@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"math"
 	"mime/multipart"
@@ -28,13 +29,6 @@ import (
 	"github.com/0chain/gosdk/core/util"
 )
 
-const (
-	OSPathSeperator    string = string(os.PathSeparator)
-	ObjectsDirName            = "objects"
-	TempObjectsDirName        = "tmp"
-	CurrentVersion            = "1.0"
-)
-
 type MinioConfiguration struct {
 	StorageServiceURL string
 	AccessKeyID       string
@@ -44,7 +38,12 @@ type MinioConfiguration struct {
 }
 
 var MinioConfig MinioConfiguration
+
 var contentHashMapLock = common.GetLocker()
+
+func getKey(allocID, contentHash string) string {
+	return encryption.Hash(allocID + contentHash)
+}
 
 type IFileBlockGetter interface {
 	GetFileBlock(fsStore *FileFSStore, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
@@ -99,23 +98,29 @@ func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileDa
 }
 
 type FileFSStore struct {
-	RootDirectory   string
 	Minio           *minio.Client
 	fileBlockGetter IFileBlockGetter
 }
 
 var fileFSStore *FileFSStore
 
-func SetupFSStore(rootDir string) (FileStore, error) {
-	if err := createDirs(rootDir); err != nil {
-		return nil, err
+func SetupFSStore(mp string) error {
+	err := initManager(mp)
+	if err != nil {
+		return err
 	}
-	return SetupFSStoreI(rootDir, FileBlockGetter{})
+	_, err = SetupFSStoreI(FileBlockGetter{})
+	return err
 }
 
-func SetupFSStoreI(rootDir string, fileBlockGetter IFileBlockGetter) (FileStore, error) {
+func SetupFSStoreI(fileBlockGetter IFileBlockGetter) (FileStore, error) {
+	minioClient, err := intializeMinio()
+	if err != nil {
+		return nil, err
+	}
+
 	fileFSStore = &FileFSStore{
-		Minio:           intializeMinio(),
+		Minio:           minioClient,
 		fileBlockGetter: fileBlockGetter,
 	}
 
@@ -124,9 +129,9 @@ func SetupFSStoreI(rootDir string, fileBlockGetter IFileBlockGetter) (FileStore,
 	return fileStore, nil
 }
 
-func intializeMinio() *minio.Client {
+func intializeMinio() (*minio.Client, error) {
 	if !config.Configuration.MinioStart {
-		return nil
+		return nil, nil
 	}
 	minioClient, err := minio.New(
 		MinioConfig.StorageServiceURL,
@@ -135,28 +140,31 @@ func intializeMinio() *minio.Client {
 		config.Configuration.MinioUseSSL,
 	)
 	if err != nil {
-		logging.Logger.Panic("Unable to initiaze minio cliet", zap.Error(err))
-		panic(err)
+		return nil, errors.New("minio_initialize_error", err.Error())
 	}
 
-	checkBucket(minioClient, MinioConfig.BucketName)
-	return minioClient
+	if err := checkBucket(minioClient, MinioConfig.BucketName); err != nil {
+		return nil, err
+	}
+	return minioClient, nil
 }
 
-func checkBucket(minioClient *minio.Client, bucketName string) {
+func checkBucket(minioClient *minio.Client, bucketName string) error {
 	err := minioClient.MakeBucket(bucketName, MinioConfig.BucketLocation)
 	if err != nil {
-		logging.Logger.Error("Error with make bucket, Will check if bucket exists", zap.Error(err))
+		logging.Logger.Error("Error with make bucket, checking if bucket exists", zap.Error(err))
 		exists, errBucketExists := minioClient.BucketExists(bucketName)
 		if errBucketExists == nil && exists {
-			logging.Logger.Info("We already own ", zap.Any("bucket_name", bucketName))
+			logging.Logger.Info("Bucket exists already", zap.Any("bucket_name", bucketName))
 		} else {
 			logging.Logger.Error("Minio bucket error", zap.Error(errBucketExists), zap.Any("bucket_name", bucketName))
-			panic(errBucketExists)
+			return errBucketExists
 		}
 	} else {
 		logging.Logger.Info(bucketName + " bucket successfully created")
 	}
+
+	return nil
 }
 
 func createDirs(dir string) error {
@@ -179,7 +187,7 @@ func (fs *FileFSStore) GetTotalDiskSizeUsed() (int64, error) {
 }
 
 func (fs *FileFSStore) GetlDiskSizeUsed(allocationID string) (int64, error) {
-	return int64(getAllocationSpaceUser(allocationID)), nil
+	return int64(getAllocationSpaceUsed(allocationID)), nil
 }
 
 func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
@@ -291,6 +299,10 @@ func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputDa
 }
 
 func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error) {
+	key := getKey(allocationID, fileData.Hash)
+	l, _ := contentHashMapLock.GetLock(key)
+	l.Lock()
+
 	tempFilePath := getTempPathForFile(allocationID, fileData.Name, encryption.Hash(fileData.Path), connectionID)
 	finfo, err := os.Stat(tempFilePath)
 	if err != nil {
@@ -308,6 +320,7 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 
 	//move file from tmp location to the objects folder
 	err = os.Rename(tempFilePath, fileObjectPath)
+	l.Unlock()
 
 	if err != nil {
 		return false, common.NewError("blob_object_creation_error", err.Error())
@@ -321,7 +334,7 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 	// 4. Copy: Doesn't call CommitWrite. Same as Rename
 	// 5. Move: It is Copy + Delete. Delete will not delete file if ref exists in database. i.e. copy would create
 	// ref that refers to this file therefore it will be skipped
-	updateAllocFileStat(allocationID, fileSize, 1)
+	incrDecrAllocFileSizeAndNumber(allocationID, fileSize, 1)
 	return true, nil
 }
 
@@ -331,6 +344,28 @@ func (fs *FileFSStore) DeleteFile(allocationID, contentHash string) error {
 		return common.NewError("get_file_path_error", err.Error())
 	}
 
+	finfo, err := os.Stat(fileObjectPath)
+	if err != nil {
+		return err
+	}
+	size := finfo.Size()
+
+	key := getKey(allocationID, contentHash)
+
+	// isNew is checked if a fresh lock is acquired. If lock is just holded by this process then it will actually delete
+	// the file.
+	// If isNew is false, either same content is being written or deleted. Therefore, this process can rely on other process
+	// to either keep or delete file
+	l, isNew := contentHashMapLock.GetLock(key)
+	if !isNew {
+		incrDecrAllocFileSizeAndNumber(allocationID, -size, -1)
+
+		return errors.New("not_new_lock",
+			fmt.Sprintf("lock is acquired by other process to process on content. allocation id: %s content hash: %s",
+				allocationID, contentHash))
+	}
+	l.Lock()
+
 	if config.Configuration.ColdStorageDeleteCloudCopy {
 		err = fs.RemoveFromCloud(contentHash)
 		if err != nil {
@@ -338,17 +373,12 @@ func (fs *FileFSStore) DeleteFile(allocationID, contentHash string) error {
 		}
 	}
 
-	finfo, err := os.Stat(fileObjectPath)
-	if err != nil {
-		return err
-	}
-	size := finfo.Size()
 	err = os.Remove(fileObjectPath)
 	if err != nil {
 		return err
 	}
 
-	updateAllocFileStat(allocationID, -size, -1)
+	incrDecrAllocFileSizeAndNumber(allocationID, -size, -1)
 	return nil
 }
 

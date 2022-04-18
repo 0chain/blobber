@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -105,8 +104,7 @@ func init() {
 	config.Configuration.SignatureScheme = "bls0chain"
 	logging.Logger = zap.NewNop()
 
-	dir, _ := os.Getwd()
-	if _, err := filestore.SetupFSStoreI(dir+"/tmp", MockFileBlockGetter{}); err != nil {
+	if _, err := filestore.SetupFSStoreI(MockFileBlockGetter{}); err != nil {
 		panic(err)
 	}
 }

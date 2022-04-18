@@ -38,6 +38,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
 )
 
@@ -61,12 +62,74 @@ type allocation struct {
 }
 
 type fileManager struct {
+	// allocMu is used to update especially add new allocation object
+	allocMu     *sync.Mutex
+	rwMU        *sync.RWMutex
 	Allocations map[string]*allocation
+}
+
+// UpdateAllocationMetaData only updates if allocation size has changed. Must use allocationID. Use of allocation Tx might
+// leak memory. allocation size must be of int64 type otherwise it won't be updated
+func UpdateAllocationMetaData(m map[string]interface{}) {
+	fm.allocMu.Lock()
+	defer fm.allocMu.Unlock()
+
+	allocIDI := m["allocation_id"]
+	if allocIDI == nil {
+		return
+	}
+
+	allocID, ok := allocIDI.(string)
+	if !ok {
+		return
+	}
+
+	allocatedSizeI := m["allocated_size"]
+	if allocatedSizeI == nil {
+		return
+	}
+
+	allocatedSize, ok := allocatedSizeI.(int64)
+	if !ok {
+		return
+	}
+	alloc := fm.getAllocation(allocID)
+	if alloc == nil {
+		alloc = &allocation{
+			allocatedSize: uint64(allocatedSize),
+			mu:            &sync.Mutex{},
+			tmpMU:         &sync.Mutex{},
+		}
+
+		fm.setAllocation(allocID, alloc)
+		return
+	}
+
+	alloc.allocatedSize = uint64(allocatedSize)
+
+}
+
+func (fm *fileManager) getAllocation(allocID string) *allocation {
+	fm.rwMU.RLock()
+	defer fm.rwMU.Unlock()
+	return fm.Allocations[allocID]
+}
+
+func (fm *fileManager) setAllocation(ID string, alloc *allocation) {
+	fm.rwMU.Lock()
+	defer fm.rwMU.Unlock()
+	fm.Allocations[ID] = alloc
+}
+
+func (fm *fileManager) removeAllocation(ID string) {
+	fm.rwMU.Lock()
+	defer fm.rwMU.Unlock()
+	delete(fm.Allocations, ID)
 }
 
 var fm fileManager
 
-func InitManager(mp string) (err error) {
+func initManager(mp string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = r.(error)
@@ -104,6 +167,7 @@ func InitManager(mp string) (err error) {
 	}
 
 	fm = fileManager{
+		rwMU:        &sync.RWMutex{},
 		Allocations: make(map[string]*allocation),
 	}
 
@@ -117,7 +181,7 @@ func InitManager(mp string) (err error) {
 			tmpMU:         &sync.Mutex{},
 		}
 
-		fm.Allocations[alloc.ID] = &a
+		fm.setAllocation(alloc.ID, &a)
 
 		err := getStorageDetails(ctx, &a, alloc.ID)
 
@@ -318,8 +382,13 @@ func CalculateCurrentDiskCapacity() error {
 	return nil
 }
 
-func updateAllocFileStat(allocID string, size int64, fileNumber int64) {
+func incrDecrAllocFileSizeAndNumber(allocID string, size int64, fileNumber int64) {
 	alloc := fm.Allocations[allocID]
+	if alloc == nil {
+		logging.Logger.Debug("alloc is nil", zap.String("allocation_id", allocID))
+		return
+	}
+
 	alloc.mu.Lock()
 	defer alloc.mu.Unlock()
 
@@ -348,7 +417,7 @@ func updateAllocFileSize(allocID string, size int64) {
 	}
 }
 
-func getAllocationSpaceUser(allocID string) uint64 {
+func getAllocationSpaceUsed(allocID string) uint64 {
 	alloc := fm.Allocations[allocID]
 	if alloc != nil {
 		return alloc.filesSize
@@ -376,6 +445,7 @@ func updateAllocTempFileSize(allocID string, size int64) {
 	alloc := fm.Allocations[allocID]
 	alloc.tmpMU.Lock()
 	defer alloc.tmpMU.Unlock()
+
 	if size < 0 {
 		alloc.tmpFileSize -= uint64(size)
 	} else {
@@ -392,11 +462,8 @@ func getTempFilesSize(allocID string) uint64 {
 }
 
 /* Todos
-filenumbers update, filesize update
-temporary file size update
-
-clound object inconsistency due to same content hash
-
 
 manage fs_store removals
+implement lock to add/remove file
+
 */

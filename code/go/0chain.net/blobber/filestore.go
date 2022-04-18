@@ -10,5 +10,5 @@ import (
 func setupFileStore() (err error) {
 	fmt.Print("[9/12] setup file store")
 
-	return filestore.InitManager(config.Configuration.MountPoint)
+	return filestore.SetupFSStore(config.Configuration.MountPoint)
 }

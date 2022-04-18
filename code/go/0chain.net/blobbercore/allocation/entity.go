@@ -143,7 +143,7 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite, pend
 	key := clientID + ":" + allocationID
 	// Lock is required because two process can simultaneously call this function and read pending data
 	// thus giving same value leading to inconsistent data
-	lock := pendingMapLock.GetLock(key)
+	lock, _ := pendingMapLock.GetLock(key)
 	lock.Lock()
 	defer lock.Unlock()
 
