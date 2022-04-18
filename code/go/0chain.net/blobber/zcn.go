@@ -14,10 +14,10 @@ import (
 	"go.uber.org/zap"
 )
 
-func setupOnChain() {
+func setupOnChain(step int) {
 	//wait http & grpc startup, and go to setup on chain
 	time.Sleep(1 * time.Second)
-	fmt.Println("[10/12] connecting to chain	")
+	fmt.Printf("[%v/%v] connecting to chain	\n", step, totalSteps)
 
 	const ATTEMPT_DELAY = 60 * 1
 
@@ -87,8 +87,8 @@ func registerBlobberOnChain() error {
 	return err
 }
 
-func setupServerChain() error {
-	fmt.Print("[6/10] setup server chain")
+func setupServerChain(step int) error {
+	fmt.Printf("[%v/%v] setup server chain", step, totalSteps)
 	common.SetupRootContext(node.GetNodeContext())
 
 	config.SetServerChainID(config.Configuration.ChainID)

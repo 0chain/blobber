@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-func startGRPCServer() {
+func startGRPCServer(step int) {
 	common.ConfigRateLimits()
 	r := mux.NewRouter()
 	initHandlers(r)
@@ -39,7 +39,7 @@ func startGRPCServer() {
 		panic(err)
 	}
 
-	fmt.Println("[11/12] starting grpc server	[OK]")
+	fmt.Printf("[%v/%v] starting grpc server	[OK]\n", step, totalSteps)
 	go func() {
 		log.Fatal(grpcServer.Serve(lis))
 	}()

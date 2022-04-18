@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func startHttpServer() {
+func startHttpServer(step int) {
 	mode := "main net"
 	if config.Development() {
 		mode = "development"
@@ -38,7 +38,7 @@ func startHttpServer() {
 	go startServer(&wg, r, mode, httpsPort, true)
 
 	logging.Logger.Info("Ready to listen to the requests")
-	fmt.Println("[12/12] start http server	[OK]")
+	fmt.Printf("[%v/%v] start http server	[OK]\n", step, totalSteps)
 
 	wg.Wait()
 }

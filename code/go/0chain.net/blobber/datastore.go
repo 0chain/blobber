@@ -22,27 +22,40 @@ func setupDatabase(step int) error {
 		}
 
 		pgDB, err = datastore.GetStore().GetPgDB()
-		if err == nil && pgDB != nil {
+
+		if err == nil {
+			if i == 599 { // no more attempts
+				logging.Logger.Error("Failed to connect to the database. Shutting the server down")
+				return err
+			}
 			break
 		}
 
-		if i == 599 {
-			logging.Logger.Error("Failed to connect to the database. Shutting the server down")
-			return fmt.Errorf("could not get postgres db connection. Error: %v", err)
+		time.Sleep(1 * time.Second)
+	}
+
+	if config.Configuration.DBAutoMigrate {
+		if err := automigration.AutoMigrate(pgDB); err != nil {
+			return fmt.Errorf("error while migrating schema: %v", err)
+		}
+	}
+
+	// check for database connection
+	for i := 0; i < 600; i++ {
+		if i > 0 {
+			fmt.Printf("\r[%v/%v] connect(%v) data store", step, totalSteps, i)
+		}
+
+		if err := datastore.GetStore().Open(); err == nil {
+			if i == 599 { // no more attempts
+				logging.Logger.Error("Failed to connect to the database. Shutting the server down")
+				return err
+			}
+			fmt.Print("	[OK]\n")
+			break
 		}
 
 		time.Sleep(1 * time.Second)
-		fmt.Print("	[OK]\n")
-
-	}
-
-	if !config.Configuration.DBAutoMigrate {
-		logging.Logger.Info("Automigration is skipped")
-		return nil
-	}
-
-	if err := automigration.AutoMigrate(pgDB); err != nil {
-		return fmt.Errorf("error while migrating schema: %v", err)
 	}
 
 	return nil

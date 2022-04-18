@@ -11,8 +11,8 @@ import (
 	"go.uber.org/zap"
 )
 
-func setupNode() error {
-	fmt.Print("[5/12] setup blobber")
+func setupNode(step int) error {
+	fmt.Printf("[%v/%v] setup blobber", step, totalSteps)
 
 	reader, err := os.Open(keysFile)
 	if err != nil {

@@ -8,8 +8,8 @@ import (
 
 var fsStore filestore.FileStore //nolint:unused // global which might be needed somewhere
 
-func setupFileStore() (err error) {
-	fmt.Print("[9/12] setup file store")
+func setupFileStore(step int) (err error) {
+	fmt.Printf("[%v/%v] setup file store", step, totalSteps)
 
 	fsStore, err = filestore.SetupFSStore(filesDir + "/files")
 
