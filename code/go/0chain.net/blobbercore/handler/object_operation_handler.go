@@ -484,7 +484,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root. Expected hash: " + allocationRoot
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
-	writemarkerEntity.ConnectionID = connectionObj.ConnectionID
+	writemarkerEntity.ConnectionID = connectionObj.ID
 	writemarkerEntity.ClientPublicKey = clientKey
 	err = writemarkerEntity.Save(ctx)
 	if err != nil {
@@ -585,10 +585,10 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	}
 
 	allocationChange := &allocation.AllocationChange{}
-	allocationChange.ConnectionID = connectionObj.ConnectionID
+	allocationChange.ConnectionID = connectionObj.ID
 	allocationChange.Size = 0
 	allocationChange.Operation = constants.FileOperationRename
-	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ConnectionID,
+	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID, Path: objectRef.Path}
 	dfc.NewName = new_name
 	connectionObj.Size += allocationChange.Size
@@ -693,11 +693,11 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.R
 	}
 
 	var change = new(allocation.AllocationChange)
-	change.ConnectionID = conn.ConnectionID
+	change.ConnectionID = conn.ID
 	change.Operation = constants.FileOperationUpdateAttrs
 
 	var uafc = &allocation.AttributesChange{
-		ConnectionID: conn.ConnectionID,
+		ConnectionID: conn.ID,
 		AllocationID: conn.AllocationID,
 		Path:         ref.Path,
 		Attributes:   attrs,
@@ -801,10 +801,10 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	}
 
 	allocationChange := &allocation.AllocationChange{}
-	allocationChange.ConnectionID = connectionObj.ConnectionID
+	allocationChange.ConnectionID = connectionObj.ID
 	allocationChange.Size = objectRef.Size
 	allocationChange.Operation = constants.FileOperationCopy
-	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ConnectionID,
+	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID, DestPath: destPath}
 	dfc.SrcPath = objectRef.Path
 	connectionObj.Size += allocationChange.Size
@@ -839,10 +839,10 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		deleteSize := fileRef.Size
 
 		allocationChange := &allocation.AllocationChange{}
-		allocationChange.ConnectionID = connectionObj.ConnectionID
+		allocationChange.ConnectionID = connectionObj.ID
 		allocationChange.Size = 0 - deleteSize
 		allocationChange.Operation = constants.FileOperationDelete
-		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ConnectionID,
+		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ID,
 			AllocationID: connectionObj.AllocationID, Name: fileRef.Name,
 			Hash: fileRef.Hash, Path: fileRef.Path, Size: deleteSize}
 
@@ -932,7 +932,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	defer mutex.Unlock()
 
 	allocationChange := &allocation.AllocationChange{}
-	allocationChange.ConnectionID = connectionObj.ConnectionID
+	allocationChange.ConnectionID = connectionObj.ID
 	allocationChange.Size = 0
 	allocationChange.Operation = constants.FileOperationCreateDir
 	connectionObj.Size += allocationChange.Size

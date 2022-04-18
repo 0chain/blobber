@@ -9,12 +9,24 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	zLogger "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	"gorm.io/gorm"
 
 	"go.uber.org/zap"
 )
 
 type ReadRedeem struct {
 	ReadMarker *ReadMarker `json:"read_marker"`
+}
+
+func (r *ReadMarkerEntity) BeforeCreate(tx *gorm.DB) error {
+	r.CreatedAt = time.Now()
+	r.UpdatedAt = r.CreatedAt
+	return nil
+}
+
+func (r *ReadMarkerEntity) BeforeSave(tx *gorm.DB) error {
+	r.UpdatedAt = time.Now()
+	return nil
 }
 
 // PendNumBlocks Return number of blocks pending to be redeemed

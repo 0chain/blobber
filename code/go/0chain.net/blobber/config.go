@@ -52,11 +52,19 @@ func setupConfig() {
 
 	config.Configuration.Capacity = viper.GetInt64("capacity")
 
-	config.Configuration.DBHost = viper.GetString("db.host")
+	config.Configuration.DBAutoMigrate = viper.GetBool("db.automigrate")
+	config.Configuration.PGUserName = viper.GetString("pg.user")
+	config.Configuration.PGPassword = viper.GetString("pg.password")
+	if isIntegrationTest {
+		config.Configuration.DBHost = "localhost"
+	} else {
+		config.Configuration.DBHost = viper.GetString("db.host")
+	}
 	config.Configuration.DBName = viper.GetString("db.name")
 	config.Configuration.DBPort = viper.GetString("db.port")
 	config.Configuration.DBUserName = viper.GetString("db.user")
 	config.Configuration.DBPassword = viper.GetString("db.password")
+	config.Configuration.DBTablesToKeep = viper.GetStringSlice("db.keep_tables")
 
 	config.Configuration.Capacity = viper.GetInt64("capacity")
 	config.Configuration.ReadPrice = viper.GetFloat64("read_price")
@@ -106,6 +114,6 @@ func setupConfig() {
 	config.Configuration.WebsiteUrl = viper.GetString("website_url")
 	config.Configuration.LogoUrl = viper.GetString("logo_url")
 	config.Configuration.Description = viper.GetString("description")
-	
+
 	fmt.Print("		[OK]\n")
 }

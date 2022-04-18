@@ -9,7 +9,7 @@ import (
 )
 
 type ChallengeEntity struct {
-	ChallengeID             string                `json:"id" gorm:"column:challenge_id;primary_key"`
+	ChallengeID             string                `json:"id" gorm:"column:challenge_id;primaryKey"`
 	PrevChallengeID         string                `json:"prev_id" gorm:"column:prev_challenge_id"`
 	RandomNumber            int64                 `json:"seed" gorm:"column:seed"`
 	AllocationID            string                `json:"allocation_id" gorm:"column:allocation_id"`
