@@ -74,6 +74,35 @@ func signHash(client *client.Client, hash string) (string, error) {
 	return retSignature, nil
 }
 
+func setupMockForFileManagerInit(mock sqlmock.Sqlmock) {
+	aa := sqlmock.AnyArg()
+	mock.ExpectBegin()
+
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations"`)).
+		WillReturnRows(sqlmock.NewRows(
+			[]string{
+				"id", "blobber_size", "blobber_size_used",
+			},
+		).AddRow(
+			"allocation id", 655360000, 6553600,
+		),
+		)
+
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects" WHERE`)).
+		WithArgs(aa, aa, aa).
+		WillReturnRows(
+			sqlmock.NewRows([]string{"count"}).AddRow(1000),
+		)
+
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT sum(size) as file_size FROM "reference_objects" WHERE`)).
+		WillReturnRows(
+			sqlmock.NewRows([]string{"file_size"}).AddRow(6553600),
+		)
+
+	mock.ExpectClose()
+
+}
+
 func init() {
 	resetMockFileBlock()
 	common.ConfigRateLimits()
@@ -81,7 +110,20 @@ func init() {
 	config.Configuration.SignatureScheme = "bls0chain"
 	logging.Logger = zap.NewNop()
 
-	if _, err := filestore.SetupFSStoreI(MockFileBlockGetter{}); err != nil {
+	mock := datastore.MockTheStore(nil)
+	setupMockForFileManagerInit(mock)
+
+	dir, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	tDir := dir + "/tmp"
+
+	if err := os.MkdirAll(tDir, 0777); err != nil {
+		panic(err)
+	}
+
+	if _, err := filestore.SetupFSStoreI(tDir, MockFileBlockGetter{}); err != nil {
 		panic(err)
 	}
 }
@@ -1088,6 +1130,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					r.Header.Set("Content-Type", formWriter.FormDataContentType())
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
 					return r
 				}(),
 			},

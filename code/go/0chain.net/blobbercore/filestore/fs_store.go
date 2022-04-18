@@ -105,15 +105,18 @@ type FileFSStore struct {
 var fileFSStore *FileFSStore
 
 func SetupFSStore(mp string) error {
-	err := initManager(mp)
-	if err != nil {
-		return err
-	}
-	_, err = SetupFSStoreI(FileBlockGetter{})
+
+	_, err := SetupFSStoreI(mp, FileBlockGetter{})
 	return err
 }
 
-func SetupFSStoreI(fileBlockGetter IFileBlockGetter) (FileStore, error) {
+func SetupFSStoreI(mp string, fileBlockGetter IFileBlockGetter) (FileStore, error) {
+
+	err := initManager(mp)
+	if err != nil {
+		return nil, err
+	}
+
 	minioClient, err := intializeMinio()
 	if err != nil {
 		return nil, err
@@ -388,6 +391,10 @@ func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) err
 
 func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
 	tempFilePath := getTempPathForFile(allocationID, fileData.Name, encryption.Hash(fileData.Path), connectionID)
+	if err := createDirs(filepath.Dir(tempFilePath)); err != nil {
+		return nil, common.NewError("dir_creation_error", err.Error())
+	}
+
 	dest, err := NewChunkWriter(tempFilePath)
 	if err != nil {
 		return nil, common.NewError("file_creation_error", err.Error())
