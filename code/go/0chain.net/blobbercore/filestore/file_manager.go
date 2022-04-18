@@ -190,7 +190,6 @@ func initManager(mp string) (err error) {
 
 	ctx = datastore.GetStore().CreateTransaction(ctx)
 	db := datastore.GetStore().GetTransaction(ctx)
-
 	if db == nil {
 		return errors.New("could not get db client")
 	}
@@ -230,6 +229,7 @@ func initManager(mp string) (err error) {
 	}
 
 	wg.Wait()
+	db.Commit()
 	return nil
 }
 
@@ -298,11 +298,12 @@ func getStorageDetails(ctx context.Context, a *allocation, ID string) error {
 		"type":          "f",
 		"on_cloud":      false,
 	}
-	var totalFiles, totalFileSize int64
+	var totalFiles int64
 	if err := db.Model(&ref{}).Where(r).Count(&totalFiles).Error; err != nil {
 		return err
 	}
 
+	var totalFileSize *int64
 	if err := db.Model(&ref{}).Select("sum(size) as file_size").Where(r).Scan(&totalFileSize).Error; err != nil {
 		return err
 	}
@@ -310,7 +311,9 @@ func getStorageDetails(ctx context.Context, a *allocation, ID string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.filesNumber = uint64(totalFiles)
-	a.filesSize = uint64(totalFileSize)
+	if totalFileSize != nil {
+		a.filesSize = uint64(*totalFileSize)
+	}
 	return nil
 }
 
