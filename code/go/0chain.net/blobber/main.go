@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
@@ -8,18 +9,22 @@ import (
 const totalSteps = 12
 
 func main() {
+
 	parseFlags(1)
 
 	setupConfig(2, configDir, deploymentMode)
 
-	if err := setupDatabase(3); err != nil {
+	setupLogging(3)
+
+	if err := setupDatabase(4); err != nil {
 		logging.Logger.Error("Error setting up data store" + err.Error())
 		panic(err)
 	}
 
-	reloadConfigFromDatastore(4)
-
-	setupLogging(5)
+	if err := reloadConfig(5, datastore.GetStore().GetDB()); err != nil {
+		logging.Logger.Error("Error reloading config" + err.Error())
+		panic(err)
+	}
 
 	if err := setupMinio(6); err != nil {
 		logging.Logger.Error("Error setting up minio " + err.Error())

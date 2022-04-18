@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/spf13/viper"
+	"gorm.io/gorm"
 )
 
 func setupConfig(step int, configDir string, deploymentMode int) {
@@ -18,7 +20,6 @@ func setupConfig(step int, configDir string, deploymentMode int) {
 	// setup config file
 	config.SetupConfig(configDir)
 
-	// load config
 	config.Configuration.DeploymentMode = byte(deploymentMode)
 	config.Configuration.ChainID = viper.GetString("server_chain.id")
 	config.Configuration.SignatureScheme = viper.GetString("server_chain.signature_scheme")
@@ -50,8 +51,6 @@ func setupConfig(step int, configDir string, deploymentMode int) {
 	config.Configuration.MinioWorkerFreq = viper.GetInt64("minio.worker_frequency")
 	config.Configuration.MinioUseSSL = viper.GetBool("minio.use_ssl")
 
-	config.Configuration.Capacity = viper.GetInt64("capacity")
-
 	config.Configuration.DBAutoMigrate = viper.GetBool("db.automigrate")
 	config.Configuration.PGUserName = viper.GetString("pg.user")
 	config.Configuration.PGPassword = viper.GetString("pg.password")
@@ -66,13 +65,7 @@ func setupConfig(step int, configDir string, deploymentMode int) {
 	config.Configuration.DBPassword = viper.GetString("db.password")
 	config.Configuration.DBTablesToKeep = viper.GetStringSlice("db.keep_tables")
 
-	config.Configuration.Capacity = viper.GetInt64("capacity")
-	config.Configuration.ReadPrice = viper.GetFloat64("read_price")
-	config.Configuration.WritePrice = viper.GetFloat64("write_price")
 	config.Configuration.PriceInUSD = viper.GetBool("price_in_usd")
-	config.Configuration.MinLockDemand = viper.GetFloat64("min_lock_demand")
-	config.Configuration.MaxOfferDuration = viper.GetDuration("max_offer_duration")
-	config.Configuration.ChallengeCompletionTime = viper.GetDuration("challenge_completion_time")
 
 	config.Configuration.ReadLockTimeout = int64(
 		viper.GetDuration("read_lock_timeout") / time.Second,
@@ -90,10 +83,6 @@ func setupConfig(step int, configDir string, deploymentMode int) {
 	if w := config.Configuration.DelegateWallet; len(w) != 64 {
 		log.Fatal("invalid delegate wallet:", w)
 	}
-	config.Configuration.MinStake = int64(viper.GetFloat64("min_stake") * 1e10)
-	config.Configuration.MaxStake = int64(viper.GetFloat64("max_stake") * 1e10)
-	config.Configuration.NumDelegates = viper.GetInt("num_delegates")
-	config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
 
 	config.Configuration.MinSubmit = viper.GetInt("min_submit")
 	if config.Configuration.MinSubmit < 1 {
@@ -118,8 +107,73 @@ func setupConfig(step int, configDir string, deploymentMode int) {
 	fmt.Print("		[OK]\n")
 }
 
-func reloadConfigFromDatastore(step int) {
+func reloadConfig(step int, db *gorm.DB) error {
 	fmt.Printf("[%v/%v] reload config", step, totalSteps)
 
+	s, ok := config.Get(context.TODO(), db)
+	if ok {
+		config.Configuration.Capacity = s.Capacity
+		cct, err := time.ParseDuration(s.ChallengeCompletionTime)
+		if err != nil {
+			return err
+		}
+		config.Configuration.ChallengeCompletionTime = cct
+
+		maxOfferDuration, err := time.ParseDuration(s.MaxOfferDuration)
+		if err != nil {
+			return err
+		}
+		config.Configuration.MaxOfferDuration = maxOfferDuration
+		config.Configuration.MaxStake = s.MaxStake
+		config.Configuration.MinLockDemand = s.MinLockDemand
+		config.Configuration.MinStake = s.MinStake
+		config.Configuration.NumDelegates = s.NumDelegates
+		config.Configuration.ReadPrice = s.ReadPrice
+		config.Configuration.ServiceCharge = s.ServiceCharge
+		config.Configuration.WritePrice = s.WritePrice
+		fmt.Print("		[OK]\n")
+		return nil
+	}
+
+	config.Configuration.Capacity = viper.GetInt64("capacity")
+	config.Configuration.ChallengeCompletionTime = viper.GetDuration("challenge_completion_time")
+	config.Configuration.MaxOfferDuration = viper.GetDuration("max_offer_duration")
+	config.Configuration.MaxStake = int64(viper.GetFloat64("max_stake") * 1e10)
+	config.Configuration.MinLockDemand = viper.GetFloat64("min_lock_demand")
+	config.Configuration.MinStake = int64(viper.GetFloat64("min_stake") * 1e10)
+	config.Configuration.NumDelegates = viper.GetInt("num_delegates")
+	config.Configuration.ReadPrice = viper.GetFloat64("read_price")
+	config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
+	config.Configuration.WritePrice = viper.GetFloat64("write_price")
+
+	s = &config.Settings{
+		Capacity:                config.Configuration.Capacity,
+		ChallengeCompletionTime: config.Configuration.ChallengeCompletionTime.String(),
+		MaxOfferDuration:        config.Configuration.MaxOfferDuration.String(),
+		MaxStake:                config.Configuration.MaxStake,
+		MinLockDemand:           config.Configuration.MinLockDemand,
+		MinStake:                config.Configuration.MinStake,
+		NumDelegates:            config.Configuration.NumDelegates,
+		ReadPrice:               config.Configuration.ReadPrice,
+		ServiceCharge:           config.Configuration.ServiceCharge,
+		WritePrice:              config.Configuration.WritePrice,
+	}
+
+	if err := config.Update(context.TODO(), db, s); err != nil {
+		return err
+	}
+
+	config.Configuration.Capacity = viper.GetInt64("capacity")
+	config.Configuration.ChallengeCompletionTime = viper.GetDuration("challenge_completion_time")
+	config.Configuration.MaxOfferDuration = viper.GetDuration("max_offer_duration")
+	config.Configuration.MaxStake = int64(viper.GetFloat64("max_stake") * 1e10)
+	config.Configuration.MinLockDemand = viper.GetFloat64("min_lock_demand")
+	config.Configuration.MinStake = int64(viper.GetFloat64("min_stake") * 1e10)
+	config.Configuration.NumDelegates = viper.GetInt("num_delegates")
+	config.Configuration.ReadPrice = viper.GetFloat64("read_price")
+	config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
+	config.Configuration.WritePrice = viper.GetFloat64("write_price")
+
 	fmt.Print("		[OK]\n")
+	return nil
 }
