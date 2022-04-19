@@ -2,12 +2,14 @@ package readmarker
 
 import (
 	"context"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"gorm.io/gorm"
 )
 
 type ReadMarkerEntity struct {
-	ID             int64       `gorm:"column:id;primary_key" json:"id"`
+	ID             int64       `gorm:"column:id;primaryKey" json:"id"`
 	ReadMarker     *ReadMarker `gorm:"embedded" json:"read_marker,omitempty"`
 	RedeemRequired bool        `gorm:"column:redeem_required"`
 	IsSuspend      bool        `gorm:"column:is_suspend" json:"is_suspend"` // is_suspend == true is very unlikely
@@ -17,6 +19,17 @@ type ReadMarkerEntity struct {
 
 func (ReadMarkerEntity) TableName() string {
 	return "read_markers"
+}
+
+func (r *ReadMarkerEntity) BeforeCreate(tx *gorm.DB) error {
+	r.CreatedAt = time.Now()
+	r.UpdatedAt = r.CreatedAt
+	return nil
+}
+
+func (r *ReadMarkerEntity) BeforeSave(tx *gorm.DB) error {
+	r.UpdatedAt = time.Now()
+	return nil
 }
 
 // GetClientPendingRMRedeemTokens Get total tokens that has not been redeemed for some client

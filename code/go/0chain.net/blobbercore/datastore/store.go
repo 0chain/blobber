@@ -22,9 +22,10 @@ type Store interface {
 	// GetTransaction get transaction from context
 	GetTransaction(ctx context.Context) *gorm.DB
 
+	// Get db connection with user that creates roles and databases. Its dialactor does not contain database name
+	GetPgDB() (*gorm.DB, error)
 	Open() error
 	Close()
-	AutoMigrate() error
 }
 
 var instance Store
