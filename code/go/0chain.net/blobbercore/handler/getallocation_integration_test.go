@@ -2,12 +2,17 @@ package handler
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 )
 
 func TestGetAllocation_IntegrationTest(t *testing.T) {
+	if os.Getenv("integration") != "1" {
+		t.Skip()
+	}
+
 	bClient, tdController := setupHandlerIntegrationTests(t)
 
 	err := tdController.ClearDatabase()

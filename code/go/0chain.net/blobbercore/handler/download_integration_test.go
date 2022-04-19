@@ -63,9 +63,14 @@ func setupFileManager(mp string) error {
 }
 
 func TestBlobberGRPCService_DownloadFile(t *testing.T) {
+	if os.Getenv("integration") != "1" {
+		t.Skip()
+	}
+
 	if err := setupMockForFileManager(); err != nil {
 		t.Fatal(err)
 	}
+
 	root := os.Getenv("root")
 	mp := filepath.Join(root, "dev.local/data/blobber/files")
 	if err := os.MkdirAll(mp, os.ModePerm); err != nil {

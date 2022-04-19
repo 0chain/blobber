@@ -17,6 +17,10 @@ import (
 )
 
 func TestBlobberGRPCService_UploadFile(t *testing.T) {
+	if os.Getenv("integration") != "1" {
+		t.Skip()
+	}
+
 	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 

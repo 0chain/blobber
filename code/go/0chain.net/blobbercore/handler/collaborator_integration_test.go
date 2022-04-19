@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"net/http"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -18,6 +19,10 @@ import (
 )
 
 func TestBlobberGRPCService_Collaborator(t *testing.T) {
+	if os.Getenv("integration") != "1" {
+		t.Skip()
+	}
+
 	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 
