@@ -53,7 +53,7 @@ func (cmd *FileCommandDelete) UpdateChange(ctx context.Context, connectionObj *a
 func (cmd *FileCommandDelete) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
 	deleteSize := cmd.existingFileRef.Size
 
-	cmd.changeProcessor = &allocation.DeleteFileChange{ConnectionID: connectionObj.ConnectionID,
+	cmd.changeProcessor = &allocation.DeleteFileChange{ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID, Name: cmd.existingFileRef.Name,
 		Hash: cmd.existingFileRef.Hash, Path: cmd.existingFileRef.Path, Size: deleteSize}
 
@@ -64,7 +64,7 @@ func (cmd *FileCommandDelete) ProcessContent(ctx context.Context, req *http.Requ
 	result.Size = cmd.existingFileRef.Size
 
 	cmd.allocationChange = &allocation.AllocationChange{}
-	cmd.allocationChange.ConnectionID = connectionObj.ConnectionID
+	cmd.allocationChange.ConnectionID = connectionObj.ID
 	cmd.allocationChange.Size = 0 - deleteSize
 	cmd.allocationChange.Operation = constants.FileOperationDelete
 

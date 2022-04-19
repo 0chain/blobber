@@ -32,6 +32,10 @@ type Mocket struct {
 	db      *gorm.DB
 }
 
+func (store *Mocket) GetPgDB() (*gorm.DB, error) {
+	return store.db, nil
+}
+
 func (store *Mocket) Open() error {
 	mocket.Catcher.Reset()
 	mocket.Catcher.Register()
