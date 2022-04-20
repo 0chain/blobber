@@ -58,7 +58,7 @@ func (c *Context) FormValue(key string) (string, bool) {
 	}
 
 	if c.Request.Form == nil {
-		c.Request.ParseMultipartForm(defaultMaxMemory)
+		c.Request.ParseMultipartForm(defaultMaxMemory) //nolint: errcheck
 	}
 
 	if vs := c.Request.Form[key]; len(vs) > 0 {
@@ -97,7 +97,7 @@ func (c *Context) FormFloat(key string) (float64, bool) {
 		return 0, false
 	}
 
-	i, err := strconv.ParseFloat(value, 10)
+	i, err := strconv.ParseFloat(value, 64)
 	if err != nil {
 		return 0, false
 	}
