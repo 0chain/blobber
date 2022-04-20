@@ -77,11 +77,15 @@ type GeolocationConfig struct {
 
 type Config struct {
 	*config.Config
+	DBAutoMigrate                 bool
 	DBHost                        string
+	PGUserName                    string
+	PGPassword                    string
 	DBPort                        string
 	DBName                        string
 	DBUserName                    string
 	DBPassword                    string
+	DBTablesToKeep                []string
 	ContentRefWorkerFreq          int64
 	ContentRefWorkerTolerance     int64
 	OpenConnectionWorkerFreq      int64
