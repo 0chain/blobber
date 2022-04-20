@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
 
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
@@ -16,9 +17,21 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+//Need to check for errors here
 func TestBlobberGRPCService_UploadFile(t *testing.T) {
 	if os.Getenv("integration") != "1" {
 		t.Skip()
+	}
+	root := os.Getenv("root")
+	mp := filepath.Join(root, "dev.local/data/blobber/files")
+	if err := os.MkdirAll(mp, os.ModePerm); err != nil {
+		t.Fatal(err)
+	}
+	if err := setupMockForFileManager(); err != nil {
+		t.Fatal(err)
+	}
+	if err := setupFileManager(mp); err != nil {
+		t.Fatal(err)
 	}
 
 	bClient, tdController := setupHandlerIntegrationTests(t)
@@ -42,8 +55,8 @@ func TestBlobberGRPCService_UploadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	root, _ := os.Getwd()
-	file, err := os.Open(root + "/helper_integration_test.go")
+	curDir, _ := os.Getwd()
+	file, err := os.Open(curDir + "/helper_integration_test.go")
 	if err != nil {
 		t.Fatal(err)
 	}
