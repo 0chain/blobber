@@ -9,7 +9,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/spf13/viper"
-	"gorm.io/gorm"
 )
 
 func setupConfig(step int, configDir string, deploymentMode int) {
@@ -107,30 +106,14 @@ func setupConfig(step int, configDir string, deploymentMode int) {
 	fmt.Print("		[OK]\n")
 }
 
-func reloadConfig(step int, db *gorm.DB) error {
+func reloadConfig(step int) error {
 	fmt.Printf("[%v/%v] reload config", step, totalSteps)
 
-	s, ok := config.Get(context.TODO(), db)
+	s, ok := config.Get(context.TODO())
 	if ok {
-		config.Configuration.Capacity = s.Capacity
-		cct, err := time.ParseDuration(s.ChallengeCompletionTime)
-		if err != nil {
+		if err := s.ToConfiguration(); err != nil {
 			return err
 		}
-		config.Configuration.ChallengeCompletionTime = cct
-
-		maxOfferDuration, err := time.ParseDuration(s.MaxOfferDuration)
-		if err != nil {
-			return err
-		}
-		config.Configuration.MaxOfferDuration = maxOfferDuration
-		config.Configuration.MaxStake = s.MaxStake
-		config.Configuration.MinLockDemand = s.MinLockDemand
-		config.Configuration.MinStake = s.MinStake
-		config.Configuration.NumDelegates = s.NumDelegates
-		config.Configuration.ReadPrice = s.ReadPrice
-		config.Configuration.ServiceCharge = s.ServiceCharge
-		config.Configuration.WritePrice = s.WritePrice
 		fmt.Print("		[OK]\n")
 		return nil
 	}
@@ -146,33 +129,9 @@ func reloadConfig(step int, db *gorm.DB) error {
 	config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
 	config.Configuration.WritePrice = viper.GetFloat64("write_price")
 
-	s = &config.Settings{
-		Capacity:                config.Configuration.Capacity,
-		ChallengeCompletionTime: config.Configuration.ChallengeCompletionTime.String(),
-		MaxOfferDuration:        config.Configuration.MaxOfferDuration.String(),
-		MaxStake:                config.Configuration.MaxStake,
-		MinLockDemand:           config.Configuration.MinLockDemand,
-		MinStake:                config.Configuration.MinStake,
-		NumDelegates:            config.Configuration.NumDelegates,
-		ReadPrice:               config.Configuration.ReadPrice,
-		ServiceCharge:           config.Configuration.ServiceCharge,
-		WritePrice:              config.Configuration.WritePrice,
-	}
-
-	if err := config.Update(context.TODO(), db, s); err != nil {
+	if err := config.Update(context.TODO()); err != nil {
 		return err
 	}
-
-	config.Configuration.Capacity = viper.GetInt64("capacity")
-	config.Configuration.ChallengeCompletionTime = viper.GetDuration("challenge_completion_time")
-	config.Configuration.MaxOfferDuration = viper.GetDuration("max_offer_duration")
-	config.Configuration.MaxStake = int64(viper.GetFloat64("max_stake") * 1e10)
-	config.Configuration.MinLockDemand = viper.GetFloat64("min_lock_demand")
-	config.Configuration.MinStake = int64(viper.GetFloat64("min_stake") * 1e10)
-	config.Configuration.NumDelegates = viper.GetInt("num_delegates")
-	config.Configuration.ReadPrice = viper.GetFloat64("read_price")
-	config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
-	config.Configuration.WritePrice = viper.GetFloat64("write_price")
 
 	fmt.Print("		[OK]\n")
 	return nil

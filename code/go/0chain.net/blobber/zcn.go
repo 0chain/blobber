@@ -8,10 +8,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/zcncore"
-	"go.uber.org/zap"
 )
 
 func setupOnChain(step int) {
@@ -45,7 +43,7 @@ func setupOnChain(step int) {
 			fmt.Print("	[SKIP]\n")
 			break
 		} else {
-			if err := registerBlobberOnChain(); err != nil {
+			if err := handler.RegisterBlobber(common.GetRootContext()); err != nil {
 				if i == 10 { // no more attempts
 					panic(err)
 				}
@@ -64,27 +62,12 @@ func setupOnChain(step int) {
 	if !isIntegrationTest {
 		go setupWorkers()
 
-		go healthCheckOnChain()
+		go startHeartbeat()
 
 		if config.Configuration.PriceInUSD {
 			go refreshPriceOnChain()
 		}
 	}
-}
-
-func registerBlobberOnChain() error {
-	txnHash, err := handler.BlobberAdd(common.GetRootContext())
-	if err != nil {
-		return err
-	}
-
-	if t, err := handler.TransactionVerify(txnHash); err != nil {
-		logging.Logger.Error("Failed to verify blobber add/update transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
-	} else {
-		logging.Logger.Info("Verified blobber add/update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-	}
-
-	return err
 }
 
 func setupServerChain(step int) error {

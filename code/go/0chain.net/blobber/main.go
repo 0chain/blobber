@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
@@ -21,7 +20,7 @@ func main() {
 		panic(err)
 	}
 
-	if err := reloadConfig(5, datastore.GetStore().GetDB()); err != nil {
+	if err := reloadConfig(5); err != nil {
 		logging.Logger.Error("Error reloading config" + err.Error())
 		panic(err)
 	}

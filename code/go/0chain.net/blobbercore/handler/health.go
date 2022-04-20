@@ -9,21 +9,15 @@ import (
 
 var blobberHealthCheckErr error
 
-func SetBlobberHealthError(err error) {
-	blobberHealthCheckErr = err
-}
-
-func GetBlobberHealthError() error {
-	return blobberHealthCheckErr
-}
-
 func BlobberHealthCheck() (string, error) {
 	if config.Configuration.Capacity == 0 {
+		blobberHealthCheckErr = ErrBlobberHasRemoved
 		return "", ErrBlobberHasRemoved
 	}
 
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
+		blobberHealthCheckErr = err
 		return "", err
 	}
 
@@ -32,8 +26,11 @@ func BlobberHealthCheck() (string, error) {
 	if err != nil {
 		logging.Logger.Info("Failed to health check on the blockchain",
 			zap.String("err:", err.Error()))
+		blobberHealthCheckErr = err
+
 		return "", err
 	}
 
+	blobberHealthCheckErr = nil
 	return txn.Hash, nil
 }

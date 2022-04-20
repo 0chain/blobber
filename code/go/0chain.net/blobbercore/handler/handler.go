@@ -85,6 +85,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/writemarker/lock/{allocation}/{connection}", WithHandler(UnlockWriteMarker)).Methods(http.MethodDelete, http.MethodOptions)
 
 	r.HandleFunc("/v1/hashnode/root/{allocation}", WithHandler(LoadRootHashnode)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/hashnode/root/{allocation}", WithHandler(UpdateSettings)).Methods(http.MethodPut, http.MethodOptions)
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {

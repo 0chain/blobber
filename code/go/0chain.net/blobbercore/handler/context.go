@@ -15,6 +15,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	defaultMaxMemory = 32 << 20 // 32 MB
+)
+
 // Context api context
 type Context struct {
 	context.Context
@@ -48,30 +52,78 @@ func (c *Context) Var(key string) string {
 }
 
 // FormValue get value from form data
-func (c *Context) FormValue(key string) string {
-	if c == nil || c.Vars == nil {
-		return ""
+func (c *Context) FormValue(key string) (string, bool) {
+	if c == nil {
+		return "", false
 	}
-	return c.Request.FormValue(key)
+
+	if c.Request.Form == nil {
+		c.Request.ParseMultipartForm(defaultMaxMemory)
+	}
+
+	if vs := c.Request.Form[key]; len(vs) > 0 {
+		return vs[0], true
+	}
+	return "", false
+}
+
+// FormInt get int from form data
+func (c *Context) FormInt(key string) (int64, bool) {
+	if c == nil {
+		return 0, false
+	}
+	value, ok := c.FormValue(key)
+
+	if !ok || len(value) == 0 {
+		return 0, false
+	}
+
+	i, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+
+	return i, true
+}
+
+// FormFloat get float from form data
+func (c *Context) FormFloat(key string) (float64, bool) {
+	if c == nil {
+		return 0, false
+	}
+	value, ok := c.FormValue(key)
+
+	if !ok || len(value) == 0 {
+		return 0, false
+	}
+
+	i, err := strconv.ParseFloat(value, 10)
+	if err != nil {
+		return 0, false
+	}
+
+	return i, true
 }
 
 // FormTime get time from form data
-func (c *Context) FormTime(key string) *time.Time {
-	if c == nil || c.Vars == nil {
-		return nil
+func (c *Context) FormTime(key string) (*time.Time, bool) {
+	if c == nil {
+		return nil, false
 	}
-	value := c.Request.FormValue(key)
-	if len(value) == 0 {
-		return nil
+
+	value, ok := c.FormValue(key)
+
+	if !ok || len(value) == 0 {
+		return nil, false
 	}
 
 	seconds, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
-		return nil
+		return nil, false
 	}
 
 	t := time.Unix(seconds, 0)
-	return &t
+	return &t, true
 }
 
 type ErrorResponse struct {
