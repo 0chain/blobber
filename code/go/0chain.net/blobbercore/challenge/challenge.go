@@ -82,6 +82,9 @@ func saveNewChallenge(nextChallenge *ChallengeEntity, ctx context.Context) {
 		return
 	}
 
+	logging.Logger.Info("debug_save_challenge",
+		zap.String("lastChallengeID", lastChallengeID),
+		zap.String("pev_chall_id", nextChallenge.PrevChallengeID))
 	isValid := nextChallenge.PrevChallengeID == "" || lastChallengeID == nextChallenge.PrevChallengeID
 
 	// it is not First and Next challenge
