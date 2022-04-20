@@ -364,10 +364,7 @@ func TestHandlers_Download(t *testing.T) {
 					WithArgs(ownerClient.ClientID).
 					WillReturnError(gorm.ErrRecordNotFound)
 
-				aa := sqlmock.AnyArg()
-
 				mock.ExpectQuery(`INSERT INTO "read_markers"`).
-					WithArgs(ownerClient.ClientID, ownerClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa, aa, aa).
 					WillReturnRows(sqlmock.NewRows([]string{}))
 
 				mock.ExpectCommit()
