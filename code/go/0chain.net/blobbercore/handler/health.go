@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// blobberHealthCheckErr use it on stats page
 var blobberHealthCheckErr error
 
 func BlobberHealthCheck() (string, error) {

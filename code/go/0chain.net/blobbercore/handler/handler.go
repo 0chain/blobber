@@ -85,7 +85,6 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/writemarker/lock/{allocation}/{connection}", WithHandler(UnlockWriteMarker)).Methods(http.MethodDelete, http.MethodOptions)
 
 	r.HandleFunc("/v1/hashnode/root/{allocation}", WithHandler(LoadRootHashnode)).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/hashnode/root/{allocation}", WithHandler(UpdateSettings)).Methods(http.MethodPut, http.MethodOptions)
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
@@ -414,8 +413,8 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	HTMLHeader(w, "Blobber Diagnostics")
 	PrintCSS(w)
 	HomepageHandler(w, r)
-	err := GetBlobberHealthError()
-	if err != nil {
+
+	if blobberHealthCheckErr != nil {
 		r.Header.Set(stats.HealthDataKey.String(), "✗")
 	} else {
 		r.Header.Set(stats.HealthDataKey.String(), "✔")

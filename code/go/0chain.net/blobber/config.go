@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/spf13/viper"
 )
@@ -109,7 +110,9 @@ func setupConfig(step int, configDir string, deploymentMode int) {
 func reloadConfig(step int) error {
 	fmt.Printf("[%v/%v] reload config", step, totalSteps)
 
-	s, ok := config.Get(context.TODO())
+	db := datastore.GetStore().GetDB()
+
+	s, ok := config.Get(context.TODO(), db)
 	if ok {
 		if err := s.ToConfiguration(); err != nil {
 			return err
@@ -129,7 +132,7 @@ func reloadConfig(step int) error {
 	config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
 	config.Configuration.WritePrice = viper.GetFloat64("write_price")
 
-	if err := config.Update(context.TODO()); err != nil {
+	if err := config.Update(context.TODO(), db); err != nil {
 		return err
 	}
 

@@ -4,13 +4,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/sdk"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 const TableNameSettings = "settings"
@@ -85,12 +85,13 @@ func (s *Settings) FromConfiguration() error {
 }
 
 // Get load settings
-func Get(ctx context.Context) (*Settings, bool) {
-	db := datastore.GetStore().GetDB()
-
+func Get(ctx context.Context, db *gorm.DB) (*Settings, bool) {
+	if db == nil {
+		return nil, false
+	}
 	var s Settings
 	if err := db.Table(TableNameSettings).
-		Where(`id="settings"`).
+		Where(`id=?`, "settings").
 		First(&s).Error; err == nil {
 		return &s, true
 	}
@@ -99,14 +100,15 @@ func Get(ctx context.Context) (*Settings, bool) {
 }
 
 // Update update settings in db
-func Update(ctx context.Context) error {
+func Update(ctx context.Context, db *gorm.DB) error {
+	if db == nil {
+		return errors.Throw(constants.ErrInvalidParameter, "db")
+	}
 	s := &Settings{}
 
 	if err := s.FromConfiguration(); err != nil {
 		return err
 	}
-
-	db := datastore.GetStore().GetDB()
 
 	s.UpdatedAt = time.Now()
 	if s.ID == "settings" {
@@ -126,7 +128,11 @@ func Update(ctx context.Context) error {
 }
 
 // Refresh sync latest settings from blockchain
-func Refresh(ctx context.Context) error {
+func Refresh(ctx context.Context, db *gorm.DB) error {
+	if db == nil {
+		return errors.Throw(constants.ErrInvalidParameter, "db")
+	}
+
 	b, err := sdk.GetBlobber(node.Self.ID)
 	if err != nil { // blobber is not registered yet
 		logging.Logger.Warn("failed to sync blobber settings from blockchain", zap.Error(err))
@@ -146,5 +152,5 @@ func Refresh(ctx context.Context) error {
 	Configuration.WritePrice = float64(b.Terms.WritePrice)
 	Configuration.WritePrice = b.StakePoolSettings.ServiceCharge
 
-	return Update(ctx)
+	return Update(ctx, db)
 }

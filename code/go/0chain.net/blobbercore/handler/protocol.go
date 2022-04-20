@@ -205,12 +205,11 @@ func SendHeartbeat() error {
 	if err != nil {
 		return err
 	}
-	t, err := TransactionVerify(txnHash)
+	_, err = TransactionVerify(txnHash)
 	if err != nil {
 		logging.Logger.Error("Failed to verify blobber health check", zap.Any("err", err), zap.String("txn.Hash", txnHash))
 		return err
 	}
-	logging.Logger.Info("Verified blobber health check", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
 
 	return nil
 }

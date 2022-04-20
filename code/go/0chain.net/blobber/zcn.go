@@ -63,6 +63,7 @@ func setupOnChain(step int) {
 		go setupWorkers()
 
 		go startHeartbeat()
+		go startRefreshSettings()
 
 		if config.Configuration.PriceInUSD {
 			go refreshPriceOnChain()
