@@ -36,13 +36,15 @@ func refreshPriceOnChain() {
 	}
 }
 
-func startHeartbeat() {
+func startHealthCheck() {
 	const REPEAT_DELAY = 60 * 15 // 15 minutes
 	var err error
 	for {
-		err = handler.SendHeartbeat()
+		err = handler.SendHealthCheck()
 		if err == nil {
 			logging.Logger.Info("success to send heartbeat")
+		} else {
+			logging.Logger.Warn("failed to send heartbeat", zap.Error(err))
 		}
 		<-time.After(REPEAT_DELAY * time.Second)
 	}
@@ -56,6 +58,8 @@ func startRefreshSettings() {
 		err = config.Refresh(common.GetRootContext(), datastore.GetStore().GetDB())
 		if err == nil {
 			logging.Logger.Info("success to refresh blobber settings from chain")
+		} else {
+			logging.Logger.Warn("failed to refresh blobber settings from chain", zap.Error(err))
 		}
 		<-time.After(REPEAT_DELAY * time.Second)
 	}

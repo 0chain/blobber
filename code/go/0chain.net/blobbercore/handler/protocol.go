@@ -121,7 +121,7 @@ func RegisterBlobber(ctx context.Context) error {
 
 	}
 
-	return SendHeartbeat()
+	return SendHealthCheck()
 
 }
 
@@ -199,8 +199,8 @@ func WalletRegister() error {
 	return nil
 }
 
-// SendHeartbeat send heartbeat to blockchain
-func SendHeartbeat() error {
+// SendHealthCheck send heartbeat to blockchain
+func SendHealthCheck() error {
 	txnHash, err := BlobberHealthCheck()
 	if err != nil {
 		return err
