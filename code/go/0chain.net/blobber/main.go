@@ -5,43 +5,41 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
 
-const totalSteps = 12
-
 func main() {
 
-	parseFlags(1)
+	parseFlags()
 
-	setupConfig(2, configDir, deploymentMode)
+	setupConfig(configDir, deploymentMode)
 
-	setupLogging(3)
+	setupLogging()
 
-	if err := setupDatabase(4); err != nil {
+	if err := setupDatabase(); err != nil {
 		logging.Logger.Error("Error setting up data store" + err.Error())
 		panic(err)
 	}
 
-	if err := reloadConfig(5); err != nil {
+	if err := reloadConfig(); err != nil {
 		logging.Logger.Error("Error reloading config" + err.Error())
 		panic(err)
 	}
 
-	if err := setupMinio(6); err != nil {
+	if err := setupMinio(); err != nil {
 		logging.Logger.Error("Error setting up minio " + err.Error())
 		panic(err)
 	}
 
-	if err := setupNode(7); err != nil {
+	if err := setupNode(); err != nil {
 		logging.Logger.Error("Error setting up blobber node " + err.Error())
 		panic(err)
 	}
 
-	if err := setupServerChain(8); err != nil {
+	if err := setupServerChain(); err != nil {
 		logging.Logger.Error("Error setting up server chain" + err.Error())
 		panic(err)
 	}
 
 	// Initialize after server chain is setup.
-	if err := setupFileStore(9); err != nil {
+	if err := setupFileStore(); err != nil {
 		logging.Logger.Error("Error setting up file store" + err.Error())
 		panic(err)
 	}
@@ -49,9 +47,9 @@ func main() {
 	// only enabled with "// +build integration_tests"
 	initIntegrationsTests(node.Self.ID)
 
-	go setupOnChain(10)
+	go setupOnChain()
 
-	startGRPCServer(11)
+	startGRPCServer()
 
-	startHttpServer(12)
+	startHttpServer()
 }

@@ -12,10 +12,10 @@ import (
 	"github.com/0chain/gosdk/zcncore"
 )
 
-func setupOnChain(step int) {
+func setupOnChain() {
 	//wait http & grpc startup, and go to setup on chain
 	time.Sleep(1 * time.Second)
-	fmt.Printf("[%v/%v] connecting to chain	\n", step, totalSteps)
+	fmt.Print("> connecting to chain	\n")
 
 	const ATTEMPT_DELAY = 60 * 1
 
@@ -71,8 +71,8 @@ func setupOnChain(step int) {
 	}
 }
 
-func setupServerChain(step int) error {
-	fmt.Printf("[%v/%v] setup server chain", step, totalSteps)
+func setupServerChain() error {
+	fmt.Print("> setup server chain")
 	common.SetupRootContext(node.GetNodeContext())
 
 	config.SetServerChainID(config.Configuration.ChainID)

@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-func setupConfig(step int, configDir string, deploymentMode int) {
-	fmt.Printf("[%v/%v] load config", step, totalSteps)
+func setupConfig(configDir string, deploymentMode int) {
+	fmt.Print("> load config")
 	// setup default
 	config.SetupDefaultConfig()
 
@@ -107,8 +107,8 @@ func setupConfig(step int, configDir string, deploymentMode int) {
 	fmt.Print("		[OK]\n")
 }
 
-func reloadConfig(step int) error {
-	fmt.Printf("[%v/%v] reload config", step, totalSteps)
+func reloadConfig() error {
+	fmt.Print("> reload config")
 
 	db := datastore.GetStore().GetDB()
 

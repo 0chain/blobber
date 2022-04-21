@@ -11,24 +11,25 @@ import (
 	"gorm.io/gorm"
 )
 
-func setupDatabase(step int) error {
-	fmt.Printf("\r[%v/%v] connect data store", step, totalSteps)
+func setupDatabase() error {
+	fmt.Print("\r> connect data store")
 	// check for database connection
 	var pgDB *gorm.DB
 	var err error
 	for i := 0; i < 600; i++ {
 		if i > 0 {
-			fmt.Printf("\r[%v/%v] connect(%v) data store", step, totalSteps, i)
+			fmt.Printf("\r connect(%v) data store", i)
 		}
 
 		pgDB, err = datastore.GetStore().GetPgDB()
 
 		if err == nil {
-			if i == 599 { // no more attempts
-				logging.Logger.Error("Failed to connect to the database. Shutting the server down")
-				return err
-			}
 			break
+		}
+
+		if i == 599 { // no more attempts
+			logging.Logger.Error("Failed to connect to the database. Shutting the server down")
+			return err
 		}
 
 		time.Sleep(1 * time.Second)
@@ -43,16 +44,20 @@ func setupDatabase(step int) error {
 	// check for database connection
 	for i := 0; i < 600; i++ {
 		if i > 0 {
-			fmt.Printf("\r[%v/%v] connect(%v) data store", step, totalSteps, i)
+			fmt.Printf("\r connect(%v) data store", i)
 		}
 
-		if err := datastore.GetStore().Open(); err == nil {
-			if i == 599 { // no more attempts
-				logging.Logger.Error("Failed to connect to the database. Shutting the server down")
-				return err
-			}
+		err = datastore.GetStore().Open()
+
+		if err == nil {
+
 			fmt.Print("	[OK]\n")
 			break
+		}
+
+		if i == 599 { // no more attempts
+			logging.Logger.Error("Failed to connect to the database. Shutting the server down")
+			return err
 		}
 
 		time.Sleep(1 * time.Second)

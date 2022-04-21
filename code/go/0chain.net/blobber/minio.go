@@ -10,8 +10,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
-func setupMinio(step int) error {
-	fmt.Printf("[%v/%v] setup minio", step, totalSteps)
+func setupMinio() error {
+	fmt.Print("> setup minio")
 
 	if config.Configuration.MinioStart {
 		fmt.Print("	+ No minio 	[SKIP]\n")
