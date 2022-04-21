@@ -273,6 +273,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	if latestRM != nil && latestRM.ReadCounter+(dr.NumBlocks) > dr.ReadMarker.ReadCounter {
+		latestRM.BlobberID = node.Self.ID
 		return &blobberhttp.DownloadResponse{
 			Success:      false,
 			LatestRM:     latestRM,
