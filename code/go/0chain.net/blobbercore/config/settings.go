@@ -34,52 +34,52 @@ func (s Settings) TableName() string {
 	return TableNameSettings
 }
 
-// ToConfiguration copy settings to config.Configuration
-func (s *Settings) ToConfiguration() error {
+// CopyTo copy settings to config.Configuration
+func (s *Settings) CopyTo(c *Config) error {
 
 	if s == nil {
 		return errors.Throw(constants.ErrInvalidParameter, "s")
 	}
 
-	Configuration.Capacity = s.Capacity
+	c.Capacity = s.Capacity
 	cct, err := time.ParseDuration(s.ChallengeCompletionTime)
 	if err != nil {
 		return errors.Throw(constants.ErrInvalidParameter, "ChallengeCompletionTime")
 	}
-	Configuration.ChallengeCompletionTime = cct
+	c.ChallengeCompletionTime = cct
 
 	maxOfferDuration, err := time.ParseDuration(s.MaxOfferDuration)
 	if err != nil {
 		return errors.Throw(constants.ErrInvalidParameter, "MaxOfferDuration")
 	}
-	Configuration.MaxOfferDuration = maxOfferDuration
-	Configuration.MaxStake = s.MaxStake
-	Configuration.MinLockDemand = s.MinLockDemand
-	Configuration.MinStake = s.MinStake
-	Configuration.NumDelegates = s.NumDelegates
-	Configuration.ReadPrice = s.ReadPrice
-	Configuration.ServiceCharge = s.ServiceCharge
-	Configuration.WritePrice = s.WritePrice
+	c.MaxOfferDuration = maxOfferDuration
+	c.MaxStake = s.MaxStake
+	c.MinLockDemand = s.MinLockDemand
+	c.MinStake = s.MinStake
+	c.NumDelegates = s.NumDelegates
+	c.ReadPrice = s.ReadPrice
+	c.ServiceCharge = s.ServiceCharge
+	c.WritePrice = s.WritePrice
 
 	return nil
 }
 
-// FromConfiguration copy settings from config.Configuration
-func (s *Settings) FromConfiguration() error {
+// CopyFrom copy settings from config.Configuration
+func (s *Settings) CopyFrom(c *Config) error {
 	if s == nil {
 		return errors.Throw(constants.ErrInvalidParameter, "s")
 	}
 
-	s.Capacity = Configuration.Capacity
-	s.ChallengeCompletionTime = Configuration.ChallengeCompletionTime.String()
-	s.MaxOfferDuration = Configuration.MaxOfferDuration.String()
-	s.MaxStake = Configuration.MaxStake
-	s.MinLockDemand = Configuration.MinLockDemand
-	s.MinStake = Configuration.MinStake
-	s.NumDelegates = Configuration.NumDelegates
-	s.ReadPrice = Configuration.ReadPrice
-	s.ServiceCharge = Configuration.ServiceCharge
-	s.WritePrice = Configuration.WritePrice
+	s.Capacity = c.Capacity
+	s.ChallengeCompletionTime = c.ChallengeCompletionTime.String()
+	s.MaxOfferDuration = c.MaxOfferDuration.String()
+	s.MaxStake = c.MaxStake
+	s.MinLockDemand = c.MinLockDemand
+	s.MinStake = c.MinStake
+	s.NumDelegates = c.NumDelegates
+	s.ReadPrice = c.ReadPrice
+	s.ServiceCharge = c.ServiceCharge
+	s.WritePrice = c.WritePrice
 
 	return nil
 }
@@ -106,25 +106,17 @@ func Update(ctx context.Context, db *gorm.DB) error {
 	}
 	s := &Settings{}
 
-	if err := s.FromConfiguration(); err != nil {
+	if err := s.CopyFrom(&Configuration); err != nil {
 		return err
 	}
 
 	s.UpdatedAt = time.Now()
 	if s.ID == "settings" {
-		if err := db.Save(s).Error; err != nil {
-			return err
-		}
-
-		return nil
+		return db.Save(s).Error
 	}
 
 	s.ID = "settings"
-	if err := db.Create(s).Error; err != nil {
-		return err
-	}
-
-	return nil
+	return db.Create(s).Error
 }
 
 // Refresh sync latest settings from blockchain

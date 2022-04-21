@@ -62,7 +62,7 @@ func setupOnChain() {
 	if !isIntegrationTest {
 		go setupWorkers()
 
-		go startHeartbeat()
+		go startHealthCheck()
 		go startRefreshSettings()
 
 		if config.Configuration.PriceInUSD {

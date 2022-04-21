@@ -114,7 +114,7 @@ func reloadConfig() error {
 
 	s, ok := config.Get(context.TODO(), db)
 	if ok {
-		if err := s.ToConfiguration(); err != nil {
+		if err := s.CopyTo(&config.Configuration); err != nil {
 			return err
 		}
 		fmt.Print("		[OK]\n")
