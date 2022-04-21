@@ -68,16 +68,17 @@ jobs:
     steps:
       - name: go env
         run:
-          go env
-          which go
-      - name: Setup go 1.17
+          echi $(which go)
+          echo $(go env)
+         
+      - name: Setup go 1.18
         uses: actions/setup-go@v2
         with:
-          go-version: '1.17' # The Go version to download (if necessary) and use.
-      - name: fix go binary
+          go-version: '1.18' # The Go version to download (if necessary) and use.
+      - name: fix go env
         run:
-          go env
-          which go
+          echi $(which go)
+          echo $(go env)
 
       # - uses: actions/cache@v2
       #   with:
