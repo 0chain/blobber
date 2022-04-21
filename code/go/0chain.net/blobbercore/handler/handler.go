@@ -414,7 +414,7 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	PrintCSS(w)
 	HomepageHandler(w, r)
 
-	if blobberHealthCheckErr != nil {
+	if getBlobberHealthCheckError() != nil {
 		r.Header.Set(stats.HealthDataKey.String(), "✗")
 	} else {
 		r.Header.Set(stats.HealthDataKey.String(), "✔")

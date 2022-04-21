@@ -1,24 +1,44 @@
 package handler
 
 import (
+	"sync"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"go.uber.org/zap"
 )
 
-// blobberHealthCheckErr use it on stats page
-var blobberHealthCheckErr error
+var (
+	// blobberHealthCheckError use it on stats page
+	blobberHealthCheckError error
+	blobberHealthCheckMutex sync.RWMutex
+)
+
+func setBlobberHealthCheckError(err error) {
+	blobberHealthCheckMutex.Lock()
+	defer blobberHealthCheckMutex.Unlock()
+
+	blobberHealthCheckError = err
+}
+
+func getBlobberHealthCheckError() error {
+	blobberHealthCheckMutex.Lock()
+	defer blobberHealthCheckMutex.Unlock()
+
+	return blobberHealthCheckError
+}
 
 func BlobberHealthCheck() (string, error) {
 	if config.Configuration.Capacity == 0 {
-		blobberHealthCheckErr = ErrBlobberHasRemoved
+
+		setBlobberHealthCheckError(ErrBlobberHasRemoved)
 		return "", ErrBlobberHasRemoved
 	}
 
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
-		blobberHealthCheckErr = err
+		setBlobberHealthCheckError(err)
 		return "", err
 	}
 
@@ -27,11 +47,11 @@ func BlobberHealthCheck() (string, error) {
 	if err != nil {
 		logging.Logger.Info("Failed to health check on the blockchain",
 			zap.String("err:", err.Error()))
-		blobberHealthCheckErr = err
+		setBlobberHealthCheckError(err)
 
 		return "", err
 	}
 
-	blobberHealthCheckErr = nil
+	setBlobberHealthCheckError(err)
 	return txn.Hash, nil
 }
