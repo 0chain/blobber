@@ -68,16 +68,23 @@ jobs:
     steps:
       - name: go env
         run:
-          echi $(which go)
+          echo $(which go)
           echo $(go env)
          
       - name: Setup go 1.18
         uses: actions/setup-go@v2
         with:
           go-version: '1.18' # The Go version to download (if necessary) and use.
-      - name: fix go env
-        run:
-          echi $(which go)
+      - name: setup env
+        shell: bash
+        run: |
+          echo $(which go)
+          echo $(go env)
+         
+          echo "::set-env name=GOPATH::${{ github.workspace }}/go"
+          echo "::add-path::${{ github.workspace }}/go/bin"
+
+          echo $(which go)
           echo $(go env)
 
       # - uses: actions/cache@v2
