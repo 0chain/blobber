@@ -6,113 +6,110 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	zLogger "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	"gorm.io/gorm"
 
 	"go.uber.org/zap"
 )
 
-func RedeemReadMarker(ctx context.Context, db *gorm.DB, rme *ReadMarkerEntity) error {
-	// Check if error is "already redeemed" then return nil
-	zLogger.Logger.Info("Redeeming read marker", zap.Any("rm", rme.ReadMarker))
+func SetupWorkers(ctx context.Context) {
+	go startRedeemMarkers(ctx)
+}
 
-	params := make(map[string]string)
-	params["blobber"] = node.Self.ID
-	params["client"] = rme.ReadMarker.ClientID
+func redeemReadMarker(ctx context.Context, rmEntity *ReadMarkerEntity) (err error) {
+	logging.Logger.Info("Redeeming the read marker", zap.Any("rm", rmEntity.LatestRM))
 
-	tx, err := transaction.NewTransactionEntity()
+	params := map[string]string{
+		"blobber": rmEntity.LatestRM.BlobberID,
+		"client":  rmEntity.LatestRM.ClientID,
+	}
+
+	latestRM := ReadMarker{BlobberID: rmEntity.LatestRM.BlobberID, ClientID: rmEntity.LatestRM.ClientID}
+	latestRMBytes, err := transaction.MakeSCRestAPICall(
+		transaction.STORAGE_CONTRACT_ADDRESS, "/latestreadmarker", params,
+		chain.GetServerChain())
+
 	if err != nil {
-		return common.NewErrorf("redeem_read_marker", "creating transaction: %v", err)
+		logging.Logger.Error("Error from sc rest api call", zap.Error(err))
+		return
+	} else if err = json.Unmarshal(latestRMBytes, &latestRM); err != nil {
+		logging.Logger.Error("Error from unmarshal of rm bytes", zap.Error(err))
+		return
+	} else if latestRM.ReadCounter > 0 && latestRM.ReadCounter >= rmEntity.LatestRM.ReadCounter {
+		logging.Logger.Info("updating the local state to match the block chain")
+		if err = SaveLatestReadMarker(ctx, &latestRM, latestRM.ReadCounter, false); err != nil {
+			return
+		}
+		rmEntity.LatestRM = &latestRM
+		if err = rmEntity.Sync(ctx); err != nil {
+			logging.Logger.Error("redeem RM loop -- error syncing RM state", zap.Error(err))
+			return
+		}
+		return // synced from blockchain, no redeeming needed
 	}
 
-	rdRedeem := &ReadRedeem{
-		ReadMarker: rme.ReadMarker,
-	}
-	rdRedeemBytes, err := json.Marshal(rdRedeem)
-	if err != nil {
-		zLogger.Logger.Error("Error encoding SC input", zap.Error(err), zap.Any("scdata", rdRedeem))
-		return common.NewErrorf("redeem_read_marker", "encoding SC data: %v", err)
+	// so, now the latestRM.ReadCounter is less than rmEntity.LatestRM.ReadCounter
+
+	if err = rmEntity.RedeemReadMarker(ctx); err != nil {
+		logging.Logger.Error("error redeeming the read marker.", zap.Any("rm", rmEntity), zap.Error(err))
+		return
 	}
 
-	if err := tx.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.READ_REDEEM,
-		string(rdRedeemBytes), 0); err != nil {
-		zLogger.Logger.Info("Failed submitting read redeem", zap.Error(err))
-		return common.NewErrorf("redeem_read_marker", "sending transaction: %v", err)
-	}
-
-	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-
-	_, err = transaction.VerifyTransaction(tx.Hash, chain.GetServerChain())
-	if err != nil {
-		zLogger.Logger.Error("Error verifying the read redeem transaction", zap.Error(err), zap.String("txn", tx.Hash))
-		return common.NewErrorf("redeem_read_marker", "verifying transaction: %v", err)
-	}
-
-	return nil
+	logging.Logger.Info("successfully redeemed read marker", zap.Any("rm", rmEntity.LatestRM))
+	return
 }
 
 func redeemReadMarkers(ctx context.Context) {
-	var err error
-	rctx := datastore.GetStore().CreateTransaction(ctx)
-
 	defer func() {
-		if err != nil {
-			datastore.GetStore().GetTransaction(rctx).Rollback()
-		} else {
-			datastore.GetStore().GetTransaction(rctx).Commit()
+		if r := recover(); r != nil {
+			logging.Logger.Error("[recover] redeemReadMarker", zap.Any("err", r))
 		}
 	}()
 
-	rms, err := GetRedeemRequiringRMEntities(rctx)
+	rctx := datastore.GetStore().CreateTransaction(ctx)
+	db := datastore.GetStore().GetTransaction(rctx)
+	readMarkers, err := GetRedeemRequiringRMEntities(rctx)
 	if err != nil {
-		zLogger.Logger.Error(err.Error())
+		logging.Logger.Error("redeem_readmarker", zap.Any("database_error", err))
 		return
 	}
 
 	guideCh := make(chan struct{}, config.Configuration.RMRedeemNumWorkers)
 	wg := sync.WaitGroup{}
-	for _, rme := range rms {
-		rme.ReadMarker.BlobberID = node.Self.ID
+
+	for _, rmEntity := range readMarkers {
 		guideCh <- struct{}{}
 		wg.Add(1)
-		go func(rme *ReadMarkerEntity) {
+
+		rmEntity.LatestRM.BlobberID = node.Self.ID
+		go func(redeemCtx context.Context, rmEntity *ReadMarkerEntity, wg *sync.WaitGroup, ch <-chan struct{}) {
 			defer func() {
-				<-guideCh
+				<-ch
 				wg.Done()
 			}()
-			ctx, ctxCncl := context.WithCancel(rctx)
-			defer ctxCncl()
 
-			// Only updateStatus will use separate transaction because readmarkers are independent of each other
-			ctx = datastore.GetStore().CreateTransaction(ctx)
-			db := datastore.GetStore().GetTransaction(ctx)
+			redeemCtx = datastore.GetStore().CreateTransaction(redeemCtx)
+			defer redeemCtx.Done()
 
-			if err := RedeemReadMarker(ctx, db, rme); err != nil {
-				zLogger.Logger.Error(err.Error())
-				_ = rme.UpdateStatus(ctx, true, true)
-			} else {
-				_ = rme.UpdateStatus(ctx, false, false)
-				// dbForPending uses same transaction for all pending operations as each operation can depend on each other
-				// if pending.id is same
-				dbForPending := datastore.GetStore().GetTransaction(rctx)
-				err = allocation.AddToPending(dbForPending, rme.ReadMarker.ClientID, rme.ReadMarker.AllocationID, 0, -rme.ReadMarker.ReadSize)
-				if err != nil {
-					zLogger.Logger.Error(err.Error())
-				}
+			err := redeemReadMarker(redeemCtx, rmEntity)
+			if err != nil {
+				logging.Logger.Error("Error redeeming the read marker.", zap.Error(err))
+				datastore.GetStore().GetTransaction(redeemCtx).Rollback()
+				return
 			}
-
-			db.Commit()
-		}(rme)
+			if err := datastore.GetStore().GetTransaction(redeemCtx).Commit().Error; err != nil {
+				logging.Logger.Error("Error committing the readmarker redeem", zap.Error(err))
+			}
+		}(ctx, rmEntity, &wg, guideCh)
 	}
-
 	wg.Wait()
+
+	db.Rollback()
+	rctx.Done()
 }
 
 func startRedeemMarkers(ctx context.Context) {
@@ -122,13 +119,7 @@ func startRedeemMarkers(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			newCtx, ctxCncl := context.WithCancel(ctx)
-			redeemReadMarkers(newCtx)
-			ctxCncl()
+			redeemReadMarkers(ctx)
 		}
 	}
-}
-
-func SetupWorkers(ctx context.Context) {
-	go startRedeemMarkers(ctx)
 }
