@@ -17,14 +17,13 @@ var (
 
 func setBlobberHealthCheckError(err error) {
 	blobberHealthCheckMutex.Lock()
-	defer blobberHealthCheckMutex.Unlock()
-
 	blobberHealthCheckError = err
+	blobberHealthCheckMutex.Unlock()
 }
 
 func getBlobberHealthCheckError() error {
-	blobberHealthCheckMutex.Lock()
-	defer blobberHealthCheckMutex.Unlock()
+	blobberHealthCheckMutex.RLock()
+	defer blobberHealthCheckMutex.RUnlock()
 
 	return blobberHealthCheckError
 }
