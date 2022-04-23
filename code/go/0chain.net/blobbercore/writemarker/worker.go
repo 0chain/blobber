@@ -8,7 +8,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"go.uber.org/zap"
 )
@@ -34,7 +33,7 @@ func redeemWriterMarkersForAllocation(allocationObj *allocation.Allocation) {
 
 		if !done {
 			if err := db.Rollback().Error; err != nil {
-				Logger.Error("Error rollbacking the writemarker redeem",
+				logging.Logger.Error("Error rollbacking the writemarker redeem",
 					zap.Any("allocation", allocationObj.ID),
 					zap.Error(err))
 			}
@@ -49,7 +48,7 @@ func redeemWriterMarkersForAllocation(allocationObj *allocation.Allocation) {
 		Order("sequence").
 		Find(&writemarkers).Error
 	if err != nil {
-		Logger.Error("Error redeeming the write marker. failed to load allocation's writemarker ",
+		logging.Logger.Error("Error redeeming the write marker. failed to load allocation's writemarker ",
 			zap.Any("allocation", allocationObj.ID),
 			zap.Any("error", err))
 		return
@@ -62,19 +61,19 @@ func redeemWriterMarkersForAllocation(allocationObj *allocation.Allocation) {
 		if startredeem || allocationObj.LatestRedeemedWM == "" {
 			err = wm.RedeemMarker(ctx)
 			if err != nil {
-				Logger.Error("Error redeeming the write marker.",
+				logging.Logger.Error("Error redeeming the write marker.",
 					zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
 				return
 			}
 			err = db.Model(allocationObj).Updates(allocation.Allocation{LatestRedeemedWM: wm.WM.AllocationRoot}).Error
 			if err != nil {
-				Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
+				logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
 					zap.Any("wm", wm.WM.AllocationRoot), zap.Any("error", err))
 
 				return
 			}
 			allocationObj.LatestRedeemedWM = wm.WM.AllocationRoot
-			Logger.Info("Success Redeeming the write marker", zap.Any("wm", wm.WM.AllocationRoot), zap.Any("txn", wm.CloseTxnID))
+			logging.Logger.Info("Success Redeeming the write marker", zap.Any("wm", wm.WM.AllocationRoot), zap.Any("txn", wm.CloseTxnID))
 		}
 	}
 	if allocationObj.LatestRedeemedWM == allocationObj.AllocationRoot {
@@ -85,7 +84,7 @@ func redeemWriterMarkersForAllocation(allocationObj *allocation.Allocation) {
 
 	err = db.Commit().Error
 	if err != nil {
-		Logger.Error("Error committing the writemarker redeem",
+		logging.Logger.Error("Error committing the writemarker redeem",
 			zap.Any("allocation", allocationObj.ID),
 			zap.Error(err))
 	}
@@ -102,7 +101,7 @@ func startRedeemWriteMarkers(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			Logger.Info("Trying to redeem writemarkers.",
+			logging.Logger.Info("Trying to redeem writemarkers.",
 				zap.Any("numOfWorkers", config.Configuration.WMRedeemNumWorkers))
 			redeemWriteMarkers()
 		}
