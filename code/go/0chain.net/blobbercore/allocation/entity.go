@@ -76,10 +76,10 @@ func sizeInGB(size int64) float64 {
 }
 
 // GetRequiredReadBalance Get tokens required to read the given size
-func (a *Allocation) GetRequiredReadBalance(blobberID string, readSize int64) (value float64) {
+func (a *Allocation) GetRequiredReadBalance(blobberID string, numBlocks int64) (value float64) {
 	for _, d := range a.Terms {
 		if d.BlobberID == blobberID {
-			value = sizeInGB(readSize) * float64(d.ReadPrice)
+			value = sizeInGB(numBlocks*CHUNK_SIZE) * float64(d.ReadPrice)
 			break
 		}
 	}
@@ -101,8 +101,6 @@ type Pending struct {
 	// ID of format client_id:allocation_id
 	ID           string `gorm:"column:id;primaryKey"`
 	PendingWrite int64  `gorm:"column:pending_write;not null;default:0;"`
-	PendingRead  int64  `gorm:"column:pending_read;pending_read;not null;default:0"` // size
-
 }
 
 func (*Pending) TableName() string {
@@ -139,7 +137,7 @@ func GetPendingRead(db *gorm.DB, clientID, allocationID string) (pendingReadSize
 	return
 }
 
-func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite, pendingRead int64) (err error) {
+func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite int64) (err error) {
 	key := clientID + ":" + allocationID
 	// Lock is required because two process can simultaneously call this function and read pending data
 	// thus giving same value leading to inconsistent data
@@ -152,12 +150,10 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite, pend
 	switch {
 	case err == nil:
 		pending.PendingWrite += pendingWrite
-		pending.PendingRead += pendingRead
 		db.Save(pending)
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		pending.ID = key
 		pending.PendingWrite = pendingWrite
-		pending.PendingRead = pendingRead
 		db.Create(pending)
 	default:
 		return err

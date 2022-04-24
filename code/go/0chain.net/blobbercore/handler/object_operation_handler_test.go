@@ -123,7 +123,7 @@ func TestDownloadFile(t *testing.T) {
 		rm.OwnerID = mockOwner.ClientID
 		rm.Timestamp = now
 		// set another value to size
-		rm.ReadSize = p.inData.numBlocks * 64 * KB
+		rm.ReadCounter = p.inData.numBlocks
 		err := rm.Sign()
 		require.NoError(t, err)
 		rmData, err := json.Marshal(rm)
@@ -389,7 +389,7 @@ func TestDownloadFile(t *testing.T) {
 			require.EqualValues(t, mockAllocationId, args[2].Value)
 			require.EqualValues(t, mockOwner.ClientID, args[3].Value)
 			require.EqualValues(t, now, args[4].Value)
-			require.EqualValues(t, p.inData.numBlocks*64*KB, args[5].Value)
+			require.EqualValues(t, p.inData.numBlocks, args[5].Value)
 		}).WithQuery(`INSERT INTO "read_markers"`).WithID(11)
 
 		mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
