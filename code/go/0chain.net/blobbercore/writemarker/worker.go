@@ -39,21 +39,21 @@ func redeemWriterMarkersForAllocation(allocationObj *allocation.Allocation) {
 			startredeem = true
 		}
 		if startredeem || allocationObj.LatestRedeemedWM == "" {
-
 			err = redeemWriteMarker(allocationObj, wm)
 			if err != nil {
 				return
 			}
-
 		}
 	}
 
 	if allocationObj.LatestRedeemedWM == allocationObj.AllocationRoot {
-		db.Model(allocationObj).
-			Where("allocation_root = ? AND allocation_root = latest_redeemed_write_marker", allocationObj.AllocationRoot).
-			Update("is_redeem_required", false)
+		err = db.Exec("UPDATE allocations SET is_redeem_required=? WHERE allocation_id = ? ", false, allocationObj.ID).Error
+		if err != nil {
+			logging.Logger.Error("Error redeeming the write marker. failed to update allocation's is_redeem_required ",
+				zap.Any("allocation", allocationObj.ID),
+				zap.Any("error", err))
+		}
 	}
-
 }
 
 func redeemWriteMarker(allocationObj *allocation.Allocation, wm *WriteMarkerEntity) error {
@@ -88,8 +88,16 @@ func redeemWriteMarker(allocationObj *allocation.Allocation, wm *WriteMarkerEnti
 
 		return err
 	}
-	allocationObj.LatestRedeemedWM = wm.WM.AllocationRoot
-	logging.Logger.Info("Success Redeeming the write marker", zap.Any("wm", wm.WM.AllocationRoot), zap.Any("txn", wm.CloseTxnID))
+
+	err = db.Exec("UPDATE allocations SET latest_redeemed_write_marker=? WHERE id=?",
+		wm.WM.AllocationRoot, allocationObj.ID).Error
+	if err != nil {
+		logging.Logger.Error("Error committing the writemarker redeem",
+			zap.Any("allocation", allocationObj.ID),
+			zap.Error(err))
+		shouldRollback = true
+		return err
+	}
 
 	err = db.Commit().Error
 	if err != nil {
@@ -99,6 +107,9 @@ func redeemWriteMarker(allocationObj *allocation.Allocation, wm *WriteMarkerEnti
 		shouldRollback = true
 		return err
 	}
+
+	allocationObj.LatestRedeemedWM = wm.WM.AllocationRoot
+	logging.Logger.Info("Success Redeeming the write marker", zap.Any("wm", wm.WM.AllocationRoot), zap.Any("txn", wm.CloseTxnID))
 
 	return nil
 }
