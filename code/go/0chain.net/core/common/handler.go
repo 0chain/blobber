@@ -22,7 +22,7 @@ const (
 	ClientSignatureHeader = "X-App-Client-Signature"
 )
 
-/*ReqRespHandlerf - a type for the default hanlder signature */
+/*ReqRespHandlerf - a type for the default handler signature */
 type ReqRespHandlerf func(w http.ResponseWriter, r *http.Request)
 
 /*JSONResponderF - a handler that takes standard request (non-json) and responds with a json response
@@ -50,16 +50,9 @@ func Respond(w http.ResponseWriter, data interface{}, err error) {
 		buf := bytes.NewBuffer(nil)
 		json.NewEncoder(buf).Encode(data) //nolint:errcheck // checked in previous step
 		http.Error(w, buf.String(), 400)
-	} else {
-		if data != nil {
-			json.NewEncoder(w).Encode(data) //nolint:errcheck // checked in previous step
-		}
+	} else if data != nil {
+		json.NewEncoder(w).Encode(data) //nolint:errcheck // checked in previous step
 	}
-}
-
-func getContext(r *http.Request) (context.Context, error) { //nolint:unused,deadcode // might be used later?
-	ctx := r.Context()
-	return ctx, nil
 }
 
 var domainRE = regexp.MustCompile(`^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)`) //nolint:unused,deadcode,varcheck // might be used later?
@@ -78,17 +71,14 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 			} else {
 				http.Error(w, err.Error(), 400)
 			}
-
-		} else {
-			if data != nil {
-				rawdata, ok := data.([]byte)
-				if ok {
-					w.Header().Set("Content-Type", "application/octet-stream")
-					w.Write(rawdata) //nolint:errcheck
-				} else {
-					w.Header().Set("Content-Type", "application/json")
-					json.NewEncoder(w).Encode(data) //nolint:errcheck
-				}
+		} else if data != nil {
+			rawdata, ok := data.([]byte)
+			if ok {
+				w.Header().Set("Content-Type", "application/octet-stream")
+				w.Write(rawdata) //nolint:errcheck
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(data) //nolint:errcheck
 			}
 		}
 	}
@@ -158,5 +148,59 @@ func JSONString(json map[string]interface{}, field string, required bool) (strin
 		return sval, nil
 	default:
 		return fmt.Sprintf("%v", sval), nil
+	}
+}
+
+type StatusCodeResponderF func(ctx context.Context, r *http.Request) (interface{}, int, error)
+
+func ToStatusCode(handler StatusCodeResponderF) ReqRespHandlerf {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
+		if r.Method == "OPTIONS" {
+			SetupCORSResponse(w, r)
+			return
+		}
+
+		ctx := r.Context()
+
+		data, statusCode, err := handler(ctx, r)
+
+		if err != nil {
+			if statusCode == 0 {
+				statusCode = http.StatusBadRequest
+			}
+
+			w.WriteHeader(statusCode)
+			w.Header().Set("Content-Type", "application/json")
+
+			if data != nil {
+				json.NewEncoder(w).Encode(data) //nolint:errcheck
+			} else {
+				//nolint:errcheck
+				json.NewEncoder(w).Encode(map[string]string{
+					"error": err.Error(),
+				})
+			}
+
+			return
+		}
+
+		if statusCode == 0 {
+			statusCode = http.StatusOK
+		}
+
+		w.WriteHeader(statusCode)
+
+		if data != nil {
+
+			rawdata, ok := data.([]byte)
+			if ok {
+				w.Header().Set("Content-Type", "application/octet-stream")
+				w.Write(rawdata) //nolint:errcheck
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(data) //nolint:errcheck
+			}
+		}
 	}
 }

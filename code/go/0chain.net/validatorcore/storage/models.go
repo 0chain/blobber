@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -11,8 +12,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/blobber/code/go/0chain.net/core/util"
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/storage/writemarker"
+	"github.com/0chain/gosdk/core/util"
 
 	"github.com/mitchellh/mapstructure"
 
@@ -67,7 +68,6 @@ func (r *DirMetaData) GetHash() string {
 }
 
 func (r *DirMetaData) CalculateHash() string {
-
 	childHashes := make([]string, len(r.Children))
 	for index, childRef := range r.Children {
 		childHashes[index] = childRef.GetHash()
@@ -91,21 +91,25 @@ type FileMetaData struct {
 	MerkleRoot     string     `json:"merkle_root" mapstructure:"merkle_root"`
 	ActualFileSize int64      `json:"actual_file_size" mapstructure:"actual_file_size"`
 	ActualFileHash string     `json:"actual_file_hash" mapstructure:"actual_file_hash"`
+	ChunkSize      int64      `json:"chunk_size" mapstructure:"chunk_size"`
 	Attributes     Attributes `json:"attributes" mapstructure:"attributes" `
 }
 
 func (fr *FileMetaData) GetHashData() string {
 	hashArray := make([]string, 0)
-	hashArray = append(hashArray, fr.AllocationID)
-	hashArray = append(hashArray, fr.Type)
-	hashArray = append(hashArray, fr.Name)
-	hashArray = append(hashArray, fr.Path)
-	hashArray = append(hashArray, strconv.FormatInt(fr.Size, 10))
-	hashArray = append(hashArray, fr.ContentHash)
-	hashArray = append(hashArray, fr.MerkleRoot)
-	hashArray = append(hashArray, strconv.FormatInt(fr.ActualFileSize, 10))
-	hashArray = append(hashArray, fr.ActualFileHash)
-	hashArray = append(hashArray, fr.Attributes.String())
+	hashArray = append(hashArray,
+		fr.AllocationID,
+		fr.Type,
+		fr.Name,
+		fr.Path,
+		strconv.FormatInt(fr.Size, 10),
+		fr.ContentHash,
+		fr.MerkleRoot,
+		strconv.FormatInt(fr.ActualFileSize, 10),
+		fr.ActualFileHash,
+		fr.Attributes.String(),
+		strconv.FormatInt(fr.ChunkSize, 10),
+	)
 	return strings.Join(hashArray, ":")
 }
 
@@ -204,7 +208,7 @@ func (op *ObjectPath) VerifyBlockNum(challengeRand int64) error {
 	r := rand.New(rand.NewSource(challengeRand))
 	//rand.Seed(challengeRand)
 	blockNum := r.Int63n(op.RootObject.NumBlocks)
-	blockNum = blockNum + 1
+	blockNum++
 
 	if op.RootObject.NumBlocks < blockNum {
 		return common.NewError("invalid_block_num", fmt.Sprintf("Invalid block number %d/%d", op.RootObject.NumBlocks, blockNum))
@@ -221,7 +225,7 @@ func (op *ObjectPath) VerifyBlockNum(challengeRand int64) error {
 		}
 		for _, child := range curRef.(*DirMetaData).Children {
 			if child.GetNumBlocks() < remainingBlocks {
-				remainingBlocks = remainingBlocks - child.GetNumBlocks()
+				remainingBlocks -= child.GetNumBlocks()
 				continue
 			}
 			if child.GetType() == FILE {
@@ -286,6 +290,7 @@ type ChallengeRequest struct {
 	WriteMarkers []*writemarker.WriteMarkerEntity `json:"write_markers,omitempty"`
 	DataBlock    []byte                           `json:"data,omitempty"`
 	MerklePath   *util.MTPath                     `json:"merkle_path,omitempty"`
+	ChunkSize    int64                            `json:"chunk_size,omitempty"`
 }
 
 func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationObj *Allocation) error {
@@ -326,8 +331,15 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 	}
 
 	Logger.Info("Verifying data block and merkle path", zap.Any("challenge_id", challengeObj.ID))
-	contentHash := encryption.Hash(cr.DataBlock)
-	merkleVerify := util.VerifyMerklePath(contentHash, cr.MerklePath, cr.ObjPath.Meta.MerkleRoot)
+	//contentHash := encryption.Hash(cr.DataBlock)
+
+	contentHasher := util.NewCompactMerkleTree(nil)
+	err = contentHasher.Reload(cr.ChunkSize, bytes.NewReader(cr.DataBlock))
+	if err != nil {
+		return common.NewError("challenge_validation_failed", "Failed to calculate content hash for the data block")
+	}
+
+	merkleVerify := util.VerifyMerklePath(contentHasher.GetMerkleRoot(), cr.MerklePath, cr.ObjPath.Meta.MerkleRoot)
 	if !merkleVerify {
 		return common.NewError("challenge_validation_failed", "Failed to verify the merkle path for the data block")
 	}

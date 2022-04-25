@@ -3,19 +3,19 @@ package filestore
 import (
 	"bytes"
 	"context"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"hash"
 	"io"
-	"io/ioutil"
+	"math"
 	"mime/multipart"
 	"os"
 	"path/filepath"
 	"strings"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/errors"
 	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -23,9 +23,10 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/util"
-	"github.com/minio/minio-go"
-	"golang.org/x/crypto/sha3"
+	"github.com/0chain/gosdk/constants"
+	minio "github.com/minio/minio-go"
+
+	"github.com/0chain/gosdk/core/util"
 )
 
 const (
@@ -52,7 +53,7 @@ type IFileBlockGetter interface {
 type FileBlockGetter struct {
 }
 
-func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
+func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
 	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
@@ -82,18 +83,18 @@ func (FileBlockGetter) GetFileBlock(fs *FileFSStore, allocationID string, fileDa
 		return nil, err
 	}
 
-	filesize := int(fileinfo.Size())
-	maxBlockNum := int64(filesize / CHUNK_SIZE)
+	filesize := fileinfo.Size()
+	maxBlockNum := filesize / fileData.ChunkSize
 	// check for any left over bytes. Add one more go routine if required.
-	if remainder := filesize % CHUNK_SIZE; remainder != 0 {
+	if remainder := filesize % fileData.ChunkSize; remainder != 0 {
 		maxBlockNum++
 	}
 
 	if blockNum > maxBlockNum || blockNum < 1 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number")
 	}
-	buffer := make([]byte, CHUNK_SIZE*numBlocks)
-	n, err := file.ReadAt(buffer, ((blockNum - 1) * CHUNK_SIZE))
+	buffer := make([]byte, fileData.ChunkSize*numBlocks)
+	n, err := file.ReadAt(buffer, ((blockNum - 1) * fileData.ChunkSize))
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
@@ -114,6 +115,16 @@ type StoreAllocation struct {
 	TempObjectsPath string
 }
 
+var fileFSStore *FileFSStore
+
+func UseDisk() {
+	if fileFSStore == nil {
+		panic("UseDisk: please SetupFSStore first")
+	}
+
+	fileStore = fileFSStore
+}
+
 func SetupFSStore(rootDir string) (FileStore, error) {
 	if err := createDirs(rootDir); err != nil {
 		return nil, err
@@ -122,12 +133,15 @@ func SetupFSStore(rootDir string) (FileStore, error) {
 }
 
 func SetupFSStoreI(rootDir string, fileBlockGetter IFileBlockGetter) (FileStore, error) {
-	fsStore = &FileFSStore{
+	fileFSStore = &FileFSStore{
 		RootDirectory:   rootDir,
 		Minio:           intializeMinio(),
 		fileBlockGetter: fileBlockGetter,
 	}
-	return fsStore, nil
+
+	fileStore = fileFSStore
+
+	return fileStore, nil
 }
 
 func intializeMinio() *minio.Client {
@@ -221,17 +235,16 @@ func (fs *FileFSStore) GetlDiskSizeUsed(allocationID string) (int64, error) {
 	return size, err
 }
 
-func GetFilePathFromHash(hash string) (string, string) {
+func GetFilePathFromHash(h string) (string, string) {
 	var dir bytes.Buffer
-	fmt.Fprintf(&dir, "%s", hash[0:3])
+	fmt.Fprintf(&dir, "%s", h[0:3])
 	for i := 1; i < 3; i++ {
-		fmt.Fprintf(&dir, "%s%s", string(os.PathSeparator), hash[3*i:3*i+3])
+		fmt.Fprintf(&dir, "%s%s", string(os.PathSeparator), h[3*i:3*i+3])
 	}
-	return dir.String(), hash[9:]
+	return dir.String(), h[9:]
 }
 
 func (fs *FileFSStore) generateTransactionPath(transID string) string {
-
 	var dir bytes.Buffer
 	fmt.Fprintf(&dir, "%s%s", fs.RootDirectory, OSPathSeperator)
 	for i := 0; i < 3; i++ {
@@ -300,60 +313,77 @@ func (fs *FileFSStore) GetFileBlockForChallenge(allocationID string, fileData *F
 
 	var returnBytes []byte
 
-	merkleHashes := make([]hash.Hash, 1024)
-	merkleLeaves := make([]util.Hashable, 1024)
-	for idx := range merkleHashes {
-		merkleHashes[idx] = sha3.New256()
-	}
+	fi, _ := file.Stat()
+
+	numChunks := int(math.Ceil(float64(fi.Size()) / float64(fileData.ChunkSize)))
+
+	fmt := util.NewFixedMerkleTree(int(fileData.ChunkSize))
+
 	bytesBuf := bytes.NewBuffer(make([]byte, 0))
-	for {
-		_, err := io.CopyN(bytesBuf, file, CHUNK_SIZE)
-		if err != io.EOF && err != nil {
-			return nil, nil, common.NewError("file_write_error", err.Error())
-		}
-		dataBytes := bytesBuf.Bytes()
-		tmpBytes := make([]byte, len(dataBytes))
-		copy(tmpBytes, dataBytes)
-		merkleChunkSize := 64
-		for i := 0; i < len(tmpBytes); i += merkleChunkSize {
-			end := i + merkleChunkSize
-			if end > len(tmpBytes) {
-				end = len(tmpBytes)
+	for chunkIndex := 0; chunkIndex < numChunks; chunkIndex++ {
+		written, err := io.CopyN(bytesBuf, file, fileData.ChunkSize)
+
+		if written > 0 {
+			dataBytes := bytesBuf.Bytes()
+
+			err2 := fmt.Write(dataBytes, chunkIndex)
+			if err2 != nil {
+				return nil, nil, errors.ThrowLog(err2.Error(), constants.ErrUnableHash)
 			}
-			offset := i / merkleChunkSize
-			merkleHashes[offset].Write(tmpBytes[i:end])
-			if offset == blockoffset {
-				returnBytes = append(returnBytes, tmpBytes[i:end]...)
+
+			merkleChunkSize := int(fileData.ChunkSize) / 1024
+
+			if merkleChunkSize == 0 {
+				merkleChunkSize = 1
 			}
+
+			offset := 0
+
+			for i := 0; i < len(dataBytes); i += merkleChunkSize {
+				end := i + merkleChunkSize
+				if end > len(dataBytes) {
+					end = len(dataBytes)
+				}
+
+				if offset == blockoffset {
+					returnBytes = append(returnBytes, dataBytes[i:end]...)
+				}
+
+				offset++
+				if offset >= 1024 {
+					offset = 1
+				}
+			}
+			bytesBuf.Reset()
 		}
-		bytesBuf.Reset()
+
 		if err != nil && err == io.EOF {
 			break
 		}
 	}
 
-	for idx := range merkleHashes {
-		merkleLeaves[idx] = util.NewStringHashable(hex.EncodeToString(merkleHashes[idx].Sum(nil)))
-	}
-	var mt util.MerkleTreeI = &util.MerkleTree{}
-	mt.ComputeTree(merkleLeaves)
-
-	return returnBytes, mt, nil
+	return returnBytes, fmt.GetMerkleTree(), nil
 }
 
-func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
+func (fs *FileFSStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
 	return fs.fileBlockGetter.GetFileBlock(fs, allocationID, fileData, blockNum, numBlocks)
 }
 
 func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error {
 	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
-		return common.NewError("invalid_allocation", "Invalid allocation. "+err.Error())
+		Logger.Warn("invalid_allocation", zap.String("allocationID", allocationID), zap.Error(err))
+		return nil
 	}
 
 	fileObjectPath := fs.generateTempPath(allocation, fileData, connectionID)
 
-	return os.Remove(fileObjectPath)
+	err = os.Remove(fileObjectPath)
+	if err != nil {
+		Logger.Warn("invalid_path", zap.String("fileObjectPath", fileObjectPath), zap.Error(err))
+	}
+
+	return nil
 }
 
 func (fs *FileFSStore) generateTempPath(allocation *StoreAllocation, fileData *FileInputData, connectionID string) string {
@@ -406,7 +436,7 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 	//return false, err
 }
 
-func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error {
+func (fs *FileFSStore) DeleteFile(allocationID, contentHash string) error {
 	allocation, err := fs.SetupAllocation(allocationID, true)
 	if err != nil {
 		return common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
@@ -426,83 +456,11 @@ func (fs *FileFSStore) DeleteFile(allocationID string, contentHash string) error
 	return os.Remove(fileObjectPath)
 }
 
-func (fs *FileFSStore) GetMerkleTreeForFile(allocationID string, fileData *FileInputData) (util.MerkleTreeI, error) {
-	allocation, err := fs.SetupAllocation(allocationID, true)
-	if err != nil {
-		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
-	}
-	dirPath, destFile := GetFilePathFromHash(fileData.Hash)
-	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
-	fileObjectPath = filepath.Join(fileObjectPath, destFile)
-
-	file, err := os.Open(fileObjectPath)
-	if err != nil {
-		if os.IsNotExist(err) && fileData.OnCloud {
-			err = fs.DownloadFromCloud(fileData.Hash, fileObjectPath)
-			if err != nil {
-				return nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
-			}
-			file, err = os.Open(fileObjectPath)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
-	}
-	defer file.Close()
-	//merkleHash := sha3.New256()
-	tReader := file //io.TeeReader(file, merkleHash)
-	//merkleLeaves := make([]util.Hashable, 0)
-	merkleHashes := make([]hash.Hash, 1024)
-	merkleLeaves := make([]util.Hashable, 1024)
-	for idx := range merkleHashes {
-		merkleHashes[idx] = sha3.New256()
-	}
-	bytesBuf := bytes.NewBuffer(make([]byte, 0))
-	for {
-		_, err := io.CopyN(bytesBuf, tReader, CHUNK_SIZE)
-		if err != io.EOF && err != nil {
-			return nil, common.NewError("file_write_error", err.Error())
-		}
-		dataBytes := bytesBuf.Bytes()
-		merkleChunkSize := 64
-		for i := 0; i < len(dataBytes); i += merkleChunkSize {
-			end := i + merkleChunkSize
-			if end > len(dataBytes) {
-				end = len(dataBytes)
-			}
-			offset := i / merkleChunkSize
-			merkleHashes[offset].Write(dataBytes[i:end])
-		}
-		//merkleLeaves = append(merkleLeaves, util.NewStringHashable(hex.EncodeToString(merkleHash.Sum(nil))))
-		//merkleHash.Reset()
-		bytesBuf.Reset()
-		if err != nil && err == io.EOF {
-			break
-		}
-	}
-	for idx := range merkleHashes {
-		merkleLeaves[idx] = util.NewStringHashable(hex.EncodeToString(merkleHashes[idx].Sum(nil)))
-	}
-
-	var mt util.MerkleTreeI = &util.MerkleTree{}
-	mt.ComputeTree(merkleLeaves)
-
-	return mt, nil
-}
-
-func (fs *FileFSStore) CreateDir(dirName string) error {
-	return createDirs(dirName)
-}
-
 func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) error {
 	return nil
 }
 
-func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
-	infile multipart.File, connectionID string) (*FileOutputData, error) {
-
+func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
 	allocation, err := fs.SetupAllocation(allocationID, false)
 	if err != nil {
 		return nil, common.NewError("filestore_setup_error", "Error setting the fs store. "+err.Error())
@@ -516,89 +474,24 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData,
 	defer dest.Close()
 
 	fileRef := &FileOutputData{}
-	var fileReader io.Reader = infile
 
-	if fileData.IsResumable {
-		h := sha1.New()
-		offset, err := dest.WriteChunk(context.TODO(), fileData.UploadOffset, io.TeeReader(fileReader, h))
-
-		if err != nil {
-			return nil, common.NewError("file_write_error", err.Error())
-		}
-
-		fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
-		fileRef.Size = dest.Size()
-		fileRef.Name = fileData.Name
-		fileRef.Path = fileData.Path
-		fileRef.UploadOffset = fileData.UploadOffset + offset
-		fileRef.UploadLength = fileData.UploadLength
-
-		if !fileData.IsFinal {
-			//skip to compute hash until the last chunk is uploaded
-			return fileRef, nil
-		}
-
-		fileReader = dest
+	// the chunk has been rewritten. but network was broken, and it is not save in db
+	if dest.size > fileData.UploadOffset {
+		fileRef.ChunkUploaded = true
 	}
 
-	h := sha1.New()
-	bytesBuffer := bytes.NewBuffer(nil)
-	multiHashWriter := io.MultiWriter(h, bytesBuffer)
-	tReader := io.TeeReader(fileReader, multiHashWriter)
-	merkleHashes := make([]hash.Hash, 1024)
-	merkleLeaves := make([]util.Hashable, 1024)
-	for idx := range merkleHashes {
-		merkleHashes[idx] = sha3.New256()
-	}
-	fileSize := int64(0)
-	for {
-		var written int64
+	h := sha256.New()
+	size, err := dest.WriteChunk(context.TODO(), fileData.UploadOffset, io.TeeReader(infile, h))
 
-		if fileData.IsResumable {
-			//all chunks have been written, only read bytes from local file , and compute hash
-			written, err = io.CopyN(ioutil.Discard, tReader, CHUNK_SIZE)
-		} else {
-			written, err = io.CopyN(dest, tReader, CHUNK_SIZE)
-		}
-
-		if err != io.EOF && err != nil {
-			return nil, common.NewError("file_write_error", err.Error())
-		}
-		fileSize += written
-		dataBytes := bytesBuffer.Bytes()
-		merkleChunkSize := 64
-		for i := 0; i < len(dataBytes); i += merkleChunkSize {
-			end := i + merkleChunkSize
-			if end > len(dataBytes) {
-				end = len(dataBytes)
-			}
-			offset := i / merkleChunkSize
-			merkleHashes[offset].Write(dataBytes[i:end])
-		}
-
-		bytesBuffer.Reset()
-		if err != nil && err == io.EOF {
-			break
-		}
-	}
-	for idx := range merkleHashes {
-		merkleLeaves[idx] = util.NewStringHashable(hex.EncodeToString(merkleHashes[idx].Sum(nil)))
+	if err != nil {
+		return nil, errors.ThrowLog(err.Error(), constants.ErrUnableWriteFile)
 	}
 
-	var mt util.MerkleTreeI = &util.MerkleTree{}
-	mt.ComputeTree(merkleLeaves)
+	fileRef.Size = size
+	fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
 
-	//only update hash for whole file when it is not a resumable upload or is final chunk.
-	if !fileData.IsResumable || fileData.IsFinal {
-		fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
-	}
-
-	fileRef.Size = fileSize
 	fileRef.Name = fileData.Name
 	fileRef.Path = fileData.Path
-	fileRef.MerkleRoot = mt.GetRoot()
-	fileRef.UploadOffset = fileSize
-	fileRef.UploadLength = fileData.UploadLength
 
 	return fileRef, nil
 }
@@ -615,7 +508,7 @@ func (fs *FileFSStore) IterateObjects(allocationID string, handler FileObjectHan
 				return nil
 			}
 			defer f.Close()
-			h := sha1.New()
+			h := sha256.New()
 			if _, err := io.Copy(h, f); err != nil {
 				return nil
 			}
@@ -639,8 +532,11 @@ func (fs *FileFSStore) DownloadFromCloud(fileHash, filePath string) error {
 }
 
 func (fs *FileFSStore) RemoveFromCloud(fileHash string) error {
-	if _, err := fs.Minio.StatObject(MinioConfig.BucketName, fileHash, minio.StatObjectOptions{}); err == nil {
-		return fs.Minio.RemoveObject(MinioConfig.BucketName, fileHash)
+	if fs != nil && fs.Minio != nil {
+		_, err := fs.Minio.StatObject(MinioConfig.BucketName, fileHash, minio.StatObjectOptions{})
+		if err == nil {
+			return fs.Minio.RemoveObject(MinioConfig.BucketName, fileHash)
+		}
 	}
 	return nil
 }

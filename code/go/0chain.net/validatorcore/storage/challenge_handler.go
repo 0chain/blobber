@@ -87,6 +87,7 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 		validationTicket.ValidatorID = node.Self.ID
 		validationTicket.ValidatorKey = node.Self.PublicKey
 		validationTicket.Timestamp = common.Now()
+
 		if err := validationTicket.Sign(); err != nil {
 			return nil, common.NewError("invalid_parameters", err.Error())
 		}
@@ -108,5 +109,4 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 
 	lru.Add(challengeHash, &validationTicket) //nolint:errcheck // never returns an error anyway
 	return &validationTicket, nil
-
 }

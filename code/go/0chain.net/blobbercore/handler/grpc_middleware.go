@@ -13,7 +13,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
-	grpc_ratelimit "github.com/grpc-ecosystem/go-grpc-middleware/ratelimit"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -50,7 +49,7 @@ func unaryDatabaseTransactionInjector() grpc.UnaryServerInterceptor {
 
 func unaryTimeoutInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		deadline := time.Now().Add(time.Duration(TIMEOUT_SECONDS * time.Second))
+		deadline := time.Now().Add(TIMEOUT_SECONDS * time.Second)
 		ctx, canceler := context.WithDeadline(ctx, deadline)
 		defer canceler()
 
@@ -58,7 +57,7 @@ func unaryTimeoutInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
-func NewGRPCServerWithMiddlewares(limiter grpc_ratelimit.Limiter, r *mux.Router) *grpc.Server {
+func NewGRPCServerWithMiddlewares(r *mux.Router) *grpc.Server {
 	srv := grpc.NewServer(
 		grpc.ChainStreamInterceptor(
 			grpc_zap.StreamServerInterceptor(logging.Logger),
@@ -68,7 +67,6 @@ func NewGRPCServerWithMiddlewares(limiter grpc_ratelimit.Limiter, r *mux.Router)
 			grpc_zap.UnaryServerInterceptor(logging.Logger),
 			grpc_recovery.UnaryServerInterceptor(),
 			unaryDatabaseTransactionInjector(),
-			grpc_ratelimit.UnaryServerInterceptor(limiter),
 			unaryTimeoutInterceptor(), // should always be the lastest, to be "innermost"
 		),
 	)
@@ -79,6 +77,11 @@ func NewGRPCServerWithMiddlewares(limiter grpc_ratelimit.Limiter, r *mux.Router)
 	wrappedServer := grpcweb.WrapServer(srv)
 	r.Use(func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if err := recover(); err != nil {
+					logging.Logger.Error("[recover]grpc", zap.String("url", r.URL.String()), zap.Any("err", err))
+				}
+			}()
 			if wrappedServer.IsGrpcWebRequest(r) {
 				wrappedServer.ServeHTTP(w, r)
 				return

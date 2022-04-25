@@ -1,0 +1,106 @@
+name: Tests
+
+concurrency:
+  group: "tests-${{ github.ref }}"
+  cancel-in-progress: true
+
+on:
+  push: 
+    branches:
+      - master
+      - staging
+    tags:
+  pull_request:
+
+jobs:
+  linter:
+    name: Lints
+    runs-on: [self-hosted,docker-builds]
+    steps:
+      - name: Setup go 1.18
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.18' # The Go version to download (if necessary) and use.
+
+      - name: Clone blobber
+        uses: actions/checkout@v2
+
+      - name: Buf-lint
+        if: success()
+        run: make local
+
+      - name: Golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
+          args: --timeout=2m0s
+          skip-go-installation: true
+
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: [self-hosted,docker-builds]
+    steps:
+      - name: Setup go 1.18
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.18' # The Go version to download (if necessary) and use.
+
+      - name: Clone blobber
+        uses: actions/checkout@v2
+
+      - name: Run tests
+        run: |
+          cd $GITHUB_WORKSPACE/code/go/0chain.net/ 
+          CGO_ENABLED=1 go test -tags bn256 -race -coverprofile=coverage.txt -covermode=atomic ./...
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          # fail_ci_if_error: true
+          files: ./code/go/0chain.net/coverage.txt
+          flags: Unit-Tests
+          verbose: true
+    
+  integration-tests:
+    name: Integration Tests
+    runs-on: [ubuntu-20.04]
+    timeout-minutes: 40
+    steps:
+      - name: Setup go 1.18
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.18' # The Go version to download (if necessary) and use.
+
+      # - uses: actions/cache@v2
+      #   with:
+      #     path: ~/go/pkg/mod
+      #     key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-go-
+
+      - name: Clone Blobber
+        uses: actions/checkout@v1
+
+      - name: Install Postgres
+        run: |
+          ./docker.local/bin/blobber.init.setup.sh
+          cd docker.local/blobber1
+          ../bin/blobber.start_github.sh
+          docker ps
+      - name: Run Tests
+        run: |
+          make local-build
+          sudo make local-run &
+          sleep 15
+          running=0
+          echo "checking blobber server status"
+          if [ $running -eq 0 ]; then
+            echo "checking blobber server status"
+            curl 127.0.0.1:5051 && $running=1 || sleep 2
+          fi
+
+          echo =========================[ run tests ]=========================
+          #sudo make integration-tests 
+          go=$(which go)
+          root=$(pwd)
+          sudo CGO_ENABLED=1 root=$root integration=1 $go test -tags bn256  ./...

@@ -6,17 +6,22 @@ import (
 
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"google.golang.org/grpc/metadata"
 )
 
 func TestGetFileMetaData_IntegrationTest(t *testing.T) {
 	bClient, tdController := setupHandlerIntegrationTests(t)
+	allocationTx := randString(32)
+
+	pubKey, _, signScheme := GeneratePubPrivateKey(t)
+	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 
 	err := tdController.ClearDatabase()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = tdController.AddGetFileMetaDataTestData()
+	err = tdController.AddGetFileMetaDataTestData(allocationTx, pubKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,12 +36,13 @@ func TestGetFileMetaData_IntegrationTest(t *testing.T) {
 		{
 			name: "Success",
 			context: metadata.New(map[string]string{
-				common.ClientHeader: "exampleOwnerId",
+				common.ClientHeader:          "exampleOwnerId",
+				common.ClientSignatureHeader: clientSignature,
 			}),
 			input: &blobbergrpc.GetFileMetaDataRequest{
 				Path:       "examplePath",
 				PathHash:   "exampleId:examplePath",
-				Allocation: "exampleTransaction",
+				Allocation: allocationTx,
 			},
 			expectedFileName: "filename",
 			expectingError:   false,
@@ -44,12 +50,13 @@ func TestGetFileMetaData_IntegrationTest(t *testing.T) {
 		{
 			name: "Unknown file path",
 			context: metadata.New(map[string]string{
-				common.ClientHeader: "exampleOwnerId",
+				common.ClientHeader:          "exampleOwnerId",
+				common.ClientSignatureHeader: clientSignature,
 			}),
 			input: &blobbergrpc.GetFileMetaDataRequest{
 				Path:       "examplePath",
 				PathHash:   "exampleId:examplePath123",
-				Allocation: "exampleTransaction",
+				Allocation: allocationTx,
 			},
 			expectedFileName: "",
 			expectingError:   true,

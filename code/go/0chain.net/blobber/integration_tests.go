@@ -1,3 +1,4 @@
+//go:build integration_tests
 // +build integration_tests
 
 package main
@@ -17,3 +18,5 @@ func initIntegrationsTests(id string) {
 func shutdownIntegrationTests() {
 	crpc.Shutdown()
 }
+
+func startGRPCServer() {}

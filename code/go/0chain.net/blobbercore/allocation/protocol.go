@@ -5,21 +5,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 // GetAllocationByID from DB. This function doesn't load related terms.
-func GetAllocationByID(ctx context.Context, allocID string) (
-	a *Allocation, err error) {
-
+func GetAllocationByID(ctx context.Context, allocID string) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
 	a = new(Allocation)
@@ -49,9 +46,8 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 	return          // found in DB
 }
 
-func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
-	readonly bool) (a *Allocation, err error) {
-
+// VerifyAllocationTransaction try to get allocation from postgres.if it doesn't exists, get it from sharders, and insert it into postgres.
+func VerifyAllocationTransaction(ctx context.Context, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
 	a = new(Allocation)
@@ -60,7 +56,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		First(a).Error
 
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err // unexpected DB error
+		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
 	}
 
 	if err == nil {
@@ -70,7 +66,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 			Where("allocation_id = ?", a.ID).
 			Find(&terms).Error
 		if err != nil {
-			return // unexpected DB error
+			return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
 		}
 		a.Terms = terms // set field
 		return          // found in DB
@@ -93,22 +89,29 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		Where("id = ?", sa.ID).
 		First(a).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err // unexpected
+		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
 	}
 
 	isExist = (a.ID != "")
 
+	Logger.Info("VerifyAllocationTransaction",
+		zap.Bool("isExist", isExist),
+		zap.Any("allocation", a),
+		zap.Any("storageAllocation", sa),
+		zap.String("node.Self.ID", node.Self.ID))
+
 	if !isExist {
 		foundBlobber := false
-		for _, blobberConnection := range sa.Blobbers {
-			if blobberConnection.ID == node.Self.ID {
-				foundBlobber = true
-				a.AllocationRoot = ""
-				a.BlobberSize = (sa.Size + int64(len(sa.Blobbers)-1)) /
-					int64(len(sa.Blobbers))
-				a.BlobberSizeUsed = 0
-				break
+		for _, blobberConnection := range sa.BlobberDetails {
+			if blobberConnection.BlobberID != node.Self.ID {
+				continue
 			}
+			foundBlobber = true
+			a.AllocationRoot = ""
+			a.BlobberSize = (sa.Size + int64(len(sa.BlobberDetails)-1)) /
+				int64(len(sa.BlobberDetails))
+			a.BlobberSizeUsed = 0
+			break
 		}
 		if !foundBlobber {
 			return nil, common.NewError("invalid_blobber",
@@ -141,7 +144,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 	}
 
 	if readonly {
-		return
+		return a, nil
 	}
 
 	Logger.Info("Saving the allocation to DB")
@@ -168,7 +171,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string,
 		}
 	}
 
-	return
+	return a, nil
 }
 
 // read/write pool stat for an {allocation -> blobber}
@@ -178,9 +181,7 @@ type PoolStat struct {
 	ExpireAt common.Timestamp `json:"expire_at"`
 }
 
-func RequestReadPools(clientID, allocationID string) (
-	rps []*ReadPool, err error) {
-
+func RequestReadPools(clientID, allocationID string) (rps []*ReadPool, err error) {
 	Logger.Info("request read pools")
 
 	var (
@@ -188,15 +189,12 @@ func RequestReadPools(clientID, allocationID string) (
 		resp      []byte
 	)
 
-	resp, err = transaction.MakeSCRestAPICall(
-		transaction.STORAGE_CONTRACT_ADDRESS,
-		"/getReadPoolAllocBlobberStat",
-		map[string]string{
-			"client_id":     clientID,
-			"allocation_id": allocationID,
-			"blobber_id":    blobberID,
-		},
-		chain.GetServerChain())
+	params := map[string]string{
+		"client_id":     clientID,
+		"allocation_id": allocationID,
+		"blobber_id":    blobberID,
+	}
+	resp, err = transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getReadPoolAllocBlobberStat", params, chain.GetServerChain())
 	if err != nil {
 		return nil, fmt.Errorf("requesting read pools stat: %v", err)
 	}
@@ -216,7 +214,6 @@ func RequestReadPools(clientID, allocationID string) (
 			PoolID: ps.PoolID,
 
 			ClientID:     clientID,
-			BlobberID:    blobberID,
 			AllocationID: allocationID,
 
 			Balance:  ps.Balance,
@@ -227,9 +224,7 @@ func RequestReadPools(clientID, allocationID string) (
 	return // got them
 }
 
-func RequestWritePools(clientID, allocationID string) (
-	wps []*WritePool, err error) {
-
+func RequestWritePools(clientID, allocationID string) (wps []*WritePool, err error) {
 	Logger.Info("request write pools")
 
 	var (
@@ -237,15 +232,12 @@ func RequestWritePools(clientID, allocationID string) (
 		resp      []byte
 	)
 
-	resp, err = transaction.MakeSCRestAPICall(
-		transaction.STORAGE_CONTRACT_ADDRESS,
-		"/getWritePoolAllocBlobberStat",
-		map[string]string{
-			"client_id":     clientID,
-			"allocation_id": allocationID,
-			"blobber_id":    blobberID,
-		},
-		chain.GetServerChain())
+	params := map[string]string{
+		"client_id":     clientID,
+		"allocation_id": allocationID,
+		"blobber_id":    blobberID,
+	}
+	resp, err = transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getWritePoolAllocBlobberStat", params, chain.GetServerChain())
 	if err != nil {
 		return nil, fmt.Errorf("requesting write pools stat: %v", err)
 	}
@@ -265,7 +257,6 @@ func RequestWritePools(clientID, allocationID string) (
 			PoolID: ps.PoolID,
 
 			ClientID:     clientID,
-			BlobberID:    blobberID,
 			AllocationID: allocationID,
 
 			Balance:  ps.Balance,

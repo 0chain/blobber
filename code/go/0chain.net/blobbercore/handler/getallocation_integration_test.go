@@ -8,7 +8,6 @@ import (
 )
 
 func TestGetAllocation_IntegrationTest(t *testing.T) {
-
 	bClient, tdController := setupHandlerIntegrationTests(t)
 
 	err := tdController.ClearDatabase()

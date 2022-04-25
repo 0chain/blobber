@@ -1,0 +1,36 @@
+@startuml Upload / Delete Flow
+
+actor Client
+
+title Upload/Delete flow
+Client -> Blockchain : Make allocation request (erasure code, size, expiry)
+Blockchain -> Blockchain : Assigns the blobbers \ncreates the read/write pools for allocation
+Blockchain --> Client : Allocation status, if success, list of blobbers selected
+
+
+loop till done
+group upload    
+    Client -> Blobber : POST request - Upload the file (path, metadata, connection id)
+    Blobber --> Client : Upload successful
+end
+group delete    
+    Client -> Blobber : DELETE request - Delete the file and pass delete token (path hash, file hash from list api)
+    Blobber -> Blobber : Validate the delete token and stores with New state
+    Blobber --> Client : delete successful
+end
+end
+Client -> Blobber : commit the connection and pass the writemarker (allocation root, prev allocation root, upload size) 
+Blobber -> Blobber : validates the write marker, commits any delete tokens
+Blobber --> Client : commit success / failure
+
+
+
+Blobber -> Blockchain : redeem the write marker in the order received
+note right
+async redeemption
+not blocking uploads
+end note
+
+Blockchain -> Blockchain : Move tokens from write pool to challenge pool
+
+@enduml

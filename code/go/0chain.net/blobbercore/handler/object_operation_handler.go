@@ -1,26 +1,23 @@
 package handler
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"math"
-	"strings"
+	"fmt"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
-	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 
 	"net/http"
 	"path/filepath"
 	"strconv"
 
+	"github.com/0chain/gosdk/constants"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
@@ -30,18 +27,23 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	zfileref "github.com/0chain/gosdk/zboxcore/fileref"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
+
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
-func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
-	numBlocks, pendNumBlocks int64, payerID string) (err error) {
+const (
+	// EncryptionHeaderSize encryption header size in chunk: PRE.MessageChecksum(128)"+PRE.OverallChecksum(128)
+	EncryptionHeaderSize = 128 + 128
+	// ReEncryptionHeaderSize re-encryption header size in chunk
+	ReEncryptionHeaderSize = 256
+)
 
+func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks, pendNumBlocks int64, payerID string) (err error) {
 	if numBlocks == 0 {
 		return
 	}
@@ -50,301 +52,207 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation,
 	var (
 		db        = datastore.GetStore().GetTransaction(ctx)
 		blobberID = node.Self.ID
-		until     = common.Now() +
-			common.Timestamp(config.Configuration.ReadLockTimeout)
-
-		want = alloc.WantRead(blobberID, numBlocks)
+		until     = common.Now() + common.Timestamp(config.Configuration.ReadLockTimeout)
 
 		rps []*allocation.ReadPool
 	)
 
-	if want == 0 {
+	if alloc.GetRequiredReadBalance(blobberID, numBlocks) <= 0 {
 		return // skip if read price is zero
 	}
 
-	rps, err = allocation.ReadPools(db, payerID, alloc.ID,
-		blobberID, until)
+	readPoolsBalance, err := allocation.GetReadPoolsBalance(db, alloc.ID, payerID, until)
 	if err != nil {
-		return common.NewErrorf("read_pre_redeem",
-			"can't get read pools from DB: %v", err)
+		return common.NewError("read_pre_redeem", "database error while reading read pools balance")
 	}
 
-	var have = alloc.HaveRead(rps, blobberID, pendNumBlocks)
+	requiredBalance := alloc.GetRequiredReadBalance(blobberID, numBlocks+pendNumBlocks)
 
-	if have < want {
-		rps, err = allocation.RequestReadPools(payerID,
-			alloc.ID)
+	if float64(readPoolsBalance) < requiredBalance {
+		rps, err = allocation.RequestReadPools(payerID, alloc.ID)
 		if err != nil {
-			return common.NewErrorf("read_pre_redeem",
-				"can't request read pools from sharders: %v", err)
+			return common.NewErrorf("read_pre_redeem", "can't request read pools from sharders: %v", err)
 		}
 
-		err = allocation.SetReadPools(db, payerID,
-			alloc.ID, blobberID, rps)
+		err = allocation.SetReadPools(db, payerID, alloc.ID, rps)
 		if err != nil {
-			return common.NewErrorf("read_pre_redeem",
-				"can't save requested read pools: %v", err)
+			return common.NewErrorf("read_pre_redeem", "can't save requested read pools: %v", err)
 		}
 
-		rps, err = allocation.ReadPools(db, payerID, alloc.ID, blobberID,
-			until)
-		if err != nil {
-			return common.NewErrorf("read_pre_redeem",
-				"can't get read pools from DB: %v", err)
+		readPoolsBalance = 0
+		for _, rp := range rps {
+			if rp.ExpireAt < until {
+				continue
+			}
+			readPoolsBalance += rp.Balance
 		}
 
-		have = alloc.HaveRead(rps, blobberID, pendNumBlocks)
-	}
-
-	if have < want {
-		return common.NewError("read_pre_redeem", "not enough "+
-			"tokens in client's read pools associated with the"+
-			" allocation->blobber")
+		if float64(readPoolsBalance) < requiredBalance {
+			return common.NewError("read_pre_redeem", "not enough "+
+				"tokens in client's read pools associated with the"+
+				" allocation->blobber")
+		}
 	}
 
 	return
 }
 
-func writePreRedeem(ctx context.Context, alloc *allocation.Allocation,
-	writeMarker *writemarker.WriteMarker, payerID string) (err error) {
-
+func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMarker *writemarker.WriteMarker, payerID string) (err error) {
 	// check out read pool tokens if read_price > 0
 	var (
 		db        = datastore.GetStore().GetTransaction(ctx)
 		blobberID = node.Self.ID
-		until     = common.Now() +
-			common.Timestamp(config.Configuration.WriteLockTimeout)
+		until     = common.Now() + common.Timestamp(config.Configuration.WriteLockTimeout)
 
-		want = alloc.WantWrite(blobberID, writeMarker.Size,
-			writeMarker.Timestamp)
+		requiredBalance = alloc.GetRequiredWriteBalance(blobberID, writeMarker.Size, writeMarker.Timestamp)
 
-		pend *allocation.Pending
-		wps  []*allocation.WritePool
+		wps []*allocation.WritePool
 	)
 
-	if writeMarker.Size <= 0 || want <= 0 {
-		return // skip if write price is zero or it's about deleting
+	if writeMarker.Size <= 0 || requiredBalance <= 0 {
+		return
 	}
 
-	pend, err = allocation.GetPending(db, payerID,
-		alloc.ID, blobberID)
+	writePoolBalance, err := allocation.GetWritePoolsBalance(db, payerID, alloc.ID, until)
 	if err != nil {
-		return common.NewErrorf("write_pre_redeem",
-			"can't get pending payments: %v", err)
+		Logger.Error(err.Error())
+		return common.NewError("write_pre_redeem", "database error while getting write pool balance")
 	}
 
-	wps, err = pend.WritePools(db, blobberID, until)
+	pendingWriteSize, err := allocation.GetPendingWrite(db, payerID, alloc.ID)
 	if err != nil {
-		return common.NewErrorf("write_pre_redeem",
-			"can't get read pools from DB: %v", err)
+		Logger.Error(err.Error())
+		return common.NewError("write_pre_redeem", "database error while getting pending writes")
 	}
 
-	var have = pend.HaveWrite(wps, alloc, writeMarker.Timestamp)
-	if have < want {
-		wps, err = allocation.RequestWritePools(payerID,
-			alloc.ID)
+	requiredBalance = alloc.GetRequiredWriteBalance(blobberID, pendingWriteSize+writeMarker.Size, writeMarker.Timestamp)
+
+	if writePoolBalance < requiredBalance {
+		wps, err = allocation.RequestWritePools(payerID, alloc.ID)
 		if err != nil {
-			return common.NewErrorf("write_pre_redeem",
-				"can't request write pools from sharders: %v", err)
+			return common.NewErrorf("write_pre_redeem", "can't request write pools from sharders: %v", err)
 		}
-		err = allocation.SetWritePools(db, payerID,
-			alloc.ID, blobberID, wps)
+
+		err = allocation.SetWritePools(db, payerID, alloc.ID, wps)
 		if err != nil {
-			return common.NewErrorf("write_pre_redeem",
-				"can't save requested write pools: %v", err)
+			return common.NewErrorf("write_pre_redeem", "can't save requested write pools: %v", err)
 		}
-		wps, err = pend.WritePools(db, blobberID, until)
-		if err != nil {
-			return common.NewErrorf("write_pre_redeem",
-				"can't get write pools from DB: %v", err)
+
+		writePoolBalance = 0
+		for _, wp := range wps {
+			if wp.ExpireAt < until {
+				continue
+			}
+			writePoolBalance += wp.Balance
 		}
-		have = pend.HaveWrite(wps, alloc, writeMarker.Timestamp)
 	}
 
-	if have < want {
+	if writePoolBalance < requiredBalance {
 		return common.NewErrorf("write_pre_redeem", "not enough "+
 			"tokens in write pools (client -> allocation ->  blobber)"+
-			"(%s -> %s -> %s), have %d, want %d", payerID,
-			alloc.ID, writeMarker.BlobberID, have, want)
+			"(%s -> %s -> %s), available balance %d, required balance %d", payerID,
+			alloc.ID, writeMarker.BlobberID, writePoolBalance, requiredBalance)
 	}
 
-	// update pending writes: add size to redeem to (not tokens)
-	pend.AddPendingWrite(writeMarker.Size)
-	if err = pend.Save(db); err != nil {
-		return common.NewErrorf("write_pre_redeem",
-			"can't save pending writes in DB: %v", err)
-	}
+	if err := allocation.AddToPending(db, payerID, alloc.ID, writeMarker.Size); err != nil {
+		Logger.Error(err.Error())
+		return common.NewErrorf("write_pre_redeem", "can't save pending writes in DB")
 
+	}
 	return
 }
 
-func (fsh *StorageHandler) DownloadFile(
-	ctx context.Context,
-	r *http.Request,
-) (resp interface{}, err error) {
-
+func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (resp interface{}, err error) {
 	// get client and allocation ids
 	var (
-		clientID     = ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-		allocationTx = ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-		_            = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string) // runtime type check
+		clientID     = ctx.Value(constants.ContextKeyClient).(string)
+		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
 		alloc        *allocation.Allocation
 	)
 
-	// check client
-	if len(clientID) == 0 {
+	if clientID == "" {
 		return nil, common.NewError("download_file", "invalid client")
 	}
 
-	// get and check allocation
 	alloc, err = fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
-		return nil, common.NewErrorf("download_file",
-			"invalid allocation id passed: %v", err)
+		return nil, common.NewErrorf("download_file", "invalid allocation id passed: %v", err)
 	}
 
-	// get and parse file params
-	if err = r.ParseMultipartForm(FormFileParseMaxMemory); nil != err {
-		Logger.Info("download_file - request_parse_error", zap.Error(err))
-		return nil, common.NewErrorf("download_file",
-			"request_parse_error: %v", err)
-	}
-
-	pathHash, err := pathHashFromReq(r, alloc.ID)
+	dr, err := FromDownloadRequest(allocationTx, r)
 	if err != nil {
-		return nil, common.NewError("download_file", "invalid path")
+		return nil, err
 	}
 
-	var blockNumStr = r.FormValue("block_num")
-	if len(blockNumStr) == 0 {
-		return nil, common.NewError("download_file", "no block number")
-	}
-
-	var blockNum int64
-	blockNum, err = strconv.ParseInt(blockNumStr, 10, 64)
-	if err != nil || blockNum < 0 {
-		return nil, common.NewError("download_file", "invalid block number")
-	}
-
-	var numBlocksStr = r.FormValue("num_blocks")
-	if len(numBlocksStr) == 0 {
-		numBlocksStr = "1"
-	}
-
-	var numBlocks int64
-	numBlocks, err = strconv.ParseInt(numBlocksStr, 10, 64)
-	if err != nil || numBlocks < 0 {
-		return nil, common.NewError("download_file",
-			"invalid number of blocks")
-	}
-
-	// get read marker
-	var (
-		readMarkerString = r.FormValue("read_marker")
-		readMarker       = &readmarker.ReadMarker{}
-	)
-	err = json.Unmarshal([]byte(readMarkerString), &readMarker)
-	if err != nil {
-		return nil, common.NewErrorf("download_file", "invalid parameters, "+
-			"error parsing the readmarker for download: %v", err)
-	}
-
-	var rmObj = &readmarker.ReadMarkerEntity{}
-	rmObj.LatestRM = readMarker
+	rmObj := new(readmarker.ReadMarkerEntity)
+	rmObj.LatestRM = &dr.ReadMarker
 
 	if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
-		return nil, common.NewErrorf("download_file", "invalid read marker, "+
-			"failed to verify the read marker: %v", err)
+		return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
 	}
 
-	// get file reference
-	var fileref *reference.Ref
-	fileref, err = reference.GetReferenceFromLookupHash(ctx, alloc.ID, pathHash)
+	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)
 	if err != nil {
-		return nil, common.NewErrorf("download_file",
-			"invalid file path: %v", err)
+		return nil, common.NewErrorf("download_file", "invalid file path: %v", err)
 	}
 
 	if fileref.Type != reference.FILE {
-		return nil, common.NewErrorf("download_file",
-			"path is not a file: %v", err)
+		return nil, common.NewErrorf("download_file", "path is not a file: %v", err)
 	}
 
 	// set payer: default
-	var payerID = alloc.OwnerID
+	payerID := alloc.OwnerID
 
 	// set payer: check for explicit allocation payer value
-	if len(alloc.PayerID) > 0 {
+	if alloc.PayerID != "" {
 		payerID = alloc.PayerID
 	}
 
-	// authorize file access
-	var (
-		isOwner        = clientID == alloc.OwnerID
-		isRepairer     = clientID == alloc.RepairerID
-		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
-	)
+	isOwner := clientID == alloc.OwnerID
+	isRepairer := clientID == alloc.RepairerID
+	isCollaborator := reference.IsACollaborator(ctx, fileref.ID, clientID)
 
-	var authToken *readmarker.AuthTicket = nil
+	var authToken *readmarker.AuthTicket
+	var shareInfo *reference.ShareInfo
 
-	if (!isOwner && !isRepairer && !isCollaborator) || len(r.FormValue("auth_token")) > 0 {
-		var authTokenString = r.FormValue("auth_token")
-
-		// check auth token
-		if isAuthorized, err := fsh.verifyAuthTicket(ctx,
-			authTokenString, alloc, fileref, clientID,
-		); !isAuthorized {
-			return nil, common.NewErrorf("download_file",
-				"cannot verify auth ticket: %v", err)
+	if !(isOwner || isCollaborator) {
+		authTokenString := dr.AuthToken
+		if authTokenString == "" {
+			return nil, common.NewError("invalid_client", "authticket is required")
 		}
 
-		authToken = &readmarker.AuthTicket{}
-		err = json.Unmarshal([]byte(authTokenString), &authToken)
-		if err != nil {
-			return nil, common.NewErrorf("download_file",
-				"error parsing the auth ticket for download: %v", err)
+		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
+			return nil, common.NewErrorf("download_file", "cannot verify auth ticket: %v", err)
 		}
+
+		shareInfo, err = reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
+		if err != nil || shareInfo == nil {
+			return nil, errors.New("client does not have permission to download the file. share does not exist")
+		}
+
+		if shareInfo.Revoked {
+			return nil, errors.New("client does not have permission to download the file. share revoked")
+		}
+
 		// set payer: check for command line payer flag (--rx_pay)
-		if r.FormValue("rx_pay") == "true" {
+		if dr.RxPay {
 			payerID = clientID
 		}
 
-		if json.Unmarshal([]byte(authTokenString), &readmarker.AuthTicket{}) != nil {
-			return nil, common.NewErrorf("download_file",
-				"error parsing the auth ticket for download: %v", err)
+		availableAt := shareInfo.AvailableAt.Unix()
+		if common.Timestamp(availableAt) > common.Now() {
+			return nil, common.NewErrorf("download_file", "the file is not available until: %v", shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
 		}
 
-		// we only check content hash if its authticket is referring to a file
-		if authToken.RefType == zfileref.FILE && authToken.ActualFileHash != fileref.ActualFileHash {
-			return nil, errors.New("content hash does not match the requested file content hash")
-		}
-
-		if authToken.RefType == zfileref.DIRECTORY {
-			hashes := util.GetParentPathHashes(allocationTx, fileref.Path)
-			found := false
-			for _, hash := range hashes {
-				if hash == authToken.FilePathHash {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return nil, errors.New("auth ticket is not authorized to download file specified")
-			}
-		}
-		readMarker.AuthTicket = datatypes.JSON(authTokenString)
+		dr.ReadMarker.AuthTicket = datatypes.JSON(authTokenString)
 
 		// check for file payer flag
 		if fileAttrs, err := fileref.GetAttributes(); err != nil {
-			return nil, common.NewErrorf("download_file",
-				"error getting file attributes: %v", err)
-		} else {
-			if fileAttrs.WhoPaysForReads == common.WhoPays3rdParty {
-				payerID = clientID
-			}
+			return nil, common.NewErrorf("download_file", "error getting file attributes: %v", err)
+		} else if fileAttrs.WhoPaysForReads == common.WhoPays3rdParty && !(isCollaborator || isRepairer) {
+			payerID = clientID
 		}
 	}
-
 	// create read marker
 	var (
 		rme           *readmarker.ReadMarkerEntity
@@ -354,53 +262,47 @@ func (fsh *StorageHandler) DownloadFile(
 
 	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, common.NewErrorf("download_file",
-			"couldn't get read marker from DB: %v", err)
+		return nil, common.NewErrorf("download_file", "couldn't get read marker from DB: %v", err)
 	}
 
 	if rme != nil {
 		latestRM = rme.LatestRM
 		if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
-			return nil, common.NewErrorf("download_file",
-				"couldn't get number of blocks pending redeeming: %v", err)
+			return nil, common.NewErrorf("download_file", "couldn't get number of blocks pending redeeming: %v", err)
 		}
 	}
 
-	if latestRM != nil &&
-		latestRM.ReadCounter+(numBlocks) != readMarker.ReadCounter {
-
-		var response = &blobberhttp.DownloadResponse{
+	if latestRM != nil && latestRM.ReadCounter+(dr.NumBlocks) > dr.ReadMarker.ReadCounter {
+		latestRM.BlobberID = node.Self.ID
+		return &blobberhttp.DownloadResponse{
 			Success:      false,
 			LatestRM:     latestRM,
 			Path:         fileref.Path,
 			AllocationID: fileref.AllocationID,
-		}
-		return response, nil
+		}, common.NewError("stale_read_marker", "")
 	}
 
 	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, alloc, numBlocks, pendNumBlocks, payerID)
+	err = readPreRedeem(ctx, alloc, dr.NumBlocks, pendNumBlocks, payerID)
 	if err != nil {
-		return nil, common.NewErrorf("download_file",
-			"pre-redeeming read marker: %v", err)
+		return nil, common.NewErrorf("download_file", "pre-redeeming read marker: %v", err)
 	}
 
 	// reading is allowed
 	var (
-		downloadMode = r.FormValue("content")
+		downloadMode = dr.DownloadMode
 		respData     []byte
 	)
-	if len(downloadMode) > 0 && downloadMode == DownloadContentThumb {
+	if downloadMode == DownloadContentThumb {
 		var fileData = &filestore.FileInputData{}
 		fileData.Name = fileref.Name
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ThumbnailHash
 		fileData.OnCloud = fileref.OnCloud
-		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID,
-			fileData, blockNum, numBlocks)
+		fileData.ChunkSize = fileref.ChunkSize
+		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID, fileData, dr.BlockNum, dr.NumBlocks)
 		if err != nil {
-			return nil, common.NewErrorf("download_file",
-				"couldn't get thumbnail block: %v", err)
+			return nil, common.NewErrorf("download_file", "couldn't get thumbnail block: %v", err)
 		}
 	} else {
 		var fileData = &filestore.FileInputData{}
@@ -408,93 +310,40 @@ func (fsh *StorageHandler) DownloadFile(
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ContentHash
 		fileData.OnCloud = fileref.OnCloud
-		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID,
-			fileData, blockNum, numBlocks)
+		fileData.ChunkSize = fileref.ChunkSize
+
+		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID, fileData, dr.BlockNum, dr.NumBlocks)
 		if err != nil {
-			return nil, common.NewErrorf("download_file",
-				"couldn't get file block: %v", err)
+			return nil, common.NewErrorf("download_file", "couldn't get file block: %v", err)
 		}
 	}
 
-	readMarker.PayerID = payerID
-	err = readmarker.SaveLatestReadMarker(ctx, readMarker, latestRM == nil)
+	dr.ReadMarker.PayerID = payerID
+	err = readmarker.SaveLatestReadMarker(ctx, &dr.ReadMarker, 0, latestRM == nil)
 	if err != nil {
-		return nil, common.NewErrorf("download_file",
-			"couldn't save latest read marker: %v", err)
+		Logger.Error(err.Error())
+		return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
 	}
 
-	var shareInfo *reference.ShareInfo
-	if authToken != nil {
-		shareInfo, err = reference.GetShareInfo(
-			ctx,
-			readMarker.ClientID,
-			authToken.FilePathHash,
-		)
-
-		if err == nil && shareInfo.Revoked {
-			return nil, errors.New("client does not have permission to download the file. share revoked")
+	var chunkEncoder ChunkEncoder
+	if len(fileref.EncryptedKey) > 0 && authToken != nil {
+		chunkEncoder = &PREChunkEncoder{
+			EncryptedKey:              fileref.EncryptedKey,
+			ReEncryptionKey:           shareInfo.ReEncryptionKey,
+			ClientEncryptionPublicKey: shareInfo.ClientEncryptionPublicKey,
 		}
+	} else {
+		chunkEncoder = &RawChunkEncoder{}
 	}
 
-	if len(fileref.EncryptedKey) > 0 {
-		if authToken == nil {
-			return nil, errors.New("auth ticket is required to download encrypted file")
-		}
+	chunkData, err := chunkEncoder.Encode(int(fileref.ChunkSize), respData)
 
-		// should not happen, just in case
-		if shareInfo == nil {
-			return nil, errors.New("client does not have permission to download the file. share does not exist")
-		}
-
-		buyerEncryptionPublicKey := shareInfo.ClientEncryptionPublicKey
-		encscheme := zencryption.NewEncryptionScheme()
-		// reEncrypt does not require pub / private key,
-		// we could probably make it a classless function
-
-		if err := encscheme.Initialize(""); err != nil {
-			return nil, err
-		}
-		if err := encscheme.InitForDecryption("filetype:audio", fileref.EncryptedKey); err != nil {
-			return nil, err
-		}
-
-		totalSize := len(respData)
-		result := []byte{}
-		for i := 0; i < totalSize; i += reference.CHUNK_SIZE {
-			encMsg := &zencryption.EncryptedMessage{}
-			chunkData := respData[i:int64(math.Min(float64(i+reference.CHUNK_SIZE), float64(totalSize)))]
-
-			encMsg.EncryptedData = chunkData[(2 * 1024):]
-
-			headerBytes := chunkData[:(2 * 1024)]
-			headerBytes = bytes.Trim(headerBytes, "\x00")
-			headerString := string(headerBytes)
-
-			headerChecksums := strings.Split(headerString, ",")
-			if len(headerChecksums) != 2 {
-				Logger.Error("Block has invalid header", zap.String("request Url", r.URL.String()))
-				return nil, errors.New("Block has invalid header for request " + r.URL.String())
-			}
-
-			encMsg.MessageChecksum, encMsg.OverallChecksum = headerChecksums[0], headerChecksums[1]
-			encMsg.EncryptedKey = encscheme.GetEncryptedKey()
-
-			reEncMsg, err := encscheme.ReEncrypt(encMsg, shareInfo.ReEncryptionKey, buyerEncryptionPublicKey)
-			if err != nil {
-				return nil, err
-			}
-
-			encData, err := reEncMsg.Marshal()
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, encData...)
-		}
-		respData = result
+	if err != nil {
+		return nil, err
 	}
 
 	stats.FileBlockDownloaded(ctx, fileref.ID)
-	return respData, nil
+	return chunkData, nil
 }
 
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
@@ -502,9 +351,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
 	}
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	clientKey := ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
 	clientKeyBytes, _ := hex.DecodeString(clientKey)
 
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
@@ -519,7 +369,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	allocationID := allocationObj.ID
 
 	connectionID := r.FormValue("connection_id")
-	if len(connectionID) == 0 {
+	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
@@ -539,21 +389,23 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	var isCollaborator bool
 	for _, change := range connectionObj.Changes {
-		if change.Operation == allocation.UPDATE_OPERATION {
-			updateFileChange := new(allocation.UpdateFileChange)
-			if err := updateFileChange.Unmarshal(change.Input); err != nil {
-				return nil, err
-			}
-			fileRef, err := reference.GetReference(ctx, allocationID, updateFileChange.Path)
-			if err != nil {
-				return nil, err
-			}
-			isCollaborator = reference.IsACollaborator(ctx, fileRef.ID, clientID)
-			break
+		if change.Operation != constants.FileOperationUpdate {
+			continue
 		}
+
+		updateFileChange := new(allocation.UpdateFileChanger)
+		if err := updateFileChange.Unmarshal(change.Input); err != nil {
+			return nil, err
+		}
+		fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, updateFileChange.Path, []string{"id"})
+		if err != nil {
+			return nil, err
+		}
+		isCollaborator = reference.IsACollaborator(ctx, fileRef.ID, clientID)
+		break
 	}
 
-	if len(clientID) == 0 || len(clientKey) == 0 {
+	if clientID == "" || clientKey == "" {
 		return nil, common.NewError("invalid_params", "Please provide clientID and clientKey")
 	}
 
@@ -561,8 +413,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	if err = r.ParseMultipartForm(FormFileParseMaxMemory); nil != err {
-		Logger.Info("Error Parsing the request", zap.Any("error", err))
+	if err = r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
+		Logger.Error("Error Parsing the request", zap.Any("error", err))
 		return nil, common.NewError("request_parse_error", err.Error())
 	}
 
@@ -581,11 +433,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	var result blobberhttp.CommitResult
-	var latestWM *writemarker.WriteMarkerEntity
-	if len(allocationObj.AllocationRoot) == 0 {
-		latestWM = nil
+	var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
+	if allocationObj.AllocationRoot == "" {
+		latestWriteMarkerEntity = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx,
+		latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
 			allocationObj.AllocationRoot)
 		if err != nil {
 			return nil, common.NewErrorf("latest_write_marker_read_error",
@@ -593,16 +445,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		}
 	}
 
-	writemarkerObj := &writemarker.WriteMarkerEntity{}
-	writemarkerObj.WM = writeMarker
+	writemarkerEntity := &writemarker.WriteMarkerEntity{}
+	writemarkerEntity.WM = writeMarker
 
-	err = writemarkerObj.VerifyMarker(ctx, allocationObj, connectionObj)
+	err = writemarkerEntity.VerifyMarker(ctx, allocationObj, connectionObj)
 	if err != nil {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		result.ErrorMessage = "Verification of write marker failed: " + err.Error()
 		result.Success = false
-		if latestWM != nil {
-			result.WriteMarker = &latestWM.WM
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = &latestWriteMarkerEntity.WM
 		}
 		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
 	}
@@ -612,32 +464,30 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		clientIDForWriteRedeem = allocationObj.OwnerID
 	}
 
-	if err = writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
+	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
 		return nil, err
 	}
-
 	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot)
 	if err != nil {
 		return nil, err
 	}
-	rootRef, err := reference.GetReference(ctx, allocationID, "/")
+	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash"})
 	if err != nil {
 		return nil, err
 	}
 	allocationRoot := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
-
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
-		if latestWM != nil {
-			result.WriteMarker = &latestWM.WM
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = &latestWriteMarkerEntity.WM
 		}
 		result.Success = false
 		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root. Expected hash: " + allocationRoot
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
-	writemarkerObj.ConnectionID = connectionObj.ConnectionID
-	writemarkerObj.ClientPublicKey = clientKey
-	err = writemarkerObj.Save(ctx)
+	writemarkerEntity.ConnectionID = connectionObj.ID
+	writemarkerEntity.ClientPublicKey = clientKey
+	err = writemarkerEntity.Save(ctx)
 	if err != nil {
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
 	}
@@ -655,7 +505,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
-		return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+		if !errors.Is(common.ErrFileWasDeleted, err) {
+			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+		}
 	}
 
 	result.Changes = connectionObj.Changes
@@ -668,16 +520,14 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	result.WriteMarker = &writeMarker
 	result.Success = true
 	result.ErrorMessage = ""
-
+	if errors.Is(common.ErrFileWasDeleted, err) {
+		return &result, err
+	}
 	return &result, nil
 }
 
 func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (interface{}, error) {
-
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -689,20 +539,20 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 
 	allocationID := allocationObj.ID
 
-	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	_ = ctx.Value(constants.ContextKeyClientKey).(string)
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	if len(clientID) == 0 {
+	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Invalid client")
 	}
 
 	new_name := r.FormValue("new_name")
-	if len(new_name) == 0 {
+	if new_name == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid name")
 	}
 
@@ -711,12 +561,12 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, err
 	}
 
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+	if clientID == "" || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	connectionID := r.FormValue("connection_id")
-	if len(connectionID) == 0 {
+	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
@@ -729,17 +579,17 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "merkle_root"})
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 
 	allocationChange := &allocation.AllocationChange{}
-	allocationChange.ConnectionID = connectionObj.ConnectionID
+	allocationChange.ConnectionID = connectionObj.ID
 	allocationChange.Size = 0
-	allocationChange.Operation = allocation.RENAME_OPERATION
-	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ConnectionID,
+	allocationChange.Operation = constants.FileOperationRename
+	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID, Path: objectRef.Path}
 	dfc.NewName = new_name
 	connectionObj.Size += allocationChange.Size
@@ -760,17 +610,15 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	return result, nil
 }
 
-func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
-	r *http.Request) (resp interface{}, err error) {
-
+func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.Request) (resp interface{}, err error) {
 	if r.Method != http.MethodPost {
 		return nil, common.NewError("update_object_attributes",
 			"Invalid method used. Use POST instead")
 	}
 
 	var (
-		allocTx  = ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-		clientID = ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+		allocTx  = ctx.Value(constants.ContextKeyAllocation).(string)
+		clientID = ctx.Value(constants.ContextKeyClient).(string)
 
 		alloc *allocation.Allocation
 	)
@@ -790,7 +638,7 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 	}
 
 	// runtime type check
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+	_ = ctx.Value(constants.ContextKeyClientKey).(string)
 
 	if clientID == "" {
 		return nil, common.NewError("update_object_attributes",
@@ -839,18 +687,18 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 	defer mutex.Unlock()
 
 	var ref *reference.Ref
-	ref, err = reference.GetReferenceFromLookupHash(ctx, alloc.ID, pathHash)
+	ref, err = reference.GetLimitedRefFieldsByLookupHash(ctx, alloc.ID, pathHash, []string{"id", "path"})
 	if err != nil {
 		return nil, common.NewErrorf("update_object_attributes",
 			"invalid file path: %v", err)
 	}
 
 	var change = new(allocation.AllocationChange)
-	change.ConnectionID = conn.ConnectionID
-	change.Operation = allocation.UPDATE_ATTRS_OPERATION
+	change.ConnectionID = conn.ID
+	change.Operation = constants.FileOperationUpdateAttrs
 
 	var uafc = &allocation.AttributesChange{
-		ConnectionID: conn.ConnectionID,
+		ConnectionID: conn.ID,
 		AllocationID: conn.AllocationID,
 		Path:         ref.Path,
 		Attributes:   attrs,
@@ -871,10 +719,8 @@ func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context,
 }
 
 func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
+
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -889,17 +735,17 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("immutable_allocation", "Cannot copy data in an immutable allocation")
 	}
 
-	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	_ = ctx.Value(constants.ContextKeyClientKey).(string)
 
 	allocationID := allocationObj.ID
 
-	if len(clientID) == 0 {
+	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Invalid client")
 	}
 
 	destPath := r.FormValue("dest")
-	if len(destPath) == 0 {
+	if destPath == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
 	}
 
@@ -908,12 +754,12 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, err
 	}
 
-	if len(clientID) == 0 || allocationObj.OwnerID != clientID {
+	if clientID == "" || allocationObj.OwnerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	connectionID := r.FormValue("connection_id")
-	if len(connectionID) == 0 {
+	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
@@ -921,32 +767,45 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
-
 	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	objectRef, err := reference.GetReferenceFromLookupHash(ctx, allocationID, pathHash)
+	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "merkle_root"})
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 	newPath := filepath.Join(destPath, objectRef.Name)
-	destRef, _ := reference.GetReference(ctx, allocationID, newPath)
-	if destRef != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
+	paths, err := common.GetParentPaths(newPath)
+	if err != nil {
+		return nil, err
 	}
 
-	destRef, err = reference.GetReference(ctx, allocationID, destPath)
-	if err != nil || destRef.Type != reference.DIRECTORY {
-		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
+	paths = append(paths, newPath)
+
+	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, paths)
+	if err != nil {
+		Logger.Error("Database error", zap.Error(err))
+		return nil, common.NewError("database_error", fmt.Sprintf("Got db error while getting refs for %v", paths))
+	}
+
+	for _, ref := range refs {
+		switch ref.Path {
+		case newPath:
+			return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
+		default:
+			if ref.Type == reference.FILE {
+				return nil, common.NewError("invalid_path", fmt.Sprintf("%v is of file type", ref.Path))
+			}
+		}
 	}
 
 	allocationChange := &allocation.AllocationChange{}
-	allocationChange.ConnectionID = connectionObj.ConnectionID
+	allocationChange.ConnectionID = connectionObj.ID
 	allocationChange.Size = objectRef.Size
-	allocationChange.Operation = allocation.COPY_OPERATION
-	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ConnectionID,
+	allocationChange.Operation = constants.FileOperationCopy
+	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID, DestPath: destPath}
 	dfc.SrcPath = objectRef.Path
 	connectionObj.Size += allocationChange.Size
@@ -963,26 +822,28 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	result.Hash = objectRef.Hash
 	result.MerkleRoot = objectRef.MerkleRoot
 	result.Size = objectRef.Size
-
 	return result, nil
 }
 
 func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*blobberhttp.UploadResult, error) {
+
 	path := r.FormValue("path")
-	if len(path) == 0 {
+	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
-
-	fileRef, _ := reference.GetReference(ctx, connectionObj.AllocationID, path)
-	_ = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+	fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, connectionObj.AllocationID, path, []string{"path", "name", "size", "hash", "merkle_root"})
+	if err != nil {
+		Logger.Error("invalid_file", zap.Error(err))
+	}
+	_ = ctx.Value(constants.ContextKeyClientKey).(string)
 	if fileRef != nil {
 		deleteSize := fileRef.Size
 
 		allocationChange := &allocation.AllocationChange{}
-		allocationChange.ConnectionID = connectionObj.ConnectionID
+		allocationChange.ConnectionID = connectionObj.ID
 		allocationChange.Size = 0 - deleteSize
-		allocationChange.Operation = allocation.DELETE_OPERATION
-		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ConnectionID,
+		allocationChange.Operation = constants.FileOperationDelete
+		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ID,
 			AllocationID: connectionObj.AllocationID, Name: fileRef.Name,
 			Hash: fileRef.Hash, Path: fileRef.Path, Size: deleteSize}
 
@@ -1002,9 +863,8 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 }
 
 func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
-
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -1017,26 +877,49 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 	allocationID := allocationObj.ID
 
-	if len(clientID) == 0 {
+	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
 	dirPath := r.FormValue("dir_path")
-	if len(dirPath) == 0 {
+	if dirPath == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
 	}
 
-	exisitingRef := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
+	exisitingRef, err := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
+	if err != nil {
+		Logger.Error("Error file reference", zap.Error(err))
+	}
+
+	if !filepath.IsAbs(dirPath) {
+		return nil, common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", dirPath))
+	}
+
+	result := &blobberhttp.UploadResult{}
+	result.Filename = dirPath
+	result.Hash = ""
+	result.MerkleRoot = ""
+	result.Size = 0
+
 	if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
 	if exisitingRef != nil {
+		// target directory exists, return StatusOK
+		if exisitingRef.Type == reference.DIRECTORY {
+			return result, nil
+		}
+
 		return nil, common.NewError("duplicate_file", "File at path already exists")
 	}
 
+	if err := validateParentPathType(ctx, allocationID, dirPath); err != nil {
+		return nil, err
+	}
+
 	connectionID := r.FormValue("connection_id")
-	if len(connectionID) == 0 {
+	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
@@ -1050,48 +933,35 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	defer mutex.Unlock()
 
 	allocationChange := &allocation.AllocationChange{}
-	allocationChange.ConnectionID = connectionObj.ConnectionID
+	allocationChange.ConnectionID = connectionObj.ID
 	allocationChange.Size = 0
-	allocationChange.Operation = allocation.CREATEDIR_OPERATION
+	allocationChange.Operation = constants.FileOperationCreateDir
 	connectionObj.Size += allocationChange.Size
 	var formData allocation.NewFileChange
 	formData.Filename = dirPath
 	formData.Path = dirPath
 	formData.AllocationID = allocationID
 	formData.ConnectionID = connectionID
-	formData.ActualHash = "-"
-	formData.ActualSize = 1
+	formData.ActualHash = ""
+	formData.ActualSize = 0
 
 	connectionObj.AddChange(allocationChange, &formData)
-
-	err = filestore.GetFileStore().CreateDir(dirPath)
-	if err != nil {
-		return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
-	}
-
 	err = connectionObj.ApplyChanges(ctx, "/")
 	if err != nil {
 		return nil, err
 	}
-
-	result := &blobberhttp.UploadResult{}
-	result.Filename = dirPath
-	result.Hash = ""
-	result.MerkleRoot = ""
-	result.Size = 0
 
 	return result, nil
 }
 
 //WriteFile stores the file into the blobber files system from the HTTP request
 func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
-
 	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE instead")
+		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE / PATCH instead")
 	}
 
-	allocationTx := ctx.Value(constants.ALLOCATION_CONTEXT_KEY).(string)
-	clientID := ctx.Value(constants.CLIENT_CONTEXT_KEY).(string)
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
 
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
@@ -1099,13 +969,27 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	}
 
 	allocationID := allocationObj.ID
-	fileOperation := getFileOperation(r)
-	existingFileRef := getExistingFileRef(fsh, ctx, r, allocationObj, fileOperation)
+	cmd := createFileCommand(r)
+	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var existingFileRef *reference.Ref
+	switch rCmd := cmd.(type) {
+	case *UpdateFileCommand:
+		existingFileRef = rCmd.existingFileRef
+	case *FileCommandDelete:
+		existingFileRef = rCmd.existingFileRef
+	default:
+		existingFileRef = nil
+	}
 	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
 
 	if isCollaborator {
-		publicKey = ctx.Value(constants.CLIENT_KEY_CONTEXT_KEY).(string)
+		publicKey = ctx.Value(constants.ContextKeyClientKey).(string)
 	}
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
@@ -1118,17 +1002,17 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("immutable_allocation", "Cannot write to an immutable allocation")
 	}
 
-	if len(clientID) == 0 {
+	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
 	if err := r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
-		Logger.Info("Error Parsing the request", zap.Any("error", err))
+		Logger.Error("Error Parsing the request", zap.Any("error", err))
 		return nil, common.NewError("request_parse_error", err.Error())
 	}
 
 	connectionID := r.FormValue("connection_id")
-	if len(connectionID) == 0 {
+	if connectionID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
@@ -1141,157 +1025,24 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	result := &blobberhttp.UploadResult{}
+	result, err := cmd.ProcessContent(ctx, r, allocationObj, connectionObj)
 
-	if fileOperation == allocation.DELETE_OPERATION {
-		if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
-			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
-		}
-		result, err = fsh.DeleteFile(ctx, r, connectionObj)
-		if err != nil {
-			return nil, err
-		}
-	} else if fileOperation == allocation.INSERT_OPERATION || fileOperation == allocation.UPDATE_OPERATION {
-		formField := getFormFieldName(fileOperation)
-		var formData allocation.UpdateFileChange
-		uploadMetaString := r.FormValue(formField)
-		err = json.Unmarshal([]byte(uploadMetaString), &formData)
-		if err != nil {
-			return nil, common.NewError("invalid_parameters",
-				"Invalid parameters. Error parsing the meta data for upload."+err.Error())
-		}
-		existingFileRefSize := int64(0)
-		existingFileOnCloud := false
-		if fileOperation == allocation.INSERT_OPERATION {
-			if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
-				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
-			}
-
-			if existingFileRef != nil {
-				return nil, common.NewError("duplicate_file", "File at path already exists")
-			}
-		} else if fileOperation == allocation.UPDATE_OPERATION {
-			if existingFileRef == nil {
-				return nil, common.NewError("invalid_file_update", "File at path does not exist for update")
-			}
-
-			if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID && !isCollaborator {
-				return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner, collaborator or the payer of the allocation")
-			}
-		}
-
-		if existingFileRef != nil {
-			existingFileRefSize = existingFileRef.Size
-			existingFileOnCloud = existingFileRef.OnCloud
-		}
-
-		origfile, _, err := r.FormFile("uploadFile")
-		if err != nil {
-			return nil, common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
-		}
-		defer origfile.Close()
-
-		thumbfile, thumbHeader, _ := r.FormFile("uploadThumbnailFile")
-		thumbnailPresent := thumbHeader != nil
-		if thumbnailPresent {
-			defer thumbfile.Close()
-		}
-
-		fileInputData := &filestore.FileInputData{Name: formData.Filename, Path: formData.Path, OnCloud: existingFileOnCloud}
-		fileOutputData, err := filestore.GetFileStore().WriteFile(allocationID, fileInputData, origfile, connectionObj.ConnectionID)
-		if err != nil {
-			return nil, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
-		}
-
-		result.Filename = formData.Filename
-		result.Hash = fileOutputData.ContentHash
-		result.MerkleRoot = fileOutputData.MerkleRoot
-		result.Size = fileOutputData.Size
-
-		if len(formData.Hash) > 0 && formData.Hash != fileOutputData.ContentHash {
-			return nil, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
-		}
-		if len(formData.MerkleRoot) > 0 && formData.MerkleRoot != fileOutputData.MerkleRoot {
-			return nil, common.NewError("content_merkle_root_mismatch", "Merkle root provided in the meta data does not match the file content")
-		}
-		if fileOutputData.Size > config.Configuration.MaxFileSize {
-			return nil, common.NewError("file_size_limit_exceeded", "Size for the given file is larger than the max limit")
-		}
-
-		formData.Hash = fileOutputData.ContentHash
-		formData.MerkleRoot = fileOutputData.MerkleRoot
-		formData.AllocationID = allocationID
-		formData.Size = fileOutputData.Size
-
-		allocationSize := fileOutputData.Size
-		if thumbnailPresent {
-			thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: formData.Path}
-			thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationID, thumbInputData, thumbfile, connectionObj.ConnectionID)
-			if err != nil {
-				return nil, common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
-			}
-			if len(formData.ThumbnailHash) > 0 && formData.ThumbnailHash != thumbOutputData.ContentHash {
-				return nil, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the thumbnail content")
-			}
-			formData.ThumbnailHash = thumbOutputData.ContentHash
-			formData.ThumbnailSize = thumbOutputData.Size
-			formData.ThumbnailFilename = thumbInputData.Name
-		}
-
-		if allocationObj.BlobberSizeUsed+(allocationSize-existingFileRefSize) > allocationObj.BlobberSize {
-			return nil, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
-		}
-
-		allocationChange := &allocation.AllocationChange{}
-		allocationChange.ConnectionID = connectionObj.ConnectionID
-		allocationChange.Size = allocationSize - existingFileRefSize
-		allocationChange.Operation = fileOperation
-
-		connectionObj.Size += allocationChange.Size
-		if fileOperation == allocation.INSERT_OPERATION {
-			connectionObj.AddChange(allocationChange, &formData.NewFileChange)
-		} else if fileOperation == allocation.UPDATE_OPERATION {
-			connectionObj.AddChange(allocationChange, &formData)
-		}
+	if err != nil {
+		return nil, err
 	}
-	err = connectionObj.Save(ctx)
+
+	err = cmd.ProcessThumbnail(ctx, r, allocationObj, connectionObj)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = cmd.UpdateChange(ctx, connectionObj)
+
 	if err != nil {
 		Logger.Error("Error in writing the connection meta data", zap.Error(err))
-		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+		return nil, common.NewError("connection_write_error", err.Error()) //"Error writing the connection meta data")
 	}
 
-	return result, nil
-}
-
-func getFormFieldName(mode string) string {
-	formField := "uploadMeta"
-	if mode == allocation.UPDATE_OPERATION {
-		formField = "updateMeta"
-	}
-
-	return formField
-}
-
-func getFileOperation(r *http.Request) string {
-	mode := allocation.INSERT_OPERATION
-	if r.Method == "PUT" {
-		mode = allocation.UPDATE_OPERATION
-	} else if r.Method == "DELETE" {
-		mode = allocation.DELETE_OPERATION
-	}
-
-	return mode
-}
-
-func getExistingFileRef(fsh *StorageHandler, ctx context.Context, r *http.Request, allocationObj *allocation.Allocation, fileOperation string) *reference.Ref {
-	if fileOperation == allocation.INSERT_OPERATION || fileOperation == allocation.UPDATE_OPERATION {
-		var formData allocation.UpdateFileChange
-		uploadMetaString := r.FormValue(getFormFieldName(fileOperation))
-		err := json.Unmarshal([]byte(uploadMetaString), &formData)
-
-		if err == nil {
-			return fsh.checkIfFileAlreadyExists(ctx, allocationObj.ID, formData.Path)
-		}
-	}
-	return nil
+	return &result, nil
 }

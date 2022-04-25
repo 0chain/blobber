@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"io"
 	"os"
-	"strings"
+	"path/filepath"
 	"testing"
 	"time"
+
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -21,27 +22,26 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 
-	root, _ := os.Getwd()
-	path := strings.Split(root, `code`)
+	root := os.Getenv("root")
 
-	err := os.MkdirAll(path[0]+`docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen`, os.ModePerm)
+	err := os.MkdirAll(filepath.Join(root, `dev.local/data/blobber/files/files/exa/mpl/eId/objects/tmp/Mon/Wen`), os.ModePerm)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		err := os.RemoveAll(path[0] + `docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon`)
+		err := os.RemoveAll(filepath.Join(root, `dev.local/data/blobber/files/files/exa/mpl/eId/objects/tmp/Mon`))
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
 
-	f, err := os.Create(path[0] + `docker.local/blobber1/files/files/exa/mpl/eId/objects/tmp/Mon/Wen/MyFile`)
+	f, err := os.Create(filepath.Join(root, `dev.local/data/blobber/files/files/exa/mpl/eId/objects/tmp/Mon/Wen/MyFile`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer f.Close()
 
-	file, err := os.Open(root + "/helper_integration_test.go")
+	file, err := os.Open(filepath.Join(root, "/code/go/0chain.net/blobbercore/handler/helper_integration_test.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 		ClientID:        clientId,
 		OwnerID:         clientId,
 		Timestamp:       now,
-		//ReadCounter:     1337,
+		ReadCounter:     1,
 	}
 
 	rmSig, err := signScheme.Sign(encryption.Hash(rm.GetHashData()))

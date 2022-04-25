@@ -80,5 +80,4 @@ func TestBlobberGRPCService_GetObjectTree(t *testing.T) {
 			t.Fatal("unexpected root name from GetObject")
 		}
 	}
-
 }

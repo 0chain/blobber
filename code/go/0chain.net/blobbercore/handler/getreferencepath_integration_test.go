@@ -11,7 +11,6 @@ import (
 )
 
 func TestBlobberGRPCService_GetReferencePath(t *testing.T) {
-
 	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 

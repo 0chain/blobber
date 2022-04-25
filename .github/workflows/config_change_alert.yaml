@@ -1,0 +1,42 @@
+name: config_change_alert 
+
+on:
+  push:
+   branches: 
+     - staging
+   paths:
+      - config/0chain_blobber.yaml
+      - config/0chain_validator.yaml
+
+  pull_request:
+    branches: 
+      - staging
+    types:
+      - closed
+    paths:
+      - config/0chain_blobber.yaml
+      - config/0chain_validator.yaml
+   
+jobs:
+  test:
+    runs-on: docker-builds
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 0  # OR "2" -> To retrieve the preceding commit.
+
+      - name: Get changed files using defaults
+        id: changed-files
+        uses: tj-actions/changed-files@v18.4
+             
+      - name: Run step when a 0chain_blobber.yaml file changes
+        if: contains(steps.changed-files.outputs.modified_files, 'config/0chain_blobber.yaml')
+        run: |
+          echo "Your 0chain_blobber.yaml file has been modified."
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"Your 0chain_blobber.yaml config file has been modified."}' ${{ secrets.CHAT_WEBHOOK_URL }}
+      
+      - name: Run step when a 0chain_validator.yaml file changes
+        if: contains(steps.changed-files.outputs.modified_files, 'config/0chain_validator.yaml')
+        run: |
+          echo "Your 0chain_validator.yaml file has been modified."
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"Your 0chain_validator.yaml config file has been modified."}' ${{ secrets.CHAT_WEBHOOK_URL }}

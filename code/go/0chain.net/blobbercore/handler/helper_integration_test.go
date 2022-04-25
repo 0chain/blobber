@@ -4,15 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"log"
 	"math/rand"
 	"os"
 	"strings"
 	"time"
 
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"gorm.io/driver/postgres"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -27,12 +28,11 @@ import (
 	"github.com/0chain/gosdk/core/zcncrypto"
 )
 
-const BlobberTestAddr = "localhost:31501"
+const BlobberTestAddr = "127.0.0.1:31501"
 const RetryAttempts = 8
 const RetryTimeout = 3
 
 func randString(n int) string {
-
 	const hexLetters = "abcdef0123456789"
 
 	var sb strings.Builder
@@ -43,18 +43,20 @@ func randString(n int) string {
 }
 
 func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClient, *TestDataController) {
-	args := make(map[string]bool)
-	for _, arg := range os.Args {
-		args[arg] = true
-	}
-	if !args["integration"] {
+	// args := make(map[string]bool)
+	// for _, arg := range os.Args {
+	// 	args[arg] = true
+	// }
+
+	if os.Getenv("integration") != "1" {
+		//	if !args["integration"] {
 		t.Skip()
 	}
 
 	var conn *grpc.ClientConn
 	var err error
 	for i := 0; i < RetryAttempts; i++ {
-		conn, err = grpc.Dial(BlobberTestAddr, grpc.WithInsecure())
+		conn, err = grpc.Dial(BlobberTestAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			log.Println(err)
 			<-time.After(time.Second * RetryTimeout)
@@ -199,7 +201,7 @@ VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKe
 	return nil
 }
 
-func (c *TestDataController) AddGetFileMetaDataTestData() error {
+func (c *TestDataController) AddGetFileMetaDataTestData(allocationTx, pubKey string) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -227,7 +229,7 @@ func (c *TestDataController) AddGetFileMetaDataTestData() error {
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, repairer_id, is_immutable)
-VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKey',` + fmt.Sprint(expTime) + `,'examplePayerId', 'repairer_id', false);
+VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubKey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -499,9 +501,8 @@ VALUES (1234,'exampleId','exampleId:examplePath','exampleId:examplePath','d','ro
 	return nil
 }
 
-func GeneratePubPrivateKey(t *testing.T) (string, string, zcncrypto.SignatureScheme) {
-
-	signScheme := zcncrypto.NewSignatureScheme("bls0chain")
+func GeneratePubPrivateKey(t *testing.T) (pubKey, privateKey string, signScheme zcncrypto.SignatureScheme) {
+	signScheme = zcncrypto.NewSignatureScheme("bls0chain")
 	wallet, err := signScheme.GenerateKeys()
 	if err != nil {
 		t.Fatal(err)
@@ -513,7 +514,6 @@ func GeneratePubPrivateKey(t *testing.T) (string, string, zcncrypto.SignatureSch
 }
 
 func setupIntegrationTestConfig(t *testing.T) {
-
 	pwd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -564,7 +564,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 	}
 
 	_, err = tx.Exec(`
-INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
+INSERT INTO allocation_connections (id, allocation_id, client_id, size, status)
 VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
 `)
 	if err != nil {
@@ -640,7 +640,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 	}
 
 	_, err = tx.Exec(`
-INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
+INSERT INTO allocation_connections (id, allocation_id, client_id, size, status)
 VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
 `)
 	if err != nil {
@@ -700,7 +700,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 	}
 
 	_, err = tx.Exec(`
-INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
+INSERT INTO allocation_connections (id, allocation_id, client_id, size, status)
 VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
 `)
 	if err != nil {
@@ -760,7 +760,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 	}
 
 	_, err = tx.Exec(`
-INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
+INSERT INTO allocation_connections (id, allocation_id, client_id, size, status)
 VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
 `)
 	if err != nil {
@@ -820,7 +820,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 	}
 
 	_, err = tx.Exec(`
-INSERT INTO allocation_connections (connection_id, allocation_id, client_id, size, status)
+INSERT INTO allocation_connections (id, allocation_id, client_id, size, status)
 VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
 `)
 	if err != nil {

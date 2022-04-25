@@ -1,28 +1,24 @@
 package transaction
 
 import (
+	"bytes"
 	"context"
-	"crypto/sha1"
 	"encoding/hex"
+	"hash/fnv"
 	"math"
-	"strconv"
 
 	"fmt"
 	"io"
-	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/core/resty"
 	"github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/zcncore"
-
-	"go.uber.org/zap"
 )
 
 const TXN_SUBMIT_URL = "v1/transaction/put"
@@ -35,6 +31,7 @@ const (
 )
 
 var ErrNoTxnDetail = common.NewError("missing_transaction_detail", "No transaction detail was found on any of the sharders")
+var MakeSCRestAPICall func(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) ([]byte, error) = makeSCRestAPICall
 
 type SCRestAPIHandler func(response map[string][]byte, numSharders int, err error)
 
@@ -53,7 +50,7 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 }
 
 // MakeSCRestAPICall execute api reqeust from sharders, and parse and return result
-func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) ([]byte, error) {
+func makeSCRestAPICall(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) ([]byte, error) {
 	var resMaxCounterBody []byte
 
 	var hashMaxCounter int
@@ -90,17 +87,9 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 	}
 
 	for _, sharder := range selectedSharders {
-
 		u := fmt.Sprintf("%v/%v%v%v", sharder, SC_REST_API_URL, scAddress, relativePath)
 
 		urls = append(urls, u+"?"+q.Encode())
-	}
-
-	transport := &http.Transport{
-		Dial: (&net.Dialer{
-			Timeout: resty.DefaultDialTimeout,
-		}).Dial,
-		TLSHandshakeTimeout: resty.DefaultDialTimeout,
 	}
 
 	header := map[string]string{
@@ -111,8 +100,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 	//leave first item for ErrTooLessConfirmation
 	var msgList = make([]string, 1, numSharders)
 
-	r := resty.New(transport, func(req *http.Request, resp *http.Response, cancelFunc context.CancelFunc, err error) error {
-
+	r := resty.New(resty.WithHeader(header)).Then(func(req *http.Request, resp *http.Response, respBody []byte, cancelFunc context.CancelFunc, err error) error {
 		if err != nil { //network issue
 			msgList = append(msgList, err.Error())
 			return err
@@ -121,27 +109,21 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		url := req.URL.String()
 
 		if resp.StatusCode != http.StatusOK {
-			resBody, _ := ioutil.ReadAll(resp.Body)
-			resp.Body.Close()
+			errorMsg := "[sharder]" + resp.Status + ": " + url
+			msgList = append(msgList, errorMsg)
 
-			Logger.Error("[sharder]"+resp.Status, zap.String("url", req.URL.String()), zap.String("response", string(resBody)))
-
-			msgList = append(msgList, url+": ["+strconv.Itoa(resp.StatusCode)+"] "+string(resBody))
-
-			return errors.Throw(ErrBadRequest, req.URL.String()+" "+resp.Status)
-
+			return errors.Throw(ErrBadRequest, errorMsg)
 		}
 
-		hash := sha1.New()
-		teeReader := io.TeeReader(resp.Body, hash)
-		resBody, err := ioutil.ReadAll(teeReader)
-		resp.Body.Close()
+		hash := fnv.New32() //use fnv for better performance
+
+		teeReader := io.TeeReader(bytes.NewReader(respBody), hash)
+		resBody, err := io.ReadAll(teeReader)
 
 		if err != nil {
-			Logger.Error("[sharder]"+resp.Status, zap.String("url", req.URL.String()), zap.String("response", string(resBody)))
-			msgList = append(msgList, url+": "+err.Error())
-			return errors.Throw(ErrBadRequest, req.URL.String()+" "+err.Error())
-
+			errorMsg := "[sharder]body: " + url + " " + err.Error()
+			msgList = append(msgList, errorMsg)
+			return errors.Throw(ErrBadRequest, errorMsg)
 		}
 
 		hashString := hex.EncodeToString(hash.Sum(nil))
@@ -153,10 +135,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		}
 
 		return nil
-	},
-		resty.WithTimeout(resty.DefaultRequestTimeout),
-		resty.WithRetry(resty.DefaultRetry),
-		resty.WithHeader(header))
+	})
 
 	for {
 		r.DoGet(context.TODO(), urls...)
@@ -177,16 +156,13 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		urls = []string{
 			fmt.Sprintf("%v/%v%v%v", network.Sharders[n], SC_REST_API_URL, scAddress, relativePath) + "?" + q.Encode(),
 		}
-
 	}
 
 	if hashMaxCounter < minNumConfirmation {
-
 		msgList[0] = fmt.Sprintf("min_confirmation is %v%%, but got %v/%v sharders", MinConfirmation, hashMaxCounter, numSharders)
 
 		return nil, errors.Throw(ErrTooLessConfirmation, msgList...)
 	}
 
 	return resMaxCounterBody, nil
-
 }

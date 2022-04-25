@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-//ChunkWriter implements a chunk write that will append content to the file
+// ChunkWriter implements a chunk write that will append content to the file
 type ChunkWriter struct {
 	file   string
 	writer *os.File
@@ -16,7 +16,7 @@ type ChunkWriter struct {
 	size   int64
 }
 
-//NewChunkWriter create a ChunkWriter
+// NewChunkWriter create a ChunkWriter
 func NewChunkWriter(file string) (*ChunkWriter, error) {
 	w := &ChunkWriter{
 		file: file,

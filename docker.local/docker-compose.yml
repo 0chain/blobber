@@ -8,6 +8,8 @@ services:
       default:
     ports:
       - "543${BLOBBER}:5432"
+    labels:
+      zchain: "postgres"
   postgres-post:
     image: postgres:11
     environment:
@@ -17,6 +19,8 @@ services:
     volumes:
       - ../bin:/blobber/bin
       - ../sql:/blobber/sql
+    labels:
+      zchain: "postgres-post"
     command: bash /blobber/bin/postgres-entrypoint.sh
     links:
       - postgres:postgres
@@ -29,13 +33,15 @@ services:
     links:
       - postgres-post:postgres-post
     volumes:
-      - ../config:/blobber/config
-      - ./blobber${BLOBBER}/data:/blobber/data
-      - ./blobber${BLOBBER}/log:/blobber/log
-      - ./keys_config:/blobber/keysconfig
+      - ../config:/validator/config
+      - ./blobber${BLOBBER}/data:/validator/data
+      - ./blobber${BLOBBER}/log:/validator/log
+      - ./keys_config:/validator/keysconfig
     ports:
       - "506${BLOBBER}:506${BLOBBER}"
-    command: ./bin/validator --port 506${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/bnode${BLOBBER}_keys.txt --log_dir /blobber/log
+    labels:
+      zchain: "validator"
+    command: ./bin/validator --port 506${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/bnode${BLOBBER}_keys.txt --log_dir /validator/log
     networks:
       default:
       testnet0:
@@ -56,6 +62,8 @@ services:
     ports:
       - "505${BLOBBER}:505${BLOBBER}"
       - "703${BLOBBER}:703${BLOBBER}"
+    labels:
+      zchain: "blobber"
     command: ./bin/blobber --port 505${BLOBBER} --grpc_port 703${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keys_config/minio_config.txt
     networks:
       default:
@@ -67,6 +75,12 @@ networks:
     driver: bridge
   testnet0:
     external: true
+    # driver: bridge
+    # ipam:
+    #   config:
+    #     - subnet: 198.18.0.0/15
+    #     - gateway: 198.18.0.255
+
 volumes:
   data:
   config:

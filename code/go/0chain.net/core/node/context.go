@@ -3,10 +3,10 @@ package node
 import (
 	"context"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/gosdk/constants"
 )
 
-const SELF_NODE common.ContextKey = "SELF_NODE"
+const SELF_NODE constants.ContextKey = "SELF_NODE"
 
 /*GetNodeContext - setup a context with the self node */
 func GetNodeContext() context.Context {

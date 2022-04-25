@@ -12,12 +12,13 @@ type ObjectPath struct {
 	Meta         map[string]interface{} `json:"meta_data"`
 	Path         map[string]interface{} `json:"path"`
 	FileBlockNum int64                  `json:"file_block_num"`
+	ChunkSize    int64                  `json:"chunk_size"`
+	Size         int64                  `json:"size"`
 	RefID        int64                  `json:"-"`
 }
 
 // TODO needs to be refactored, current implementation can probably be heavily simplified
 func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*ObjectPath, error) {
-
 	rootRef, err := GetRefWithSortedChildren(ctx, allocationID, "/")
 	if err != nil {
 		return nil, common.NewError("invalid_dir_struct", "Allocation root corresponds to an invalid directory structure")
@@ -56,9 +57,8 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 		}
 		curResult["list"] = list
 		for idx, child := range curRef.Children {
-
 			if child.NumBlocks < remainingBlocks {
-				remainingBlocks = remainingBlocks - child.NumBlocks
+				remainingBlocks -= child.NumBlocks
 				continue
 			}
 			if child.Type == FILE {
@@ -67,7 +67,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 				break
 			}
 			curRef, err = GetRefWithSortedChildren(ctx, allocationID, child.Path)
-			if err != nil || len(curRef.Hash) == 0 {
+			if err != nil || curRef.Hash == "" {
 				return nil, common.NewError("failed_object_path", "Failed to get the object path")
 			}
 			curResult = list[idx]
@@ -83,6 +83,8 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 	retObj.Meta = curRef.GetListingData(ctx)
 	retObj.Path = result
 	retObj.FileBlockNum = remainingBlocks
+	retObj.ChunkSize = curRef.ChunkSize
+	retObj.Size = curRef.Size
 	retObj.RefID = curRef.ID
 
 	return &retObj, nil

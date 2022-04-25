@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"mime/multipart"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
@@ -145,27 +144,26 @@ func WriteMarkerGRPCToWriteMarker(wm *blobbergrpc.WriteMarker) *writemarker.Writ
 	}
 }
 
-func ReadMarkerToReadMarkerGRPC(rm *readmarker.ReadMarker) *blobbergrpc.ReadMaker {
+func ReadMarkerToReadMarkerGRPC(rm *readmarker.ReadMarker) *blobbergrpc.ReadMarker {
 	if rm == nil {
 		return nil
 	}
 
-	return &blobbergrpc.ReadMaker{
+	return &blobbergrpc.ReadMarker{
 		ClientId:        rm.ClientID,
 		ClientPublicKey: rm.ClientPublicKey,
 		BlobberId:       rm.BlobberID,
 		AllocationId:    rm.AllocationID,
 		OwnerId:         rm.OwnerID,
 		Timestamp:       int64(rm.Timestamp),
-		Counter:         rm.ReadCounter,
+		ReadCounter:     rm.ReadCounter,
 		Signature:       rm.Signature,
-		Suspend:         rm.Suspend,
 		PayerId:         rm.PayerID,
 		AuthTicket:      rm.AuthTicket,
 	}
 }
 
-func ReadMakerGRPCToReadMaker(rm *blobbergrpc.ReadMaker) *readmarker.ReadMarker {
+func ReadMakerGRPCToReadMaker(rm *blobbergrpc.ReadMarker) *readmarker.ReadMarker {
 	if rm == nil {
 		return nil
 	}
@@ -177,9 +175,8 @@ func ReadMakerGRPCToReadMaker(rm *blobbergrpc.ReadMaker) *readmarker.ReadMarker 
 		AllocationID:    rm.AllocationId,
 		OwnerID:         rm.OwnerId,
 		Timestamp:       common.Timestamp(rm.Timestamp),
-		ReadCounter:     rm.Counter,
+		ReadCounter:     rm.ReadCounter,
 		Signature:       rm.Signature,
-		Suspend:         rm.Suspend,
 		PayerID:         rm.PayerId,
 		AuthTicket:      rm.AuthTicket,
 	}
@@ -427,7 +424,7 @@ func convertDirMetaDataGRPCToDirRef(dirref *blobbergrpc.DirMetaData) *reference.
 }
 
 func WriteFileGRPCToHTTP(req *blobbergrpc.UploadFileRequest) (*http.Request, error) {
-	var formData allocation.UpdateFileChange
+	var formData allocation.UpdateFileChanger
 	var uploadMetaString string
 	switch req.Method {
 	case `POST`:
@@ -441,7 +438,7 @@ func WriteFileGRPCToHTTP(req *blobbergrpc.UploadFileRequest) (*http.Request, err
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 	}
 
-	r, err := http.NewRequest(req.Method, "", nil)
+	r, err := http.NewRequest(req.Method, "", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -477,64 +474,25 @@ func WriteFileGRPCToHTTP(req *blobbergrpc.UploadFileRequest) (*http.Request, err
 			return nil, err
 		}
 		r.Header.Set("Content-Type", writer.FormDataContentType())
-
 	}
 
 	return r, nil
 }
 
 func DownloadFileGRPCToHTTP(req *blobbergrpc.DownloadFileRequest) (*http.Request, error) {
-	body := bytes.NewBuffer([]byte{})
-	writer := multipart.NewWriter(body)
 
-	err := writer.WriteField("path", req.Path)
+	r, err := http.NewRequest("GET", "", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	err = writer.WriteField("path_hash", req.PathHash)
-	if err != nil {
-		return nil, err
-	}
-
-	err = writer.WriteField("rx_pay", req.RxPay)
-	if err != nil {
-		return nil, err
-	}
-
-	err = writer.WriteField("block_num", req.BlockNum)
-	if err != nil {
-		return nil, err
-	}
-
-	err = writer.WriteField("num_blocks", req.NumBlocks)
-	if err != nil {
-		return nil, err
-	}
-
-	err = writer.WriteField("read_marker", req.ReadMarker)
-	if err != nil {
-		return nil, err
-	}
-
-	err = writer.WriteField("auth_token", req.AuthToken)
-	if err != nil {
-		return nil, err
-	}
-
-	err = writer.WriteField("content", req.Content)
-	if err != nil {
-		return nil, err
-	}
-
-	writer.Close()
-
-	r, err := http.NewRequest("POST", "", strings.NewReader(body.String()))
-	if err != nil {
-		return nil, err
-	}
-
-	r.Header.Set("Content-Type", writer.FormDataContentType())
-
+	r.Header.Set("X-Path", req.Path)
+	r.Header.Set("X-Path-Hash", req.PathHash)
+	r.Header.Set("X-Rxpay", req.RxPay)
+	r.Header.Set("X-Block-Num", req.BlockNum)
+	r.Header.Set("X-Num-Blocks", req.NumBlocks)
+	r.Header.Set("X-Read-Marker", req.ReadMarker)
+	r.Header.Set("X-Auth-Token", req.AuthToken)
+	r.Header.Set("X-Mode", req.Content)
 	return r, nil
 }

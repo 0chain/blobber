@@ -1,7 +1,7 @@
 version: 1.0
 
 # delegate wallet (must be set)
-delegate_wallet: '86b147de5be951a5ab0c6b1732596686185c5e11c3bdf76a112183f828f39ba1'
+delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'
 # min stake allowed, tokens
 min_stake: 1.0
 # max stake allowed, tokens
@@ -17,8 +17,8 @@ handlers:
   rate_limit: 10 # 10 per second
 
 logging:
-  level: "info"
-  console: false # printing log to console is only supported in development mode
+  level: "error"
+  console: true # printing log to console is only supported in development mode
 
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"

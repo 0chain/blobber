@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-//SetupDefaultConfig - setup the default config options that can be overridden via the config file
+// SetupDefaultConfig - setup the default config options that can be overridden via the config file
 func SetupDefaultConfig() {
 	viper.SetDefault("logging.level", "info")
 	viper.SetDefault("delegate_wallet", "")
@@ -17,9 +17,14 @@ func SetupDefaultConfig() {
 }
 
 /*SetupConfig - setup the configuration system */
-func SetupConfig() {
+func SetupConfig(configDir string) {
 	viper.SetConfigName("0chain_validator")
-	viper.AddConfigPath("./config")
+	if configDir == "" {
+		viper.AddConfigPath("./config")
+	} else {
+		viper.AddConfigPath(configDir)
+	}
+
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {             // Handle errors reading the config file
 		panic(fmt.Errorf("fatal error config file: %s", err))
