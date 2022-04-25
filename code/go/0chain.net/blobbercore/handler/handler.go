@@ -16,7 +16,6 @@ import (
 
 	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
-	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -26,15 +25,11 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
-	"github.com/0chain/blobber/code/go/0chain.net/core/build"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
 
 var storageHandler StorageHandler
-var StartTime time.Time
 
 func GetMetaDataStore() datastore.Store {
 	return datastore.GetStore()
@@ -126,45 +121,6 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 	}
 }
 
-func WithStatusConnection(handler common.StatusCodeResponderF) common.StatusCodeResponderF {
-	return func(ctx context.Context, r *http.Request) (resp interface{}, statusCode int, err error) {
-		ctx = GetMetaDataStore().CreateTransaction(ctx)
-		resp, statusCode, err = handler(ctx, r)
-
-		defer func() {
-			if err != nil {
-				var rollErr = GetMetaDataStore().GetTransaction(ctx).
-					Rollback().Error
-				if rollErr != nil {
-					Logger.Error("couldn't rollback", zap.Error(err))
-				}
-			}
-		}()
-
-		if err != nil {
-			Logger.Error("Error in handling the request." + err.Error())
-			return
-		}
-		err = GetMetaDataStore().GetTransaction(ctx).Commit().Error
-		if err != nil {
-			return resp, statusCode, common.NewErrorf("commit_error",
-				"error committing to meta store: %v", err)
-		}
-		return
-	}
-}
-
-func WithStatusReadOnlyConnection(handler common.StatusCodeResponderF) common.StatusCodeResponderF {
-	return func(ctx context.Context, r *http.Request) (interface{}, int, error) {
-		ctx = GetMetaDataStore().CreateTransaction(ctx)
-		resp, statusCode, err := handler(ctx, r)
-		defer func() {
-			GetMetaDataStore().GetTransaction(ctx).Rollback()
-		}()
-		return resp, statusCode, err
-	}
-}
-
 func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	var vars = mux.Vars(r)
 	ctx = context.WithValue(ctx, constants.ContextKeyClient,
@@ -176,31 +132,6 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	// signature is not requered for all requests, but if header is empty it won`t affect anything
 	ctx = context.WithValue(ctx, constants.ContextKeyClientSignatureHeaderKey, r.Header.Get(common.ClientSignatureHeader))
 	return ctx
-}
-
-func HomepageHandler(w http.ResponseWriter, r *http.Request) {
-	mc := chain.GetServerChain()
-
-	fmt.Fprintf(w, "<div>Working on the chain: %v</div>\n", mc.ID)
-	fmt.Fprintf(w,
-		"<div>I am a blobber with <ul><li>id:%v</li><li>public_key:%v</li><li>build_tag:%v</li></ul></div>\n",
-		node.Self.ID, node.Self.PublicKey, build.BuildTag,
-	)
-
-	fmt.Fprintf(w, "<div>Miners ...\n")
-	network := zcncore.GetNetwork()
-	for _, miner := range network.Miners {
-		fmt.Fprintf(w, "%v\n", miner)
-	}
-	fmt.Fprintf(w, "</div>\n")
-	fmt.Fprintf(w, "<div>Sharders ...\n")
-	for _, sharder := range network.Sharders {
-		fmt.Fprintf(w, "%v\n", sharder)
-	}
-	fmt.Fprintf(w, "</div>\n")
-	fmt.Fprintf(w, "</br>")
-	fmt.Fprintf(w, "<div>Running since %v (Total elapsed time: %v)</div>\n", StartTime.Format(common.DateTimeFormat), time.Since(StartTime))
-	fmt.Fprintf(w, "</br>")
 }
 
 func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -236,17 +167,6 @@ func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, er
 	return response, nil
 }
 
-func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.AddCollaborator(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
-}
-
 func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -276,20 +196,9 @@ func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-/*CommitHandler is the handler to respond to upload requests fro clients*/
+/*CommitHandler is the handler to respond to upload requests from clients*/
 func CommitHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
-
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.CommitWrite(ctx, r)
-
-	if err != nil {
-		if errors.Is(common.ErrFileWasDeleted, err) {
-			return response, http.StatusNoContent, nil
-		}
-		return nil, http.StatusBadRequest, err
-	}
-	return response, http.StatusOK, nil
+	return commitHandler(ctx, r)
 }
 
 func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -318,16 +227,7 @@ func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error
 }
 
 func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
-	ctx = setupHandlerContext(ctx, r)
-	response, err := storageHandler.GetObjectTree(ctx, r)
-	if err != nil {
-		if errors.Is(common.ErrNotFound, err) {
-			return response, http.StatusNotFound, nil
-		}
-		return nil, http.StatusBadRequest, err
-	}
-
-	return response, http.StatusOK, nil
+	return objectTreeHandler(ctx, r)
 }
 
 func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -387,17 +287,6 @@ func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{},
 
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.UpdateObjectAttributes(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
-}
-
-func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.CalculateHash(ctx, r)
 	if err != nil {
 		return nil, err
 	}
