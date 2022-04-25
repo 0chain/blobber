@@ -312,15 +312,31 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 	l.Lock()
 
 	tempFilePath := getTempPathForFile(allocationID, fileData.Name, encryption.Hash(fileData.Path), connectionID)
-	finfo, err := os.Stat(tempFilePath)
+
+	f, err := os.Open(tempFilePath)
 	if err != nil {
-		return false, common.NewError("stat_error", err.Error())
+		return false, common.NewError("file_open_error", err.Error())
 	}
-	fileSize := finfo.Size()
+
+	//calculate content hash
+	h := sha256.New()
+	fileSize, err := io.Copy(h, f)
+	if err != nil {
+		return false, common.NewError("io_copy_error", err.Error())
+	}
+
+	b := h.Sum(nil)
+	hash := string(b)
+
+	if hash != fileData.Hash {
+		return false, common.NewError("invalid_hash", "calculated content hash does not match with client's content hash")
+	}
+
 	fileObjectPath, err := GetPathForFile(allocationID, fileData.Hash)
 	if err != nil {
 		return false, common.NewError("get_file_path_error", err.Error())
 	}
+
 	err = createDirs(filepath.Dir(fileObjectPath))
 	if err != nil {
 		return false, common.NewError("blob_object_dir_creation_error", err.Error())
@@ -407,9 +423,6 @@ func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, i
 	defer dest.Close()
 
 	fileRef := &FileOutputData{}
-	/* Todos
-	   cloud object inconsistency due to same content hash
-	*/
 
 	// the chunk has been rewritten. but network was broken, and it is not save in db
 	if dest.size > fileData.UploadOffset {
