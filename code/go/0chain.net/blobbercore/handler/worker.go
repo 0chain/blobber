@@ -76,18 +76,29 @@ func cleanupTempFiles(ctx context.Context) {
 		connection := &openConnectionsToDelete[i]
 		logging.Logger.Info("Deleting temp files for the connection", zap.Any("connection", connection.ID))
 		connection.ComputeProperties()
+
 		nctx := datastore.GetStore().CreateTransaction(ctx)
 		ndb := datastore.GetStore().GetTransaction(nctx)
+		var errorOccurred bool
 		for _, changeProcessor := range connection.AllocationChanges {
 			if err := changeProcessor.DeleteTempFile(); err != nil {
+				errorOccurred = true
 				logging.Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
 			}
 		}
-		ndb.Model(connection).Updates(allocation.AllocationChangeCollector{Status: allocation.DeletedConnection})
+
+		if !errorOccurred {
+			for _, c := range connection.Changes {
+				ndb.Unscoped().Delete(c)
+			}
+			ndb.Unscoped().Delete(connection)
+		}
+
 		ndb.Commit()
 		nctx.Done()
 	}
-	db.Rollback()
+
+	db.Commit()
 	rctx.Done()
 }
 
