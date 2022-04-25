@@ -206,7 +206,7 @@ message ReadMarker {
   string           allocation_id = 4;
   string           owner_id = 5;
   int64            timestamp = 6;
-  int64            read_size = 7;
+  int64            read_counter = 7;
   string           signature = 8;
   string           payer_id = 9;
   bytes            auth_ticket = 10;
