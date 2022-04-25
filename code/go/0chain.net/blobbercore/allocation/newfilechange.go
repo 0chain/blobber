@@ -130,9 +130,8 @@ func (nf *NewFileChange) ApplyChange(ctx context.Context, change *AllocationChan
 		return nf.CreateDir(ctx, nf.AllocationID, nf.Path, allocationRoot)
 	}
 
-	path, _ := filepath.Split(nf.Path)
-	path = filepath.Clean(path)
-	tSubDirs := reference.GetSubDirsFromPath(path)
+	parentPath := filepath.Dir(nf.Path)
+	tSubDirs := reference.GetSubDirsFromPath(parentPath)
 
 	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, nf.Path)
 	if err != nil {
