@@ -17,12 +17,6 @@ func SetupWorkers(ctx context.Context) {
 }
 
 func redeemWriterMarkersForAllocation(allocationObj *allocation.Allocation) {
-	defer func() {
-		if r := recover(); r != nil {
-			logging.Logger.Error("[recover] redeemWriterMarkersForAllocation", zap.Any("err", r))
-		}
-	}()
-
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	db := datastore.GetStore().GetTransaction(ctx)
 	var err error
