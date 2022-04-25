@@ -3,6 +3,7 @@ package stats
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"runtime"
 	"time"
 
@@ -541,34 +542,39 @@ type ReadMarkerEntity struct {
 	LatestRedeemedRC int64 `gorm:"column:latest_redeemed_rc"`
 }
 
-func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (rms *ReadMarkersStat, err error) {
+func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (*ReadMarkersStat, error) {
 	var (
-		db  = datastore.GetStore().GetTransaction(ctx)
+		db  = datastore.GetStore().GetDB()
 		rme ReadMarkerEntity
 	)
 
-	err = db.Table("read_markers").
+	row := db.Table("read_markers").
 		Select("counter, latest_redeemed_rc").
 		Where("allocation_id = ?", allocationID).
-		Limit(1).
-		Row().
-		Scan(&rme.ReadCounter, &rme.LatestRedeemedRC)
+		Limit(1).Row()
 
-	if err != nil && err != sql.ErrNoRows {
-		return
+	err := row.Err()
+	if err != nil {
+		return nil, err
 	}
 
-	if err == sql.ErrNoRows {
-		return &ReadMarkersStat{}, nil // empty
+	err = row.Scan(&rme.ReadCounter, &rme.LatestRedeemedRC)
+
+	rms := &ReadMarkersStat{}
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return rms, nil // empty
+		}
+		return nil, err
 	}
 
-	rms = new(ReadMarkersStat)
 	if rme.ReadCounter > rme.LatestRedeemedRC {
 		rms.Pending = rme.ReadCounter - rme.LatestRedeemedRC // pending
 	}
 
 	rms.Redeemed = rme.LatestRedeemedRC // already redeemed
-	return
+	return rms, nil
 }
 
 // copy pasted from writemarker package because of import cycle
