@@ -24,7 +24,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
 	"github.com/0chain/gosdk/constants"
-	"github.com/minio/minio-go"
+	minio "github.com/minio/minio-go"
 
 	"github.com/0chain/gosdk/core/util"
 )

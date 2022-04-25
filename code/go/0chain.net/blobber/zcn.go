@@ -8,16 +8,14 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/zcncore"
-	"go.uber.org/zap"
 )
 
 func setupOnChain() {
 	//wait http & grpc startup, and go to setup on chain
 	time.Sleep(1 * time.Second)
-	fmt.Println("[10/12] connecting to chain	")
+	fmt.Print("> connecting to chain	\n")
 
 	const ATTEMPT_DELAY = 60 * 1
 
@@ -45,7 +43,7 @@ func setupOnChain() {
 			fmt.Print("	[SKIP]\n")
 			break
 		} else {
-			if err := registerBlobberOnChain(); err != nil {
+			if err := handler.RegisterBlobber(common.GetRootContext()); err != nil {
 				if i == 10 { // no more attempts
 					panic(err)
 				}
@@ -64,7 +62,8 @@ func setupOnChain() {
 	if !isIntegrationTest {
 		go setupWorkers()
 
-		go healthCheckOnChain()
+		go startHealthCheck()
+		go startRefreshSettings()
 
 		if config.Configuration.PriceInUSD {
 			go refreshPriceOnChain()
@@ -72,23 +71,8 @@ func setupOnChain() {
 	}
 }
 
-func registerBlobberOnChain() error {
-	txnHash, err := handler.BlobberAdd(common.GetRootContext())
-	if err != nil {
-		return err
-	}
-
-	if t, err := handler.TransactionVerify(txnHash); err != nil {
-		logging.Logger.Error("Failed to verify blobber add/update transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
-	} else {
-		logging.Logger.Info("Verified blobber add/update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-	}
-
-	return err
-}
-
 func setupServerChain() error {
-	fmt.Print("[6/10] setup server chain")
+	fmt.Print("> setup server chain")
 	common.SetupRootContext(node.GetNodeContext())
 
 	config.SetServerChainID(config.Configuration.ChainID)
