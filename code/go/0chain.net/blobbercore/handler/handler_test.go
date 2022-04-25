@@ -1,3 +1,6 @@
+//go:build !integration
+// +build !integration
+
 package handler
 
 import (
@@ -19,7 +22,6 @@ import (
 	"github.com/0chain/gosdk/zboxcore/client"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"github.com/0chain/gosdk/zboxcore/marker"
-	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -129,48 +131,6 @@ func init() {
 		panic(err)
 	}
 
-}
-
-func setup(t *testing.T) {
-	// setup wallet
-	w, err := zcncrypto.NewSignatureScheme("bls0chain").GenerateKeys()
-	if err != nil {
-		t.Fatal(err)
-	}
-	wBlob, err := json.Marshal(w)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := zcncore.SetWalletInfo(string(wBlob), true); err != nil {
-		t.Fatal(err)
-	}
-
-	// setup servers
-	sharderServ := httptest.NewServer(
-		http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-			},
-		),
-	)
-	server := httptest.NewServer(
-		http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-				n := zcncore.Network{Miners: []string{"miner 1"}, Sharders: []string{sharderServ.URL}}
-				blob, err := json.Marshal(n)
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				if _, err := w.Write(blob); err != nil {
-					t.Fatal(err)
-				}
-			},
-		),
-	)
-
-	if err := zcncore.InitZCNSDK(server.URL, "ed25519"); err != nil {
-		t.Fatal(err)
-	}
 }
 
 func setupHandlers() (*mux.Router, map[string]string) {
