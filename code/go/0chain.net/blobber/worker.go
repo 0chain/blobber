@@ -6,6 +6,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/challenge"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
@@ -29,29 +30,37 @@ func refreshPriceOnChain() {
 	var REPEAT_DELAY = 60 * 60 * time.Duration(viper.GetInt("price_worker_in_hours")) // 12 hours with default settings
 	for {
 		time.Sleep(REPEAT_DELAY * time.Second)
-		if err := registerBlobberOnChain(); err != nil {
+		if err := handler.RefreshPriceOnChain(common.GetRootContext()); err != nil {
 			logging.Logger.Error("refresh price on chain ", zap.Error(err))
 		}
 	}
 }
 
-func healthCheckOnChain() {
+func startHealthCheck() {
 	const REPEAT_DELAY = 60 * 15 // 15 minutes
-
+	var err error
 	for {
-		time.Sleep(REPEAT_DELAY * time.Second)
-		txnHash, err := handler.BlobberHealthCheck()
-		if err != nil {
-			handler.SetBlobberHealthError(err)
+		err = handler.SendHealthCheck()
+		if err == nil {
+			logging.Logger.Info("success to send heartbeat")
 		} else {
-			t, err := handler.TransactionVerify(txnHash)
-			if err != nil {
-				logging.Logger.Error("Failed to verify blobber health check", zap.Any("err", err), zap.String("txn.Hash", txnHash))
-			} else {
-				logging.Logger.Info("Verified blobber health check", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-			}
-
-			handler.SetBlobberHealthError(err)
+			logging.Logger.Warn("failed to send heartbeat", zap.Error(err))
 		}
+		<-time.After(REPEAT_DELAY * time.Second)
+	}
+}
+
+// startRefreshSettings sync settings from chain
+func startRefreshSettings() {
+	const REPEAT_DELAY = 60 * 15 // 15 minutes
+	var err error
+	for {
+		err = config.Refresh(common.GetRootContext(), datastore.GetStore().GetDB())
+		if err == nil {
+			logging.Logger.Info("success to refresh blobber settings from chain")
+		} else {
+			logging.Logger.Warn("failed to refresh blobber settings from chain", zap.Error(err))
+		}
+		<-time.After(REPEAT_DELAY * time.Second)
 	}
 }

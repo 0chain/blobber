@@ -22,7 +22,7 @@ WORKDIR $SRC_DIR/code/go/0chain.net/validator
 RUN CGO_ENABLED=1 go build -v -tags "bn256 development" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=$GIT_COMMIT"
 
 # Copy the build artifact into a minimal runtime image:
-FROM alpine:3.14
+FROM alpine:3.15
 RUN apk add gmp gmp-dev openssl-dev
 COPY --from=validator_build  /usr/local/lib/libmcl*.so \
                         /usr/local/lib/libbls*.so \

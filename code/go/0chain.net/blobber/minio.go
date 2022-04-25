@@ -11,7 +11,7 @@ import (
 )
 
 func setupMinio() error {
-	fmt.Print("[4/12] setup minio")
+	fmt.Print("> setup minio")
 
 	if config.Configuration.MinioStart {
 		fmt.Print("	+ No minio 	[SKIP]\n")
