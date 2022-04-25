@@ -98,8 +98,8 @@ type fileManager struct {
 	Allocations map[string]*allocation
 }
 
-// UpdateAllocationMetaData only updates if allocation size has changed. Must use allocationID. Use of allocation Tx might
-// leak memory. allocation size must be of int64 type otherwise it won't be updated
+// UpdateAllocationMetaData only updates if allocation size has changed or new allocation is allocated. Must use allocationID.
+// Use of allocation Tx might leak memory. allocation size must be of int64 type otherwise it won't be updated
 func UpdateAllocationMetaData(m map[string]interface{}) {
 	fm.allocMu.Lock()
 	defer fm.allocMu.Unlock()
@@ -442,18 +442,6 @@ func incrDecrAllocFileSizeAndNumber(allocID string, size int64, fileNumber int64
 	}
 }
 
-func updateAllocFileSize(allocID string, size int64) {
-	alloc := fm.Allocations[allocID]
-	alloc.mu.Lock()
-	defer alloc.mu.Unlock()
-
-	if size < 0 {
-		alloc.filesSize -= uint64(size)
-	} else {
-		alloc.filesSize += uint64(size)
-	}
-}
-
 func getAllocationSpaceUsed(allocID string) uint64 {
 	alloc := fm.Allocations[allocID]
 	if alloc != nil {
@@ -480,6 +468,10 @@ func getTempPathForFile(allocId, fileName, pathHash, connectionID string) string
 
 func updateAllocTempFileSize(allocID string, size int64) {
 	alloc := fm.Allocations[allocID]
+	if alloc == nil { // This check is only for tests as there is no way for tests to update fm.Allocations map
+		return
+	}
+
 	alloc.tmpMU.Lock()
 	defer alloc.tmpMU.Unlock()
 
@@ -499,8 +491,5 @@ func getTempFilesSize(allocID string) uint64 {
 }
 
 /* Todos
-
-manage fs_store removals
-implement lock to add/remove file
-
+may need to verify content hash of the file
 */
