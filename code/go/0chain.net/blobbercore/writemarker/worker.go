@@ -17,23 +17,9 @@ func SetupWorkers(ctx context.Context) {
 }
 
 func redeemWriterMarkersForAllocation(allocationObj *allocation.Allocation) {
-	ctx := datastore.GetStore().CreateTransaction(context.TODO())
-	db := datastore.GetStore().GetTransaction(ctx)
+
+	db := datastore.GetStore().GetDB()
 	var err error
-
-	done := false
-
-	defer func() {
-
-		if !done {
-			if err := db.Rollback().Error; err != nil {
-				logging.Logger.Error("Error rollbacking the writemarker redeem",
-					zap.Any("allocation", allocationObj.ID),
-					zap.Error(err))
-			}
-		}
-		ctx.Done()
-	}()
 
 	var writemarkers []*WriteMarkerEntity
 
@@ -53,37 +39,68 @@ func redeemWriterMarkersForAllocation(allocationObj *allocation.Allocation) {
 			startredeem = true
 		}
 		if startredeem || allocationObj.LatestRedeemedWM == "" {
-			err = wm.RedeemMarker(ctx)
-			if err != nil {
-				logging.Logger.Error("Error redeeming the write marker.",
-					zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
-				return
-			}
-			err = db.Model(allocationObj).Updates(allocation.Allocation{LatestRedeemedWM: wm.WM.AllocationRoot}).Error
-			if err != nil {
-				logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
-					zap.Any("wm", wm.WM.AllocationRoot), zap.Any("error", err))
 
+			err = redeemWriteMarker(allocationObj, wm)
+			if err != nil {
 				return
 			}
-			allocationObj.LatestRedeemedWM = wm.WM.AllocationRoot
-			logging.Logger.Info("Success Redeeming the write marker", zap.Any("wm", wm.WM.AllocationRoot), zap.Any("txn", wm.CloseTxnID))
+
 		}
 	}
+
 	if allocationObj.LatestRedeemedWM == allocationObj.AllocationRoot {
 		db.Model(allocationObj).
 			Where("allocation_root = ? AND allocation_root = latest_redeemed_write_marker", allocationObj.AllocationRoot).
 			Update("is_redeem_required", false)
 	}
 
+}
+
+func redeemWriteMarker(allocationObj *allocation.Allocation, wm *WriteMarkerEntity) error {
+	ctx := datastore.GetStore().CreateTransaction(context.TODO())
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	shouldRollback := false
+
+	defer func() {
+		if shouldRollback {
+			if err := db.Rollback(); err != nil {
+				logging.Logger.Error("Error rollback on redeeming the write marker.",
+					zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
+			}
+		}
+	}()
+
+	err := wm.RedeemMarker(ctx)
+	if err != nil {
+		logging.Logger.Error("Error redeeming the write marker.",
+			zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
+
+		shouldRollback = true
+
+		return err
+	}
+	err = db.Model(allocationObj).Updates(allocation.Allocation{LatestRedeemedWM: wm.WM.AllocationRoot}).Error
+	if err != nil {
+		logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
+			zap.Any("wm", wm.WM.AllocationRoot), zap.Any("error", err))
+		shouldRollback = true
+
+		return err
+	}
+	allocationObj.LatestRedeemedWM = wm.WM.AllocationRoot
+	logging.Logger.Info("Success Redeeming the write marker", zap.Any("wm", wm.WM.AllocationRoot), zap.Any("txn", wm.CloseTxnID))
+
 	err = db.Commit().Error
 	if err != nil {
 		logging.Logger.Error("Error committing the writemarker redeem",
 			zap.Any("allocation", allocationObj.ID),
 			zap.Error(err))
+		shouldRollback = true
+		return err
 	}
 
-	done = true
+	return nil
 }
 
 func startRedeemWriteMarkers(ctx context.Context) {
