@@ -23,9 +23,9 @@ func setBlobberHealthCheckError(err error) {
 
 func getBlobberHealthCheckError() error {
 	blobberHealthCheckMutex.RLock()
-	defer blobberHealthCheckMutex.RUnlock()
-
-	return blobberHealthCheckError
+	err := blobberHealthCheckError
+	blobberHealthCheckMutex.RUnlock()
+	return err
 }
 
 func BlobberHealthCheck() (string, error) {
