@@ -47,7 +47,7 @@ func redeemWriterMarkersForAllocation(allocationObj *allocation.Allocation) {
 	}
 
 	if allocationObj.LatestRedeemedWM == allocationObj.AllocationRoot {
-		err = db.Exec("UPDATE allocations SET is_redeem_required=? WHERE allocation_id = ? ", false, allocationObj.ID).Error
+		err = db.Exec("UPDATE allocations SET is_redeem_required=? WHERE id = ? ", false, allocationObj.ID).Error
 		if err != nil {
 			logging.Logger.Error("Error redeeming the write marker. failed to update allocation's is_redeem_required ",
 				zap.Any("allocation", allocationObj.ID),
