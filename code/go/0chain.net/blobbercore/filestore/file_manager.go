@@ -166,7 +166,6 @@ func initManager(mp string) (err error) {
 		}
 	}()
 
-	// TODO Also check if mp is base point
 	if !isMountPoint(mp) {
 		return fmt.Errorf("%s is not a mount point", mp)
 	}
