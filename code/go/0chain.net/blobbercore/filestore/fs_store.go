@@ -2,7 +2,6 @@ package filestore
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -307,9 +306,6 @@ func (fs *FileFSStore) DeleteTempFile(allocationID string, fileData *FileInputDa
 }
 
 func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error) {
-	key := getKey(allocationID, fileData.Hash)
-	l, _ := contentHashMapLock.GetLock(key)
-	l.Lock()
 
 	tempFilePath := getTempPathForFile(allocationID, fileData.Name, encryption.Hash(fileData.Path), connectionID)
 
@@ -331,6 +327,10 @@ func (fs *FileFSStore) CommitWrite(allocationID string, fileData *FileInputData,
 	if hash != fileData.Hash {
 		return false, common.NewError("invalid_hash", "calculated content hash does not match with client's content hash")
 	}
+
+	key := getKey(allocationID, fileData.Hash)
+	l, _ := contentHashMapLock.GetLock(key)
+	l.Lock()
 
 	fileObjectPath, err := GetPathForFile(allocationID, fileData.Hash)
 	if err != nil {
@@ -410,35 +410,54 @@ func (fs *FileFSStore) DeleteDir(allocationID, dirPath, connectionID string) err
 	return nil
 }
 
-func (fs *FileFSStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
+func (fs *FileFSStore) WriteFile(allocationID string,
+	fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
+
 	tempFilePath := getTempPathForFile(allocationID, fileData.Name, encryption.Hash(fileData.Path), connectionID)
-	if err := createDirs(filepath.Dir(tempFilePath)); err != nil {
+	var initialSize int64
+	finfo, err := os.Stat(tempFilePath)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, common.NewError("file_stat_error", err.Error())
+	}
+	if finfo != nil {
+		initialSize = finfo.Size()
+	}
+
+	if err = createDirs(filepath.Dir(tempFilePath)); err != nil {
 		return nil, common.NewError("dir_creation_error", err.Error())
 	}
 
-	dest, err := NewChunkWriter(tempFilePath)
+	f, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return nil, common.NewError("file_creation_error", err.Error())
+		return nil, common.NewError("file_open_error", err.Error())
 	}
-	defer dest.Close()
-
-	fileRef := &FileOutputData{}
-
-	// the chunk has been rewritten. but network was broken, and it is not save in db
-	if dest.size > fileData.UploadOffset {
-		fileRef.ChunkUploaded = true
+	_, err = f.Seek(fileData.UploadOffset, io.SeekStart)
+	if err != nil {
+		return nil, common.NewError("file_seek_error", err.Error())
 	}
 
 	h := sha256.New()
-	size, err := dest.WriteChunk(context.TODO(), fileData.UploadOffset, io.TeeReader(infile, h))
+	tReader := io.TeeReader(infile, h)
 
+	_, err = io.Copy(f, tReader)
 	if err != nil {
-		return nil, errors.ThrowLog(err.Error(), constants.ErrUnableWriteFile)
+		return nil, common.NewError("file_write_error", err.Error())
 	}
 
-	updateAllocTempFileSize(allocationID, size)
+	finfo, err = f.Stat()
+	if err != nil {
+		return nil, common.NewError("file_stat_error", err.Error())
+	}
 
-	fileRef.Size = size
+	fileRef := &FileOutputData{}
+
+	currentSize := finfo.Size()
+	if currentSize > initialSize { // Is chunk new or rewritten
+		fileRef.ChunkUploaded = true
+		updateAllocTempFileSize(allocationID, currentSize-initialSize)
+	}
+
+	fileRef.Size = currentSize
 	fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
 
 	fileRef.Name = fileData.Name
