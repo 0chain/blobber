@@ -61,6 +61,7 @@ func SetupConfig(configPath string) {
 	if err != nil {             // Handle errors reading the config file
 		panic(fmt.Errorf("fatal error config file: %s", err))
 	}
+
 	Configuration.Config = &config.Configuration
 }
 
@@ -77,11 +78,15 @@ type GeolocationConfig struct {
 
 type Config struct {
 	*config.Config
+	DBAutoMigrate                 bool
 	DBHost                        string
+	PGUserName                    string
+	PGPassword                    string
 	DBPort                        string
 	DBName                        string
 	DBUserName                    string
 	DBPassword                    string
+	DBTablesToKeep                []string
 	ContentRefWorkerFreq          int64
 	ContentRefWorkerTolerance     int64
 	OpenConnectionWorkerFreq      int64

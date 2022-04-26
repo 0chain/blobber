@@ -11,8 +11,8 @@ var WriteMarkerMutext = &writemarker.Mutex{}
 
 // LockWriteMarker try to lock writemarker for specified allocation id, and return latest RefTree
 func LockWriteMarker(ctx *Context) (interface{}, error) {
-	connectionID := ctx.FormValue("connection_id")
-	requestTime := ctx.FormTime("request_time")
+	connectionID, _ := ctx.FormValue("connection_id")
+	requestTime, _ := ctx.FormTime("request_time")
 
 	result, err := WriteMarkerMutext.Lock(ctx, ctx.AllocationTx, connectionID, requestTime)
 	if err != nil {

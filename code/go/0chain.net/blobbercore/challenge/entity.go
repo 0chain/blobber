@@ -60,34 +60,46 @@ type ValidationNode struct {
 }
 
 type ChallengeEntity struct {
-	ChallengeID             string                `json:"id" gorm:"column:challenge_id;primary_key"`
-	PrevChallengeID         string                `json:"prev_id" gorm:"column:prev_challenge_id"`
-	RandomNumber            int64                 `json:"seed" gorm:"column:seed"`
-	AllocationID            string                `json:"allocation_id" gorm:"column:allocation_id"`
-	AllocationRoot          string                `json:"allocation_root" gorm:"column:allocation_root"`
-	RespondedAllocationRoot string                `json:"responded_allocation_root" gorm:"column:responded_allocation_root"`
-	Status                  ChallengeStatus       `json:"status" gorm:"column:status"`
-	Result                  ChallengeResult       `json:"result" gorm:"column:result"`
-	StatusMessage           string                `json:"status_message" gorm:"column:status_message"`
-	CommitTxnID             string                `json:"commit_txn_id" gorm:"column:commit_txn_id"`
-	BlockNum                int64                 `json:"block_num" gorm:"column:block_num"`
-	ValidationTicketsString datatypes.JSON        `json:"-" gorm:"column:validation_tickets"`
-	ValidatorsString        datatypes.JSON        `json:"-" gorm:"column:validators"`
-	LastCommitTxnList       datatypes.JSON        `json:"-" gorm:"column:last_commit_txn_ids"`
-	RefID                   int64                 `json:"-" gorm:"column:ref_id"`
-	Validators              []ValidationNode      `json:"validators" gorm:"-"`
-	LastCommitTxnIDs        []string              `json:"last_commit_txn_ids" gorm:"-"`
-	ValidationTickets       []*ValidationTicket   `json:"validation_tickets" gorm:"-"`
-	ObjectPathString        datatypes.JSON        `json:"-" gorm:"column:object_path"`
-	ObjectPath              *reference.ObjectPath `json:"object_path" gorm:"-"`
-	Created                 common.Timestamp      `json:"created" gorm:"-"`
+	ChallengeID             string                `gorm:"column:challenge_id;size:64;primaryKey" json:"id"`
+	PrevChallengeID         string                `gorm:"column:prev_challenge_id;size:64" json:"prev_id"`
+	RandomNumber            int64                 `gorm:"column:seed;not null;default:0" json:"seed"`
+	AllocationID            string                `gorm:"column:allocation_id;size64;not null" json:"allocation_id"`
+	AllocationRoot          string                `gorm:"column:allocation_root;size:64" json:"allocation_root"`
+	RespondedAllocationRoot string                `gorm:"column:responded_allocation_root;size:64" json:"responded_allocation_root"`
+	Status                  ChallengeStatus       `gorm:"column:status;type:integer;not null;default:0" json:"status"`
+	Result                  ChallengeResult       `gorm:"column:result;type:integer;not null;default:0" json:"result"`
+	StatusMessage           string                `gorm:"column:status_message" json:"status_message"`
+	CommitTxnID             string                `gorm:"column:commit_txn_id;size:64" json:"commit_txn_id"`
+	BlockNum                int64                 `gorm:"column:block_num" json:"block_num"`
+	ValidatorsString        datatypes.JSON        `gorm:"column:validators" json:"-"`
+	ValidationTicketsString datatypes.JSON        `gorm:"column:validation_tickets" json:"-"`
+	LastCommitTxnList       datatypes.JSON        `gorm:"column:last_commit_txn_ids" json:"-"`
+	RefID                   int64                 `gorm:"column:ref_id" json:"-"`
+	Validators              []ValidationNode      `gorm:"-" json:"validators"`
+	LastCommitTxnIDs        []string              `gorm:"-" json:"last_commit_txn_ids"`
+	ValidationTickets       []*ValidationTicket   `gorm:"-" json:"validation_tickets"`
+	ObjectPathString        datatypes.JSON        `gorm:"column:object_path" json:"-"`
+	ObjectPath              *reference.ObjectPath `gorm:"-" json:"object_path"`
+	Sequence                int64                 `gorm:"column:sequence;unique;type:bigserial;<-:false"`
+	Created                 common.Timestamp      `gorm:"-" json:"created"`
 
-	CreatedAt time.Time `gorm:"created_at"`
-	UpdatedAt time.Time `gorm:"updated_at"`
+	CreatedAt time.Time `gorm:"created_at;type:timestamp without time zone;not null;default:now()"`
+	UpdatedAt time.Time `gorm:"updated_at;type:timestamp without time zone;not null;default:now()"`
 }
 
 func (ChallengeEntity) TableName() string {
 	return "challenges"
+}
+
+func (c *ChallengeEntity) BeforeCreate(tx *gorm.DB) error {
+	c.CreatedAt = time.Now()
+	c.UpdatedAt = c.CreatedAt
+	return nil
+}
+
+func (c *ChallengeEntity) BeforeSave(tx *gorm.DB) error {
+	c.UpdatedAt = time.Now()
+	return nil
 }
 
 func marshalField(obj interface{}, dest *datatypes.JSON) error {

@@ -3,7 +3,7 @@ package stats
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	"errors"
 	"runtime"
 	"time"
 
@@ -14,7 +14,6 @@ import (
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"go.uber.org/zap"
-	"gorm.io/datatypes"
 )
 
 const DateTimeFormat = "2006-01-02T15:04:05"
@@ -539,49 +538,43 @@ func loadAllocationList(ctx context.Context) (interface{}, error) {
 }
 
 type ReadMarkerEntity struct {
-	ReadCounter          int64          `gorm:"column:counter" json:"counter"`
-	LatestRedeemedRMBlob datatypes.JSON `gorm:"column:latest_redeemed_rm"`
-	RedeemRequired       bool           `gorm:"column:redeem_required"`
+	ReadCounter      int64 `gorm:"column:counter" json:"counter"`
+	LatestRedeemedRC int64 `gorm:"column:latest_redeemed_rc"`
 }
 
-func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (rms *ReadMarkersStat, err error) {
+func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (*ReadMarkersStat, error) {
 	var (
-		db  = datastore.GetStore().GetTransaction(ctx)
+		db  = datastore.GetStore().GetDB()
 		rme ReadMarkerEntity
 	)
 
-	err = db.Table("read_markers").
-		Select("counter, latest_redeemed_rm, redeem_required").
+	row := db.Table("read_markers").
+		Select("counter, latest_redeemed_rc").
 		Where("allocation_id = ?", allocationID).
-		Limit(1).
-		Row().
-		Scan(&rme.ReadCounter, &rme.LatestRedeemedRMBlob, &rme.RedeemRequired)
+		Limit(1).Row()
 
-	if err != nil && err != sql.ErrNoRows {
-		return
+	err := row.Err()
+	if err != nil {
+		return nil, err
 	}
 
-	if err == sql.ErrNoRows {
-		return &ReadMarkersStat{}, nil // empty
-	}
+	err = row.Scan(&rme.ReadCounter, &rme.LatestRedeemedRC)
 
-	var prev, current = new(ReadMarkerEntity), &rme
-	if len(rme.LatestRedeemedRMBlob) > 0 {
-		err = json.Unmarshal([]byte(rme.LatestRedeemedRMBlob), prev)
-		if err != nil {
-			return
+	rms := &ReadMarkersStat{}
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return rms, nil // empty
 		}
+		return nil, err
 	}
 
-	rms = new(ReadMarkersStat)
-	if current.RedeemRequired {
-		rms.Pending = current.ReadCounter - prev.ReadCounter // pending
-		rms.Redeemed = prev.ReadCounter                      // already redeemed
-	} else {
-		rms.Redeemed = current.ReadCounter // already redeemed
+	if rme.ReadCounter > rme.LatestRedeemedRC {
+		rms.Pending = rme.ReadCounter - rme.LatestRedeemedRC // pending
 	}
 
-	return
+	rms.Redeemed = rme.LatestRedeemedRC // already redeemed
+	return rms, nil
 }
 
 // copy pasted from writemarker package because of import cycle

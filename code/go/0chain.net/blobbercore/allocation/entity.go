@@ -31,27 +31,28 @@ const (
 )
 
 type Allocation struct {
-	ID             string           `gorm:"column:id;primary_key"`
-	Tx             string           `gorm:"column:tx"`
-	TotalSize      int64            `gorm:"column:size"`
-	UsedSize       int64            `gorm:"column:used_size"`
-	OwnerID        string           `gorm:"column:owner_id"`
-	OwnerPublicKey string           `gorm:"column:owner_public_key"`
-	RepairerID     string           `gorm:"column:repairer_id"` // experimental / blobber node id
-	PayerID        string           `gorm:"column:payer_id"`    // optional / client paying for all r/w ops
-	Expiration     common.Timestamp `gorm:"column:expiration_date"`
+	ID             string           `gorm:"column:id;size:64;primaryKey"`
+	Tx             string           `gorm:"column:tx;size:64;not null;unique;index:idx_unique_allocations_tx,unique"`
+	TotalSize      int64            `gorm:"column:size;not null;default:0"`
+	UsedSize       int64            `gorm:"column:used_size;not null;default:0"`
+	OwnerID        string           `gorm:"column:owner_id;size:64;not null"`
+	OwnerPublicKey string           `gorm:"column:owner_public_key;size:512;not null"`
+	RepairerID     string           `gorm:"column:repairer_id;size:64;not null"`
+	PayerID        string           `gorm:"column:payer_id;size:64;not null"`
+	Expiration     common.Timestamp `gorm:"column:expiration_date;not null"`
 	// AllocationRoot allcation_root of last write_marker
-	AllocationRoot   string        `gorm:"column:allocation_root"`
-	BlobberSize      int64         `gorm:"column:blobber_size"`
-	BlobberSizeUsed  int64         `gorm:"column:blobber_size_used"`
-	LatestRedeemedWM string        `gorm:"column:latest_redeemed_write_marker"`
+	AllocationRoot   string        `gorm:"column:allocation_root;size:64;not null;default:''"`
+	BlobberSize      int64         `gorm:"column:blobber_size;not null;default:0"`
+	BlobberSizeUsed  int64         `gorm:"column:blobber_size_used;not null;default:0"`
+	LatestRedeemedWM string        `gorm:"column:latest_redeemed_write_marker;size:64"`
 	IsRedeemRequired bool          `gorm:"column:is_redeem_required"`
-	TimeUnit         time.Duration `gorm:"column:time_unit"`
-	IsImmutable      bool          `gorm:"is_immutable"`
+	TimeUnit         time.Duration `gorm:"column:time_unit;not null;default:172800000000000"`
+	IsImmutable      bool          `gorm:"is_immutable;not null"`
 	// Ending and cleaning
-	CleanedUp bool `gorm:"column:cleaned_up"`
-	Finalized bool `gorm:"column:finalized"`
+	CleanedUp bool `gorm:"column:cleaned_up;not null;default:false"`
+	Finalized bool `gorm:"column:finalized;not null;default:false"`
 	// Has many terms
+	// If Preload("Terms") is required replace tag `gorm:"-"` with `gorm:"foreignKey:AllocationID"`
 	Terms []*Terms `gorm:"-"`
 }
 
@@ -75,10 +76,10 @@ func sizeInGB(size int64) float64 {
 }
 
 // GetRequiredReadBalance Get tokens required to read the given size
-func (a *Allocation) GetRequiredReadBalance(blobberID string, readSize int64) (value float64) {
+func (a *Allocation) GetRequiredReadBalance(blobberID string, numBlocks int64) (value float64) {
 	for _, d := range a.Terms {
 		if d.BlobberID == blobberID {
-			value = sizeInGB(readSize) * float64(d.ReadPrice)
+			value = sizeInGB(numBlocks*CHUNK_SIZE) * float64(d.ReadPrice)
 			break
 		}
 	}
@@ -98,11 +99,8 @@ func (a *Allocation) GetRequiredWriteBalance(blobberID string, writeSize int64, 
 
 type Pending struct {
 	// ID of format client_id:allocation_id
-	ID string `gorm:"column:id;primary_key"`
-
-	PendingWrite int64 `gorm:"column:pending_write"` // size
-	// PendingRead client's pending token redeeming
-	PendingRead int64 `gorm:"column:pending_read"` // size
+	ID           string `gorm:"column:id;primaryKey"`
+	PendingWrite int64  `gorm:"column:pending_write;not null;default:0;"`
 }
 
 func (*Pending) TableName() string {
@@ -139,11 +137,11 @@ func GetPendingRead(db *gorm.DB, clientID, allocationID string) (pendingReadSize
 	return
 }
 
-func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite, pendingRead int64) (err error) {
+func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite int64) (err error) {
 	key := clientID + ":" + allocationID
 	// Lock is required because two process can simultaneously call this function and read pending data
 	// thus giving same value leading to inconsistent data
-	lock := pendingMapLock.GetLock(key)
+	lock, _ := pendingMapLock.GetLock(key)
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -152,12 +150,10 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite, pend
 	switch {
 	case err == nil:
 		pending.PendingWrite += pendingWrite
-		pending.PendingRead += pendingRead
 		db.Save(pending)
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		pending.ID = key
 		pending.PendingWrite = pendingWrite
-		pending.PendingRead = pendingRead
 		db.Create(pending)
 	default:
 		return err
@@ -184,44 +180,41 @@ const (
 
 // Terms for allocation by its Tx.
 type Terms struct {
-	ID           int64  `gorm:"column:id;primary_key"`
-	BlobberID    string `gorm:"blobber_id"`
-	AllocationID string `gorm:"allocation_id"`
+	ID           int64      `gorm:"column:id;primaryKey"`
+	BlobberID    string     `gorm:"blobber_id;size:64;not null"`
+	AllocationID string     `gorm:"allocation_id;size:64;not null"`
+	Allocation   Allocation `gorm:"foreignKey:AllocationID"` // references allocations(id)
 
-	ReadPrice  int64 `gorm:"read_price"`
-	WritePrice int64 `gorm:"write_price"`
+	ReadPrice  int64 `gorm:"read_price;not null"`
+	WritePrice int64 `gorm:"write_price;not null"`
 }
 
-func (*Terms) TableName() string {
+func (Terms) TableName() string {
 	return TableNameTerms
 }
 
 type ReadPool struct {
-	PoolID string `gorm:"column:pool_id;primary_key"`
-
-	ClientID     string `gorm:"column:client_id"`
-	AllocationID string `gorm:"column:allocation_id"`
-
+	PoolID       string `gorm:"column:pool_id;size:64;primaryKey"`
+	ClientID     string `gorm:"column:client_id;size:64;not null;index:idx_read_pools_cab,priority:1"`
+	AllocationID string `gorm:"column:allocation_id;size:64;not null;index:idx_read_pools_cab,priority:2"`
 	// Cached balance in read pool. Might need update when balance - pending is less than 0
-	Balance  int64            `gorm:"column:balance"`
-	ExpireAt common.Timestamp `gorm:"column:expire_at"`
+	Balance  int64            `gorm:"column:balance;not null"`
+	ExpireAt common.Timestamp `gorm:"column:expire_at;not null"`
 }
 
-func (*ReadPool) TableName() string {
+func (ReadPool) TableName() string {
 	return "read_pools"
 }
 
 type WritePool struct {
-	PoolID string `gorm:"column:pool_id;primary_key"`
-
-	ClientID     string `gorm:"column:client_id"`
-	AllocationID string `gorm:"column:allocation_id"`
-
-	Balance  int64            `gorm:"column:balance"`
-	ExpireAt common.Timestamp `gorm:"column:expire_at"`
+	PoolID       string           `gorm:"column:pool_id;size:64;primaryKey"`
+	ClientID     string           `gorm:"column:client_id;size:64;not null;index:idx_write_pools_cab,priority:1"`
+	AllocationID string           `gorm:"column:allocation_id;size:64;not null;index:idx_write_pools_cab,priority:2"`
+	Balance      int64            `gorm:"column:balance;not null"`
+	ExpireAt     common.Timestamp `gorm:"column:expire_at;not null"`
 }
 
-func (*WritePool) TableName() string {
+func (WritePool) TableName() string {
 	return "write_pools"
 }
 

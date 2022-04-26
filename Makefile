@@ -33,9 +33,9 @@ local-init:
 	#[ -d ./dev.local/data/blobber/config ] && rm -rf ./dev.local/data/blobber/config
 	cp -r ./config ./dev.local/data/blobber/ 
 ifeq ($(UNAME_OS),Darwin)
-	cd ./dev.local/data/blobber/config/ && find . -name "*.yaml" -exec sed -i '' "s/postgres/127.0.0.1/g" {} \;
+	cd ./dev.local/data/blobber/config/ && find . -name "*.yaml" -exec sed -i '' "s/host: postgres/host: 127.0.0.1/g" {} \;
 else
-	cd ./dev.local/data/blobber/config/ && sed -i "s/postgres/127.0.0.1/g" ./0chain_blobber.yaml
+	cd ./dev.local/data/blobber/config/ && sed -i "s/host: postgres/host: 127.0.0.1/g" ./0chain_blobber.yaml
 endif
 	cd ./dev.local/data/blobber && [ -d files ] || mkdir files 
 	cd ./dev.local/data/blobber && [ -d data ] || mkdir data 
@@ -60,7 +60,7 @@ local-run:
 	--log_dir ./data/blobber/log \
 	--db_dir ./data/blobber/data  \
 	--minio_file ../docker.local/keys_config/minio_config.txt \
-	--config_dir ./data/blobber/config
+	--config_dir ../config
     
 
 ########################################################

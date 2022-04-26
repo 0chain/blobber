@@ -33,10 +33,10 @@ jobs:
           echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
           echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
           
-      - name: Setup go 1.17
+      - name: Setup go 1.18
         uses: actions/setup-go@v2
         with:
-          go-version: '1.17' # The Go version to download (if necessary) and use.
+          go-version: '1.18' # The Go version to download (if necessary) and use.
 
       - name: Clone blobber
         uses: actions/checkout@v1
@@ -78,10 +78,10 @@ jobs:
           echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
           echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
 
-      - name: Setup go 1.17
+      - name: Setup go 1.18
         uses: actions/setup-go@v2
         with:
-          go-version: '1.17' # The Go version to download (if necessary) and use.
+          go-version: '1.18' # The Go version to download (if necessary) and use.
 
       - name: Clone blobber
         uses: actions/checkout@v1
@@ -173,7 +173,6 @@ jobs:
           network: ${{ env.NETWORK_URL }}
           zbox_cli_branch: staging
           zwallet_cli_branch: staging
-          smart_contract_owner_wallet_json: ${{ secrets.SMART_CONTRACT_OWNER_WALLET_JSON }}
           svc_account_secret: ${{ github.token }}
           deploy_report_page: false
           archive_results: true
