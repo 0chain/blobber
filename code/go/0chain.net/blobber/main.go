@@ -12,11 +12,6 @@ func main() {
 
 	setupLogging()
 
-	if err := setupMinio(); err != nil {
-		logging.Logger.Error("Error setting up minio " + err.Error())
-		panic(err)
-	}
-
 	if err := setupNode(); err != nil {
 		logging.Logger.Error("Error setting up blobber node " + err.Error())
 		panic(err)
