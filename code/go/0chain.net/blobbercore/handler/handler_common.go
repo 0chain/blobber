@@ -94,6 +94,27 @@ func HomepageHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "</br>")
 }
 
+type BlobberInfo struct {
+	ChainId string `json:"chainId"`
+	BlobberId string `json:"blobberId"`
+	BlobberPublicKey string `json:"blobberPubKey"`
+	BuildTag string `json:"buildTag"`
+	Stats interface{} `json:"stats"`
+}
+
+func GetBlobberInfoJson() BlobberInfo {
+	mc := chain.GetServerChain()
+
+	blobberInfo := BlobberInfo{
+		ChainId: mc.ID,
+		BlobberId: node.Self.ID,
+		BlobberPublicKey: node.Self.PublicKey,
+		BuildTag: build.BuildTag,
+	}
+
+	return blobberInfo
+}
+
 func WithStatusConnection(handler common.StatusCodeResponderF) common.StatusCodeResponderF {
 	return func(ctx context.Context, r *http.Request) (resp interface{}, statusCode int, err error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
