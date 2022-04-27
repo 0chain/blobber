@@ -4,9 +4,18 @@ on:
   push:
    branches: 
      - staging
+   paths:
+      - config/0chain_blobber.yaml
+      - config/0chain_validator.yaml
+
   pull_request:
-   branches: 
-     - staging
+    branches: 
+      - staging
+    types:
+      - closed
+    paths:
+      - config/0chain_blobber.yaml
+      - config/0chain_validator.yaml
    
 jobs:
   test:

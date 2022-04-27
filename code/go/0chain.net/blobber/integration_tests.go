@@ -18,3 +18,5 @@ func initIntegrationsTests(id string) {
 func shutdownIntegrationTests() {
 	crpc.Shutdown()
 }
+
+func startGRPCServer() {}
