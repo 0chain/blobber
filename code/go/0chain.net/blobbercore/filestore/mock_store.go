@@ -14,20 +14,21 @@ type MockStore struct {
 var mockStore *MockStore
 
 func (fs *MockStore) Initialize() error
-func (fs *MockStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
-func (fs *MockStore) CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error)
-func (fs *MockStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
+func (fs *MockStore) WriteFile(allocID, connID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error)
+func (fs *MockStore) CommitWrite(allocID, connID string, fileData *FileInputData) (bool, error)
+func (fs *MockStore) DeleteTempFile(allocID, connID string, fileData *FileInputData) error
 func (fs *MockStore) DeleteFile(allocationID string, contentHash string) error
 func (fs *MockStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
 func (fs *MockStore) GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error)
 func (fs *MockStore) MinioUpload(string, string) error
+func (fs *MockStore) MinioDownload(string, string) error
 func (fs *MockStore) MinioDelete(string) error
 func (fs *MockStore) GetTotalTempFilesSizeByAllocations() (s uint64)
 func (fs *MockStore) GetTempFilesSizeByAllocation(allocID string) uint64
 func (fs *MockStore) GetTotalPermFilesSizeByAllocations() uint64
 func (fs *MockStore) GetPermFilesSizeByAllocation(allocID string) uint64
 func (fs *MockStore) GetTotalFilesSizeByAllocations() uint64
-func (fs *MockStore) GetTotalFilesSizeByAllocation(allocID string)
+func (fs *MockStore) GetTotalFilesSizeByAllocation(allocID string) uint64
 func (fs *MockStore) IterateObjects(allocationID string, handler FileObjectHandler) error
 func (fs *MockStore) GetCurrentDiskCapacity() uint64
 func (fs *MockStore) CalculateCurrentDiskCapacity() error

@@ -60,13 +60,13 @@ func (fc *BaseFileChanger) DeleteTempFile() error {
 	fileInputData.Name = fc.Filename
 	fileInputData.Path = fc.Path
 	fileInputData.Hash = fc.Hash
-	err := filestore.GetFileStore().DeleteTempFile(fc.AllocationID, fileInputData, fc.ConnectionID)
+	err := filestore.GetFileStore().DeleteTempFile(fc.AllocationID, fc.ConnectionID, fileInputData)
 	if fc.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{}
 		fileInputData.Name = fc.ThumbnailFilename
 		fileInputData.Path = fc.Path
 		fileInputData.Hash = fc.ThumbnailHash
-		err = filestore.GetFileStore().DeleteTempFile(fc.AllocationID, fileInputData, fc.ConnectionID)
+		err = filestore.GetFileStore().DeleteTempFile(fc.AllocationID, fc.ConnectionID, fileInputData)
 	}
 	return err
 }
@@ -76,7 +76,7 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 	fileInputData.Name = fc.Filename
 	fileInputData.Path = fc.Path
 	fileInputData.Hash = fc.Hash
-	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fileInputData, fc.ConnectionID)
+	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
 	if err != nil {
 		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 	}
@@ -85,7 +85,7 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 		fileInputData.Name = fc.ThumbnailFilename
 		fileInputData.Path = fc.Path
 		fileInputData.Hash = fc.ThumbnailHash
-		_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fileInputData, fc.ConnectionID)
+		_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
 		if err != nil {
 			return common.NewError("file_store_error", "Error committing thumbnail to file store. "+err.Error())
 		}

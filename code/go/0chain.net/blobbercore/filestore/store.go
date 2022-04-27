@@ -41,22 +41,24 @@ type FileObjectHandler func(contentHash string, contentSize int64)
 type FileStorer interface {
 	// WriteFile write chunk file into disk
 	Initialize() error
-	WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
-	CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error)
-	DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
-	DeleteFile(allocationID string, contentHash string) error
-	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
-	GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error)
+	WriteFile(allocID, connID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error)
+	CommitWrite(allocID, connID string, fileData *FileInputData) (bool, error)
+	DeleteTempFile(allocID, connID string, fileData *FileInputData) error
+	DeleteFile(allocID string, contentHash string) error
+	GetFileBlock(allocID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
+	GetFileBlockForChallenge(allocID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error)
 
-	MinioUpload(string, string) error
-	MinioDelete(string) error
-
+	// fPath --> local path of file that is being uploaded
+	MinioUpload(contentHash, fPath string) error
+	MinioDelete(contentHash string) error
+	// fPath --> local path to download file to
+	MinioDownload(contentHash, fPath string) error
 	GetTotalTempFilesSizeByAllocations() (s uint64)
 	GetTempFilesSizeByAllocation(allocID string) uint64
 	GetTotalPermFilesSizeByAllocations() uint64
 	GetPermFilesSizeByAllocation(allocID string) uint64
 	GetTotalFilesSizeByAllocations() uint64
-	GetTotalFilesSizeByAllocation(allocID string)
+	GetTotalFilesSizeByAllocation(allocID string) uint64
 
 	IterateObjects(allocationID string, handler FileObjectHandler) error
 	// SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)
