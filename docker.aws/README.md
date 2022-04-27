@@ -49,13 +49,13 @@ block_worker: https://beta.0chain.net/dns
 4. Modify `docker.local/b0docker-compose.yml` and replace `< public ip here >` with public ip of your instance / vm.
 
 
-` command: ./bin/blobber --port 505${BLOBBER} --hostname < public ip here > --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keysconfig/minio_config.txt `
+` command: ./bin/blobber --port 505${BLOBBER} --hostname < public ip here > --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --mount_point /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keysconfig/minio_config.txt `
 
 
 5. To listen on tls network add `--https-port`, `--https-cert-file` (certificate file) and `--https-key-file` (key file)
 
 
-` command: ./bin/blobber --port 505${BLOBBER} --https-port 506${BLOBBER} --https-cert-file < certificate file > --https-key-file < key file > --hostname < public ip here > --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keysconfig/minio_config.txt `
+` command: ./bin/blobber --port 505${BLOBBER} --https-port 506${BLOBBER} --https-cert-file < certificate file > --https-key-file < key file > --hostname < public ip here > --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --mount_point /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keysconfig/minio_config.txt `
 
 
 6. Go to git/blobber directory to build containers using 
