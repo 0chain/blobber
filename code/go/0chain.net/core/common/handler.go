@@ -20,6 +20,9 @@ const (
 
 	// ClientSignatureHeader represents http request header contains signature.
 	ClientSignatureHeader = "X-App-Client-Signature"
+	ClientObjectPath      = "X-App-Client-Path"
+	ClientCollabID        = "X-App-Client-Collab-ID"
+	ClientRefereeID       = "X-App-Client-Referee-ID"
 )
 
 /*ReqRespHandlerf - a type for the default handler signature */

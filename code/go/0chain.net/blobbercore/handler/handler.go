@@ -173,12 +173,12 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 		r.Header.Get(common.ClientKeyHeader))
 	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
 		vars["allocation"])
-	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
-		vars["path"])
-	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
-		vars["collab_id"])
-	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
-		vars["refereeClientID"])
+	ctx = context.WithValue(ctx, constants.ContextKeyObjectPath,
+		r.Header.Get(common.ClientObjectPath))
+	ctx = context.WithValue(ctx, constants.ContextKeyCollabClientID,
+		r.Header.Get(common.ClientCollabID))
+	ctx = context.WithValue(ctx, constants.ContextKeyRefereeClientID,
+		r.Header.Get(common.ClientRefereeID))
 	// signature is not requered for all requests, but if header is empty it won`t affect anything
 	ctx = context.WithValue(ctx, constants.ContextKeyClientSignatureHeaderKey, r.Header.Get(common.ClientSignatureHeader))
 	return ctx
