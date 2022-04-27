@@ -38,31 +38,41 @@ type FileOutputData struct {
 
 type FileObjectHandler func(contentHash string, contentSize int64)
 
-type FileStore interface {
+type FileStorer interface {
 	// WriteFile write chunk file into disk
+	Initialize() error
 	WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
-	DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
-
-	DeleteDir(allocationID, dirPath, connectionID string) error
-
-	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
-
 	CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error)
-
-	GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error)
+	DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
 	DeleteFile(allocationID string, contentHash string) error
-	GetTotalDiskSizeUsed() (int64, error)
-	GetlDiskSizeUsed(allocationID string) (int64, error)
-	GetTempPathSize(allocationID string) (int64, error)
+	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
+	GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error)
+
+	MinioUpload(string, string) error
+	MinioDelete(string) error
+
+	GetTotalTempFilesSizeByAllocations() (s uint64)
+	GetTempFilesSizeByAllocation(allocID string) uint64
+	GetTotalPermFilesSizeByAllocations() uint64
+	GetPermFilesSizeByAllocation(allocID string) uint64
+	GetTotalFilesSizeByAllocations() uint64
+	GetTotalFilesSizeByAllocation(allocID string)
+
 	IterateObjects(allocationID string, handler FileObjectHandler) error
-	UploadToCloud(fileHash, filePath string) error
-	DownloadFromCloud(fileHash, filePath string) error
-	RemoveFromCloud(fileHash string) error
 	// SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)
+	GetCurrentDiskCapacity() uint64
+	CalculateCurrentDiskCapacity() error
+	// GetPathForFile given allocation id and content hash of a file, its path is calculated.
+	// Will return error if allocation id or content hash are not of length 64
+	GetPathForFile(allocID, contentHash string) (string, error)
+	UpdateAllocationMetaData(m map[string]interface{})
 }
 
-var fileStore FileStore
+var fileStore FileStorer
 
-func GetFileStore() FileStore {
+func SetFileStore(fs FileStorer) {
+	fileStore = fs
+}
+func GetFileStore() FileStorer {
 	return fileStore
 }

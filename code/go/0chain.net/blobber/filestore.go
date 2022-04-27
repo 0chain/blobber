@@ -3,14 +3,25 @@ package main
 import (
 	"fmt"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 )
 
 func setupFileStore() (err error) {
 	fmt.Print("[9/12] setup file store")
+	var fs filestore.FileStorer
 	if isIntegrationTest {
-		filestore.SetIsMountPointFunc(func(s string) bool { return true })
+		fs = &filestore.MockStore{}
+	} else {
+		fs = &filestore.FileStore{}
+
 	}
-	return filestore.SetupFSStore(config.Configuration.MountPoint)
+
+	err = fs.Initialize()
+	if err != nil {
+		return
+	}
+
+	filestore.SetFileStore(fs)
+
+	return nil
 }

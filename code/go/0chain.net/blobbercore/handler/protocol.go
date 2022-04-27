@@ -68,7 +68,7 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	if err != nil {
 		return nil, err
 	}
-	sn.Capacity = int64(filestore.GetCurrentDiskCapacity())
+	sn.Capacity = int64(filestore.GetFileStore().GetCurrentDiskCapacity())
 	readPrice := config.Configuration.ReadPrice
 	writePrice := config.Configuration.WritePrice
 	if config.Configuration.PriceInUSD {

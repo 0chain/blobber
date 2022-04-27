@@ -1,14 +1,9 @@
 package filestore
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
-	"errors"
-	"io"
 	"mime/multipart"
 
-	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/core/util"
 )
 
@@ -18,102 +13,125 @@ type MockStore struct {
 
 var mockStore *MockStore
 
-func UseMock(initData map[string]map[string]bool) {
-	if mockStore == nil {
-		mockStore = &MockStore{d: initData}
-	}
+func (fs *MockStore) Initialize() error
+func (fs *MockStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
+func (fs *MockStore) CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error)
+func (fs *MockStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
+func (fs *MockStore) DeleteFile(allocationID string, contentHash string) error
+func (fs *MockStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
+func (fs *MockStore) GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error)
+func (fs *MockStore) MinioUpload(string, string) error
+func (fs *MockStore) MinioDelete(string) error
+func (fs *MockStore) GetTotalTempFilesSizeByAllocations() (s uint64)
+func (fs *MockStore) GetTempFilesSizeByAllocation(allocID string) uint64
+func (fs *MockStore) GetTotalPermFilesSizeByAllocations() uint64
+func (fs *MockStore) GetPermFilesSizeByAllocation(allocID string) uint64
+func (fs *MockStore) GetTotalFilesSizeByAllocations() uint64
+func (fs *MockStore) GetTotalFilesSizeByAllocation(allocID string)
+func (fs *MockStore) IterateObjects(allocationID string, handler FileObjectHandler) error
+func (fs *MockStore) GetCurrentDiskCapacity() uint64
+func (fs *MockStore) CalculateCurrentDiskCapacity() error
+func (fs *MockStore) GetPathForFile(allocID, contentHash string) (string, error)
+func (fs *MockStore) UpdateAllocationMetaData(m map[string]interface{})
 
-	mockStore.d = initData
-	fileStore = mockStore
-}
+// func UseMock(initData map[string]map[string]bool) {
+// 	if mockStore == nil {
+// 		mockStore = &MockStore{d: initData}
+// 	}
+
+// 	mockStore.d = initData
+// 	fileStore = mockStore
+// }
 
 // WriteFile write chunk file into disk
-func (ms *MockStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
-	fileRef := &FileOutputData{}
+// func (ms *MockStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
+// 	fileRef := &FileOutputData{}
 
-	fileRef.ChunkUploaded = true
+// 	fileRef.ChunkUploaded = true
 
-	h := sha256.New()
-	reader := io.TeeReader(infile, h)
-	fileSize := int64(0)
-	for {
-		written, err := io.CopyN(io.Discard, reader, fileData.ChunkSize)
+// 	h := sha256.New()
+// 	reader := io.TeeReader(infile, h)
+// 	fileSize := int64(0)
+// 	for {
+// 		written, err := io.CopyN(io.Discard, reader, fileData.ChunkSize)
 
-		fileSize += written
+// 		fileSize += written
 
-		if err != nil {
-			break
-		}
-	}
+// 		if err != nil {
+// 			break
+// 		}
+// 	}
 
-	fileRef.Size = fileSize
-	fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
+// 	fileRef.Size = fileSize
+// 	fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
 
-	fileRef.Name = fileData.Name
-	fileRef.Path = fileData.Path
+// 	fileRef.Name = fileData.Name
+// 	fileRef.Path = fileData.Path
 
-	return fileRef, nil
-}
-func (ms *MockStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error {
-	return nil
-}
+// 	return fileRef, nil
+// }
 
-func (ms *MockStore) CreateDir(dirName string) error {
-	return nil
-}
-func (ms *MockStore) DeleteDir(allocationID, dirPath, connectionID string) error {
-	return nil
-}
+// func (ms *MockStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error {
+// 	return nil
+// }
 
-func (ms *MockStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
-	return nil, constants.ErrNotImplemented
-}
+// func (ms *MockStore) CreateDir(dirName string) error {
+// 	return nil
+// }
 
-func (ms *MockStore) CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error) {
-	ms.addFileInDataObj(allocationID, fileData.Hash)
-	return true, nil
-}
+// func (ms *MockStore) DeleteDir(allocationID, dirPath, connectionID string) error {
+// 	return nil
+// }
 
-func (ms *MockStore) GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
-	return nil, nil, constants.ErrNotImplemented
-}
-func (ms *MockStore) DeleteFile(allocationID, contentHash string) error {
-	if ms.d == nil || ms.d[allocationID] == nil || !ms.d[allocationID][contentHash] {
-		return errors.New("file not available related to content")
-	}
-	delete(ms.d[allocationID], contentHash)
-	return nil
-}
+// func (ms *MockStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
+// 	return nil, constants.ErrNotImplemented
+// }
 
-func (ms *MockStore) GetTotalDiskSizeUsed() (int64, error) {
-	return 0, constants.ErrNotImplemented
-}
-func (ms *MockStore) GetlDiskSizeUsed(allocationID string) (int64, error) {
-	return 0, constants.ErrNotImplemented
-}
-func (ms *MockStore) GetTempPathSize(allocationID string) (int64, error) {
-	return 0, constants.ErrNotImplemented
-}
-func (ms *MockStore) IterateObjects(allocationID string, handler FileObjectHandler) error {
-	return nil
-}
-func (ms *MockStore) UploadToCloud(fileHash, filePath string) error {
-	return nil
-}
-func (ms *MockStore) DownloadFromCloud(fileHash, filePath string) error {
-	return nil
-}
-func (ms *MockStore) RemoveFromCloud(fileHash string) error {
-	return nil
-}
+// func (ms *MockStore) CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error) {
+// 	ms.addFileInDataObj(allocationID, fileData.Hash)
+// 	return true, nil
+// }
 
-func (ms *MockStore) addFileInDataObj(allocationID, contentHash string) {
-	if contentHash == "" {
-		return
-	}
-	if ms.d == nil {
-		ms.d = make(map[string]map[string]bool)
-	}
-	dataObj := ms.d[allocationID]
-	dataObj[contentHash] = true
-}
+// func (ms *MockStore) GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
+// 	return nil, nil, constants.ErrNotImplemented
+// }
+// func (ms *MockStore) DeleteFile(allocationID, contentHash string) error {
+// 	if ms.d == nil || ms.d[allocationID] == nil || !ms.d[allocationID][contentHash] {
+// 		return errors.New("file not available related to content")
+// 	}
+// 	delete(ms.d[allocationID], contentHash)
+// 	return nil
+// }
+
+// func (ms *MockStore) GetTotalDiskSizeUsed() (int64, error) {
+// 	return 0, constants.ErrNotImplemented
+// }
+// func (ms *MockStore) GetlDiskSizeUsed(allocationID string) (int64, error) {
+// 	return 0, constants.ErrNotImplemented
+// }
+// func (ms *MockStore) GetTempPathSize(allocationID string) (int64, error) {
+// 	return 0, constants.ErrNotImplemented
+// }
+// func (ms *MockStore) IterateObjects(allocationID string, handler FileObjectHandler) error {
+// 	return nil
+// }
+// func (ms *MockStore) UploadToCloud(fileHash, filePath string) error {
+// 	return nil
+// }
+// func (ms *MockStore) DownloadFromCloud(fileHash, filePath string) error {
+// 	return nil
+// }
+// func (ms *MockStore) RemoveFromCloud(fileHash string) error {
+// 	return nil
+// }
+
+// func (ms *MockStore) addFileInDataObj(allocationID, contentHash string) {
+// 	if contentHash == "" {
+// 		return
+// 	}
+// 	if ms.d == nil {
+// 		ms.d = make(map[string]map[string]bool)
+// 	}
+// 	dataObj := ms.d[allocationID]
+// 	dataObj[contentHash] = true
+// }

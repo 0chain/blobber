@@ -61,11 +61,11 @@ func healthCheckOnChain() {
 }
 
 func StartUpdateWorker(ctx context.Context, interval time.Duration) {
-	err := filestore.CalculateCurrentDiskCapacity()
+	err := filestore.GetFileStore().CalculateCurrentDiskCapacity()
 	if err != nil {
 		panic(err)
 	}
-	currentCapacity := filestore.GetCurrentDiskCapacity()
+	currentCapacity := filestore.GetFileStore().GetCurrentDiskCapacity()
 
 	ticker := time.NewTicker(config.Configuration.BlobberUpdateInterval)
 	for {
@@ -73,12 +73,12 @@ func StartUpdateWorker(ctx context.Context, interval time.Duration) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			err := filestore.CalculateCurrentDiskCapacity()
+			err := filestore.GetFileStore().CalculateCurrentDiskCapacity()
 			if err != nil {
 				logging.Logger.Error("Error while getting capacity", zap.Error(err))
 				break
 			}
-			if currentCapacity != filestore.GetCurrentDiskCapacity() {
+			if currentCapacity != filestore.GetFileStore().GetCurrentDiskCapacity() {
 
 				err := registerBlobberOnChain()
 				if err != nil {

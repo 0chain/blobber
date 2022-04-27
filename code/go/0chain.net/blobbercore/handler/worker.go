@@ -129,12 +129,7 @@ func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize int64, limi
 		}
 	}()
 
-	fs := filestore.GetFileStore()
-	totalDiskSizeUsed, err := fs.GetTotalDiskSizeUsed()
-	if err != nil {
-		logging.Logger.Error("Unable to get total disk size used from the file store", zap.Error(err))
-		return
-	}
+	totalDiskSizeUsed := filestore.GetFileStore().GetTotalPermFilesSizeByAllocations()
 
 	// Check if capacity exceded the start capacity size
 	if totalDiskSizeUsed > config.Configuration.ColdStorageStartCapacitySize {
@@ -195,12 +190,11 @@ func startMoveColdDataToCloud(ctx context.Context) {
 }
 
 func moveFileToCloud(ctx context.Context, fileRef *reference.Ref) {
-	fileObjectPath, err := filestore.GetPathForFile(fileRef.AllocationID, fileRef.ContentHash)
+	fileObjectPath, err := filestore.GetFileStore().GetPathForFile(fileRef.AllocationID, fileRef.ContentHash)
 	if err != nil {
 		logging.Logger.Error("Error while getting path of file", zap.Error(err))
 	}
-	fs := filestore.GetFileStore()
-	err = fs.UploadToCloud(fileRef.ContentHash, fileObjectPath)
+	err = filestore.GetFileStore().MinioUpload(fileRef.ContentHash, fileObjectPath)
 	if err != nil {
 		logging.Logger.Error("Error uploading cold data to cloud", zap.Error(err), zap.Any("file_name", fileRef.Name), zap.Any("file_path", fileObjectPath))
 		return
@@ -208,11 +202,11 @@ func moveFileToCloud(ctx context.Context, fileRef *reference.Ref) {
 
 	if fileRef.ThumbnailHash != "" {
 		thumbnailPath := ""
-		if err := fs.UploadToCloud(fileRef.ThumbnailHash, thumbnailPath); err != nil {
+		if err := filestore.GetFileStore().MinioUpload(fileRef.ThumbnailHash, thumbnailPath); err != nil {
 			logging.Logger.Error("Error uploading cold thumbnail data to cloud", zap.Error(err))
 
 			logging.Logger.Info("Removing file from cloud")
-			if err := fs.RemoveFromCloud(fileRef.ContentHash); err != nil {
+			if err := filestore.GetFileStore().MinioDelete(fileRef.ContentHash); err != nil {
 				logging.Logger.Debug("Got Error while remove file from cloud", zap.String("file", fileRef.ContentHash))
 			}
 			return

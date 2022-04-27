@@ -103,13 +103,18 @@ type Config struct {
 	ColdStorageMinimumFileSize   int64
 	ColdStorageTimeLimitInHours  int64
 	ColdStorageJobQueryLimit     int
-	ColdStorageStartCapacitySize int64
+	ColdStorageStartCapacitySize uint64
 	ColdStorageDeleteLocalCopy   bool
 	ColdStorageDeleteCloudCopy   bool
 
 	MinioStart      bool
 	MinioWorkerFreq int64
 	MinioUseSSL     bool
+	MinioStorageUrl string
+	MinioAccessID   string
+	MinioSecretKey  string
+	MinioBucket     string
+	MinioRegion     string
 
 	ReadPrice               float64
 	WritePrice              float64
@@ -153,7 +158,9 @@ type Config struct {
 	WebsiteUrl string
 
 	// MountPoint is where allocation files are stored. This is basically arranged in RAID5.
-	MountPoint string
+	MountPoint    string
+	AllocDirLevel []int
+	FileDirLevel  []int
 	// AutomacitUpdate Whether to automatically update blobber updates to blockchain
 	AutomaticUpdate       bool
 	BlobberUpdateInterval time.Duration
