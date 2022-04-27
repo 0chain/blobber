@@ -54,11 +54,12 @@ func setupMockForFileManager() error {
 }
 
 func setupFileManager(mp string) error {
-	filestore.SetIsMountPointFunc(func(s string) bool { return true })
-	if err := filestore.SetupFSStore(mp); err != nil {
+	fs := &filestore.MockStore{}
+	err := fs.Initialize()
+	if err != nil {
 		return err
 	}
-
+	filestore.SetFileStore(fs)
 	return nil
 }
 
@@ -86,7 +87,7 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 	pathHash := randString(64)
 	contentHash := randString(64)
 
-	fPath, err := filestore.GetPathForFile(allocID, contentHash)
+	fPath, err := filestore.GetFileStore().GetPathForFile(allocID, contentHash)
 	if err != nil {
 		t.Fatal(err)
 	}

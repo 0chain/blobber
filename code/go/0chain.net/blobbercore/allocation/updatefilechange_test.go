@@ -256,8 +256,11 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		fs := &filestore.MockStore{}
+		if err := fs.Initialize(); err != nil {
+			t.Fatal(err)
+		}
 		datastore.MocketTheStore(t, true)
-		filestore.UseMock(tc.initDir)
 		tc.setupDbMock()
 
 		ctx := context.TODO()

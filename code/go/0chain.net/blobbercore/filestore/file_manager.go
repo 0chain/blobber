@@ -43,7 +43,7 @@ func (fs *FileStore) Initialize() (err error) {
 
 	fs.mp = config.Configuration.MountPoint
 	if !fs.isMountPoint() {
-		return fmt.Errorf("%s is not mount point")
+		return fmt.Errorf("%s is not mount point", fs.mp)
 	}
 
 	if err = validateDirLevels(); err != nil {

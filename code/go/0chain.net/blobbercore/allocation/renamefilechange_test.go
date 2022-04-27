@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,20 +28,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-type MockFileBlockGetter struct {
-	filestore.IFileBlockGetter
-}
-
 var mockFileBlock []byte
-
-func (MockFileBlockGetter) GetFileBlock(
-	fsStore *filestore.FileFSStore,
-	allocationID string,
-	fileData *filestore.FileInputData,
-	blockNum int64,
-	numBlocks int64) ([]byte, error) {
-	return mockFileBlock, nil
-}
 
 func resetMockFileBlock() {
 	mockFileBlock = []byte("mock")
@@ -145,13 +131,12 @@ func init() {
 		panic(err)
 	}
 
-	filestore.SetIsMountPointFunc(func(s string) bool { return true })
-
-	if _, err := filestore.SetupFSStoreI(tDir, MockFileBlockGetter{}); err != nil {
+	fs := &filestore.MockStore{}
+	err = fs.Initialize()
+	if err != nil {
 		panic(err)
 	}
-
-	fmt.Println("yay initialized")
+	filestore.SetFileStore(fs)
 }
 
 func TestBlobberCore_RenameFile(t *testing.T) {
