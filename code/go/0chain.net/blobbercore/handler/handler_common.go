@@ -95,10 +95,10 @@ func HomepageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type BlobberInfo struct {
-	ChainId string `json:"chainId"`
-	BlobberId string `json:"blobberId"`
-	BlobberPublicKey string `json:"blobberPubKey"`
-	BuildTag string `json:"buildTag"`
+	ChainId string `json:"chain_id"`
+	BlobberId string `json:"blobber_id"`
+	BlobberPublicKey string `json:"public_key"`
+	BuildTag string `json:"build_tag"`
 	Stats interface{} `json:"stats"`
 }
 

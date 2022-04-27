@@ -315,6 +315,7 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 
 			w.WriteHeader(http.StatusInternalServerError)
 			writeResponse(w, []byte(err.Error()))
+			return
 		}
 
 		blobberInfo.Stats = blobberStats
@@ -326,6 +327,7 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 
 			w.WriteHeader(http.StatusInternalServerError)
 			writeResponse(w, []byte(err.Error()))
+			return
 		}
 
 		writeResponse(w, statsJson)
