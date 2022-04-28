@@ -104,13 +104,6 @@ func init() {
 	config.Configuration.SignatureScheme = "bls0chain"
 	logging.Logger = zap.NewNop()
 
-	mock := datastore.MockTheStore(nil)
-
-	// TODO
-	/***modify this*/
-	setupMockForFileManagerInit(mock)
-	/*Modify above*/
-
 	dir, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -121,7 +114,7 @@ func init() {
 		panic(err)
 	}
 
-	fs := &filestore.MockStore{}
+	fs := &MockFileStore{}
 	err = fs.Initialize()
 	if err != nil {
 		panic(err)
