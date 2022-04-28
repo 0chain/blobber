@@ -3,7 +3,7 @@
 
 
 
-## install `postgres:11` in docker as shared database for blobbers and validators
+## install `postgres:14` in docker as shared database for blobbers and validators
 
 ```
 **********************************************

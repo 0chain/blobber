@@ -1,7 +1,7 @@
 version: '3'
 services:
   postgres:
-    image: postgres:11
+    image: postgres:14
     volumes:
       - /0chain/${AGENT_DIR}/data/postgresql:/var/lib/postgresql/data
     networks:
@@ -10,7 +10,7 @@ services:
     container_name: ${AGENT_CONTAINER}-postgres
 
   postgres-post:
-    image: postgres:11
+    image: postgres:14
     environment:
       POSTGRES_PORT: 5432
       POSTGRES_HOST: postgres

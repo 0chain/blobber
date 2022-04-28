@@ -113,7 +113,7 @@ done
 install_postgres () {
     echo Installing blobber_postgres in docker...
 
-    [ ! "$(docker ps -a | grep blobber_postgres)" ] && docker run --name blobber_postgres --restart always -p 5432:5432 -e POSTGRES_PASSWORD=postgres -d postgres:11
+    [ ! "$(docker ps -a | grep blobber_postgres)" ] && docker run --name blobber_postgres --restart always -p 5432:5432 -e POSTGRES_PASSWORD=postgres -d postgres:14
 
 
     [ -d "./data/blobber$i" ] || mkdir -p "./data/blobber$i"
@@ -152,7 +152,7 @@ install_postgres () {
     -e  POSTGRES_PASSWORD=postgres \
     -v  $root/data/blobber$i/bin:/blobber/bin \
     -v  $root/data/blobber$i/sql:/blobber/sql \
-    postgres:11 bash /blobber/bin/postgres-entrypoint.sh 
+    postgres:14 bash /blobber/bin/postgres-entrypoint.sh 
 
     docker rm blobber_postgres_init --force
 }
