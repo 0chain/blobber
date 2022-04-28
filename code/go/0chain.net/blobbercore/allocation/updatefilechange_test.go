@@ -14,7 +14,6 @@ import (
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
 	mocket "github.com/selvatico/go-mocket"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
 )
@@ -37,19 +36,18 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 	alloc.OwnerID = client.GetClientID()
 
 	testCases := []struct {
-		name                 string
-		context              metadata.MD
-		allocChange          *AllocationChange
-		path                 string
-		filename             string
-		allocRoot            string
-		thumbnailHash        string
-		hash                 string
-		allocationID         string
-		expectedMessage      string
-		expectingError       bool
-		setupDbMock          func()
-		initDir, expectedDir map[string]map[string]bool
+		name            string
+		context         metadata.MD
+		allocChange     *AllocationChange
+		path            string
+		filename        string
+		allocRoot       string
+		thumbnailHash   string
+		hash            string
+		allocationID    string
+		expectedMessage string
+		expectingError  bool
+		setupDbMock     func()
 	}{
 		{
 			name:           "Update thumbnail hash",
@@ -105,18 +103,6 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 					},
 				)
 
-			},
-			initDir: map[string]map[string]bool{
-				alloc.ID: {
-					"content_hash":       true,
-					"thumbnail_hash_old": true,
-				},
-			},
-			expectedDir: map[string]map[string]bool{
-				alloc.ID: {
-					"content_hash":   true,
-					"thumbnail_hash": true,
-				},
 			},
 		},
 		{
@@ -174,18 +160,6 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 				)
 
 			},
-			initDir: map[string]map[string]bool{
-				alloc.ID: {
-					"content_hash_old": true,
-					"thumbnail_hash":   true,
-				},
-			},
-			expectedDir: map[string]map[string]bool{
-				alloc.ID: {
-					"content_hash":   true,
-					"thumbnail_hash": true,
-				},
-			},
 		},
 		{
 			name:           "Remove thumbnail",
@@ -241,25 +215,15 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 				)
 
 			},
-			initDir: map[string]map[string]bool{
-				alloc.ID: {
-					"content_hash":   true,
-					"thumbnail_hash": true,
-				},
-			},
-			expectedDir: map[string]map[string]bool{
-				alloc.ID: {
-					"content_hash": true,
-				},
-			},
 		},
 	}
 
 	for _, tc := range testCases {
-		fs := &filestore.MockStore{}
+		fs := &MockFileStore{}
 		if err := fs.Initialize(); err != nil {
 			t.Fatal(err)
 		}
+		filestore.SetFileStore(fs)
 		datastore.MocketTheStore(t, true)
 		tc.setupDbMock()
 
@@ -312,6 +276,5 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 			t.Fatal("expected error")
 		}
 
-		require.EqualValues(t, tc.expectedDir, tc.initDir)
 	}
 }
