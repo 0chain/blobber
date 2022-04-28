@@ -15,7 +15,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
 
-	"github.com/0chain/gosdk/zboxcore/sdk"
 	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
 )
@@ -102,7 +101,7 @@ func getStorageNode() (*transaction.StorageNode, error) {
 // RegisterBlobber register blobber if it doesn't registered yet. sync terms and stake pool settings from blockchain if it is registered
 func RegisterBlobber(ctx context.Context) error {
 
-	_, err := sdk.GetBlobber(node.Self.ID)
+	_, err := getBlobber(node.Self.ID)
 	if err != nil { // blobber is not registered yet
 		logging.Logger.Warn("failed to get blobber from blockchain", zap.Error(err))
 
@@ -122,6 +121,41 @@ func RegisterBlobber(ctx context.Context) error {
 	}
 
 	return SendHealthCheck()
+
+}
+
+// getBlobber try to get blobber info from 0chain.
+func getBlobber(blobberID string) (*zcncore.Blobber, error) {
+	cb := &getBlobberCallback{}
+	if err := zcncore.GetBlobber(blobberID, cb); err != nil {
+		return nil, err
+	}
+
+	if cb.Error != nil {
+		return nil, cb.Error
+	}
+
+	return cb.Blobber, nil
+
+}
+
+type getBlobberCallback struct {
+	Blobber *zcncore.Blobber
+	Error   error
+}
+
+func (cb *getBlobberCallback) OnInfoAvailable(op int, status int, info string, err string) {
+	if status != zcncore.StatusSuccess {
+		cb.Error = errors.New(err)
+		return
+	}
+	b := &zcncore.Blobber{}
+	if err := json.Unmarshal([]byte(info), b); err != nil {
+		cb.Error = err
+		return
+	}
+
+	cb.Blobber = b
 
 }
 
@@ -176,6 +210,9 @@ func sendSmartContractBlobberAdd(ctx context.Context) (string, error) {
 // service anymore). Thus the blobber shouldn't send the health check
 // transactions.
 var ErrBlobberHasRemoved = errors.New("blobber has removed")
+
+// ErrBlobberNotFound it is not registered on chain
+var ErrBlobberNotFound = errors.New("blobber is not found")
 
 func TransactionVerify(txnHash string) (t *transaction.Transaction, err error) {
 	for i := 0; i < util.MAX_RETRIES; i++ {
