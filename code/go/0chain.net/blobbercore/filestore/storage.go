@@ -52,7 +52,10 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const TempDir = "tmp"
+const (
+	TempDir         = "tmp"
+	MerkleChunkSize = 64
+)
 
 func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
@@ -124,7 +127,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	}
 
 	b := h.Sum(nil)
-	hash := string(b)
+	hash := hex.EncodeToString(b)
 
 	if hash != fileData.Hash {
 		return false, common.NewError("invalid_hash", "calculated content hash does not match with client's content hash")
@@ -243,6 +246,9 @@ func (fs *FileStore) GetFileBlock(allocID string, fileData *FileInputData, block
 	file, err := os.Open(fileObjectPath)
 	switch {
 	case err != nil && errors.Is(err, os.ErrNotExist):
+		if fs.mc == nil {
+			return nil, common.NewError("file_exist_error", fmt.Sprintf("%s does not exists", fileObjectPath))
+		}
 		err = fs.MinioDownload(fileData.Hash, fileObjectPath)
 		if err != nil {
 			return nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
@@ -281,6 +287,10 @@ func (fs *FileStore) GetFileBlock(allocID string, fileData *FileInputData, block
 func (fs *FileStore) GetFileBlockForChallenge(allocID string,
 	fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
 
+	if blockoffset < 0 || blockoffset >= 1024 {
+		return nil, nil, common.NewError("invalid_block_number", "Invalid block offset")
+	}
+
 	fileObjectPath, err := fs.GetPathForFile(allocID, fileData.Hash)
 	if err != nil {
 		return nil, nil, common.NewError("get_file_path_error", err.Error())
@@ -289,6 +299,9 @@ func (fs *FileStore) GetFileBlockForChallenge(allocID string,
 	file, err := os.Open(fileObjectPath)
 	switch {
 	case err != nil && errors.Is(err, os.ErrNotExist):
+		if fs.mc == nil {
+			return nil, nil, common.NewError("file_exist_error", fmt.Sprintf("%s does not exists", fileObjectPath))
+		}
 		err = fs.MinioDownload(fileData.Hash, fileObjectPath)
 		if err != nil {
 			return nil, nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
@@ -302,61 +315,42 @@ func (fs *FileStore) GetFileBlockForChallenge(allocID string,
 	}
 	defer file.Close()
 
-	if blockoffset < 0 || blockoffset >= 1024 {
-		return nil, nil, common.NewError("invalid_block_number", "Invalid block offset")
-	}
-
 	var returnBytes []byte
 
-	fi, _ := file.Stat()
+	fi, err := file.Stat()
+	if err != nil {
+		return nil, nil, common.NewError("stat_error", err.Error())
+	}
 
-	numChunks := int(math.Ceil(float64(fi.Size()) / float64(fileData.ChunkSize)))
+	totalChunks := int(math.Ceil(float64(fi.Size()) / float64(fileData.ChunkSize)))
 
-	fmt := util.NewFixedMerkleTree(int(fileData.ChunkSize))
+	fixedMT := util.NewFixedMerkleTree(int(fileData.ChunkSize))
 
 	bytesBuf := bytes.NewBuffer(make([]byte, 0))
-	for chunkIndex := 0; chunkIndex < numChunks; chunkIndex++ {
-		written, err := io.CopyN(bytesBuf, file, fileData.ChunkSize)
-		if err != nil && err == io.EOF {
-			break
+	for i := 0; i < totalChunks; i++ {
+		n, err := io.CopyN(bytesBuf, file, fileData.ChunkSize)
+		if err != nil {
+			if n == 0 && errors.Is(err, io.EOF) {
+				break
+			}
+			return nil, nil, err
 		}
 
-		if written > 0 {
-			dataBytes := bytesBuf.Bytes()
-			err = fmt.Write(dataBytes, chunkIndex)
-			if err != nil {
-				return nil, nil, common.NewError("buffer_write_error", err.Error())
-			}
-
-			merkleChunkSize := int(fileData.ChunkSize) / 1024
-
-			if merkleChunkSize == 0 {
-				merkleChunkSize = 1
-			}
-
-			offset := 0
-
-			for i := 0; i < len(dataBytes); i += merkleChunkSize {
-				end := i + merkleChunkSize
-				if end > len(dataBytes) {
-					end = len(dataBytes)
-				}
-
-				if offset == blockoffset {
-					returnBytes = append(returnBytes, dataBytes[i:end]...)
-				}
-
-				offset++
-				if offset >= 1024 {
-					offset = 1
-				}
-			}
-			bytesBuf.Reset()
+		dataBytes := bytesBuf.Bytes()
+		err = fixedMT.Write(dataBytes, i)
+		if err != nil {
+			return nil, nil, common.NewError("buffer_write_error", err.Error())
 		}
+
+		startInd := blockoffset * MerkleChunkSize
+		endInd := startInd + MerkleChunkSize
+		returnBytes = append(returnBytes, dataBytes[startInd:endInd]...)
+
+		bytesBuf.Reset()
 
 	}
 
-	return returnBytes, fmt.GetMerkleTree(), nil
+	return returnBytes, fixedMT.GetMerkleTree(), nil
 }
 func (fs FileStore) GetCurrentDiskCapacity() uint64 {
 	return fs.currentDiskCapacity

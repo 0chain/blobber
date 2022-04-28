@@ -30,7 +30,7 @@ func (fs *FileStore) setAllocation(allocID string, alloc *allocation) {
 
 func (fs *FileStore) getAllocation(allocID string) *allocation {
 	fs.rwMU.RLock()
-	defer fs.rwMU.Unlock()
+	defer fs.rwMU.RUnlock()
 	return fs.mAllocs[allocID]
 }
 
@@ -94,17 +94,8 @@ func (fs *FileStore) incrDecrAllocFileSizeAndNumber(allocID string, size int64, 
 	alloc.mu.Lock()
 	defer alloc.mu.Unlock()
 
-	if size < 0 {
-		alloc.filesSize -= uint64(size)
-	} else {
-		alloc.filesSize += uint64(size)
-	}
-
-	if fileNumber < 0 {
-		alloc.filesNumber -= uint64(fileNumber)
-	} else {
-		alloc.filesNumber += uint64(fileNumber)
-	}
+	alloc.filesSize += uint64(size)
+	alloc.filesNumber += uint64(fileNumber)
 }
 
 func (fs *FileStore) GetDiskUsedByAllocation(allocID string) uint64 {
