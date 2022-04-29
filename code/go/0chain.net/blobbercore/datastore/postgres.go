@@ -18,13 +18,29 @@ type postgresStore struct {
 }
 
 func (p *postgresStore) GetPgDB() (*gorm.DB, error) {
-	return gorm.Open(postgres.Open(
+
+	db, err := gorm.Open(postgres.Open(
 		fmt.Sprintf("host=%v port=%v user=%v password=%v sslmode=disable",
 			config.Configuration.DBHost,
 			config.Configuration.DBPort,
 			config.Configuration.PGUserName,
 			config.Configuration.PGPassword),
 	))
+
+	if err != nil {
+		return nil, err
+	}
+
+	sqldb, err := db.DB()
+	if err != nil {
+		return nil, common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
+	}
+
+	if err := sqldb.Ping(); err != nil {
+		return nil, common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
+	}
+
+	return db, err
 
 }
 

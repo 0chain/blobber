@@ -92,7 +92,7 @@ challenge_response:
   max_retries: 20
 pg:
   user: postgres
-  password: password
+  password: postgres
 db:
   automigrate: true # true to automigrate with gorm's Automigration
   name: blobber_meta

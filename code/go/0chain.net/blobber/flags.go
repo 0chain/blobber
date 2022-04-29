@@ -44,7 +44,7 @@ func init() {
 }
 
 func parseFlags() {
-	fmt.Print("[1/12] load flags")
+	fmt.Print("> load flags")
 	flag.Parse()
 
 	if metadataDB == "" {

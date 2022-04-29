@@ -38,7 +38,7 @@ func startHttpServer() {
 	go startServer(&wg, r, mode, httpsPort, true)
 
 	logging.Logger.Info("Ready to listen to the requests")
-	fmt.Println("[12/12] start http server	[OK]")
+	fmt.Print("> start http server	[OK]\n")
 
 	wg.Wait()
 }

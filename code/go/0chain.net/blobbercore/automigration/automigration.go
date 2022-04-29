@@ -38,6 +38,7 @@ var tableModels = []tableNameI{
 	new(writemarker.WriteMarkerEntity),
 	new(writemarker.WriteLock),
 	new(stats.FileStats),
+	new(config.Settings),
 }
 
 func AutoMigrate(pgDB *gorm.DB) error {
