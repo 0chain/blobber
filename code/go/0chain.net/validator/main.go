@@ -39,6 +39,8 @@ func initHandlers(r *mux.Router) {
 }
 
 func main() {
+	fmt.Println("======[ Validator ]======")
+
 	deploymentMode := flag.Int("deployment_mode", 2, "deployment_mode")
 	keysFile := flag.String("keys_file", "", "keys_file")
 	logDir := flag.String("log_dir", "", "log_dir")
@@ -48,6 +50,7 @@ func main() {
 
 	flag.Parse()
 
+	// setup config
 	config.SetupDefaultConfig()
 	config.SetupConfig(*configDir)
 
@@ -81,28 +84,37 @@ func main() {
 		panic("Please specify --port which is the port on which requests are accepted")
 	}
 
-	reader, err := os.Open(*keysFile)
-	if err != nil {
-		panic(err)
-	}
-
-	publicKey, privateKey, _, _ := encryption.ReadKeys(reader)
-	reader.Close()
-	node.Self.SetKeys(publicKey, privateKey)
-
 	port, err := strconv.Atoi(*portString) //fmt.Sprintf(":%v", port) // node.Self.Port
 	if err != nil {
 		Logger.Panic("Port specified is not Int " + *portString)
 		return
 	}
 
+	//address := publicIP + ":" + portString
+	address := ":" + *portString
+
+	mode := "main net"
+	if config.Development() {
+		mode = "development"
+	} else if config.TestNet() {
+		mode = "test net"
+	}
+
+	fmt.Printf("[+] %-24s    %s\n", "setup configs", "[OK]")
+
+	// register on chain
+	reader, err := os.Open(*keysFile)
+	if err != nil {
+		panic(err)
+	}
+	publicKey, privateKey, _, _ := encryption.ReadKeys(reader)
+	reader.Close()
+	node.Self.SetKeys(publicKey, privateKey)
 	node.Self.SetHostURL("http", *hostname, port)
 	Logger.Info(" Base URL" + node.Self.GetURLBase())
 
 	config.SetServerChainID(config.Configuration.ChainID)
-
 	common.SetupRootContext(node.GetNodeContext())
-	//ctx := common.GetRootContext()
 	serverChain = chain.NewChainFromConfig()
 
 	if node.Self.ID == "" {
@@ -111,21 +123,14 @@ func main() {
 		Logger.Info("self identity", zap.Any("id", node.Self.ID))
 	}
 
-	//address := publicIP + ":" + portString
-	address := ":" + *portString
-
 	chain.SetServerChain(serverChain)
 
 	if err := SetupValidatorOnBC(*logDir); err != nil {
 		Logger.Info("error setting up validator on blockchain", zap.Any("err", err))
 	}
 
-	mode := "main net"
-	if config.Development() {
-		mode = "development"
-	} else if config.TestNet() {
-		mode = "test net"
-	}
+	fmt.Printf("[+] %-24s    %s\n", "register on chain", "[OK]")
+
 	Logger.Info("Starting validator", zap.Int("available_cpus", runtime.NumCPU()), zap.String("port", *portString), zap.String("chain_id", config.GetServerChainID()), zap.String("mode", mode))
 	var server *http.Server
 	r := mux.NewRouter()
@@ -156,6 +161,7 @@ func main() {
 	common.ConfigRateLimits()
 	initHandlers(r)
 
+	fmt.Printf("[+] %-24s    %s\n", "start server on "+address, "[OK]")
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()
 	log.Fatal(server.ListenAndServe())
