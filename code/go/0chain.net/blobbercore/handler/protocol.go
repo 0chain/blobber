@@ -10,11 +10,13 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
 
+	"github.com/0chain/gosdk/zboxcore/sdk"
 	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
 )
@@ -35,30 +37,6 @@ func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet, err string)
 	wb.wg.Done()
 }
 
-// size in gigabytes
-func sizeInGB(size int64) float64 { //nolint:unused,deadcode // might be used later?
-	return float64(size) / GB
-}
-
-type apiResp struct { //nolint:unused,deadcode // might be used later?
-	ok   bool
-	resp string
-}
-
-func (ar *apiResp) decode(val interface{}) (err error) { //nolint:unused,deadcode // might be used later?
-	if err = ar.err(); err != nil {
-		return
-	}
-	return json.Unmarshal([]byte(ar.resp), val)
-}
-
-func (ar *apiResp) err() error { //nolint:unused,deadcode // might be used later?
-	if !ar.ok {
-		return errors.New(ar.resp)
-	}
-	return nil
-}
-
 func getStorageNode() (*transaction.StorageNode, error) {
 	var err error
 	sn := &transaction.StorageNode{}
@@ -68,7 +46,12 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	if err != nil {
 		return nil, err
 	}
-	sn.Capacity = int64(filestore.GetFileStore().GetCurrentDiskCapacity())
+	if config.Configuration.AutomaticUpdate {
+		sn.Capacity = int64(filestore.GetFileStore().GetCurrentDiskCapacity())
+	} else {
+		sn.Capacity = config.Configuration.Capacity
+	}
+
 	readPrice := config.Configuration.ReadPrice
 	writePrice := config.Configuration.WritePrice
 	if config.Configuration.PriceInUSD {
@@ -101,8 +84,49 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	return sn, nil
 }
 
-// Add or update blobber on blockchain
-func BlobberAdd(ctx context.Context) (string, error) {
+// RegisterBlobber register blobber if it doesn't registered yet. sync terms and stake pool settings from blockchain if it is registered
+func RegisterBlobber(ctx context.Context) error {
+
+	_, err := sdk.GetBlobber(node.Self.ID)
+	if err != nil { // blobber is not registered yet
+		logging.Logger.Warn("failed to get blobber from blockchain", zap.Error(err))
+
+		txnHash, err := sendSmartContractBlobberAdd(ctx)
+		if err != nil {
+			return err
+		}
+
+		if t, err := TransactionVerify(txnHash); err != nil {
+			logging.Logger.Error("Failed to verify blobber add/update transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
+		} else {
+			logging.Logger.Info("Verified blobber add/update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+		}
+
+		return err
+
+	}
+
+	return SendHealthCheck()
+
+}
+
+func RefreshPriceOnChain(ctx context.Context) error {
+	txnHash, err := sendSmartContractBlobberAdd(ctx)
+	if err != nil {
+		return err
+	}
+
+	if t, err := TransactionVerify(txnHash); err != nil {
+		logging.Logger.Error("Failed to verify blobber add/update transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
+	} else {
+		logging.Logger.Info("Verified blobber add/update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+	}
+
+	return err
+}
+
+// sendSmartContractBlobberAdd Add or update blobber on blockchain
+func sendSmartContractBlobberAdd(ctx context.Context) (string, error) {
 	// initialize storage node (ie blobber)
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
@@ -119,12 +143,66 @@ func BlobberAdd(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	Logger.Info("Adding or updating on the blockchain")
+	logging.Logger.Info("Adding or updating on the blockchain")
 
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
 		transaction.ADD_BLOBBER_SC_NAME, string(snBytes), 0)
 	if err != nil {
-		Logger.Error("Failed to set blobber on the blockchain",
+		logging.Logger.Error("Failed to set blobber on the blockchain",
+			zap.String("err:", err.Error()))
+		return "", err
+	}
+
+	return txn.Hash, nil
+}
+
+// UpdateBlobberOnChain updates latest changes in blobber's settings, capacity,etc.
+func UpdateBlobberOnChain(ctx context.Context) error {
+
+	_, err := sdk.GetBlobber(node.Self.ID)
+	if err != nil { // blobber is not registered yet
+		logging.Logger.Warn("failed to get blobber from blockchain", zap.Error(err))
+		return err
+	}
+
+	txnHash, err := sendSmartContractBlobberUpdate(ctx)
+	if err != nil {
+		return err
+	}
+
+	if t, err := TransactionVerify(txnHash); err != nil {
+		logging.Logger.Error("Failed to verify blobber add/update transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
+	} else {
+		logging.Logger.Info("Verified blobber add/update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+	}
+
+	return err
+}
+
+// sendSmartContractBlobberUpdate update blobber on blockchain
+func sendSmartContractBlobberUpdate(ctx context.Context) (string, error) {
+	// initialize storage node (ie blobber)
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return "", err
+	}
+
+	sn, err := getStorageNode()
+	if err != nil {
+		return "", err
+	}
+
+	snBytes, err := json.Marshal(sn)
+	if err != nil {
+		return "", err
+	}
+
+	logging.Logger.Info("Adding or updating on the blockchain")
+
+	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
+		transaction.UPDATE_BLOBBER_SC_NAME, string(snBytes), 0)
+	if err != nil {
+		logging.Logger.Error("Failed to set blobber on the blockchain",
 			zap.String("err:", err.Error()))
 		return "", err
 	}
@@ -136,7 +214,7 @@ func BlobberAdd(ctx context.Context) (string, error) {
 // blobber has removed (by owner, in case the blobber doesn't provide its
 // service anymore). Thus the blobber shouldn't send the health check
 // transactions.
-var ErrBlobberHasRemoved = errors.New("blobber has removed")
+var ErrBlobberHasRemoved = errors.New("blobber has been removed")
 
 func TransactionVerify(txnHash string) (t *transaction.Transaction, err error) {
 	for i := 0; i < util.MAX_RETRIES; i++ {
@@ -154,6 +232,21 @@ func WalletRegister() error {
 	wcb.wg = &sync.WaitGroup{}
 	wcb.wg.Add(1)
 	if err := zcncore.RegisterToMiners(node.Self.GetWallet(), wcb); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SendHealthCheck send heartbeat to blockchain
+func SendHealthCheck() error {
+	txnHash, err := BlobberHealthCheck()
+	if err != nil {
+		return err
+	}
+	_, err = TransactionVerify(txnHash)
+	if err != nil {
+		logging.Logger.Error("Failed to verify blobber health check", zap.Any("err", err), zap.String("txn.Hash", txnHash))
 		return err
 	}
 
