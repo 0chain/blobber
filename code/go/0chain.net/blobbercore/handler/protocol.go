@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/zcn"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
@@ -101,7 +102,7 @@ func getStorageNode() (*transaction.StorageNode, error) {
 // RegisterBlobber register blobber if it doesn't registered yet. sync terms and stake pool settings from blockchain if it is registered
 func RegisterBlobber(ctx context.Context) error {
 
-	_, err := getBlobber(node.Self.ID)
+	_, err := zcn.GetBlobber(node.Self.ID)
 	if err != nil { // blobber is not registered yet
 		logging.Logger.Warn("failed to get blobber from blockchain", zap.Error(err))
 
@@ -121,41 +122,6 @@ func RegisterBlobber(ctx context.Context) error {
 	}
 
 	return SendHealthCheck()
-
-}
-
-// getBlobber try to get blobber info from 0chain.
-func getBlobber(blobberID string) (*zcncore.Blobber, error) {
-	cb := &getBlobberCallback{}
-	if err := zcncore.GetBlobber(blobberID, cb); err != nil {
-		return nil, err
-	}
-
-	if cb.Error != nil {
-		return nil, cb.Error
-	}
-
-	return cb.Blobber, nil
-
-}
-
-type getBlobberCallback struct {
-	Blobber *zcncore.Blobber
-	Error   error
-}
-
-func (cb *getBlobberCallback) OnInfoAvailable(op int, status int, info string, err string) {
-	if status != zcncore.StatusSuccess {
-		cb.Error = errors.New(err)
-		return
-	}
-	b := &zcncore.Blobber{}
-	if err := json.Unmarshal([]byte(info), b); err != nil {
-		cb.Error = err
-		return
-	}
-
-	cb.Blobber = b
 
 }
 
