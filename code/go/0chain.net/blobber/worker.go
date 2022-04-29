@@ -89,7 +89,7 @@ func StartUpdateWorker(ctx context.Context, interval time.Duration) {
 			}
 			if currentCapacity != filestore.GetFileStore().GetCurrentDiskCapacity() {
 
-				err := registerBlobberOnChain()
+				err := handler.UpdateBlobberOnChain(ctx)
 				if err != nil {
 					logging.Logger.Error("Error while updating blobber updates on chain", zap.Error(err))
 				}

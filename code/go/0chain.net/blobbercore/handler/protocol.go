@@ -37,30 +37,6 @@ func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet, err string)
 	wb.wg.Done()
 }
 
-// size in gigabytes
-func sizeInGB(size int64) float64 { //nolint:unused,deadcode // might be used later?
-	return float64(size) / GB
-}
-
-type apiResp struct { //nolint:unused,deadcode // might be used later?
-	ok   bool
-	resp string
-}
-
-func (ar *apiResp) decode(val interface{}) (err error) { //nolint:unused,deadcode // might be used later?
-	if err = ar.err(); err != nil {
-		return
-	}
-	return json.Unmarshal([]byte(ar.resp), val)
-}
-
-func (ar *apiResp) err() error { //nolint:unused,deadcode // might be used later?
-	if !ar.ok {
-		return errors.New(ar.resp)
-	}
-	return nil
-}
-
 func getStorageNode() (*transaction.StorageNode, error) {
 	var err error
 	sn := &transaction.StorageNode{}
@@ -70,7 +46,12 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	if err != nil {
 		return nil, err
 	}
-	sn.Capacity = int64(filestore.GetFileStore().GetCurrentDiskCapacity())
+	if config.Configuration.AutomaticUpdate {
+		sn.Capacity = int64(filestore.GetFileStore().GetCurrentDiskCapacity())
+	} else {
+		sn.Capacity = config.Configuration.Capacity
+	}
+
 	readPrice := config.Configuration.ReadPrice
 	writePrice := config.Configuration.WritePrice
 	if config.Configuration.PriceInUSD {
@@ -175,11 +156,65 @@ func sendSmartContractBlobberAdd(ctx context.Context) (string, error) {
 	return txn.Hash, nil
 }
 
+// UpdateBlobberOnChain updates latest changes in blobber's settings, capacity,etc.
+func UpdateBlobberOnChain(ctx context.Context) error {
+
+	_, err := sdk.GetBlobber(node.Self.ID)
+	if err != nil { // blobber is not registered yet
+		logging.Logger.Warn("failed to get blobber from blockchain", zap.Error(err))
+		return err
+	}
+
+	txnHash, err := sendSmartContractBlobberUpdate(ctx)
+	if err != nil {
+		return err
+	}
+
+	if t, err := TransactionVerify(txnHash); err != nil {
+		logging.Logger.Error("Failed to verify blobber add/update transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
+	} else {
+		logging.Logger.Info("Verified blobber add/update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+	}
+
+	return err
+}
+
+// sendSmartContractBlobberUpdate update blobber on blockchain
+func sendSmartContractBlobberUpdate(ctx context.Context) (string, error) {
+	// initialize storage node (ie blobber)
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return "", err
+	}
+
+	sn, err := getStorageNode()
+	if err != nil {
+		return "", err
+	}
+
+	snBytes, err := json.Marshal(sn)
+	if err != nil {
+		return "", err
+	}
+
+	logging.Logger.Info("Adding or updating on the blockchain")
+
+	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
+		transaction.UPDATE_BLOBBER_SC_NAME, string(snBytes), 0)
+	if err != nil {
+		logging.Logger.Error("Failed to set blobber on the blockchain",
+			zap.String("err:", err.Error()))
+		return "", err
+	}
+
+	return txn.Hash, nil
+}
+
 // ErrBlobberHasRemoved represents service health check error, where the
 // blobber has removed (by owner, in case the blobber doesn't provide its
 // service anymore). Thus the blobber shouldn't send the health check
 // transactions.
-var ErrBlobberHasRemoved = errors.New("blobber has removed")
+var ErrBlobberHasRemoved = errors.New("blobber has been removed")
 
 func TransactionVerify(txnHash string) (t *transaction.Transaction, err error) {
 	for i := 0; i < util.MAX_RETRIES; i++ {
