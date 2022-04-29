@@ -375,6 +375,16 @@ func (fs *FileStore) isMountPoint() bool {
 		return false
 	}
 
+	/*Below code is temporary fix unless devops comes with exact mountpoint*/
+	if err := os.MkdirAll(fs.mp, 0777); err != nil {
+		logging.Logger.Error(fmt.Sprintf("Error %s while creating directories", err.Error()))
+		return false
+	}
+	if true {
+		return true
+	}
+	/*Above code is temporary fix unless devops comes with exact mountpoint*/
+
 	realMP, err := filepath.EvalSymlinks(fs.mp)
 	if err != nil {
 		logging.Logger.Error(err.Error())
