@@ -527,8 +527,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	db.Delete(connectionObj)
-	db.Commit()
-
 	return &result, nil
 }
 

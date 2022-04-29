@@ -54,7 +54,7 @@ func setupMockForFileManager() error {
 }
 
 func setupFileManager(mp string) error {
-	fs := &filestore.MockStore{}
+	fs := &MockFileStore{mp: mp}
 	err := fs.Initialize()
 	if err != nil {
 		return err
@@ -91,7 +91,6 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	err = os.MkdirAll(filepath.Dir(fPath), os.ModePerm)
 	if err != nil {
 		t.Fatal(err)

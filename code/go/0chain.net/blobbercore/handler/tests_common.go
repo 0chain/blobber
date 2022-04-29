@@ -3,10 +3,13 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
@@ -58,6 +61,7 @@ func setup(t *testing.T) {
 }
 
 type MockFileStore struct {
+	mp string
 }
 
 func (mfs *MockFileStore) Initialize() error {
@@ -146,10 +150,40 @@ func (mfs *MockFileStore) CalculateCurrentDiskCapacity() error {
 	return nil
 }
 
+// GetPathForFile is based on default directory levels. If directory levels are changed
+// getDirLevelsXXX function needs to be changed accordingly
 func (mfs *MockFileStore) GetPathForFile(allocID, contentHash string) (string, error) {
-	return "", nil
+	if len(allocID) != 64 || len(contentHash) != 64 {
+		return "", errors.New("length of allocationID/contentHash must be 64")
+	}
+
+	return filepath.Join(mfs.getAllocDir(allocID), getPath(contentHash, getDirLevelsForFiles())), nil
 }
 
 func (mfs *MockFileStore) UpdateAllocationMetaData(m map[string]interface{}) {
 
+}
+
+func (mfs *MockFileStore) getAllocDir(allocID string) string {
+	return filepath.Join(mfs.mp, getPath(allocID, getDirLevelsForAllocations()))
+}
+
+// getPath returns "/" separated strings with the given levels.
+func getPath(hash string, levels []int) string {
+	var count int
+	var pStr []string
+	for _, i := range levels {
+		pStr = append(pStr, hash[count:count+i])
+		count += i
+	}
+	pStr = append(pStr, hash[count:])
+	return strings.Join(pStr, "/")
+}
+
+var getDirLevelsForAllocations = func() []int {
+	return []int{2, 1} // default
+}
+
+var getDirLevelsForFiles = func() []int {
+	return []int{2, 2, 1} // default
 }
