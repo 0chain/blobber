@@ -68,35 +68,6 @@ func signHash(client *client.Client, hash string) (string, error) {
 	return retSignature, nil
 }
 
-func setupMockForFileManagerInit(mock sqlmock.Sqlmock) {
-	aa := sqlmock.AnyArg()
-	mock.ExpectBegin()
-
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations"`)).
-		WillReturnRows(sqlmock.NewRows(
-			[]string{
-				"id", "blobber_size", "blobber_size_used",
-			},
-		).AddRow(
-			"allocation id", 655360000, 6553600,
-		),
-		)
-
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects" WHERE`)).
-		WithArgs(aa, aa, aa).
-		WillReturnRows(
-			sqlmock.NewRows([]string{"count"}).AddRow(1000),
-		)
-
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT sum(size) as file_size FROM "reference_objects" WHERE`)).
-		WillReturnRows(
-			sqlmock.NewRows([]string{"file_size"}).AddRow(6553600),
-		)
-
-	mock.ExpectClose()
-
-}
-
 func init() {
 	resetMockFileBlock()
 	common.ConfigRateLimits()
