@@ -70,6 +70,10 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 		return common.NewError("read_marker_validation_failed", "Read Marker is not for the blobber")
 	}
 
+	if rm.LatestRM.OwnerID != sa.OwnerID {
+		return common.NewError("read_marker_validation_failed", "OwnerID mismatch")
+	}
+
 	clientPublicKey := ctx.Value(constants.ContextKeyClientKey).(string)
 	if clientPublicKey == "" || clientPublicKey != rm.LatestRM.ClientPublicKey {
 		return common.NewError("read_marker_validation_failed", "Could not get the public key of the client")
