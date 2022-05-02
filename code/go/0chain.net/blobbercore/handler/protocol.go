@@ -9,6 +9,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/zcn"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
@@ -87,7 +88,7 @@ func getStorageNode() (*transaction.StorageNode, error) {
 // RegisterBlobber register blobber if it doesn't registered yet. sync terms and stake pool settings from blockchain if it is registered
 func RegisterBlobber(ctx context.Context) error {
 
-	_, err := sdk.GetBlobber(node.Self.ID)
+	_, err := zcn.GetBlobber(node.Self.ID)
 	if err != nil { // blobber is not registered yet
 		logging.Logger.Warn("failed to get blobber from blockchain", zap.Error(err))
 
@@ -215,6 +216,9 @@ func sendSmartContractBlobberUpdate(ctx context.Context) (string, error) {
 // service anymore). Thus the blobber shouldn't send the health check
 // transactions.
 var ErrBlobberHasRemoved = errors.New("blobber has been removed")
+
+// ErrBlobberNotFound it is not registered on chain
+var ErrBlobberNotFound = errors.New("blobber is not found")
 
 func TransactionVerify(txnHash string) (t *transaction.Transaction, err error) {
 	for i := 0; i < util.MAX_RETRIES; i++ {

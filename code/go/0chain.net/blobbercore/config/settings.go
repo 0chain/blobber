@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/zcn"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/zboxcore/sdk"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -104,18 +104,22 @@ func Update(ctx context.Context, db *gorm.DB) error {
 	if db == nil {
 		return errors.Throw(constants.ErrInvalidParameter, "db")
 	}
-	s := &Settings{}
+	s, ok := Get(ctx, db)
+	if !ok {
+		s = &Settings{
+			ID: "settings",
+		}
+	}
 
+	s.UpdatedAt = time.Now()
 	if err := s.CopyFrom(&Configuration); err != nil {
 		return err
 	}
 
-	s.UpdatedAt = time.Now()
-	if s.ID == "settings" {
+	if ok {
 		return db.Save(s).Error
 	}
 
-	s.ID = "settings"
 	return db.Create(s).Error
 }
 
@@ -125,14 +129,13 @@ func Refresh(ctx context.Context, db *gorm.DB) error {
 		return errors.Throw(constants.ErrInvalidParameter, "db")
 	}
 
-	b, err := sdk.GetBlobber(node.Self.ID)
+	b, err := zcn.GetBlobber(node.Self.ID)
 	if err != nil { // blobber is not registered yet
 		logging.Logger.Warn("failed to sync blobber settings from blockchain", zap.Error(err))
 
 		return err
 	}
 
-	Configuration.Capacity = int64(b.Capacity)
 	Configuration.Capacity = int64(b.Capacity)
 	Configuration.ChallengeCompletionTime = b.Terms.ChallengeCompletionTime
 	Configuration.MaxOfferDuration = b.Terms.MaxOfferDuration
