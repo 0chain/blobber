@@ -48,6 +48,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/util"
+	"github.com/0chain/gosdk/zboxcore/sdk"
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
 )
@@ -84,7 +85,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	h := sha256.New()
 	tReader := io.TeeReader(infile, h)
 
-	_, err = io.Copy(f, tReader)
+	writtenSize, err := io.Copy(f, tReader)
 	if err != nil {
 		return nil, common.NewError("file_write_error", err.Error())
 	}
@@ -102,7 +103,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 		fs.updateAllocTempFileSize(allocID, currentSize-initialSize)
 	}
 
-	fileRef.Size = currentSize
+	fileRef.Size = writtenSize
 	fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
 
 	fileRef.Name = fileData.Name
@@ -118,16 +119,54 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	if err != nil {
 		return false, common.NewError("file_open_error", err.Error())
 	}
+	defer f.Close()
 
-	//calculate content hash
-	h := sha256.New()
-	fileSize, err := io.Copy(h, f)
+	fStat, err := f.Stat()
 	if err != nil {
-		return false, common.NewError("io_copy_error", err.Error())
+		return false, common.NewError("stat_error", err.Error())
 	}
 
-	b := h.Sum(nil)
-	hash := hex.EncodeToString(b)
+	fileSize := fStat.Size()
+	if fileSize > fileData.ChunkSize && fileSize%fileData.ChunkSize != 0 { // workaround for data without padding
+		return false, common.NewError("invalid_data",
+			fmt.Sprintf("file size %d is not exactly divisible by chunk size %d", fileSize, fileData.ChunkSize))
+	}
+	//calculate content hash
+	hasher := sdk.CreateHasher(int(fileData.ChunkSize))
+
+	n := fileSize / fileData.ChunkSize
+	n = int64(math.Max(float64(1), float64(n)))                                  // workaround for data without padding
+	chunkSize := int64(math.Min(float64(fileSize), float64(fileData.ChunkSize))) // workaround for data without padding
+
+	for i := int64(0); i < n; i++ {
+		offset := i * chunkSize
+		data := make([]byte, chunkSize)
+		n, err := f.ReadAt(data, offset)
+		if err != nil {
+			return false, common.NewError("read_error", err.Error())
+		}
+
+		if n != int(chunkSize) {
+			return false, common.NewError("read_error",
+				fmt.Sprintf("expected read %d, got %d", chunkSize, n))
+		}
+
+		h := sha256.New()
+		_, err = h.Write(data)
+		if err != nil {
+			return false, common.NewError("hash_write_error", err.Error())
+		}
+
+		err = hasher.WriteHashToContent(hex.EncodeToString(h.Sum(nil)), int(i))
+		if err != nil {
+			return false, common.NewError("content_hash_write_error", err.Error())
+		}
+	}
+
+	hash, err := hasher.GetContentHash()
+	if err != nil {
+		return false, common.NewError("get_content_hash_error", err.Error())
+	}
 
 	if hash != fileData.Hash {
 		return false, common.NewError("invalid_hash", "calculated content hash does not match with client's content hash")

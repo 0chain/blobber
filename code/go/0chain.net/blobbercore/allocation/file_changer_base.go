@@ -76,6 +76,7 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 	fileInputData.Name = fc.Filename
 	fileInputData.Path = fc.Path
 	fileInputData.Hash = fc.Hash
+	fileInputData.ChunkSize = fc.ChunkSize
 	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
 	if err != nil {
 		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
@@ -85,6 +86,7 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 		fileInputData.Name = fc.ThumbnailFilename
 		fileInputData.Path = fc.Path
 		fileInputData.Hash = fc.ThumbnailHash
+		fileInputData.ChunkSize = fc.ChunkSize
 		_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
 		if err != nil {
 			return common.NewError("file_store_error", "Error committing thumbnail to file store. "+err.Error())
