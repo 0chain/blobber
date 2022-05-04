@@ -293,7 +293,47 @@ func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{},
 	return response, nil
 }
 
+func writeResponse (w http.ResponseWriter, resp []byte) {
+	_, err := w.Write(resp)
+
+	if err != nil {
+		Logger.Error("Error sending StatsHandler response", zap.Error(err))
+	}
+}
+
 func StatsHandler(w http.ResponseWriter, r *http.Request) {
+	isJSON := r.Header.Get("Accept") == "application/json"
+
+	if isJSON {
+		blobberInfo := GetBlobberInfoJson()
+
+		ctx := datastore.GetStore().CreateTransaction(r.Context())
+		blobberStats, err := stats.StatsJSONHandler(ctx, r)
+
+		if err != nil {
+			Logger.Error("Error getting blobber JSON stats", zap.Error(err))
+
+			w.WriteHeader(http.StatusInternalServerError)
+			writeResponse(w, []byte(err.Error()))
+			return
+		}
+
+		blobberInfo.Stats = blobberStats
+
+		statsJson, err := json.Marshal(blobberInfo)
+
+		if err != nil {
+			Logger.Error("Error marshaling JSON stats", zap.Error(err))
+
+			w.WriteHeader(http.StatusInternalServerError)
+			writeResponse(w, []byte(err.Error()))
+			return
+		}
+
+		writeResponse(w, statsJson)
+
+		return
+	}
 
 	HTMLHeader(w, "Blobber Diagnostics")
 	PrintCSS(w)
