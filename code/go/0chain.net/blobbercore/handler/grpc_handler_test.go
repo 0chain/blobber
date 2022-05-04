@@ -3,15 +3,14 @@ package handler
 import (
 	"context"
 	"errors"
-	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"net"
 	"regexp"
 	"testing"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
+	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 
-	rl "go.uber.org/ratelimit"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/convert"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 
@@ -22,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"gorm.io/gorm"
@@ -33,7 +33,7 @@ var (
 
 func startGRPCServer(t *testing.T) {
 	lis = bufconn.Listen(1024 * 1024)
-	grpcS := NewGRPCServerWithMiddlewares(&common.GRPCRateLimiter{Limiter: rl.New(1000)}, mux.NewRouter())
+	grpcS := NewGRPCServerWithMiddlewares(mux.NewRouter())
 	go func() {
 		if err := grpcS.Serve(lis); err != nil {
 			t.Errorf("Server exited with error: %v", err)
@@ -48,7 +48,7 @@ func makeTestClient() (blobbergrpc.BlobberServiceClient, *grpc.ClientConn, error
 			return lis.Dial()
 		}
 	)
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -59,7 +59,7 @@ func makeTestClient() (blobbergrpc.BlobberServiceClient, *grpc.ClientConn, error
 func makeTestAllocation(exp common.Timestamp) *allocation.Allocation {
 	allocID := "allocation id"
 	alloc := allocation.Allocation{
-		Tx: "allocation tx",
+		Tx: "allocation id",
 		ID: allocID,
 		Terms: []*allocation.Terms{
 			{
@@ -123,7 +123,6 @@ func Test_GetAllocation(t *testing.T) {
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
@@ -135,7 +134,7 @@ func Test_GetAllocation(t *testing.T) {
 			wantAlloc:    convert.AllocationToGRPCAllocation(alloc),
 		},
 		{
-			name: "Commiting_Transaction_ERR",
+			name: "Committing_Transaction_ERR",
 			mockSetup: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
@@ -154,7 +153,6 @@ func Test_GetAllocation(t *testing.T) {
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{
@@ -185,7 +183,6 @@ func Test_GetAllocation(t *testing.T) {
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(expiredAlloc.Terms[0].ID, expiredAlloc.Terms[0].AllocationID),
 					)
-
 			},
 			args: args{
 				allocationR: &blobbergrpc.GetAllocationRequest{

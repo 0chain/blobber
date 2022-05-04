@@ -41,10 +41,10 @@ func GetRootContext() context.Context {
 
 /*Done - call this when the program needs to stop and notify all workers */
 func Done() {
-	//Logger.Info("Initiating shutdown...")
+	// Logger.Info("Initiating shutdown...")
 	rootCancel()
-	//TODO: How do we ensure every worker is completed any shutdown sequence before we finally shut down
-	//the server using server.Shutdown(ctx)
+	// TODO: How do we ensure every worker is completed any shutdown sequence before we finally shut down
+	// the server using server.Shutdown(ctx)
 }
 
 /*HandleShutdown - handles various shutdown signals */

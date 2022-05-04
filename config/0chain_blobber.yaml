@@ -1,8 +1,15 @@
 version: 1.0
 
 logging:
-  level: "info"
-  console: false # printing log to console is only supported in development mode
+  level: "error"
+  console: true # printing log to console is only supported in development mode
+
+info:
+  name: my_blobber
+  logo_url: https://google.com
+  description: this is my test blobber
+  website_url: https://google.com
+
 
 # for testing
 #  500 MB - 536870912
@@ -36,13 +43,12 @@ challenge_completion_time: 2m # duration to complete a challenge
 # a task and redeem tokens, it should be big enough
 read_lock_timeout: 1m
 write_lock_timeout: 1m
-max_file_size: 10485760 #10MB
 
 # update_allocations_interval used to refresh known allocation objects from SC
 update_allocations_interval: 1m
 
 # delegate wallet (must be set)
-delegate_wallet: '2f34516ed8c567089b7b5572b12950db34a62a07e16770da14b15b170d0d60a9'
+delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'
 # min stake allowed, tokens
 min_stake: 1.0
 # max stake allowed, tokens
@@ -59,7 +65,7 @@ min_confirmation: 50
 block_worker: http://198.18.0.98:9091
 
 handlers:
-  rate_limit: 10 # 10 per second
+  rate_limit: 0 # 10 per second . it can't too small one if a large file is download with blocks
 
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
@@ -73,7 +79,7 @@ contentref_cleaner:
   tolerance: 3600
 openconnection_cleaner:
   frequency: 30
-  tolerance: 3600
+  tolerance: 3600 # 60 * 60 
 writemarker_redeem:
   frequency: 10
   num_workers: 5
@@ -84,12 +90,23 @@ challenge_response:
   frequency: 10
   num_workers: 5
   max_retries: 20
+pg:
+  user: postgres
+  password: postgres
 db:
+  automigrate: true # true to automigrate with gorm's Automigration
   name: blobber_meta
   user: blobber_user
   password: blobber
   host: postgres
   port: 5432
+  # keep_tables list won't be automigrated if table exists. If table name is in both keep_tables.
+  # table will be considered to not automigrate. Other tables will be dropped regardless and schema is migrated
+  # Example:
+  # keep_tables:
+  #   - allocations
+  #   - terms
+ 
 
 geolocation:
   latitude: 0

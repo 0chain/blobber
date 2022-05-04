@@ -21,14 +21,25 @@ type RenameFileChange struct {
 }
 
 func (rf *RenameFileChange) DeleteTempFile() error {
-	return OperationNotApplicable
+	return nil
 }
 
-func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+
+	isFilePresent, err := reference.IsRefExist(ctx, rf.AllocationID, rf.NewName)
+	if err != nil {
+		Logger.Info("invalid_reference_path", zap.Error(err))
+	}
+
+	if isFilePresent {
+		return nil, common.NewError("invalid_reference_path", "file already exists")
+	}
+
 	affectedRef, err := reference.GetObjectTree(ctx, rf.AllocationID, rf.Path)
 	if err != nil {
 		return nil, err
 	}
+	affectedRef.HashToBeComputed = true
 	path, _ := filepath.Split(affectedRef.Path)
 	path = filepath.Clean(path)
 	affectedRef.Name = rf.NewName
@@ -48,7 +59,7 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 	if err != nil {
 		return nil, err
 	}
-
+	rootRef.HashToBeComputed = true
 	dirRef := rootRef
 	treelevel := 0
 	for treelevel < len(tSubDirs) {
@@ -57,6 +68,7 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef = child
+					dirRef.HashToBeComputed = true
 					found = true
 					break
 				}
@@ -68,6 +80,11 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 			return nil, common.NewError("invalid_reference_path", "Invalid reference path from the blobber")
 		}
 	}
+	if len(dirRef.Children) == 0 {
+		Logger.Error("no files in root folder", zap.Any("change", rf))
+		return nil, common.NewError("file_not_found", "No files in root folder")
+	}
+
 	idx := -1
 	for i, child := range dirRef.Children {
 		if child.Path == rf.Path {
@@ -79,11 +96,9 @@ func (rf *RenameFileChange) ProcessChange(ctx context.Context, change *Allocatio
 		Logger.Error("error in file rename", zap.Any("change", rf))
 		return nil, common.NewError("file_not_found", "File to rename not found in blobber")
 	}
-	//dirRef.Children[idx] = affectedRef
 	dirRef.RemoveChild(idx)
 	dirRef.AddChild(affectedRef)
 	_, err = rootRef.CalculateHash(ctx, true)
-
 	return rootRef, err
 }
 

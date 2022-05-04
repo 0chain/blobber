@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-//SetupDefaultConfig - setup the default config options that can be overridden via the config file
+// SetupDefaultConfig - setup the default config options that can be overridden via the config file
 func SetupDefaultConfig() {
 	viper.SetDefault("logging.level", "info")
 	viper.SetDefault("contentref_cleaner.frequency", 30)
@@ -33,6 +33,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("challenge_completion_time", time.Duration(-1))
 	viper.SetDefault("read_lock_timeout", time.Duration(-1))
 	viper.SetDefault("write_lock_timeout", time.Duration(-1))
+	viper.SetDefault("write_marker_lock_timeout", time.Second*30)
 
 	viper.SetDefault("delegate_wallet", "")
 	viper.SetDefault("min_stake", 1.0)
@@ -49,11 +50,18 @@ func SetupConfig(configPath string) {
 	viper.SetEnvKeyReplacer(replacer)
 	viper.AutomaticEnv()
 	viper.SetConfigName("0chain_blobber")
-	viper.AddConfigPath(configPath)
+
+	if configPath == "" {
+		viper.AddConfigPath("./config")
+	} else {
+		viper.AddConfigPath(configPath)
+	}
+
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {             // Handle errors reading the config file
 		panic(fmt.Errorf("fatal error config file: %s", err))
 	}
+
 	Configuration.Config = &config.Configuration
 }
 
@@ -70,11 +78,15 @@ type GeolocationConfig struct {
 
 type Config struct {
 	*config.Config
+	DBAutoMigrate                 bool
 	DBHost                        string
+	PGUserName                    string
+	PGPassword                    string
 	DBPort                        string
 	DBName                        string
 	DBUserName                    string
 	DBPassword                    string
+	DBTablesToKeep                []string
 	ContentRefWorkerFreq          int64
 	ContentRefWorkerTolerance     int64
 	OpenConnectionWorkerFreq      int64
@@ -88,7 +100,6 @@ type Config struct {
 	ChallengeMaxRetires           int
 	TempFilesCleanupFreq          int64
 	TempFilesCleanupNumWorkers    int
-	MaxFileSize                   int64
 
 	ColdStorageMinimumFileSize   int64
 	ColdStorageTimeLimitInHours  int64
@@ -110,6 +121,8 @@ type Config struct {
 
 	ReadLockTimeout  int64 // seconds
 	WriteLockTimeout int64 // seconds
+	// WriteMarkerLockTimeout lock is released automatically if it is timeout
+	WriteMarkerLockTimeout time.Duration
 
 	UpdateAllocationsInterval time.Duration
 
@@ -130,6 +143,15 @@ type Config struct {
 	MinSubmit int
 	// MinConfirmation minial confirmation from sharders
 	MinConfirmation int
+
+	// Name the name of blobber
+	Name string
+	// LogoUrl logo of blobber
+	LogoUrl string
+	// Description general information of blobber
+	Description string
+	// WebsiteUrl the website of blobber (if any)
+	WebsiteUrl string
 }
 
 /*Configuration of the system */
@@ -151,7 +173,6 @@ func Geolocation() GeolocationConfig {
 	if g.Latitude > 90.00 || g.Latitude < -90.00 ||
 		g.Longitude > 180.00 || g.Longitude < -180.00 {
 		panic("Fatal error in config file")
-
 	}
 	return g
 }

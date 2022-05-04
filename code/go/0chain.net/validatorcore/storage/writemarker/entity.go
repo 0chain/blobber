@@ -44,7 +44,7 @@ func (wm *WriteMarker) VerifySignature(clientPublicKey string) bool {
 	return true
 }
 
-func (wm *WriteMarker) Verify(allocationID string, allocationRoot string, clientPublicKey string) error {
+func (wm *WriteMarker) Verify(allocationID, allocationRoot, clientPublicKey string) error {
 	if wm.AllocationID != allocationID {
 		return common.NewError("challenge_validation_failed", "Invalid write marker. Allocation ID mismatch")
 	}

@@ -3,20 +3,17 @@ package stats
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	"errors"
+	"runtime"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"go.uber.org/zap"
-
-	"gorm.io/datatypes"
 )
 
 const DateTimeFormat = "2006-01-02T15:04:05"
@@ -60,9 +57,9 @@ type Stats struct {
 var LastMinioScan time.Time
 
 type MinioStats struct {
-	CloudFilesSize  int64  `json:"cloud_files_size"`
-	CloudTotalFiles int    `json:"cloud_total_files"`
-	LastMinioScan   string `json:"last_minio_scan"`
+	CloudFilesSize  int64     `json:"cloud_files_size"`
+	CloudTotalFiles int       `json:"cloud_total_files"`
+	LastMinioScan   time.Time `json:"last_minio_scan"`
 }
 
 type Duration int64
@@ -74,9 +71,14 @@ func (d Duration) String() string {
 type BlobberStats struct {
 	Stats
 	MinioStats
-	NumAllocation int64  `json:"num_of_allocations"`
-	ClientID      string `json:"-"`
-	PublicKey     string `json:"-"`
+	NumAllocation             int64             `json:"num_of_allocations"`
+	ClientID                  string            `json:"-"`
+	PublicKey                 string            `json:"-"`
+	InfraStats                InfraStats        `json:"-"`
+	DBStats                   *DBStats          `json:"-"`
+	FailedChallengeList       []ChallengeEntity `json:"-"`
+	FailedChallengePagination *Pagination       `json:"failed_challenge_pagination,omitempty"`
+	AllocationListPagination  *Pagination       `json:"allocation_list_pagination,omitempty"`
 
 	// configurations
 	Capacity                int64         `json:"capacity"`
@@ -103,6 +105,9 @@ func LoadBlobberStats(ctx context.Context) *BlobberStats {
 	fs := &BlobberStats{}
 	fs.loadBasicStats(ctx)
 	fs.loadDetailedStats(ctx)
+	fs.loadInfraStats(ctx)
+	fs.loadDBStats()
+	fs.loadFailedChallengeList(ctx)
 	return fs
 }
 
@@ -173,8 +178,57 @@ func (bs *BlobberStats) loadDetailedStats(ctx context.Context) {
 	}
 }
 
-func (bs *BlobberStats) loadStats(ctx context.Context) {
+func (bs *BlobberStats) loadInfraStats(ctx context.Context) {
+	healthIn := ctx.Value(HealthDataKey)
+	if healthIn == nil {
+		return
+	}
+	health := healthIn.(string)
+	memstats := runtime.MemStats{}
+	runtime.ReadMemStats(&memstats)
+	bs.InfraStats = InfraStats{
+		CPUs:               runtime.NumCPU(),
+		NumberOfGoroutines: runtime.NumGoroutine(),
+		HeapSys:            int64(memstats.HeapSys),
+		HeapAlloc:          int64(memstats.HeapAlloc),
+		ActiveOnChain:      health,
+	}
+}
 
+func (bs *BlobberStats) loadDBStats() {
+	bs.DBStats = &DBStats{Status: "✗"}
+
+	db := datastore.GetStore().GetDB()
+	sqldb, err := db.DB()
+	if err != nil {
+		return
+	}
+
+	dbStats := sqldb.Stats()
+
+	bs.DBStats.Status = "✔"
+	bs.DBStats.DBStats = dbStats
+}
+
+func (bs *BlobberStats) loadFailedChallengeList(ctx context.Context) {
+	fcrdI := ctx.Value(FailedChallengeRequestDataKey)
+	if fcrdI == nil {
+		return
+	}
+	fcrd := fcrdI.(RequestData)
+
+	fcs, count, err := getAllFailedChallenges(fcrd.Offset, fcrd.Limit)
+	if err != nil {
+		Logger.Error("", zap.Any("err", err))
+		return
+	}
+	bs.FailedChallengeList = fcs
+
+	pagination := GeneratePagination(fcrd.Page, fcrd.Limit, fcrd.Offset, count)
+	bs.FailedChallengePagination = pagination
+}
+
+func (bs *BlobberStats) loadStats(ctx context.Context) {
 	const sel = `
 	COALESCE (SUM (reference_objects.size), 0) AS files_size,
 	COALESCE (SUM (reference_objects.thumbnail_size), 0) AS thumbnails_size,
@@ -211,7 +265,6 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 }
 
 func (bs *BlobberStats) loadMinioStats(ctx context.Context) {
-
 	var (
 		db  = datastore.GetStore().GetTransaction(ctx)
 		row *sql.Row
@@ -232,19 +285,32 @@ func (bs *BlobberStats) loadMinioStats(ctx context.Context) {
 		return
 	}
 
-	bs.LastMinioScan = LastMinioScan.Format(DateTimeFormat)
+	bs.LastMinioScan = LastMinioScan
 }
 
 func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 	bs.AllocationStats = make([]*AllocationStats, 0)
 
 	var (
-		db   = datastore.GetStore().GetTransaction(ctx)
-		rows *sql.Rows
-		err  error
+		db            = datastore.GetStore().GetTransaction(ctx)
+		rows          *sql.Rows
+		err           error
+		requestData   *RequestData
+		offset, limit int
 	)
 
-	rows, err = db.Table("reference_objects").
+	alrdI := ctx.Value(AllocationListRequestDataKey)
+	if alrdI == nil {
+		offset = 0
+		limit = 20
+	} else {
+		alrd := alrdI.(RequestData)
+		requestData = &alrd
+		offset = requestData.Offset
+		limit = requestData.Limit
+	}
+
+	rows, err = db.Table("reference_objects").Offset(offset).Limit(limit).
 		Select(`
             reference_objects.allocation_id,
             SUM(reference_objects.size) as files_size,
@@ -292,10 +358,21 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 			zap.Error(err))
 		return
 	}
+
+	var count int64
+	err = db.Table("reference_objects").Where("deleted_at is null").Count(&count).Error
+	if err != nil {
+		Logger.Error("loadAllocationStats err where deleted_at is nul", zap.Any("err", err))
+		return
+	}
+
+	if requestData != nil {
+		pagination := GeneratePagination(requestData.Page, requestData.Limit, requestData.Offset, int(count))
+		bs.AllocationListPagination = pagination
+	}
 }
 
 func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
-
 	var (
 		db   = datastore.GetStore().GetTransaction(ctx)
 		rows *sql.Rows
@@ -348,7 +425,6 @@ func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
 			zap.Error(err))
 		return
 	}
-
 }
 
 func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
@@ -418,11 +494,9 @@ func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
 			zap.Error(err))
 		return
 	}
-
 }
 
 func loadAllocationList(ctx context.Context) (interface{}, error) {
-
 	var (
 		allocations = make([]AllocationId, 0)
 		db          = datastore.GetStore().GetTransaction(ctx)
@@ -464,51 +538,43 @@ func loadAllocationList(ctx context.Context) (interface{}, error) {
 }
 
 type ReadMarkerEntity struct {
-	ReadCounter          int64          `gorm:"column:counter" json:"counter"`
-	LatestRedeemedRMBlob datatypes.JSON `gorm:"column:latest_redeemed_rm"`
-	RedeemRequired       bool           `gorm:"column:redeem_required"`
+	ReadCounter      int64 `gorm:"column:counter" json:"counter"`
+	LatestRedeemedRC int64 `gorm:"column:latest_redeemed_rc"`
 }
 
-func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (
-	rms *ReadMarkersStat, err error) {
-
+func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (*ReadMarkersStat, error) {
 	var (
-		db  = datastore.GetStore().GetTransaction(ctx)
+		db  = datastore.GetStore().GetDB()
 		rme ReadMarkerEntity
 	)
 
-	err = db.Table("read_markers").
-		Select("counter, latest_redeemed_rm, redeem_required").
+	row := db.Table("read_markers").
+		Select("counter, latest_redeemed_rc").
 		Where("allocation_id = ?", allocationID).
-		Limit(1).
-		Row().
-		Scan(&rme.ReadCounter, &rme.LatestRedeemedRMBlob, &rme.RedeemRequired)
+		Limit(1).Row()
 
-	if err != nil && err != sql.ErrNoRows {
-		return
+	err := row.Err()
+	if err != nil {
+		return nil, err
 	}
 
-	if err == sql.ErrNoRows {
-		return &ReadMarkersStat{}, nil // empty
-	}
+	err = row.Scan(&rme.ReadCounter, &rme.LatestRedeemedRC)
 
-	var prev, current = new(ReadMarkerEntity), &rme
-	if len(rme.LatestRedeemedRMBlob) > 0 {
-		err = json.Unmarshal([]byte(rme.LatestRedeemedRMBlob), prev)
-		if err != nil {
-			return
+	rms := &ReadMarkersStat{}
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return rms, nil // empty
 		}
+		return nil, err
 	}
 
-	rms = new(ReadMarkersStat)
-	if current.RedeemRequired {
-		rms.Pending = current.ReadCounter - prev.ReadCounter // pending
-		rms.Redeemed = prev.ReadCounter                      // already redeemed
-	} else {
-		rms.Redeemed = current.ReadCounter // already redeemed
+	if rme.ReadCounter > rme.LatestRedeemedRC {
+		rms.Pending = rme.ReadCounter - rme.LatestRedeemedRC // pending
 	}
 
-	return
+	rms.Redeemed = rme.LatestRedeemedRC // already redeemed
+	return rms, nil
 }
 
 // copy pasted from writemarker package because of import cycle
@@ -520,9 +586,7 @@ const (
 	Failed                             // 2
 )
 
-func loadAllocWriteMarkerStat(ctx context.Context, allocationID string) (
-	wms *WriteMarkersStat, err error) {
-
+func loadAllocWriteMarkerStat(ctx context.Context, allocationID string) (wms *WriteMarkersStat, err error) {
 	var (
 		db   = datastore.GetStore().GetTransaction(ctx)
 		rows *sql.Rows

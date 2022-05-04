@@ -4,25 +4,29 @@ set -e
 GIT_COMMIT=$(git rev-list -1 HEAD)
 echo $GIT_COMMIT
 
-cmd="build"
+echo "1> set DOCKER_IMAGE & DOCKER_BUILD"
+if [ -z "$DOCKER_BUILD" ]; then  
+    if [ "x86_64" != "$(uname -m)" ]; then
+        #docker buildx use blobber_buildx || docker buildx create --name blobber_buildx --use
+        DOCKER_BUILD="buildx build --platform linux/arm64"
+    else
+        DOCKER_BUILD="build"
+    fi
+fi
 
-for arg in "$@"
-do
-    case $arg in
-        -m1|--m1|m1)
-        echo "The build will be performed for Apple M1 chip"
-        cmd="buildx build --platform linux/amd64"
-        shift
-        ;;
-    esac
-done
+if [ -z "$DOCKER_IMAGE_BASE" ]; then  
+    DOCKER_IMAGE_BASE="blobber_base"
+fi
 
-docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/ValidatorDockerfile . -t validator
-docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/Dockerfile . -t blobber
+if [ -z "$DOCKER_IMAGE_BLOBBER" ]; then  
+    DOCKER_IMAGE_BLOBBER="-t blobber"
+fi
 
-for i in $(seq 1 6);
-do
-  BLOBBER=$i docker-compose -p blobber$i -f docker.local/docker-compose.yml build --force-rm
-done
+echo "  DOCKER_BUILD=$DOCKER_BUILD"
+echo "  DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE"
+echo "  DOCKER_IMAGE_BLOBBER=$DOCKER_IMAGE_BLOBBER"
 
-docker.local/bin/sync_clock.sh
+echo ""
+
+echo "2> docker build blobber"
+DOCKER_BUILDKIT=1 docker $DOCKER_BUILD --progress=plain --build-arg GIT_COMMIT=$GIT_COMMIT --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f docker.local/blobber.Dockerfile . $DOCKER_IMAGE_BLOBBER

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"gorm.io/datatypes"
@@ -19,35 +20,51 @@ type CopyFileChange struct {
 }
 
 func (rf *CopyFileChange) DeleteTempFile() error {
-	return OperationNotApplicable
+	return nil
 }
 
-func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
 	affectedRef, err := reference.GetObjectTree(ctx, rf.AllocationID, rf.SrcPath)
 	if err != nil {
 		return nil, err
 	}
-	destRef, err := reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
-	if err != nil || destRef.Type != reference.DIRECTORY {
-		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
-	}
-
-	rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
-
-	if destRef.ParentPath == "" {
+	affectedRef.HashToBeComputed = true
+	if rf.DestPath == "/" {
+		destRef, err := reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
+		if err != nil || destRef.Type != reference.DIRECTORY {
+			return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
+		}
+		destRef.HashToBeComputed = true
+		fileRefs := rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
 		_, err = destRef.CalculateHash(ctx, true)
+		if err != nil {
+			return nil, err
+		}
+		for _, fileRef := range fileRefs {
+			stats.NewFileCreated(ctx, fileRef.ID)
+		}
+
 		return destRef, err
 	}
 
+	// it will create new dir if it is not available in db
+	destRef, err := reference.Mkdir(ctx, rf.AllocationID, rf.DestPath)
+	if err != nil || destRef.Type != reference.DIRECTORY {
+		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
+	}
+	destRef, err = reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
+	if err != nil || destRef.Type != reference.DIRECTORY {
+		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
+	}
+	destRef.HashToBeComputed = true
 	path, _ := filepath.Split(rf.DestPath)
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)
-
 	rootRef, err := reference.GetReferencePath(ctx, rf.AllocationID, path)
 	if err != nil {
 		return nil, err
 	}
-
+	rootRef.HashToBeComputed = true
 	dirRef := rootRef
 	treelevel := 0
 	for treelevel < len(tSubDirs) {
@@ -56,6 +73,7 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef = child
+					dirRef.HashToBeComputed = true
 					found = true
 					break
 				}
@@ -67,26 +85,36 @@ func (rf *CopyFileChange) ProcessChange(ctx context.Context, change *AllocationC
 			return nil, common.NewError("invalid_reference_path", "Invalid reference path from the blobber")
 		}
 	}
-	var foundRef *reference.Ref = nil
+	childIndex := -1
 	for i, child := range dirRef.Children {
 		if child.Path == rf.DestPath && child.Type == reference.DIRECTORY {
-			foundRef = dirRef.Children[i]
-			dirRef.RemoveChild(i)
-			dirRef.AddChild(destRef)
+			childIndex = i
 			break
 		}
 	}
 
-	if foundRef == nil {
+	if childIndex == -1 {
 		return nil, common.NewError("file_not_found", "Destination Object to copy to not found in blobber")
 	}
 
+	dirRef.RemoveChild(childIndex)
+	filerefs := rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
+	dirRef.AddChild(destRef)
 	_, err = rootRef.CalculateHash(ctx, true)
+	if err != nil {
+		return nil, err
+	}
 
+	for _, fileRef := range filerefs {
+		stats.NewFileCreated(ctx, fileRef.ID)
+	}
 	return rootRef, err
 }
 
-func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef *reference.Ref, destRef *reference.Ref, allocationRoot string) {
+func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, destRef *reference.Ref, allocationRoot string) []*reference.Ref {
+
+	var files []*reference.Ref
+
 	if affectedRef.Type == reference.DIRECTORY {
 		newRef := reference.NewDirectoryRef()
 		newRef.AllocationID = rf.AllocationID
@@ -95,11 +123,13 @@ func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef *refe
 		newRef.Name = affectedRef.Name
 		newRef.LookupHash = reference.GetReferenceLookup(newRef.AllocationID, newRef.Path)
 		newRef.Attributes = datatypes.JSON(string(affectedRef.Attributes))
+		newRef.HashToBeComputed = true
 		destRef.AddChild(newRef)
+
 		for _, childRef := range affectedRef.Children {
-			rf.processCopyRefs(ctx, childRef, newRef, allocationRoot)
+			files = append(files, rf.processCopyRefs(ctx, childRef, newRef, allocationRoot)...)
 		}
-	} else {
+	} else if affectedRef.Type == reference.FILE {
 		newFile := reference.NewFileRef()
 		newFile.ActualFileHash = affectedRef.ActualFileHash
 		newFile.ActualFileSize = affectedRef.ActualFileSize
@@ -120,9 +150,15 @@ func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef *refe
 		newFile.ActualThumbnailSize = affectedRef.ActualThumbnailSize
 		newFile.EncryptedKey = affectedRef.EncryptedKey
 		newFile.Attributes = datatypes.JSON(string(affectedRef.Attributes))
-
+		newFile.ChunkSize = affectedRef.ChunkSize
+		newFile.HashToBeComputed = true
 		destRef.AddChild(newFile)
+
+		files = append(files, newFile)
 	}
+
+	return files
+
 }
 
 func (rf *CopyFileChange) Marshal() (string, error) {

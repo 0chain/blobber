@@ -21,15 +21,14 @@ type AttributesChange struct {
 	Attributes   *reference.Attributes `json:"attributes"` // new attributes
 }
 
-// ProcessChange processes the attributes changes.
-func (ac *AttributesChange) ProcessChange(ctx context.Context,
-	_ *AllocationChange, allocRoot string) (ref *reference.Ref, err error) {
-
+// ApplyChange processes the attributes changes.
+func (ac *AttributesChange) ApplyChange(ctx context.Context, _ *AllocationChange, allocRoot string) (ref *reference.Ref, err error) {
 	var path, _ = filepath.Split(ac.Path)
 	path = filepath.Clean(path)
 
 	// root reference
 	ref, err = reference.GetReferencePath(ctx, ac.AllocationID, ac.Path)
+
 	if err != nil {
 		return nil, common.NewErrorf("process_attrs_update",
 			"getting root reference path: %v", err)
@@ -40,13 +39,14 @@ func (ac *AttributesChange) ProcessChange(ctx context.Context,
 		dirRef    = ref
 		treelevel = 0
 	)
-
+	dirRef.HashToBeComputed = true
 	for treelevel < len(tSubDirs) {
 		var found bool
 		for _, child := range dirRef.Children {
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef, found = child, true
+					dirRef.HashToBeComputed = true
 					break
 				}
 			}
@@ -80,7 +80,9 @@ func (ac *AttributesChange) ProcessChange(ctx context.Context,
 			"setting new attributes: %v", err)
 	}
 
-	if _, err = ref.CalculateHash(ctx, true); err != nil {
+	existingRef.HashToBeComputed = true
+
+	if _, err := ref.CalculateHash(ctx, true); err != nil {
 		return nil, common.NewErrorf("process_attrs_update",
 			"saving updated reference: %v", err)
 	}
@@ -106,7 +108,7 @@ func (ac *AttributesChange) Unmarshal(val string) (err error) {
 
 // The DeleteTempFile returns OperationNotApplicable error.
 func (ac *AttributesChange) DeleteTempFile() (err error) {
-	return OperationNotApplicable
+	return nil
 }
 
 // The CommitToFileStore does nothing.

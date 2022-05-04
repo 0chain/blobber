@@ -8,9 +8,9 @@ import (
 )
 
 type Collaborator struct {
-	RefID     int64     `gorm:"ref_id" json:"ref_id"`
-	ClientID  string    `gorm:"client_id" json:"client_id"`
-	CreatedAt time.Time `gorm:"created_at" json:"created_at"`
+	RefID     int64     `gorm:"ref_id;not null" json:"ref_id"`
+	ClientID  string    `gorm:"client_id;size:64;not null" json:"client_id"`
+	CreatedAt time.Time `gorm:"created_at;timestamp without time zone;not null;default:now()" json:"created_at"`
 }
 
 func (Collaborator) TableName() string {
@@ -55,4 +55,19 @@ func IsACollaborator(ctx context.Context, refID int64, clientID string) bool {
 		return false
 	}
 	return collaboratorCount > 0
+}
+
+func IsCollaboratorInAllPaths(ctx context.Context, allocationID string, paths []string, clientID string) bool {
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	var list []int64
+	db.Select(&Ref{}).Where("allocation_id = ? and path in ?", allocationID, paths).Pluck("id", &list)
+
+	for _, refID := range list {
+		if !IsACollaborator(ctx, refID, clientID) {
+			return false
+		}
+	}
+
+	return true
 }

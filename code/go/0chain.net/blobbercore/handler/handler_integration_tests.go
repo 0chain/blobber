@@ -1,3 +1,4 @@
+//go:build integration_tests
 // +build integration_tests
 
 //
@@ -13,22 +14,25 @@ import (
 	"os"
 	"runtime/pprof"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/constants"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"github.com/0chain/gosdk/constants"
 
 	"github.com/gorilla/mux"
 
 	// integration tests RPC control
 	crpc "github.com/0chain/blobber/code/go/0chain.net/conductor/conductrpc"
+
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 var storageHandler StorageHandler
 
-func GetMetaDataStore() *datastore.Store {
+func GetMetaDataStore() datastore.Store {
 	return datastore.GetStore()
 }
 
@@ -39,9 +43,9 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/download/{allocation}", common.UserRateLimit(common.ToByteStream(WithConnection(DownloadHandler))))
 	r.HandleFunc("/v1/file/rename/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(RenameHandler))))
 	r.HandleFunc("/v1/file/copy/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CopyHandler))))
-	r.HandleFunc("/v1/file/attributes/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UpdateObjectAttributes))))
+	r.HandleFunc("/v1/file/attributes/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(UpdateAttributesHandler))))
 
-	r.HandleFunc("/v1/connection/commit/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitHandler))))
+	r.HandleFunc("/v1/connection/commit/{allocation}", common.UserRateLimit(common.ToStatusCode(WithStatusConnection(CommitHandler))))
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
 
 	//object info related apis
@@ -51,7 +55,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler))))
 	r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler))))
 	r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
-	r.HandleFunc("/v1/file/objecttree/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectTreeHandler))))
+	r.HandleFunc("/v1/file/objecttree/{allocation}", common.UserRateLimit(common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler))))
 
 	//admin related
 	r.HandleFunc("/_debug", common.UserRateLimit(common.ToJSONResponse(DumpGoRoutines)))
@@ -96,11 +100,11 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 
 func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	var vars = mux.Vars(r)
-	ctx = context.WithValue(ctx, constants.CLIENT_CONTEXT_KEY,
+	ctx = context.WithValue(ctx, constants.ContextKeyClient,
 		r.Header.Get(common.ClientHeader))
-	ctx = context.WithValue(ctx, constants.CLIENT_KEY_CONTEXT_KEY,
+	ctx = context.WithValue(ctx, constants.ContextKeyClientKey,
 		r.Header.Get(common.ClientKeyHeader))
-	ctx = context.WithValue(ctx, constants.ALLOCATION_CONTEXT_KEY,
+	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
 		vars["allocation"])
 	return ctx
 }
@@ -187,7 +191,7 @@ func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 
 	var state = crpc.Client().State()
 	if state.StorageTree.IsBad(state, node.Self.ID) {
-		dr := response.(*DownloadResponse)
+		dr := response.(*blobberhttp.DownloadResponse)
 		dr.Path = "/injection/" + dr.Path
 	}
 
@@ -210,20 +214,19 @@ func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-/*CommitHandler is the handler to respond to upload requests fro clients*/
-func CommitHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
+func CommitHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
+	resp, status, err := commitHandler(ctx, r)
 
-	response, err := storageHandler.CommitWrite(ctx, r)
 	if err != nil {
-		return nil, err
+		return nil, status, err
 	}
 
 	var state = crpc.Client().State()
 	if state.StorageTree.IsBad(state, node.Self.ID) {
+		response := resp.(*blobberhttp.CommitResult)
 		response.AllocationRoot = revertString(response.AllocationRoot)
 	}
-	return response, nil
+	return resp, http.StatusOK, nil
 }
 
 func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -263,22 +266,21 @@ func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error
 	return response, nil
 }
 
-func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.GetObjectTree(ctx, r)
+func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
+	resp, status, err := objectTreeHandler(ctx, r)
 	if err != nil {
-		return nil, err
+		return nil, status, err
 	}
 
 	var state = crpc.Client().State()
 	if state.StorageTree.IsBad(state, node.Self.ID) {
+		response := resp.(*blobberhttp.ReferencePathResult)
 		if len(response.List) > 0 {
 			response.List = append(response.List, response.List[0])
 		}
 	}
 
-	return response, nil
+	return resp, http.StatusOK, nil
 }
 
 func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -290,7 +292,7 @@ func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	var state = crpc.Client().State()
 	if state.StorageTree.IsBad(state, node.Self.ID) {
-		ur := response.(*UploadResult)
+		ur := response.(*blobberhttp.UploadResult)
 		ur.Filename = "/injected/" + ur.Filename
 	}
 
@@ -306,7 +308,7 @@ func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	var state = crpc.Client().State()
 	if state.StorageTree.IsBad(state, node.Self.ID) {
-		ur := response.(*UploadResult)
+		ur := response.(*blobberhttp.UploadResult)
 		ur.Filename = "/injected/" + ur.Filename
 	}
 
@@ -324,6 +326,22 @@ func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	var state = crpc.Client().State()
 	if state.StorageTree.IsBad(state, node.Self.ID) {
 		response.Filename = "/injected/" + response.Filename
+	}
+
+	return response, nil
+}
+
+func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+	response, err := storageHandler.UpdateObjectAttributes(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	var state = crpc.Client().State()
+	if state.StorageTree.IsBad(state, node.Self.ID) {
+		ur := response.(*blobberhttp.UploadResult)
+		ur.Filename = "/injected/" + ur.Filename
 	}
 
 	return response, nil

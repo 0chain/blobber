@@ -3,32 +3,29 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
+
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
-	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"github.com/0chain/gosdk/zboxcore/marker"
 	"github.com/0chain/gosdk/zcncore"
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	bconfig "github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -45,14 +42,8 @@ type MockFileBlockGetter struct {
 
 var mockFileBlock []byte
 
-func (MockFileBlockGetter) GetFileBlock(
-	fsStore *filestore.FileFSStore,
-	allocationID string,
-	fileData *filestore.FileInputData,
-	blockNum int64,
-	numBlocks int64,
-) ([]byte, error) {
-	return []byte(mockFileBlock), nil
+func (MockFileBlockGetter) GetFileBlock(fsStore *filestore.FileFSStore, allocationID string, fileData *filestore.FileInputData, blockNum, numBlocks int64) ([]byte, error) {
+	return mockFileBlock, nil
 }
 
 func setMockFileBlock(data []byte) {
@@ -63,15 +54,24 @@ func resetMockFileBlock() {
 	mockFileBlock = []byte("mock")
 }
 
-var encscheme zencryption.EncryptionScheme
-
-func setupEncryptionScheme() {
-	encscheme = zencryption.NewEncryptionScheme()
-	mnemonic := client.GetClient().Mnemonic
-	if err := encscheme.Initialize(mnemonic); err != nil {
-		panic("initialize encscheme")
+func signHash(client *client.Client, hash string) (string, error) {
+	retSignature := ""
+	for _, kv := range client.Keys {
+		ss := zcncrypto.NewSignatureScheme("bls0chain")
+		err := ss.SetPrivateKey(kv.PrivateKey)
+		if err != nil {
+			return "", err
+		}
+		if len(retSignature) == 0 {
+			retSignature, err = ss.Sign(hash)
+		} else {
+			retSignature, err = ss.Add(retSignature, hash)
+		}
+		if err != nil {
+			return "", err
+		}
 	}
-	encscheme.InitForEncryption("filetype:audio")
+	return retSignature, nil
 }
 
 func init() {
@@ -85,12 +85,11 @@ func init() {
 	if _, err := filestore.SetupFSStoreI(dir+"/tmp", MockFileBlockGetter{}); err != nil {
 		panic(err)
 	}
-	bconfig.Configuration.MaxFileSize = int64(1 << 30)
 }
 
 func setup(t *testing.T) {
 	// setup wallet
-	w, err := zcncrypto.NewBLS0ChainScheme().GenerateKeys()
+	w, err := zcncrypto.NewSignatureScheme("bls0chain").GenerateKeys()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,15 +141,6 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	),
 	).Name(opName)
 
-	rpPath := "/v1/file/referencepath/{allocation}"
-	rpName := "Reference_Path"
-	router.HandleFunc(rpPath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithReadOnlyConnection(ReferencePathHandler),
-		),
-	),
-	).Name(rpName)
-
 	sPath := "/v1/file/stats/{allocation}"
 	sName := "Stats"
 	router.HandleFunc(sPath, common.UserRateLimit(
@@ -159,15 +149,6 @@ func setupHandlers() (*mux.Router, map[string]string) {
 		),
 	),
 	).Name(sName)
-
-	otPath := "/v1/file/objecttree/{allocation}"
-	otName := "Object_Tree"
-	router.HandleFunc(otPath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithReadOnlyConnection(ObjectTreeHandler),
-		),
-	),
-	).Name(otName)
 
 	collPath := "/v1/file/collaborator/{allocation}"
 	collName := "Collaborator"
@@ -214,37 +195,15 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	),
 	).Name(uName)
 
-	dPath := "/v1/file/download/{allocation}"
-	dName := "Download"
-	router.HandleFunc(dPath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithConnection(DownloadHandler),
-		),
-	),
-	).Name(dName)
-
-	sharePath := "/v1/marketplace/shareinfo/{allocation}"
-	shareName := "Share"
-	router.HandleFunc(sharePath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithReadOnlyConnection(MarketPlaceShareInfoHandler),
-		),
-	),
-	).Name(shareName)
-
 	return router,
 		map[string]string{
-			opPath:    opName,
-			rpPath:    rpName,
-			sPath:     sName,
-			otPath:    otName,
-			collPath:  collName,
-			rPath:     rName,
-			cPath:     cName,
-			aPath:     aName,
-			uPath:     uName,
-			sharePath: shareName,
-			dPath:     dName,
+			opPath:   opName,
+			sPath:    sName,
+			collPath: collName,
+			rPath:    rName,
+			cPath:    cName,
+			aPath:    aName,
+			uPath:    uName,
 		}
 }
 
@@ -257,28 +216,40 @@ func isEndpointRequireSignature(name string) bool {
 	}
 }
 
+func isEndpointUpload(name string) bool {
+	return name == "Upload"
+}
+
 func isEndpointAllowGetReq(name string) bool {
 	switch name {
-	case "Stats", "Rename", "Copy", "Attributes", "Upload", "Share", "Download":
+	case "Stats", "Rename", "Copy", "Attributes", "Upload", "Download":
 		return false
 	default:
 		return true
 	}
 }
 
-func GetAuthTicketForEncryptedFile(allocationID string, remotePath string, fileHash string, clientID string, encPublicKey string) (string, error) {
+func GetAuthTicketForEncryptedFile(ownerClient *client.Client, allocationID, remotePath, fileHash, clientID, encPublicKey string) (string, error) {
 	at := &marker.AuthTicket{}
 	at.AllocationID = allocationID
-	at.OwnerID = client.GetClientID()
+	at.OwnerID = ownerClient.ClientID
 	at.ClientID = clientID
 	at.FileName = remotePath
 	at.FilePathHash = fileHash
-	at.RefType = fileref.FILE
+	if strings.HasSuffix(remotePath, "/") {
+		at.RefType = fileref.DIRECTORY
+	} else {
+		at.RefType = fileref.FILE
+	}
 	timestamp := int64(common.Now())
 	at.Expiration = timestamp + 7776000
 	at.Timestamp = timestamp
 	at.ReEncryptionKey = "regenkey"
-	err := at.Sign()
+	at.Encrypted = true
+
+	hash := encryption.Hash(at.GetHashData())
+	var err error
+	at.Signature, err = signHash(ownerClient, hash)
 	if err != nil {
 		return "", err
 	}
@@ -292,21 +263,27 @@ func GetAuthTicketForEncryptedFile(allocationID string, remotePath string, fileH
 func TestHandlers_Requiring_Signature(t *testing.T) {
 	setup(t)
 
-	clientJson := "{\"client_id\":\"2f34516ed8c567089b7b5572b12950db34a62a07e16770da14b15b170d0d60a9\",\"client_key\":\"bc94452950dd733de3b4498afdab30ff72741beae0b82de12b80a14430018a09ba119ff0bfe69b2a872bded33d560b58c89e071cef6ec8388268d4c3e2865083\",\"keys\":[{\"public_key\":\"bc94452950dd733de3b4498afdab30ff72741beae0b82de12b80a14430018a09ba119ff0bfe69b2a872bded33d560b58c89e071cef6ec8388268d4c3e2865083\",\"private_key\":\"9fef6ff5edc39a79c1d8e5eb7ca7e5ac14d34615ee49e6d8ca12ecec136f5907\"}],\"mnemonics\":\"expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe\",\"version\":\"1.0\",\"date_created\":\"2021-05-30 17:45:06.492093 +0545 +0545 m=+0.139083805\"}"
-	require.NoError(t, client.PopulateClient(clientJson, "bls0chain"))
-	setupEncryptionScheme()
+	clientJson := `{"client_id":"2f34516ed8c567089b7b5572b12950db34a62a07e16770da14b15b170d0d60a9","client_key":"bc94452950dd733de3b4498afdab30ff72741beae0b82de12b80a14430018a09ba119ff0bfe69b2a872bded33d560b58c89e071cef6ec8388268d4c3e2865083","keys":[{"public_key":"bc94452950dd733de3b4498afdab30ff72741beae0b82de12b80a14430018a09ba119ff0bfe69b2a872bded33d560b58c89e071cef6ec8388268d4c3e2865083","private_key":"9fef6ff5edc39a79c1d8e5eb7ca7e5ac14d34615ee49e6d8ca12ecec136f5907"}],"mnemonics":"expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe","version":"1.0","date_created":"2021-05-30 17:45:06.492093 +0545 +0545 m=+0.139083805"}`
+	guestClientJson := `{"client_id":"213297e22c8282ff85d1d5c99f4967636fe68f842c1351b24bd497246cbd26d9","client_key":"7710b547897e0bddf93a28903875b244db4d320e4170172b19a5d51280c73522e9bb381b184fa3d24d6e1464882bf7f89d24ac4e8d05616d55eb857a6e235383","keys":[{"public_key":"7710b547897e0bddf93a28903875b244db4d320e4170172b19a5d51280c73522e9bb381b184fa3d24d6e1464882bf7f89d24ac4e8d05616d55eb857a6e235383","private_key":"19ca446f814dcd56e28e11d4147f73590a07c7f1a9a6012087808a8602024a08"}],"mnemonics":"crazy dutch object arrest jump fragile oak amateur taxi trigger gap aspect marriage hat slice wool island spike unlock alter include easily say ramp","version":"1.0","date_created":"2022-01-26T07:26:41+05:45"}`
+
+	require.NoError(t, client.PopulateClients([]string{clientJson, guestClientJson}, "bls0chain"))
+	clients := client.GetClients()
+
+	ownerClient := clients[0]
+
 	router, handlers := setupHandlers()
 
-	sch := zcncrypto.NewBLS0ChainScheme()
-	sch.Mnemonic = "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
-	_, err := sch.GenerateKeys()
+	sch := zcncrypto.NewSignatureScheme("bls0chain")
+	//sch.Mnemonic = "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
+	_, err := sch.RecoverKeys("expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe")
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	ts := time.Now().Add(time.Hour)
 	alloc := makeTestAllocation(common.Timestamp(ts.Unix()))
-	alloc.OwnerPublicKey = sch.GetPublicKey()
-	alloc.OwnerID = client.GetClientID()
+	alloc.OwnerPublicKey = ownerClient.Keys[0].PublicKey
+	alloc.OwnerID = ownerClient.ClientID
 
 	const (
 		path         = "/path"
@@ -330,11 +307,189 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			wantBody    string
 		}
 	)
-	negativeTests := make([]test, 0)
+	uploadNegativeTests := make([]test, 0)
 	for _, name := range handlers {
-		if !isEndpointRequireSignature(name) {
+		if !isEndpointRequireSignature(name) || !isEndpointUpload(name) {
 			continue
 		}
+
+		baseSetupDbMock := func(mock sqlmock.Sqlmock) {
+			aa := sqlmock.AnyArg()
+
+			mock.ExpectBegin()
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
+				WithArgs(alloc.Tx).
+				WillReturnRows(
+					sqlmock.NewRows(
+						[]string{
+							"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
+						},
+					).
+						AddRow(
+							alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
+						),
+				)
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
+				WithArgs(alloc.ID).
+				WillReturnRows(
+					sqlmock.NewRows([]string{"id", "allocation_id"}).
+						AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
+				)
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects"`)).
+				WithArgs(aa, aa).
+				WillReturnRows(
+					sqlmock.NewRows([]string{"count"}).
+						AddRow(0),
+				)
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
+				WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).
+				WillReturnRows(
+					sqlmock.NewRows([]string{}).
+						AddRow(),
+				)
+			mock.ExpectExec(`INSERT INTO "allocation_connections"`).
+				WithArgs(aa, aa, aa, aa, aa, aa, aa).
+				WillReturnResult(sqlmock.NewResult(0, 0))
+			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "allocation_changes"`)).
+				WithArgs(aa, aa, aa, aa, aa, aa).
+				WillReturnRows(
+					sqlmock.NewRows([]string{}),
+				)
+		}
+
+		emptySignature := test{
+			name: name + "_Empty_Signature",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: func() *http.Request {
+					url, err := router.Get(name).URL("allocation", alloc.Tx)
+					if err != nil {
+						t.Fatal()
+					}
+					q := url.Query()
+					formFieldByt, err := json.Marshal(
+						&allocation.UploadFileChanger{
+							BaseFileChanger: allocation.BaseFileChanger{Path: path}})
+					if err != nil {
+						t.Fatal(err)
+					}
+					q.Set("uploadMeta", string(formFieldByt))
+					q.Set("path", path)
+					q.Set("new_name", newName)
+					q.Set("connection_id", connectionID)
+					url.RawQuery = q.Encode()
+
+					body := bytes.NewBuffer(nil)
+					formWriter := multipart.NewWriter(body)
+					root, _ := os.Getwd()
+					file, err := os.Open(root + "/handler_test.go")
+					if err != nil {
+						t.Fatal(err)
+					}
+					fileField, err := formWriter.CreateFormFile("uploadFile", file.Name())
+					if err != nil {
+						t.Fatal(err)
+					}
+					fileB := make([]byte, 0)
+					if _, err := io.ReadFull(file, fileB); err != nil {
+						t.Fatal(err)
+					}
+					if _, err := fileField.Write(fileB); err != nil {
+						t.Fatal(err)
+					}
+					if err := formWriter.Close(); err != nil {
+						t.Fatal(err)
+					}
+					r, err := http.NewRequest(http.MethodPost, url.String(), body)
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+
+					return r
+				}(),
+			},
+			alloc:       alloc,
+			setupDbMock: baseSetupDbMock,
+			wantCode:    http.StatusBadRequest,
+			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n\n",
+		}
+		uploadNegativeTests = append(uploadNegativeTests, emptySignature)
+
+		wrongSignature := test{
+			name: name + "_Wrong_Signature",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: func() *http.Request {
+					url, err := router.Get(name).URL("allocation", alloc.Tx)
+					if err != nil {
+						t.Fatal()
+					}
+					q := url.Query()
+					formFieldByt, err := json.Marshal(
+						&allocation.UploadFileChanger{
+							BaseFileChanger: allocation.BaseFileChanger{Path: path}})
+					if err != nil {
+						t.Fatal(err)
+					}
+					q.Set("uploadMeta", string(formFieldByt))
+					q.Set("path", path)
+					q.Set("new_name", newName)
+					q.Set("connection_id", connectionID)
+					url.RawQuery = q.Encode()
+
+					body := bytes.NewBuffer(nil)
+					formWriter := multipart.NewWriter(body)
+					root, _ := os.Getwd()
+					file, err := os.Open(root + "/handler_test.go")
+					if err != nil {
+						t.Fatal(err)
+					}
+					fileField, err := formWriter.CreateFormFile("uploadFile", file.Name())
+					if err != nil {
+						t.Fatal(err)
+					}
+					fileB := make([]byte, 0)
+					if _, err := io.ReadFull(file, fileB); err != nil {
+						t.Fatal(err)
+					}
+					if _, err := fileField.Write(fileB); err != nil {
+						t.Fatal(err)
+					}
+					if err := formWriter.Close(); err != nil {
+						t.Fatal(err)
+					}
+					r, err := http.NewRequest(http.MethodPost, url.String(), body)
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					r.Header.Set("Content-Type", formWriter.FormDataContentType())
+					hash := encryption.Hash("another data")
+					sign, err := sch.Sign(hash)
+					if err != nil {
+						t.Fatal(err)
+					}
+					r.Header.Set(common.ClientSignatureHeader, sign)
+					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+					return r
+				}(),
+			},
+			alloc:       alloc,
+			setupDbMock: baseSetupDbMock,
+			wantCode:    http.StatusBadRequest,
+			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n\n",
+		}
+		uploadNegativeTests = append(uploadNegativeTests, wrongSignature)
+	}
+	negativeTests := make([]test, 0)
+	for _, name := range handlers {
+		if !isEndpointRequireSignature(name) || isEndpointUpload(name) {
+			continue
+		}
+
 		baseSetupDbMock := func(mock sqlmock.Sqlmock) {
 			mock.ExpectBegin()
 
@@ -369,6 +524,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if !isEndpointAllowGetReq(name) {
 						method = http.MethodPost
 					}
+
 					r, err := http.NewRequest(method, url.String(), nil)
 					if err != nil {
 						t.Fatal(err)
@@ -473,69 +629,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, "/", reference.DIRECTORY, alloc.ID, "/").
-					WillReturnRows(
-						sqlmock.NewRows([]string{"path"}).
-							AddRow("/"),
-					)
-
-				mock.ExpectCommit()
-			},
-			wantCode: http.StatusOK,
-		},
-		{
-			name: "Reference_Path_OK",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: func() *http.Request {
-					handlerName := handlers["/v1/file/referencepath/{allocation}"]
-					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
-					if err != nil {
-						t.Fatal()
-					}
-					q := url.Query()
-					q.Set("path", path)
-					url.RawQuery = q.Encode()
-
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					r.Header.Set(common.ClientSignatureHeader, sign)
-					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-
-					return r
-				}(),
-			},
-			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectBegin()
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
-					WithArgs(alloc.Tx).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id"}).
-							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
-					WithArgs(alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "allocation_id"}).
-							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, path, alloc.ID, "/", "", alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path"}).
 							AddRow("/"),
@@ -617,66 +712,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			wantCode: http.StatusOK,
 		},
 		{
-			name: "Object_Tree_OK",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: func() *http.Request {
-					handlerName := handlers["/v1/file/objecttree/{allocation}"]
-					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
-					if err != nil {
-						t.Fatal()
-					}
-					q := url.Query()
-					q.Set("path", path)
-					url.RawQuery = q.Encode()
-
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					r.Header.Set(common.ClientSignatureHeader, sign)
-					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-
-					return r
-				}(),
-			},
-			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectBegin()
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
-					WithArgs(alloc.Tx).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id"}).
-							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
-					WithArgs(alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "allocation_id"}).
-							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, path, path+"/%", alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"path"}).
-							AddRow("/"),
-					)
-
-				mock.ExpectCommit()
-			},
-			wantCode: http.StatusOK,
-		},
-		{
 			name: "Collaborator_OK",
 			args: args{
 				w: httptest.NewRecorder(),
@@ -727,7 +762,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","type" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
@@ -803,7 +838,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","name","path","hash","size","merkle_root" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
@@ -837,7 +872,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q.Set("path", path)
 					q.Set("new_name", newName)
 					q.Set("connection_id", connectionID)
-					q.Set("dest", "dest")
+					q.Set("dest", "/dest")
 					url.RawQuery = q.Encode()
 
 					r, err := http.NewRequest(http.MethodPost, url.String(), nil)
@@ -885,24 +920,17 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","name","path","hash","size","merkle_root" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"type"}).
-							AddRow(reference.FILE),
+						sqlmock.NewRows([]string{"type", "name"}).
+							AddRow(reference.FILE, "path"),
 					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(aa, aa).
-					WillReturnError(errors.New(""))
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(aa, aa).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "path","type" FROM "reference_objects" WHERE`)).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"type"}).
-							AddRow(reference.DIRECTORY),
+						sqlmock.NewRows([]string{"path", "type"}).
+							AddRow("/dest", reference.DIRECTORY),
 					)
-
 				mock.ExpectExec(`INSERT INTO "allocation_connections"`).
 					WithArgs(aa, aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
@@ -983,7 +1011,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
@@ -1014,7 +1042,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 
 					q := url.Query()
-					formFieldByt, err := json.Marshal(&allocation.UpdateFileChange{})
+					formFieldByt, err := json.Marshal(
+						&allocation.UploadFileChanger{
+							BaseFileChanger: allocation.BaseFileChanger{Path: path}})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1059,7 +1089,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					r.Header.Set("Content-Type", formWriter.FormDataContentType())
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-
 					return r
 				}(),
 			},
@@ -1068,7 +1097,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectBegin()
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
 					WithArgs(alloc.Tx).
 					WillReturnRows(
@@ -1081,29 +1109,27 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
 							),
 					)
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
 					WithArgs(alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects"`)).
-					WithArgs(aa).
-					WillReturnError(gorm.ErrRecordNotFound)
-
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects"`)).
+					WithArgs(aa, aa).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"count"}).
+							AddRow(0),
+					)
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
 					WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).
 					WillReturnRows(
 						sqlmock.NewRows([]string{}).
 							AddRow(),
 					)
-
 				mock.ExpectExec(`INSERT INTO "allocation_connections"`).
 					WithArgs(aa, aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
-
 				mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "allocation_changes"`)).
 					WithArgs(aa, aa, aa, aa, aa, aa).
 					WillReturnRows(
@@ -1112,795 +1138,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			},
 			wantCode: http.StatusOK,
 		},
-		{
-			name: "InsertShareInfo_OK_New_Share",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: func() *http.Request {
-					handlerName := handlers["/v1/marketplace/shareinfo/{allocation}"]
-					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
-					if err != nil {
-						t.Fatal()
-					}
-
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
-					shareClientEncryptionPublicKey := "kkk"
-					shareClientID := "abcdefgh"
-					require.NoError(t, formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey))
-					remotePath := "/file.txt"
-					filePathHash := "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"
-					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, filePathHash, shareClientID, sch.GetPublicKey())
-					if err != nil {
-						t.Fatal(err)
-					}
-					require.NoError(t, formWriter.WriteField("auth_ticket", authTicket))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
-					r, err := http.NewRequest(http.MethodPost, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
-					r.Header.Set(common.ClientSignatureHeader, sign)
-					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-
-					return r
-				}(),
-			},
-			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectBegin()
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
-					WithArgs(alloc.Tx).
-					WillReturnRows(
-						sqlmock.NewRows(
-							[]string{
-								"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
-							},
-						).
-							AddRow(
-								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
-							),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
-					WithArgs(alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "allocation_id"}).
-							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.Tx, "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
-					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "lookup_hash"}).
-							AddRow("/file.txt", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
-					WithArgs("abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
-					WillReturnRows(sqlmock.NewRows([]string{}))
-				aa := sqlmock.AnyArg()
-
-				mock.ExpectExec(`INSERT INTO "marketplace_share_info"`).
-					WithArgs(client.GetClientID(), "abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c", "regenkey", aa, false, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
-			},
-			wantCode: http.StatusOK,
-			wantBody: "{\"message\":\"Share info added successfully\"}\n",
-		},
-		{
-			name: "UpdateShareInfo",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: func() *http.Request {
-					handlerName := handlers["/v1/marketplace/shareinfo/{allocation}"]
-					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
-					if err != nil {
-						t.Fatal()
-					}
-
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
-					shareClientEncryptionPublicKey := "kkk"
-					shareClientID := "abcdefgh"
-					require.NoError(t, formWriter.WriteField("encryption_public_key", shareClientEncryptionPublicKey))
-					remotePath := "/file.txt"
-					filePathHash := "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"
-					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, filePathHash, shareClientID, sch.GetPublicKey())
-					if err != nil {
-						t.Fatal(err)
-					}
-					require.NoError(t, formWriter.WriteField("auth_ticket", authTicket))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
-					r, err := http.NewRequest(http.MethodPost, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
-					r.Header.Set(common.ClientSignatureHeader, sign)
-					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-
-					return r
-				}(),
-			},
-			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectBegin()
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
-					WithArgs(alloc.Tx).
-					WillReturnRows(
-						sqlmock.NewRows(
-							[]string{
-								"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
-							},
-						).
-							AddRow(
-								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
-							),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
-					WithArgs(alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "allocation_id"}).
-							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.Tx, "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
-					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "lookup_hash"}).
-							AddRow("/file.txt", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c"),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
-					WithArgs("abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id", "owner_id"}).
-							AddRow("abcdefgh", "owner"),
-					)
-				aa := sqlmock.AnyArg()
-
-				mock.ExpectExec(`UPDATE "marketplace_share_info"`).
-					WithArgs("regenkey", "kkk", false, aa, "abcdefgh", "f15383a1130bd2fae1e52a7a15c432269eeb7def555f1f8b9b9a28bd9611362c").
-					WillReturnResult(sqlmock.NewResult(0, 1))
-			},
-			wantCode: http.StatusOK,
-			wantBody: "{\"message\":\"Share info added successfully\"}\n",
-		},
-		{
-			name: "RevokeShareInfo_OK_Existing_Share",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: func() *http.Request {
-					handlerName := handlers["/v1/marketplace/shareinfo/{allocation}"]
-					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
-					if err != nil {
-						t.Fatal()
-					}
-
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
-					shareClientID := "abcdefgh"
-					remotePath := "/file.txt"
-
-					require.NoError(t, formWriter.WriteField("refereeClientID", shareClientID))
-					require.NoError(t, formWriter.WriteField("path", remotePath))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
-					r, err := http.NewRequest(http.MethodDelete, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
-					r.Header.Set(common.ClientSignatureHeader, sign)
-					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-
-					return r
-				}(),
-			},
-			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectBegin()
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
-					WithArgs(alloc.Tx).
-					WillReturnRows(
-						sqlmock.NewRows(
-							[]string{
-								"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
-							},
-						).
-							AddRow(
-								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
-							),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
-					WithArgs(alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "allocation_id"}).
-							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
-					)
-
-				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.Tx, filePathHash).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "lookup_hash"}).
-							AddRow("/file.txt", filePathHash),
-					)
-
-				mock.ExpectExec(regexp.QuoteMeta(`UPDATE "marketplace_share_info"`)).
-					WithArgs(true, "abcdefgh", filePathHash).
-					WillReturnResult(sqlmock.NewResult(0, 1))
-
-			},
-			wantCode: http.StatusOK,
-			wantBody: "{\"message\":\"Path successfully removed from allocation\",\"status\":204}\n",
-		},
-		{
-			name: "RevokeShareInfo_NotOK_For_Non_Existing_Share",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: func() *http.Request {
-					handlerName := handlers["/v1/marketplace/shareinfo/{allocation}"]
-					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
-					if err != nil {
-						t.Fatal()
-					}
-
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
-					shareClientID := "abcdefgh"
-					remotePath := "/file.txt"
-
-					require.NoError(t, formWriter.WriteField("refereeClientID", shareClientID))
-					require.NoError(t, formWriter.WriteField("path", remotePath))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
-					r, err := http.NewRequest(http.MethodDelete, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
-					r.Header.Set(common.ClientSignatureHeader, sign)
-					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-
-					return r
-				}(),
-			},
-			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectBegin()
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
-					WithArgs(alloc.Tx).
-					WillReturnRows(
-						sqlmock.NewRows(
-							[]string{
-								"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
-							},
-						).
-							AddRow(
-								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
-							),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
-					WithArgs(alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "allocation_id"}).
-							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
-					)
-
-				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.Tx, filePathHash).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "lookup_hash"}).
-							AddRow("/file.txt", filePathHash),
-					)
-
-				mock.ExpectExec(regexp.QuoteMeta(`UPDATE "marketplace_share_info"`)).
-					WithArgs(true, "abcdefgh", filePathHash).
-					WillReturnResult(sqlmock.NewResult(0, 0))
-
-			},
-			wantCode: http.StatusOK,
-			wantBody: "{\"message\":\"Path not found\",\"status\":404}\n",
-		},
-		{
-			name: "DownloadFile_Record_Not_Found",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: func() *http.Request {
-					handlerName := handlers["/v1/file/download/{allocation}"]
-					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
-					if err != nil {
-						t.Fatal()
-					}
-
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
-					remotePath := "/file.txt"
-
-					require.NoError(t, formWriter.WriteField("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath)))
-					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
-					rm := &marker.ReadMarker{}
-					rm.ClientID = client.GetClientID()
-					rm.ClientPublicKey = client.GetClientPublicKey()
-					rm.BlobberID = ""
-					rm.AllocationID = alloc.ID
-					rm.OwnerID = client.GetClientID()
-					err = rm.Sign()
-					if err != nil {
-						t.Fatal(err)
-					}
-					rmData, err := json.Marshal(rm)
-					require.NoError(t, err)
-					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
-					r, err := http.NewRequest(http.MethodPost, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
-					r.Header.Set(common.ClientSignatureHeader, sign)
-					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
-
-					return r
-				}(),
-			},
-			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectBegin()
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
-					WithArgs(alloc.Tx).
-					WillReturnRows(
-						sqlmock.NewRows(
-							[]string{
-								"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
-							},
-						).
-							AddRow(
-								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
-							),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
-					WithArgs(alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "allocation_id"}).
-							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
-					)
-
-				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, filePathHash).WillReturnError(gorm.ErrRecordNotFound)
-
-			},
-			wantCode: http.StatusBadRequest,
-			wantBody: "{\"code\":\"download_file\",\"error\":\"download_file: invalid file path: record not found\"}\n\n",
-		},
-		{
-			name: "DownloadFile_Unencrypted_return_file",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: func() *http.Request {
-					handlerName := handlers["/v1/file/download/{allocation}"]
-					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
-					if err != nil {
-						t.Fatal()
-					}
-
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
-					remotePath := "/file.txt"
-
-					require.NoError(t, formWriter.WriteField("path_hash", fileref.GetReferenceLookup(alloc.Tx, remotePath)))
-					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
-					rm := &marker.ReadMarker{}
-					rm.ClientID = client.GetClientID()
-					rm.ClientPublicKey = client.GetClientPublicKey()
-					rm.BlobberID = ""
-					rm.AllocationID = alloc.ID
-					rm.ReadCounter = 1
-					rm.OwnerID = client.GetClientID()
-					err = rm.Sign()
-					if err != nil {
-						t.Fatal(err)
-					}
-					rmData, err := json.Marshal(rm)
-					require.NoError(t, err)
-					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
-					r, err := http.NewRequest(http.MethodPost, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
-					r.Header.Set(common.ClientSignatureHeader, sign)
-					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
-
-					return r
-				}(),
-			},
-			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectBegin()
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
-					WithArgs(alloc.Tx).
-					WillReturnRows(
-						sqlmock.NewRows(
-							[]string{
-								"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
-							},
-						).
-							AddRow(
-								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
-							),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
-					WithArgs(alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "allocation_id"}).
-							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
-					)
-
-				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, filePathHash).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "type", "lookup_hash", "content_hash"}).
-							AddRow("/file.txt", "f", filePathHash, "abcd"),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(1) FROM "collaborators" WHERE`)).
-					WithArgs(client.GetClientID()).
-					WillReturnError(gorm.ErrRecordNotFound)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(client.GetClientID()).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(client.GetClientID()),
-					)
-
-				aa := sqlmock.AnyArg()
-
-				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(client.GetClientPublicKey(), alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
-
-				mock.ExpectCommit()
-			},
-			wantCode: http.StatusOK,
-			wantBody: "\"bW9jaw==\"\n", //base64encoded for mock string
-		},
-		{
-			name: "DownloadFile_Encrypted_Permission_Denied_Unshared_File",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: func() *http.Request {
-					handlerName := handlers["/v1/file/download/{allocation}"]
-					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
-					if err != nil {
-						t.Fatal()
-					}
-
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
-					remotePath := "/file.txt"
-
-					pathHash := fileref.GetReferenceLookup(alloc.Tx, remotePath)
-					require.NoError(t, formWriter.WriteField("path_hash", pathHash))
-					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
-					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, pathHash, client.GetClientID(), sch.GetPublicKey())
-					if err != nil {
-						t.Fatal(err)
-					}
-					require.NoError(t, formWriter.WriteField("auth_token", authTicket))
-					rm := &marker.ReadMarker{}
-					rm.ClientID = client.GetClientID()
-					rm.ClientPublicKey = client.GetClientPublicKey()
-					rm.BlobberID = ""
-					rm.AllocationID = alloc.ID
-					rm.ReadCounter = 1
-					rm.OwnerID = client.GetClientID()
-					err = rm.Sign()
-					if err != nil {
-						t.Fatal(err)
-					}
-					rmData, err := json.Marshal(rm)
-					require.NoError(t, err)
-					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
-					r, err := http.NewRequest(http.MethodPost, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
-					r.Header.Set(common.ClientSignatureHeader, sign)
-					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
-
-					return r
-				}(),
-			},
-			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectBegin()
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
-					WithArgs(alloc.Tx).
-					WillReturnRows(
-						sqlmock.NewRows(
-							[]string{
-								"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
-							},
-						).
-							AddRow(
-								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
-							),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
-					WithArgs(alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "allocation_id"}).
-							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
-					)
-
-				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, filePathHash).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key"}).
-							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", "qCj3sXXeXUAByi1ERIbcfXzWN75dyocYzyRXnkStXio="),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(1) FROM "collaborators" WHERE`)).
-					WithArgs(client.GetClientID()).
-					WillReturnError(gorm.ErrRecordNotFound)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(client.GetClientID()).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(client.GetClientID()),
-					)
-
-				aa := sqlmock.AnyArg()
-
-				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(client.GetClientPublicKey(), alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
-					WithArgs(client.GetClientID(), filePathHash).
-					WillReturnError(gorm.ErrRecordNotFound)
-
-				mock.ExpectCommit()
-			},
-			wantCode: http.StatusBadRequest,
-			wantBody: "{\"error\":\"client does not have permission to download the file. share does not exist\"}\n\n",
-		},
-		{
-			name: "DownloadFile_Encrypted_Permission_Allowed_shared_File",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: func() *http.Request {
-					handlerName := handlers["/v1/file/download/{allocation}"]
-					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
-					if err != nil {
-						t.Fatal()
-					}
-
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
-					remotePath := "/file.txt"
-
-					pathHash := fileref.GetReferenceLookup(alloc.Tx, remotePath)
-					require.NoError(t, formWriter.WriteField("path_hash", pathHash))
-					require.NoError(t, formWriter.WriteField("block_num", fmt.Sprintf("%d", 1)))
-					authTicket, err := GetAuthTicketForEncryptedFile(alloc.ID, remotePath, pathHash, client.GetClientID(), sch.GetPublicKey())
-					if err != nil {
-						t.Fatal(err)
-					}
-					require.NoError(t, formWriter.WriteField("auth_token", authTicket))
-					rm := &marker.ReadMarker{}
-					rm.ClientID = client.GetClientID()
-					rm.ClientPublicKey = client.GetClientPublicKey()
-					rm.BlobberID = ""
-					rm.AllocationID = alloc.ID
-					rm.ReadCounter = 1
-					rm.OwnerID = client.GetClientID()
-					err = rm.Sign()
-					if err != nil {
-						t.Fatal(err)
-					}
-					rmData, err := json.Marshal(rm)
-					require.NoError(t, err)
-					require.NoError(t, formWriter.WriteField("read_marker", string(rmData)))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
-					r, err := http.NewRequest(http.MethodPost, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
-					r.Header.Set(common.ClientSignatureHeader, sign)
-					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
-
-					return r
-				}(),
-			},
-			alloc: alloc,
-			begin: func() {
-				dataToEncrypt := "data_to_encrypt"
-				encMsg, err := encscheme.Encrypt([]byte(dataToEncrypt))
-				if err != nil {
-					t.Fatal(err)
-				}
-				header := make([]byte, 2*1024)
-				copy(header[:], encMsg.MessageChecksum+","+encMsg.OverallChecksum)
-				data := append(header, encMsg.EncryptedData...)
-				setMockFileBlock(data)
-			},
-			end: func() {
-				resetMockFileBlock()
-			},
-			setupDbMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectBegin()
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
-					WithArgs(alloc.Tx).
-					WillReturnRows(
-						sqlmock.NewRows(
-							[]string{
-								"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
-							},
-						).
-							AddRow(
-								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
-							),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
-					WithArgs(alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "allocation_id"}).
-							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
-					)
-
-				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, filePathHash).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key"}).
-							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", encscheme.GetEncryptedKey()),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(1) FROM "collaborators" WHERE`)).
-					WithArgs(client.GetClientID()).
-					WillReturnError(gorm.ErrRecordNotFound)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(client.GetClientID()).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(client.GetClientID()),
-					)
-
-				aa := sqlmock.AnyArg()
-
-				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(client.GetClientPublicKey(), alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
-
-				reEncryptionKey, _ := encscheme.GetReGenKey(encscheme.GetEncryptedKey(), "filetype:audio")
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
-					WithArgs(client.GetClientID(), filePathHash).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"re_encryption_key", "client_encryption_public_key"}).
-							AddRow(reEncryptionKey, encscheme.GetEncryptedKey()),
-					)
-
-				mock.ExpectCommit()
-			},
-			wantCode: http.StatusOK,
-			wantBody: "",
-		},
 	}
 	tests := append(positiveTests, negativeTests...)
+	tests = append(tests, uploadNegativeTests...)
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)
@@ -1919,6 +1159,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				assert.Equal(t, test.wantBody, test.args.w.Body.String())
 			}
 		})
+
 	}
 
 	curDir, err := os.Getwd()
