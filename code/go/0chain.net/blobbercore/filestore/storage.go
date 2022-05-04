@@ -127,32 +127,38 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	}
 
 	fileSize := fStat.Size()
+
+	/* Uncomment it after padding is done in gosdk
 	if fileSize > fileData.ChunkSize && fileSize%fileData.ChunkSize != 0 { // workaround for data without padding
 		return false, common.NewError("invalid_data",
 			fmt.Sprintf("file size %d is not exactly divisible by chunk size %d", fileSize, fileData.ChunkSize))
 	}
+	*/
+
 	//calculate content hash
 	hasher := sdk.CreateHasher(int(fileData.ChunkSize))
 
-	n := fileSize / fileData.ChunkSize
-	n = int64(math.Max(float64(1), float64(n)))                                  // workaround for data without padding
-	chunkSize := int64(math.Min(float64(fileSize), float64(fileData.ChunkSize))) // workaround for data without padding
+	n := int64(math.Ceil(float64(fileSize) / float64(fileData.ChunkSize)))       // workaround for data without padding otherwise fileSize/fileData.ChunkSize
+	n = int64(math.Max(float64(1), float64(n)))                                  // workaround for data without padding otherwise non-existing line
+	chunkSize := int64(math.Min(float64(fileSize), float64(fileData.ChunkSize))) // workaround for data without padding otherwise non-existing line
 
 	for i := int64(0); i < n; i++ {
 		offset := i * chunkSize
 		data := make([]byte, chunkSize)
 		n, err := f.ReadAt(data, offset)
-		if err != nil {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return false, common.NewError("read_error", err.Error())
 		}
 
+		/* Uncomment when padding is done in gosdk
 		if n != int(chunkSize) {
 			return false, common.NewError("read_error",
 				fmt.Sprintf("expected read %d, got %d", chunkSize, n))
 		}
+		*/
 
 		h := sha256.New()
-		_, err = h.Write(data)
+		_, err = h.Write(data[:n]) // workaround for data without padding otherwise h.Write(data)
 		if err != nil {
 			return false, common.NewError("hash_write_error", err.Error())
 		}
