@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.8.3-0.20220502105714-1ed0515e3b86
+	github.com/0chain/gosdk v1.8.3-0.20220505203904-dfd62efd81ff
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/gorilla/handlers v1.5.1
