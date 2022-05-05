@@ -20,6 +20,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/gosdk/core/util"
+	"github.com/0chain/gosdk/zboxcore/sdk"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )
@@ -240,13 +241,14 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 		t.Run(test.testName, func(t *testing.T) {
 			fs.setAllocation(test.allocID, test.alloc)
 			fPath := filepath.Join(fs.mp, randString(10)+".txt")
-			fileHash, err := generateRandomData(fPath)
+			contentHash, commitContentHash, err := generateRandomData(fPath)
 			require.Nil(t, err)
 
 			fid := &FileInputData{
-				Name: test.fileName,
-				Path: test.remotePath,
-				Hash: fileHash,
+				Name:      test.fileName,
+				Path:      test.remotePath,
+				Hash:      contentHash,
+				ChunkSize: 64 * KB,
 			}
 
 			f, err := os.Open(fPath)
@@ -273,7 +275,10 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 
 			if test.differentHash {
 				fid.Hash = randString(64)
+			} else {
+				fid.Hash = commitContentHash
 			}
+
 			success, err := fs.CommitWrite(test.allocID, test.connID, fid)
 			if test.expectedErrorOnCommit {
 				require.NotNil(t, err)
@@ -298,7 +303,7 @@ func TestGetFileBlock(t *testing.T) {
 	}
 	fs.setAllocation(allocID, alloc)
 	fPath := filepath.Join(fs.mp, randString(10)+".txt")
-	fileHash, err := generateRandomData(fPath)
+	_, fileHash, err := generateRandomData(fPath)
 	require.Nil(t, err)
 
 	permanentFPath, err := fs.GetPathForFile(allocID, fileHash)
@@ -381,7 +386,7 @@ func TestGetFileBlockForChallenge(t *testing.T) {
 	defer cleanUp()
 
 	orgFilePath := filepath.Join(fs.mp, randString(5)+".txt")
-	fileHash, err := generateRandomData(orgFilePath)
+	_, commitContentHash, err := generateRandomData(orgFilePath)
 	require.Nil(t, err)
 
 	f, err := os.Open(orgFilePath)
@@ -391,7 +396,7 @@ func TestGetFileBlockForChallenge(t *testing.T) {
 	require.Nil(t, err)
 	t.Logf("Merkle root: %s", mr)
 	allocID := randString(64)
-	fPath, err := fs.GetPathForFile(allocID, fileHash)
+	fPath, err := fs.GetPathForFile(allocID, commitContentHash)
 	require.Nil(t, err)
 
 	err = os.MkdirAll(filepath.Dir(fPath), 0777)
@@ -434,7 +439,7 @@ func TestGetFileBlockForChallenge(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
 			fd := &FileInputData{
-				Hash:      fileHash,
+				Hash:      commitContentHash,
 				ChunkSize: 64 * KB,
 			}
 			rb, fixedMtI, err := fs.GetFileBlockForChallenge(allocID, fd, test.blockOffset)
@@ -478,27 +483,50 @@ func setupStorage(t *testing.T) (*FileStore, func()) {
 	return &fs, f
 }
 
-func generateRandomData(fPath string) (string, error) {
+func generateRandomData(fPath string) (string, string, error) {
 	p := make([]byte, 64*KB*10)
 	_, err := rand.Read(p)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	f, err := os.Create(fPath)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer f.Close()
 
-	h := sha256.New()
-	mW := io.MultiWriter(f, h)
+	cHW := sha256.New()
+	mW := io.MultiWriter(f, cHW)
 
 	_, err = mW.Write(p)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return hex.EncodeToString(h.Sum(nil)), nil
+	contentHash := hex.EncodeToString(cHW.Sum(nil))
+
+	hasher := sdk.CreateHasher(64 * KB)
+	var count int
+	for start := 0; start < len(p); start = start + 64*KB {
+		h := sha256.New()
+		data := p[start : start+64*KB]
+		_, err := h.Write(data)
+		if err != nil {
+			return "", "", err
+		}
+
+		err = hasher.WriteHashToContent(hex.EncodeToString(h.Sum(nil)), count)
+		if err != nil {
+			return "", "", err
+		}
+		count++
+	}
+	commitContentHash, err := hasher.GetContentHash()
+	if err != nil {
+		return "", "", err
+	}
+
+	return contentHash, commitContentHash, nil
 }
 
 func getMerkleRoot(r io.Reader) (mr string, err error) {
