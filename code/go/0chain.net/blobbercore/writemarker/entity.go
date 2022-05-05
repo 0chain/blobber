@@ -106,6 +106,10 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarke
 	return
 }
 
+func (wm *WriteMarkerEntity) OnChain() bool {
+	return wm.Status == Committed
+}
+
 // GetWriteMarkerEntity get WriteMarkerEntity from postgres
 func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
