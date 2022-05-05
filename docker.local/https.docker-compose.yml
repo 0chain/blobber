@@ -65,7 +65,7 @@ services:
       - "703${BLOBBER}:703${BLOBBER}"
     labels:
       zchain: "blobber"
-    command: ./bin/blobber --port 505${BLOBBER} --https-port 506${BLOBBER} --https-cert-file config/localhost.crt --https-key-file config/localhost.key --grpc_port 703${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/bnode${BLOBBER}_keys.txt --mount_point /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keys_config/minio_config.txt
+    command: ./bin/blobber --port 505${BLOBBER} --https-port 506${BLOBBER} --https-cert-file config/localhost.crt --https-key-file config/localhost.key --grpc_port 703${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keys_config/minio_config.txt
     networks:
       default:
       testnet0:

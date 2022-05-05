@@ -47,7 +47,7 @@ services:
     ports:
     - ${AGENT_PORT}:${AGENT_PORT}
 
-    command: /0chain/bin/blobber --deployment_mode 0 --keys_file /0chain/config/blobber.txt --nodes_file nodes --mount_point /0chain/files --log_dir /0chain/log --db_dir /0chain/data
+    command: /0chain/bin/blobber --deployment_mode 0 --keys_file /0chain/config/blobber.txt --nodes_file nodes --files_dir /0chain/files --log_dir /0chain/log --db_dir /0chain/data
 
     networks:
       default:

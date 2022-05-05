@@ -23,7 +23,7 @@ func setupConfig(configDir string, deploymentMode int) {
 	if mountPoint != "" {
 		config.Configuration.MountPoint = mountPoint
 	} else {
-		config.Configuration.MountPoint = viper.GetString("storage.mount_point")
+		config.Configuration.MountPoint = viper.GetString("storage.files_dir")
 	}
 
 	if config.Configuration.MountPoint == "" {

@@ -200,13 +200,13 @@ start_blobber () {
     keys_file="../docker.local/keys_config/b0bnode${i}_keys.txt"
     minio_file="../docker.local/keys_config/minio_config.txt"
     config_dir="./data/blobber$i/config"
-    mount_point="./data/blobber$i/files"
+    files_dir="./data/blobber$i/files"
     log_dir="./data/blobber$i/log"
     db_dir="./data/blobber$i/data"
 
     echo "[3/3] run blobber..."
 
-    ./data/blobber$i/blobber --port $port --grpc_port $grpc_port --hostname $hostname --deployment_mode 0 --keys_file $keys_file  --mount_point $mount_point --log_dir $log_dir --db_dir $db_dir  --minio_file $minio_file --config_dir $config_dir
+    ./data/blobber$i/blobber --port $port --grpc_port $grpc_port --hostname $hostname --deployment_mode 0 --keys_file $keys_file  --files_dir $files_dir --log_dir $log_dir --db_dir $db_dir  --minio_file $minio_file --config_dir $config_dir
 }
 
 start_validator () {

@@ -113,10 +113,10 @@ geolocation:
   longitude: 0
 
 storage:
-  mount_point: "/path/to/hdd"
+  files_dir: "/path/to/hdd"
 #  sha256 hash will have 64 characters of hex encoded length. So if dir_level is [2,2] this means for an allocation id 
 #  "4c9bad252272bc6e3969be637610d58f3ab2ff8ca336ea2fadd6171fc68fdd56" directory below will be created.
-#  alloc_dir = {mount_point}/4c/9b/ad252272bc6e3969be637610d58f3ab2ff8ca336ea2fadd6171fc68fdd56
+#  alloc_dir = {files_dir}/4c/9b/ad252272bc6e3969be637610d58f3ab2ff8ca336ea2fadd6171fc68fdd56
 # 
 #  So this means, there will maximum of 16^4 = 65536 numbers directories for all allocations stored by blobber.
 #  Similarly for some file_hash "ef935503b66b1ce026610edf18bffd756a79676a8fe317d951965b77a77c0227" with dir_level [2, 2, 1]
