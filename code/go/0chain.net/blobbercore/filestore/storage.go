@@ -281,7 +281,7 @@ func (fs *FileStore) DeleteTempFile(allocID, conID string, fd *FileInputData) er
 
 func (fs *FileStore) GetFileBlock(allocID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
 	if blockNum < 1 {
-		return nil, common.NewError("invalid_block_number", "Start block number must be greater than 0")
+		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number must be greater than 0")
 	}
 
 	fileObjectPath, err := fs.GetPathForFile(allocID, fileData.Hash)
@@ -317,7 +317,7 @@ func (fs *FileStore) GetFileBlock(allocID string, fileData *FileInputData, block
 
 	if blockNum > maxBlockNum {
 		return nil, common.NewError("invalid_block_number",
-			fmt.Sprintf("Start block %d is greater than maximum blocks %d", blockNum, maxBlockNum))
+			fmt.Sprintf("Invalid block number. Start block %d is greater than maximum blocks %d", blockNum, maxBlockNum))
 	}
 
 	buffer := make([]byte, fileData.ChunkSize*numBlocks)
