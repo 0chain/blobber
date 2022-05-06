@@ -37,7 +37,7 @@ func DeleteObject(ctx context.Context, allocationID, path string) (*Ref, map[str
 	for _, it := range deletedObjects {
 		if it.Type == FILE {
 			deletedFiles[it.ContentHash] = true
-			if it.ThumbnailHash != "" {
+			if it.ThumbnailSize > 0 {
 				deletedFiles[it.ThumbnailHash] = true
 			}
 		}

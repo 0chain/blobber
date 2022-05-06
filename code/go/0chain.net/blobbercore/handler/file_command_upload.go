@@ -25,6 +25,10 @@ type UploadFileCommand struct {
 	fileChanger      *allocation.UploadFileChanger
 }
 
+func (cmd *UploadFileCommand) GetExistingFileRef() *reference.Ref {
+	return nil
+}
+
 // IsValidated validate request.
 func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
