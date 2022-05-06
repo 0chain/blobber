@@ -16,11 +16,11 @@ var getDirLevelsForFiles = func() []int {
 }
 
 func validateDirLevels() error {
-	if config.Configuration.AllocDirLevel != nil {
+	if len(config.Configuration.AllocDirLevel) > 0 {
 		getDirLevelsForAllocations = func() []int { return config.Configuration.AllocDirLevel }
 	}
 
-	if config.Configuration.FileDirLevel != nil {
+	if len(config.Configuration.FileDirLevel) > 0 {
 		getDirLevelsForFiles = func() []int { return config.Configuration.FileDirLevel }
 	}
 
