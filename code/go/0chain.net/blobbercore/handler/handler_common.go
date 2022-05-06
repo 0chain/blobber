@@ -58,11 +58,33 @@ func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, er
 	return response, nil
 }
 
-func CollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+func AddCollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.AddCollaborator(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func GetCollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
+	ctx = setupHandlerContext(ctx, r)
+
+	response, err := storageHandler.GetCollaborator(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func RemoveCollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
+	ctx = setupHandlerContext(ctx, r)
+
+	response, err := storageHandler.RemoveCollaborator(ctx, r)
 	if err != nil {
 		return nil, err
 	}
@@ -95,21 +117,21 @@ func HomepageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type BlobberInfo struct {
-	ChainId string `json:"chain_id"`
-	BlobberId string `json:"blobber_id"`
-	BlobberPublicKey string `json:"public_key"`
-	BuildTag string `json:"build_tag"`
-	Stats interface{} `json:"stats"`
+	ChainId          string      `json:"chain_id"`
+	BlobberId        string      `json:"blobber_id"`
+	BlobberPublicKey string      `json:"public_key"`
+	BuildTag         string      `json:"build_tag"`
+	Stats            interface{} `json:"stats"`
 }
 
 func GetBlobberInfoJson() BlobberInfo {
 	mc := chain.GetServerChain()
 
 	blobberInfo := BlobberInfo{
-		ChainId: mc.ID,
-		BlobberId: node.Self.ID,
+		ChainId:          mc.ID,
+		BlobberId:        node.Self.ID,
 		BlobberPublicKey: node.Self.PublicKey,
-		BuildTag: build.BuildTag,
+		BuildTag:         build.BuildTag,
 	}
 
 	return blobberInfo

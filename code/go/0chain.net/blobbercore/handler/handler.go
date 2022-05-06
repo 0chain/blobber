@@ -50,8 +50,13 @@ func SetupHandlers(r *mux.Router) {
 
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToStatusCode(WithStatusConnection(CommitHandler)))
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.ToJSONResponse(WithConnection(CommitMetaTxnHandler)))
-	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(CollaboratorHandler)))
+
 	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.ToJSONResponse(WithConnection(CalculateHashHandler)))
+
+	// collaborator
+	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(AddCollaboratorHandler))).Methods(http.MethodOptions, http.MethodPost)
+	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(GetCollaboratorHandler))).Methods(http.MethodOptions, http.MethodGet)
+	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(RemoveCollaboratorHandler))).Methods(http.MethodOptions, http.MethodDelete)
 
 	//object info related apis
 	r.HandleFunc("/allocation", common.ToJSONResponse(WithConnection(AllocationHandler)))
@@ -293,7 +298,7 @@ func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{},
 	return response, nil
 }
 
-func writeResponse (w http.ResponseWriter, resp []byte) {
+func writeResponse(w http.ResponseWriter, resp []byte) {
 	_, err := w.Write(resp)
 
 	if err != nil {
