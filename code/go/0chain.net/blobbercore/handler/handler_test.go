@@ -154,7 +154,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	collName := "Collaborator"
 	router.HandleFunc(collPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(CollaboratorHandler),
+			WithReadOnlyConnection(GetCollaboratorHandler),
 		),
 	),
 	).Name(collName)
@@ -1141,6 +1141,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	}
 	tests := append(positiveTests, negativeTests...)
 	tests = append(tests, uploadNegativeTests...)
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)
