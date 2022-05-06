@@ -463,7 +463,9 @@ func TestHandlers_Share(t *testing.T) {
 
 					u.RawQuery = query.Encode()
 					r, err := http.NewRequest(http.MethodDelete, u.String(), nil)
-
+					if err != nil {
+						t.Fatal(err)
+					}
 					hash := encryption.Hash(alloc.Tx)
 					sign, err := sch.Sign(hash)
 					if err != nil {
