@@ -19,6 +19,7 @@ type FileStats struct {
 	FailedChallenges         int64         `gorm:"column:num_of_failed_challenges" json:"num_of_failed_challenges"`
 	LastChallengeResponseTxn string        `gorm:"column:last_challenge_txn;size:64" json:"last_challenge_txn"`
 	WriteMarkerRedeemTxn     string        `gorm:"-" json:"write_marker_txn"`
+	OnChain                  bool          `gorm:"-" json:"on_chain"`
 	datastore.ModelWithTS
 }
 
