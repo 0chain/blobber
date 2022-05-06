@@ -28,7 +28,7 @@ func validateDirLevels() error {
 	for _, i := range getDirLevelsForAllocations() {
 		s += i
 	}
-	if s >= 64 || s == 0 {
+	if s >= 64 || s <= 0 {
 		return errors.New("allocation directory levels sum should be in range 0<s<=64")
 	}
 
@@ -36,7 +36,7 @@ func validateDirLevels() error {
 	for _, i := range getDirLevelsForFiles() {
 		s += i
 	}
-	if s >= 64 || s == 0 {
+	if s >= 64 || s <= 0 {
 		return errors.New("files directory levels has sum should be in range 0<s<=64")
 	}
 

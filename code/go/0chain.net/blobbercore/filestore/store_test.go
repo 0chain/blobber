@@ -174,7 +174,7 @@ func TestValidateDirLevels(t *testing.T) {
 	err := validateDirLevels() // Test Default values
 	require.Nil(t, err)
 
-	config.Configuration.AllocDirLevel = []int{}
+	config.Configuration.AllocDirLevel = []int{-1}
 
 	err = validateDirLevels()
 	require.NotNil(t, err)
