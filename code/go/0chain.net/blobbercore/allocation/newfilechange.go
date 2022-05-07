@@ -258,6 +258,7 @@ func (nfch *NewFileChange) CommitToFileStore(ctx context.Context) error {
 		fileInputData.Path = nfch.Path
 		fileInputData.Hash = nfch.ThumbnailHash
 		fileInputData.ChunkSize = nfch.ChunkSize
+		fileInputData.IsThumbnail = true
 		_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, nfch.ConnectionID, fileInputData)
 		if err != nil {
 			return common.NewError("file_store_error", "Error committing thumbnail to file store. "+err.Error())
