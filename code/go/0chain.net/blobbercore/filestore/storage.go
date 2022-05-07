@@ -131,12 +131,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	var hash string
 	switch {
 	case fileData.IsThumbnail:
-		h := sha256.New()
-		_, err := io.Copy(h, f)
-		if err != nil {
-			return false, common.NewError("read_error", err.Error())
-		}
-		hash = hex.EncodeToString(h.Sum(nil))
+		hash = fileData.Hash
 	default:
 		/* Uncomment it after padding is done in gosdk
 		if fileSize > fileData.ChunkSize && fileSize%fileData.ChunkSize != 0 { // workaround for data without padding
