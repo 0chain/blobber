@@ -175,7 +175,7 @@ func (cmd *UploadFileCommand) reloadChange(connectionObj *allocation.AllocationC
 		cmd.fileChanger.Size = dbChangeProcessor.Size
 		cmd.fileChanger.ThumbnailFilename = dbChangeProcessor.ThumbnailFilename
 		cmd.fileChanger.ThumbnailSize = dbChangeProcessor.ThumbnailSize
-		cmd.fileChanger.ThumbnailHash = dbChangeProcessor.Hash
+		cmd.fileChanger.ThumbnailHash = dbChangeProcessor.ThumbnailHash
 
 		return
 	}
