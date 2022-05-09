@@ -351,8 +351,8 @@ type Challenge struct {
 	Validators     []*StorageNode `json:"validators"`
 	RandomNumber   int64          `json:"seed"`
 	AllocationID   string         `json:"allocation_id"`
-	Blobber        *StorageNode   `json:"blobber"`
 	AllocationRoot string         `json:"allocation_root"`
+	BlobberID      string         `json:"blobber_id"`
 }
 
 type ValidationTicket struct {
