@@ -393,6 +393,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
 	if wm != nil && fileStats != nil {
 		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
+		fileStats.OnChain = wm.OnChain()
 	}
 	var statsMap map[string]interface{}
 	statsBytes, _ := json.Marshal(fileStats)
