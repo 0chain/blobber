@@ -79,7 +79,7 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 		}
 
 		Logger.Error("Validation Failed - Error verifying the challenge", zap.Any("challenge_id", challengeObj.ID), zap.Error(err))
-		validationTicket.BlobberID = challengeObj.Blobber.ID
+		validationTicket.BlobberID = challengeObj.BlobberID
 		validationTicket.ChallengeID = challengeObj.ID
 		validationTicket.Result = false
 		validationTicket.MessageCode = errCode
@@ -94,7 +94,7 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 		return &validationTicket, nil
 	}
 
-	validationTicket.BlobberID = challengeObj.Blobber.ID
+	validationTicket.BlobberID = challengeObj.BlobberID
 	validationTicket.ChallengeID = challengeObj.ID
 	validationTicket.Result = true
 	validationTicket.MessageCode = "success"
