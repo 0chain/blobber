@@ -110,7 +110,7 @@ func (sp *ValidatorProtocolImpl) VerifyChallengeTransaction(ctx context.Context,
 		return nil, common.NewError("invalid_challenge", "Validator is not part of the challenge")
 	}
 
-	if challengeObj.Blobber.ID != blobberID {
+	if challengeObj.BlobberID != blobberID {
 		return nil, common.NewError("invalid_challenge", "Challenge is meant for a different blobber")
 	}
 
