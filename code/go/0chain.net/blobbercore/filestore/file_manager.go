@@ -17,15 +17,15 @@ import (
 )
 
 type FileStore struct {
-	mp      string
+	mp      string // mount point
 	mAllocs map[string]*allocation
 
 	allocMu *sync.Mutex
 	rwMU    *sync.RWMutex
 
-	mc                  *minio.Client
-	bucket              string
-	currentDiskCapacity uint64
+	mc           *minio.Client
+	bucket       string
+	diskCapacity uint64
 }
 
 var contentHashMapLock = common.GetLocker()

@@ -68,6 +68,8 @@ type FileStorer interface {
 	// GetPathForFile given allocation id and content hash of a file, its path is calculated.
 	// Will return error if allocation id or content hash are not of length 64
 	GetPathForFile(allocID, contentHash string) (string, error)
+	// UpdateAllocationMetaData only updates if allocation size has changed or new allocation is allocated. Must use allocationID.
+	// Use of allocation Tx might leak memory. allocation size must be of int64 type otherwise it won't be updated
 	UpdateAllocationMetaData(m map[string]interface{})
 }
 

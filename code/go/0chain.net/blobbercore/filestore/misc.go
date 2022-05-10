@@ -6,8 +6,11 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 )
 
-// TODO make return values uint
-var getDirLevelsForAllocations = func() []int {
+// For an allocation 4c9bad252272bc6e3969be637610d58f3ab2ff8ca336ea2fadd6171fc68fdd56, providing dirlevel [1,2] would
+// return string {mount_point}/4/c9/bad252272bc6e3969be637610d58f3ab2ff8ca336ea2fadd6171fc68fdd56
+// Similarly for dirlevel [1,2,3,4] it would return
+// {mount_point}/4/c9/bad/2522/72bc6e3969be637610d58f3ab2ff8ca336ea2fadd6171fc68fdd56
+var getDirLevelsForAllocations = func() []int { // TODO make return values uint
 	return []int{2, 1} // default
 }
 

@@ -408,7 +408,7 @@ func (fs *FileStore) GetFileBlockForChallenge(allocID string,
 	return returnBytes, fixedMT.GetMerkleTree(), nil
 }
 func (fs FileStore) GetCurrentDiskCapacity() uint64 {
-	return fs.currentDiskCapacity
+	return fs.diskCapacity
 }
 
 func (fs FileStore) CalculateCurrentDiskCapacity() error {
@@ -420,7 +420,7 @@ func (fs FileStore) CalculateCurrentDiskCapacity() error {
 		return err
 	}
 
-	fs.currentDiskCapacity = volStat.Bavail * uint64(volStat.Bsize)
+	fs.diskCapacity = volStat.Bavail * uint64(volStat.Bsize)
 	return nil
 }
 
