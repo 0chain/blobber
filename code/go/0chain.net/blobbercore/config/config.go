@@ -126,6 +126,8 @@ type Config struct {
 
 	UpdateAllocationsInterval time.Duration
 
+	MaxAllocationDirFiles int
+
 	// DelegateWallet for pool owner.
 	DelegateWallet string `json:"delegate_wallet"`
 	// MinStake allowed.

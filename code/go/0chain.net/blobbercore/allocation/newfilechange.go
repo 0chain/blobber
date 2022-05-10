@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"path/filepath"
 	"strings"
 
@@ -121,6 +122,16 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 }
 
 func (nf *NewFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+	totalRefs, err := reference.CountRefs(ctx, nf.AllocationID)
+	if err != nil {
+		return nil, err
+	}
+
+	if int64(config.Configuration.MaxAllocationDirFiles) <= totalRefs {
+		return nil, common.NewErrorf("max_alloc_dir_files_reached",
+			"maximum files and directories already reached: %v", err)
+	}
+
 	if change.Operation == constants.FileOperationCreateDir {
 		err := nf.Unmarshal(change.Input)
 		if err != nil {

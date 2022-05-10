@@ -339,3 +339,15 @@ func GetDeletedRefs(ctx context.Context, allocationID, updatedDate, offsetPath, 
 	totalPages = int(math.Ceil(float64(totalRows) / float64(pageLimit)))
 	return
 }
+
+func CountRefs(ctx context.Context, allocationID string) (int64, error) {
+	var totalRows int64
+
+	db := datastore.GetStore().GetDB()
+
+	err := db.Model(&Ref{}).
+		Where("allocation_id = ?", allocationID).
+		Count(&totalRows).Error
+
+	return totalRows, err
+}

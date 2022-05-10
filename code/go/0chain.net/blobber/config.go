@@ -79,6 +79,12 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.UpdateAllocationsInterval =
 		viper.GetDuration("update_allocations_interval")
 
+	config.Configuration.MaxAllocationDirFiles =
+		viper.GetInt("max_dirs_files")
+	if config.Configuration.MaxAllocationDirFiles <= 0 {
+		config.Configuration.MaxAllocationDirFiles = 1000
+	}
+
 	config.Configuration.DelegateWallet = viper.GetString("delegate_wallet")
 	if w := config.Configuration.DelegateWallet; len(w) != 64 {
 		log.Fatal("invalid delegate wallet:", w)
