@@ -99,7 +99,7 @@ func GetBlobbers() ([]*zcncore.Blobber, error) {
 func CallFaucet() error {
 	wg := &sync.WaitGroup{}
 	statusBar := &ZCNStatus{wg: wg}
-	txn, err := zcncore.NewTransaction(statusBar, 0)
+	txn, err := zcncore.NewTransaction(statusBar, 0, 0)
 	if err != nil {
 		return common.NewError("call_faucet_failed", "Failed to create new transaction with err: "+err.Error())
 	}
@@ -128,7 +128,7 @@ func CallFaucet() error {
 func Transfer(token float64, clientID string) error {
 	wg := &sync.WaitGroup{}
 	statusBar := &ZCNStatus{wg: wg}
-	txn, err := zcncore.NewTransaction(statusBar, 0)
+	txn, err := zcncore.NewTransaction(statusBar, 0, 0)
 	if err != nil {
 		return common.NewError("call_transfer_failed", "Failed to create new transaction with err: "+err.Error())
 	}

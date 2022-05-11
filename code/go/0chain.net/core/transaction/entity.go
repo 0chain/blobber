@@ -143,7 +143,7 @@ func NewTransactionEntity() (*Transaction, error) {
 	txn.ChainID = chain.GetServerChain().ID
 	txn.PublicKey = node.Self.PublicKey
 	txn.wg = &sync.WaitGroup{}
-	zcntxn, err := zcncore.NewTransaction(txn, 0)
+	zcntxn, err := zcncore.NewTransaction(txn, 0, 0)
 	if err != nil {
 		return nil, err
 	}
