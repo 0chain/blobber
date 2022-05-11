@@ -7,11 +7,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 )
 
-/*
-Optimize hash calculation further
-remove soft-deletion
-*/
-
 func DeleteObject(ctx context.Context, allocationID, objPath string) (*Ref, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Delete(&Ref{}, "allocation_id=? AND path LIKE ? AND path != ?",
