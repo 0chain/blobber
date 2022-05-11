@@ -98,7 +98,7 @@ func (mfs *MockFileStore) GetFileBlock(allocID string, fileData *filestore.FileI
 	return nil, nil
 }
 
-func (mfs *MockFileStore) GetFileBlockForChallenge(allocID string, fileData *filestore.FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
+func (mfs *MockFileStore) GetMerkleTree(allocID string, fileData *filestore.FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
 	return nil, nil, nil
 }
 

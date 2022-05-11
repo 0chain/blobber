@@ -381,7 +381,7 @@ func TestGetFileBlock(t *testing.T) {
 
 }
 
-func TestGetFileBlockForChallenge(t *testing.T) {
+func TestGetMerkleTree(t *testing.T) {
 	fs, cleanUp := setupStorage(t)
 	defer cleanUp()
 
@@ -442,7 +442,7 @@ func TestGetFileBlockForChallenge(t *testing.T) {
 				Hash:      commitContentHash,
 				ChunkSize: 64 * KB,
 			}
-			rb, fixedMtI, err := fs.GetFileBlockForChallenge(allocID, fd, test.blockOffset)
+			rb, fixedMtI, err := fs.GetMerkleTree(allocID, fd, test.blockOffset)
 
 			if test.expectedError {
 				require.NotNil(t, err)

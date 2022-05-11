@@ -64,10 +64,10 @@ func (fs *MockStore) GetFileBlock(allocID string, fileData *FileInputData, block
 	return fs.FileStore.GetFileBlock(allocID, fileData, blockNum, numBlocks)
 }
 
-func (fs *MockStore) GetFileBlockForChallenge(allocID string,
+func (fs *MockStore) GetMerkleTree(allocID string,
 	fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
 
-	return fs.FileStore.GetFileBlockForChallenge(allocID, fileData, blockoffset)
+	return fs.FileStore.GetMerkleTree(allocID, fileData, blockoffset)
 }
 
 func (fs *MockStore) MinioUpload(contentHash string, fPath string) error {
