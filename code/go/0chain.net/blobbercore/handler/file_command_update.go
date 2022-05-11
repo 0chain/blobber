@@ -90,7 +90,6 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	allocationSize := connectionObj.Size
 
-	// only update connection size when the chunk is uploaded by first time.
 	if fileOutputData.ChunkUploaded {
 		allocationSize += fileOutputData.Size
 	}

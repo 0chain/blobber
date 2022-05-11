@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
@@ -129,7 +128,7 @@ func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize int64, limi
 		}
 	}()
 
-	totalDiskSizeUsed := filestore.GetFileStore().GetTotalPermFilesSizeByAllocations()
+	totalDiskSizeUsed := filestore.GetFileStore().GetTotalCommittedFileSize()
 
 	// Check if capacity exceded the start capacity size
 	if totalDiskSizeUsed > config.Configuration.ColdStorageStartCapacitySize {
@@ -193,6 +192,7 @@ func moveFileToCloud(ctx context.Context, fileRef *reference.Ref) {
 	fileObjectPath, err := filestore.GetFileStore().GetPathForFile(fileRef.AllocationID, fileRef.ContentHash)
 	if err != nil {
 		logging.Logger.Error("Error while getting path of file", zap.Error(err))
+		return
 	}
 	err = filestore.GetFileStore().MinioUpload(fileRef.ContentHash, fileObjectPath)
 	if err != nil {
@@ -238,8 +238,8 @@ func moveFileToCloud(ctx context.Context, fileRef *reference.Ref) {
 		return
 	}
 
-	if contentHashSharingRefsCount < 2 && config.Configuration.ColdStorageDeleteLocalCopy {
-		err = os.Remove(fileObjectPath)
+	if contentHashSharingRefsCount <= 1 && config.Configuration.ColdStorageDeleteLocalCopy {
+		err = filestore.GetFileStore().DeleteFile(fileRef.AllocationID, fileRef.ContentHash)
 		if err != nil {
 			logging.Logger.Error("Error deleting file after upload to cold storage", zap.Error(err))
 			return

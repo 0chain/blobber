@@ -31,10 +31,10 @@ func initializeMinio() (mc *minio.Client, bucket string, err error) {
 	logging.Logger.Info(fmt.Sprintf("Checking if bucket %s exists", bucket))
 	isExist, err := mc.BucketExists(bucket)
 	switch {
-	case isExist:
-		logging.Logger.Info("Bucket exists")
 	case err != nil:
 		return
+	case isExist:
+		logging.Logger.Info("Bucket exists")
 	default:
 		logging.Logger.Info("Bucket does not exist. Creating bucket")
 		err = mc.MakeBucket(bucket, region)
@@ -47,11 +47,12 @@ func initializeMinio() (mc *minio.Client, bucket string, err error) {
 }
 
 func (fs *FileStore) MinioUpload(fileHash, filePath string) (err error) {
-	if fs.mc != nil {
-		_, err = fs.mc.FPutObject(fs.bucket, fileHash, filePath, minio.PutObjectOptions{})
-		return
+	if fs.mc == nil {
+		return common.NewError("minio_client_not_set", "")
 	}
-	return common.NewError("minio_client_not_set", "")
+
+	_, err = fs.mc.FPutObject(fs.bucket, fileHash, filePath, minio.PutObjectOptions{})
+	return
 }
 
 func (fs *FileStore) MinioDownload(fileHash, filePath string) error {
