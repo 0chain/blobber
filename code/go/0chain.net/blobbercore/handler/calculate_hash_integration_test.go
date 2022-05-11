@@ -12,8 +12,12 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+func isIntegrationTest() bool {
+	return os.Getenv("integration") == "1"
+}
+
 func TestBlobberGRPCService_CalculateHash(t *testing.T) {
-	if os.Getenv("integration") != "1" {
+	if !isIntegrationTest() {
 		t.Skip()
 	}
 

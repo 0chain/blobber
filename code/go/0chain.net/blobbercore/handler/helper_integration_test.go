@@ -48,7 +48,7 @@ func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClien
 	// 	args[arg] = true
 	// }
 
-	if os.Getenv("integration") != "1" {
+	if !isIntegrationTest() {
 		//	if !args["integration"] {
 		t.Logf("Skipping integration test: %s", t.Name())
 		t.Skip()

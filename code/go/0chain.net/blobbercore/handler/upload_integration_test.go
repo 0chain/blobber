@@ -19,7 +19,7 @@ import (
 
 //Need to check for errors here
 func TestBlobberGRPCService_UploadFile(t *testing.T) {
-	if os.Getenv("integration") != "1" {
+	if !isIntegrationTest() {
 		t.Skip()
 	}
 	root := os.Getenv("root")

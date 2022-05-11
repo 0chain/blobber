@@ -64,7 +64,7 @@ func setupFileManager(mp string) error {
 }
 
 func TestBlobberGRPCService_DownloadFile(t *testing.T) {
-	if os.Getenv("integration") != "1" {
+	if !isIntegrationTest() {
 		t.Skip()
 	}
 

@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/hex"
-	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -18,7 +17,7 @@ import (
 )
 
 func TestBlobberGRPCService_CommitMetaTxn(t *testing.T) {
-	if os.Getenv("integration") != "1" {
+	if !isIntegrationTest() {
 		t.Skip()
 	}
 
