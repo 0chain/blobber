@@ -82,28 +82,28 @@ func (fs *MockStore) MinioDelete(contentHash string) error {
 	return fs.FileStore.MinioDelete(contentHash)
 }
 
-func (fs *MockStore) GetTotalTempFilesSizeByAllocations() (s uint64) {
-	return fs.FileStore.GetTotalTempFilesSizeByAllocations()
+func (fs *MockStore) GetTotalTempFileSizes() (s uint64) {
+	return fs.FileStore.GetTotalTempFileSizes()
 }
 
-func (fs *MockStore) GetTempFilesSizeByAllocation(allocID string) uint64 {
-	return fs.FileStore.GetTempFilesSizeByAllocation(allocID)
+func (fs *MockStore) GetTempFilesSizeOfAllocation(allocID string) uint64 {
+	return fs.FileStore.GetTempFilesSizeOfAllocation(allocID)
 }
 
-func (fs *MockStore) GetTotalPermFilesSizeByAllocations() uint64 {
-	return fs.FileStore.GetTotalPermFilesSizeByAllocations()
+func (fs *MockStore) GetTotalCommittedFileSize() uint64 {
+	return fs.FileStore.GetTotalCommittedFileSize()
 }
 
-func (fs *MockStore) GetPermFilesSizeByAllocation(allocID string) uint64 {
-	return fs.FileStore.GetPermFilesSizeByAllocation(allocID)
+func (fs *MockStore) GetCommittedFileSizeOfAllocation(allocID string) uint64 {
+	return fs.FileStore.GetCommittedFileSizeOfAllocation(allocID)
 }
 
-func (fs *MockStore) GetTotalFilesSizeByAllocations() uint64 {
-	return fs.FileStore.GetTotalFilesSizeByAllocations()
+func (fs *MockStore) GetTotalFilesSize() uint64 {
+	return fs.FileStore.GetTotalFilesSize()
 }
 
-func (fs *MockStore) GetTotalFilesSizeByAllocation(allocID string) uint64 {
-	return fs.FileStore.GetTotalFilesSizeByAllocation(allocID)
+func (fs *MockStore) GetTotalFilesSizeOfAllocation(allocID string) uint64 {
+	return fs.FileStore.GetTotalFilesSizeOfAllocation(allocID)
 }
 
 func (fs *MockStore) IterateObjects(allocID string, handler FileObjectHandler) error {

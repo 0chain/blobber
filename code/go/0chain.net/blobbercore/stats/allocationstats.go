@@ -25,7 +25,7 @@ type AllocationStats struct {
 }
 
 func (aStat *AllocationStats) loadAllocationDiskUsageStats() error {
-	aStat.DiskSizeUsed = filestore.GetFileStore().GetPermFilesSizeByAllocation(aStat.AllocationID)
-	aStat.TempFolderSize = filestore.GetFileStore().GetTempFilesSizeByAllocation(aStat.AllocationID)
+	aStat.DiskSizeUsed = filestore.GetFileStore().GetCommittedFileSizeOfAllocation(aStat.AllocationID)
+	aStat.TempFolderSize = filestore.GetFileStore().GetTempFilesSizeOfAllocation(aStat.AllocationID)
 	return nil
 }

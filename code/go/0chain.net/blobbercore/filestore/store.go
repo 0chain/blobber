@@ -55,12 +55,12 @@ type FileStorer interface {
 	MinioDelete(contentHash string) error
 	// fPath --> local path to download file to
 	MinioDownload(contentHash, fPath string) error
-	GetTotalTempFilesSizeByAllocations() (s uint64)
-	GetTempFilesSizeByAllocation(allocID string) uint64
-	GetTotalPermFilesSizeByAllocations() uint64
-	GetPermFilesSizeByAllocation(allocID string) uint64
-	GetTotalFilesSizeByAllocations() uint64
-	GetTotalFilesSizeByAllocation(allocID string) uint64
+	GetTotalTempFileSizes() (s uint64)
+	GetTempFilesSizeOfAllocation(allocID string) uint64
+	GetTotalCommittedFileSize() uint64
+	GetCommittedFileSizeOfAllocation(allocID string) uint64
+	GetTotalFilesSize() uint64
+	GetTotalFilesSizeOfAllocation(allocID string) uint64
 
 	IterateObjects(allocationID string, handler FileObjectHandler) error
 	// SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)

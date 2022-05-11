@@ -63,27 +63,27 @@ func (mfs *MockFileStore) MinioDownload(contentHash, fPath string) error {
 	return nil
 }
 
-func (mfs *MockFileStore) GetTotalTempFilesSizeByAllocations() (s uint64) {
+func (mfs *MockFileStore) GetTotalTempFileSizes() (s uint64) {
 	return 0
 }
 
-func (mfs *MockFileStore) GetTempFilesSizeByAllocation(allocID string) uint64 {
+func (mfs *MockFileStore) GetTempFilesSizeOfAllocation(allocID string) uint64 {
 	return 0
 }
 
-func (mfs *MockFileStore) GetTotalPermFilesSizeByAllocations() uint64 {
+func (mfs *MockFileStore) GetTotalCommittedFileSize() uint64 {
 	return 0
 }
 
-func (mfs *MockFileStore) GetPermFilesSizeByAllocation(allocID string) uint64 {
+func (mfs *MockFileStore) GetCommittedFileSizeOfAllocation(allocID string) uint64 {
 	return 0
 }
 
-func (mfs *MockFileStore) GetTotalFilesSizeByAllocations() uint64 {
+func (mfs *MockFileStore) GetTotalFilesSize() uint64 {
 	return 0
 }
 
-func (mfs *MockFileStore) GetTotalFilesSizeByAllocation(allocID string) uint64 {
+func (mfs *MockFileStore) GetTotalFilesSizeOfAllocation(allocID string) uint64 {
 	return 0
 }
 

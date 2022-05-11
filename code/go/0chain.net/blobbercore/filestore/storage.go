@@ -191,6 +191,11 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	key := getKey(allocID, fileData.Hash)
 	l, _ := contentHashMapLock.GetLock(key)
 	l.Lock()
+	defer func() {
+		if err != nil {
+			l.Unlock()
+		}
+	}()
 
 	fileObjectPath, err := fs.GetPathForFile(allocID, fileData.Hash)
 	if err != nil {
@@ -289,6 +294,7 @@ func (fs *FileStore) DeleteTempFile(allocID, conID string, fd *FileInputData) er
 	return nil
 }
 
+// GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.
 func (fs *FileStore) GetFileBlock(allocID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
 	if blockNum < 1 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number must be greater than 0")
@@ -339,7 +345,7 @@ func (fs *FileStore) GetFileBlock(allocID string, fileData *FileInputData, block
 	return buffer[:n], nil
 }
 
-func (fs *FileStore) GetFileBlockForChallenge(allocID string,
+func (fs *FileStore) GetMerkleTree(allocID string,
 	fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
 
 	if blockoffset < 0 || blockoffset >= 1024 {
@@ -407,11 +413,12 @@ func (fs *FileStore) GetFileBlockForChallenge(allocID string,
 
 	return returnBytes, fixedMT.GetMerkleTree(), nil
 }
+
 func (fs FileStore) GetCurrentDiskCapacity() uint64 {
 	return fs.diskCapacity
 }
 
-func (fs FileStore) CalculateCurrentDiskCapacity() error {
+func (fs *FileStore) CalculateCurrentDiskCapacity() error {
 
 	var volStat unix.Statfs_t
 	err := unix.Statfs(fs.mp, &volStat)
@@ -420,7 +427,7 @@ func (fs FileStore) CalculateCurrentDiskCapacity() error {
 		return err
 	}
 
-	fs.diskCapacity = volStat.Bavail * uint64(volStat.Bsize) // nolint: ineffassign
+	fs.diskCapacity = volStat.Bavail * uint64(volStat.Bsize)
 	return nil
 }
 
@@ -464,7 +471,8 @@ func (fs *FileStore) isMountPoint() bool {
 	return dev != pDev
 }
 
-func (fstr *FileStore) getTemporaryStorageDetails(ctx context.Context, a *allocation, ID string, ch <-chan struct{}, wg *sync.WaitGroup) {
+func (fstr *FileStore) getTemporaryStorageDetails(
+	ctx context.Context, a *allocation, ID string, ch <-chan struct{}, wg *sync.WaitGroup) {
 
 	defer func() {
 		wg.Done()
@@ -523,7 +531,7 @@ func (fstr *FileStore) getTemporaryStorageDetails(ctx context.Context, a *alloca
 }
 
 func (fs *FileStore) getAllocDir(allocID string) string {
-	return filepath.Join(fs.mp, getPath(allocID, getDirLevelsForAllocations()))
+	return filepath.Join(fs.mp, getPartialPath(allocID, getDirLevelsForAllocations()))
 }
 
 func (fs *FileStore) GetPathForFile(allocID, contentHash string) (string, error) {
@@ -531,11 +539,11 @@ func (fs *FileStore) GetPathForFile(allocID, contentHash string) (string, error)
 		return "", errors.New("length of allocationID/contentHash must be 64")
 	}
 
-	return filepath.Join(fs.getAllocDir(allocID), getPath(contentHash, getDirLevelsForFiles())), nil
+	return filepath.Join(fs.getAllocDir(allocID), getPartialPath(contentHash, getDirLevelsForFiles())), nil
 }
 
 // getPath returns "/" separated strings with the given levels.
-func getPath(hash string, levels []int) string {
+func getPartialPath(hash string, levels []int) string {
 	var count int
 	var pStr []string
 	for _, i := range levels {
@@ -547,6 +555,7 @@ func getPath(hash string, levels []int) string {
 }
 
 /*****************************************Temporary files management*****************************************/
+
 func (fs *FileStore) getAllocTempDir(allocID string) string {
 	return filepath.Join(fs.getAllocDir(allocID), TempDir)
 }
@@ -564,21 +573,18 @@ func (fs *FileStore) updateAllocTempFileSize(allocID string, size int64) {
 	alloc.tmpMU.Lock()
 	defer alloc.tmpMU.Unlock()
 
-	if size < 0 {
-		alloc.tmpFileSize -= uint64(size)
-	} else {
-		alloc.tmpFileSize += uint64(size)
-	}
+	alloc.tmpFileSize += uint64(size)
 }
 
-func (fs *FileStore) GetTotalTempFilesSizeByAllocations() (s uint64) {
+// GetTempFilesSizeOfAllocation Get total file sizes of all allocation that are not yet committed
+func (fs *FileStore) GetTotalTempFileSizes() (s uint64) {
 	for _, alloc := range fs.mAllocs {
 		s += alloc.tmpFileSize
 	}
 	return
 }
 
-func (fs *FileStore) GetTempFilesSizeByAllocation(allocID string) uint64 {
+func (fs *FileStore) GetTempFilesSizeOfAllocation(allocID string) uint64 {
 	alloc := fs.mAllocs[allocID]
 	if alloc != nil {
 		return alloc.tmpFileSize
@@ -586,14 +592,15 @@ func (fs *FileStore) GetTempFilesSizeByAllocation(allocID string) uint64 {
 	return 0
 }
 
-func (fs *FileStore) GetTotalPermFilesSizeByAllocations() (s uint64) {
+// GetTotalCommittedFileSize Get total committed file sizes of all allocations
+func (fs *FileStore) GetTotalCommittedFileSize() (s uint64) {
 	for _, alloc := range fs.mAllocs {
 		s += alloc.filesSize
 	}
 	return
 }
 
-func (fs *FileStore) GetPermFilesSizeByAllocation(allocID string) uint64 {
+func (fs *FileStore) GetCommittedFileSizeOfAllocation(allocID string) uint64 {
 	alloc := fs.mAllocs[allocID]
 	if alloc != nil {
 		return alloc.filesSize
@@ -601,14 +608,16 @@ func (fs *FileStore) GetPermFilesSizeByAllocation(allocID string) uint64 {
 	return 0
 }
 
-func (fs *FileStore) GetTotalFilesSizeByAllocations() (s uint64) {
+// GetTotalFilesSize Get total file sizes of all allocations; committed or not committed
+func (fs *FileStore) GetTotalFilesSize() (s uint64) {
 	for _, alloc := range fs.mAllocs {
 		s += alloc.filesSize + alloc.tmpFileSize
 	}
 	return
 }
 
-func (fs *FileStore) GetTotalFilesSizeByAllocation(allocID string) uint64 {
+// GetTotalFilesSize Get total file sizes of an allocation; committed or not committed
+func (fs *FileStore) GetTotalFilesSizeOfAllocation(allocID string) uint64 {
 	alloc := fs.mAllocs[allocID]
 	if alloc != nil {
 		return alloc.filesSize + alloc.tmpFileSize
@@ -617,6 +626,7 @@ func (fs *FileStore) GetTotalFilesSizeByAllocation(allocID string) uint64 {
 }
 
 /***************************************************Misc***************************************************/
+
 func createDirs(dir string) error {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0700)

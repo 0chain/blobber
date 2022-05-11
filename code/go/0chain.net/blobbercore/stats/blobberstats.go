@@ -125,7 +125,7 @@ func (bs *BlobberStats) loadBasicStats(ctx context.Context) {
 	bs.ReadLockTimeout = Duration(config.Configuration.ReadLockTimeout)
 	bs.WriteLockTimeout = Duration(config.Configuration.WriteLockTimeout)
 	//
-	du := filestore.GetFileStore().GetTotalFilesSizeByAllocations()
+	du := filestore.GetFileStore().GetTotalFilesSize()
 
 	bs.DiskSizeUsed = du
 	bs.loadStats(ctx)
