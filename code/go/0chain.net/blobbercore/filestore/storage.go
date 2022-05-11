@@ -420,7 +420,7 @@ func (fs FileStore) CalculateCurrentDiskCapacity() error {
 		return err
 	}
 
-	fs.diskCapacity = volStat.Bavail * uint64(volStat.Bsize)
+	fs.diskCapacity = volStat.Bavail * uint64(volStat.Bsize) // nolint: ineffassign
 	return nil
 }
 
