@@ -52,11 +52,11 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.ChallengeMaxRetires = viper.GetInt("challenge_response.max_retries")
 
 	config.Configuration.AutomaticUpdate = viper.GetBool("disk_update.automatic_update")
-	blobberUpdateIntrv := viper.GetInt("disk_update.blobber_update_interval")
+	blobberUpdateIntrv := viper.GetDuration("disk_update.blobber_update_interval")
 	if blobberUpdateIntrv <= 0 {
-		blobberUpdateIntrv = 5
+		blobberUpdateIntrv = 5 * time.Minute
 	}
-	config.Configuration.BlobberUpdateInterval = time.Minute * time.Duration(blobberUpdateIntrv)
+	config.Configuration.BlobberUpdateInterval = blobberUpdateIntrv
 
 	config.Configuration.ColdStorageMinimumFileSize = viper.GetInt64("cold_storage.min_file_size")
 	config.Configuration.ColdStorageTimeLimitInHours = viper.GetInt64("cold_storage.file_time_limit_in_hours")
