@@ -57,16 +57,17 @@ func (nf *DeleteFileChange) DeleteTempFile() error {
 func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	type Result struct {
-		ContentHash string
-		Thumbnail   string
+		ContentHash   string
+		ThumbnailHash string
 	}
 
 	limitCh := make(chan struct{}, 10)
 	wg := &sync.WaitGroup{}
 	var results []Result
 	err := db.Model(&reference.Ref{}).Unscoped().
-		Select("content_hash", "thumbnail").
-		Where("allocation_id=? AND path LIKE ? AND deleted_at is not NULL", nf.AllocationID, nf.Path+"%").
+		Select("content_hash", "thumbnail_hash").
+		Where("allocation_id=? AND path LIKE ? AND type=? AND deleted_at is not NULL",
+			nf.AllocationID, nf.Path+"%", reference.FILE).
 		FindInBatches(&results, 100, func(tx *gorm.DB, batch int) error {
 
 			for _, res := range results {
@@ -92,11 +93,11 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 								zap.String("content_hash", res.ContentHash))
 						}
 
-						if res.Thumbnail != "" {
-							err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.Thumbnail)
+						if res.ThumbnailHash != "" {
+							err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ThumbnailHash)
 							if err != nil {
 								logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
-									zap.String("thumbnail", res.Thumbnail))
+									zap.String("thumbnail", res.ThumbnailHash))
 							}
 						}
 					}

@@ -44,5 +44,6 @@ func DeleteObject(ctx context.Context, allocationID, objPath string) (*Ref, erro
 	}
 
 	rootRef.HashToBeComputed = true
+	rootRef.childrenLoaded = true
 	return rootRef, nil
 }
