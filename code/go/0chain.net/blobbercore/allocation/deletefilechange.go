@@ -73,18 +73,16 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 			for _, res := range results {
 				limitCh <- struct{}{}
 				wg.Add(1)
-				newTx := tx.Begin()
-				go func(tx *gorm.DB, res Result) {
+				var count int64
+				tx.Model(&reference.Ref{}).
+					Where("allocation_id=? AND content_hash=?", nf.AllocationID, res.ContentHash).
+					Count(&count)
+
+				go func(res Result, count int64) {
 					defer func() {
 						<-limitCh
-						tx.Commit()
 						wg.Done()
 					}()
-
-					var count int64
-					tx.Model(&reference.Ref{}).
-						Where("allocation_id=? AND content_hash=?", nf.AllocationID, res.ContentHash).
-						Count(&count)
 
 					if count == 0 {
 						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ContentHash)
@@ -102,7 +100,7 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 						}
 					}
 
-				}(newTx, res)
+				}(res, count)
 
 			}
 			return nil
@@ -116,6 +114,6 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 
 	return db.Model(&reference.Ref{}).Unscoped().
 		Delete(&reference.Ref{},
-			"allocation_id = ? AND path LIKE ? AND delete_at IS NOT NULL",
+			"allocation_id = ? AND path LIKE ? AND deleted_at IS NOT NULL",
 			nf.AllocationID, nf.Path+"%").Error
 }
