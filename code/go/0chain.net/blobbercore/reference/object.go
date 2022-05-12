@@ -12,7 +12,7 @@ func DeleteObject(ctx context.Context, allocationID, objPath string) (*Ref, erro
 
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Delete(&Ref{}, "allocation_id=? AND path LIKE ? AND path != ?",
-		allocationID, objPath+"%", "/").Delete(&Ref{}).Error
+		allocationID, objPath+"%", "/").Error
 
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func DeleteObject(ctx context.Context, allocationID, objPath string) (*Ref, erro
 	for _, subDir := range subDirs {
 		var found bool
 		for _, ref := range dirRef.Children {
-			if ref.Name == subDir {
+			if ref.Name == subDir && ref.Type == DIRECTORY {
 				ref.HashToBeComputed = true
 				found = true
 				dirRef = ref
