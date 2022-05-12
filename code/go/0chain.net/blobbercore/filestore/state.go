@@ -10,6 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 type allocation struct {
@@ -51,38 +52,37 @@ func (fs *FileStore) initMap() error {
 		return errors.New("could not get db client")
 	}
 
-	var allocations []*dbAllocation
-	if err := db.Model(&dbAllocation{}).Find(&allocations).Error; err != nil {
-		return err
-	}
-
 	limitCh := make(chan struct{}, 50)
 	wg := &sync.WaitGroup{}
+	var allocations []*dbAllocation
 
-	for _, alloc := range allocations {
-		a := allocation{
-			allocatedSize: uint64(alloc.BlobberSize),
-			mu:            &sync.Mutex{},
-			tmpMU:         &sync.Mutex{},
+	err := db.Model(&dbAllocation{}).FindInBatches(allocations, 1000, func(tx *gorm.DB, batch int) error {
+		for _, alloc := range allocations {
+			a := allocation{
+				allocatedSize: uint64(alloc.BlobberSize),
+				mu:            &sync.Mutex{},
+				tmpMU:         &sync.Mutex{},
+			}
+
+			fs.setAllocation(alloc.ID, &a)
+
+			err := getStorageDetails(ctx, &a, alloc.ID)
+
+			if err != nil {
+				return err
+			}
+
+			limitCh <- struct{}{}
+			wg.Add(1)
+			go fs.getTemporaryStorageDetails(ctx, &a, alloc.ID, limitCh, wg)
+
 		}
-
-		fs.setAllocation(alloc.ID, &a)
-
-		err := getStorageDetails(ctx, &a, alloc.ID)
-
-		if err != nil {
-			return err
-		}
-
-		limitCh <- struct{}{}
-		wg.Add(1)
-		go fs.getTemporaryStorageDetails(ctx, &a, alloc.ID, limitCh, wg)
-
-	}
+		return nil
+	}).Error
 
 	wg.Wait()
 	db.Commit()
-	return nil
+	return err
 }
 
 func (fs *FileStore) incrDecrAllocFileSizeAndNumber(allocID string, size int64, fileNumber int64) {
