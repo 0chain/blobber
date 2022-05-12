@@ -170,28 +170,28 @@ func getStorageDetails(ctx context.Context, a *allocation, ID string) error {
 
 // UpdateAllocationMetaData only updates if allocation size has changed or new allocation is allocated. Must use allocationID.
 // Use of allocation Tx might leak memory. allocation size must be of int64 type otherwise it won't be updated
-func (fs *FileStore) UpdateAllocationMetaData(m map[string]interface{}) {
+func (fs *FileStore) UpdateAllocationMetaData(m map[string]interface{}) error {
 	fs.allocMu.Lock()
 	defer fs.allocMu.Unlock()
 
 	allocIDI := m["allocation_id"]
 	if allocIDI == nil {
-		return
+		return errors.New("empty allocation id")
 	}
 
 	allocID, ok := allocIDI.(string)
 	if !ok {
-		return
+		return errors.New("allocation id is not string type")
 	}
 
 	allocatedSizeI := m["allocated_size"]
 	if allocatedSizeI == nil {
-		return
+		return errors.New("empty allocated size value")
 	}
 
 	allocatedSize, ok := allocatedSizeI.(int64)
 	if !ok {
-		return
+		return errors.New("allocated size is not int64 type")
 	}
 	alloc := fs.getAllocation(allocID)
 	if alloc == nil {
@@ -202,9 +202,9 @@ func (fs *FileStore) UpdateAllocationMetaData(m map[string]interface{}) {
 		}
 
 		fs.setAllocation(allocID, alloc)
-		return
+		return nil
 	}
 
 	alloc.allocatedSize = uint64(allocatedSize)
-
+	return nil
 }

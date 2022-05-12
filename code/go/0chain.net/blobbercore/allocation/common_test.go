@@ -103,6 +103,6 @@ func (mfs *MockFileStore) GetPathForFile(allocID, contentHash string) (string, e
 	return "", nil
 }
 
-func (mfs *MockFileStore) UpdateAllocationMetaData(m map[string]interface{}) {
-
+func (mfs *MockFileStore) UpdateAllocationMetaData(m map[string]interface{}) error {
+	return nil
 }

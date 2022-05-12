@@ -71,7 +71,7 @@ type FileStorer interface {
 	GetPathForFile(allocID, contentHash string) (string, error)
 	// UpdateAllocationMetaData only updates if allocation size has changed or new allocation is allocated. Must use allocationID.
 	// Use of allocation Tx might leak memory. allocation size must be of int64 type otherwise it won't be updated
-	UpdateAllocationMetaData(m map[string]interface{})
+	UpdateAllocationMetaData(m map[string]interface{}) error
 }
 
 var fileStore FileStorer

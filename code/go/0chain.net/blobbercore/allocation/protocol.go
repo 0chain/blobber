@@ -139,7 +139,10 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 		"allocated_size": (sa.Size + int64(len(sa.BlobberDetails)-1)) / int64(len(sa.BlobberDetails)),
 	}
 
-	go filestore.GetFileStore().UpdateAllocationMetaData(m)
+	err = filestore.GetFileStore().UpdateAllocationMetaData(m)
+	if err != nil {
+		return nil, common.NewError("meta_data_update_error", err.Error())
+	}
 	// go update allocation data in file store map
 	// related terms
 	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))

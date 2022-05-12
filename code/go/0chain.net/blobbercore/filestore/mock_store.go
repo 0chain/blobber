@@ -122,6 +122,6 @@ func (fs *MockStore) GetPathForFile(allocID, contentHash string) (string, error)
 	return fs.FileStore.GetPathForFile(allocID, contentHash)
 }
 
-func (fs *MockStore) UpdateAllocationMetaData(m map[string]interface{}) {
-	fs.FileStore.UpdateAllocationMetaData(m)
+func (fs *MockStore) UpdateAllocationMetaData(m map[string]interface{}) error {
+	return fs.FileStore.UpdateAllocationMetaData(m)
 }

@@ -160,8 +160,8 @@ func (mfs *MockFileStore) GetPathForFile(allocID, contentHash string) (string, e
 	return filepath.Join(mfs.getAllocDir(allocID), getPath(contentHash, getDirLevelsForFiles())), nil
 }
 
-func (mfs *MockFileStore) UpdateAllocationMetaData(m map[string]interface{}) {
-
+func (mfs *MockFileStore) UpdateAllocationMetaData(m map[string]interface{}) error {
+	return nil
 }
 
 func (mfs *MockFileStore) getAllocDir(allocID string) string {
