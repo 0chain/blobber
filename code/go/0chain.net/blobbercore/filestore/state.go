@@ -24,20 +24,21 @@ type allocation struct {
 
 func (fs *FileStore) setAllocation(allocID string, alloc *allocation) {
 	fs.rwMU.Lock()
-	defer fs.rwMU.Unlock()
 	fs.mAllocs[allocID] = alloc
+	fs.rwMU.Unlock()
 }
 
 func (fs *FileStore) getAllocation(allocID string) *allocation {
 	fs.rwMU.RLock()
-	defer fs.rwMU.RUnlock()
-	return fs.mAllocs[allocID]
+	alloc := fs.mAllocs[allocID]
+	fs.rwMU.RUnlock()
+	return alloc
 }
 
 func (fs *FileStore) removeAllocation(ID string) {
 	fs.rwMU.Lock()
-	defer fs.rwMU.Unlock()
 	delete(fs.mAllocs, ID)
+	fs.rwMU.Unlock()
 }
 
 func (fs *FileStore) initMap() error {
@@ -92,10 +93,11 @@ func (fs *FileStore) incrDecrAllocFileSizeAndNumber(allocID string, size int64, 
 	}
 
 	alloc.mu.Lock()
-	defer alloc.mu.Unlock()
 
 	alloc.filesSize += uint64(size)
 	alloc.filesNumber += uint64(fileNumber)
+
+	alloc.mu.Unlock()
 }
 
 func (fs *FileStore) GetDiskUsedByAllocation(allocID string) uint64 {
