@@ -209,11 +209,11 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 
 	//move file from tmp location to the objects folder
 	err = os.Rename(tempFilePath, fileObjectPath)
-	l.Unlock()
-
 	if err != nil {
 		return false, common.NewError("blob_object_creation_error", err.Error())
 	}
+
+	l.Unlock()
 
 	fs.updateAllocTempFileSize(allocID, -fileSize)
 	// Each commit write should add 1 to file number because of the following:
