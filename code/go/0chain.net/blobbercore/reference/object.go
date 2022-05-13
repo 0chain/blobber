@@ -32,6 +32,7 @@ func DeleteObject(ctx context.Context, allocationID, objPath string) (*Ref, erro
 		for _, ref := range dirRef.Children {
 			if ref.Name == subDir && ref.Type == DIRECTORY {
 				ref.HashToBeComputed = true
+				ref.childrenLoaded = true
 				found = true
 				dirRef = ref
 				break
