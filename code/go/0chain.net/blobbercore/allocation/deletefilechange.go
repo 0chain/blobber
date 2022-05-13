@@ -71,12 +71,17 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 		FindInBatches(&results, 100, func(tx *gorm.DB, batch int) error {
 
 			for _, res := range results {
-				limitCh <- struct{}{}
-				wg.Add(1)
 				var count int64
 				tx.Model(&reference.Ref{}).
 					Where("allocation_id=? AND content_hash=?", nf.AllocationID, res.ContentHash).
 					Count(&count)
+
+				if count != 0 {
+					continue
+				}
+
+				limitCh <- struct{}{}
+				wg.Add(1)
 
 				go func(res Result, count int64) {
 					defer func() {
@@ -84,19 +89,17 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 						wg.Done()
 					}()
 
-					if count == 0 {
-						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ContentHash)
-						if err != nil {
-							logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
-								zap.String("content_hash", res.ContentHash))
-						}
+					err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ContentHash)
+					if err != nil {
+						logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
+							zap.String("content_hash", res.ContentHash))
+					}
 
-						if res.ThumbnailHash != "" {
-							err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ThumbnailHash)
-							if err != nil {
-								logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
-									zap.String("thumbnail", res.ThumbnailHash))
-							}
+					if res.ThumbnailHash != "" {
+						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ThumbnailHash)
+						if err != nil {
+							logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
+								zap.String("thumbnail", res.ThumbnailHash))
 						}
 					}
 
