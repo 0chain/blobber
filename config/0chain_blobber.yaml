@@ -112,6 +112,19 @@ geolocation:
   latitude: 0
   longitude: 0
 
+storage:
+  files_dir: "/path/to/hdd"
+#  sha256 hash will have 64 characters of hex encoded length. So if dir_level is [2,2] this means for an allocation id 
+#  "4c9bad252272bc6e3969be637610d58f3ab2ff8ca336ea2fadd6171fc68fdd56" directory below will be created.
+#  alloc_dir = {files_dir}/4c/9b/ad252272bc6e3969be637610d58f3ab2ff8ca336ea2fadd6171fc68fdd56
+# 
+#  So this means, there will maximum of 16^4 = 65536 numbers directories for all allocations stored by blobber.
+#  Similarly for some file_hash "ef935503b66b1ce026610edf18bffd756a79676a8fe317d951965b77a77c0227" with dir_level [2, 2, 1]
+#  following path is created for the file:
+# {alloc_dir}/ef/93/5/503b66b1ce026610edf18bffd756a79676a8fe317d951965b77a77c0227
+  alloc_dir_level: [2, 1]
+  file_dir_level: [2, 2, 1]
+
 minio:
   # Enable or disable minio backup service
   start: false
@@ -119,6 +132,12 @@ minio:
   worker_frequency: 3600 # In Seconds
   # Use SSL for connection or not
   use_ssl: false
+
+  storage_service_url: "play.min.io"
+  access_id: "Q3AM3UQ867SPQQA43P2F"
+  secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+  bucket_name: "mytestbucket"
+  region: "us-east-1"
 
 cold_storage:
   # Minimum file size to be considered for moving to cloud
@@ -134,6 +153,11 @@ cold_storage:
   # Delete cloud copy if the file is deleted from the blobber by user/other process
   delete_cloud_copy: true
 
+disk_update:
+  # defaults to true. If false, blobber has to manually update blobber's capacity upon increase/decrease
+  # If blobber has to limit its capacity to 5% of its capacity then it should turn automaci_update to false.
+  automatic_update: true 
+  blobber_update_interval: 5m # In minutes
 # integration tests related configurations
 integration_tests:
   # address of the server

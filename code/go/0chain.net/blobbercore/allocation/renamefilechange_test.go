@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -20,26 +21,14 @@ import (
 	"github.com/0chain/gosdk/zboxcore/client"
 	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 	"github.com/0chain/gosdk/zcncore"
+	"github.com/DATA-DOG/go-sqlmock"
 	mocket "github.com/selvatico/go-mocket"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
 )
 
-type MockFileBlockGetter struct {
-	filestore.IFileBlockGetter
-}
-
 var mockFileBlock []byte
-
-func (MockFileBlockGetter) GetFileBlock(
-	fsStore *filestore.FileFSStore,
-	allocationID string,
-	fileData *filestore.FileInputData,
-	blockNum int64,
-	numBlocks int64) ([]byte, error) {
-	return mockFileBlock, nil
-}
 
 func resetMockFileBlock() {
 	mockFileBlock = []byte("mock")
@@ -97,6 +86,30 @@ func setup(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+func setupMockForFileManagerInit(mock sqlmock.Sqlmock) {
+	mock.ExpectBegin()
+
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations"`)).
+		WillReturnRows(sqlmock.NewRows(
+			[]string{
+				"id", "blobber_size", "blobber_size_used",
+			},
+		).AddRow(
+			"allocation_id", 655360000, 6553600,
+		),
+		)
+
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects" WHERE`)).
+		WillReturnRows(
+			sqlmock.NewRows([]string{"count"}).AddRow(1000),
+		)
+
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT sum(size) as file_size FROM "reference_objects" WHERE`)).
+		WillReturnRows(
+			sqlmock.NewRows([]string{"file_size"}).AddRow(6553600),
+		)
+
+}
 
 func init() {
 	resetMockFileBlock()
@@ -105,10 +118,25 @@ func init() {
 	config.Configuration.SignatureScheme = "bls0chain"
 	logging.Logger = zap.NewNop()
 
-	dir, _ := os.Getwd()
-	if _, err := filestore.SetupFSStoreI(dir+"/tmp", MockFileBlockGetter{}); err != nil {
+	mock := datastore.MockTheStore(nil)
+	setupMockForFileManagerInit(mock)
+
+	dir, err := os.Getwd()
+	if err != nil {
 		panic(err)
 	}
+
+	tDir := dir + "/tmp"
+	if err := os.MkdirAll(tDir, 0777); err != nil {
+		panic(err)
+	}
+
+	fs := &filestore.MockStore{}
+	err = fs.Initialize()
+	if err != nil {
+		panic(err)
+	}
+	filestore.SetFileStore(fs)
 }
 
 func TestBlobberCore_RenameFile(t *testing.T) {

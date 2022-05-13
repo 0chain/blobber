@@ -2,8 +2,6 @@ package handler
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
@@ -16,7 +14,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 )
 
@@ -28,9 +26,10 @@ func SetupWorkers(ctx context.Context) {
 }
 
 func CleanupDiskFiles(ctx context.Context) error {
-	db := datastore.GetStore().GetTransaction(ctx)
 	var allocations []allocation.Allocation
+	db := datastore.GetStore().GetTransaction(ctx)
 	db.Find(&allocations)
+
 	for _, allocationObj := range allocations {
 		cleanupAllocationFiles(db, &allocationObj)
 	}
@@ -41,27 +40,34 @@ func cleanupAllocationFiles(db *gorm.DB, allocationObj *allocation.Allocation) {
 	mutex := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
 	mutex.Lock()
 	defer mutex.Unlock()
+
 	_ = filestore.GetFileStore().IterateObjects(allocationObj.ID, func(contentHash string, contentSize int64) {
 		var refs []reference.Ref
-		err := db.Table((reference.Ref{}).TableName()).Where(reference.Ref{ContentHash: contentHash, Type: reference.FILE}).Or(reference.Ref{ThumbnailHash: contentHash, Type: reference.FILE}).Find(&refs).Error
+		err := db.Table((reference.Ref{}).TableName()).
+			Where(reference.Ref{ContentHash: contentHash, Type: reference.FILE}).
+			Or(reference.Ref{ThumbnailHash: contentHash, Type: reference.FILE}).
+			Find(&refs).Error
+
 		if err != nil {
-			Logger.Error("Error in cleanup of disk files.", zap.Error(err))
+			logging.Logger.Error("Error in cleanup of disk files.", zap.Error(err))
 			return
 		}
+
 		if len(refs) == 0 {
-			Logger.Info("hash has no references. Deleting from disk", zap.Any("count", len(refs)), zap.String("hash", contentHash))
-			if err := filestore.GetFileStore().DeleteFile(allocationObj.ID, contentHash); err != nil {
-				Logger.Error("FileStore_DeleteFile", zap.String("content_hash", contentHash), zap.Error(err))
+			logging.Logger.Info("hash has no references. Deleting from disk",
+				zap.Any("count", len(refs)), zap.String("hash", contentHash))
+
+			if err = filestore.GetFileStore().DeleteFile(allocationObj.ID, contentHash); err != nil {
+				logging.Logger.Error("FileStore_DeleteFile", zap.String("content_hash", contentHash), zap.Error(err))
 			}
 		}
 	})
-
 }
 
 func cleanupTempFiles(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			Logger.Error("[recover] cleanupTempFiles", zap.Any("err", r))
+			logging.Logger.Error("[recover] cleanupTempFiles", zap.Any("err", r))
 		}
 	}()
 
@@ -75,54 +81,54 @@ func cleanupTempFiles(ctx context.Context) {
 
 	for i := 0; i < len(openConnectionsToDelete); i++ {
 		connection := &openConnectionsToDelete[i]
-		Logger.Info("Deleting temp files for the connection", zap.Any("connection", connection.ID))
+		logging.Logger.Info("Deleting temp files for the connection", zap.Any("connection", connection.ID))
 		connection.ComputeProperties()
+
 		nctx := datastore.GetStore().CreateTransaction(ctx)
 		ndb := datastore.GetStore().GetTransaction(nctx)
+		var errorOccurred bool
 		for _, changeProcessor := range connection.AllocationChanges {
 			if err := changeProcessor.DeleteTempFile(); err != nil {
-				Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
+				errorOccurred = true
+				logging.Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
 			}
 		}
-		ndb.Model(connection).Updates(allocation.AllocationChangeCollector{Status: allocation.DeletedConnection})
+
+		if !errorOccurred {
+			for _, c := range connection.Changes {
+				ndb.Unscoped().Delete(c)
+			}
+			ndb.Unscoped().Delete(connection)
+		}
+
 		ndb.Commit()
 		nctx.Done()
 	}
-	db.Rollback()
+
+	db.Commit()
 	rctx.Done()
 }
 
 func startCleanupTempFiles(ctx context.Context) {
-	var iterInprogress = false
 	ticker := time.NewTicker(time.Duration(config.Configuration.OpenConnectionWorkerFreq) * time.Second)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			//Logger.Info("Trying to redeem writemarkers.", zap.Any("iterInprogress", iterInprogress), zap.Any("numOfWorkers", numOfWorkers))
-			if !iterInprogress {
-				iterInprogress = true //nolint:ineffassign // probably has something to do with goroutines
-				cleanupTempFiles(ctx)
-				iterInprogress = false
-			}
+			cleanupTempFiles(ctx)
 		}
 	}
 }
 
-func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize, limit int64) {
+func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize int64, limit int) {
 	defer func() {
 		if r := recover(); r != nil {
-			Logger.Error("[recover] moveColdDataToCloud", zap.Any("err", r))
+			logging.Logger.Error("[recover] moveColdDataToCloud", zap.Any("err", r))
 		}
 	}()
 
-	fs := filestore.GetFileStore()
-	totalDiskSizeUsed, err := fs.GetTotalDiskSizeUsed()
-	if err != nil {
-		Logger.Error("Unable to get total disk size used from the file store", zap.Error(err))
-		return
-	}
+	totalDiskSizeUsed := filestore.GetFileStore().GetTotalCommittedFileSize()
 
 	// Check if capacity exceded the start capacity size
 	if totalDiskSizeUsed > config.Configuration.ColdStorageStartCapacitySize {
@@ -130,15 +136,14 @@ func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize, limit int6
 		db := datastore.GetStore().GetTransaction(rctx)
 		// Get total number of fileRefs with size greater than limit and on_cloud = false
 		var totalRecords int64
-		db.Table((&reference.Ref{}).TableName()).
+		db.Model(&reference.Ref{}).
 			Where("size > ? AND on_cloud = ?", coldStorageMinFileSize, false).
 			Count(&totalRecords)
 
-		offset := int64(0)
-		for offset < totalRecords {
-			// Get all fileRefs with size greater than limit and on_cloud false
+		var offset int
+		for int64(offset) < totalRecords {
 			var fileRefs []*reference.Ref
-			db.Offset(int(offset)).Limit(int(limit)).
+			db.Offset(offset).Limit(limit).
 				Table((&reference.Ref{}).TableName()).
 				Where("size > ? AND on_cloud = ?", coldStorageMinFileSize, false).
 				Find(&fileRefs)
@@ -150,13 +155,13 @@ func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize, limit int6
 
 				fileStat, err := stats.GetFileStats(rctx, fileRef.ID)
 				if err != nil {
-					Logger.Error("Unable to find filestats for fileRef with", zap.Any("reID", fileRef.ID))
+					logging.Logger.Error("Unable to find filestats for fileRef with", zap.Any("reID", fileRef.ID))
 					continue
 				}
 
 				timeToAdd := time.Duration(config.Configuration.ColdStorageTimeLimitInHours) * time.Hour
 				if fileStat.UpdatedAt.Before(time.Now().Add(-1 * timeToAdd)) {
-					Logger.Info("Moving file to cloud", zap.Any("path", fileRef.Path), zap.Any("allocation", fileRef.AllocationID))
+					logging.Logger.Info("Moving file to cloud", zap.Any("path", fileRef.Path), zap.Any("allocation", fileRef.AllocationID))
 					moveFileToCloud(ctx, fileRef)
 				}
 			}
@@ -168,7 +173,6 @@ func moveColdDataToCloud(ctx context.Context, coldStorageMinFileSize, limit int6
 }
 
 func startMoveColdDataToCloud(ctx context.Context) {
-	var iterInprogress = false
 	var coldStorageMinFileSize = config.Configuration.ColdStorageMinimumFileSize
 	var limit = config.Configuration.ColdStorageJobQueryLimit
 	ticker := time.NewTicker(time.Duration(config.Configuration.MinioWorkerFreq) * time.Second)
@@ -177,32 +181,36 @@ func startMoveColdDataToCloud(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if !iterInprogress {
-				moveColdDataToCloud(ctx, coldStorageMinFileSize, limit)
-				iterInprogress = false
-				stats.LastMinioScan = time.Now()
-				Logger.Info("Move cold data to cloud worker running successfully")
-			}
+			moveColdDataToCloud(ctx, coldStorageMinFileSize, limit)
+			stats.LastMinioScan = time.Now()
+			logging.Logger.Info("Move cold data to cloud worker running successfully")
 		}
 	}
 }
 
 func moveFileToCloud(ctx context.Context, fileRef *reference.Ref) {
-	fs := filestore.GetFileStore()
-	allocation, err := fs.SetupAllocation(fileRef.AllocationID, true)
+	fileObjectPath, err := filestore.GetFileStore().GetPathForFile(fileRef.AllocationID, fileRef.ContentHash)
 	if err != nil {
-		Logger.Error("Unable to fetch allocation with error", zap.Any("allocationID", fileRef.AllocationID), zap.Error(err))
+		logging.Logger.Error("Error while getting path of file", zap.Error(err))
+		return
+	}
+	err = filestore.GetFileStore().MinioUpload(fileRef.ContentHash, fileObjectPath)
+	if err != nil {
+		logging.Logger.Error("Error uploading cold data to cloud", zap.Error(err), zap.Any("file_name", fileRef.Name), zap.Any("file_path", fileObjectPath))
 		return
 	}
 
-	dirPath, destFile := filestore.GetFilePathFromHash(fileRef.ContentHash)
-	fileObjectPath := filepath.Join(allocation.ObjectsPath, dirPath)
-	fileObjectPath = filepath.Join(fileObjectPath, destFile)
+	if fileRef.ThumbnailHash != "" {
+		thumbnailPath := ""
+		if err := filestore.GetFileStore().MinioUpload(fileRef.ThumbnailHash, thumbnailPath); err != nil {
+			logging.Logger.Error("Error uploading cold thumbnail data to cloud", zap.Error(err))
 
-	err = fs.UploadToCloud(fileRef.ContentHash, fileObjectPath)
-	if err != nil {
-		Logger.Error("Error uploading cold data to cloud", zap.Error(err), zap.Any("file_name", fileRef.Name), zap.Any("file_path", fileObjectPath))
-		return
+			logging.Logger.Info("Removing file from cloud")
+			if err := filestore.GetFileStore().MinioDelete(fileRef.ContentHash); err != nil {
+				logging.Logger.Debug("Got Error while remove file from cloud", zap.String("file", fileRef.ContentHash))
+			}
+			return
+		}
 	}
 
 	fileRef.OnCloud = true
@@ -210,7 +218,7 @@ func moveFileToCloud(ctx context.Context, fileRef *reference.Ref) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	err = db.Save(fileRef).Error
 	if err != nil {
-		Logger.Error("Failed to update reference_object for on cloud true", zap.Error(err))
+		logging.Logger.Error("Failed to update reference_object for on cloud true", zap.Error(err))
 		db.Rollback()
 		ctx.Done()
 		return
@@ -218,14 +226,24 @@ func moveFileToCloud(ctx context.Context, fileRef *reference.Ref) {
 
 	db.Commit()
 	ctx.Done()
-	Logger.Info("Successfully uploaded file to cloud", zap.Any("file_name", fileRef.Name), zap.Any("allocation", fileRef.AllocationID))
+	logging.Logger.Info("Successfully uploaded file to cloud", zap.Any("file_name", fileRef.Name), zap.Any("allocation", fileRef.AllocationID))
 
-	if config.Configuration.ColdStorageDeleteLocalCopy {
-		err = os.Remove(fileObjectPath)
+	newCtx := datastore.GetStore().CreateTransaction(context.Background())
+	db = datastore.GetStore().GetTransaction(newCtx)
+
+	var contentHashSharingRefsCount int64
+	condRef := reference.Ref{AllocationID: fileRef.AllocationID, ContentHash: fileRef.ContentHash}
+	if err := db.Model(&reference.Ref{}).Where(&condRef).Count(&contentHashSharingRefsCount).Error; err != nil {
+		logging.Logger.Error("Failed to get count", zap.Error(err))
+		return
+	}
+
+	if contentHashSharingRefsCount <= 1 && config.Configuration.ColdStorageDeleteLocalCopy {
+		err = filestore.GetFileStore().DeleteFile(fileRef.AllocationID, fileRef.ContentHash)
 		if err != nil {
-			Logger.Error("Error deleting file after upload to cold storage", zap.Error(err))
+			logging.Logger.Error("Error deleting file after upload to cold storage", zap.Error(err))
 			return
 		}
-		Logger.Info("Successfully deleted file's local copy", zap.Any("file_name", fileRef.Name), zap.Any("allocation", fileRef.AllocationID))
+		logging.Logger.Info("Successfully deleted file's local copy", zap.Any("file_name", fileRef.Name), zap.Any("allocation", fileRef.AllocationID))
 	}
 }

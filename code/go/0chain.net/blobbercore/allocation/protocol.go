@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -132,6 +134,16 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 	a.TimeUnit = sa.TimeUnit
 	a.IsImmutable = sa.IsImmutable
 
+	m := map[string]interface{}{
+		"allocation_id":  a.ID,
+		"allocated_size": (sa.Size + int64(len(sa.BlobberDetails)-1)) / int64(len(sa.BlobberDetails)),
+	}
+
+	err = filestore.GetFileStore().UpdateAllocationMetaData(m)
+	if err != nil {
+		return nil, common.NewError("meta_data_update_error", err.Error())
+	}
+	// go update allocation data in file store map
 	// related terms
 	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))
 	for _, d := range sa.BlobberDetails {
