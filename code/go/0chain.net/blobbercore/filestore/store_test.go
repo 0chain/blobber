@@ -442,7 +442,7 @@ func TestGetMerkleTree(t *testing.T) {
 				Hash:      commitContentHash,
 				ChunkSize: 64 * KB,
 			}
-			rb, fixedMtI, err := fs.GetMerkleTree(allocID, fd, test.blockOffset)
+			rb, fixedMtI, err := fs.GetBlocksMerkleTreeForChallenge(allocID, fd, test.blockOffset)
 
 			if test.expectedError {
 				require.NotNil(t, err)

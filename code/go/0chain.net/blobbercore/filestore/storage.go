@@ -345,7 +345,7 @@ func (fs *FileStore) GetFileBlock(allocID string, fileData *FileInputData, block
 	return buffer[:n], nil
 }
 
-func (fs *FileStore) GetMerkleTree(allocID string,
+func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
 	fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
 
 	if blockoffset < 0 || blockoffset >= 1024 {
