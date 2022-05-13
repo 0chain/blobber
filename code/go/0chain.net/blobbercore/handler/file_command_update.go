@@ -62,7 +62,7 @@ func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request
 	if thumbHeader != nil {
 		if thumbHeader.Size > MaxThumbnailSize {
 			return common.NewError("max_thumbnail_size",
-				fmt.Sprintf("Thumbnail size %d should not be greater than %d", thumbHeader.Size, MaxThumbnailSize))
+				fmt.Sprintf("thumbnail size %d should not be greater than %d", thumbHeader.Size, MaxThumbnailSize))
 		}
 	}
 
