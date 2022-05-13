@@ -77,11 +77,11 @@ func TestStoreState(t *testing.T) {
 		require.Equal(t, expectedN, alloc.filesNumber)
 
 		curAllocatedSize := alloc.allocatedSize
-		fs.UpdateAllocationMetaData(map[string]interface{}{"allocation_id": allocID, "allocated_size": int64(25536)})
+		_ = fs.UpdateAllocationMetaData(map[string]interface{}{"allocation_id": allocID, "allocated_size": int64(25536)})
 		require.NotEqual(t, curAllocatedSize, alloc.allocatedSize)
 
 		curAllocatedSize = alloc.allocatedSize
-		fs.UpdateAllocationMetaData(map[string]interface{}{"allocation_id": allocID, "allocated_size": int(65536000)})
+		_ = fs.UpdateAllocationMetaData(map[string]interface{}{"allocation_id": allocID, "allocated_size": int(65536000)})
 		require.Equal(t, curAllocatedSize, alloc.allocatedSize)
 
 	}
