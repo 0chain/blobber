@@ -29,6 +29,14 @@ func (fs *FileStore) setAllocation(allocID string, alloc *allocation) {
 	fs.rwMU.Unlock()
 }
 
+func (fs *FileStore) setAllocations(m map[string]*allocation) {
+	fs.rwMU.Lock()
+	for allocID, alloc := range m {
+		fs.mAllocs[allocID] = alloc
+	}
+	fs.rwMU.Unlock()
+}
+
 func (fs *FileStore) getAllocation(allocID string) *allocation {
 	fs.rwMU.RLock()
 	alloc := fs.mAllocs[allocID]
@@ -54,19 +62,21 @@ func (fs *FileStore) initMap() error {
 
 	limitCh := make(chan struct{}, 50)
 	wg := &sync.WaitGroup{}
-	var allocations []*dbAllocation
+	var dbAllocations []*dbAllocation
 
-	err := db.Model(&dbAllocation{}).FindInBatches(&allocations, 1000, func(tx *gorm.DB, batch int) error {
-		for _, alloc := range allocations {
+	err := db.Model(&dbAllocation{}).FindInBatches(&dbAllocations, 1000, func(tx *gorm.DB, batch int) error {
+		allocsMap := make(map[string]*allocation)
+
+		for _, dbAlloc := range dbAllocations {
 			a := allocation{
-				allocatedSize: uint64(alloc.BlobberSize),
+				allocatedSize: uint64(dbAlloc.BlobberSize),
 				mu:            &sync.Mutex{},
 				tmpMU:         &sync.Mutex{},
 			}
 
-			fs.setAllocation(alloc.ID, &a)
+			allocsMap[dbAlloc.ID] = &a
 
-			err := getStorageDetails(ctx, &a, alloc.ID)
+			err := getStorageDetails(ctx, &a, dbAlloc.ID)
 
 			if err != nil {
 				return err
@@ -74,9 +84,11 @@ func (fs *FileStore) initMap() error {
 
 			limitCh <- struct{}{}
 			wg.Add(1)
-			go fs.getTemporaryStorageDetails(ctx, &a, alloc.ID, limitCh, wg)
+			go fs.getTemporaryStorageDetails(ctx, &a, dbAlloc.ID, limitCh, wg)
 
 		}
+
+		fs.setAllocations(allocsMap)
 		return nil
 	}).Error
 
