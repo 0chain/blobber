@@ -9,10 +9,15 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"gorm.io/gorm"
 
 	"go.uber.org/zap"
+)
+
+var (
+	NoNewLock = common.NewError("not_new_lock", "")
 )
 
 type DeleteFileChange struct {
@@ -76,7 +81,7 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 					Where("allocation_id=? AND content_hash=?", nf.AllocationID, res.ContentHash).
 					Count(&count)
 
-				if count != 0 {
+				if count != 0 && res.ThumbnailHash == "" {
 					continue
 				}
 
@@ -89,10 +94,12 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 						wg.Done()
 					}()
 
-					err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ContentHash)
-					if err != nil {
-						logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
-							zap.String("content_hash", res.ContentHash))
+					if count == 0 {
+						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ContentHash)
+						if err != nil {
+							logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
+								zap.String("content_hash", res.ContentHash))
+						}
 					}
 
 					if res.ThumbnailHash != "" {
