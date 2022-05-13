@@ -56,7 +56,7 @@ func (fs *FileStore) initMap() error {
 	wg := &sync.WaitGroup{}
 	var allocations []*dbAllocation
 
-	err := db.Model(&dbAllocation{}).FindInBatches(allocations, 1000, func(tx *gorm.DB, batch int) error {
+	err := db.Model(&dbAllocation{}).FindInBatches(&allocations, 1000, func(tx *gorm.DB, batch int) error {
 		for _, alloc := range allocations {
 			a := allocation{
 				allocatedSize: uint64(alloc.BlobberSize),
