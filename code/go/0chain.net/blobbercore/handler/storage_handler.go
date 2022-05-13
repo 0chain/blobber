@@ -268,22 +268,25 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 	return result, nil
 }
 
-func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
+func (fsh *StorageHandler) getAllocationObject(ctx context.Context, r *http.Request) (*allocation.Allocation, string, error) {
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, "", common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
 	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
 	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+		return nil, "", common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	allocationID := allocationObj.ID
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 
+	return allocationObj, clientID, nil
+}
+
+func (fsh *StorageHandler) validateCollaboratorRequest(ctx context.Context, allocationID string, r *http.Request) (*reference.Ref, error) {
 	pathHash, err := pathHashFromReq(r, allocationID)
 	if err != nil {
 		return nil, err
@@ -296,6 +299,21 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 
 	if fileref.Type != reference.FILE {
 		return nil, common.NewError("invalid_parameters", "Path is not a file.")
+	}
+
+	return fileref, nil
+}
+
+func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
+
+	allocationObj, clientID, err := fsh.getAllocationObject(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	fileref, err := fsh.validateCollaboratorRequest(ctx, allocationObj.ID, r)
+	if err != nil {
+		return nil, err
 	}
 
 	collabClientID := r.FormValue("collab_id")
@@ -326,32 +344,14 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 }
 
 func (fsh *StorageHandler) GetCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-
-	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	allocationID := allocationObj.ID
-
-	pathHash, err := pathHashFromReq(r, allocationID)
+	allocationObj, _, err := fsh.getAllocationObject(ctx, r)
 	if err != nil {
 		return nil, err
 	}
 
-	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "type"})
+	fileref, err := fsh.validateCollaboratorRequest(ctx, allocationObj.ID, r)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-
-	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
+		return nil, err
 	}
 
 	collaborators, err := reference.GetCollaborators(ctx, fileref.ID)
@@ -363,34 +363,14 @@ func (fsh *StorageHandler) GetCollaborator(ctx context.Context, r *http.Request)
 }
 
 func (fsh *StorageHandler) RemoveCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-
-	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	allocationID := allocationObj.ID
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	_ = ctx.Value(constants.ContextKeyClientKey).(string)
-
-	pathHash, err := pathHashFromReq(r, allocationID)
+	allocationObj, clientID, err := fsh.getAllocationObject(ctx, r)
 	if err != nil {
 		return nil, err
 	}
 
-	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "type"})
+	fileref, err := fsh.validateCollaboratorRequest(ctx, allocationObj.ID, r)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-
-	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
+		return nil, err
 	}
 
 	collabClientID, ok := GetField(r, "collab_id")

@@ -59,36 +59,15 @@ func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, er
 }
 
 func AddCollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.AddCollaborator(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
+	return storageHandler.AddCollaborator(setupHandlerContext(ctx, r), r)
 }
 
 func GetCollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.GetCollaborator(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
+	return storageHandler.GetCollaborator(setupHandlerContext(ctx, r), r)
 }
 
 func RemoveCollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.RemoveCollaborator(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
+	return storageHandler.RemoveCollaborator(setupHandlerContext(ctx, r), r)
 }
 
 func HomepageHandler(w http.ResponseWriter, r *http.Request) {
