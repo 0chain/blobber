@@ -95,7 +95,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		UploadOffset: cmd.fileChanger.UploadOffset,
 		IsFinal:      cmd.fileChanger.IsFinal,
 	}
-	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ID)
+	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionObj.ID, fileInputData, origfile)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
@@ -106,8 +106,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	allocationSize := connectionObj.Size
 
-	// only update connection size when the chunk is uploaded by first time.
-	if !fileOutputData.ChunkUploaded {
+	if fileOutputData.ChunkUploaded {
 		allocationSize += fileOutputData.Size
 	}
 
@@ -144,7 +143,7 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 		defer thumbfile.Close()
 
 		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
-		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, thumbInputData, thumbfile, connectionObj.ID)
+		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionObj.ID, thumbInputData, thumbfile)
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 		}
@@ -176,7 +175,7 @@ func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationC
 		cmd.fileChanger.Size = dbFileChanger.Size
 		cmd.fileChanger.ThumbnailFilename = dbFileChanger.ThumbnailFilename
 		cmd.fileChanger.ThumbnailSize = dbFileChanger.ThumbnailSize
-		cmd.fileChanger.ThumbnailHash = dbFileChanger.Hash
+		cmd.fileChanger.ThumbnailHash = dbFileChanger.ThumbnailHash
 		return
 	}
 }

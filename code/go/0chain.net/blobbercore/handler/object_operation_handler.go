@@ -508,7 +508,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	result.Changes = connectionObj.Changes
 
-	connectionObj.DeleteChanges(ctx) //nolint:errcheck // never returns an error anyway
+	connectionObj.DeleteChanges(ctx)
 
 	db.Model(connectionObj).Updates(allocation.AllocationChangeCollector{Status: allocation.CommittedConnection})
 
@@ -516,9 +516,13 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	result.WriteMarker = &writeMarker
 	result.Success = true
 	result.ErrorMessage = ""
-	if errors.Is(common.ErrFileWasDeleted, err) {
-		return &result, err
+
+	//Delete connection object and its changes
+	for _, c := range connectionObj.Changes {
+		db.Delete(c)
 	}
+
+	db.Delete(connectionObj)
 	return &result, nil
 }
 

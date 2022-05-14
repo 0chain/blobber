@@ -39,7 +39,9 @@ func MockTheStore(t *testing.T) sqlmock.Sqlmock {
 	var mock sqlmock.Sqlmock
 	var err error
 	db, mock, err = sqlmock.New()
-	require.NoError(t, err)
+	if t != nil {
+		require.NoError(t, err)
+	}
 
 	var dialector = postgres.New(postgres.Config{
 		DSN:                  "sqlmock_db_0",
@@ -49,7 +51,10 @@ func MockTheStore(t *testing.T) sqlmock.Sqlmock {
 	})
 	var gdb *gorm.DB
 	gdb, err = gorm.Open(dialector, &gorm.Config{})
-	require.NoError(t, err)
+
+	if t != nil {
+		require.NoError(t, err)
+	}
 
 	instance = &postgresStore{
 		db: gdb,

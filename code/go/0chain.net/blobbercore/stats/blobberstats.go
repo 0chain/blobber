@@ -39,19 +39,19 @@ type WriteMarkersStat struct {
 }
 
 type Stats struct {
-	AllocatedSize      int64 `json:"allocated_size"`
-	UsedSize           int64 `json:"used_size"`
-	FilesSize          int64 `json:"files_size"`
-	ThumbnailsSize     int64 `json:"thumbnails_size"`
-	DiskSizeUsed       int64 `json:"disk_size_used"`
-	BlockWrites        int64 `json:"num_of_block_writes"`
-	NumWrites          int64 `json:"num_of_writes"`
-	NumReads           int64 `json:"num_of_reads"`
-	TotalChallenges    int64 `json:"total_challenges"`
-	OpenChallenges     int64 `json:"num_open_challenges"`
-	SuccessChallenges  int64 `json:"num_success_challenges"`
-	FailedChallenges   int64 `json:"num_failed_challenges"`
-	RedeemedChallenges int64 `json:"num_redeemed_challenges"`
+	AllocatedSize      int64  `json:"allocated_size"`
+	UsedSize           int64  `json:"used_size"`
+	FilesSize          int64  `json:"files_size"`
+	ThumbnailsSize     int64  `json:"thumbnails_size"`
+	DiskSizeUsed       uint64 `json:"disk_size_used"`
+	BlockWrites        int64  `json:"num_of_block_writes"`
+	NumWrites          int64  `json:"num_of_writes"`
+	NumReads           int64  `json:"num_of_reads"`
+	TotalChallenges    int64  `json:"total_challenges"`
+	OpenChallenges     int64  `json:"num_open_challenges"`
+	SuccessChallenges  int64  `json:"num_success_challenges"`
+	FailedChallenges   int64  `json:"num_failed_challenges"`
+	RedeemedChallenges int64  `json:"num_redeemed_challenges"`
 }
 
 var LastMinioScan time.Time
@@ -125,10 +125,8 @@ func (bs *BlobberStats) loadBasicStats(ctx context.Context) {
 	bs.ReadLockTimeout = Duration(config.Configuration.ReadLockTimeout)
 	bs.WriteLockTimeout = Duration(config.Configuration.WriteLockTimeout)
 	//
-	du, err := filestore.GetFileStore().GetTotalDiskSizeUsed()
-	if err != nil {
-		du = -1
-	}
+	du := filestore.GetFileStore().GetTotalFilesSize()
+
 	bs.DiskSizeUsed = du
 	bs.loadStats(ctx)
 	bs.loadMinioStats(ctx)

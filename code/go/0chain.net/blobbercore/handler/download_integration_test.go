@@ -7,10 +7,14 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 	"time"
 
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/DATA-DOG/go-sqlmock"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -18,24 +22,88 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+func setupMockForFileManager() error {
+	mock := datastore.MockTheStore(nil)
+
+	aa := sqlmock.AnyArg()
+	mock.ExpectBegin()
+
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations"`)).
+		WillReturnRows(sqlmock.NewRows(
+			[]string{
+				"id", "blobber_size", "blobber_size_used",
+			},
+		).AddRow(
+			"allocation id", 655360000, 6553600,
+		),
+		)
+
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects" WHERE`)).
+		WithArgs(aa, aa, aa).
+		WillReturnRows(
+			sqlmock.NewRows([]string{"count"}).AddRow(1000),
+		)
+
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT sum(size) as file_size FROM "reference_objects" WHERE`)).
+		WillReturnRows(
+			sqlmock.NewRows([]string{"file_size"}).AddRow(6553600),
+		)
+
+	mock.ExpectClose()
+	return nil
+}
+
+func setupFileManager(mp string) error {
+	fs := &MockFileStore{mp: mp}
+	err := fs.Initialize()
+	if err != nil {
+		return err
+	}
+	filestore.SetFileStore(fs)
+	return nil
+}
+
 func TestBlobberGRPCService_DownloadFile(t *testing.T) {
-	bClient, tdController := setupHandlerIntegrationTests(t)
-	allocationTx := randString(32)
+	if !isIntegrationTest() {
+		t.Skip()
+	}
+
+	if err := setupMockForFileManager(); err != nil {
+		t.Fatal(err)
+	}
 
 	root := os.Getenv("root")
+	mp := filepath.Join(root, "dev.local/data/blobber/files")
+	if err := os.MkdirAll(mp, os.ModePerm); err != nil {
+		t.Fatal(err)
+	}
 
-	err := os.MkdirAll(filepath.Join(root, `dev.local/data/blobber/files/files/exa/mpl/eId/objects/tmp/Mon/Wen`), os.ModePerm)
+	if err := setupFileManager(mp); err != nil {
+		t.Fatal(err)
+	}
+
+	allocID := randString(64)
+	allocTx := randString(64)
+	pathHash := randString(64)
+	contentHash := randString(64)
+
+	fPath, err := filestore.GetFileStore().GetPathForFile(allocID, contentHash)
 	if err != nil {
 		t.Fatal(err)
 	}
+	err = os.MkdirAll(filepath.Dir(fPath), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	defer func() {
-		err := os.RemoveAll(filepath.Join(root, `dev.local/data/blobber/files/files/exa/mpl/eId/objects/tmp/Mon`))
+		err := os.RemoveAll(mp)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
 
-	f, err := os.Create(filepath.Join(root, `dev.local/data/blobber/files/files/exa/mpl/eId/objects/tmp/Mon/Wen/MyFile`))
+	f, err := os.Create(fPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,11 +121,12 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 	}
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
-	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
+	clientSignature, _ := signScheme.Sign(encryption.Hash(allocTx))
 	pubKeyBytes, _ := hex.DecodeString(pubKey)
 	clientId := encryption.Hash(pubKeyBytes)
 	now := common.Timestamp(time.Now().Unix())
-	allocationId := `exampleId`
+
+	bClient, tdController := setupHandlerIntegrationTests(t)
 
 	if err := tdController.ClearDatabase(); err != nil {
 		t.Fatal(err)
@@ -68,7 +137,7 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 
 	rm := readmarker.ReadMarker{
 		BlobberID:       encryption.Hash(blobberPubKeyBytes),
-		AllocationID:    allocationId,
+		AllocationID:    allocID,
 		ClientPublicKey: pubKey,
 		ClientID:        clientId,
 		OwnerID:         clientId,
@@ -87,7 +156,7 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := tdController.AddDownloadTestData(allocationTx, pubKey, clientId, rmSig, now); err != nil {
+	if err := tdController.AddDownloadTestData(allocID, allocTx, pathHash, contentHash, pubKey, clientId, rmSig, now); err != nil {
 		t.Fatal(err)
 	}
 
@@ -106,9 +175,9 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 				common.ClientKeyHeader:       pubKey,
 			}),
 			input: &blobbergrpc.DownloadFileRequest{
-				Allocation: allocationTx,
+				Allocation: allocTx,
 				Path:       "/some_file",
-				PathHash:   "exampleId:examplePath",
+				PathHash:   pathHash,
 				ReadMarker: string(rmString),
 				BlockNum:   "1",
 			},
