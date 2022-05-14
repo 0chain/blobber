@@ -14,6 +14,10 @@ import (
 
 // FileCommand execute command for a file operation
 type FileCommand interface {
+
+	// GetExistingFileRef get file ref if it exists
+	GetExistingFileRef() *reference.Ref
+
 	// IsValidated validate request, and try build ChangeProcesser instance
 	IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error
 
@@ -35,7 +39,7 @@ func createFileCommand(req *http.Request) FileCommand {
 	case http.MethodPut:
 		return &UpdateFileCommand{}
 	case http.MethodDelete:
-		return &FileCommandDelete{}
+		return &DeleteFileCommand{}
 
 	default:
 		return &UploadFileCommand{}
