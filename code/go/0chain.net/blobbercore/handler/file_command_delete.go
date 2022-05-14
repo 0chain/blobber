@@ -14,21 +14,25 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
-// FileCommandDelete command for deleting file
-type FileCommandDelete struct {
+// DeleteFileCommand command for deleting file
+type DeleteFileCommand struct {
 	existingFileRef  *reference.Ref
 	changeProcessor  *allocation.DeleteFileChange
 	allocationChange *allocation.AllocationChange
 }
 
+func (cmd *DeleteFileCommand) GetExistingFileRef() *reference.Ref {
+	return cmd.existingFileRef
+}
+
 // IsValidated validate request.
-func (cmd *FileCommandDelete) IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
+func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	path := req.FormValue("path")
-	if path == "" {
+	path, ok := GetField(req, "path")
+	if !ok {
 		return common.NewError("invalid_parameters", "Invalid path")
 	}
 	var err error
@@ -43,14 +47,14 @@ func (cmd *FileCommandDelete) IsValidated(ctx context.Context, req *http.Request
 }
 
 // UpdateChange add DeleteFileChange in db
-func (cmd *FileCommandDelete) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
+func (cmd *DeleteFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	connectionObj.AddChange(cmd.allocationChange, cmd.changeProcessor)
 
 	return connectionObj.Save(ctx)
 }
 
 // ProcessContent flush file to FileStorage
-func (cmd *FileCommandDelete) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
+func (cmd *DeleteFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
 	deleteSize := cmd.existingFileRef.Size
 
 	cmd.changeProcessor = &allocation.DeleteFileChange{ConnectionID: connectionObj.ID,
@@ -74,7 +78,7 @@ func (cmd *FileCommandDelete) ProcessContent(ctx context.Context, req *http.Requ
 }
 
 // ProcessThumbnail no thumbnail should be processed for delete. A deffered delete command has been added on ProcessContent
-func (cmd *FileCommandDelete) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
+func (cmd *DeleteFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
 	//DO NOTHING
 	return nil
 }

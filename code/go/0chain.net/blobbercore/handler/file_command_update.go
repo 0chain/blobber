@@ -28,6 +28,10 @@ type UpdateFileCommand struct {
 	allocationChange *allocation.AllocationChange
 }
 
+func (cmd *UpdateFileCommand) GetExistingFileRef() *reference.Ref {
+	return cmd.existingFileRef
+}
+
 // IsValidated validate request.
 func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
 	uploadMetaString := req.FormValue(UploadMeta)

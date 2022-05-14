@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"regexp"
 	"testing"
@@ -375,23 +376,21 @@ func TestHandlers_Share(t *testing.T) {
 			args: args{
 				w: httptest.NewRecorder(),
 				r: func() *http.Request {
-					url, err := router.Get(revokeShare).URL("allocation", alloc.Tx)
+					u, err := router.Get(revokeShare).URL("allocation", alloc.Tx)
 					if err != nil {
 						t.Fatal()
 					}
 
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
+					query := &url.Values{}
 					shareClientID := "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77"
 					remotePath := "/file.txt"
 
-					require.NoError(t, formWriter.WriteField("refereeClientID", shareClientID))
-					require.NoError(t, formWriter.WriteField("path", remotePath))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
-					r, err := http.NewRequest(http.MethodDelete, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
+					query.Add("refereeClientID", shareClientID)
+					query.Add("path", remotePath)
+
+					u.RawQuery = query.Encode()
+					r, err := http.NewRequest(http.MethodDelete, u.String(), nil)
+
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -402,7 +401,6 @@ func TestHandlers_Share(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 
@@ -454,34 +452,29 @@ func TestHandlers_Share(t *testing.T) {
 			args: args{
 				w: httptest.NewRecorder(),
 				r: func() *http.Request {
-					url, err := router.Get(revokeShare).URL("allocation", alloc.Tx)
+					u, err := router.Get(revokeShare).URL("allocation", alloc.Tx)
 					if err != nil {
 						t.Fatal()
 					}
 
-					body := bytes.NewBuffer(nil)
-					formWriter := multipart.NewWriter(body)
+					query := &url.Values{}
 					shareClientID := "da4b54d934890aa415bb043ce1126f2e30a96faf63a4c65c25bbddcb32824d77"
 					remotePath := "/file.txt"
 
-					require.NoError(t, formWriter.WriteField("refereeClientID", shareClientID))
-					require.NoError(t, formWriter.WriteField("path", remotePath))
-					if err := formWriter.Close(); err != nil {
-						t.Fatal(err)
-					}
-					r, err := http.NewRequest(http.MethodDelete, url.String(), body)
-					r.Header.Add("Content-Type", formWriter.FormDataContentType())
+					query.Add("refereeClientID", shareClientID)
+					query.Add("path", remotePath)
+
+					u.RawQuery = query.Encode()
+					r, err := http.NewRequest(http.MethodDelete, u.String(), nil)
 					if err != nil {
 						t.Fatal(err)
 					}
-
 					hash := encryption.Hash(alloc.Tx)
 					sign, err := sch.Sign(hash)
 					if err != nil {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("Content-Type", formWriter.FormDataContentType())
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 
