@@ -77,6 +77,8 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	if err != nil {
 		return nil, common.NewError("file_open_error", err.Error())
 	}
+	defer f.Close()
+
 	_, err = f.Seek(fileData.UploadOffset, io.SeekStart)
 	if err != nil {
 		return nil, common.NewError("file_seek_error", err.Error())
