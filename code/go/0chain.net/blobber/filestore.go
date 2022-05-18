@@ -6,14 +6,22 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 )
 
-var fsStore filestore.FileStore //nolint:unused // global which might be needed somewhere
-
 func setupFileStore() (err error) {
 	fmt.Print("> setup file store")
+	var fs filestore.FileStorer
+	if isIntegrationTest {
+		fs = &filestore.MockStore{}
+	} else {
+		fs = &filestore.FileStore{}
 
-	fsStore, err = filestore.SetupFSStore(filesDir + "/files")
+	}
 
-	fmt.Print("		[OK]\n")
+	err = fs.Initialize()
+	if err != nil {
+		return
+	}
 
-	return err
+	filestore.SetFileStore(fs)
+
+	return nil
 }

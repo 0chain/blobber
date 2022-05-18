@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -11,10 +12,13 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/constants"
-	sdkConstants "github.com/0chain/gosdk/constants"
+	sdkConst "github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"go.uber.org/zap"
+)
+
+const (
+	UpdateMeta = "updatedMeta"
 )
 
 // UpdateFileCommand command for updating file
@@ -24,13 +28,17 @@ type UpdateFileCommand struct {
 	allocationChange *allocation.AllocationChange
 }
 
+func (cmd *UpdateFileCommand) GetExistingFileRef() *reference.Ref {
+	return cmd.existingFileRef
+}
+
 // IsValidated validate request.
 func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
-	uploadMetaString := req.FormValue("uploadMeta")
+	uploadMetaString := req.FormValue(UploadMeta)
 
 	if uploadMetaString == "" {
 		// backward compatibility for old update request
-		uploadMetaString = req.FormValue("updatedMeta")
+		uploadMetaString = req.FormValue(UpdateMeta)
 	}
 
 	err := json.Unmarshal([]byte(uploadMetaString), &cmd.fileChanger)
@@ -54,6 +62,14 @@ func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner, collaborator or the payer of the allocation")
 	}
 
+	_, thumbHeader, _ := req.FormFile(UploadThumbnailFile)
+	if thumbHeader != nil {
+		if thumbHeader.Size > MaxThumbnailSize {
+			return common.NewError("max_thumbnail_size",
+				fmt.Sprintf("thumbnail size %d should not be greater than %d", thumbHeader.Size, MaxThumbnailSize))
+		}
+	}
+
 	return nil
 }
 
@@ -63,7 +79,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	result.Filename = cmd.fileChanger.Filename
 
-	origfile, _, err := req.FormFile("uploadFile")
+	origfile, _, err := req.FormFile(UploadFile)
 	if err != nil {
 		return result, common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
 	}
@@ -79,7 +95,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		UploadOffset: cmd.fileChanger.UploadOffset,
 		IsFinal:      cmd.fileChanger.IsFinal,
 	}
-	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ID)
+	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionObj.ID, fileInputData, origfile)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
@@ -90,8 +106,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	allocationSize := connectionObj.Size
 
-	// only update connection size when the chunk is uploaded by first time.
-	if !fileOutputData.ChunkUploaded {
+	if fileOutputData.ChunkUploaded {
 		allocationSize += fileOutputData.Size
 	}
 
@@ -109,7 +124,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionObj.ID
 	cmd.allocationChange.Size = allocationSize - cmd.existingFileRef.Size
-	cmd.allocationChange.Operation = sdkConstants.FileOperationUpdate
+	cmd.allocationChange.Operation = sdkConst.FileOperationUpdate
 
 	if cmd.fileChanger.IsFinal {
 		connectionObj.Size = allocationSize - cmd.existingFileRef.Size
@@ -122,13 +137,13 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 // ProcessThumbnail flush thumbnail file to FileStorage if it has.
 func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
-	thumbfile, thumbHeader, _ := req.FormFile("uploadThumbnailFile")
+	thumbfile, thumbHeader, _ := req.FormFile(UploadThumbnailFile)
 
 	if thumbHeader != nil {
 		defer thumbfile.Close()
 
 		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
-		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, thumbInputData, thumbfile, connectionObj.ID)
+		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionObj.ID, thumbInputData, thumbfile)
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 		}
@@ -145,7 +160,7 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 
 func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
-		if c.Operation != constants.FileOperationUpdate {
+		if c.Operation != sdkConst.FileOperationUpdate {
 			continue
 		}
 
@@ -160,7 +175,7 @@ func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationC
 		cmd.fileChanger.Size = dbFileChanger.Size
 		cmd.fileChanger.ThumbnailFilename = dbFileChanger.ThumbnailFilename
 		cmd.fileChanger.ThumbnailSize = dbFileChanger.ThumbnailSize
-		cmd.fileChanger.ThumbnailHash = dbFileChanger.Hash
+		cmd.fileChanger.ThumbnailHash = dbFileChanger.ThumbnailHash
 		return
 	}
 }
@@ -168,7 +183,7 @@ func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationC
 // UpdateChange add UpdateFileChanger in db
 func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	for _, c := range connectionObj.Changes {
-		if c.Operation != constants.FileOperationUpdate {
+		if c.Operation != sdkConst.FileOperationUpdate {
 			continue
 		}
 

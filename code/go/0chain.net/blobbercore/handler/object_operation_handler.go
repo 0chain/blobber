@@ -368,8 +368,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	allocationID := allocationObj.ID
 
-	connectionID := r.FormValue("connection_id")
-	if connectionID == "" {
+	connectionID, ok := GetField(r, "connection_id")
+	if !ok {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
@@ -411,11 +411,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	if (allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID) && !isCollaborator {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
-	if err = r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
-		Logger.Error("Error Parsing the request", zap.Any("error", err))
-		return nil, common.NewError("request_parse_error", err.Error())
 	}
 
 	if allocationObj.BlobberSizeUsed+connectionObj.Size > allocationObj.BlobberSize {
@@ -513,7 +508,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	result.Changes = connectionObj.Changes
 
-	connectionObj.DeleteChanges(ctx) //nolint:errcheck // never returns an error anyway
+	connectionObj.DeleteChanges(ctx)
 
 	db.Model(connectionObj).Updates(allocation.AllocationChangeCollector{Status: allocation.CommittedConnection})
 
@@ -521,9 +516,13 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	result.WriteMarker = &writeMarker
 	result.Success = true
 	result.ErrorMessage = ""
-	if errors.Is(common.ErrFileWasDeleted, err) {
-		return &result, err
+
+	//Delete connection object and its changes
+	for _, c := range connectionObj.Changes {
+		db.Delete(c)
 	}
+
+	db.Delete(connectionObj)
 	return &result, nil
 }
 
@@ -977,15 +976,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, err
 	}
 
-	var existingFileRef *reference.Ref
-	switch rCmd := cmd.(type) {
-	case *UpdateFileCommand:
-		existingFileRef = rCmd.existingFileRef
-	case *FileCommandDelete:
-		existingFileRef = rCmd.existingFileRef
-	default:
-		existingFileRef = nil
-	}
+	existingFileRef := cmd.GetExistingFileRef()
+
 	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
 
@@ -1007,13 +999,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	if err := r.ParseMultipartForm(FormFileParseMaxMemory); err != nil {
-		Logger.Error("Error Parsing the request", zap.Any("error", err))
-		return nil, common.NewError("request_parse_error", err.Error())
-	}
-
-	connectionID := r.FormValue("connection_id")
-	if connectionID == "" {
+	connectionID, ok := GetField(r, "connection_id")
+	if !ok {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 

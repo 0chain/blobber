@@ -12,7 +12,7 @@ import (
 type FileStats struct {
 	ID                       int64         `gorm:"column:id;primaryKey" json:"-"`
 	RefID                    int64         `gorm:"column:ref_id;unique" json:"-"`
-	Ref                      reference.Ref `gorm:"foreignKey:RefID"`
+	Ref                      reference.Ref `gorm:"foreignKey:RefID;constraint:OnDelete:CASCADE"`
 	NumUpdates               int64         `gorm:"column:num_of_updates" json:"num_of_updates"`
 	NumBlockDownloads        int64         `gorm:"column:num_of_block_downloads" json:"num_of_block_downloads"`
 	SuccessChallenges        int64         `gorm:"column:num_of_challenges" json:"num_of_challenges"`
@@ -74,4 +74,9 @@ func GetFileStats(ctx context.Context, refID int64) (*FileStats, error) {
 		return nil, err
 	}
 	return stats, err
+}
+
+func DeleteFileStats(ctx context.Context, refID int64) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	return db.Unscoped().Delete(&FileStats{}, "ref_id=?", refID).Error
 }

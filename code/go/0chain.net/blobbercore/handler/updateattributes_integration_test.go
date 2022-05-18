@@ -15,6 +15,10 @@ import (
 )
 
 func TestBlobberGRPCService_UpdateObjectAttributes(t *testing.T) {
+	if !isIntegrationTest() {
+		t.Skip()
+	}
+
 	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 

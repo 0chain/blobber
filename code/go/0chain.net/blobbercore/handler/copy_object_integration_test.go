@@ -13,6 +13,10 @@ import (
 )
 
 func TestBlobberGRPCService_CopyObject(t *testing.T) {
+	if isIntegrationTest() {
+		t.Skip()
+	}
+
 	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 

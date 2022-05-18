@@ -8,6 +8,10 @@ import (
 )
 
 func TestGetAllocation_IntegrationTest(t *testing.T) {
+	if !isIntegrationTest() {
+		t.Skip()
+	}
+
 	bClient, tdController := setupHandlerIntegrationTests(t)
 
 	err := tdController.ClearDatabase()

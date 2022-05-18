@@ -201,7 +201,17 @@ func (b *blobberGRPCService) Collaborator(ctx context.Context, req *blobbergrpc.
 		"collab_id": {req.CollabId},
 	}
 
-	resp, err := CollaboratorHandler(ctx, r)
+	var resp interface{}
+
+	switch req.Method {
+	case http.MethodPost:
+		resp, err = AddCollaboratorHandler(ctx, r)
+	case http.MethodGet:
+		resp, err = GetCollaboratorHandler(ctx, r)
+	case http.MethodDelete:
+		resp, err = RemoveCollaboratorHandler(ctx, r)
+	}
+
 	if err != nil {
 		return nil, err
 	}

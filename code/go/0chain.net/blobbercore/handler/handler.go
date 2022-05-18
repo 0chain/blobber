@@ -1,6 +1,3 @@
-//go:build !integration_tests
-// +build !integration_tests
-
 package handler
 
 import (
@@ -50,8 +47,13 @@ func SetupHandlers(r *mux.Router) {
 
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToStatusCode(WithStatusConnection(CommitHandler)))
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.ToJSONResponse(WithConnection(CommitMetaTxnHandler)))
-	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(CollaboratorHandler)))
+
 	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.ToJSONResponse(WithConnection(CalculateHashHandler)))
+
+	// collaborator
+	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(AddCollaboratorHandler))).Methods(http.MethodOptions, http.MethodPost)
+	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(GetCollaboratorHandler))).Methods(http.MethodOptions, http.MethodGet)
+	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(RemoveCollaboratorHandler))).Methods(http.MethodOptions, http.MethodDelete)
 
 	//object info related apis
 	r.HandleFunc("/allocation", common.ToJSONResponse(WithConnection(AllocationHandler)))
@@ -293,7 +295,7 @@ func UpdateAttributesHandler(ctx context.Context, r *http.Request) (interface{},
 	return response, nil
 }
 
-func writeResponse (w http.ResponseWriter, resp []byte) {
+func writeResponse(w http.ResponseWriter, resp []byte) {
 	_, err := w.Write(resp)
 
 	if err != nil {
@@ -395,8 +397,8 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	path := r.FormValue("path")
-	refereeClientID := r.FormValue("refereeClientID")
+	path, _ := GetField(r, "path")
+	refereeClientID, _ := GetField(r, "refereeClientID")
 	filePathHash := fileref.GetReferenceLookup(allocationID, path)
 	//_, err = reference.GetReferenceByLookupHashForAddCollaborator(ctx, allocationID, filePathHash)
 	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})

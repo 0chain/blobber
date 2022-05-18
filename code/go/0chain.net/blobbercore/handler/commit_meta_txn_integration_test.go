@@ -17,6 +17,10 @@ import (
 )
 
 func TestBlobberGRPCService_CommitMetaTxn(t *testing.T) {
+	if !isIntegrationTest() {
+		t.Skip()
+	}
+
 	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 
