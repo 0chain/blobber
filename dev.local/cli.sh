@@ -87,10 +87,11 @@ change_zcn() {
 
 install_debuggger() {
     [ -d ../.vscode ] || mkdir -p ../.vscode
-    sed "s/Hostname/$hostname/g" launch.json > ../.vscode/launch.json
+    sed "s/Hostname/$hostname/g" launch.json > ./launch.1.json
     base=$(echo "$repo" | sed 's/\//\\\//g')
-    sed "s/repo/$base/g" launch.json > ../.vscode/launch.json
-    echo "debugbbers are installed"
+    sed "s/repo/$base/g" ./launch.1.json > ../.vscode/launch.json
+    rm -rf ./launch.1.json
+    echo "debugbbers are installed" 
 }
 
 cleanAll() {
