@@ -48,7 +48,7 @@ write_lock_timeout: 1m
 update_allocations_interval: 1m
 
 # maximum limit on the number of combined directories and files on each allocation
-max_dirs_files: 1000
+max_dirs_files: 50000
 
 # delegate wallet (must be set)
 delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'

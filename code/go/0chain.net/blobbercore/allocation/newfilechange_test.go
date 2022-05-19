@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"context"
+	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/gosdk/constants"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,6 @@ import (
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
 	mocket "github.com/selvatico/go-mocket"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
 )
@@ -47,7 +47,6 @@ func TestBlobberCore_NewFile(t *testing.T) {
 		expectedMessage     string
 		expectingError      bool
 		setupDbMock         func()
-		expectedFiles       map[string]map[string]bool
 	}{
 		{
 			name:                "New file success",
@@ -58,11 +57,6 @@ func TestBlobberCore_NewFile(t *testing.T) {
 			expectingError:      false,
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
-			},
-			expectedFiles: map[string]map[string]bool{
-				alloc.ID: {
-					"new_file_hash": true,
-				},
 			},
 		},
 		{
@@ -81,9 +75,6 @@ func TestBlobberCore_NewFile(t *testing.T) {
 					{"count": 5},
 				})
 			},
-			expectedFiles: map[string]map[string]bool{
-				alloc.ID: {},
-			},
 		},
 		{
 			name:                "New directory fails when max dirs & files reached",
@@ -101,9 +92,6 @@ func TestBlobberCore_NewFile(t *testing.T) {
 					{"count": 5},
 				})
 			},
-			expectedFiles: map[string]map[string]bool{
-				alloc.ID: {},
-			},
 		},
 	}
 
@@ -111,12 +99,12 @@ func TestBlobberCore_NewFile(t *testing.T) {
 		tc := tt
 
 		t.Run(t.Name(), func(t *testing.T) {
-			filesInit := map[string]map[string]bool{
-				tc.allocationID: {},
+			fs := &MockFileStore{}
+			if err := fs.Initialize(); err != nil {
+				t.Fatal(err)
 			}
-
+			filestore.SetFileStore(fs)
 			datastore.MocketTheStore(t, true)
-			filestore.UseMock(filesInit)
 			tc.setupDbMock()
 
 			config.Configuration.MaxAllocationDirFiles = tc.maxDirFilesPerAlloc
@@ -147,10 +135,9 @@ func TestBlobberCore_NewFile(t *testing.T) {
 
 			assert.Equal(t, tc.expectingError, err != nil)
 			if err != nil {
+				fmt.Println(err.Error())
 				assert.Contains(t, err.Error(), tc.expectedMessage)
 			}
-
-			require.EqualValues(t, tc.expectedFiles, filesInit)
 		})
 	}
 }
