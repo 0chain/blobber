@@ -63,7 +63,7 @@ jobs:
     
   integration-tests:
     name: Integration Tests
-    runs-on: [ubuntu-20.04]
+    runs-on: [self-hosted,docker-builds]
     timeout-minutes: 40
     steps:
       - name: Setup go 1.18
