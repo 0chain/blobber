@@ -97,7 +97,7 @@ jobs:
           sudo lsof -i tcp:31501 
           #n=$(sudo lsof -i tcp:31501 | grep -v PID | wc -l)
           #[ $n -gt 0 ] && sudo kill -9 $(lsof -i tcp:31501 | awk '{print $2}' | grep -v PID)
-          sudo pkill -9 blobber
+          sudo pkill -9 blobber || echo "no blobber instance"
 
           make local-build
           sudo make local-run &
