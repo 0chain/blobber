@@ -89,7 +89,9 @@ jobs:
           docker ps
       - name: Run Tests
         run: |
-          apt-get install lsof fuser -y
+          apt-get install lsof -y
+          sudo lsof -i tcp:31501 
+          lsof -i tcp:31501 | awk '/31501/{print $2}' | xargs kill
           sudo lsof -i tcp:31501 
           sudo fuser -k 31501/tcp
           # lsof -i tcp:31501 | awk '/31501/{print $2}' | xargs kill
