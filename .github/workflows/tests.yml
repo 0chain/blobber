@@ -94,11 +94,12 @@ jobs:
           sudo apt-get install lsof procps -y
 
 
-          sudo lsof -i tcp:31501 
-          #n=$(sudo lsof -i tcp:31501 | grep -v PID | wc -l)
-          #[ $n -gt 0 ] && sudo kill -9 $(lsof -i tcp:31501 | awk '{print $2}' | grep -v PID)
-          sudo pkill -9 blobber || echo "no blobber instance"
+          sudo lsof -i tcp:35051 
+          #n=$(sudo lsof -i tcp:35051 | grep -v PID | wc -l)
+          #[ $n -gt 0 ] && sudo kill -9 $(lsof -i tcp:35051 | awk '{print $2}' | grep -v PID)
+          sudo pkill -9 blobber 2> /dev/null && echo "killed blobber" || echo "no blobber is running"
 
+          echo ""
           make local-build
           sudo make local-run &
           sleep 15
