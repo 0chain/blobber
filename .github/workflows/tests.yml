@@ -91,9 +91,12 @@ jobs:
         run: |
           echo "kill previous blobber instance if it exists"
           sudo apt-get install psmisc -y
-          fuser 31501/tcp
+          sudo fuser 31501/tcp
           sudo fuser -k 31501/tcp
+          sudo fuser 5051/tcp
+          sudo fuser -k 5051/tcp
 
+          echo "run blobber instance"
           make local-build
           sudo make local-run &
           sleep 15
