@@ -106,7 +106,6 @@ db:
   # keep_tables:
   #   - allocations
   #   - terms
-
  
 
 geolocation:
