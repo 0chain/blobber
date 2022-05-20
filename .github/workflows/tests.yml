@@ -89,6 +89,7 @@ jobs:
           docker ps
       - name: Run Tests
         run: |
+          sudo kill -9 $(lsof -t -i:31501)
           make local-build
           sudo make local-run &
           sleep 15
