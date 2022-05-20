@@ -89,13 +89,10 @@ jobs:
           docker ps
       - name: Run Tests
         run: |
-          apt-get install lsof -y
-          sudo lsof -i tcp:31501 
-          lsof -i tcp:31501 | awk '/31501/{print $2}' | xargs kill
-          sudo lsof -i tcp:31501 
+          echo "kill previous blobber instance if it exists"
+          fuser 31501/tcp
           sudo fuser -k 31501/tcp
-          # lsof -i tcp:31501 | awk '/31501/{print $2}' | xargs kill
-          # pid=$(lsof -t -i:31501) && sudo kill -9 $pid
+
           make local-build
           sudo make local-run &
           sleep 15
