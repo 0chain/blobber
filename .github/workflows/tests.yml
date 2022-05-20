@@ -93,7 +93,7 @@ jobs:
           sudo apt-get update -y
           sudo apt autoremove
           sudo apt-get install lsof -y
-          sudo lsof -i:31501 && sudo lsof -i i:31501 | awk '/31501/{print $2}' | sudo xargs kill
+          sudo lsof -i tcp:31501 && sudo lsof -i tcp:31501 | | awk '{print $2}' | grep -v PID | sudo xargs kill
 
           make local-build
           sudo make local-run &
