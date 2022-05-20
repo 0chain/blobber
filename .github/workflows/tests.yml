@@ -91,7 +91,7 @@ jobs:
         run: |
           echo ===============[  kill blobber instance  ]====================
           sudo apt-get update -y
-          sudo apt autoremove
+          sudo apt autoremove -y
           sudo apt-get install lsof -y
           sudo lsof -i tcp:31501 && sudo lsof -i tcp:31501 | | awk '{print $2}' | grep -v PID | sudo xargs kill
 
