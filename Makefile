@@ -51,8 +51,8 @@ local-build: local-init
 local-run: 
 	@echo "=========================[ run blobber ]========================="
 	cd ./dev.local/ && integration=1 ./data/blobber/blobber \
-	--port 5051 \
-	--grpc_port 31501 \
+	--port 25051 \
+	--grpc_port 35051 \
 	--hostname 127.0.0.1 \
 	--deployment_mode 0 \
 	--keys_file ../docker.local/keys_config/b0bnode1_keys.txt  \
