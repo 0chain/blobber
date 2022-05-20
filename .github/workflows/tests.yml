@@ -92,9 +92,8 @@ jobs:
           echo ===============[  kill blobber instance  ]====================
           sudo apt-get update -y
           sudo apt-get install lsof procps -y
-
-
-          sudo lsof -i tcp:35051 
+        
+          sudo lsof -i tcp:35051 2> /dev/null
           #n=$(sudo lsof -i tcp:35051 | grep -v PID | wc -l)
           #[ $n -gt 0 ] && sudo kill -9 $(lsof -i tcp:35051 | awk '{print $2}' | grep -v PID)
           sudo pkill -9 blobber 2> /dev/null && echo "killed blobber" || echo "no blobber is running"
