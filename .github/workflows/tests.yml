@@ -95,9 +95,9 @@ jobs:
         
           ps aux | grep blobber
           #sudo lsof -i tcp:35051 2> /dev/null
-          #n=$(sudo lsof -i tcp:35051 | grep -v PID | wc -l)
-          #[ $n -gt 0 ] && sudo kill -9 $(lsof -i tcp:35051 | awk '{print $2}' | grep -v PID)
-          sudo pkill -9 blobber 2> /dev/null && echo "killed blobber" || echo "no blobber is running"
+          n=$(sudo lsof -i tcp:35051 | grep -v PID | wc -l)
+          [ $n -gt 0 ] && sudo kill -9 $(lsof -i tcp:35051 | awk '{print $2}' | grep -v PID) && echo "killed blobber" || echo "no blobber is running"
+          #sudo pkill -9 blobber 2> /dev/null && echo "killed blobber" || echo "no blobber is running"
 
           echo ""
           make local-build
@@ -107,7 +107,7 @@ jobs:
           echo ===============[ checking blobber status ]====================
           if [ $running -eq 0 ]; then
             echo "checking blobber status"
-            curl 127.0.0.1:5051 && $running=1 || sleep 2
+            curl 127.0.0.1:25051 && $running=1 || sleep 2
           fi
 
           echo ===============[        run tests        ]====================
