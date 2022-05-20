@@ -129,7 +129,7 @@ func grantPrivileges(db *gorm.DB) error {
 }
 
 func migrateSchema(db *gorm.DB) error {
-	// !FIXME : tables can't be dropped as default on blobber startup. Because blobber will lost all data if it restarts. It is a critical bug on production.
+	// !FIXME : tables can't be dropped as default on blobber startup. Because blobber will lose all data if it restarts. It might be a critical bug on production.
 	tablesToKeep := make(map[string]struct{})
 
 	for _, tb := range config.Configuration.DBTablesToKeep {
