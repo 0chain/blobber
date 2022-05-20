@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -24,6 +25,16 @@ func (rf *CopyFileChange) DeleteTempFile() error {
 }
 
 func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+	totalRefs, err := reference.CountRefs(ctx, rf.AllocationID)
+	if err != nil {
+		return nil, err
+	}
+
+	if int64(config.Configuration.MaxAllocationDirFiles) <= totalRefs {
+		return nil, common.NewErrorf("max_alloc_dir_files_reached",
+			"maximum files and directories already reached: %v", err)
+	}
+
 	affectedRef, err := reference.GetObjectTree(ctx, rf.AllocationID, rf.SrcPath)
 	if err != nil {
 		return nil, err
