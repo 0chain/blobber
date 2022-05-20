@@ -94,7 +94,7 @@ jobs:
           sudo apt-get install lsof -y
 
           sudo n=$(lsof -i tcp:31501 | grep -v PID | wc -l)
-          [ $n -gt 0 ] && sudo lsof -i tcp:31501 | awk '{print $2}' | grep -v PID | sudo xargs kill
+          [ $n -gt 0 ] && sudo kill -9 $(sudo lsof -i tcp:31501 | awk '{print $2}' | grep -v PID)
 
           make local-build
           sudo make local-run &
@@ -111,3 +111,5 @@ jobs:
           go=$(which go)
           root=$(pwd)
           sudo CGO_ENABLED=1 root=$root integration=1 $go test -tags bn256 -tags=integration  ./...
+
+          sudo kill -9 $(sudo lsof -i tcp:31501 | awk '{print $2}' | grep -v PID)
