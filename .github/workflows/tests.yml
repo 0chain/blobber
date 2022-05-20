@@ -89,6 +89,7 @@ jobs:
           docker ps
       - name: Run Tests
         run: |
+          apt-get install lsof -y
           pid=$(lsof -t -i:31501) && sudo kill -9 $pid
           make local-build
           sudo make local-run &
