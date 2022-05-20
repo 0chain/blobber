@@ -91,15 +91,19 @@ jobs:
         run: |
           echo ===============[  kill blobber instance  ]====================
           sudo apt-get update -y
+          sudo apt autoremove
           sudo apt-get install psmisc lsof -y
           #sudo fuser 31501/tcp
           #sudo fuser -k 31501/tcp
           #sudo fuser 5051/tcp
           #sudo fuser -k 5051/tcp
-          sudo lsof -i:5051
+
+          sudo lsof -i:31501
+          sudo lsof -i tcp:31501 | awk '/31501/{print $2}' | sudo xargs kill
+          echo ""
           sudo lsof -i:31501
 
-          echo ===============[   run blobber instance  ]====================
+
           make local-build
           sudo make local-run &
           sleep 15
