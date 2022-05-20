@@ -104,10 +104,11 @@ jobs:
           sleep 15
           running=0
           echo ===============[ checking blobber status ]====================
-          if [ $running -eq 0 ]; then
-            echo "checking blobber status"
-            curl 127.0.0.1:25051 && $running=1 || sleep 2
-          fi
+          for i in {1..10} 
+          do
+            echo "[$i/10] checking blobber status"
+            curl 127.0.0.1:25051 && break || sleep 2
+          done
 
           echo ===============[        run tests        ]====================
           #sudo make integration-tests 
