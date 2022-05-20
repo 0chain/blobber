@@ -94,9 +94,9 @@ jobs:
           sudo apt-get install lsof procps -y
 
 
-          lsof -i tcp:31501 
-          #sudo n=$(lsof -i tcp:31501 | grep -v PID | wc -l)
-          #[ $n -gt 0 ] && sudo kill -9 $(sudo lsof -i tcp:31501 | awk '{print $2}' | grep -v PID)
+          sudo lsof -i tcp:31501 
+          #n=$(sudo lsof -i tcp:31501 | grep -v PID | wc -l)
+          #[ $n -gt 0 ] && sudo kill -9 $(lsof -i tcp:31501 | awk '{print $2}' | grep -v PID)
           sudo pkill -9 blobber
 
           make local-build
