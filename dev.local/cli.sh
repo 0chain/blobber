@@ -2,10 +2,6 @@
 
 set -e
 
-cd ..
-repo=$(pwd)
-cd ./dev.local
-
 root=$(pwd)
 hostname=`ifconfig | grep "inet " | grep -Fv 127.0.0.1 | grep broadcast | awk '{print $2; exit}'`
 
@@ -88,8 +84,8 @@ change_zcn() {
 install_debuggger() {
     [ -d ../.vscode ] || mkdir -p ../.vscode
     sed "s/Hostname/$hostname/g" launch.json > ./launch.1.json
-    base=$(echo "$repo" | sed 's/\//\\\//g')
-    sed "s/repo/$base/g" ./launch.1.json > ../.vscode/launch.json
+    base=$(echo "$root" | sed 's/\//\\\//g')
+    sed "s/root/$base/g" ./launch.1.json > ../.vscode/launch.json
     rm -rf ./launch.1.json
     echo "debugbbers are installed" 
 }
@@ -207,7 +203,7 @@ start_blobber () {
     keys_file="../docker.local/keys_config/b0bnode${i}_keys.txt"
     minio_file="../docker.local/keys_config/minio_config.txt"
     config_dir="./data/blobber$i/config"
-    files_dir="${repo}/data/blobber$i/files"
+    files_dir="${root}/data/blobber$i/files"
     log_dir="./data/blobber$i/log"
     db_dir="./data/blobber$i/data"
 

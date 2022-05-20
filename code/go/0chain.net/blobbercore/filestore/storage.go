@@ -47,6 +47,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	thrown "github.com/0chain/errors"
+	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/zboxcore/sdk"
 	"go.uber.org/zap"
@@ -385,32 +387,51 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
 		return nil, nil, common.NewError("stat_error", err.Error())
 	}
 
-	totalChunks := int(math.Ceil(float64(fi.Size()) / float64(fileData.ChunkSize)))
+	numChunks := int(math.Ceil(float64(fi.Size()) / float64(fileData.ChunkSize)))
 
 	fixedMT := util.NewFixedMerkleTree(int(fileData.ChunkSize))
 
 	bytesBuf := bytes.NewBuffer(make([]byte, 0))
-	for i := 0; i < totalChunks; i++ {
-		n, err := io.CopyN(bytesBuf, file, fileData.ChunkSize)
-		if err != nil {
-			if n == 0 && errors.Is(err, io.EOF) {
-				break
+	for chunkIndex := 0; chunkIndex < numChunks; chunkIndex++ {
+		written, err := io.CopyN(bytesBuf, file, fileData.ChunkSize)
+
+		if written > 0 {
+			dataBytes := bytesBuf.Bytes()
+
+			errWrite := fixedMT.Write(dataBytes, chunkIndex)
+			if errWrite != nil {
+				return nil, nil, thrown.ThrowLog(errWrite.Error(), constants.ErrUnableHash)
 			}
-			return nil, nil, err
+
+			merkleChunkSize := int(fileData.ChunkSize) / 1024
+
+			if merkleChunkSize == 0 {
+				merkleChunkSize = 1
+			}
+
+			offset := 0
+
+			for i := 0; i < len(dataBytes); i += merkleChunkSize {
+				end := i + merkleChunkSize
+				if end > len(dataBytes) {
+					end = len(dataBytes)
+				}
+
+				if offset == blockoffset {
+					returnBytes = append(returnBytes, dataBytes[i:end]...)
+				}
+
+				offset++
+				if offset >= 1024 {
+					offset = 1
+				}
+			}
+			bytesBuf.Reset()
 		}
 
-		dataBytes := bytesBuf.Bytes()
-		err = fixedMT.Write(dataBytes, i)
-		if err != nil {
-			return nil, nil, common.NewError("buffer_write_error", err.Error())
+		if err != nil && err == io.EOF {
+			break
 		}
-
-		startInd := blockoffset * MerkleChunkSize
-		endInd := startInd + MerkleChunkSize
-		returnBytes = append(returnBytes, dataBytes[startInd:endInd]...)
-
-		bytesBuf.Reset()
-
 	}
 
 	return returnBytes, fixedMT.GetMerkleTree(), nil

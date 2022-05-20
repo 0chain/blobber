@@ -129,23 +129,24 @@ func grantPrivileges(db *gorm.DB) error {
 }
 
 func migrateSchema(db *gorm.DB) error {
-	tablesToKeep := make(map[string]struct{})
+	// !FIXME : tables can't be dropped as default on blobber startup. Because blobber will lost all data if it restarts. It is a critical bug on production.
+	// tablesToKeep := make(map[string]struct{})
 
-	for _, tb := range config.Configuration.DBTablesToKeep {
-		tablesToKeep[tb] = struct{}{}
-	}
+	// for _, tb := range config.Configuration.DBTablesToKeep {
+	// 	tablesToKeep[tb] = struct{}{}
+	// }
 
-	for _, tblMdl := range tableModels {
-		tableName := tblMdl.TableName()
-		if _, ok := tablesToKeep[tableName]; ok {
-			continue
-		}
+	// for _, tblMdl := range tableModels {
+	// 	tableName := tblMdl.TableName()
+	// 	if _, ok := tablesToKeep[tableName]; ok {
+	// 		continue
+	// 	}
 
-		err := db.Migrator().DropTable(tableName)
-		if err != nil {
-			return err
-		}
-	}
+	// 	err := db.Migrator().DropTable(tableName)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	var tables []interface{} // Put in new slice to resolve type mismatch
 	for _, tbl := range tableModels {
