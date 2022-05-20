@@ -89,26 +89,26 @@ jobs:
           docker ps
       - name: Run Tests
         run: |
-          echo "kill previous blobber instance if it exists"
+          echo ===============[  kill blobber instance  ]====================
           sudo apt-get update -y
-          sudo apt-get install psmisc -y
-          sudo fuser 31501/tcp
-          sudo fuser -k 31501/tcp
-          sudo fuser 5051/tcp
-          sudo fuser -k 5051/tcp
+          sudo apt-get install psmisc lsof -y
+          #sudo fuser 31501/tcp
+          #sudo fuser -k 31501/tcp
+          #sudo fuser 5051/tcp
+          #sudo fuser -k 5051/tcp
 
-          echo "run blobber instance"
+          echo ===============[   run blobber instance  ]====================
           make local-build
           sudo make local-run &
           sleep 15
           running=0
-          echo "checking blobber server status"
+          echo ===============[ checking blobber status ]====================
           if [ $running -eq 0 ]; then
-            echo "checking blobber server status"
+            echo "checking blobber status"
             curl 127.0.0.1:5051 && $running=1 || sleep 2
           fi
 
-          echo =========================[ run tests ]=========================
+          echo ===============[        run tests        ]====================
           #sudo make integration-tests 
           go=$(which go)
           root=$(pwd)
