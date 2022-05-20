@@ -90,6 +90,7 @@ jobs:
       - name: Run Tests
         run: |
           echo "kill previous blobber instance if it exists"
+          sudo apt-get upgrade -y
           sudo apt-get install psmisc -y
           sudo fuser 31501/tcp
           sudo fuser -k 31501/tcp
