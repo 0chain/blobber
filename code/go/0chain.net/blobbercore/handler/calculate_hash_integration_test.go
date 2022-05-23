@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
@@ -11,7 +12,15 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+func isIntegrationTest() bool {
+	return os.Getenv("integration") == "1"
+}
+
 func TestBlobberGRPCService_CalculateHash(t *testing.T) {
+	if !isIntegrationTest() {
+		t.Skip()
+	}
+
 	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)

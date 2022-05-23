@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"path/filepath"
 	"strings"
 
@@ -20,6 +21,16 @@ type UploadFileChanger struct {
 
 // ApplyChange update references, and create a new FileRef
 func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+	totalRefs, err := reference.CountRefs(ctx, nf.AllocationID)
+	if err != nil {
+		return nil, err
+	}
+
+	if int64(config.Configuration.MaxAllocationDirFiles) <= totalRefs {
+		return nil, common.NewErrorf("max_alloc_dir_files_reached",
+			"maximum files and directories already reached: %v", err)
+	}
+
 	path, _ := filepath.Split(nf.Path)
 	path = filepath.Clean(path)
 	tSubDirs := reference.GetSubDirsFromPath(path)

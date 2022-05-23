@@ -107,7 +107,14 @@ func BenchmarkUploadFileWithNoDisk(b *testing.B) {
 	//GB := 1024 * MB
 
 	datastore.UseMocket(false)
-	filestore.UseMock(nil)
+	// filestore.UseMock(nil)
+	fs := &filestore.MockStore{}
+	err := fs.Initialize()
+	if err != nil {
+		b.Fatal("Failed to initialize mock store")
+	}
+	filestore.SetFileStore(fs)
+
 	blobber := mock.NewBlobberClient()
 
 	allocationID := "benchmark_uploadfile"

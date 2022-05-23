@@ -28,7 +28,7 @@ import (
 	"github.com/0chain/gosdk/core/zcncrypto"
 )
 
-const BlobberTestAddr = "127.0.0.1:31501"
+const BlobberTestAddr = "127.0.0.1:35051"
 const RetryAttempts = 8
 const RetryTimeout = 3
 
@@ -48,8 +48,9 @@ func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClien
 	// 	args[arg] = true
 	// }
 
-	if os.Getenv("integration") != "1" {
+	if !isIntegrationTest() {
 		//	if !args["integration"] {
+		t.Logf("Skipping integration test: %s", t.Name())
 		t.Skip()
 	}
 
@@ -58,10 +59,11 @@ func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClien
 	for i := 0; i < RetryAttempts; i++ {
 		conn, err = grpc.Dial(BlobberTestAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			log.Println(err)
+			t.Log(err)
 			<-time.After(time.Second * RetryTimeout)
 			continue
 		}
+		t.Logf("Connection is set to the target %s", BlobberTestAddr)
 		break
 	}
 	if err != nil {
@@ -785,7 +787,7 @@ VALUES
 	return nil
 }
 
-func (c *TestDataController) AddDownloadTestData(allocationTx, pubkey, clientId, wmSig string, now common.Timestamp) error {
+func (c *TestDataController) AddDownloadTestData(allocID, allocTx, pathHash, contentHash, pubkey, clientId, wmSig string, now common.Timestamp) error {
 	var err error
 	var tx *sql.Tx
 	defer func() {
@@ -813,7 +815,7 @@ func (c *TestDataController) AddDownloadTestData(allocationTx, pubkey, clientId,
 
 	_, err = tx.Exec(`
 INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, blobber_size, allocation_root, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
+VALUES ('` + allocID + `' ,'` + allocTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -821,7 +823,7 @@ VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',
 
 	_, err = tx.Exec(`
 INSERT INTO allocation_connections (id, allocation_id, client_id, size, status)
-VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
+VALUES ('connection_id' ,'` + allocID + `','` + clientId + `', 1337, 1);
 `)
 	if err != nil {
 		return err
@@ -829,7 +831,7 @@ VALUES ('connection_id' ,'exampleId','` + clientId + `', 1337, 1);
 
 	_, err = tx.Exec(`
 INSERT INTO allocation_changes (id, connection_id, operation, size, input)
-VALUES (1 ,'connection_id','rename', 1200, '{"allocation_id":"exampleId","path":"/some_file","new_name":"new_name"}');
+VALUES (1 ,'connection_id','rename', 1200, '{"allocation_id":"` + allocID + `","path":"/some_file","new_name":"new_name"}');
 `)
 	if err != nil {
 		return err
@@ -838,8 +840,8 @@ VALUES (1 ,'connection_id','rename', 1200, '{"allocation_id":"exampleId","path":
 	_, err = tx.Exec(`
 INSERT INTO reference_objects (id, allocation_id, path_hash,lookup_hash,type,name,path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash, parent_path)
 VALUES 
-(1234,'exampleId','exampleId:examplePath','exampleId:examplePath','d','root','/','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash','/'),
-(123,'exampleId','exampleId:examplePath','exampleId:examplePath','f','some_file','/some_file','someHash','customMeta','tmpMonWenMyFile','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash','/');
+(1234,'` + allocID + `','` + pathHash + `','` + pathHash + `','d','root','/','someHash','customMeta','` + contentHash + `','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash','/'),
+(123,'` + allocID + `','` + pathHash + `','` + pathHash + `','f','some_file','/some_file','someHash','customMeta','` + contentHash + `','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash','/');
 `)
 	if err != nil {
 		return err

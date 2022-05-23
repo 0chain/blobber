@@ -16,7 +16,7 @@ func (t Timestamp) String() string {
 
 type AllocationStats struct {
 	AllocationID   string `json:"allocation_id"`
-	TempFolderSize int64  `json:"-"`
+	TempFolderSize uint64 `json:"-"`
 	Stats
 	Expiration Timestamp `json:"expiration_date" gorm:"column:expiration_date"`
 
@@ -24,16 +24,8 @@ type AllocationStats struct {
 	WriteMarkers *WriteMarkersStat `json:"write_markers"`
 }
 
-func (fs *AllocationStats) loadAllocationDiskUsageStats() error {
-	du, err := filestore.GetFileStore().GetlDiskSizeUsed(fs.AllocationID)
-	if err != nil {
-		du = -1
-	}
-	fs.DiskSizeUsed = du
-	tfs, err := filestore.GetFileStore().GetTempPathSize(fs.AllocationID)
-	if err != nil {
-		tfs = -1
-	}
-	fs.TempFolderSize = tfs
-	return err
+func (aStat *AllocationStats) loadAllocationDiskUsageStats() error {
+	aStat.DiskSizeUsed = filestore.GetFileStore().GetCommittedFileSizeOfAllocation(aStat.AllocationID)
+	aStat.TempFolderSize = filestore.GetFileStore().GetTempFilesSizeOfAllocation(aStat.AllocationID)
+	return nil
 }

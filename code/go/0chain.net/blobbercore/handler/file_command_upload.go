@@ -19,10 +19,21 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	MaxThumbnailSize    = MB
+	UploadMeta          = "uploadMeta"
+	UploadFile          = "uploadFile"
+	UploadThumbnailFile = "uploadThumbnailFile"
+)
+
 // UploadFileCommand command for resuming file
 type UploadFileCommand struct {
 	allocationChange *allocation.AllocationChange
 	fileChanger      *allocation.UploadFileChanger
+}
+
+func (cmd *UploadFileCommand) GetExistingFileRef() *reference.Ref {
+	return nil
 }
 
 // IsValidated validate request.
@@ -33,7 +44,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 	fileChanger := &allocation.UploadFileChanger{}
 
-	uploadMetaString := req.FormValue("uploadMeta")
+	uploadMetaString := req.FormValue(UploadMeta)
 	err := json.Unmarshal([]byte(uploadMetaString), fileChanger)
 	if err != nil {
 		return common.NewError("invalid_parameters",
@@ -64,6 +75,14 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return err
 	}
 
+	_, thumbHeader, _ := req.FormFile(UploadThumbnailFile)
+	if thumbHeader != nil {
+		if thumbHeader.Size > MaxThumbnailSize {
+			return common.NewError("max_thumbnail_size",
+				fmt.Sprintf("thumbnail size %d should not be greater than %d", thumbHeader.Size, MaxThumbnailSize))
+		}
+	}
+
 	if fileChanger.ChunkSize <= 0 {
 		fileChanger.ChunkSize = fileref.CHUNK_SIZE
 	}
@@ -77,7 +96,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
 	result := blobberhttp.UploadResult{}
 
-	origfile, _, err := req.FormFile("uploadFile")
+	origfile, _, err := req.FormFile(UploadFile)
 	if err != nil {
 		return result, common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
 	}
@@ -94,7 +113,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		UploadOffset: cmd.fileChanger.UploadOffset,
 		IsFinal:      cmd.fileChanger.IsFinal,
 	}
-	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, fileInputData, origfile, connectionObj.ID)
+	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionObj.ID, fileInputData, origfile)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
@@ -105,8 +124,8 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	allocationSize := connectionObj.Size
 
-	// only update connection size when the chunk is uploaded by first time.
-	if !fileOutputData.ChunkUploaded {
+	// only update connection size when the chunk is uploaded.
+	if fileOutputData.ChunkUploaded {
 		allocationSize += fileOutputData.Size
 	}
 
@@ -137,13 +156,13 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 // ProcessThumbnail flush thumbnail file to FileStorage if it has.
 func (cmd *UploadFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
-	thumbfile, thumbHeader, _ := req.FormFile("uploadThumbnailFile")
+	thumbfile, thumbHeader, _ := req.FormFile(UploadThumbnailFile)
 
 	if thumbHeader != nil {
 		defer thumbfile.Close()
 
 		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
-		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, thumbInputData, thumbfile, connectionObj.ID)
+		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionObj.ID, thumbInputData, thumbfile)
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 		}
@@ -175,7 +194,7 @@ func (cmd *UploadFileCommand) reloadChange(connectionObj *allocation.AllocationC
 		cmd.fileChanger.Size = dbChangeProcessor.Size
 		cmd.fileChanger.ThumbnailFilename = dbChangeProcessor.ThumbnailFilename
 		cmd.fileChanger.ThumbnailSize = dbChangeProcessor.ThumbnailSize
-		cmd.fileChanger.ThumbnailHash = dbChangeProcessor.Hash
+		cmd.fileChanger.ThumbnailHash = dbChangeProcessor.ThumbnailHash
 
 		return
 	}

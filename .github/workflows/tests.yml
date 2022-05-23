@@ -63,7 +63,7 @@ jobs:
     
   integration-tests:
     name: Integration Tests
-    runs-on: [ubuntu-20.04]
+    runs-on: [self-hosted,docker-builds]
     timeout-minutes: 40
     steps:
       - name: Setup go 1.18
@@ -89,18 +89,31 @@ jobs:
           docker ps
       - name: Run Tests
         run: |
+          echo ===============[  kill blobber instance  ]====================
+          sudo apt-get update -y
+          sudo apt-get install lsof -y
+        
+          ps aux | grep blobber
+    
+          n=$(sudo lsof -i tcp:35051 | grep -v PID | wc -l)
+          [ $n -gt 0 ] && sudo kill -9 $(lsof -i tcp:35051 | awk '{print $2}' | grep -v PID) && echo "> killed running blobber for integration-tests" || echo "> no blobber is running for integration-tests"
+
+          echo ""
           make local-build
           sudo make local-run &
           sleep 15
           running=0
-          echo "checking blobber server status"
-          if [ $running -eq 0 ]; then
-            echo "checking blobber server status"
-            curl 127.0.0.1:5051 && $running=1 || sleep 2
-          fi
+          echo ===============[ checking blobber status ]====================
+          for i in {1..10} 
+          do
+            echo "[$i/10] checking blobber status"
+            curl 127.0.0.1:25051 && break || sleep 2
+          done
 
-          echo =========================[ run tests ]=========================
+          echo ===============[        run tests        ]====================
           #sudo make integration-tests 
           go=$(which go)
           root=$(pwd)
-          sudo CGO_ENABLED=1 root=$root integration=1 $go test -tags bn256  ./...
+          sudo CGO_ENABLED=1 root=$root integration=1 $go test -tags bn256 -tags=integration  ./...
+
+          sudo pkill -9 blobber

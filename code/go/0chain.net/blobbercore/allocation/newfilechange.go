@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"path/filepath"
 	"strings"
 
@@ -121,6 +122,16 @@ func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, a
 }
 
 func (nf *NewFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+	totalRefs, err := reference.CountRefs(ctx, nf.AllocationID)
+	if err != nil {
+		return nil, err
+	}
+
+	if int64(config.Configuration.MaxAllocationDirFiles) <= totalRefs {
+		return nil, common.NewErrorf("max_alloc_dir_files_reached",
+			"maximum files and directories already reached: %v", err)
+	}
+
 	if change.Operation == constants.FileOperationCreateDir {
 		err := nf.Unmarshal(change.Input)
 		if err != nil {
@@ -130,9 +141,8 @@ func (nf *NewFileChange) ApplyChange(ctx context.Context, change *AllocationChan
 		return nf.CreateDir(ctx, nf.AllocationID, nf.Path, allocationRoot)
 	}
 
-	path, _ := filepath.Split(nf.Path)
-	path = filepath.Clean(path)
-	tSubDirs := reference.GetSubDirsFromPath(path)
+	parentPath := filepath.Dir(nf.Path)
+	tSubDirs := reference.GetSubDirsFromPath(parentPath)
 
 	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, nf.Path)
 	if err != nil {
@@ -232,13 +242,13 @@ func (nf *NewFileChange) DeleteTempFile() error {
 	fileInputData.Name = nf.Filename
 	fileInputData.Path = nf.Path
 	fileInputData.Hash = nf.Hash
-	err := filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
+	err := filestore.GetFileStore().DeleteTempFile(nf.AllocationID, nf.ConnectionID, fileInputData)
 	if nf.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{}
 		fileInputData.Name = nf.ThumbnailFilename
 		fileInputData.Path = nf.Path
 		fileInputData.Hash = nf.ThumbnailHash
-		err = filestore.GetFileStore().DeleteTempFile(nf.AllocationID, fileInputData, nf.ConnectionID)
+		err = filestore.GetFileStore().DeleteTempFile(nf.AllocationID, nf.ConnectionID, fileInputData)
 	}
 	return err
 }
@@ -248,7 +258,8 @@ func (nfch *NewFileChange) CommitToFileStore(ctx context.Context) error {
 	fileInputData.Name = nfch.Filename
 	fileInputData.Path = nfch.Path
 	fileInputData.Hash = nfch.Hash
-	_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, fileInputData, nfch.ConnectionID)
+	fileInputData.ChunkSize = nfch.ChunkSize
+	_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, nfch.ConnectionID, fileInputData)
 	if err != nil {
 		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 	}
@@ -257,7 +268,9 @@ func (nfch *NewFileChange) CommitToFileStore(ctx context.Context) error {
 		fileInputData.Name = nfch.ThumbnailFilename
 		fileInputData.Path = nfch.Path
 		fileInputData.Hash = nfch.ThumbnailHash
-		_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, fileInputData, nfch.ConnectionID)
+		fileInputData.ChunkSize = nfch.ChunkSize
+		fileInputData.IsThumbnail = true
+		_, err := filestore.GetFileStore().CommitWrite(nfch.AllocationID, nfch.ConnectionID, fileInputData)
 		if err != nil {
 			return common.NewError("file_store_error", "Error committing thumbnail to file store. "+err.Error())
 		}

@@ -124,6 +124,7 @@ type StorageAllocationBlobber struct {
 
 const (
 	ADD_BLOBBER_SC_NAME      = "add_blobber"
+	UPDATE_BLOBBER_SC_NAME   = "update_blobber_settings"
 	ADD_VALIDATOR_SC_NAME    = "add_validator"
 	CLOSE_CONNECTION_SC_NAME = "commit_connection"
 	READ_REDEEM              = "read_redeem"
@@ -142,7 +143,7 @@ func NewTransactionEntity() (*Transaction, error) {
 	txn.ChainID = chain.GetServerChain().ID
 	txn.PublicKey = node.Self.PublicKey
 	txn.wg = &sync.WaitGroup{}
-	zcntxn, err := zcncore.NewTransaction(txn, 0)
+	zcntxn, err := zcncore.NewTransaction(txn, 0, 0)
 	if err != nil {
 		return nil, err
 	}

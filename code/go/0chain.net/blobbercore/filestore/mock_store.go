@@ -1,119 +1,127 @@
 package filestore
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
-	"errors"
-	"io"
+	"fmt"
 	"mime/multipart"
+	"sync"
 
-	"github.com/0chain/gosdk/constants"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/gosdk/core/util"
 )
 
 type MockStore struct {
-	d map[string]map[string]bool
+	FileStore
 }
 
-var mockStore *MockStore
+func (fs *MockStore) isMountPoint() bool {
+	return true // only for manual testing
+}
 
-func UseMock(initData map[string]map[string]bool) {
-	if mockStore == nil {
-		mockStore = &MockStore{d: initData}
+func (fs *MockStore) Initialize() (err error) {
+	fs.mp = config.Configuration.MountPoint
+	if !fs.isMountPoint() {
+		return fmt.Errorf("%s is not mount point", fs.mp)
 	}
 
-	mockStore.d = initData
-	fileStore = mockStore
-}
-
-// WriteFile write chunk file into disk
-func (ms *MockStore) WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error) {
-	fileRef := &FileOutputData{}
-
-	fileRef.ChunkUploaded = true
-
-	h := sha256.New()
-	reader := io.TeeReader(infile, h)
-	fileSize := int64(0)
-	for {
-		written, err := io.CopyN(io.Discard, reader, fileData.ChunkSize)
-
-		fileSize += written
-
-		if err != nil {
-			break
-		}
-	}
-
-	fileRef.Size = fileSize
-	fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
-
-	fileRef.Name = fileData.Name
-	fileRef.Path = fileData.Path
-
-	return fileRef, nil
-}
-func (ms *MockStore) DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error {
-	return nil
-}
-
-func (ms *MockStore) CreateDir(dirName string) error {
-	return nil
-}
-func (ms *MockStore) DeleteDir(allocationID, dirPath, connectionID string) error {
-	return nil
-}
-
-func (ms *MockStore) GetFileBlock(allocationID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
-	return nil, constants.ErrNotImplemented
-}
-
-func (ms *MockStore) CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error) {
-	ms.addFileInDataObj(allocationID, fileData.Hash)
-	return true, nil
-}
-
-func (ms *MockStore) GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
-	return nil, nil, constants.ErrNotImplemented
-}
-func (ms *MockStore) DeleteFile(allocationID, contentHash string) error {
-	if ms.d == nil || ms.d[allocationID] == nil || !ms.d[allocationID][contentHash] {
-		return errors.New("file not available related to content")
-	}
-	delete(ms.d[allocationID], contentHash)
-	return nil
-}
-
-func (ms *MockStore) GetTotalDiskSizeUsed() (int64, error) {
-	return 0, constants.ErrNotImplemented
-}
-func (ms *MockStore) GetlDiskSizeUsed(allocationID string) (int64, error) {
-	return 0, constants.ErrNotImplemented
-}
-func (ms *MockStore) GetTempPathSize(allocationID string) (int64, error) {
-	return 0, constants.ErrNotImplemented
-}
-func (ms *MockStore) IterateObjects(allocationID string, handler FileObjectHandler) error {
-	return nil
-}
-func (ms *MockStore) UploadToCloud(fileHash, filePath string) error {
-	return nil
-}
-func (ms *MockStore) DownloadFromCloud(fileHash, filePath string) error {
-	return nil
-}
-func (ms *MockStore) SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error) {
-	return nil, constants.ErrNotImplemented
-}
-
-func (ms *MockStore) addFileInDataObj(allocationID, contentHash string) {
-	if contentHash == "" {
+	if err = validateDirLevels(); err != nil {
 		return
 	}
-	if ms.d == nil {
-		ms.d = make(map[string]map[string]bool)
+
+	fs.allocMu = &sync.Mutex{}
+	fs.rwMU = &sync.RWMutex{}
+	fs.mAllocs = make(map[string]*allocation)
+
+	if err = fs.initMap(); err != nil {
+		return
 	}
-	dataObj := ms.d[allocationID]
-	dataObj[contentHash] = true
+
+	fs.mc, fs.bucket, err = initializeMinio()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (fs *MockStore) WriteFile(allocID, connID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
+	return fs.FileStore.WriteFile(allocID, connID, fileData, infile)
+}
+
+func (fs *MockStore) CommitWrite(allocID, connID string, fileData *FileInputData) (bool, error) {
+	return fs.FileStore.CommitWrite(allocID, connID, fileData)
+}
+
+func (fs *MockStore) DeleteTempFile(allocID, connID string, fileData *FileInputData) error {
+	return fs.FileStore.DeleteTempFile(allocID, connID, fileData)
+}
+
+func (fs *MockStore) DeleteFile(allocationID string, contentHash string) error {
+	return fs.FileStore.DeleteFile(allocationID, contentHash)
+}
+
+func (fs *MockStore) GetFileBlock(allocID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
+	return fs.FileStore.GetFileBlock(allocID, fileData, blockNum, numBlocks)
+}
+
+func (fs *MockStore) GetBlocksMerkleTreeForChallenge(allocID string,
+	fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
+
+	return fs.FileStore.GetBlocksMerkleTreeForChallenge(allocID, fileData, blockoffset)
+}
+
+func (fs *MockStore) MinioUpload(contentHash string, fPath string) error {
+	return fs.FileStore.MinioUpload(contentHash, fPath)
+}
+
+func (fs *MockStore) MinioDownload(contentHash string, localPath string) error {
+	return fs.FileStore.MinioDownload(contentHash, localPath)
+}
+
+func (fs *MockStore) MinioDelete(contentHash string) error {
+	return fs.FileStore.MinioDelete(contentHash)
+}
+
+func (fs *MockStore) GetTotalTempFileSizes() (s uint64) {
+	return fs.FileStore.GetTotalTempFileSizes()
+}
+
+func (fs *MockStore) GetTempFilesSizeOfAllocation(allocID string) uint64 {
+	return fs.FileStore.GetTempFilesSizeOfAllocation(allocID)
+}
+
+func (fs *MockStore) GetTotalCommittedFileSize() uint64 {
+	return fs.FileStore.GetTotalCommittedFileSize()
+}
+
+func (fs *MockStore) GetCommittedFileSizeOfAllocation(allocID string) uint64 {
+	return fs.FileStore.GetCommittedFileSizeOfAllocation(allocID)
+}
+
+func (fs *MockStore) GetTotalFilesSize() uint64 {
+	return fs.FileStore.GetTotalFilesSize()
+}
+
+func (fs *MockStore) GetTotalFilesSizeOfAllocation(allocID string) uint64 {
+	return fs.FileStore.GetTotalFilesSizeOfAllocation(allocID)
+}
+
+func (fs *MockStore) IterateObjects(allocID string, handler FileObjectHandler) error {
+	return fs.FileStore.IterateObjects(allocID, handler)
+}
+
+func (fs *MockStore) GetCurrentDiskCapacity() uint64 {
+	return fs.FileStore.GetCurrentDiskCapacity()
+}
+
+func (fs *MockStore) CalculateCurrentDiskCapacity() error {
+	return fs.FileStore.CalculateCurrentDiskCapacity()
+}
+
+func (fs *MockStore) GetPathForFile(allocID, contentHash string) (string, error) {
+	return fs.FileStore.GetPathForFile(allocID, contentHash)
+}
+
+func (fs *MockStore) UpdateAllocationMetaData(m map[string]interface{}) error {
+	return fs.FileStore.UpdateAllocationMetaData(m)
 }

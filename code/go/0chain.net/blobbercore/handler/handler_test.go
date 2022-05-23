@@ -1,3 +1,6 @@
+//go:build !integration
+// +build !integration
+
 package handler
 
 import (
@@ -19,7 +22,6 @@ import (
 	"github.com/0chain/gosdk/zboxcore/client"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"github.com/0chain/gosdk/zboxcore/marker"
-	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,15 +38,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
-type MockFileBlockGetter struct {
-	filestore.IFileBlockGetter
-}
-
 var mockFileBlock []byte
-
-func (MockFileBlockGetter) GetFileBlock(fsStore *filestore.FileFSStore, allocationID string, fileData *filestore.FileInputData, blockNum, numBlocks int64) ([]byte, error) {
-	return mockFileBlock, nil
-}
 
 func setMockFileBlock(data []byte) {
 	mockFileBlock = data
@@ -81,52 +75,22 @@ func init() {
 	config.Configuration.SignatureScheme = "bls0chain"
 	logging.Logger = zap.NewNop()
 
-	dir, _ := os.Getwd()
-	if _, err := filestore.SetupFSStoreI(dir+"/tmp", MockFileBlockGetter{}); err != nil {
+	dir, err := os.Getwd()
+	if err != nil {
 		panic(err)
 	}
-}
+	tDir := dir + "/tmp"
 
-func setup(t *testing.T) {
-	// setup wallet
-	w, err := zcncrypto.NewSignatureScheme("bls0chain").GenerateKeys()
+	if err := os.MkdirAll(tDir, 0777); err != nil {
+		panic(err)
+	}
+
+	fs := &MockFileStore{}
+	err = fs.Initialize()
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
-	wBlob, err := json.Marshal(w)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := zcncore.SetWalletInfo(string(wBlob), true); err != nil {
-		t.Fatal(err)
-	}
-
-	// setup servers
-	sharderServ := httptest.NewServer(
-		http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-			},
-		),
-	)
-	server := httptest.NewServer(
-		http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-				n := zcncore.Network{Miners: []string{"miner 1"}, Sharders: []string{sharderServ.URL}}
-				blob, err := json.Marshal(n)
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				if _, err := w.Write(blob); err != nil {
-					t.Fatal(err)
-				}
-			},
-		),
-	)
-
-	if err := zcncore.InitZCNSDK(server.URL, "ed25519"); err != nil {
-		t.Fatal(err)
-	}
+	filestore.SetFileStore(fs)
 }
 
 func setupHandlers() (*mux.Router, map[string]string) {
@@ -154,7 +118,7 @@ func setupHandlers() (*mux.Router, map[string]string) {
 	collName := "Collaborator"
 	router.HandleFunc(collPath, common.UserRateLimit(
 		common.ToJSONResponse(
-			WithReadOnlyConnection(CollaboratorHandler),
+			WithReadOnlyConnection(GetCollaboratorHandler),
 		),
 	),
 	).Name(collName)
@@ -1089,6 +1053,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					r.Header.Set("Content-Type", formWriter.FormDataContentType())
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
 					return r
 				}(),
 			},
@@ -1141,6 +1106,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	}
 	tests := append(positiveTests, negativeTests...)
 	tests = append(tests, uploadNegativeTests...)
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)

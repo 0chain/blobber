@@ -22,7 +22,8 @@ type FileInputData struct {
 	//Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
 	UploadOffset int64
 	//IsFinal  the request is final chunk
-	IsFinal bool
+	IsFinal     bool
+	IsThumbnail bool
 }
 
 type FileOutputData struct {
@@ -38,30 +39,47 @@ type FileOutputData struct {
 
 type FileObjectHandler func(contentHash string, contentSize int64)
 
-type FileStore interface {
+type FileStorer interface {
 	// WriteFile write chunk file into disk
-	WriteFile(allocationID string, fileData *FileInputData, infile multipart.File, connectionID string) (*FileOutputData, error)
-	DeleteTempFile(allocationID string, fileData *FileInputData, connectionID string) error
+	Initialize() error
+	WriteFile(allocID, connID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error)
+	CommitWrite(allocID, connID string, fileData *FileInputData) (bool, error)
+	DeleteTempFile(allocID, connID string, fileData *FileInputData) error
+	DeleteFile(allocID string, contentHash string) error
+	// GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.
+	GetFileBlock(allocID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
 
-	DeleteDir(allocationID, dirPath, connectionID string) error
+	GetBlocksMerkleTreeForChallenge(allocID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error)
 
-	GetFileBlock(allocationID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
+	// fPath --> local path of file that is being uploaded
+	MinioUpload(contentHash, fPath string) error
+	MinioDelete(contentHash string) error
+	// fPath --> local path to download file to
+	MinioDownload(contentHash, fPath string) error
+	GetTotalTempFileSizes() (s uint64)
+	GetTempFilesSizeOfAllocation(allocID string) uint64
+	GetTotalCommittedFileSize() uint64
+	GetCommittedFileSizeOfAllocation(allocID string) uint64
+	GetTotalFilesSize() uint64
+	GetTotalFilesSizeOfAllocation(allocID string) uint64
 
-	CommitWrite(allocationID string, fileData *FileInputData, connectionID string) (bool, error)
-
-	GetFileBlockForChallenge(allocationID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error)
-	DeleteFile(allocationID string, contentHash string) error
-	GetTotalDiskSizeUsed() (int64, error)
-	GetlDiskSizeUsed(allocationID string) (int64, error)
-	GetTempPathSize(allocationID string) (int64, error)
 	IterateObjects(allocationID string, handler FileObjectHandler) error
-	UploadToCloud(fileHash, filePath string) error
-	DownloadFromCloud(fileHash, filePath string) error
-	SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)
+	// SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)
+	GetCurrentDiskCapacity() uint64
+	CalculateCurrentDiskCapacity() error
+	// GetPathForFile given allocation id and content hash of a file, its path is calculated.
+	// Will return error if allocation id or content hash are not of length 64
+	GetPathForFile(allocID, contentHash string) (string, error)
+	// UpdateAllocationMetaData only updates if allocation size has changed or new allocation is allocated. Must use allocationID.
+	// Use of allocation Tx might leak memory. allocation size must be of int64 type otherwise it won't be updated
+	UpdateAllocationMetaData(m map[string]interface{}) error
 }
 
-var fileStore FileStore
+var fileStore FileStorer
 
-func GetFileStore() FileStore {
+func SetFileStore(fs FileStorer) {
+	fileStore = fs
+}
+func GetFileStore() FileStorer {
 	return fileStore
 }

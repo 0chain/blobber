@@ -268,23 +268,25 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 	return result, nil
 }
 
-func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
+func (fsh *StorageHandler) getAllocationObject(ctx context.Context, r *http.Request) (*allocation.Allocation, string, error) {
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, "", common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
 	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
 	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+		return nil, "", common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	allocationID := allocationObj.ID
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	_ = ctx.Value(constants.ContextKeyClientKey).(string)
 
+	return allocationObj, clientID, nil
+}
+
+func (fsh *StorageHandler) validateCollaboratorRequest(ctx context.Context, allocationID string, r *http.Request) (*reference.Ref, error) {
 	pathHash, err := pathHashFromReq(r, allocationID)
 	if err != nil {
 		return nil, err
@@ -299,6 +301,21 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 		return nil, common.NewError("invalid_parameters", "Path is not a file.")
 	}
 
+	return fileref, nil
+}
+
+func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
+
+	allocationObj, clientID, err := fsh.getAllocationObject(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	fileref, err := fsh.validateCollaboratorRequest(ctx, allocationObj.ID, r)
+	if err != nil {
+		return nil, err
+	}
+
 	collabClientID := r.FormValue("collab_id")
 	if collabClientID == "" {
 		return nil, common.NewError("invalid_parameter", "collab_id not present in the params")
@@ -308,45 +325,72 @@ func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request)
 		Msg string `json:"msg"`
 	}
 
-	switch r.Method {
-	case http.MethodPost:
-		if clientID == "" || clientID != allocationObj.OwnerID {
-			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-		}
-
-		if reference.IsACollaborator(ctx, fileref.ID, collabClientID) {
-			result.Msg = "Given client ID is already a collaborator"
-			return result, nil
-		}
-
-		err = reference.AddCollaborator(ctx, fileref.ID, collabClientID)
-		if err != nil {
-			return nil, common.NewError("add_collaborator_failed", "Failed to add collaborator with err :"+err.Error())
-		}
-		result.Msg = "Added collaborator successfully"
-
-	case http.MethodGet:
-		collaborators, err := reference.GetCollaborators(ctx, fileref.ID)
-		if err != nil {
-			return nil, common.NewError("get_collaborator_failed", "Failed to get collaborators from refID with err:"+err.Error())
-		}
-
-		return collaborators, nil
-
-	case http.MethodDelete:
-		if clientID == "" || clientID != allocationObj.OwnerID {
-			return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-		}
-
-		err = reference.RemoveCollaborator(ctx, fileref.ID, collabClientID)
-		if err != nil {
-			return nil, common.NewError("delete_collaborator_failed", "Failed to delete collaborator from refID with err:"+err.Error())
-		}
-		result.Msg = "Removed collaborator successfully"
-
-	default:
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST/GET/DELETE instead")
+	if clientID == "" || clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
+
+	if reference.IsACollaborator(ctx, fileref.ID, collabClientID) {
+		result.Msg = "Given client ID is already a collaborator"
+		return result, nil
+	}
+
+	err = reference.AddCollaborator(ctx, fileref.ID, collabClientID)
+	if err != nil {
+		return nil, common.NewError("add_collaborator_failed", "Failed to add collaborator with err :"+err.Error())
+	}
+	result.Msg = "Added collaborator successfully"
+
+	return result, nil
+}
+
+func (fsh *StorageHandler) GetCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
+	allocationObj, _, err := fsh.getAllocationObject(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	fileref, err := fsh.validateCollaboratorRequest(ctx, allocationObj.ID, r)
+	if err != nil {
+		return nil, err
+	}
+
+	collaborators, err := reference.GetCollaborators(ctx, fileref.ID)
+	if err != nil {
+		return nil, common.NewError("get_collaborator_failed", "Failed to get collaborators from refID with err:"+err.Error())
+	}
+
+	return collaborators, nil
+}
+
+func (fsh *StorageHandler) RemoveCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
+	allocationObj, clientID, err := fsh.getAllocationObject(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	fileref, err := fsh.validateCollaboratorRequest(ctx, allocationObj.ID, r)
+	if err != nil {
+		return nil, err
+	}
+
+	collabClientID, ok := GetField(r, "collab_id")
+	if !ok {
+		return nil, common.NewError("invalid_parameter", "collab_id not present in the params")
+	}
+
+	var result struct {
+		Msg string `json:"msg"`
+	}
+
+	if clientID == "" || clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	err = reference.RemoveCollaborator(ctx, fileref.ID, collabClientID)
+	if err != nil {
+		return nil, common.NewError("delete_collaborator_failed", "Failed to delete collaborator from refID with err:"+err.Error())
+	}
+	result.Msg = "Removed collaborator successfully"
 
 	return result, nil
 }
@@ -393,6 +437,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
 	if wm != nil && fileStats != nil {
 		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
+		fileStats.OnChain = wm.OnChain()
 	}
 	var statsMap map[string]interface{}
 	statsBytes, _ := json.Marshal(fileStats)
@@ -982,8 +1027,8 @@ func pathHashFromReq(r *http.Request, allocationID string) (pathHash string, err
 }
 
 func getPathHash(r *http.Request, allocationID string) (pathHash, path string, err error) {
-	pathHash = r.FormValue("path_hash")
-	path = r.FormValue("path")
+	pathHash, _ = GetField(r, "path_hash")
+	path, _ = GetField(r, "path")
 
 	if pathHash == "" && path == "" {
 		pathHash = r.Header.Get("path_hash")
