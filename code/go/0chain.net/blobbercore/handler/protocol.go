@@ -90,21 +90,19 @@ func RegisterBlobber(ctx context.Context) error {
 
 	_, err := zcn.GetBlobber(node.Self.ID)
 	if err != nil { // blobber is not registered yet
-		logging.Logger.Warn("failed to get blobber from blockchain", zap.Error(err))
-
 		txnHash, err := sendSmartContractBlobberAdd(ctx)
 		if err != nil {
 			return err
 		}
 
-		if t, err := TransactionVerify(txnHash); err != nil {
+		t, err := TransactionVerify(txnHash)
+		if err != nil {
 			logging.Logger.Error("Failed to verify blobber add/update transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
-		} else {
-			logging.Logger.Info("Verified blobber add/update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+			return err
 		}
 
-		return err
-
+		logging.Logger.Info("Verified blobber add/update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+		return nil
 	}
 
 	return SendHealthCheck()

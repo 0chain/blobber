@@ -37,27 +37,25 @@ func setupOnChain() {
 	var err error
 	// setup blobber (add or update) on the blockchain (multiple attempts)
 	for i := 1; i <= 10; i++ {
-		fmt.Printf("\r	+ [%v/10]connect to sharders:", i)
-		if err = filestore.GetFileStore().CalculateCurrentDiskCapacity(); err != nil {
-			fmt.Print("\n		", err.Error()+"\n")
-			goto sleep
+		if i == 1 {
+			fmt.Printf("\r	+ connect to sharders:")
+		} else {
+			time.After(time.Duration(ATTEMPT_DELAY) * time.Second)
+			fmt.Printf("\r	+ [%v/10]connect to sharders:", i)
 		}
 
-		if err = handler.RegisterBlobber(common.GetRootContext()); err != nil {
-			fmt.Print("\n		", err.Error()+"\n")
-			goto sleep
+		err = filestore.GetFileStore().CalculateCurrentDiskCapacity()
+		if err != nil {
+			continue
 		}
 
-		fmt.Print("	[OK]\n")
+		err = handler.RegisterBlobber(common.GetRootContext())
+		if err != nil {
+			continue
+		}
+
 		success = true
 		break
-
-	sleep:
-		for n := 0; n < ATTEMPT_DELAY; n++ {
-			<-time.After(1 * time.Second)
-
-			fmt.Printf("\r	- wait %v seconds to retry", ATTEMPT_DELAY-n)
-		}
 	}
 
 	if !success {
