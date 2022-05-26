@@ -83,8 +83,11 @@ change_zcn() {
 
 install_debuggger() {
     [ -d ../.vscode ] || mkdir -p ../.vscode
-    sed "s/Hostname/$hostname/g" launch.json > ../.vscode/launch.json
-    echo "debugbbers are installed"
+    sed "s/Hostname/$hostname/g" launch.json > ./launch.1.json
+    base=$(echo "$root" | sed 's/\//\\\//g')
+    sed "s/root/$base/g" ./launch.1.json > ../.vscode/launch.json
+    rm -rf ./launch.1.json
+    echo "debugbbers are installed" 
 }
 
 cleanAll() {
@@ -200,7 +203,7 @@ start_blobber () {
     keys_file="../docker.local/keys_config/b0bnode${i}_keys.txt"
     minio_file="../docker.local/keys_config/minio_config.txt"
     config_dir="./data/blobber$i/config"
-    files_dir="./data/blobber$i/files"
+    files_dir="${root}/data/blobber$i/files"
     log_dir="./data/blobber$i/log"
     db_dir="./data/blobber$i/data"
 

@@ -17,7 +17,7 @@
                 "--keys_file", "../../../../docker.local/keys_config/b0bnode1_keys.txt",
                 "--minio_file" ,"../../../../docker.local/keys_config/minio_config.txt",
 
-                "--files_dir","../../../../dev.local/data/blobber/files",
+                "--files_dir","root/data/blobber/files",
                 "--log_dir" ,"../../../../dev.local/data/blobber/log",
                 "--db_dir", "../../../../dev.local/data/blobber/data", 
                 "--config_dir", "../../../../dev.local/data/blobber/config"
@@ -36,7 +36,7 @@
                 "--keys_file", "../../../../docker.local/keys_config/b0bnode1_keys.txt",
                 "--minio_file" ,"../../../../docker.local/keys_config/minio_config.txt",
 
-                "--files_dir","../../../../dev.local/data/blobber1/files",
+                "--files_dir","root/data/blobber1/files",
                 "--log_dir" ,"../../../../dev.local/data/blobber1/log",
                 "--db_dir", "../../../../dev.local/data/blobber1/data", 
                 "--config_dir", "../../../../dev.local/data/blobber1/config"
@@ -55,7 +55,7 @@
                 "--keys_file", "../../../../docker.local/keys_config/b0bnode2_keys.txt",
                 "--minio_file" ,"../../../../docker.local/keys_config/minio_config.txt",
 
-                "--files_dir","../../../../dev.local/data/blobber2/files",
+                "--files_dir","root/data/blobber2/files",
                 "--log_dir" ,"../../../../dev.local/data/blobber2/log",
                 "--db_dir", "../../../../dev.local/data/blobber2/data", 
                 "--config_dir", "../../../../dev.local/data/blobber2/config"
@@ -74,7 +74,7 @@
                 "--keys_file", "../../../../docker.local/keys_config/b0bnode3_keys.txt",
                 "--minio_file" ,"../../../../docker.local/keys_config/minio_config.txt",
 
-                "--files_dir","../../../../dev.local/data/blobber3/files",
+                "--files_dir","root/data/blobber3/files",
                 "--log_dir" ,"../../../../dev.local/data/blobber3/log",
                 "--db_dir", "../../../../dev.local/data/blobber3/data", 
                 "--config_dir", "../../../../dev.local/data/blobber3/config"
