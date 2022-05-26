@@ -42,9 +42,12 @@ func main() {
 	// only enabled with "// +build integration_tests"
 	initIntegrationsTests(node.Self.ID)
 
-	go setupOnChain()
+	if err := registerOnChain(); err != nil {
+		logging.Logger.Error("Error register on blockchain" + err.Error())
+		panic(err)
+	}
 
-	startGRPCServer()
+	go startGRPCServer()
 
 	startHttpServer()
 }

@@ -13,9 +13,8 @@ import (
 	"github.com/0chain/gosdk/zcncore"
 )
 
-func setupOnChain() {
+func registerOnChain() error {
 	//wait http & grpc startup, and go to setup on chain
-	time.Sleep(1 * time.Second)
 	fmt.Print("> connecting to chain	\n")
 
 	const ATTEMPT_DELAY = 60 * 1
@@ -24,7 +23,7 @@ func setupOnChain() {
 	fmt.Print("	+ connect to miners: ")
 	if isIntegrationTest {
 		fmt.Print("	[SKIP]\n")
-		return
+		return nil
 	}
 
 	if err := handler.WalletRegister(); err != nil {
@@ -33,14 +32,13 @@ func setupOnChain() {
 	}
 	fmt.Print("	[OK]\n")
 
-	var success bool
 	var err error
 	// setup blobber (add or update) on the blockchain (multiple attempts)
-	for i := 1; i <= 10; i++ {
+	for i := 1; i <= ATTEMPT_DELAY; i++ {
 		if i == 1 {
 			fmt.Printf("\r	+ connect to sharders:")
 		} else {
-			time.After(time.Duration(ATTEMPT_DELAY) * time.Second)
+			time.Sleep(1 * time.Second)
 			fmt.Printf("\r	+ [%v/10]connect to sharders:", i)
 		}
 
@@ -54,12 +52,7 @@ func setupOnChain() {
 			continue
 		}
 
-		success = true
 		break
-	}
-
-	if !success {
-		panic(err)
 	}
 
 	if !isIntegrationTest {
@@ -72,6 +65,8 @@ func setupOnChain() {
 			go refreshPriceOnChain()
 		}
 	}
+
+	return err
 }
 
 func setupServerChain() error {
