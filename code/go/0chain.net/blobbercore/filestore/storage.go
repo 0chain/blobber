@@ -47,8 +47,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	thrown "github.com/0chain/errors"
-	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/zboxcore/sdk"
 	"go.uber.org/zap"
@@ -401,7 +399,7 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
 
 			errWrite := fixedMT.Write(dataBytes, chunkIndex)
 			if errWrite != nil {
-				return nil, nil, thrown.ThrowLog(errWrite.Error(), constants.ErrUnableHash)
+				return nil, nil, common.NewError("hash_error", errWrite.Error())
 			}
 
 			if merkleChunkSize == 0 {
