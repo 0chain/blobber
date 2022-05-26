@@ -389,6 +389,9 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
 
 	fixedMT := util.NewFixedMerkleTree(int(fileData.ChunkSize))
 	merkleChunkSize := int(fileData.ChunkSize) / 1024
+	if merkleChunkSize == 0 {
+		merkleChunkSize = 1
+	}
 
 	bytesBuf := bytes.NewBuffer(make([]byte, 0))
 	for chunkIndex := 0; chunkIndex < numChunks; chunkIndex++ {
@@ -400,10 +403,6 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
 			errWrite := fixedMT.Write(dataBytes, chunkIndex)
 			if errWrite != nil {
 				return nil, nil, common.NewError("hash_error", errWrite.Error())
-			}
-
-			if merkleChunkSize == 0 {
-				merkleChunkSize = 1
 			}
 
 			offset := 0
