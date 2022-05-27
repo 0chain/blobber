@@ -34,12 +34,20 @@ func registerOnChain() error {
 
 	var err error
 	// setup blobber (add or update) on the blockchain (multiple attempts)
-	for i := 1; i <= ATTEMPT_DELAY; i++ {
+	for i := 1; i <= 10; i++ {
 		if i == 1 {
 			fmt.Printf("\r	+ connect to sharders:")
 		} else {
-			time.Sleep(1 * time.Second)
-			fmt.Printf("\r	+ [%v/10]connect to sharders:", i)
+
+			for n := ATTEMPT_DELAY; n < 1; n-- {
+				if n == 1 {
+					fmt.Printf("\r	+ [%v/10]connect to sharders :", i)
+				} else {
+					fmt.Printf("\r	+ [%v/10]connect to sharders %v:", i, n)
+				}
+				time.Sleep(1 * time.Second)
+			}
+
 		}
 
 		err = filestore.GetFileStore().CalculateCurrentDiskCapacity()
@@ -54,6 +62,8 @@ func registerOnChain() error {
 
 		break
 	}
+
+	fmt.Print("	[OK]\n")
 
 	if !isIntegrationTest {
 		go setupWorkers()
