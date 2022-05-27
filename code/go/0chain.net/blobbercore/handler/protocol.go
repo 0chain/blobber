@@ -17,7 +17,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
 
-	"github.com/0chain/gosdk/zboxcore/sdk"
 	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
 )
@@ -153,7 +152,7 @@ func sendSmartContractBlobberAdd(ctx context.Context) (string, error) {
 // UpdateBlobberOnChain updates latest changes in blobber's settings, capacity,etc.
 func UpdateBlobberOnChain(ctx context.Context) error {
 
-	_, err := sdk.GetBlobber(node.Self.ID)
+	_, err := zcn.GetBlobber(node.Self.ID)
 	if err != nil { // blobber is not registered yet
 		logging.Logger.Warn("failed to get blobber from blockchain", zap.Error(err))
 		return err
