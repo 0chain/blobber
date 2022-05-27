@@ -13,9 +13,8 @@ import (
 	"github.com/0chain/gosdk/zcncore"
 )
 
-func setupOnChain() {
+func registerOnChain() error {
 	//wait http & grpc startup, and go to setup on chain
-	time.Sleep(1 * time.Second)
 	fmt.Print("> connecting to chain	\n")
 
 	const ATTEMPT_DELAY = 60 * 1
@@ -24,7 +23,7 @@ func setupOnChain() {
 	fmt.Print("	+ connect to miners: ")
 	if isIntegrationTest {
 		fmt.Print("	[SKIP]\n")
-		return
+		return nil
 	}
 
 	if err := handler.WalletRegister(); err != nil {
@@ -33,36 +32,38 @@ func setupOnChain() {
 	}
 	fmt.Print("	[OK]\n")
 
-	var success bool
 	var err error
 	// setup blobber (add or update) on the blockchain (multiple attempts)
 	for i := 1; i <= 10; i++ {
-		fmt.Printf("\r	+ [%v/10]connect to sharders:", i)
-		if err = filestore.GetFileStore().CalculateCurrentDiskCapacity(); err != nil {
-			fmt.Print("\n		", err.Error()+"\n")
-			goto sleep
+		if i == 1 {
+			fmt.Printf("\r	+ connect to sharders:")
+		} else {
+
+			for n := ATTEMPT_DELAY; n < 1; n-- {
+				if n == 1 {
+					fmt.Printf("\r	+ [%v/10]connect to sharders :", i)
+				} else {
+					fmt.Printf("\r	+ [%v/10]connect to sharders %v:", i, n)
+				}
+				time.Sleep(1 * time.Second)
+			}
+
 		}
 
-		if err = handler.RegisterBlobber(common.GetRootContext()); err != nil {
-			fmt.Print("\n		", err.Error()+"\n")
-			goto sleep
+		err = filestore.GetFileStore().CalculateCurrentDiskCapacity()
+		if err != nil {
+			continue
 		}
 
-		fmt.Print("	[OK]\n")
-		success = true
+		err = handler.RegisterBlobber(common.GetRootContext())
+		if err != nil {
+			continue
+		}
+
 		break
-
-	sleep:
-		for n := 0; n < ATTEMPT_DELAY; n++ {
-			<-time.After(1 * time.Second)
-
-			fmt.Printf("\r	- wait %v seconds to retry", ATTEMPT_DELAY-n)
-		}
 	}
 
-	if !success {
-		panic(err)
-	}
+	fmt.Print("	[OK]\n")
 
 	if !isIntegrationTest {
 		go setupWorkers()
@@ -74,6 +75,8 @@ func setupOnChain() {
 			go refreshPriceOnChain()
 		}
 	}
+
+	return err
 }
 
 func setupServerChain() error {

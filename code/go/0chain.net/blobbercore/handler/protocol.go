@@ -89,8 +89,6 @@ func RegisterBlobber(ctx context.Context) error {
 
 	_, err := zcn.GetBlobber(node.Self.ID)
 	if err != nil { // blobber is not registered yet
-		logging.Logger.Warn("failed to get blobber from blockchain", zap.Error(err))
-
 		txnHash, err := sendSmartContractBlobberAdd(ctx)
 		if err != nil {
 			return err
@@ -138,15 +136,10 @@ func sendSmartContractBlobberAdd(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	snBytes, err := json.Marshal(sn)
-	if err != nil {
-		return "", err
-	}
-
 	logging.Logger.Info("Adding or updating on the blockchain")
 
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
-		transaction.ADD_BLOBBER_SC_NAME, string(snBytes), 0)
+		transaction.ADD_BLOBBER_SC_NAME, sn, 0)
 	if err != nil {
 		logging.Logger.Error("Failed to set blobber on the blockchain",
 			zap.String("err:", err.Error()))
