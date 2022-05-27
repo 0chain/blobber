@@ -23,7 +23,7 @@ func GetAllocationByID(ctx context.Context, allocID string) (a *Allocation, err 
 
 	a = new(Allocation)
 	err = tx.Model(&Allocation{}).
-		Where(&Allocation{ID: allocID}).
+		Where("id=?", allocID).
 		First(a).Error
 	return
 }

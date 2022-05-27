@@ -17,7 +17,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
 
-	"github.com/0chain/gosdk/zboxcore/sdk"
 	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
 )
@@ -97,14 +96,14 @@ func RegisterBlobber(ctx context.Context) error {
 			return err
 		}
 
-		if t, err := TransactionVerify(txnHash); err != nil {
+		t, err := TransactionVerify(txnHash)
+		if err != nil {
 			logging.Logger.Error("Failed to verify blobber add/update transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
-		} else {
-			logging.Logger.Info("Verified blobber add/update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+			return err
 		}
 
-		return err
-
+		logging.Logger.Info("Verified blobber add/update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+		return nil
 	}
 
 	return SendHealthCheck()
@@ -160,7 +159,7 @@ func sendSmartContractBlobberAdd(ctx context.Context) (string, error) {
 // UpdateBlobberOnChain updates latest changes in blobber's settings, capacity,etc.
 func UpdateBlobberOnChain(ctx context.Context) error {
 
-	_, err := sdk.GetBlobber(node.Self.ID)
+	_, err := zcn.GetBlobber(node.Self.ID)
 	if err != nil { // blobber is not registered yet
 		logging.Logger.Warn("failed to get blobber from blockchain", zap.Error(err))
 		return err

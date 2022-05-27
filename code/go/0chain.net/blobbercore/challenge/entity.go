@@ -112,12 +112,15 @@ func marshalField(obj interface{}, dest *datatypes.JSON) error {
 }
 
 func unMarshalField(stringObj datatypes.JSON, dest interface{}) error {
-	retBytes, err := stringObj.Value()
+	if len(stringObj) == 0 {
+		return nil
+	}
+	retBytes, err := stringObj.MarshalJSON()
 	if err != nil {
 		return err
 	}
 	if retBytes != nil {
-		return json.Unmarshal(retBytes.([]byte), dest)
+		return json.Unmarshal(retBytes, dest)
 	}
 	return nil
 }
@@ -151,20 +154,16 @@ func (cr *ChallengeEntity) SaveWith(db *gorm.DB) error {
 
 func (cr *ChallengeEntity) UnmarshalFields() error {
 	var err error
-
-	cr.Validators = make([]ValidationNode, 0)
 	err = unMarshalField(cr.ValidatorsString, &cr.Validators)
 	if err != nil {
 		return err
 	}
 
-	cr.LastCommitTxnIDs = make([]string, 0)
 	err = unMarshalField(cr.LastCommitTxnList, &cr.LastCommitTxnIDs)
 	if err != nil {
 		return err
 	}
 
-	cr.ValidationTickets = make([]*ValidationTicket, 0)
 	err = unMarshalField(cr.ValidationTicketsString, &cr.ValidationTickets)
 	if err != nil {
 		return err
