@@ -136,6 +136,7 @@ func migrateSchema(db *gorm.DB) error {
 		tablesToKeep[tb] = struct{}{}
 	}
 
+	var migratingTables []tableNameI
 	for _, tblMdl := range tableModels {
 		tableName := tblMdl.TableName()
 		if _, ok := tablesToKeep[tableName]; ok {
@@ -146,10 +147,11 @@ func migrateSchema(db *gorm.DB) error {
 		if err != nil {
 			return err
 		}
+		migratingTables = append(migratingTables, tblMdl)
 	}
 
 	var tables []interface{} // Put in new slice to resolve type mismatch
-	for _, tbl := range tableModels {
+	for _, tbl := range migratingTables {
 		tables = append(tables, tbl)
 	}
 
