@@ -37,12 +37,7 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 	sn.ChallengeID = cr.ChallengeID
 	sn.ValidationTickets = cr.ValidationTickets
 
-	snBytes, err := json.Marshal(sn)
-	if err != nil {
-		return nil, err
-	}
-
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CHALLENGE_RESPONSE, string(snBytes), 0)
+	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CHALLENGE_RESPONSE, sn, 0)
 	if err != nil {
 		Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
 		return nil, err
