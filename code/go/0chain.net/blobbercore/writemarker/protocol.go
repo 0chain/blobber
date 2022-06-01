@@ -2,7 +2,6 @@ package writemarker
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -98,19 +97,7 @@ func (wme *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 	sn.PrevAllocationRoot = wme.WM.PreviousAllocationRoot
 	sn.WriteMarker = &wme.WM
 
-	snBytes, err := json.Marshal(sn)
-	if err != nil {
-		Logger.Error("Error encoding sc input", zap.String("err:", err.Error()), zap.Any("scdata", sn))
-		wme.Status = Failed
-		wme.StatusMessage = "Error encoding sc input. " + err.Error()
-		wme.ReedeemRetries++
-		if err := wme.UpdateStatus(ctx, Failed, "Error encoding sc input. "+err.Error(), ""); err != nil {
-			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
-		}
-		return err
-	}
-
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CLOSE_CONNECTION_SC_NAME, string(snBytes), 0)
+	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CLOSE_CONNECTION_SC_NAME, sn, 0)
 	if err != nil {
 		Logger.Error("Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))
 		wme.Status = Failed

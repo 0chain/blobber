@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"sync"
 	"time"
@@ -185,15 +184,10 @@ func sendSmartContractBlobberUpdate(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	snBytes, err := json.Marshal(sn)
-	if err != nil {
-		return "", err
-	}
-
 	logging.Logger.Info("Adding or updating on the blockchain")
 
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
-		transaction.UPDATE_BLOBBER_SC_NAME, string(snBytes), 0)
+		transaction.UPDATE_BLOBBER_SC_NAME, sn, 0)
 	if err != nil {
 		logging.Logger.Error("Failed to set blobber on the blockchain",
 			zap.String("err:", err.Error()))

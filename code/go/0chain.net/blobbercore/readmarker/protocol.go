@@ -2,7 +2,6 @@ package readmarker
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
@@ -50,13 +49,7 @@ func (rme *ReadMarkerEntity) RedeemReadMarker(ctx context.Context) (err error) {
 		ReadMarker: rme.LatestRM,
 	}
 
-	var snBytes []byte
-	if snBytes, err = json.Marshal(sn); err != nil {
-		zLogger.Logger.Error("Error encoding SC input", zap.Error(err), zap.Any("scdata", sn))
-		return common.NewErrorf("redeem_read_marker", "encoding SC data: %v", err)
-	}
-
-	err = tx.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.READ_REDEEM, string(snBytes), 0)
+	err = tx.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.READ_REDEEM, sn, 0)
 	if err != nil {
 		zLogger.Logger.Info("Failed submitting read redeem", zap.Error(err))
 		return common.NewErrorf("redeem_read_marker", "sending transaction: %v", err)
