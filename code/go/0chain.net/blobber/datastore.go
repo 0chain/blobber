@@ -35,10 +35,8 @@ func setupDatabase() error {
 		time.Sleep(1 * time.Second)
 	}
 
-	if config.Configuration.DBAutoMigrate {
-		if err := automigration.AutoMigrate(pgDB); err != nil {
-			return fmt.Errorf("error while migrating schema: %v", err)
-		}
+	if err := automigration.AutoMigrate(pgDB); err != nil {
+		return fmt.Errorf("error while migrating schema: %v", err)
 	}
 
 	// check for database connection
@@ -63,5 +61,5 @@ func setupDatabase() error {
 		time.Sleep(1 * time.Second)
 	}
 
-	return nil
+	return automigration.AddVersion(config.Configuration.Version)
 }

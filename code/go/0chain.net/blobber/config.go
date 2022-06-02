@@ -132,6 +132,10 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.WebsiteUrl = viper.GetString("website_url")
 	config.Configuration.LogoUrl = viper.GetString("logo_url")
 	config.Configuration.Description = viper.GetString("description")
+	config.Configuration.Version = viper.GetString("version")
+	if config.Configuration.Version == "" {
+		panic("missing version info")
+	}
 
 	fmt.Print("		[OK]\n")
 }

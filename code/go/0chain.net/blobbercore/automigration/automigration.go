@@ -39,6 +39,7 @@ var tableModels = []tableNameI{
 	new(writemarker.WriteLock),
 	new(stats.FileStats),
 	new(config.Settings),
+	new(Version),
 }
 
 func AutoMigrate(pgDB *gorm.DB) error {
@@ -69,11 +70,8 @@ func AutoMigrate(pgDB *gorm.DB) error {
 		return err
 	}
 
-	if config.Configuration.DBAutoMigrate || isNew {
-		db := datastore.GetStore().GetDB()
-		return migrateSchema(db)
-	}
-	return nil
+	db := datastore.GetStore().GetDB()
+	return migrateSchema(db, isNew)
 }
 
 func createDB(db *gorm.DB) (err error, isCreated bool) {
@@ -133,15 +131,17 @@ func grantPrivileges(db *gorm.DB) error {
 	return nil
 }
 
-func migrateSchema(db *gorm.DB) error {
+func migrateSchema(db *gorm.DB, isNew bool) error {
 	var migratingTables []tableNameI
-	for _, tblMdl := range tableModels {
-		tableName := tblMdl.TableName()
-		err := db.Migrator().DropTable(tableName)
-		if err != nil {
-			return err
+	if config.Configuration.DBAutoMigrate || isNew {
+		for _, tblMdl := range tableModels {
+			tableName := tblMdl.TableName()
+			err := db.Migrator().DropTable(tableName)
+			if err != nil {
+				return err
+			}
+			migratingTables = append(migratingTables, tblMdl)
 		}
-		migratingTables = append(migratingTables, tblMdl)
 	}
 
 	var tables []interface{} // Put in new slice to resolve type mismatch

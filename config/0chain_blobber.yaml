@@ -1,4 +1,4 @@
-version: 1.0
+version: "1.0"
 
 logging:
   level: "error"
@@ -97,7 +97,7 @@ pg:
   user: postgres
   password: postgres
 db:
-  automigrate: false # true to automigrate with gorm's Automigration
+  automigrate: true # true to automigrate with gorm's Automigration
   name: blobber_meta
   user: blobber_user
   password: blobber
