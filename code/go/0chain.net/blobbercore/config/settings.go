@@ -143,9 +143,9 @@ func Refresh(ctx context.Context, db *gorm.DB) error {
 	Configuration.MinLockDemand = b.Terms.MinLockDemand
 	Configuration.MinStake = int64(b.StakePoolSettings.MinStake)
 	Configuration.NumDelegates = b.StakePoolSettings.NumDelegates
-	Configuration.ReadPrice = float64(b.Terms.ReadPrice)
-	Configuration.WritePrice = float64(b.Terms.WritePrice)
-	Configuration.WritePrice = b.StakePoolSettings.ServiceCharge
+	Configuration.ReadPrice = b.Terms.ReadPrice.ToToken()
+	Configuration.WritePrice = b.Terms.WritePrice.ToToken()
+	Configuration.ServiceCharge = b.StakePoolSettings.ServiceCharge
 
 	return Update(ctx, db)
 }

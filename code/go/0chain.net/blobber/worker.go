@@ -54,9 +54,9 @@ func startHealthCheck() {
 	}
 }
 
-// startRefreshSettings sync settings from chain
+// startRefreshSettings sync settings from blockchain
 func startRefreshSettings() {
-	const REPEAT_DELAY = 60 * 15 // 15 minutes
+	const REPEAT_DELAY = 60 * 3 // 3 minutes
 	var err error
 	for {
 		err = config.Refresh(common.GetRootContext(), datastore.GetStore().GetDB())
