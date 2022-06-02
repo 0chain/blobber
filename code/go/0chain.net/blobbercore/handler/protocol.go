@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/zcn"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
@@ -86,8 +87,8 @@ func getStorageNode() (*transaction.StorageNode, error) {
 // RegisterBlobber register blobber if it doesn't registered yet. sync terms and stake pool settings from blockchain if it is registered
 func RegisterBlobber(ctx context.Context) error {
 
-	_, err := zcn.GetBlobber(node.Self.ID)
-	if err != nil { // blobber is not registered yet
+	b, err := config.ReloadFromChain(ctx, datastore.GetStore().GetDB())
+	if err != nil || b.BaseURL != node.Self.GetURLBase() { // blobber is not registered yet, baseURL is changed
 		txnHash, err := sendSmartContractBlobberAdd(ctx)
 		if err != nil {
 			return err

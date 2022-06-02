@@ -62,7 +62,7 @@ func startRefreshSettings() {
 	var err error
 	var b *zcncore.Blobber
 	for {
-		b, err = config.Refresh(common.GetRootContext(), datastore.GetStore().GetDB())
+		b, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
 		if err == nil {
 			logging.Logger.Info("success to refresh blobber settings from chain")
 			//	BaseURL is changed, register blobber to refresh it on blockchain again

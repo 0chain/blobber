@@ -124,8 +124,8 @@ func Update(ctx context.Context, db *gorm.DB) error {
 	return db.Create(s).Error
 }
 
-// Refresh sync latest settings from blockchain
-func Refresh(ctx context.Context, db *gorm.DB) (*zcncore.Blobber, error) {
+// ReloadFromChain load and refresh latest settings from blockchain
+func ReloadFromChain(ctx context.Context, db *gorm.DB) (*zcncore.Blobber, error) {
 	if db == nil {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "db")
 	}
