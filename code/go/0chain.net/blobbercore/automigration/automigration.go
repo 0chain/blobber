@@ -46,7 +46,9 @@ func AutoMigrate(pgDB *gorm.DB) error {
 		return err
 	}
 
-	if err := createDB(pgDB); err != nil {
+	var isNew bool
+	var err error
+	if err, isNew = createDB(pgDB); err != nil {
 		return err
 	}
 
@@ -67,17 +69,19 @@ func AutoMigrate(pgDB *gorm.DB) error {
 		return err
 	}
 
-	db := datastore.GetStore().GetDB()
-
-	return migrateSchema(db)
+	if config.Configuration.DBAutoMigrate || isNew {
+		db := datastore.GetStore().GetDB()
+		return migrateSchema(db)
+	}
+	return nil
 }
 
-func createDB(db *gorm.DB) error {
+func createDB(db *gorm.DB) (err error, isCreated bool) {
 	// check if db exists
 	dbstmt := fmt.Sprintf("SELECT datname, oid FROM pg_database WHERE datname = '%s';", config.Configuration.DBName)
 	rs := db.Raw(dbstmt)
 	if rs.Error != nil {
-		return rs.Error
+		return rs.Error, false
 	}
 
 	var result struct {
@@ -86,11 +90,12 @@ func createDB(db *gorm.DB) error {
 
 	if rs.Scan(&result); len(result.Datname) == 0 {
 		stmt := fmt.Sprintf("CREATE DATABASE %s;", config.Configuration.DBName)
-		if rs := db.Exec(stmt); rs.Error != nil && rs.Error.Error() != fmt.Sprintf("pq: database \"%s\" already exists", config.Configuration.DBName) {
-			return rs.Error
+		if rs := db.Exec(stmt); rs.Error != nil {
+			return rs.Error, false
 		}
+		isCreated = true
 	}
-	return nil
+	return
 }
 
 func createUser(db *gorm.DB) error {
@@ -129,20 +134,9 @@ func grantPrivileges(db *gorm.DB) error {
 }
 
 func migrateSchema(db *gorm.DB) error {
-	// !FIXME : tables can't be dropped as default on blobber startup. Because blobber will lose all data if it restarts. It might be a critical bug on production.
-	tablesToKeep := make(map[string]struct{})
-
-	for _, tb := range config.Configuration.DBTablesToKeep {
-		tablesToKeep[tb] = struct{}{}
-	}
-
 	var migratingTables []tableNameI
 	for _, tblMdl := range tableModels {
 		tableName := tblMdl.TableName()
-		if _, ok := tablesToKeep[tableName]; ok {
-			continue
-		}
-
 		err := db.Migrator().DropTable(tableName)
 		if err != nil {
 			return err
