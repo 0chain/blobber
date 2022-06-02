@@ -47,9 +47,7 @@ func AutoMigrate(pgDB *gorm.DB) error {
 		return err
 	}
 
-	var isNew bool
-	var err error
-	if err, isNew = createDB(pgDB); err != nil {
+	if err := createDB(pgDB); err != nil {
 		return err
 	}
 
@@ -71,15 +69,15 @@ func AutoMigrate(pgDB *gorm.DB) error {
 	}
 
 	db := datastore.GetStore().GetDB()
-	return migrateSchema(db, isNew)
+	return migrateSchema(db)
 }
 
-func createDB(db *gorm.DB) (err error, isCreated bool) {
+func createDB(db *gorm.DB) (err error) {
 	// check if db exists
 	dbstmt := fmt.Sprintf("SELECT datname, oid FROM pg_database WHERE datname = '%s';", config.Configuration.DBName)
 	rs := db.Raw(dbstmt)
 	if rs.Error != nil {
-		return rs.Error, false
+		return rs.Error
 	}
 
 	var result struct {
@@ -89,9 +87,8 @@ func createDB(db *gorm.DB) (err error, isCreated bool) {
 	if rs.Scan(&result); len(result.Datname) == 0 {
 		stmt := fmt.Sprintf("CREATE DATABASE %s;", config.Configuration.DBName)
 		if rs := db.Exec(stmt); rs.Error != nil {
-			return rs.Error, false
+			return rs.Error
 		}
-		isCreated = true
 	}
 	return
 }
@@ -131,9 +128,9 @@ func grantPrivileges(db *gorm.DB) error {
 	return nil
 }
 
-func migrateSchema(db *gorm.DB, isNew bool) error {
+func migrateSchema(db *gorm.DB) error {
 	var migratingTables []tableNameI
-	if config.Configuration.DBAutoMigrate || isNew {
+	if config.Configuration.DBAutoMigrate {
 		for _, tblMdl := range tableModels {
 			tableName := tblMdl.TableName()
 			err := db.Migrator().DropTable(tableName)
