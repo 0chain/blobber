@@ -97,7 +97,6 @@ pg:
   user: postgres
   password: postgres
 db:
-  automigrate: true # true to automigrate with gorm's Automigration
   name: blobber_meta
   user: blobber_user
   password: blobber

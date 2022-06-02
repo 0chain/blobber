@@ -129,20 +129,8 @@ func grantPrivileges(db *gorm.DB) error {
 }
 
 func migrateSchema(db *gorm.DB) error {
-	var migratingTables []tableNameI
-	if config.Configuration.DBAutoMigrate {
-		for _, tblMdl := range tableModels {
-			tableName := tblMdl.TableName()
-			err := db.Migrator().DropTable(tableName)
-			if err != nil {
-				return err
-			}
-			migratingTables = append(migratingTables, tblMdl)
-		}
-	}
-
 	var tables []interface{} // Put in new slice to resolve type mismatch
-	for _, tbl := range migratingTables {
+	for _, tbl := range tableModels {
 		tables = append(tables, tbl)
 	}
 
