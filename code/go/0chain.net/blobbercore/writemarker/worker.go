@@ -64,9 +64,9 @@ func redeemWriteMarker(allocationObj *allocation.Allocation, wm *WriteMarkerEnti
 
 	defer func() {
 		if shouldRollback {
-			if err := db.Rollback(); err != nil {
+			if rollbackErr := db.Rollback().Error; rollbackErr != nil {
 				logging.Logger.Error("Error rollback on redeeming the write marker.",
-					zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
+					zap.Any("wm", wm.WM.AllocationID), zap.Error(rollbackErr))
 			}
 		}
 	}()

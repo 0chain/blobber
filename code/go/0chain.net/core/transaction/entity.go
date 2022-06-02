@@ -185,7 +185,7 @@ func (t *Transaction) Verify() error {
 	var objmap map[string]json.RawMessage
 	err = json.Unmarshal([]byte(output), &objmap)
 	if err != nil {
-		return common.NewError("transaction_verify_error", "Error unmarshaling verify output. "+err.Error())
+		return common.NewError("transaction_verify_error", "Error unmarshaling verify output: "+string(output)+" "+err.Error())
 	}
 
 	err = json.Unmarshal(objmap["txn"], t)
@@ -193,11 +193,11 @@ func (t *Transaction) Verify() error {
 		var confirmation map[string]json.RawMessage
 		err = json.Unmarshal(objmap["confirmation"], &confirmation)
 		if err != nil {
-			return common.NewError("transaction_verify_error", "Error unmarshaling verify output. "+err.Error())
+			return common.NewError("transaction_verify_error", "Error unmarshaling verify output->confirmation: "+string(output)+" "+err.Error())
 		}
 		err = json.Unmarshal(confirmation["txn"], t)
 		if err != nil {
-			return common.NewError("transaction_verify_error", "Error unmarshaling verify output. "+err.Error())
+			return common.NewError("transaction_verify_error", "Error unmarshaling verify output->confirmation->txn: "+string(output)+" "+err.Error())
 		}
 	}
 	return nil

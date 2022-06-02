@@ -246,14 +246,6 @@ type finalizeRequest struct {
 	AllocationID string `json:"allocation_id"`
 }
 
-func (fr *finalizeRequest) marshal() string {
-	var b, err = json.Marshal(fr)
-	if err != nil {
-		panic(err) // must never happens
-	}
-	return string(b)
-}
-
 func sendFinalizeAllocation(a *Allocation) {
 	var tx, err = transaction.NewTransactionEntity()
 	if err != nil {
@@ -267,7 +259,7 @@ func sendFinalizeAllocation(a *Allocation) {
 	err = tx.ExecuteSmartContract(
 		transaction.STORAGE_CONTRACT_ADDRESS,
 		transaction.FINALIZE_ALLOCATION,
-		request.marshal(),
+		request,
 		0)
 	if err != nil {
 		Logger.Error("sending finalize allocation", zap.Error(err))
