@@ -87,22 +87,27 @@ func StartUpdateWorker(ctx context.Context, interval time.Duration) {
 	if err != nil {
 		panic(err)
 	}
-	currentCapacity := filestore.GetFileStore().GetCurrentDiskCapacity()
 
-	ticker := time.NewTicker(config.Configuration.BlobberUpdateInterval)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
+		case <-time.After(config.Configuration.BlobberUpdateInterval):
 			err := filestore.GetFileStore().CalculateCurrentDiskCapacity()
 			if err != nil {
 				logging.Logger.Error("Error while getting capacity", zap.Error(err))
 				break
 			}
-			if currentCapacity != filestore.GetFileStore().GetCurrentDiskCapacity() {
+			if uint64(config.Configuration.Capacity) != filestore.GetFileStore().GetCurrentDiskCapacity() {
 
-				err := handler.UpdateBlobberOnChain(ctx)
+				_, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
+
+				if err != nil {
+					logging.Logger.Error("Error while updating blobber updates on chain", zap.Error(err))
+					continue
+				}
+
+				err = handler.UpdateBlobberOnChain(ctx)
 				if err != nil {
 					logging.Logger.Error("Error while updating blobber updates on chain", zap.Error(err))
 				}

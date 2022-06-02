@@ -9,7 +9,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/zcn"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
@@ -170,12 +169,6 @@ func sendSmartContractBlobberAdd(ctx context.Context) (string, error) {
 
 // UpdateBlobberOnChain updates latest changes in blobber's settings, capacity,etc.
 func UpdateBlobberOnChain(ctx context.Context) error {
-
-	_, err := zcn.GetBlobber(node.Self.ID)
-	if err != nil { // blobber is not registered yet
-		logging.Logger.Warn("failed to get blobber from blockchain", zap.Error(err))
-		return err
-	}
 
 	txnHash, err := sendSmartContractBlobberUpdate(ctx)
 	if err != nil {
