@@ -14,6 +14,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"github.com/0chain/gosdk/zcncore"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
@@ -58,13 +60,24 @@ func startHealthCheck() {
 func startRefreshSettings() {
 	const REPEAT_DELAY = 60 * 3 // 3 minutes
 	var err error
+	var b *zcncore.Blobber
 	for {
-		err = config.Refresh(common.GetRootContext(), datastore.GetStore().GetDB())
+		b, err = config.Refresh(common.GetRootContext(), datastore.GetStore().GetDB())
 		if err == nil {
 			logging.Logger.Info("success to refresh blobber settings from chain")
+			//	BaseURL is changed, register blobber to refresh it on blockchain again
+			if b.BaseURL != node.Self.GetURLBase() {
+				err = handler.UpdateBlobber(context.TODO())
+				if err == nil {
+					logging.Logger.Info("success to refresh blobber BaseURL on chain")
+				} else {
+					logging.Logger.Warn("failed to refresh blobber BaseURL on chain", zap.Error(err))
+				}
+			}
 		} else {
 			logging.Logger.Warn("failed to refresh blobber settings from chain", zap.Error(err))
 		}
+
 		<-time.After(REPEAT_DELAY * time.Second)
 	}
 }

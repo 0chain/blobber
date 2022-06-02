@@ -95,15 +95,34 @@ func RegisterBlobber(ctx context.Context) error {
 
 		t, err := TransactionVerify(txnHash)
 		if err != nil {
-			logging.Logger.Error("Failed to verify blobber add/update transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
+			logging.Logger.Error("Failed to verify blobber add transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
 			return err
 		}
 
-		logging.Logger.Info("Verified blobber add/update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+		logging.Logger.Info("Verified blobber add transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
 		return nil
 	}
 
 	return SendHealthCheck()
+
+}
+
+// UpdateBlobber update blobber
+func UpdateBlobber(ctx context.Context) error {
+
+	txnHash, err := sendSmartContractBlobberAdd(ctx)
+	if err != nil {
+		return err
+	}
+
+	t, err := TransactionVerify(txnHash)
+	if err != nil {
+		logging.Logger.Error("Failed to verify blobber update transaction", zap.Any("err", err), zap.String("txn.Hash", txnHash))
+		return err
+	}
+
+	logging.Logger.Info("Verified blobber update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+	return nil
 
 }
 
