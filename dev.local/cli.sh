@@ -75,7 +75,7 @@ change_zcn() {
         find ../config/ -name "0chain_blobber.yaml" -exec sed -i '' "s/block_worker/#block_worker/g" {} \;
         find ../config/ -name "0chain_validator.yaml" -exec sed -i '' "s/block_worker/#block_worker/g" {} \;
         echo "block_worker: $yourZCN" >> ../config/0chain_blobber.yaml
-         echo "block_worker: $yourZCN" >> ../config/0chain_validator.yaml
+        echo "block_worker: $yourZCN" >> ../config/0chain_validator.yaml
     fi
     zcn=$(cat ../config/0chain_blobber.yaml | grep '^block_worker' | awk -F ' ' '{print $2}')
     echo "> zcn is updated to: $zcn"
@@ -172,12 +172,17 @@ prepareRuntime() {
         find . -name "*.yaml" -exec sed -i '' "s/blobber_meta/blobber_meta$i/g" {} \;
         find . -name "*.yaml" -exec sed -i '' "s/host: postgres/host: 127.0.0.1/g" {} \;
         find . -name "*.yaml" -exec sed -i '' "s/password: postgres/password: postgres/g" {} \;
+        find . -name "*.yaml" -exec sed -i '' "s/9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9/bec04d9120f56ef4198ad0b75b09e34dbcebd79d77807ff4badf2094c5198090/g" {} \;
+        find . -name "*.yaml" -exec sed -i '' "s/198.18.0.98/127.0.0.1/g" {} \;
     else
         sed -i "s/blobber_user/blobber_user$i/g" *.yaml;
         sed -i "s/blobber_meta/blobber_meta$i/g" *.yaml;
         sed -i "s/host: postgres/host: 127.0.0.1/g" *.yaml
         sed -i "s/password: postgres/password: postgres/g" *.yaml
+        sed -i "s/9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9/bec04d9120f56ef4198ad0b75b09e34dbcebd79d77807ff4badf2094c5198090/g" *.yaml
+        sed -i "s/198.18.0.98/127.0.0.1/g" *.yaml
     fi
+
 
     cd $root/data/blobber$i/
 
