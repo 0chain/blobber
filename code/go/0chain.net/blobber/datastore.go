@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/automigration"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"gorm.io/gorm"
@@ -61,5 +60,5 @@ func setupDatabase() error {
 		time.Sleep(1 * time.Second)
 	}
 
-	return automigration.AddVersion(config.Configuration.Version)
+	return nil
 }

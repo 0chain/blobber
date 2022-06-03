@@ -166,7 +166,6 @@ type Config struct {
 	// AutomacitUpdate Whether to automatically update blobber updates to blockchain
 	AutomaticUpdate       bool
 	BlobberUpdateInterval time.Duration
-	Version               string
 }
 
 /*Configuration of the system */
