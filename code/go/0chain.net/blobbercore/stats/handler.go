@@ -27,6 +27,19 @@ func byteCountIEC(b int64) string {
 	return fmt.Sprintf("%.1f %ciB", float64(b)/float64(div), "KMGTPE"[exp])
 }
 
+func byteCountIEC2(b uint64) string {
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %ciB", float64(b)/float64(div), "KMGTPE"[exp])
+}
+
 const (
 	Ki            = 1024    // kilobyte
 	readBlockSize = 64 * Ki // read block size is 64 KiB
@@ -36,8 +49,9 @@ var funcMap = template.FuncMap{
 	"read_size": func(readCount int64) string {
 		return byteCountIEC(readCount * readBlockSize)
 	},
-	"write_size":           byteCountIEC,
-	"byte_count_in_string": byteCountIEC,
+	"write_size":                      byteCountIEC,
+	"byte_count_in_string":            byteCountIEC,
+	"byte_count_in_string_for_uint64": byteCountIEC2,
 	"time_in_string": func(timeValue time.Time) string {
 		if timeValue.IsZero() {
 			return "-"
@@ -72,7 +86,7 @@ const tpl = `
                 </tr>
                 <tr>
                     <td>Actual Disk Usage</td>
-                    <td>{{ byte_count_in_string .DiskSizeUsed }}</td>
+                    <td>{{ byte_count_in_string_for_uint64 .DiskSizeUsed }}</td>
                 </tr>
                 <tr>
                     <td>Files Size</td>
@@ -272,7 +286,7 @@ const tpl = `
     <tr>
         <td rowspan=2>{{ .AllocationID }}</td>
         <td>{{ byte_count_in_string .UsedSize }}</td>
-        <td>{{ byte_count_in_string .DiskSizeUsed }}</td>
+        <td>{{ byte_count_in_string_for_uint64 .DiskSizeUsed }}</td>
         <td>{{ byte_count_in_string .TempFolderSize }}</td>
         <td>{{ .NumWrites }}</td>
         <td>{{ .BlockWrites }}</td>
