@@ -14,6 +14,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"github.com/0chain/gosdk/zcncore"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
@@ -54,17 +56,28 @@ func startHealthCheck() {
 	}
 }
 
-// startRefreshSettings sync settings from chain
+// startRefreshSettings sync settings from blockchain
 func startRefreshSettings() {
-	const REPEAT_DELAY = 60 * 15 // 15 minutes
+	const REPEAT_DELAY = 60 * 3 // 3 minutes
 	var err error
+	var b *zcncore.Blobber
 	for {
-		err = config.Refresh(common.GetRootContext(), datastore.GetStore().GetDB())
+		b, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
 		if err == nil {
 			logging.Logger.Info("success to refresh blobber settings from chain")
+			//	BaseURL is changed, register blobber to refresh it on blockchain again
+			if b.BaseURL != node.Self.GetURLBase() {
+				err = handler.UpdateBlobber(context.TODO())
+				if err == nil {
+					logging.Logger.Info("success to refresh blobber BaseURL on chain")
+				} else {
+					logging.Logger.Warn("failed to refresh blobber BaseURL on chain", zap.Error(err))
+				}
+			}
 		} else {
 			logging.Logger.Warn("failed to refresh blobber settings from chain", zap.Error(err))
 		}
+
 		<-time.After(REPEAT_DELAY * time.Second)
 	}
 }
@@ -74,22 +87,27 @@ func StartUpdateWorker(ctx context.Context, interval time.Duration) {
 	if err != nil {
 		panic(err)
 	}
-	currentCapacity := filestore.GetFileStore().GetCurrentDiskCapacity()
 
-	ticker := time.NewTicker(config.Configuration.BlobberUpdateInterval)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
+		case <-time.After(config.Configuration.BlobberUpdateInterval):
 			err := filestore.GetFileStore().CalculateCurrentDiskCapacity()
 			if err != nil {
 				logging.Logger.Error("Error while getting capacity", zap.Error(err))
 				break
 			}
-			if currentCapacity != filestore.GetFileStore().GetCurrentDiskCapacity() {
+			if uint64(config.Configuration.Capacity) != filestore.GetFileStore().GetCurrentDiskCapacity() {
 
-				err := handler.UpdateBlobberOnChain(ctx)
+				_, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
+
+				if err != nil {
+					logging.Logger.Error("Error while updating blobber updates on chain", zap.Error(err))
+					continue
+				}
+
+				err = handler.UpdateBlobberOnChain(ctx)
 				if err != nil {
 					logging.Logger.Error("Error while updating blobber updates on chain", zap.Error(err))
 				}

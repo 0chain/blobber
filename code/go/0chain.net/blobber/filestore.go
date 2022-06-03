@@ -23,5 +23,6 @@ func setupFileStore() (err error) {
 
 	filestore.SetFileStore(fs)
 
+	fmt.Print("	[OK]\n")
 	return nil
 }

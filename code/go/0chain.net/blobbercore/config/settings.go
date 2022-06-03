@@ -9,6 +9,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/constants"
+	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -123,17 +124,17 @@ func Update(ctx context.Context, db *gorm.DB) error {
 	return db.Create(s).Error
 }
 
-// Refresh sync latest settings from blockchain
-func Refresh(ctx context.Context, db *gorm.DB) error {
+// ReloadFromChain load and refresh latest settings from blockchain
+func ReloadFromChain(ctx context.Context, db *gorm.DB) (*zcncore.Blobber, error) {
 	if db == nil {
-		return errors.Throw(constants.ErrInvalidParameter, "db")
+		return nil, errors.Throw(constants.ErrInvalidParameter, "db")
 	}
 
 	b, err := zcn.GetBlobber(node.Self.ID)
 	if err != nil { // blobber is not registered yet
 		logging.Logger.Warn("failed to sync blobber settings from blockchain", zap.Error(err))
 
-		return err
+		return nil, err
 	}
 
 	Configuration.Capacity = int64(b.Capacity)
@@ -143,9 +144,9 @@ func Refresh(ctx context.Context, db *gorm.DB) error {
 	Configuration.MinLockDemand = b.Terms.MinLockDemand
 	Configuration.MinStake = int64(b.StakePoolSettings.MinStake)
 	Configuration.NumDelegates = b.StakePoolSettings.NumDelegates
-	Configuration.ReadPrice = float64(b.Terms.ReadPrice)
-	Configuration.WritePrice = float64(b.Terms.WritePrice)
-	Configuration.WritePrice = b.StakePoolSettings.ServiceCharge
+	Configuration.ReadPrice = b.Terms.ReadPrice.ToToken()
+	Configuration.WritePrice = b.Terms.WritePrice.ToToken()
+	Configuration.ServiceCharge = b.StakePoolSettings.ServiceCharge
 
-	return Update(ctx, db)
+	return b, Update(ctx, db)
 }
