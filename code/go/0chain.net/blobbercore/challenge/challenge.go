@@ -164,10 +164,18 @@ func commitProcessed(ctx context.Context) {
 		Order("sequence").
 		Find(&challenges)
 
-	for _, challenge := range challenges {
-		commitChallenge(challenge)
+	if len(challenges) > 0 {
+		swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
+		for _, challenge := range challenges {
+			c := challenge
+			swg.Add()
+			go func() {
+				defer swg.Done()
+				commitChallenge(c)
+			}()
+		}
+		swg.Wait()
 	}
-
 }
 
 func commitChallenge(openchallenge *ChallengeEntity) {
