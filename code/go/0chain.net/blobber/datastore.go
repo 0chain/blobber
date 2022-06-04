@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/automigration"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"gorm.io/gorm"
@@ -35,10 +34,8 @@ func setupDatabase() error {
 		time.Sleep(1 * time.Second)
 	}
 
-	if config.Configuration.DBAutoMigrate {
-		if err := automigration.AutoMigrate(pgDB); err != nil {
-			return fmt.Errorf("error while migrating schema: %v", err)
-		}
+	if err := automigration.AutoMigrate(pgDB); err != nil {
+		return fmt.Errorf("error while migrating schema: %v", err)
 	}
 
 	// check for database connection

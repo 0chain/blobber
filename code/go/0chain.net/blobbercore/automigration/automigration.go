@@ -68,11 +68,10 @@ func AutoMigrate(pgDB *gorm.DB) error {
 	}
 
 	db := datastore.GetStore().GetDB()
-
 	return migrateSchema(db)
 }
 
-func createDB(db *gorm.DB) error {
+func createDB(db *gorm.DB) (err error) {
 	// check if db exists
 	dbstmt := fmt.Sprintf("SELECT datname, oid FROM pg_database WHERE datname = '%s';", config.Configuration.DBName)
 	rs := db.Raw(dbstmt)
@@ -86,11 +85,11 @@ func createDB(db *gorm.DB) error {
 
 	if rs.Scan(&result); len(result.Datname) == 0 {
 		stmt := fmt.Sprintf("CREATE DATABASE %s;", config.Configuration.DBName)
-		if rs := db.Exec(stmt); rs.Error != nil && rs.Error.Error() != fmt.Sprintf("pq: database \"%s\" already exists", config.Configuration.DBName) {
+		if rs := db.Exec(stmt); rs.Error != nil {
 			return rs.Error
 		}
 	}
-	return nil
+	return
 }
 
 func createUser(db *gorm.DB) error {
@@ -129,25 +128,6 @@ func grantPrivileges(db *gorm.DB) error {
 }
 
 func migrateSchema(db *gorm.DB) error {
-	// !FIXME : tables can't be dropped as default on blobber startup. Because blobber will lose all data if it restarts. It might be a critical bug on production.
-	tablesToKeep := make(map[string]struct{})
-
-	for _, tb := range config.Configuration.DBTablesToKeep {
-		tablesToKeep[tb] = struct{}{}
-	}
-
-	for _, tblMdl := range tableModels {
-		tableName := tblMdl.TableName()
-		if _, ok := tablesToKeep[tableName]; ok {
-			continue
-		}
-
-		err := db.Migrator().DropTable(tableName)
-		if err != nil {
-			return err
-		}
-	}
-
 	var tables []interface{} // Put in new slice to resolve type mismatch
 	for _, tbl := range tableModels {
 		tables = append(tables, tbl)
