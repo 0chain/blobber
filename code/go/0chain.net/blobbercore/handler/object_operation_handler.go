@@ -76,7 +76,6 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks,
 			return common.NewErrorf("read_pre_redeem", "can't save requested read pools: %v", err)
 		}
 
-		readPoolsBalance = 0
 		if isOwner {
 			readPoolsBalance = rp.OwnerBalance
 		} else {
