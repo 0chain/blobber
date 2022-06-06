@@ -74,7 +74,6 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.MinioBucket = viper.GetString("minio.bucket_name")
 	config.Configuration.MinioRegion = viper.GetString("minio.region")
 
-	config.Configuration.DBAutoMigrate = viper.GetBool("db.automigrate")
 	config.Configuration.PGUserName = viper.GetString("pg.user")
 	config.Configuration.PGPassword = viper.GetString("pg.password")
 	if isIntegrationTest {
