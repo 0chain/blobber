@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
@@ -193,47 +192,23 @@ type PoolStat struct {
 	ExpireAt common.Timestamp `json:"expire_at"`
 }
 
-func RequestReadPools(clientID, allocationID string) (rps []*ReadPool, err error) {
+func RequestReadPoolStat(clientID string) (*ReadPool, error) {
 	Logger.Info("request read pools")
 
-	var (
-		blobberID = node.Self.ID
-		resp      []byte
-	)
-
 	params := map[string]string{
-		"client_id":     clientID,
-		"allocation_id": allocationID,
-		"blobber_id":    blobberID,
+		"client_id": clientID,
 	}
-	resp, err = transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getReadPoolAllocBlobberStat", params, chain.GetServerChain())
+	resp, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getReadPoolStat", params, chain.GetServerChain())
 	if err != nil {
 		return nil, fmt.Errorf("requesting read pools stat: %v", err)
 	}
 
-	var pss []*PoolStat
-	if err = json.Unmarshal(resp, &pss); err != nil {
-		return nil, fmt.Errorf("decoding read pools stat response: %v", err)
+	var readPool ReadPool
+	if err = json.Unmarshal(resp, &readPool); err != nil {
+		return nil, fmt.Errorf("decoding read pools stat response: %v, \n==> resp: %s", err, string(resp))
 	}
 
-	if len(pss) == 0 {
-		return nil, nil // empty
-	}
-
-	rps = make([]*ReadPool, 0, len(pss))
-	for _, ps := range pss {
-		rps = append(rps, &ReadPool{
-			PoolID: ps.PoolID,
-
-			ClientID:     clientID,
-			AllocationID: allocationID,
-
-			Balance:  ps.Balance,
-			ExpireAt: ps.ExpireAt,
-		})
-	}
-
-	return // got them
+	return &readPool, nil
 }
 
 func RequestWritePools(clientID, allocationID string) (wps []*WritePool, err error) {

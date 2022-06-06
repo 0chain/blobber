@@ -193,13 +193,13 @@ func (Terms) TableName() string {
 	return TableNameTerms
 }
 
+// ReadPool represents new trimmed down readPool consisting of two balances,
+// one for the allocations that the client (client_id) owns
+// and the other for the allocations that the client (client_id) doesn't own
 type ReadPool struct {
-	PoolID       string `gorm:"column:pool_id;size:64;primaryKey"`
-	ClientID     string `gorm:"column:client_id;size:64;not null;index:idx_read_pools_cab,priority:1"`
-	AllocationID string `gorm:"column:allocation_id;size:64;not null;index:idx_read_pools_cab,priority:2"`
-	// Cached balance in read pool. Might need update when balance - pending is less than 0
-	Balance  int64            `gorm:"column:balance;not null"`
-	ExpireAt common.Timestamp `gorm:"column:expire_at;not null"`
+	ClientID       string `gorm:"column:client_id;size:64;primaryKey" json:"client_id"`
+	OwnerBalance   int64  `gorm:"column:owner_balance;not null" json:"owner_balance"`
+	VisitorBalance int64  `gorm:"column:visitor_balance;not null" json:"visitor_balance"`
 }
 
 func (ReadPool) TableName() string {
@@ -218,57 +218,42 @@ func (WritePool) TableName() string {
 	return "write_pools"
 }
 
-func GetReadPools(db *gorm.DB, allocationID, clientID string, until common.Timestamp) (rps []*ReadPool, err error) {
-	err = db.Model(&ReadPool{}).Select("pool_id", "balance", "expire_at").
-		Where(
-			"allocation_id = ? AND "+
-				"client_id = ? AND "+
-				"expire_at > ?", allocationID, clientID, until).Find(&rps).Error
-
-	if err != nil {
-		return nil, err
-	}
-	return
+func GetReadPool(db *gorm.DB, clientID string) (*ReadPool, error) {
+	var rp ReadPool
+	return &rp, db.Model(&ReadPool{}).Where("client_id = ?", clientID).Scan(&rp).Error
 }
 
-func GetReadPoolsBalance(db *gorm.DB, allocationID, clientID string, until common.Timestamp) (balance int64, err error) {
-	var b *int64 // pointer to int64 for possible total sum as null
-	err = db.Model(&ReadPool{}).Select("sum(balance) as tot_balance").Where(
-		"client_id = ? AND "+
-			"allocation_id = ? AND "+
-			"expire_at > ?", clientID, allocationID, until).Scan(&b).Error
-
+func GetReadPoolsBalance(db *gorm.DB, clientID string, isOwner bool) (int64, error) {
+	rp, err := GetReadPool(db, clientID)
 	if err != nil {
 		return 0, err
 	}
-	if b == nil {
-		return 0, nil
+
+	if isOwner {
+		return rp.OwnerBalance, nil
 	}
-	return *b, nil
+	return rp.VisitorBalance, nil
 }
 
-func SetReadPools(db *gorm.DB, clientID, allocationID string, rps []*ReadPool) (err error) {
-	// cleanup and batch insert (remove old pools, add / update new)
-	const query = `client_id = ? AND
-			allocation_id = ?`
-
-	var stub []*ReadPool
-	err = db.Model(&ReadPool{}).
-		Where(query, clientID, allocationID).
-		Delete(&stub).Error
+func SetReadPool(db *gorm.DB, rp *ReadPool) error {
+	var erp ReadPool //find existing read pool
+	err := db.Model(&ReadPool{}).Where("client_id = ?", rp.ClientID).FirstOrCreate(&erp, rp).Error
 	if err != nil {
-		return
+		return err
 	}
 
-	if len(rps) == 0 {
-		return
+	if erp.OwnerBalance == rp.OwnerBalance && erp.VisitorBalance == rp.VisitorBalance {
+		return nil
 	}
+	// update existing
+	return UpdateReadPool(db, rp)
+}
 
-	err = db.Model(&ReadPool{}).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "pool_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"balance"}),
-	}).Create(rps).Error
-	return
+func UpdateReadPool(db *gorm.DB, rp *ReadPool) error {
+	return db.Model(&ReadPool{}).Where("client_id = ?", rp.ClientID).Updates(map[string]interface{}{
+		"owner_balance":   rp.OwnerBalance,
+		"visitor_balance": rp.VisitorBalance,
+	}).Error
 }
 
 func SetWritePools(db *gorm.DB, clientID, allocationID string, wps []*WritePool) (err error) {
@@ -301,19 +286,4 @@ func SetWritePools(db *gorm.DB, clientID, allocationID string, wps []*WritePool)
 type ReadPoolRedeem struct {
 	PoolID  string `json:"pool_id"` // read pool ID
 	Balance int64  `json:"balance"` // balance reduction
-}
-
-// SubReadRedeemed subtracts tokens redeemed from read pools.
-func SubReadRedeemed(rps []*ReadPool, redeems []ReadPoolRedeem) {
-	var rm = make(map[string]int64)
-
-	for _, rd := range redeems {
-		rm[rd.PoolID] += rd.Balance
-	}
-
-	for _, rp := range rps {
-		if sub, ok := rm[rp.PoolID]; ok {
-			rp.Balance -= sub
-		}
-	}
 }

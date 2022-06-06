@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -151,22 +150,21 @@ func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, latestRedeemedRC 
 }
 
 // Sync read marker with 0chain to be sure its correct.
-func (rm *ReadMarkerEntity) Sync(ctx context.Context) (err error) {
+func (rm *ReadMarkerEntity) Sync(ctx context.Context) error {
 	var db = datastore.GetStore().GetTransaction(ctx)
 	// update local read pools cache from sharders
-	var rps []*allocation.ReadPool
-	rps, err = allocation.RequestReadPools(rm.LatestRM.ClientID, rm.LatestRM.AllocationID)
+	rp, err := allocation.RequestReadPoolStat(rm.LatestRM.ClientID)
 	if err != nil {
 		return common.NewErrorf("rme_sync", "can't get read pools from sharders: %v", err)
 	}
 
 	// save the fresh read pools information
-	err = allocation.SetReadPools(db, rm.LatestRM.ClientID, rm.LatestRM.AllocationID, rps)
+	err = allocation.SetReadPool(db, rp)
 	if err != nil {
 		return common.NewErrorf("rme_sync", "can't update read pools from sharders: %v", err)
 	}
 
-	return
+	return err
 }
 
 // UpdateStatus updates read marker status and all related on successful redeeming.
@@ -186,14 +184,14 @@ func (rme *ReadMarkerEntity) UpdateStatus(ctx context.Context, txOutput, redeemT
 		return common.NewError("rme_update_status", err.Error())
 	}
 
-	rps, err := allocation.GetReadPools(db, rme.LatestRM.AllocationID, rme.LatestRM.ClientID, common.Now())
+	rp, err := allocation.RequestReadPoolStat(rme.LatestRM.ClientID)
 	if err != nil {
-		return common.NewError("rme_update_status", "database error while getting read pools")
+		return common.NewErrorf("rme_update_status", "can't get read pools from sharders: %v", err)
 	}
 
-	allocation.SubReadRedeemed(rps, redeems)
-	if err := allocation.SetReadPools(db, rme.LatestRM.ClientID, rme.LatestRM.AllocationID, rps); err != nil {
+	if err := allocation.UpdateReadPool(db, rp); err != nil {
 		return common.NewErrorf("rme_update_status", "can't update local read pools cache: %v", err)
 	}
+
 	return
 }
