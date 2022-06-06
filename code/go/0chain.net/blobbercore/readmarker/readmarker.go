@@ -35,9 +35,7 @@ type ReadMarker struct {
 	Timestamp       common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
 	ReadCounter     int64            `gorm:"column:counter" json:"counter"`
 	Signature       string           `gorm:"column:signature;size:64" json:"signature"`
-	PayerID         string           `gorm:"column:payer_id;size:64" json:"payer_id"`
 
-	// Remove this as well
 	AuthTicket datatypes.JSON `gorm:"column:auth_ticket" json:"auth_ticket"`
 }
 

@@ -11,7 +11,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/mock"
-	"github.com/0chain/gosdk/zboxcore/fileref"
 	"github.com/0chain/gosdk/zboxcore/sdk"
 )
 
@@ -63,7 +62,6 @@ func BenchmarkUploadFileWithDisk(b *testing.B) {
 				MimeType:   "plain/text",
 				RemoteName: fileName,
 				RemotePath: "/" + fileName,
-				Attributes: fileref.Attributes{},
 			}
 
 			hasher := sdk.CreateHasher(bm.ChunkSize)
@@ -157,7 +155,6 @@ func BenchmarkUploadFileWithNoDisk(b *testing.B) {
 				MimeType:   "plain/text",
 				RemoteName: fileName,
 				RemotePath: "/" + fileName,
-				Attributes: fileref.Attributes{},
 			}
 
 			hasher := sdk.CreateHasher(bm.ChunkSize)

@@ -2,7 +2,6 @@ package storage
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -34,21 +33,6 @@ type ObjectEntity interface {
 	GetHash() string
 	CalculateHash() string
 	GetType() string
-}
-
-type Attributes struct {
-	WhoPaysForReads common.WhoPays `json:"who_pays_for_reads,omitempty" mapstructure:"who_pays_for_reads"`
-}
-
-func (a *Attributes) String() string {
-	if a == nil || (*a) == (Attributes{}) {
-		return "{}"
-	}
-	var b, err = json.Marshal(a)
-	if err != nil {
-		return "{}"
-	}
-	return string(b)
 }
 
 type DirMetaData struct {
@@ -85,14 +69,13 @@ func (r *DirMetaData) GetType() string {
 
 type FileMetaData struct {
 	DirMetaData    `mapstructure:",squash"`
-	CustomMeta     string     `json:"custom_meta" mapstructure:"custom_meta"`
-	ContentHash    string     `json:"content_hash" mapstructure:"content_hash"`
-	Size           int64      `json:"size" mapstructure:"size"`
-	MerkleRoot     string     `json:"merkle_root" mapstructure:"merkle_root"`
-	ActualFileSize int64      `json:"actual_file_size" mapstructure:"actual_file_size"`
-	ActualFileHash string     `json:"actual_file_hash" mapstructure:"actual_file_hash"`
-	ChunkSize      int64      `json:"chunk_size" mapstructure:"chunk_size"`
-	Attributes     Attributes `json:"attributes" mapstructure:"attributes" `
+	CustomMeta     string `json:"custom_meta" mapstructure:"custom_meta"`
+	ContentHash    string `json:"content_hash" mapstructure:"content_hash"`
+	Size           int64  `json:"size" mapstructure:"size"`
+	MerkleRoot     string `json:"merkle_root" mapstructure:"merkle_root"`
+	ActualFileSize int64  `json:"actual_file_size" mapstructure:"actual_file_size"`
+	ActualFileHash string `json:"actual_file_hash" mapstructure:"actual_file_hash"`
+	ChunkSize      int64  `json:"chunk_size" mapstructure:"chunk_size"`
 }
 
 func (fr *FileMetaData) GetHashData() string {
@@ -107,7 +90,6 @@ func (fr *FileMetaData) GetHashData() string {
 		fr.MerkleRoot,
 		strconv.FormatInt(fr.ActualFileSize, 10),
 		fr.ActualFileHash,
-		fr.Attributes.String(),
 		strconv.FormatInt(fr.ChunkSize, 10),
 	)
 	return strings.Join(hashArray, ":")

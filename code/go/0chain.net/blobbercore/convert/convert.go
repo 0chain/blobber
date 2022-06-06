@@ -158,7 +158,6 @@ func ReadMarkerToReadMarkerGRPC(rm *readmarker.ReadMarker) *blobbergrpc.ReadMark
 		Timestamp:       int64(rm.Timestamp),
 		ReadCounter:     rm.ReadCounter,
 		Signature:       rm.Signature,
-		PayerId:         rm.PayerID,
 		AuthTicket:      rm.AuthTicket,
 	}
 }
@@ -177,7 +176,6 @@ func ReadMakerGRPCToReadMaker(rm *blobbergrpc.ReadMarker) *readmarker.ReadMarker
 		Timestamp:       common.Timestamp(rm.Timestamp),
 		ReadCounter:     rm.ReadCounter,
 		Signature:       rm.Signature,
-		PayerID:         rm.PayerId,
 		AuthTicket:      rm.AuthTicket,
 	}
 }
@@ -333,7 +331,6 @@ func convertFileRefToFileMetaDataGRPC(fileref *reference.Ref) *blobbergrpc.FileM
 		ActualThumbnailSize: fileref.ActualThumbnailSize,
 		ActualThumbnailHash: fileref.ActualThumbnailHash,
 		EncryptedKey:        fileref.EncryptedKey,
-		Attributes:          fileref.Attributes,
 		OnCloud:             fileref.OnCloud,
 		CommitMetaTxns:      commitMetaTxnsGRPC,
 		CreatedAt:           fileref.CreatedAt.UnixNano(),
@@ -400,7 +397,6 @@ func convertFileMetaDataGRPCToFileRef(metaData *blobbergrpc.FileMetaData) *refer
 		ActualThumbnailSize: metaData.ActualThumbnailSize,
 		ActualThumbnailHash: metaData.ActualThumbnailHash,
 		EncryptedKey:        metaData.EncryptedKey,
-		Attributes:          metaData.Attributes,
 		OnCloud:             metaData.OnCloud,
 		CommitMetaTxns:      commitMetaTxnsGRPC,
 		CreatedAt:           time.Unix(0, metaData.CreatedAt),

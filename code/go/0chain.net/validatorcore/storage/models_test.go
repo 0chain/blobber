@@ -15,54 +15,6 @@ import (
 	"go.uber.org/zap"
 )
 
-func TestAttributes_String(t *testing.T) {
-	tests := []struct {
-		name  string
-		attrs *storage.Attributes
-		want  string
-	}{
-		{
-			name: "owner",
-			attrs: &storage.Attributes{
-				WhoPaysForReads: common.WhoPaysOwner,
-			},
-			want: "{}",
-			// want: "{\"who_pays_for_reads\":0}",
-		},
-		{
-			name: "",
-			attrs: &storage.Attributes{
-				WhoPaysForReads: common.WhoPays3rdParty,
-			},
-			want: "{\"who_pays_for_reads\":1}",
-		},
-		{
-			name:  "nil",
-			attrs: nil,
-			want:  "{}",
-		},
-		{
-			name:  "empty",
-			attrs: &storage.Attributes{},
-			want:  "{}",
-		},
-		{
-			name: "invalid",
-			attrs: &storage.Attributes{
-				WhoPaysForReads: 2,
-			},
-			want: "{\"who_pays_for_reads\":2}",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.attrs.String()
-			assert.Equal(t, tt.want, got)
-		})
-	}
-}
-
 func TestDirMetaData_GetNumBlocks(t *testing.T) {
 	t.Skip("covered in TestObjectPath_VerifyBlockNum")
 }
@@ -127,96 +79,12 @@ func TestDirMetaData_GetType(t *testing.T) {
 	t.Skip("covered in TestObjectPath_VerifyBlockNum")
 }
 
-func TestFileMetaData_GetHashData(t *testing.T) {
-	tests := []struct {
-		name string
-		fmd  storage.FileMetaData
-		want string
-	}{
-		{
-			name: "with Attributes.WhoPays = WhoPaysOwner",
-			fmd: storage.FileMetaData{
-				DirMetaData: storage.DirMetaData{},
-				Attributes: storage.Attributes{
-					WhoPaysForReads: common.WhoPaysOwner,
-				},
-			},
-			want: "::::0:::0::{}:0",
-			// want: "::::0:::0::{\"who_pays_for_reads\":0}",
-		},
-		{
-			name: "with Attributes.WhoPays = WhoPays3rdParty",
-			fmd: storage.FileMetaData{
-				DirMetaData: storage.DirMetaData{},
-				Attributes: storage.Attributes{
-					WhoPaysForReads: common.WhoPays3rdParty,
-				},
-			},
-			want: "::::0:::0::{\"who_pays_for_reads\":1}:0",
-		},
-		{
-			name: "with Attributes.WhoPays = nil",
-			fmd: storage.FileMetaData{
-				DirMetaData: storage.DirMetaData{},
-			},
-			want: "::::0:::0::{}:0",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.fmd.GetHashData()
-			assert.Equal(t, tt.want, got)
-		})
-	}
-}
-
 func TestFileMetaData_NumBlocks(t *testing.T) {
 	t.Skip("covered in TestObjectPath_VerifyBlockNum")
 }
 
 func TestFileMetaData_GetHash(t *testing.T) {
 	t.Skip("covered in TestObjectPath_Parse")
-}
-
-func TestFileMetaData_CalculateHash(t *testing.T) {
-	tests := []struct {
-		name string
-		fmd  storage.FileMetaData
-		want string
-	}{
-		{
-			name: "with Attributes.WhoPays = WhoPaysOwner",
-			fmd: storage.FileMetaData{
-				Attributes: storage.Attributes{
-					WhoPaysForReads: common.WhoPaysOwner,
-				},
-			},
-			want: "2f3e218c5c0a759f8267f8b86d8438c5416c1c8499cd483f1fae428fe97eca2d",
-			// want: "a9862b25db264157a540dc3ecf7aae331f377aeb3c2ef9c59951e1c8c3e3bc15",
-		},
-		{
-			name: "with Attributes.WhoPays = WhoPays3rdParty",
-			fmd: storage.FileMetaData{
-				Attributes: storage.Attributes{
-					WhoPaysForReads: common.WhoPays3rdParty,
-				},
-			},
-			want: "b5553813cb69c0973b25ba19d9fc7748bd8eb4cc3ee7925f55750c96b08c5804",
-		},
-		{
-			name: "with Attributes.WhoPays = nil",
-			fmd:  storage.FileMetaData{},
-			want: "2f3e218c5c0a759f8267f8b86d8438c5416c1c8499cd483f1fae428fe97eca2d",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.fmd.CalculateHash()
-			assert.Equal(t, tt.want, got)
-		})
-	}
 }
 
 func TestFileMetaData_GetType(t *testing.T) {
@@ -484,7 +352,6 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 							MerkleRoot:     "",
 							ActualFileSize: int64(0),
 							ActualFileHash: "",
-							Attributes:     storage.Attributes{},
 						},
 					},
 				},
@@ -535,7 +402,6 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 							MerkleRoot:     "",
 							ActualFileSize: int64(0),
 							ActualFileHash: "",
-							Attributes:     storage.Attributes{},
 						},
 					},
 				},
@@ -605,7 +471,6 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 									MerkleRoot:     "",
 									ActualFileSize: int64(0),
 									ActualFileHash: "",
-									Attributes:     storage.Attributes{},
 								},
 							},
 						},

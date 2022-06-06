@@ -21,7 +21,7 @@ func TestHashnodeHanders_LoadRootHashnode(t *testing.T) {
 	datastore.UseMocket(true)
 
 	gomocket.Catcher.NewMock().
-		WithQuery(`SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, attributes, chunk_size,size,actual_file_size, parent_path
+		WithQuery(`SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, chunk_size,size,actual_file_size, parent_path
 FROM reference_objects`).
 		WithArgs("allocation_handler_load_root").
 		WithReply([]map[string]interface{}{
@@ -33,7 +33,6 @@ FROM reference_objects`).
 				"content_hash":     "",
 				"merkle_root":      "",
 				"actual_file_hash": "",
-				"attributes":       []byte("null"),
 				"chunk_size":       0,
 				"size":             0,
 				"actual_file_size": 0,
@@ -47,7 +46,6 @@ FROM reference_objects`).
 				"content_hash":     "",
 				"merkle_root":      "",
 				"actual_file_hash": "",
-				"attributes":       []byte("null"),
 				"chunk_size":       0,
 				"size":             0,
 				"actual_file_size": 0,
@@ -61,7 +59,6 @@ FROM reference_objects`).
 				"content_hash":     "",
 				"merkle_root":      "",
 				"actual_file_hash": "",
-				"attributes":       []byte("null"),
 				"chunk_size":       0,
 				"size":             0,
 				"actual_file_size": 0,
@@ -75,7 +72,6 @@ FROM reference_objects`).
 				"content_hash":     "",
 				"merkle_root":      "",
 				"actual_file_hash": "",
-				"attributes":       []byte("null"),
 				"chunk_size":       0,
 				"size":             0,
 				"actual_file_size": 0,

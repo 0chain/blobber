@@ -212,18 +212,6 @@ message ReadMarker {
   bytes            auth_ticket = 10;
 }
 
-message UpdateObjectAttributesRequest {
-  string allocation = 1;
-  string path = 2;
-  string path_hash = 3;
-  string connection_id = 4;
-  string attributes = 5;
-}
-
-message UpdateObjectAttributesResponse {
-  int64 who_pays_for_reads = 1;
-}
-
 message CopyObjectRequest {
   string allocation = 1;
   string path = 2;
@@ -338,11 +326,10 @@ message FileMetaData {
   int64 actual_thumbnail_size = 17;
   string actual_thumbnail_hash = 18;
   string encrypted_key = 19;
-  bytes attributes = 20;
-  bool on_cloud = 21;
-  repeated CommitMetaTxn commit_meta_txns = 22;
-  int64 created_at = 23;
-  int64 updated_at = 24;
+  bool on_cloud = 20;
+  repeated CommitMetaTxn commit_meta_txns = 21;
+  int64 created_at = 22;
+  int64 updated_at = 23;
 }
 
 message DirMetaData {

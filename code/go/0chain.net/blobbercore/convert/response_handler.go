@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
@@ -142,12 +140,6 @@ func CollaboratorResponse(response *blobbergrpc.CollaboratorResponse) interface{
 	}
 
 	return nil
-}
-
-func UpdateObjectAttributesResponseHandler(updateAttributesResponse *blobbergrpc.UpdateObjectAttributesResponse) *blobberhttp.UpdateObjectAttributesResponse {
-	return &blobberhttp.UpdateObjectAttributesResponse{
-		WhoPaysForReads: common.WhoPays(updateAttributesResponse.WhoPaysForReads),
-	}
 }
 
 func CopyObjectResponseHandler(copyObjectResponse *blobbergrpc.CopyObjectResponse) *blobberhttp.UploadResult {

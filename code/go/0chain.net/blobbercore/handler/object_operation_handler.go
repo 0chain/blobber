@@ -209,7 +209,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	isOwner := clientID == alloc.OwnerID
-	isRepairer := clientID == alloc.RepairerID
 	isCollaborator := reference.IsACollaborator(ctx, fileref.ID, clientID)
 
 	var authToken *readmarker.AuthTicket
@@ -234,11 +233,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			return nil, errors.New("client does not have permission to download the file. share revoked")
 		}
 
-		// set payer: check for command line payer flag (--rx_pay)
-		if dr.RxPay {
-			payerID = clientID
-		}
-
 		availableAt := shareInfo.AvailableAt.Unix()
 		if common.Timestamp(availableAt) > common.Now() {
 			return nil, common.NewErrorf("download_file", "the file is not available until: %v", shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
@@ -246,12 +240,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 
 		dr.ReadMarker.AuthTicket = datatypes.JSON(authTokenString)
 
-		// check for file payer flag
-		if fileAttrs, err := fileref.GetAttributes(); err != nil {
-			return nil, common.NewErrorf("download_file", "error getting file attributes: %v", err)
-		} else if fileAttrs.WhoPaysForReads == common.WhoPays3rdParty && !(isCollaborator || isRepairer) {
-			payerID = clientID
-		}
 	}
 	// create read marker
 	var (
@@ -318,7 +306,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		}
 	}
 
-	dr.ReadMarker.PayerID = payerID
 	err = readmarker.SaveLatestReadMarker(ctx, &dr.ReadMarker, 0, latestRM == nil)
 	if err != nil {
 		Logger.Error(err.Error())
@@ -608,114 +595,6 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	result.Size = objectRef.Size
 
 	return result, nil
-}
-
-func (fsh *StorageHandler) UpdateObjectAttributes(ctx context.Context, r *http.Request) (resp interface{}, err error) {
-	if r.Method != http.MethodPost {
-		return nil, common.NewError("update_object_attributes",
-			"Invalid method used. Use POST instead")
-	}
-
-	var (
-		allocTx  = ctx.Value(constants.ContextKeyAllocation).(string)
-		clientID = ctx.Value(constants.ContextKeyClient).(string)
-
-		alloc *allocation.Allocation
-	)
-
-	if alloc, err = fsh.verifyAllocation(ctx, allocTx, false); err != nil {
-		return nil, common.NewErrorf("update_object_attributes",
-			"Invalid allocation ID passed: %v", err)
-	}
-
-	valid, err := verifySignatureFromRequest(allocTx, r.Header.Get(common.ClientSignatureHeader), alloc.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	if alloc.IsImmutable {
-		return nil, common.NewError("immutable_allocation", "Cannot update data in an immutable allocation")
-	}
-
-	// runtime type check
-	_ = ctx.Value(constants.ContextKeyClientKey).(string)
-
-	if clientID == "" {
-		return nil, common.NewError("update_object_attributes",
-			"missing client ID")
-	}
-
-	var attributes = r.FormValue("attributes") // new attributes as string
-	if attributes == "" {
-		return nil, common.NewError("update_object_attributes",
-			"missing new attributes, pass at least {} for empty attributes")
-	}
-
-	var attrs = new(reference.Attributes)
-	if err = json.Unmarshal([]byte(attributes), attrs); err != nil {
-		return nil, common.NewErrorf("update_object_attributes",
-			"decoding given attributes: %v", err)
-	}
-
-	pathHash, err := pathHashFromReq(r, alloc.ID)
-	if err != nil {
-		return nil, common.NewError("update_object_attributes",
-			"missing path and path_hash")
-	}
-
-	if alloc.OwnerID != clientID {
-		return nil, common.NewError("update_object_attributes",
-			"operation needs to be performed by the owner of the allocation")
-	}
-
-	var connID = r.FormValue("connection_id")
-	if connID == "" {
-		return nil, common.NewErrorf("update_object_attributes",
-			"invalid connection id passed: %s", connID)
-	}
-
-	var conn *allocation.AllocationChangeCollector
-	conn, err = allocation.GetAllocationChanges(ctx, connID, alloc.ID, clientID)
-	if err != nil {
-		return nil, common.NewErrorf("update_object_attributes",
-			"reading metadata for connection: %v", err)
-	}
-
-	var mutex = lock.GetMutex(conn.TableName(), connID)
-
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	var ref *reference.Ref
-	ref, err = reference.GetLimitedRefFieldsByLookupHash(ctx, alloc.ID, pathHash, []string{"id", "path"})
-	if err != nil {
-		return nil, common.NewErrorf("update_object_attributes",
-			"invalid file path: %v", err)
-	}
-
-	var change = new(allocation.AllocationChange)
-	change.ConnectionID = conn.ID
-	change.Operation = constants.FileOperationUpdateAttrs
-
-	var uafc = &allocation.AttributesChange{
-		ConnectionID: conn.ID,
-		AllocationID: conn.AllocationID,
-		Path:         ref.Path,
-		Attributes:   attrs,
-	}
-
-	conn.AddChange(change, uafc)
-
-	err = conn.Save(ctx)
-	if err != nil {
-		Logger.Error("update_object_attributes: "+
-			"error in writing the connection meta data", zap.Error(err))
-		return nil, common.NewError("update_object_attributes",
-			"error writing the connection meta data")
-	}
-
-	// return new attributes as result
-	return attrs, nil
 }
 
 func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
