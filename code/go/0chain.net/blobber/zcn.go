@@ -17,7 +17,7 @@ func registerOnChain() error {
 	//wait http & grpc startup, and go to setup on chain
 	fmt.Print("> connecting to chain	\n")
 
-	const ATTEMPT_DELAY = 60 * 1
+	const ATTEMPT_DELAY = 30 //30s
 
 	// setup wallet
 	fmt.Print("	+ connect to miners: ")
@@ -26,33 +26,33 @@ func registerOnChain() error {
 		return nil
 	}
 
-	if err := handler.WalletRegister(); err != nil {
-		fmt.Println(err.Error() + "\n")
-		panic(err)
+	var err error
+
+	err = handler.WalletRegister()
+	if err != nil {
+		return err
 	}
 	fmt.Print("	[OK]\n")
 
-	var err error
+	err = filestore.GetFileStore().CalculateCurrentDiskCapacity()
+	if err != nil {
+		return err
+	}
+
 	// setup blobber (add or update) on the blockchain (multiple attempts)
 	for i := 1; i <= 10; i++ {
 		if i == 1 {
 			fmt.Printf("\r	+ connect to sharders:")
 		} else {
-
-			for n := ATTEMPT_DELAY; n < 1; n-- {
+			for n := ATTEMPT_DELAY; n > 0; n-- {
 				if n == 1 {
-					fmt.Printf("\r	+ [%v/10]connect to sharders :", i)
+					fmt.Printf("\r	+ [%v/10]connect to sharders:      ", i)
 				} else {
-					fmt.Printf("\r	+ [%v/10]connect to sharders %v:", i, n)
+					fmt.Printf("\r	+ [%v/10]connect to sharders: %.2vs", i, n)
 				}
-				time.Sleep(1 * time.Second)
+
+				<-time.After(1 * time.Second)
 			}
-
-		}
-
-		err = filestore.GetFileStore().CalculateCurrentDiskCapacity()
-		if err != nil {
-			continue
 		}
 
 		err = handler.RegisterBlobber(common.GetRootContext())
@@ -63,16 +63,21 @@ func registerOnChain() error {
 		break
 	}
 
+	if err != nil {
+		return err
+	}
+
 	fmt.Print("	[OK]\n")
 
 	if !isIntegrationTest {
-		go setupWorkers()
+		ctx := common.GetRootContext()
+		go setupWorkers(ctx)
 
-		go startHealthCheck()
-		go startRefreshSettings()
+		go startHealthCheck(ctx)
+		go startRefreshSettings(ctx)
 
 		if config.Configuration.PriceInUSD {
-			go refreshPriceOnChain()
+			go refreshPriceOnChain(ctx)
 		}
 	}
 

@@ -20,65 +20,82 @@ import (
 	"go.uber.org/zap"
 )
 
-func setupWorkers() {
-	var root = common.GetRootContext()
-	handler.SetupWorkers(root)
-	challenge.SetupWorkers(root)
-	readmarker.SetupWorkers(root)
-	writemarker.SetupWorkers(root)
-	allocation.StartUpdateWorker(root, config.Configuration.UpdateAllocationsInterval)
+func setupWorkers(ctx context.Context) {
+
+	handler.SetupWorkers(ctx)
+	challenge.SetupWorkers(ctx)
+	readmarker.SetupWorkers(ctx)
+	writemarker.SetupWorkers(ctx)
+	allocation.StartUpdateWorker(ctx, config.Configuration.UpdateAllocationsInterval)
 	if config.Configuration.AutomaticUpdate {
-		go StartUpdateWorker(root, config.Configuration.BlobberUpdateInterval)
+		go StartUpdateWorker(ctx, config.Configuration.BlobberUpdateInterval)
 	}
 }
 
-func refreshPriceOnChain() {
+func refreshPriceOnChain(ctx context.Context) {
 	var REPEAT_DELAY = 60 * 60 * time.Duration(viper.GetInt("price_worker_in_hours")) // 12 hours with default settings
-	for {
-		time.Sleep(REPEAT_DELAY * time.Second)
-		if err := handler.RefreshPriceOnChain(common.GetRootContext()); err != nil {
-			logging.Logger.Error("refresh price on chain ", zap.Error(err))
-		}
-	}
-}
-
-func startHealthCheck() {
-	const REPEAT_DELAY = 60 * 15 // 15 minutes
 	var err error
 	for {
-		err = handler.SendHealthCheck()
-		if err == nil {
-			logging.Logger.Info("success to send heartbeat")
-		} else {
-			logging.Logger.Warn("failed to send heartbeat", zap.Error(err))
+		select {
+		case <-ctx.Done():
+			break
+
+		case <-time.After(REPEAT_DELAY * time.Second):
+			err = handler.RefreshPriceOnChain(common.GetRootContext())
+			if err != nil {
+				logging.Logger.Error("refresh price on chain ", zap.Error(err))
+			}
 		}
-		<-time.After(REPEAT_DELAY * time.Second)
+
+	}
+}
+
+func startHealthCheck(ctx context.Context) {
+
+	const REPEAT_DELAY = 10 * 1 // 60s
+	var err error
+	for {
+		select {
+		case <-ctx.Done():
+			break
+		case <-time.After(REPEAT_DELAY * time.Second):
+
+			err = handler.SendHealthCheck()
+			if err == nil {
+				logging.Logger.Info("success to send heartbeat")
+			} else {
+				logging.Logger.Warn("failed to send heartbeat", zap.Error(err))
+			}
+		}
 	}
 }
 
 // startRefreshSettings sync settings from blockchain
-func startRefreshSettings() {
+func startRefreshSettings(ctx context.Context) {
 	const REPEAT_DELAY = 60 * 3 // 3 minutes
 	var err error
 	var b *zcncore.Blobber
 	for {
-		b, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
-		if err == nil {
-			logging.Logger.Info("success to refresh blobber settings from chain")
-			//	BaseURL is changed, register blobber to refresh it on blockchain again
-			if b.BaseURL != node.Self.GetURLBase() {
-				err = handler.UpdateBlobber(context.TODO())
-				if err == nil {
-					logging.Logger.Info("success to refresh blobber BaseURL on chain")
-				} else {
-					logging.Logger.Warn("failed to refresh blobber BaseURL on chain", zap.Error(err))
+		select {
+		case <-ctx.Done():
+			break
+		case <-time.After(REPEAT_DELAY * time.Second):
+			b, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
+			if err == nil {
+				logging.Logger.Info("success to refresh blobber settings from chain")
+				//	BaseURL is changed, register blobber to refresh it on blockchain again
+				if b.BaseURL != node.Self.GetURLBase() {
+					err = handler.UpdateBlobber(context.TODO())
+					if err == nil {
+						logging.Logger.Info("success to refresh blobber BaseURL on chain")
+					} else {
+						logging.Logger.Warn("failed to refresh blobber BaseURL on chain", zap.Error(err))
+					}
 				}
+			} else {
+				logging.Logger.Warn("failed to refresh blobber settings from chain", zap.Error(err))
 			}
-		} else {
-			logging.Logger.Warn("failed to refresh blobber settings from chain", zap.Error(err))
 		}
-
-		<-time.After(REPEAT_DELAY * time.Second)
 	}
 }
 

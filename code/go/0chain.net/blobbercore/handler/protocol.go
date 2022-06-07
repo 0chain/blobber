@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"log"
 	"sync"
 	"time"
 
@@ -239,6 +240,7 @@ func WalletRegister() error {
 
 // SendHealthCheck send heartbeat to blockchain
 func SendHealthCheck() error {
+	log.Println("SendHealthCheck")
 	txnHash, err := BlobberHealthCheck()
 	if err != nil {
 		return err
