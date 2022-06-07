@@ -43,7 +43,7 @@ const (
 	ReEncryptionHeaderSize = 256
 )
 
-func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks, pendNumBlocks int64, payerID string) (err error) {
+func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks, pendNumBlocks int64) (err error) {
 	if numBlocks == 0 {
 		return
 	}
@@ -61,7 +61,7 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks,
 		return // skip if read price is zero
 	}
 
-	readPoolsBalance, err := allocation.GetReadPoolsBalance(db, alloc.ID, payerID, until)
+	readPoolsBalance, err := allocation.GetReadPoolsBalance(db, alloc.ID, alloc.OwnerID, until)
 	if err != nil {
 		return common.NewError("read_pre_redeem", "database error while reading read pools balance")
 	}
@@ -69,12 +69,12 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks,
 	requiredBalance := alloc.GetRequiredReadBalance(blobberID, numBlocks+pendNumBlocks)
 
 	if float64(readPoolsBalance) < requiredBalance {
-		rps, err = allocation.RequestReadPools(payerID, alloc.ID)
+		rps, err = allocation.RequestReadPools(alloc.OwnerID, alloc.ID)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem", "can't request read pools from sharders: %v", err)
 		}
 
-		err = allocation.SetReadPools(db, payerID, alloc.ID, rps)
+		err = allocation.SetReadPools(db, alloc.OwnerID, alloc.ID, rps)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem", "can't save requested read pools: %v", err)
 		}
@@ -200,14 +200,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		return nil, common.NewErrorf("download_file", "path is not a file: %v", err)
 	}
 
-	// set payer: default
-	payerID := alloc.OwnerID
-
-	// set payer: check for explicit allocation payer value
-	if alloc.PayerID != "" {
-		payerID = alloc.PayerID
-	}
-
 	isOwner := clientID == alloc.OwnerID
 	isCollaborator := reference.IsACollaborator(ctx, fileref.ID, clientID)
 
@@ -271,7 +263,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, alloc, dr.NumBlocks, pendNumBlocks, payerID)
+	err = readPreRedeem(ctx, alloc, dr.NumBlocks, pendNumBlocks)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "pre-redeeming read marker: %v", err)
 	}
@@ -780,7 +772,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	result.MerkleRoot = ""
 	result.Size = 0
 
-	if allocationObj.OwnerID != clientID && allocationObj.PayerID != clientID {
+	if clientID != allocationObj.OwnerID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 

@@ -51,7 +51,6 @@ func AllocationToGRPCAllocation(alloc *allocation.Allocation) *blobbergrpc.Alloc
 		CleanedUp:        alloc.CleanedUp,
 		Finalized:        alloc.Finalized,
 		Terms:            terms,
-		PayerId:          alloc.PayerID,
 	}
 }
 
@@ -87,7 +86,6 @@ func GRPCAllocationToAllocation(alloc *blobbergrpc.Allocation) *allocation.Alloc
 		CleanedUp:        alloc.CleanedUp,
 		Finalized:        alloc.Finalized,
 		Terms:            terms,
-		PayerID:          alloc.PayerId,
 	}
 }
 
