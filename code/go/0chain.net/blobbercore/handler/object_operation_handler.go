@@ -6,10 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
-
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -52,16 +50,14 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks,
 	var (
 		db        = datastore.GetStore().GetTransaction(ctx)
 		blobberID = node.Self.ID
-		until     = common.Now() + common.Timestamp(config.Configuration.ReadLockTimeout)
-
-		rps []*allocation.ReadPool
 	)
 
 	if alloc.GetRequiredReadBalance(blobberID, numBlocks) <= 0 {
 		return // skip if read price is zero
 	}
 
-	readPoolsBalance, err := allocation.GetReadPoolsBalance(db, alloc.ID, payerID, until)
+	isOwner := alloc.OwnerID == payerID
+	readPoolsBalance, err := allocation.GetReadPoolsBalance(db, payerID, isOwner)
 	if err != nil {
 		return common.NewError("read_pre_redeem", "database error while reading read pools balance")
 	}
@@ -69,28 +65,26 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks,
 	requiredBalance := alloc.GetRequiredReadBalance(blobberID, numBlocks+pendNumBlocks)
 
 	if float64(readPoolsBalance) < requiredBalance {
-		rps, err = allocation.RequestReadPools(payerID, alloc.ID)
+		rp, err := allocation.RequestReadPoolStat(payerID)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem", "can't request read pools from sharders: %v", err)
 		}
 
-		err = allocation.SetReadPools(db, payerID, alloc.ID, rps)
+		rp.ClientID = payerID
+		err = allocation.UpdateReadPool(db, rp)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem", "can't save requested read pools: %v", err)
 		}
 
-		readPoolsBalance = 0
-		for _, rp := range rps {
-			if rp.ExpireAt < until {
-				continue
-			}
-			readPoolsBalance += rp.Balance
+		if isOwner {
+			readPoolsBalance = rp.OwnerBalance
+		} else {
+			readPoolsBalance = rp.VisitorBalance
 		}
 
 		if float64(readPoolsBalance) < requiredBalance {
-			return common.NewError("read_pre_redeem", "not enough "+
-				"tokens in client's read pools associated with the"+
-				" allocation->blobber")
+			return common.NewError("read_pre_redeem",
+				"not enough tokens in client's read pools associated with the allocation->blobber")
 		}
 	}
 
