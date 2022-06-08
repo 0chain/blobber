@@ -51,14 +51,11 @@ func refreshPriceOnChain(ctx context.Context) {
 }
 
 func startHealthCheck(ctx context.Context) {
-
-	const REPEAT_DELAY = 10 * 1 // 60s
-
 	for {
 		select {
 		case <-ctx.Done():
 			break
-		case <-time.After(REPEAT_DELAY * time.Second):
+		case <-time.After(config.Configuration.HealthCheckWorkerFreq):
 			go func() {
 				start := time.Now()
 
