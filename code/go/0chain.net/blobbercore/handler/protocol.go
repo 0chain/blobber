@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"errors"
-	"log"
 	"sync"
 	"time"
 
@@ -104,8 +103,13 @@ func RegisterBlobber(ctx context.Context) error {
 		return nil
 	}
 
-	return SendHealthCheck()
+	txnHash, err := SendHealthCheck()
+	if err != nil {
+		logging.Logger.Error("Failed to send healthcheck transaction", zap.String("txn_hash", txnHash))
+		return err
+	}
 
+	return nil
 }
 
 // UpdateBlobber update blobber
@@ -239,17 +243,12 @@ func WalletRegister() error {
 }
 
 // SendHealthCheck send heartbeat to blockchain
-func SendHealthCheck() error {
-	log.Println("SendHealthCheck")
+func SendHealthCheck() (string, error) {
 	txnHash, err := BlobberHealthCheck()
 	if err != nil {
-		return err
+		return txnHash, err
 	}
 	_, err = TransactionVerify(txnHash)
-	if err != nil {
-		logging.Logger.Error("Failed to verify blobber health check", zap.Any("err", err), zap.String("txn.Hash", txnHash))
-		return err
-	}
 
-	return nil
+	return txnHash, err
 }

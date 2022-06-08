@@ -53,19 +53,23 @@ func refreshPriceOnChain(ctx context.Context) {
 func startHealthCheck(ctx context.Context) {
 
 	const REPEAT_DELAY = 10 * 1 // 60s
-	var err error
+
 	for {
 		select {
 		case <-ctx.Done():
 			break
 		case <-time.After(REPEAT_DELAY * time.Second):
+			go func() {
+				start := time.Now()
 
-			err = handler.SendHealthCheck()
-			if err == nil {
-				logging.Logger.Info("success to send heartbeat")
-			} else {
-				logging.Logger.Warn("failed to send heartbeat", zap.Error(err))
-			}
+				txnHash, err := handler.SendHealthCheck()
+				end := time.Now()
+				if err == nil {
+					logging.Logger.Info("success to send heartbeat", zap.String("txn_hash", txnHash), zap.Time("start", start), zap.Time("end", end), zap.Duration("duration", end.Sub(start)))
+				} else {
+					logging.Logger.Warn("failed to send heartbeat", zap.String("txn_hash", txnHash), zap.Time("start", start), zap.Time("end", end), zap.Duration("duration", end.Sub(start)))
+				}
+			}()
 		}
 	}
 }
