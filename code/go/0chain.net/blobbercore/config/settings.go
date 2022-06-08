@@ -23,7 +23,7 @@ type Settings struct {
 	MaxOfferDuration        string    `gorm:"column:max_offer_duration;size:30;default:'-1ns';not null"`
 	MaxStake                int64     `gorm:"column:max_stake;not null;default:100"`
 	MinLockDemand           float64   `gorm:"column:min_lock_demand;not null;default:0"`
-	MinStake                int64     `gorm:"column:min_lock_demand;not null;default:1"`
+	MinStake                int64     `gorm:"column:min_stake;not null;default:1"`
 	NumDelegates            int       `gorm:"column:num_delegates;not null;default:100"`
 	ReadPrice               float64   `gorm:"column:read_price;not null;default:0"`
 	WritePrice              float64   `gorm:"column:write_price;not null;default:0"`

@@ -25,6 +25,8 @@ func SetupDefaultConfig() {
 	viper.SetDefault("challenge_response.num_workers", 5)
 	viper.SetDefault("challenge_response.max_retries", 10)
 
+	viper.SetDefault("healthcheck.frequency", "60s")
+
 	viper.SetDefault("capacity", -1)
 	viper.SetDefault("read_price", 0.0)
 	viper.SetDefault("write_price", 0.0)
@@ -106,6 +108,8 @@ type Config struct {
 	ColdStorageStartCapacitySize uint64
 	ColdStorageDeleteLocalCopy   bool
 	ColdStorageDeleteCloudCopy   bool
+
+	HealthCheckWorkerFreq time.Duration
 
 	MinioStart      bool
 	MinioWorkerFreq int64
