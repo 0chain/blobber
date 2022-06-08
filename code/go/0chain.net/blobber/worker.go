@@ -115,7 +115,9 @@ func StartUpdateWorker(ctx context.Context, interval time.Duration) {
 				logging.Logger.Error("Error while getting capacity", zap.Error(err))
 				break
 			}
-			if uint64(config.Configuration.Capacity) != filestore.GetFileStore().GetCurrentDiskCapacity() {
+			capacity := filestore.GetFileStore().GetCurrentDiskCapacity()
+
+			if uint64(config.Configuration.Capacity) != capacity {
 
 				_, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
 
@@ -128,6 +130,8 @@ func StartUpdateWorker(ctx context.Context, interval time.Duration) {
 				if err != nil {
 					logging.Logger.Error("Error while updating blobber updates on chain", zap.Error(err))
 				}
+
+				config.Configuration.Capacity = int64(capacity)
 			}
 		}
 	}
