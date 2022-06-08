@@ -56,11 +56,9 @@ func registerOnChain() error {
 		}
 
 		err = handler.RegisterBlobber(common.GetRootContext())
-		if err != nil {
-			continue
+		if err == nil {
+			break
 		}
-
-		break
 	}
 
 	if err != nil {

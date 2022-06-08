@@ -82,21 +82,24 @@ func startRefreshSettings(ctx context.Context) {
 			break
 		case <-time.After(REPEAT_DELAY * time.Second):
 			b, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
-			if err == nil {
-				logging.Logger.Info("success to refresh blobber settings from chain")
-				//	BaseURL is changed, register blobber to refresh it on blockchain again
-				if b.BaseURL != node.Self.GetURLBase() {
-					err = handler.UpdateBlobber(context.TODO())
-					if err == nil {
-						logging.Logger.Info("success to refresh blobber BaseURL on chain")
-					} else {
-						logging.Logger.Warn("failed to refresh blobber BaseURL on chain", zap.Error(err))
-					}
-				}
-			} else {
+			if err != nil {
 				logging.Logger.Warn("failed to refresh blobber settings from chain", zap.Error(err))
+				continue
+			}
+
+			logging.Logger.Info("success to refresh blobber settings from chain")
+
+			//	BaseURL is changed, register blobber to refresh it on blockchain again
+			if b.BaseURL != node.Self.GetURLBase() {
+				err = handler.UpdateBlobber(context.TODO())
+				if err == nil {
+					logging.Logger.Info("success to refresh blobber BaseURL on chain")
+				} else {
+					logging.Logger.Warn("failed to refresh blobber BaseURL on chain", zap.Error(err))
+				}
 			}
 		}
+
 	}
 }
 
