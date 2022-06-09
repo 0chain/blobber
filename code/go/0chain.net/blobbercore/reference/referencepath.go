@@ -351,3 +351,15 @@ func CountRefs(ctx context.Context, allocationID string) (int64, error) {
 
 	return totalRows, err
 }
+
+func GetStarredRefs(ctx context.Context, allocationID string) ([]PaginatedRef, error) {
+	var refs []PaginatedRef
+
+	db := datastore.GetStore().GetDB()
+
+	err := db.Model(&Ref{}).Where("allocation_id = ?", allocationID).
+		Where("starred = ?", true).
+		Find(&refs).Error
+
+	return refs, err
+}

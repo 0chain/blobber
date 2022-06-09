@@ -84,6 +84,7 @@ type Ref struct {
 	Children            []*Ref         `gorm:"-"`
 	childrenLoaded      bool
 	OnCloud             bool `gorm:"column:on_cloud;default:false" filelist:"on_cloud"`
+	Starred             bool `gorm:"column:starred;default:false" filelist:"starred"`
 
 	CommitMetaTxns []CommitMetaTxn `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
 	CreatedAt      time.Time       `gorm:"column:created_at;type:timestamp without time zone;not null;default:now()" dirlist:"created_at" filelist:"created_at"`

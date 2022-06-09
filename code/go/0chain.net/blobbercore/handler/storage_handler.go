@@ -985,6 +985,87 @@ func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (
 	return result, nil
 }
 
+func (fsh *StorageHandler) StarOrUnstarRef(ctx context.Context, r *http.Request) (interface{}, error) {
+	if r.Method != "POST" {
+		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
+	}
+
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	alloc, err := fsh.verifyAllocation(ctx, allocationTx, true)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+	allocationID := alloc.ID
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID == "" || alloc.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), alloc.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	starStr, _ := GetField(r, "starred")
+	if starStr == "" {
+		return nil, common.NewError("invalid_parameters", "Missing starred.")
+	}
+
+	starred, err := strconv.ParseBool(starStr)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid starred passed.")
+	}
+
+	pathHash, err := pathHashFromReq(r, allocationID)
+	if err != nil {
+		return nil, err
+	}
+
+	ref, err := reference.GetReferenceByLookupHash(ctx, allocationID, pathHash)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	ref.Starred = starred
+	if err := ref.Save(ctx); err != nil {
+		return nil, common.NewError("bad_db_operation", err.Error())
+	}
+
+	result := make(map[string]interface{})
+	result["msg"] = "Updated ref star successfully"
+
+	return result, nil
+}
+
+func (fsh *StorageHandler) ListStarredRefs(ctx context.Context, r *http.Request) (*blobberhttp.ListStarredRefsResult, error) {
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	alloc, err := fsh.verifyAllocation(ctx, allocationTx, true)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+	allocationID := alloc.ID
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID == "" || alloc.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), alloc.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	refs, err := reference.GetStarredRefs(ctx, allocationID)
+	if err != nil {
+		return nil, common.NewError("bad_db_operation", err.Error())
+	}
+
+	return &blobberhttp.ListStarredRefsResult{
+		Refs: refs,
+	}, nil
+}
+
 // verifySignatureFromRequest verifies signature passed as common.ClientSignatureHeader header.
 func verifySignatureFromRequest(alloc, sign, pbK string) (bool, error) {
 	sign = encryption.MiraclToHerumiSig(sign)

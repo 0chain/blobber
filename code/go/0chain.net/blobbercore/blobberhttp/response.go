@@ -42,6 +42,10 @@ type RefResult struct {
 	LatestWM   *writemarker.WriteMarker  `json:"latest_write_marker"`
 }
 
+type ListStarredRefsResult struct {
+	Refs []reference.PaginatedRef `json:"refs"`
+}
+
 type ObjectPathResult struct {
 	*reference.ObjectPath
 	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
