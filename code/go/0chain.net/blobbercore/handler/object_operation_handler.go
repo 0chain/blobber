@@ -28,7 +28,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	"go.uber.org/zap"
@@ -229,8 +228,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		if common.Timestamp(availableAt) > common.Now() {
 			return nil, common.NewErrorf("download_file", "the file is not available until: %v", shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
 		}
-
-		dr.ReadMarker.AuthTicket = datatypes.JSON(authTokenString)
 
 	}
 	// create read marker

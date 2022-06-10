@@ -13,7 +13,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/constants"
 	"go.uber.org/zap"
-	"gorm.io/datatypes"
 )
 
 // Lock write access to readmarkers table for specific client:allocationId combination.
@@ -35,8 +34,6 @@ type ReadMarker struct {
 	Timestamp       common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
 	ReadCounter     int64            `gorm:"column:counter" json:"counter"`
 	Signature       string           `gorm:"column:signature;size:64" json:"signature"`
-
-	AuthTicket datatypes.JSON `gorm:"column:auth_ticket" json:"auth_ticket"`
 }
 
 func (rm *ReadMarker) GetHashData() string {

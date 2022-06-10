@@ -156,7 +156,6 @@ func ReadMarkerToReadMarkerGRPC(rm *readmarker.ReadMarker) *blobbergrpc.ReadMark
 		Timestamp:       int64(rm.Timestamp),
 		ReadCounter:     rm.ReadCounter,
 		Signature:       rm.Signature,
-		AuthTicket:      rm.AuthTicket,
 	}
 }
 
@@ -174,7 +173,6 @@ func ReadMakerGRPCToReadMaker(rm *blobbergrpc.ReadMarker) *readmarker.ReadMarker
 		Timestamp:       common.Timestamp(rm.Timestamp),
 		ReadCounter:     rm.ReadCounter,
 		Signature:       rm.Signature,
-		AuthTicket:      rm.AuthTicket,
 	}
 }
 
