@@ -297,7 +297,7 @@ func TestStorageHandler_ListStarredRefs(t *testing.T) {
 			request:           mustHttpReq(http.MethodGet, apiURL, nil),
 			requestHeaders:    headers(common.ClientHeader, alloc.OwnerID, common.ClientSignatureHeader, validSign),
 			wantResStatusCode: 200,
-			wantResBody:       "{\"refs\":[{\"path\":\"/\",\"created_at\":\"0001-01-01T00:00:00Z\",\"updated_at\":\"0001-01-01T00:00:00Z\",\"chunk_size\":0},{\"path\":\"/file\",\"created_at\":\"0001-01-01T00:00:00Z\",\"updated_at\":\"0001-01-01T00:00:00Z\",\"chunk_size\":0}]}",
+			wantResBody:       "{\"refs\":[",
 			setupDbMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
