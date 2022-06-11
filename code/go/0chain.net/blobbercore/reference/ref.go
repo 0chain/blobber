@@ -139,7 +139,9 @@ type PaginatedRef struct { //Gorm smart select fields.
 	EncryptedKey        string         `gorm:"column:encrypted_key" json:"encrypted_key,omitempty"`
 	Attributes          datatypes.JSON `gorm:"column:attributes" json:"attributes,omitempty"`
 
-	OnCloud   bool           `gorm:"column:on_cloud" json:"on_cloud,omitempty"`
+	OnCloud bool `gorm:"column:on_cloud" json:"on_cloud,omitempty"`
+	Starred bool `gorm:"column:starred;default:false" filelist:"starred"`
+
 	CreatedAt time.Time      `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt time.Time      `gorm:"column:updated_at" json:"updated_at,omitempty"`
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"-"` // soft deletion
