@@ -359,6 +359,7 @@ func GetStarredRefs(ctx context.Context, allocationID string) ([]PaginatedRef, e
 
 	err := db.Model(&Ref{}).Where("allocation_id = ?", allocationID).
 		Where("starred = ?", true).
+		Order("path").
 		Find(&refs).Error
 
 	return refs, err
