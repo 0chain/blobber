@@ -56,15 +56,14 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks,
 		return // skip if read price is zero
 	}
 
-	isOwner := alloc.OwnerID == payerID
-	readPoolsBalance, err := allocation.GetReadPoolsBalance(db, payerID, isOwner)
+	readPoolBalance, err := allocation.GetReadPoolsBalance(db, payerID)
 	if err != nil {
 		return common.NewError("read_pre_redeem", "database error while reading read pools balance")
 	}
 
 	requiredBalance := alloc.GetRequiredReadBalance(blobberID, numBlocks+pendNumBlocks)
 
-	if float64(readPoolsBalance) < requiredBalance {
+	if float64(readPoolBalance) < requiredBalance {
 		rp, err := allocation.RequestReadPoolStat(payerID)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem", "can't request read pools from sharders: %v", err)
@@ -76,13 +75,9 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks,
 			return common.NewErrorf("read_pre_redeem", "can't save requested read pools: %v", err)
 		}
 
-		if isOwner {
-			readPoolsBalance = rp.OwnerBalance
-		} else {
-			readPoolsBalance = rp.VisitorBalance
-		}
+		readPoolBalance = rp.Balance
 
-		if float64(readPoolsBalance) < requiredBalance {
+		if float64(readPoolBalance) < requiredBalance {
 			return common.NewError("read_pre_redeem",
 				"not enough tokens in client's read pools associated with the allocation->blobber")
 		}
