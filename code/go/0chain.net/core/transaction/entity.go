@@ -109,6 +109,7 @@ type StorageAllocation struct {
 	CCT            time.Duration        `json:"challenge_completion_time"`
 	TimeUnit       time.Duration        `json:"time_unit"`
 	IsImmutable    bool                 `json:"is_immutable"`
+	WritePool      int64                `json:"write_pool"`
 }
 
 func (sa *StorageAllocation) Until() common.Timestamp {

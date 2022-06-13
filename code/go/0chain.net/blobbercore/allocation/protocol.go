@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
@@ -185,13 +186,6 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 	return a, nil
 }
 
-// read/write pool stat for an {allocation -> blobber}
-type PoolStat struct {
-	PoolID   string           `json:"pool_id"`
-	Balance  int64            `json:"balance"`
-	ExpireAt common.Timestamp `json:"expire_at"`
-}
-
 func RequestReadPoolStat(clientID string) (*ReadPool, error) {
 	Logger.Info("request read pools")
 
@@ -211,45 +205,31 @@ func RequestReadPoolStat(clientID string) (*ReadPool, error) {
 	return &readPool, nil
 }
 
-func RequestWritePools(clientID, allocationID string) (wps []*WritePool, err error) {
+func RequestWritePool(allocationID string) (wps *WritePool, err error) {
 	Logger.Info("request write pools")
 
 	var (
-		blobberID = node.Self.ID
-		resp      []byte
+		resp []byte
 	)
 
 	params := map[string]string{
-		"client_id":     clientID,
-		"allocation_id": allocationID,
-		"blobber_id":    blobberID,
+		"allocation": allocationID,
 	}
-	resp, err = transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getWritePoolAllocBlobberStat", params, chain.GetServerChain())
+	resp, err = transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/allocation", params, chain.GetServerChain())
 	if err != nil {
 		return nil, fmt.Errorf("requesting write pools stat: %v", err)
 	}
 
-	var pss []*PoolStat
-	if err = json.Unmarshal(resp, &pss); err != nil {
+	var allocation = struct {
+		ID        string `json:"id"`
+		WritePool int64  `json:"write_pool"`
+	}{}
+	if err = json.Unmarshal(resp, &allocation); err != nil {
 		return nil, fmt.Errorf("decoding write pools stat response: %v", err)
 	}
 
-	if len(pss) == 0 {
-		return nil, nil // empty
-	}
-
-	wps = make([]*WritePool, 0, len(pss))
-	for _, ps := range pss {
-		wps = append(wps, &WritePool{
-			PoolID: ps.PoolID,
-
-			ClientID:     clientID,
-			AllocationID: allocationID,
-
-			Balance:  ps.Balance,
-			ExpireAt: ps.ExpireAt,
-		})
-	}
-
-	return // got them
+	return &WritePool{
+		AllocationID: allocationID,
+		Balance:      allocation.WritePool,
+	}, nil
 }
