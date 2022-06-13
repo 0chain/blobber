@@ -197,9 +197,8 @@ func (Terms) TableName() string {
 // one for the allocations that the client (client_id) owns
 // and the other for the allocations that the client (client_id) doesn't own
 type ReadPool struct {
-	ClientID       string `gorm:"column:client_id;size:64;primaryKey" json:"client_id"`
-	OwnerBalance   int64  `gorm:"column:owner_balance;not null" json:"owner_balance"`
-	VisitorBalance int64  `gorm:"column:visitor_balance;not null" json:"visitor_balance"`
+	ClientID string `gorm:"column:client_id;size:64;primaryKey" json:"client_id"`
+	Balance  int64  `gorm:"column:balance;not null" json:"balance"`
 }
 
 func (ReadPool) TableName() string {
@@ -223,16 +222,13 @@ func GetReadPool(db *gorm.DB, clientID string) (*ReadPool, error) {
 	return &rp, db.Model(&ReadPool{}).Where("client_id = ?", clientID).Scan(&rp).Error
 }
 
-func GetReadPoolsBalance(db *gorm.DB, clientID string, isOwner bool) (int64, error) {
+func GetReadPoolsBalance(db *gorm.DB, clientID string) (int64, error) {
 	rp, err := GetReadPool(db, clientID)
 	if err != nil {
 		return 0, err
 	}
 
-	if isOwner {
-		return rp.OwnerBalance, nil
-	}
-	return rp.VisitorBalance, nil
+	return rp.Balance, nil
 }
 
 func SetReadPool(db *gorm.DB, rp *ReadPool) error {
@@ -242,7 +238,7 @@ func SetReadPool(db *gorm.DB, rp *ReadPool) error {
 		return err
 	}
 
-	if erp.OwnerBalance == rp.OwnerBalance && erp.VisitorBalance == rp.VisitorBalance {
+	if erp.Balance == rp.Balance {
 		return nil
 	}
 	// update existing
@@ -251,8 +247,7 @@ func SetReadPool(db *gorm.DB, rp *ReadPool) error {
 
 func UpdateReadPool(db *gorm.DB, rp *ReadPool) error {
 	return db.Model(&ReadPool{}).Where("client_id = ?", rp.ClientID).Updates(map[string]interface{}{
-		"owner_balance":   rp.OwnerBalance,
-		"visitor_balance": rp.VisitorBalance,
+		"balance": rp.Balance,
 	}).Error
 }
 
