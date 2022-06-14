@@ -162,15 +162,13 @@ func TestDownloadFile(t *testing.T) {
 			require.EqualValues(t, scAddress, transaction.STORAGE_CONTRACT_ADDRESS)
 			switch relativePath {
 			case "/getReadPoolStat":
-				//require.False(t, p.isFundedBlobber) //todo: why is this relevant?
 				require.EqualValues(t, p.payerId.ClientID, params["client_id"])
 				var funds int64
 				if p.isFunded0Chain {
 					funds = mockBigBalance
 				}
 				rp := allocation.ReadPool{
-					OwnerBalance:   funds,
-					VisitorBalance: funds,
+					Balance: funds,
 				}
 
 				mbytes, err := json.Marshal(&rp)
@@ -264,17 +262,10 @@ func TestDownloadFile(t *testing.T) {
 			funds = mockBigBalance
 		}
 
-		if p.isOwner {
-			mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
-			}).OneTime().WithQuery(`SELECT * FROM "read_pools" WHERE`).WithReply(
-				[]map[string]interface{}{{"client_id": p.payerId.ClientID, "owner_balance": funds}},
-			)
-		} else {
-			mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
-			}).OneTime().WithQuery(`SELECT * FROM "read_pools" WHERE`).WithReply(
-				[]map[string]interface{}{{"client_id": p.payerId.ClientID, "visitor_balance": funds}},
-			)
-		}
+		mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
+		}).OneTime().WithQuery(`SELECT * FROM "read_pools" WHERE`).WithReply(
+			[]map[string]interface{}{{"client_id": p.payerId.ClientID, "balance": funds}},
+		)
 
 		if p.useAuthTicket {
 			mocket.Catcher.NewMock().OneTime().WithQuery(
