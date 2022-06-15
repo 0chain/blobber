@@ -91,6 +91,33 @@ type StorageNode struct {
 	Information       Info                   `json:"info"`
 }
 
+type BlobberUpdate struct {
+	ID                string                 `json:"id"`
+	BaseURL           string                 `json:"url"`
+	Geolocation       StorageNodeGeolocation `json:"geolocation"`
+	Terms             BlobberUpdateTerms     `json:"terms"`
+	Capacity          int64                  `json:"capacity"`
+	PublicKey         string                 `json:"-"`
+	StakePoolSettings StakePoolSettings      `json:"stake_pool_settings"`
+	Information       Info                   `json:"info"`
+}
+
+// Terms represents Blobber terms. A Blobber can update its terms,
+// but any existing offer will use terms of offer signing time.
+type BlobberUpdateTerms struct {
+	// ReadPrice is price for reading. Token / GB.
+	ReadPrice int64 `json:"read_price"`
+	// WritePrice is price for reading. Token / GB. Also,
+	// it used to calculate min_lock_demand value.
+	WritePrice int64 `json:"write_price"`
+	// MinLockDemand in number in [0; 1] range. It represents part of
+	// allocation should be locked for the blobber rewards even if
+	// user never write something to the blobber.
+	MinLockDemand float64 `json:"min_lock_demand"`
+	// MaxOfferDuration with this prices and the demand.
+	MaxOfferDuration time.Duration `json:"max_offer_duration"`
+}
+
 type BlobberAllocation struct {
 	BlobberID string `json:"blobber_id"`
 	Terms     Terms  `json:"terms"`

@@ -36,9 +36,9 @@ func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet, err string)
 	wb.wg.Done()
 }
 
-func getStorageNode() (*transaction.StorageNode, error) {
+func getBlobberUpdateObject() (*transaction.BlobberUpdate, error) {
 	var err error
-	sn := &transaction.StorageNode{}
+	sn := &transaction.BlobberUpdate{}
 	sn.ID = node.Self.ID
 	sn.BaseURL = node.Self.GetURLBase()
 	sn.Geolocation = transaction.StorageNodeGeolocation(config.Geolocation())
@@ -68,7 +68,6 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn.Terms.WritePrice = zcncore.ConvertToValue(writePrice)
 	sn.Terms.MinLockDemand = config.Configuration.MinLockDemand
 	sn.Terms.MaxOfferDuration = config.Configuration.MaxOfferDuration
-	sn.Terms.ChallengeCompletionTime = config.Configuration.ChallengeCompletionTime
 
 	sn.StakePoolSettings.DelegateWallet = config.Configuration.DelegateWallet
 	sn.StakePoolSettings.MinStake = config.Configuration.MinStake
@@ -154,7 +153,7 @@ func sendSmartContractBlobberAdd(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	sn, err := getStorageNode()
+	sn, err := getBlobberUpdateObject()
 	if err != nil {
 		return "", err
 	}
@@ -195,7 +194,7 @@ func sendSmartContractBlobberUpdate(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	sn, err := getStorageNode()
+	sn, err := getBlobberUpdateObject()
 	if err != nil {
 		return "", err
 	}
