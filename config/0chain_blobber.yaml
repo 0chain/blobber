@@ -1,7 +1,7 @@
 version: "1.0"
 
 logging:
-  level: "error"
+  level: "info"
   console: true # printing log to console is only supported in development mode
 
 info:
@@ -93,6 +93,10 @@ challenge_response:
   frequency: 10
   num_workers: 5
   max_retries: 20
+
+healthcheck: 
+  frequency: 60s # send healthcheck to miners every 60 seconds
+
 pg:
   user: postgres
   password: postgres
