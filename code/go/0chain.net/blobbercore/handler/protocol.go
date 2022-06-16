@@ -36,9 +36,9 @@ func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet, err string)
 	wb.wg.Done()
 }
 
-func getBlobberUpdateObject() (*transaction.BlobberUpdate, error) {
+func getStorageNode() (*transaction.StorageNode, error) {
 	var err error
-	sn := &transaction.BlobberUpdate{}
+	sn := &transaction.StorageNode{}
 	sn.ID = node.Self.ID
 	sn.BaseURL = node.Self.GetURLBase()
 	sn.Geolocation = transaction.StorageNodeGeolocation(config.Geolocation())
@@ -153,7 +153,7 @@ func sendSmartContractBlobberAdd(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	sn, err := getBlobberUpdateObject()
+	sn, err := getStorageNode()
 	if err != nil {
 		return "", err
 	}
@@ -194,7 +194,7 @@ func sendSmartContractBlobberUpdate(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	sn, err := getBlobberUpdateObject()
+	sn, err := getStorageNode()
 	if err != nil {
 		return "", err
 	}

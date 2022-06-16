@@ -149,7 +149,6 @@ const tpl = `
                 <tr><td>Write price</td><td>{{ .WritePrice }}</td></tr>
                 <tr><td>Min lock demand</td><td>{{ .MinLockDemand }}</td></tr>
                 <tr><td>Max offer duration</td><td>{{ .MaxOfferDuration }}</td></tr>
-                <tr><td>Challenge completion_time</td><td>{{ .ChallengeCompletionTime }}</td></tr>
                 <tr><td>Read lock timeout</td><td>{{ .ReadLockTimeout }}</td></tr>
                 <tr><td>Write lock timeout</td><td>{{ .WriteLockTimeout }}</td></tr>
             </table>

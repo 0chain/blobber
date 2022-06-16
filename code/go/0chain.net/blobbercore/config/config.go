@@ -120,12 +120,11 @@ type Config struct {
 	MinioBucket     string
 	MinioRegion     string
 
-	ReadPrice               float64
-	WritePrice              float64
-	PriceInUSD              bool
-	MinLockDemand           float64
-	MaxOfferDuration        time.Duration
-	ChallengeCompletionTime time.Duration
+	ReadPrice        float64
+	WritePrice       float64
+	PriceInUSD       bool
+	MinLockDemand    float64
+	MaxOfferDuration time.Duration
 
 	ReadLockTimeout  int64 // seconds
 	WriteLockTimeout int64 // seconds
