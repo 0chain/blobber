@@ -51,7 +51,7 @@ update_allocations_interval: 1m
 max_dirs_files: 50000
 
 # delegate wallet (must be set)
-delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'
+delegate_wallet: '1746b06bb09f55ee01b33b5e2e055d6cc7a900cb57c0a3a5eaabb8a0e7745802'
 # min stake allowed, tokens
 min_stake: 1.0
 # max stake allowed, tokens
@@ -65,7 +65,7 @@ min_submit: 50
 # min confirmation from sharder
 min_confirmation: 50
 
-block_worker: http://198.18.0.98:9091
+block_worker: http://192.168.1.100:9091
 
 handlers:
   rate_limit: 0 # 10 per second . it can't too small one if a large file is download with blocks
