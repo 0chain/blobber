@@ -53,7 +53,6 @@ func TestDownloadFile(t *testing.T) {
 		mockReadPrice      = int64(0.1 * 1e10)
 		mockWritePrice     = int64(0.5 * 1e10)
 		mockBigBalance     = int64(10000 * 1e10)
-		mockPoolId         = "mock pool id"
 	)
 	ts := time.Now().Add(time.Hour)
 	var mockLongTimeInFuture = common.Timestamp(ts.Unix()) + common.Timestamp(time.Second*1000)
@@ -161,31 +160,17 @@ func TestDownloadFile(t *testing.T) {
 			require.New(t)
 			require.EqualValues(t, scAddress, transaction.STORAGE_CONTRACT_ADDRESS)
 			switch relativePath {
-			case "/getReadPoolAllocBlobberStat":
-				require.False(t, p.isFundedBlobber)
-				for key, value := range params {
-					switch key {
-					case "client_id":
-						require.EqualValues(t, p.payerId.ClientID, value)
-					case "allocation_id":
-						require.EqualValues(t, mockAllocationId, value)
-					case "blobber_id":
-						require.EqualValues(t, mockBlobberId, value)
-					default:
-						require.Fail(t, "unexpected parameter "+key+" call "+relativePath)
-					}
-				}
-				var pss []*allocation.PoolStat
+			case "/getReadPoolStat":
+				require.EqualValues(t, p.payerId.ClientID, params["client_id"])
 				var funds int64
 				if p.isFunded0Chain {
 					funds = mockBigBalance
 				}
-				pss = append(pss, &allocation.PoolStat{
-					PoolID:   mockPoolId,
-					Balance:  funds,
-					ExpireAt: mockLongTimeInFuture,
-				})
-				mbytes, err := json.Marshal(&pss)
+				rp := allocation.ReadPool{
+					Balance: funds,
+				}
+
+				mbytes, err := json.Marshal(&rp)
 				require.NoError(t, err)
 				return mbytes, nil
 			default:
@@ -265,57 +250,15 @@ func TestDownloadFile(t *testing.T) {
 			[]map[string]interface{}{{"count": collaboratorRtv}},
 		)
 
-		// mocket.Catcher.NewMock().OneTime().WithQuery(
-		// 	`SELECT * FROM "read_markers" WHERE`,
-		// ).WithCallback(func(par1 string, args []driver.NamedValue) {
-		// 	require.EqualValues(t, p.payerId.ClientID, args[0].Value)
-		// }).WithArgs(
-		// 	p.payerId.ClientID,
-		// ).WithReply(
-		// 	[]map[string]interface{}{{
-		// 		"client_id":       p.allocation.ID,
-		// 		"redeem_required": false,
-		// 	}},
-		// )
-
-		// mocket.Catcher.NewMock().OneTime().WithQuery(
-		// 	`SELECT * FROM "read_markers" WHERE`,
-		// ).WithCallback(func(par1 string, args []driver.NamedValue) {
-		// 	//require.EqualValues(t, p.payerId.ClientID, args[0].Value)
-		// 	require.EqualValues(t, client.GetClientID(), args[0].Value)
-		// }).WithReply(
-		// 	[]map[string]interface{}{{
-		// 		"client_id":       p.allocation.ID,
-		// 		"redeem_required": false,
-		// 	}},
-		// )
-
 		var funds int64
 		if p.isFundedBlobber || p.isFunded0Chain {
 			funds = mockBigBalance
 		}
 
-		// fundedPool := []map[string]interface{}{{
-		// 	"pool_id":       "",
-		// 	"client_id":     p.payerId.ClientID,
-		// 	"blobber_id":    mockBlobberId,
-		// 	"allocation_id": mockAllocationId,
-		// 	"balance":       funds,
-		// 	"expire_at":     mockLongTimeInFuture,
-		// }}
-		if p.isFundedBlobber {
-			mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
-			}).OneTime().WithQuery(`SELECT sum(balance) as tot_balance FROM "read_pools" WHERE`).WithReply(
-				[]map[string]interface{}{{"tot_balance": funds}},
-			)
-		} else {
-			mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
-			}).OneTime().WithQuery(`SELECT sum(balance) as tot_balance FROM "read_pools" WHERE`).WithReply(
-				[]map[string]interface{}{
-					{"tot_balance": funds},
-				},
-			)
-		}
+		mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
+		}).OneTime().WithQuery(`SELECT * FROM "read_pools" WHERE`).WithReply(
+			[]map[string]interface{}{{"client_id": p.payerId.ClientID, "balance": funds}},
+		)
 
 		if p.useAuthTicket {
 			mocket.Catcher.NewMock().OneTime().WithQuery(
@@ -352,28 +295,6 @@ func TestDownloadFile(t *testing.T) {
 		p parameters,
 		rm marker.ReadMarker,
 	) {
-		mocket.Catcher.NewMock().WithQuery(
-			`DELETE FROM "read_pools" WHERE`,
-		).WithCallback(func(par1 string, args []driver.NamedValue) {
-			require.EqualValues(t, p.payerId.ClientID, args[0].Value)
-			require.EqualValues(t, mockAllocationId, args[1].Value)
-			// require.EqualValues(t, mockBlobberId, args[2].Value)
-		}).WithID(17)
-
-		var funds int64
-		if p.isFunded0Chain || p.isFundedBlobber {
-			funds = mockBigBalance
-		}
-		mocket.Catcher.NewMock().WithQuery(
-			`INSERT INTO "read_pools"`,
-		).WithCallback(func(par1 string, args []driver.NamedValue) {
-			require.EqualValues(t, mockPoolId, args[0].Value)
-			require.EqualValues(t, p.payerId.ClientID, args[1].Value)
-			// require.EqualValues(t, mockBlobberId, args[2].Value)
-			require.EqualValues(t, mockAllocationId, args[2].Value)
-			require.EqualValues(t, funds, args[3].Value)
-			require.EqualValues(t, mockLongTimeInFuture, args[4].Value)
-		}).WithID(23)
 
 		mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
 			require.EqualValues(t, client.GetClientID(), args[0].Value)

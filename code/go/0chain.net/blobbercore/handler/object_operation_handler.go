@@ -6,13 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
-
 	"net/http"
 	"path/filepath"
 	"strconv"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
 	"github.com/0chain/gosdk/constants"
 
@@ -51,45 +50,35 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks,
 	var (
 		db        = datastore.GetStore().GetTransaction(ctx)
 		blobberID = node.Self.ID
-		until     = common.Now() + common.Timestamp(config.Configuration.ReadLockTimeout)
-
-		rps []*allocation.ReadPool
 	)
 
 	if alloc.GetRequiredReadBalance(blobberID, numBlocks) <= 0 {
 		return // skip if read price is zero
 	}
 
-	readPoolsBalance, err := allocation.GetReadPoolsBalance(db, alloc.ID, alloc.OwnerID, until)
+	readPoolBalance, err := allocation.GetReadPoolsBalance(db, alloc.OwnerID)
 	if err != nil {
 		return common.NewError("read_pre_redeem", "database error while reading read pools balance")
 	}
 
 	requiredBalance := alloc.GetRequiredReadBalance(blobberID, numBlocks+pendNumBlocks)
-
-	if float64(readPoolsBalance) < requiredBalance {
-		rps, err = allocation.RequestReadPools(alloc.OwnerID, alloc.ID)
+	if float64(readPoolBalance) < requiredBalance {
+		rp, err := allocation.RequestReadPoolStat(alloc.OwnerID)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem", "can't request read pools from sharders: %v", err)
 		}
 
-		err = allocation.SetReadPools(db, alloc.OwnerID, alloc.ID, rps)
+		rp.ClientID = alloc.OwnerID
+		err = allocation.UpdateReadPool(db, rp)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem", "can't save requested read pools: %v", err)
 		}
 
-		readPoolsBalance = 0
-		for _, rp := range rps {
-			if rp.ExpireAt < until {
-				continue
-			}
-			readPoolsBalance += rp.Balance
-		}
+		readPoolBalance = rp.Balance
 
-		if float64(readPoolsBalance) < requiredBalance {
-			return common.NewError("read_pre_redeem", "not enough "+
-				"tokens in client's read pools associated with the"+
-				" allocation->blobber")
+		if float64(readPoolBalance) < requiredBalance {
+			return common.NewError("read_pre_redeem",
+				"not enough tokens in client's read pools associated with the allocation->blobber")
 		}
 	}
 

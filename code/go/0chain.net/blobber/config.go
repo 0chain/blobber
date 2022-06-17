@@ -47,6 +47,8 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.RMRedeemFreq = viper.GetInt64("readmarker_redeem.frequency")
 	config.Configuration.RMRedeemNumWorkers = viper.GetInt("readmarker_redeem.num_workers")
 
+	config.Configuration.HealthCheckWorkerFreq = viper.GetDuration("healthcheck.frequency")
+
 	config.Configuration.ChallengeResolveFreq = viper.GetInt64("challenge_response.frequency")
 	config.Configuration.ChallengeResolveNumWorkers = viper.GetInt("challenge_response.num_workers")
 	config.Configuration.ChallengeMaxRetires = viper.GetInt("challenge_response.max_retries")

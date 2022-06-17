@@ -487,8 +487,8 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		FilePathHash:              authTicket.FilePathHash,
 		ReEncryptionKey:           authTicket.ReEncryptionKey,
 		ClientEncryptionPublicKey: encryptionPublicKey,
-		ExpiryAt:                  common.ToTime(authTicket.Expiration),
-		AvailableAt:               common.ToTime(availableAt),
+		ExpiryAt:                  common.ToTime(authTicket.Expiration).UTC(),
+		AvailableAt:               common.ToTime(availableAt).UTC(),
 	}
 
 	existingShare, _ := reference.GetShareInfo(ctx, authTicket.ClientID, authTicket.FilePathHash)
