@@ -152,7 +152,7 @@ func NewTransactionEntity() (*Transaction, error) {
 	return txn, nil
 }
 
-func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val int64) error {
+func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val uint64) error {
 	t.wg.Add(1)
 	err := t.zcntxn.ExecuteSmartContract(address, methodName, input, val)
 	if err != nil {
