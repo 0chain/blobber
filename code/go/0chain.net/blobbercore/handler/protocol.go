@@ -64,8 +64,8 @@ func getStorageNode() (*transaction.StorageNode, error) {
 			return nil, err
 		}
 	}
-	sn.Terms.ReadPrice = zcncore.ConvertToValue(readPrice)
-	sn.Terms.WritePrice = zcncore.ConvertToValue(writePrice)
+	sn.Terms.ReadPrice = int64(zcncore.ConvertToValue(readPrice))
+	sn.Terms.WritePrice = int64(zcncore.ConvertToValue(writePrice))
 	sn.Terms.MinLockDemand = config.Configuration.MinLockDemand
 	sn.Terms.MaxOfferDuration = config.Configuration.MaxOfferDuration
 	sn.Terms.ChallengeCompletionTime = config.Configuration.ChallengeCompletionTime
