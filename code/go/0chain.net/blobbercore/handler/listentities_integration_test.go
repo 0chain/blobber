@@ -101,7 +101,8 @@ func TestBlobberGRPCService_ListEntities(t *testing.T) {
 			t.Fatal("expected error")
 		}
 
-		if listEntitiesResp.MetaData.DirMetaData.Path != tc.expectedPath {
+		if listEntitiesResp.GetMetaData().GetDirMetaData().GetPath() != tc.expectedPath &&
+			listEntitiesResp.GetMetaData().GetFileMetaData().GetPath() != tc.expectedPath {
 			t.Fatal("unexpected path from ListEntities rpc")
 		}
 	}
