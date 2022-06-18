@@ -308,8 +308,8 @@ message Term {
   int64 id = 1;
   string blobber_id = 2;
   string allocation_id = 3;
-  int64 read_price = 4;
-  int64 write_price = 5;
+  uint64 read_price = 4;
+  uint64 write_price = 5;
 }
 
 message FileRef {
