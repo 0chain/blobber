@@ -152,7 +152,7 @@ func reloadConfig() error {
 	}
 
 	config.Configuration.Capacity = viper.GetInt64("capacity")
-	config.Configuration.ChallengeCompletionTime = viper.GetDuration("challenge_completion_time")
+
 	config.Configuration.MaxOfferDuration = viper.GetDuration("max_offer_duration")
 	config.Configuration.MaxStake = int64(viper.GetFloat64("max_stake") * 1e10)
 	config.Configuration.MinLockDemand = viper.GetFloat64("min_lock_demand")
