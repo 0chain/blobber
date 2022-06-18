@@ -313,16 +313,19 @@ func GetSubDirsFromPath(p string) []string {
 	return subDirs
 }
 
+// GetRefWithChildren returns a root ref with its immediate children.
+// If the path provided is a DIRECTORY, the root ref is the directory and will have its children sorted by created time.
+// If the path provided is a FILE, the root ref is the file itself.
 func GetRefWithChildren(ctx context.Context, allocationID, path string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
+	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Path: path, AllocationID: allocationID})
 	err := db.Order("level, created_at").Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}
 	if len(refs) == 0 {
-		return &Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID}, nil
+		return nil, common.NewError("invalid_dir_tree", "DB has invalid tree. Root not found in DB")
 	}
 	curRef := &refs[0]
 	if curRef.Path != path {

@@ -40,18 +40,33 @@ func TestBlobberGRPCService_ListEntities(t *testing.T) {
 		expectingError bool
 	}{
 		{
-			name: "Success",
+			name: "Success for directory",
 			context: metadata.New(map[string]string{
 				common.ClientHeader:          "exampleOwnerId",
 				common.ClientSignatureHeader: clientSignature,
 			}),
 			input: &blobbergrpc.ListEntitiesRequest{
-				Path:       "examplePath",
+				Path:       "/exampleDir",
+				PathHash:   "exampleId:exampleDir",
+				AuthToken:  "",
+				Allocation: allocationTx,
+			},
+			expectedPath:   "/exampleDir",
+			expectingError: false,
+		},
+		{
+			name: "Success for file",
+			context: metadata.New(map[string]string{
+				common.ClientHeader:          "exampleOwnerId",
+				common.ClientSignatureHeader: clientSignature,
+			}),
+			input: &blobbergrpc.ListEntitiesRequest{
+				Path:       "/exampleDir/examplePath",
 				PathHash:   "exampleId:examplePath",
 				AuthToken:  "",
 				Allocation: allocationTx,
 			},
-			expectedPath:   "examplePath",
+			expectedPath:   "/exampleDir/examplePath",
 			expectingError: false,
 		},
 		{

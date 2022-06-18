@@ -354,8 +354,16 @@ VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubkey + `',` 
 	}
 
 	_, err = tx.Exec(`
-INSERT INTO reference_objects (id, allocation_id, path_hash,lookup_hash,type,name,path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
-VALUES (1234,'exampleId','exampleId:examplePath','exampleId:examplePath','f','filename','examplePath','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
+INSERT INTO reference_objects (id, allocation_id, path_hash,lookup_hash,type,name,path,parent_path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
+VALUES (1234,'exampleId','exampleId:exampleDir','exampleId:exampleDir','f','filename','/exampleDir','','',someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
+`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+INSERT INTO reference_objects (id, allocation_id, path_hash,lookup_hash,type,name,path,parent_path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
+VALUES (1234,'exampleId','exampleId:examplePath','exampleId:examplePath','f','filename','/examplePath','/exampleDir/examplePath','','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
 `)
 	if err != nil {
 		return err
