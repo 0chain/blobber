@@ -469,7 +469,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	}
 
 	Logger.Info("Path Hash for list dir :" + pathHash)
-	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "path", "lookup_hash", "type", "name", "parent_path"})
+	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "path", "lookup_hash", "type", "name"})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// `/` always is valid even it doesn't exists in db. so ignore RecordNotFound error
@@ -509,7 +509,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 			return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 		}
 
-		parent, err := reference.GetReference(ctx, allocationID, fileref.ParentPath)
+		parent, err := reference.GetReference(ctx, allocationID, r.ParentPath)
 		if err != nil {
 			return nil, common.NewError("invalid_parameters", "Invalid path. Parent dir of file not found. "+err.Error())
 		}
