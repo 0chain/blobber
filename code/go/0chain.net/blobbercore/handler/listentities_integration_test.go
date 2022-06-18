@@ -66,7 +66,7 @@ func TestBlobberGRPCService_ListEntities(t *testing.T) {
 				AuthToken:  "",
 				Allocation: allocationTx,
 			},
-			expectedPath:   "/exampleDir/examplePath",
+			expectedPath:   "/exampleDir",
 			expectingError: false,
 		},
 		{
@@ -101,8 +101,7 @@ func TestBlobberGRPCService_ListEntities(t *testing.T) {
 			t.Fatal("expected error")
 		}
 
-		if listEntitiesResp.GetMetaData().GetDirMetaData().GetPath() != tc.expectedPath &&
-			listEntitiesResp.GetMetaData().GetFileMetaData().GetPath() != tc.expectedPath {
+		if listEntitiesResp.GetMetaData().GetDirMetaData().GetPath() != tc.expectedPath {
 			t.Fatal("unexpected path from ListEntities rpc")
 		}
 	}
