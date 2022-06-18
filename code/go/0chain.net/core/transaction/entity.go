@@ -50,9 +50,6 @@ type Terms struct {
 	MinLockDemand float64 `json:"min_lock_demand"`
 	// MaxOfferDuration with this prices and the demand.
 	MaxOfferDuration time.Duration `json:"max_offer_duration"`
-	// ChallengeCompletionTime is duration required to complete a
-	// challenge.
-	ChallengeCompletionTime time.Duration `json:"challenge_completion_time"`
 }
 
 type StakePoolSettings struct {
@@ -154,7 +151,7 @@ func NewTransactionEntity() (*Transaction, error) {
 
 func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val uint64) error {
 	t.wg.Add(1)
-	err := t.zcntxn.ExecuteSmartContract(address, methodName, input, val)
+	err := t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
 	if err != nil {
 		t.wg.Done()
 		return err
