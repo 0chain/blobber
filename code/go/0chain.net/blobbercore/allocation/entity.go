@@ -184,8 +184,8 @@ type Terms struct {
 	AllocationID string     `gorm:"allocation_id;size:64;not null"`
 	Allocation   Allocation `gorm:"foreignKey:AllocationID"` // references allocations(id)
 
-	ReadPrice  int64 `gorm:"read_price;not null"`
-	WritePrice int64 `gorm:"write_price;not null"`
+	ReadPrice  uint64 `gorm:"read_price;not null"`
+	WritePrice uint64 `gorm:"write_price;not null"`
 }
 
 func (Terms) TableName() string {
