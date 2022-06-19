@@ -188,8 +188,8 @@ func (c *TestDataController) AddGetAllocationTestData() error {
 	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
 
 	_, err = tx.Exec(`
-INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, repairer_id, is_immutable)
-VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKey',` + fmt.Sprint(expTime) + `,'examplePayerId', 'repairer_id', false);
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, repairer_id, is_immutable)
+VALUES ('exampleId' ,'exampleTransaction','exampleOwnerId','exampleOwnerPublicKey',` + fmt.Sprint(expTime) + `, 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -230,8 +230,8 @@ func (c *TestDataController) AddGetFileMetaDataTestData(allocationTx, pubKey str
 	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
 
 	_, err = tx.Exec(`
-INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubKey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 'repairer_id', false);
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, repairer_id, is_immutable)
+VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubKey + `',` + fmt.Sprint(expTime) + `, 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -296,8 +296,8 @@ func (c *TestDataController) AddGetFileStatsTestData(allocationTx, pubKey string
 	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
 
 	_, err = tx.Exec(`
-INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubKey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 'repairer_id', false);
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, repairer_id, is_immutable)
+VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubKey + `',` + fmt.Sprint(expTime) + `, 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -346,8 +346,8 @@ func (c *TestDataController) AddListEntitiesTestData(allocationTx, pubkey string
 	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
 
 	_, err = tx.Exec(`
-INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 'repairer_id', false);
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, repairer_id, is_immutable)
+VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubkey + `',` + fmt.Sprint(expTime) + `, 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -396,8 +396,8 @@ func (c *TestDataController) AddGetObjectPathTestData(allocationTx, pubKey strin
 	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
 
 	_, err = tx.Exec(`
-INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubKey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 'repairer_id', false);
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, repairer_id, is_immutable)
+VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubKey + `',` + fmt.Sprint(expTime) + `, 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -438,8 +438,8 @@ func (c *TestDataController) AddGetReferencePathTestData(allocationTx, pubkey st
 	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
 
 	_, err = tx.Exec(`
-INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 'repairer_id', false);
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, repairer_id, is_immutable)
+VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubkey + `',` + fmt.Sprint(expTime) + `, 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -480,8 +480,8 @@ func (c *TestDataController) AddGetObjectTreeTestData(allocationTx, pubkey strin
 	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
 
 	_, err = tx.Exec(`
-INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 'repairer_id', false);
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, repairer_id, is_immutable)
+VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubkey + `',` + fmt.Sprint(expTime) + `, 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -558,8 +558,8 @@ func (c *TestDataController) AddCommitTestData(allocationTx, pubkey, clientId, w
 	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
 
 	_, err = tx.Exec(`
-INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, blobber_size, allocation_root, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, blobber_size, allocation_root, repairer_id, is_immutable)
+VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `, 99999999, '/', 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -634,8 +634,8 @@ func (c *TestDataController) AddCopyObjectData(allocationTx, pubkey, clientId st
 	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
 
 	_, err = tx.Exec(`
-INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, blobber_size, allocation_root, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, blobber_size, allocation_root, repairer_id, is_immutable)
+VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `, 99999999, '/', 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -694,8 +694,8 @@ func (c *TestDataController) AddRenameTestData(allocationTx, pubkey, clientId st
 	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
 
 	_, err = tx.Exec(`
-INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, blobber_size, allocation_root, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, blobber_size, allocation_root, repairer_id, is_immutable)
+VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `, 99999999, '/', 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -754,8 +754,8 @@ func (c *TestDataController) AddDownloadTestData(allocID, allocTx, pathHash, con
 	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
 
 	_, err = tx.Exec(`
-INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, blobber_size, allocation_root, repairer_id, is_immutable)
-VALUES ('` + allocID + `' ,'` + allocTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, blobber_size, allocation_root, repairer_id, is_immutable)
+VALUES ('` + allocID + `' ,'` + allocTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `, 99999999, '/', 'repairer_id', false);
 `)
 	if err != nil {
 		return err
@@ -822,8 +822,8 @@ func (c *TestDataController) AddUploadTestData(allocationTx, pubkey, clientId st
 	expTime := time.Now().Add(time.Hour * 100000).UnixNano()
 
 	_, err = tx.Exec(`
-INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, payer_id, blobber_size, allocation_root, repairer_id, is_immutable)
-VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `,'examplePayerId', 99999999, '/', 'repairer_id', false);
+INSERT INTO allocations (id, tx, owner_id, owner_public_key, expiration_date, blobber_size, allocation_root, repairer_id, is_immutable)
+VALUES ('exampleId' ,'` + allocationTx + `','` + clientId + `','` + pubkey + `',` + fmt.Sprint(expTime) + `, 99999999, '/', 'repairer_id', false);
 `)
 	if err != nil {
 		return err
