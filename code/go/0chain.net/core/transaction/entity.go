@@ -40,19 +40,16 @@ type SmartContractTxnData struct {
 // but any existing offer will use terms of offer signing time.
 type Terms struct {
 	// ReadPrice is price for reading. Token / GB.
-	ReadPrice int64 `json:"read_price"`
+	ReadPrice uint64 `json:"read_price"`
 	// WritePrice is price for reading. Token / GB. Also,
 	// it used to calculate min_lock_demand value.
-	WritePrice int64 `json:"write_price"`
+	WritePrice uint64 `json:"write_price"`
 	// MinLockDemand in number in [0; 1] range. It represents part of
 	// allocation should be locked for the blobber rewards even if
 	// user never write something to the blobber.
 	MinLockDemand float64 `json:"min_lock_demand"`
 	// MaxOfferDuration with this prices and the demand.
 	MaxOfferDuration time.Duration `json:"max_offer_duration"`
-	// ChallengeCompletionTime is duration required to complete a
-	// challenge.
-	ChallengeCompletionTime time.Duration `json:"challenge_completion_time"`
 }
 
 type StakePoolSettings struct {
@@ -153,7 +150,7 @@ func NewTransactionEntity() (*Transaction, error) {
 
 func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val int64) error {
 	t.wg.Add(1)
-	err := t.zcntxn.ExecuteSmartContract(address, methodName, input, val)
+	err := t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
 	if err != nil {
 		t.wg.Done()
 		return err
