@@ -41,7 +41,10 @@ const (
 	ReEncryptionHeaderSize = 256
 )
 
-func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks, pendNumBlocks int64) (err error) {
+func readPreRedeem(
+	ctx context.Context, alloc *allocation.Allocation,
+	numBlocks, pendNumBlocks int64, payerID string) (err error) {
+
 	if numBlocks == 0 {
 		return
 	}
@@ -56,19 +59,19 @@ func readPreRedeem(ctx context.Context, alloc *allocation.Allocation, numBlocks,
 		return // skip if read price is zero
 	}
 
-	readPoolBalance, err := allocation.GetReadPoolsBalance(db, alloc.OwnerID)
+	readPoolBalance, err := allocation.GetReadPoolsBalance(db, payerID)
 	if err != nil {
 		return common.NewError("read_pre_redeem", "database error while reading read pools balance")
 	}
 
 	requiredBalance := alloc.GetRequiredReadBalance(blobberID, numBlocks+pendNumBlocks)
 	if float64(readPoolBalance) < requiredBalance {
-		rp, err := allocation.RequestReadPoolStat(alloc.OwnerID)
+		rp, err := allocation.RequestReadPoolStat(payerID)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem", "can't request read pools from sharders: %v", err)
 		}
 
-		rp.ClientID = alloc.OwnerID
+		rp.ClientID = payerID
 		err = allocation.UpdateReadPool(db, rp)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem", "can't save requested read pools: %v", err)
@@ -172,6 +175,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		return nil, err
 	}
 
+	if dr.ReadMarker.ClientID != clientID { // We might well remove client id from request header
+		return nil, common.NewError("invalid_client", "header clientID and readmarker clientID are different")
+	}
+
 	rmObj := new(readmarker.ReadMarkerEntity)
 	rmObj.LatestRM = &dr.ReadMarker
 
@@ -249,7 +256,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, alloc, dr.NumBlocks, pendNumBlocks)
+	err = readPreRedeem(ctx, alloc, dr.NumBlocks, pendNumBlocks, clientID)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "pre-redeeming read marker: %v", err)
 	}
