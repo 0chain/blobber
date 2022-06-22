@@ -500,9 +500,30 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	} else if path != "/" {
 		return nil, common.NewError("invalid_parameters", "Invalid path: ref not found ")
 	}
-	dirref, err := reference.GetRefWithChildren(ctx, allocationID, filePath)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
+
+	// If the reference is a file, build result with the file and parent dir.
+	var dirref *reference.Ref
+	if fileref != nil && fileref.Type == reference.FILE {
+		r, err := reference.GetReference(ctx, allocationID, filePath)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
+		}
+
+		parent, err := reference.GetReference(ctx, allocationID, r.ParentPath)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid path. Parent dir of file not found. "+err.Error())
+		}
+
+		parent.Children = append(parent.Children, r)
+
+		dirref = parent
+	} else {
+		r, err := reference.GetRefWithChildren(ctx, allocationID, filePath)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
+		}
+
+		dirref = r
 	}
 
 	var result blobberhttp.ListResult
