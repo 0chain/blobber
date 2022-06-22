@@ -1,5 +1,11 @@
 version: 1.0
 
+info:
+  name: my_validator
+  logo_url: https://google.com
+  description: this is my test validator
+  website_url: https://google.com
+
 # delegate wallet (must be set)
 delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'
 # min stake allowed, tokens
@@ -28,3 +34,5 @@ server_chain:
   network:
     relay_time: 100 # milliseconds
   signature_scheme: "bls0chain"
+# delegate wallet for all rewards, if it's empty, then blobber ID used
+delegate_wallet: 'fd6448ca91fbda66b66980529feeb9cae5f988ecede915cfc32d619e861465ab'

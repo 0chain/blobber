@@ -39,6 +39,9 @@ min_lock_demand: 0.1
 # in the future, prices can be changed
 max_offer_duration: 744h # 31 day
 
+# delegate wallet for all rewards, if it's empty, then blobber ID used
+delegate_wallet: 'fd6448ca91fbda66b66980529feeb9cae5f988ecede915cfc32d619e861465ab'
+
 # these timeouts required by blobber to check client pools, perform
 # a task and redeem tokens, it should be big enough
 read_lock_timeout: 1m
