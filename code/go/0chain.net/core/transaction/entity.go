@@ -40,10 +40,10 @@ type SmartContractTxnData struct {
 // but any existing offer will use terms of offer signing time.
 type Terms struct {
 	// ReadPrice is price for reading. Token / GB.
-	ReadPrice int64 `json:"read_price"`
+	ReadPrice uint64 `json:"read_price"`
 	// WritePrice is price for reading. Token / GB. Also,
 	// it used to calculate min_lock_demand value.
-	WritePrice int64 `json:"write_price"`
+	WritePrice uint64 `json:"write_price"`
 	// MinLockDemand in number in [0; 1] range. It represents part of
 	// allocation should be locked for the blobber rewards even if
 	// user never write something to the blobber.
