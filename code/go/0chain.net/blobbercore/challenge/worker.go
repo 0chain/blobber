@@ -14,11 +14,18 @@ func SetupWorkers(ctx context.Context) {
 	go startCommitProcessed(ctx)
 }
 
+var (
+	waitToProcess = make(chan *ChallengeEntity)
+	waitToCommit  = make(chan *ChallengeEntity)
+)
+
 func startCommitProcessed(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case next := <-waitToCommit:
+			commitChallenge(next)
 		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
 			commitProcessed(ctx)
 		}
@@ -30,6 +37,8 @@ func startProcessAccepted(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
+		case next := <-waitToProcess:
+			validateChallenge(nil, next)
 		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
 			processAccepted(ctx)
 		}

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -52,12 +54,11 @@ func syncOpenChallenges(ctx context.Context) {
 	}
 
 	for _, challengeObj := range blobberChallenges.Challenges {
-
 		if challengeObj == nil || challengeObj.ChallengeID == "" {
 			logging.Logger.Info("[challenge]open: No challenge entity from the challenge map")
 			continue
 		}
-
+		log.Println("challenge: sync", challengeObj.ChallengeID)
 		saveNewChallenge(challengeObj, ctx)
 	}
 
@@ -95,11 +96,17 @@ func saveNewChallenge(nextChallenge *ChallengeEntity, ctx context.Context) {
 	nextChallenge.CreatedAt = common.ToTime(nextChallenge.Created)
 	nextChallenge.UpdatedAt = nextChallenge.CreatedAt
 
-	if err := db.Transaction(func(tx *gorm.DB) error {
+	err = db.Transaction(func(tx *gorm.DB) error {
 		return nextChallenge.SaveWith(tx)
-	}); err != nil {
+	})
+	if err != nil {
 		logging.Logger.Error("[challenge]db: ", zap.String("challenge_id", nextChallenge.ChallengeID), zap.Error(err))
+		return
 	}
+
+	go func() {
+		waitToProcess <- nextChallenge
+	}()
 
 }
 
@@ -131,7 +138,11 @@ func processAccepted(ctx context.Context) {
 }
 
 func validateChallenge(swg *sizedwaitgroup.SizedWaitGroup, challengeObj *ChallengeEntity) {
-	defer swg.Done()
+	defer func() {
+		if swg != nil {
+			swg.Done()
+		}
+	}()
 
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	defer ctx.Done()
@@ -143,11 +154,16 @@ func validateChallenge(swg *sizedwaitgroup.SizedWaitGroup, challengeObj *Challen
 		return
 	}
 
-	if err := db.Commit().Error; err != nil {
+	err := db.Commit().Error
+	if err != nil {
 		logging.Logger.Error("[challenge]db: ", zap.Any("challenge_id", challengeObj.ChallengeID), zap.Error(err))
 		db.Rollback()
 		return
 	}
+
+	go func() {
+		waitToCommit <- challengeObj
+	}()
 }
 
 func commitProcessed(ctx context.Context) {
@@ -169,6 +185,7 @@ func commitProcessed(ctx context.Context) {
 		for _, challenge := range challenges {
 			c := challenge
 			swg.Add()
+			log.Println("challenge: commit ", time.Now())
 			go func() {
 				defer swg.Done()
 				commitChallenge(c)
