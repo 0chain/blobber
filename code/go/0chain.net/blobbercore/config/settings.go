@@ -17,18 +17,17 @@ import (
 const TableNameSettings = "settings"
 
 type Settings struct {
-	ID                      string    `gorm:"column:id;size:10;primaryKey"`
-	Capacity                int64     `gorm:"column:capacity;not null;default:0"`
-	ChallengeCompletionTime string    `gorm:"column:challenge_completion_time;size:30;default:'-1ns';not null"`
-	MaxOfferDuration        string    `gorm:"column:max_offer_duration;size:30;default:'-1ns';not null"`
-	MaxStake                int64     `gorm:"column:max_stake;not null;default:100"`
-	MinLockDemand           float64   `gorm:"column:min_lock_demand;not null;default:0"`
-	MinStake                int64     `gorm:"column:min_stake;not null;default:1"`
-	NumDelegates            int       `gorm:"column:num_delegates;not null;default:100"`
-	ReadPrice               float64   `gorm:"column:read_price;not null;default:0"`
-	WritePrice              float64   `gorm:"column:write_price;not null;default:0"`
-	ServiceCharge           float64   `gorm:"column:service_charge;not null;default:0"`
-	UpdatedAt               time.Time `gorm:"column:updated_at;not null;default:NOW()"`
+	ID               string    `gorm:"column:id;size:10;primaryKey"`
+	Capacity         int64     `gorm:"column:capacity;not null;default:0"`
+	MaxOfferDuration string    `gorm:"column:max_offer_duration;size:30;default:'-1ns';not null"`
+	MaxStake         int64     `gorm:"column:max_stake;not null;default:100"`
+	MinLockDemand    float64   `gorm:"column:min_lock_demand;not null;default:0"`
+	MinStake         int64     `gorm:"column:min_stake;not null;default:1"`
+	NumDelegates     int       `gorm:"column:num_delegates;not null;default:100"`
+	ReadPrice        float64   `gorm:"column:read_price;not null;default:0"`
+	WritePrice       float64   `gorm:"column:write_price;not null;default:0"`
+	ServiceCharge    float64   `gorm:"column:service_charge;not null;default:0"`
+	UpdatedAt        time.Time `gorm:"column:updated_at;not null;default:NOW()"`
 }
 
 func (s Settings) TableName() string {
@@ -43,11 +42,6 @@ func (s *Settings) CopyTo(c *Config) error {
 	}
 
 	c.Capacity = s.Capacity
-	cct, err := time.ParseDuration(s.ChallengeCompletionTime)
-	if err != nil {
-		return errors.Throw(constants.ErrInvalidParameter, "ChallengeCompletionTime")
-	}
-	c.ChallengeCompletionTime = cct
 
 	maxOfferDuration, err := time.ParseDuration(s.MaxOfferDuration)
 	if err != nil {
@@ -72,7 +66,6 @@ func (s *Settings) CopyFrom(c *Config) error {
 	}
 
 	s.Capacity = c.Capacity
-	s.ChallengeCompletionTime = c.ChallengeCompletionTime.String()
 	s.MaxOfferDuration = c.MaxOfferDuration.String()
 	s.MaxStake = c.MaxStake
 	s.MinLockDemand = c.MinLockDemand
@@ -138,7 +131,6 @@ func ReloadFromChain(ctx context.Context, db *gorm.DB) (*zcncore.Blobber, error)
 	}
 
 	Configuration.Capacity = int64(b.Capacity)
-	Configuration.ChallengeCompletionTime = b.Terms.ChallengeCompletionTime
 	Configuration.MaxOfferDuration = b.Terms.MaxOfferDuration
 	Configuration.MaxStake = int64(b.StakePoolSettings.MaxStake)
 	Configuration.MinLockDemand = b.Terms.MinLockDemand

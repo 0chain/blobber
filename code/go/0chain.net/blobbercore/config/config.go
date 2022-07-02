@@ -32,7 +32,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("write_price", 0.0)
 	viper.SetDefault("min_lock_demand", 0.0)
 	viper.SetDefault("max_offer_duration", time.Duration(0))
-	viper.SetDefault("challenge_completion_time", time.Duration(-1))
+
 	viper.SetDefault("read_lock_timeout", time.Duration(-1))
 	viper.SetDefault("write_lock_timeout", time.Duration(-1))
 	viper.SetDefault("write_marker_lock_timeout", time.Second*30)
@@ -120,12 +120,11 @@ type Config struct {
 	MinioBucket     string
 	MinioRegion     string
 
-	ReadPrice               float64
-	WritePrice              float64
-	PriceInUSD              bool
-	MinLockDemand           float64
-	MaxOfferDuration        time.Duration
-	ChallengeCompletionTime time.Duration
+	ReadPrice        float64
+	WritePrice       float64
+	PriceInUSD       bool
+	MinLockDemand    float64
+	MaxOfferDuration time.Duration
 
 	ReadLockTimeout  int64 // seconds
 	WriteLockTimeout int64 // seconds

@@ -68,7 +68,6 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn.Terms.WritePrice = zcncore.ConvertToValue(writePrice)
 	sn.Terms.MinLockDemand = config.Configuration.MinLockDemand
 	sn.Terms.MaxOfferDuration = config.Configuration.MaxOfferDuration
-	sn.Terms.ChallengeCompletionTime = config.Configuration.ChallengeCompletionTime
 
 	sn.StakePoolSettings.DelegateWallet = config.Configuration.DelegateWallet
 	sn.StakePoolSettings.MinStake = config.Configuration.MinStake
