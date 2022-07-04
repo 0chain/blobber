@@ -95,13 +95,6 @@ service BlobberService {
     };
   }
 
-  rpc UpdateObjectAttributes(UpdateObjectAttributesRequest) returns (UpdateObjectAttributesResponse) {
-    option (google.api.http) = {
-      post: "/v2/file/attributes/{allocation}"
-      body: "*"
-    };
-  }
-
   rpc CopyObject(CopyObjectRequest) returns (CopyObjectResponse) {
     option (google.api.http) = {
       post: "/v2/file/copy/{allocation}"
