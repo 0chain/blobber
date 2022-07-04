@@ -5,7 +5,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
@@ -29,7 +28,6 @@ type BaseFileChanger struct {
 	//client side:
 	MimeType string `json:"mimetype,omitempty"`
 	//client side:
-	Attributes reference.Attributes `json:"attributes,omitempty"`
 	//client side:
 	MerkleRoot string `json:"merkle_root,omitempty"`
 
