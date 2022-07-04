@@ -25,7 +25,7 @@ func TestHashnode_Should_Work(t *testing.T) {
 			allocationID: "allocation_none",
 			mock: func() {
 				gomocket.Catcher.NewMock().
-					WithQuery(`SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, attributes, chunk_size,size,actual_file_size, parent_path
+					WithQuery(`SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, chunk_size,size,actual_file_size, parent_path
 FROM reference_objects`).WithArgs("allocation_none").
 					WithReply(nil)
 			},
@@ -43,12 +43,6 @@ FROM reference_objects`).WithArgs("allocation_none").
 				require.EqualValues(test, 0, r.ChunkSize)
 				require.EqualValues(test, 0, r.Size)
 				require.EqualValues(test, 0, r.ActualFileSize)
-
-				buf, e := r.Attributes.MarshalJSON() //nolint
-				require.Nil(test, e)
-
-				require.Equal(test, "null", string(buf))
-
 				require.Equal(test, "", r.ParentPath)
 
 			},
@@ -58,7 +52,7 @@ FROM reference_objects`).WithArgs("allocation_none").
 			allocationID: "allocation_nested",
 			mock: func() {
 				gomocket.Catcher.NewMock().
-					WithQuery(`SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, attributes, chunk_size,size,actual_file_size, parent_path
+					WithQuery(`SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, chunk_size,size,actual_file_size, parent_path
 FROM reference_objects`).
 					WithArgs("allocation_nested").
 					WithReply([]map[string]interface{}{
@@ -70,7 +64,6 @@ FROM reference_objects`).
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,
@@ -84,7 +77,6 @@ FROM reference_objects`).
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,
@@ -98,7 +90,6 @@ FROM reference_objects`).
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,
@@ -112,7 +103,6 @@ FROM reference_objects`).
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,
@@ -168,7 +158,7 @@ func TestHashnode_Should_Not_Work(t *testing.T) {
 			allocationID: "allocation_missing",
 			mock: func() {
 				gomocket.Catcher.NewMock().
-					WithQuery(`SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, attributes, chunk_size,size,actual_file_size, parent_path
+					WithQuery(`SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, chunk_size,size,actual_file_size, parent_path
 FROM reference_objects`).WithArgs("allocation_missing").
 					WithReply([]map[string]interface{}{
 						{
@@ -179,7 +169,6 @@ FROM reference_objects`).WithArgs("allocation_missing").
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,
@@ -197,7 +186,7 @@ FROM reference_objects`).WithArgs("allocation_missing").
 			allocationID: "allocation_duplicated_root",
 			mock: func() {
 				gomocket.Catcher.NewMock().
-					WithQuery(`SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, attributes, chunk_size,size,actual_file_size, parent_path
+					WithQuery(`SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, chunk_size,size,actual_file_size, parent_path
 FROM reference_objects`).
 					WithArgs("allocation_duplicated_root").
 					WithReply([]map[string]interface{}{
@@ -209,7 +198,6 @@ FROM reference_objects`).
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,
@@ -223,7 +211,6 @@ FROM reference_objects`).
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,
@@ -237,7 +224,6 @@ FROM reference_objects`).
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,
@@ -251,7 +237,6 @@ FROM reference_objects`).
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,
@@ -265,7 +250,6 @@ FROM reference_objects`).
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,
@@ -285,7 +269,7 @@ FROM reference_objects`).
 			allocationID: "allocation_duplicated_node",
 			mock: func() {
 				gomocket.Catcher.NewMock().
-					WithQuery(`SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, attributes, chunk_size,size,actual_file_size, parent_path
+					WithQuery(`SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, chunk_size,size,actual_file_size, parent_path
 FROM reference_objects`).
 					WithArgs("allocation_duplicated_node").
 					WithReply([]map[string]interface{}{
@@ -297,7 +281,6 @@ FROM reference_objects`).
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,
@@ -311,7 +294,6 @@ FROM reference_objects`).
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,
@@ -325,7 +307,6 @@ FROM reference_objects`).
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,
@@ -339,7 +320,6 @@ FROM reference_objects`).
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,
@@ -353,7 +333,6 @@ FROM reference_objects`).
 							"content_hash":     "",
 							"merkle_root":      "",
 							"actual_file_hash": "",
-							"attributes":       []byte("null"),
 							"chunk_size":       0,
 							"size":             0,
 							"actual_file_size": 0,

@@ -38,7 +38,6 @@ type Allocation struct {
 	OwnerID        string           `gorm:"column:owner_id;size:64;not null"`
 	OwnerPublicKey string           `gorm:"column:owner_public_key;size:512;not null"`
 	RepairerID     string           `gorm:"column:repairer_id;size:64;not null"`
-	PayerID        string           `gorm:"column:payer_id;size:64;not null"`
 	Expiration     common.Timestamp `gorm:"column:expiration_date;not null"`
 	// AllocationRoot allcation_root of last write_marker
 	AllocationRoot   string        `gorm:"column:allocation_root;size:64;not null;default:''"`

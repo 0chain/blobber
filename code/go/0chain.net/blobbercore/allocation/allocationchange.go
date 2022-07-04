@@ -148,8 +148,6 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 			acp = new(RenameFileChange)
 		case constants.FileOperationCopy:
 			acp = new(CopyFileChange)
-		case constants.FileOperationUpdateAttrs:
-			acp = new(AttributesChange)
 		}
 
 		if acp == nil {
