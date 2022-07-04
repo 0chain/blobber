@@ -22,7 +22,7 @@ require (
 	github.com/stretchr/testify v1.7.2
 	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.21.0
-	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	golang.org/x/net v0.0.0-20220607020251-c690dde0001d // indirect
 	golang.org/x/time v0.0.0-20220609170525-579cf78fd858 // indirect
 	google.golang.org/genproto v0.0.0-20220608133413-ed9918b62aac
@@ -30,9 +30,9 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.28.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
-	gorm.io/datatypes v1.0.6
-	gorm.io/driver/postgres v1.3.7
-	gorm.io/gorm v1.23.6
+	gorm.io/datatypes v1.0.7
+	gorm.io/driver/postgres v1.3.8
+	gorm.io/gorm v1.23.7
 )
 
 require golang.org/x/sys v0.0.0-20220610221304-9f5ed59c137d
