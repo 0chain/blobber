@@ -87,10 +87,6 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	existingRef.EncryptedKey = nf.EncryptedKey
 	existingRef.ChunkSize = nf.ChunkSize
 
-	if err = existingRef.SetAttributes(&nf.Attributes); err != nil {
-		return nil, common.NewErrorf("process_update_file_change",
-			"setting file attributes: %v", err)
-	}
 	_, err = rootRef.CalculateHash(ctx, true)
 	stats.FileUpdated(ctx, existingRef.ID)
 	return rootRef, err

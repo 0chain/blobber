@@ -208,20 +208,6 @@ message ReadMarker {
   int64            timestamp = 6;
   int64            read_counter = 7;
   string           signature = 8;
-  string           payer_id = 9;
-  bytes            auth_ticket = 10;
-}
-
-message UpdateObjectAttributesRequest {
-  string allocation = 1;
-  string path = 2;
-  string path_hash = 3;
-  string connection_id = 4;
-  string attributes = 5;
-}
-
-message UpdateObjectAttributesResponse {
-  int64 who_pays_for_reads = 1;
 }
 
 message CopyObjectRequest {
@@ -291,17 +277,16 @@ message Allocation {
   string owner_id = 5;
   string owner_public_key = 6;
   string repairer_id = 7;
-  string payer_id = 8;
-  int64 expiration = 9;
-  string allocation_root = 10;
-  int64 blobber_size = 11;
-  int64 blobber_size_used = 12;
-  string latest_redeemed_wm = 13;
-  bool is_redeem_required = 14;
-  int64 time_unit = 15;
-  bool cleaned_up = 16;
-  bool finalized = 17;
-  repeated Term terms = 18;
+  int64 expiration = 8;
+  string allocation_root = 9;
+  int64 blobber_size = 10;
+  int64 blobber_size_used = 11;
+  string latest_redeemed_wm = 12;
+  bool is_redeem_required = 13;
+  int64 time_unit = 14;
+  bool cleaned_up = 15;
+  bool finalized = 16;
+  repeated Term terms = 17;
 }
 
 message Term {
@@ -338,11 +323,10 @@ message FileMetaData {
   int64 actual_thumbnail_size = 17;
   string actual_thumbnail_hash = 18;
   string encrypted_key = 19;
-  bytes attributes = 20;
-  bool on_cloud = 21;
-  repeated CommitMetaTxn commit_meta_txns = 22;
-  int64 created_at = 23;
-  int64 updated_at = 24;
+  bool on_cloud = 20;
+  repeated CommitMetaTxn commit_meta_txns = 21;
+  int64 created_at = 22;
+  int64 updated_at = 23;
 }
 
 message DirMetaData {

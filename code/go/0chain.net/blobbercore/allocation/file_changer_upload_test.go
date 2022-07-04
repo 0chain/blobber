@@ -2,15 +2,15 @@ package allocation
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/gosdk/constants"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/zcncrypto"
@@ -100,7 +100,6 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 					Filename:     "new",
 					Path:         "/",
 					ActualSize:   2310,
-					Attributes:   reference.Attributes{WhoPaysForReads: common.WhoPaysOwner},
 					AllocationID: tc.allocationID,
 					Hash:         tc.hash,
 					Size:         2310,
