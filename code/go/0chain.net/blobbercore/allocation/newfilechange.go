@@ -3,9 +3,10 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"path/filepath"
 	"strings"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -32,8 +33,6 @@ type NewFileChange struct {
 	ActualThumbnailHash string `json:"actual_thumb_hash"`
 	//client side:
 	MimeType string `json:"mimetype,omitempty"`
-	//client side:
-	Attributes reference.Attributes `json:"attributes,omitempty"`
 	//client side:
 	MerkleRoot string `json:"merkle_root,omitempty"`
 
@@ -205,11 +204,6 @@ func (nf *NewFileChange) ApplyChange(ctx context.Context, change *AllocationChan
 	newFile.EncryptedKey = nf.EncryptedKey
 	newFile.ChunkSize = nf.ChunkSize
 	newFile.HashToBeComputed = true
-
-	if err = newFile.SetAttributes(&nf.Attributes); err != nil {
-		return nil, common.NewErrorf("process_new_file_change",
-			"setting file attributes: %v", err)
-	}
 
 	dirRef.AddChild(newFile)
 

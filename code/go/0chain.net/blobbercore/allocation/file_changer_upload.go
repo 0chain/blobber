@@ -3,9 +3,10 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"path/filepath"
 	"strings"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
@@ -96,10 +97,7 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	newFile.EncryptedKey = nf.EncryptedKey
 	newFile.ChunkSize = nf.ChunkSize
 	newFile.HashToBeComputed = true
-	if err = newFile.SetAttributes(&nf.Attributes); err != nil {
-		return nil, common.NewErrorf("process_new_file_change",
-			"setting file attributes: %v", err)
-	}
+
 	dirRef.AddChild(newFile)
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err

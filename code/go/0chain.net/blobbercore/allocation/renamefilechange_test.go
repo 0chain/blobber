@@ -199,9 +199,9 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 							"path":        "/old_dir",
 						}},
 					)
-				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%!!(string=allocation id)!(string=)!(string=/)!(string=allocation id)!(string=/old_dir)(EXTRA string=allocation id)`
+				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%!!(string=allocation id)!(string=)!(string=/)!(string=allocation id)!(string=/old_dir)(EXTRA string=allocation id)`
 				mocket.Catcher.NewMock().OneTime().WithQuery(
-					`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE`,
+					`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE`,
 				).WithQuery(query).WithReply(
 					[]map[string]interface{}{{
 						"id":          1,
@@ -242,7 +242,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 							"path":        "old_file.pdf",
 						}},
 					)
-				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%!!(string=allocation id)!(string=)!(string=.)!(string=allocation id)!(string=old_file.pdf)(EXTRA string=allocation id)`
+				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%!!(string=allocation id)!(string=)!(string=.)!(string=allocation id)!(string=old_file.pdf)(EXTRA string=allocation id)`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).WithReply(
 					[]map[string]interface{}{{
 						"id":          1,
@@ -259,7 +259,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 							"parent_path": "/",
 						}},
 				)
-				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","attributes","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE "id" = $1 AND "reference_objects"."deleted_at" IS NULL ORDER BY "reference_objects"."id" LIMIT 1%!(EXTRA int64=1)`
+				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE "id" = $1 AND "reference_objects"."deleted_at" IS NULL ORDER BY "reference_objects"."id" LIMIT 1%!(EXTRA int64=1)`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).
 					WithReply(
 						[]map[string]interface{}{{

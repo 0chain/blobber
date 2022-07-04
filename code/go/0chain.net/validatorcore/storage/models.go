@@ -2,7 +2,6 @@ package storage
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -17,7 +16,7 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 )
 
@@ -34,21 +33,6 @@ type ObjectEntity interface {
 	GetHash() string
 	CalculateHash() string
 	GetType() string
-}
-
-type Attributes struct {
-	WhoPaysForReads common.WhoPays `json:"who_pays_for_reads,omitempty" mapstructure:"who_pays_for_reads"`
-}
-
-func (a *Attributes) String() string {
-	if a == nil || (*a) == (Attributes{}) {
-		return "{}"
-	}
-	var b, err = json.Marshal(a)
-	if err != nil {
-		return "{}"
-	}
-	return string(b)
 }
 
 type DirMetaData struct {
@@ -85,14 +69,13 @@ func (r *DirMetaData) GetType() string {
 
 type FileMetaData struct {
 	DirMetaData    `mapstructure:",squash"`
-	CustomMeta     string     `json:"custom_meta" mapstructure:"custom_meta"`
-	ContentHash    string     `json:"content_hash" mapstructure:"content_hash"`
-	Size           int64      `json:"size" mapstructure:"size"`
-	MerkleRoot     string     `json:"merkle_root" mapstructure:"merkle_root"`
-	ActualFileSize int64      `json:"actual_file_size" mapstructure:"actual_file_size"`
-	ActualFileHash string     `json:"actual_file_hash" mapstructure:"actual_file_hash"`
-	ChunkSize      int64      `json:"chunk_size" mapstructure:"chunk_size"`
-	Attributes     Attributes `json:"attributes" mapstructure:"attributes" `
+	CustomMeta     string `json:"custom_meta" mapstructure:"custom_meta"`
+	ContentHash    string `json:"content_hash" mapstructure:"content_hash"`
+	Size           int64  `json:"size" mapstructure:"size"`
+	MerkleRoot     string `json:"merkle_root" mapstructure:"merkle_root"`
+	ActualFileSize int64  `json:"actual_file_size" mapstructure:"actual_file_size"`
+	ActualFileHash string `json:"actual_file_hash" mapstructure:"actual_file_hash"`
+	ChunkSize      int64  `json:"chunk_size" mapstructure:"chunk_size"`
 }
 
 func (fr *FileMetaData) GetHashData() string {
@@ -107,7 +90,6 @@ func (fr *FileMetaData) GetHashData() string {
 		fr.MerkleRoot,
 		strconv.FormatInt(fr.ActualFileSize, 10),
 		fr.ActualFileHash,
-		fr.Attributes.String(),
 		strconv.FormatInt(fr.ChunkSize, 10),
 	)
 	return strings.Join(hashArray, ":")
@@ -160,7 +142,7 @@ func (op *ObjectPath) Parse(input map[string]interface{}, allocationID string) (
 					fileObj.AllocationID = allocationID
 					newHash := fileObj.CalculateHash()
 					if newHash != fileObj.GetHash() {
-						Logger.Error("Hash mismatch for file.", zap.Any("hashdata", fileObj.GetHashData()), zap.Any("newhash", newHash), zap.Any("given_hash", fileObj.GetHash()))
+						logging.Logger.Error("Hash mismatch for file.", zap.Any("hashdata", fileObj.GetHashData()), zap.Any("newhash", newHash), zap.Any("given_hash", fileObj.GetHash()))
 						return nil, common.NewError("hash_mismatch", "Object path error since there is a mismatch in the file hashes. "+fileObj.Path)
 					}
 					rootDir.Children[i] = &fileObj
@@ -174,7 +156,7 @@ func (op *ObjectPath) Parse(input map[string]interface{}, allocationID string) (
 						dirObj.AllocationID = allocationID
 						newHash := dirObj.CalculateHash()
 						if newHash != dirObj.GetHash() {
-							Logger.Error("Hash mismatch for directory.", zap.Any("newhash", newHash), zap.Any("given_hash", dirObj.GetHash()), zap.Any("dirObj", dirObj))
+							logging.Logger.Error("Hash mismatch for directory.", zap.Any("newhash", newHash), zap.Any("given_hash", dirObj.GetHash()), zap.Any("dirObj", dirObj))
 							return nil, common.NewError("hash_mismatch", "Object path error since there is a mismatch in the dir hashes. "+dirObj.Path)
 						}
 					} else {
@@ -194,6 +176,8 @@ func (op *ObjectPath) Parse(input map[string]interface{}, allocationID string) (
 	}
 
 	newHash := rootDir.CalculateHash()
+	fmt.Printf("\nNewroothash: %s rootdir hash: %s\n\n", newHash, rootDir.GetHash())
+
 	if newHash != rootDir.GetHash() {
 		return nil, common.NewError("hash_mismatch", "Object path error since there is a mismatch in the dir hashes. "+rootDir.Path)
 	}
@@ -202,7 +186,7 @@ func (op *ObjectPath) Parse(input map[string]interface{}, allocationID string) (
 
 func (op *ObjectPath) VerifyBlockNum(challengeRand int64) error {
 	if op.RootObject.NumBlocks == 0 {
-		Logger.Info("Challenge is on a empty allocation")
+		logging.Logger.Info("Challenge is on a empty allocation")
 		return nil
 	}
 	r := rand.New(rand.NewSource(challengeRand))
@@ -238,12 +222,12 @@ func (op *ObjectPath) VerifyBlockNum(challengeRand int64) error {
 		}
 	}
 	if !found {
-		Logger.Error("File for Block num was not found in object path", zap.Any("object_path", op), zap.Any("rand_seed", challengeRand), zap.Any("blocknum", blockNum), zap.Any("root_blocks", op.RootObject.NumBlocks))
+		logging.Logger.Error("File for Block num was not found in object path", zap.Any("object_path", op), zap.Any("rand_seed", challengeRand), zap.Any("blocknum", blockNum), zap.Any("root_blocks", op.RootObject.NumBlocks))
 		return common.NewError("invalid_object_path", "File for Block num was not found in object path")
 	}
 
 	if op.Meta.GetHash() != curRef.GetHash() {
-		Logger.Error("Block num was not for the same file as object path", zap.Any("curRef", curRef), zap.Any("object_path", op), zap.Any("rand_seed", challengeRand), zap.Any("blocknum", blockNum), zap.Any("root_blocks", op.RootObject.NumBlocks))
+		logging.Logger.Error("Block num was not for the same file as object path", zap.Any("curRef", curRef), zap.Any("object_path", op), zap.Any("rand_seed", challengeRand), zap.Any("blocknum", blockNum), zap.Any("root_blocks", op.RootObject.NumBlocks))
 		return common.NewError("invalid_object_path", "Block num was not for the same file as object path")
 	}
 
@@ -255,7 +239,7 @@ func (op *ObjectPath) VerifyPath(allocationID string) error {
 	op.RootObject = rootDir
 
 	if err != nil {
-		Logger.Error("Error parsing the object path", zap.Any("object_path", op))
+		logging.Logger.Error("Error parsing the object path", zap.Any("object_path", op))
 		return common.NewError("invalid_object_path", "Error parsing the object path. "+err.Error())
 	}
 	if op.RootHash != rootDir.Hash {
@@ -294,7 +278,7 @@ type ChallengeRequest struct {
 }
 
 func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationObj *Allocation) error {
-	Logger.Info("Verifying object path", zap.Any("challenge_id", challengeObj.ID), zap.Any("seed", challengeObj.RandomNumber))
+	logging.Logger.Info("Verifying object path", zap.Any("challenge_id", challengeObj.ID), zap.Any("seed", challengeObj.RandomNumber))
 	err := cr.ObjPath.Verify(challengeObj.AllocationID, challengeObj.RandomNumber)
 	if err != nil {
 		return common.NewError("challenge_validation_failed", "Failed to verify the object path."+err.Error())
@@ -304,7 +288,7 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 		return common.NewError("challenge_validation_failed", "Invalid write marker")
 	}
 
-	Logger.Info("Verifying write marker", zap.Any("challenge_id", challengeObj.ID))
+	logging.Logger.Info("Verifying write marker", zap.Any("challenge_id", challengeObj.ID))
 	err = cr.WriteMarkers[0].WM.Verify(allocationObj.ID, challengeObj.AllocationRoot, cr.WriteMarkers[0].ClientPublicKey)
 	if err != nil {
 		return err
@@ -330,7 +314,7 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 		return nil
 	}
 
-	Logger.Info("Verifying data block and merkle path", zap.Any("challenge_id", challengeObj.ID))
+	logging.Logger.Info("Verifying data block and merkle path", zap.Any("challenge_id", challengeObj.ID))
 	//contentHash := encryption.Hash(cr.DataBlock)
 
 	contentHasher := util.NewCompactMerkleTree(nil)

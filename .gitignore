@@ -16,3 +16,4 @@ dev.local/data
 out/
 **/tmp/
 *.tar.gz
+**/descriptor.proto
