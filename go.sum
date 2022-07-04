@@ -48,6 +48,8 @@ github.com/0chain/gosdk v1.8.5-0.20220629004800-888ebaf69d5f h1:6X1bGDDq4mFFvoDH
 github.com/0chain/gosdk v1.8.5-0.20220629004800-888ebaf69d5f/go.mod h1:JeaXA7gbncHoYbKixUnM58+7S2E9z7IKYY+fV0IQJ/o=
 github.com/0chain/gosdk v1.8.5-0.20220702141053-d40f51dc818b h1:+2iVBIpP3BjKmm/MCRsskfNaRS4Wa3AiMFaDXkJbslg=
 github.com/0chain/gosdk v1.8.5-0.20220702141053-d40f51dc818b/go.mod h1:JeaXA7gbncHoYbKixUnM58+7S2E9z7IKYY+fV0IQJ/o=
+github.com/0chain/gosdk v1.8.5-0.20220704093207-b8dd7a6d544e h1:H+P1jApt99xXLuQFJLpAkAWeBbERq3Uvxm8T/MCwcAk=
+github.com/0chain/gosdk v1.8.5-0.20220704093207-b8dd7a6d544e/go.mod h1:JeaXA7gbncHoYbKixUnM58+7S2E9z7IKYY+fV0IQJ/o=
 github.com/Azure/azure-sdk-for-go/sdk/azcore v0.19.0/go.mod h1:h6H6c8enJmmocHUbLiiGY6sx7f9i+X3m1CHdd5c6Rdw=
 github.com/Azure/azure-sdk-for-go/sdk/azcore v0.21.1/go.mod h1:fBF9PQNqB8scdgpZ3ufzaLntG0AG7C1WjPMsiFOmfHM=
 github.com/Azure/azure-sdk-for-go/sdk/azidentity v0.11.0/go.mod h1:HcM1YX14R7CJcghJGOYCgdezslRSVzqwLf/q+4Y2r/0=
