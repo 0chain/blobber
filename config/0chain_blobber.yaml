@@ -51,7 +51,7 @@ update_allocations_interval: 1m
 max_dirs_files: 50000
 
 # delegate wallet (must be set)
-delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'
+delegate_wallet: 'bec04d9120f56ef4198ad0b75b09e34dbcebd79d77807ff4badf2094c5198090'
 # min stake allowed, tokens
 min_stake: 1.0
 # max stake allowed, tokens
