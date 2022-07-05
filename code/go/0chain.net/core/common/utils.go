@@ -46,3 +46,15 @@ func GetParentPaths(fPath string) ([]string, error) {
 	}
 	return paths[2:], nil
 }
+
+// GetPathFields will return slice of fields of path.
+// For path /a/b/c/d/e/f.txt it will return [a, b, c, d, e, f.txt],nil
+func GetPathFields(p string) ([]string, error) {
+	if !filepath.IsAbs(p) {
+		return nil, NewError("invalid_path", fmt.Sprintf("%v is not absolute path", p))
+	}
+
+	p = filepath.Clean(p)
+	fields := strings.Split(p, "/")
+	return fields[1:], nil
+}

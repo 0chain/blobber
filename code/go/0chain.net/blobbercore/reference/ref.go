@@ -108,10 +108,9 @@ type PaginatedRef struct { //Gorm smart select fields.
 	ActualThumbnailHash string `gorm:"column:actual_thumbnail_hash" json:"actual_thumbnail_hash,omitempty"`
 	EncryptedKey        string `gorm:"column:encrypted_key" json:"encrypted_key,omitempty"`
 
-	OnCloud   bool           `gorm:"column:on_cloud" json:"on_cloud,omitempty"`
-	CreatedAt time.Time      `gorm:"column:created_at" json:"created_at,omitempty"`
-	UpdatedAt time.Time      `gorm:"column:updated_at" json:"updated_at,omitempty"`
-	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"-"` // soft deletion
+	OnCloud   bool             `gorm:"column:on_cloud" json:"on_cloud,omitempty"`
+	CreatedAt common.Timestamp `gorm:"column:created_at" json:"created_at,omitempty"`
+	UpdatedAt common.Timestamp `gorm:"column:updated_at" json:"updated_at,omitempty"`
 
 	ChunkSize int64 `gorm:"column:chunk_size" json:"chunk_size"`
 }
@@ -387,7 +386,22 @@ func (r *Ref) AddChild(child *Ref) {
 	if r.Children == nil {
 		r.Children = make([]*Ref, 0)
 	}
-	r.Children = append(r.Children, child)
+	var index int
+	var ltFound bool
+	// Add child in sorted fashion
+	for i, ref := range r.Children {
+		if strings.Compare(child.Path, ref.Path) == -1 {
+			index = i
+			ltFound = true
+			break
+		}
+	}
+	if ltFound {
+		r.Children = append(r.Children[:index+1], r.Children[index:]...)
+		r.Children[index] = child
+	} else {
+		r.Children = append(r.Children, child)
+	}
 	r.childrenLoaded = true
 }
 

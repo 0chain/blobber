@@ -434,7 +434,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
 		return nil, err
 	}
-	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot)
+
+	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot, writeMarker.Timestamp)
 	if err != nil {
 		return nil, err
 	}
@@ -801,16 +802,12 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	allocationChange.Size = 0
 	allocationChange.Operation = constants.FileOperationCreateDir
 	connectionObj.Size += allocationChange.Size
-	var formData allocation.NewFileChange
-	formData.Filename = dirPath
-	formData.Path = dirPath
-	formData.AllocationID = allocationID
-	formData.ConnectionID = connectionID
-	formData.ActualHash = ""
-	formData.ActualSize = 0
+	var newDir allocation.NewDir
+	newDir.ConnectionID = connectionID
+	newDir.Path = dirPath
+	newDir.AllocationID = allocationID
 
-	connectionObj.AddChange(allocationChange, &formData)
-	err = connectionObj.ApplyChanges(ctx, "/")
+	connectionObj.AddChange(allocationChange, &newDir)
 	if err != nil {
 		return nil, err
 	}
