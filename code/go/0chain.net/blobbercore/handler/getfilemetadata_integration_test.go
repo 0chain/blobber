@@ -11,22 +11,13 @@ import (
 )
 
 func TestGetFileMetaData_IntegrationTest(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
-
 	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 
-	err := tdController.ClearDatabase()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = tdController.AddGetFileMetaDataTestData(allocationTx, pubKey)
-	if err != nil {
+	if err := tdController.AddGetFileMetaDataTestData(allocationTx, pubKey); err != nil {
 		t.Fatal(err)
 	}
 

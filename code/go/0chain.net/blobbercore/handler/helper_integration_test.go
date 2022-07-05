@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/automigration"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/stretchr/testify/require"
 	"log"
 	"math/rand"
 	"os"
@@ -12,13 +15,8 @@ import (
 
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"gorm.io/driver/postgres"
-
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/spf13/viper"
 
 	"testing"
@@ -43,43 +41,22 @@ func randString(n int) string {
 }
 
 func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClient, *TestDataController) {
-	// args := make(map[string]bool)
-	// for _, arg := range os.Args {
-	// 	args[arg] = true
-	// }
+	startGRPCServer(t)
 
-	if !isIntegrationTest() {
-		//	if !args["integration"] {
-		t.Logf("Skipping integration test: %s", t.Name())
-		t.Skip()
-	}
-
-	var conn *grpc.ClientConn
-	var err error
-	for i := 0; i < RetryAttempts; i++ {
-		conn, err = grpc.Dial(BlobberTestAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			t.Log(err)
-			<-time.After(time.Second * RetryTimeout)
-			continue
-		}
-		t.Logf("Connection is set to the target %s", BlobberTestAddr)
-		break
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-	bClient := blobbergrpc.NewBlobberServiceClient(conn)
+	bClient, _, err := makeTestClient()
+	require.NoError(t, err)
 
 	setupIntegrationTestConfig(t)
-	db, err := gorm.Open(postgres.Open(fmt.Sprintf(
-		"host=%v port=%v user=%v dbname=%v password=%v sslmode=disable",
-		config.Configuration.DBHost, config.Configuration.DBPort,
-		config.Configuration.DBUserName, config.Configuration.DBName,
-		config.Configuration.DBPassword)), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+
+	db, err := datastore.UseInMemory()
+	require.NoError(t, err)
+
+	err = automigration.DropSchemas(db)
+	require.NoError(t, err)
+
+	err = automigration.MigrateSchema(db)
+	require.NoError(t, err)
+
 	tdController := NewTestDataController(db)
 
 	return bClient, tdController
@@ -91,74 +68,6 @@ type TestDataController struct {
 
 func NewTestDataController(db *gorm.DB) *TestDataController {
 	return &TestDataController{db: db}
-}
-
-// ClearDatabase deletes all data from all tables
-func (c *TestDataController) ClearDatabase() error {
-	var err error
-	var tx *sql.Tx
-	defer func() {
-		if err != nil {
-			if tx != nil {
-				errRollback := tx.Rollback()
-				if errRollback != nil {
-					log.Println(errRollback)
-				}
-			}
-		}
-	}()
-
-	db, err := c.db.DB()
-	if err != nil {
-		return err
-	}
-
-	tx, err = db.BeginTx(context.Background(), &sql.TxOptions{})
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("truncate allocations cascade")
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("truncate reference_objects cascade")
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("truncate commit_meta_txns cascade")
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("truncate collaborators cascade")
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("truncate allocation_changes cascade")
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("truncate allocation_connections cascade")
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("truncate write_markers cascade")
-	if err != nil {
-		return err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (c *TestDataController) AddGetAllocationTestData() error {

@@ -19,9 +19,6 @@ import (
 
 //Need to check for errors here
 func TestBlobberGRPCService_UploadFile(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
 	root := os.Getenv("root")
 	mp := filepath.Join(root, "dev.local/data/blobber/files")
 	if err := os.MkdirAll(mp, os.ModePerm); err != nil {
@@ -48,9 +45,6 @@ func TestBlobberGRPCService_UploadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := tdController.ClearDatabase(); err != nil {
-		t.Fatal(err)
-	}
 	if err := tdController.AddUploadTestData(allocationTx, pubKey, clientId); err != nil {
 		t.Fatal(err)
 	}

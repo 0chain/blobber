@@ -15,10 +15,6 @@ import (
 )
 
 func TestBlobberGRPCService_UpdateObjectAttributes(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
-
 	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 
@@ -27,9 +23,6 @@ func TestBlobberGRPCService_UpdateObjectAttributes(t *testing.T) {
 	pubKeyBytes, _ := hex.DecodeString(pubKey)
 	clientId := encryption.Hash(pubKeyBytes)
 
-	if err := tdController.ClearDatabase(); err != nil {
-		t.Fatal(err)
-	}
 	if err := tdController.AddAttributesTestData(allocationTx, pubKey, clientId); err != nil {
 		t.Fatal(err)
 	}

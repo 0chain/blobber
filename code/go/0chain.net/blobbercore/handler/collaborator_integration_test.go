@@ -18,10 +18,6 @@ import (
 )
 
 func TestBlobberGRPCService_Collaborator(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
-
 	bClient, tdController := setupHandlerIntegrationTests(t)
 	allocationTx := randString(32)
 
@@ -57,9 +53,6 @@ func TestBlobberGRPCService_Collaborator(t *testing.T) {
 
 	wm.Signature = wmSig
 
-	if err := tdController.ClearDatabase(); err != nil {
-		t.Fatal(err)
-	}
 	if err := tdController.AddCommitTestData(allocationTx, pubKey, clientId, wmSig, now); err != nil {
 		t.Fatal(err)
 	}

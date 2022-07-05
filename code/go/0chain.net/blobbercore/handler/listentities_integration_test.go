@@ -12,10 +12,6 @@ import (
 )
 
 func TestBlobberGRPCService_ListEntities(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
-
 	bClient, tdController := setupHandlerIntegrationTests(t)
 
 	allocationTx := randString(32)
@@ -23,11 +19,7 @@ func TestBlobberGRPCService_ListEntities(t *testing.T) {
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 
-	err := tdController.ClearDatabase()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = tdController.AddListEntitiesTestData(allocationTx, pubKey)
+	err := tdController.AddListEntitiesTestData(allocationTx, pubKey)
 	if err != nil {
 		t.Fatal(err)
 	}

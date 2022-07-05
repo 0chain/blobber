@@ -8,18 +8,9 @@ import (
 )
 
 func TestGetAllocation_IntegrationTest(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
-
 	bClient, tdController := setupHandlerIntegrationTests(t)
 
-	err := tdController.ClearDatabase()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = tdController.AddGetAllocationTestData()
-	if err != nil {
+	if err := tdController.AddGetAllocationTestData(); err != nil {
 		t.Fatal(err)
 	}
 

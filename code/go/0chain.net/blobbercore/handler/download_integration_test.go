@@ -64,10 +64,6 @@ func setupFileManager(mp string) error {
 }
 
 func TestBlobberGRPCService_DownloadFile(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
-
 	if err := setupMockForFileManager(); err != nil {
 		t.Fatal(err)
 	}
@@ -127,10 +123,6 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 	now := common.Timestamp(time.Now().Unix())
 
 	bClient, tdController := setupHandlerIntegrationTests(t)
-
-	if err := tdController.ClearDatabase(); err != nil {
-		t.Fatal(err)
-	}
 
 	blobberPubKey := "de52c0a51872d5d2ec04dbc15a6f0696cba22657b80520e1d070e72de64c9b04e19ce3223cae3c743a20184158457582ffe9c369ca9218c04bfe83a26a62d88d"
 	blobberPubKeyBytes, _ := hex.DecodeString(blobberPubKey)
