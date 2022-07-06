@@ -34,9 +34,10 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 			"maximum files and directories already reached: %v", err)
 	}
 
-	path, _ := filepath.Split(nf.Path)
-	path = filepath.Clean(path)
-	tSubDirs := reference.GetSubDirsFromPath(path)
+	fields, err := common.GetPathFields(filepath.Dir(nf.Path))
+	if err != nil {
+		return nil, err
+	}
 
 	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, nf.Path)
 	if err != nil {
@@ -45,73 +46,64 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	if rootRef.CreatedAt == 0 {
 		rootRef.CreatedAt = ts
 	}
+
 	rootRef.UpdatedAt = ts
 	rootRef.HashToBeComputed = true
+
 	dirRef := rootRef
-	treelevel := 0
-	for {
+	for i := 0; i < len(fields); i++ {
 		found := false
 		for _, child := range dirRef.Children {
-			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
-				if child.Name == tSubDirs[treelevel] {
-					dirRef = child
-					dirRef.HashToBeComputed = true
-					found = true
-					break
-				}
+			if child.Name == fields[i] {
+				dirRef = child
+				dirRef.UpdatedAt = ts
+				dirRef.HashToBeComputed = true
+				found = true
 			}
 		}
-		if found {
-			treelevel++
-			continue
-		}
-		if len(tSubDirs) > treelevel {
-			newRef := reference.NewDirectoryRef()
+		if !found {
+			newRef := reference.NewFileRef()
 			newRef.AllocationID = dirRef.AllocationID
-			newRef.Path = "/" + strings.Join(tSubDirs[:treelevel+1], "/")
-			newRef.ParentPath = "/" + strings.Join(tSubDirs[:treelevel], "/")
-			newRef.Name = tSubDirs[treelevel]
-			newRef.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, newRef.Path)
-			newRef.HashToBeComputed = true
+			newRef.Path = "/" + strings.Join(fields[:i+1], "/")
+			newRef.ParentPath = "/" + strings.Join(fields[:i], "/")
+			newRef.Name = fields[i]
 			newRef.CreatedAt = ts
 			newRef.UpdatedAt = ts
+			newRef.HashToBeComputed = true
 			dirRef.AddChild(newRef)
-			dirRef = newRef
-			treelevel++
-			continue
-		} else {
-			break
 		}
 	}
 
-	var newFile = reference.NewFileRef()
-	newFile.ActualFileHash = nf.ActualHash
-	newFile.ActualFileSize = nf.ActualSize
-	newFile.AllocationID = dirRef.AllocationID
-	newFile.ContentHash = nf.Hash
-	newFile.CustomMeta = nf.CustomMeta
-	newFile.MerkleRoot = nf.MerkleRoot
-	newFile.Name = nf.Filename
-	newFile.ParentPath = dirRef.Path
-	newFile.Path = nf.Path
-	newFile.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, nf.Path)
-	newFile.Size = nf.Size
-	newFile.MimeType = nf.MimeType
-	newFile.WriteMarker = allocationRoot
-	newFile.ThumbnailHash = nf.ThumbnailHash
-	newFile.ThumbnailSize = nf.ThumbnailSize
-	newFile.ActualThumbnailHash = nf.ActualThumbnailHash
-	newFile.ActualThumbnailSize = nf.ActualThumbnailSize
-	newFile.EncryptedKey = nf.EncryptedKey
-	newFile.ChunkSize = nf.ChunkSize
-	newFile.CreatedAt = ts
-	newFile.UpdatedAt = ts
-	newFile.HashToBeComputed = true
+	newFile := &reference.Ref{
+		ActualFileHash:      nf.ActualHash,
+		ActualFileSize:      nf.ActualSize,
+		AllocationID:        dirRef.AllocationID,
+		ContentHash:         nf.Hash,
+		CustomMeta:          nf.CustomMeta,
+		MerkleRoot:          nf.MerkleRoot,
+		Name:                nf.Filename,
+		Path:                nf.Path,
+		ParentPath:          dirRef.Path,
+		Type:                reference.FILE,
+		Size:                nf.Size,
+		MimeType:            nf.MimeType,
+		WriteMarker:         allocationRoot,
+		ThumbnailHash:       nf.ThumbnailHash,
+		ThumbnailSize:       nf.ThumbnailSize,
+		ActualThumbnailHash: nf.ActualThumbnailHash,
+		ActualThumbnailSize: nf.ActualThumbnailSize,
+		EncryptedKey:        nf.EncryptedKey,
+		ChunkSize:           nf.ChunkSize,
+		CreatedAt:           ts,
+		UpdatedAt:           ts,
+		HashToBeComputed:    true,
+	}
 
 	dirRef.AddChild(newFile)
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}
+
 	stats.NewFileCreated(ctx, newFile.ID)
 	return rootRef, nil
 }
