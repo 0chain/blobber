@@ -10,14 +10,14 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func TestBlobberGRPCService_GetObjectPath(t *testing.T) {
-	bClient, tdController := setupHandlerIntegrationTests(t)
+func TestBlobberGRPCService_GetReferencePath(t *testing.T) {
+	bClient, tdController := setupGrpcTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 
-	err := tdController.AddGetObjectPathTestData(allocationTx, pubKey)
+	err := tdController.AddGetReferencePathTestData(allocationTx, pubKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +25,7 @@ func TestBlobberGRPCService_GetObjectPath(t *testing.T) {
 	testCases := []struct {
 		name           string
 		context        metadata.MD
-		input          *blobbergrpc.GetObjectPathRequest
+		input          *blobbergrpc.GetReferencePathRequest
 		expectedPath   string
 		expectingError bool
 	}{
@@ -35,10 +35,10 @@ func TestBlobberGRPCService_GetObjectPath(t *testing.T) {
 				common.ClientHeader:          "exampleOwnerId",
 				common.ClientSignatureHeader: clientSignature,
 			}),
-			input: &blobbergrpc.GetObjectPathRequest{
+			input: &blobbergrpc.GetReferencePathRequest{
+				Paths:      "",
+				Path:       "/",
 				Allocation: allocationTx,
-				Path:       "examplePath",
-				BlockNum:   "0",
 			},
 			expectedPath:   "/",
 			expectingError: false,
@@ -48,7 +48,7 @@ func TestBlobberGRPCService_GetObjectPath(t *testing.T) {
 	for _, tc := range testCases {
 		ctx := context.Background()
 		ctx = metadata.NewOutgoingContext(ctx, tc.context)
-		getObjectPathResp, err := bClient.GetObjectPath(ctx, tc.input)
+		getReferencePathResp, err := bClient.GetReferencePath(ctx, tc.input)
 		if err != nil {
 			if !tc.expectingError {
 				t.Fatal(err)
@@ -60,8 +60,8 @@ func TestBlobberGRPCService_GetObjectPath(t *testing.T) {
 			t.Fatal("expected error")
 		}
 
-		if getObjectPathResp.ObjectPath.Path.DirMetaData.Path != tc.expectedPath {
-			t.Fatal("unexpected root hash from GetObjectPath rpc")
+		if getReferencePathResp.ReferencePath.MetaData.DirMetaData.Path != tc.expectedPath {
+			t.Fatal("unexpected path from GetReferencePath rpc")
 		}
 	}
 }

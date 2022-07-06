@@ -26,10 +26,6 @@ import (
 	"github.com/0chain/gosdk/core/zcncrypto"
 )
 
-const BlobberTestAddr = "127.0.0.1:35051"
-const RetryAttempts = 8
-const RetryTimeout = 3
-
 func randString(n int) string {
 	const hexLetters = "abcdef0123456789"
 
@@ -40,7 +36,7 @@ func randString(n int) string {
 	return sb.String()
 }
 
-func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClient, *TestDataController) {
+func setupGrpcTests(t *testing.T) (blobbergrpc.BlobberServiceClient, *TestDataController) {
 	startGRPCServer(t)
 
 	bClient, _, err := makeTestClient()
@@ -60,7 +56,8 @@ func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClien
 	err = automigration.MigrateSchema(db)
 	require.NoError(t, err)
 
-	// Recreate timestamp columns to be sqlite compatible
+	// Recreate timestamp columns to be sqlite compatible.
+	// Columns with `timestamp without time zone` cannot be parsed properly in sqlite.
 	db.Exec("ALTER TABLE `reference_objects` DROP COLUMN `created_at`")
 	db.Exec("ALTER TABLE `reference_objects` ADD COLUMN `created_at` timestamp NOT NULL DEFAULT current_timestamp")
 	db.Exec("DROP INDEX `idx_updated_at`")

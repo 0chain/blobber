@@ -10,24 +10,24 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func TestBlobberGRPCService_GetReferencePath(t *testing.T) {
-	bClient, tdController := setupHandlerIntegrationTests(t)
+func TestBlobberGRPCService_GetObjectTree(t *testing.T) {
+	bClient, tdController := setupGrpcTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 
-	err := tdController.AddGetReferencePathTestData(allocationTx, pubKey)
+	err := tdController.AddGetObjectTreeTestData(allocationTx, pubKey)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	testCases := []struct {
-		name           string
-		context        metadata.MD
-		input          *blobbergrpc.GetReferencePathRequest
-		expectedPath   string
-		expectingError bool
+		name             string
+		context          metadata.MD
+		input            *blobbergrpc.GetObjectTreeRequest
+		expectedFileName string
+		expectingError   bool
 	}{
 		{
 			name: "Success",
@@ -35,20 +35,32 @@ func TestBlobberGRPCService_GetReferencePath(t *testing.T) {
 				common.ClientHeader:          "exampleOwnerId",
 				common.ClientSignatureHeader: clientSignature,
 			}),
-			input: &blobbergrpc.GetReferencePathRequest{
-				Paths:      "",
+			input: &blobbergrpc.GetObjectTreeRequest{
 				Path:       "/",
 				Allocation: allocationTx,
 			},
-			expectedPath:   "/",
-			expectingError: false,
+			expectedFileName: "root",
+			expectingError:   false,
+		},
+		{
+			name: "bad path",
+			context: metadata.New(map[string]string{
+				common.ClientHeader:          "exampleOwnerId",
+				common.ClientSignatureHeader: clientSignature,
+			}),
+			input: &blobbergrpc.GetObjectTreeRequest{
+				Path:       "/2",
+				Allocation: "",
+			},
+			expectedFileName: "root",
+			expectingError:   true,
 		},
 	}
 
 	for _, tc := range testCases {
 		ctx := context.Background()
 		ctx = metadata.NewOutgoingContext(ctx, tc.context)
-		getReferencePathResp, err := bClient.GetReferencePath(ctx, tc.input)
+		getObjectTreeResp, err := bClient.GetObjectTree(ctx, tc.input)
 		if err != nil {
 			if !tc.expectingError {
 				t.Fatal(err)
@@ -60,8 +72,8 @@ func TestBlobberGRPCService_GetReferencePath(t *testing.T) {
 			t.Fatal("expected error")
 		}
 
-		if getReferencePathResp.ReferencePath.MetaData.DirMetaData.Path != tc.expectedPath {
-			t.Fatal("unexpected path from GetReferencePath rpc")
+		if getObjectTreeResp.ReferencePath.MetaData.DirMetaData.Name != tc.expectedFileName {
+			t.Fatal("unexpected root name from GetObject")
 		}
 	}
 }

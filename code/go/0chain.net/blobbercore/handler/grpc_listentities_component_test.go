@@ -12,7 +12,7 @@ import (
 )
 
 func TestBlobberGRPCService_ListEntities(t *testing.T) {
-	bClient, tdController := setupHandlerIntegrationTests(t)
+	bClient, tdController := setupGrpcTests(t)
 
 	allocationTx := randString(32)
 

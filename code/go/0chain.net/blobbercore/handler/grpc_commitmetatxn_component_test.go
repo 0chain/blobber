@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/hex"
-	"net/http"
 	"strconv"
 	"testing"
 	"time"
@@ -17,12 +16,11 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func TestBlobberGRPCService_Collaborator(t *testing.T) {
-	bClient, tdController := setupHandlerIntegrationTests(t)
+func TestBlobberGRPCService_CommitMetaTxn(t *testing.T) {
+	bClient, tdController := setupGrpcTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
-	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 	pubKeyBytes, _ := hex.DecodeString(pubKey)
 	clientId := encryption.Hash(pubKeyBytes)
 	now := common.Timestamp(time.Now().UnixNano())
@@ -60,39 +58,36 @@ func TestBlobberGRPCService_Collaborator(t *testing.T) {
 	testCases := []struct {
 		name            string
 		context         metadata.MD
-		input           *blobbergrpc.CollaboratorRequest
+		input           *blobbergrpc.CommitMetaTxnRequest
 		expectedMessage string
 		expectingError  bool
 	}{
 		{
 			name: "Success",
 			context: metadata.New(map[string]string{
-				common.ClientHeader:          clientId,
-				common.ClientSignatureHeader: clientSignature,
-				common.ClientKeyHeader:       pubKey,
+				common.ClientHeader: clientId,
 			}),
-			input: &blobbergrpc.CollaboratorRequest{
+			input: &blobbergrpc.CommitMetaTxnRequest{
 				Path:       "/some_file",
 				PathHash:   "exampleId:examplePath",
+				AuthToken:  "",
 				Allocation: allocationTx,
-				Method:     http.MethodPost,
-				CollabId:   "10",
+				TxnId:      "8",
 			},
-			expectedMessage: "Added collaborator successfully",
+			expectedMessage: "Added commitMetaTxn successfully",
 			expectingError:  false,
 		},
 		{
 			name: "Fail",
 			context: metadata.New(map[string]string{
-				common.ClientHeader:          clientId,
-				common.ClientSignatureHeader: clientSignature,
-				common.ClientKeyHeader:       pubKey,
+				common.ClientHeader: clientId,
 			}),
-			input: &blobbergrpc.CollaboratorRequest{
+			input: &blobbergrpc.CommitMetaTxnRequest{
 				Path:       "/some_file",
 				PathHash:   "exampleId:examplePath",
+				AuthToken:  "",
 				Allocation: allocationTx,
-				Method:     http.MethodPost,
+				TxnId:      "",
 			},
 			expectedMessage: "",
 			expectingError:  true,
@@ -102,12 +97,11 @@ func TestBlobberGRPCService_Collaborator(t *testing.T) {
 	for _, tc := range testCases {
 		ctx := context.Background()
 		ctx = metadata.NewOutgoingContext(ctx, tc.context)
-		response, err := bClient.Collaborator(ctx, tc.input)
+		commitMetaTxnResponse, err := bClient.CommitMetaTxn(ctx, tc.input)
 		if err != nil {
 			if !tc.expectingError {
 				t.Fatal(err)
 			}
-
 			continue
 		}
 
@@ -115,7 +109,7 @@ func TestBlobberGRPCService_Collaborator(t *testing.T) {
 			t.Fatal("expected error")
 		}
 
-		if response.GetMessage() != tc.expectedMessage {
+		if commitMetaTxnResponse.GetMessage() != tc.expectedMessage {
 			t.Fatal("failed!")
 		}
 	}

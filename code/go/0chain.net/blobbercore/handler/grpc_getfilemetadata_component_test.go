@@ -10,22 +10,21 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func TestGetFilestats_IntegrationTest(t *testing.T) {
-	bClient, tdController := setupHandlerIntegrationTests(t)
+func TestBlobberGRPCService_GetFileMetaData(t *testing.T) {
+	bClient, tdController := setupGrpcTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 
-	err := tdController.AddGetFileStatsTestData(allocationTx, pubKey)
-	if err != nil {
+	if err := tdController.AddGetFileMetaDataTestData(allocationTx, pubKey); err != nil {
 		t.Fatal(err)
 	}
 
 	testCases := []struct {
 		name             string
 		context          metadata.MD
-		input            *blobbergrpc.GetFileStatsRequest
+		input            *blobbergrpc.GetFileMetaDataRequest
 		expectedFileName string
 		expectingError   bool
 	}{
@@ -35,7 +34,7 @@ func TestGetFilestats_IntegrationTest(t *testing.T) {
 				common.ClientHeader:          "exampleOwnerId",
 				common.ClientSignatureHeader: clientSignature,
 			}),
-			input: &blobbergrpc.GetFileStatsRequest{
+			input: &blobbergrpc.GetFileMetaDataRequest{
 				Path:       "examplePath",
 				PathHash:   "exampleId:examplePath",
 				Allocation: allocationTx,
@@ -44,12 +43,12 @@ func TestGetFilestats_IntegrationTest(t *testing.T) {
 			expectingError:   false,
 		},
 		{
-			name: "Unknown Path",
+			name: "Unknown file path",
 			context: metadata.New(map[string]string{
 				common.ClientHeader:          "exampleOwnerId",
 				common.ClientSignatureHeader: clientSignature,
 			}),
-			input: &blobbergrpc.GetFileStatsRequest{
+			input: &blobbergrpc.GetFileMetaDataRequest{
 				Path:       "examplePath",
 				PathHash:   "exampleId:examplePath123",
 				Allocation: allocationTx,
@@ -62,7 +61,7 @@ func TestGetFilestats_IntegrationTest(t *testing.T) {
 	for _, tc := range testCases {
 		ctx := context.Background()
 		ctx = metadata.NewOutgoingContext(ctx, tc.context)
-		getFileStatsResp, err := bClient.GetFileStats(ctx, tc.input)
+		getFileMetaDataResp, err := bClient.GetFileMetaData(ctx, tc.input)
 		if err != nil {
 			if !tc.expectingError {
 				t.Fatal(err)
@@ -74,8 +73,8 @@ func TestGetFilestats_IntegrationTest(t *testing.T) {
 			t.Fatal("expected error")
 		}
 
-		if getFileStatsResp.MetaData.FileMetaData.Name != tc.expectedFileName {
-			t.Fatal("unexpected file name from GetFileStats rpc")
+		if getFileMetaDataResp.MetaData.FileMetaData.Name != tc.expectedFileName {
+			t.Fatal("unexpected file name from GetFileMetaData rpc")
 		}
 	}
 }

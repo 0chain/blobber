@@ -30,7 +30,7 @@ func TestBlobberGRPCService_UploadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bClient, tdController := setupHandlerIntegrationTests(t)
+	bClient, tdController := setupGrpcTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)

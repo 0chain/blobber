@@ -136,6 +136,7 @@ func MigrateSchema(db *gorm.DB) error {
 	return db.AutoMigrate(tables...)
 }
 
+// DropSchemas is used for integration tests to clear DB.
 func DropSchemas(db *gorm.DB) error {
 	var tables []interface{} // Put in new slice to resolve type mismatch
 	for _, tbl := range tableModels {
