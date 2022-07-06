@@ -78,11 +78,7 @@ func setupConfig(configDir string, deploymentMode int) {
 
 	config.Configuration.PGUserName = viper.GetString("pg.user")
 	config.Configuration.PGPassword = viper.GetString("pg.password")
-	if isIntegrationTest {
-		config.Configuration.DBHost = "localhost"
-	} else {
-		config.Configuration.DBHost = viper.GetString("db.host")
-	}
+	config.Configuration.DBHost = viper.GetString("db.host")
 	config.Configuration.DBName = viper.GetString("db.name")
 	config.Configuration.DBPort = viper.GetString("db.port")
 	config.Configuration.DBUserName = viper.GetString("db.user")

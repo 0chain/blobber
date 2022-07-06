@@ -3,7 +3,6 @@ package datastore
 import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 // UseInMemory set the DB instance to an in-memory DB.
@@ -12,8 +11,6 @@ func UseInMemory() (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	gdb.Logger = gdb.Logger.LogMode(logger.Info)
 
 	instance = &postgresStore{
 		db: gdb,

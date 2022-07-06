@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
 
 func main() {
@@ -38,9 +37,6 @@ func main() {
 		logging.Logger.Error("Error setting up file store" + err.Error())
 		panic(err)
 	}
-
-	// only enabled with "// +build integration_tests"
-	initIntegrationsTests(node.Self.ID)
 
 	if err := registerOnChain(); err != nil {
 		logging.Logger.Error("Error register on blockchain" + err.Error())

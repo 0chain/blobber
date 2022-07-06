@@ -158,10 +158,3 @@ disk_update:
   # If blobber has to limit its capacity to 5% of its capacity then it should turn automaci_update to false.
   automatic_update: true 
   blobber_update_interval: 5m # In minutes
-# integration tests related configurations
-integration_tests:
-  # address of the server
-  address: host.docker.internal:15210
-  # lock_interval used by nodes to request server to connect to blockchain
-  # after start
-  lock_interval: 1s

@@ -9,12 +9,7 @@ import (
 func setupFileStore() (err error) {
 	fmt.Print("> setup file store")
 	var fs filestore.FileStorer
-	if isIntegrationTest {
-		fs = &filestore.MockStore{}
-	} else {
-		fs = &filestore.FileStore{}
-
-	}
+	fs = &filestore.FileStore{}
 
 	err = fs.Initialize()
 	if err != nil {

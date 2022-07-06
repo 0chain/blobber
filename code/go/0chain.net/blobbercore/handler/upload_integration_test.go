@@ -19,8 +19,7 @@ import (
 
 //Need to check for errors here
 func TestBlobberGRPCService_UploadFile(t *testing.T) {
-	root := os.Getenv("root")
-	mp := filepath.Join(root, "dev.local/data/blobber/files")
+	mp := filepath.Join(os.TempDir(), "/test_ul_files")
 	if err := os.MkdirAll(mp, os.ModePerm); err != nil {
 		t.Fatal(err)
 	}
@@ -49,11 +48,11 @@ func TestBlobberGRPCService_UploadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	curDir, _ := os.Getwd()
-	file, err := os.Open(curDir + "/helper_integration_test.go")
+	file, err := os.CreateTemp(mp, "test*")
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer file.Close()
 	stats, err := file.Stat()
 	if err != nil {
 		panic(err)

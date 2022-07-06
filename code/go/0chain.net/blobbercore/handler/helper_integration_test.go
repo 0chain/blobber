@@ -51,11 +51,32 @@ func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClien
 	db, err := datastore.UseInMemory()
 	require.NoError(t, err)
 
+	// Enable to see SQL logging
+	//db.Logger = db.Logger.LogMode(logger.Info)
+
 	err = automigration.DropSchemas(db)
 	require.NoError(t, err)
 
 	err = automigration.MigrateSchema(db)
 	require.NoError(t, err)
+
+	// Recreate timestamp columns to be sqlite compatible
+	db.Exec("ALTER TABLE `reference_objects` DROP COLUMN `created_at`")
+	db.Exec("ALTER TABLE `reference_objects` ADD COLUMN `created_at` timestamp NOT NULL DEFAULT current_timestamp")
+	db.Exec("DROP INDEX `idx_updated_at`")
+	db.Exec("ALTER TABLE `reference_objects` DROP COLUMN `updated_at`")
+	db.Exec("ALTER TABLE `reference_objects` ADD COLUMN `updated_at` timestamp NOT NULL DEFAULT current_timestamp")
+	db.Exec("CREATE INDEX `idx_updated_at` ON `reference_objects`(`updated_at`)")
+	db.Exec("ALTER TABLE `challenges` DROP COLUMN `created_at`")
+	db.Exec("ALTER TABLE `challenges` ADD COLUMN `created_at` timestamp NOT NULL DEFAULT current_timestamp")
+	db.Exec("ALTER TABLE `challenges` DROP COLUMN `updated_at`")
+	db.Exec("ALTER TABLE `challenges` ADD COLUMN `updated_at` timestamp NOT NULL DEFAULT current_timestamp")
+	db.Exec("ALTER TABLE `collaborators` DROP COLUMN `created_at`")
+	db.Exec("ALTER TABLE `collaborators` ADD COLUMN `created_at` timestamp NOT NULL DEFAULT current_timestamp")
+	db.Exec("ALTER TABLE `commit_meta_txns` DROP COLUMN `created_at`")
+	db.Exec("ALTER TABLE `commit_meta_txns` ADD COLUMN `created_at` timestamp NOT NULL DEFAULT current_timestamp")
+	db.Exec("ALTER TABLE `marketplace_share_info` DROP COLUMN `available_at`")
+	db.Exec("ALTER TABLE `marketplace_share_info` ADD COLUMN `available_at` timestamp NOT NULL DEFAULT current_timestamp")
 
 	tdController := NewTestDataController(db)
 
@@ -262,17 +283,25 @@ VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubkey + `',` 
 		return err
 	}
 
-	_, err = tx.Exec(`
-INSERT INTO reference_objects (id, allocation_id, path_hash,lookup_hash,type,name,path,parent_path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
-VALUES (1234,'exampleId','exampleId:exampleDir','exampleId:exampleDir','d','filename','/exampleDir','','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
+	_, err = tx.Exec(` 
+INSERT INTO reference_objects (id, level,  allocation_id, path_hash,lookup_hash,type,name,path,parent_path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
+VALUES (1233, 1, 'exampleId','exampleId:root','exampleId:root','d','/','/','','roothash','rootmeta','roothash','rootmerkleRoot','actualRootHash','mimetype','writeMarker','thumbnailHash','actualRootThumbnailHash');
+`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(` 
+INSERT INTO reference_objects (id, level, allocation_id, path_hash,lookup_hash,type,name,path,parent_path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
+VALUES (1234, 1, 'exampleId','exampleId:exampleDir','exampleId:exampleDir','d','filename','/exampleDir','/','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
 `)
 	if err != nil {
 		return err
 	}
 
 	_, err = tx.Exec(`
-INSERT INTO reference_objects (id, allocation_id, path_hash,lookup_hash,type,name,path,parent_path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
-VALUES (1235,'exampleId','exampleId:examplePath','exampleId:examplePath','f','filename','/exampleDir/examplePath','/exampleDir','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
+INSERT INTO reference_objects (id, level, allocation_id, path_hash,lookup_hash,type,name,path,parent_path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
+VALUES (1235, 2, 'exampleId','exampleId:examplePath','exampleId:examplePath','f','filename','/exampleDir/examplePath','/exampleDir','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
 `)
 	if err != nil {
 		return err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"strconv"
 	"testing"
 	"time"
@@ -30,6 +31,8 @@ func TestBlobberGRPCService_Commit(t *testing.T) {
 	blobberPubKey := "de52c0a51872d5d2ec04dbc15a6f0696cba22657b80520e1d070e72de64c9b04e19ce3223cae3c743a20184158457582ffe9c369ca9218c04bfe83a26a62d88d"
 	blobberPubKeyBytes, _ := hex.DecodeString(blobberPubKey)
 
+	node.Self.ID = encryption.Hash(blobberPubKeyBytes)
+
 	fr := reference.Ref{
 		AllocationID:   "exampleId",
 		Type:           "f",
@@ -48,7 +51,7 @@ func TestBlobberGRPCService_Commit(t *testing.T) {
 		PreviousAllocationRoot: "/",
 		AllocationID:           "exampleId",
 		Size:                   1337,
-		BlobberID:              encryption.Hash(blobberPubKeyBytes),
+		BlobberID:              node.Self.ID,
 		Timestamp:              now,
 		ClientID:               clientId,
 	}
