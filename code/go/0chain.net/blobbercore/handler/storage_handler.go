@@ -930,17 +930,19 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	var refs *[]reference.PaginatedRef
 	var totalPages int
 	var newOffsetPath string
-	var newOffsetDate string
+	var newOffsetDate common.Timestamp
 
 	switch {
 	case refType == "regular":
-		refs, totalPages, newOffsetPath, err = reference.GetRefs(ctx, allocationID, path, offsetPath, fileType, level, pageLimit)
+		refs, totalPages, newOffsetPath, err = reference.GetRefs(
+			ctx, allocationID, path, offsetPath, fileType, level, pageLimit,
+		)
 
 	case refType == "updated":
-		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetUpdatedRefs(ctx, allocationID, path, offsetPath, fileType, updatedDate, offsetDate, level, pageLimit, OffsetDateLayout)
-
-	case refType == "deleted":
-		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetDeletedRefs(ctx, allocationID, updatedDate, offsetPath, offsetDate, pageLimit, OffsetDateLayout)
+		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetUpdatedRefs(
+			ctx, allocationID, path, offsetPath, fileType,
+			updatedDate, offsetDate, level, pageLimit, OffsetDateLayout,
+		)
 
 	default:
 		return nil, common.NewError("invalid_parameters", "refType param should have value regular/updated/deleted")

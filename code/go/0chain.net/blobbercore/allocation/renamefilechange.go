@@ -24,9 +24,11 @@ func (rf *RenameFileChange) DeleteTempFile() error {
 	return nil
 }
 
-func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
+	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
 
-	isFilePresent, err := reference.IsRefExist(ctx, rf.AllocationID, rf.NewName)
+	newPath := filepath.Join(filepath.Dir(rf.Path), rf.NewName)
+	isFilePresent, err := reference.IsRefExist(ctx, rf.AllocationID, newPath)
 	if err != nil {
 		Logger.Info("invalid_reference_path", zap.Error(err))
 	}
@@ -39,65 +41,53 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 	if err != nil {
 		return nil, err
 	}
+
 	affectedRef.HashToBeComputed = true
-	path, _ := filepath.Split(affectedRef.Path)
-	path = filepath.Clean(path)
 	affectedRef.Name = rf.NewName
-	newPath := filepath.Join(path, rf.NewName)
-	affectedRef.UpdatePath(newPath, path)
+	affectedRef.Path = newPath
 	if affectedRef.Type == reference.FILE {
 		stats.FileUpdated(ctx, affectedRef.ID)
 	}
 
 	rf.processChildren(ctx, affectedRef)
 
-	path, _ = filepath.Split(rf.Path)
-	path = filepath.Clean(path)
-	tSubDirs := reference.GetSubDirsFromPath(path)
+	fields, err := common.GetPathFields(rf.Path)
+	if err != nil {
+		return nil, err
+	}
 
 	rootRef, err := reference.GetReferencePath(ctx, rf.AllocationID, rf.Path)
 	if err != nil {
 		return nil, err
 	}
+
+	rootRef.UpdatedAt = ts
 	rootRef.HashToBeComputed = true
 	dirRef := rootRef
-	treelevel := 0
-	for treelevel < len(tSubDirs) {
+	parentRef := rootRef
+
+	var index int
+	for i := 0; i < len(fields); i++ {
 		found := false
-		for _, child := range dirRef.Children {
-			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
-				if child.Name == tSubDirs[treelevel] {
-					dirRef = child
-					dirRef.HashToBeComputed = true
-					found = true
-					break
-				}
+		for idx, child := range dirRef.Children {
+			if child.Name == fields[i] {
+				parentRef = dirRef
+				dirRef = child
+				dirRef.UpdatedAt = ts
+				dirRef.HashToBeComputed = true
+				found = true
+				index = idx
+				break
 			}
 		}
-		if found {
-			treelevel++
-		} else {
+
+		if !found {
 			return nil, common.NewError("invalid_reference_path", "Invalid reference path from the blobber")
 		}
 	}
-	if len(dirRef.Children) == 0 {
-		Logger.Error("no files in root folder", zap.Any("change", rf))
-		return nil, common.NewError("file_not_found", "No files in root folder")
-	}
 
-	idx := -1
-	for i, child := range dirRef.Children {
-		if child.Path == rf.Path {
-			idx = i
-			break
-		}
-	}
-	if idx < 0 {
-		Logger.Error("error in file rename", zap.Any("change", rf))
-		return nil, common.NewError("file_not_found", "File to rename not found in blobber")
-	}
-	dirRef.RemoveChild(idx)
-	dirRef.AddChild(affectedRef)
+	parentRef.RemoveChild(index)
+	parentRef.AddChild(affectedRef)
 	_, err = rootRef.CalculateHash(ctx, true)
 	return rootRef, err
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
 
@@ -25,7 +26,8 @@ const (
 type AllocationChangeProcessor interface {
 	CommitToFileStore(ctx context.Context) error
 	DeleteTempFile() error
-	ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error)
+	ApplyChange(ctx context.Context, change *AllocationChange,
+		allocationRoot string, ts common.Timestamp) (*reference.Ref, error)
 	Marshal() (string, error)
 	Unmarshal(string) error
 }
@@ -148,6 +150,8 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 			acp = new(RenameFileChange)
 		case constants.FileOperationCopy:
 			acp = new(CopyFileChange)
+		case constants.FileOperationCreateDir:
+			acp = new(NewDir)
 		}
 
 		if acp == nil {
@@ -162,10 +166,11 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 }
 
 //
-func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot string) error {
+func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot string,
+	ts common.Timestamp) error {
 	for idx, change := range cc.Changes {
 		changeProcessor := cc.AllocationChanges[idx]
-		_, err := changeProcessor.ApplyChange(ctx, change, allocationRoot)
+		_, err := changeProcessor.ApplyChange(ctx, change, allocationRoot, ts)
 		if err != nil {
 			return err
 		}

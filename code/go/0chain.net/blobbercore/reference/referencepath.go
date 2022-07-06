@@ -38,9 +38,13 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 			db = db.Where(Ref{ParentPath: path, AllocationID: allocationID})
 			pathsAdded[path] = true
 		}
-		depth := len(GetSubDirsFromPath(path)) + 1
+		fields, err := common.GetPathFields(path)
+		if err != nil {
+			return nil, err
+		}
+
 		curPath := filepath.Dir(path)
-		for i := 0; i < depth-1; i++ {
+		for i := 0; i <= len(fields); i++ {
 			if _, ok := pathsAdded[curPath]; !ok {
 				db = db.Or(Ref{ParentPath: curPath, AllocationID: allocationID})
 				pathsAdded[curPath] = true
@@ -225,11 +229,16 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 }
 
 //Retrieves updated refs compared to some update_at value. Useful to localCache
-func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, updatedDate, offsetDate string, level, pageLimit int, dateLayOut string) (refs *[]PaginatedRef, totalPages int, newOffsetPath, newOffsetDate string, err error) {
+func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type,
+	updatedDate, offsetDate string, level, pageLimit int, dateLayOut string) (
+
+	refs *[]PaginatedRef, totalPages int, newOffsetPath string,
+	newOffsetDate common.Timestamp, err error) {
+
 	var totalRows int64
 	var pRefs []PaginatedRef
 	db := datastore.GetStore().GetDB()
-	db1 := db.Session(&gorm.Session{}) //TODO Might need to use transaction from db1/db2 to avoid injection attack
+	db1 := db.Session(&gorm.Session{})
 	db2 := db.Session(&gorm.Session{})
 
 	wg := sync.WaitGroup{}
@@ -279,7 +288,7 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, 
 
 	if len(pRefs) != 0 {
 		lastIdx := len(pRefs) - 1
-		newOffsetDate = pRefs[lastIdx].UpdatedAt.Format(dateLayOut)
+		newOffsetDate = pRefs[lastIdx].UpdatedAt
 		newOffsetPath = pRefs[lastIdx].Path
 	}
 	refs = &pRefs
@@ -287,58 +296,58 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type, 
 	return
 }
 
-//Retrieves deleted refs compared to some update_at value. Useful for localCache.
-func GetDeletedRefs(ctx context.Context, allocationID, updatedDate, offsetPath, offsetDate string, pageLimit int, dateLayOut string) (refs *[]PaginatedRef, totalPages int, newOffsetPath, newOffsetDate string, err error) {
-	var totalRows int64
-	var pRefs []PaginatedRef
-	db := datastore.GetStore().GetDB()
+// //Retrieves deleted refs compared to some update_at value. Useful for localCache.
+// func GetDeletedRefs(ctx context.Context, allocationID, updatedDate, offsetPath, offsetDate string, pageLimit int, dateLayOut string) (refs *[]PaginatedRef, totalPages int, newOffsetPath, newOffsetDate string, err error) {
+// 	var totalRows int64
+// 	var pRefs []PaginatedRef
+// 	db := datastore.GetStore().GetDB()
 
-	db1 := db.Session(&gorm.Session{})
-	db2 := db.Session(&gorm.Session{})
+// 	db1 := db.Session(&gorm.Session{})
+// 	db2 := db.Session(&gorm.Session{})
 
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	go func() {
-		db1 = db1.Model(&Ref{}).Unscoped().
-			Select("path", "path_hash", "deleted_at", "updated_at").
-			Where("allocation_id = ?", allocationID)
+// 	wg := sync.WaitGroup{}
+// 	wg.Add(2)
+// 	go func() {
+// 		db1 = db1.Model(&Ref{}).Unscoped().
+// 			Select("path", "path_hash", "deleted_at", "updated_at").
+// 			Where("allocation_id = ?", allocationID)
 
-		if updatedDate == "" {
-			db1 = db1.Where("deleted_at IS NOT null")
-		} else {
-			db1 = db1.Where("deleted_at > ?", updatedDate)
-		}
+// 		if updatedDate == "" {
+// 			db1 = db1.Where("deleted_at IS NOT null")
+// 		} else {
+// 			db1 = db1.Where("deleted_at > ?", updatedDate)
+// 		}
 
-		if offsetDate != "" {
-			db1 = db1.Where("(updated_at, path) > (?, ?)", offsetDate, offsetPath)
-		}
+// 		if offsetDate != "" {
+// 			db1 = db1.Where("(updated_at, path) > (?, ?)", offsetDate, offsetPath)
+// 		}
 
-		err = db1.Order("updated_at, path").Limit(pageLimit).Find(&pRefs).Error
-		wg.Done()
-	}()
+// 		err = db1.Order("updated_at, path").Limit(pageLimit).Find(&pRefs).Error
+// 		wg.Done()
+// 	}()
 
-	go func() {
-		db2 = db2.Model(&Ref{}).Unscoped().Where("allocation_id = ?", allocationID)
+// 	go func() {
+// 		db2 = db2.Model(&Ref{}).Unscoped().Where("allocation_id = ?", allocationID)
 
-		if updatedDate == "" {
-			db2 = db2.Where("deleted_at IS NOT null")
-		} else {
-			db2 = db2.Where("deleted_at > ?", updatedDate)
-		}
+// 		if updatedDate == "" {
+// 			db2 = db2.Where("deleted_at IS NOT null")
+// 		} else {
+// 			db2 = db2.Where("deleted_at > ?", updatedDate)
+// 		}
 
-		db2 = db2.Count(&totalRows)
-		wg.Done()
-	}()
-	wg.Wait()
-	if len(pRefs) != 0 {
-		lastIdx := len(pRefs) - 1
-		newOffsetDate = pRefs[lastIdx].DeletedAt.Time.Format(dateLayOut)
-		newOffsetPath = pRefs[lastIdx].Path
-	}
-	refs = &pRefs
-	totalPages = int(math.Ceil(float64(totalRows) / float64(pageLimit)))
-	return
-}
+// 		db2 = db2.Count(&totalRows)
+// 		wg.Done()
+// 	}()
+// 	wg.Wait()
+// 	if len(pRefs) != 0 {
+// 		lastIdx := len(pRefs) - 1
+// 		newOffsetDate = pRefs[lastIdx].DeletedAt.Time.Format(dateLayOut)
+// 		newOffsetPath = pRefs[lastIdx].Path
+// 	}
+// 	refs = &pRefs
+// 	totalPages = int(math.Ceil(float64(totalRows) / float64(pageLimit)))
+// 	return
+// }
 
 func CountRefs(ctx context.Context, allocationID string) (int64, error) {
 	var totalRows int64

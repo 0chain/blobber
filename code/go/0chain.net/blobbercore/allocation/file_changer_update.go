@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -12,7 +13,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"go.uber.org/zap"
 )
@@ -22,73 +23,88 @@ type UpdateFileChanger struct {
 	BaseFileChanger
 }
 
-func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
-	path, _ := filepath.Split(nf.Path)
-	path = filepath.Clean(path)
-	tSubDirs := reference.GetSubDirsFromPath(path)
+func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *AllocationChange,
+	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
 
-	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, nf.Path)
+	path := filepath.Clean(nf.Path)
+	fields, err := common.GetPathFields(path)
+	if err != nil {
+		fmt.Printf("\nError: %v\n Path was %s\n\n", err, path)
+		return nil, err
+	}
+
+	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, path)
 	if err != nil {
 		return nil, err
 	}
+
 	rootRef.HashToBeComputed = true
+	rootRef.UpdatedAt = ts
 	dirRef := rootRef
-	treelevel := 0
-	for treelevel < len(tSubDirs) {
+
+	var fileRef *reference.Ref
+	var fileRefFound bool
+	for i := 0; i < len(fields); i++ {
 		found := false
 		for _, child := range dirRef.Children {
-			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
-				if child.Name == tSubDirs[treelevel] {
+			if child.Type == reference.DIRECTORY {
+				if child.Name == fields[i] {
 					dirRef = child
 					dirRef.HashToBeComputed = true
+					dirRef.UpdatedAt = ts
 					found = true
-					break
+				}
+			} else {
+				if child.Type == reference.FILE {
+					if child.Name == fields[i] {
+						fileRef = child
+						fileRef.UpdatedAt = ts
+						found = true
+						fileRefFound = true
+					}
 				}
 			}
 		}
-		if found {
-			treelevel++
-		} else {
+
+		if !found {
 			return nil, common.NewError("invalid_reference_path", "Invalid reference path from the blobber")
 		}
 	}
-	idx := -1
-	for i, child := range dirRef.Children {
-		if child.Type == reference.FILE && child.Path == nf.Path {
-			idx = i
-			break
-		}
+
+	if !fileRefFound {
+		return nil, common.NewError("invalid_reference_path", "File to update not found in blobber")
 	}
-	if idx < 0 {
-		Logger.Error("error in file update", zap.Any("change", nf))
-		return nil, common.NewError("file_not_found", "File to update not found in blobber")
-	}
-	existingRef := dirRef.Children[idx]
-	existingRef.HashToBeComputed = true
+
+	fileRef.HashToBeComputed = true
 	nf.deleteHash = make(map[string]bool)
-	if existingRef.ThumbnailHash != "" && existingRef.ThumbnailHash != nf.ThumbnailHash {
-		nf.deleteHash[existingRef.ThumbnailHash] = true
+	if fileRef.ThumbnailHash != "" && fileRef.ThumbnailHash != nf.ThumbnailHash {
+		nf.deleteHash[fileRef.ThumbnailHash] = true
 	}
-	if existingRef.ContentHash != "" && existingRef.ContentHash != nf.Hash {
-		nf.deleteHash[existingRef.ContentHash] = true
+	if fileRef.ContentHash != "" && fileRef.ContentHash != nf.Hash {
+		nf.deleteHash[fileRef.ContentHash] = true
 	}
-	existingRef.ActualFileHash = nf.ActualHash
-	existingRef.ActualFileSize = nf.ActualSize
-	existingRef.MimeType = nf.MimeType
-	existingRef.ContentHash = nf.Hash
-	existingRef.CustomMeta = nf.CustomMeta
-	existingRef.MerkleRoot = nf.MerkleRoot
-	existingRef.WriteMarker = allocationRoot
-	existingRef.Size = nf.Size
-	existingRef.ThumbnailHash = nf.ThumbnailHash
-	existingRef.ThumbnailSize = nf.ThumbnailSize
-	existingRef.ActualThumbnailHash = nf.ActualThumbnailHash
-	existingRef.ActualThumbnailSize = nf.ActualThumbnailSize
-	existingRef.EncryptedKey = nf.EncryptedKey
-	existingRef.ChunkSize = nf.ChunkSize
+	fileRef.ActualFileHash = nf.ActualHash
+	fileRef.ActualFileSize = nf.ActualSize
+	fileRef.MimeType = nf.MimeType
+	fileRef.ContentHash = nf.Hash
+	fileRef.CustomMeta = nf.CustomMeta
+	fileRef.MerkleRoot = nf.MerkleRoot
+	fileRef.WriteMarker = allocationRoot
+	fileRef.Size = nf.Size
+	fileRef.ThumbnailHash = nf.ThumbnailHash
+	fileRef.ThumbnailSize = nf.ThumbnailSize
+	fileRef.ActualThumbnailHash = nf.ActualThumbnailHash
+	fileRef.ActualThumbnailSize = nf.ActualThumbnailSize
+	fileRef.EncryptedKey = nf.EncryptedKey
+	fileRef.ChunkSize = nf.ChunkSize
 
 	_, err = rootRef.CalculateHash(ctx, true)
-	stats.FileUpdated(ctx, existingRef.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	stats.FileUpdated(ctx, fileRef.ID)
+
 	return rootRef, err
 }
 
@@ -98,9 +114,9 @@ func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
 		var count int64
 		err := db.Table((&reference.Ref{}).TableName()).Where(db.Where(&reference.Ref{ThumbnailHash: contenthash}).Or(&reference.Ref{ContentHash: contenthash})).Where("deleted_at IS null").Where(&reference.Ref{AllocationID: nf.AllocationID}).Count(&count).Error
 		if err == nil && count == 0 {
-			Logger.Info("Deleting content file", zap.String("content_hash", contenthash))
+			logging.Logger.Info("Deleting content file", zap.String("content_hash", contenthash))
 			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, contenthash); err != nil {
-				Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
+				logging.Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
 			}
 		}
 	}

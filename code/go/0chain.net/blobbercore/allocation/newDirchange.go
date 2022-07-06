@@ -56,6 +56,7 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 			if child.Name == fields[i] {
 				dirRef = child
 				dirRef.HashToBeComputed = true
+				dirRef.UpdatedAt = ts
 				found = true
 				break
 			}

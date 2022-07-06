@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"regexp"
-	"strings"
 	"testing"
 	"time"
 
@@ -171,7 +170,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 			allocRoot:       "/",
 			path:            "/old_dir",
 			newName:         "/new_dir",
-			expectedMessage: "Invalid path. Could not find object tree",
+			expectedMessage: "ref is not found",
 			expectingError:  true,
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
@@ -187,36 +186,43 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 			expectingError:  false,
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
-				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%!!(string=allocation id)!(string=/old_dir/%!)(MISSING)!(string=/old_dir)(EXTRA string=allocation id)`
+				query := `SELECT * FROM "reference_objects" WHERE "reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4) ORDER BY path`
 				mocket.Catcher.NewMock().OneTime().WithQuery(
 					`SELECT * FROM "reference_objects" WHERE`,
 				).WithQuery(query).
 					WithReply(
-						[]map[string]interface{}{{
-							"id":          2,
-							"level":       1,
-							"lookup_hash": "lookup_hash",
-							"path":        "/old_dir",
-						}},
+						[]map[string]interface{}{
+							{
+								"id":          2,
+								"level":       1,
+								"lookup_hash": "lookup_hash",
+								"path":        "/old_dir",
+								"created_at":  common.Now() - 3600,
+							},
+						},
 					)
-				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%!!(string=allocation id)!(string=)!(string=/)!(string=allocation id)!(string=/old_dir)(EXTRA string=allocation id)`
-				mocket.Catcher.NewMock().OneTime().WithQuery(
-					`SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE`,
-				).WithQuery(query).WithReply(
-					[]map[string]interface{}{{
-						"id":          1,
-						"level":       0,
-						"lookup_hash": "lookup_hash_root",
-						"path":        "/",
-						"parent_path": ".",
-					},
+				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE "reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6) ORDER BY path`
+				mocket.Catcher.NewMock().OneTime().WithQuery(query).WithReply(
+					[]map[string]interface{}{
+						{
+							"id":          1,
+							"level":       0,
+							"lookup_hash": "lookup_hash_root",
+							"path":        "/",
+							"parent_path": "",
+							"name":        "",
+							"created_at":  common.Now() - 3600,
+						},
 						{
 							"id":          2,
 							"level":       1,
 							"lookup_hash": "lookup_hash",
 							"path":        "/old_dir",
 							"parent_path": "/",
-						}},
+							"name":        "old_dir",
+							"created_at":  common.Now() - 1800,
+						},
+					},
 				)
 				mocket.Catcher.NewMock().WithQuery(`INSERT INTO "reference_objects"`).
 					WithID(1)
@@ -226,40 +232,62 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 			name:            "Filename_Change_Ok",
 			allocChange:     &AllocationChange{},
 			allocRoot:       "/",
-			path:            "old_file.pdf",
-			newName:         "new_file.pdf",
+			path:            "/old_file.pdf",
+			newName:         "/new_file.pdf",
 			expectedMessage: "",
 			expectingError:  false,
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
-				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%!!(string=allocation id)!(string=old_file.pdf/%!)(MISSING)!(string=old_file.pdf)(EXTRA string=allocation id)`
+				query := `SELECT * FROM "reference_objects" WHERE "reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4) ORDER BY path`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).
 					WithReply(
-						[]map[string]interface{}{{
-							"id":          2,
-							"level":       1,
-							"lookup_hash": "lookup_hash",
-							"path":        "old_file.pdf",
-						}},
+						[]map[string]interface{}{
+							{
+								"id":          1,
+								"lookup_hash": "root_lookup_hash",
+								"name":        "/",
+								"path":        "/",
+								"parent_path": "",
+								"type":        "d",
+								"level":       1,
+								"created_at":  common.Now() - 3600,
+							},
+							{
+								"id":          22,
+								"lookup_hash": "lookup_hash",
+								"name":        "old_file.pdf",
+								"path":        "/old_file.pdf",
+								"parent_path": "/",
+								"type":        "f",
+								"level":       42,
+								"created_at":  common.Now() - 1800,
+							},
+						},
 					)
-				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%!!(string=allocation id)!(string=)!(string=.)!(string=allocation id)!(string=old_file.pdf)(EXTRA string=allocation id)`
+				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE "reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6) ORDER BY path`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).WithReply(
-					[]map[string]interface{}{{
-						"id":          1,
-						"level":       0,
-						"lookup_hash": "lookup_hash_root",
-						"path":        "/",
-						"parent_path": ".",
-					},
+					[]map[string]interface{}{
+						{
+							"id":          1,
+							"level":       1,
+							"lookup_hash": "lookup_hash_root",
+							"path":        "/",
+							"parent_path": "",
+							"name":        "/",
+							"created_at":  common.Now() - 3600,
+						},
 						{
 							"id":          2,
 							"level":       1,
 							"lookup_hash": "lookup_hash",
-							"path":        "old_file.pdf",
+							"path":        "/old_file.pdf",
 							"parent_path": "/",
-						}},
+							"name":        "old_file.pdf",
+							"created_at":  common.Now() - 3600,
+						},
+					},
 				)
-				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE "id" = $1 AND "reference_objects"."deleted_at" IS NULL ORDER BY "reference_objects"."id" LIMIT 1%!(EXTRA int64=1)`
+				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE "id" = $1 ORDER BY "reference_objects"."id" LIMIT 1%!(EXTRA int64=1)`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).
 					WithReply(
 						[]map[string]interface{}{{
@@ -267,7 +295,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 							"level":       0,
 							"lookup_hash": "lookup_hash_root",
 							"path":        "/",
-							"parent_path": ".",
+							"parent_path": "",
 						}},
 					)
 				mocket.Catcher.NewMock().WithQuery(`INSERT INTO "reference_objects"`).
@@ -283,25 +311,23 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 		ctx := context.TODO()
 		db := datastore.GetStore().GetDB().Begin()
 		ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
-		change := &RenameFileChange{AllocationID: alloc.ID, Path: tc.path, NewName: tc.newName}
-		response, err := change.ApplyChange(ctx, tc.allocChange, tc.allocRoot)
-		if err != nil {
-			if !tc.expectingError {
-				t.Fatal(err)
+
+		t.Run(tc.name, func(t *testing.T) {
+			change := &RenameFileChange{AllocationID: alloc.ID, Path: tc.path, NewName: tc.newName}
+			response, err := change.ApplyChange(ctx, tc.allocChange, tc.allocRoot, common.Now()-1)
+
+			if tc.expectingError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.expectedMessage)
+				return
 			}
 
-			if tc.expectingError && strings.Contains(tc.expectedMessage, err.Error()) {
-				t.Fatal("expected error " + tc.expectedMessage)
-			}
+			require.Nil(t, err)
+			require.EqualValues(t, len(response.Children), 1)
+			require.EqualValues(t, response.Children[0].Path, tc.newName)
 
-			continue
-		}
+		})
 
-		if tc.expectingError {
-			t.Fatal("expected error")
-		}
-		require.EqualValues(t, len(response.Children), 1)
-		require.EqualValues(t, response.Children[0].Path, tc.newName)
 	}
 }
 

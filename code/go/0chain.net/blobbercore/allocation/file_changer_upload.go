@@ -21,7 +21,9 @@ type UploadFileChanger struct {
 }
 
 // ApplyChange update references, and create a new FileRef
-func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *AllocationChange,
+	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
+
 	totalRefs, err := reference.CountRefs(ctx, nf.AllocationID)
 	if err != nil {
 		return nil, err
@@ -40,8 +42,12 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	if err != nil {
 		return nil, err
 	}
-	dirRef := rootRef
+	if rootRef.CreatedAt == 0 {
+		rootRef.CreatedAt = ts
+	}
+	rootRef.UpdatedAt = ts
 	rootRef.HashToBeComputed = true
+	dirRef := rootRef
 	treelevel := 0
 	for {
 		found := false
@@ -67,6 +73,8 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 			newRef.Name = tSubDirs[treelevel]
 			newRef.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, newRef.Path)
 			newRef.HashToBeComputed = true
+			newRef.CreatedAt = ts
+			newRef.UpdatedAt = ts
 			dirRef.AddChild(newRef)
 			dirRef = newRef
 			treelevel++
@@ -96,6 +104,8 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	newFile.ActualThumbnailSize = nf.ActualThumbnailSize
 	newFile.EncryptedKey = nf.EncryptedKey
 	newFile.ChunkSize = nf.ChunkSize
+	newFile.CreatedAt = ts
+	newFile.UpdatedAt = ts
 	newFile.HashToBeComputed = true
 
 	dirRef.AddChild(newFile)

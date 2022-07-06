@@ -13,7 +13,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/gosdk/constants"
 )
 
 type NewFileChange struct {
@@ -52,75 +51,8 @@ type NewFileChange struct {
 	ChunkSize int64 `json:"chunk_size,omitempty"` // the size of achunk. 64*1024 is default
 }
 
-func (nf *NewFileChange) CreateDir(ctx context.Context, allocationID, dirName, allocationRoot string) (*reference.Ref, error) {
-	path := filepath.Clean(dirName)
-	tSubDirs := reference.GetSubDirsFromPath(path)
-	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, nf.Path)
-	if err != nil {
-		return nil, err
-	}
-	rootRef.HashToBeComputed = true
-	dirRef := rootRef
-	treelevel := 0
-	for {
-		found := false
-		for _, child := range dirRef.Children {
-			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
-				if child.Name == tSubDirs[treelevel] {
-					dirRef = child
-					dirRef.HashToBeComputed = true
-					found = true
-					break
-				}
-			}
-		}
-		if found {
-			treelevel++
-			continue
-		}
-		if len(tSubDirs) > treelevel {
-			newRef := reference.NewDirectoryRef()
-			newRef.AllocationID = dirRef.AllocationID
-			newRef.Path = "/" + strings.Join(tSubDirs[:treelevel+1], "/")
-			newRef.ParentPath = "/" + strings.Join(tSubDirs[:treelevel], "/")
-			newRef.Name = tSubDirs[treelevel]
-			newRef.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, newRef.Path)
-			newRef.HashToBeComputed = true
-			dirRef.AddChild(newRef)
-			dirRef = newRef
-			treelevel++
-			continue
-		} else {
-			break
-		}
-	}
-
-	// adding nil to make childLoaded as true so we can have hash calculated in CalculateHas.
-	// without has commit fails
-	var newDir = reference.NewDirectoryRef()
-	newDir.ActualFileSize = 0
-	newDir.AllocationID = dirRef.AllocationID
-	newDir.MerkleRoot = nf.MerkleRoot
-	newDir.Path = dirName
-	newDir.Size = 0
-	newDir.NumBlocks = 0
-	newDir.ParentPath = dirRef.Path
-	newDir.WriteMarker = allocationRoot
-	newDir.HashToBeComputed = true
-	dirRef.AddChild(newDir)
-
-	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-		return nil, err
-	}
-
-	if err := stats.NewDirCreated(ctx, dirRef.ID); err != nil {
-		return nil, err
-	}
-
-	return rootRef, nil
-}
-
-func (nf *NewFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+func (nf *NewFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
+	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
 	totalRefs, err := reference.CountRefs(ctx, nf.AllocationID)
 	if err != nil {
 		return nil, err
@@ -131,15 +63,6 @@ func (nf *NewFileChange) ApplyChange(ctx context.Context, change *AllocationChan
 			"maximum files and directories already reached: %v", err)
 	}
 
-	if change.Operation == constants.FileOperationCreateDir {
-		err := nf.Unmarshal(change.Input)
-		if err != nil {
-			return nil, err
-		}
-
-		return nf.CreateDir(ctx, nf.AllocationID, nf.Path, allocationRoot)
-	}
-
 	parentPath := filepath.Dir(nf.Path)
 	tSubDirs := reference.GetSubDirsFromPath(parentPath)
 
@@ -147,6 +70,10 @@ func (nf *NewFileChange) ApplyChange(ctx context.Context, change *AllocationChan
 	if err != nil {
 		return nil, err
 	}
+	if rootRef.CreatedAt == 0 {
+		rootRef.CreatedAt = ts
+	}
+	rootRef.UpdatedAt = ts
 	rootRef.HashToBeComputed = true
 	dirRef := rootRef
 	treelevel := 0
@@ -156,6 +83,7 @@ func (nf *NewFileChange) ApplyChange(ctx context.Context, change *AllocationChan
 			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
 				if child.Name == tSubDirs[treelevel] {
 					dirRef = child
+					dirRef.UpdatedAt = ts
 					dirRef.HashToBeComputed = true
 					found = true
 					break
@@ -173,6 +101,8 @@ func (nf *NewFileChange) ApplyChange(ctx context.Context, change *AllocationChan
 			newRef.ParentPath = "/" + strings.Join(tSubDirs[:treelevel], "/")
 			newRef.Name = tSubDirs[treelevel]
 			newRef.LookupHash = reference.GetReferenceLookup(dirRef.AllocationID, newRef.Path)
+			newRef.CreatedAt = ts
+			newRef.UpdatedAt = ts
 			newRef.HashToBeComputed = true
 			dirRef.AddChild(newRef)
 			dirRef = newRef
@@ -203,6 +133,8 @@ func (nf *NewFileChange) ApplyChange(ctx context.Context, change *AllocationChan
 	newFile.ActualThumbnailSize = nf.ActualThumbnailSize
 	newFile.EncryptedKey = nf.EncryptedKey
 	newFile.ChunkSize = nf.ChunkSize
+	newFile.CreatedAt = ts
+	newFile.UpdatedAt = ts
 	newFile.HashToBeComputed = true
 
 	dirRef.AddChild(newFile)

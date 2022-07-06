@@ -25,3 +25,9 @@ func Within(ts, seconds int64) bool {
 func ToTime(ts Timestamp) time.Time {
 	return time.Unix(int64(ts), 0)
 }
+
+// ValidateLt will validate timestamp if it is within (currentTime - duration) and currentTime
+func ValidateLt(ts Timestamp, d time.Duration) bool {
+	now := Now()
+	return ts < now && ts > (now-Timestamp(d.Seconds()))
+}

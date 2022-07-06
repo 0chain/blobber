@@ -2,17 +2,19 @@ package allocation
 
 import (
 	"context"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/gosdk/constants"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
 	mocket "github.com/selvatico/go-mocket"
@@ -26,7 +28,8 @@ func init() {
 
 func TestBlobberCore_CopyFile(t *testing.T) {
 	sch := zcncrypto.NewSignatureScheme("bls0chain")
-	mnemonic := "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
+	mnemonic := "expose culture dignity plastic digital couple promote best pool error" +
+		" brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
 	_, err := sch.RecoverKeys(mnemonic)
 	if err != nil {
 		t.Fatal(err)
@@ -59,7 +62,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
 
-				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				query := `SELECT * FROM "reference_objects" WHERE "reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4) ORDER BY path`
 				mocket.Catcher.NewMock().WithQuery(query).WithReply(
 					[]map[string]interface{}{
 						{
@@ -74,6 +77,8 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 							"thumbnail_size": 00,
 							"thumbnail_hash": "",
 							"type":           reference.DIRECTORY,
+							"created_at":     common.Now() - 3600,
+							"updated_at":     common.Now() - 1800,
 						},
 						{
 							"id":             2,
@@ -87,6 +92,44 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 							"thumbnail_size": 00,
 							"thumbnail_hash": "",
 							"type":           reference.FILE,
+							"created_at":     common.Now() - 3600,
+							"updated_at":     common.Now() - 1800,
+						},
+					},
+				)
+
+				q2 := `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level" FROM "reference_objects" WHERE "reference_objects"."allocation_id" = $1 OR ("reference_objects"."allocation_id" = $2 AND "reference_objects"."parent_path" = $3) OR (parent_path = $4 AND allocation_id = $5) ORDER BY path`
+				mocket.Catcher.NewMock().WithQuery(q2).WithReply(
+					[]map[string]interface{}{
+						{
+							"id":             1,
+							"level":          0,
+							"lookup_hash":    "lookup_hash_root",
+							"path":           "/",
+							"name":           "/",
+							"allocation_id":  alloc.ID,
+							"parent_path":    "",
+							"content_hash":   "",
+							"thumbnail_size": 00,
+							"thumbnail_hash": "",
+							"type":           reference.DIRECTORY,
+							"created_at":     common.Now() - 3600,
+							"updated_at":     common.Now() - 1800,
+						},
+						{
+							"id":             2,
+							"level":          1,
+							"lookup_hash":    "lookup_hash",
+							"path":           "/orig.txt",
+							"name":           "orig.txt",
+							"allocation_id":  alloc.ID,
+							"parent_path":    "/",
+							"content_hash":   "content_hash",
+							"thumbnail_size": 00,
+							"thumbnail_hash": "",
+							"type":           reference.FILE,
+							"created_at":     common.Now() - 3600,
+							"updated_at":     common.Now() - 1800,
 						},
 					},
 				)
@@ -104,7 +147,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
 
-				query := `SELECT count(*) FROM "reference_objects" WHERE allocation_id = $1 AND "reference_objects"."deleted_at" IS NULL`
+				query := `SELECT count(*) FROM "reference_objects" WHERE allocation_id = $1`
 				mocket.Catcher.NewMock().WithQuery(query).WithReply([]map[string]interface{}{
 					{"count": 5},
 				})
@@ -137,7 +180,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 			}
 
 			err := func() error {
-				_, err := change.ApplyChange(ctx, tc.allocChange, "/")
+				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1)
 				if err != nil {
 					return err
 				}
@@ -145,10 +188,12 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 				return change.CommitToFileStore(ctx)
 			}()
 
-			assert.Equal(t, tc.expectingError, err != nil)
-			if err != nil {
+			if tc.expectingError {
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.expectedMessage)
+				return
 			}
+			require.Nil(t, err)
 		})
 	}
 }

@@ -2,13 +2,13 @@ package allocation
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/gosdk/constants"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
@@ -70,7 +70,7 @@ func TestBlobberCore_NewFile(t *testing.T) {
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
 
-				query := `SELECT count(*) FROM "reference_objects" WHERE allocation_id = $1 AND "reference_objects"."deleted_at" IS NULL`
+				query := `SELECT count(*) FROM "reference_objects" WHERE allocation_id = $1`
 				mocket.Catcher.NewMock().WithQuery(query).WithReply([]map[string]interface{}{
 					{"count": 5},
 				})
@@ -124,7 +124,7 @@ func TestBlobberCore_NewFile(t *testing.T) {
 			}
 
 			err := func() error {
-				_, err := change.ApplyChange(ctx, tc.allocChange, "/")
+				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1)
 				if err != nil {
 					return err
 				}
@@ -132,11 +132,12 @@ func TestBlobberCore_NewFile(t *testing.T) {
 				return change.CommitToFileStore(ctx)
 			}()
 
-			assert.Equal(t, tc.expectingError, err != nil)
-			if err != nil {
-				fmt.Println(err.Error())
+			if tc.expectingError {
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.expectedMessage)
+				return
 			}
+			require.Nil(t, err)
 		})
 	}
 }
