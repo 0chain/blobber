@@ -50,7 +50,6 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 
 	rootRef.UpdatedAt = ts
 
-	fmt.Printf("\nRootref: %d\tlookuphash: %s\n\n", rootRef.CreatedAt, rootRef.LookupHash)
 	dirRef := rootRef
 	fields, err := common.GetPathFields(rf.DestPath)
 	if err != nil {

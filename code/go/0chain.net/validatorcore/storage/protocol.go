@@ -8,7 +8,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/config"
@@ -152,10 +152,10 @@ func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (string,
 	sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
 	sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
 
-	Logger.Info("Adding validator to the blockchain.")
+	logging.Logger.Info("Adding validator to the blockchain.")
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.ADD_VALIDATOR_SC_NAME, sn, 0)
 	if err != nil {
-		Logger.Info("Failed during registering validator to the mining network", zap.String("err:", err.Error()))
+		logging.Logger.Info("Failed during registering validator to the mining network", zap.String("err:", err.Error()))
 		return "", err
 	}
 

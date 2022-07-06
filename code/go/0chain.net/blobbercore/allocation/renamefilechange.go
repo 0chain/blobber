@@ -8,7 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"go.uber.org/zap"
 )
@@ -30,7 +30,7 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 	newPath := filepath.Join(filepath.Dir(rf.Path), rf.NewName)
 	isFilePresent, err := reference.IsRefExist(ctx, rf.AllocationID, newPath)
 	if err != nil {
-		Logger.Info("invalid_reference_path", zap.Error(err))
+		logging.Logger.Info("invalid_reference_path", zap.Error(err))
 	}
 
 	if isFilePresent {

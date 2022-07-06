@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -29,7 +28,6 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	path := filepath.Clean(nf.Path)
 	fields, err := common.GetPathFields(path)
 	if err != nil {
-		fmt.Printf("\nError: %v\n Path was %s\n\n", err, path)
 		return nil, err
 	}
 
