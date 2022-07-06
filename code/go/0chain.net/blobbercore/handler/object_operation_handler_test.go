@@ -84,7 +84,6 @@ func TestDownloadFile(t *testing.T) {
 			isFundedBlobber bool
 			isFunded0Chain  bool
 			rxPay           bool
-			attribute       common.WhoPays
 			payerId         client.Client
 
 			// client input from gosdk's BlockDownloadRequest,
@@ -224,11 +223,6 @@ func TestDownloadFile(t *testing.T) {
 			}},
 		)
 
-		attribute, err := json.Marshal(&reference.Attributes{
-			WhoPaysForReads: p.attribute,
-		})
-		require.NoError(t, err)
-
 		mocket.Catcher.NewMock().OneTime().WithQuery(
 			`SELECT * FROM "reference_objects" WHERE`,
 		).WithArgs(
@@ -238,7 +232,6 @@ func TestDownloadFile(t *testing.T) {
 				"allocation_id": p.allocation.ID,
 				"lookup_hash":   p.inData.pathHash,
 				"type":          reference.FILE,
-				"attributes":    attribute,
 			}},
 		)
 
@@ -366,15 +359,8 @@ func TestDownloadFile(t *testing.T) {
 			}
 		}
 		require.True(t, (p.isOwner && !p.isCollaborator && !p.useAuthTicket) || !p.isOwner)
-		require.True(t, p.attribute == common.WhoPays3rdParty || p.attribute == common.WhoPaysOwner)
 		p.inData.pathHash = fileref.GetReferenceLookup(p.inData.allocationID, p.inData.remotefilepath)
-		if p.isOwner ||
-			p.isCollaborator ||
-			(p.attribute == common.WhoPaysOwner && !p.rxPay) {
-			p.payerId = mockOwner
-		} else {
-			p.payerId = mockClient
-		}
+		p.payerId = mockOwner
 	}
 
 	tests := []test{
@@ -385,7 +371,6 @@ func TestDownloadFile(t *testing.T) {
 				isCollaborator:  false,
 				isRepairer:      false,
 				useAuthTicket:   false,
-				attribute:       common.WhoPays3rdParty,
 				isRevoked:       false,
 				isFundedBlobber: true,
 				isFunded0Chain:  false,
@@ -399,7 +384,6 @@ func TestDownloadFile(t *testing.T) {
 				isCollaborator:  false,
 				isRepairer:      false,
 				useAuthTicket:   false,
-				attribute:       common.WhoPays3rdParty,
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
@@ -413,7 +397,6 @@ func TestDownloadFile(t *testing.T) {
 				isCollaborator:  false,
 				isRepairer:      false,
 				useAuthTicket:   false,
-				attribute:       common.WhoPays3rdParty,
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  false,
@@ -431,7 +414,6 @@ func TestDownloadFile(t *testing.T) {
 				isCollaborator:  true,
 				isRepairer:      false,
 				useAuthTicket:   false,
-				attribute:       common.WhoPays3rdParty,
 				isRevoked:       false,
 				isFundedBlobber: true,
 				isFunded0Chain:  true,
@@ -448,7 +430,6 @@ func TestDownloadFile(t *testing.T) {
 				isCollaborator:  true,
 				isRepairer:      false,
 				useAuthTicket:   true,
-				attribute:       common.WhoPays3rdParty,
 				isRevoked:       false,
 				isFundedBlobber: true,
 				isFunded0Chain:  true,
@@ -462,7 +443,6 @@ func TestDownloadFile(t *testing.T) {
 				isCollaborator:  false,
 				isRepairer:      false,
 				useAuthTicket:   true,
-				attribute:       common.WhoPaysOwner,
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
@@ -476,7 +456,6 @@ func TestDownloadFile(t *testing.T) {
 				isCollaborator:  false,
 				isRepairer:      false,
 				useAuthTicket:   true,
-				attribute:       common.WhoPays3rdParty,
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
@@ -490,7 +469,6 @@ func TestDownloadFile(t *testing.T) {
 				isCollaborator:  false,
 				isRepairer:      false,
 				useAuthTicket:   true,
-				attribute:       common.WhoPays3rdParty,
 				isRevoked:       true,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
@@ -508,7 +486,6 @@ func TestDownloadFile(t *testing.T) {
 				isCollaborator:  false,
 				isRepairer:      false,
 				useAuthTicket:   true,
-				attribute:       common.WhoPaysOwner,
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
@@ -522,7 +499,6 @@ func TestDownloadFile(t *testing.T) {
 				isCollaborator:  false,
 				isRepairer:      true,
 				useAuthTicket:   true,
-				attribute:       common.WhoPaysOwner,
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
@@ -536,7 +512,6 @@ func TestDownloadFile(t *testing.T) {
 				isCollaborator:  false,
 				isRepairer:      true,
 				useAuthTicket:   false,
-				attribute:       common.WhoPaysOwner,
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
