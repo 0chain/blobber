@@ -149,25 +149,6 @@ func (b *blobberGRPCService) GetObjectTree(ctx context.Context, req *blobbergrpc
 	return convert.GetObjectTreeResponseCreator(resp), nil
 }
 
-func (b *blobberGRPCService) CalculateHash(ctx context.Context, req *blobbergrpc.CalculateHashRequest) (*blobbergrpc.CalculateHashResponse, error) {
-	r, err := http.NewRequest("POST", "", http.NoBody)
-	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":  {req.Path},
-		"paths": {req.Paths},
-	}
-
-	resp, err := CalculateHashHandler(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return convert.GetCalculateHashResponseCreator(resp), nil
-}
-
 func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, req *blobbergrpc.CommitMetaTxnRequest) (*blobbergrpc.CommitMetaTxnResponse, error) {
 	r, err := http.NewRequest("POST", "", http.NoBody)
 	if err != nil {

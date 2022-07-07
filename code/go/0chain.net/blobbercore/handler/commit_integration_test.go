@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"os"
 	"strconv"
 	"testing"
-	"time"
 
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 
@@ -16,6 +16,10 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"google.golang.org/grpc/metadata"
 )
+
+func isIntegrationTest() bool {
+	return os.Getenv("integration") == "1"
+}
 
 func TestBlobberGRPCService_Commit(t *testing.T) {
 	if !isIntegrationTest() {
@@ -29,7 +33,7 @@ func TestBlobberGRPCService_Commit(t *testing.T) {
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 	pubKeyBytes, _ := hex.DecodeString(pubKey)
 	clientId := encryption.Hash(pubKeyBytes)
-	now := common.Timestamp(time.Now().UnixNano())
+	now := common.Now()
 
 	blobberPubKey := "de52c0a51872d5d2ec04dbc15a6f0696cba22657b80520e1d070e72de64c9b04e19ce3223cae3c743a20184158457582ffe9c369ca9218c04bfe83a26a62d88d"
 	blobberPubKeyBytes, _ := hex.DecodeString(blobberPubKey)

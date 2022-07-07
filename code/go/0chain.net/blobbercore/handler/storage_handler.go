@@ -973,41 +973,6 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	return &refResult, nil
 }
 
-func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method != "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
-
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-	allocationID := allocationObj.ID
-
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if clientID == "" || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
-	paths, err := pathsFromReq(r)
-	if err != nil {
-		return nil, err
-	}
-	rootRef, err := reference.GetReferenceForHashCalculationFromPaths(ctx, allocationID, paths)
-	if err != nil {
-		return nil, err
-	}
-	rootRef.HashToBeComputed = true
-	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-		return nil, err
-	}
-
-	result := make(map[string]interface{})
-	result["msg"] = "Hash recalculated for the given paths"
-	return result, nil
-}
-
 // verifySignatureFromRequest verifies signature passed as common.ClientSignatureHeader header.
 func verifySignatureFromRequest(alloc, sign, pbK string) (bool, error) {
 	sign = encryption.MiraclToHerumiSig(sign)

@@ -47,8 +47,6 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToStatusCode(WithStatusConnection(CommitHandler)))
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.ToJSONResponse(WithConnection(CommitMetaTxnHandler)))
 
-	r.HandleFunc("/v1/file/calculatehash/{allocation}", common.ToJSONResponse(WithConnection(CalculateHashHandler)))
-
 	// collaborator
 	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(AddCollaboratorHandler))).Methods(http.MethodOptions, http.MethodPost)
 	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(GetCollaboratorHandler))).Methods(http.MethodOptions, http.MethodGet)
