@@ -67,7 +67,7 @@ type Ref struct {
 // BeforeCreate Hook that gets executed to update create and update date
 func (ref *Ref) BeforeCreate(tx *gorm.DB) (err error) {
 	if !(ref.CreatedAt > 0) {
-		return errors.New(fmt.Sprintf("invalid timestamp value while creating for path %s", ref.Path))
+		return fmt.Errorf("invalid timestamp value while creating for path %s", ref.Path)
 	}
 	ref.UpdatedAt = ref.CreatedAt
 	return nil
@@ -75,7 +75,7 @@ func (ref *Ref) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (ref *Ref) BeforeSave(tx *gorm.DB) (err error) {
 	if !(ref.UpdatedAt > 0) {
-		return errors.New(fmt.Sprintf("invalid timestamp value while updating %s", ref.Path))
+		return fmt.Errorf("invalid timestamp value while updating %s", ref.Path)
 	}
 	return nil
 }
