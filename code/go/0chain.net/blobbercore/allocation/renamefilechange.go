@@ -45,11 +45,12 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 	affectedRef.HashToBeComputed = true
 	affectedRef.Name = rf.NewName
 	affectedRef.Path = newPath
+	affectedRef.UpdatedAt = ts
 	if affectedRef.Type == reference.FILE {
 		stats.FileUpdated(ctx, affectedRef.ID)
 	}
 
-	rf.processChildren(ctx, affectedRef)
+	rf.processChildren(ctx, affectedRef, ts)
 
 	fields, err := common.GetPathFields(rf.Path)
 	if err != nil {
@@ -92,15 +93,16 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 	return rootRef, err
 }
 
-func (rf *RenameFileChange) processChildren(ctx context.Context, curRef *reference.Ref) {
+func (rf *RenameFileChange) processChildren(ctx context.Context, curRef *reference.Ref, ts common.Timestamp) {
 	for _, childRef := range curRef.Children {
+		childRef.UpdatedAt = ts
 		newPath := filepath.Join(curRef.Path, childRef.Name)
 		childRef.UpdatePath(newPath, curRef.Path)
 		if childRef.Type == reference.FILE {
 			stats.FileUpdated(ctx, childRef.ID)
 		}
 		if childRef.Type == reference.DIRECTORY {
-			rf.processChildren(ctx, childRef)
+			rf.processChildren(ctx, childRef, ts)
 		}
 	}
 }
