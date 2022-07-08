@@ -182,7 +182,9 @@ func (t *Transaction) Verify() error {
 	var objmap map[string]json.RawMessage
 	err = json.Unmarshal([]byte(output), &objmap)
 	if err != nil {
-		return common.NewError("transaction_verify_error", "Error unmarshaling verify output: "+string(output)+" "+err.Error())
+		// it is a plain error message from blockchain. The format is `error_code: error message`. eg verify_challenge: could not find challenge, value not present
+		// so it is impossible to decode as map[string]json.RawMessage.
+		return common.NewError("transaction_verify_error", string(output))
 	}
 
 	err = json.Unmarshal(objmap["txn"], t)
