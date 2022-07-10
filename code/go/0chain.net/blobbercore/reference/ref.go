@@ -316,7 +316,7 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*
 }
 
 func (fr *Ref) GetFileHashData() string {
-	hashArray := make([]string, 0, 11)
+	hashArray := make([]string, 0, 10)
 	hashArray = append(hashArray,
 		fr.AllocationID,
 		fr.Type, // don't need to add it as well
