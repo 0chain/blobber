@@ -52,12 +52,13 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 
 	rf.processChildren(ctx, affectedRef, ts)
 
-	fields, err := common.GetPathFields(rf.Path)
+	parentPath := filepath.Dir(rf.Path)
+	fields, err := common.GetPathFields(parentPath)
 	if err != nil {
 		return nil, err
 	}
 
-	rootRef, err := reference.GetReferencePath(ctx, rf.AllocationID, rf.Path)
+	rootRef, err := reference.GetReferencePath(ctx, rf.AllocationID, parentPath)
 	if err != nil {
 		return nil, err
 	}
@@ -65,19 +66,15 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 	rootRef.UpdatedAt = ts
 	rootRef.HashToBeComputed = true
 	dirRef := rootRef
-	parentRef := rootRef
 
-	var index int
 	for i := 0; i < len(fields); i++ {
 		found := false
-		for idx, child := range dirRef.Children {
+		for _, child := range dirRef.Children {
 			if child.Name == fields[i] {
-				parentRef = dirRef
 				dirRef = child
 				dirRef.UpdatedAt = ts
 				dirRef.HashToBeComputed = true
 				found = true
-				index = idx
 				break
 			}
 		}
@@ -87,8 +84,18 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 		}
 	}
 
-	parentRef.RemoveChild(index)
-	parentRef.AddChild(affectedRef)
+	found := false
+	for i, child := range dirRef.Children {
+		if child.Path == rf.Path {
+			dirRef.Children[i] = affectedRef
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil, common.NewError("file_not_found", "File to rename not found in blobber")
+	}
+
 	_, err = rootRef.CalculateHash(ctx, true)
 	return rootRef, err
 }
@@ -96,6 +103,7 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 func (rf *RenameFileChange) processChildren(ctx context.Context, curRef *reference.Ref, ts common.Timestamp) {
 	for _, childRef := range curRef.Children {
 		childRef.UpdatedAt = ts
+		childRef.HashToBeComputed = true
 		newPath := filepath.Join(curRef.Path, childRef.Name)
 		childRef.UpdatePath(newPath, curRef.Path)
 		if childRef.Type == reference.FILE {

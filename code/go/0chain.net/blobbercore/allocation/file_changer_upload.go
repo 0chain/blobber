@@ -62,7 +62,7 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 			}
 		}
 		if !found {
-			newRef := reference.NewFileRef()
+			newRef := reference.NewDirectoryRef()
 			newRef.AllocationID = dirRef.AllocationID
 			newRef.Path = "/" + strings.Join(fields[:i+1], "/")
 			newRef.ParentPath = "/" + strings.Join(fields[:i], "/")
@@ -71,6 +71,7 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 			newRef.UpdatedAt = ts
 			newRef.HashToBeComputed = true
 			dirRef.AddChild(newRef)
+			dirRef = newRef
 		}
 	}
 
