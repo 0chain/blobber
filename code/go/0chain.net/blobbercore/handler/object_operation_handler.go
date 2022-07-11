@@ -812,6 +812,11 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, err
 	}
 
+	connectionObj.Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return result, nil
 }
 
