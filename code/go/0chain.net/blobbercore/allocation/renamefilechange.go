@@ -48,9 +48,9 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 	affectedRef.UpdatedAt = ts
 	if affectedRef.Type == reference.FILE {
 		stats.FileUpdated(ctx, affectedRef.ID)
+	} else {
+		rf.processChildren(ctx, affectedRef, ts)
 	}
-
-	rf.processChildren(ctx, affectedRef, ts)
 
 	parentPath := filepath.Dir(rf.Path)
 	fields, err := common.GetPathFields(parentPath)
