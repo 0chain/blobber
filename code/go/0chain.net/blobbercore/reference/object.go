@@ -2,6 +2,7 @@ package reference
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -25,13 +26,18 @@ func DeleteObject(ctx context.Context, allocationID, objPath string, ts common.T
 	}
 
 	rootRef.UpdatedAt = ts
-	subDirs := GetSubDirsFromPath(parentPath)
+	fields, err := common.GetPathFields(parentPath)
+	if err != nil {
+		return nil, err
+	}
+
 	dirRef := rootRef
 
-	for _, subDir := range subDirs {
+	for _, name := range fields {
 		var found bool
 		for _, ref := range dirRef.Children {
-			if ref.Name == subDir && ref.Type == DIRECTORY {
+			if ref.Name == name {
+				fmt.Printf("\nParent ref: %s\n\n", ref.Path)
 				ref.HashToBeComputed = true
 				ref.childrenLoaded = true
 				ref.UpdatedAt = ts

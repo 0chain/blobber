@@ -110,7 +110,13 @@ func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	for contenthash := range nf.deleteHash {
 		var count int64
-		err := db.Table((&reference.Ref{}).TableName()).Where(db.Where(&reference.Ref{ThumbnailHash: contenthash}).Or(&reference.Ref{ContentHash: contenthash})).Where("deleted_at IS null").Where(&reference.Ref{AllocationID: nf.AllocationID}).Count(&count).Error
+		err := db.Table((&reference.Ref{}).TableName()).
+			Where(
+				db.Where(&reference.Ref{ThumbnailHash: contenthash}).
+					Or(&reference.Ref{ContentHash: contenthash})).
+			Where(&reference.Ref{AllocationID: nf.AllocationID}).
+			Count(&count).Error
+
 		if err == nil && count == 0 {
 			logging.Logger.Info("Deleting content file", zap.String("content_hash", contenthash))
 			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, contenthash); err != nil {
