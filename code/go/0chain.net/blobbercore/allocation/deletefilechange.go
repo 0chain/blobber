@@ -31,7 +31,7 @@ type DeleteFileChange struct {
 
 func (nf *DeleteFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
-	rootRef, err := reference.DeleteObject(ctx, nf.AllocationID, nf.Path)
+	rootRef, err := reference.DeleteObject(ctx, nf.AllocationID, nf.Path, ts)
 	if err != nil {
 		return nil, err
 	}

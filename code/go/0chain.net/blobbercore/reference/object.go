@@ -8,7 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
-func DeleteObject(ctx context.Context, allocationID, objPath string) (*Ref, error) {
+func DeleteObject(ctx context.Context, allocationID, objPath string, ts common.Timestamp) (*Ref, error) {
 
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Delete(&Ref{}, "allocation_id=? AND path LIKE ? AND path != ?",
@@ -24,6 +24,7 @@ func DeleteObject(ctx context.Context, allocationID, objPath string) (*Ref, erro
 		return nil, err
 	}
 
+	rootRef.UpdatedAt = ts
 	subDirs := GetSubDirsFromPath(parentPath)
 	dirRef := rootRef
 
@@ -33,6 +34,7 @@ func DeleteObject(ctx context.Context, allocationID, objPath string) (*Ref, erro
 			if ref.Name == subDir && ref.Type == DIRECTORY {
 				ref.HashToBeComputed = true
 				ref.childrenLoaded = true
+				ref.UpdatedAt = ts
 				found = true
 				dirRef = ref
 				break
