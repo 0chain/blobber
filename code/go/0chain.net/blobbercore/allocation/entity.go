@@ -86,10 +86,10 @@ func (a *Allocation) GetRequiredReadBalance(blobberID string, numBlocks int64) (
 }
 
 // GetRequiredWriteBalance Get tokens required to write the give size
-func (a *Allocation) GetRequiredWriteBalance(blobberID string, writeSize int64, wmt common.Timestamp) (value int64) {
+func (a *Allocation) GetRequiredWriteBalance(blobberID string, writeSize int64, wmt common.Timestamp) (value uint64) {
 	for _, d := range a.Terms {
 		if d.BlobberID == blobberID {
-			value = int64(sizeInGB(writeSize)*float64(d.WritePrice)) * int64(a.RestDurationInTimeUnits(wmt))
+			value = uint64(sizeInGB(writeSize)*float64(d.WritePrice)) * uint64(a.RestDurationInTimeUnits(wmt))
 			break
 		}
 	}
@@ -160,7 +160,7 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite int64
 	return nil
 }
 
-func GetWritePoolsBalance(db *gorm.DB, allocationID string) (balance int64, err error) {
+func GetWritePoolsBalance(db *gorm.DB, allocationID string) (balance uint64, err error) {
 	err = db.Model(&WritePool{}).Select("sum (balance) as tot_balance").Where(
 		"allocation_id = ?", allocationID,
 	).Scan(&balance).Error
