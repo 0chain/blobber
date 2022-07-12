@@ -204,7 +204,7 @@ func (ReadPool) TableName() string {
 
 type WritePool struct {
 	AllocationID string `gorm:"column:allocation_id;size:64;not null;index:idx_write_pools_cab,priority:1"`
-	Balance      int64  `gorm:"column:balance;not null"`
+	Balance      uint64 `gorm:"column:balance;not null"`
 }
 
 func (WritePool) TableName() string {

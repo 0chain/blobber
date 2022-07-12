@@ -222,7 +222,7 @@ func RequestWritePool(allocationID string) (wps *WritePool, err error) {
 
 	var allocation = struct {
 		ID        string `json:"id"`
-		WritePool int64  `json:"write_pool"`
+		WritePool uint64 `json:"write_pool"`
 	}{}
 	if err = json.Unmarshal(resp, &allocation); err != nil {
 		return nil, fmt.Errorf("decoding write pools stat response: %v", err)
