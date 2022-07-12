@@ -90,7 +90,7 @@ func UseUserRateLimit(h http.Handler) http.Handler {
 
 // FileRateLimit is a custom of `tollbooth.LimitHandlerFunc` that uses custom values to build keys for limiting file actions.
 func FileRateLimit(handler ReqRespHandlerf) ReqRespHandlerf {
-	if !fileRateLimit.RateLimit {
+	if fileRateLimit == nil || !fileRateLimit.RateLimit {
 		return handler
 	}
 
