@@ -26,16 +26,14 @@ func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, err
 func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("id", "allocation_id", "type", "name", "path",
+	db = db.Model(&Ref{}).Select("id", "allocation_id", "type", "name", "path",
 		"parent_path", "size", "hash", "path_hash", "content_hash", "merkle_root",
 		"actual_file_size", "actual_file_hash", "chunk_size",
-		"lookup_hash", "thumbnail_hash", "write_marker", "level")
-	db = db.Model(&Ref{})
+		"lookup_hash", "thumbnail_hash", "write_marker", "level", "created_at", "updated_at")
 	pathsAdded := make(map[string]bool)
 	for _, path := range paths {
-		path = strings.TrimSuffix(path, "/")
 		if _, ok := pathsAdded[path]; !ok {
-			db = db.Where(Ref{ParentPath: path, AllocationID: allocationID})
+			db = db.Where("allocation_id=? AND parent_path=?", allocationID, path)
 			pathsAdded[path] = true
 		}
 		fields, err := common.GetPathFields(path)
