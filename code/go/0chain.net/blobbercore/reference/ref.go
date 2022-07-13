@@ -265,7 +265,7 @@ func GetRefWithChildren(ctx context.Context, allocationID, path string) (*Ref, e
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
-	err := db.Order("level, created_at").Find(&refs).Error
+	err := db.Order("path").Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}

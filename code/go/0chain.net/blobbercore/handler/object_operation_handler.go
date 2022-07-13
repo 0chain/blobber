@@ -756,27 +756,24 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		Logger.Error("Error file reference", zap.Error(err))
 	}
 
-	if !filepath.IsAbs(dirPath) {
-		return nil, common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", dirPath))
-	}
-
-	result := &blobberhttp.UploadResult{}
-	result.Filename = dirPath
-	result.Hash = ""
-	result.MerkleRoot = ""
-	result.Size = 0
-
-	if clientID != allocationObj.OwnerID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+	result := &blobberhttp.UploadResult{
+		Filename: dirPath,
 	}
 
 	if exisitingRef != nil {
 		// target directory exists, return StatusOK
 		if exisitingRef.Type == reference.DIRECTORY {
-			return result, nil
+			return nil, common.NewError("directory_exists", "Directory already exists`")
 		}
 
 		return nil, common.NewError("duplicate_file", "File at path already exists")
+	}
+	if !filepath.IsAbs(dirPath) {
+		return nil, common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", dirPath))
+	}
+
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
 	if err := validateParentPathType(ctx, allocationID, dirPath); err != nil {
