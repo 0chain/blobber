@@ -72,6 +72,7 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 			newRef := reference.NewDirectoryRef()
 			newRef.AllocationID = nf.AllocationID
 			newRef.Path = filepath.Join("/", strings.Join(fields[:i+1], "/"))
+			newRef.PathLevel = len(fields) + 1
 			newRef.ParentPath = filepath.Dir(newRef.Path)
 			newRef.Name = fields[i]
 			newRef.LookupHash = reference.GetReferenceLookup(nf.AllocationID, newRef.Path)
