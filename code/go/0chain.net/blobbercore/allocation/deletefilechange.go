@@ -72,7 +72,7 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 	var results []Result
 	err := db.Model(&reference.Ref{}).Unscoped().
 		Select("content_hash", "thumbnail_hash").
-		Where("allocation_id=? AND path LIKE ? AND type=?",
+		Where("allocation_id=? AND path LIKE ? AND type=? AND deleted_at is not NULL",
 			nf.AllocationID, nf.Path+"%", reference.FILE).
 		FindInBatches(&results, 100, func(tx *gorm.DB, batch int) error {
 
@@ -125,6 +125,6 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 
 	return db.Model(&reference.Ref{}).Unscoped().
 		Delete(&reference.Ref{},
-			"allocation_id = ? AND path LIKE ? AND",
+			"allocation_id = ? AND path LIKE ? AND deleted_at IS NOT NULL",
 			nf.AllocationID, nf.Path+"%").Error
 }

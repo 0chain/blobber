@@ -60,6 +60,8 @@ type Ref struct {
 	CreatedAt      common.Timestamp `gorm:"column:created_at" dirlist:"created_at" filelist:"created_at"`
 	UpdatedAt      common.Timestamp `gorm:"column:updated_at;index:idx_updated_at;" dirlist:"updated_at" filelist:"updated_at"`
 
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
+
 	ChunkSize        int64 `gorm:"column:chunk_size;not null;default:65536" dirlist:"chunk_size" filelist:"chunk_size"`
 	HashToBeComputed bool  `gorm:"-"`
 }
@@ -357,7 +359,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 	}()
 
 	l := len(r.Children)
-	if l == 0 {
+	if l == 0 && !r.childrenLoaded {
 		h = r.Hash
 		return
 	}
