@@ -365,7 +365,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 	}
 
 	childHashes := make([]string, l)
-	childPaths := make([]string, l)
+	childPathHashes := make([]string, l)
 	var refNumBlocks, size int64
 
 	for i, childRef := range r.Children {
@@ -377,13 +377,13 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 		}
 
 		childHashes[i] = childRef.Hash
-		childPaths[i] = childRef.Path
+		childPathHashes[i] = childRef.PathHash
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
 	}
 
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
-	r.PathHash = encryption.Hash(strings.Join(childPaths, ":"))
+	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.NumBlocks = refNumBlocks
 	r.Size = size
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
