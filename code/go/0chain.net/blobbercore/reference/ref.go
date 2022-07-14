@@ -339,9 +339,9 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
-	// fr.PathHash = GetReferenceLookup(fr.AllocationID, fr.Path) its of no use to calculate
 	fr.PathLevel = len(strings.Split(strings.TrimRight(fr.Path, "/"), "/"))
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
+	fr.PathHash = fr.LookupHash
 
 	var err error
 	if saveToDB && fr.HashToBeComputed {
