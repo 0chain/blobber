@@ -149,17 +149,11 @@ func FileLimitBuildKeys(lmt *limiter.Limiter, r *http.Request) []string {
 }
 
 func requestField(r *http.Request, key string) (string, bool) {
-	if r.Form != nil {
-		v, ok := r.Form[key]
-		if ok {
-			return v[0], true
-		}
+	TryParseForm(r)
+
+	if !r.Form.Has(key) {
+		return "", false
 	}
 
-	v, ok := r.URL.Query()[key]
-	if ok {
-		return v[0], true
-	}
-
-	return "", false
+	return r.Form.Get(key), true
 }

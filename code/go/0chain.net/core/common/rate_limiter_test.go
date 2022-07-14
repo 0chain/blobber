@@ -1,9 +1,11 @@
 package common
 
 import (
+	"bytes"
 	"context"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -69,6 +71,13 @@ func TestFileLimitBuildKeys(t *testing.T) {
 			wantKeys:  []string{"", "/v1/file/upload/alloc123", "", "testclient", ""},
 		},
 		{
+			name:      "upload with connection_id in multipart",
+			req:       multipartReq(context.Background(), http.MethodPost, "http://localhost:8080/v1/file/upload/alloc123", map[string]string{"connection_id": "abcdef"}),
+			reqHeader: map[string]string{ClientHeader: "testclient"},
+			reqForm:   map[string]string{},
+			wantKeys:  []string{"", "/v1/file/upload/alloc123", "", "testclient", "abcdef"},
+		},
+		{
 			name:      "download with path hash",
 			req:       mustReq(http.NewRequestWithContext(context.Background(), http.MethodGet, "http://localhost:8080/v1/file/download/alloc123", nil)),
 			reqHeader: map[string]string{ClientHeader: "testclient", "X-Path-Hash": "hash"},
@@ -126,5 +135,22 @@ func TestFileLimitBuildKeys(t *testing.T) {
 }
 
 func mustReq(r *http.Request, _ error) *http.Request {
+	return r
+}
+
+func multipartReq(ctx context.Context, method, url string, multiPart map[string]string) *http.Request {
+	body := &bytes.Buffer{}
+
+	formWriter := multipart.NewWriter(body)
+
+	for k, v := range multiPart {
+		formWriter.WriteField(k, v)
+	}
+
+	formWriter.Close()
+
+	r := mustReq(http.NewRequestWithContext(ctx, method, url, body))
+	r.Header.Add("Content-Type", formWriter.FormDataContentType())
+
 	return r
 }
