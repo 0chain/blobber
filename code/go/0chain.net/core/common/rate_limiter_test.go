@@ -144,10 +144,10 @@ func multipartReq(ctx context.Context, method, url string, multiPart map[string]
 	formWriter := multipart.NewWriter(body)
 
 	for k, v := range multiPart {
-		formWriter.WriteField(k, v)
+		_ = formWriter.WriteField(k, v)
 	}
 
-	formWriter.Close()
+	_ = formWriter.Close()
 
 	r := mustReq(http.NewRequestWithContext(ctx, method, url, body))
 	r.Header.Add("Content-Type", formWriter.FormDataContentType())
