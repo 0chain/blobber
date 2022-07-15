@@ -5,10 +5,13 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/challenge"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
@@ -20,9 +23,9 @@ import (
 func setupWorkers(ctx context.Context) {
 
 	handler.SetupWorkers(ctx)
-	// challenge.SetupWorkers(ctx)
-	// readmarker.SetupWorkers(ctx)
-	// writemarker.SetupWorkers(ctx)
+	challenge.SetupWorkers(ctx)
+	readmarker.SetupWorkers(ctx)
+	writemarker.SetupWorkers(ctx)
 	allocation.StartUpdateWorker(ctx, config.Configuration.UpdateAllocationsInterval)
 	if config.Configuration.AutomaticUpdate {
 		go StartUpdateWorker(ctx, config.Configuration.BlobberUpdateInterval)
@@ -32,10 +35,11 @@ func setupWorkers(ctx context.Context) {
 func refreshPriceOnChain(ctx context.Context) {
 	var REPEAT_DELAY = 60 * 60 * time.Duration(viper.GetInt("price_worker_in_hours")) // 12 hours with default settings
 	var err error
+loop:
 	for {
 		select {
 		case <-ctx.Done():
-			break
+			break loop
 
 		case <-time.After(REPEAT_DELAY * time.Second):
 			err = handler.RefreshPriceOnChain(common.GetRootContext())
@@ -48,10 +52,11 @@ func refreshPriceOnChain(ctx context.Context) {
 }
 
 func startHealthCheck(ctx context.Context) {
+loop:
 	for {
 		select {
 		case <-ctx.Done():
-			break
+			break loop
 		case <-time.After(config.Configuration.HealthCheckWorkerFreq):
 			go func() {
 				start := time.Now()
@@ -73,10 +78,11 @@ func startRefreshSettings(ctx context.Context) {
 	const REPEAT_DELAY = 60 * 3 // 3 minutes
 	var err error
 	var b *zcncore.Blobber
+loop:
 	for {
 		select {
 		case <-ctx.Done():
-			break
+			break loop
 		case <-time.After(REPEAT_DELAY * time.Second):
 			b, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
 			if err != nil {
