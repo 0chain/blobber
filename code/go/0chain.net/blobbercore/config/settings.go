@@ -27,7 +27,7 @@ type Settings struct {
 	ReadPrice        float64   `gorm:"column:read_price;not null;default:0"`
 	WritePrice       float64   `gorm:"column:write_price;not null;default:0"`
 	ServiceCharge    float64   `gorm:"column:service_charge;not null;default:0"`
-	UpdatedAt        time.Time `gorm:"column:updated_at;not null;default:NOW()"`
+	UpdatedAt        time.Time `gorm:"column:updated_at;not null;default:current_timestamp"`
 }
 
 func (s Settings) TableName() string {

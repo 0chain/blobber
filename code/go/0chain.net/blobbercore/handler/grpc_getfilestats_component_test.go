@@ -10,22 +10,14 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func TestBlobberGRPCService_GetObjectTree(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
-
-	bClient, tdController := setupHandlerIntegrationTests(t)
+func TestBlobberGRPCService_GetFilestats(t *testing.T) {
+	bClient, tdController := setupGrpcTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 
-	err := tdController.ClearDatabase()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = tdController.AddGetObjectTreeTestData(allocationTx, pubKey)
+	err := tdController.AddGetFileStatsTestData(allocationTx, pubKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +25,7 @@ func TestBlobberGRPCService_GetObjectTree(t *testing.T) {
 	testCases := []struct {
 		name             string
 		context          metadata.MD
-		input            *blobbergrpc.GetObjectTreeRequest
+		input            *blobbergrpc.GetFileStatsRequest
 		expectedFileName string
 		expectingError   bool
 	}{
@@ -43,24 +35,26 @@ func TestBlobberGRPCService_GetObjectTree(t *testing.T) {
 				common.ClientHeader:          "exampleOwnerId",
 				common.ClientSignatureHeader: clientSignature,
 			}),
-			input: &blobbergrpc.GetObjectTreeRequest{
-				Path:       "/",
+			input: &blobbergrpc.GetFileStatsRequest{
+				Path:       "examplePath",
+				PathHash:   "exampleId:examplePath",
 				Allocation: allocationTx,
 			},
-			expectedFileName: "root",
+			expectedFileName: "filename",
 			expectingError:   false,
 		},
 		{
-			name: "bad path",
+			name: "Unknown Path",
 			context: metadata.New(map[string]string{
 				common.ClientHeader:          "exampleOwnerId",
 				common.ClientSignatureHeader: clientSignature,
 			}),
-			input: &blobbergrpc.GetObjectTreeRequest{
-				Path:       "/2",
-				Allocation: "",
+			input: &blobbergrpc.GetFileStatsRequest{
+				Path:       "examplePath",
+				PathHash:   "exampleId:examplePath123",
+				Allocation: allocationTx,
 			},
-			expectedFileName: "root",
+			expectedFileName: "",
 			expectingError:   true,
 		},
 	}
@@ -68,7 +62,7 @@ func TestBlobberGRPCService_GetObjectTree(t *testing.T) {
 	for _, tc := range testCases {
 		ctx := context.Background()
 		ctx = metadata.NewOutgoingContext(ctx, tc.context)
-		getObjectTreeResp, err := bClient.GetObjectTree(ctx, tc.input)
+		getFileStatsResp, err := bClient.GetFileStats(ctx, tc.input)
 		if err != nil {
 			if !tc.expectingError {
 				t.Fatal(err)
@@ -80,8 +74,8 @@ func TestBlobberGRPCService_GetObjectTree(t *testing.T) {
 			t.Fatal("expected error")
 		}
 
-		if getObjectTreeResp.ReferencePath.MetaData.DirMetaData.Name != tc.expectedFileName {
-			t.Fatal("unexpected root name from GetObject")
+		if getFileStatsResp.MetaData.FileMetaData.Name != tc.expectedFileName {
+			t.Fatal("unexpected file name from GetFileStats rpc")
 		}
 	}
 }

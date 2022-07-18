@@ -68,7 +68,7 @@ func AutoMigrate(pgDB *gorm.DB) error {
 	}
 
 	db := datastore.GetStore().GetDB()
-	return migrateSchema(db)
+	return MigrateSchema(db)
 }
 
 func createDB(db *gorm.DB) (err error) {
@@ -127,11 +127,21 @@ func grantPrivileges(db *gorm.DB) error {
 	return nil
 }
 
-func migrateSchema(db *gorm.DB) error {
+func MigrateSchema(db *gorm.DB) error {
 	var tables []interface{} // Put in new slice to resolve type mismatch
 	for _, tbl := range tableModels {
 		tables = append(tables, tbl)
 	}
 
 	return db.AutoMigrate(tables...)
+}
+
+// DropSchemas is used for integration tests to clear DB.
+func DropSchemas(db *gorm.DB) error {
+	var tables []interface{} // Put in new slice to resolve type mismatch
+	for _, tbl := range tableModels {
+		tables = append(tables, tbl)
+	}
+
+	return db.Migrator().DropTable(tables...)
 }

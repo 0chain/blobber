@@ -83,8 +83,8 @@ type ChallengeEntity struct {
 	Sequence                int64                 `gorm:"column:sequence;unique;type:bigserial;<-:false"`
 	Created                 common.Timestamp      `gorm:"-" json:"created"`
 
-	CreatedAt time.Time `gorm:"created_at;type:timestamp without time zone;not null;default:now()"`
-	UpdatedAt time.Time `gorm:"updated_at;type:timestamp without time zone;not null;default:now()"`
+	CreatedAt time.Time `gorm:"created_at;type:timestamp without time zone;not null;default:current_timestamp"`
+	UpdatedAt time.Time `gorm:"updated_at;type:timestamp without time zone;not null;default:current_timestamp"`
 }
 
 func (ChallengeEntity) TableName() string {

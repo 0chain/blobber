@@ -22,10 +22,6 @@ lint:
 	golangci-lint run --timeout 2m0s;
 
 
-.PHONY: integration-tests
-integration-tests:
-	CGO_ENABLED=1 root=$(ROOT) integration=1   go test -p 1 -tags bn256  ./...
-
 .PHONY: local-init
 local-init:
 	@echo "=========================[ init blobber ]========================="
@@ -50,7 +46,7 @@ local-build: local-init
 .PHONY: local-run
 local-run: 
 	@echo "=========================[ run blobber ]========================="
-	cd ./dev.local/ && integration=1 ./data/blobber/blobber \
+	cd ./dev.local/ && ./data/blobber/blobber \
 	--port 25051 \
 	--grpc_port 35051 \
 	--hostname 127.0.0.1 \
