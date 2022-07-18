@@ -35,7 +35,10 @@ require (
 	gorm.io/gorm v1.23.6
 )
 
-require golang.org/x/sys v0.0.0-20220610221304-9f5ed59c137d
+require (
+	golang.org/x/sys v0.0.0-20220610221304-9f5ed59c137d
+	gorm.io/driver/sqlite v1.3.1
+)
 
 require (
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
@@ -77,6 +80,7 @@ require (
 	github.com/klauspost/reedsolomon v1.9.16 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
+	github.com/mattn/go-sqlite3 v1.14.12 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.2 // indirect

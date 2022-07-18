@@ -13,11 +13,7 @@ import (
 )
 
 func TestBlobberGRPCService_CopyObject(t *testing.T) {
-	if isIntegrationTest() {
-		t.Skip()
-	}
-
-	bClient, tdController := setupHandlerIntegrationTests(t)
+	bClient, tdController := setupGrpcTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
@@ -25,9 +21,6 @@ func TestBlobberGRPCService_CopyObject(t *testing.T) {
 	pubKeyBytes, _ := hex.DecodeString(pubKey)
 	clientId := encryption.Hash(pubKeyBytes)
 
-	if err := tdController.ClearDatabase(); err != nil {
-		t.Fatal(err)
-	}
 	if err := tdController.AddCopyObjectData(allocationTx, pubKey, clientId); err != nil {
 		t.Fatal(err)
 	}

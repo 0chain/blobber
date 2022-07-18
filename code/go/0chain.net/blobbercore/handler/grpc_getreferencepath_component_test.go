@@ -11,21 +11,13 @@ import (
 )
 
 func TestBlobberGRPCService_GetReferencePath(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
-
-	bClient, tdController := setupHandlerIntegrationTests(t)
+	bClient, tdController := setupGrpcTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 
-	err := tdController.ClearDatabase()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = tdController.AddGetReferencePathTestData(allocationTx, pubKey)
+	err := tdController.AddGetReferencePathTestData(allocationTx, pubKey)
 	if err != nil {
 		t.Fatal(err)
 	}
