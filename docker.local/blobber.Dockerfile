@@ -11,6 +11,7 @@ ENV GO111MODULE=on
 # Will be cached if we don't change mod/sum files
 COPY .  $SRC_DIR
 # COPY ./gosdk  /gosdk
+RUN ls -la $SRC_DIR/
 
 RUN cd $SRC_DIR/ && go mod download
 
