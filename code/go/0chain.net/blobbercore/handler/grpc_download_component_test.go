@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"io"
 	"os"
 	"path/filepath"
@@ -64,16 +65,11 @@ func setupFileManager(mp string) error {
 }
 
 func TestBlobberGRPCService_DownloadFile(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
-
 	if err := setupMockForFileManager(); err != nil {
 		t.Fatal(err)
 	}
 
-	root := os.Getenv("root")
-	mp := filepath.Join(root, "dev.local/data/blobber/files")
+	mp := filepath.Join(os.TempDir(), "/test_dl_files")
 	if err := os.MkdirAll(mp, os.ModePerm); err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +105,7 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 	}
 	defer f.Close()
 
-	file, err := os.Open(filepath.Join(root, "/code/go/0chain.net/blobbercore/handler/helper_integration_test.go"))
+	file, err := os.CreateTemp(mp, "test*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,14 +122,13 @@ func TestBlobberGRPCService_DownloadFile(t *testing.T) {
 	clientId := encryption.Hash(pubKeyBytes)
 	now := common.Timestamp(time.Now().Unix())
 
-	bClient, tdController := setupHandlerIntegrationTests(t)
-
-	if err := tdController.ClearDatabase(); err != nil {
-		t.Fatal(err)
-	}
+	bClient, tdController := setupGrpcTests(t)
 
 	blobberPubKey := "de52c0a51872d5d2ec04dbc15a6f0696cba22657b80520e1d070e72de64c9b04e19ce3223cae3c743a20184158457582ffe9c369ca9218c04bfe83a26a62d88d"
 	blobberPubKeyBytes, _ := hex.DecodeString(blobberPubKey)
+
+	node.Self.ID = encryption.Hash(blobberPubKeyBytes)
+	node.Self.PublicKey = blobberPubKey
 
 	rm := readmarker.ReadMarker{
 		BlobberID:       encryption.Hash(blobberPubKeyBytes),
