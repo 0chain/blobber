@@ -9,6 +9,7 @@ ENV GO111MODULE=on
 
 # Download the dependencies:
 # Will be cached if we don't change mod/sum files
+RUN mkdir /0chain
 COPY .  $SRC_DIR
 # COPY ./gosdk  /gosdk
 RUN ls -la $SRC_DIR/
