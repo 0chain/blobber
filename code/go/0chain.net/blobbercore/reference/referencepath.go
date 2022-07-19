@@ -306,24 +306,32 @@ func GetRecentlyCreatedRefs(
 	ctx context.Context,
 	allocID string,
 	pageLimit, offset int,
-) (refs []*PaginatedRef, count int64, newOffset int, err error) {
+) (refs []*PaginatedRef, totalPages int, newOffset int, err error) {
 
 	db := datastore.GetStore().GetTransaction(ctx)
-	err = db.Model(&Ref{}).Where("allocation_id=?", allocID).
-		Order("created_at desc, path asc").
-		Offset(offset).
-		Limit(pageLimit).Find(&refs).Error
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- db.Model(&Ref{}).Where("allocation_id=?", allocID).
+			Order("created_at desc, path asc").
+			Offset(offset).
+			Limit(pageLimit).Find(&refs).Error
 
-	if err != nil {
-		return
-	}
+	}()
 
-	err = db.Model(&Ref{}).Where("allocation_id=?", allocID).Count(&count).Error
-	if err != nil {
-		return nil, 0, 0, err
+	var count int64
+	go func() {
+		errCh <- db.Model(&Ref{}).Where("allocation_id=?", allocID).Count(&count).Error
+	}()
+
+	for i := 0; i < 2; i++ {
+		err = <-errCh
+		if err != nil {
+			return nil, 0, 0, err
+		}
 	}
 
 	newOffset = offset + len(refs)
+	totalPages = int(math.Ceil(float64(count) / float64(pageLimit)))
 	return
 }
 
