@@ -327,7 +327,7 @@ func GetRecentlyCreatedRefs(
 	return
 }
 
-func CountRefs(ctx context.Context, allocationID string) (int64, error) {
+func CountRefs(allocationID string) (int64, error) {
 	var totalRows int64
 
 	db := datastore.GetStore().GetDB()
