@@ -10,7 +10,7 @@ import (
 type CommitMetaTxn struct {
 	RefID     int64     `gorm:"ref_id;not null" json:"ref_id"`
 	TxnID     string    `gorm:"txn_id;size:64;not null" json:"txn_id"`
-	CreatedAt time.Time `gorm:"created_at;timestamp without time zone;not null;default:now()" json:"created_at"`
+	CreatedAt time.Time `gorm:"created_at;timestamp without time zone;not null;default:current_timestamp" json:"created_at"`
 }
 
 func (CommitMetaTxn) TableName() string {
