@@ -830,9 +830,28 @@ func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Req
 		if err != nil {
 			return nil, common.NewError("invalid_parameters", "Invalid page limit value. Got Error "+err.Error())
 		}
+		if pageLimit <= 0 {
+			return nil, common.NewError("invalid_parameters", "Zero/Negative page limit value is not allowed")
+		}
+
+		if pageLimit > PageLimit {
+			pageLimit = PageLimit
+		}
+
+	} else {
+		pageLimit = PageLimit
 	}
-	refs, count, offset, err := reference.GetRecentlyCreatedRefs(ctx, allocationID, PageLimit, offset)
-	return nil, nil
+
+	refs, totalPages, offset, err := reference.GetRecentlyCreatedRefs(ctx, allocationID, pageLimit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	return &blobberhttp.RecentRefResult{
+		Refs:       refs,
+		TotalPages: int(totalPages),
+		Offset:     offset,
+	}, nil
 }
 
 //Retrieves file refs. One can use three types to refer to regular, updated and deleted. Regular type gives all undeleted rows.

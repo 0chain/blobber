@@ -43,9 +43,9 @@ type RefResult struct {
 }
 
 type RecentRefResult struct {
-	TotalPages int              `json:"total_pages"`
-	Offset     int              `json:"offset"`
-	Refs       []*reference.Ref `json:"refs"`
+	TotalPages int                       `json:"total_pages"`
+	Offset     int                       `json:"offset"`
+	Refs       []*reference.PaginatedRef `json:"refs"`
 }
 type ObjectPathResult struct {
 	*reference.ObjectPath
