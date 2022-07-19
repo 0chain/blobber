@@ -294,58 +294,38 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type,
 	return
 }
 
-// //Retrieves deleted refs compared to some update_at value. Useful for localCache.
-// func GetDeletedRefs(ctx context.Context, allocationID, updatedDate, offsetPath, offsetDate string, pageLimit int, dateLayOut string) (refs *[]PaginatedRef, totalPages int, newOffsetPath, newOffsetDate string, err error) {
-// 	var totalRows int64
-// 	var pRefs []PaginatedRef
-// 	db := datastore.GetStore().GetDB()
+// GetRecentlyCreatedRefs will return recently created refs with pagination. As opposed to getting
+// refs ordered by path in ascending order, this will return paths in decending order for same timestamp.
+// So if a file is created with path "/a/b/c/d/e/f.txt" and if "/a" didn't exist previously then
+// creation date for "/a", "/a/b", "/a/b/c", "/a/b/c/d", "/a/b/c/d/e" and "/a/b/c/d/e/f.txt" will be the same.
+// The refs returned will be in "/a/b/c/d/e/f.txt", "/a/b/c/d/e", ... order.
+func GetRecentlyCreatedRefs(
+	// Note: Above mentioned function will only be feasible after splitting reference_objects table.
+	// Since current limit is 50,000 files per allocation, Using common offset method should not be a big
+	// deal
+	ctx context.Context,
+	allocID string,
+	pageLimit, offset int,
+) (refs []*PaginatedRef, count int64, newOffset int, err error) {
 
-// 	db1 := db.Session(&gorm.Session{})
-// 	db2 := db.Session(&gorm.Session{})
+	db := datastore.GetStore().GetTransaction(ctx)
+	err = db.Model(&Ref{}).Where("allocation_id=?", allocID).
+		Order("created_at desc, path asc").
+		Offset(offset).
+		Limit(pageLimit).Find(&refs).Error
 
-// 	wg := sync.WaitGroup{}
-// 	wg.Add(2)
-// 	go func() {
-// 		db1 = db1.Model(&Ref{}).Unscoped().
-// 			Select("path", "path_hash", "deleted_at", "updated_at").
-// 			Where("allocation_id = ?", allocationID)
+	if err != nil {
+		return
+	}
 
-// 		if updatedDate == "" {
-// 			db1 = db1.Where("deleted_at IS NOT null")
-// 		} else {
-// 			db1 = db1.Where("deleted_at > ?", updatedDate)
-// 		}
+	err = db.Model(&Ref{}).Where("allocation_id=?", allocID).Count(&count).Error
+	if err != nil {
+		return nil, 0, 0, err
+	}
 
-// 		if offsetDate != "" {
-// 			db1 = db1.Where("(updated_at, path) > (?, ?)", offsetDate, offsetPath)
-// 		}
-
-// 		err = db1.Order("updated_at, path").Limit(pageLimit).Find(&pRefs).Error
-// 		wg.Done()
-// 	}()
-
-// 	go func() {
-// 		db2 = db2.Model(&Ref{}).Unscoped().Where("allocation_id = ?", allocationID)
-
-// 		if updatedDate == "" {
-// 			db2 = db2.Where("deleted_at IS NOT null")
-// 		} else {
-// 			db2 = db2.Where("deleted_at > ?", updatedDate)
-// 		}
-
-// 		db2 = db2.Count(&totalRows)
-// 		wg.Done()
-// 	}()
-// 	wg.Wait()
-// 	if len(pRefs) != 0 {
-// 		lastIdx := len(pRefs) - 1
-// 		newOffsetDate = pRefs[lastIdx].DeletedAt.Time.Format(dateLayOut)
-// 		newOffsetPath = pRefs[lastIdx].Path
-// 	}
-// 	refs = &pRefs
-// 	totalPages = int(math.Ceil(float64(totalRows) / float64(pageLimit)))
-// 	return
-// }
+	newOffset = offset + len(refs)
+	return
+}
 
 func CountRefs(ctx context.Context, allocationID string) (int64, error) {
 	var totalRows int64

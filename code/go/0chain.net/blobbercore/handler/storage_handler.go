@@ -783,6 +783,58 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	return &refPathResult, nil
 }
 
+func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Request) (*blobberhttp.RecentRefResult, error) {
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID == "" {
+		return nil, common.NewError("invalid_operation", "Client id is required")
+	}
+
+	publicKey, _ := ctx.Value(constants.ContextKeyClientKey).(string)
+	if publicKey == "" {
+		if clientID == allocationObj.OwnerID {
+			publicKey = allocationObj.OwnerPublicKey
+		} else {
+			return nil, common.NewError("empty_public_key", "public key is required")
+		}
+	}
+
+	clientSign := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
+
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	allocationID := allocationObj.ID
+
+	var offset, pageLimit int
+	offsetStr := r.FormValue("offset")
+
+	if offsetStr != "" {
+		offset, err = strconv.Atoi(offsetStr)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid offset value "+err.Error())
+		}
+	}
+
+	pageLimitStr := r.FormValue("page_limit")
+	if pageLimitStr != "" {
+		pageLimit, err = strconv.Atoi(pageLimitStr)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid page limit value. Got Error "+err.Error())
+		}
+	}
+	refs, count, offset, err := reference.GetRecentlyCreatedRefs(ctx, allocationID, PageLimit, offset)
+	return nil, nil
+}
+
 //Retrieves file refs. One can use three types to refer to regular, updated and deleted. Regular type gives all undeleted rows.
 //Updated gives rows that is updated compared to the date given. And deleted gives deleted refs compared to the date given.
 //Updated date time format should be as declared in above constant; OffsetDateLayout
