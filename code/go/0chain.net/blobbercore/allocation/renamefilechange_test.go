@@ -186,13 +186,13 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 			expectingError:  false,
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
-				query := `SELECT count(*) FROM "reference_objects" WHERE allocation_id=$1 AND path=$2`
+				query := `SELECT count(*) FROM "reference_objects" WHERE (allocation_id=$1 AND path=$2) AND "reference_objects"."deleted_at" IS NULL`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).
 					WithReply([]map[string]interface{}{
 						{"count": 0},
 					})
 
-				query = `SELECT * FROM "reference_objects" WHERE "reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4) ORDER BY path`
+				query = `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).
 					WithReply(
 						[]map[string]interface{}{
@@ -219,7 +219,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 						},
 					)
 
-				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level","created_at","updated_at" FROM "reference_objects" WHERE (allocation_id=$1 AND parent_path=$2) OR (parent_path = $3 AND allocation_id = $4) ORDER BY path`
+				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level","created_at","updated_at" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR (parent_path = $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).WithReply(
 					[]map[string]interface{}{
 						{
@@ -275,13 +275,13 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 			expectingError:  false,
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
-				query := `SELECT count(*) FROM "reference_objects" WHERE allocation_id=$1 AND path=$2`
+				query := `SELECT count(*) FROM "reference_objects" WHERE (allocation_id=$1 AND path=$2) AND "reference_objects"."deleted_at" IS NULL`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).
 					WithReply([]map[string]interface{}{
 						{"count": 0},
 					})
 
-				query = `SELECT * FROM "reference_objects" WHERE "reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4) ORDER BY path`
+				query = `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).
 					WithReply(
 						[]map[string]interface{}{
@@ -317,7 +317,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 					},
 				)
 
-				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level","created_at","updated_at" FROM "reference_objects" WHERE (allocation_id=$1 AND parent_path=$2) OR (parent_path = $3 AND allocation_id = $4) ORDER BY path`
+				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level","created_at","updated_at" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR (parent_path = $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).WithReply(
 					[]map[string]interface{}{
 						{
