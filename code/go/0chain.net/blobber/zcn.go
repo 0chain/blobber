@@ -21,10 +21,6 @@ func registerOnChain() error {
 
 	// setup wallet
 	fmt.Print("	+ connect to miners: ")
-	if isIntegrationTest {
-		fmt.Print("	[SKIP]\n")
-		return nil
-	}
 
 	var err error
 
@@ -67,16 +63,14 @@ func registerOnChain() error {
 
 	fmt.Print("	[OK]\n")
 
-	if !isIntegrationTest {
-		ctx := common.GetRootContext()
-		go setupWorkers(ctx)
+	ctx := common.GetRootContext()
+	go setupWorkers(ctx)
 
-		go startHealthCheck(ctx)
-		go startRefreshSettings(ctx)
+	go startHealthCheck(ctx)
+	go startRefreshSettings(ctx)
 
-		if config.Configuration.PriceInUSD {
-			go refreshPriceOnChain(ctx)
-		}
+	if config.Configuration.PriceInUSD {
+		go refreshPriceOnChain(ctx)
 	}
 
 	return err
@@ -91,16 +85,9 @@ func setupServerChain() error {
 	chain.SetServerChain(serverChain)
 
 	if err := zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme); err != nil {
-		if isIntegrationTest {
-			return nil
-		}
-
 		return err
 	}
 	if err := zcncore.SetWalletInfo(node.Self.GetWalletString(), false); err != nil {
-		if isIntegrationTest {
-			return nil
-		}
 		return err
 	}
 

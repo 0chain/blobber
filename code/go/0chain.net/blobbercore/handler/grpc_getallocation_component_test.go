@@ -7,19 +7,10 @@ import (
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 )
 
-func TestGetAllocation_IntegrationTest(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
+func TestBlobberGRPCService_GetAllocation(t *testing.T) {
+	bClient, tdController := setupGrpcTests(t)
 
-	bClient, tdController := setupHandlerIntegrationTests(t)
-
-	err := tdController.ClearDatabase()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = tdController.AddGetAllocationTestData()
-	if err != nil {
+	if err := tdController.AddGetAllocationTestData(); err != nil {
 		t.Fatal(err)
 	}
 
