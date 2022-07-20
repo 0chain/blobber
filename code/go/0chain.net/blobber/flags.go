@@ -3,25 +3,23 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
 )
 
 var (
-	deploymentMode    int
-	keysFile          string
-	minioFile         string
-	mountPoint        string
-	metadataDB        string
-	logDir            string
-	httpPort          int
-	hostname          string
-	configDir         string
-	grpcPort          int
-	isIntegrationTest bool
-	httpsPort         int
-	httpsKeyFile      string
-	httpsCertFile     string
-	hostUrl           string
+	deploymentMode int
+	keysFile       string
+	minioFile      string
+	mountPoint     string
+	metadataDB     string
+	logDir         string
+	httpPort       int
+	hostname       string
+	configDir      string
+	grpcPort       int
+	httpsPort      int
+	httpsKeyFile   string
+	httpsCertFile  string
+	hostUrl        string
 )
 
 func init() {
@@ -58,7 +56,6 @@ func parseFlags() {
 	if httpPort <= 0 && httpsPort <= 0 {
 		panic("Please specify --port or --https-port which is the port on which requests are accepted")
 	}
-	isIntegrationTest = os.Getenv("integration") == "1"
 
 	if httpsPort > 0 && (httpsCertFile == "" || httpsKeyFile == "") {
 		panic("Please specify --https-cert-file and --https-key-file if you are using --https-port")

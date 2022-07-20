@@ -19,11 +19,7 @@ import (
 
 //Need to check for errors here
 func TestBlobberGRPCService_UploadFile(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
-	root := os.Getenv("root")
-	mp := filepath.Join(root, "dev.local/data/blobber/files")
+	mp := filepath.Join(os.TempDir(), "/test_ul_files")
 	if err := os.MkdirAll(mp, os.ModePerm); err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +30,7 @@ func TestBlobberGRPCService_UploadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bClient, tdController := setupHandlerIntegrationTests(t)
+	bClient, tdController := setupGrpcTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
@@ -48,18 +44,15 @@ func TestBlobberGRPCService_UploadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := tdController.ClearDatabase(); err != nil {
-		t.Fatal(err)
-	}
 	if err := tdController.AddUploadTestData(allocationTx, pubKey, clientId); err != nil {
 		t.Fatal(err)
 	}
 
-	curDir, _ := os.Getwd()
-	file, err := os.Open(curDir + "/helper_integration_test.go")
+	file, err := os.CreateTemp(mp, "test*")
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer file.Close()
 	stats, err := file.Stat()
 	if err != nil {
 		panic(err)
