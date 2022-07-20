@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.10.3
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.0
 	github.com/herumi/bls-go-binary v1.0.1-0.20220103075647-4e46f4fe2af2
 	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/koding/cache v0.0.0-20161222233015-e8a81b0b3f20
@@ -23,10 +23,10 @@ require (
 	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
-	golang.org/x/net v0.0.0-20220607020251-c690dde0001d // indirect
+	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e // indirect
 	golang.org/x/time v0.0.0-20220609170525-579cf78fd858 // indirect
-	google.golang.org/genproto v0.0.0-20220608133413-ed9918b62aac
-	google.golang.org/grpc v1.47.0
+	google.golang.org/genproto v0.0.0-20220719170305-83ca9fad585f
+	google.golang.org/grpc v1.48.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.28.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
