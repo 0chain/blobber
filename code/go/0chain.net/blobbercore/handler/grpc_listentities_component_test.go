@@ -12,22 +12,14 @@ import (
 )
 
 func TestBlobberGRPCService_ListEntities(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
-
-	bClient, tdController := setupHandlerIntegrationTests(t)
+	bClient, tdController := setupGrpcTests(t)
 
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 
-	err := tdController.ClearDatabase()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = tdController.AddListEntitiesTestData(allocationTx, pubKey)
+	err := tdController.AddListEntitiesTestData(allocationTx, pubKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,22 +79,25 @@ func TestBlobberGRPCService_ListEntities(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		ctx := context.Background()
-		ctx = metadata.NewOutgoingContext(ctx, tc.context)
-		listEntitiesResp, err := bClient.ListEntities(ctx, tc.input)
-		if err != nil {
-			if !tc.expectingError {
-				t.Fatal(err)
+		tt := tc
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx = metadata.NewOutgoingContext(ctx, tc.context)
+			listEntitiesResp, err := bClient.ListEntities(ctx, tc.input)
+			if err != nil {
+				if !tc.expectingError {
+					t.Fatal(err)
+				}
+				return
 			}
-			continue
-		}
 
-		if tc.expectingError {
-			t.Fatal("expected error")
-		}
+			if tc.expectingError {
+				t.Fatal("expected error")
+			}
 
-		if listEntitiesResp.GetMetaData().GetDirMetaData().GetPath() != tc.expectedPath {
-			t.Fatal("unexpected path from ListEntities rpc")
-		}
+			if listEntitiesResp.GetMetaData().GetDirMetaData().GetPath() != tc.expectedPath {
+				t.Fatal("unexpected path from ListEntities rpc")
+			}
+		})
 	}
 }

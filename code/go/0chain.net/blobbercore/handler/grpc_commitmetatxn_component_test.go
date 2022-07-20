@@ -17,11 +17,7 @@ import (
 )
 
 func TestBlobberGRPCService_CommitMetaTxn(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
-
-	bClient, tdController := setupHandlerIntegrationTests(t)
+	bClient, tdController := setupGrpcTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
@@ -55,9 +51,6 @@ func TestBlobberGRPCService_CommitMetaTxn(t *testing.T) {
 
 	wm.Signature = wmSig
 
-	if err := tdController.ClearDatabase(); err != nil {
-		t.Fatal(err)
-	}
 	if err := tdController.AddCommitTestData(allocationTx, pubKey, clientId, wmSig, now); err != nil {
 		t.Fatal(err)
 	}
