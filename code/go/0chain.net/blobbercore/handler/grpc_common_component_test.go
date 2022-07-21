@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/automigration"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/stretchr/testify/require"
 	"log"
 	"math/rand"
 	"os"
@@ -12,13 +15,8 @@ import (
 
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"gorm.io/driver/postgres"
-
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/spf13/viper"
 
 	"testing"
@@ -27,10 +25,6 @@ import (
 
 	"github.com/0chain/gosdk/core/zcncrypto"
 )
-
-const BlobberTestAddr = "127.0.0.1:35051"
-const RetryAttempts = 8
-const RetryTimeout = 3
 
 func randString(n int) string {
 	const hexLetters = "abcdef0123456789"
@@ -42,44 +36,45 @@ func randString(n int) string {
 	return sb.String()
 }
 
-func setupHandlerIntegrationTests(t *testing.T) (blobbergrpc.BlobberServiceClient, *TestDataController) {
-	// args := make(map[string]bool)
-	// for _, arg := range os.Args {
-	// 	args[arg] = true
-	// }
+func setupGrpcTests(t *testing.T) (blobbergrpc.BlobberServiceClient, *TestDataController) {
+	startGRPCServer(t)
 
-	if !isIntegrationTest() {
-		//	if !args["integration"] {
-		t.Logf("Skipping integration test: %s", t.Name())
-		t.Skip()
-	}
-
-	var conn *grpc.ClientConn
-	var err error
-	for i := 0; i < RetryAttempts; i++ {
-		conn, err = grpc.Dial(BlobberTestAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			t.Log(err)
-			<-time.After(time.Second * RetryTimeout)
-			continue
-		}
-		t.Logf("Connection is set to the target %s", BlobberTestAddr)
-		break
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-	bClient := blobbergrpc.NewBlobberServiceClient(conn)
+	bClient, _, err := makeTestClient()
+	require.NoError(t, err)
 
 	setupIntegrationTestConfig(t)
-	db, err := gorm.Open(postgres.Open(fmt.Sprintf(
-		"host=%v port=%v user=%v dbname=%v password=%v sslmode=disable",
-		config.Configuration.DBHost, config.Configuration.DBPort,
-		config.Configuration.DBUserName, config.Configuration.DBName,
-		config.Configuration.DBPassword)), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+
+	db, err := datastore.UseInMemory()
+	require.NoError(t, err)
+
+	// Enable to see SQL logging
+	//db.Logger = db.Logger.LogMode(logger.Info)
+
+	err = automigration.DropSchemas(db)
+	require.NoError(t, err)
+
+	err = automigration.MigrateSchema(db)
+	require.NoError(t, err)
+
+	// Recreate timestamp columns to be sqlite compatible.
+	// Columns with `timestamp without time zone` cannot be parsed properly in sqlite.
+	db.Exec("ALTER TABLE `reference_objects` DROP COLUMN `created_at`")
+	db.Exec("ALTER TABLE `reference_objects` ADD COLUMN `created_at` timestamp NOT NULL DEFAULT current_timestamp")
+	db.Exec("DROP INDEX `idx_updated_at`")
+	db.Exec("ALTER TABLE `reference_objects` DROP COLUMN `updated_at`")
+	db.Exec("ALTER TABLE `reference_objects` ADD COLUMN `updated_at` timestamp NOT NULL DEFAULT current_timestamp")
+	db.Exec("CREATE INDEX `idx_updated_at` ON `reference_objects`(`updated_at`)")
+	db.Exec("ALTER TABLE `challenges` DROP COLUMN `created_at`")
+	db.Exec("ALTER TABLE `challenges` ADD COLUMN `created_at` timestamp NOT NULL DEFAULT current_timestamp")
+	db.Exec("ALTER TABLE `challenges` DROP COLUMN `updated_at`")
+	db.Exec("ALTER TABLE `challenges` ADD COLUMN `updated_at` timestamp NOT NULL DEFAULT current_timestamp")
+	db.Exec("ALTER TABLE `collaborators` DROP COLUMN `created_at`")
+	db.Exec("ALTER TABLE `collaborators` ADD COLUMN `created_at` timestamp NOT NULL DEFAULT current_timestamp")
+	db.Exec("ALTER TABLE `commit_meta_txns` DROP COLUMN `created_at`")
+	db.Exec("ALTER TABLE `commit_meta_txns` ADD COLUMN `created_at` timestamp NOT NULL DEFAULT current_timestamp")
+	db.Exec("ALTER TABLE `marketplace_share_info` DROP COLUMN `available_at`")
+	db.Exec("ALTER TABLE `marketplace_share_info` ADD COLUMN `available_at` timestamp NOT NULL DEFAULT current_timestamp")
+
 	tdController := NewTestDataController(db)
 
 	return bClient, tdController
@@ -91,74 +86,6 @@ type TestDataController struct {
 
 func NewTestDataController(db *gorm.DB) *TestDataController {
 	return &TestDataController{db: db}
-}
-
-// ClearDatabase deletes all data from all tables
-func (c *TestDataController) ClearDatabase() error {
-	var err error
-	var tx *sql.Tx
-	defer func() {
-		if err != nil {
-			if tx != nil {
-				errRollback := tx.Rollback()
-				if errRollback != nil {
-					log.Println(errRollback)
-				}
-			}
-		}
-	}()
-
-	db, err := c.db.DB()
-	if err != nil {
-		return err
-	}
-
-	tx, err = db.BeginTx(context.Background(), &sql.TxOptions{})
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("truncate allocations cascade")
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("truncate reference_objects cascade")
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("truncate commit_meta_txns cascade")
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("truncate collaborators cascade")
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("truncate allocation_changes cascade")
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("truncate allocation_connections cascade")
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("truncate write_markers cascade")
-	if err != nil {
-		return err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (c *TestDataController) AddGetAllocationTestData() error {
@@ -353,17 +280,25 @@ VALUES ('exampleId' ,'` + allocationTx + `','exampleOwnerId','` + pubkey + `',` 
 		return err
 	}
 
-	_, err = tx.Exec(`
-INSERT INTO reference_objects (id, allocation_id, path_hash,lookup_hash,type,name,path,parent_path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
-VALUES (1234,'exampleId','exampleId:exampleDir','exampleId:exampleDir','d','filename','/exampleDir','','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
+	_, err = tx.Exec(` 
+INSERT INTO reference_objects (id, level,  allocation_id, path_hash,lookup_hash,type,name,path,parent_path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
+VALUES (1233, 1, 'exampleId','exampleId:root','exampleId:root','d','/','/','','roothash','rootmeta','roothash','rootmerkleRoot','actualRootHash','mimetype','writeMarker','thumbnailHash','actualRootThumbnailHash');
+`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(` 
+INSERT INTO reference_objects (id, level, allocation_id, path_hash,lookup_hash,type,name,path,parent_path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
+VALUES (1234, 1, 'exampleId','exampleId:exampleDir','exampleId:exampleDir','d','filename','/exampleDir','/','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
 `)
 	if err != nil {
 		return err
 	}
 
 	_, err = tx.Exec(`
-INSERT INTO reference_objects (id, allocation_id, path_hash,lookup_hash,type,name,path,parent_path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
-VALUES (1235,'exampleId','exampleId:examplePath','exampleId:examplePath','f','filename','/exampleDir/examplePath','/exampleDir','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
+INSERT INTO reference_objects (id, level, allocation_id, path_hash,lookup_hash,type,name,path,parent_path,hash,custom_meta,content_hash,merkle_root,actual_file_hash,mimetype,write_marker,thumbnail_hash, actual_thumbnail_hash)
+VALUES (1235, 2, 'exampleId','exampleId:examplePath','exampleId:examplePath','f','filename','/exampleDir/examplePath','/exampleDir','someHash','customMeta','contentHash','merkleRoot','actualFileHash','mimetype','writeMarker','thumbnailHash','actualThumbnailHash');
 `)
 	if err != nil {
 		return err

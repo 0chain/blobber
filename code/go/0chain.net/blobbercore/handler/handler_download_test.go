@@ -1,11 +1,9 @@
-//go:build !integration
-// +build !integration
-
 package handler
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -401,7 +399,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm := &marker.ReadMarker{}
 					rm.ClientID = ownerClient.ClientID
 					rm.ClientPublicKey = ownerClient.ClientKey
-					rm.BlobberID = ""
+					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
 					rm.OwnerID = ownerClient.ClientID

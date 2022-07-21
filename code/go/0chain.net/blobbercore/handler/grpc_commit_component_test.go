@@ -3,10 +3,12 @@ package handler
 import (
 	"context"
 	"encoding/hex"
-	"net/http"
+	"encoding/json"
+	"os"
 	"strconv"
 	"testing"
-	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 
@@ -17,25 +19,34 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func TestBlobberGRPCService_Collaborator(t *testing.T) {
-	if !isIntegrationTest() {
-		t.Skip()
-	}
+func isIntegrationTest() bool {
+	return os.Getenv("integration") == "1"
+}
 
-	bClient, tdController := setupHandlerIntegrationTests(t)
+func TestBlobberGRPCService_Commit(t *testing.T) {
+	bClient, tdController := setupGrpcTests(t)
 	allocationTx := randString(32)
 
 	pubKey, _, signScheme := GeneratePubPrivateKey(t)
 	clientSignature, _ := signScheme.Sign(encryption.Hash(allocationTx))
 	pubKeyBytes, _ := hex.DecodeString(pubKey)
 	clientId := encryption.Hash(pubKeyBytes)
-	now := common.Timestamp(time.Now().UnixNano())
+	now := common.Now()
 
 	blobberPubKey := "de52c0a51872d5d2ec04dbc15a6f0696cba22657b80520e1d070e72de64c9b04e19ce3223cae3c743a20184158457582ffe9c369ca9218c04bfe83a26a62d88d"
 	blobberPubKeyBytes, _ := hex.DecodeString(blobberPubKey)
 
+	node.Self.ID = encryption.Hash(blobberPubKeyBytes)
+
 	fr := reference.Ref{
-		AllocationID: "exampleId",
+		AllocationID:   "exampleId",
+		Type:           "f",
+		Name:           "new_name",
+		Path:           "/new_name",
+		ContentHash:    "contentHash",
+		MerkleRoot:     "merkleRoot",
+		ActualFileHash: "actualFileHash",
+		ChunkSize:      65536,
 	}
 
 	rootRefHash := encryption.Hash(encryption.Hash(fr.GetFileHashData()))
@@ -45,7 +56,7 @@ func TestBlobberGRPCService_Collaborator(t *testing.T) {
 		PreviousAllocationRoot: "/",
 		AllocationID:           "exampleId",
 		Size:                   1337,
-		BlobberID:              encryption.Hash(blobberPubKeyBytes),
+		BlobberID:              node.Self.ID,
 		Timestamp:              now,
 		ClientID:               clientId,
 	}
@@ -57,19 +68,22 @@ func TestBlobberGRPCService_Collaborator(t *testing.T) {
 
 	wm.Signature = wmSig
 
-	if err := tdController.ClearDatabase(); err != nil {
+	wmRaw, err := json.Marshal(wm)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := tdController.AddCommitTestData(allocationTx, pubKey, clientId, wmSig, now); err != nil {
+
+	err = tdController.AddCommitTestData(allocationTx, pubKey, clientId, wmSig, now)
+	if err != nil {
 		t.Fatal(err)
 	}
 
 	testCases := []struct {
-		name            string
-		context         metadata.MD
-		input           *blobbergrpc.CollaboratorRequest
-		expectedMessage string
-		expectingError  bool
+		name               string
+		context            metadata.MD
+		input              *blobbergrpc.CommitRequest
+		expectedAllocation string
+		expectingError     bool
 	}{
 		{
 			name: "Success",
@@ -78,43 +92,39 @@ func TestBlobberGRPCService_Collaborator(t *testing.T) {
 				common.ClientSignatureHeader: clientSignature,
 				common.ClientKeyHeader:       pubKey,
 			}),
-			input: &blobbergrpc.CollaboratorRequest{
-				Path:       "/some_file",
-				PathHash:   "exampleId:examplePath",
-				Allocation: allocationTx,
-				Method:     http.MethodPost,
-				CollabId:   "10",
+			input: &blobbergrpc.CommitRequest{
+				Allocation:   allocationTx,
+				ConnectionId: "connection_id",
+				WriteMarker:  string(wmRaw),
 			},
-			expectedMessage: "Added collaborator successfully",
-			expectingError:  false,
+			expectedAllocation: "exampleId",
+			expectingError:     false,
 		},
 		{
-			name: "Fail",
+			name: "invalid write_marker",
 			context: metadata.New(map[string]string{
 				common.ClientHeader:          clientId,
 				common.ClientSignatureHeader: clientSignature,
 				common.ClientKeyHeader:       pubKey,
 			}),
-			input: &blobbergrpc.CollaboratorRequest{
-				Path:       "/some_file",
-				PathHash:   "exampleId:examplePath",
-				Allocation: allocationTx,
-				Method:     http.MethodPost,
+			input: &blobbergrpc.CommitRequest{
+				Allocation:   allocationTx,
+				ConnectionId: "invalid",
+				WriteMarker:  "invalid",
 			},
-			expectedMessage: "",
-			expectingError:  true,
+			expectedAllocation: "",
+			expectingError:     true,
 		},
 	}
 
 	for _, tc := range testCases {
 		ctx := context.Background()
 		ctx = metadata.NewOutgoingContext(ctx, tc.context)
-		response, err := bClient.Collaborator(ctx, tc.input)
+		getCommiteResp, err := bClient.Commit(ctx, tc.input)
 		if err != nil {
 			if !tc.expectingError {
 				t.Fatal(err)
 			}
-
 			continue
 		}
 
@@ -122,8 +132,8 @@ func TestBlobberGRPCService_Collaborator(t *testing.T) {
 			t.Fatal("expected error")
 		}
 
-		if response.GetMessage() != tc.expectedMessage {
-			t.Fatal("failed!")
+		if getCommiteResp.WriteMarker.AllocationId != tc.expectedAllocation {
+			t.Fatal("unexpected root name from GetObject")
 		}
 	}
 }

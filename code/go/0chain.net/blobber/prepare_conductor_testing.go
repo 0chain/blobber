@@ -1,6 +1,9 @@
 //go:build integration_tests
 // +build integration_tests
 
+// Integration tests is also called conductor tests.
+// TODO. There seems to be missing setup for conductor as only prepareBlobber() is hooked.
+
 package main
 
 import (
@@ -10,13 +13,11 @@ import (
 )
 
 // start lock, where the miner is ready to connect to blockchain (BC)
-func initIntegrationsTests(id string) {
+func prepareBlobber(id string) {
 	logging.Logger.Info("integration tests")
 	crpc.Init(id)
 }
 
-func shutdownIntegrationTests() {
+func prepareBlobberShutdown() {
 	crpc.Shutdown()
 }
-
-func startGRPCServer() {}
