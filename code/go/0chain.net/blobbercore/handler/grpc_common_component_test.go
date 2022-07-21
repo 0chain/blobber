@@ -4,14 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/automigration"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/stretchr/testify/require"
 	"log"
 	"math/rand"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/automigration"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/stretchr/testify/require"
 
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 
@@ -58,12 +59,6 @@ func setupGrpcTests(t *testing.T) (blobbergrpc.BlobberServiceClient, *TestDataCo
 
 	// Recreate timestamp columns to be sqlite compatible.
 	// Columns with `timestamp without time zone` cannot be parsed properly in sqlite.
-	db.Exec("ALTER TABLE `reference_objects` DROP COLUMN `created_at`")
-	db.Exec("ALTER TABLE `reference_objects` ADD COLUMN `created_at` timestamp NOT NULL DEFAULT current_timestamp")
-	db.Exec("DROP INDEX `idx_updated_at`")
-	db.Exec("ALTER TABLE `reference_objects` DROP COLUMN `updated_at`")
-	db.Exec("ALTER TABLE `reference_objects` ADD COLUMN `updated_at` timestamp NOT NULL DEFAULT current_timestamp")
-	db.Exec("CREATE INDEX `idx_updated_at` ON `reference_objects`(`updated_at`)")
 	db.Exec("ALTER TABLE `challenges` DROP COLUMN `created_at`")
 	db.Exec("ALTER TABLE `challenges` ADD COLUMN `created_at` timestamp NOT NULL DEFAULT current_timestamp")
 	db.Exec("ALTER TABLE `challenges` DROP COLUMN `updated_at`")
