@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"log"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -58,7 +56,6 @@ func syncOpenChallenges(ctx context.Context) {
 			logging.Logger.Info("[challenge]open: No challenge entity from the challenge map")
 			continue
 		}
-		log.Println("challenge: sync", challengeObj.ChallengeID)
 		saveNewChallenge(challengeObj, ctx)
 	}
 
@@ -185,7 +182,6 @@ func commitProcessed(ctx context.Context) {
 		for _, challenge := range challenges {
 			c := challenge
 			swg.Add()
-			log.Println("challenge: commit ", time.Now())
 			go func() {
 				defer swg.Done()
 				commitChallenge(c)
