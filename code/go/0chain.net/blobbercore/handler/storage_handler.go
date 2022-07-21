@@ -830,7 +830,7 @@ func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Req
 		if err != nil {
 			return nil, common.NewError("invalid_parameters", "Invalid page limit value. Got Error "+err.Error())
 		}
-		if pageLimit <= 0 {
+		if pageLimit < 0 {
 			return nil, common.NewError("invalid_parameters", "Zero/Negative page limit value is not allowed")
 		}
 
@@ -842,11 +842,24 @@ func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Req
 		pageLimit = PageLimit
 	}
 
-	refs, totalPages, offset, err := reference.GetRecentlyCreatedRefs(ctx, allocationID, pageLimit, offset)
+	var fromDate int
+	fromDateStr := r.FormValue("from_date")
+	if fromDateStr != "" {
+		fromDate, err = strconv.Atoi(fromDateStr)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid from date value. Got error "+err.Error())
+		}
+		if fromDate < 0 {
+			return nil, common.NewError("invalid_parameters", "Negative from date value is not allowed")
+		}
+	}
+
+	refs, totalPages, offset, err := reference.GetRecentlyCreatedRefs(ctx, allocationID, pageLimit, offset, fromDate)
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Printf("\nReturning refs: %v\n\n", refs)
 	return &blobberhttp.RecentRefResult{
 		Refs:       refs,
 		TotalPages: int(totalPages),

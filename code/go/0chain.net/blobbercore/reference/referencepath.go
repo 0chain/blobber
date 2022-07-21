@@ -299,19 +299,25 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type,
 // So if a file is created with path "/a/b/c/d/e/f.txt" and if "/a" didn't exist previously then
 // creation date for "/a", "/a/b", "/a/b/c", "/a/b/c/d", "/a/b/c/d/e" and "/a/b/c/d/e/f.txt" will be the same.
 // The refs returned will be in "/a/b/c/d/e/f.txt", "/a/b/c/d/e", ... order.
+//
+// pageLimit --> maximum number of refs to returs
+// fromDate --> timestamp to begin searching refs from i.e. refs created date greater than fromDate
+// totalPages --> total pages available. Equal to totalRefs/pageLimit
+// newOffset --> offset to use for subsequent request
 func GetRecentlyCreatedRefs(
 	// Note: Above mentioned function will only be feasible after splitting reference_objects table.
 	// Since current limit is 50,000 files per allocation, Using common offset method should not be a big
 	// deal
 	ctx context.Context,
 	allocID string,
-	pageLimit, offset int,
+	pageLimit, offset, fromDate int,
 ) (refs []*PaginatedRef, totalPages int, newOffset int, err error) {
 
 	db := datastore.GetStore().GetTransaction(ctx)
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- db.Model(&Ref{}).Where("allocation_id=?", allocID).
+		errCh <- db.Model(&Ref{}).Where("allocation_id=? AND created_at > ?",
+			allocID, fromDate).
 			Order("created_at desc, path asc").
 			Offset(offset).
 			Limit(pageLimit).Find(&refs).Error
@@ -320,7 +326,8 @@ func GetRecentlyCreatedRefs(
 
 	var count int64
 	go func() {
-		errCh <- db.Model(&Ref{}).Where("allocation_id=?", allocID).Count(&count).Error
+		errCh <- db.Model(&Ref{}).Where("allocation_id=? AND created_at > ?",
+			allocID, fromDate).Count(&count).Error
 	}()
 
 	for i := 0; i < 2; i++ {
