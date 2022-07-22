@@ -541,9 +541,6 @@ func TestDownloadFile(t *testing.T) {
 				var sh StorageHandler
 				_, err := sh.DownloadFile(setupCtx(test.parameters), request)
 
-				if (test.want.err) != (err != nil) {
-					fmt.Printf("\n\n%v --> Error occurred: %v\n\n", test.name, err)
-				}
 				require.EqualValues(t, test.want.err, err != nil)
 				if err != nil {
 					require.EqualValues(t, test.want.errMsg, err.Error())

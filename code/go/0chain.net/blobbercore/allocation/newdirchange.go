@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -24,7 +23,6 @@ type NewDir struct {
 func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
 
-	fmt.Printf("\n\nApplying change for direcory change\n\n")
 	totalRefs, err := reference.CountRefs(ctx, nf.AllocationID)
 	if err != nil {
 		return nil, err

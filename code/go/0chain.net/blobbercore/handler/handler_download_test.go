@@ -3,13 +3,14 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"regexp"
 	"testing"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
@@ -661,7 +662,6 @@ func TestHandlers_Download(t *testing.T) {
 				header := make([]byte, EncryptionHeaderSize)
 				copy(header, encMsg.MessageChecksum+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
-				fmt.Println("Encrypted data: ", string(data))
 				setMockFileBlock(data)
 			},
 			end: func() {
@@ -1149,10 +1149,6 @@ func TestHandlers_Download(t *testing.T) {
 	tests := append(positiveTests, negativeTests...)
 
 	for _, test := range tests {
-		if test.name != "DownloadFile_file_return_stale_readmarker" {
-			fmt.Printf("\n\nSkipping Test: %s\n\n", test.name)
-			continue
-		}
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)
 			test.setupDbMock(mock)
@@ -1165,7 +1161,6 @@ func TestHandlers_Download(t *testing.T) {
 				test.end()
 			}
 
-			fmt.Printf("\nResponse body: %v", test.args.w.Body.String())
 			assert.Equal(t, test.wantCode, test.args.w.Result().StatusCode)
 			if test.wantCode != http.StatusOK || test.wantBody != "" {
 				assert.Equal(t, test.wantBody, test.args.w.Body.String())
