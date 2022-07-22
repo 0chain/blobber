@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.10.3
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.0
 	github.com/herumi/bls-go-binary v1.0.1-0.20220103075647-4e46f4fe2af2
 	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/koding/cache v0.0.0-20161222233015-e8a81b0b3f20
@@ -22,22 +22,22 @@ require (
 	github.com/stretchr/testify v1.8.0
 	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.21.0
-	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
-	golang.org/x/net v0.0.0-20220607020251-c690dde0001d // indirect
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
+	golang.org/x/net v0.0.0-20220708220712-1185a9018129 // indirect
 	golang.org/x/time v0.0.0-20220609170525-579cf78fd858 // indirect
-	google.golang.org/genproto v0.0.0-20220608133413-ed9918b62aac
-	google.golang.org/grpc v1.47.0
+	google.golang.org/genproto v0.0.0-20220720214146-176da50484ac
+	google.golang.org/grpc v1.48.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.28.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
-	gorm.io/datatypes v1.0.6
-	gorm.io/driver/postgres v1.3.7
-	gorm.io/gorm v1.23.6
+	gorm.io/datatypes v1.0.7
+	gorm.io/driver/postgres v1.3.8
+	gorm.io/gorm v1.23.8
 )
 
 require (
-	golang.org/x/sys v0.0.0-20220610221304-9f5ed59c137d
-	gorm.io/driver/sqlite v1.3.1
+	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
+	gorm.io/driver/sqlite v1.3.6
 )
 
 require (
@@ -51,7 +51,7 @@ require (
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
-	github.com/ethereum/go-ethereum v1.10.18 // indirect
+	github.com/ethereum/go-ethereum v1.10.20 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-ini/ini v1.66.6 // indirect
@@ -75,19 +75,19 @@ require (
 	github.com/jackc/pgx/v4 v4.16.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/klauspost/compress v1.15.6 // indirect
-	github.com/klauspost/cpuid/v2 v2.0.13 // indirect
-	github.com/klauspost/reedsolomon v1.9.16 // indirect
+	github.com/klauspost/compress v1.15.8 // indirect
+	github.com/klauspost/cpuid/v2 v2.1.0 // indirect
+	github.com/klauspost/reedsolomon v1.10.0 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
-	github.com/mattn/go-sqlite3 v1.14.12 // indirect
+	github.com/mattn/go-sqlite3 v1.14.14 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/cors v1.8.2 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
-	github.com/spf13/afero v1.8.2 // indirect
+	github.com/spf13/afero v1.9.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -106,7 +106,7 @@ require (
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/driver/mysql v1.3.4 // indirect
+	gorm.io/driver/mysql v1.3.5 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
