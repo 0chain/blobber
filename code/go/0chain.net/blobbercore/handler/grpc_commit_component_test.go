@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"os"
 	"strconv"
 	"testing"
 
@@ -18,10 +17,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"google.golang.org/grpc/metadata"
 )
-
-func isIntegrationTest() bool {
-	return os.Getenv("integration") == "1"
-}
 
 func TestBlobberGRPCService_Commit(t *testing.T) {
 	bClient, tdController := setupGrpcTests(t)
