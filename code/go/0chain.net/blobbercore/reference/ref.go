@@ -351,18 +351,18 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 }
 
 func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, err error) {
+	l := len(r.Children)
+	if l == 0 && !r.childrenLoaded {
+		h = r.Hash
+		return
+	}
+
 	defer func() {
 		if err == nil && saveToDB {
 			err = r.SaveDirRef(ctx)
 
 		}
 	}()
-
-	l := len(r.Children)
-	if l == 0 && !r.childrenLoaded {
-		h = r.Hash
-		return
-	}
 
 	childHashes := make([]string, l)
 	childPathHashes := make([]string, l)
