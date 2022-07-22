@@ -35,11 +35,10 @@ func setupWorkers(ctx context.Context) {
 func refreshPriceOnChain(ctx context.Context) {
 	var REPEAT_DELAY = 60 * 60 * time.Duration(viper.GetInt("price_worker_in_hours")) // 12 hours with default settings
 	var err error
-loop:
 	for {
 		select {
 		case <-ctx.Done():
-			break loop
+			return
 
 		case <-time.After(REPEAT_DELAY * time.Second):
 			err = handler.RefreshPriceOnChain(common.GetRootContext())
@@ -52,11 +51,10 @@ loop:
 }
 
 func startHealthCheck(ctx context.Context) {
-loop:
 	for {
 		select {
 		case <-ctx.Done():
-			break loop
+			return
 		case <-time.After(config.Configuration.HealthCheckWorkerFreq):
 			go func() {
 				start := time.Now()
@@ -78,11 +76,10 @@ func startRefreshSettings(ctx context.Context) {
 	const REPEAT_DELAY = 60 * 3 // 3 minutes
 	var err error
 	var b *zcncore.Blobber
-loop:
 	for {
 		select {
 		case <-ctx.Done():
-			break loop
+			return
 		case <-time.After(REPEAT_DELAY * time.Second):
 			b, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
 			if err != nil {
