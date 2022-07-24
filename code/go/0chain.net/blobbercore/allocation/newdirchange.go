@@ -54,6 +54,7 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 	}
 
 	dirRef := rootRef
+	var newDirs []*reference.Ref
 	for i := 0; i < len(fields); i++ {
 		found := false
 		for _, child := range dirRef.Children {
@@ -78,7 +79,9 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 			newRef.UpdatedAt = ts
 			newRef.HashToBeComputed = true
 			dirRef.AddChild(newRef)
+			newDirs = append(newDirs, newRef)
 			dirRef = newRef
+
 		}
 
 	}
@@ -87,8 +90,10 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 		return nil, err
 	}
 
-	if err := stats.NewDirCreated(ctx, dirRef.ID); err != nil {
-		return nil, err
+	for _, r := range newDirs {
+		if err := stats.NewDirCreated(ctx, r.ID); err != nil {
+			return nil, err
+		}
 	}
 
 	return rootRef, nil
