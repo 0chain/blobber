@@ -330,7 +330,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	allocationID := allocationObj.ID
 
-	connectionID, ok := GetField(r, "connection_id")
+	connectionID, ok := common.GetField(r, "connection_id")
 	if !ok {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
@@ -853,7 +853,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	connectionID, ok := GetField(r, "connection_id")
+	connectionID, ok := common.GetField(r, "connection_id")
 	if !ok {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}

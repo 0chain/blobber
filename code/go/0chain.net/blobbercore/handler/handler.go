@@ -37,8 +37,8 @@ func SetupHandlers(r *mux.Router) {
 	r.Use(useRecovery, useCors, common.UseUserRateLimit)
 
 	//object operations
-	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONResponse(WithConnection(UploadHandler)))
-	r.HandleFunc("/v1/file/download/{allocation}", common.ToByteStream(WithConnection(DownloadHandler))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/file/upload/{allocation}", common.FileRateLimit(common.ToJSONResponse(WithConnection(UploadHandler))))
+	r.HandleFunc("/v1/file/download/{allocation}", common.FileRateLimit(common.ToByteStream(WithConnection(DownloadHandler)))).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/v1/file/rename/{allocation}", common.ToJSONResponse(WithConnection(RenameHandler))).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/v1/file/copy/{allocation}", common.ToJSONResponse(WithConnection(CopyHandler))).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/v1/dir/{allocation}", common.ToJSONResponse(WithConnection(CreateDirHandler))).Methods(http.MethodPost, http.MethodOptions)
@@ -386,8 +386,8 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	path, _ := GetField(r, "path")
-	refereeClientID, _ := GetField(r, "refereeClientID")
+	path, _ := common.GetField(r, "path")
+	refereeClientID, _ := common.GetField(r, "refereeClientID")
 	filePathHash := fileref.GetReferenceLookup(allocationID, path)
 	//_, err = reference.GetReferenceByLookupHashForAddCollaborator(ctx, allocationID, filePathHash)
 	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})
