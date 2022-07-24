@@ -352,7 +352,7 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 
 func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, err error) {
 	l := len(r.Children)
-	if l == 0 && !r.childrenLoaded {
+	if l == 0 && !r.childrenLoaded && !r.HashToBeComputed {
 		h = r.Hash
 		return
 	}
