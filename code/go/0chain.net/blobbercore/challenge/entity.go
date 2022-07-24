@@ -80,7 +80,7 @@ type ChallengeEntity struct {
 	ValidationTickets       []*ValidationTicket   `gorm:"-" json:"validation_tickets"`
 	ObjectPathString        datatypes.JSON        `gorm:"column:object_path" json:"-"`
 	ObjectPath              *reference.ObjectPath `gorm:"-" json:"object_path"`
-	Sequence                int64                 `gorm:"column:sequence;type:bigint;AUTO_INCREMENT;<-:false"`
+	Sequence                int64                 `gorm:"column:sequence;type:bigserial;<-:false"`
 	Created                 common.Timestamp      `gorm:"-" json:"created"`
 
 	CreatedAt time.Time `gorm:"created_at;type:timestamp without time zone;not null;default:current_timestamp"`
