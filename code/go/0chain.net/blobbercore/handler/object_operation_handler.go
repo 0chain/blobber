@@ -16,7 +16,6 @@ import (
 	"github.com/0chain/gosdk/constants"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
@@ -91,20 +90,17 @@ func readPreRedeem(
 func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMarker *writemarker.WriteMarker, payerID string) (err error) {
 	// check out read pool tokens if read_price > 0
 	var (
-		db        = datastore.GetStore().GetTransaction(ctx)
-		blobberID = node.Self.ID
-		until     = common.Now() + common.Timestamp(config.Configuration.WriteLockTimeout)
-
+		db              = datastore.GetStore().GetTransaction(ctx)
+		blobberID       = node.Self.ID
 		requiredBalance = alloc.GetRequiredWriteBalance(blobberID, writeMarker.Size, writeMarker.Timestamp)
-
-		wps []*allocation.WritePool
+		wp              *allocation.WritePool
 	)
 
 	if writeMarker.Size <= 0 || requiredBalance <= 0 {
 		return
 	}
 
-	writePoolBalance, err := allocation.GetWritePoolsBalance(db, payerID, alloc.ID, until)
+	writePoolBalance, err := allocation.GetWritePoolsBalance(db, alloc.ID)
 	if err != nil {
 		Logger.Error(err.Error())
 		return common.NewError("write_pre_redeem", "database error while getting write pool balance")
@@ -119,23 +115,17 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 	requiredBalance = alloc.GetRequiredWriteBalance(blobberID, pendingWriteSize+writeMarker.Size, writeMarker.Timestamp)
 
 	if writePoolBalance < requiredBalance {
-		wps, err = allocation.RequestWritePools(payerID, alloc.ID)
+		wp, err = allocation.RequestWritePool(alloc.ID)
 		if err != nil {
 			return common.NewErrorf("write_pre_redeem", "can't request write pools from sharders: %v", err)
 		}
 
-		err = allocation.SetWritePools(db, payerID, alloc.ID, wps)
+		err = allocation.SetWritePool(db, alloc.ID, wp)
 		if err != nil {
 			return common.NewErrorf("write_pre_redeem", "can't save requested write pools: %v", err)
 		}
 
-		writePoolBalance = 0
-		for _, wp := range wps {
-			if wp.ExpireAt < until {
-				continue
-			}
-			writePoolBalance += wp.Balance
-		}
+		writePoolBalance += wp.Balance
 	}
 
 	if writePoolBalance < requiredBalance {
