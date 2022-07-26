@@ -49,6 +49,7 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 	}
 
 	rootRef.UpdatedAt = ts
+	rootRef.HashToBeComputed = true
 
 	dirRef := rootRef
 	fields, err := common.GetPathFields(rf.DestPath)
