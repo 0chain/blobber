@@ -86,10 +86,10 @@ func (a *Allocation) GetRequiredReadBalance(blobberID string, numBlocks int64) (
 }
 
 // GetRequiredWriteBalance Get tokens required to write the give size
-func (a *Allocation) GetRequiredWriteBalance(blobberID string, writeSize int64, wmt common.Timestamp) (value int64) {
+func (a *Allocation) GetRequiredWriteBalance(blobberID string, writeSize int64, wmt common.Timestamp) (value uint64) {
 	for _, d := range a.Terms {
 		if d.BlobberID == blobberID {
-			value = int64(sizeInGB(writeSize)*float64(d.WritePrice)) * int64(a.RestDurationInTimeUnits(wmt))
+			value = uint64(sizeInGB(writeSize)*float64(d.WritePrice)) * uint64(a.RestDurationInTimeUnits(wmt))
 			break
 		}
 	}
@@ -160,11 +160,9 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite int64
 	return nil
 }
 
-func GetWritePoolsBalance(db *gorm.DB, clientID, allocationID string, until common.Timestamp) (balance int64, err error) {
+func GetWritePoolsBalance(db *gorm.DB, allocationID string) (balance uint64, err error) {
 	err = db.Model(&WritePool{}).Select("sum (balance) as tot_balance").Where(
-		"allocation_id = ? AND "+
-			"client_id = ? AND "+
-			"expire_at > ?", allocationID, clientID, until,
+		"allocation_id = ?", allocationID,
 	).Scan(&balance).Error
 	return
 }
@@ -205,11 +203,8 @@ func (ReadPool) TableName() string {
 }
 
 type WritePool struct {
-	PoolID       string           `gorm:"column:pool_id;size:64;primaryKey"`
-	ClientID     string           `gorm:"column:client_id;size:64;not null;index:idx_write_pools_cab,priority:1"`
-	AllocationID string           `gorm:"column:allocation_id;size:64;not null;index:idx_write_pools_cab,priority:2"`
-	Balance      int64            `gorm:"column:balance;not null"`
-	ExpireAt     common.Timestamp `gorm:"column:expire_at;not null"`
+	AllocationID string `gorm:"column:allocation_id;size:64;not null;index:idx_write_pools_cab,priority:1"`
+	Balance      uint64 `gorm:"column:balance;not null"`
 }
 
 func (WritePool) TableName() string {
@@ -250,26 +245,25 @@ func UpdateReadPool(db *gorm.DB, rp *ReadPool) error {
 	}).Error
 }
 
-func SetWritePools(db *gorm.DB, clientID, allocationID string, wps []*WritePool) (err error) {
-	const query = `client_id = ? AND
-				allocation_id = ?`
+func SetWritePool(db *gorm.DB, allocationID string, wp *WritePool) (err error) {
+	const query = `allocation_id = ?`
 
-	var stub []*WritePool
+	var stub *WritePool
+
 	err = db.Model(&WritePool{}).
-		Where(query, clientID, allocationID).
+		Where(query, allocationID).
 		Delete(&stub).Error
 	if err != nil {
 		return
 	}
 
-	if len(wps) == 0 {
+	if wp == nil {
 		return
 	}
 
 	err = db.Model(&WritePool{}).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "pool_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"balance"}),
-	}).Create(wps).Error
+	}).Create(wp).Error
 	return
 }
 
