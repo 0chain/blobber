@@ -3,6 +3,7 @@ package zcn
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/0chain/gosdk/zcncore"
@@ -46,7 +47,7 @@ func (cb *getBlobberCallback) OnInfoAvailable(op int, status int, info string, e
 	}
 	b := &zcncore.Blobber{}
 	if err := json.Unmarshal([]byte(info), b); err != nil {
-		cb.Error = err
+		cb.Error = fmt.Errorf("getBlobber:json %s", info)
 		return
 	}
 
