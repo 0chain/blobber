@@ -16,6 +16,7 @@ on:
 env:
   BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY }}
   VALIDATOR_REGISTRY: ${{ secrets.VALIDATOR_REGISTRY }}
+  DOCKER_CLI_EXPERIMENTAL: true
 
 jobs:
   blobber:
