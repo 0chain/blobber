@@ -100,24 +100,23 @@ func main() {
 
 	if len(*hostUrl) > 0 {
 		node.Self.URL = *hostUrl
-	} else {
-
-		if *hostname == "" {
-			panic("Please specify --hostname which is the public hostname")
-		}
-
-		if *portString == "" {
-			panic("Please specify --port which is the port on which requests are accepted")
-		}
-
-		port, err := strconv.Atoi(*portString) //fmt.Sprintf(":%v", port) // node.Self.Port
-		if err != nil {
-			Logger.Panic("Port specified is not Int " + *portString)
-			return
-		}
-
-		node.Self.SetHostURL("http", *hostname, port)
 	}
+
+	if *hostname == "" {
+		panic("Please specify --hostname which is the public hostname")
+	}
+
+	if *portString == "" {
+		panic("Please specify --port which is the port on which requests are accepted")
+	}
+
+	port, err := strconv.Atoi(*portString) //fmt.Sprintf(":%v", port) // node.Self.Port
+	if err != nil {
+		Logger.Panic("Port specified is not Int " + *portString)
+		return
+	}
+
+	node.Self.SetHostURL("http", *hostname, port)
 
 	Logger.Info(" Base URL" + node.Self.GetURLBase())
 
