@@ -98,7 +98,7 @@ func main() {
 	reader.Close()
 	node.Self.SetKeys(publicKey, privateKey)
 
-	if len(*hostUrl) > 0 {
+	if len(*hosturl) > 0 {
 		node.Self.URL = *hostUrl
 	} else {
 
