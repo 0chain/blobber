@@ -170,6 +170,15 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		return nil, common.NewErrorf("download_file", "invalid allocation id passed: %v", err)
 	}
 
+	key := clientID + ":" + alloc.ID
+	lock, isNewLock := readmarker.ReadmarkerMapLock.GetLock(key)
+	if !isNewLock {
+		return nil, common.NewErrorf("lock_exists", fmt.Sprintf("lock exists for key: %v", key))
+	}
+
+	lock.Lock()
+	defer lock.Unlock()
+
 	dr, err := FromDownloadRequest(allocationTx, r)
 	if err != nil {
 		return nil, err
