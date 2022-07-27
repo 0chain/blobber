@@ -47,7 +47,7 @@ func (cb *getBlobberCallback) OnInfoAvailable(op int, status int, info string, e
 	}
 	b := &zcncore.Blobber{}
 	if err := json.Unmarshal([]byte(info), b); err != nil {
-		cb.Error = fmt.Errorf("getBlobber:json %s", info)
+		cb.Error = fmt.Errorf("getBlobber:json %s %w", info, err)
 		return
 	}
 
