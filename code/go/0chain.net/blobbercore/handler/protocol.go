@@ -89,6 +89,7 @@ func RegisterBlobber(ctx context.Context) error {
 	if err != nil || b.BaseURL != node.Self.GetURLBase() { // blobber is not registered yet, baseURL is changed
 		txnHash, err := sendSmartContractBlobberAdd(ctx)
 		if err != nil {
+			logging.Logger.Error("Error when sending add request to blockchain", zap.Any("err", err))
 			return err
 		}
 

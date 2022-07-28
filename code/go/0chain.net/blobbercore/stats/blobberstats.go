@@ -234,8 +234,7 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 
 	const join = `
 	INNER JOIN file_stats ON reference_objects.id = file_stats.ref_id
-	WHERE reference_objects.type = 'f'
-	AND reference_objects.deleted_at IS NULL`
+	WHERE reference_objects.type = 'f'`
 
 	var (
 		db  = datastore.GetStore().GetTransaction(ctx)
@@ -271,7 +270,7 @@ func (bs *BlobberStats) loadMinioStats(ctx context.Context) {
 		Select(`
 			COALESCE (SUM (size), 0) AS cloud_files_size,
 			COUNT (*) AS cloud_total_files`).
-		Where("on_cloud = 'TRUE' and type = 'f' and deleted_at IS NULL").
+		Where("on_cloud = 'TRUE' and type = 'f'").
 		Row()
 
 	err = row.Scan(&bs.CloudFilesSize, &bs.CloudTotalFiles)
@@ -321,8 +320,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 		Joins(`
             INNER JOIN allocations
             ON allocations.id = reference_objects.allocation_id`).
-		Where(`reference_objects.type = 'f'
-            AND reference_objects.deleted_at IS NULL`).
+		Where(`reference_objects.type = 'f'`).
 		Group(`reference_objects.allocation_id, allocations.expiration_date`).
 		Group(`reference_objects.allocation_id, allocations.size`).
 		Rows()
@@ -356,9 +354,9 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 	}
 
 	var count int64
-	err = db.Table("reference_objects").Where("deleted_at is null").Count(&count).Error
+	err = db.Table("reference_objects").Count(&count).Error
 	if err != nil {
-		Logger.Error("loadAllocationStats err where deleted_at is nul", zap.Any("err", err))
+		Logger.Error("loadAllocationStats err", zap.Any("err", err))
 		return
 	}
 

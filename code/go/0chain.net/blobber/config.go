@@ -125,10 +125,14 @@ func setupConfig(configDir string, deploymentMode int) {
 
 	transaction.MinConfirmation = config.Configuration.MinConfirmation
 
-	config.Configuration.Name = viper.GetString("name")
-	config.Configuration.WebsiteUrl = viper.GetString("website_url")
-	config.Configuration.LogoUrl = viper.GetString("logo_url")
-	config.Configuration.Description = viper.GetString("description")
+	config.Configuration.Name = viper.GetString("info.name")
+	config.Configuration.WebsiteUrl = viper.GetString("info.website_url")
+	config.Configuration.LogoUrl = viper.GetString("info.logo_url")
+	config.Configuration.Description = viper.GetString("info.description")
+
+	config.Configuration.Geolocation = config.GeolocationConfig{}
+	config.Configuration.Geolocation.Latitude = viper.GetFloat64("geolocation.latitude")
+	config.Configuration.Geolocation.Longitude = viper.GetFloat64("geolocation.longitude")
 
 	fmt.Print("		[OK]\n")
 }

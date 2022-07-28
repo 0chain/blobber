@@ -47,7 +47,7 @@ func syncOpenChallenges(ctx context.Context) {
 	d := json.NewDecoder(bytesReader)
 	d.UseNumber()
 	if err := d.Decode(&blobberChallenges); err != nil {
-		logging.Logger.Error("[challenge]json: ", zap.Error(err))
+		logging.Logger.Error("[challenge]json: ", zap.String("resp", string(retBytes)), zap.Error(err))
 		return
 	}
 

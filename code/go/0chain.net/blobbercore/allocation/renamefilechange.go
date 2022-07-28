@@ -8,7 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"go.uber.org/zap"
 )
@@ -24,11 +24,13 @@ func (rf *RenameFileChange) DeleteTempFile() error {
 	return nil
 }
 
-func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
+	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
 
-	isFilePresent, err := reference.IsRefExist(ctx, rf.AllocationID, rf.NewName)
+	newPath := filepath.Join(filepath.Dir(rf.Path), rf.NewName)
+	isFilePresent, err := reference.IsRefExist(ctx, rf.AllocationID, newPath)
 	if err != nil {
-		Logger.Info("invalid_reference_path", zap.Error(err))
+		logging.Logger.Info("invalid_reference_path", zap.Error(err))
 	}
 
 	if isFilePresent {
@@ -39,78 +41,76 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 	if err != nil {
 		return nil, err
 	}
+
 	affectedRef.HashToBeComputed = true
-	path, _ := filepath.Split(affectedRef.Path)
-	path = filepath.Clean(path)
 	affectedRef.Name = rf.NewName
-	newPath := filepath.Join(path, rf.NewName)
-	affectedRef.UpdatePath(newPath, path)
+	affectedRef.Path = newPath
+	affectedRef.UpdatedAt = ts
 	if affectedRef.Type == reference.FILE {
 		stats.FileUpdated(ctx, affectedRef.ID)
+	} else {
+		rf.processChildren(ctx, affectedRef, ts)
 	}
 
-	rf.processChildren(ctx, affectedRef)
-
-	path, _ = filepath.Split(rf.Path)
-	path = filepath.Clean(path)
-	tSubDirs := reference.GetSubDirsFromPath(path)
-
-	rootRef, err := reference.GetReferencePath(ctx, rf.AllocationID, rf.Path)
+	parentPath := filepath.Dir(rf.Path)
+	fields, err := common.GetPathFields(parentPath)
 	if err != nil {
 		return nil, err
 	}
+
+	rootRef, err := reference.GetReferencePath(ctx, rf.AllocationID, parentPath)
+	if err != nil {
+		return nil, err
+	}
+
+	rootRef.UpdatedAt = ts
 	rootRef.HashToBeComputed = true
 	dirRef := rootRef
-	treelevel := 0
-	for treelevel < len(tSubDirs) {
+
+	for i := 0; i < len(fields); i++ {
 		found := false
 		for _, child := range dirRef.Children {
-			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
-				if child.Name == tSubDirs[treelevel] {
-					dirRef = child
-					dirRef.HashToBeComputed = true
-					found = true
-					break
-				}
+			if child.Name == fields[i] {
+				dirRef = child
+				dirRef.UpdatedAt = ts
+				dirRef.HashToBeComputed = true
+				found = true
+				break
 			}
 		}
-		if found {
-			treelevel++
-		} else {
+
+		if !found {
 			return nil, common.NewError("invalid_reference_path", "Invalid reference path from the blobber")
 		}
 	}
-	if len(dirRef.Children) == 0 {
-		Logger.Error("no files in root folder", zap.Any("change", rf))
-		return nil, common.NewError("file_not_found", "No files in root folder")
-	}
 
-	idx := -1
+	found := false
 	for i, child := range dirRef.Children {
 		if child.Path == rf.Path {
-			idx = i
+			dirRef.Children[i] = affectedRef
+			found = true
 			break
 		}
 	}
-	if idx < 0 {
-		Logger.Error("error in file rename", zap.Any("change", rf))
+	if !found {
 		return nil, common.NewError("file_not_found", "File to rename not found in blobber")
 	}
-	dirRef.RemoveChild(idx)
-	dirRef.AddChild(affectedRef)
+
 	_, err = rootRef.CalculateHash(ctx, true)
 	return rootRef, err
 }
 
-func (rf *RenameFileChange) processChildren(ctx context.Context, curRef *reference.Ref) {
+func (rf *RenameFileChange) processChildren(ctx context.Context, curRef *reference.Ref, ts common.Timestamp) {
 	for _, childRef := range curRef.Children {
+		childRef.UpdatedAt = ts
+		childRef.HashToBeComputed = true
 		newPath := filepath.Join(curRef.Path, childRef.Name)
 		childRef.UpdatePath(newPath, curRef.Path)
 		if childRef.Type == reference.FILE {
 			stats.FileUpdated(ctx, childRef.ID)
 		}
 		if childRef.Type == reference.DIRECTORY {
-			rf.processChildren(ctx, childRef)
+			rf.processChildren(ctx, childRef, ts)
 		}
 	}
 }

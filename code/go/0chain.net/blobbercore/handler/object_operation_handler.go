@@ -16,7 +16,6 @@ import (
 	"github.com/0chain/gosdk/constants"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
@@ -91,20 +90,17 @@ func readPreRedeem(
 func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMarker *writemarker.WriteMarker, payerID string) (err error) {
 	// check out read pool tokens if read_price > 0
 	var (
-		db        = datastore.GetStore().GetTransaction(ctx)
-		blobberID = node.Self.ID
-		until     = common.Now() + common.Timestamp(config.Configuration.WriteLockTimeout)
-
+		db              = datastore.GetStore().GetTransaction(ctx)
+		blobberID       = node.Self.ID
 		requiredBalance = alloc.GetRequiredWriteBalance(blobberID, writeMarker.Size, writeMarker.Timestamp)
-
-		wps []*allocation.WritePool
+		wp              *allocation.WritePool
 	)
 
 	if writeMarker.Size <= 0 || requiredBalance <= 0 {
 		return
 	}
 
-	writePoolBalance, err := allocation.GetWritePoolsBalance(db, payerID, alloc.ID, until)
+	writePoolBalance, err := allocation.GetWritePoolsBalance(db, alloc.ID)
 	if err != nil {
 		Logger.Error(err.Error())
 		return common.NewError("write_pre_redeem", "database error while getting write pool balance")
@@ -119,23 +115,17 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 	requiredBalance = alloc.GetRequiredWriteBalance(blobberID, pendingWriteSize+writeMarker.Size, writeMarker.Timestamp)
 
 	if writePoolBalance < requiredBalance {
-		wps, err = allocation.RequestWritePools(payerID, alloc.ID)
+		wp, err = allocation.RequestWritePool(alloc.ID)
 		if err != nil {
 			return common.NewErrorf("write_pre_redeem", "can't request write pools from sharders: %v", err)
 		}
 
-		err = allocation.SetWritePools(db, payerID, alloc.ID, wps)
+		err = allocation.SetWritePool(db, alloc.ID, wp)
 		if err != nil {
 			return common.NewErrorf("write_pre_redeem", "can't save requested write pools: %v", err)
 		}
 
-		writePoolBalance = 0
-		for _, wp := range wps {
-			if wp.ExpireAt < until {
-				continue
-			}
-			writePoolBalance += wp.Balance
-		}
+		writePoolBalance += wp.Balance
 	}
 
 	if writePoolBalance < requiredBalance {
@@ -434,7 +424,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
 		return nil, err
 	}
-	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot)
+
+	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot, writeMarker.Timestamp)
 	if err != nil {
 		return nil, err
 	}
@@ -755,27 +746,24 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		Logger.Error("Error file reference", zap.Error(err))
 	}
 
-	if !filepath.IsAbs(dirPath) {
-		return nil, common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", dirPath))
-	}
-
-	result := &blobberhttp.UploadResult{}
-	result.Filename = dirPath
-	result.Hash = ""
-	result.MerkleRoot = ""
-	result.Size = 0
-
-	if clientID != allocationObj.OwnerID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+	result := &blobberhttp.UploadResult{
+		Filename: dirPath,
 	}
 
 	if exisitingRef != nil {
 		// target directory exists, return StatusOK
 		if exisitingRef.Type == reference.DIRECTORY {
-			return result, nil
+			return nil, common.NewError("directory_exists", "Directory already exists`")
 		}
 
 		return nil, common.NewError("duplicate_file", "File at path already exists")
+	}
+	if !filepath.IsAbs(dirPath) {
+		return nil, common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", dirPath))
+	}
+
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
 	if err := validateParentPathType(ctx, allocationID, dirPath); err != nil {
@@ -801,16 +789,17 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	allocationChange.Size = 0
 	allocationChange.Operation = constants.FileOperationCreateDir
 	connectionObj.Size += allocationChange.Size
-	var formData allocation.NewFileChange
-	formData.Filename = dirPath
-	formData.Path = dirPath
-	formData.AllocationID = allocationID
-	formData.ConnectionID = connectionID
-	formData.ActualHash = ""
-	formData.ActualSize = 0
+	var newDir allocation.NewDir
+	newDir.ConnectionID = connectionID
+	newDir.Path = dirPath
+	newDir.AllocationID = allocationID
 
-	connectionObj.AddChange(allocationChange, &formData)
-	err = connectionObj.ApplyChanges(ctx, "/")
+	connectionObj.AddChange(allocationChange, &newDir)
+	if err != nil {
+		return nil, err
+	}
+
+	err = connectionObj.Save(ctx)
 	if err != nil {
 		return nil, err
 	}

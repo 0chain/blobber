@@ -3,12 +3,12 @@ package reference
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -37,7 +37,7 @@ type Ref struct {
 	Hash                string `gorm:"column:hash;size:64;not null" dirlist:"hash" filelist:"hash"`
 	NumBlocks           int64  `gorm:"column:num_of_blocks;not null;default:0" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
 	PathHash            string `gorm:"column:path_hash;size:64;not null" dirlist:"path_hash" filelist:"path_hash"`
-	ParentPath          string `gorm:"column:parent_path;size:999s"`
+	ParentPath          string `gorm:"column:parent_path;size:999"`
 	PathLevel           int    `gorm:"column:level;not null;default:0"`
 	CustomMeta          string `gorm:"column:custom_meta;not null" filelist:"custom_meta"`
 	ContentHash         string `gorm:"column:content_hash;size:64;not null" filelist:"content_hash"`
@@ -56,9 +56,9 @@ type Ref struct {
 	childrenLoaded      bool
 	OnCloud             bool `gorm:"column:on_cloud;default:false" filelist:"on_cloud"`
 
-	CommitMetaTxns []CommitMetaTxn `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
-	CreatedAt      time.Time       `gorm:"column:created_at;type:timestamp without time zone;not null;default:current_timestamp" dirlist:"created_at" filelist:"created_at"`
-	UpdatedAt      time.Time       `gorm:"column:updated_at;type:timestamp without time zone;not null;default:current_timestamp;index:idx_updated_at;" dirlist:"updated_at" filelist:"updated_at"`
+	CommitMetaTxns []CommitMetaTxn  `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
+	CreatedAt      common.Timestamp `gorm:"column:created_at" dirlist:"created_at" filelist:"created_at"`
+	UpdatedAt      common.Timestamp `gorm:"column:updated_at;index:idx_updated_at;" dirlist:"updated_at" filelist:"updated_at"`
 
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
 
@@ -68,13 +68,17 @@ type Ref struct {
 
 // BeforeCreate Hook that gets executed to update create and update date
 func (ref *Ref) BeforeCreate(tx *gorm.DB) (err error) {
-	ref.CreatedAt = time.Now()
+	if !(ref.CreatedAt > 0) {
+		return fmt.Errorf("invalid timestamp value while creating for path %s", ref.Path)
+	}
 	ref.UpdatedAt = ref.CreatedAt
 	return nil
 }
 
 func (ref *Ref) BeforeSave(tx *gorm.DB) (err error) {
-	ref.UpdatedAt = time.Now()
+	if !(ref.UpdatedAt > 0) {
+		return fmt.Errorf("invalid timestamp value while updating %s", ref.Path)
+	}
 	return nil
 }
 
@@ -108,10 +112,9 @@ type PaginatedRef struct { //Gorm smart select fields.
 	ActualThumbnailHash string `gorm:"column:actual_thumbnail_hash" json:"actual_thumbnail_hash,omitempty"`
 	EncryptedKey        string `gorm:"column:encrypted_key" json:"encrypted_key,omitempty"`
 
-	OnCloud   bool           `gorm:"column:on_cloud" json:"on_cloud,omitempty"`
-	CreatedAt time.Time      `gorm:"column:created_at" json:"created_at,omitempty"`
-	UpdatedAt time.Time      `gorm:"column:updated_at" json:"updated_at,omitempty"`
-	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"-"` // soft deletion
+	OnCloud   bool             `gorm:"column:on_cloud" json:"on_cloud,omitempty"`
+	CreatedAt common.Timestamp `gorm:"column:created_at" json:"created_at,omitempty"`
+	UpdatedAt common.Timestamp `gorm:"column:updated_at" json:"updated_at,omitempty"`
 
 	ChunkSize int64 `gorm:"column:chunk_size" json:"chunk_size"`
 }
@@ -262,7 +265,7 @@ func GetRefWithChildren(ctx context.Context, allocationID, path string) (*Ref, e
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
-	err := db.Order("level, created_at").Find(&refs).Error
+	err := db.Order("path").Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}
@@ -286,18 +289,24 @@ func GetRefWithChildren(ctx context.Context, allocationID, path string) (*Ref, e
 func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*Ref, error) {
 	var refs []*Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
+	db = db.Where(
+		Ref{ParentPath: path, AllocationID: allocationID}).
+		Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
+
 	err := db.Order("path").Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}
+
 	if len(refs) == 0 {
 		return &Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID}, nil
 	}
+
 	curRef := refs[0]
 	if curRef.Path != path {
 		return nil, common.NewError("invalid_dir_tree", "DB has invalid tree. Root not found in DB")
 	}
+
 	for i := 1; i < len(refs); i++ {
 		if refs[i].ParentPath == curRef.Path {
 			curRef.Children = append(curRef.Children, refs[i])
@@ -309,11 +318,11 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*
 }
 
 func (fr *Ref) GetFileHashData() string {
-	hashArray := make([]string, 0, 11)
+	hashArray := make([]string, 0, 10)
 	hashArray = append(hashArray,
 		fr.AllocationID,
-		fr.Type,
-		fr.Name,
+		fr.Type, // don't need to add it as well
+		fr.Name, // don't see any utility as fr.Path below has name in it
 		fr.Path,
 		strconv.FormatInt(fr.Size, 10),
 		fr.ContentHash,
@@ -330,9 +339,9 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
-	fr.PathHash = GetReferenceLookup(fr.AllocationID, fr.Path)
-	fr.PathLevel = len(GetSubDirsFromPath(fr.Path)) + 1
+	fr.PathLevel = len(strings.Split(strings.TrimRight(fr.Path, "/"), "/"))
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
+	fr.PathHash = fr.LookupHash
 
 	var err error
 	if saveToDB && fr.HashToBeComputed {
@@ -341,38 +350,51 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 	return fr.Hash, err
 }
 
-func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (string, error) {
-	// empty directory, return hash directly
-	if len(r.Children) == 0 && !r.childrenLoaded {
-		return r.Hash, nil
+func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, err error) {
+	if !r.HashToBeComputed {
+		h = r.Hash
+		return
 	}
-	childHashes := make([]string, len(r.Children))
-	childPathHashes := make([]string, len(r.Children))
-	var refNumBlocks int64
-	var size int64
-	for index, childRef := range r.Children {
+
+	l := len(r.Children)
+
+	// if l == 0 && !r.childrenLoaded {
+	// 	h = r.Hash
+	// 	return
+	// }
+
+	defer func() {
+		if err == nil && saveToDB {
+			err = r.SaveDirRef(ctx)
+
+		}
+	}()
+
+	childHashes := make([]string, l)
+	childPathHashes := make([]string, l)
+	var refNumBlocks, size int64
+
+	for i, childRef := range r.Children {
 		if childRef.HashToBeComputed {
 			_, err := childRef.CalculateHash(ctx, saveToDB)
 			if err != nil {
 				return "", err
 			}
 		}
-		childHashes[index] = childRef.Hash
-		childPathHashes[index] = childRef.PathHash
+
+		childHashes[i] = childRef.Hash
+		childPathHashes[i] = childRef.PathHash
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
 	}
 
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
+	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.NumBlocks = refNumBlocks
 	r.Size = size
-	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
-	var err error
-	if saveToDB && r.HashToBeComputed {
-		err = r.SaveDirRef(ctx)
-	}
+
 	return r.Hash, err
 }
 
@@ -387,7 +409,22 @@ func (r *Ref) AddChild(child *Ref) {
 	if r.Children == nil {
 		r.Children = make([]*Ref, 0)
 	}
-	r.Children = append(r.Children, child)
+	var index int
+	var ltFound bool
+	// Add child in sorted fashion
+	for i, ref := range r.Children {
+		if strings.Compare(child.Path, ref.Path) == -1 {
+			index = i
+			ltFound = true
+			break
+		}
+	}
+	if ltFound {
+		r.Children = append(r.Children[:index+1], r.Children[index:]...)
+		r.Children[index] = child
+	} else {
+		r.Children = append(r.Children, child)
+	}
 	r.childrenLoaded = true
 }
 
