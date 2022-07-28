@@ -329,8 +329,8 @@ func convertFileRefToFileMetaDataGRPC(fileref *reference.Ref) *blobbergrpc.FileM
 		EncryptedKey:        fileref.EncryptedKey,
 		OnCloud:             fileref.OnCloud,
 		CommitMetaTxns:      commitMetaTxnsGRPC,
-		CreatedAt:           fileref.CreatedAt.UnixNano(),
-		UpdatedAt:           fileref.UpdatedAt.UnixNano(),
+		CreatedAt:           int64(fileref.CreatedAt),
+		UpdatedAt:           int64(fileref.UpdatedAt),
 	}
 }
 
@@ -344,8 +344,8 @@ func convertDirRefToDirMetaDataGRPC(dirref *reference.Ref) *blobbergrpc.DirMetaD
 		NumBlocks:  dirref.NumBlocks,
 		PathHash:   dirref.PathHash,
 		Size:       dirref.Size,
-		CreatedAt:  dirref.CreatedAt.UnixNano(),
-		UpdatedAt:  dirref.UpdatedAt.UnixNano(),
+		CreatedAt:  int64(dirref.CreatedAt),
+		UpdatedAt:  int64(dirref.UpdatedAt),
 	}
 }
 
@@ -395,8 +395,8 @@ func convertFileMetaDataGRPCToFileRef(metaData *blobbergrpc.FileMetaData) *refer
 		EncryptedKey:        metaData.EncryptedKey,
 		OnCloud:             metaData.OnCloud,
 		CommitMetaTxns:      commitMetaTxnsGRPC,
-		CreatedAt:           time.Unix(0, metaData.CreatedAt),
-		UpdatedAt:           time.Unix(0, metaData.UpdatedAt),
+		CreatedAt:           common.Timestamp(metaData.CreatedAt),
+		UpdatedAt:           common.Timestamp(metaData.UpdatedAt),
 	}
 }
 
@@ -410,8 +410,8 @@ func convertDirMetaDataGRPCToDirRef(dirref *blobbergrpc.DirMetaData) *reference.
 		NumBlocks:  dirref.NumBlocks,
 		PathHash:   dirref.PathHash,
 		Size:       dirref.Size,
-		CreatedAt:  time.Unix(0, dirref.CreatedAt),
-		UpdatedAt:  time.Unix(0, dirref.UpdatedAt),
+		CreatedAt:  common.Timestamp(dirref.CreatedAt),
+		UpdatedAt:  common.Timestamp(dirref.UpdatedAt),
 	}
 }
 

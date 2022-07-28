@@ -5,6 +5,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
 type UploadResult struct {
@@ -36,7 +37,7 @@ type ReferencePathResult struct {
 type RefResult struct {
 	TotalPages int                       `json:"total_pages"`
 	OffsetPath string                    `json:"offset_path,omitempty"` //used for pagination; index for path is created in database
-	OffsetDate string                    `json:"offset_date,omitempty"` //used for pagination; idex for updated_at is created in database
+	OffsetDate common.Timestamp          `json:"offset_date,omitempty"` //used for pagination; idex for updated_at is created in database
 	Refs       *[]reference.PaginatedRef `json:"refs"`
 	LatestWM   *writemarker.WriteMarker  `json:"latest_write_marker"`
 }

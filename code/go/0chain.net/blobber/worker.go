@@ -38,7 +38,7 @@ func refreshPriceOnChain(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			break
+			return
 
 		case <-time.After(REPEAT_DELAY * time.Second):
 			err = handler.RefreshPriceOnChain(common.GetRootContext())
@@ -54,7 +54,7 @@ func startHealthCheck(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			break
+			return
 		case <-time.After(config.Configuration.HealthCheckWorkerFreq):
 			go func() {
 				start := time.Now()
@@ -79,7 +79,7 @@ func startRefreshSettings(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			break
+			return
 		case <-time.After(REPEAT_DELAY * time.Second):
 			b, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
 			if err != nil {

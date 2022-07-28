@@ -47,17 +47,6 @@ func commitHandler(ctx context.Context, r *http.Request) (interface{}, int, erro
 	return response, http.StatusOK, nil
 }
 
-func CalculateHashHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.CalculateHash(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
-}
-
 func AddCollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return storageHandler.AddCollaborator(setupHandlerContext(ctx, r), r)
 }

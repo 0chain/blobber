@@ -929,17 +929,19 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	var refs *[]reference.PaginatedRef
 	var totalPages int
 	var newOffsetPath string
-	var newOffsetDate string
+	var newOffsetDate common.Timestamp
 
 	switch {
 	case refType == "regular":
-		refs, totalPages, newOffsetPath, err = reference.GetRefs(ctx, allocationID, path, offsetPath, fileType, level, pageLimit)
+		refs, totalPages, newOffsetPath, err = reference.GetRefs(
+			ctx, allocationID, path, offsetPath, fileType, level, pageLimit,
+		)
 
 	case refType == "updated":
-		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetUpdatedRefs(ctx, allocationID, path, offsetPath, fileType, updatedDate, offsetDate, level, pageLimit, OffsetDateLayout)
-
-	case refType == "deleted":
-		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetDeletedRefs(ctx, allocationID, updatedDate, offsetPath, offsetDate, pageLimit, OffsetDateLayout)
+		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetUpdatedRefs(
+			ctx, allocationID, path, offsetPath, fileType,
+			updatedDate, offsetDate, level, pageLimit, OffsetDateLayout,
+		)
 
 	default:
 		return nil, common.NewError("invalid_parameters", "refType param should have value regular/updated/deleted")
@@ -968,41 +970,6 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	}
 	// Refs will be returned as it is and object tree will be build in client side
 	return &refResult, nil
-}
-
-func (fsh *StorageHandler) CalculateHash(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method != "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
-
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-	allocationID := allocationObj.ID
-
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if clientID == "" || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
-	paths, err := pathsFromReq(r)
-	if err != nil {
-		return nil, err
-	}
-	rootRef, err := reference.GetReferenceForHashCalculationFromPaths(ctx, allocationID, paths)
-	if err != nil {
-		return nil, err
-	}
-	rootRef.HashToBeComputed = true
-	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-		return nil, err
-	}
-
-	result := make(map[string]interface{})
-	result["msg"] = "Hash recalculated for the given paths"
-	return result, nil
 }
 
 // verifySignatureFromRequest verifies signature passed as common.ClientSignatureHeader header.

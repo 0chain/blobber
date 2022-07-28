@@ -3,7 +3,9 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
@@ -23,7 +25,9 @@ func (rf *CopyFileChange) DeleteTempFile() error {
 	return nil
 }
 
-func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string) (*reference.Ref, error) {
+func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
+	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
+
 	totalRefs, err := reference.CountRefs(ctx, rf.AllocationID)
 	if err != nil {
 		return nil, err
@@ -34,138 +38,115 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 			"maximum files and directories already reached: %v", err)
 	}
 
-	affectedRef, err := reference.GetObjectTree(ctx, rf.AllocationID, rf.SrcPath)
+	srcRef, err := reference.GetObjectTree(ctx, rf.AllocationID, rf.SrcPath)
 	if err != nil {
 		return nil, err
 	}
-	affectedRef.HashToBeComputed = true
-	if rf.DestPath == "/" {
-		destRef, err := reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
-		if err != nil || destRef.Type != reference.DIRECTORY {
-			return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
-		}
-		destRef.HashToBeComputed = true
-		fileRefs := rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
-		_, err = destRef.CalculateHash(ctx, true)
-		if err != nil {
-			return nil, err
-		}
-		for _, fileRef := range fileRefs {
-			stats.NewFileCreated(ctx, fileRef.ID)
-		}
 
-		return destRef, err
-	}
-
-	// it will create new dir if it is not available in db
-	destRef, err := reference.Mkdir(ctx, rf.AllocationID, rf.DestPath)
-	if err != nil || destRef.Type != reference.DIRECTORY {
-		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
-	}
-	destRef, err = reference.GetRefWithSortedChildren(ctx, rf.AllocationID, rf.DestPath)
-	if err != nil || destRef.Type != reference.DIRECTORY {
-		return nil, common.NewError("invalid_parameters", "Invalid destination path. Should be a valid directory.")
-	}
-	destRef.HashToBeComputed = true
-	path, _ := filepath.Split(rf.DestPath)
-	path = filepath.Clean(path)
-	tSubDirs := reference.GetSubDirsFromPath(path)
-	rootRef, err := reference.GetReferencePath(ctx, rf.AllocationID, path)
+	rootRef, err := reference.GetReferencePath(ctx, rf.AllocationID, rf.DestPath)
 	if err != nil {
 		return nil, err
 	}
+
+	rootRef.UpdatedAt = ts
 	rootRef.HashToBeComputed = true
+
 	dirRef := rootRef
-	treelevel := 0
-	for treelevel < len(tSubDirs) {
+	fields, err := common.GetPathFields(rf.DestPath)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < len(fields); i++ {
 		found := false
 		for _, child := range dirRef.Children {
-			if child.Type == reference.DIRECTORY && treelevel < len(tSubDirs) {
-				if child.Name == tSubDirs[treelevel] {
+			if child.Name == fields[i] {
+				if child.Type == reference.DIRECTORY {
+					child.HashToBeComputed = true
 					dirRef = child
-					dirRef.HashToBeComputed = true
+					dirRef.UpdatedAt = ts
 					found = true
-					break
+				} else {
+					return nil, common.NewError("invalid_path",
+						fmt.Sprintf("%s is of file type", child.Path))
 				}
 			}
 		}
-		if found {
-			treelevel++
-		} else {
-			return nil, common.NewError("invalid_reference_path", "Invalid reference path from the blobber")
-		}
-	}
-	childIndex := -1
-	for i, child := range dirRef.Children {
-		if child.Path == rf.DestPath && child.Type == reference.DIRECTORY {
-			childIndex = i
-			break
+
+		if !found {
+			newRef := reference.NewDirectoryRef()
+			newRef.AllocationID = rf.AllocationID
+			newRef.Path = filepath.Join("/", strings.Join(fields[:i+1], "/"))
+			newRef.ParentPath = filepath.Join("/", strings.Join(fields[:i], "/"))
+			newRef.Name = fields[i]
+			newRef.HashToBeComputed = true
+			newRef.CreatedAt = ts
+			newRef.UpdatedAt = ts
+			dirRef.AddChild(newRef)
+			dirRef = newRef
 		}
 	}
 
-	if childIndex == -1 {
-		return nil, common.NewError("file_not_found", "Destination Object to copy to not found in blobber")
-	}
+	fileRefs := rf.processCopyRefs(ctx, srcRef, dirRef, allocationRoot, ts)
 
-	dirRef.RemoveChild(childIndex)
-	filerefs := rf.processCopyRefs(ctx, affectedRef, destRef, allocationRoot)
-	dirRef.AddChild(destRef)
 	_, err = rootRef.CalculateHash(ctx, true)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, fileRef := range filerefs {
+	for _, fileRef := range fileRefs {
 		stats.NewFileCreated(ctx, fileRef.ID)
 	}
 	return rootRef, err
 }
 
-func (rf *CopyFileChange) processCopyRefs(ctx context.Context, affectedRef, destRef *reference.Ref, allocationRoot string) []*reference.Ref {
+func (rf *CopyFileChange) processCopyRefs(
+	ctx context.Context, srcRef, destRef *reference.Ref,
+	allocationRoot string, ts common.Timestamp) (fileRefs []*reference.Ref) {
 
-	var files []*reference.Ref
-
-	if affectedRef.Type == reference.DIRECTORY {
+	if srcRef.Type == reference.DIRECTORY {
 		newRef := reference.NewDirectoryRef()
 		newRef.AllocationID = rf.AllocationID
-		newRef.Path = filepath.Join(destRef.Path, affectedRef.Name)
+		newRef.Path = filepath.Join(destRef.Path, srcRef.Name)
 		newRef.ParentPath = destRef.Path
-		newRef.Name = affectedRef.Name
-		newRef.LookupHash = reference.GetReferenceLookup(newRef.AllocationID, newRef.Path)
+		newRef.Name = srcRef.Name
+		newRef.CreatedAt = ts
+		newRef.UpdatedAt = ts
 		newRef.HashToBeComputed = true
 		destRef.AddChild(newRef)
 
-		for _, childRef := range affectedRef.Children {
-			files = append(files, rf.processCopyRefs(ctx, childRef, newRef, allocationRoot)...)
+		for _, childRef := range srcRef.Children {
+			fileRefs = append(fileRefs, rf.processCopyRefs(ctx, childRef, newRef, allocationRoot, ts)...)
 		}
-	} else if affectedRef.Type == reference.FILE {
+	} else if srcRef.Type == reference.FILE {
 		newFile := reference.NewFileRef()
-		newFile.ActualFileHash = affectedRef.ActualFileHash
-		newFile.ActualFileSize = affectedRef.ActualFileSize
-		newFile.AllocationID = affectedRef.AllocationID
-		newFile.ContentHash = affectedRef.ContentHash
-		newFile.CustomMeta = affectedRef.CustomMeta
-		newFile.MerkleRoot = affectedRef.MerkleRoot
-		newFile.Name = affectedRef.Name
+		newFile.ActualFileHash = srcRef.ActualFileHash
+		newFile.ActualFileSize = srcRef.ActualFileSize
+		newFile.AllocationID = srcRef.AllocationID
+		newFile.ContentHash = srcRef.ContentHash
+		newFile.CustomMeta = srcRef.CustomMeta
+		newFile.MerkleRoot = srcRef.MerkleRoot
+		newFile.Name = srcRef.Name
 		newFile.ParentPath = destRef.Path
-		newFile.Path = filepath.Join(destRef.Path, affectedRef.Name)
-		newFile.LookupHash = reference.GetReferenceLookup(newFile.AllocationID, newFile.Path)
-		newFile.Size = affectedRef.Size
-		newFile.MimeType = affectedRef.MimeType
+		newFile.Path = filepath.Join(destRef.Path, srcRef.Name)
+		newFile.Size = srcRef.Size
+		newFile.MimeType = srcRef.MimeType
 		newFile.WriteMarker = allocationRoot
-		newFile.ThumbnailHash = affectedRef.ThumbnailHash
-		newFile.ThumbnailSize = affectedRef.ThumbnailSize
-		newFile.ActualThumbnailHash = affectedRef.ActualThumbnailHash
-		newFile.ActualThumbnailSize = affectedRef.ActualThumbnailSize
-		newFile.EncryptedKey = affectedRef.EncryptedKey
-		newFile.ChunkSize = affectedRef.ChunkSize
+		newFile.ThumbnailHash = srcRef.ThumbnailHash
+		newFile.ThumbnailSize = srcRef.ThumbnailSize
+		newFile.ActualThumbnailHash = srcRef.ActualThumbnailHash
+		newFile.ActualThumbnailSize = srcRef.ActualThumbnailSize
+		newFile.EncryptedKey = srcRef.EncryptedKey
+		newFile.ChunkSize = srcRef.ChunkSize
+		newFile.CreatedAt = ts
+		newFile.UpdatedAt = ts
 		newFile.HashToBeComputed = true
 		destRef.AddChild(newFile)
 
-		files = append(files, newFile)
+		fileRefs = append(fileRefs, newFile)
 	}
 
-	return files
+	return
 
 }
 

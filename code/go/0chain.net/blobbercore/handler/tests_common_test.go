@@ -95,7 +95,7 @@ func (mfs *MockFileStore) DeleteFile(allocID string, contentHash string) error {
 }
 
 func (mfs *MockFileStore) GetFileBlock(allocID string, fileData *filestore.FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
-	return nil, nil
+	return []byte(mockFileBlock), nil
 }
 
 func (mfs *MockFileStore) GetBlocksMerkleTreeForChallenge(allocID string, fileData *filestore.FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {

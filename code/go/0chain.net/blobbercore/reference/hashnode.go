@@ -16,7 +16,7 @@ func LoadRootHashnode(ctx context.Context, allocationID string) (*Hashnode, erro
 	db = db.Raw(`
 SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, chunk_size,size,actual_file_size, parent_path
 FROM reference_objects
-WHERE allocation_id = ? and deleted_at IS NULL
+WHERE allocation_id = ?
 ORDER BY level desc, path`, allocationID)
 
 	rows, err := db.Rows()

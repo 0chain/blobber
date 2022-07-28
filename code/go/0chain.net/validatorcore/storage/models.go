@@ -176,7 +176,6 @@ func (op *ObjectPath) Parse(input map[string]interface{}, allocationID string) (
 	}
 
 	newHash := rootDir.CalculateHash()
-	fmt.Printf("\nNewroothash: %s rootdir hash: %s\n\n", newHash, rootDir.GetHash())
 
 	if newHash != rootDir.GetHash() {
 		return nil, common.NewError("hash_mismatch", "Object path error since there is a mismatch in the dir hashes. "+rootDir.Path)
