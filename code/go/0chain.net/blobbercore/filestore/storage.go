@@ -584,7 +584,7 @@ func (fs *FileStore) getTempPathForFile(allocId, fileName, pathHash, connectionI
 }
 
 func (fs *FileStore) updateAllocTempFileSize(allocID string, size int64) {
-	alloc := fs.mAllocs[allocID]
+	alloc := fs.getAllocation(allocID)
 	if alloc == nil {
 		return
 	}
@@ -604,7 +604,7 @@ func (fs *FileStore) GetTotalTempFileSizes() (s uint64) {
 }
 
 func (fs *FileStore) GetTempFilesSizeOfAllocation(allocID string) uint64 {
-	alloc := fs.mAllocs[allocID]
+	alloc := fs.getAllocation(allocID)
 	if alloc != nil {
 		return alloc.tmpFileSize
 	}
@@ -620,7 +620,7 @@ func (fs *FileStore) GetTotalCommittedFileSize() (s uint64) {
 }
 
 func (fs *FileStore) GetCommittedFileSizeOfAllocation(allocID string) uint64 {
-	alloc := fs.mAllocs[allocID]
+	alloc := fs.getAllocation(allocID)
 	if alloc != nil {
 		return alloc.filesSize
 	}
@@ -637,7 +637,7 @@ func (fs *FileStore) GetTotalFilesSize() (s uint64) {
 
 // GetTotalFilesSize Get total file sizes of an allocation; committed or not committed
 func (fs *FileStore) GetTotalFilesSizeOfAllocation(allocID string) uint64 {
-	alloc := fs.mAllocs[allocID]
+	alloc := fs.getAllocation(allocID)
 	if alloc != nil {
 		return alloc.filesSize + alloc.tmpFileSize
 	}
