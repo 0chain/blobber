@@ -66,7 +66,7 @@ func syncOpenChallenges(ctx context.Context) {
 func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			logging.Logger.Error("[recover]add", zap.Any("err", r))
+			logging.Logger.Error("[recover]add_challenge", zap.Any("err", r))
 		}
 	}()
 
@@ -78,7 +78,7 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 	lastChallengeID, err := getLastChallengeID(db)
 
 	if err != nil {
-		logging.Logger.Error("[challenge]add: ", zap.Error(err))
+		logging.Logger.Error("[challenge]add(get_latest_challenge_id): ", zap.Error(err))
 		return
 	}
 
@@ -162,7 +162,7 @@ func validateChallenge(swg *sizedwaitgroup.SizedWaitGroup, c *ChallengeEntity) {
 	}
 
 	if err := db.Commit().Error; err != nil {
-		logging.Logger.Error("[challenge]validate: ",
+		logging.Logger.Error("[challenge]validate(Commit): ",
 			zap.Any("challenge_id", c.ChallengeID),
 			zap.Time("created", c.CreatedAt),
 			zap.Error(err))
