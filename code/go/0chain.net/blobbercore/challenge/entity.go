@@ -29,6 +29,19 @@ const (
 	Committed
 )
 
+func (s ChallengeStatus) String() string {
+	switch s {
+	case Accepted:
+		return "Accepted"
+	case Processed:
+		return "Processed"
+	case Committed:
+		return "Committed"
+	default:
+		return fmt.Sprintf("%d", int(s))
+	}
+}
+
 const (
 	ChallengeUnknown ChallengeResult = iota
 	ChallengeSuccess

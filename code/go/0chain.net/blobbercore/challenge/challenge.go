@@ -66,7 +66,7 @@ func syncOpenChallenges(ctx context.Context) {
 func saveNewChallenge(nextChallenge *ChallengeEntity, ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			logging.Logger.Error("[recover]challenge", zap.Any("err", r))
+			logging.Logger.Error("[recover]add", zap.Any("err", r))
 		}
 	}()
 
@@ -78,7 +78,7 @@ func saveNewChallenge(nextChallenge *ChallengeEntity, ctx context.Context) {
 	lastChallengeID, err := getLastChallengeID(db)
 
 	if err != nil {
-		logging.Logger.Error("[challenge]db: ", zap.Error(err))
+		logging.Logger.Error("[challenge]add: ", zap.Error(err))
 		return
 	}
 
@@ -98,7 +98,7 @@ func saveNewChallenge(nextChallenge *ChallengeEntity, ctx context.Context) {
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		return nextChallenge.SaveWith(tx)
 	}); err != nil {
-		logging.Logger.Error("[challenge]db: ", zap.String("challenge_id", nextChallenge.ChallengeID), zap.Error(err))
+		logging.Logger.Error("[challenge]add: ", zap.String("challenge_id", nextChallenge.ChallengeID), zap.Error(err))
 	}
 
 }
@@ -120,7 +120,12 @@ func processAccepted(ctx context.Context) {
 			logging.Logger.Info("[challenge]process: ", zap.String("challenge_id", openchallenge.ChallengeID))
 			err := openchallenge.UnmarshalFields()
 			if err != nil {
-				logging.Logger.Error("[challenge]json: ", zap.Error(err))
+				logging.Logger.Error("[challenge]process: ",
+					zap.String("validators", string(openchallenge.ValidatorsString)),
+					zap.String("lastCommitTxnList", string(openchallenge.LastCommitTxnList)),
+					zap.String("validationTickets", string(openchallenge.ValidationTicketsString)),
+					zap.String("ObjectPath", string(openchallenge.ObjectPathString)),
+					zap.Error(err))
 				continue
 			}
 			swg.Add()
@@ -144,10 +149,12 @@ func validateChallenge(swg *sizedwaitgroup.SizedWaitGroup, challengeObj *Challen
 	}
 
 	if err := db.Commit().Error; err != nil {
-		logging.Logger.Error("[challenge]db: ", zap.Any("challenge_id", challengeObj.ChallengeID), zap.Error(err))
+		logging.Logger.Error("[challenge]validate: ", zap.Any("challenge_id", challengeObj.ChallengeID), zap.Error(err))
 		db.Rollback()
 		return
 	}
+
+	logging.Logger.Info("[challenge]validate: ", zap.Any("challenge_id", challengeObj.ChallengeID))
 }
 
 func commitProcessed(ctx context.Context) {
@@ -179,9 +186,14 @@ func commitProcessed(ctx context.Context) {
 }
 
 func commitChallenge(openchallenge *ChallengeEntity) {
-	logging.Logger.Info("Attempting to commit challenge", zap.Any("challenge_id", openchallenge.ChallengeID), zap.Any("openchallenge", openchallenge))
+	logging.Logger.Info("[challenge]commit", zap.Any("challenge_id", openchallenge.ChallengeID), zap.Any("openchallenge", openchallenge))
 	if err := openchallenge.UnmarshalFields(); err != nil {
-		logging.Logger.Error("ChallengeEntity_UnmarshalFields", zap.String("challenge_id", openchallenge.ChallengeID), zap.Error(err))
+		logging.Logger.Error("[challenge]commit", zap.String("challenge_id", openchallenge.ChallengeID),
+			zap.String("validators", string(openchallenge.ValidatorsString)),
+			zap.String("lastCommitTxnList", string(openchallenge.LastCommitTxnList)),
+			zap.String("validationTickets", string(openchallenge.ValidationTicketsString)),
+			zap.String("ObjectPath", string(openchallenge.ObjectPathString)),
+			zap.Error(err))
 	}
 
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
@@ -190,7 +202,7 @@ func commitChallenge(openchallenge *ChallengeEntity) {
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	if err := openchallenge.CommitChallenge(ctx, false); err != nil {
-		logging.Logger.Error("Error committing to blockchain",
+		logging.Logger.Error("[challenge]commit",
 			zap.Error(err),
 			zap.String("challenge_id", openchallenge.ChallengeID))
 		db.Rollback()
@@ -198,14 +210,14 @@ func commitChallenge(openchallenge *ChallengeEntity) {
 	}
 
 	if err := db.Commit(); err != nil {
-		logging.Logger.Info("Challenge was not committed", zap.Any("challenge_id", openchallenge.ChallengeID))
+		logging.Logger.Warn("[challenge]commit", zap.Any("challenge_id", openchallenge.ChallengeID), zap.Error(err))
 		db.Rollback()
 		return
 	}
 
-	if openchallenge.Status == Committed {
-		logging.Logger.Info("Challenge has been submitted to blockchain",
-			zap.Any("id", openchallenge.ChallengeID),
-			zap.String("txn", openchallenge.CommitTxnID))
-	}
+	logging.Logger.Info("[challenge]commit",
+		zap.Any("challenge_id", openchallenge.ChallengeID),
+		zap.String("status", openchallenge.Status.String()),
+		zap.String("txn", openchallenge.CommitTxnID))
+
 }
