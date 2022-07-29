@@ -15,7 +15,7 @@ import (
 type WriteMarker struct {
 	AllocationRoot         string           `gorm:"column:allocation_root;size:64;primaryKey" json:"allocation_root"`
 	PreviousAllocationRoot string           `gorm:"column:prev_allocation_root;size:64" json:"prev_allocation_root"`
-	AllocationID           string           `gorm:"column:allocation_id;size:64" json:"allocation_id"`
+	AllocationID           string           `gorm:"column:allocation_id;size:64;index:idx_seq,unique,priority:1" json:"allocation_id"`
 	Size                   int64            `gorm:"column:size" json:"size"`
 	BlobberID              string           `gorm:"column:blobber_id;size:64" json:"blobber_id"`
 	Timestamp              common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
@@ -51,7 +51,7 @@ type WriteMarkerEntity struct {
 	CloseTxnID      string            `gorm:"column:close_txn_id;size:64"`
 	ConnectionID    string            `gorm:"column:connection_id;size:64"`
 	ClientPublicKey string            `gorm:"column:client_key;size:256"`
-	Sequence        int64             `gorm:"column:sequence;unique;autoIncrement;<-:false"` // <-:false skips value insert/update by gorm
+	Sequence        int64             `gorm:"column:sequence;unique;autoIncrement;<-:false;index:idx_seq,unique,priority:2"` // <-:false skips value insert/update by gorm
 	datastore.ModelWithTS
 }
 
@@ -152,7 +152,7 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID, startAllocationRo
 	}
 	if len(seqRange) == 2 {
 		retMarkers := make([]*WriteMarkerEntity, 0)
-		err = db.Where("sequence BETWEEN ? AND ?", seqRange[0], seqRange[1]).Order("sequence").Find(&retMarkers).Error
+		err = db.Where("allocation_id=? and  sequence BETWEEN ? AND ?", allocationID, seqRange[0], seqRange[1]).Order("sequence").Find(&retMarkers).Error
 		if err != nil {
 			return nil, err
 		}
