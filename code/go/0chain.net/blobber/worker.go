@@ -114,28 +114,11 @@ func StartUpdateWorker(ctx context.Context, interval time.Duration) {
 		case <-ctx.Done():
 			return
 		case <-time.After(config.Configuration.BlobberUpdateInterval):
-			err := filestore.GetFileStore().CalculateCurrentDiskCapacity()
+			_, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
+
 			if err != nil {
-				logging.Logger.Error("Error while getting capacity", zap.Error(err))
-				break
-			}
-			capacity := filestore.GetFileStore().GetCurrentDiskCapacity()
-
-			if uint64(config.Configuration.Capacity) != capacity {
-
-				_, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
-
-				if err != nil {
-					logging.Logger.Error("Error while updating blobber updates on chain", zap.Error(err))
-					continue
-				}
-
-				err = handler.UpdateBlobberOnChain(ctx)
-				if err != nil {
-					logging.Logger.Error("Error while updating blobber updates on chain", zap.Error(err))
-				}
-
-				config.Configuration.Capacity = int64(capacity)
+				logging.Logger.Error("Error while updating blobber updates on chain", zap.Error(err))
+				continue
 			}
 		}
 	}
