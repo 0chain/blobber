@@ -26,9 +26,6 @@ func setupWorkers(ctx context.Context) {
 	readmarker.SetupWorkers(ctx)
 	writemarker.SetupWorkers(ctx)
 	allocation.StartUpdateWorker(ctx, config.Configuration.UpdateAllocationsInterval)
-	if config.Configuration.AutomaticUpdate {
-		go StartUpdateWorker(ctx, config.Configuration.BlobberUpdateInterval)
-	}
 }
 
 func refreshPriceOnChain(ctx context.Context) {
@@ -100,22 +97,4 @@ func startRefreshSettings(ctx context.Context) {
 		}
 
 	}
-}
-
-func StartUpdateWorker(ctx context.Context, interval time.Duration) {
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(config.Configuration.BlobberUpdateInterval):
-			_, err := config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
-
-			if err != nil {
-				logging.Logger.Error("Error while updating blobber updates on chain", zap.Error(err))
-				continue
-			}
-		}
-	}
-
 }
