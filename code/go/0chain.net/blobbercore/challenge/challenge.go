@@ -191,13 +191,12 @@ func commitProcessed(ctx context.Context) {
 
 	if len(challenges) > 0 {
 		swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
-		for _, c := range challenges {
-			c := c
+		for _, challenge := range challenges {
 			swg.Add()
-			go func() {
+			go func(c *ChallengeEntity) {
 				defer swg.Done()
 				commitChallenge(c)
-			}()
+			}(challenge)
 		}
 		swg.Wait()
 	}
