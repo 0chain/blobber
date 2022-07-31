@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -16,6 +17,7 @@ import (
 	zlogger "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
+	"github.com/remeh/sizedwaitgroup"
 
 	"go.uber.org/zap"
 )
@@ -179,42 +181,71 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	if cr.ValidationTickets == nil {
 		cr.ValidationTickets = make([]*ValidationTicket, len(cr.Validators))
 	}
+
+	swg := sizedwaitgroup.New(10)
+	accessMu := sync.Mutex{}
 	for i, validator := range cr.Validators {
 		if cr.ValidationTickets[i] != nil {
 			exisitingVT := cr.ValidationTickets[i]
-			if len(exisitingVT.Signature) > 0 && exisitingVT.ChallengeID == cr.ChallengeID {
+			if exisitingVT.Signature != "" && exisitingVT.ChallengeID == cr.ChallengeID {
 				continue
 			}
 		}
 
 		url := validator.URL + VALIDATOR_URL
 
-		resp, err := util.SendPostRequest(url, postDataBytes, nil)
-		if err != nil {
-			zlogger.Logger.Info("[challenge]post: ", zap.Any("error", err.Error()))
-			delete(responses, validator.ID)
-			cr.ValidationTickets[i] = nil
-			continue
-		}
-		var validationTicket ValidationTicket
-		err = json.Unmarshal(resp, &validationTicket)
-		if err != nil {
-			zlogger.Logger.Error("[challenge]resp: ", zap.String("validator", validator.ID), zap.Any("resp", string(resp)), zap.Any("error", err.Error()))
-			delete(responses, validator.ID)
-			cr.ValidationTickets[i] = nil
-			continue
-		}
-		zlogger.Logger.Info("[challenge]resp: Got response from the validator.", zap.Any("validator_response", validationTicket))
-		verified, err := validationTicket.VerifySign()
-		if err != nil || !verified {
-			zlogger.Logger.Error("[challenge]ticket: Validation ticket from validator could not be verified.", zap.String("validator", validator.ID))
-			delete(responses, validator.ID)
-			cr.ValidationTickets[i] = nil
-			continue
-		}
-		responses[validator.ID] = validationTicket
-		cr.ValidationTickets[i] = &validationTicket
+		swg.Add()
+		go func(url, validatorID string, i int) {
+			defer swg.Done()
+
+			resp, err := util.SendPostRequest(url, postDataBytes, nil)
+			if err != nil {
+				zlogger.Logger.Info("[challenge]post: ", zap.Any("error", err.Error()))
+				delete(responses, validatorID)
+				cr.ValidationTickets[i] = nil
+				return
+			}
+			var validationTicket ValidationTicket
+			err = json.Unmarshal(resp, &validationTicket)
+			if err != nil {
+				zlogger.Logger.Error(
+					"[challenge]resp: ",
+					zap.String("validator",
+						validatorID),
+					zap.Any("resp", string(resp)),
+					zap.Any("error", err.Error()),
+				)
+				accessMu.Lock()
+				delete(responses, validatorID)
+				cr.ValidationTickets[i] = nil
+				accessMu.Unlock()
+				return
+			}
+			zlogger.Logger.Info(
+				"[challenge]resp: Got response from the validator.",
+				zap.Any("validator_response", validationTicket),
+			)
+			verified, err := validationTicket.VerifySign()
+			if err != nil || !verified {
+				zlogger.Logger.Error(
+					"[challenge]ticket: Validation ticket from validator could not be verified.",
+					zap.String("validator",
+						validatorID),
+				)
+				accessMu.Lock()
+				delete(responses, validatorID)
+				cr.ValidationTickets[i] = nil
+				accessMu.Unlock()
+				return
+			}
+			accessMu.Lock()
+			responses[validatorID] = validationTicket
+			cr.ValidationTickets[i] = &validationTicket
+			accessMu.Unlock()
+		}(url, validator.ID, i)
 	}
+
+	swg.Wait()
 
 	numSuccess := 0
 	numFailure := 0
