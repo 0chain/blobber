@@ -283,7 +283,7 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 		return common.NewError("challenge_validation_failed", "Failed to verify the object path."+err.Error())
 	}
 
-	if cr.WriteMarkers == nil || len(cr.WriteMarkers) == 0 {
+	if len(cr.WriteMarkers) == 0 {
 		return common.NewError("challenge_validation_failed", "Invalid write marker")
 	}
 
