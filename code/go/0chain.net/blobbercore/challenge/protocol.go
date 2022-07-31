@@ -97,21 +97,17 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 
 	rootRef, err := reference.GetReference(ctx, cr.AllocationID, "/")
+	if err != nil {
+		cr.ErrorChallenge(ctx, err)
+		return err
+	}
+
 	blockNum := int64(0)
 	if rootRef.NumBlocks > 0 {
 		r := rand.New(rand.NewSource(cr.RandomNumber))
 		blockNum = r.Int63n(rootRef.NumBlocks)
 		blockNum++
 		cr.BlockNum = blockNum
-	} else {
-		err = common.NewError("allocation_is_blank", "Got a challenge for a blank allocation")
-		cr.ErrorChallenge(ctx, err)
-		return err
-	}
-
-	if err != nil {
-		cr.ErrorChallenge(ctx, err)
-		return err
 	}
 
 	zlogger.Logger.Info("[challenge]rand: ", zap.Any("rootRef.NumBlocks", rootRef.NumBlocks), zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ChallengeID), zap.Any("random_seed", cr.RandomNumber))
@@ -120,6 +116,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.ErrorChallenge(ctx, err)
 		return err
 	}
+
 	cr.RefID = objectPath.RefID
 	cr.RespondedAllocationRoot = allocationObj.AllocationRoot
 	cr.ObjectPath = objectPath
