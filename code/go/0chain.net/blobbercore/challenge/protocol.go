@@ -14,6 +14,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	zlogger "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
@@ -82,6 +83,10 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Lock allocation changes from happening in handler.CommitWrite function
+	allocMu := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
+	allocMu.Lock()
 
 	wms, err := writemarker.GetWriteMarkersInRange(ctx, cr.AllocationID, cr.AllocationRoot, allocationObj.AllocationRoot)
 	if err != nil {
@@ -170,6 +175,8 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		postData["merkle_path"] = mt.GetPathByIndex(blockoffset)
 		postData["chunk_size"] = objectPath.ChunkSize
 	}
+
+	allocMu.Unlock()
 
 	postDataBytes, err := json.Marshal(postData)
 	if err != nil {
