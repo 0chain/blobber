@@ -13,7 +13,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
@@ -36,7 +35,8 @@ func syncOpenChallenges(ctx context.Context) {
 
 	var blobberChallenges BCChallengeResponse
 	blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
-	retBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain())
+	retBytes, err := transaction.MakeSCRestAPICall(
+		transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain())
 
 	if err != nil {
 		logging.Logger.Error("[challenge]open: ", zap.Error(err))
@@ -46,6 +46,7 @@ func syncOpenChallenges(ctx context.Context) {
 	bytesReader := bytes.NewBuffer(retBytes)
 	d := json.NewDecoder(bytesReader)
 	d.UseNumber()
+
 	if err := d.Decode(&blobberChallenges); err != nil {
 		logging.Logger.Error("[challenge]json: ", zap.String("resp", string(retBytes)), zap.Error(err))
 		return
@@ -70,12 +71,14 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 		}
 	}()
 
-	db := datastore.GetStore().GetDB()
-	if Exists(db, c.ChallengeID) {
+	ctx = datastore.GetStore().CreateTransaction(ctx)
+	tx := datastore.GetStore().GetTransaction(ctx)
+
+	if Exists(tx, c.ChallengeID) {
 		return
 	}
 
-	lastChallengeID, err := getLastChallengeID(db)
+	lastChallengeID, err := getLastChallengeID(tx)
 
 	if err != nil {
 		logging.Logger.Error("[challenge]add(get_latest_challenge_id): ", zap.Error(err))
@@ -98,14 +101,17 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 		zap.String("challenge_id", c.ChallengeID),
 		zap.Time("created", c.CreatedAt))
 
-	if err := db.Transaction(func(tx *gorm.DB) error {
-		return c.SaveWith(tx)
-	}); err != nil {
+	if err = c.SaveWith(tx); err != nil {
 		logging.Logger.Error("[challenge]add: ",
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Time("created", c.CreatedAt),
 			zap.Error(err))
+
+		tx.Rollback()
+		return
 	}
+
+	tx.Commit()
 
 }
 
