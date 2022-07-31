@@ -43,7 +43,7 @@ type DirMetaData struct {
 	Hash         string           `json:"hash" mapstructure:"hash"`
 	PathHash     string           `json:"path_hash" mapstructure:"path_hash"`
 	NumBlocks    int64            `json:"num_of_blocks" mapstructure:"num_of_blocks"`
-	AllocationID string           `json:"allocation_id"`
+	AllocationID string           `json:"allocation_id" mapstructure:"allocation_id"`
 	Children     []ObjectEntity   `json:"-"`
 }
 
