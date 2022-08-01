@@ -300,7 +300,9 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 				if err := cr.Save(ctx); err != nil {
 					zlogger.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 				}
-				FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
+				if cr.RefID != 0 {
+					FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
+				}
 				return nil
 			}
 			zlogger.Logger.Error("[challenge]trans: Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
@@ -328,6 +330,8 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		cr.UpdatedAt = time.Now().UTC()
 	}
 	err = cr.Save(ctx)
-	FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
+	if cr.RefID != 0 {
+		FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
+	}
 	return err
 }
