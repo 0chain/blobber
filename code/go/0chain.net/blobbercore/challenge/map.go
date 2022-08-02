@@ -15,7 +15,7 @@ type ChallengeMap struct {
 
 func (f *ChallengeMap) Exists(id string) (ChallengeStatus, bool) {
 	f.RLock()
-	defer f.Unlock()
+	defer f.RUnlock()
 
 	s, ok := f.items[id]
 
