@@ -33,7 +33,7 @@ func (f *ChallengeMap) Add(id string, status ChallengeStatus) {
 	f.Lock()
 	defer f.Unlock()
 
-	f.items.Add(id, status)
+	f.items.Add(id, status) //nolint: errcheck
 	f.count++
 }
 
@@ -41,7 +41,7 @@ func (f *ChallengeMap) Remove(id string) {
 	f.Lock()
 	defer f.Unlock()
 
-	f.items.Delete(id)
+	f.items.Delete(id) //nolint: errcheck
 	f.count--
 }
 
