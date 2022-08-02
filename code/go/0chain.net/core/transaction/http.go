@@ -26,7 +26,7 @@ import (
 
 var TXN_SUBMIT_URL = miner_endpoint.PutTransaction.FormattedPath(endpoint.NoSlash)
 var TXN_VERIFY_URL = sharder_endpoint.GetTransactionConfirmation.FormattedPath(endpoint.NoSlash) + "?hash="
-var SC_REST_API_URL = sharder_endpoint.SmartContractFunction.FormattedPath(endpoint.NoSlash)
+var SC_REST_API_URL = sharder_endpoint.SmartContractFunction.FormattedPath(endpoint.TrailingSlash)
 var REGISTER_CLIENT = miner_endpoint.PutClient.FormattedPath(endpoint.NoSlash)
 
 const (
