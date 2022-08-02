@@ -221,12 +221,15 @@ func getLastChallengeID(db *gorm.DB) (string, error) {
 	return "", err
 }
 
-// Exists check challenge if exists in db
-func Exists(db *gorm.DB, challengeID string) bool {
+// getStatus check challenge if exists in db
+func getStatus(db *gorm.DB, challengeID string) *ChallengeStatus {
 
-	var count int64
-	db.Raw("SELECT 1 FROM challenges WHERE challenge_id=?", challengeID).Count(&count)
+	var status []int
+	err := db.Raw("SELECT status FROM challenges WHERE challenge_id=?", challengeID).Pluck("status", &status).Error
 
-	return count > 0
+	if errors.Is(err, gorm.ErrRecordNotFound) || len(status) == 0 {
+		return nil
+	}
 
+	return (*ChallengeStatus)(&status[0])
 }
