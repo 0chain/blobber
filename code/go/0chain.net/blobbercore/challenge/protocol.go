@@ -14,6 +14,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	zlogger "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
@@ -72,10 +73,13 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.StatusMessage = "No validators assigned to the challenge"
 		cr.UpdatedAt = time.Now().UTC()
 
+		zlogger.Logger.Debug(cr.StatusMessage + "for challenge: " + cr.ChallengeID)
+
 		if err := cr.Save(ctx); err != nil {
 			zlogger.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+			return err
 		}
-		return common.NewError("no_validators", "No validators assigned to the challenge")
+		return nil
 	}
 
 	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
@@ -84,22 +88,22 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 
 	// Lock allocation changes from happening in handler.CommitWrite function
-	// allocMu := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
-	// allocMu.Lock()
+	allocMu := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
+	allocMu.Lock()
 
 	wms, err := writemarker.GetWriteMarkersInRange(ctx, cr.AllocationID, cr.AllocationRoot, allocationObj.AllocationRoot)
 	if err != nil {
-		// allocMu.Unlock()
+		allocMu.Unlock()
 		return err
 	}
 	if len(wms) == 0 {
-		// allocMu.Unlock()
+		allocMu.Unlock()
 		return common.NewError("write_marker_not_found", "Could find the writemarker for the given allocation root on challenge")
 	}
 
 	rootRef, err := reference.GetReference(ctx, cr.AllocationID, "/")
 	if err != nil {
-		// allocMu.Unlock()
+		allocMu.Unlock()
 		cr.ErrorChallenge(ctx, err)
 		return err
 	}
@@ -115,7 +119,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	zlogger.Logger.Info("[challenge]rand: ", zap.Any("rootRef.NumBlocks", rootRef.NumBlocks), zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ChallengeID), zap.Any("random_seed", cr.RandomNumber))
 	objectPath, err := reference.GetObjectPath(ctx, cr.AllocationID, blockNum)
 	if err != nil {
-		// allocMu.Unlock()
+		allocMu.Unlock()
 		cr.ErrorChallenge(ctx, err)
 		return err
 	}
@@ -138,7 +142,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 	if blockNum > 0 {
 		if objectPath.Meta["type"] != reference.FILE {
-			// allocMu.Unlock()
+			allocMu.Unlock()
 			zlogger.Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta), zap.Any("obejct_path", objectPath))
 			err = common.NewError("invalid_object_path", "Object path was not for a file")
 			cr.ErrorChallenge(ctx, err)
@@ -169,7 +173,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		blockData, mt, err := filestore.GetFileStore().GetBlocksMerkleTreeForChallenge(cr.AllocationID, inputData, blockoffset)
 
 		if err != nil {
-			// allocMu.Unlock()
+			allocMu.Unlock()
 			cr.ErrorChallenge(ctx, err)
 			return common.NewError("blockdata_not_found", err.Error())
 		}
@@ -178,7 +182,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		postData["chunk_size"] = objectPath.ChunkSize
 	}
 
-	// allocMu.Unlock()
+	allocMu.Unlock()
 
 	postDataBytes, err := json.Marshal(postData)
 	if err != nil {
