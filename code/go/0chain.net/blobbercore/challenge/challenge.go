@@ -58,7 +58,7 @@ func syncOpenChallenges(ctx context.Context) {
 
 	jsonElapsed := time.Since(startTime)
 
-	logging.Logger.Error("[challenge]elapsed:pull",
+	logging.Logger.Info("[challenge]elapsed:pull",
 		zap.Int("count", len(blobberChallenges.Challenges)),
 		zap.String("download", downloadElapsed.String()),
 		zap.String("json", (jsonElapsed-downloadElapsed).String()))
@@ -115,7 +115,7 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 
 	cMap.Add(c.ChallengeID, Accepted)
 
-	logging.Logger.Error("[challenge]elapsed:add ",
+	logging.Logger.Info("[challenge]elapsed:add ",
 		zap.String("challenge_id", c.ChallengeID),
 		zap.Time("created", c.CreatedAt),
 		zap.String("delay", c.CreatedAt.Sub(startTime).String()),
@@ -160,7 +160,7 @@ func processAccepted(ctx context.Context) {
 		}
 		swg.Wait()
 
-		logging.Logger.Error("[challenge]elapsed:process ",
+		logging.Logger.Info("[challenge]elapsed:process ",
 			zap.Int("count", len(challenges)),
 			zap.String("save", time.Since(startTime).String()))
 	}
@@ -197,7 +197,7 @@ func validateChallenge(swg *sizedwaitgroup.SizedWaitGroup, c *ChallengeEntity) {
 		zap.Any("challenge_id", c.ChallengeID),
 		zap.Time("created", c.CreatedAt))
 
-	logging.Logger.Error("[challenge]elapsed:validate ",
+	logging.Logger.Info("[challenge]elapsed:validate ",
 		zap.String("challenge_id", c.ChallengeID),
 		zap.Time("created", c.CreatedAt),
 		zap.String("delay", c.CreatedAt.Sub(startTime).String()),
@@ -232,7 +232,7 @@ func commitProcessed(ctx context.Context) {
 		}
 		swg.Wait()
 
-		logging.Logger.Error("[challenge]elapsed:commit ",
+		logging.Logger.Info("[challenge]elapsed:commit ",
 			zap.Int("count", len(challenges)),
 			zap.String("save", time.Since(startTime).String()))
 	}
@@ -287,7 +287,7 @@ func commitChallenge(c *ChallengeEntity) {
 		zap.String("status", c.Status.String()),
 		zap.String("txn", c.CommitTxnID))
 
-	logging.Logger.Error("[challenge]elapsed:commit ",
+	logging.Logger.Info("[challenge]elapsed:commit ",
 		zap.String("challenge_id", c.ChallengeID),
 		zap.Time("created", c.CreatedAt),
 		zap.String("delay", c.CreatedAt.Sub(startTime).String()),
