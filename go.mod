@@ -3,7 +3,7 @@ module github.com/0chain/blobber
 go 1.18
 
 require (
-	github.com/0chain/common v0.0.1
+	github.com/0chain/common v0.0.2
 	github.com/0chain/errors v1.0.3
 	github.com/0chain/gosdk v1.8.6
 	github.com/DATA-DOG/go-sqlmock v1.5.0
