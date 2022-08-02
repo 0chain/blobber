@@ -2,7 +2,6 @@ package challenge
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,7 +11,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	"github.com/0chain/gosdk/constants"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -203,22 +201,6 @@ func GetChallengeEntity(ctx context.Context, challengeID string) (*ChallengeEnti
 		return nil, err
 	}
 	return cr, nil
-}
-
-func getLastChallengeID(db *gorm.DB) (string, error) {
-	if db == nil {
-		return "", constants.ErrInvalidParameter
-	}
-
-	var challengeID string
-
-	err := db.Raw("SELECT challenge_id FROM challenges ORDER BY sequence DESC LIMIT 1").Row().Scan(&challengeID)
-
-	if err == nil || errors.Is(err, sql.ErrNoRows) {
-		return challengeID, nil
-	}
-
-	return "", err
 }
 
 // getStatus check challenge if exists in db
