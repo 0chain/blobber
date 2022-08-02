@@ -93,7 +93,7 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 
 	db := datastore.GetStore().GetDB()
 	if status := getStatus(db, c.ChallengeID); status != nil {
-		cMap.Add(c.ChallengeID, *status)
+		cMap.Add(c.ChallengeID, *status) //nolint
 		return
 	}
 
