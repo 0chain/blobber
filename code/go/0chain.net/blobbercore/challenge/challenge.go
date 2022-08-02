@@ -118,7 +118,7 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 	logging.Logger.Info("[challenge]elapsed:add ",
 		zap.String("challenge_id", c.ChallengeID),
 		zap.Time("created", c.CreatedAt),
-		zap.String("delay", c.CreatedAt.Sub(startTime).String()),
+		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
 		zap.String("save", time.Since(startTime).String()))
 
 }
@@ -200,7 +200,7 @@ func validateChallenge(swg *sizedwaitgroup.SizedWaitGroup, c *ChallengeEntity) {
 	logging.Logger.Info("[challenge]elapsed:validate ",
 		zap.String("challenge_id", c.ChallengeID),
 		zap.Time("created", c.CreatedAt),
-		zap.String("delay", c.CreatedAt.Sub(startTime).String()),
+		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
 		zap.String("save", time.Since(startTime).String()))
 }
 
@@ -290,7 +290,7 @@ func commitChallenge(c *ChallengeEntity) {
 	logging.Logger.Info("[challenge]elapsed:commit ",
 		zap.String("challenge_id", c.ChallengeID),
 		zap.Time("created", c.CreatedAt),
-		zap.String("delay", c.CreatedAt.Sub(startTime).String()),
+		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
 		zap.String("save", time.Since(startTime).String()))
 
 	go cMap.Remove(c.ChallengeID)
