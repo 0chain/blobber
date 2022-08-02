@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"github.com/0chain/common/constants/endpoint/v1_endpoint/validator_endpoint"
 	"net/http"
 	"os"
 	"runtime/pprof"
@@ -14,8 +15,8 @@ import (
 /*SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
 	r.Use(common.UseUserRateLimit)
-	r.HandleFunc("/v1/storage/challenge/new", common.ToJSONResponse(SetupContext(ChallengeHandler)))
-	r.HandleFunc("/debug", common.ToJSONResponse(DumpGoRoutines))
+	r.HandleFunc(validator_endpoint.NewChallenge.Path(), common.ToJSONResponse(SetupContext(ChallengeHandler)))
+	r.HandleFunc(validator_endpoint.Debug.Path(), common.ToJSONResponse(DumpGoRoutines))
 }
 
 func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {

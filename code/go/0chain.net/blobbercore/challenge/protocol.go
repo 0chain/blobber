@@ -3,6 +3,7 @@ package challenge
 import (
 	"context"
 	"encoding/json"
+	"github.com/0chain/common/constants/endpoint/v1_endpoint/validator_endpoint"
 	"math"
 	"math/rand"
 	"time"
@@ -20,7 +21,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const VALIDATOR_URL = "/v1/storage/challenge/new"
+var VALIDATOR_URL = validator_endpoint.NewChallenge.Path()
 
 type ChallengeResponse struct {
 	ChallengeID       string              `json:"challenge_id"`

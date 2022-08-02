@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/0chain/common/constants/endpoint/v1_endpoint/blobber_endpoint"
 	"net/http"
 	"os"
 	"runtime/pprof"
@@ -37,48 +38,48 @@ func SetupHandlers(r *mux.Router) {
 	r.Use(useRecovery, useCors, common.UseUserRateLimit)
 
 	//object operations
-	r.HandleFunc("/v1/file/upload/{allocation}", common.FileRateLimit(common.ToJSONResponse(WithConnection(UploadHandler))))
-	r.HandleFunc("/v1/file/download/{allocation}", common.FileRateLimit(common.ToByteStream(WithConnection(DownloadHandler)))).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/file/rename/{allocation}", common.ToJSONResponse(WithConnection(RenameHandler))).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/v1/file/copy/{allocation}", common.ToJSONResponse(WithConnection(CopyHandler))).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/v1/dir/{allocation}", common.ToJSONResponse(WithConnection(CreateDirHandler))).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/v1/dir/{allocation}", common.ToJSONResponse(WithConnection(CreateDirHandler))).Methods(http.MethodDelete, http.MethodOptions)
+	r.HandleFunc(blobber_endpoint.FileUpload.PathWithPathVariable(), common.FileRateLimit(common.ToJSONResponse(WithConnection(UploadHandler))))
+	r.HandleFunc(blobber_endpoint.FileDownload.PathWithPathVariable(), common.FileRateLimit(common.ToByteStream(WithConnection(DownloadHandler)))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc(blobber_endpoint.FileRename.PathWithPathVariable(), common.ToJSONResponse(WithConnection(RenameHandler))).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc(blobber_endpoint.FileCopy.PathWithPathVariable(), common.ToJSONResponse(WithConnection(CopyHandler))).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc(blobber_endpoint.Dir.PathWithPathVariable(), common.ToJSONResponse(WithConnection(CreateDirHandler))).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc(blobber_endpoint.Dir.PathWithPathVariable(), common.ToJSONResponse(WithConnection(CreateDirHandler))).Methods(http.MethodDelete, http.MethodOptions)
 
-	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToStatusCode(WithStatusConnection(CommitHandler)))
-	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.ToJSONResponse(WithConnection(CommitMetaTxnHandler)))
+	r.HandleFunc(blobber_endpoint.ConnectionCommit.PathWithPathVariable(), common.ToStatusCode(WithStatusConnection(CommitHandler)))
+	r.HandleFunc(blobber_endpoint.FileCommitMetaTxn.PathWithPathVariable(), common.ToJSONResponse(WithConnection(CommitMetaTxnHandler)))
 
 	// collaborator
-	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(AddCollaboratorHandler))).Methods(http.MethodOptions, http.MethodPost)
-	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(GetCollaboratorHandler))).Methods(http.MethodOptions, http.MethodGet)
-	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(RemoveCollaboratorHandler))).Methods(http.MethodOptions, http.MethodDelete)
+	r.HandleFunc(blobber_endpoint.FileCollaborator.PathWithPathVariable(), common.ToJSONResponse(WithConnection(AddCollaboratorHandler))).Methods(http.MethodOptions, http.MethodPost)
+	r.HandleFunc(blobber_endpoint.FileCollaborator.PathWithPathVariable(), common.ToJSONResponse(WithConnection(GetCollaboratorHandler))).Methods(http.MethodOptions, http.MethodGet)
+	r.HandleFunc(blobber_endpoint.FileCollaborator.PathWithPathVariable(), common.ToJSONResponse(WithConnection(RemoveCollaboratorHandler))).Methods(http.MethodOptions, http.MethodDelete)
 
 	//object info related apis
-	r.HandleFunc("/allocation", common.ToJSONResponse(WithConnection(AllocationHandler)))
-	r.HandleFunc("/v1/file/meta/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler)))
-	r.HandleFunc("/v1/file/stats/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)))
-	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ListHandler))).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/file/objectpath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler)))
-	r.HandleFunc("/v1/file/referencepath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))
-	r.HandleFunc("/v1/file/objecttree/{allocation}", common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler))).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/file/refs/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(RefsHandler))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc(blobber_endpoint.Allocation.Path(), common.ToJSONResponse(WithConnection(AllocationHandler)))
+	r.HandleFunc(blobber_endpoint.FileMeta.PathWithPathVariable(), common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler)))
+	r.HandleFunc(blobber_endpoint.FileStats.PathWithPathVariable(), common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)))
+	r.HandleFunc(blobber_endpoint.FileList.PathWithPathVariable(), common.ToJSONResponse(WithReadOnlyConnection(ListHandler))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc(blobber_endpoint.FileObjectPath.PathWithPathVariable(), common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler)))
+	r.HandleFunc(blobber_endpoint.FileReferencePath.PathWithPathVariable(), common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))
+	r.HandleFunc(blobber_endpoint.FileObjectTree.PathWithPathVariable(), common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc(blobber_endpoint.FileRefs.PathWithPathVariable(), common.ToJSONResponse(WithReadOnlyConnection(RefsHandler))).Methods(http.MethodGet, http.MethodOptions)
 	//admin related
-	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
-	r.HandleFunc("/_config", common.ToJSONResponse(GetConfig))
-	r.HandleFunc("/_stats", StatsHandler)
-	r.HandleFunc("/_statsJSON", common.ToJSONResponse(stats.StatsJSONHandler))
-	r.HandleFunc("/_cleanupdisk", common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))
-	r.HandleFunc("/getstats", common.ToJSONResponse(stats.GetStatsHandler))
+	r.HandleFunc(blobber_endpoint.Debug.Path(), common.ToJSONResponse(DumpGoRoutines))
+	r.HandleFunc(blobber_endpoint.Config.Path(), common.ToJSONResponse(GetConfig))
+	r.HandleFunc(blobber_endpoint.Stats.Path(), StatsHandler)
+	r.HandleFunc(blobber_endpoint.JsonStats.Path(), common.ToJSONResponse(stats.StatsJSONHandler))
+	r.HandleFunc(blobber_endpoint.CleanupDisk.Path(), common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))
+	r.HandleFunc(blobber_endpoint.GetStats.Path(), common.ToJSONResponse(stats.GetStatsHandler))
 
 	//marketplace related
-	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(InsertShare))).Methods(http.MethodOptions, http.MethodPost)
-	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(RevokeShare))).Methods(http.MethodOptions, http.MethodDelete)
+	r.HandleFunc(blobber_endpoint.MarketplaceShareInfo.PathWithPathVariable(), common.ToJSONResponse(WithConnection(InsertShare))).Methods(http.MethodOptions, http.MethodPost)
+	r.HandleFunc(blobber_endpoint.MarketplaceShareInfo.PathWithPathVariable(), common.ToJSONResponse(WithConnection(RevokeShare))).Methods(http.MethodOptions, http.MethodDelete)
 
 	// lightweight http handler without heavy postgres transaction to improve performance
 
-	r.HandleFunc("/v1/writemarker/lock/{allocation}", WithHandler(LockWriteMarker)).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/v1/writemarker/lock/{allocation}/{connection}", WithHandler(UnlockWriteMarker)).Methods(http.MethodDelete, http.MethodOptions)
+	r.HandleFunc(blobber_endpoint.WriteMarkerLock.PathWithPathVariable(), WithHandler(LockWriteMarker)).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc(blobber_endpoint.WriteMarkerLockConnection.PathWithPathVariable(), WithHandler(UnlockWriteMarker)).Methods(http.MethodDelete, http.MethodOptions)
 
-	r.HandleFunc("/v1/hashnode/root/{allocation}", WithHandler(LoadRootHashnode)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc(blobber_endpoint.HashnodeRoot.PathWithPathVariable(), WithHandler(LoadRootHashnode)).Methods(http.MethodGet, http.MethodOptions)
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {

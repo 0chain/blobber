@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"github.com/0chain/common/constants/endpoint"
+	"github.com/0chain/common/constants/endpoint/v1_endpoint/miner_endpoint"
+	"github.com/0chain/common/constants/endpoint/v1_endpoint/sharder_endpoint"
 	"hash/fnv"
 	"math"
 
@@ -21,10 +24,10 @@ import (
 	"github.com/0chain/gosdk/zcncore"
 )
 
-const TXN_SUBMIT_URL = "v1/transaction/put"
-const TXN_VERIFY_URL = "v1/transaction/get/confirmation?hash="
-const SC_REST_API_URL = "v1/screst/"
-const REGISTER_CLIENT = "v1/client/put"
+var TXN_SUBMIT_URL = miner_endpoint.PutTransaction.FormattedPath(endpoint.NoSlash)
+var TXN_VERIFY_URL = sharder_endpoint.GetTransactionConfirmation.FormattedPath(endpoint.NoSlash) + "?hash="
+var SC_REST_API_URL = sharder_endpoint.SmartContractFunction.FormattedPath(endpoint.NoSlash)
+var REGISTER_CLIENT = miner_endpoint.PutClient.FormattedPath(endpoint.NoSlash)
 
 const (
 	SLEEP_FOR_TXN_CONFIRMATION = 5
