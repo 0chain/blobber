@@ -8,6 +8,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/cache"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
@@ -23,6 +24,8 @@ type BCChallengeResponse struct {
 	BlobberID  string             `json:"blobber_id"`
 	Challenges []*ChallengeEntity `json:"challenges"`
 }
+
+var cMap = cache.NewLRUCache(2000)
 
 // syncOpenChallenges get challenge from blockchain , and add them in database
 func syncOpenChallenges(ctx context.Context) {
@@ -84,7 +87,7 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 
 	startTime := time.Now()
 
-	if _, ok := cMap.Exists(c.ChallengeID); ok {
+	if _, err := cMap.Get(c.ChallengeID); err == nil {
 		return
 	}
 
@@ -113,7 +116,7 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 		return
 	}
 
-	cMap.Add(c.ChallengeID, Accepted)
+	cMap.Add(c.ChallengeID, Accepted) //nolint
 
 	logging.Logger.Info("[challenge]elapsed:add ",
 		zap.String("challenge_id", c.ChallengeID),
@@ -293,6 +296,6 @@ func commitChallenge(c *ChallengeEntity) {
 		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
 		zap.String("save", time.Since(startTime).String()))
 
-	go cMap.Remove(c.ChallengeID)
+	go cMap.Delete(c.ChallengeID) //nolint
 
 }

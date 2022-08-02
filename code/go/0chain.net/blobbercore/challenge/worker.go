@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
 )
 
 // SetupWorkers start challenge workers
@@ -45,7 +43,6 @@ func startSyncOpen(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
-			logging.Logger.Info("[challenge]wait", zap.Int("count", cMap.Count()))
 			syncOpenChallenges(ctx)
 		}
 	}
