@@ -121,10 +121,11 @@ func findAllocations(ctx context.Context, offset int64) (allocs []*Allocation, c
 
 	err = tx.Model(&Allocation{}).Where(query).Count(&count).Error
 	if err != nil {
+		Logger.Error(err.Error())
 		return
 	}
 
-	allocs = make([]*Allocation, 0) // have to make for the GROM (stupid GORM)
+	allocs = make([]*Allocation, 0)
 	err = tx.Model(&Allocation{}).
 		Where(query).
 		Limit(UPDATE_LIMIT).
