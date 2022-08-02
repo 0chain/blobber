@@ -104,7 +104,7 @@ func CallFaucet() error {
 		return common.NewError("call_faucet_failed", "Failed to create new transaction with err: "+err.Error())
 	}
 	wg.Add(1)
-	err = txn.ExecuteSmartContract(zcncore.FaucetSmartContractAddress, "pour", "Blobber Registration", zcncore.ConvertToValue(0))
+	_, err = txn.ExecuteSmartContract(zcncore.FaucetSmartContractAddress, "pour", "Blobber Registration", zcncore.ConvertToValue(0))
 	if err != nil {
 		return common.NewError("call_faucet_failed", "Failed to execute smart contract with err: "+err.Error())
 	}
