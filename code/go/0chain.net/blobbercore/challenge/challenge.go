@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/cache"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
@@ -23,6 +25,8 @@ type BCChallengeResponse struct {
 	Challenges []*ChallengeEntity `json:"challenges"`
 }
 
+var cMap = cache.NewLRUCache(2000)
+
 // syncOpenChallenges get challenge from blockchain , and add them in database
 func syncOpenChallenges(ctx context.Context) {
 	defer func() {
@@ -36,12 +40,16 @@ func syncOpenChallenges(ctx context.Context) {
 
 	var blobberChallenges BCChallengeResponse
 	blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
+
+	startTime := time.Now()
 	retBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain())
 
 	if err != nil {
 		logging.Logger.Error("[challenge]open: ", zap.Error(err))
 		return
 	}
+
+	downloadElapsed := time.Since(startTime)
 
 	bytesReader := bytes.NewBuffer(retBytes)
 	d := json.NewDecoder(bytesReader)
@@ -50,6 +58,13 @@ func syncOpenChallenges(ctx context.Context) {
 		logging.Logger.Error("[challenge]json: ", zap.String("resp", string(retBytes)), zap.Error(err))
 		return
 	}
+
+	jsonElapsed := time.Since(startTime)
+
+	logging.Logger.Info("[challenge]elapsed:pull",
+		zap.Int("count", len(blobberChallenges.Challenges)),
+		zap.String("download", downloadElapsed.String()),
+		zap.String("json", (jsonElapsed-downloadElapsed).String()))
 
 	for _, challengeObj := range blobberChallenges.Challenges {
 
@@ -70,23 +85,15 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 		}
 	}()
 
+	startTime := time.Now()
+
+	if _, err := cMap.Get(c.ChallengeID); err == nil {
+		return
+	}
+
 	db := datastore.GetStore().GetDB()
-	if Exists(db, c.ChallengeID) {
-		return
-	}
-
-	lastChallengeID, err := getLastChallengeID(db)
-
-	if err != nil {
-		logging.Logger.Error("[challenge]add(get_latest_challenge_id): ", zap.Error(err))
-		return
-	}
-
-	isValid := c.PrevChallengeID == "" || lastChallengeID == c.PrevChallengeID
-
-	// it is not First and Next challenge
-	if !isValid {
-		logging.Logger.Error("[challenge]Challenge chain is not valid")
+	if status := getStatus(db, c.ChallengeID); status != nil {
+		cMap.Add(c.ChallengeID, *status) //nolint
 		return
 	}
 
@@ -105,7 +112,17 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Time("created", c.CreatedAt),
 			zap.Error(err))
+
+		return
 	}
+
+	cMap.Add(c.ChallengeID, Accepted) //nolint
+
+	logging.Logger.Info("[challenge]elapsed:add ",
+		zap.String("challenge_id", c.ChallengeID),
+		zap.Time("created", c.CreatedAt),
+		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
+		zap.String("save", time.Since(startTime).String()))
 
 }
 
@@ -121,6 +138,9 @@ func processAccepted(ctx context.Context) {
 	challenges := make([]*ChallengeEntity, 0)
 	db.Where(ChallengeEntity{Status: Accepted}).Find(&challenges)
 	if len(challenges) > 0 {
+
+		startTime := time.Now()
+
 		swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
 		for _, c := range challenges {
 			logging.Logger.Info("[challenge]process: ",
@@ -142,11 +162,17 @@ func processAccepted(ctx context.Context) {
 			go validateChallenge(&swg, c)
 		}
 		swg.Wait()
+
+		logging.Logger.Info("[challenge]elapsed:process ",
+			zap.Int("count", len(challenges)),
+			zap.String("save", time.Since(startTime).String()))
 	}
 }
 
 func validateChallenge(swg *sizedwaitgroup.SizedWaitGroup, c *ChallengeEntity) {
 	defer swg.Done()
+
+	startTime := time.Now()
 
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	defer ctx.Done()
@@ -173,6 +199,12 @@ func validateChallenge(swg *sizedwaitgroup.SizedWaitGroup, c *ChallengeEntity) {
 	logging.Logger.Info("[challenge]validate: ",
 		zap.Any("challenge_id", c.ChallengeID),
 		zap.Time("created", c.CreatedAt))
+
+	logging.Logger.Info("[challenge]elapsed:validate ",
+		zap.String("challenge_id", c.ChallengeID),
+		zap.Time("created", c.CreatedAt),
+		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
+		zap.String("save", time.Since(startTime).String()))
 }
 
 func commitProcessed(ctx context.Context) {
@@ -190,6 +222,9 @@ func commitProcessed(ctx context.Context) {
 		Find(&challenges)
 
 	if len(challenges) > 0 {
+
+		startTime := time.Now()
+
 		swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
 		for _, challenge := range challenges {
 			swg.Add()
@@ -199,14 +234,22 @@ func commitProcessed(ctx context.Context) {
 			}(challenge)
 		}
 		swg.Wait()
+
+		logging.Logger.Info("[challenge]elapsed:commit ",
+			zap.Int("count", len(challenges)),
+			zap.String("save", time.Since(startTime).String()))
 	}
 }
 
 func commitChallenge(c *ChallengeEntity) {
+
+	startTime := time.Now()
+
 	logging.Logger.Info("[challenge]commit",
 		zap.Any("challenge_id", c.ChallengeID),
 		zap.Time("created", c.CreatedAt),
 		zap.Any("openchallenge", c))
+
 	if err := c.UnmarshalFields(); err != nil {
 		logging.Logger.Error("[challenge]commit",
 			zap.String("challenge_id", c.ChallengeID),
@@ -246,5 +289,13 @@ func commitChallenge(c *ChallengeEntity) {
 		zap.Time("created", c.CreatedAt),
 		zap.String("status", c.Status.String()),
 		zap.String("txn", c.CommitTxnID))
+
+	logging.Logger.Info("[challenge]elapsed:commit ",
+		zap.String("challenge_id", c.ChallengeID),
+		zap.Time("created", c.CreatedAt),
+		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
+		zap.String("save", time.Since(startTime).String()))
+
+	go cMap.Delete(c.ChallengeID) //nolint
 
 }

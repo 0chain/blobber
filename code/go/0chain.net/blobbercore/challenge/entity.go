@@ -2,7 +2,6 @@ package challenge
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,7 +11,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	"github.com/0chain/gosdk/constants"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -205,28 +203,15 @@ func GetChallengeEntity(ctx context.Context, challengeID string) (*ChallengeEnti
 	return cr, nil
 }
 
-func getLastChallengeID(db *gorm.DB) (string, error) {
-	if db == nil {
-		return "", constants.ErrInvalidParameter
+// getStatus check challenge if exists in db
+func getStatus(db *gorm.DB, challengeID string) *ChallengeStatus {
+
+	var status []int
+	err := db.Raw("SELECT status FROM challenges WHERE challenge_id=?", challengeID).Pluck("status", &status).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) || len(status) == 0 {
+		return nil
 	}
 
-	var challengeID string
-
-	err := db.Raw("SELECT challenge_id FROM challenges ORDER BY sequence DESC LIMIT 1").Row().Scan(&challengeID)
-
-	if err == nil || errors.Is(err, sql.ErrNoRows) {
-		return challengeID, nil
-	}
-
-	return "", err
-}
-
-// Exists check challenge if exists in db
-func Exists(db *gorm.DB, challengeID string) bool {
-
-	var count int64
-	db.Raw("SELECT 1 FROM challenges WHERE challenge_id=?", challengeID).Count(&count)
-
-	return count > 0
-
+	return (*ChallengeStatus)(&status[0])
 }
