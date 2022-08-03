@@ -237,6 +237,7 @@ func validateChallenge(id string) {
 			zap.String("validationTickets", string(c.ValidationTicketsString)),
 			zap.String("ObjectPath", string(c.ObjectPathString)),
 			zap.Error(err))
+		db.Rollback()
 		return
 	}
 
@@ -379,6 +380,7 @@ func commitChallenge(id string) {
 			zap.String("validationTickets", string(c.ValidationTicketsString)),
 			zap.String("ObjectPath", string(c.ObjectPathString)),
 			zap.Error(err))
+		db.Rollback()
 		return
 	}
 
