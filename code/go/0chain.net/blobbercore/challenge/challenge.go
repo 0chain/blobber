@@ -138,7 +138,9 @@ func processAccepted(ctx context.Context) {
 
 	db := datastore.GetStore().GetDB()
 
-	rows, err := db.Where("status = ?", Accepted).Select("challenge_id", "created_at").Rows()
+	rows, err := db.Model(&ChallengeEntity{}).
+		Where("status = ?", Accepted).
+		Select("challenge_id", "created_at").Rows()
 
 	if err != nil {
 		logging.Logger.Error("[challenge]process: ",
@@ -209,7 +211,9 @@ func validateChallenge(id string) {
 
 	db := datastore.GetStore().GetTransaction(ctx)
 
-	if err := db.Where("challenge_id = ? and status = ?", id, Accepted).Find(c).Error; err != nil {
+	if err := db.Model(&ChallengeEntity{}).
+		Where("challenge_id = ? and status = ?", id, Accepted).
+		Find(c).Error; err != nil {
 
 		logging.Logger.Error("[challenge]validate: ",
 			zap.Any("challenge_id", id),
@@ -275,7 +279,9 @@ func commitProcessed(ctx context.Context) {
 	db := datastore.GetStore().GetDB()
 	count := 0
 
-	rows, err := db.Where("status = ?", Processed).Select("challenge_id", "created_at").Rows()
+	rows, err := db.Model(&ChallengeEntity{}).
+		Where("status = ?", Processed).
+		Select("challenge_id", "created_at").Rows()
 
 	if err != nil {
 		logging.Logger.Error("[challenge]validate: ",
@@ -344,7 +350,9 @@ func commitChallenge(id string) {
 
 	var c *ChallengeEntity
 
-	if err := db.Where("challenge_id = ? and status = ?", id, Processed).Find(c).Error; err != nil {
+	if err := db.Model(&ChallengeEntity{}).
+		Where("challenge_id = ? and status = ?", id, Processed).
+		Find(c).Error; err != nil {
 
 		logging.Logger.Error("[challenge]commit: ",
 			zap.Any("challenge_id", id),
