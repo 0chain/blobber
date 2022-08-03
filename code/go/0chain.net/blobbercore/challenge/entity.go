@@ -25,6 +25,7 @@ const (
 	Accepted ChallengeStatus = iota + 1
 	Processed
 	Committed
+	Cancelled
 )
 
 func (s ChallengeStatus) String() string {
@@ -35,6 +36,8 @@ func (s ChallengeStatus) String() string {
 		return "Processed"
 	case Committed:
 		return "Committed"
+	case Cancelled:
+		return "Cancelled"
 	default:
 		return fmt.Sprintf("%d", int(s))
 	}
@@ -77,7 +80,7 @@ type ChallengeEntity struct {
 	AllocationID            string                `gorm:"column:allocation_id;size64;not null" json:"allocation_id"`
 	AllocationRoot          string                `gorm:"column:allocation_root;size:64" json:"allocation_root"`
 	RespondedAllocationRoot string                `gorm:"column:responded_allocation_root;size:64" json:"responded_allocation_root"`
-	Status                  ChallengeStatus       `gorm:"column:status;type:integer;not null;default:0" json:"status"`
+	Status                  ChallengeStatus       `gorm:"column:status;type:integer;not null;default:0;index:idx_status" json:"status"`
 	Result                  ChallengeResult       `gorm:"column:result;type:integer;not null;default:0" json:"result"`
 	StatusMessage           string                `gorm:"column:status_message" json:"status_message"`
 	CommitTxnID             string                `gorm:"column:commit_txn_id;size:64" json:"commit_txn_id"`
@@ -204,6 +207,7 @@ func GetChallengeEntity(ctx context.Context, challengeID string) (*ChallengeEnti
 }
 
 // getStatus check challenge if exists in db
+// nolint
 func getStatus(db *gorm.DB, challengeID string) *ChallengeStatus {
 
 	var status []int
