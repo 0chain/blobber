@@ -88,6 +88,9 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 
 	// Lock allocation changes from happening in handler.CommitWrite function
+	// This lock should be unlocked as soon as possible. We should not defer
+	// unlocking it as it will be locked for longer time and handler.CommitWrite
+	// will fail.
 	allocMu := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
 	allocMu.Lock()
 
@@ -195,8 +198,19 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.ValidationTickets = make([]*ValidationTicket, len(cr.Validators))
 	}
 
-	swg := sizedwaitgroup.New(10)
 	accessMu := sync.Mutex{}
+	updateMapAndSlice := func(validatorID string, i int, vt *ValidationTicket) {
+		accessMu.Lock()
+		cr.ValidationTickets[i] = vt
+		if vt != nil {
+			responses[validatorID] = *vt
+		} else {
+			delete(responses, validatorID)
+		}
+		accessMu.Unlock()
+	}
+
+	swg := sizedwaitgroup.New(10)
 	for i, validator := range cr.Validators {
 		if cr.ValidationTickets[i] != nil {
 			exisitingVT := cr.ValidationTickets[i]
@@ -214,8 +228,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			resp, err := util.SendPostRequest(url, postDataBytes, nil)
 			if err != nil {
 				logging.Logger.Info("[challenge]post: ", zap.Any("error", err.Error()))
-				delete(responses, validatorID)
-				cr.ValidationTickets[i] = nil
+				updateMapAndSlice(validatorID, i, nil)
 				return
 			}
 			var validationTicket ValidationTicket
@@ -228,10 +241,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 					zap.Any("resp", string(resp)),
 					zap.Any("error", err.Error()),
 				)
-				accessMu.Lock()
-				delete(responses, validatorID)
-				cr.ValidationTickets[i] = nil
-				accessMu.Unlock()
+				updateMapAndSlice(validatorID, i, nil)
 				return
 			}
 			logging.Logger.Info(
@@ -242,19 +252,12 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			if err != nil || !verified {
 				logging.Logger.Error(
 					"[challenge]ticket: Validation ticket from validator could not be verified.",
-					zap.String("validator",
-						validatorID),
+					zap.String("validator", validatorID),
 				)
-				accessMu.Lock()
-				delete(responses, validatorID)
-				cr.ValidationTickets[i] = nil
-				accessMu.Unlock()
+				updateMapAndSlice(validatorID, i, nil)
 				return
 			}
-			accessMu.Lock()
-			responses[validatorID] = validationTicket
-			cr.ValidationTickets[i] = &validationTicket
-			accessMu.Unlock()
+			updateMapAndSlice(validatorID, i, &validationTicket)
 		}(url, validator.ID, i)
 	}
 
