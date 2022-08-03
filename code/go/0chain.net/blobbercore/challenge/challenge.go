@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -15,6 +14,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
@@ -73,26 +73,13 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 		}
 	}()
 
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-	tx := datastore.GetStore().GetTransaction(ctx)
-
-	var err error
-	defer func() {
-		ctx.Done()
-		if err != nil {
-			tx.Rollback()
-			return
-		}
-		tx.Commit()
-	}()
-
-	if Exists(tx, c.ChallengeID) {
+	db := datastore.GetStore().GetDB()
+	if Exists(db, c.ChallengeID) {
 		logging.Logger.Info(fmt.Sprintf("Challenge %s already exists", c.ChallengeID))
 		return
 	}
 
-	var lastChallengeID string
-	lastChallengeID, err = getLastChallengeID(tx)
+	lastChallengeID, err := getLastChallengeID(db)
 
 	if err != nil {
 		logging.Logger.Error("[challenge]add(get_latest_challenge_id): ", zap.Error(err))
@@ -104,7 +91,6 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 	// it is not First and Next challenge
 	if !isValid {
 		logging.Logger.Error("[challenge]Challenge chain is not valid")
-		err = errors.New("dummy")
 		return
 	}
 
@@ -116,7 +102,9 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 		zap.String("challenge_id", c.ChallengeID),
 		zap.Time("created", c.CreatedAt))
 
-	if err = c.SaveWith(tx); err != nil {
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		return c.SaveWith(tx)
+	}); err != nil {
 		logging.Logger.Error("[challenge]add: ",
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Time("created", c.CreatedAt),
