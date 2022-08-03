@@ -24,6 +24,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("challenge_response.frequency", 10)
 	viper.SetDefault("challenge_response.num_workers", 5)
 	viper.SetDefault("challenge_response.max_retries", 10)
+	viper.SetDefault("challenge_completion_time", "3m")
 
 	viper.SetDefault("healthcheck.frequency", "60s")
 
@@ -169,6 +170,8 @@ type Config struct {
 	// AutomacitUpdate Whether to automatically update blobber updates to blockchain
 	AutomaticUpdate       bool
 	BlobberUpdateInterval time.Duration
+
+	ChallengeCompletionTime time.Duration
 }
 
 /*Configuration of the system */
