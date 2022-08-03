@@ -237,6 +237,7 @@ func validateChallenge(id string) {
 			zap.String("validationTickets", string(c.ValidationTicketsString)),
 			zap.String("ObjectPath", string(c.ObjectPathString)),
 			zap.Error(err))
+		return
 	}
 
 	if err := c.LoadValidationTickets(ctx); err != nil {
@@ -378,6 +379,7 @@ func commitChallenge(id string) {
 			zap.String("validationTickets", string(c.ValidationTicketsString)),
 			zap.String("ObjectPath", string(c.ObjectPathString)),
 			zap.Error(err))
+		return
 	}
 
 	if err := c.CommitChallenge(ctx, false); err != nil {
