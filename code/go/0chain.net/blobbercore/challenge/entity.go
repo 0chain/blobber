@@ -25,6 +25,7 @@ const (
 	Accepted ChallengeStatus = iota + 1
 	Processed
 	Committed
+	Cancelled
 )
 
 func (s ChallengeStatus) String() string {
@@ -35,6 +36,8 @@ func (s ChallengeStatus) String() string {
 		return "Processed"
 	case Committed:
 		return "Committed"
+	case Cancelled:
+		return "Cancelled"
 	default:
 		return fmt.Sprintf("%d", int(s))
 	}
