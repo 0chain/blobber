@@ -15,7 +15,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
-	zlogger "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
 	"github.com/remeh/sizedwaitgroup"
@@ -42,19 +42,19 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CHALLENGE_RESPONSE, sn, 0)
 	if err != nil {
-		zlogger.Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
+		logging.Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
 		return nil, err
 	}
 
-	zlogger.Logger.Info("Verifying challenge response to blockchain.", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
+	logging.Logger.Info("Verifying challenge response to blockchain.", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
 	if err != nil {
-		zlogger.Logger.Error("Error verifying the challenge response transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
+		logging.Logger.Error("Error verifying the challenge response transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
 		return txn, err
 	}
-	zlogger.Logger.Info("Challenge committed and accepted", zap.Any("txn.hash", t.Hash), zap.Any("txn.output", t.TransactionOutput), zap.String("challenge_id", cr.ChallengeID))
+	logging.Logger.Info("Challenge committed and accepted", zap.Any("txn.hash", t.Hash), zap.Any("txn.output", t.TransactionOutput), zap.String("challenge_id", cr.ChallengeID))
 	return t, nil
 }
 
@@ -63,7 +63,7 @@ func (cr *ChallengeEntity) ErrorChallenge(ctx context.Context, err error) {
 	cr.UpdatedAt = time.Now().UTC()
 
 	if err := cr.Save(ctx); err != nil {
-		zlogger.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+		logging.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 	}
 }
 
@@ -73,10 +73,10 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.StatusMessage = "No validators assigned to the challenge"
 		cr.UpdatedAt = time.Now().UTC()
 
-		zlogger.Logger.Debug(cr.StatusMessage + "for challenge: " + cr.ChallengeID)
+		logging.Logger.Debug(cr.StatusMessage + "for challenge: " + cr.ChallengeID)
 
 		if err := cr.Save(ctx); err != nil {
-			zlogger.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+			logging.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 			return err
 		}
 		return nil
@@ -116,7 +116,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.BlockNum = blockNum
 	}
 
-	zlogger.Logger.Info("[challenge]rand: ", zap.Any("rootRef.NumBlocks", rootRef.NumBlocks), zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ChallengeID), zap.Any("random_seed", cr.RandomNumber))
+	logging.Logger.Info("[challenge]rand: ", zap.Any("rootRef.NumBlocks", rootRef.NumBlocks), zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ChallengeID), zap.Any("random_seed", cr.RandomNumber))
 	objectPath, err := reference.GetObjectPath(ctx, cr.AllocationID, blockNum)
 	if err != nil {
 		allocMu.Unlock()
@@ -143,7 +143,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	if blockNum > 0 {
 		if objectPath.Meta["type"] != reference.FILE {
 			allocMu.Unlock()
-			zlogger.Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta), zap.Any("obejct_path", objectPath))
+			logging.Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta), zap.Any("obejct_path", objectPath))
 			err = common.NewError("invalid_object_path", "Object path was not for a file")
 			cr.ErrorChallenge(ctx, err)
 			return err
@@ -186,7 +186,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 	postDataBytes, err := json.Marshal(postData)
 	if err != nil {
-		zlogger.Logger.Error("[db]form: " + err.Error())
+		logging.Logger.Error("[db]form: " + err.Error())
 		cr.ErrorChallenge(ctx, err)
 		return err
 	}
@@ -213,7 +213,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 			resp, err := util.SendPostRequest(url, postDataBytes, nil)
 			if err != nil {
-				zlogger.Logger.Info("[challenge]post: ", zap.Any("error", err.Error()))
+				logging.Logger.Info("[challenge]post: ", zap.Any("error", err.Error()))
 				delete(responses, validatorID)
 				cr.ValidationTickets[i] = nil
 				return
@@ -221,7 +221,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			var validationTicket ValidationTicket
 			err = json.Unmarshal(resp, &validationTicket)
 			if err != nil {
-				zlogger.Logger.Error(
+				logging.Logger.Error(
 					"[challenge]resp: ",
 					zap.String("validator",
 						validatorID),
@@ -234,13 +234,13 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 				accessMu.Unlock()
 				return
 			}
-			zlogger.Logger.Info(
+			logging.Logger.Info(
 				"[challenge]resp: Got response from the validator.",
 				zap.Any("validator_response", validationTicket),
 			)
 			verified, err := validationTicket.VerifySign()
 			if err != nil || !verified {
-				zlogger.Logger.Error(
+				logging.Logger.Error(
 					"[challenge]ticket: Validation ticket from validator could not be verified.",
 					zap.String("validator",
 						validatorID),
@@ -269,21 +269,21 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			if vt.Result {
 				numSuccess++
 			} else {
-				zlogger.Logger.Error("[challenge]ticket: "+vt.Message, zap.String("validator", vt.ValidatorID))
+				logging.Logger.Error("[challenge]ticket: "+vt.Message, zap.String("validator", vt.ValidatorID))
 				numFailure++
 			}
 			numValidatorsResponded++
 		}
 	}
 
-	zlogger.Logger.Info("[challenge]validator response stats", zap.Any("challenge_id", cr.ChallengeID), zap.Any("validator_responses", responses))
+	logging.Logger.Info("[challenge]validator response stats", zap.Any("challenge_id", cr.ChallengeID), zap.Any("validator_responses", responses))
 	if numSuccess > (len(cr.Validators)/2) || numFailure > (len(cr.Validators)/2) || numValidatorsResponded == len(cr.Validators) {
 		if numSuccess > (len(cr.Validators) / 2) {
 			cr.Result = ChallengeSuccess
 		} else {
 			cr.Result = ChallengeFailure
 
-			zlogger.Logger.Error("[challenge]validate: ", zap.String("challenge_id", cr.ChallengeID), zap.Any("block_num", cr.BlockNum), zap.Any("object_path", objectPath))
+			logging.Logger.Error("[challenge]validate: ", zap.String("challenge_id", cr.ChallengeID), zap.Any("block_num", cr.BlockNum), zap.Any("object_path", objectPath))
 		}
 
 		cr.Status = Processed
@@ -299,7 +299,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
-			zlogger.Logger.Info("[challenge]commit: Verifying the transaction : " + lastTxn)
+			logging.Logger.Info("[challenge]commit: Verifying the transaction : " + lastTxn)
 			t, err := transaction.VerifyTransaction(lastTxn, chain.GetServerChain())
 			if err == nil {
 				cr.Status = Committed
@@ -307,14 +307,14 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 				cr.CommitTxnID = t.Hash
 				cr.UpdatedAt = time.Now().UTC()
 				if err := cr.Save(ctx); err != nil {
-					zlogger.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+					logging.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 				}
 				if cr.RefID != 0 {
 					FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
 				}
 				return nil
 			}
-			zlogger.Logger.Error("[challenge]trans: Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+			logging.Logger.Error("[challenge]trans: Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 		}
 	}
 
@@ -330,7 +330,7 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 			cr.UpdatedAt = time.Now().UTC()
 		}
 		cr.ErrorChallenge(ctx, err)
-		zlogger.Logger.Error("[challenge]submit: Error while submitting challenge to BC.", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+		logging.Logger.Error("[challenge]submit: Error while submitting challenge to BC.", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 	} else {
 		cr.Status = Committed
 		cr.StatusMessage = t.TransactionOutput
