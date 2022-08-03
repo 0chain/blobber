@@ -121,21 +121,10 @@ func processAccepted(ctx context.Context) {
 		}
 	}()
 
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-	tx := datastore.GetStore().GetTransaction(ctx)
-
-	var err error
-	defer func() {
-		ctx.Done()
-		if err != nil {
-			tx.Rollback()
-			return
-		}
-		tx.Commit()
-	}()
+	db := datastore.GetStore().GetDB()
 
 	challenges := make([]*ChallengeEntity, 0)
-	tx.Where(ChallengeEntity{Status: Accepted}).Find(&challenges)
+	db.Where(ChallengeEntity{Status: Accepted}).Find(&challenges)
 
 	swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
 	for _, c := range challenges {
@@ -143,7 +132,7 @@ func processAccepted(ctx context.Context) {
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Time("created", c.CreatedAt))
 
-		err = c.UnmarshalFields()
+		err := c.UnmarshalFields()
 		if err != nil {
 			logging.Logger.Error("[challenge]process: ",
 				zap.String("challenge_id", c.ChallengeID),
@@ -198,14 +187,10 @@ func commitProcessed(ctx context.Context) {
 		}
 	}()
 
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-	tx := datastore.GetStore().GetTransaction(ctx)
-
-	defer tx.Rollback()
-
 	var challenges []*ChallengeEntity
 
-	tx.Where(ChallengeEntity{Status: Processed}).
+	db := datastore.GetStore().GetDB()
+	db.Where(ChallengeEntity{Status: Processed}).
 		Order("sequence").
 		Find(&challenges)
 
@@ -239,7 +224,6 @@ func commitChallenge(c *ChallengeEntity) {
 	}
 
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
-
 	tx := datastore.GetStore().GetTransaction(ctx)
 	var err error
 	defer func() {
