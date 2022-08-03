@@ -148,6 +148,8 @@ func processAccepted(ctx context.Context) {
 		return
 	}
 
+	defer rows.Close()
+
 	startTime := time.Now()
 	swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
 	count := 0
@@ -290,6 +292,7 @@ func commitProcessed(ctx context.Context) {
 			zap.Error(err))
 		return
 	}
+	defer rows.Close()
 
 	startTime := time.Now()
 	swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
