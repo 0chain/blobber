@@ -9,7 +9,7 @@ import (
 
 // SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {
-	// go startSyncOpen(ctx)
+	go startSyncOpen(ctx)
 	// go startProcessAccepted(ctx)
 	// go startCommitProcessed(ctx)
 }
