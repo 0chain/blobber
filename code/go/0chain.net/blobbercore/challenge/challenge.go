@@ -211,9 +211,9 @@ func validateChallenge(id string) {
 
 	var c *ChallengeEntity
 
-	db := datastore.GetStore().GetTransaction(ctx)
+	tx := datastore.GetStore().GetTransaction(ctx)
 
-	if err := db.Model(&ChallengeEntity{}).
+	if err := tx.Model(&ChallengeEntity{}).
 		Where("challenge_id = ? and status = ?", id, Accepted).
 		Find(c).Error; err != nil {
 
@@ -221,7 +221,7 @@ func validateChallenge(id string) {
 			zap.Any("challenge_id", id),
 			zap.Error(err))
 
-		db.Rollback()
+		tx.Rollback()
 		return
 	}
 
@@ -239,7 +239,7 @@ func validateChallenge(id string) {
 			zap.String("validationTickets", string(c.ValidationTicketsString)),
 			zap.String("ObjectPath", string(c.ObjectPathString)),
 			zap.Error(err))
-		db.Rollback()
+		tx.Rollback()
 		return
 	}
 
@@ -248,16 +248,16 @@ func validateChallenge(id string) {
 			zap.Any("challenge_id", c.ChallengeID),
 			zap.Time("created", c.CreatedAt),
 			zap.Error(err))
-		db.Rollback()
+		tx.Rollback()
 		return
 	}
 
-	if err := db.Commit().Error; err != nil {
+	if err := tx.Commit().Error; err != nil {
 		logging.Logger.Error("[challenge]validate(Commit): ",
 			zap.Any("challenge_id", c.ChallengeID),
 			zap.Time("created", c.CreatedAt),
 			zap.Error(err))
-		db.Rollback()
+		tx.Rollback()
 		return
 	}
 
@@ -288,7 +288,7 @@ func commitProcessed(ctx context.Context) {
 		Select("challenge_id", "created_at").Rows()
 
 	if err != nil {
-		logging.Logger.Error("[challenge]validate: ",
+		logging.Logger.Error("[challenge]commit: ",
 			zap.Error(err))
 		return
 	}
@@ -351,11 +351,11 @@ func commitChallenge(id string) {
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	defer ctx.Done()
 
-	db := datastore.GetStore().GetTransaction(ctx)
+	tx := datastore.GetStore().GetTransaction(ctx)
 
 	var c *ChallengeEntity
 
-	if err := db.Model(&ChallengeEntity{}).
+	if err := tx.Model(&ChallengeEntity{}).
 		Where("challenge_id = ? and status = ?", id, Processed).
 		Find(c).Error; err != nil {
 
@@ -363,7 +363,7 @@ func commitChallenge(id string) {
 			zap.Any("challenge_id", id),
 			zap.Error(err))
 
-		db.Rollback()
+		tx.Rollback()
 		return
 	}
 
@@ -383,7 +383,7 @@ func commitChallenge(id string) {
 			zap.String("validationTickets", string(c.ValidationTicketsString)),
 			zap.String("ObjectPath", string(c.ObjectPathString)),
 			zap.Error(err))
-		db.Rollback()
+		tx.Rollback()
 		return
 	}
 
@@ -392,16 +392,16 @@ func commitChallenge(id string) {
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Time("created", c.CreatedAt),
 			zap.Error(err))
-		db.Rollback()
+		tx.Rollback()
 		return
 	}
 
-	if err := db.Commit().Error; err != nil {
+	if err := tx.Commit().Error; err != nil {
 		logging.Logger.Warn("[challenge]commit",
 			zap.Any("challenge_id", c.ChallengeID),
 			zap.Time("created", c.CreatedAt),
 			zap.Error(err))
-		db.Rollback()
+		tx.Rollback()
 		return
 	}
 
