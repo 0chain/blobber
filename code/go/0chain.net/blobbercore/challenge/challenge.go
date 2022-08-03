@@ -25,9 +25,10 @@ type BCChallengeResponse struct {
 	Challenges []*ChallengeEntity `json:"challenges"`
 }
 
-var cMap = cache.NewLRUCache(2000)
+var cMap = cache.NewLRUCache(2000) //nolint
 
 // syncOpenChallenges get challenge from blockchain , and add them in database
+// nolint
 func syncOpenChallenges(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -78,6 +79,7 @@ func syncOpenChallenges(ctx context.Context) {
 
 }
 
+// nolint
 func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -121,12 +123,14 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 	logging.Logger.Info("[challenge]elapsed:add ",
 		zap.String("challenge_id", c.ChallengeID),
 		zap.Time("created", c.CreatedAt),
+		zap.Time("start", startTime),
 		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
 		zap.String("save", time.Since(startTime).String()))
 
 }
 
 // processAccepted read accepted challenge from db, and send them to validator to pass challenge
+// nolint
 func processAccepted(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -203,6 +207,7 @@ func validateChallenge(swg *sizedwaitgroup.SizedWaitGroup, c *ChallengeEntity) {
 	logging.Logger.Info("[challenge]elapsed:validate ",
 		zap.String("challenge_id", c.ChallengeID),
 		zap.Time("created", c.CreatedAt),
+		zap.Time("start", startTime),
 		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
 		zap.String("save", time.Since(startTime).String()))
 }
@@ -293,6 +298,7 @@ func commitChallenge(c *ChallengeEntity) {
 	logging.Logger.Info("[challenge]elapsed:commit ",
 		zap.String("challenge_id", c.ChallengeID),
 		zap.Time("created", c.CreatedAt),
+		zap.Time("start", startTime),
 		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
 		zap.String("save", time.Since(startTime).String()))
 
