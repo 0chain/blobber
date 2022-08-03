@@ -25,10 +25,9 @@ type BCChallengeResponse struct {
 	Challenges []*ChallengeEntity `json:"challenges"`
 }
 
-var cMap = cache.NewLRUCache(2000) //nolint
+var cMap = cache.NewLRUCache(2000)
 
 // syncOpenChallenges get challenge from blockchain , and add them in database
-// nolint
 func syncOpenChallenges(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -79,7 +78,6 @@ func syncOpenChallenges(ctx context.Context) {
 
 }
 
-// nolint
 func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -130,7 +128,6 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 }
 
 // processAccepted read accepted challenge from db, and send them to validator to pass challenge
-// nolint
 func processAccepted(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {

@@ -9,9 +9,9 @@ import (
 
 // SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {
-	go startSyncOpen(ctx)
-	go startProcessAccepted(ctx)
-	go startCommitProcessed(ctx)
+	// go startSyncOpen(ctx)
+	// go startProcessAccepted(ctx)
+	// go startCommitProcessed(ctx)
 }
 
 func startCommitProcessed(ctx context.Context) {
@@ -20,7 +20,7 @@ func startCommitProcessed(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
-			//commitProcessed(ctx)
+			commitProcessed(ctx)
 		}
 	}
 }
@@ -31,7 +31,7 @@ func startProcessAccepted(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
-			//	processAccepted(ctx)
+			processAccepted(ctx)
 		}
 	}
 }
@@ -43,7 +43,7 @@ func startSyncOpen(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
-			//syncOpenChallenges(ctx)
+			syncOpenChallenges(ctx)
 		}
 	}
 }
