@@ -209,13 +209,13 @@ func validateChallenge(id string) {
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	defer ctx.Done()
 
-	var c *ChallengeEntity
+	c := ChallengeEntity{}
 
 	tx := datastore.GetStore().GetTransaction(ctx)
 
 	if err := tx.Model(&ChallengeEntity{}).
 		Where("challenge_id = ? and status = ?", id, Accepted).
-		Find(c).Error; err != nil {
+		Find(&c).Error; err != nil {
 
 		logging.Logger.Error("[challenge]validate: ",
 			zap.Any("challenge_id", id),
