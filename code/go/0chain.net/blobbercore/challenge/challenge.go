@@ -353,11 +353,11 @@ func commitChallenge(id string) {
 
 	tx := datastore.GetStore().GetTransaction(ctx)
 
-	var c *ChallengeEntity
+	c := ChallengeEntity{}
 
 	if err := tx.Model(&ChallengeEntity{}).
 		Where("challenge_id = ? and status = ?", id, Processed).
-		Find(c).Error; err != nil {
+		Find(&c).Error; err != nil {
 
 		logging.Logger.Error("[challenge]commit: ",
 			zap.Any("challenge_id", id),
