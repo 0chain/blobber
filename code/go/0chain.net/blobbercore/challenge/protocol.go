@@ -308,6 +308,7 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		cr.Status = Cancelled
 		cr.StatusMessage = "challenge completion time expired"
 		cr.UpdatedAt = time.Now().UTC()
+		return common.NewError("challenge_time_expired", "")
 	}
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
@@ -343,13 +344,14 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		if t != nil {
 			cr.CommitTxnID = t.Hash
 			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
-			cr.UpdatedAt = time.Now().UTC()
 		}
 
 		if IsValueNotPresentError(err) {
 			cr.Status = Cancelled
 			cr.StatusMessage = "value not present in Blockchain"
 		}
+
+		cr.UpdatedAt = time.Now().UTC()
 
 		cr.ErrorChallenge(ctx, err)
 		logging.Logger.Error("[challenge]submit: Error while submitting challenge to BC.", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
