@@ -62,11 +62,6 @@ func syncOpenChallenges(ctx context.Context) {
 
 	jsonElapsed := time.Since(startTime)
 
-	logging.Logger.Info("[challenge]elapsed:pull",
-		zap.Int("count", len(blobberChallenges.Challenges)),
-		zap.String("download", downloadElapsed.String()),
-		zap.String("json", (jsonElapsed-downloadElapsed).String()))
-
 	for _, challengeObj := range blobberChallenges.Challenges {
 
 		if challengeObj == nil || challengeObj.ChallengeID == "" {
@@ -76,6 +71,12 @@ func syncOpenChallenges(ctx context.Context) {
 
 		saveNewChallenge(challengeObj, ctx)
 	}
+
+	logging.Logger.Info("[challenge]elapsed:pull",
+		zap.Int("count", len(blobberChallenges.Challenges)),
+		zap.String("download", downloadElapsed.String()),
+		zap.String("json", (jsonElapsed-downloadElapsed).String()),
+		zap.String("db", (time.Since(startTime)-downloadElapsed-jsonElapsed).String()))
 
 }
 
@@ -197,7 +198,7 @@ func processAccepted(ctx context.Context) {
 
 	swg.Wait()
 
-	logging.Logger.Info("[challenge]elapsed:process ",
+	logging.Logger.Info("[challenge]elapsed:process:batch",
 		zap.Int("count", count),
 		zap.String("save", time.Since(startTime).String()))
 
@@ -209,13 +210,13 @@ func validateChallenge(id string) {
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	defer ctx.Done()
 
-	c := ChallengeEntity{}
+	c := &ChallengeEntity{}
 
 	tx := datastore.GetStore().GetTransaction(ctx)
 
 	if err := tx.Model(&ChallengeEntity{}).
 		Where("challenge_id = ? and status = ?", id, Accepted).
-		Find(&c).Error; err != nil {
+		Find(c).Error; err != nil {
 
 		logging.Logger.Error("[challenge]validate: ",
 			zap.Any("challenge_id", id),
@@ -341,23 +342,25 @@ func commitProcessed(ctx context.Context) {
 
 	swg.Wait()
 
-	logging.Logger.Info("[challenge]elapsed:commit ",
+	logging.Logger.Info("[challenge]elapsed:commit:batch",
 		zap.Int("count", count),
 		zap.String("save", time.Since(startTime).String()))
 }
 
 func commitChallenge(id string) {
 
+	startTime := time.Now()
+
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	defer ctx.Done()
 
 	tx := datastore.GetStore().GetTransaction(ctx)
 
-	c := ChallengeEntity{}
+	c := &ChallengeEntity{}
 
 	if err := tx.Model(&ChallengeEntity{}).
 		Where("challenge_id = ? and status = ?", id, Processed).
-		Find(&c).Error; err != nil {
+		Find(c).Error; err != nil {
 
 		logging.Logger.Error("[challenge]commit: ",
 			zap.Any("challenge_id", id),
@@ -366,8 +369,6 @@ func commitChallenge(id string) {
 		tx.Rollback()
 		return
 	}
-
-	startTime := time.Now()
 
 	logging.Logger.Info("[challenge]commit",
 		zap.Any("challenge_id", c.ChallengeID),
@@ -387,6 +388,7 @@ func commitChallenge(id string) {
 		return
 	}
 
+	elapsedLoad := time.Since(startTime)
 	if err := c.CommitChallenge(ctx, false); err != nil {
 		logging.Logger.Error("[challenge]commit",
 			zap.String("challenge_id", c.ChallengeID),
@@ -396,6 +398,7 @@ func commitChallenge(id string) {
 		return
 	}
 
+	elapsedCommitOnChain := time.Since(startTime) - elapsedLoad
 	if err := tx.Commit().Error; err != nil {
 		logging.Logger.Warn("[challenge]commit",
 			zap.Any("challenge_id", c.ChallengeID),
@@ -404,6 +407,8 @@ func commitChallenge(id string) {
 		tx.Rollback()
 		return
 	}
+
+	elapsedCommitOnDb := time.Since(startTime) - elapsedLoad - elapsedCommitOnChain
 
 	logging.Logger.Info("[challenge]commit",
 		zap.Any("challenge_id", c.ChallengeID),
@@ -416,7 +421,10 @@ func commitChallenge(id string) {
 		zap.Time("created", c.CreatedAt),
 		zap.Time("start", startTime),
 		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
-		zap.String("save", time.Since(startTime).String()))
+		zap.String("load", elapsedLoad.String()),
+		zap.String("commit_on_chain", elapsedCommitOnChain.String()),
+		zap.String("commit_on_db", elapsedCommitOnDb.String()),
+	)
 
 	go cMap.Delete(c.ChallengeID) //nolint
 
