@@ -141,7 +141,9 @@ func processAccepted(ctx context.Context) {
 
 	rows, err := db.Model(&ChallengeEntity{}).
 		Where("status = ?", Accepted).
-		Select("challenge_id", "created_at").Rows()
+		Select("challenge_id", "created_at").
+		Order("sequence").
+		Rows()
 
 	if err != nil {
 		logging.Logger.Error("[challenge]process: ",
@@ -286,7 +288,9 @@ func commitProcessed(ctx context.Context) {
 
 	rows, err := db.Model(&ChallengeEntity{}).
 		Where("status = ?", Processed).
-		Select("challenge_id", "created_at").Rows()
+		Select("challenge_id", "created_at").
+		Order("sequence").
+		Rows()
 
 	if err != nil {
 		logging.Logger.Error("[challenge]commit: ",
