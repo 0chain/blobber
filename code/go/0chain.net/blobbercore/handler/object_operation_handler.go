@@ -912,14 +912,15 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	elapsedUpdateChange := time.Since(startTime) - elapsedAllocation - elapsedValidate - elapsedRef - elapsedAllocationChanges - elapsedProcess
 
 	Logger.Info("[upload]elapsed",
-		zap.String("allocation_id", allocationID),
+		zap.String("alloc_id", allocationID),
 		zap.String("file", cmd.GetPath()),
-		zap.Duration("get_allocation", elapsedAllocation),
+		zap.Duration("get_alloc", elapsedAllocation),
 		zap.Duration("validate", elapsedValidate),
 		zap.Duration("ref", elapsedRef),
 		zap.Duration("load_changes", elapsedAllocationChanges),
 		zap.Duration("process", elapsedProcess),
 		zap.Duration("update_changes", elapsedUpdateChange),
+		zap.Duration("total", time.Since(startTime)),
 	)
 
 	return &result, nil
