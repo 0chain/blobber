@@ -98,7 +98,7 @@ func (fs *FileStore) initMap() error {
 }
 
 func (fs *FileStore) incrDecrAllocFileSizeAndNumber(allocID string, size int64, fileNumber int64) {
-	alloc := fs.mAllocs[allocID]
+	alloc := fs.getAllocation(allocID)
 	if alloc == nil {
 		logging.Logger.Debug("alloc is nil", zap.String("allocation_id", allocID))
 		return
@@ -113,7 +113,7 @@ func (fs *FileStore) incrDecrAllocFileSizeAndNumber(allocID string, size int64, 
 }
 
 func (fs *FileStore) GetDiskUsedByAllocation(allocID string) uint64 {
-	alloc := fs.mAllocs[allocID]
+	alloc := fs.getAllocation(allocID)
 	if alloc != nil {
 		return alloc.filesSize + alloc.tmpFileSize
 	}

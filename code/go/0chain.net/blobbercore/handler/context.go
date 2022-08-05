@@ -142,7 +142,7 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 			return
 		}
 
-		TryParseForm(r)
+		common.TryParseForm(r)
 
 		w.Header().Set("Content-Type", "application/json")
 

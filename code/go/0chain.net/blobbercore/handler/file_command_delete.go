@@ -31,7 +31,7 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	path, ok := GetField(req, "path")
+	path, ok := common.GetField(req, "path")
 	if !ok {
 		return common.NewError("invalid_parameters", "Invalid path")
 	}

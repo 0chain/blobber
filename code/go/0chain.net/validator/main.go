@@ -47,6 +47,7 @@ func main() {
 	portString := flag.String("port", "", "port")
 	hostname := flag.String("hostname", "", "hostname")
 	configDir := flag.String("config_dir", "./config", "config_dir")
+	hostUrl := flag.String("hosturl", "", "register url on blockchain instead of [schema://hostname+port] if it has value")
 
 	flag.Parse()
 
@@ -76,20 +77,6 @@ func main() {
 	config.Configuration.NumDelegates = viper.GetInt("num_delegates")
 	config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
 
-	if *hostname == "" {
-		panic("Please specify --hostname which is the public hostname")
-	}
-
-	if *portString == "" {
-		panic("Please specify --port which is the port on which requests are accepted")
-	}
-
-	port, err := strconv.Atoi(*portString) //fmt.Sprintf(":%v", port) // node.Self.Port
-	if err != nil {
-		Logger.Panic("Port specified is not Int " + *portString)
-		return
-	}
-
 	//address := publicIP + ":" + portString
 	address := ":" + *portString
 
@@ -110,7 +97,28 @@ func main() {
 	publicKey, privateKey, _, _ := encryption.ReadKeys(reader)
 	reader.Close()
 	node.Self.SetKeys(publicKey, privateKey)
-	node.Self.SetHostURL("http", *hostname, port)
+
+	if len(*hostUrl) > 0 {
+		node.Self.URL = *hostUrl
+	} else {
+
+		if *hostname == "" {
+			panic("Please specify --hostname which is the public hostname")
+		}
+
+		if *portString == "" {
+			panic("Please specify --port which is the port on which requests are accepted")
+		}
+
+		port, err := strconv.Atoi(*portString) //fmt.Sprintf(":%v", port) // node.Self.Port
+		if err != nil {
+			Logger.Panic("Port specified is not Int " + *portString)
+			return
+		}
+
+		node.Self.SetHostURL("http", *hostname, port)
+	}
+
 	Logger.Info(" Base URL" + node.Self.GetURLBase())
 
 	config.SetServerChainID(config.Configuration.ChainID)

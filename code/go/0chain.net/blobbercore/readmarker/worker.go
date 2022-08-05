@@ -3,6 +3,7 @@ package readmarker
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -41,9 +42,19 @@ func redeemReadMarker(ctx context.Context, rmEntity *ReadMarkerEntity) (err erro
 		return
 	} else if latestRM.ReadCounter > 0 && latestRM.ReadCounter >= rmEntity.LatestRM.ReadCounter {
 		logging.Logger.Info("updating the local state to match the block chain")
+		key := rmEntity.LatestRM.ClientID + ":" + rmEntity.LatestRM.AllocationID
+		lock, isNewLock := ReadmarkerMapLock.GetLock(key)
+		if !isNewLock {
+			return fmt.Errorf("lock exists for key: %v", key)
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+
 		if err = SaveLatestReadMarker(ctx, &latestRM, latestRM.ReadCounter, false); err != nil {
 			return
 		}
+
 		rmEntity.LatestRM = &latestRM
 		if err = rmEntity.Sync(ctx); err != nil {
 			logging.Logger.Error("redeem RM loop -- error syncing RM state", zap.Error(err))

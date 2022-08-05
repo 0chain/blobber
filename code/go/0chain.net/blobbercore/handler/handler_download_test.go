@@ -1,6 +1,3 @@
-//go:build !integration
-// +build !integration
-
 package handler
 
 import (
@@ -12,6 +9,8 @@ import (
 	"regexp"
 	"testing"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
@@ -221,7 +220,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm := &marker.ReadMarker{}
 					rm.ClientID = ownerClient.ClientID
 					rm.ClientPublicKey = ownerClient.ClientKey
-					rm.BlobberID = ""
+					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.OwnerID = ownerClient.ClientID
 					rm.ReadCounter = 1
@@ -300,7 +299,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm := &marker.ReadMarker{}
 					rm.ClientID = ownerClient.ClientID
 					rm.ClientPublicKey = ownerClient.ClientKey
-					rm.BlobberID = ""
+					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
 					rm.OwnerID = ownerClient.ClientID
@@ -377,11 +376,12 @@ func TestHandlers_Download(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(ownerClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa).
+					WithArgs(ownerClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectCommit()
 			},
+			//one error left check tomorrow
 			wantCode: http.StatusOK,
 			wantBody: "\"bW9jaw==\"\n", //base64encoded for mock string
 		},
@@ -401,7 +401,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm := &marker.ReadMarker{}
 					rm.ClientID = ownerClient.ClientID
 					rm.ClientPublicKey = ownerClient.ClientKey
-					rm.BlobberID = ""
+					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
 					rm.OwnerID = ownerClient.ClientID
@@ -508,7 +508,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm := &marker.ReadMarker{}
 					rm.ClientID = guestClient.ClientID
 					rm.ClientPublicKey = guestClient.ClientKey
-					rm.BlobberID = ""
+					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
 					rm.OwnerID = ownerClient.ClientID
@@ -620,7 +620,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm := &marker.ReadMarker{}
 					rm.ClientID = guestClient.ClientID
 					rm.ClientPublicKey = guestClient.ClientKey
-					rm.BlobberID = ""
+					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
 					rm.OwnerID = ownerClient.ClientID
@@ -663,7 +663,6 @@ func TestHandlers_Download(t *testing.T) {
 				header := make([]byte, EncryptionHeaderSize)
 				copy(header, encMsg.MessageChecksum+encMsg.OverallChecksum)
 				data := append(header, encMsg.EncryptedData...)
-				fmt.Println("Encrypted data: ", string(data))
 				setMockFileBlock(data)
 			},
 			end: func() {
@@ -731,7 +730,7 @@ func TestHandlers_Download(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa).
+					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectCommit()
@@ -761,7 +760,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm := &marker.ReadMarker{}
 					rm.ClientID = guestClient.ClientID
 					rm.ClientPublicKey = guestClient.ClientKey
-					rm.BlobberID = ""
+					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
 					rm.OwnerID = ownerClient.ClientID
@@ -877,7 +876,7 @@ func TestHandlers_Download(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa).
+					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectCommit()
@@ -907,7 +906,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm := &marker.ReadMarker{}
 					rm.ClientID = guestClient.ClientID
 					rm.ClientPublicKey = guestClient.ClientKey
-					rm.BlobberID = ""
+					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
 					rm.OwnerID = alloc.OwnerID
@@ -1023,7 +1022,7 @@ func TestHandlers_Download(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa).
+					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectCommit()
@@ -1053,7 +1052,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm := &marker.ReadMarker{}
 					rm.ClientID = guestClient.ClientID
 					rm.ClientPublicKey = guestClient.ClientKey
-					rm.BlobberID = ""
+					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
 					rm.OwnerID = alloc.OwnerID
@@ -1151,10 +1150,6 @@ func TestHandlers_Download(t *testing.T) {
 	tests := append(positiveTests, negativeTests...)
 
 	for _, test := range tests {
-		if test.name != "DownloadFile_file_return_stale_readmarker" {
-			fmt.Printf("\n\nSkipping Test: %s\n\n", test.name)
-			continue
-		}
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)
 			test.setupDbMock(mock)
@@ -1167,7 +1162,6 @@ func TestHandlers_Download(t *testing.T) {
 				test.end()
 			}
 
-			fmt.Printf("\nResponse body: %v", test.args.w.Body.String())
 			assert.Equal(t, test.wantCode, test.args.w.Result().StatusCode)
 			if test.wantCode != http.StatusOK || test.wantBody != "" {
 				assert.Equal(t, test.wantBody, test.args.w.Body.String())

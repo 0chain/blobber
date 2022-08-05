@@ -78,11 +78,7 @@ func setupConfig(configDir string, deploymentMode int) {
 
 	config.Configuration.PGUserName = viper.GetString("pg.user")
 	config.Configuration.PGPassword = viper.GetString("pg.password")
-	if isIntegrationTest {
-		config.Configuration.DBHost = "localhost"
-	} else {
-		config.Configuration.DBHost = viper.GetString("db.host")
-	}
+	config.Configuration.DBHost = viper.GetString("db.host")
 	config.Configuration.DBName = viper.GetString("db.name")
 	config.Configuration.DBPort = viper.GetString("db.port")
 	config.Configuration.DBUserName = viper.GetString("db.user")
@@ -129,10 +125,16 @@ func setupConfig(configDir string, deploymentMode int) {
 
 	transaction.MinConfirmation = config.Configuration.MinConfirmation
 
-	config.Configuration.Name = viper.GetString("name")
-	config.Configuration.WebsiteUrl = viper.GetString("website_url")
-	config.Configuration.LogoUrl = viper.GetString("logo_url")
-	config.Configuration.Description = viper.GetString("description")
+	config.Configuration.Name = viper.GetString("info.name")
+	config.Configuration.WebsiteUrl = viper.GetString("info.website_url")
+	config.Configuration.LogoUrl = viper.GetString("info.logo_url")
+	config.Configuration.Description = viper.GetString("info.description")
+
+	config.Configuration.Geolocation = config.GeolocationConfig{}
+	config.Configuration.Geolocation.Latitude = viper.GetFloat64("geolocation.latitude")
+	config.Configuration.Geolocation.Longitude = viper.GetFloat64("geolocation.longitude")
+
+	config.Configuration.ChallengeCompletionTime = viper.GetDuration("challenge_completion_time")
 
 	fmt.Print("		[OK]\n")
 }

@@ -1,11 +1,7 @@
-//go:build !integration
-// +build !integration
-
 package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -281,7 +277,6 @@ func TestHandlers_ReferencePath(t *testing.T) {
 				test.end()
 			}
 
-			fmt.Printf("\nResponse body: %v", test.args.w.Body.String())
 			assert.Equal(t, test.wantCode, test.args.w.Result().StatusCode)
 			if test.wantCode != http.StatusOK || test.wantBody != "" {
 				assert.Equal(t, test.wantBody, test.args.w.Body.String())

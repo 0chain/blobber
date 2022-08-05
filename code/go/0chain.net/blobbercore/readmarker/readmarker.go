@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -22,7 +23,7 @@ import (
 // updates it.
 // Mostly SaveLatestReadMarker will be called while DownloadFile is called. So it won't be blocking for client.
 // Only when blobber is not in sync with blockchain, SaveLatestReadMarker will be called.
-var readmarkerMapLock = common.GetLocker()
+var ReadmarkerMapLock = common.GetLocker()
 
 type ReadMarker struct {
 	ClientID        string           `gorm:"column:client_id;size:64;primaryKey" json:"client_id"`
@@ -119,16 +120,11 @@ func GetRedeemRequiringRMEntities(ctx context.Context) ([]*ReadMarkerEntity, err
 	return rms, nil
 }
 
+// SaveLatestReadMarker will save latest readmarker for a client. Basically it updates `read_counter` of the
+// readmarker. There can be multiple requests from same client and `read_counter` update can become inconsis-
+// tent. So to make sure we have reliable `read_counter` value, a lock is required to be called before calling
+// this function. We should use lock from `ReadMarkerMapLock`
 func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, latestRedeemedRC int64, isCreate bool) error {
-	key := rm.ClientID + ":" + rm.AllocationID
-	lock, isNewLock := readmarkerMapLock.GetLock(key)
-	if !isNewLock {
-		return fmt.Errorf("lock exists for key: %v", key)
-	}
-
-	lock.Lock()
-	defer lock.Unlock()
-
 	db := datastore.GetStore().GetTransaction(ctx)
 	rmEntity := &ReadMarkerEntity{
 		LatestRM: rm,

@@ -106,6 +106,7 @@ type StorageAllocation struct {
 	CCT            time.Duration        `json:"challenge_completion_time"`
 	TimeUnit       time.Duration        `json:"time_unit"`
 	IsImmutable    bool                 `json:"is_immutable"`
+	WritePool      uint64               `json:"write_pool"`
 }
 
 func (sa *StorageAllocation) Until() common.Timestamp {
@@ -148,9 +149,9 @@ func NewTransactionEntity() (*Transaction, error) {
 	return txn, nil
 }
 
-func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val int64) error {
+func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val uint64) error {
 	t.wg.Add(1)
-	err := t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
+	_, err := t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
 	if err != nil {
 		t.wg.Done()
 		return err

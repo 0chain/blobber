@@ -2,7 +2,6 @@ package challenge
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,7 +11,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	"github.com/0chain/gosdk/constants"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -27,7 +25,23 @@ const (
 	Accepted ChallengeStatus = iota + 1
 	Processed
 	Committed
+	Cancelled
 )
+
+func (s ChallengeStatus) String() string {
+	switch s {
+	case Accepted:
+		return "Accepted"
+	case Processed:
+		return "Processed"
+	case Committed:
+		return "Committed"
+	case Cancelled:
+		return "Cancelled"
+	default:
+		return fmt.Sprintf("%d", int(s))
+	}
+}
 
 const (
 	ChallengeUnknown ChallengeResult = iota
@@ -66,7 +80,7 @@ type ChallengeEntity struct {
 	AllocationID            string                `gorm:"column:allocation_id;size64;not null" json:"allocation_id"`
 	AllocationRoot          string                `gorm:"column:allocation_root;size:64" json:"allocation_root"`
 	RespondedAllocationRoot string                `gorm:"column:responded_allocation_root;size:64" json:"responded_allocation_root"`
-	Status                  ChallengeStatus       `gorm:"column:status;type:integer;not null;default:0" json:"status"`
+	Status                  ChallengeStatus       `gorm:"column:status;type:integer;not null;default:0;index:idx_status" json:"status"`
 	Result                  ChallengeResult       `gorm:"column:result;type:integer;not null;default:0" json:"result"`
 	StatusMessage           string                `gorm:"column:status_message" json:"status_message"`
 	CommitTxnID             string                `gorm:"column:commit_txn_id;size:64" json:"commit_txn_id"`
@@ -80,11 +94,11 @@ type ChallengeEntity struct {
 	ValidationTickets       []*ValidationTicket   `gorm:"-" json:"validation_tickets"`
 	ObjectPathString        datatypes.JSON        `gorm:"column:object_path" json:"-"`
 	ObjectPath              *reference.ObjectPath `gorm:"-" json:"object_path"`
-	Sequence                int64                 `gorm:"column:sequence;unique;type:bigserial;<-:false"`
+	Sequence                int64                 `gorm:"column:sequence;unique;autoIncrement;<-:false"`
 	Created                 common.Timestamp      `gorm:"-" json:"created"`
 
-	CreatedAt time.Time `gorm:"created_at;type:timestamp without time zone;not null;default:now()"`
-	UpdatedAt time.Time `gorm:"updated_at;type:timestamp without time zone;not null;default:now()"`
+	CreatedAt time.Time `gorm:"created_at;type:timestamp without time zone;not null;default:current_timestamp"`
+	UpdatedAt time.Time `gorm:"updated_at;type:timestamp without time zone;not null;default:current_timestamp"`
 }
 
 func (ChallengeEntity) TableName() string {
@@ -192,28 +206,16 @@ func GetChallengeEntity(ctx context.Context, challengeID string) (*ChallengeEnti
 	return cr, nil
 }
 
-func getLastChallengeID(db *gorm.DB) (string, error) {
-	if db == nil {
-		return "", constants.ErrInvalidParameter
+// getStatus check challenge if exists in db
+// nolint
+func getStatus(db *gorm.DB, challengeID string) *ChallengeStatus {
+
+	var status []int
+	err := db.Raw("SELECT status FROM challenges WHERE challenge_id=?", challengeID).Pluck("status", &status).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) || len(status) == 0 {
+		return nil
 	}
 
-	var challengeID string
-
-	err := db.Raw("SELECT challenge_id FROM challenges ORDER BY sequence DESC LIMIT 1").Row().Scan(&challengeID)
-
-	if err == nil || errors.Is(err, sql.ErrNoRows) {
-		return challengeID, nil
-	}
-
-	return "", err
-}
-
-// Exists check challenge if exists in db
-func Exists(db *gorm.DB, challengeID string) bool {
-
-	var count int64
-	db.Raw("SELECT 1 FROM challenges WHERE challenge_id=?", challengeID).Count(&count)
-
-	return count > 0
-
+	return (*ChallengeStatus)(&status[0])
 }

@@ -28,7 +28,7 @@ func (rf *CopyFileChange) DeleteTempFile() error {
 func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
 
-	totalRefs, err := reference.CountRefs(rf.AllocationID)
+	totalRefs, err := reference.CountRefs(ctx, rf.AllocationID)
 	if err != nil {
 		return nil, err
 	}
@@ -49,6 +49,7 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 	}
 
 	rootRef.UpdatedAt = ts
+	rootRef.HashToBeComputed = true
 
 	dirRef := rootRef
 	fields, err := common.GetPathFields(rf.DestPath)

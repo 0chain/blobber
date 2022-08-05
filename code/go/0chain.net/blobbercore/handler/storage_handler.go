@@ -27,11 +27,10 @@ import (
 )
 
 const (
-	FormFileParseMaxMemory = 10 * 1024 * 1024
-	OffsetDateLayout       = "2006-01-02T15:04:05.99999Z07:00"
-	DownloadContentFull    = "full"
-	DownloadContentThumb   = "thumbnail"
-	PageLimit              = 100 //100 rows will make up to 100 KB
+	OffsetDateLayout     = "2006-01-02T15:04:05.99999Z07:00"
+	DownloadContentFull  = "full"
+	DownloadContentThumb = "thumbnail"
+	PageLimit            = 100 //100 rows will make up to 100 KB
 )
 
 type StorageHandler struct{}
@@ -373,7 +372,7 @@ func (fsh *StorageHandler) RemoveCollaborator(ctx context.Context, r *http.Reque
 		return nil, err
 	}
 
-	collabClientID, ok := GetField(r, "collab_id")
+	collabClientID, ok := common.GetField(r, "collab_id")
 	if !ok {
 		return nil, common.NewError("invalid_parameter", "collab_id not present in the params")
 	}
@@ -1099,8 +1098,8 @@ func pathHashFromReq(r *http.Request, allocationID string) (pathHash string, err
 }
 
 func getPathHash(r *http.Request, allocationID string) (pathHash, path string, err error) {
-	pathHash, _ = GetField(r, "path_hash")
-	path, _ = GetField(r, "path")
+	pathHash, _ = common.GetField(r, "path_hash")
+	path, _ = common.GetField(r, "path")
 
 	if pathHash == "" && path == "" {
 		pathHash = r.Header.Get("path_hash")
