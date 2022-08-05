@@ -70,10 +70,11 @@ func (cr *ChallengeEntity) ErrorChallenge(ctx context.Context, err error) {
 // LoadValidationTickets load validation tickets
 func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	if len(cr.Validators) == 0 {
+		cr.Status = Cancelled
 		cr.StatusMessage = "No validators assigned to the challenge"
 		cr.UpdatedAt = time.Now().UTC()
 
-		logging.Logger.Debug(cr.StatusMessage + "for challenge: " + cr.ChallengeID)
+		logging.Logger.Error(cr.StatusMessage + "for challenge: " + cr.ChallengeID)
 
 		if err := cr.Save(ctx); err != nil {
 			logging.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
