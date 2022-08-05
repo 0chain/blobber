@@ -304,7 +304,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 }
 
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
-	if time.Since(cr.CreatedAt) > config.Configuration.ChallengeCompletionTime+time.Second {
+	if time.Since(common.ToTime(cr.CreatedAt)) > config.Configuration.ChallengeCompletionTime {
 		cr.Status = Cancelled
 		cr.StatusMessage = "challenge completion time expired"
 		cr.UpdatedAt = time.Now().UTC()
