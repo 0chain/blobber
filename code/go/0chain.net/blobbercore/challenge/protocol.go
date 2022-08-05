@@ -326,7 +326,11 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		return nil
 	}
 
+	now := time.Now()
 	t, err := cr.SubmitChallengeToBC(ctx)
+	logging.Logger.Debug("[challenge]submit: Time taken to submit challenge: ",
+		zap.Any("time_taken", time.Since(now)))
+
 	if err != nil {
 		if t != nil {
 			cr.CommitTxnID = t.Hash
