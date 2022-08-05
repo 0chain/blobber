@@ -97,7 +97,7 @@ type ChallengeEntity struct {
 	Sequence                int64                 `gorm:"column:sequence;unique;autoIncrement;<-:false"`
 
 	// This time is taken from Blockchain challenge object.
-	CreatedAt common.Timestamp `gorm:"created_at" json:"created_at"`
+	CreatedAt common.Timestamp `gorm:"created_at" json:"created"`
 	UpdatedAt time.Time        `gorm:"updated_at;type:timestamp without time zone;not null;default:current_timestamp" json:"-"`
 }
 
