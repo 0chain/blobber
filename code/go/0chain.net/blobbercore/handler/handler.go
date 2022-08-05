@@ -242,7 +242,6 @@ func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 }
 
 func RecentRefsRequestHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	fmt.Printf("\nhandler.go L245\n\n")
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.GetRecentlyAddedRefs(ctx, r)
 	if err != nil {
