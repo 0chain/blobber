@@ -858,7 +858,6 @@ func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Req
 		return nil, err
 	}
 
-	fmt.Printf("\nReturning refs: %v\n\n", refs)
 	return &blobberhttp.RecentRefResult{
 		Refs:       refs,
 		TotalPages: int(totalPages),
