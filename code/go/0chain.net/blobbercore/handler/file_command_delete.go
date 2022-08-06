@@ -19,10 +19,15 @@ type DeleteFileCommand struct {
 	existingFileRef  *reference.Ref
 	changeProcessor  *allocation.DeleteFileChange
 	allocationChange *allocation.AllocationChange
+	path             string
 }
 
 func (cmd *DeleteFileCommand) GetExistingFileRef() *reference.Ref {
 	return cmd.existingFileRef
+}
+
+func (cmd *DeleteFileCommand) GetPath() string {
+	return cmd.path
 }
 
 // IsValidated validate request.
@@ -35,6 +40,9 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 	if !ok {
 		return common.NewError("invalid_parameters", "Invalid path")
 	}
+
+	cmd.path = path
+
 	var err error
 	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByPath(ctx, allocationObj.ID, path, []string{"path", "name", "size", "hash", "merkle_root"})
 	if err != nil {
