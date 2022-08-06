@@ -3,6 +3,7 @@ package challenge
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"math"
 	"math/rand"
 	"sync"
@@ -24,6 +25,12 @@ import (
 )
 
 const VALIDATOR_URL = "/v1/storage/challenge/new"
+
+var (
+	ErrNoValidator          = errors.New("No validators assigned to the challenge")
+	ErrNoConsensusChallenge = errors.New("no_consensus_challenge: No Consensus on the challenge result. Erroring out the challenge")
+	ErrInvalidObjectPath    = errors.New("invalid_object_path: Object path was not for a file")
+)
 
 type ChallengeResponse struct {
 	ChallengeID       string              `json:"challenge_id"`
@@ -61,30 +68,24 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 func (cr *ChallengeEntity) ErrorChallenge(ctx context.Context, err error) {
 	cr.StatusMessage = err.Error()
 	cr.UpdatedAt = time.Now().UTC()
+	cr.Status = Cancelled
 
 	if err := cr.Save(ctx); err != nil {
-		logging.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+		logging.Logger.Error("[challenge]cancel:db ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 	}
 }
 
 // LoadValidationTickets load validation tickets
 func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	if len(cr.Validators) == 0 {
-		cr.Status = Cancelled
-		cr.StatusMessage = "No validators assigned to the challenge"
-		cr.UpdatedAt = time.Now().UTC()
 
-		logging.Logger.Error(cr.StatusMessage + "for challenge: " + cr.ChallengeID)
-
-		if err := cr.Save(ctx); err != nil {
-			logging.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
-			return err
-		}
-		return nil
+		cr.ErrorChallenge(ctx, ErrNoValidator)
+		return ErrNoValidator
 	}
 
 	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
 	if err != nil {
+		cr.ErrorChallenge(ctx, ErrNoValidator)
 		return err
 	}
 
@@ -148,9 +149,9 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		if objectPath.Meta["type"] != reference.FILE {
 			allocMu.Unlock()
 			logging.Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta), zap.Any("obejct_path", objectPath))
-			err = common.NewError("invalid_object_path", "Object path was not for a file")
-			cr.ErrorChallenge(ctx, err)
-			return err
+
+			cr.ErrorChallenge(ctx, ErrInvalidObjectPath)
+			return ErrInvalidObjectPath
 		}
 
 		inputData := &filestore.FileInputData{}
@@ -228,6 +229,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 			resp, err := util.SendPostRequest(url, postDataBytes, nil)
 			if err != nil {
+				//network issue, don't cancel it, and try it again
 				logging.Logger.Info("[challenge]post: ", zap.Any("error", err.Error()))
 				updateMapAndSlice(validatorID, i, nil)
 				return
@@ -293,8 +295,8 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.Status = Processed
 		cr.UpdatedAt = time.Now().UTC()
 	} else {
-		cr.ErrorChallenge(ctx, common.NewError("no_consensus_challenge", "No Consensus on the challenge result. Erroring out the challenge"))
-		return common.NewError("no_consensus_challenge", "No Consensus on the challenge result. Erroring out the challenge")
+		cr.ErrorChallenge(ctx, ErrNoConsensusChallenge)
+		return ErrNoConsensusChallenge
 	}
 
 	return cr.Save(ctx)

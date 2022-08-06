@@ -4,17 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/cache"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
@@ -127,84 +124,15 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
 		zap.String("save", time.Since(startTime).String()))
 
-}
-
-// processAccepted read accepted challenge from db, and send them to validator to pass challenge
-func processAccepted(ctx context.Context) {
-	defer func() {
-		if r := recover(); r != nil {
-			logging.Logger.Error("[recover]challenge", zap.Any("err", r))
-		}
-	}()
-
-	db := datastore.GetStore().GetDB()
-
-	rows, err := db.Model(&ChallengeEntity{}).
-		Where("status = ?", Accepted).
-		Select("challenge_id", "created_at").Rows()
-
-	if err != nil {
-		logging.Logger.Error("[challenge]process: ",
-			zap.Error(err))
-		return
+	nextTodoChallenge <- TodoChallenge{
+		Id:        c.ChallengeID,
+		CreatedAt: c.CreatedAt,
+		Status:    Accepted,
 	}
-
-	defer rows.Close()
-
-	startTime := time.Now()
-	swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
-	count := 0
-	for rows.Next() {
-		count++
-		now := time.Now()
-
-		var challengeID string
-		var createdAt time.Time
-
-		err := rows.Scan(&challengeID, &createdAt)
-		if err != nil {
-			logging.Logger.Error("[challenge]process: ",
-				zap.Error(err))
-			continue
-		}
-
-		if time.Since(createdAt) > config.Configuration.ChallengeCompletionTime {
-
-			db.Model(&ChallengeEntity{}).
-				Where("challenge_id =? and status =? ", challengeID, Accepted).
-				Updates(map[string]interface{}{
-					"status":         Cancelled,
-					"result":         ChallengeFailure,
-					"status_message": fmt.Sprintf("created: %s, start: %s , delay: %s, cct: %s", createdAt, now, now.Sub(createdAt).String(), config.Configuration.ChallengeCompletionTime.String()),
-				})
-
-			logging.Logger.Error("[challenge]process: timeout ",
-				zap.Any("challenge_id", challengeID),
-				zap.Time("created", createdAt),
-				zap.Time("start", now),
-				zap.String("delay", now.Sub(createdAt).String()),
-				zap.String("cct", config.Configuration.ChallengeCompletionTime.String()),
-				zap.Error(err))
-			continue
-		}
-
-		swg.Add()
-		go func(id string) {
-			defer swg.Done()
-			validateChallenge(id)
-		}(challengeID)
-
-	}
-
-	swg.Wait()
-
-	logging.Logger.Info("[challenge]elapsed:process:batch",
-		zap.Int("count", count),
-		zap.String("save", time.Since(startTime).String()))
 
 }
 
-func validateChallenge(id string) {
+func validateOnValidators(id string) {
 	startTime := time.Now()
 
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
@@ -241,6 +169,8 @@ func validateChallenge(id string) {
 			zap.String("ObjectPath", string(c.ObjectPathString)),
 			zap.Error(err))
 		tx.Rollback()
+
+		c.ErrorChallenge(ctx, err)
 		return
 	}
 
@@ -274,80 +204,7 @@ func validateChallenge(id string) {
 		zap.String("save", time.Since(startTime).String()))
 }
 
-func commitProcessed(ctx context.Context) {
-	defer func() {
-		if r := recover(); r != nil {
-			logging.Logger.Error("[recover]challenge", zap.Any("err", r))
-		}
-	}()
-
-	db := datastore.GetStore().GetDB()
-	count := 0
-
-	rows, err := db.Model(&ChallengeEntity{}).
-		Where("status = ?", Processed).
-		Select("challenge_id", "created_at").Rows()
-
-	if err != nil {
-		logging.Logger.Error("[challenge]commit: ",
-			zap.Error(err))
-		return
-	}
-	defer rows.Close()
-
-	startTime := time.Now()
-	swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
-
-	for rows.Next() {
-		count++
-		now := time.Now()
-
-		var challengeID string
-		var createdAt time.Time
-
-		err := rows.Scan(&challengeID, &createdAt)
-		if err != nil {
-			logging.Logger.Error("[challenge]commit: ",
-				zap.Error(err))
-			continue
-		}
-
-		if time.Since(createdAt) > config.Configuration.ChallengeCompletionTime {
-
-			db.Model(&ChallengeEntity{}).
-				Where("challenge_id =? and status =? ", challengeID, Accepted).
-				Updates(map[string]interface{}{
-					"status":         Cancelled,
-					"result":         ChallengeFailure,
-					"status_message": fmt.Sprintf("created: %s, start: %s , delay: %s, cct: %s", createdAt, now, now.Sub(createdAt).String(), config.Configuration.ChallengeCompletionTime.String()),
-				})
-
-			logging.Logger.Error("[challenge]commit: timeout ",
-				zap.Any("challenge_id", challengeID),
-				zap.Time("created", createdAt),
-				zap.Time("start", now),
-				zap.String("delay", now.Sub(createdAt).String()),
-				zap.String("cct", config.Configuration.ChallengeCompletionTime.String()),
-				zap.Error(err))
-			continue
-		}
-
-		swg.Add()
-		go func(id string) {
-			defer swg.Done()
-			commitChallenge(id)
-		}(challengeID)
-
-	}
-
-	swg.Wait()
-
-	logging.Logger.Info("[challenge]elapsed:commit:batch",
-		zap.Int("count", count),
-		zap.String("save", time.Since(startTime).String()))
-}
-
-func commitChallenge(id string) {
+func commitOnChain(id string) {
 
 	startTime := time.Now()
 
@@ -385,6 +242,8 @@ func commitChallenge(id string) {
 			zap.String("ObjectPath", string(c.ObjectPathString)),
 			zap.Error(err))
 		tx.Rollback()
+
+		c.ErrorChallenge(ctx, err)
 		return
 	}
 
@@ -427,5 +286,42 @@ func commitChallenge(id string) {
 	)
 
 	go cMap.Delete(c.ChallengeID) //nolint
+
+}
+
+func loadTodoChallenges() {
+	db := datastore.GetStore().GetDB()
+
+	rows, err := db.Model(&ChallengeEntity{}).
+		Where("status in (?,?)", Accepted, Processed).
+		Select("challenge_id", "created_at", "status").Rows()
+
+	if err != nil {
+		logging.Logger.Error("[challenge]todo",
+			zap.Error(err))
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+
+		var challengeID string
+		var createdAt time.Time
+		var status int
+
+		err := rows.Scan(&challengeID, &createdAt, &status)
+		if err != nil {
+			logging.Logger.Error("[challenge]todo",
+				zap.Error(err))
+			continue
+		}
+
+		nextTodoChallenge <- TodoChallenge{
+			Id:        challengeID,
+			CreatedAt: createdAt,
+			Status:    ChallengeStatus(status),
+		}
+
+	}
 
 }
