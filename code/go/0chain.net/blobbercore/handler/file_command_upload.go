@@ -36,6 +36,13 @@ func (cmd *UploadFileCommand) GetExistingFileRef() *reference.Ref {
 	return nil
 }
 
+func (cmd *UploadFileCommand) GetPath() string {
+	if cmd.fileChanger == nil {
+		return ""
+	}
+	return cmd.fileChanger.Path
+}
+
 // IsValidated validate request.
 func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
