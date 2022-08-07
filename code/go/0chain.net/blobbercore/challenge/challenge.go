@@ -121,7 +121,7 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 
 	logging.Logger.Info("[challenge]elapsed:add ",
 		zap.String("challenge_id", c.ChallengeID),
-		zap.Time("created", common.ToTime(c.CreatedAt)),
+		zap.Time("created", createdTime),
 		zap.Time("start", startTime),
 		zap.String("delay", startTime.Sub(createdTime).String()),
 		zap.String("save", time.Since(startTime).String()))
