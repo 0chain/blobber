@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"math"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
@@ -24,6 +26,7 @@ import (
 )
 
 const VALIDATOR_URL = "/v1/storage/challenge/new"
+const ValueNotPresent = "value not present"
 
 type ChallengeResponse struct {
 	ChallengeID       string              `json:"challenge_id"`
@@ -301,6 +304,12 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 }
 
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
+	if time.Since(common.ToTime(cr.CreatedAt)) > config.Configuration.ChallengeCompletionTime {
+		cr.Status = Cancelled
+		cr.StatusMessage = "challenge completion time expired"
+		cr.UpdatedAt = time.Now().UTC()
+		return cr.Save(ctx)
+	}
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
 			logging.Logger.Info("[challenge]commit: Verifying the transaction : " + lastTxn)
@@ -335,8 +344,15 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		if t != nil {
 			cr.CommitTxnID = t.Hash
 			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
-			cr.UpdatedAt = time.Now().UTC()
 		}
+
+		if IsValueNotPresentError(err) {
+			cr.Status = Cancelled
+			cr.StatusMessage = "value not present in Blockchain"
+		}
+
+		cr.UpdatedAt = time.Now().UTC()
+
 		cr.ErrorChallenge(ctx, err)
 		logging.Logger.Error("[challenge]submit: Error while submitting challenge to BC.", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 	} else {
@@ -351,4 +367,8 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
 	}
 	return err
+}
+
+func IsValueNotPresentError(err error) bool {
+	return strings.Contains(err.Error(), ValueNotPresent)
 }
