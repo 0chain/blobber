@@ -95,10 +95,10 @@ type ChallengeEntity struct {
 	ObjectPathString        datatypes.JSON        `gorm:"column:object_path" json:"-"`
 	ObjectPath              *reference.ObjectPath `gorm:"-" json:"object_path"`
 	Sequence                int64                 `gorm:"column:sequence;unique;autoIncrement;<-:false"`
-	Created                 common.Timestamp      `gorm:"-" json:"created"`
 
-	CreatedAt time.Time `gorm:"created_at;type:timestamp without time zone;not null;default:current_timestamp"`
-	UpdatedAt time.Time `gorm:"updated_at;type:timestamp without time zone;not null;default:current_timestamp"`
+	// This time is taken from Blockchain challenge object.
+	CreatedAt common.Timestamp `gorm:"created_at" json:"created"`
+	UpdatedAt time.Time        `gorm:"updated_at;type:timestamp without time zone;not null;default:current_timestamp" json:"-"`
 }
 
 func (ChallengeEntity) TableName() string {
@@ -106,8 +106,7 @@ func (ChallengeEntity) TableName() string {
 }
 
 func (c *ChallengeEntity) BeforeCreate(tx *gorm.DB) error {
-	c.CreatedAt = time.Now()
-	c.UpdatedAt = c.CreatedAt
+	c.UpdatedAt = time.Now()
 	return nil
 }
 
