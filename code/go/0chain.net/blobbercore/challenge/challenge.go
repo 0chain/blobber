@@ -100,17 +100,18 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 	}
 
 	c.Status = Accepted
+	createdTime := common.ToTime(c.CreatedAt)
 
 	logging.Logger.Info("[challenge]add: ",
 		zap.String("challenge_id", c.ChallengeID),
-		zap.Time("created", common.ToTime(c.CreatedAt)))
+		zap.Time("created", createdTime))
 
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		return c.SaveWith(tx)
 	}); err != nil {
 		logging.Logger.Error("[challenge]add: ",
 			zap.String("challenge_id", c.ChallengeID),
-			zap.Time("created", common.ToTime(c.CreatedAt)),
+			zap.Time("created", createdTime),
 			zap.Error(err))
 
 		return
@@ -122,7 +123,7 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 		zap.String("challenge_id", c.ChallengeID),
 		zap.Time("created", common.ToTime(c.CreatedAt)),
 		zap.Time("start", startTime),
-		zap.String("delay", startTime.Sub(common.ToTime(c.CreatedAt)).String()),
+		zap.String("delay", startTime.Sub(createdTime).String()),
 		zap.String("save", time.Since(startTime).String()))
 
 }
@@ -226,15 +227,16 @@ func validateChallenge(id string) {
 		return
 	}
 
+	createdTime := common.ToTime(c.CreatedAt)
 	logging.Logger.Info("[challenge]validate: ",
 		zap.String("challenge_id", c.ChallengeID),
-		zap.Time("created", common.ToTime(c.CreatedAt)))
+		zap.Time("created", createdTime))
 
 	err := c.UnmarshalFields()
 	if err != nil {
 		logging.Logger.Error("[challenge]validate: ",
 			zap.String("challenge_id", c.ChallengeID),
-			zap.Time("created", common.ToTime(c.CreatedAt)),
+			zap.Time("created", createdTime),
 			zap.String("validators", string(c.ValidatorsString)),
 			zap.String("lastCommitTxnList", string(c.LastCommitTxnList)),
 			zap.String("validationTickets", string(c.ValidationTicketsString)),
@@ -247,7 +249,7 @@ func validateChallenge(id string) {
 	if err := c.LoadValidationTickets(ctx); err != nil {
 		logging.Logger.Error("[challenge]validate: ",
 			zap.Any("challenge_id", c.ChallengeID),
-			zap.Time("created", common.ToTime(c.CreatedAt)),
+			zap.Time("created", createdTime),
 			zap.Error(err))
 		tx.Rollback()
 		return
@@ -256,7 +258,7 @@ func validateChallenge(id string) {
 	if err := tx.Commit().Error; err != nil {
 		logging.Logger.Error("[challenge]validate(Commit): ",
 			zap.Any("challenge_id", c.ChallengeID),
-			zap.Time("created", common.ToTime(c.CreatedAt)),
+			zap.Time("created", createdTime),
 			zap.Error(err))
 		tx.Rollback()
 		return
@@ -264,13 +266,13 @@ func validateChallenge(id string) {
 
 	logging.Logger.Info("[challenge]validate: ",
 		zap.Any("challenge_id", c.ChallengeID),
-		zap.Time("created", common.ToTime(c.CreatedAt)))
+		zap.Time("created", createdTime))
 
 	logging.Logger.Info("[challenge]elapsed:validate ",
 		zap.String("challenge_id", c.ChallengeID),
-		zap.Time("created", common.ToTime(c.CreatedAt)),
+		zap.Time("created", createdTime),
 		zap.Time("start", startTime),
-		zap.String("delay", startTime.Sub(common.ToTime(c.CreatedAt)).String()),
+		zap.String("delay", startTime.Sub(createdTime).String()),
 		zap.String("save", time.Since(startTime).String()))
 }
 
@@ -319,9 +321,12 @@ func commitProcessed(ctx context.Context) {
 			db.Model(&ChallengeEntity{}).
 				Where("challenge_id =? and status =? ", challengeID, Accepted).
 				Updates(map[string]interface{}{
-					"status":         Cancelled,
-					"result":         ChallengeFailure,
-					"status_message": fmt.Sprintf("created: %s, start: %s , delay: %s, cct: %s", createdAt, now, now.Sub(createdAt).String(), config.Configuration.ChallengeCompletionTime.String()),
+					"status": Cancelled,
+					"result": ChallengeFailure,
+					"status_message": fmt.Sprintf(
+						"created: %s, start: %s , delay: %s, cct: %s",
+						createdAt, now, now.Sub(createdAt).String(),
+						config.Configuration.ChallengeCompletionTime.String()),
 				})
 
 			logging.Logger.Error("[challenge]commit: timeout ",
@@ -372,15 +377,16 @@ func commitChallenge(id string) {
 		return
 	}
 
+	createdTime := common.ToTime(c.CreatedAt)
 	logging.Logger.Info("[challenge]commit",
 		zap.Any("challenge_id", c.ChallengeID),
-		zap.Time("created", common.ToTime(c.CreatedAt)),
+		zap.Time("created", createdTime),
 		zap.Any("openchallenge", c))
 
 	if err := c.UnmarshalFields(); err != nil {
 		logging.Logger.Error("[challenge]commit",
 			zap.String("challenge_id", c.ChallengeID),
-			zap.Time("created", common.ToTime(c.CreatedAt)),
+			zap.Time("created", createdTime),
 			zap.String("validators", string(c.ValidatorsString)),
 			zap.String("lastCommitTxnList", string(c.LastCommitTxnList)),
 			zap.String("validationTickets", string(c.ValidationTicketsString)),
@@ -394,7 +400,7 @@ func commitChallenge(id string) {
 	if err := c.CommitChallenge(ctx, false); err != nil {
 		logging.Logger.Error("[challenge]commit",
 			zap.String("challenge_id", c.ChallengeID),
-			zap.Time("created", common.ToTime(c.CreatedAt)),
+			zap.Time("created", createdTime),
 			zap.Error(err))
 		tx.Rollback()
 		return
@@ -404,7 +410,7 @@ func commitChallenge(id string) {
 	if err := tx.Commit().Error; err != nil {
 		logging.Logger.Warn("[challenge]commit",
 			zap.Any("challenge_id", c.ChallengeID),
-			zap.Time("created", common.ToTime(c.CreatedAt)),
+			zap.Time("created", createdTime),
 			zap.Error(err))
 		tx.Rollback()
 		return
@@ -414,15 +420,15 @@ func commitChallenge(id string) {
 
 	logging.Logger.Info("[challenge]commit",
 		zap.Any("challenge_id", c.ChallengeID),
-		zap.Time("created", common.ToTime(c.CreatedAt)),
+		zap.Time("created", createdTime),
 		zap.String("status", c.Status.String()),
 		zap.String("txn", c.CommitTxnID))
 
 	logging.Logger.Info("[challenge]elapsed:commit ",
 		zap.String("challenge_id", c.ChallengeID),
-		zap.Time("created", common.ToTime(c.CreatedAt)),
+		zap.Time("created", createdTime),
 		zap.Time("start", startTime),
-		zap.String("delay", startTime.Sub(common.ToTime(c.CreatedAt)).String()),
+		zap.String("delay", startTime.Sub(createdTime).String()),
 		zap.String("load", elapsedLoad.String()),
 		zap.String("commit_on_chain", elapsedCommitOnChain.String()),
 		zap.String("commit_on_db", elapsedCommitOnDb.String()),
