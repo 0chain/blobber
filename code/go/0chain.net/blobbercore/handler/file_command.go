@@ -18,6 +18,8 @@ type FileCommand interface {
 	// GetExistingFileRef get file ref if it exists
 	GetExistingFileRef() *reference.Ref
 
+	GetPath() string
+
 	// IsValidated validate request, and try build ChangeProcesser instance
 	IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error
 

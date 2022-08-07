@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
@@ -819,6 +820,9 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 //WriteFile stores the file into the blobber files system from the HTTP request
 func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
+
+	startTime := time.Now()
+
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE / PATCH instead")
 	}
@@ -831,9 +835,13 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
+	elapsedAllocation := time.Since(startTime)
+
 	allocationID := allocationObj.ID
 	cmd := createFileCommand(r)
 	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
+
+	elapsedValidate := time.Since(startTime) - elapsedAllocation
 
 	if err != nil {
 		return nil, err
@@ -867,6 +875,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
+	elapsedRef := time.Since(startTime) - elapsedAllocation - elapsedValidate
+
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
@@ -875,6 +885,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
 	mutex.Lock()
 	defer mutex.Unlock()
+
+	elapsedAllocationChanges := time.Since(startTime) - elapsedAllocation - elapsedValidate - elapsedRef
 
 	result, err := cmd.ProcessContent(ctx, r, allocationObj, connectionObj)
 
@@ -888,12 +900,28 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, err
 	}
 
+	elapsedProcess := time.Since(startTime) - elapsedAllocation - elapsedValidate - elapsedRef - elapsedAllocationChanges
+
 	err = cmd.UpdateChange(ctx, connectionObj)
 
 	if err != nil {
 		Logger.Error("Error in writing the connection meta data", zap.Error(err))
 		return nil, common.NewError("connection_write_error", err.Error()) //"Error writing the connection meta data")
 	}
+
+	elapsedUpdateChange := time.Since(startTime) - elapsedAllocation - elapsedValidate - elapsedRef - elapsedAllocationChanges - elapsedProcess
+
+	Logger.Info("[upload]elapsed",
+		zap.String("alloc_id", allocationID),
+		zap.String("file", cmd.GetPath()),
+		zap.Duration("get_alloc", elapsedAllocation),
+		zap.Duration("validate", elapsedValidate),
+		zap.Duration("ref", elapsedRef),
+		zap.Duration("load_changes", elapsedAllocationChanges),
+		zap.Duration("process", elapsedProcess),
+		zap.Duration("update_changes", elapsedUpdateChange),
+		zap.Duration("total", time.Since(startTime)),
+	)
 
 	return &result, nil
 }
