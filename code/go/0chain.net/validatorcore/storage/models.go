@@ -36,7 +36,7 @@ type ObjectEntity interface {
 }
 
 type DirMetaData struct {
-	CreationDate common.Timestamp `json:"creation_date" mapstructure:"creation_date"`
+	CreationDate common.Timestamp `json:"created_at" mapstructure:"created_at"`
 	Type         string           `json:"type" mapstructure:"type"`
 	Name         string           `json:"name" mapstructure:"name"`
 	Path         string           `json:"path" mapstructure:"path"`

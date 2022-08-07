@@ -97,19 +97,18 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 	}
 
 	c.Status = Accepted
-	c.CreatedAt = common.ToTime(c.Created)
-	c.UpdatedAt = c.CreatedAt
+	createdTime := common.ToTime(c.CreatedAt)
 
 	logging.Logger.Info("[challenge]add: ",
 		zap.String("challenge_id", c.ChallengeID),
-		zap.Time("created", c.CreatedAt))
+		zap.Time("created", createdTime))
 
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		return c.SaveWith(tx)
 	}); err != nil {
 		logging.Logger.Error("[challenge]add: ",
 			zap.String("challenge_id", c.ChallengeID),
-			zap.Time("created", c.CreatedAt),
+			zap.Time("created", createdTime),
 			zap.Error(err))
 
 		return
@@ -119,14 +118,14 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 
 	logging.Logger.Info("[challenge]elapsed:add ",
 		zap.String("challenge_id", c.ChallengeID),
-		zap.Time("created", c.CreatedAt),
+		zap.Time("created", createdTime),
 		zap.Time("start", startTime),
-		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
+		zap.String("delay", startTime.Sub(createdTime).String()),
 		zap.String("save", time.Since(startTime).String()))
 
 	nextTodoChallenge <- TodoChallenge{
 		Id:        c.ChallengeID,
-		CreatedAt: c.CreatedAt,
+		CreatedAt: common.ToTime(c.CreatedAt),
 		Status:    Accepted,
 	}
 
@@ -154,15 +153,16 @@ func validateOnValidators(id string) {
 		return
 	}
 
+	createdTime := common.ToTime(c.CreatedAt)
 	logging.Logger.Info("[challenge]validate: ",
 		zap.String("challenge_id", c.ChallengeID),
-		zap.Time("created", c.CreatedAt))
+		zap.Time("created", createdTime))
 
 	err := c.UnmarshalFields()
 	if err != nil {
 		logging.Logger.Error("[challenge]validate: ",
 			zap.String("challenge_id", c.ChallengeID),
-			zap.Time("created", c.CreatedAt),
+			zap.Time("created", createdTime),
 			zap.String("validators", string(c.ValidatorsString)),
 			zap.String("lastCommitTxnList", string(c.LastCommitTxnList)),
 			zap.String("validationTickets", string(c.ValidationTicketsString)),
@@ -177,7 +177,7 @@ func validateOnValidators(id string) {
 	if err := c.LoadValidationTickets(ctx); err != nil {
 		logging.Logger.Error("[challenge]validate: ",
 			zap.Any("challenge_id", c.ChallengeID),
-			zap.Time("created", c.CreatedAt),
+			zap.Time("created", createdTime),
 			zap.Error(err))
 		tx.Rollback()
 		return
@@ -186,7 +186,7 @@ func validateOnValidators(id string) {
 	if err := tx.Commit().Error; err != nil {
 		logging.Logger.Error("[challenge]validate(Commit): ",
 			zap.Any("challenge_id", c.ChallengeID),
-			zap.Time("created", c.CreatedAt),
+			zap.Time("created", createdTime),
 			zap.Error(err))
 		tx.Rollback()
 		return
@@ -194,13 +194,13 @@ func validateOnValidators(id string) {
 
 	logging.Logger.Info("[challenge]validate: ",
 		zap.Any("challenge_id", c.ChallengeID),
-		zap.Time("created", c.CreatedAt))
+		zap.Time("created", createdTime))
 
 	logging.Logger.Info("[challenge]elapsed:validate ",
 		zap.String("challenge_id", c.ChallengeID),
-		zap.Time("created", c.CreatedAt),
+		zap.Time("created", createdTime),
 		zap.Time("start", startTime),
-		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
+		zap.String("delay", startTime.Sub(createdTime).String()),
 		zap.String("save", time.Since(startTime).String()))
 }
 
@@ -227,15 +227,16 @@ func commitOnChain(id string) {
 		return
 	}
 
+	createdTime := common.ToTime(c.CreatedAt)
 	logging.Logger.Info("[challenge]commit",
 		zap.Any("challenge_id", c.ChallengeID),
-		zap.Time("created", c.CreatedAt),
+		zap.Time("created", createdTime),
 		zap.Any("openchallenge", c))
 
 	if err := c.UnmarshalFields(); err != nil {
 		logging.Logger.Error("[challenge]commit",
 			zap.String("challenge_id", c.ChallengeID),
-			zap.Time("created", c.CreatedAt),
+			zap.Time("created", createdTime),
 			zap.String("validators", string(c.ValidatorsString)),
 			zap.String("lastCommitTxnList", string(c.LastCommitTxnList)),
 			zap.String("validationTickets", string(c.ValidationTicketsString)),
@@ -251,7 +252,7 @@ func commitOnChain(id string) {
 	if err := c.CommitChallenge(ctx, false); err != nil {
 		logging.Logger.Error("[challenge]commit",
 			zap.String("challenge_id", c.ChallengeID),
-			zap.Time("created", c.CreatedAt),
+			zap.Time("created", createdTime),
 			zap.Error(err))
 		tx.Rollback()
 		return
@@ -261,7 +262,7 @@ func commitOnChain(id string) {
 	if err := tx.Commit().Error; err != nil {
 		logging.Logger.Warn("[challenge]commit",
 			zap.Any("challenge_id", c.ChallengeID),
-			zap.Time("created", c.CreatedAt),
+			zap.Time("created", createdTime),
 			zap.Error(err))
 		tx.Rollback()
 		return
@@ -271,15 +272,15 @@ func commitOnChain(id string) {
 
 	logging.Logger.Info("[challenge]commit",
 		zap.Any("challenge_id", c.ChallengeID),
-		zap.Time("created", c.CreatedAt),
+		zap.Time("created", createdTime),
 		zap.String("status", c.Status.String()),
 		zap.String("txn", c.CommitTxnID))
 
 	logging.Logger.Info("[challenge]elapsed:commit ",
 		zap.String("challenge_id", c.ChallengeID),
-		zap.Time("created", c.CreatedAt),
+		zap.Time("created", createdTime),
 		zap.Time("start", startTime),
-		zap.String("delay", startTime.Sub(c.CreatedAt).String()),
+		zap.String("delay", startTime.Sub(createdTime).String()),
 		zap.String("load", elapsedLoad.String()),
 		zap.String("commit_on_chain", elapsedCommitOnChain.String()),
 		zap.String("commit_on_db", elapsedCommitOnDb.String()),

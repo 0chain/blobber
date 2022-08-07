@@ -87,7 +87,8 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 	found := false
 	for i, child := range dirRef.Children {
 		if child.Path == rf.Path {
-			dirRef.Children[i] = affectedRef
+			dirRef.RemoveChild(i)
+			dirRef.AddChild(affectedRef)
 			found = true
 			break
 		}
