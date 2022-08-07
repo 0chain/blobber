@@ -308,7 +308,7 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		cr.Status = Cancelled
 		cr.StatusMessage = "challenge completion time expired"
 		cr.UpdatedAt = time.Now().UTC()
-		return nil
+		return cr.Save(ctx)
 	}
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
