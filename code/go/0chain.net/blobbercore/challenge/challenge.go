@@ -295,6 +295,7 @@ func loadTodoChallenges() {
 
 	rows, err := db.Model(&ChallengeEntity{}).
 		Where("status in (?,?)", Accepted, Processed).
+		Order("created_at").
 		Select("challenge_id", "created_at", "status").Rows()
 
 	if err != nil {

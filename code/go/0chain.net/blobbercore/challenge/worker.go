@@ -3,6 +3,7 @@ package challenge
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -21,7 +22,20 @@ var nextTodoChallenge = make(chan TodoChallenge, config.Configuration.ChallengeR
 
 // SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {
+	go startPullWorker(ctx)
 	go startWorkers(ctx)
+}
+
+func startPullWorker(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
+			syncOpenChallenges(ctx)
+		}
+	}
+
 }
 
 func startWorkers(ctx context.Context) {
@@ -35,8 +49,6 @@ func startWorkers(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
-			syncOpenChallenges(ctx)
 		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
 			loadTodoChallenges()
 		}
@@ -75,7 +87,7 @@ func waitNextTodo(ctx context.Context) {
 				continue
 			}
 
-			logging.Logger.Info("[challenge]next",
+			logging.Logger.Info("[challenge]next:"+strings.ToLower(it.Status.String()),
 				zap.Any("challenge_id", it.Id),
 				zap.String("status", it.Status.String()),
 				zap.Time("created", it.CreatedAt),
