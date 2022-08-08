@@ -307,7 +307,7 @@ func loadTodoChallenges() {
 	for rows.Next() {
 
 		var challengeID string
-		var createdAt time.Time
+		var createdAt common.Timestamp
 		var status int
 
 		err := rows.Scan(&challengeID, &createdAt, &status)
@@ -319,7 +319,7 @@ func loadTodoChallenges() {
 
 		nextTodoChallenge <- TodoChallenge{
 			Id:        challengeID,
-			CreatedAt: createdAt,
+			CreatedAt: common.ToTime(createdAt),
 			Status:    ChallengeStatus(status),
 		}
 
