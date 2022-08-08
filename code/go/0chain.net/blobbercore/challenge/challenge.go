@@ -40,8 +40,7 @@ func syncOpenChallenges(ctx context.Context) {
 	params["offset"] = strconv.Itoa(offset)
 	params["limit"] = "20"
 
-	var blobberChallenges BCChallengeResponse
-	blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
+	var allOpenChallenges []*ChallengeEntity
 
 	var downloadElapsed, jsonElapsed time.Duration
 
@@ -71,7 +70,7 @@ func syncOpenChallenges(ctx context.Context) {
 		if len(challenges.Challenges) == 0 {
 			break
 		}
-		blobberChallenges.Challenges = append(blobberChallenges.Challenges, challenges.Challenges...)
+		allOpenChallenges = append(allOpenChallenges, challenges.Challenges...)
 		offset += incrOffset
 		params["offset"] = strconv.Itoa(offset)
 	}
@@ -79,7 +78,7 @@ func syncOpenChallenges(ctx context.Context) {
 	saved := 0
 
 	dbTimeStart := time.Now()
-	for _, challengeObj := range blobberChallenges.Challenges {
+	for _, challengeObj := range allOpenChallenges {
 
 		if challengeObj == nil || challengeObj.ChallengeID == "" {
 			logging.Logger.Info("[challenge]open: No challenge entity from the challenge map")
@@ -92,7 +91,7 @@ func syncOpenChallenges(ctx context.Context) {
 	}
 
 	logging.Logger.Info("[challenge]elapsed:pull",
-		zap.Int("count", len(blobberChallenges.Challenges)),
+		zap.Int("count", len(allOpenChallenges)),
 		zap.Int("saved", saved),
 		zap.String("download", downloadElapsed.String()),
 		zap.String("json", jsonElapsed.String()),
