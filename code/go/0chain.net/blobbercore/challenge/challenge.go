@@ -79,7 +79,11 @@ func syncOpenChallenges(ctx context.Context) {
 	saved := 0
 
 	dbTimeStart := time.Now()
+	logging.Logger.Info("Starting saving challenges",
+		zap.Int("challenges", len(allOpenChallenges)))
 	for _, challengeObj := range allOpenChallenges {
+		logging.Logger.Error("saving challenge",
+			zap.String("challenge_id", challengeObj.ChallengeID))
 
 		if challengeObj == nil || challengeObj.ChallengeID == "" {
 			logging.Logger.Info("[challenge]open: No challenge entity from the challenge map")
