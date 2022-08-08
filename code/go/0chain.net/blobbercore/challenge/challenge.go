@@ -318,6 +318,11 @@ func loadTodoChallenges() {
 			continue
 		}
 
+		if challengeID == "" {
+			logging.Logger.Warn("[challenge]todo: get empty challenge id from db")
+			continue
+		}
+
 		createdTime := common.ToTime(createdAt)
 
 		logging.Logger.Info("[challenge]todo",
