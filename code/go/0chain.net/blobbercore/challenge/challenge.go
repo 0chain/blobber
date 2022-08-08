@@ -34,32 +34,39 @@ func syncOpenChallenges(ctx context.Context) {
 
 	params := make(map[string]string)
 	params["blobber"] = node.Self.ID
-	params["limit"] = "1000"
 
 	var blobberChallenges BCChallengeResponse
-	blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
 
-	startTime := time.Now()
-	retBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain())
+	var downloadElapsed, jsonElapsed time.Duration
 
-	if err != nil {
-		logging.Logger.Error("[challenge]open: ", zap.Error(err))
-		return
+	for {
+		var challenges BCChallengeResponse
+		apiStart := time.Now()
+		retBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain())
+		if err != nil {
+			logging.Logger.Error("[challenge]open: ", zap.Error(err))
+			return
+		}
+		downloadElapsed += time.Since(apiStart)
+
+		jsonStart := time.Now()
+		bytesReader := bytes.NewBuffer(retBytes)
+		d := json.NewDecoder(bytesReader)
+		d.UseNumber()
+		if err := d.Decode(&challenges); err != nil {
+			logging.Logger.Error("[challenge]json: ", zap.String("resp", string(retBytes)), zap.Error(err))
+			return
+		}
+		jsonElapsed += time.Since(jsonStart)
+		if len(challenges.Challenges) == 0 {
+			break
+		}
+		blobberChallenges.Challenges = append(blobberChallenges.Challenges, challenges.Challenges...)
 	}
 
-	downloadElapsed := time.Since(startTime)
-
-	bytesReader := bytes.NewBuffer(retBytes)
-	d := json.NewDecoder(bytesReader)
-	d.UseNumber()
-	if err := d.Decode(&blobberChallenges); err != nil {
-		logging.Logger.Error("[challenge]json: ", zap.String("resp", string(retBytes)), zap.Error(err))
-		return
-	}
-
-	jsonElapsed := time.Since(startTime)
 	saved := 0
 
+	dbTimeStart := time.Now()
 	for _, challengeObj := range blobberChallenges.Challenges {
 
 		if challengeObj == nil || challengeObj.ChallengeID == "" {
@@ -76,8 +83,8 @@ func syncOpenChallenges(ctx context.Context) {
 		zap.Int("count", len(blobberChallenges.Challenges)),
 		zap.Int("saved", saved),
 		zap.String("download", downloadElapsed.String()),
-		zap.String("json", (jsonElapsed-downloadElapsed).String()),
-		zap.String("db", (time.Since(startTime)-jsonElapsed).String()))
+		zap.String("json", jsonElapsed.String()),
+		zap.String("db", time.Since(dbTimeStart).String()))
 
 }
 
