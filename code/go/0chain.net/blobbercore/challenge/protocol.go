@@ -31,9 +31,11 @@ const VALIDATOR_URL = "/v1/storage/challenge/new"
 const ValueNotPresent = "value not present"
 
 var (
-	ErrNoValidator          = errors.New("No validators assigned to the challenge")
+	ErrNoValidator          = errors.New("no validators assigned to the challenge")
 	ErrNoConsensusChallenge = errors.New("no_consensus_challenge: No Consensus on the challenge result. Erroring out the challenge")
 	ErrInvalidObjectPath    = errors.New("invalid_object_path: Object path was not for a file")
+	ErrExpiredCCT           = errors.New("expired challenge completion time")
+	ErrValNotPresent        = errors.New("chain responded: " + ValueNotPresent)
 )
 
 type ChallengeResponse struct {
@@ -312,10 +314,8 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
 	if time.Since(common.ToTime(cr.CreatedAt)) > config.Configuration.ChallengeCompletionTime {
-		cr.Status = Cancelled
-		cr.StatusMessage = "challenge completion time expired"
-		cr.UpdatedAt = time.Now().UTC()
-		return cr.Save(ctx)
+		cr.CancelChallenge(ctx, ErrExpiredCCT)
+		return ErrExpiredCCT
 	}
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
@@ -354,11 +354,8 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		}
 
 		if IsValueNotPresentError(err) {
-			cr.Status = Cancelled
-			cr.StatusMessage = "value not present in Blockchain"
+			err = ErrValNotPresent
 		}
-
-		cr.UpdatedAt = time.Now().UTC()
 
 		cr.CancelChallenge(ctx, err)
 		logging.Logger.Error("[challenge]submit: Error while submitting challenge to BC.", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
