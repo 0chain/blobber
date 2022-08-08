@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -26,14 +27,17 @@ type BCChallengeResponse struct {
 
 // syncOpenChallenges get challenge from blockchain , and add them in database
 func syncOpenChallenges(ctx context.Context) {
+	const incrOffset = 10
 	defer func() {
 		if r := recover(); r != nil {
 			logging.Logger.Error("[recover]challenge", zap.Any("err", r))
 		}
 	}()
 
+	offset := 0
 	params := make(map[string]string)
 	params["blobber"] = node.Self.ID
+	params["offset"] = strconv.Itoa(offset)
 
 	var blobberChallenges BCChallengeResponse
 	blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
@@ -67,6 +71,8 @@ func syncOpenChallenges(ctx context.Context) {
 			break
 		}
 		blobberChallenges.Challenges = append(blobberChallenges.Challenges, challenges.Challenges...)
+		offset += incrOffset
+		params["offset"] = strconv.Itoa(offset)
 	}
 
 	saved := 0
