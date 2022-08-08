@@ -309,7 +309,7 @@ func loadTodoChallenges() {
 
 		var challengeID string
 		var createdAt common.Timestamp
-		var status int
+		var status ChallengeStatus
 
 		err := rows.Scan(&challengeID, &createdAt, &status)
 		if err != nil {
@@ -318,10 +318,15 @@ func loadTodoChallenges() {
 			continue
 		}
 
+		logging.Logger.Info("[challenge]todo",
+			zap.String("challenge_id", challengeID),
+			zap.String("status", status.String()),
+			zap.Time("created_at", common.ToTime(createdAt)))
+
 		nextTodoChallenge <- TodoChallenge{
 			Id:        challengeID,
 			CreatedAt: common.ToTime(createdAt),
-			Status:    ChallengeStatus(status),
+			Status:    status,
 		}
 
 	}
