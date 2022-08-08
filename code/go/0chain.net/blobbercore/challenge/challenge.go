@@ -86,13 +86,13 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 
 	startTime := time.Now()
 
-	if _, err := cMap.Get(c.ChallengeID); err == nil {
-		return
-	}
+	// if _, err := cMap.Get(c.ChallengeID); err == nil {
+	// 	return
+	// }
 
 	db := datastore.GetStore().GetDB()
 	if status := getStatus(db, c.ChallengeID); status != nil {
-		cMap.Add(c.ChallengeID, *status) //nolint
+		// cMap.Add(c.ChallengeID, *status) //nolint
 		return
 	}
 
@@ -114,7 +114,7 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 		return
 	}
 
-	cMap.Add(c.ChallengeID, Accepted) //nolint
+	// cMap.Add(c.ChallengeID, Accepted) //nolint
 
 	logging.Logger.Info("[challenge]elapsed:add ",
 		zap.String("challenge_id", c.ChallengeID),
@@ -286,7 +286,7 @@ func commitOnChain(id string) {
 		zap.String("commit_on_db", elapsedCommitOnDb.String()),
 	)
 
-	go cMap.Delete(c.ChallengeID) //nolint
+	// go cMap.Delete(c.ChallengeID) //nolint
 
 }
 
