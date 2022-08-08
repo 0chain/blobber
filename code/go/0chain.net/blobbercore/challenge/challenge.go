@@ -58,6 +58,7 @@ func syncOpenChallenges(ctx context.Context) {
 	}
 
 	jsonElapsed := time.Since(startTime)
+	saved := 0
 
 	for _, challengeObj := range blobberChallenges.Challenges {
 
@@ -66,18 +67,21 @@ func syncOpenChallenges(ctx context.Context) {
 			continue
 		}
 
-		saveNewChallenge(challengeObj, ctx)
+		if saveNewChallenge(challengeObj, ctx) {
+			saved++
+		}
 	}
 
 	logging.Logger.Info("[challenge]elapsed:pull",
 		zap.Int("count", len(blobberChallenges.Challenges)),
+		zap.Int("saved", saved),
 		zap.String("download", downloadElapsed.String()),
 		zap.String("json", (jsonElapsed-downloadElapsed).String()),
 		zap.String("db", (time.Since(startTime)-jsonElapsed).String()))
 
 }
 
-func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
+func saveNewChallenge(c *ChallengeEntity, ctx context.Context) bool {
 	defer func() {
 		if r := recover(); r != nil {
 			logging.Logger.Error("[recover]add_challenge", zap.Any("err", r))
@@ -87,13 +91,13 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 	startTime := time.Now()
 
 	if _, err := cMap.Get(c.ChallengeID); err == nil {
-		return
+		return false
 	}
 
 	db := datastore.GetStore().GetDB()
 	if status := getStatus(db, c.ChallengeID); status != nil {
 		cMap.Add(c.ChallengeID, *status) //nolint
-		return
+		return false
 	}
 
 	c.Status = Accepted
@@ -111,7 +115,7 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 			zap.Time("created", createdTime),
 			zap.Error(err))
 
-		return
+		return false
 	}
 
 	cMap.Add(c.ChallengeID, Accepted) //nolint
@@ -128,6 +132,7 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 		CreatedAt: common.ToTime(c.CreatedAt),
 		Status:    Accepted,
 	}
+	return true
 
 }
 
