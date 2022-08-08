@@ -73,7 +73,7 @@ func syncOpenChallenges(ctx context.Context) {
 		zap.Int("count", len(blobberChallenges.Challenges)),
 		zap.String("download", downloadElapsed.String()),
 		zap.String("json", (jsonElapsed-downloadElapsed).String()),
-		zap.String("db", (time.Since(startTime)-downloadElapsed-jsonElapsed).String()))
+		zap.String("db", (time.Since(startTime)-jsonElapsed).String()))
 
 }
 
