@@ -3,6 +3,7 @@ package challenge
 import (
 	"context"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -91,11 +92,14 @@ func waitNextTodo(ctx context.Context) {
 				zap.String("delay", now.Sub(it.CreatedAt).String()),
 				zap.String("cct", config.Configuration.ChallengeCompletionTime.String()))
 
+			var wg sync.WaitGroup
 			switch it.Status {
 			case Accepted:
-				validateOnValidators(it.Id)
+				wg.Add(1)
+				go validateOnValidators(it.Id, &wg)
 			case Processed:
-				commitOnChain(it.Id)
+				wg.Add(1)
+				go commitOnChain(it.Id, &wg)
 			default:
 				logging.Logger.Warn("[challenge]skipped",
 					zap.Any("challenge_id", it.Id),
@@ -105,6 +109,10 @@ func waitNextTodo(ctx context.Context) {
 					zap.String("delay", now.Sub(it.CreatedAt).String()),
 					zap.String("cct", config.Configuration.ChallengeCompletionTime.String()))
 			}
+			logging.Logger.Info("waiting for challenge to be computed",
+				zap.String("challenge_id", it.Id))
+
+			wg.Wait()
 		}
 	}
 }
