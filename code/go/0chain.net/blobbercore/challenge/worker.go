@@ -2,12 +2,10 @@ package challenge
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 )
@@ -72,14 +70,8 @@ func waitNextTodo(ctx context.Context) {
 
 			now := time.Now()
 			if now.Sub(it.CreatedAt) > config.Configuration.ChallengeCompletionTime {
-				db := datastore.GetStore().GetDB()
-				db.Model(&ChallengeEntity{}).
-					Where("challenge_id =? and status =? ", it.Id, it.Status).
-					Updates(map[string]interface{}{
-						"status":         Cancelled,
-						"result":         ChallengeFailure,
-						"status_message": fmt.Sprintf("status: %s,  created: %s, start: %s , delay: %s, cct: %s", it.Status, it.CreatedAt, now, now.Sub(it.CreatedAt).String(), config.Configuration.ChallengeCompletionTime.String()),
-					})
+				c := &ChallengeEntity{ChallengeID: it.Id}
+				c.CancelChallenge(ctx, ErrExpiredCCT)
 
 				logging.Logger.Error("[challenge]timeout",
 					zap.Any("challenge_id", it.Id),
