@@ -62,9 +62,13 @@ func waitNextTodo(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			logging.Logger.Info("exiting waitNextTodo")
 			return
 
 		case it := <-nextTodoChallenge:
+
+			logging.Logger.Info("processing_challenge",
+				zap.String("challenge_id", it.Id))
 
 			now := time.Now()
 			if now.Sub(it.CreatedAt) > config.Configuration.ChallengeCompletionTime {
