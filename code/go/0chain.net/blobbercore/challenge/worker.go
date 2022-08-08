@@ -40,7 +40,7 @@ func startPullWorker(ctx context.Context) {
 func startWorkers(ctx context.Context) {
 
 	// populate all accepted/processed challenges to channel
-	loadTodoChallenges()
+	go loadTodoChallenges()
 
 	// start challenge listeners
 	for i := 0; i < config.Configuration.ChallengeResolveNumWorkers; i++ {

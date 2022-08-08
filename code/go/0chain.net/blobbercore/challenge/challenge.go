@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/remeh/sizedwaitgroup"
 	"strconv"
 	"sync"
 	"time"
@@ -81,6 +83,9 @@ func syncOpenChallenges(ctx context.Context) {
 	dbTimeStart := time.Now()
 	logging.Logger.Info("Starting saving challenges",
 		zap.Int("challenges", len(allOpenChallenges)))
+
+	swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
+
 	for _, challengeObj := range allOpenChallenges {
 		logging.Logger.Error("saving challenge",
 			zap.String("challenge_id", challengeObj.ChallengeID))
@@ -90,10 +95,13 @@ func syncOpenChallenges(ctx context.Context) {
 			continue
 		}
 
-		if saveNewChallenge(challengeObj, ctx) {
-			saved++
-		}
+		swg.Add()
+		go func(challObj *ChallengeEntity) {
+			defer swg.Done()
+			saveNewChallenge(challObj, ctx)
+		}(challengeObj)
 	}
+	swg.Wait()
 
 	logging.Logger.Info("[challenge]elapsed:pull",
 		zap.Int("count", len(allOpenChallenges)),
@@ -104,7 +112,7 @@ func syncOpenChallenges(ctx context.Context) {
 
 }
 
-func saveNewChallenge(c *ChallengeEntity, ctx context.Context) bool {
+func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
 			logging.Logger.Error("[recover]add_challenge", zap.Any("err", r))
@@ -120,7 +128,6 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) bool {
 	db := datastore.GetStore().GetDB()
 	if status := getStatus(db, c.ChallengeID); status != nil {
 		//cMap.Add(c.ChallengeID, *status) //nolint
-		return false
 	}
 
 	c.Status = Accepted
@@ -137,8 +144,6 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) bool {
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Time("created", createdTime),
 			zap.Error(err))
-
-		return false
 	}
 
 	//cMap.Add(c.ChallengeID, Accepted) //nolint
@@ -155,8 +160,6 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) bool {
 		CreatedAt: common.ToTime(c.CreatedAt),
 		Status:    Accepted,
 	}
-	return true
-
 }
 
 func validateOnValidators(id string, wg *sync.WaitGroup) {
