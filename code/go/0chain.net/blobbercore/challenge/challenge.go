@@ -41,12 +41,16 @@ func syncOpenChallenges(ctx context.Context) {
 
 	for {
 		var challenges BCChallengeResponse
+		challenges.Challenges = make([]*ChallengeEntity, 0)
 		apiStart := time.Now()
 		retBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain())
 		if err != nil {
 			logging.Logger.Error("[challenge]open: ", zap.Error(err))
 			return
 		}
+		logging.Logger.Info("openchallenges API response",
+			zap.String("response", string(retBytes)))
+
 		downloadElapsed += time.Since(apiStart)
 
 		jsonStart := time.Now()
