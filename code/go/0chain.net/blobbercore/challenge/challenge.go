@@ -38,6 +38,7 @@ func syncOpenChallenges(ctx context.Context) {
 	params := make(map[string]string)
 	params["blobber"] = node.Self.ID
 	params["offset"] = strconv.Itoa(offset)
+	params["limit"] = "20"
 
 	var blobberChallenges BCChallengeResponse
 	blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
