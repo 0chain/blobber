@@ -36,6 +36,7 @@ func syncOpenChallenges(ctx context.Context) {
 	params["blobber"] = node.Self.ID
 
 	var blobberChallenges BCChallengeResponse
+	blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
 
 	var downloadElapsed, jsonElapsed time.Duration
 
@@ -48,8 +49,6 @@ func syncOpenChallenges(ctx context.Context) {
 			logging.Logger.Error("[challenge]open: ", zap.Error(err))
 			return
 		}
-		logging.Logger.Info("openchallenges API response",
-			zap.String("response", string(retBytes)))
 
 		downloadElapsed += time.Since(apiStart)
 
@@ -61,6 +60,8 @@ func syncOpenChallenges(ctx context.Context) {
 			logging.Logger.Error("[challenge]json: ", zap.String("resp", string(retBytes)), zap.Error(err))
 			return
 		}
+		logging.Logger.Info("challenges_from_chain",
+			zap.Int("challenges", len(challenges.Challenges)))
 		jsonElapsed += time.Since(jsonStart)
 		if len(challenges.Challenges) == 0 {
 			break
