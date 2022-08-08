@@ -27,7 +27,7 @@ type BCChallengeResponse struct {
 
 // syncOpenChallenges get challenge from blockchain , and add them in database
 func syncOpenChallenges(ctx context.Context) {
-	const incrOffset = 10
+	const incrOffset = 20
 	defer func() {
 		if r := recover(); r != nil {
 			logging.Logger.Error("[recover]challenge", zap.Any("err", r))
