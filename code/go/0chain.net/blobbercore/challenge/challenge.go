@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/core/cache"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
@@ -23,7 +22,7 @@ type BCChallengeResponse struct {
 	Challenges []*ChallengeEntity `json:"challenges"`
 }
 
-var cMap = cache.NewLRUCache(2000)
+// var cMap = cache.NewLRUCache(2000)
 
 // syncOpenChallenges get challenge from blockchain , and add them in database
 func syncOpenChallenges(ctx context.Context) {
