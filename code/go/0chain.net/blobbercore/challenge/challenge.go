@@ -35,6 +35,7 @@ func syncOpenChallenges(ctx context.Context) {
 
 	params := make(map[string]string)
 	params["blobber"] = node.Self.ID
+	params["limit"] = "1000"
 
 	var blobberChallenges BCChallengeResponse
 	blobberChallenges.Challenges = make([]*ChallengeEntity, 0)
