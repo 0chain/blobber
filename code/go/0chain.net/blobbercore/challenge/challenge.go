@@ -318,10 +318,13 @@ func loadTodoChallenges() {
 			continue
 		}
 
+		createdTime := common.ToTime(createdAt)
+
 		logging.Logger.Info("[challenge]todo",
 			zap.String("challenge_id", challengeID),
 			zap.String("status", status.String()),
-			zap.Time("created_at", common.ToTime(createdAt)))
+			zap.Time("created_at", createdTime),
+			zap.Duration("delay", time.Since(createdTime)))
 
 		nextTodoChallenge <- TodoChallenge{
 			Id:        challengeID,
