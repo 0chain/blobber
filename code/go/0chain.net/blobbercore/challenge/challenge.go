@@ -170,7 +170,7 @@ func validateOnValidators(id string) {
 			zap.Error(err))
 		tx.Rollback()
 
-		c.ErrorChallenge(ctx, err)
+		c.CancelChallenge(ctx, err)
 		return
 	}
 
@@ -244,7 +244,7 @@ func commitOnChain(id string) {
 			zap.Error(err))
 		tx.Rollback()
 
-		c.ErrorChallenge(ctx, err)
+		c.CancelChallenge(ctx, err)
 		return
 	}
 

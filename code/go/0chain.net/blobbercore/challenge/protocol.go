@@ -12,6 +12,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
@@ -68,12 +69,16 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 	return t, nil
 }
 
-func (cr *ChallengeEntity) ErrorChallenge(ctx context.Context, err error) {
-	cr.StatusMessage = err.Error()
-	cr.UpdatedAt = time.Now().UTC()
-	cr.Status = Cancelled
+func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, err error) {
 
-	if err := cr.Save(ctx); err != nil {
+	db := datastore.GetStore().GetDB()
+	if err := db.Model(&ChallengeEntity{}).
+		Where("challenge_id = ?", cr.ChallengeID).
+		Updates(map[string]interface{}{
+			"status":         Cancelled,
+			"updated_at":     time.Now().UTC(),
+			"status_message": err.Error(),
+		}).Error; err != nil {
 		logging.Logger.Error("[challenge]cancel:db ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 	}
 }
@@ -82,13 +87,13 @@ func (cr *ChallengeEntity) ErrorChallenge(ctx context.Context, err error) {
 func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	if len(cr.Validators) == 0 {
 
-		cr.ErrorChallenge(ctx, ErrNoValidator)
+		cr.CancelChallenge(ctx, ErrNoValidator)
 		return ErrNoValidator
 	}
 
 	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
 	if err != nil {
-		cr.ErrorChallenge(ctx, ErrNoValidator)
+		cr.CancelChallenge(ctx, ErrNoValidator)
 		return err
 	}
 
@@ -112,7 +117,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	rootRef, err := reference.GetReference(ctx, cr.AllocationID, "/")
 	if err != nil {
 		allocMu.Unlock()
-		cr.ErrorChallenge(ctx, err)
+		cr.CancelChallenge(ctx, err)
 		return err
 	}
 
@@ -128,7 +133,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	objectPath, err := reference.GetObjectPath(ctx, cr.AllocationID, blockNum)
 	if err != nil {
 		allocMu.Unlock()
-		cr.ErrorChallenge(ctx, err)
+		cr.CancelChallenge(ctx, err)
 		return err
 	}
 
@@ -153,7 +158,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			allocMu.Unlock()
 			logging.Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta), zap.Any("obejct_path", objectPath))
 
-			cr.ErrorChallenge(ctx, ErrInvalidObjectPath)
+			cr.CancelChallenge(ctx, ErrInvalidObjectPath)
 			return ErrInvalidObjectPath
 		}
 
@@ -182,7 +187,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 		if err != nil {
 			allocMu.Unlock()
-			cr.ErrorChallenge(ctx, err)
+			cr.CancelChallenge(ctx, err)
 			return common.NewError("blockdata_not_found", err.Error())
 		}
 		postData["data"] = []byte(blockData)
@@ -195,7 +200,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	postDataBytes, err := json.Marshal(postData)
 	if err != nil {
 		logging.Logger.Error("[db]form: " + err.Error())
-		cr.ErrorChallenge(ctx, err)
+		cr.CancelChallenge(ctx, err)
 		return err
 	}
 	responses := make(map[string]ValidationTicket)
@@ -298,7 +303,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.Status = Processed
 		cr.UpdatedAt = time.Now().UTC()
 	} else {
-		cr.ErrorChallenge(ctx, ErrNoConsensusChallenge)
+		cr.CancelChallenge(ctx, ErrNoConsensusChallenge)
 		return ErrNoConsensusChallenge
 	}
 
@@ -355,7 +360,7 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 
 		cr.UpdatedAt = time.Now().UTC()
 
-		cr.ErrorChallenge(ctx, err)
+		cr.CancelChallenge(ctx, err)
 		logging.Logger.Error("[challenge]submit: Error while submitting challenge to BC.", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 	} else {
 		cr.Status = Committed

@@ -70,7 +70,7 @@ func waitNextTodo(ctx context.Context) {
 			if now.Sub(it.CreatedAt) > config.Configuration.ChallengeCompletionTime {
 
 				db.Model(&ChallengeEntity{}).
-					Where("challenge_id =? and status =? ", it.Id, Accepted).
+					Where("challenge_id =? and status =? ", it.Id, it.Status).
 					Updates(map[string]interface{}{
 						"status":         Cancelled,
 						"result":         ChallengeFailure,
