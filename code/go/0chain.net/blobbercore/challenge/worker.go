@@ -18,7 +18,7 @@ type TodoChallenge struct {
 	Status    ChallengeStatus
 }
 
-var nextTodoChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers)
+var nextTodoChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers*100)
 
 // SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {
@@ -40,6 +40,9 @@ func startPullWorker(ctx context.Context) {
 
 func startWorkers(ctx context.Context) {
 
+	// populate all accepted/processed challenges to channel
+	loadTodoChallenges()
+
 	// start challenge listeners
 	for i := 0; i < config.Configuration.ChallengeResolveNumWorkers; i++ {
 		go waitNextTodo(ctx)
@@ -49,8 +52,6 @@ func startWorkers(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
-			loadTodoChallenges()
 		}
 	}
 

@@ -207,6 +207,12 @@ func validateOnValidators(id string) {
 		zap.Time("start", startTime),
 		zap.String("delay", startTime.Sub(createdTime).String()),
 		zap.String("save", time.Since(startTime).String()))
+
+	nextTodoChallenge <- TodoChallenge{
+		Id:        c.ChallengeID,
+		CreatedAt: createdTime,
+		Status:    Processed,
+	}
 }
 
 func commitOnChain(id string) {
