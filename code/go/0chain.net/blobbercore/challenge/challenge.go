@@ -85,16 +85,8 @@ func syncOpenChallenges(ctx context.Context) {
 	logging.Logger.Info("Starting saving challenges",
 		zap.Int("challenges", len(allOpenChallenges)))
 
-	for _, challengeObj := range allOpenChallenges {
-
-		if challengeObj == nil || challengeObj.ChallengeID == "" {
-			logging.Logger.Info("[challenge]open: No challenge entity from the challenge map")
-			continue
-		}
-
-		logging.Logger.Info("saving challenge",
-			zap.String("challenge_id", challengeObj.ChallengeID))
-
+	if len(allOpenChallenges) == 0 {
+		return
 	}
 
 	saved := saveNewChallenges(ctx, allOpenChallenges...)
@@ -154,20 +146,24 @@ func saveNewChallenges(ctx context.Context, ce ...*ChallengeEntity) int {
 				zap.Time("created", createdTime),
 				zap.Error(err))
 		}
+		txnCompleteTime := time.Since(txnStartTime)
+		chanStart := time.Now()
 
 		//cMap.Add(c.ChallengeID, Accepted) //nolint
+
+		nextValidateChallenge <- TodoChallenge{
+			Id:        c.ChallengeID,
+			CreatedAt: common.ToTime(c.CreatedAt),
+		}
+		chanDone := time.Since(chanStart)
 
 		logging.Logger.Info("[challenge]elapsed:add ",
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Time("created", createdTime),
 			zap.Time("start", startTime),
 			zap.String("delay", startTime.Sub(createdTime).String()),
-			zap.String("save", time.Since(txnStartTime).String()))
-
-		nextValidateChallenge <- TodoChallenge{
-			Id:        c.ChallengeID,
-			CreatedAt: common.ToTime(c.CreatedAt),
-		}
+			zap.String("save", txnCompleteTime.String()),
+			zap.String("chan_send", chanDone.String()))
 	}
 	return saved
 }
