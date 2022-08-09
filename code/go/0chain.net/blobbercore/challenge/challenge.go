@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -165,8 +164,7 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 	}
 }
 
-func validateOnValidators(id string, wg *sync.WaitGroup) {
-	defer wg.Done()
+func validateOnValidators(id string) {
 	startTime := time.Now()
 
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
@@ -245,8 +243,7 @@ func validateOnValidators(id string, wg *sync.WaitGroup) {
 	}
 }
 
-func commitOnChain(id string, wg *sync.WaitGroup) {
-	defer wg.Done()
+func commitOnChain(id string) {
 
 	startTime := time.Now()
 
