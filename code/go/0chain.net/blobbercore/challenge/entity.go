@@ -207,14 +207,30 @@ func GetChallengeEntity(ctx context.Context, challengeID string) (*ChallengeEnti
 
 // getStatus check challenge if exists in db
 // nolint
-func getStatus(db *gorm.DB, challengeID string) *ChallengeStatus {
+func getStatus(db *gorm.DB, challengeIDs ...string) map[string]*ChallengeStatus {
 
-	var status []int
-	err := db.Raw("SELECT status FROM challenges WHERE challenge_id=?", challengeID).Pluck("status", &status).Error
-
-	if errors.Is(err, gorm.ErrRecordNotFound) || len(status) == 0 {
+	if len(challengeIDs) == 0 {
 		return nil
 	}
 
-	return (*ChallengeStatus)(&status[0])
+	type challengeStatus struct {
+		ChallengeID string
+		Status      ChallengeStatus
+	}
+
+	var challStatus []challengeStatus
+	challToStatus := make(map[string]*ChallengeStatus)
+
+	err := db.Model(&ChallengeEntity{}).
+		Select("challenge_id, status").
+		Where("status IN ?", challengeIDs).Find(&challStatus).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) || len(challStatus) == 0 {
+		return nil
+	}
+
+	for _, cs := range challStatus {
+		challToStatus[cs.ChallengeID] = &cs.Status
+	}
+
+	return challToStatus
 }

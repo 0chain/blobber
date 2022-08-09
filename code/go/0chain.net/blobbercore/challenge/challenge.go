@@ -81,8 +81,6 @@ func syncOpenChallenges(ctx context.Context) {
 		params["offset"] = strconv.Itoa(offset)
 	}
 
-	saved := 0
-
 	dbTimeStart := time.Now()
 	logging.Logger.Info("Starting saving challenges",
 		zap.Int("challenges", len(allOpenChallenges)))
@@ -97,8 +95,9 @@ func syncOpenChallenges(ctx context.Context) {
 		logging.Logger.Info("saving challenge",
 			zap.String("challenge_id", challengeObj.ChallengeID))
 
-		saveNewChallenge(challengeObj, ctx)
 	}
+
+	saved := saveNewChallenges(ctx, allOpenChallenges...)
 
 	logging.Logger.Info("[challenge]elapsed:pull",
 		zap.Int("count", len(allOpenChallenges)),
@@ -109,7 +108,7 @@ func syncOpenChallenges(ctx context.Context) {
 
 }
 
-func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
+func saveNewChallenges(ctx context.Context, ce ...*ChallengeEntity) int {
 	defer func() {
 		if r := recover(); r != nil {
 			logging.Logger.Error("[recover]add_challenge", zap.Any("err", r))
@@ -118,45 +117,57 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 
 	startTime := time.Now()
 
+	var challIDs []string
+	for _, ch := range ce {
+		challIDs = append(challIDs, ch.ChallengeID)
+	}
+
 	//if _, err := cMap.Get(c.ChallengeID); err == nil {
 	//	return false
 	//}
 
 	db := datastore.GetStore().GetDB()
-	if status := getStatus(db, c.ChallengeID); status != nil {
-		//cMap.Add(c.ChallengeID, *status) //nolint
-		return
-	}
+	status := getStatus(db, challIDs...)
+	logging.Logger.Info("add_challenge[response]",
+		zap.Any("challenge_status mapping", status))
+	saved := 0
 
-	c.Status = Accepted
-	createdTime := common.ToTime(c.CreatedAt)
+	for _, c := range ce {
+		if _, ok := status[c.ChallengeID]; ok {
+			continue
+		}
+		saved++
+		c.Status = Accepted
+		createdTime := common.ToTime(c.CreatedAt)
 
-	logging.Logger.Info("[challenge]add: ",
-		zap.String("challenge_id", c.ChallengeID),
-		zap.Time("created", createdTime))
+		logging.Logger.Info("[challenge]add: ",
+			zap.String("challenge_id", c.ChallengeID),
+			zap.Time("created", createdTime))
 
-	if err := db.Transaction(func(tx *gorm.DB) error {
-		return c.SaveWith(tx)
-	}); err != nil {
-		logging.Logger.Error("[challenge]add: ",
+		if err := db.Transaction(func(tx *gorm.DB) error {
+			return c.SaveWith(tx)
+		}); err != nil {
+			logging.Logger.Error("[challenge]add: ",
+				zap.String("challenge_id", c.ChallengeID),
+				zap.Time("created", createdTime),
+				zap.Error(err))
+		}
+
+		//cMap.Add(c.ChallengeID, Accepted) //nolint
+
+		logging.Logger.Info("[challenge]elapsed:add ",
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Time("created", createdTime),
-			zap.Error(err))
+			zap.Time("start", startTime),
+			zap.String("delay", startTime.Sub(createdTime).String()),
+			zap.String("save", time.Since(startTime).String()))
+
+		nextValidateChallenge <- TodoChallenge{
+			Id:        c.ChallengeID,
+			CreatedAt: common.ToTime(c.CreatedAt),
+		}
 	}
-
-	//cMap.Add(c.ChallengeID, Accepted) //nolint
-
-	logging.Logger.Info("[challenge]elapsed:add ",
-		zap.String("challenge_id", c.ChallengeID),
-		zap.Time("created", createdTime),
-		zap.Time("start", startTime),
-		zap.String("delay", startTime.Sub(createdTime).String()),
-		zap.String("save", time.Since(startTime).String()))
-
-	nextValidateChallenge <- TodoChallenge{
-		Id:        c.ChallengeID,
-		CreatedAt: common.ToTime(c.CreatedAt),
-	}
+	return saved
 }
 
 func validateOnValidators(id string) {
