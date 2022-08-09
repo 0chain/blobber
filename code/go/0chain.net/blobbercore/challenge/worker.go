@@ -38,8 +38,12 @@ func startPullWorker(ctx context.Context) {
 
 func startWorkers(ctx context.Context) {
 
+	numWorkers := config.Configuration.ChallengeResolveNumWorkers / 2
+	logging.Logger.Info("initializing challenge workers",
+		zap.Int("num_workers", numWorkers))
+
 	// start challenge listeners
-	for i := 0; i < config.Configuration.ChallengeResolveNumWorkers; i++ {
+	for i := 0; i < numWorkers; i++ {
 		go validateAccepted(ctx)
 		go commitValidated(ctx)
 	}
