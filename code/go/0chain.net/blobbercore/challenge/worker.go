@@ -15,8 +15,8 @@ type TodoChallenge struct {
 	CreatedAt time.Time
 }
 
-var nextValidateChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers*100)
-var nextCommitChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers*100)
+var nextValidateChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers*1000)
+var nextCommitChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers*1000)
 
 // SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {
