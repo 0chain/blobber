@@ -23,6 +23,8 @@ type BCChallengeResponse struct {
 	Challenges []*ChallengeEntity `json:"challenges"`
 }
 
+var lastChallengeTimestamp int
+
 //var cMap = cache.NewLRUCache(2000)
 
 // syncOpenChallenges get challenge from blockchain , and add them in database
@@ -39,6 +41,9 @@ func syncOpenChallenges(ctx context.Context) {
 	params["blobber"] = node.Self.ID
 	params["offset"] = strconv.Itoa(offset)
 	params["limit"] = "20"
+	if lastChallengeTimestamp > 0 {
+		params["from"] = strconv.Itoa(lastChallengeTimestamp)
+	}
 
 	var allOpenChallenges []*ChallengeEntity
 
@@ -67,6 +72,9 @@ func syncOpenChallenges(ctx context.Context) {
 		}
 		for _, c := range challenges.Challenges {
 			challengeIDs = append(challengeIDs, c.ChallengeID)
+			if c.CreatedAt > common.Timestamp(lastChallengeTimestamp) {
+				lastChallengeTimestamp = int(c.CreatedAt)
+			}
 		}
 		logging.Logger.Info("challenges_from_chain",
 			zap.Int("challenges", len(challenges.Challenges)),
