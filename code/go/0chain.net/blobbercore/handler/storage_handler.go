@@ -30,7 +30,8 @@ const (
 	OffsetDateLayout     = "2006-01-02T15:04:05.99999Z07:00"
 	DownloadContentFull  = "full"
 	DownloadContentThumb = "thumbnail"
-	PageLimit            = 100 //100 rows will make up to 100 KB
+	MaxPageLimit         = 100 //100 rows will make up to 100 KB
+	DefaultPageLimit     = 20
 )
 
 type StorageHandler struct{}
@@ -833,12 +834,12 @@ func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Req
 			return nil, common.NewError("invalid_parameters", "Zero/Negative page limit value is not allowed")
 		}
 
-		if pageLimit > PageLimit {
-			pageLimit = PageLimit
+		if pageLimit > MaxPageLimit {
+			pageLimit = MaxPageLimit
 		}
 
 	} else {
-		pageLimit = PageLimit
+		pageLimit = DefaultPageLimit
 	}
 
 	var fromDate int
@@ -853,15 +854,14 @@ func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Req
 		}
 	}
 
-	refs, totalPages, offset, err := reference.GetRecentlyCreatedRefs(ctx, allocationID, pageLimit, offset, fromDate)
+	refs, offset, err := reference.GetRecentlyCreatedRefs(ctx, allocationID, pageLimit, offset, fromDate)
 	if err != nil {
 		return nil, err
 	}
 
 	return &blobberhttp.RecentRefResult{
-		Refs:       refs,
-		TotalPages: int(totalPages),
-		Offset:     offset,
+		Refs:   refs,
+		Offset: offset,
 	}, nil
 }
 
@@ -969,7 +969,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	pageLimitStr := r.FormValue("pageLimit")
 	var pageLimit int
 	if pageLimitStr == "" {
-		pageLimit = PageLimit
+		pageLimit = DefaultPageLimit
 	} else {
 		o, err := strconv.Atoi(pageLimitStr)
 		if err != nil {
@@ -977,8 +977,8 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		}
 		if o <= 0 {
 			return nil, common.NewError("invalid_parameters", "Zero/Negative page limit value is not allowed")
-		} else if o > PageLimit {
-			pageLimit = PageLimit
+		} else if o > MaxPageLimit {
+			pageLimit = MaxPageLimit
 		} else {
 			pageLimit = o
 		}
