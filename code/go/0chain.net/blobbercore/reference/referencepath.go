@@ -300,9 +300,8 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type,
 // creation date for "/a", "/a/b", "/a/b/c", "/a/b/c/d", "/a/b/c/d/e" and "/a/b/c/d/e/f.txt" will be the same.
 // The refs returned will be in "/a/b/c/d/e/f.txt", "/a/b/c/d/e", ... order.
 //
-// pageLimit --> maximum number of refs to returs
+// pageLimit --> maximum number of refs to return
 // fromDate --> timestamp to begin searching refs from i.e. refs created date greater than fromDate
-// totalPages --> total pages available. Equal to totalRefs/pageLimit
 // newOffset --> offset to use for subsequent request
 func GetRecentlyCreatedRefs(
 	// Note: Above mentioned function will only be feasible after splitting reference_objects table.
@@ -311,34 +310,16 @@ func GetRecentlyCreatedRefs(
 	ctx context.Context,
 	allocID string,
 	pageLimit, offset, fromDate int,
-) (refs []*PaginatedRef, totalPages int, newOffset int, err error) {
+) (refs []*PaginatedRef, newOffset int, err error) {
 
 	db := datastore.GetStore().GetTransaction(ctx)
-	errCh := make(chan error, 1)
-	go func() {
-		errCh <- db.Model(&Ref{}).Where("allocation_id=? AND created_at > ?",
-			allocID, fromDate).
-			Order("created_at desc, path asc").
-			Offset(offset).
-			Limit(pageLimit).Find(&refs).Error
-
-	}()
-
-	var count int64
-	go func() {
-		errCh <- db.Model(&Ref{}).Where("allocation_id=? AND created_at > ?",
-			allocID, fromDate).Count(&count).Error
-	}()
-
-	for i := 0; i < 2; i++ {
-		err = <-errCh
-		if err != nil {
-			return nil, 0, 0, err
-		}
-	}
+	err = db.Model(&Ref{}).Where("allocation_id=? AND created_at > ?",
+		allocID, fromDate).
+		Order("created_at desc, path asc").
+		Offset(offset).
+		Limit(pageLimit).Find(&refs).Error
 
 	newOffset = offset + len(refs)
-	totalPages = int(math.Ceil(float64(count) / float64(pageLimit)))
 	return
 }
 
