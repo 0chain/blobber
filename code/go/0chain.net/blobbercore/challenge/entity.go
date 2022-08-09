@@ -216,25 +216,32 @@ func getStatus(db *gorm.DB, challengeIDs ...string) map[string]*ChallengeStatus 
 		return nil
 	}
 
-	type challengeStatus struct {
-		ChallengeID string
-		Status      ChallengeStatus
-	}
-
-	var challStatus []challengeStatus
 	challToStatus := make(map[string]*ChallengeStatus)
 
-	err := db.Raw("SELECT challenge_id,status FROM challenges WHERE challenge_id IN ?", challengeIDs).Scan(&challStatus).Error
+	rows, err := db.Model(&ChallengeEntity{}).
+		Where("challenge_id IN ?", challengeIDs).
+		Select("challenge_id, status").Rows()
 	if err != nil {
 		logging.Logger.Error("error_fetching_status",
 			zap.Error(err))
 	}
-	if errors.Is(err, gorm.ErrRecordNotFound) || len(challStatus) == 0 {
+	defer rows.Close()
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil
 	}
 
-	for _, cs := range challStatus {
-		challToStatus[cs.ChallengeID] = &cs.Status
+	for rows.Next() {
+		var challengeID string
+		var status ChallengeStatus
+
+		err = rows.Scan(&challengeID, &status)
+		if err != nil {
+			logging.Logger.Error("[challenge]get_status",
+				zap.Error(err))
+			continue
+		}
+
+		challToStatus[challengeID] = &status
 	}
 
 	return challToStatus
