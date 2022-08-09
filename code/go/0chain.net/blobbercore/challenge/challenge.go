@@ -255,9 +255,10 @@ func validateOnValidators(id string) {
 	//	Id:        c.ChallengeID,
 	//	CreatedAt: createdTime,
 	//}
+	commitOnChain(c, c.ChallengeID)
 }
 
-func commitOnChain(id string) {
+func commitOnChain(c *ChallengeEntity, id string) {
 
 	startTime := time.Now()
 
@@ -266,18 +267,20 @@ func commitOnChain(id string) {
 
 	tx := datastore.GetStore().GetTransaction(ctx)
 
-	c := &ChallengeEntity{}
+	if c == nil {
+		c := &ChallengeEntity{}
 
-	if err := tx.Model(&ChallengeEntity{}).
-		Where("challenge_id = ? and status = ?", id, Processed).
-		Find(c).Error; err != nil {
+		if err := tx.Model(&ChallengeEntity{}).
+			Where("challenge_id = ? and status = ?", id, Processed).
+			Find(c).Error; err != nil {
 
-		logging.Logger.Error("[challenge]commit: ",
-			zap.Any("challenge_id", id),
-			zap.Error(err))
+			logging.Logger.Error("[challenge]commit: ",
+				zap.Any("challenge_id", id),
+				zap.Error(err))
 
-		tx.Rollback()
-		return
+			tx.Rollback()
+			return
+		}
 	}
 
 	createdTime := common.ToTime(c.CreatedAt)
@@ -344,14 +347,20 @@ func commitOnChain(id string) {
 
 }
 
-func loadTodoChallenges() {
+func loadTodoChallenges(doProcessed bool) {
 	db := datastore.GetStore().GetDB()
 	now := time.Now().Unix()
 	from := now - int64(config.Configuration.ChallengeCompletionTime.Seconds())
 
-	rows, err := db.Model(&ChallengeEntity{}).
-		Where("created_at > ? AND status in (?,?)", from, Accepted, Processed).
-		Order("created_at").
+	db = db.Model(&ChallengeEntity{}).
+		Where("created_at > ? AND status in (?)", from, Accepted)
+
+	if doProcessed {
+		db.Model(&ChallengeEntity{}).
+			Where("created_at > ? AND status in (?,?)", from, Accepted, Processed)
+	}
+
+	rows, err := db.Order("created_at").
 		Select("challenge_id", "created_at", "status").Rows()
 
 	if err != nil {
