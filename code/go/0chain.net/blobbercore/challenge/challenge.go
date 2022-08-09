@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"strconv"
 	"time"
 
@@ -44,6 +45,7 @@ func syncOpenChallenges(ctx context.Context) {
 	if lastChallengeTimestamp > 0 {
 		params["from"] = strconv.Itoa(lastChallengeTimestamp)
 	}
+	start := time.Now()
 
 	var allOpenChallenges []*ChallengeEntity
 
@@ -104,7 +106,8 @@ func syncOpenChallenges(ctx context.Context) {
 		zap.Int("saved", saved),
 		zap.String("download", downloadElapsed.String()),
 		zap.String("json", jsonElapsed.String()),
-		zap.String("db", time.Since(dbTimeStart).String()))
+		zap.String("db", time.Since(dbTimeStart).String()),
+		zap.String("time_taken", time.Since(start).String()))
 
 }
 
@@ -159,7 +162,7 @@ func saveNewChallenges(ctx context.Context, ce ...*ChallengeEntity) int {
 
 		//cMap.Add(c.ChallengeID, Accepted) //nolint
 
-		//nextValidateChallenge <- TodoChallenge{
+		//toProcessChallenge <- TodoChallenge{
 		//	Id:        c.ChallengeID,
 		//	CreatedAt: common.ToTime(c.CreatedAt),
 		//}
@@ -170,7 +173,8 @@ func saveNewChallenges(ctx context.Context, ce ...*ChallengeEntity) int {
 			zap.Time("created", createdTime),
 			zap.Time("start", startTime),
 			zap.String("delay", startTime.Sub(createdTime).String()),
-			zap.String("save", txnCompleteTime.String()))
+			zap.String("save", txnCompleteTime.String()),
+			zap.String("time_taken", time.Since(startTime).String()))
 	}
 	return saved
 }
@@ -245,7 +249,7 @@ func validateOnValidators(id string) {
 		zap.Time("created", createdTime),
 		zap.Time("start", startTime),
 		zap.String("delay", startTime.Sub(createdTime).String()),
-		zap.String("save", time.Since(startTime).String()))
+		zap.String("time_taken", time.Since(startTime).String()))
 
 	//nextCommitChallenge <- TodoChallenge{
 	//	Id:        c.ChallengeID,
@@ -333,6 +337,7 @@ func commitOnChain(id string) {
 		zap.String("load", elapsedLoad.String()),
 		zap.String("commit_on_chain", elapsedCommitOnChain.String()),
 		zap.String("commit_on_db", elapsedCommitOnDb.String()),
+		zap.String("time_taken", time.Since(startTime).String()),
 	)
 
 	//go cMap.Delete(c.ChallengeID) //nolint
@@ -341,9 +346,11 @@ func commitOnChain(id string) {
 
 func loadTodoChallenges() {
 	db := datastore.GetStore().GetDB()
+	now := time.Now().Unix()
+	from := now - int64(config.Configuration.ChallengeCompletionTime.Seconds())
 
 	rows, err := db.Model(&ChallengeEntity{}).
-		Where("status in (?,?)", Accepted, Processed).
+		Where("created_at > ? AND status in (?,?)", from, Accepted, Processed).
 		Order("created_at").
 		Select("challenge_id", "created_at", "status").Rows()
 
@@ -380,17 +387,10 @@ func loadTodoChallenges() {
 			zap.Time("created_at", createdTime),
 			zap.Duration("delay", time.Since(createdTime)))
 
-		switch status {
-		case Accepted:
-			nextValidateChallenge <- TodoChallenge{
-				Id:        challengeID,
-				CreatedAt: common.ToTime(createdAt),
-			}
-		case Processed:
-			nextCommitChallenge <- TodoChallenge{
-				Id:        challengeID,
-				CreatedAt: common.ToTime(createdAt),
-			}
+		toProcessChallenge <- TodoChallenge{
+			Id:        challengeID,
+			CreatedAt: common.ToTime(createdAt),
+			Status:    status,
 		}
 
 	}

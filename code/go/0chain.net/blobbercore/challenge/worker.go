@@ -13,10 +13,10 @@ import (
 type TodoChallenge struct {
 	Id        string
 	CreatedAt time.Time
+	Status    ChallengeStatus
 }
 
-var nextValidateChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers*1000)
-var nextCommitChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers*1000)
+var toProcessChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers*1000)
 
 // SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {
@@ -38,14 +38,13 @@ func startPullWorker(ctx context.Context) {
 
 func startWorkers(ctx context.Context) {
 
-	numWorkers := config.Configuration.ChallengeResolveNumWorkers / 2
+	numWorkers := config.Configuration.ChallengeResolveNumWorkers
 	logging.Logger.Info("initializing challenge workers",
 		zap.Int("num_workers", numWorkers))
 
 	// start challenge listeners
 	for i := 0; i < numWorkers; i++ {
-		go validateAccepted(ctx)
-		go commitValidated(ctx)
+		go challengeProcessor(ctx)
 	}
 
 	// populate all accepted/processed challenges to channel
@@ -59,17 +58,17 @@ func startWorkers(ctx context.Context) {
 	}
 }
 
-func validateAccepted(ctx context.Context) {
+func challengeProcessor(ctx context.Context) {
 
 	for {
 		select {
 		case <-ctx.Done():
-			logging.Logger.Info("exiting validateAccepted")
+			logging.Logger.Info("exiting challengeProcessor")
 			return
 
-		case it := <-nextValidateChallenge:
+		case it := <-toProcessChallenge:
 
-			logging.Logger.Info("validating_challenge",
+			logging.Logger.Info("processing_challenge",
 				zap.String("challenge_id", it.Id))
 
 			now := time.Now()
@@ -79,7 +78,7 @@ func validateAccepted(ctx context.Context) {
 
 				logging.Logger.Error("[challenge]timeout",
 					zap.Any("challenge_id", it.Id),
-					zap.String("status", Accepted.String()),
+					zap.String("status", it.Status.String()),
 					zap.Time("created", it.CreatedAt),
 					zap.Time("start", now),
 					zap.String("delay", now.Sub(it.CreatedAt).String()),
@@ -87,57 +86,28 @@ func validateAccepted(ctx context.Context) {
 				continue
 			}
 
-			logging.Logger.Info("[challenge]next:"+strings.ToLower(Accepted.String()),
+			logging.Logger.Info("[challenge]next:"+strings.ToLower(it.Status.String()),
 				zap.Any("challenge_id", it.Id),
-				zap.String("status", Accepted.String()),
+				zap.String("status", it.Status.String()),
 				zap.Time("created", it.CreatedAt),
 				zap.Time("start", now),
 				zap.String("delay", now.Sub(it.CreatedAt).String()),
 				zap.String("cct", config.Configuration.ChallengeCompletionTime.String()))
 
-			validateOnValidators(it.Id)
-
-		}
-	}
-}
-
-func commitValidated(ctx context.Context) {
-
-	for {
-		select {
-		case <-ctx.Done():
-			logging.Logger.Info("exiting commitValidated")
-			return
-
-		case it := <-nextCommitChallenge:
-
-			logging.Logger.Info("committing_challenge",
-				zap.String("challenge_id", it.Id))
-
-			now := time.Now()
-			if now.Sub(it.CreatedAt) > config.Configuration.ChallengeCompletionTime {
-				c := &ChallengeEntity{ChallengeID: it.Id}
-				c.CancelChallenge(ctx, ErrExpiredCCT)
-
-				logging.Logger.Error("[challenge]timeout",
+			switch it.Status {
+			case Accepted:
+				validateOnValidators(it.Id)
+			case Processed:
+				commitOnChain(it.Id)
+			default:
+				logging.Logger.Warn("[challenge]skipped",
 					zap.Any("challenge_id", it.Id),
-					zap.String("status", Processed.String()),
+					zap.String("status", it.Status.String()),
 					zap.Time("created", it.CreatedAt),
 					zap.Time("start", now),
 					zap.String("delay", now.Sub(it.CreatedAt).String()),
 					zap.String("cct", config.Configuration.ChallengeCompletionTime.String()))
-				continue
 			}
-
-			logging.Logger.Info("[challenge]next:"+strings.ToLower(Processed.String()),
-				zap.Any("challenge_id", it.Id),
-				zap.String("status", Processed.String()),
-				zap.Time("created", it.CreatedAt),
-				zap.Time("start", now),
-				zap.String("delay", now.Sub(it.CreatedAt).String()),
-				zap.String("cct", config.Configuration.ChallengeCompletionTime.String()))
-
-			commitOnChain(it.Id)
 
 		}
 	}
