@@ -129,7 +129,8 @@ func saveNewChallenges(ctx context.Context, ce ...*ChallengeEntity) int {
 	db := datastore.GetStore().GetDB()
 	status := getStatus(db, challIDs...)
 	logging.Logger.Info("add_challenge[response]",
-		zap.Any("challenge_status mapping", status))
+		zap.Int("challenge_status mapping", len(status)),
+		zap.String("db_read", time.Since(startTime).String()))
 	saved := 0
 
 	for _, c := range ce {
@@ -144,6 +145,7 @@ func saveNewChallenges(ctx context.Context, ce ...*ChallengeEntity) int {
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Time("created", createdTime))
 
+		txnStartTime := time.Now()
 		if err := db.Transaction(func(tx *gorm.DB) error {
 			return c.SaveWith(tx)
 		}); err != nil {
@@ -160,7 +162,7 @@ func saveNewChallenges(ctx context.Context, ce ...*ChallengeEntity) int {
 			zap.Time("created", createdTime),
 			zap.Time("start", startTime),
 			zap.String("delay", startTime.Sub(createdTime).String()),
-			zap.String("save", time.Since(startTime).String()))
+			zap.String("save", time.Since(txnStartTime).String()))
 
 		nextValidateChallenge <- TodoChallenge{
 			Id:        c.ChallengeID,
