@@ -7,9 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/remeh/sizedwaitgroup"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -49,6 +46,7 @@ func syncOpenChallenges(ctx context.Context) {
 
 	for {
 		var challenges BCChallengeResponse
+		var challengeIDs []string
 		challenges.Challenges = make([]*ChallengeEntity, 0)
 		apiStart := time.Now()
 		retBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain())
@@ -67,8 +65,13 @@ func syncOpenChallenges(ctx context.Context) {
 			logging.Logger.Error("[challenge]json: ", zap.String("resp", string(retBytes)), zap.Error(err))
 			return
 		}
+		for _, c := range challenges.Challenges {
+			challengeIDs = append(challengeIDs, c.ChallengeID)
+		}
 		logging.Logger.Info("challenges_from_chain",
-			zap.Int("challenges", len(challenges.Challenges)))
+			zap.Int("challenges", len(challenges.Challenges)),
+			zap.Strings("challenge_ids", challengeIDs))
+
 		jsonElapsed += time.Since(jsonStart)
 		if len(challenges.Challenges) == 0 {
 			break
@@ -76,6 +79,7 @@ func syncOpenChallenges(ctx context.Context) {
 		allOpenChallenges = append(allOpenChallenges, challenges.Challenges...)
 		offset += incrOffset
 		params["offset"] = strconv.Itoa(offset)
+		break
 	}
 
 	saved := 0
@@ -83,8 +87,6 @@ func syncOpenChallenges(ctx context.Context) {
 	dbTimeStart := time.Now()
 	logging.Logger.Info("Starting saving challenges",
 		zap.Int("challenges", len(allOpenChallenges)))
-
-	swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
 
 	for _, challengeObj := range allOpenChallenges {
 
@@ -96,13 +98,8 @@ func syncOpenChallenges(ctx context.Context) {
 		logging.Logger.Info("saving challenge",
 			zap.String("challenge_id", challengeObj.ChallengeID))
 
-		swg.Add()
-		go func(challObj *ChallengeEntity) {
-			defer swg.Done()
-			saveNewChallenge(challObj, ctx)
-		}(challengeObj)
+		saveNewChallenge(challengeObj, ctx)
 	}
-	swg.Wait()
 
 	logging.Logger.Info("[challenge]elapsed:pull",
 		zap.Int("count", len(allOpenChallenges)),
