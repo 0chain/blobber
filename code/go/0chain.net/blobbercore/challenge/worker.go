@@ -39,21 +39,13 @@ func startPullWorker(ctx context.Context) {
 
 func startWorkers(ctx context.Context) {
 
-	// populate all accepted/processed challenges to channel
-	go loadTodoChallenges()
-
 	// start challenge listeners
 	for i := 0; i < config.Configuration.ChallengeResolveNumWorkers; i++ {
 		go waitNextTodo(ctx)
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		}
-	}
-
+	// populate all accepted/processed challenges to channel
+	loadTodoChallenges()
 }
 
 func waitNextTodo(ctx context.Context) {

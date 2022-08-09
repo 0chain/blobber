@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/remeh/sizedwaitgroup"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/remeh/sizedwaitgroup"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
@@ -87,13 +88,14 @@ func syncOpenChallenges(ctx context.Context) {
 	swg := sizedwaitgroup.New(config.Configuration.ChallengeResolveNumWorkers)
 
 	for _, challengeObj := range allOpenChallenges {
-		logging.Logger.Error("saving challenge",
-			zap.String("challenge_id", challengeObj.ChallengeID))
 
 		if challengeObj == nil || challengeObj.ChallengeID == "" {
 			logging.Logger.Info("[challenge]open: No challenge entity from the challenge map")
 			continue
 		}
+
+		logging.Logger.Info("saving challenge",
+			zap.String("challenge_id", challengeObj.ChallengeID))
 
 		swg.Add()
 		go func(challObj *ChallengeEntity) {
@@ -128,6 +130,7 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 	db := datastore.GetStore().GetDB()
 	if status := getStatus(db, c.ChallengeID); status != nil {
 		//cMap.Add(c.ChallengeID, *status) //nolint
+		return
 	}
 
 	c.Status = Accepted
