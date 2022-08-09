@@ -49,7 +49,14 @@ func startWorkers(ctx context.Context) {
 	}
 
 	// populate all accepted/processed challenges to channel
-	loadTodoChallenges()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
+			loadTodoChallenges()
+		}
+	}
 }
 
 func validateAccepted(ctx context.Context) {

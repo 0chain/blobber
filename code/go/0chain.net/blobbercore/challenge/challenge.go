@@ -155,23 +155,22 @@ func saveNewChallenges(ctx context.Context, ce ...*ChallengeEntity) int {
 				zap.Error(err))
 		}
 		txnCompleteTime := time.Since(txnStartTime)
-		chanStart := time.Now()
+		//chanStart := time.Now()
 
 		//cMap.Add(c.ChallengeID, Accepted) //nolint
 
-		nextValidateChallenge <- TodoChallenge{
-			Id:        c.ChallengeID,
-			CreatedAt: common.ToTime(c.CreatedAt),
-		}
-		chanDone := time.Since(chanStart)
+		//nextValidateChallenge <- TodoChallenge{
+		//	Id:        c.ChallengeID,
+		//	CreatedAt: common.ToTime(c.CreatedAt),
+		//}
+		//chanDone := time.Since(chanStart)
 
 		logging.Logger.Info("[challenge]elapsed:add ",
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Time("created", createdTime),
 			zap.Time("start", startTime),
 			zap.String("delay", startTime.Sub(createdTime).String()),
-			zap.String("save", txnCompleteTime.String()),
-			zap.String("chan_send", chanDone.String()))
+			zap.String("save", txnCompleteTime.String()))
 	}
 	return saved
 }
@@ -248,10 +247,10 @@ func validateOnValidators(id string) {
 		zap.String("delay", startTime.Sub(createdTime).String()),
 		zap.String("save", time.Since(startTime).String()))
 
-	nextCommitChallenge <- TodoChallenge{
-		Id:        c.ChallengeID,
-		CreatedAt: createdTime,
-	}
+	//nextCommitChallenge <- TodoChallenge{
+	//	Id:        c.ChallengeID,
+	//	CreatedAt: createdTime,
+	//}
 }
 
 func commitOnChain(id string) {
