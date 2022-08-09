@@ -52,7 +52,7 @@ func syncOpenChallenges(ctx context.Context) {
 		retBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain())
 		if err != nil {
 			logging.Logger.Error("[challenge]open: ", zap.Error(err))
-			return
+			break
 		}
 
 		downloadElapsed += time.Since(apiStart)
@@ -63,7 +63,7 @@ func syncOpenChallenges(ctx context.Context) {
 		d.UseNumber()
 		if err := d.Decode(&challenges); err != nil {
 			logging.Logger.Error("[challenge]json: ", zap.String("resp", string(retBytes)), zap.Error(err))
-			return
+			break
 		}
 		for _, c := range challenges.Challenges {
 			challengeIDs = append(challengeIDs, c.ChallengeID)
@@ -79,7 +79,6 @@ func syncOpenChallenges(ctx context.Context) {
 		allOpenChallenges = append(allOpenChallenges, challenges.Challenges...)
 		offset += incrOffset
 		params["offset"] = strconv.Itoa(offset)
-		break
 	}
 
 	saved := 0
@@ -154,10 +153,9 @@ func saveNewChallenge(c *ChallengeEntity, ctx context.Context) {
 		zap.String("delay", startTime.Sub(createdTime).String()),
 		zap.String("save", time.Since(startTime).String()))
 
-	nextTodoChallenge <- TodoChallenge{
+	nextValidateChallenge <- TodoChallenge{
 		Id:        c.ChallengeID,
 		CreatedAt: common.ToTime(c.CreatedAt),
-		Status:    Accepted,
 	}
 }
 
@@ -233,10 +231,9 @@ func validateOnValidators(id string) {
 		zap.String("delay", startTime.Sub(createdTime).String()),
 		zap.String("save", time.Since(startTime).String()))
 
-	nextTodoChallenge <- TodoChallenge{
+	nextCommitChallenge <- TodoChallenge{
 		Id:        c.ChallengeID,
 		CreatedAt: createdTime,
-		Status:    Processed,
 	}
 }
 
@@ -367,10 +364,17 @@ func loadTodoChallenges() {
 			zap.Time("created_at", createdTime),
 			zap.Duration("delay", time.Since(createdTime)))
 
-		nextTodoChallenge <- TodoChallenge{
-			Id:        challengeID,
-			CreatedAt: common.ToTime(createdAt),
-			Status:    status,
+		switch status {
+		case Accepted:
+			nextValidateChallenge <- TodoChallenge{
+				Id:        challengeID,
+				CreatedAt: common.ToTime(createdAt),
+			}
+		case Processed:
+			nextCommitChallenge <- TodoChallenge{
+				Id:        challengeID,
+				CreatedAt: common.ToTime(createdAt),
+			}
 		}
 
 	}

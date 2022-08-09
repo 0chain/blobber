@@ -13,10 +13,10 @@ import (
 type TodoChallenge struct {
 	Id        string
 	CreatedAt time.Time
-	Status    ChallengeStatus
 }
 
-var nextTodoChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers*100)
+var nextValidateChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers*100)
+var nextCommitChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers*100)
 
 // SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {
@@ -40,24 +40,25 @@ func startWorkers(ctx context.Context) {
 
 	// start challenge listeners
 	for i := 0; i < config.Configuration.ChallengeResolveNumWorkers; i++ {
-		go waitNextTodo(ctx)
+		go validateAccepted(ctx)
+		go commitValidated(ctx)
 	}
 
 	// populate all accepted/processed challenges to channel
 	loadTodoChallenges()
 }
 
-func waitNextTodo(ctx context.Context) {
+func validateAccepted(ctx context.Context) {
 
 	for {
 		select {
 		case <-ctx.Done():
-			logging.Logger.Info("exiting waitNextTodo")
+			logging.Logger.Info("exiting validateAccepted")
 			return
 
-		case it := <-nextTodoChallenge:
+		case it := <-nextValidateChallenge:
 
-			logging.Logger.Info("processing_challenge",
+			logging.Logger.Info("validating_challenge",
 				zap.String("challenge_id", it.Id))
 
 			now := time.Now()
@@ -67,7 +68,7 @@ func waitNextTodo(ctx context.Context) {
 
 				logging.Logger.Error("[challenge]timeout",
 					zap.Any("challenge_id", it.Id),
-					zap.String("status", it.Status.String()),
+					zap.String("status", Accepted.String()),
 					zap.Time("created", it.CreatedAt),
 					zap.Time("start", now),
 					zap.String("delay", now.Sub(it.CreatedAt).String()),
@@ -75,30 +76,57 @@ func waitNextTodo(ctx context.Context) {
 				continue
 			}
 
-			logging.Logger.Info("[challenge]next:"+strings.ToLower(it.Status.String()),
+			logging.Logger.Info("[challenge]next:"+strings.ToLower(Accepted.String()),
 				zap.Any("challenge_id", it.Id),
-				zap.String("status", it.Status.String()),
+				zap.String("status", Accepted.String()),
 				zap.Time("created", it.CreatedAt),
 				zap.Time("start", now),
 				zap.String("delay", now.Sub(it.CreatedAt).String()),
 				zap.String("cct", config.Configuration.ChallengeCompletionTime.String()))
 
-			switch it.Status {
-			case Accepted:
-				validateOnValidators(it.Id)
-			case Processed:
-				commitOnChain(it.Id)
-			default:
-				logging.Logger.Warn("[challenge]skipped",
+			validateOnValidators(it.Id)
+
+		}
+	}
+}
+
+func commitValidated(ctx context.Context) {
+
+	for {
+		select {
+		case <-ctx.Done():
+			logging.Logger.Info("exiting commitValidated")
+			return
+
+		case it := <-nextCommitChallenge:
+
+			logging.Logger.Info("committing_challenge",
+				zap.String("challenge_id", it.Id))
+
+			now := time.Now()
+			if now.Sub(it.CreatedAt) > config.Configuration.ChallengeCompletionTime {
+				c := &ChallengeEntity{ChallengeID: it.Id}
+				c.CancelChallenge(ctx, ErrExpiredCCT)
+
+				logging.Logger.Error("[challenge]timeout",
 					zap.Any("challenge_id", it.Id),
-					zap.String("status", it.Status.String()),
+					zap.String("status", Processed.String()),
 					zap.Time("created", it.CreatedAt),
 					zap.Time("start", now),
 					zap.String("delay", now.Sub(it.CreatedAt).String()),
 					zap.String("cct", config.Configuration.ChallengeCompletionTime.String()))
+				continue
 			}
-			logging.Logger.Info("waiting for challenge to be computed",
-				zap.String("challenge_id", it.Id))
+
+			logging.Logger.Info("[challenge]next:"+strings.ToLower(Processed.String()),
+				zap.Any("challenge_id", it.Id),
+				zap.String("status", Processed.String()),
+				zap.Time("created", it.CreatedAt),
+				zap.Time("start", now),
+				zap.String("delay", now.Sub(it.CreatedAt).String()),
+				zap.String("cct", config.Configuration.ChallengeCompletionTime.String()))
+
+			commitOnChain(it.Id)
 
 		}
 	}
