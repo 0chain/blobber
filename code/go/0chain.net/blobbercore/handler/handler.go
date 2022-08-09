@@ -61,7 +61,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/referencepath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))
 	r.HandleFunc("/v1/file/objecttree/{allocation}", common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler))).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/v1/file/refs/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(RefsHandler))).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/file/recent-refs/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(RecentRefsRequestHandler))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/file/refs/recent/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(RecentRefsRequestHandler))).Methods(http.MethodGet, http.MethodOptions)
 	//admin related
 	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
 	r.HandleFunc("/_config", common.ToJSONResponse(GetConfig))
