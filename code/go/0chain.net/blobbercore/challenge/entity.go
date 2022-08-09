@@ -224,9 +224,7 @@ func getStatus(db *gorm.DB, challengeIDs ...string) map[string]*ChallengeStatus 
 	var challStatus []challengeStatus
 	challToStatus := make(map[string]*ChallengeStatus)
 
-	err := db.Model(&ChallengeEntity{}).
-		Select("challenge_id, status").
-		Where("status IN ?", challengeIDs).Find(&challStatus).Error
+	err := db.Raw("SELECT challenge_id,status FROM challenges WHERE challenge_id IN ?", challengeIDs).Scan(&challStatus).Error
 	if err != nil {
 		logging.Logger.Error("error_fetching_status",
 			zap.Error(err))
