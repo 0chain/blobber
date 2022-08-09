@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -210,6 +212,7 @@ func GetChallengeEntity(ctx context.Context, challengeID string) (*ChallengeEnti
 func getStatus(db *gorm.DB, challengeIDs ...string) map[string]*ChallengeStatus {
 
 	if len(challengeIDs) == 0 {
+		logging.Logger.Error("cannot fetch ids: 0")
 		return nil
 	}
 
@@ -224,6 +227,10 @@ func getStatus(db *gorm.DB, challengeIDs ...string) map[string]*ChallengeStatus 
 	err := db.Model(&ChallengeEntity{}).
 		Select("challenge_id, status").
 		Where("status IN ?", challengeIDs).Find(&challStatus).Error
+	if err != nil {
+		logging.Logger.Error("error_fetching_status",
+			zap.Error(err))
+	}
 	if errors.Is(err, gorm.ErrRecordNotFound) || len(challStatus) == 0 {
 		return nil
 	}
