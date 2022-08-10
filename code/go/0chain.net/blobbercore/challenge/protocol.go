@@ -60,14 +60,29 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 	}
 
 	logging.Logger.Info("Verifying challenge response to blockchain.", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
-	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+	var (
+		t *transaction.Transaction
+	)
+	for i := 0; i < 3; i++ {
+		t, err = transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
+		if err == nil {
+			break
+		}
+		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+	}
 
-	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
 	if err != nil {
-		logging.Logger.Error("Error verifying the challenge response transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
+		logging.Logger.Error("Error verifying the challenge response transaction",
+			zap.String("err:", err.Error()),
+			zap.String("txn", txn.Hash),
+			zap.String("challenge_id", cr.ChallengeID))
 		return txn, err
 	}
-	logging.Logger.Info("Challenge committed and accepted", zap.Any("txn.hash", t.Hash), zap.Any("txn.output", t.TransactionOutput), zap.String("challenge_id", cr.ChallengeID))
+
+	logging.Logger.Info("Challenge committed and accepted",
+		zap.Any("txn.hash", t.Hash),
+		zap.Any("txn.output", t.TransactionOutput),
+		zap.String("challenge_id", cr.ChallengeID))
 	return t, nil
 }
 
