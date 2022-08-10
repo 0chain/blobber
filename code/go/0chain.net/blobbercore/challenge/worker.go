@@ -16,7 +16,7 @@ type TodoChallenge struct {
 	Status    ChallengeStatus
 }
 
-var toProcessChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers*1000)
+var toProcessChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers)
 
 // SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {

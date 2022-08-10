@@ -313,6 +313,8 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 }
 
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
+	start := time.Now()
+	verifyIterated := 0
 	if time.Since(common.ToTime(cr.CreatedAt)) > config.Configuration.ChallengeCompletionTime {
 		cr.CancelChallenge(ctx, ErrExpiredCCT)
 		return ErrExpiredCCT
@@ -335,17 +337,18 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 				return nil
 			}
 			logging.Logger.Error("[challenge]trans: Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+			verifyIterated++
 		}
 	}
+	verifyTxnTime := time.Since(start)
 
 	if verifyOnly {
 		return nil
 	}
 
-	now := time.Now()
 	t, err := cr.SubmitChallengeToBC(ctx)
-	logging.Logger.Debug("[challenge]submit: Time taken to submit challenge: ",
-		zap.Any("time_taken", time.Since(now)))
+
+	submitTime := time.Since(start) - verifyTxnTime
 
 	if err != nil {
 		if t != nil {
@@ -366,10 +369,22 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
 		cr.UpdatedAt = time.Now().UTC()
 	}
+	handleVerify := time.Since(start) - verifyTxnTime - submitTime
 	err = cr.Save(ctx)
+	challengeSaveTime := time.Since(start) - verifyTxnTime - submitTime - handleVerify
 	if cr.RefID != 0 {
 		FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
 	}
+	fileChallengedTime := time.Since(start) - verifyTxnTime - submitTime - handleVerify - challengeSaveTime
+	logging.Logger.Info("[challenge]submit: Time taken to submit challenge: ",
+		zap.String("time_taken", time.Since(start).String()),
+		zap.String("challenge_id", cr.ChallengeID),
+		zap.Int("last_txns_verified", verifyIterated),
+		zap.String("verify_txn_time", verifyTxnTime.String()),
+		zap.String("submit_challenge_time", submitTime.String()),
+		zap.String("handle_verify_time", handleVerify.String()),
+		zap.String("challenge_save_time", challengeSaveTime.String()),
+		zap.String("file_challenged_time", fileChallengedTime.String()))
 	return err
 }
 
