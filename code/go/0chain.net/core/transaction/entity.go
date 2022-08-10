@@ -150,10 +150,13 @@ func NewTransactionEntity() (*Transaction, error) {
 }
 
 func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val uint64) error {
+	t.wg.Add(1)
 	_, err := t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
 	if err != nil {
+		t.wg.Done()
 		return err
 	}
+	t.wg.Wait()
 	t.Hash = t.zcntxn.GetTransactionHash()
 	if len(t.zcntxn.GetTransactionError()) > 0 {
 		return common.NewError("transaction_send_error", t.zcntxn.GetTransactionError())
