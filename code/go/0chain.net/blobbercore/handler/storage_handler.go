@@ -30,7 +30,8 @@ const (
 	OffsetDateLayout     = "2006-01-02T15:04:05.99999Z07:00"
 	DownloadContentFull  = "full"
 	DownloadContentThumb = "thumbnail"
-	PageLimit            = 100 //100 rows will make up to 100 KB
+	MaxPageLimit         = 100 //100 rows will make up to 100 KB
+	DefaultPageLimit     = 20
 )
 
 type StorageHandler struct{}
@@ -782,6 +783,88 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	return &refPathResult, nil
 }
 
+func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Request) (*blobberhttp.RecentRefResult, error) {
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID == "" {
+		return nil, common.NewError("invalid_operation", "Client id is required")
+	}
+
+	publicKey, _ := ctx.Value(constants.ContextKeyClientKey).(string)
+	if publicKey == "" {
+		if clientID == allocationObj.OwnerID {
+			publicKey = allocationObj.OwnerPublicKey
+		} else {
+			return nil, common.NewError("empty_public_key", "public key is required")
+		}
+	}
+
+	clientSign := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
+
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	allocationID := allocationObj.ID
+
+	var offset, pageLimit int
+	offsetStr := r.FormValue("offset")
+
+	if offsetStr != "" {
+		offset, err = strconv.Atoi(offsetStr)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid offset value "+err.Error())
+		}
+	}
+
+	pageLimitStr := r.FormValue("page_limit")
+	if pageLimitStr != "" {
+		pageLimit, err = strconv.Atoi(pageLimitStr)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid page limit value. Got Error "+err.Error())
+		}
+		if pageLimit < 0 {
+			return nil, common.NewError("invalid_parameters", "Zero/Negative page limit value is not allowed")
+		}
+
+		if pageLimit > MaxPageLimit {
+			pageLimit = MaxPageLimit
+		}
+
+	} else {
+		pageLimit = DefaultPageLimit
+	}
+
+	var fromDate int
+	fromDateStr := r.FormValue("from_date")
+	if fromDateStr != "" {
+		fromDate, err = strconv.Atoi(fromDateStr)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid from date value. Got error "+err.Error())
+		}
+		if fromDate < 0 {
+			return nil, common.NewError("invalid_parameters", "Negative from date value is not allowed")
+		}
+	}
+
+	refs, offset, err := reference.GetRecentlyCreatedRefs(ctx, allocationID, pageLimit, offset, fromDate)
+	if err != nil {
+		return nil, err
+	}
+
+	return &blobberhttp.RecentRefResult{
+		Refs:   refs,
+		Offset: offset,
+	}, nil
+}
+
 //Retrieves file refs. One can use three types to refer to regular, updated and deleted. Regular type gives all undeleted rows.
 //Updated gives rows that is updated compared to the date given. And deleted gives deleted refs compared to the date given.
 //Updated date time format should be as declared in above constant; OffsetDateLayout
@@ -886,7 +969,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	pageLimitStr := r.FormValue("pageLimit")
 	var pageLimit int
 	if pageLimitStr == "" {
-		pageLimit = PageLimit
+		pageLimit = DefaultPageLimit
 	} else {
 		o, err := strconv.Atoi(pageLimitStr)
 		if err != nil {
@@ -894,8 +977,8 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		}
 		if o <= 0 {
 			return nil, common.NewError("invalid_parameters", "Zero/Negative page limit value is not allowed")
-		} else if o > PageLimit {
-			pageLimit = PageLimit
+		} else if o > MaxPageLimit {
+			pageLimit = MaxPageLimit
 		} else {
 			pageLimit = o
 		}
