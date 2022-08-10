@@ -24,7 +24,7 @@ type UploadFileChanger struct {
 func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
 
-	totalRefs, err := reference.CountRefs(ctx, nf.AllocationID)
+	totalRefs, err := reference.CountRefs(nf.AllocationID)
 	if err != nil {
 		return nil, err
 	}
