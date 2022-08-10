@@ -57,8 +57,8 @@ type Ref struct {
 	OnCloud             bool `gorm:"column:on_cloud;default:false" filelist:"on_cloud"`
 
 	CommitMetaTxns []CommitMetaTxn  `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
-	CreatedAt      common.Timestamp `gorm:"column:created_at" dirlist:"created_at" filelist:"created_at"`
-	UpdatedAt      common.Timestamp `gorm:"column:updated_at;index:idx_updated_at;" dirlist:"updated_at" filelist:"updated_at"`
+	CreatedAt      common.Timestamp `gorm:"column:created_at;index:idx_created_at,sort:desc" dirlist:"created_at" filelist:"created_at"`
+	UpdatedAt      common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" dirlist:"updated_at" filelist:"updated_at"`
 
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
 
