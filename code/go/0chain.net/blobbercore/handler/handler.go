@@ -61,6 +61,8 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/referencepath/{allocation}", common.FileRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
 	r.HandleFunc("/v1/file/objecttree/{allocation}", common.FileRateLimit(common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler)))).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/v1/file/refs/{allocation}", common.FileRateLimit(common.ToJSONResponse(WithReadOnlyConnection(RefsHandler)))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/file/refs/recent/{allocation}", common.FileRateLimit(common.ToJSONResponse(WithReadOnlyConnection(RecentRefsRequestHandler)))).Methods(http.MethodGet, http.MethodOptions)
+
 	//admin related
 	r.HandleFunc("/_debug", common.UserRateLimit(common.ToJSONResponse(DumpGoRoutines)))
 	r.HandleFunc("/_config", common.UserRateLimit(common.ToJSONResponse(GetConfig)))
@@ -234,6 +236,15 @@ func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetRefs(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func RecentRefsRequestHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+	response, err := storageHandler.GetRecentlyAddedRefs(ctx, r)
 	if err != nil {
 		return nil, err
 	}
