@@ -99,7 +99,7 @@ func syncOpenChallenges(ctx context.Context) {
 		return
 	}
 
-	saved := saveNewChallenges(ctx, allOpenChallenges...)
+	saved := saveNewChallenges(ctx, allOpenChallenges)
 
 	logging.Logger.Info("[challenge]elapsed:pull",
 		zap.Int("count", len(allOpenChallenges)),
@@ -111,7 +111,7 @@ func syncOpenChallenges(ctx context.Context) {
 
 }
 
-func saveNewChallenges(ctx context.Context, ce ...*ChallengeEntity) int {
+func saveNewChallenges(ctx context.Context, ce []*ChallengeEntity) int {
 	defer func() {
 		if r := recover(); r != nil {
 			logging.Logger.Error("[recover]add_challenge", zap.Any("err", r))
@@ -356,7 +356,7 @@ func loadTodoChallenges(doProcessed bool) {
 		Where("created_at > ? AND status in (?)", from, Accepted)
 
 	if doProcessed {
-		db.Model(&ChallengeEntity{}).
+		db = db.Model(&ChallengeEntity{}).
 			Where("created_at > ? AND status in (?,?)", from, Accepted, Processed)
 	}
 
