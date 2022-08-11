@@ -26,8 +26,6 @@ type BCChallengeResponse struct {
 
 var lastChallengeTimestamp int
 
-//var cMap = cache.NewLRUCache(2000)
-
 // syncOpenChallenges get challenge from blockchain , and add them in database
 func syncOpenChallenges(ctx context.Context) {
 	const incrOffset = 20
@@ -125,10 +123,6 @@ func saveNewChallenges(ctx context.Context, ce []*ChallengeEntity) int {
 		challIDs = append(challIDs, ch.ChallengeID)
 	}
 
-	//if _, err := cMap.Get(c.ChallengeID); err == nil {
-	//	return false
-	//}
-
 	db := datastore.GetStore().GetDB()
 	status := getStatus(db, challIDs...)
 	logging.Logger.Info("add_challenge[response]",
@@ -158,15 +152,6 @@ func saveNewChallenges(ctx context.Context, ce []*ChallengeEntity) int {
 				zap.Error(err))
 		}
 		txnCompleteTime := time.Since(txnStartTime)
-		//chanStart := time.Now()
-
-		//cMap.Add(c.ChallengeID, Accepted) //nolint
-
-		//toProcessChallenge <- TodoChallenge{
-		//	Id:        c.ChallengeID,
-		//	CreatedAt: common.ToTime(c.CreatedAt),
-		//}
-		//chanDone := time.Since(chanStart)
 
 		logging.Logger.Info("[challenge]elapsed:add ",
 			zap.String("challenge_id", c.ChallengeID),
@@ -342,8 +327,6 @@ func commitOnChain(c *ChallengeEntity, id string) {
 		zap.String("commit_on_db", elapsedCommitOnDb.String()),
 		zap.String("time_taken", time.Since(startTime).String()),
 	)
-
-	//go cMap.Delete(c.ChallengeID) //nolint
 
 }
 
