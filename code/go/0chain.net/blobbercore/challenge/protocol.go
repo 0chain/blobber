@@ -3,6 +3,7 @@ package challenge
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"math"
 	"math/rand"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
@@ -27,6 +29,14 @@ import (
 
 const VALIDATOR_URL = "/v1/storage/challenge/new"
 const ValueNotPresent = "value not present"
+
+var (
+	ErrNoValidator          = errors.New("no validators assigned to the challenge")
+	ErrNoConsensusChallenge = errors.New("no_consensus_challenge: No Consensus on the challenge result. Erroring out the challenge")
+	ErrInvalidObjectPath    = errors.New("invalid_object_path: Object path was not for a file")
+	ErrExpiredCCT           = errors.New("expired challenge completion time")
+	ErrValNotPresent        = errors.New("chain responded: " + ValueNotPresent)
+)
 
 type ChallengeResponse struct {
 	ChallengeID       string              `json:"challenge_id"`
@@ -50,44 +60,57 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 	}
 
 	logging.Logger.Info("Verifying challenge response to blockchain.", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
-	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+	var (
+		t *transaction.Transaction
+	)
+	for i := 0; i < 3; i++ {
+		t, err = transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
+		if err == nil {
+			break
+		}
+		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+	}
 
-	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
 	if err != nil {
-		logging.Logger.Error("Error verifying the challenge response transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
+		logging.Logger.Error("Error verifying the challenge response transaction",
+			zap.String("err:", err.Error()),
+			zap.String("txn", txn.Hash),
+			zap.String("challenge_id", cr.ChallengeID))
 		return txn, err
 	}
-	logging.Logger.Info("Challenge committed and accepted", zap.Any("txn.hash", t.Hash), zap.Any("txn.output", t.TransactionOutput), zap.String("challenge_id", cr.ChallengeID))
+
+	logging.Logger.Info("Challenge committed and accepted",
+		zap.Any("txn.hash", t.Hash),
+		zap.Any("txn.output", t.TransactionOutput),
+		zap.String("challenge_id", cr.ChallengeID))
 	return t, nil
 }
 
-func (cr *ChallengeEntity) ErrorChallenge(ctx context.Context, err error) {
-	cr.StatusMessage = err.Error()
-	cr.UpdatedAt = time.Now().UTC()
+func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, err error) {
 
-	if err := cr.Save(ctx); err != nil {
-		logging.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+	db := datastore.GetStore().GetDB()
+	if err := db.Model(&ChallengeEntity{}).
+		Where("challenge_id = ?", cr.ChallengeID).
+		Updates(map[string]interface{}{
+			"status":         Cancelled,
+			"updated_at":     time.Now().UTC(),
+			"status_message": err.Error(),
+		}).Error; err != nil {
+		logging.Logger.Error("[challenge]cancel:db ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 	}
 }
 
 // LoadValidationTickets load validation tickets
 func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	if len(cr.Validators) == 0 {
-		cr.Status = Cancelled
-		cr.StatusMessage = "No validators assigned to the challenge"
-		cr.UpdatedAt = time.Now().UTC()
 
-		logging.Logger.Error(cr.StatusMessage + "for challenge: " + cr.ChallengeID)
-
-		if err := cr.Save(ctx); err != nil {
-			logging.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
-			return err
-		}
-		return nil
+		cr.CancelChallenge(ctx, ErrNoValidator)
+		return ErrNoValidator
 	}
 
 	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
 	if err != nil {
+		cr.CancelChallenge(ctx, ErrNoValidator)
 		return err
 	}
 
@@ -111,7 +134,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	rootRef, err := reference.GetReference(ctx, cr.AllocationID, "/")
 	if err != nil {
 		allocMu.Unlock()
-		cr.ErrorChallenge(ctx, err)
+		cr.CancelChallenge(ctx, err)
 		return err
 	}
 
@@ -127,7 +150,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	objectPath, err := reference.GetObjectPath(ctx, cr.AllocationID, blockNum)
 	if err != nil {
 		allocMu.Unlock()
-		cr.ErrorChallenge(ctx, err)
+		cr.CancelChallenge(ctx, err)
 		return err
 	}
 
@@ -151,9 +174,9 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		if objectPath.Meta["type"] != reference.FILE {
 			allocMu.Unlock()
 			logging.Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta), zap.Any("obejct_path", objectPath))
-			err = common.NewError("invalid_object_path", "Object path was not for a file")
-			cr.ErrorChallenge(ctx, err)
-			return err
+
+			cr.CancelChallenge(ctx, ErrInvalidObjectPath)
+			return ErrInvalidObjectPath
 		}
 
 		inputData := &filestore.FileInputData{}
@@ -181,7 +204,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 		if err != nil {
 			allocMu.Unlock()
-			cr.ErrorChallenge(ctx, err)
+			cr.CancelChallenge(ctx, err)
 			return common.NewError("blockdata_not_found", err.Error())
 		}
 		postData["data"] = []byte(blockData)
@@ -194,7 +217,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	postDataBytes, err := json.Marshal(postData)
 	if err != nil {
 		logging.Logger.Error("[db]form: " + err.Error())
-		cr.ErrorChallenge(ctx, err)
+		cr.CancelChallenge(ctx, err)
 		return err
 	}
 	responses := make(map[string]ValidationTicket)
@@ -231,6 +254,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 			resp, err := util.SendPostRequest(url, postDataBytes, nil)
 			if err != nil {
+				//network issue, don't cancel it, and try it again
 				logging.Logger.Info("[challenge]post: ", zap.Any("error", err.Error()))
 				updateMapAndSlice(validatorID, i, nil)
 				return
@@ -296,19 +320,19 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.Status = Processed
 		cr.UpdatedAt = time.Now().UTC()
 	} else {
-		cr.ErrorChallenge(ctx, common.NewError("no_consensus_challenge", "No Consensus on the challenge result. Erroring out the challenge"))
-		return common.NewError("no_consensus_challenge", "No Consensus on the challenge result. Erroring out the challenge")
+		cr.CancelChallenge(ctx, ErrNoConsensusChallenge)
+		return ErrNoConsensusChallenge
 	}
 
 	return cr.Save(ctx)
 }
 
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
+	start := time.Now()
+	verifyIterated := 0
 	if time.Since(common.ToTime(cr.CreatedAt)) > config.Configuration.ChallengeCompletionTime {
-		cr.Status = Cancelled
-		cr.StatusMessage = "challenge completion time expired"
-		cr.UpdatedAt = time.Now().UTC()
-		return cr.Save(ctx)
+		cr.CancelChallenge(ctx, ErrExpiredCCT)
+		return ErrExpiredCCT
 	}
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
@@ -328,17 +352,18 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 				return nil
 			}
 			logging.Logger.Error("[challenge]trans: Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+			verifyIterated++
 		}
 	}
+	verifyTxnTime := time.Since(start)
 
 	if verifyOnly {
 		return nil
 	}
 
-	now := time.Now()
 	t, err := cr.SubmitChallengeToBC(ctx)
-	logging.Logger.Debug("[challenge]submit: Time taken to submit challenge: ",
-		zap.Any("time_taken", time.Since(now)))
+
+	submitTime := time.Since(start) - verifyTxnTime
 
 	if err != nil {
 		if t != nil {
@@ -347,13 +372,10 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		}
 
 		if IsValueNotPresentError(err) {
-			cr.Status = Cancelled
-			cr.StatusMessage = "value not present in Blockchain"
+			err = ErrValNotPresent
 		}
 
-		cr.UpdatedAt = time.Now().UTC()
-
-		cr.ErrorChallenge(ctx, err)
+		cr.CancelChallenge(ctx, err)
 		logging.Logger.Error("[challenge]submit: Error while submitting challenge to BC.", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 	} else {
 		cr.Status = Committed
@@ -362,10 +384,22 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
 		cr.UpdatedAt = time.Now().UTC()
 	}
+	handleVerify := time.Since(start) - verifyTxnTime - submitTime
 	err = cr.Save(ctx)
+	challengeSaveTime := time.Since(start) - verifyTxnTime - submitTime - handleVerify
 	if cr.RefID != 0 {
 		FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
 	}
+	fileChallengedTime := time.Since(start) - verifyTxnTime - submitTime - handleVerify - challengeSaveTime
+	logging.Logger.Info("[challenge]submit: Time taken to submit challenge: ",
+		zap.String("time_taken", time.Since(start).String()),
+		zap.String("challenge_id", cr.ChallengeID),
+		zap.Int("last_txns_verified", verifyIterated),
+		zap.String("verify_txn_time", verifyTxnTime.String()),
+		zap.String("submit_challenge_time", submitTime.String()),
+		zap.String("handle_verify_time", handleVerify.String()),
+		zap.String("challenge_save_time", challengeSaveTime.String()),
+		zap.String("file_challenged_time", fileChallengedTime.String()))
 	return err
 }
 
