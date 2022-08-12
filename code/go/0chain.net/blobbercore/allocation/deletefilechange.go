@@ -63,6 +63,7 @@ func (nf *DeleteFileChange) DeleteTempFile() error {
 func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	type Result struct {
+		Id            string
 		ContentHash   string
 		ThumbnailHash string
 	}
@@ -71,7 +72,7 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 	wg := &sync.WaitGroup{}
 	var results []Result
 	err := db.Model(&reference.Ref{}).Unscoped().
-		Select("content_hash", "thumbnail_hash").
+		Select("id", "content_hash", "thumbnail_hash").
 		Where("allocation_id=? AND path LIKE ? AND type=? AND deleted_at is not NULL",
 			nf.AllocationID, nf.Path+"%", reference.FILE).
 		FindInBatches(&results, 100, func(tx *gorm.DB, batch int) error {
@@ -81,6 +82,8 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 				tx.Model(&reference.Ref{}).
 					Where("allocation_id=? AND content_hash=?", nf.AllocationID, res.ContentHash).
 					Count(&count)
+
+				tx.Model(&reference.CommitMetaTxn{}).Unscoped().Delete("ref_id = ?", res.Id)
 
 				if count != 0 && res.ThumbnailHash == "" {
 					continue
