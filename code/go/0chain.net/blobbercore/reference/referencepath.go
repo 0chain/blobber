@@ -294,7 +294,36 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type,
 	return
 }
 
-func CountRefs(ctx context.Context, allocationID string) (int64, error) {
+// GetRecentlyCreatedRefs will return recently created refs with pagination. As opposed to getting
+// refs ordered by path in ascending order, this will return paths in decending order for same timestamp.
+// So if a file is created with path "/a/b/c/d/e/f.txt" and if "/a" didn't exist previously then
+// creation date for "/a", "/a/b", "/a/b/c", "/a/b/c/d", "/a/b/c/d/e" and "/a/b/c/d/e/f.txt" will be the same.
+// The refs returned will be in "/a/b/c/d/e/f.txt", "/a/b/c/d/e", ... order.
+//
+// pageLimit --> maximum number of refs to return
+// fromDate --> timestamp to begin searching refs from i.e. refs created date greater than fromDate
+// newOffset --> offset to use for subsequent request
+func GetRecentlyCreatedRefs(
+	// Note: Above mentioned function will only be feasible after splitting reference_objects table.
+	// Since current limit is 50,000 files per allocation, Using common offset method should not be a big
+	// deal
+	ctx context.Context,
+	allocID string,
+	pageLimit, offset, fromDate int,
+) (refs []*PaginatedRef, newOffset int, err error) {
+
+	db := datastore.GetStore().GetTransaction(ctx)
+	err = db.Model(&Ref{}).Where("allocation_id=? AND created_at > ?",
+		allocID, fromDate).
+		Order("created_at desc, path asc").
+		Offset(offset).
+		Limit(pageLimit).Find(&refs).Error
+
+	newOffset = offset + len(refs)
+	return
+}
+
+func CountRefs(allocationID string) (int64, error) {
 	var totalRows int64
 
 	db := datastore.GetStore().GetDB()

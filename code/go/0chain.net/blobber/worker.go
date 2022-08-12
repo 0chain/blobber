@@ -8,7 +8,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/challenge"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
@@ -27,9 +26,6 @@ func setupWorkers(ctx context.Context) {
 	readmarker.SetupWorkers(ctx)
 	writemarker.SetupWorkers(ctx)
 	allocation.StartUpdateWorker(ctx, config.Configuration.UpdateAllocationsInterval)
-	if config.Configuration.AutomaticUpdate {
-		go StartUpdateWorker(ctx, config.Configuration.BlobberUpdateInterval)
-	}
 }
 
 func refreshPriceOnChain(ctx context.Context) {
@@ -101,43 +97,4 @@ func startRefreshSettings(ctx context.Context) {
 		}
 
 	}
-}
-
-func StartUpdateWorker(ctx context.Context, interval time.Duration) {
-	err := filestore.GetFileStore().CalculateCurrentDiskCapacity()
-	if err != nil {
-		panic(err)
-	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(config.Configuration.BlobberUpdateInterval):
-			err := filestore.GetFileStore().CalculateCurrentDiskCapacity()
-			if err != nil {
-				logging.Logger.Error("Error while getting capacity", zap.Error(err))
-				break
-			}
-			capacity := filestore.GetFileStore().GetCurrentDiskCapacity()
-
-			if uint64(config.Configuration.Capacity) != capacity {
-
-				_, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
-
-				if err != nil {
-					logging.Logger.Error("Error while updating blobber updates on chain", zap.Error(err))
-					continue
-				}
-
-				err = handler.UpdateBlobberOnChain(ctx)
-				if err != nil {
-					logging.Logger.Error("Error while updating blobber updates on chain", zap.Error(err))
-				}
-
-				config.Configuration.Capacity = int64(capacity)
-			}
-		}
-	}
-
 }

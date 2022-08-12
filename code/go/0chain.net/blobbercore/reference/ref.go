@@ -30,7 +30,7 @@ const (
 type Ref struct {
 	ID                  int64  `gorm:"column:id;primaryKey"`
 	Type                string `gorm:"column:type;size:1" dirlist:"type" filelist:"type"`
-	AllocationID        string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_lookup_hash_alloc,priority:1"`
+	AllocationID        string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_lookup_hash_alloc,priority:1" dirlist:"allocation_id" filelist:"allocation_id"`
 	LookupHash          string `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash_alloc,priority:2" dirlist:"lookup_hash" filelist:"lookup_hash"`
 	Name                string `gorm:"column:name;size:100;not null" dirlist:"name" filelist:"name"`
 	Path                string `gorm:"column:path;size:1000;not null;index:idx_path_alloc,priority:2;index:path_idx" dirlist:"path" filelist:"path"`
@@ -57,8 +57,8 @@ type Ref struct {
 	OnCloud             bool `gorm:"column:on_cloud;default:false" filelist:"on_cloud"`
 
 	CommitMetaTxns []CommitMetaTxn  `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
-	CreatedAt      common.Timestamp `gorm:"column:created_at" dirlist:"created_at" filelist:"created_at"`
-	UpdatedAt      common.Timestamp `gorm:"column:updated_at;index:idx_updated_at;" dirlist:"updated_at" filelist:"updated_at"`
+	CreatedAt      common.Timestamp `gorm:"column:created_at;index:idx_created_at,sort:desc" dirlist:"created_at" filelist:"created_at"`
+	UpdatedAt      common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" dirlist:"updated_at" filelist:"updated_at"`
 
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
 

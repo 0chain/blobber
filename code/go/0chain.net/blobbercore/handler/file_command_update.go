@@ -32,6 +32,13 @@ func (cmd *UpdateFileCommand) GetExistingFileRef() *reference.Ref {
 	return cmd.existingFileRef
 }
 
+func (cmd *UpdateFileCommand) GetPath() string {
+	if cmd.fileChanger == nil {
+		return ""
+	}
+	return cmd.fileChanger.Path
+}
+
 // IsValidated validate request.
 func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
 	uploadMetaString := req.FormValue(UploadMeta)

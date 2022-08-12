@@ -109,13 +109,15 @@ func startRedeemWriteMarkers(ctx context.Context) {
 	var ticker = time.NewTicker(
 		time.Duration(config.Configuration.WMRedeemFreq) * time.Second,
 	)
+
+	logging.Logger.Info("Redeem writemarkers",
+		zap.Any("numOfWorkers", config.Configuration.WMRedeemNumWorkers))
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			logging.Logger.Info("Trying to redeem writemarkers.",
-				zap.Any("numOfWorkers", config.Configuration.WMRedeemNumWorkers))
 			redeemWriteMarkers()
 		}
 	}

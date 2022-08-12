@@ -27,7 +27,7 @@ const SC_REST_API_URL = "v1/screst/"
 const REGISTER_CLIENT = "v1/client/put"
 
 const (
-	SLEEP_FOR_TXN_CONFIRMATION = 5
+	SLEEP_FOR_TXN_CONFIRMATION = 1
 )
 
 var ErrNoTxnDetail = common.NewError("missing_transaction_detail", "No transaction detail was found on any of the sharders")
