@@ -118,7 +118,6 @@ func startRedeemWriteMarkers(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-
 			redeemWriteMarkers()
 		}
 	}
