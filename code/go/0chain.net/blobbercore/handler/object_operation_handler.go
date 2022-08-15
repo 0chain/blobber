@@ -559,6 +559,10 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 
+	if objectRef.Path == "/" {
+		return nil, common.NewError("invalid_operation", "cannot rename root path")
+	}
+
 	allocationChange := &allocation.AllocationChange{}
 	allocationChange.ConnectionID = connectionObj.ID
 	allocationChange.Size = 0
