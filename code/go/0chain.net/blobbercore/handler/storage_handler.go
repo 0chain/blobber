@@ -824,7 +824,7 @@ func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Req
 		}
 	}
 
-	pageLimitStr := r.FormValue("page_limit")
+	pageLimitStr := r.FormValue("limit")
 	if pageLimitStr != "" {
 		pageLimit, err = strconv.Atoi(pageLimitStr)
 		if err != nil {
@@ -843,7 +843,7 @@ func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Req
 	}
 
 	var fromDate int
-	fromDateStr := r.FormValue("from_date")
+	fromDateStr := r.FormValue("from-date")
 	if fromDateStr != "" {
 		fromDate, err = strconv.Atoi(fromDateStr)
 		if err != nil {

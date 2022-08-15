@@ -27,6 +27,10 @@ func (rf *RenameFileChange) DeleteTempFile() error {
 func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
 
+	if rf.Path == "/" {
+		return nil, common.NewError("invalid_operation", "cannot rename root path")
+	}
+
 	newPath := filepath.Join(filepath.Dir(rf.Path), rf.NewName)
 	isFilePresent, err := reference.IsRefExist(ctx, rf.AllocationID, newPath)
 	if err != nil {
