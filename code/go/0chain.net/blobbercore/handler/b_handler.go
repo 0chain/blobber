@@ -184,8 +184,8 @@ func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 	return storageHandler.DownloadFile(ctx, r)
 }
 
-/*ListHandler is the handler to respond to upload requests fro clients*/
-func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+/*listHandler is the handler to respond to list requests from clients*/
+func listHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
 

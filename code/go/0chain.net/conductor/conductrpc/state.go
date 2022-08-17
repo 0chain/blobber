@@ -8,6 +8,14 @@ import (
 // state (long polling)
 //
 
+type (
+	// BlobberList represents TestCaseConfigurator implementation.
+	BlobberList struct {
+		SendWrongData bool   `json:"send_wrong_data" yaml:"send_wrong_data" mapstructure:"send_wrong_data"`
+		Adversarial   string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
+	}
+)
+
 // State is current node state.
 type State struct {
 	// Nodes maps NodeID -> NodeName.
@@ -49,6 +57,7 @@ type State struct {
 	StorageTree    *config.Bad // blobber sends bad files/tree responses
 	ValidatorProof *config.Bad // blobber sends invalid proof to validators
 	Challenges     *config.Bad // blobber ignores challenges
+	BlobberList    BlobberList
 }
 
 // Name returns NodeName by given NodeID.
