@@ -151,6 +151,7 @@ func NewTransactionEntity() (*Transaction, error) {
 
 func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val uint64) error {
 	t.wg.Add(1)
+	_ = t.zcntxn.SetTransactionNonce(monitor.getNextUnusedNonce())
 	_, err := t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
 	if err != nil {
 		t.wg.Done()
@@ -176,8 +177,12 @@ func (t *Transaction) Verify() error {
 	}
 	t.wg.Wait()
 	if len(t.zcntxn.GetVerifyError()) > 0 {
+		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return common.NewError("transaction_verify_error", t.zcntxn.GetVerifyError())
+	} else {
+		monitor.recordSuccess(t.zcntxn.GetTransactionNonce())
 	}
+
 	output := t.zcntxn.GetVerifyOutput()
 
 	var objmap map[string]json.RawMessage
