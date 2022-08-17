@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -31,7 +32,7 @@ type DeleteFileChange struct {
 
 func (nf *DeleteFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
-	rootRef, err := reference.DeleteObject(ctx, nf.AllocationID, nf.Path, ts)
+	rootRef, err := reference.DeleteObject(ctx, nf.AllocationID, filepath.Clean(nf.Path), ts)
 	if err != nil {
 		return nil, err
 	}

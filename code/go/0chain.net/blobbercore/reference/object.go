@@ -9,10 +9,14 @@ import (
 )
 
 func DeleteObject(ctx context.Context, allocationID, objPath string, ts common.Timestamp) (*Ref, error) {
+	likePath := objPath + "/%"
+	if objPath == "/" {
+		likePath = "/%"
+	}
 
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Delete(&Ref{}, "allocation_id=? AND path LIKE ? AND path != ?",
-		allocationID, objPath+"%", "/").Error
+	err := db.Delete(&Ref{}, "allocation_id=? AND path != ? AND (path=? OR path LIKE ?)",
+		allocationID, "/", objPath, likePath).Error
 
 	if err != nil {
 		return nil, err
