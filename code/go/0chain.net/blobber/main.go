@@ -29,7 +29,7 @@ func main() {
 	}
 
 	if err := setupServerChain(); err != nil {
-		logging.Logger.Error("Error setting up server chain" + err.Error())
+		logging.Logger.Error("Error setting up server chain " + err.Error())
 		panic(err)
 	}
 
