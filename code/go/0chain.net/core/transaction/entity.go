@@ -155,11 +155,13 @@ func (t *Transaction) ExecuteSmartContract(address, methodName string, input int
 	_, err := t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
 	if err != nil {
 		t.wg.Done()
+		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return err
 	}
 	t.wg.Wait()
 	t.Hash = t.zcntxn.GetTransactionHash()
 	if len(t.zcntxn.GetTransactionError()) > 0 {
+		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return common.NewError("transaction_send_error", t.zcntxn.GetTransactionError())
 	}
 	return nil
@@ -167,12 +169,14 @@ func (t *Transaction) ExecuteSmartContract(address, methodName string, input int
 
 func (t *Transaction) Verify() error {
 	if err := t.zcntxn.SetTransactionHash(t.Hash); err != nil {
+		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return err
 	}
 	t.wg.Add(1)
 	err := t.zcntxn.Verify()
 	if err != nil {
 		t.wg.Done()
+		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return err
 	}
 	t.wg.Wait()
