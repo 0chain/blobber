@@ -47,7 +47,7 @@ func (m *nonceMonitor) recordFailedNonce(nonce int64) {
 
 	delete(m.used, nonce)
 
-	// this is likely a false negative, do nothing else.
+	// this is likely a false negative or from verifying txn with unknown nonce, do nothing else.
 	if nonce <= m.highestSuccess {
 		return
 	}
