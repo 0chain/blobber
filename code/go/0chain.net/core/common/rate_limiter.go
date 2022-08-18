@@ -105,18 +105,16 @@ func RateLimit(handler ReqRespHandlerf, rlType RPS) ReqRespHandlerf {
 			keys := tollbooth.BuildKeys(lmt, r)
 			clientID := r.Header.Get(ClientHeader)
 
-			keys = append(keys, []string{clientID})
+			keys[0] = append(keys[0], clientID)
 
-			for _, k := range keys {
-				httpError := tollbooth.LimitByKeys(lmt, k)
-				if httpError != nil {
-					lmt.ExecOnLimitReached(w, r)
-					setResponseHeaders(lmt, w, r)
-					w.Header().Add("Content-Type", lmt.GetMessageContentType())
-					w.WriteHeader(httpError.StatusCode)
-					w.Write([]byte(httpError.Message)) // nolint
-					return
-				}
+			httpError := tollbooth.LimitByKeys(lmt, keys[0])
+			if httpError != nil {
+				lmt.ExecOnLimitReached(w, r)
+				setResponseHeaders(lmt, w, r)
+				w.Header().Add("Content-Type", lmt.GetMessageContentType())
+				w.WriteHeader(httpError.StatusCode)
+				w.Write([]byte(httpError.Message)) // nolint
+				return
 			}
 		}
 		handler(w, r)
