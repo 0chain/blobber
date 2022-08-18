@@ -75,6 +75,8 @@ func ConfigRateLimits() {
 	}
 
 	if isProxy {
+		// If blobber is behind some proxy then it is important to put
+		// "X-Forwarded-For" in fron of other parameters.
 		ipLookup := []string{"X-Forwarded-For", "RemoteAddr", "X-Real-IP"}
 		commitRL.SetIPLookups(ipLookup)
 		fileRL.SetIPLookups(ipLookup)
@@ -82,6 +84,26 @@ func ConfigRateLimits() {
 		generalRL.SetIPLookups(ipLookup)
 	}
 
+	cRps := viper.GetFloat64("rate_limiters.commit_rps")
+	fRps := viper.GetFloat64("rate_limiters.file_rps")
+	oRps := viper.GetFloat64("rate_limiters.object_rps")
+	gRps := viper.GetFloat64("rate_limiters.general_rps")
+
+	if cRps > 0 {
+		commitRL.SetMax(cRps)
+	}
+
+	if fRps > 0 {
+		fileRL.SetMax(fRps)
+	}
+
+	if oRps > 0 {
+		objectRL.SetMax(oRps)
+	}
+
+	if gRps > 0 {
+		generalRL.SetMax(gRps)
+	}
 }
 
 func RateLimit(handler ReqRespHandlerf, rlType RPS) ReqRespHandlerf {
