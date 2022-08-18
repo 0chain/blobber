@@ -5,11 +5,12 @@ import (
 	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
 	"sync"
+	"time"
 )
 
 var monitor = &nonceMonitor{
 	failed:                   map[int64]int64{},
-	used:                     map[int64]struct{}{},
+	used:                     map[int64]time.Time{},
 	highestSuccess:           0,
 	shouldRefreshFromBalance: true,
 }
@@ -17,7 +18,7 @@ var monitor = &nonceMonitor{
 type nonceMonitor struct {
 	sync.Mutex
 	failed                   map[int64]int64
-	used                     map[int64]struct{}
+	used                     map[int64]time.Time
 	highestSuccess           int64
 	shouldRefreshFromBalance bool
 }
@@ -31,8 +32,9 @@ func (m *nonceMonitor) getNextUnusedNonce() int64 {
 	}
 
 	for start := m.highestSuccess + 1; ; start++ {
-		if _, ok := m.used[start]; !ok {
-			m.used[start] = struct{}{}
+		// return next nonce that is not in use or has already been 6 mins since reserved.
+		if reservedTime, ok := m.used[start]; !ok || reservedTime.Add(time.Minute*6).Before(time.Now().UTC()) {
+			m.used[start] = time.Now().UTC()
 			logging.Logger.Info("Next available nonce.", zap.Any("nonce", start))
 			return start
 		}
@@ -55,6 +57,7 @@ func (m *nonceMonitor) recordFailedNonce(nonce int64) {
 	// when failing for same nonce often, should reschedule nonce for refresh from balance.
 	if m.failed[nonce]%10 == 0 {
 		m.shouldRefreshFromBalance = true
+		logging.Logger.Info("Frequent failures at nonce.", zap.Any("nonce", nonce), zap.Any("highestSuccess", m.highestSuccess))
 	}
 }
 
@@ -95,7 +98,7 @@ func (m *nonceMonitor) refreshFromBalance() {
 		return
 	}
 
-	logging.Logger.Info("Got nonce from balance.", zap.Any("nonce", cb.nonce))
+	logging.Logger.Info("Got nonce from balance.", zap.Any("nonce", cb.nonce), zap.Any("highestSuccess", m.highestSuccess))
 
 	newNonce := cb.nonce
 
