@@ -11,8 +11,9 @@ import (
 type (
 	// BlobberList represents TestCaseConfigurator implementation.
 	BlobberList struct {
-		SendWrongData bool   `json:"send_wrong_data" yaml:"send_wrong_data" mapstructure:"send_wrong_data"`
-		Adversarial   string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
+		SendWrongData     bool   `json:"send_wrong_data" yaml:"send_wrong_data" mapstructure:"send_wrong_data"`
+		SendWrongMetadata bool   `json:"send_wrong_metadata" yaml:"send_wrong_metadata" mapstructure:"send_wrong_metadata"`
+		Adversarial       string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
 	}
 )
 
