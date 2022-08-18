@@ -19,6 +19,17 @@ func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	if state.BlobberList.Adversarial == node.Self.ID && state.BlobberList.SendWrongData {
 		var result blobberhttp.ListResult
 		return result, nil
+	} else if state.BlobberList.Adversarial == node.Self.ID && state.BlobberList.SendWrongMetadata {
+		listResult, err := listHandler(ctx, r)
+
+		var result *blobberhttp.ListResult
+
+		result = listResult.(*blobberhttp.ListResult)
+
+		result.Meta = make(map[string]interface{})
+		result.Meta["type"] = ""
+
+		return result, err
 	}
 
 	return listHandler(ctx, r)
