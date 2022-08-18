@@ -21,10 +21,10 @@ const (
 )
 
 const (
-	CommitRPS  = 0.5 // Commit Request Per Second
-	FileRPS    = 1   // File Request Per Second
-	ObjectRPS  = 0.5 // Object Request Per Second
-	GeneralRPS = 5   // General Request Per Second
+	CommitRPS  = 1600 // Commit Request Per Second
+	FileRPS    = 1600   // File Request Per Second
+	ObjectRPS  = 1600 // Object Request Per Second
+	GeneralRPS = 1600   // General Request Per Second
 )
 
 var (
