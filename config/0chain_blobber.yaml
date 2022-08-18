@@ -93,6 +93,8 @@ rate_limiters:
   # General Request Per Second. This rps is used to rate limit endpoints like copy, rename, get file metadata,
   # get paginated refs, etc. Default is 5
   general_rps: 25
+  # Admin Request Per Second. This rps is used to limit endpoints like _stats, _debug, etc. Default is 1
+  admin_rps: 1
 
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
