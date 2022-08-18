@@ -22,10 +22,10 @@ const (
 )
 
 const (
-	CommitRPS  = 500   // Commit Request Per Second
-	FileRPS    = 500   // File Request Per Second
-	ObjectRPS  = 500   // Object Request Per Second
-	GeneralRPS = 500   // General Request Per Second
+	CommitRPS  = 5   // Commit Request Per Second
+	FileRPS    = 5   // File Request Per Second
+	ObjectRPS  = 5   // Object Request Per Second
+	GeneralRPS = 5   // General Request Per Second
 	AdminRPS   = 1	   // Admin Request Per Second
 )
 
