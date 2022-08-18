@@ -160,6 +160,11 @@ func (t *Transaction) ExecuteSmartContract(address, methodName string, input int
 			zap.Any("nonce", nonce),
 			zap.Any("error", err))
 	}
+
+	logging.Logger.Error("Transaction nonce set.",
+		zap.Any("hash", t.zcntxn.GetTransactionHash()),
+		zap.Any("nonce", nonce))
+
 	_, err := t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
 	if err != nil {
 		t.wg.Done()
