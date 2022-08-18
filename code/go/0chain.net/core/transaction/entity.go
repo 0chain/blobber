@@ -151,6 +151,10 @@ func NewTransactionEntity() (*Transaction, error) {
 	return txn, nil
 }
 
+func (t *Transaction) GetTransaction() zcncore.TransactionScheme {
+	return t.zcntxn
+}
+
 func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val uint64) error {
 	t.wg.Add(1)
 	nonce := monitor.getNextUnusedNonce()
@@ -175,7 +179,9 @@ func (t *Transaction) ExecuteSmartContract(address, methodName string, input int
 		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return err
 	}
+
 	t.wg.Wait()
+
 	t.Hash = t.zcntxn.GetTransactionHash()
 	if len(t.zcntxn.GetTransactionError()) > 0 {
 		logging.Logger.Error("Failed to submit SC.",
