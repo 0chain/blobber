@@ -153,7 +153,13 @@ func NewTransactionEntity() (*Transaction, error) {
 
 func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val uint64) error {
 	t.wg.Add(1)
-	_ = t.zcntxn.SetTransactionNonce(monitor.getNextUnusedNonce())
+	nonce := monitor.getNextUnusedNonce()
+	if err := t.zcntxn.SetTransactionNonce(nonce); err != nil {
+		logging.Logger.Error("Failed to set nonce.",
+			zap.Any("hash", t.zcntxn.GetTransactionHash()),
+			zap.Any("nonce", nonce),
+			zap.Any("error", err))
+	}
 	_, err := t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
 	if err != nil {
 		t.wg.Done()
@@ -202,14 +208,13 @@ func (t *Transaction) Verify() error {
 		logging.Logger.Error("Failed to verify txn.",
 			zap.Any("hash", t.zcntxn.GetTransactionHash()),
 			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
-			zap.Any("error", err))
+			zap.Any("error", t.zcntxn.GetVerifyError()))
 		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return common.NewError("transaction_verify_error", t.zcntxn.GetVerifyError())
 	} else {
 		logging.Logger.Info("Successful txn verification.",
 			zap.Any("hash", t.zcntxn.GetTransactionHash()),
-			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
-			zap.Any("error", err))
+			zap.Any("nonce", t.zcntxn.GetTransactionNonce()))
 		monitor.recordSuccess(t.zcntxn.GetTransactionNonce())
 	}
 
@@ -220,7 +225,6 @@ func (t *Transaction) Verify() error {
 	if err != nil {
 		// it is a plain error message from blockchain. The format is `error_code: error message`. eg verify_challenge: could not find challenge, value not present
 		// so it is impossible to decode as map[string]json.RawMessage.
-		return common.NewError("transaction_verify_error", string(output))
 	}
 
 	err = json.Unmarshal(objmap["txn"], t)
