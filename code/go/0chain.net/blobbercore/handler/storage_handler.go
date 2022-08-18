@@ -97,9 +97,6 @@ func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString
 }
 
 func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method != "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
-	}
 	allocationTx := r.FormValue("id")
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 
@@ -131,10 +128,6 @@ func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocat
 }
 
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	alloc, err := fsh.verifyAllocation(ctx, allocationTx, true)
 	if err != nil {
@@ -396,9 +389,6 @@ func (fsh *StorageHandler) RemoveCollaborator(ctx context.Context, r *http.Reque
 }
 
 func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
 	if err != nil {
@@ -575,11 +565,6 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 }
 
 func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request, resCh chan<- *blobberhttp.ReferencePathResult, errCh chan<- error) {
-	if r.Method == "POST" {
-		errCh <- common.NewError("invalid_method", "Invalid method used. Use GET instead")
-		return
-	}
-
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
@@ -661,9 +646,6 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 }
 
 func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (*blobberhttp.ObjectPathResult, error) {
-	if r.Method == "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
-	}
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {

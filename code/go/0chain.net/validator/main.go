@@ -166,7 +166,6 @@ func main() {
 	}
 	common.HandleShutdown(server)
 
-	common.ConfigRateLimits()
 	initHandlers(r)
 
 	fmt.Printf("[+] %-24s    %s\n", "start server on "+address, "[OK]")
