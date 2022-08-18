@@ -179,13 +179,13 @@ func RegisterValidator() {
 	registrationRetries := 0
 	//ctx := badgerdbstore.GetStorageProvider().WithConnection(common.GetRootContext())
 	for registrationRetries < 10 {
-		txnHash, err := storage.GetProtocolImpl().RegisterValidator(common.GetRootContext())
+		txn, err := storage.GetProtocolImpl().RegisterValidator(common.GetRootContext())
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 		txnVerified := false
 		verifyRetries := 0
 		for verifyRetries < util.MAX_RETRIES {
 			time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-			t, err := transaction.VerifyTransaction(txnHash, chain.GetServerChain())
+			t, err := transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
 			if err == nil {
 				Logger.Info("Transaction for adding validator accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
 				return
@@ -194,7 +194,7 @@ func RegisterValidator() {
 		}
 
 		if !txnVerified {
-			Logger.Error("Add validator transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txnHash))
+			Logger.Error("Add validator transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txn.Hash))
 		}
 	}
 }
