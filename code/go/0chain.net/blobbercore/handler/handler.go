@@ -113,12 +113,12 @@ func SetupHandlers(r *mux.Router) {
 		Methods(http.MethodGet, http.MethodOptions)
 
 	//admin related
-	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
-	r.HandleFunc("/_config", common.ToJSONResponse(GetConfig))
-	r.HandleFunc("/_stats", StatsHandler)
-	r.HandleFunc("/_statsJSON", common.ToJSONResponse(stats.StatsJSONHandler))
-	r.HandleFunc("/_cleanupdisk", common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))
-	r.HandleFunc("/getstats", common.ToJSONResponse(stats.GetStatsHandler))
+	r.HandleFunc("/_debug", common.RateLimit(common.ToJSONResponse(DumpGoRoutines), common.LimitByAdminRL))
+	r.HandleFunc("/_config", common.RateLimit(common.ToJSONResponse(GetConfig), common.LimitByAdminRL))
+	r.HandleFunc("/_stats", common.RateLimit(StatsHandler, common.LimitByAdminRL))
+	r.HandleFunc("/_statsJSON", common.RateLimit(common.ToJSONResponse(stats.StatsJSONHandler), common.LimitByAdminRL))
+	r.HandleFunc("/_cleanupdisk", common.RateLimit(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)), common.LimitByAdminRL))
+	r.HandleFunc("/getstats", common.RateLimit(common.ToJSONResponse(stats.GetStatsHandler), common.LimitByAdminRL))
 
 	//marketplace related
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
