@@ -42,16 +42,16 @@ jobs:
       - name: Clone blobber
         uses: actions/checkout@v1
 
-#       - name: Set up QEMU
-#         uses: docker/setup-qemu-action@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
       
-# #       - name: Set up Docker Buildx
-# #         uses: docker/setup-buildx-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-# #       - name: Set up Docker Context for Buildx
-# #         id: buildx-context
-# #         run: |
-# #           docker context create builders
+#       - name: Set up Docker Context for Buildx
+#         id: buildx-context
+#         run: |
+#           docker context create builders
 
 #       - name: Set up Docker Buildx
 #         id: buildx
@@ -98,16 +98,16 @@ jobs:
       - name: Clone blobber
         uses: actions/checkout@v1
 
-#       - name: Set up QEMU
-#         uses: docker/setup-qemu-action@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
       
-# #       - name: Set up Docker Buildx
-# #         uses: docker/setup-buildx-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-# #       - name: Set up Docker Context for Buildx
-# #         id: buildx-context
-# #         run: |
-# #           docker context create builders
+#       - name: Set up Docker Context for Buildx
+#         id: buildx-context
+#         run: |
+#           docker context create builders
 
 #       - name: Set up Docker Buildx
 #         id: buildx
