@@ -64,7 +64,11 @@ func ConfigureRateLimiter() {
 
 func RateLimit(handler common.ReqRespHandlerf) common.ReqRespHandlerf {
 	return func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
+		if err := r.ParseForm(); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error())) // nolint
+			return
+		}
 
 		httpError := tollbooth.LimitByRequest(lmt, w, r)
 		if httpError != nil {
@@ -72,7 +76,7 @@ func RateLimit(handler common.ReqRespHandlerf) common.ReqRespHandlerf {
 			setResponseHeaders(lmt, w, r)
 			w.Header().Add("Content-Type", lmt.GetMessageContentType())
 			w.WriteHeader(httpError.StatusCode)
-			w.Write([]byte(httpError.Message))
+			w.Write([]byte(httpError.Message)) // nolint
 			return
 		}
 		handler(w, r)

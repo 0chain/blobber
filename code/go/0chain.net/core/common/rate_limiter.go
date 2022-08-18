@@ -114,7 +114,7 @@ func RateLimit(handler ReqRespHandlerf, rlType RPS) ReqRespHandlerf {
 					setResponseHeaders(lmt, w, r)
 					w.Header().Add("Content-Type", lmt.GetMessageContentType())
 					w.WriteHeader(httpError.StatusCode)
-					w.Write([]byte(httpError.Message))
+					w.Write([]byte(httpError.Message)) // nolint
 					return
 				}
 			}
