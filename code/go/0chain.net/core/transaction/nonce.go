@@ -1,7 +1,9 @@
 package transaction
 
 import (
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/zcncore"
+	"go.uber.org/zap"
 	"sync"
 )
 
@@ -31,6 +33,7 @@ func (m *nonceMonitor) getNextUnusedNonce() int64 {
 	for start := m.highestSuccess + 1; ; start++ {
 		if _, ok := m.used[start]; !ok {
 			m.used[start] = struct{}{}
+			logging.Logger.Info("Next available nonce.", zap.Any("nonce", start))
 			return start
 		}
 	}
@@ -76,7 +79,10 @@ func (m *nonceMonitor) recordSuccess(nonce int64) {
 }
 
 func (m *nonceMonitor) refreshFromBalance() {
+	logging.Logger.Info("Refreshing nonce from balance.")
+
 	// sync lock not necessary, this is expected to be called within a synchronized function.
+	m.shouldRefreshFromBalance = false
 
 	cb := &getNonceCallBack{waitCh: make(chan struct{})}
 	if err := zcncore.GetNonce(cb); err != nil {
@@ -88,6 +94,8 @@ func (m *nonceMonitor) refreshFromBalance() {
 	if cb.hasError {
 		return
 	}
+
+	logging.Logger.Info("Got nonce from balance.", zap.Any("nonce", cb.nonce))
 
 	newNonce := cb.nonce
 

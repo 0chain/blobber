@@ -2,6 +2,8 @@ package transaction
 
 import (
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"sync"
 	"time"
 
@@ -155,12 +157,20 @@ func (t *Transaction) ExecuteSmartContract(address, methodName string, input int
 	_, err := t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
 	if err != nil {
 		t.wg.Done()
+		logging.Logger.Error("Failed to execute SC.",
+			zap.Any("hash", t.zcntxn.GetTransactionHash()),
+			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
+			zap.Any("error", err))
 		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return err
 	}
 	t.wg.Wait()
 	t.Hash = t.zcntxn.GetTransactionHash()
 	if len(t.zcntxn.GetTransactionError()) > 0 {
+		logging.Logger.Error("Failed to submit SC.",
+			zap.Any("hash", t.zcntxn.GetTransactionHash()),
+			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
+			zap.Any("error", err))
 		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return common.NewError("transaction_send_error", t.zcntxn.GetTransactionError())
 	}
@@ -170,20 +180,36 @@ func (t *Transaction) ExecuteSmartContract(address, methodName string, input int
 func (t *Transaction) Verify() error {
 	if err := t.zcntxn.SetTransactionHash(t.Hash); err != nil {
 		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
+		logging.Logger.Error("Failed to set txn hash.",
+			zap.Any("hash", t.zcntxn.GetTransactionHash()),
+			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
+			zap.Any("error", err))
 		return err
 	}
 	t.wg.Add(1)
 	err := t.zcntxn.Verify()
 	if err != nil {
 		t.wg.Done()
+		logging.Logger.Error("Failed to start txn verification.",
+			zap.Any("hash", t.zcntxn.GetTransactionHash()),
+			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
+			zap.Any("error", err))
 		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return err
 	}
 	t.wg.Wait()
 	if len(t.zcntxn.GetVerifyError()) > 0 {
+		logging.Logger.Error("Failed to verify txn.",
+			zap.Any("hash", t.zcntxn.GetTransactionHash()),
+			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
+			zap.Any("error", err))
 		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return common.NewError("transaction_verify_error", t.zcntxn.GetVerifyError())
 	} else {
+		logging.Logger.Info("Successful txn verification.",
+			zap.Any("hash", t.zcntxn.GetTransactionHash()),
+			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
+			zap.Any("error", err))
 		monitor.recordSuccess(t.zcntxn.GetTransactionNonce())
 	}
 
