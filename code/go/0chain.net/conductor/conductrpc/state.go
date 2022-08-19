@@ -13,6 +13,7 @@ type (
 	BlobberList struct {
 		SendWrongData     bool   `json:"send_wrong_data" yaml:"send_wrong_data" mapstructure:"send_wrong_data"`
 		SendWrongMetadata bool   `json:"send_wrong_metadata" yaml:"send_wrong_metadata" mapstructure:"send_wrong_metadata"`
+		NotRespond        bool   `json:"not_respond" yaml:"not_respond" mapstructure:"not_respond"`
 		Adversarial       string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
 	}
 )

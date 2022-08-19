@@ -113,8 +113,8 @@ func RateLimitByGeneralRL(handler common.ReqRespHandlerf) common.ReqRespHandlerf
 	return common.RateLimit(handler, generalRL)
 }
 
-/*SetupHandlers sets up the necessary API end points */
-func SetupHandlers(r *mux.Router) {
+/*setupHandlers sets up the necessary API end points */
+func setupHandlers(r *mux.Router) {
 	ConfigRateLimits()
 	r.Use(useRecovery, useCors)
 
@@ -166,10 +166,6 @@ func SetupHandlers(r *mux.Router) {
 
 	r.HandleFunc("/v1/file/stats/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
-
-	r.HandleFunc("/v1/file/list/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))).
-		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/referencepath/{allocation}",
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
