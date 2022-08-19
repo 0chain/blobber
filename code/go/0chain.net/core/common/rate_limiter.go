@@ -18,15 +18,15 @@ const (
 	LimitByFileRL                   // Limit by file rate limiter
 	LimitByObjectRL                 // Limit by object rate limiter
 	LimitByGeneralRL                // Limit by general rate limiter
-	LimitByAdminRL					// Limit by admin rate limiter
+	LimitByAdminRL                  // Limit by admin rate limiter
 )
 
 const (
-	CommitRPS  = 5   // Commit Request Per Second
-	FileRPS    = 5   // File Request Per Second
-	ObjectRPS  = 5   // Object Request Per Second
-	GeneralRPS = 5   // General Request Per Second
-	AdminRPS   = 1	   // Admin Request Per Second
+	CommitRPS  = 5 // Commit Request Per Second
+	FileRPS    = 5 // File Request Per Second
+	ObjectRPS  = 5 // Object Request Per Second
+	GeneralRPS = 5 // General Request Per Second
+	AdminRPS   = 1 // Admin Request Per Second
 )
 
 var (
@@ -143,16 +143,18 @@ func RateLimit(handler ReqRespHandlerf, rlType RPS) ReqRespHandlerf {
 			keys := tollbooth.BuildKeys(lmt, r)
 			clientID := r.Header.Get(ClientHeader)
 
-			keys[0] = append(keys[0], clientID)
+			keys = append(keys, []string{clientID})
 
-			httpError := tollbooth.LimitByKeys(lmt, keys[0])
-			if httpError != nil {
-				lmt.ExecOnLimitReached(w, r)
-				setResponseHeaders(lmt, w, r)
-				w.Header().Add("Content-Type", lmt.GetMessageContentType())
-				w.WriteHeader(httpError.StatusCode)
-				w.Write([]byte(httpError.Message)) // nolint
-				return
+			for _, k := range keys {
+				httpError := tollbooth.LimitByKeys(lmt, k)
+				if httpError != nil {
+					lmt.ExecOnLimitReached(w, r)
+					setResponseHeaders(lmt, w, r)
+					w.Header().Add("Content-Type", lmt.GetMessageContentType())
+					w.WriteHeader(httpError.StatusCode)
+					w.Write([]byte(httpError.Message)) // nolint
+					return
+				}
 			}
 		}
 		handler(w, r)
