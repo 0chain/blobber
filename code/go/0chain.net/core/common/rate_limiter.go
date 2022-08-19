@@ -18,7 +18,6 @@ const (
 	LimitByFileRL                   // Limit by file rate limiter
 	LimitByObjectRL                 // Limit by object rate limiter
 	LimitByGeneralRL                // Limit by general rate limiter
-	LimitByAdminRL                  // Limit by admin rate limiter
 )
 
 const (
@@ -34,7 +33,6 @@ var (
 	fileRL    *limiter.Limiter // file Rate Limiter
 	objectRL  *limiter.Limiter // object Rate Limiter
 	generalRL *limiter.Limiter // general Rate Limiter
-	adminRL   *limiter.Limiter // admin Rate Limiter
 )
 
 func init() {
@@ -63,11 +61,6 @@ func init() {
 	generalRL.SetIgnoreURL(true)
 	generalRL.SetIPLookups(defaultIPLookups)
 
-	adminRL = tollbooth.NewLimiter(AdminRPS, &limiter.ExpirableOptions{
-		DefaultExpirationTTL: time.Minute * 5,
-	})
-	adminRL.SetIgnoreURL(true)
-	adminRL.SetIPLookups(defaultIPLookups)
 }
 
 //ConfigRateLimits - configure the rate limits
@@ -80,7 +73,6 @@ func ConfigRateLimits() {
 		fileRL.SetTokenBucketExpirationTTL(tokenExpirettl)
 		objectRL.SetTokenBucketExpirationTTL(tokenExpirettl)
 		generalRL.SetTokenBucketExpirationTTL(tokenExpirettl)
-		adminRL.SetTokenBucketExpirationTTL(tokenExpirettl)
 	}
 
 	if isProxy {
@@ -91,14 +83,12 @@ func ConfigRateLimits() {
 		fileRL.SetIPLookups(ipLookup)
 		objectRL.SetIPLookups(ipLookup)
 		generalRL.SetIPLookups(ipLookup)
-		adminRL.SetIPLookups(ipLookup)
 	}
 
 	cRps := viper.GetFloat64("rate_limiters.commit_rps")
 	fRps := viper.GetFloat64("rate_limiters.file_rps")
 	oRps := viper.GetFloat64("rate_limiters.object_rps")
 	gRps := viper.GetFloat64("rate_limiters.general_rps")
-	aRps := viper.GetFloat64("rate_limiters.admin_rps")
 
 	if cRps > 0 {
 		commitRL.SetMax(cRps)
@@ -115,9 +105,7 @@ func ConfigRateLimits() {
 	if gRps > 0 {
 		generalRL.SetMax(gRps)
 	}
-	if aRps > 0 {
-		adminRL.SetMax(aRps)
-	}
+
 }
 
 func RateLimit(handler ReqRespHandlerf, rlType RPS) ReqRespHandlerf {
@@ -134,8 +122,6 @@ func RateLimit(handler ReqRespHandlerf, rlType RPS) ReqRespHandlerf {
 			lmt = objectRL
 		case LimitByGeneralRL:
 			lmt = generalRL
-		case LimitByAdminRL:
-			lmt = adminRL
 		}
 
 		if lmt != nil {
