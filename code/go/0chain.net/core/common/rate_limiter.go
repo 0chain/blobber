@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	tollbooth "github.com/didip/tollbooth/v6"
 	"github.com/didip/tollbooth/v6/limiter"
 	"github.com/spf13/viper"
@@ -134,6 +135,7 @@ func RateLimit(handler ReqRespHandlerf, rlType RPS) ReqRespHandlerf {
 			for _, k := range keys {
 				httpError := tollbooth.LimitByKeys(lmt, k)
 				if httpError != nil {
+					logging.Logger.Error(fmt.Sprintf("Rate limit error: %s", httpError.Error()))
 					lmt.ExecOnLimitReached(w, r)
 					setResponseHeaders(lmt, w, r)
 					w.Header().Add("Content-Type", lmt.GetMessageContentType())
