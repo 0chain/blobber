@@ -319,7 +319,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 }
 
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
-
+	startTime := time.Now()
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
 	}
@@ -338,6 +338,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("immutable_allocation", "Cannot write to an immutable allocation")
 	}
 
+	elapsedAllocation := time.Since(startTime)
+
 	allocationID := allocationObj.ID
 
 	connectionID, ok := common.GetField(r, "connection_id")
@@ -350,6 +352,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	elapsedGetLock := time.Since(startTime) - elapsedAllocation
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewErrorf("invalid_parameters",
@@ -359,6 +362,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_parameters",
 			"Invalid connection id. Connection does not have any changes.")
 	}
+
+	elapsedGetConnObj := time.Since(startTime) - elapsedAllocation - elapsedGetLock
 
 	var isCollaborator bool
 	for _, change := range connectionObj.Changes {
@@ -427,6 +432,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
 	}
 
+	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj
+
 	var clientIDForWriteRedeem = writeMarker.ClientID
 	if isCollaborator {
 		clientIDForWriteRedeem = allocationObj.OwnerID
@@ -436,10 +443,17 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, err
 	}
 
+	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
+		elapsedGetConnObj - elapsedVerifyWM
+
 	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot, writeMarker.Timestamp)
 	if err != nil {
 		return nil, err
 	}
+
+	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
+		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
+
 	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash"})
 	if err != nil {
 		return nil, err
@@ -497,6 +511,21 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	db.Delete(connectionObj)
+
+	commitOperation := connectionObj.Changes[0].Operation
+	input := connectionObj.Changes[0].Input
+
+	Logger.Info("[commit]"+commitOperation,
+		zap.String("alloc_id", allocationID),
+		zap.String("input", input),
+		zap.Duration("get_alloc", elapsedAllocation),
+		zap.Duration("get-lock", elapsedGetLock),
+		zap.Duration("get-conn-obj", elapsedGetConnObj),
+		zap.Duration("verify-wm", elapsedVerifyWM),
+		zap.Duration("write-pre-redeem", elapsedWritePreRedeem),
+		zap.Duration("apply-changes", elapsedApplyChanges),
+		zap.Duration("total", time.Since(startTime)),
+	)
 	return &result, nil
 }
 
