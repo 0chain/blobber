@@ -9,12 +9,27 @@ import (
 //
 
 type (
-	// BlobberList represents TestCaseConfigurator implementation.
+	// BlobberList
 	BlobberList struct {
 		SendWrongData     bool   `json:"send_wrong_data" yaml:"send_wrong_data" mapstructure:"send_wrong_data"`
 		SendWrongMetadata bool   `json:"send_wrong_metadata" yaml:"send_wrong_metadata" mapstructure:"send_wrong_metadata"`
 		NotRespond        bool   `json:"not_respond" yaml:"not_respond" mapstructure:"not_respond"`
 		Adversarial       string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
+	}
+	// BlobberDownload
+	BlobberDownload struct {
+		NotRespond  bool   `json:"not_respond" yaml:"not_respond" mapstructure:"not_respond"`
+		Adversarial string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
+	}
+	// BlobberUpload
+	BlobberUpload struct {
+		NotRespond  bool   `json:"not_respond" yaml:"not_respond" mapstructure:"not_respond"`
+		Adversarial string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
+	}
+	// BlobberDelete
+	BlobberDelete struct {
+		NotRespond  bool   `json:"not_respond" yaml:"not_respond" mapstructure:"not_respond"`
+		Adversarial string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
 	}
 )
 
@@ -56,10 +71,13 @@ type State struct {
 	Publish    *config.Bad
 
 	// Blobbers related states
-	StorageTree    *config.Bad // blobber sends bad files/tree responses
-	ValidatorProof *config.Bad // blobber sends invalid proof to validators
-	Challenges     *config.Bad // blobber ignores challenges
-	BlobberList    BlobberList
+	StorageTree     *config.Bad // blobber sends bad files/tree responses
+	ValidatorProof  *config.Bad // blobber sends invalid proof to validators
+	Challenges      *config.Bad // blobber ignores challenges
+	BlobberList     BlobberList
+	BlobberDownload BlobberDownload
+	BlobberUpload   BlobberUpload
+	BlobberDelete   BlobberDelete
 }
 
 // Name returns NodeName by given NodeID.

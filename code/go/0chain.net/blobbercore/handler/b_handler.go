@@ -119,13 +119,6 @@ func setupHandlers(r *mux.Router) {
 	r.Use(useRecovery, useCors)
 
 	//object operations
-	r.HandleFunc("/v1/file/upload/{allocation}",
-		RateLimitByFileRL(common.ToJSONResponse(WithConnection(UploadHandler))))
-
-	r.HandleFunc("/v1/file/download/{allocation}",
-		RateLimitByFileRL(common.ToByteStream(WithConnection(DownloadHandler)))).
-		Methods(http.MethodGet, http.MethodOptions)
-
 	r.HandleFunc("/v1/file/rename/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RenameHandler)))).
 		Methods(http.MethodPost, http.MethodOptions)
@@ -318,8 +311,8 @@ func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error)
 	return response, nil
 }
 
-/*DownloadHandler is the handler to respond to download requests from clients*/
-func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+/*downloadHandler is the handler to respond to download requests from clients*/
+func downloadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
 	return storageHandler.DownloadFile(ctx, r)
@@ -411,8 +404,8 @@ func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error)
 	return response, nil
 }
 
-/*UploadHandler is the handler to respond to upload requests fro clients*/
-func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+/*uploadHandler is the handler to respond to upload requests fro clients*/
+func uploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.WriteFile(ctx, r)
