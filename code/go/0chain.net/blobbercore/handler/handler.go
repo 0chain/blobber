@@ -81,8 +81,7 @@ func SetupHandlers(r *mux.Router) {
 		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/meta/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler)), common.LimitByGeneralRL)).
-		Methods(http.MethodGet, http.MethodOptions)
+		common.RateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler)), common.LimitByGeneralRL))
 
 	r.HandleFunc("/v1/file/stats/{allocation}",
 		common.RateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)), common.LimitByGeneralRL)).
