@@ -19,6 +19,9 @@ type Lock struct {
 
 // Lock Acquire lock
 func (l *Lock) Lock() {
+	l.countMu.Lock()
+	l.count++
+	l.countMu.Unlock()
 	for {
 		l.actualLock.Lock()
 		if l.stale {
@@ -53,15 +56,11 @@ func (m *MapLocker) GetLock(key string) (l *Lock, isNew bool) {
 	valueI, ok := m.m.Load(key)
 	if ok {
 		l = valueI.(*Lock)
-		l.countMu.Lock()
-		l.count++
-		l.countMu.Unlock()
 		return
 	}
 
 	l = &Lock{
 		key:        key,
-		count:      1,
 		pMap:       m,
 		actualLock: new(sync.Mutex),
 		countMu:    new(sync.Mutex),
