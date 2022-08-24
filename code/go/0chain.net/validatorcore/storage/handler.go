@@ -21,8 +21,8 @@ const (
 
 var lmt *limiter.Limiter
 
-/*SetupHandlers sets up the necessary API end points */
-func SetupHandlers(r *mux.Router) {
+/*setupHandlers sets up the necessary API end points */
+func setupHandlers(r *mux.Router) {
 	ConfigureRateLimiter()
 	r.HandleFunc("/v1/storage/challenge/new",
 		RateLimit(common.ToJSONResponse(SetupContext(ChallengeHandler))))
