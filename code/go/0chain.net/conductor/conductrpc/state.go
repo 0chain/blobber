@@ -11,6 +11,7 @@ import (
 type (
 	// BlobberList
 	BlobberList struct {
+		ReturnError       bool   `json:"return_error" yaml:"return_error" mapstructure:"return_error"`
 		SendWrongData     bool   `json:"send_wrong_data" yaml:"send_wrong_data" mapstructure:"send_wrong_data"`
 		SendWrongMetadata bool   `json:"send_wrong_metadata" yaml:"send_wrong_metadata" mapstructure:"send_wrong_metadata"`
 		NotRespond        bool   `json:"not_respond" yaml:"not_respond" mapstructure:"not_respond"`
@@ -18,16 +19,19 @@ type (
 	}
 	// BlobberDownload
 	BlobberDownload struct {
+		ReturnError bool   `json:"return_error" yaml:"return_error" mapstructure:"return_error"`
 		NotRespond  bool   `json:"not_respond" yaml:"not_respond" mapstructure:"not_respond"`
 		Adversarial string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
 	}
 	// BlobberUpload
 	BlobberUpload struct {
+		ReturnError bool   `json:"return_error" yaml:"return_error" mapstructure:"return_error"`
 		NotRespond  bool   `json:"not_respond" yaml:"not_respond" mapstructure:"not_respond"`
 		Adversarial string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
 	}
 	// BlobberDelete
 	BlobberDelete struct {
+		ReturnError bool   `json:"return_error" yaml:"return_error" mapstructure:"return_error"`
 		NotRespond  bool   `json:"not_respond" yaml:"not_respond" mapstructure:"not_respond"`
 		Adversarial string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
 	}

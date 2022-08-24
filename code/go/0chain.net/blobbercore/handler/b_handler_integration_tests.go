@@ -139,7 +139,9 @@ func ListHandler(ctx context.Context, r *http.Request) (interface{}, error, bool
 	if state.BlobberList.Adversarial == node.Self.ID && state.BlobberList.SendWrongData {
 		var result blobberhttp.ListResult
 		return result, nil, true
-	} else if state.BlobberList.Adversarial == node.Self.ID && state.BlobberList.SendWrongMetadata {
+	}
+
+	if state.BlobberList.Adversarial == node.Self.ID && state.BlobberList.SendWrongMetadata {
 		listResult, err := listHandler(ctx, r)
 
 		var result *blobberhttp.ListResult
@@ -150,8 +152,14 @@ func ListHandler(ctx context.Context, r *http.Request) (interface{}, error, bool
 		result.Meta["type"] = ""
 
 		return result, err, true
-	} else if state.BlobberList.Adversarial == node.Self.ID && state.BlobberList.NotRespond {
+	}
+
+	if state.BlobberList.Adversarial == node.Self.ID && state.BlobberList.NotRespond {
 		return nil, nil, false
+	}
+
+	if state.BlobberList.Adversarial == node.Self.ID && state.BlobberList.ReturnError {
+		return nil, common.NewError("list_file", "adversarial"), true
 	}
 
 	result, err := listHandler(ctx, r)
@@ -165,6 +173,10 @@ func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error, 
 
 	if state.BlobberDownload.Adversarial == node.Self.ID && state.BlobberDownload.NotRespond {
 		return nil, nil, false
+	}
+
+	if state.BlobberDownload.Adversarial == node.Self.ID && state.BlobberDownload.ReturnError {
+		return nil, common.NewError("download_file", "adversarial"), true
 	}
 
 	result, err := downloadHandler(ctx, r)
@@ -182,6 +194,14 @@ func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error, bo
 
 	if state.BlobberDelete.Adversarial == node.Self.ID && state.BlobberDelete.NotRespond && r.Method == "DELETE" {
 		return nil, nil, false
+	}
+
+	if state.BlobberUpload.Adversarial == node.Self.ID && state.BlobberUpload.ReturnError && (r.Method == "PUT" || r.Method == "POST") {
+		return nil, common.NewError("upload_file", "adversarial"), true
+	}
+
+	if state.BlobberDelete.Adversarial == node.Self.ID && state.BlobberDelete.ReturnError && r.Method == "DELETE" {
+		return nil, common.NewError("delete_file", "adversarial"), true
 	}
 
 	result, err := uploadHandler(ctx, r)
