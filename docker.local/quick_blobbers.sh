@@ -4,6 +4,7 @@ set -e
 
 # bash script to setup blobbers
 
+#TODO: Fix docker installation
 # sudo apt update
 sudo apt install -y build-essential jq wget
 # install go
@@ -13,14 +14,6 @@ tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
 export PATH=/usr/local/go/bin:$PATH
 
 export NETWORK=demo
-
-# sudo systemctl start docker
-# sudo systemctl enable docker
-# sudo usermod -aG docker ${USER}
-# su - ${USER}
-
-# conform if the user is added to
-# id -nG
 
 # download docker-compose
 sudo curl -L "https://github.com/docker/compose/releases/download/1.29.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
