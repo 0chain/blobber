@@ -52,9 +52,36 @@ func LoadPlaylist(ctx *Context) (interface{}, error) {
 func LoadPlaylistFile(ctx *Context) (interface{}, error) {
 	q := ctx.Request.URL.Query()
 
-	root, err := reference.LoadPlaylistFile(ctx, ctx.AllocationId, q.Get("lookup_hash"))
-	if err != nil {
-		return nil, err
+	lookupHash := q.Get("lookup_hash")
+	if len(lookupHash) == 0 {
+		return nil, errors.New("lookup_hash_missed: lookup_hash is required")
 	}
-	return root, nil
+
+	authTokenString := q.Get("auth_token")
+
+	//load playlist with auth ticket
+	if len(authTokenString) > 0 {
+
+		fileRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, ctx.AllocationId, lookupHash, []string{"id", "path", "lookup_hash", "type", "name"})
+		if err != nil {
+			return nil, common.NewError("invalid_lookup_hash", err.Error())
+		}
+
+		authToken, err := verifyAuthTicket(ctx, ctx.Store.GetDB(), authTokenString, ctx.Allocation, fileRef, ctx.ClientID)
+		if err != nil {
+			return nil, err
+		}
+		if authToken == nil {
+			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
+		}
+
+		return reference.LoadPlaylistFile(ctx, ctx.AllocationId, lookupHash)
+
+	}
+
+	if ctx.ClientID == "" || ctx.ClientID != ctx.Allocation.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	return reference.LoadPlaylistFile(ctx, ctx.AllocationId, lookupHash)
 }
