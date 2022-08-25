@@ -19,11 +19,13 @@ func AuthenticateAdmin(handler ReqRespHandlerf) ReqRespHandlerf {
 		if !ok {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("Admin only api")) // nolint
+			return
 		}
 
 		if uname != username || passwd != password {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("Invalid username or password")) // nolint
+			return
 		}
 
 		handler(w, r)
