@@ -197,6 +197,21 @@ func GetLimitedRefFieldsByPath(ctx context.Context, allocationID, path string, s
 }
 
 // GetLimitedRefFieldsByLookupHash get FileRef selected fields with allocationID and lookupHash from postgres
+func GetLimitedRefFieldsByLookupHashWith(ctx context.Context, db *gorm.DB, allocationID, lookupHash string, selectedFields []string) (*Ref, error) {
+	ref := &Ref{}
+
+	err := db.
+		Select(selectedFields).
+		Where(&Ref{AllocationID: allocationID, LookupHash: lookupHash}).
+		First(ref).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
+}
+
+// GetLimitedRefFieldsByLookupHash get FileRef selected fields with allocationID and lookupHash from postgres
 func GetLimitedRefFieldsByLookupHash(ctx context.Context, allocationID, lookupHash string, selectedFields []string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
