@@ -109,6 +109,22 @@ func ConfigRateLimits() {
 
 }
 
+func RateLimitByFileRL(handler ReqRespHandlerf) ReqRespHandlerf {
+	return RateLimit(handler, LimitByFileRL)
+}
+
+func RateLimitByCommmitRL(handler ReqRespHandlerf) ReqRespHandlerf {
+	return RateLimit(handler, LimitByCommitRL)
+}
+
+func RateLimitByObjectRL(handler ReqRespHandlerf) ReqRespHandlerf {
+	return RateLimit(handler, LimitByObjectRL)
+}
+
+func RateLimitByGeneralRL(handler ReqRespHandlerf) ReqRespHandlerf {
+	return RateLimit(handler, LimitByGeneralRL)
+}
+
 func RateLimit(handler ReqRespHandlerf, rlType RPS) ReqRespHandlerf {
 	return func(w http.ResponseWriter, r *http.Request) {
 		TryParseForm(r)

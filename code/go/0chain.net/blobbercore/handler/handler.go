@@ -38,77 +38,77 @@ func SetupHandlers(r *mux.Router) {
 
 	//object operations
 	r.HandleFunc("/v1/file/upload/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithConnection(UploadHandler)), common.LimitByFileRL))
+		common.RateLimitByFileRL(common.ToJSONResponse(WithConnection(UploadHandler))))
 
 	r.HandleFunc("/v1/file/download/{allocation}",
-		common.RateLimit(common.ToByteStream(WithConnection(DownloadHandler)), common.LimitByFileRL)).
+		common.RateLimitByFileRL(common.ToByteStream(WithConnection(DownloadHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/rename/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithConnection(RenameHandler)), common.LimitByGeneralRL)).
+		common.RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RenameHandler)))).
 		Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/copy/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithConnection(CopyHandler)), common.LimitByGeneralRL)).
+		common.RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CopyHandler)))).
 		Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/v1/dir/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithConnection(CreateDirHandler)), common.LimitByGeneralRL)).
+		common.RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CreateDirHandler)))).
 		Methods(http.MethodPost, http.MethodDelete, http.MethodOptions)
 
 	r.HandleFunc("/v1/connection/commit/{allocation}",
-		common.RateLimit(common.ToStatusCode(WithStatusConnection(CommitHandler)), common.LimitByCommitRL))
+		common.RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnection(CommitHandler))))
 
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler)), common.LimitByCommitRL))
+		common.RateLimitByCommmitRL(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
 
 	// collaborator
 	r.HandleFunc("/v1/file/collaborator/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithConnection(AddCollaboratorHandler)), common.LimitByGeneralRL)).
+		common.RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(AddCollaboratorHandler)))).
 		Methods(http.MethodOptions, http.MethodPost)
 
 	r.HandleFunc("/v1/file/collaborator/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithConnection(GetCollaboratorHandler)), common.LimitByGeneralRL)).
+		common.RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(GetCollaboratorHandler)))).
 		Methods(http.MethodOptions, http.MethodGet)
 
 	r.HandleFunc("/v1/file/collaborator/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithConnection(RemoveCollaboratorHandler)), common.LimitByGeneralRL)).
+		common.RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RemoveCollaboratorHandler)))).
 		Methods(http.MethodOptions, http.MethodDelete)
 
 	//object info related apis
 	r.HandleFunc("/allocation",
-		common.RateLimit(common.ToJSONResponse(WithConnection(AllocationHandler)), common.LimitByGeneralRL)).
+		common.RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(AllocationHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/meta/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler)), common.LimitByGeneralRL))
+		common.RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
 
 	r.HandleFunc("/v1/file/stats/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)), common.LimitByGeneralRL)).
+		common.RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/list/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler)), common.LimitByObjectRL)).
+		common.RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/objectpath/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler)), common.LimitByObjectRL)).
+		common.RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/referencepath/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)), common.LimitByObjectRL)).
+		common.RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/objecttree/{allocation}",
-		common.RateLimit(common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler)), common.LimitByObjectRL)).
+		common.RateLimitByObjectRL(common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/refs/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithReadOnlyConnection(RefsHandler)), common.LimitByGeneralRL)).
+		common.RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(RefsHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/refs/recent/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithReadOnlyConnection(RecentRefsRequestHandler)), common.LimitByGeneralRL)).
+		common.RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(RecentRefsRequestHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	//admin related
@@ -121,25 +121,25 @@ func SetupHandlers(r *mux.Router) {
 
 	//marketplace related
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithConnection(InsertShare)), common.LimitByGeneralRL)).
+		common.RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(InsertShare)))).
 		Methods(http.MethodOptions, http.MethodPost)
 
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
-		common.RateLimit(common.ToJSONResponse(WithConnection(RevokeShare)), common.LimitByGeneralRL)).
+		common.RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RevokeShare)))).
 		Methods(http.MethodOptions, http.MethodDelete)
 
 	// lightweight http handler without heavy postgres transaction to improve performance
 
 	r.HandleFunc("/v1/writemarker/lock/{allocation}",
-		common.RateLimit(WithHandler(LockWriteMarker), common.LimitByGeneralRL)).
+		common.RateLimitByGeneralRL(WithHandler(LockWriteMarker))).
 		Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/v1/writemarker/lock/{allocation}/{connection}",
-		common.RateLimit(WithHandler(UnlockWriteMarker), common.LimitByGeneralRL)).
+		common.RateLimitByGeneralRL(WithHandler(UnlockWriteMarker))).
 		Methods(http.MethodDelete, http.MethodOptions)
 
 	r.HandleFunc("/v1/hashnode/root/{allocation}",
-		common.RateLimit(WithHandler(LoadRootHashnode), common.LimitByObjectRL)).
+		common.RateLimitByObjectRL(WithHandler(LoadRootHashnode))).
 		Methods(http.MethodGet, http.MethodOptions)
 }
 
