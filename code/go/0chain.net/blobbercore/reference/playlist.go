@@ -35,7 +35,7 @@ func LoadPlaylist(ctx context.Context, allocationID, path, lookupHash, since str
 	var files []PlaylistFile
 
 	db = db.Table("reference_objects").
-		Select([]string{"lookup_hash", "name", "path", "num_of_blocks", "parent_path", "size", "mimetype", "type"})
+		Select([]string{"lookup_hash", "name", "path", "num_of_blocks", "parent_path", "size", "mimetype", "type"}).Order("id")
 	if sinceId > 0 {
 		db.Where("allocation_id = ? and parent_path = ? and type='f'  and id > ? and name like '%.ts'", allocationID, path, sinceId)
 	} else {
