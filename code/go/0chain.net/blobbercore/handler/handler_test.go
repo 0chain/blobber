@@ -67,7 +67,7 @@ func signHash(client *client.Client, hash string) (string, error) {
 
 func init() {
 	resetMockFileBlock()
-	common.ConfigRateLimits()
+	ConfigRateLimits()
 	chain.SetServerChain(&chain.Chain{})
 	config.Configuration.SignatureScheme = "bls0chain"
 	logging.Logger = zap.NewNop()

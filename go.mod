@@ -20,7 +20,6 @@ require (
 	github.com/selvatico/go-mocket v1.0.7
 	github.com/spf13/viper v1.12.0
 	github.com/stretchr/testify v1.8.0
-	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/net v0.0.0-20220728211354-c7608f3a8462 // indirect
@@ -36,12 +35,12 @@ require (
 )
 
 require (
+	github.com/didip/tollbooth v4.0.2+incompatible
 	golang.org/x/sys v0.0.0-20220731174439-a90be440212d
 	gorm.io/driver/sqlite v1.3.6
 )
 
 require (
-	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/btcsuite/btcd v0.23.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.1 // indirect
@@ -82,6 +81,7 @@ require (
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mattn/go-sqlite3 v1.14.14 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
