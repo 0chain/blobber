@@ -6,11 +6,12 @@ import (
 	"github.com/spf13/viper"
 )
 
-var username, password string
+// global username and password used to access endpoints only by admin
+var gUsername, gPassword string
 
 func SetAdminCredentials() {
-	username = viper.GetString("admin.username")
-	password = viper.GetString("admin.password")
+	gUsername = viper.GetString("admin.username")
+	gPassword = viper.GetString("admin.password")
 }
 
 func AuthenticateAdmin(handler ReqRespHandlerf) ReqRespHandlerf {
@@ -22,7 +23,7 @@ func AuthenticateAdmin(handler ReqRespHandlerf) ReqRespHandlerf {
 			return
 		}
 
-		if uname != username || passwd != password {
+		if uname != gUsername || passwd != gPassword {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("Invalid username or password")) // nolint
 			return
