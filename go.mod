@@ -26,7 +26,7 @@ require (
 	golang.org/x/net v0.0.0-20220811182439-13a9a731de15 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
 	google.golang.org/genproto v0.0.0-20220810155839-1856144b1d9c
-	google.golang.org/grpc v1.48.0
+	google.golang.org/grpc v1.49.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
