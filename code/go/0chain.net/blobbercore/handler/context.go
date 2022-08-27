@@ -27,8 +27,8 @@ type Context struct {
 	ClientID string
 	// ClientKey client wallet public key
 	ClientKey string
-	// AllocationTx optional. allcation id in request
-	AllocationTx string
+	// AllocationId optional. allocation id in request
+	AllocationId string
 	// Signature optional. signature in request
 	Signature string
 
@@ -146,7 +146,7 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 
 		w.Header().Set("Content-Type", "application/json")
 
-		ctx, err := WithAuth(r)
+		ctx, err := WithVerify(r)
 		statusCode := ctx.StatusCode
 
 		if err != nil {
@@ -182,8 +182,8 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 	}
 }
 
-// WithAuth verify alloation and signature
-func WithAuth(r *http.Request) (*Context, error) {
+// WithVerify verify allocation and signature
+func WithVerify(r *http.Request) (*Context, error) {
 
 	ctx := &Context{
 		Context: context.TODO(),
@@ -198,11 +198,11 @@ func WithAuth(r *http.Request) (*Context, error) {
 
 	ctx.ClientID = r.Header.Get(common.ClientHeader)
 	ctx.ClientKey = r.Header.Get(common.ClientKeyHeader)
-	ctx.AllocationTx = ctx.Vars["allocation"]
+	ctx.AllocationId = ctx.Vars["allocation"]
 	ctx.Signature = r.Header.Get(common.ClientSignatureHeader)
 
-	if len(ctx.AllocationTx) > 0 {
-		alloc, err := allocation.GetOrCreate(ctx, ctx.Store, ctx.AllocationTx)
+	if len(ctx.AllocationId) > 0 {
+		alloc, err := allocation.GetOrCreate(ctx, ctx.Store, ctx.AllocationId)
 
 		if err != nil {
 			if errors.Is(common.ErrBadRequest, err) {
@@ -223,7 +223,7 @@ func WithAuth(r *http.Request) (*Context, error) {
 		if alloc.OwnerID != ctx.ClientID {
 			publicKey = ctx.ClientKey
 		}
-		valid, err := verifySignatureFromRequest(ctx.AllocationTx, ctx.Signature, publicKey)
+		valid, err := verifySignatureFromRequest(ctx.AllocationId, ctx.Signature, publicKey)
 
 		if !valid {
 			ctx.StatusCode = http.StatusBadRequest
