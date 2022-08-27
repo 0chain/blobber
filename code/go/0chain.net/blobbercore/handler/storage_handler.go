@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 
 	"github.com/0chain/gosdk/constants"
 	"go.uber.org/zap"
@@ -69,31 +70,10 @@ func (fsh *StorageHandler) convertGormError(err error) error {
 
 // verifyAuthTicket verifies authTicket and returns authToken and error if any. For any error authToken is nil
 func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (*readmarker.AuthTicket, error) {
-	if authTokenString == "" {
-		return nil, common.NewError("invalid_parameters", "Auth ticket is required")
-	}
 
-	authToken := &readmarker.AuthTicket{}
-	if err := json.Unmarshal([]byte(authTokenString), &authToken); err != nil {
-		return nil, common.NewError("invalid_parameters", "Error parsing the auth ticket for download."+err.Error())
-	}
+	db := datastore.GetStore().GetTransaction(ctx)
 
-	if err := authToken.Verify(allocationObj, clientID); err != nil {
-		return nil, err
-	}
-
-	if refRequested.LookupHash != authToken.FilePathHash {
-		authTokenRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, authToken.AllocationID, authToken.FilePathHash, []string{"id", "path"})
-		if err != nil {
-			return nil, err
-		}
-
-		if matched, _ := regexp.MatchString(fmt.Sprintf("^%v", authTokenRef.Path), refRequested.Path); !matched {
-			return nil, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
-		}
-	}
-
-	return authToken, nil
+	return verifyAuthTicket(ctx, db, authTokenString, allocationObj, refRequested, clientID)
 }
 
 func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Request) (interface{}, error) {

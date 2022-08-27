@@ -41,7 +41,7 @@ func TestWriteMarkerHandlers_Lock(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(WithHandler(func(ctx *Context) (interface{}, error) {
-		ctx.AllocationTx = "TestHandlers_Lock_allocation_id"
+		ctx.AllocationId = "TestHandlers_Lock_allocation_id"
 		return LockWriteMarker(ctx)
 	}))
 
@@ -81,7 +81,7 @@ func TestWriteMarkerHandlers_Unlock(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(WithHandler(func(ctx *Context) (interface{}, error) {
-		ctx.AllocationTx = "TestHandlers_Unlock_allocation_id"
+		ctx.AllocationId = "TestHandlers_Unlock_allocation_id"
 		ctx.Vars["connection"] = "connection_id"
 		return UnlockWriteMarker(ctx)
 	}))
