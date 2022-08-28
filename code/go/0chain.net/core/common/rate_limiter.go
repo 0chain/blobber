@@ -26,7 +26,6 @@ func GetRateLimiter(rps float64, ipLookups []string, ignoreUrl bool, tokExpireTT
 
 func RateLimit(handler ReqRespHandlerf, lmt *limiter.Limiter) ReqRespHandlerf {
 	return func(w http.ResponseWriter, r *http.Request) {
-		TryParseForm(r)
 
 		if lmt != nil {
 
@@ -54,8 +53,6 @@ func RateLimit(handler ReqRespHandlerf, lmt *limiter.Limiter) ReqRespHandlerf {
 
 func RateLimitByIP(handler ReqRespHandlerf, lmt *limiter.Limiter) ReqRespHandlerf {
 	return func(w http.ResponseWriter, r *http.Request) {
-		TryParseForm(r)
-
 		if lmt != nil {
 
 			keys := tollbooth.BuildKeys(lmt, r)
