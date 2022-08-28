@@ -223,9 +223,14 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/hashnode/root/{allocation}",
 		RateLimitByObjectRL(WithHandler(LoadRootHashnode))).
 		Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/hashnode/root/{allocation}", WithHandler(LoadRootHashnode)).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/playlist/latest/{allocation}", WithHandler(LoadPlaylist)).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/playlist/file/{allocation}", WithHandler(LoadPlaylistFile)).Methods(http.MethodGet, http.MethodOptions)
+
+	r.HandleFunc("/v1/playlist/latest/{allocation}",
+		RateLimitByGeneralRL(WithHandler(LoadPlaylist))).
+		Methods(http.MethodGet, http.MethodOptions)
+
+	r.HandleFunc("/v1/playlist/file/{allocation}",
+		RateLimitByGeneralRL(WithHandler(LoadPlaylistFile))).
+		Methods(http.MethodGet, http.MethodOptions)
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
