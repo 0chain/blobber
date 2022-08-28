@@ -84,6 +84,13 @@ func ConfigRateLimits() {
 		gRps = GeneralRPS
 	}
 
+	Logger.Info("Setting rps: ",
+		zap.Float64("commit_rps", cRps),
+		zap.Float64("file_rps", fRps),
+		zap.Float64("object_rps", oRps),
+		zap.Float64("general_rps", gRps),
+	)
+
 	commitRL = common.GetRateLimiter(cRps, ipLookups, true, tokenExpirettl)
 	fileRL = common.GetRateLimiter(fRps, ipLookups, true, tokenExpirettl)
 	objectRL = common.GetRateLimiter(oRps, ipLookups, true, tokenExpirettl)
