@@ -127,20 +127,20 @@ func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet, err string)
 	wb.wg.Done()
 }
 
-func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (string, error) {
+func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (*transaction.Transaction, error) {
 	wcb := &WalletCallback{}
 	wcb.wg = &sync.WaitGroup{}
 	wcb.wg.Add(1)
 	err := zcncore.RegisterToMiners(node.Self.GetWallet(), wcb)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	sn := &transaction.StorageNode{}
@@ -156,8 +156,8 @@ func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (string,
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.ADD_VALIDATOR_SC_NAME, sn, 0)
 	if err != nil {
 		logging.Logger.Info("Failed during registering validator to the mining network", zap.String("err:", err.Error()))
-		return "", err
+		return nil, err
 	}
 
-	return txn.Hash, nil
+	return txn, nil
 }

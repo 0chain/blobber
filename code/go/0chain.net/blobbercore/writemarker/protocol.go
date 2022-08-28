@@ -110,13 +110,14 @@ func (wme *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 	}
 
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-	t, err := transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
+	t, err := transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
 	if err != nil {
 		Logger.Error("Error verifying the close connection transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
 		wme.Status = Failed
 		wme.StatusMessage = "Error verifying the close connection transaction." + err.Error()
 		wme.ReedeemRetries++
 		wme.CloseTxnID = txn.Hash
+		// TODO Is this single try?
 		if err := wme.UpdateStatus(ctx, Failed, "Error verifying the close connection transaction."+err.Error(), txn.Hash); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
