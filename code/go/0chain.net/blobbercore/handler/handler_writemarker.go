@@ -11,7 +11,7 @@ func LockWriteMarker(ctx *Context) (interface{}, error) {
 	connectionID, _ := ctx.FormValue("connection_id")
 	requestTime, _ := ctx.FormTime("request_time")
 
-	result, err := WriteMarkerMutext.Lock(ctx, ctx.AllocationTx, connectionID, requestTime)
+	result, err := WriteMarkerMutext.Lock(ctx, ctx.AllocationId, connectionID, requestTime)
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +23,7 @@ func LockWriteMarker(ctx *Context) (interface{}, error) {
 func UnlockWriteMarker(ctx *Context) (interface{}, error) {
 	connectionID := ctx.Vars["connection"]
 
-	err := WriteMarkerMutext.Unlock(ctx, ctx.AllocationTx, connectionID)
+	err := WriteMarkerMutext.Unlock(ctx, ctx.AllocationId, connectionID)
 	if err != nil {
 		return nil, err
 	}
