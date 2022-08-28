@@ -29,17 +29,17 @@ func getBlobberHealthCheckError() error {
 	return err
 }
 
-func BlobberHealthCheck() (string, error) {
+func BlobberHealthCheck() (*transaction.Transaction, error) {
 	if config.Configuration.Capacity == 0 {
 
 		setBlobberHealthCheckError(ErrBlobberHasRemoved)
-		return "", ErrBlobberHasRemoved
+		return nil, ErrBlobberHasRemoved
 	}
 
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		setBlobberHealthCheckError(err)
-		return "", err
+		return nil, err
 	}
 
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
@@ -49,9 +49,9 @@ func BlobberHealthCheck() (string, error) {
 			zap.String("err:", err.Error()))
 		setBlobberHealthCheckError(err)
 
-		return "", err
+		return nil, err
 	}
 
 	setBlobberHealthCheckError(err)
-	return txn.Hash, nil
+	return txn, nil
 }

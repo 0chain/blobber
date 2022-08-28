@@ -4,7 +4,9 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/remeh/sizedwaitgroup"
+	"go.uber.org/zap"
 )
 
 func redeemWriteMarkers() {
@@ -14,6 +16,10 @@ func redeemWriteMarkers() {
 	db.Where(&allocation.Allocation{IsRedeemRequired: true}).
 		Find(&allocations)
 	if len(allocations) > 0 {
+
+		logging.Logger.Info("Redeem writemarkers for allocations",
+			zap.Any("numOfAllocations", len(allocations)))
+
 		swg := sizedwaitgroup.New(config.Configuration.WMRedeemNumWorkers)
 		for _, allocationObj := range allocations {
 			swg.Add()

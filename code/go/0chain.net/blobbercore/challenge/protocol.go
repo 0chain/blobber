@@ -64,7 +64,7 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 		t *transaction.Transaction
 	)
 	for i := 0; i < 3; i++ {
-		t, err = transaction.VerifyTransaction(txn.Hash, chain.GetServerChain())
+		t, err = transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
 		if err == nil {
 			break
 		}
