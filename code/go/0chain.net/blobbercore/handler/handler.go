@@ -159,27 +159,23 @@ func SetupHandlers(r *mux.Router) {
 
 	//object info related apis
 	r.HandleFunc("/allocation",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(AllocationHandler)))).
-		Methods(http.MethodGet, http.MethodOptions)
+		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(AllocationHandler))))
 
 	r.HandleFunc("/v1/file/meta/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
 
 	r.HandleFunc("/v1/file/stats/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)))).
-		Methods(http.MethodGet, http.MethodOptions)
+		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
 
 	r.HandleFunc("/v1/file/list/{allocation}",
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/objectpath/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler)))).
-		Methods(http.MethodGet, http.MethodOptions)
+		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler))))
 
 	r.HandleFunc("/v1/file/referencepath/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))).
-		Methods(http.MethodGet, http.MethodOptions)
+		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
 
 	r.HandleFunc("/v1/file/objecttree/{allocation}",
 		RateLimitByObjectRL(common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler)))).
