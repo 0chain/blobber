@@ -12,7 +12,7 @@ export BLOCK_WORKER_URL=http://${NETWORK}.0chain.net/dns
 
 #TODO: Fix docker installation
 sudo apt update
-sudo apt install -y build-essential jq wget unzip curl containerd docker.io
+sudo apt install -y unzip curl containerd docker.io
 
 # download docker-compose
 sudo curl -L "https://github.com/docker/compose/releases/download/1.29.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
