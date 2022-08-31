@@ -24,16 +24,20 @@ docker-compose --version
 FOLDERS_TO_CREATE="config sql bin monitoringconfig keys_config"
 
 for i in ${FOLDERS_TO_CREATE}; do
-    mkdir -p ${PROJECT_ROOT}/${FOLDERS_TO_CREATE}
+    folder=${PROJECT_ROOT}/${i}
+    echo "creating folder: $folder"
+    mkdir -p $folder
 done
 
+ls -al $PROJECT_ROOT
+
 # download and unzip files
-sudo curl -L "https://github.com/boddumanohar/ansible-demo/raw/feature1/blobber-files.zip" -o /tmp/blobber-files.zip
+curl -L "https://github.com/boddumanohar/ansible-demo/raw/feature1/blobber-files.zip" -o /tmp/blobber-files.zip
 unzip -o /tmp/blobber-files.zip -d ${PROJECT_ROOT}
 rm /tmp/blobber-files.zip
 
 # create 0chain_blobber.yaml file
-
+echo "creating 0chain_validator.yaml"
 cat <<EOF >${PROJECT_ROOT}/config/0chain_blobber.yaml
 version: "1.0"
 
@@ -208,7 +212,7 @@ integration_tests:
 EOF
 
 ### Create 0chain_validator.yaml file
-
+echo "creating 0chain_validator.yaml"
 cat <<EOF >${PROJECT_ROOT}/config/0chain_validator.yaml
 version: 1.0
 
@@ -244,12 +248,13 @@ server_chain:
 EOF
 
 ### Create minio_config.txt file
+echo "creating minio_config.txt"
 cat <<EOF >${PROJECT_ROOT}/keys_config/minio_config.txt
 block_worker: ${BLOCK_WORKER_URL}
 EOF
 
 ### Caddyfile
-
+echo "creating Caddyfile"
 cat <<EOF >${PROJECT_ROOT}/Caddyfile
 ${CLUSTER}.${DOMAIN} {
 	route / {
@@ -273,7 +278,7 @@ ${CLUSTER}.${DOMAIN} {
 EOF
 
 ### docker-compose.yaml
-
+echo "creating docker-compose file"
 cat <<EOF >${PROJECT_ROOT}/docker-compose.yml
 ---
 version: "3"
@@ -288,6 +293,7 @@ services:
     command: postgres -c config_file=/var/lib/postgresql/postgresql.conf
     networks:
       default:
+    restart: "always"
 
   postgres-post:
     image: postgres:14
@@ -323,6 +329,7 @@ services:
       default:
       testnet0:
         ipv4_address: 198.18.0.61
+    restart: "always"
 
   blobber:
     image: 0chaindev/blobber:staging
@@ -353,6 +360,7 @@ services:
       default:
       testnet0:
         ipv4_address: 198.18.0.91
+    restart: "always"
 
   caddy:
     image: caddy:latest
@@ -364,6 +372,7 @@ services:
       - ${PROJECT_ROOT}/site:/srv
       - ${PROJECT_ROOT}/caddy_data:/data
       - ${PROJECT_ROOT}/caddy_config:/config
+    restart: "always"
 
   promtail:
     image: grafana/promtail:2.3.0
@@ -392,6 +401,10 @@ services:
       - "9090:9090"
     volumes:
       - ${PROJECT_ROOT}/monitoringconfig/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
     restart: "always"
     depends_on:
     - cadvisor
@@ -403,6 +416,7 @@ services:
     - 9487:9487
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
+    restart: "always"
 
   node-exporter:
     image: prom/node-exporter:latest
@@ -419,6 +433,7 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)(\$\$|/)'
     expose:
       - 9100
+    restart: "always"
 
   grafana:
     image: grafana/grafana:latest
@@ -426,8 +441,15 @@ services:
       GF_SERVER_ROOT_URL: "https://${CLUSTER}.${DOMAIN}/grafana"
     volumes:
       - ${PROJECT_ROOT}/monitoringconfig/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yaml
+      - grafana_data:/var/lib/grafana
     ports:
       - "3040:3000"
+    restart: "always"
+
+  monitoringapi:
+    image: bmanu199/monitoringapi:latest
+    ports:
+      - "3001:3001"
     restart: "always"
 
 networks:
@@ -441,16 +463,18 @@ networks:
           gateway: 198.18.0.255
 
 volumes:
-  caddy_data:
-  caddy_config:
+  grafana_data:
+  prometheus_data:
 
 EOF
 
-/usr/local/bin/docker-compose -f ${PROJECT_ROOT}/zchain-compose.yml up -d
+if [ ! -f ${PROJECT_ROOT}/keys_config/b0bnode01_keys.txt ]; then
+    echo "creating keys"
+    /usr/local/bin/docker-compose -f ${PROJECT_ROOT}/zchain-compose.yml up -d
 
-# wait for the keys keys_config/b0bnode01_keys.txt is created or not
-
-while [ ! -f ${PROJECT_ROOT}/keys_config/b0bnode01_keys.txt ]; do echo "wait for keys_config/b0bnode01_keys.txt"; sleep 1; done
+    # wait for the keys keys_config/b0bnode01_keys.txt is created or not
+    while [ ! -f ${PROJECT_ROOT}/keys_config/b0bnode01_keys.txt ]; do echo "wait for keys_config/b0bnode01_keys.txt"; sleep 1; done
+fi
 
 /usr/local/bin/docker-compose -f ${PROJECT_ROOT}/docker-compose.yml up -d
 
