@@ -3,9 +3,9 @@
 set -e
 
 # setup variables
-export NETWORK=dev
-export DOMAIN=testnet-0chain.net
-export CLUSTER=manohar-test
+export NETWORK=0chainnetwork
+export DOMAIN=0chaindomain
+export CLUSTER=0chaincluster
 export DELEGATE_WALLET=4a53cfa74eb600e973d28af1eedc9213bc3a4e9f3af4fd289bd441f642fb540a
 export PROJECT_ROOT=/var/0chain/blobber
 export BLOCK_WORKER_URL=http://${NETWORK}.0chain.net/dns
