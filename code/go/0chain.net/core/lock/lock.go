@@ -48,7 +48,10 @@ func GetMutex(tablename, key string) *Mutex {
 		return eLock
 	}
 
-	m := &Mutex{usedby: 1}
+	m := &Mutex{
+		usedby: 1,
+		mu:     &sync.Mutex{},
+	}
 
 	lockPool[lockKey] = m
 
