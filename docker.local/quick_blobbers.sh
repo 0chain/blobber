@@ -257,7 +257,15 @@ EOF
 echo "creating Caddyfile"
 cat <<EOF >${PROJECT_ROOT}/Caddyfile
 ${CLUSTER}.${DOMAIN} {
-	route / {
+	log {
+		output file /var/log/access.log {
+			roll_size 1gb
+			roll_keep 5
+			roll_keep_for 720h
+		}
+	}
+
+	route {
 		reverse_proxy blobber:5051
 	}
 
