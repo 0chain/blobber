@@ -916,26 +916,26 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
 
-	Logger.Info(fmt.Sprintf("Acquiring lock for connection: %s", connectionID))
+	Logger.Info(fmt.Sprintf("[upload] Acquiring lock for connection: %s", connectionID))
 	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
 
-	Logger.Info(fmt.Sprintf("Locking connection: %s", connectionID))
+	Logger.Info(fmt.Sprintf("[upload] Locking connection: %s", connectionID))
 
 	mutex.Lock()
-	Logger.Info(fmt.Sprintf("Acquired lock for connection: %s", connectionID))
+	Logger.Info(fmt.Sprintf("[upload] Acquired lock for connection: %s", connectionID))
 
 	defer mutex.Unlock()
 
 	elapsedAllocationChanges := time.Since(startTime) - elapsedAllocation - elapsedValidate - elapsedRef
 
-	Logger.Info(fmt.Sprintf("Processing content for connection: %s", connectionID))
+	Logger.Info(fmt.Sprintf("[upload] Processing content for connection: %s", connectionID))
 
 	result, err := cmd.ProcessContent(ctx, r, allocationObj, connectionObj)
 
 	if err != nil {
 		return nil, err
 	}
-	Logger.Info(fmt.Sprintf("Content processed for connection: %s", connectionID))
+	Logger.Info(fmt.Sprintf("[upload] Content processed for connection: %s", connectionID))
 
 	err = cmd.ProcessThumbnail(ctx, r, allocationObj, connectionObj)
 
