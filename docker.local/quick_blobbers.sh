@@ -32,7 +32,7 @@ done
 ls -al $PROJECT_ROOT
 
 # download and unzip files
-curl -L "https://github.com/boddumanohar/ansible-demo/raw/feature1/blobber-files.zip" -o /tmp/blobber-files.zip
+curl -L "https://github.com/0chain/blobber/raw/setup-blobber-quickly/docker.local/bin/blobber-files.zip" -o /tmp/blobber-files.zip
 unzip -o /tmp/blobber-files.zip -d ${PROJECT_ROOT}
 rm /tmp/blobber-files.zip
 
