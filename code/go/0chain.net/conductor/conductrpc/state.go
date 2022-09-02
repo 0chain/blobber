@@ -35,6 +35,12 @@ type (
 		NotRespond  bool   `json:"not_respond" yaml:"not_respond" mapstructure:"not_respond"`
 		Adversarial string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
 	}
+
+	// AdversarialValidator
+	AdversarialValidator struct {
+		ID                 string `json:"id" yaml:"id" mapstructure:"id"`
+		FailValidChallenge bool   `json:"fail_valid_challenge" yaml:"fail_valid_challenge" mapstructure:"fail_valid_challenge"`
+	}
 )
 
 // State is current node state.
@@ -75,13 +81,14 @@ type State struct {
 	Publish    *config.Bad
 
 	// Blobbers related states
-	StorageTree     *config.Bad // blobber sends bad files/tree responses
-	ValidatorProof  *config.Bad // blobber sends invalid proof to validators
-	Challenges      *config.Bad // blobber ignores challenges
-	BlobberList     BlobberList
-	BlobberDownload BlobberDownload
-	BlobberUpload   BlobberUpload
-	BlobberDelete   BlobberDelete
+	StorageTree          *config.Bad // blobber sends bad files/tree responses
+	ValidatorProof       *config.Bad // blobber sends invalid proof to validators
+	Challenges           *config.Bad // blobber ignores challenges
+	BlobberList          BlobberList
+	BlobberDownload      BlobberDownload
+	BlobberUpload        BlobberUpload
+	BlobberDelete        BlobberDelete
+	AdversarialValidator AdversarialValidator
 }
 
 // Name returns NodeName by given NodeID.

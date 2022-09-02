@@ -345,6 +345,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 }
 
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
+	// fmt.Println("commiting challenge")
 	start := time.Now()
 	verifyIterated := 0
 	if time.Since(common.ToTime(cr.CreatedAt)) > config.StorageSCConfig.ChallengeCompletionTime {
@@ -355,6 +356,7 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		for _, lastTxn := range cr.LastCommitTxnIDs {
 			logging.Logger.Info("[challenge]commit: Verifying the transaction : " + lastTxn)
 			t, err := transaction.VerifyTransaction(lastTxn, chain.GetServerChain())
+			// fmt.Printf("tx commit challenge %+v\n", t)
 			if err == nil {
 				cr.Status = Committed
 				cr.StatusMessage = t.TransactionOutput
@@ -389,6 +391,8 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 	}
 
 	t, err := cr.SubmitChallengeToBC(ctx)
+
+	// fmt.Printf("tx submitted %+v\n", t)
 
 	submitTime := time.Since(start) - verifyTxnTime
 
