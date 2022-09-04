@@ -4,7 +4,7 @@ set -e
 
 # setup variables
 export NETWORK=atluschimney
-export DOMAIN=devnet-0chain
+export DOMAIN=0chaindomain
 export CLUSTER=0chaincluster
 export DELEGATE_WALLET=4a53cfa74eb600e973d28af1eedc9213bc3a4e9f3af4fd289bd441f642fb540a
 export PROJECT_ROOT=/var/0chain/blobber
