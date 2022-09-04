@@ -3,12 +3,12 @@
 set -e
 
 # setup variables
-export NETWORK=0chainnetwork
-export DOMAIN=0chaindomain
+export NETWORK=atluschimney
+export DOMAIN=devnet-0chain
 export CLUSTER=0chaincluster
 export DELEGATE_WALLET=4a53cfa74eb600e973d28af1eedc9213bc3a4e9f3af4fd289bd441f642fb540a
 export PROJECT_ROOT=/var/0chain/blobber
-export BLOCK_WORKER_URL=http://${NETWORK}.0chain.net/dns
+export BLOCK_WORKER_URL=http://${NETWORK}.devnet-0chain.net/dns
 
 #TODO: Fix docker installation
 sudo apt update
@@ -269,8 +269,12 @@ ${CLUSTER}.${DOMAIN} {
 		reverse_proxy blobber:5051
 	}
 
-	route /monitoring/* {
+	route /monitoring* {
 		uri strip_prefix /monitoring
+	        header Access-Control-Allow-Methods "POST,PATCH,PUT,DELETE, GET, OPTIONS"
+                header Access-Control-Allow-Headers "*"
+	        header Access-Control-Allow-Origin "*"
+	        header Cache-Control max-age=3600
 		reverse_proxy monitoringapi:3001
 	}
 
