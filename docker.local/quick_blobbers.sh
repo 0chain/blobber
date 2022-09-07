@@ -224,13 +224,13 @@ version: 1.0
 # delegate wallet (must be set)
 delegate_wallet: ${DELEGATE_WALLET}
 # min stake allowed, tokens
-min_stake: 1.0
+min_stake: ${MIN_STAKE}
 # max stake allowed, tokens
-max_stake: 100.0
+max_stake: ${MAX_STAKE}
 # maximum allowed number of stake holders
 num_delegates: 50
 # service charge of related blobber
-service_charge: 0.30
+service_charge: ${SERVICE_CHARGE}
 
 block_worker: ${BLOCK_WORKER_URL}
 
