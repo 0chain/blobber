@@ -6,7 +6,12 @@ set -e
 export NETWORK=atluschimney
 export DOMAIN=0chaindomain
 export CLUSTER=0chaincluster
-export DELEGATE_WALLET=4a53cfa74eb600e973d28af1eedc9213bc3a4e9f3af4fd289bd441f642fb540a
+export DELEGATE_WALLET=0chainclientId
+export READ_PRICE=0chainreadPrice
+export WRITE_PRICE=0chainwritePrice
+export MIN_STAKE=0chainminStake
+export MAX_STAKE=0chainmaxStake
+export SERVICE_CHARGE=0chainserviceCharge
 export PROJECT_ROOT=/var/0chain/blobber
 export BLOCK_WORKER_URL=http://${NETWORK}.devnet-0chain.net/dns
 
@@ -59,8 +64,8 @@ info:
 #    3 GB - 3221225472
 #  100 GB - 107374182400
 capacity: 1073741824 # 1 GB bytes total blobber capacity
-read_price: 0.01     # token / GB for reading
-write_price: 0.10    # token / GB / time_unit for writing
+read_price: ${READ_PRICE}  # token / GB for reading
+write_price: ${WRITE_PRICE}    # token / GB / time_unit for writing
 price_in_usd: false
 price_worker_in_hours: 12
 # the time_unit configured in Storage SC and can be given using
@@ -94,13 +99,13 @@ max_dirs_files: 50000
 # delegate wallet (must be set)
 delegate_wallet: ${DELEGATE_WALLET}
 # min stake allowed, tokens
-min_stake: 1.0
+min_stake: ${MIN_STAKE}
 # max stake allowed, tokens
-max_stake: 100.0
+max_stake: ${MAX_STAKE}
 # maximum allowed number of stake holders
 num_delegates: 50
 # service charge of the blobber
-service_charge: 0.30
+service_charge: ${SERVICE_CHARGE}
 # min submit from miners
 min_submit: 50
 # min confirmation from sharder
