@@ -99,9 +99,9 @@ max_dirs_files: 50000
 # delegate wallet (must be set)
 delegate_wallet: ${DELEGATE_WALLET}
 # min stake allowed, tokens
-min_stake: ${MIN_STAKE}
+min_stake: 1.0
 # max stake allowed, tokens
-max_stake: ${MAX_STAKE}
+max_stake: 100.0
 # maximum allowed number of stake holders
 num_delegates: 50
 # service charge of the blobber
@@ -224,9 +224,9 @@ version: 1.0
 # delegate wallet (must be set)
 delegate_wallet: ${DELEGATE_WALLET}
 # min stake allowed, tokens
-min_stake: ${MIN_STAKE}
+min_stake: 1.0
 # max stake allowed, tokens
-max_stake: ${MAX_STAKE}
+max_stake: 100.0
 # maximum allowed number of stake holders
 num_delegates: 50
 # service charge of related blobber
