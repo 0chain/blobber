@@ -11,7 +11,7 @@ export READ_PRICE=0chainreadPrice
 export WRITE_PRICE=0chainwritePrice
 export MIN_STAKE=0chainminStake
 export MAX_STAKE=0chainmaxStake
-export SERVICE_CHARGE=0chainserviceCharge
+export SERVICE_CHARGE=0.30
 export PROJECT_ROOT=/var/0chain/blobber
 export BLOCK_WORKER_URL=http://${NETWORK}.devnet-0chain.net/dns
 
