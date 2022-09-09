@@ -74,7 +74,7 @@ func challengeProcessor(ctx context.Context) {
 				zap.String("challenge_id", it.Id))
 
 			now := time.Now()
-			if now.Sub(it.CreatedAt) > config.Configuration.ChallengeCompletionTime {
+			if now.Sub(it.CreatedAt) > config.Configuration.CCT {
 				c := &ChallengeEntity{ChallengeID: it.Id}
 				c.CancelChallenge(ctx, ErrExpiredCCT)
 
@@ -84,7 +84,7 @@ func challengeProcessor(ctx context.Context) {
 					zap.Time("created", it.CreatedAt),
 					zap.Time("start", now),
 					zap.String("delay", now.Sub(it.CreatedAt).String()),
-					zap.String("cct", config.Configuration.ChallengeCompletionTime.String()))
+					zap.String("cct", config.Configuration.CCT.String()))
 				continue
 			}
 
@@ -94,7 +94,7 @@ func challengeProcessor(ctx context.Context) {
 				zap.Time("created", it.CreatedAt),
 				zap.Time("start", now),
 				zap.String("delay", now.Sub(it.CreatedAt).String()),
-				zap.String("cct", config.Configuration.ChallengeCompletionTime.String()))
+				zap.String("cct", config.Configuration.CCT.String()))
 
 			switch it.Status {
 			case Accepted:
@@ -108,7 +108,7 @@ func challengeProcessor(ctx context.Context) {
 					zap.Time("created", it.CreatedAt),
 					zap.Time("start", now),
 					zap.String("delay", now.Sub(it.CreatedAt).String()),
-					zap.String("cct", config.Configuration.ChallengeCompletionTime.String()))
+					zap.String("cct", config.Configuration.CCT.String()))
 			}
 
 		}
