@@ -170,7 +170,7 @@ type Config struct {
 	AutomaticUpdate       bool
 	BlobberUpdateInterval time.Duration
 
-	CCT time.Duration // challenge completion time // retrieved from storage SC config
+	ChallengeCompletionTime time.Duration // retrieved from storage SC config
 }
 
 /*Configuration of the system */

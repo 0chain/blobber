@@ -58,7 +58,7 @@ func setCCTFromChain() error {
 		return err
 	}
 
-	config.Configuration.CCT = cb.cct
+	config.Configuration.ChallengeCompletionTime = cb.cct
 	return nil
 }
 

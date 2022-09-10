@@ -113,7 +113,7 @@ type StorageAllocation struct {
 }
 
 func (sa *StorageAllocation) Until() common.Timestamp {
-	return sa.Expiration + common.Timestamp(config.Configuration.CCT/time.Second)
+	return sa.Expiration + common.Timestamp(config.Configuration.ChallengeCompletionTime/time.Second)
 }
 
 type StorageAllocationBlobber struct {
