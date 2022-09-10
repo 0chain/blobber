@@ -22,7 +22,6 @@ type FileStore struct {
 	allocMu *sync.Mutex
 	rwMU    *sync.RWMutex
 
-	bucket       string
 	diskCapacity uint64
 }
 
