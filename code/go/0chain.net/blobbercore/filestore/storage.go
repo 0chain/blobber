@@ -43,7 +43,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -257,13 +256,6 @@ func (fs *FileStore) DeleteFile(allocID, contentHash string) error {
 	}
 	l.Lock()
 
-	if config.Configuration.ColdStorageDeleteCloudCopy {
-		err = fs.MinioDelete(contentHash)
-		if err != nil {
-			logging.Logger.Error("Unable to delete object from minio", zap.Error(err))
-		}
-	}
-
 	err = os.Remove(fileObjectPath)
 	if err != nil {
 		return err
@@ -307,20 +299,7 @@ func (fs *FileStore) GetFileBlock(allocID string, fileData *FileInputData, block
 		return nil, common.NewError("get_file_path_error", err.Error())
 	}
 	file, err := os.Open(fileObjectPath)
-	switch {
-	case err != nil && errors.Is(err, os.ErrNotExist):
-		if fs.mc == nil {
-			return nil, common.NewError("file_exist_error", fmt.Sprintf("%s does not exists", fileObjectPath))
-		}
-		err = fs.MinioDownload(fileData.Hash, fileObjectPath)
-		if err != nil {
-			return nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
-		}
-		file, err = os.Open(fileObjectPath)
-		if err != nil {
-			return nil, err
-		}
-	case err != nil:
+	if err != nil {
 		return nil, err
 	}
 
@@ -360,22 +339,10 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
 	}
 
 	file, err := os.Open(fileObjectPath)
-	switch {
-	case err != nil && errors.Is(err, os.ErrNotExist):
-		if fs.mc == nil {
-			return nil, nil, common.NewError("file_exist_error", fmt.Sprintf("%s does not exists", fileObjectPath))
-		}
-		err = fs.MinioDownload(fileData.Hash, fileObjectPath)
-		if err != nil {
-			return nil, nil, common.NewError("minio_download_failed", "Unable to download from minio with err "+err.Error())
-		}
-		file, err = os.Open(fileObjectPath)
-		if err != nil {
-			return nil, nil, err
-		}
-	case err != nil:
+	if err != nil {
 		return nil, nil, err
 	}
+
 	defer file.Close()
 
 	var returnBytes []byte

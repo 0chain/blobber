@@ -14,7 +14,6 @@ require (
 	github.com/herumi/bls-go-binary v1.0.1-0.20220103075647-4e46f4fe2af2
 	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/koding/cache v0.0.0-20161222233015-e8a81b0b3f20
-	github.com/minio/minio-go v6.0.14+incompatible
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/selvatico/go-mocket v1.0.7
@@ -54,7 +53,6 @@ require (
 	github.com/ethereum/go-ethereum v1.10.21 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
-	github.com/go-ini/ini v1.66.6 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-pkgz/expirable-cache v0.1.0 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect

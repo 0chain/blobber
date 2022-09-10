@@ -102,18 +102,6 @@ func (mfs *MockFileStore) GetBlocksMerkleTreeForChallenge(allocID string, fileDa
 	return nil, nil, nil
 }
 
-func (mfs *MockFileStore) MinioUpload(contentHash, fPath string) error {
-	return nil
-}
-
-func (mfs *MockFileStore) MinioDelete(contentHash string) error {
-	return nil
-}
-
-func (mfs *MockFileStore) MinioDownload(contentHash, fPath string) error {
-	return nil
-}
-
 func (mfs *MockFileStore) GetTotalTempFileSizes() (s uint64) {
 	return 0
 }

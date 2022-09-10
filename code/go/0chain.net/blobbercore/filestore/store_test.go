@@ -145,7 +145,7 @@ func setupMockForFileManagerInit(mock sqlmock.Sqlmock, ip initParams) {
 		)
 
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects" WHERE`)).
-		WithArgs(aa, aa, aa).
+		WithArgs(aa, aa).
 		WillReturnRows(
 			sqlmock.NewRows([]string{"count"}).AddRow(ip.totalRefs),
 		)
@@ -345,7 +345,7 @@ func TestGetFileBlock(t *testing.T) {
 			numBlocks:     10,
 			hash:          randString(64),
 			expectedError: true,
-			errorContains: "file_exist_error",
+			errorContains: "no such file or directory",
 		},
 		{
 			testName:         "successful response",
@@ -366,7 +366,7 @@ func TestGetFileBlock(t *testing.T) {
 			data, err := fs.GetFileBlock(allocID, fid, test.blockNum, test.numBlocks)
 			if test.expectedError {
 				require.NotNil(t, err)
-				require.Contains(t, err.Error(), test.errorContains)
+				require.Contains(t, err.Error(), test.errorContains, "Actual error: ", err.Error())
 				return
 			}
 

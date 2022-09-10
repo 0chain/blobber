@@ -323,7 +323,6 @@ message FileMetaData {
   int64 actual_thumbnail_size = 17;
   string actual_thumbnail_hash = 18;
   string encrypted_key = 19;
-  bool on_cloud = 20;
   repeated CommitMetaTxn commit_meta_txns = 21;
   int64 created_at = 22;
   int64 updated_at = 23;

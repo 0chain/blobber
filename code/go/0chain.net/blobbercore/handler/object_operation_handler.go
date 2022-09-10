@@ -271,7 +271,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		fileData.Name = fileref.Name
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ThumbnailHash
-		fileData.OnCloud = fileref.OnCloud
 		fileData.ChunkSize = fileref.ChunkSize
 		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID, fileData, dr.BlockNum, dr.NumBlocks)
 		if err != nil {
@@ -282,7 +281,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		fileData.Name = fileref.Name
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ContentHash
-		fileData.OnCloud = fileref.OnCloud
 		fileData.ChunkSize = fileref.ChunkSize
 
 		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID, fileData, dr.BlockNum, dr.NumBlocks)

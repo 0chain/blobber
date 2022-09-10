@@ -13,7 +13,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	"github.com/minio/minio-go"
 )
 
 type FileStore struct {
@@ -23,7 +22,6 @@ type FileStore struct {
 	allocMu *sync.Mutex
 	rwMU    *sync.RWMutex
 
-	mc           *minio.Client
 	bucket       string
 	diskCapacity uint64
 }
@@ -56,11 +54,6 @@ func (fs *FileStore) Initialize() (err error) {
 
 	if err = fs.initMap(); err != nil {
 		return
-	}
-
-	fs.mc, fs.bucket, err = initializeMinio()
-	if err != nil {
-		return err
 	}
 
 	return nil

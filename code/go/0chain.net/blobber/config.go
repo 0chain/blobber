@@ -60,22 +60,6 @@ func setupConfig(configDir string, deploymentMode int) {
 	}
 	config.Configuration.BlobberUpdateInterval = blobberUpdateIntrv
 
-	config.Configuration.ColdStorageMinimumFileSize = viper.GetInt64("cold_storage.min_file_size")
-	config.Configuration.ColdStorageTimeLimitInHours = viper.GetInt64("cold_storage.file_time_limit_in_hours")
-	config.Configuration.ColdStorageJobQueryLimit = viper.GetInt("cold_storage.job_query_limit")
-	config.Configuration.ColdStorageStartCapacitySize = viper.GetUint64("cold_storage.start_capacity_size")
-	config.Configuration.ColdStorageDeleteLocalCopy = viper.GetBool("cold_storage.delete_local_copy")
-	config.Configuration.ColdStorageDeleteCloudCopy = viper.GetBool("cold_storage.delete_cloud_copy")
-
-	config.Configuration.MinioStart = viper.GetBool("minio.start")
-	config.Configuration.MinioWorkerFreq = viper.GetInt64("minio.worker_frequency")
-	config.Configuration.MinioUseSSL = viper.GetBool("minio.use_ssl")
-	config.Configuration.MinioStorageUrl = viper.GetString("minio.storage_service_url")
-	config.Configuration.MinioAccessID = viper.GetString("minio.access_id")
-	config.Configuration.MinioSecretKey = viper.GetString("minio.secret_access_key")
-	config.Configuration.MinioBucket = viper.GetString("minio.bucket_name")
-	config.Configuration.MinioRegion = viper.GetString("minio.region")
-
 	config.Configuration.PGUserName = viper.GetString("pg.user")
 	config.Configuration.PGPassword = viper.GetString("pg.password")
 	config.Configuration.DBHost = viper.GetString("db.host")
