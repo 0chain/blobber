@@ -169,8 +169,6 @@ type Config struct {
 	// AutomacitUpdate Whether to automatically update blobber updates to blockchain
 	AutomaticUpdate       bool
 	BlobberUpdateInterval time.Duration
-
-	ChallengeCompletionTime time.Duration // retrieved from storage SC config
 }
 
 /*Configuration of the system */
@@ -236,3 +234,12 @@ func ValidChain(chain string) error {
 	}
 	return ErrSupportedChain
 }
+
+// StorageSCConfiguration will include all the required sc configs to operate blobber
+// If any field it required then it can simply be added in this struct and we are
+// good to go
+type StorageSCConfiguration struct {
+	ChallengeCompletionTime time.Duration
+}
+
+var StorageSCConfig StorageSCConfiguration

@@ -334,7 +334,7 @@ func commitOnChain(c *ChallengeEntity, id string) {
 func loadTodoChallenges(doProcessed bool) {
 	db := datastore.GetStore().GetDB()
 	now := time.Now().Unix()
-	from := now - int64(config.Configuration.ChallengeCompletionTime.Seconds())
+	from := now - int64(config.StorageSCConfig.ChallengeCompletionTime.Seconds())
 
 	db = db.Model(&ChallengeEntity{}).
 		Where("created_at > ? AND status in (?)", from, Accepted)
