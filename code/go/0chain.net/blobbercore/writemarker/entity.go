@@ -21,6 +21,7 @@ type WriteMarker struct {
 	Timestamp              common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
 	ClientID               string           `gorm:"column:client_id;size:64" json:"client_id"`
 	Signature              string           `gorm:"column:signature;size:64" json:"signature"`
+	Operation              string           `gorm:"column:operation;size:64" json:"operation"`
 
 	LookupHash  string `gorm:"column:lookup_hash;size:64;" json:"lookup_hash"`
 	Name        string `gorm:"column:name;size:100;" json:"name"`
