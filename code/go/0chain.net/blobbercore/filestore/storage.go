@@ -178,11 +178,26 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 			if err != nil {
 				return false, common.NewError("content_hash_write_error", err.Error())
 			}
+
+			err = hasher.WriteToChallenge(data, int(i))
+			if err != nil {
+				return false, common.NewError("challenge_hash_write_error", err.Error())
+			}
 		}
 
 		hash, err = hasher.GetContentHash()
 		if err != nil {
 			return false, common.NewError("get_content_hash_error", err.Error())
+		}
+
+		merkleRoot, err := hasher.GetChallengeHash()
+		if err != nil {
+			return false, common.NewError("get_challenge_hash_error", err.Error())
+		}
+
+		if merkleRoot != fileData.MerkleRoot {
+			return false, common.NewError("merkle_root_mismatch",
+				fmt.Sprintf("Expected %s got %s", fileData.MerkleRoot, merkleRoot))
 		}
 	}
 
@@ -655,3 +670,30 @@ func createDirs(dir string) error {
 	}
 	return nil
 }
+
+// func getMerkleRootOfContent(r io.Reader, totalSize int64, chunkSize int) (string, error) {
+// 	numChunks := int(math.Ceil(float64(totalSize) / float64(chunkSize)))
+
+// 	fixedMT := util.NewFixedMerkleTree(chunkSize)
+
+// 	bytesBuf := bytes.NewBuffer(make([]byte, 0))
+// 	for chunkIndex := 0; chunkIndex < numChunks; chunkIndex++ {
+// 		written, err := io.CopyN(bytesBuf, r, int64(chunkSize))
+
+// 		if written > 0 {
+
+// 			errWrite := fixedMT.Write(bytesBuf.Bytes(), chunkIndex)
+// 			if errWrite != nil {
+// 				return "", common.NewError("hash_error", errWrite.Error())
+// 			}
+
+// 			bytesBuf.Reset()
+// 		}
+
+// 		if err != nil && err == io.EOF {
+// 			break
+// 		}
+// 	}
+
+// 	return fixedMT.GetMerkleRoot(), nil
+// }

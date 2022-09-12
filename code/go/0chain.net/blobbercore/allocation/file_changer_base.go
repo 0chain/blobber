@@ -74,6 +74,7 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 	fileInputData.Name = fc.Filename
 	fileInputData.Path = fc.Path
 	fileInputData.Hash = fc.Hash
+	fileInputData.MerkleRoot = fc.MerkleRoot
 	fileInputData.ChunkSize = fc.ChunkSize
 	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
 	if err != nil {
