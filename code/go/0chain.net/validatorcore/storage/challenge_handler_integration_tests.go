@@ -13,7 +13,6 @@ import (
 )
 
 func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	fmt.Println("getting conductor client state")
 	state := conductrpc.Client().State()
 
 	if state.AdversarialValidator.ID == node.Self.ID && state.AdversarialValidator.FailValidChallenge {
@@ -27,7 +26,9 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 			return nil, err
 		}
 
-		return InvalidValidationTicket(challengeObj, err)
+		if len(challengeObj.Validators) > 2 {
+			return InvalidValidationTicket(challengeObj, fmt.Errorf("Challenge failed by adversarial validator"))
+		}
 	}
 
 	return challengeHandler(ctx, r)
