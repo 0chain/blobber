@@ -20,6 +20,12 @@ export GF_ADMIN_PASSWORD=0chaingfadminpassword
 export PROJECT_ROOT=/var/0chain/blobber
 export BLOCK_WORKER_URL=http://${NETWORK}.devnet-0chain.net/dns
 
+
+## cleanup server before starting the deployment
+docker-compose -f /var/0chain/blobber/docker-compose.yml down --volumes || true
+docker-compose -f /var/0chain/blobber/zchain-compose.yml down --volumes || true
+rm -rf /var/0chain/blobber || true
+
 #TODO: Fix docker installation
 sudo apt update
 sudo apt install -y unzip curl containerd docker.io
