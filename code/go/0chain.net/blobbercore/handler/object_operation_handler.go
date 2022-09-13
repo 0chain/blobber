@@ -916,26 +916,30 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
 
-	Logger.Info(fmt.Sprintf("[upload] Acquiring lock for connection: %s", connectionID))
+	Logger.Info(fmt.Sprintf("[upload] Acquiring lock for allocation: %s, connection: %s", allocationID, connectionID))
 	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
 
-	Logger.Info(fmt.Sprintf("[upload] Locking connection: %s", connectionID))
+	Logger.Info(fmt.Sprintf("[upload] Locking for allocation: %s, connection: %s", allocationID, connectionID))
 
 	mutex.Lock()
-	Logger.Info(fmt.Sprintf("[upload] Acquired lock for connection: %s", connectionID))
+	Logger.Info(fmt.Sprintf("[upload] Acquired lock for allocation: %s, connection: %s", allocationID, connectionID))
 
-	defer mutex.Unlock()
+	defer func() {
+		Logger.Info(fmt.Sprintf("[upload] Unlocking lock for allocation: %s, connection: %s", allocationID, connectionID))
+		mutex.Unlock()
+		Logger.Info(fmt.Sprintf("[upload] Unlocked lock for allocation: %s, connection: %s", allocationID, connectionID))
+	}()
 
 	elapsedAllocationChanges := time.Since(startTime) - elapsedAllocation - elapsedValidate - elapsedRef
 
-	Logger.Info(fmt.Sprintf("[upload] Processing content for connection: %s", connectionID))
+	Logger.Info(fmt.Sprintf("[upload] Processing content for allocation %s, connection: %s", allocationID, connectionID))
 
 	result, err := cmd.ProcessContent(ctx, r, allocationObj, connectionObj)
 
 	if err != nil {
 		return nil, err
 	}
-	Logger.Info(fmt.Sprintf("[upload] Content processed for connection: %s", connectionID))
+	Logger.Info(fmt.Sprintf("[upload] Content processed for allocation: %s, connection: %s", allocationID, connectionID))
 
 	err = cmd.ProcessThumbnail(ctx, r, allocationObj, connectionObj)
 
