@@ -20,12 +20,12 @@ import (
 )
 
 func setupWorkers(ctx context.Context) {
-
 	handler.SetupWorkers(ctx)
 	challenge.SetupWorkers(ctx)
 	readmarker.SetupWorkers(ctx)
 	writemarker.SetupWorkers(ctx)
 	allocation.StartUpdateWorker(ctx, config.Configuration.UpdateAllocationsInterval)
+	updateCCTWorker(ctx)
 }
 
 func refreshPriceOnChain(ctx context.Context) {
