@@ -9,9 +9,14 @@ export CLUSTER=0chaincluster
 export DELEGATE_WALLET=0chainclientId
 export READ_PRICE=0chainreadPrice
 export WRITE_PRICE=0chainwritePrice
-export MIN_STAKE=0chainminStake
-export MAX_STAKE=0chainmaxStake
-export SERVICE_CHARGE=0.30
+# export MIN_STAKE=0chainminStake
+# export MAX_STAKE=0chainmaxStake
+# export SERVICE_CHARGE=0chainserviceCharge
+export MIN_STAKE="1.0"
+export MAX_STAKE="100.0"
+export SERVICE_CHARGE="0.30"
+export GF_ADMIN_USER=0chaingfadminuser
+export GF_ADMIN_PASSWORD=0chaingfadminpassword
 export PROJECT_ROOT=/var/0chain/blobber
 export BLOCK_WORKER_URL=http://${NETWORK}.devnet-0chain.net/dns
 
@@ -99,9 +104,9 @@ max_dirs_files: 50000
 # delegate wallet (must be set)
 delegate_wallet: ${DELEGATE_WALLET}
 # min stake allowed, tokens
-min_stake: 1.0
+min_stake: ${MIN_STAKE}
 # max stake allowed, tokens
-max_stake: 100.0
+max_stake: ${MAX_STAKE}
 # maximum allowed number of stake holders
 num_delegates: 50
 # service charge of the blobber
@@ -224,9 +229,9 @@ version: 1.0
 # delegate wallet (must be set)
 delegate_wallet: ${DELEGATE_WALLET}
 # min stake allowed, tokens
-min_stake: 1.0
+min_stake: ${MIN_STAKE}
 # max stake allowed, tokens
-max_stake: 100.0
+max_stake: ${MAX_STAKE}
 # maximum allowed number of stake holders
 num_delegates: 50
 # service charge of related blobber
@@ -456,6 +461,8 @@ services:
     image: grafana/grafana:latest
     environment:
       GF_SERVER_ROOT_URL: "https://${CLUSTER}.${DOMAIN}/grafana"
+      GF_SECURITY_ADMIN_USER: ${GF_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_ADMIN_PASSWORD}
     volumes:
       - ${PROJECT_ROOT}/monitoringconfig/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yaml
       - grafana_data:/var/lib/grafana
