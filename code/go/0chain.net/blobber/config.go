@@ -134,11 +134,6 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.Geolocation.Latitude = viper.GetFloat64("geolocation.latitude")
 	config.Configuration.Geolocation.Longitude = viper.GetFloat64("geolocation.longitude")
 
-	err := setCCTFromChain()
-	if err != nil {
-		panic(err)
-	}
-
 	fmt.Print("		[OK]\n")
 }
 
