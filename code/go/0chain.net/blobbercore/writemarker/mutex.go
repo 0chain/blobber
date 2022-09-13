@@ -2,7 +2,6 @@ package writemarker
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -29,25 +28,27 @@ type LockResult struct {
 
 // Mutex WriteMarker mutex
 type Mutex struct {
-	sync.Mutex
+	// ML MapLocker
+	ML *common.MapLocker
 }
 
 // Lock
 func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, requestTime *time.Time) (*LockResult, error) {
-	m.Mutex.Lock()
-	defer m.Mutex.Unlock()
-
-	if len(allocationID) == 0 {
+	if allocationID == "" {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "allocationID")
 	}
 
-	if len(connectionID) == 0 {
+	if connectionID == "" {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "connectionID")
 	}
 
 	if requestTime == nil {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "requestTime")
 	}
+
+	l, _ := m.ML.GetLock(allocationID)
+	l.Lock()
+	defer l.Unlock()
 
 	now := time.Now()
 	if requestTime.After(now.Add(config.Configuration.WriteMarkerLockTimeout)) {
@@ -121,12 +122,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 }
 
 func (*Mutex) Unlock(ctx context.Context, allocationID string, connectionID string) error {
-
-	if len(allocationID) == 0 {
-		return nil
-	}
-
-	if len(connectionID) == 0 {
+	if allocationID == "" || connectionID == "" {
 		return nil
 	}
 
