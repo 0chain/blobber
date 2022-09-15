@@ -267,11 +267,11 @@ func (fsh *StorageHandler) validateCollaboratorRequest(ctx context.Context, allo
 
 	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "type"})
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+		return nil, common.NewError("invalid_parameters", fileref.Path + " is an invalid path: "+err.Error())
 	}
 
 	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
+		return nil, common.NewError("invalid_parameters", fileref.Path + " is not a file.")
 	}
 
 	return fileref, nil
