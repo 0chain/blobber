@@ -330,7 +330,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
 	start := time.Now()
 	verifyIterated := 0
-	if time.Since(common.ToTime(cr.CreatedAt)) > config.Configuration.ChallengeCompletionTime {
+	if time.Since(common.ToTime(cr.CreatedAt)) > config.StorageSCConfig.ChallengeCompletionTime {
 		cr.CancelChallenge(ctx, ErrExpiredCCT)
 		return ErrExpiredCCT
 	}
