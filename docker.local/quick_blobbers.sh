@@ -3,7 +3,7 @@
 set -e
 
 # setup variables
-export NETWORK=atluschimney
+export NETWORK=manohar
 export DOMAIN=0chaindomain
 export CLUSTER=0chaincluster
 export DELEGATE_WALLET=0chainclientId
