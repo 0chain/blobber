@@ -27,5 +27,5 @@ func GetChallengeTimings(ctx context.Context, r *http.Request) (interface{}, err
 		return nil, err
 	}
 
-	return challenge.GetUpdatedChallengeTimings(from, limit), nil
+	return challenge.GetUpdatedChallengeTimings(from, limit)
 }
