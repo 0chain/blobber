@@ -69,6 +69,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/_statsJSON", common.ToJSONResponse(stats.StatsJSONHandler))
 	r.HandleFunc("/_cleanupdisk", common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))
 	r.HandleFunc("/getstats", common.ToJSONResponse(stats.GetStatsHandler))
+	r.HandleFunc("/challengetimings", common.ToJSONResponse(GetChallengeTimings))
 
 	//marketplace related
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(InsertShare))).Methods(http.MethodOptions, http.MethodPost)
