@@ -220,7 +220,8 @@ func (t *Transaction) Verify() error {
 		logging.Logger.Error("Failed to verify txn.",
 			zap.Any("hash", t.zcntxn.GetTransactionHash()),
 			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
-			zap.Any("error", t.zcntxn.GetVerifyError()))
+			zap.Any("error", t.zcntxn.GetVerifyError()),
+			zap.Any("verify_output", t.zcntxn.GetVerifyOutput()))
 		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return common.NewError("transaction_verify_error", t.zcntxn.GetVerifyError())
 	} else {
