@@ -360,7 +360,7 @@ services:
     restart: "always"
 
   blobber:
-    image: 0chaindev/blobber:staging
+    image: 0chaindev/blobber:pr-832-d1e986c7
     environment:
       DOCKER: "true"
       DB_NAME: blobber_meta
