@@ -3,7 +3,7 @@
 set -e
 
 # setup variables
-export NETWORK=manohar
+export NETWORK=atluschimney
 export DOMAIN=0chaindomain
 export CLUSTER=0chaincluster
 export DELEGATE_WALLET=0chainclientId
@@ -360,7 +360,7 @@ services:
     restart: "always"
 
   blobber:
-    image: 0chaindev/blobber:pr-832-d1e986c7
+    image: 0chaindev/blobber:staging
     environment:
       DOCKER: "true"
       DB_NAME: blobber_meta
