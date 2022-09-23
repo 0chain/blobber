@@ -21,6 +21,7 @@ import (
 func SetupHandlers(r *mux.Router) {
 	setupHandlers(r)
 
+<<<<<<< HEAD
 	r.HandleFunc("/v1/file/list/{allocation}",
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
@@ -29,39 +30,14 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/download/{allocation}",
 		RateLimitByFileRL(ToByteStreamOrNot(WithConnectionNotRespond(DownloadHandler))).
 			Methods(http.MethodGet, http.MethodOptions))
+=======
+	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONOrNotResponse(WithConnectionNotRespond(UploadHandler)))
+	r.HandleFunc("/v1/file/download/{allocation}", ToByteStreamOrNot(WithConnectionNotRespond(DownloadHandler))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONOrNotResponse(WithReadOnlyConnectionNotRespond(ListHandler))).Methods(http.MethodGet, http.MethodOptions)
+>>>>>>> Add validator behaviour to don't respond to challenge verifications
 }
 
-/*JSONResponderOrNotF - a handler that takes standard request (non-json) and responds with a json response
-* Useful for POST opertaion where the input is posted as json with
-*    Content-type: application/json
-* header
-* For test purposes it is useful to not respond
- */
-type JSONResponderOrNotF func(ctx context.Context, r *http.Request) (interface{}, error, bool)
-
-/* ToJSONOrNotResponse - An adapter that takes a handler of the form
-* func AHandler(r *http.Request) (interface{}, error)
-* which takes a request object, processes and returns an object or an error
-* and converts into a standard request/response handler or simply does not respond
-* for test purposes
- */
-func ToJSONOrNotResponse(handler JSONResponderOrNotF) common.ReqRespHandlerf {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
-		if r.Method == "OPTIONS" {
-			common.SetupCORSResponse(w, r)
-			return
-		}
-		ctx := r.Context()
-		data, err, shouldRespond := handler(ctx, r)
-
-		if shouldRespond {
-			common.Respond(w, data, err)
-		}
-	}
-}
-
-func WithReadOnlyConnectionNotRespond(handler JSONResponderOrNotF) JSONResponderOrNotF {
+func WithReadOnlyConnectionNotRespond(handler common.JSONResponderOrNotF) common.JSONResponderOrNotF {
 	return func(ctx context.Context, r *http.Request) (interface{}, error, bool) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
 		res, err, shouldRespond := handler(ctx, r)
@@ -72,7 +48,7 @@ func WithReadOnlyConnectionNotRespond(handler JSONResponderOrNotF) JSONResponder
 	}
 }
 
-func WithConnectionNotRespond(handler JSONResponderOrNotF) JSONResponderOrNotF {
+func WithConnectionNotRespond(handler common.JSONResponderOrNotF) common.JSONResponderOrNotF {
 	return func(ctx context.Context, r *http.Request) (resp interface{}, err error, shouldRespond bool) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
 		resp, err, shouldRespond = handler(ctx, r)
@@ -100,7 +76,7 @@ func WithConnectionNotRespond(handler JSONResponderOrNotF) JSONResponderOrNotF {
 	}
 }
 
-func ToByteStreamOrNot(handler JSONResponderOrNotF) common.ReqRespHandlerf {
+func ToByteStreamOrNot(handler common.JSONResponderOrNotF) common.ReqRespHandlerf {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		data, err, shouldRespond := handler(ctx, r)

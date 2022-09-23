@@ -12,24 +12,29 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
 
-func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error, bool) {
 	state := conductrpc.Client().State()
 
 	if state.AdversarialValidator.ID == node.Self.ID && state.AdversarialValidator.FailValidChallenge {
 		challengeRequest, _, err := NewChallengeRequest(r)
 		if err != nil {
-			return nil, err
+			return nil, err, true
 		}
 
 		challengeObj, err := NewChallengeObj(ctx, challengeRequest)
 		if err != nil {
-			return nil, err
+			return nil, err, true
 		}
 
 		if len(challengeObj.Validators) > 2 {
-			return InvalidValidationTicket(challengeObj, fmt.Errorf("Challenge failed by adversarial validator"))
+			res, err := InvalidValidationTicket(challengeObj, fmt.Errorf("Challenge failed by adversarial validator"))
+			return res, err, true
 		}
+	} else if state.AdversarialValidator.ID == node.Self.ID && state.AdversarialValidator.DenialOfService {
+		return nil, nil, false
 	}
 
-	return challengeHandler(ctx, r)
+	res, err := challengeHandler(ctx, r)
+
+	return res, err, true
 }
