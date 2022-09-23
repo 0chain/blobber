@@ -2,10 +2,12 @@ package transaction
 
 import (
 	"encoding/json"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
 	"sync"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 
 	"github.com/0chain/gosdk/zcncore"
 
@@ -105,14 +107,13 @@ type StorageAllocation struct {
 	Expiration     common.Timestamp     `json:"expiration_date"`
 	BlobberDetails []*BlobberAllocation `json:"blobber_details"`
 	Finalized      bool                 `json:"finalized"`
-	CCT            time.Duration        `json:"challenge_completion_time"`
 	TimeUnit       time.Duration        `json:"time_unit"`
 	IsImmutable    bool                 `json:"is_immutable"`
 	WritePool      uint64               `json:"write_pool"`
 }
 
 func (sa *StorageAllocation) Until() common.Timestamp {
-	return sa.Expiration + common.Timestamp(sa.CCT/time.Second)
+	return sa.Expiration + common.Timestamp(config.StorageSCConfig.ChallengeCompletionTime/time.Second)
 }
 
 type StorageAllocationBlobber struct {
@@ -219,7 +220,8 @@ func (t *Transaction) Verify() error {
 		logging.Logger.Error("Failed to verify txn.",
 			zap.Any("hash", t.zcntxn.GetTransactionHash()),
 			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
-			zap.Any("error", t.zcntxn.GetVerifyError()))
+			zap.Any("error", t.zcntxn.GetVerifyError()),
+			zap.Any("verify_output", t.zcntxn.GetVerifyOutput()))
 		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return common.NewError("transaction_verify_error", t.zcntxn.GetVerifyError())
 	} else {
