@@ -48,6 +48,11 @@ func main() {
 		panic(err)
 	}
 
+	err := setCCTFromChain()
+	if err != nil {
+		panic(err)
+	}
+
 	go startGRPCServer()
 
 	startHttpServer()
