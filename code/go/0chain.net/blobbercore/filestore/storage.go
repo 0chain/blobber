@@ -179,7 +179,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 				return false, common.NewError("content_hash_write_error", err.Error())
 			}
 
-			err = hasher.WriteToChallenge(data, int(i))
+			err = hasher.WriteToChallenge(data[:n], int(i))
 			if err != nil {
 				return false, common.NewError("challenge_hash_write_error", err.Error())
 			}
