@@ -26,8 +26,11 @@ type ChallengeTiming struct {
 	// When challenge is marked as expired by blobber.
 	Expiration common.Timestamp `gorm:"expiration" json:"expiration"`
 
+	// When challenge is closed (eg. expired, cancelled, or completed/verified). When
+	ClosedAt common.Timestamp `gorm:"column:closed_at;index:idx_closed_at,sort:desc;" json:"closed"`
+
 	// When row is last updated
-	UpdatedAt common.Timestamp `gorm:"updated_at" json:"updated"`
+	UpdatedAt common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" json:"updated"`
 }
 
 func (ChallengeTiming) TableName() string {
@@ -64,25 +67,16 @@ func UpdateChallengeTimingCancellation(challengeID string, cancellation common.T
 	}
 
 	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		err := tx.Model(&c).Update("cancellation", cancellation).Error
-
-		if err == nil && reason == ErrExpiredCCT {
-			err = tx.Model(&c).Update("expiration", cancellation).Error
+		values := map[string]interface{}{
+			"cancellation": cancellation,
+			"closed_at":    cancellation,
 		}
 
-		return err
-	})
+		if reason == ErrExpiredCCT {
+			values["expiration"] = cancellation
+		}
 
-	return err
-}
-
-func UpdateChallengeTimingFirstValidation(challengeID string, firstValidation common.Timestamp) error {
-	c := &ChallengeTiming{
-		ChallengeID: challengeID,
-	}
-
-	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		return tx.Model(&c).Update("first_validation", firstValidation).Error
+		return tx.Model(&c).Updates(values).Error
 	})
 
 	return err
@@ -118,7 +112,12 @@ func UpdateChallengeTimingTxnVerification(challengeID string, txnVerification co
 	}
 
 	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		return tx.Model(&c).Update("txn_verification", txnVerification).Error
+		values := map[string]interface{}{
+			"txn_verification": txnVerification,
+			"closed_at":        txnVerification,
+		}
+
+		return tx.Model(&c).Updates(values).Error
 	})
 
 	return err
