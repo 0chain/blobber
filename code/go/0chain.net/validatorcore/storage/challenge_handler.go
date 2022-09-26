@@ -50,7 +50,7 @@ func challengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 		return InvalidValidationTicket(challengeObj, err)
 	}
 
-	return ValidValidationTicket(challengeObj, challengeRequest, challengeHash)
+	return ValidValidationTicket(challengeObj, challengeRequest.ChallengeID, challengeHash)
 }
 
 func NewChallengeRequest(r *http.Request) (*ChallengeRequest, string, error) {
@@ -95,7 +95,7 @@ func NewChallengeObj(ctx context.Context, challengeRequest *ChallengeRequest) (*
 	return challengeObj, nil
 }
 
-func ValidValidationTicket(challengeObj *Challenge, challengeRequest *ChallengeRequest, challengeHash string) (interface{}, error) {
+func ValidValidationTicket(challengeObj *Challenge, challengeID string, challengeHash string) (interface{}, error) {
 	var validationTicket ValidationTicket
 
 	validationTicket.BlobberID = challengeObj.BlobberID
@@ -109,7 +109,7 @@ func ValidValidationTicket(challengeObj *Challenge, challengeRequest *ChallengeR
 	if err := validationTicket.Sign(); err != nil {
 		return nil, common.NewError("invalid_parameters", err.Error())
 	}
-	logging.Logger.Info("Validation passed.", zap.Any("challenge_id", challengeRequest.ChallengeID))
+	logging.Logger.Info("Validation passed.", zap.Any("challenge_id", challengeID))
 
 	lru.Add(challengeHash, &validationTicket) //nolint:errcheck // never returns an error anyway
 	return &validationTicket, nil

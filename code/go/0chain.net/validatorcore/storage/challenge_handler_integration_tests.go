@@ -32,6 +32,19 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error,
 		}
 	} else if state.AdversarialValidator.ID == node.Self.ID && state.AdversarialValidator.DenialOfService {
 		return nil, nil, false
+	} else if state.AdversarialValidator.ID == node.Self.ID && state.AdversarialValidator.PassAllChallenges {
+		challengeRequest, challengeHash, err := NewChallengeRequest(r)
+		if err != nil {
+			return nil, err, true
+		}
+
+		challengeObj, err := NewChallengeObj(ctx, challengeRequest)
+		if err != nil {
+			return nil, err, true
+		}
+
+		res, err := ValidValidationTicket(challengeObj, challengeRequest.ChallengeID, challengeHash)
+		return res, err, true
 	}
 
 	res, err := challengeHandler(ctx, r)

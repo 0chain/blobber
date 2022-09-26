@@ -12,10 +12,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
-/*setupHandlers sets up the necessary API end points */
-func setupHandlers(r *mux.Router) {
-	r.Use(common.UseUserRateLimit)
-	r.HandleFunc("/v1/storage/challenge/new", common.ToJSONOrNotResponse(setupContextNotRespond(ChallengeHandler)))
+/* SetupHandlers sets up the necessary API end points */
+func SetupHandlers(r *mux.Router) {
+	ConfigureRateLimiter()
+	r.HandleFunc("/v1/storage/challenge/new",
+		RateLimit(common.ToJSONOrNotResponse(setupContextNotRespond(ChallengeHandler))))
+
 	r.HandleFunc("/debug", common.ToJSONResponse(DumpGoRoutines))
 }
 

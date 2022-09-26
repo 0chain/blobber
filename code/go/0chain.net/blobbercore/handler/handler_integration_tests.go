@@ -21,20 +21,14 @@ import (
 func SetupHandlers(r *mux.Router) {
 	setupHandlers(r)
 
-<<<<<<< HEAD
 	r.HandleFunc("/v1/file/list/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))).
+		RateLimitByObjectRL(common.ToJSONOrNotResponse(WithConnectionNotRespond(ListHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/v1/file/upload/{allocation}",
-		RateLimitByFileRL(ToJSONOrNotResponse(WithConnectionNotRespond(UploadHandler))))
+		RateLimitByFileRL(common.ToJSONOrNotResponse(WithConnectionNotRespond(UploadHandler))))
 	r.HandleFunc("/v1/file/download/{allocation}",
-		RateLimitByFileRL(ToByteStreamOrNot(WithConnectionNotRespond(DownloadHandler))).
-			Methods(http.MethodGet, http.MethodOptions))
-=======
-	r.HandleFunc("/v1/file/upload/{allocation}", common.ToJSONOrNotResponse(WithConnectionNotRespond(UploadHandler)))
-	r.HandleFunc("/v1/file/download/{allocation}", ToByteStreamOrNot(WithConnectionNotRespond(DownloadHandler))).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONOrNotResponse(WithReadOnlyConnectionNotRespond(ListHandler))).Methods(http.MethodGet, http.MethodOptions)
->>>>>>> Add validator behaviour to don't respond to challenge verifications
+		RateLimitByFileRL(ToByteStreamOrNot(WithConnectionNotRespond(DownloadHandler)))).
+		Methods(http.MethodGet, http.MethodOptions)
 }
 
 func WithReadOnlyConnectionNotRespond(handler common.JSONResponderOrNotF) common.JSONResponderOrNotF {

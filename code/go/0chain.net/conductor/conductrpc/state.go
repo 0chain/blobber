@@ -41,6 +41,7 @@ type (
 		ID                 string `json:"id" yaml:"id" mapstructure:"id"`
 		FailValidChallenge bool   `json:"fail_valid_challenge" yaml:"fail_valid_challenge" mapstructure:"fail_valid_challenge"`
 		DenialOfService    bool   `json:"denial_of_service" yaml:"denial_of_service" mapstructure:"denial_of_service"`
+		PassAllChallenges  bool   `json:"pass_all_challenges" yaml:"pass_all_challenges" mapstructure:"pass_all_challenges"`
 	}
 )
 
