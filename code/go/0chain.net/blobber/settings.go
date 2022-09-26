@@ -35,7 +35,7 @@ func (c *cctCB) OnInfoAvailable(op int, status int, info string, errStr string) 
 	}
 
 	m = m["fields"].(map[string]interface{})
-	cct := m["max_challenge_completion_time"].(string)
+	cct := m["challenge_completion_time"].(string)
 
 	d, err := time.ParseDuration(cct)
 	if err != nil {
