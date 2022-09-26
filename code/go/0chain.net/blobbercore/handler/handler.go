@@ -39,49 +39,49 @@ func SetupHandlers(r *mux.Router) {
 	//object operations
 	r.HandleFunc("/v1/file/upload/{allocation}", common.FileRateLimit(common.ToJSONResponse(WithConnection(UploadHandler))))
 	r.HandleFunc("/v1/file/download/{allocation}", common.FileRateLimit(common.ToByteStream(WithConnection(DownloadHandler)))).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/file/rename/{allocation}", common.ToJSONResponse(WithConnection(RenameHandler))).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/v1/file/copy/{allocation}", common.ToJSONResponse(WithConnection(CopyHandler))).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/v1/dir/{allocation}", common.ToJSONResponse(WithConnection(CreateDirHandler))).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/v1/dir/{allocation}", common.ToJSONResponse(WithConnection(CreateDirHandler))).Methods(http.MethodDelete, http.MethodOptions)
+	r.HandleFunc("/v1/file/rename/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(RenameHandler)))).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/v1/file/copy/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CopyHandler)))).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/v1/dir/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CreateDirHandler)))).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/v1/dir/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CreateDirHandler)))).Methods(http.MethodDelete, http.MethodOptions)
 
-	r.HandleFunc("/v1/connection/commit/{allocation}", common.ToStatusCode(WithStatusConnection(CommitHandler)))
-	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.ToJSONResponse(WithConnection(CommitMetaTxnHandler)))
+	r.HandleFunc("/v1/connection/commit/{allocation}", common.UserRateLimit(common.ToStatusCode(WithStatusConnection(CommitHandler))))
+	r.HandleFunc("/v1/file/commitmetatxn/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
 
 	// collaborator
-	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(AddCollaboratorHandler))).Methods(http.MethodOptions, http.MethodPost)
-	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(GetCollaboratorHandler))).Methods(http.MethodOptions, http.MethodGet)
-	r.HandleFunc("/v1/file/collaborator/{allocation}", common.ToJSONResponse(WithConnection(RemoveCollaboratorHandler))).Methods(http.MethodOptions, http.MethodDelete)
+	r.HandleFunc("/v1/file/collaborator/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(AddCollaboratorHandler)))).Methods(http.MethodOptions, http.MethodPost)
+	r.HandleFunc("/v1/file/collaborator/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(GetCollaboratorHandler)))).Methods(http.MethodOptions, http.MethodGet)
+	r.HandleFunc("/v1/file/collaborator/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(RemoveCollaboratorHandler)))).Methods(http.MethodOptions, http.MethodDelete)
 
 	//object info related apis
-	r.HandleFunc("/allocation", common.ToJSONResponse(WithConnection(AllocationHandler)))
-	r.HandleFunc("/v1/file/meta/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler)))
-	r.HandleFunc("/v1/file/stats/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)))
-	r.HandleFunc("/v1/file/list/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ListHandler))).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/file/objectpath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler)))
-	r.HandleFunc("/v1/file/referencepath/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))
-	r.HandleFunc("/v1/file/objecttree/{allocation}", common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler))).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/file/refs/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(RefsHandler))).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/file/refs/recent/{allocation}", common.ToJSONResponse(WithReadOnlyConnection(RecentRefsRequestHandler))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/allocation", common.UserRateLimit(common.ToJSONResponse(WithConnection(AllocationHandler))))
+	r.HandleFunc("/v1/file/meta/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
+	r.HandleFunc("/v1/file/stats/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
+	r.HandleFunc("/v1/file/list/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/file/objectpath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler))))
+	r.HandleFunc("/v1/file/referencepath/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
+	r.HandleFunc("/v1/file/objecttree/{allocation}", common.UserRateLimit(common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler)))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/file/refs/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(RefsHandler)))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/file/refs/recent/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(RecentRefsRequestHandler)))).Methods(http.MethodGet, http.MethodOptions)
 	//admin related
-	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
-	r.HandleFunc("/_config", common.ToJSONResponse(GetConfig))
-	r.HandleFunc("/_stats", StatsHandler)
-	r.HandleFunc("/_statsJSON", common.ToJSONResponse(stats.StatsJSONHandler))
-	r.HandleFunc("/_cleanupdisk", common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))
-	r.HandleFunc("/getstats", common.ToJSONResponse(stats.GetStatsHandler))
+	r.HandleFunc("/_debug", common.UserRateLimit(common.ToJSONResponse(DumpGoRoutines)))
+	r.HandleFunc("/_config", common.UserRateLimit(common.ToJSONResponse(GetConfig)))
+	r.HandleFunc("/_stats", common.UserRateLimit(StatsHandler))
+	r.HandleFunc("/_statsJSON", common.UserRateLimit(common.ToJSONResponse(stats.StatsJSONHandler)))
+	r.HandleFunc("/_cleanupdisk", common.UserRateLimit(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
+	r.HandleFunc("/getstats", common.UserRateLimit(common.ToJSONResponse(stats.GetStatsHandler)))
 
 	//marketplace related
-	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(InsertShare))).Methods(http.MethodOptions, http.MethodPost)
-	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(RevokeShare))).Methods(http.MethodOptions, http.MethodDelete)
+	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(InsertShare)))).Methods(http.MethodOptions, http.MethodPost)
+	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.UserRateLimit(common.ToJSONResponse(WithConnection(RevokeShare)))).Methods(http.MethodOptions, http.MethodDelete)
 
 	// lightweight http handler without heavy postgres transaction to improve performance
 
-	r.HandleFunc("/v1/writemarker/lock/{allocation}", WithHandler(LockWriteMarker)).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/v1/writemarker/lock/{allocation}/{connection}", WithHandler(UnlockWriteMarker)).Methods(http.MethodDelete, http.MethodOptions)
+	r.HandleFunc("/v1/writemarker/lock/{allocation}", common.UserRateLimit(WithHandler(LockWriteMarker))).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/v1/writemarker/lock/{allocation}/{connection}", common.UserRateLimit(WithHandler(UnlockWriteMarker))).Methods(http.MethodDelete, http.MethodOptions)
 
-	r.HandleFunc("/v1/hashnode/root/{allocation}", WithHandler(LoadRootHashnode)).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/playlist/latest/{allocation}", WithHandler(LoadPlaylist)).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/playlist/file/{allocation}", WithHandler(LoadPlaylistFile)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/hashnode/root/{allocation}", common.UserRateLimit(WithHandler(LoadRootHashnode))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/playlist/latest/{allocation}", common.UserRateLimit(WithHandler(LoadPlaylist))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/playlist/file/{allocation}", common.UserRateLimit(WithHandler(LoadPlaylistFile))).Methods(http.MethodGet, http.MethodOptions)
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
