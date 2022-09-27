@@ -9,27 +9,28 @@ import (
 )
 
 type ChallengeTiming struct {
+	// ChallengeID is the challenge ID generated on blockchain.
 	ChallengeID string `gorm:"column:challenge_id;size:64;primaryKey" json:"id"`
 
-	// When generated on blockchain.
+	// CreatedAtChain is when generated on blockchain.
 	CreatedAtChain common.Timestamp `gorm:"created_at_chain" json:"created_at_chain"`
-	// When synchronized and created at blobber.
+	// CreatedAtBlobber is when synchronized and created at blobber.
 	CreatedAtBlobber common.Timestamp `gorm:"created_at_blobber" json:"created_at_blobber"`
-	// When all validation tickets are all received.
+	// CompleteValidation is when all validation tickets are all received.
 	CompleteValidation common.Timestamp `gorm:"complete_validation" json:"complete_validation"`
-	// When challenge response is first sent to blockchain.
+	// TxnSubmission is when challenge response is first sent to blockchain.
 	TxnSubmission common.Timestamp `gorm:"txn_submission" json:"txn_submission"`
-	// When challenge response is verified on blockchain.
-	TxnVerified common.Timestamp `gorm:"txn_verified" json:"txn_verification"`
-	// When challenge is cancelled by blobber due to expiration or bad challenge data (eg. invalid ref or not a file) which is impossible to validate.
+	// TxnVerification is when challenge response is verified on blockchain.
+	TxnVerification common.Timestamp `gorm:"txn_verification" json:"txn_verification"`
+	// Cancelled is when challenge is cancelled by blobber due to expiration or bad challenge data (eg. invalid ref or not a file) which is impossible to validate.
 	Cancelled common.Timestamp `gorm:"cancelled" json:"cancelled"`
-	// When challenge is marked as expired by blobber.
+	// Expiration is when challenge is marked as expired by blobber.
 	Expiration common.Timestamp `gorm:"expiration" json:"expiration"`
 
-	// When challenge is closed (eg. expired, cancelled, or completed/verified). When
+	// ClosedAt is when challenge is closed (eg. expired, cancelled, or completed/verified).
 	ClosedAt common.Timestamp `gorm:"column:closed_at;index:idx_closed_at,sort:desc;" json:"closed"`
 
-	// When row is last updated
+	// UpdatedAt is when row is last updated.
 	UpdatedAt common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" json:"updated"`
 }
 
