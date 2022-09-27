@@ -123,10 +123,10 @@ func UpdateChallengeTimingTxnVerification(challengeID string, txnVerification co
 	return err
 }
 
-func GetUpdatedChallengeTimings(from common.Timestamp, limit common.Pagination) ([]*ChallengeTiming, error) {
+func GetChallengeTimings(from common.Timestamp, limit common.Pagination) ([]*ChallengeTiming, error) {
 	query := datastore.GetStore().GetDB().Model(&ChallengeTiming{}).
-		Where("updated_at > ?", from).Limit(limit.Limit).Offset(limit.Offset).Order(clause.OrderByColumn{
-		Column: clause.Column{Name: "created_at"},
+		Where("closed_at > ?", from).Limit(limit.Limit).Offset(limit.Offset).Order(clause.OrderByColumn{
+		Column: clause.Column{Name: "closed_at"},
 		Desc:   limit.IsDescending,
 	})
 
