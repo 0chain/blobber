@@ -670,30 +670,3 @@ func createDirs(dir string) error {
 	}
 	return nil
 }
-
-// func getMerkleRootOfContent(r io.Reader, totalSize int64, chunkSize int) (string, error) {
-// 	numChunks := int(math.Ceil(float64(totalSize) / float64(chunkSize)))
-
-// 	fixedMT := util.NewFixedMerkleTree(chunkSize)
-
-// 	bytesBuf := bytes.NewBuffer(make([]byte, 0))
-// 	for chunkIndex := 0; chunkIndex < numChunks; chunkIndex++ {
-// 		written, err := io.CopyN(bytesBuf, r, int64(chunkSize))
-
-// 		if written > 0 {
-
-// 			errWrite := fixedMT.Write(bytesBuf.Bytes(), chunkIndex)
-// 			if errWrite != nil {
-// 				return "", common.NewError("hash_error", errWrite.Error())
-// 			}
-
-// 			bytesBuf.Reset()
-// 		}
-
-// 		if err != nil && err == io.EOF {
-// 			break
-// 		}
-// 	}
-
-// 	return fixedMT.GetMerkleRoot(), nil
-// }
