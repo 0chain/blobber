@@ -1,6 +1,6 @@
 #!/bin/sh
   
-for i in $(seq 1 20)
+for i in $(seq 1 6)
 do
   if [[ $i -lt 10 ]]; then
     i=0$i
