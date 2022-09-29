@@ -1,3 +1,4 @@
+
 version: "3"
 services:
   postgres:
@@ -8,7 +9,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
+      - ../config/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
     networks:
       default:
 
@@ -24,7 +27,7 @@ services:
     command: bash /blobber/bin/postgres-entrypoint.sh
     links:
       - postgres:postgres
-
+      
   validator:
     image: validator
     environment:
@@ -35,12 +38,12 @@ services:
       - postgres-post:postgres-post
     volumes:
       - ../config:/validator/config
-      - ./blobber${BLOBBER}/data:/validator/data
-      - ./blobber${BLOBBER}/log:/validator/log
+      - ./validator${BLOBBER}/data:/validator/data
+      - ./validator${BLOBBER}/log:/validator/log
       - ./keys_config:/validator/keysconfig
     ports:
       - "506${BLOBBER}:506${BLOBBER}"
-    command: ./bin/validator --port 506${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --log_dir /validator/log --hosturl https://<domain>/validator${BLOBBER}/
+    command: ./bin/validator --port 506${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0vnode${BLOBBER}_keys.txt --log_dir /validator/log --hosturl https://<domain>/validator${BLOBBER}/
     networks:
       default:
       testnet0:
@@ -63,8 +66,8 @@ services:
       - ./blobber${BLOBBER}/data/tmp:/tmp
     ports:
       - "505${BLOBBER}:505${BLOBBER}"
-      # - "703${BLOBBER}:703${BLOBBER}"
-    command: ./bin/blobber --port 505${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keysconfig/minio_config.txt --hosturl https://<domain>/blobber${BLOBBER}/
+      - "507${BLOBBER}:507${BLOBBER}"
+    command: ./bin/blobber --port 505${BLOBBER}  --grpc_port 507${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keysconfig/minio_config.txt --hosturl https://<domain>/blobber${BLOBBER}/
     networks:
       default:
       testnet0:
