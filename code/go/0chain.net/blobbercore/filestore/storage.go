@@ -177,11 +177,26 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 			if err != nil {
 				return false, common.NewError("content_hash_write_error", err.Error())
 			}
+
+			err = hasher.WriteToChallenge(data[:n], int(i))
+			if err != nil {
+				return false, common.NewError("challenge_hash_write_error", err.Error())
+			}
 		}
 
 		hash, err = hasher.GetContentHash()
 		if err != nil {
 			return false, common.NewError("get_content_hash_error", err.Error())
+		}
+
+		merkleRoot, err := hasher.GetChallengeHash()
+		if err != nil {
+			return false, common.NewError("get_challenge_hash_error", err.Error())
+		}
+
+		if merkleRoot != fileData.MerkleRoot {
+			return false, common.NewError("merkle_root_mismatch",
+				fmt.Sprintf("Expected %s got %s", fileData.MerkleRoot, merkleRoot))
 		}
 	}
 

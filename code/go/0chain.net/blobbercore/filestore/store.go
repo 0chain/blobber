@@ -10,9 +10,10 @@ import (
 const CHUNK_SIZE = 64 * 1024
 
 type FileInputData struct {
-	Name string
-	Path string
-	Hash string
+	Name       string
+	Path       string
+	Hash       string
+	MerkleRoot string
 
 	// ChunkSize chunk size
 	ChunkSize int64
