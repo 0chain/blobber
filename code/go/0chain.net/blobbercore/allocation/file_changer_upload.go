@@ -22,7 +22,11 @@ type UploadFileChanger struct {
 
 // ApplyChange update references, and create a new FileRef
 func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
+	allocationRoot string, ts common.Timestamp, inodeMeta *InodeMeta) (*reference.Ref, error) {
+
+	if inodeMeta == nil || inodeMeta.MetaData == nil {
+		return nil, nil // return error
+	}
 
 	totalRefs, err := reference.CountRefs(nf.AllocationID)
 	if err != nil {
@@ -65,11 +69,18 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 			newRef := reference.NewDirectoryRef()
 			newRef.AllocationID = dirRef.AllocationID
 			newRef.Path = "/" + strings.Join(fields[:i+1], "/")
+			fileID, ok := inodeMeta.MetaData[newRef.Path]
+			if !ok || fileID <= 0 {
+				_ = 2
+				// return error
+				// validate existing fileid??
+			}
 			newRef.ParentPath = "/" + strings.Join(fields[:i], "/")
 			newRef.Name = fields[i]
 			newRef.CreatedAt = ts
 			newRef.UpdatedAt = ts
 			newRef.HashToBeComputed = true
+
 			dirRef.AddChild(newRef)
 			dirRef = newRef
 		}
@@ -104,6 +115,9 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}
+
+	//TODO store latest inode
+	_ = inodeMeta.LatestInode
 
 	stats.NewFileCreated(ctx, newFile.ID)
 	return rootRef, nil

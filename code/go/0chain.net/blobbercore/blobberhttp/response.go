@@ -31,7 +31,8 @@ type CommitResult struct {
 
 type ReferencePathResult struct {
 	*reference.ReferencePath
-	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
+	LatestWM    *writemarker.WriteMarker `json:"latest_write_marker"`
+	LatestInode *allocation.Inode        `json:"latest_inode"`
 }
 
 type RefResult struct {

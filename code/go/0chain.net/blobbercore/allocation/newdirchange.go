@@ -21,7 +21,7 @@ type NewDir struct {
 }
 
 func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
+	allocationRoot string, ts common.Timestamp, inodeMeta *InodeMeta) (*reference.Ref, error) {
 
 	totalRefs, err := reference.CountRefs(nf.AllocationID)
 	if err != nil {
@@ -78,6 +78,12 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 			newRef.CreatedAt = ts
 			newRef.UpdatedAt = ts
 			newRef.HashToBeComputed = true
+			fileID, ok := inodeMeta.MetaData[newRef.Path]
+			if ok || fileID <= 0 {
+				//return error
+				_ = 2
+			}
+			newRef.FileID = fileID
 			dirRef.AddChild(newRef)
 			newDirs = append(newDirs, newRef)
 			dirRef = newRef
@@ -89,6 +95,9 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}
+
+	// TODO Update latest inode
+	_ = inodeMeta.LatestInode
 
 	for _, r := range newDirs {
 		if err := stats.NewDirCreated(ctx, r.ID); err != nil {

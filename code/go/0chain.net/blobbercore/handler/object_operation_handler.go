@@ -436,7 +436,29 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, err
 	}
 
-	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot, writeMarker.Timestamp)
+	inodeMeta := &allocation.InodeMeta{}
+	switch writeMarker.Operation {
+	case writemarker.Upload, writemarker.Copy, writemarker.NewDir:
+		// Should contain map of filepath and fileid
+		inodesMetaStr := r.FormValue("inodes_meta")
+		err = json.Unmarshal([]byte(inodesMetaStr), &inodeMeta)
+		if err != nil {
+			return nil, common.NewError("unmarshall_error",
+				fmt.Sprintf("Error while unmarshalling inodes meta data: %v", err))
+		}
+
+		if len(inodeMeta.MetaData) < 1 {
+			return nil, common.NewError("invalid_inode_meta", "inode meta data has no map of path to fileid")
+		}
+
+		err = inodeMeta.LatestInode.VerifySignature(clientKey)
+		if err != nil {
+			return nil, common.NewError("inode_signature_verification_failed", err.Error())
+		}
+	}
+
+	err = connectionObj.ApplyChanges(
+		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, inodeMeta)
 	if err != nil {
 		return nil, err
 	}

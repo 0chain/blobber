@@ -25,7 +25,7 @@ func (rf *RenameFileChange) DeleteTempFile() error {
 }
 
 func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
+	allocationRoot string, ts common.Timestamp, inodeMeta *InodeMeta) (*reference.Ref, error) {
 
 	if rf.Path == "/" {
 		return nil, common.NewError("invalid_operation", "cannot rename root path")

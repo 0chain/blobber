@@ -19,6 +19,7 @@ type CopyFileChange struct {
 	AllocationID string `json:"allocation_id"`
 	SrcPath      string `json:"path"`
 	DestPath     string `json:"dest_path"`
+	LatestInode  Inode  `json:"latest_inode"`
 }
 
 func (rf *CopyFileChange) DeleteTempFile() error {
@@ -26,7 +27,7 @@ func (rf *CopyFileChange) DeleteTempFile() error {
 }
 
 func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
+	allocationRoot string, ts common.Timestamp, inodeMeta *InodeMeta) (*reference.Ref, error) {
 
 	totalRefs, err := reference.CountRefs(rf.AllocationID)
 	if err != nil {
@@ -77,6 +78,12 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 			newRef := reference.NewDirectoryRef()
 			newRef.AllocationID = rf.AllocationID
 			newRef.Path = filepath.Join("/", strings.Join(fields[:i+1], "/"))
+			fileID, ok := inodeMeta.MetaData[newRef.Path]
+			if !ok || fileID <= 0 {
+				_ = 2
+				// return error
+				// validate existing fileid??
+			}
 			newRef.ParentPath = filepath.Join("/", strings.Join(fields[:i], "/"))
 			newRef.Name = fields[i]
 			newRef.HashToBeComputed = true
@@ -93,6 +100,9 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO store latest inode
+	_ = inodeMeta.LatestInode
 
 	for _, fileRef := range fileRefs {
 		stats.NewFileCreated(ctx, fileRef.ID)

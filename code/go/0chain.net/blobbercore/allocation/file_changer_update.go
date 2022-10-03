@@ -23,7 +23,7 @@ type UpdateFileChanger struct {
 }
 
 func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
+	allocationRoot string, ts common.Timestamp, inodeMeta *InodeMeta) (*reference.Ref, error) {
 
 	path := filepath.Clean(nf.Path)
 	fields, err := common.GetPathFields(path)
