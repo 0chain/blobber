@@ -82,16 +82,16 @@ rate_limiters:
 
   # Commit Request Per second. Commit endpoint is resource intensive.
   # Default is 0.5
-  commit_rps: 25
+  commit_rps: 1600
   # File Request Per Second. This rps is used to rate limit basically upload and download requests.
   # Its better to have 2 request per second. Default is 1
-  file_rps: 25
+  file_rps: 1600
   # Object Request Per Second. This rps is used to rate limit GetReferencePath, GetObjectTree, etc.
   # which is resource intensive. Default is 0.5
-  object_rps: 25
+  object_rps: 1600
   # General Request Per Second. This rps is used to rate limit endpoints like copy, rename, get file metadata,
   # get paginated refs, etc. Default is 5
-  general_rps: 25
+  general_rps: 1600
 
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
