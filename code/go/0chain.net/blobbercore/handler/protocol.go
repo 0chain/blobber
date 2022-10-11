@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -220,6 +221,8 @@ var ErrBlobberHasRemoved = errors.New("blobber has been removed")
 var ErrBlobberNotFound = errors.New("blobber is not found")
 
 func TransactionVerify(txn *transaction.Transaction) (t *transaction.Transaction, err error) {
+	msg := fmt.Sprintf("Verifying transaction: max_retries: %d", util.MAX_RETRIES)
+	logging.Logger.Info(msg)
 	for i := 0; i < util.MAX_RETRIES; i++ {
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 		if t, err = transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce()); err == nil {
