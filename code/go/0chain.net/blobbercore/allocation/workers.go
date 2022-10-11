@@ -257,6 +257,7 @@ func sendFinalizeAllocation(a *Allocation) {
 	var request finalizeRequest
 	request.AllocationID = a.ID
 
+	// TODO should this be verified?
 	err = tx.ExecuteSmartContract(
 		transaction.STORAGE_CONTRACT_ADDRESS,
 		transaction.FINALIZE_ALLOCATION,

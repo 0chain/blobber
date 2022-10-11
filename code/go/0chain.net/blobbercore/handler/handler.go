@@ -69,6 +69,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/_statsJSON", common.ToJSONResponse(stats.StatsJSONHandler))
 	r.HandleFunc("/_cleanupdisk", common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))
 	r.HandleFunc("/getstats", common.ToJSONResponse(stats.GetStatsHandler))
+	r.HandleFunc("/challengetimings", common.ToJSONResponse(GetChallengeTimings))
 
 	//marketplace related
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}", common.ToJSONResponse(WithConnection(InsertShare))).Methods(http.MethodOptions, http.MethodPost)
@@ -80,6 +81,8 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/writemarker/lock/{allocation}/{connection}", WithHandler(UnlockWriteMarker)).Methods(http.MethodDelete, http.MethodOptions)
 
 	r.HandleFunc("/v1/hashnode/root/{allocation}", WithHandler(LoadRootHashnode)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/playlist/latest/{allocation}", WithHandler(LoadPlaylist)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/playlist/file/{allocation}", WithHandler(LoadPlaylistFile)).Methods(http.MethodGet, http.MethodOptions)
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {

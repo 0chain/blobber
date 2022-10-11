@@ -49,6 +49,23 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 	return txn, nil
 }
 
+// VerifyTransactionWithNonce verifies a transaction with known nonce.
+func VerifyTransactionWithNonce(txnHash string, nonce int64) (*Transaction, error) {
+	txn, err := NewTransactionEntity()
+	if err != nil {
+		return nil, err
+	}
+
+	txn.Hash = txnHash
+	_ = txn.zcntxn.SetTransactionNonce(nonce)
+
+	err = txn.Verify()
+	if err != nil {
+		return nil, err
+	}
+	return txn, nil
+}
+
 // MakeSCRestAPICall execute api reqeust from sharders, and parse and return result
 func makeSCRestAPICall(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) ([]byte, error) {
 	var resMaxCounterBody []byte

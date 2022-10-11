@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	zLogger "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
@@ -58,7 +57,7 @@ func (rme *ReadMarkerEntity) RedeemReadMarker(ctx context.Context) (err error) {
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	var logHash = tx.Hash // keep transaction hash for error logs
-	tx, err = transaction.VerifyTransaction(tx.Hash, chain.GetServerChain())
+	tx, err = transaction.VerifyTransactionWithNonce(tx.Hash, tx.GetTransaction().GetTransactionNonce())
 	if err != nil {
 		zLogger.Logger.Error("Error verifying the read redeem transaction", zap.Error(err), zap.String("txn", logHash))
 		return common.NewErrorf("redeem_read_marker", "verifying transaction: %v", err)

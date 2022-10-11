@@ -67,7 +67,6 @@ min_confirmation: 50
 
 block_worker: http://192.168.1.100:9091
 
-challenge_completion_time: 3m
 
 handlers:
   rate_limit: 0 # 10 per second . it can't too small one if a large file is download with blocks

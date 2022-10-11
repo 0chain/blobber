@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"strconv"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
@@ -151,6 +152,14 @@ func saveNewChallenges(ctx context.Context, ce []*ChallengeEntity) int {
 				zap.Time("created", createdTime),
 				zap.Error(err))
 		}
+
+		if err := CreateChallengeTiming(c.ChallengeID, c.CreatedAt); err != nil {
+			logging.Logger.Error("[challengetiming]add: ",
+				zap.String("challenge_id", c.ChallengeID),
+				zap.Time("created", createdTime),
+				zap.Error(err))
+		}
+
 		txnCompleteTime := time.Since(txnStartTime)
 
 		logging.Logger.Info("[challenge]elapsed:add ",
@@ -223,6 +232,15 @@ func validateOnValidators(id string) {
 			zap.Error(err))
 		tx.Rollback()
 		return
+	}
+
+	completedValidation := time.Now()
+	if err := UpdateChallengeTimingCompleteValidation(c.ChallengeID, common.Timestamp(completedValidation.Unix())); err != nil {
+		logging.Logger.Error("[challengetiming]validation",
+			zap.Any("challenge_id", c.ChallengeID),
+			zap.Time("created", createdTime),
+			zap.Time("complete_validation", completedValidation),
+			zap.Error(err))
 	}
 
 	logging.Logger.Info("[challenge]validate: ",
@@ -333,7 +351,7 @@ func commitOnChain(c *ChallengeEntity, id string) {
 func loadTodoChallenges(doProcessed bool) {
 	db := datastore.GetStore().GetDB()
 	now := time.Now().Unix()
-	from := now - int64(config.Configuration.ChallengeCompletionTime.Seconds())
+	from := now - int64(config.StorageSCConfig.ChallengeCompletionTime.Seconds())
 
 	db = db.Model(&ChallengeEntity{}).
 		Where("created_at > ? AND status in (?)", from, Accepted)

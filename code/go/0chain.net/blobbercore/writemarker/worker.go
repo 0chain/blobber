@@ -66,6 +66,7 @@ func redeemWriteMarker(allocationObj *allocation.Allocation, wm *WriteMarkerEnti
 		if shouldRollback {
 			if rollbackErr := db.Rollback().Error; rollbackErr != nil {
 				logging.Logger.Error("Error rollback on redeeming the write marker.",
+					zap.Any("allocation", allocationObj.ID),
 					zap.Any("wm", wm.WM.AllocationID), zap.Error(rollbackErr))
 			}
 		}
@@ -74,6 +75,7 @@ func redeemWriteMarker(allocationObj *allocation.Allocation, wm *WriteMarkerEnti
 	err := wm.RedeemMarker(ctx)
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker.",
+			zap.Any("allocation", allocationObj.ID),
 			zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
 
 		shouldRollback = true
@@ -85,6 +87,7 @@ func redeemWriteMarker(allocationObj *allocation.Allocation, wm *WriteMarkerEnti
 		wm.WM.AllocationRoot, allocationObj.ID).Error
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
+			zap.Any("allocation", allocationObj.ID),
 			zap.Any("wm", wm.WM.AllocationRoot), zap.Any("error", err))
 		shouldRollback = true
 		return err
@@ -94,13 +97,15 @@ func redeemWriteMarker(allocationObj *allocation.Allocation, wm *WriteMarkerEnti
 	if err != nil {
 		logging.Logger.Error("Error committing the writemarker redeem",
 			zap.Any("allocation", allocationObj.ID),
-			zap.Error(err))
+			zap.Any("wm", wm.WM.AllocationRoot), zap.Error(err))
 		shouldRollback = true
 		return err
 	}
 
 	allocationObj.LatestRedeemedWM = wm.WM.AllocationRoot
-	logging.Logger.Info("Success Redeeming the write marker", zap.Any("wm", wm.WM.AllocationRoot), zap.Any("txn", wm.CloseTxnID))
+	logging.Logger.Info("Success Redeeming the write marker",
+		zap.Any("allocation", allocationObj.ID),
+		zap.Any("wm", wm.WM.AllocationRoot), zap.Any("txn", wm.CloseTxnID))
 
 	return nil
 }

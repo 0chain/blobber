@@ -134,8 +134,6 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.Geolocation.Latitude = viper.GetFloat64("geolocation.latitude")
 	config.Configuration.Geolocation.Longitude = viper.GetFloat64("geolocation.longitude")
 
-	config.Configuration.ChallengeCompletionTime = viper.GetDuration("challenge_completion_time")
-
 	fmt.Print("		[OK]\n")
 }
 
