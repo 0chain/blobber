@@ -32,12 +32,12 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gorm.io/datatypes v1.0.7
 	gorm.io/driver/postgres v1.3.9
-	gorm.io/gorm v1.23.8
+	gorm.io/gorm v1.24.0
 )
 
 require (
 	golang.org/x/sys v0.0.0-20220909162455-aba9fc2a8ff2
-	gorm.io/driver/sqlite v1.3.6
+	gorm.io/driver/sqlite v1.4.2
 )
 
 require (
