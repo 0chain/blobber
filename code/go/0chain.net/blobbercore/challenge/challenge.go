@@ -152,6 +152,14 @@ func saveNewChallenges(ctx context.Context, ce []*ChallengeEntity) int {
 				zap.Time("created", createdTime),
 				zap.Error(err))
 		}
+
+		if err := CreateChallengeTiming(c.ChallengeID, c.CreatedAt); err != nil {
+			logging.Logger.Error("[challengetiming]add: ",
+				zap.String("challenge_id", c.ChallengeID),
+				zap.Time("created", createdTime),
+				zap.Error(err))
+		}
+
 		txnCompleteTime := time.Since(txnStartTime)
 
 		logging.Logger.Info("[challenge]elapsed:add ",
@@ -224,6 +232,15 @@ func validateOnValidators(id string) {
 			zap.Error(err))
 		tx.Rollback()
 		return
+	}
+
+	completedValidation := time.Now()
+	if err := UpdateChallengeTimingCompleteValidation(c.ChallengeID, common.Timestamp(completedValidation.Unix())); err != nil {
+		logging.Logger.Error("[challengetiming]validation",
+			zap.Any("challenge_id", c.ChallengeID),
+			zap.Time("created", createdTime),
+			zap.Time("complete_validation", completedValidation),
+			zap.Error(err))
 	}
 
 	logging.Logger.Info("[challenge]validate: ",
