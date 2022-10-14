@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -23,10 +24,6 @@ type UploadFileChanger struct {
 // ApplyChange update references, and create a new FileRef
 func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, inodeMeta *InodeMeta) (*reference.Ref, error) {
-
-	if inodeMeta == nil || inodeMeta.MetaData == nil {
-		return nil, nil // return error
-	}
 
 	totalRefs, err := reference.CountRefs(nf.AllocationID)
 	if err != nil {
@@ -71,10 +68,10 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 			newRef.Path = "/" + strings.Join(fields[:i+1], "/")
 			fileID, ok := inodeMeta.MetaData[newRef.Path]
 			if !ok || fileID <= 0 {
-				_ = 2
-				// return error
-				// validate existing fileid??
+				return nil, common.NewError("invalid_parameter",
+					fmt.Sprintf("file path %s has no entry in inodes meta", newRef.Path))
 			}
+			newRef.FileID = fileID
 			newRef.ParentPath = "/" + strings.Join(fields[:i], "/")
 			newRef.Name = fields[i]
 			newRef.CreatedAt = ts

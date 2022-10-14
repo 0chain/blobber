@@ -40,6 +40,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 		name            string
 		context         metadata.MD
 		allocChange     *AllocationChange
+		inodesMeta      *InodeMeta
 		path            string
 		filename        string
 		allocRoot       string
@@ -257,7 +258,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := func() (*reference.Ref, error) {
-				resp, err := change.ApplyChange(ctx, tc.allocChange, tc.allocRoot, common.Now()-1)
+				resp, err := change.ApplyChange(ctx, tc.allocChange, tc.allocRoot, common.Now()-1, tc.inodesMeta)
 				if err != nil {
 					return nil, err
 				}

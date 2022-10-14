@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -79,9 +80,9 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 			newRef.UpdatedAt = ts
 			newRef.HashToBeComputed = true
 			fileID, ok := inodeMeta.MetaData[newRef.Path]
-			if ok || fileID <= 0 {
-				//return error
-				_ = 2
+			if !ok || fileID <= 0 {
+				return nil, common.NewError("invalid_parameter",
+					fmt.Sprintf("file path %s has no entry in inodes meta", newRef.Path))
 			}
 			newRef.FileID = fileID
 			dirRef.AddChild(newRef)
@@ -89,7 +90,6 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 			dirRef = newRef
 
 		}
-
 	}
 
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {

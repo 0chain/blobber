@@ -157,6 +157,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 		name            string
 		context         metadata.MD
 		allocChange     *AllocationChange
+		inodesMeta      *InodeMeta
 		path            string
 		newName         string
 		allocRoot       string
@@ -365,7 +366,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 
 		t.Run(tc.name, func(t *testing.T) {
 			change := &RenameFileChange{AllocationID: alloc.ID, Path: tc.path, NewName: tc.newName}
-			response, err := change.ApplyChange(ctx, tc.allocChange, tc.allocRoot, common.Now()-1)
+			response, err := change.ApplyChange(ctx, tc.allocChange, tc.allocRoot, common.Now()-1, tc.inodesMeta)
 
 			if tc.expectingError {
 				require.Error(t, err)

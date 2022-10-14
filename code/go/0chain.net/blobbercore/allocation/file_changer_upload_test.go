@@ -2,6 +2,8 @@ package allocation
 
 import (
 	"context"
+	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
@@ -41,6 +44,7 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 		name                string
 		context             metadata.MD
 		allocChange         *AllocationChange
+		inodesMeta          *InodeMeta
 		hash                string
 		allocationID        string
 		maxDirFilesPerAlloc int
@@ -96,10 +100,11 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 			db := datastore.GetStore().GetDB().Begin()
 			ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
 
+			fPath := "/new"
 			change := &UploadFileChanger{
 				BaseFileChanger: BaseFileChanger{
-					Filename:     "new",
-					Path:         "/",
+					Filename:     filepath.Base(fPath),
+					Path:         "/new",
 					ActualSize:   2310,
 					AllocationID: tc.allocationID,
 					Hash:         tc.hash,
@@ -108,8 +113,24 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 				},
 			}
 
+			inodesMeta := func() *InodeMeta {
+				fileID := int64(2)
+				hash := encryption.Hash(strconv.FormatInt(fileID, 10))
+				sign, _ := client.Sign(hash)
+				in := Inode{
+					AllocationID:   alloc.ID,
+					LatestFileID:   fileID,
+					OwnerSignature: sign,
+				}
+
+				inodesMeta := map[string]int64{
+					filepath.Dir(fPath): 1,
+					fPath:               2,
+				}
+				return &InodeMeta{MetaData: inodesMeta, LatestInode: in}
+			}()
 			err := func() error {
-				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1)
+				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1, inodesMeta)
 				if err != nil {
 					return err
 				}

@@ -295,11 +295,23 @@ type Inode struct {
 	LatestFileID int64 `gorm:"latest_file_id" json:"latest_file_id"`
 	// OwnerSignature is the signature of LatestFileID signed by the owner.
 	OwnerSignature string `gorm:"owner_signature" json:"owner_signature"`
+	// Public Key of a client
+	PublicKey string `gorm:"public_key"`
 }
 
-func (in Inode) VerifySignature(pk string) error {
+func (in *Inode) Save() error {
+	if in.AllocationID == "" || in.OwnerSignature == "" ||
+		in.LatestFileID <= 0 {
+		return errors.New("invalid inode parameters")
+	}
+	db := datastore.GetStore().GetDB()
+
+	return db.Save(in).Error
+}
+
+func (in Inode) VerifySignature() error {
 	hash := encryption.Hash(strconv.FormatInt(in.LatestFileID, 10))
-	isValid, err := encryption.Verify(pk, in.OwnerSignature, hash)
+	isValid, err := encryption.Verify(in.PublicKey, in.OwnerSignature, hash)
 
 	if err != nil {
 		return err
@@ -319,15 +331,4 @@ func GetInode(allocID string) (*Inode, error) {
 		return nil, err
 	}
 	return &in, nil
-}
-
-func SetInode(allocID, ownerSignature string, latestFileID int64) error {
-	db := datastore.GetStore().GetDB()
-	in := Inode{
-		AllocationID:   allocID,
-		LatestFileID:   latestFileID,
-		OwnerSignature: ownerSignature,
-	}
-
-	return db.Save(&in).Error
 }
