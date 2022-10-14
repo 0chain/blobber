@@ -451,10 +451,17 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			return nil, common.NewError("invalid_inode_meta", "inode meta data has no map of path to fileid")
 		}
 
-		err = inodeMeta.LatestInode.VerifySignature(clientKey)
+		if inodeMeta.LatestInode.LatestFileID <= 0 {
+			return nil, common.NewError("invalid_parameters",
+				"Latest file id cannot be less than or equal to 0")
+		}
+
+		inodeMeta.LatestInode.PublicKey = allocationObj.OwnerPublicKey
+		err = inodeMeta.LatestInode.VerifySignature()
 		if err != nil {
 			return nil, common.NewError("inode_signature_verification_failed", err.Error())
 		}
+
 	}
 
 	err = connectionObj.ApplyChanges(
@@ -500,6 +507,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		if !errors.Is(common.ErrFileWasDeleted, err) {
 			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 		}
+	}
+
+	err = inodeMeta.LatestInode.Save()
+	if err != nil {
+		return nil, common.NewError("inode_save_error", err.Error())
 	}
 
 	result.Changes = connectionObj.Changes
