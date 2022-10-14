@@ -10,13 +10,13 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/zboxutil"
 
 	"gorm.io/gorm"
 
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 )
 
@@ -35,7 +35,7 @@ func StartUpdateWorker(ctx context.Context, interval time.Duration) {
 // requesting SC through REST API. The worker required to fetch allocations
 // updates in DB.
 func UpdateWorker(ctx context.Context, interval time.Duration) {
-	Logger.Info("start update allocations worker")
+	logging.Logger.Info("start update allocations worker")
 
 	var tk = time.NewTicker(interval)
 	defer tk.Stop()
@@ -75,7 +75,7 @@ func waitOrQuit(ctx context.Context, d time.Duration) (quit bool) {
 func updateWork(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			Logger.Error("[recover] updateWork", zap.Any("err", r))
+			logging.Logger.Error("[recover] updateWork", zap.Any("err", r))
 		}
 	}()
 
@@ -92,7 +92,7 @@ func updateWork(ctx context.Context) {
 	for start := true; start || (offset < count); start = false {
 		allocs, count, err = findAllocations(ctx, offset)
 		if err != nil {
-			Logger.Error("finding allocations in DB", zap.Error(err))
+			logging.Logger.Error("finding allocations in DB", zap.Error(err))
 			if waitOrQuit(ctx, UPDATE_DB_INTERVAL) {
 				return
 			}
@@ -121,7 +121,7 @@ func findAllocations(ctx context.Context, offset int64) (allocs []*Allocation, c
 
 	err = tx.Model(&Allocation{}).Where(query).Count(&count).Error
 	if err != nil {
-		Logger.Error(err.Error())
+		logging.Logger.Error(err.Error())
 		return
 	}
 
@@ -148,14 +148,14 @@ func updateAllocation(ctx context.Context, a *Allocation) {
 
 	var sa, err = requestAllocation(a.ID)
 	if err != nil {
-		Logger.Error("requesting allocations from SC", zap.Error(err))
+		logging.Logger.Error("requesting allocations from SC", zap.Error(err))
 		return
 	}
 
 	// if new Tx, then we have to update the allocation
 	if sa.Tx != a.Tx || sa.OwnerID != a.OwnerID || sa.Finalized != a.Finalized {
 		if a, err = updateAllocationInDB(ctx, a, sa); err != nil {
-			Logger.Error("updating allocation in DB", zap.Error(err))
+			logging.Logger.Error("updating allocation in DB", zap.Error(err))
 			return
 		}
 	}
@@ -250,7 +250,7 @@ type finalizeRequest struct {
 func sendFinalizeAllocation(a *Allocation) {
 	var tx, err = transaction.NewTransactionEntity()
 	if err != nil {
-		Logger.Error("creating new transaction entity", zap.Error(err))
+		logging.Logger.Error("creating new transaction entity", zap.Error(err))
 		return
 	}
 
@@ -264,7 +264,7 @@ func sendFinalizeAllocation(a *Allocation) {
 		request,
 		0)
 	if err != nil {
-		Logger.Error("sending finalize allocation", zap.Error(err))
+		logging.Logger.Error("sending finalize allocation", zap.Error(err))
 		return
 	}
 }
@@ -272,7 +272,7 @@ func sendFinalizeAllocation(a *Allocation) {
 func cleanupAllocation(ctx context.Context, a *Allocation) {
 	var err error
 	if err = deleteInFakeConnection(ctx, a); err != nil {
-		Logger.Error("cleaning finalized allocation", zap.Error(err))
+		logging.Logger.Error("cleaning finalized allocation", zap.Error(err))
 	}
 
 	ctx = datastore.GetStore().CreateTransaction(ctx)
@@ -281,7 +281,7 @@ func cleanupAllocation(ctx context.Context, a *Allocation) {
 
 	a.CleanedUp = true
 	if err = tx.Model(a).Updates(a).Error; err != nil {
-		Logger.Error("updating allocation 'cleaned_up'", zap.Error(err))
+		logging.Logger.Error("updating allocation 'cleaned_up'", zap.Error(err))
 	}
 }
 

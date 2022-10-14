@@ -10,7 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"go.uber.org/zap"
@@ -96,7 +96,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 
 	isExist = (a.ID != "")
 
-	Logger.Info("VerifyAllocationTransaction",
+	logging.Logger.Info("VerifyAllocationTransaction",
 		zap.Bool("isExist", isExist),
 		zap.Any("allocation", a),
 		zap.Any("storageAllocation", sa),
@@ -159,7 +159,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 		return a, nil
 	}
 
-	Logger.Info("Saving the allocation to DB")
+	logging.Logger.Info("Saving the allocation to DB")
 
 	if isExist {
 		err = tx.Save(a).Error
@@ -187,7 +187,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 }
 
 func RequestReadPoolStat(clientID string) (*ReadPool, error) {
-	Logger.Info("request read pools")
+	logging.Logger.Info("request read pools")
 
 	params := map[string]string{
 		"client_id": clientID,
@@ -206,7 +206,7 @@ func RequestReadPoolStat(clientID string) (*ReadPool, error) {
 }
 
 func RequestWritePool(allocationID string) (wps *WritePool, err error) {
-	Logger.Info("request write pools")
+	logging.Logger.Info("request write pools")
 
 	var (
 		resp []byte
