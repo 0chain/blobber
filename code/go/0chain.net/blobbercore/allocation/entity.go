@@ -299,6 +299,10 @@ type Inode struct {
 	PublicKey string `gorm:"public_key"`
 }
 
+func (in Inode) TableName() string {
+	return "inode"
+}
+
 func (in *Inode) Save() error {
 	if in.AllocationID == "" || in.OwnerSignature == "" ||
 		in.LatestFileID <= 0 {
