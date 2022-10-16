@@ -67,10 +67,10 @@ func signHash(client *client.Client, hash string) (string, error) {
 
 func init() {
 	resetMockFileBlock()
-	common.ConfigRateLimits()
 	chain.SetServerChain(&chain.Chain{})
 	config.Configuration.SignatureScheme = "bls0chain"
 	logging.Logger = zap.NewNop()
+	ConfigRateLimits()
 
 	dir, err := os.Getwd()
 	if err != nil {
@@ -95,57 +95,38 @@ func setupHandlers() (*mux.Router, map[string]string) {
 
 	opPath := "/v1/file/objectpath/{allocation}"
 	opName := "Object_Path"
-	router.HandleFunc(opPath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithReadOnlyConnection(ObjectPathHandler),
-		),
-	),
-	).Name(opName)
+	router.HandleFunc(opPath, common.ToJSONResponse(
+		WithReadOnlyConnection(ObjectPathHandler))).Name(opName)
 
 	sPath := "/v1/file/stats/{allocation}"
 	sName := "Stats"
-	router.HandleFunc(sPath, common.UserRateLimit(
+	router.HandleFunc(sPath,
 		common.ToJSONResponse(
-			WithReadOnlyConnection(FileStatsHandler),
-		),
-	),
-	).Name(sName)
+			WithReadOnlyConnection(FileStatsHandler))).Name(sName)
 
 	collPath := "/v1/file/collaborator/{allocation}"
 	collName := "Collaborator"
-	router.HandleFunc(collPath, common.UserRateLimit(
+	router.HandleFunc(collPath,
 		common.ToJSONResponse(
-			WithReadOnlyConnection(GetCollaboratorHandler),
-		),
-	),
-	).Name(collName)
+			WithReadOnlyConnection(GetCollaboratorHandler))).Name(collName)
 
 	rPath := "/v1/file/rename/{allocation}"
 	rName := "Rename"
-	router.HandleFunc(rPath, common.UserRateLimit(
+	router.HandleFunc(rPath,
 		common.ToJSONResponse(
-			WithReadOnlyConnection(RenameHandler),
-		),
-	),
-	).Name(rName)
+			WithReadOnlyConnection(RenameHandler))).Name(rName)
 
 	cPath := "/v1/file/copy/{allocation}"
 	cName := "Copy"
-	router.HandleFunc(cPath, common.UserRateLimit(
+	router.HandleFunc(cPath,
 		common.ToJSONResponse(
-			WithReadOnlyConnection(CopyHandler),
-		),
-	),
-	).Name(cName)
+			WithReadOnlyConnection(CopyHandler))).Name(cName)
 
 	uPath := "/v1/file/upload/{allocation}"
 	uName := "Upload"
-	router.HandleFunc(uPath, common.UserRateLimit(
+	router.HandleFunc(uPath,
 		common.ToJSONResponse(
-			WithReadOnlyConnection(UploadHandler),
-		),
-	),
-	).Name(uName)
+			WithReadOnlyConnection(UploadHandler))).Name(uName)
 
 	return router,
 		map[string]string{

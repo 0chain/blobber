@@ -23,7 +23,7 @@ import (
 // updates it.
 // Mostly SaveLatestReadMarker will be called while DownloadFile is called. So it won't be blocking for client.
 // Only when blobber is not in sync with blockchain, SaveLatestReadMarker will be called.
-var ReadmarkerMapLock = common.GetLocker()
+var ReadmarkerMapLock = common.GetNewLocker()
 
 type ReadMarker struct {
 	ClientID        string           `gorm:"column:client_id;size:64;primaryKey" json:"client_id"`

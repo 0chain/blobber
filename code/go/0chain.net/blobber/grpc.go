@@ -7,8 +7,6 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/gorilla/mux"
@@ -16,7 +14,6 @@ import (
 )
 
 func startGRPCServer() {
-	common.ConfigRateLimits()
 	r := mux.NewRouter()
 	initHandlers(r)
 

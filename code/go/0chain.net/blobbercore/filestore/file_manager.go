@@ -28,7 +28,7 @@ type FileStore struct {
 	diskCapacity uint64
 }
 
-var contentHashMapLock = common.GetLocker()
+var contentHashMapLock = common.GetNewLocker()
 
 func getKey(allocID, contentHash string) string {
 	return encryption.Hash(allocID + contentHash)

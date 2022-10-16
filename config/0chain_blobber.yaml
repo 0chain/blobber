@@ -68,9 +68,30 @@ min_confirmation: 50
 block_worker: http://198.18.0.98:9091
 
 
-handlers:
-  rate_limit: 0 # 10 per second . it can't too small one if a large file is download with blocks
-  file_rate_limit: 100 # 100 files per second
+rate_limiters:
+  # Rate limiters will use this duration to clean unused token buckets.
+  # If it is 0 then token will expire in 10 years.
+  default_token_expire_duration: 5m
+  # If blobber is behind some proxy eg. nginx, cloudflare, etc.
+  proxy: true
+
+  # Rate limiter is applied with two parameters. One is ip-address and other is clientID.
+  # Rate limiter will track both parameters independently and will block request if both 
+  # ip-address or clientID has reached its limit
+  # Blobber may not provide any rps values and default will work fine.
+
+  # Commit Request Per second. Commit endpoint is resource intensive.
+  # Default is 0.5
+  commit_rps: 1600
+  # File Request Per Second. This rps is used to rate limit basically upload and download requests.
+  # Its better to have 2 request per second. Default is 1
+  file_rps: 1600
+  # Object Request Per Second. This rps is used to rate limit GetReferencePath, GetObjectTree, etc.
+  # which is resource intensive. Default is 0.5
+  object_rps: 1600
+  # General Request Per Second. This rps is used to rate limit endpoints like copy, rename, get file metadata,
+  # get paginated refs, etc. Default is 5
+  general_rps: 1600
 
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
@@ -167,3 +188,6 @@ integration_tests:
   # lock_interval used by nodes to request server to connect to blockchain
   # after start
   lock_interval: 1s
+admin:
+  username: "admin"
+  password: "password"

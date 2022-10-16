@@ -112,7 +112,6 @@ func setupMockForFileManagerInit(mock sqlmock.Sqlmock) {
 
 func init() {
 	resetMockFileBlock()
-	common.ConfigRateLimits()
 	chain.SetServerChain(&chain.Chain{})
 	config.Configuration.SignatureScheme = "bls0chain"
 	logging.Logger = zap.NewNop()
