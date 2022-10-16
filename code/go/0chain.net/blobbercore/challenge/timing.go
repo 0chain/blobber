@@ -2,6 +2,7 @@ package challenge
 
 import (
 	"fmt"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"gorm.io/gorm"
@@ -69,8 +70,7 @@ func UpdateChallengeTimingCancellation(challengeID string, cancellation common.T
 
 	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
 		values := map[string]interface{}{
-			"cancellation": cancellation,
-			"closed_at":    cancellation,
+			"closed_at": cancellation,
 		}
 
 		if reason == ErrExpiredCCT {
