@@ -35,19 +35,12 @@ func setupShareHandlers() (*mux.Router, map[string]string) {
 
 	sharePath := "/v1/marketplace/shareinfo/{allocation}"
 
-	router.HandleFunc(sharePath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithReadOnlyConnection(InsertShare),
-		),
-	),
-	).Name(insertShare).Methods(http.MethodPost)
+	router.HandleFunc(sharePath, common.ToJSONResponse(
+		WithReadOnlyConnection(InsertShare))).Name(insertShare).Methods(http.MethodPost)
 
-	router.HandleFunc(sharePath, common.UserRateLimit(
+	router.HandleFunc(sharePath,
 		common.ToJSONResponse(
-			WithReadOnlyConnection(RevokeShare),
-		),
-	),
-	).Name(revokeShare).Methods(http.MethodDelete)
+			WithReadOnlyConnection(RevokeShare))).Name(revokeShare).Methods(http.MethodDelete)
 
 	return router,
 		map[string]string{

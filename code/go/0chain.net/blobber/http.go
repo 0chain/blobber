@@ -25,7 +25,6 @@ func startHttpServer() {
 		mode = "test net"
 	}
 
-	common.ConfigRateLimits()
 	r := mux.NewRouter()
 	initHandlers(r)
 

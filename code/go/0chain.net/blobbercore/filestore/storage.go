@@ -270,6 +270,7 @@ func (fs *FileStore) DeleteFile(allocID, contentHash string) error {
 				allocID, contentHash))
 	}
 	l.Lock()
+	defer l.Unlock()
 
 	err = os.Remove(fileObjectPath)
 	if err != nil {

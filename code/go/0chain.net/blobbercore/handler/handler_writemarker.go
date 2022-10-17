@@ -2,9 +2,12 @@ package handler
 
 import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
-var WriteMarkerMutext = &writemarker.Mutex{}
+var WriteMarkerMutext = &writemarker.Mutex{
+	ML: common.GetNewLocker(),
+}
 
 // LockWriteMarker try to lock writemarker for specified allocation id, and return latest RefTree
 func LockWriteMarker(ctx *Context) (interface{}, error) {

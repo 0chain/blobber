@@ -17,17 +17,15 @@ var (
 
 // Mutex a mutual exclusion lock.
 type Mutex struct {
-	// key lock key in pool
-	key string
 	// usedby how objects it is used by
 	usedby int
 
-	sync.Mutex
+	mu *sync.Mutex
 }
 
 // Lock implements Locker.Lock
 func (m *Mutex) Lock() {
-	m.Mutex.Lock()
+	m.mu.Lock()
 }
 
 // Unlock implements Locker.Unlock, and mark mutex as unlock object
@@ -36,7 +34,7 @@ func (m *Mutex) Unlock() {
 	defer lockMutex.Unlock()
 
 	m.usedby--
-	m.Mutex.Unlock()
+	m.mu.Unlock()
 }
 
 // GetMutex get mutex by table and key
@@ -50,7 +48,10 @@ func GetMutex(tablename, key string) *Mutex {
 		return eLock
 	}
 
-	m := &Mutex{key: lockKey, usedby: 1}
+	m := &Mutex{
+		usedby: 1,
+		mu:     &sync.Mutex{},
+	}
 
 	lockPool[lockKey] = m
 

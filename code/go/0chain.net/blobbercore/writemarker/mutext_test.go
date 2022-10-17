@@ -7,6 +7,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	gomocket "github.com/selvatico/go-mocket"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +18,9 @@ func TestMutext_LockShouldWork(t *testing.T) {
 
 	config.Configuration.WriteMarkerLockTimeout = 30 * time.Second
 
-	m := &Mutex{}
+	m := &Mutex{
+		ML: common.GetNewLocker(),
+	}
 	now := time.Now()
 
 	tests := []struct {
@@ -156,7 +159,9 @@ func TestMutext_LockShouldNotWork(t *testing.T) {
 
 	config.Configuration.WriteMarkerLockTimeout = 30 * time.Second
 
-	m := &Mutex{}
+	m := &Mutex{
+		ML: common.GetNewLocker(),
+	}
 
 	tests := []struct {
 		name         string
