@@ -13,8 +13,12 @@ service_charge: 0.30
 
 block_worker: http://192.168.1.100:9091
 
-handlers:
-  rate_limit: 10 # 10 per second
+rate_limiters:
+  # Rate limiters will use this duration to clean unused token buckets.
+  # If it is 0 then token will expire in 10 years.
+  default_token_expire_duration: 5m
+  # If blobber is behind some proxy eg. nginx, cloudflare, etc.
+  proxy: true
 
 logging:
   level: "error"

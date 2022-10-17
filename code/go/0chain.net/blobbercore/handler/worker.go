@@ -31,12 +31,12 @@ func CleanupDiskFiles(ctx context.Context) error {
 	db.Find(&allocations)
 
 	for _, allocationObj := range allocations {
-		cleanupAllocationFiles(db, &allocationObj)
+		cleanupAllocationFiles(db, allocationObj)
 	}
 	return nil
 }
 
-func cleanupAllocationFiles(db *gorm.DB, allocationObj *allocation.Allocation) {
+func cleanupAllocationFiles(db *gorm.DB, allocationObj allocation.Allocation) {
 	mutex := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
 	mutex.Lock()
 	defer mutex.Unlock()

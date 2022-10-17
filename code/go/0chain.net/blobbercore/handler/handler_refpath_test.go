@@ -28,12 +28,8 @@ func setupReferencePathHandlers() (*mux.Router, map[string]string) {
 
 	rpPath := "/v1/file/referencepath/{allocation}"
 	rpName := "Reference_Path"
-	router.HandleFunc(rpPath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithReadOnlyConnection(ReferencePathHandler),
-		),
-	),
-	).Name(rpName)
+	router.HandleFunc(rpPath, common.ToJSONResponse(
+		WithReadOnlyConnection(ReferencePathHandler))).Name(rpName)
 
 	return router,
 		map[string]string{

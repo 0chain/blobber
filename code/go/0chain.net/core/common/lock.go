@@ -70,7 +70,7 @@ func (m *MapLocker) GetLock(key string) (l *Lock, isNew bool) {
 	return
 }
 
-func GetLocker() *MapLocker {
+func GetNewLocker() *MapLocker {
 	return &MapLocker{
 		mu: new(sync.Mutex),
 		m:  new(sync.Map),
