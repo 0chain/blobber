@@ -50,6 +50,12 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 
 // VerifyAllocationTransaction try to get allocation from postgres.if it doesn't exists, get it from sharders, and insert it into postgres.
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string, readonly bool) (a *Allocation, err error) {
+	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
+	if err != nil {
+		return nil, common.NewError("invalid_allocation",
+			"Invalid Allocation id. Allocation not found in blockchain. "+err.Error())
+	}
+
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
 	a = new(Allocation)
@@ -74,11 +80,6 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 		return          // found in DB
 	}
 
-	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
-	if err != nil {
-		return nil, common.NewError("invalid_allocation",
-			"Invalid Allocation id. Allocation not found in blockchain. "+err.Error())
-	}
 	var sa transaction.StorageAllocation
 	err = json.Unmarshal([]byte(t.TransactionOutput), &sa)
 	if err != nil {
