@@ -3,7 +3,6 @@ package transaction
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"hash/fnv"
 	"math"
 
@@ -71,7 +70,7 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 	var resMaxCounterBody []byte
 
 	var hashMaxCounter int
-	hashCounters := make(map[string]int)
+	// hashCounters := make(map[string]int)
 
 	network := zcncore.GetNetwork()
 	numSharders := len(network.Sharders)
@@ -143,13 +142,17 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			return errors.Throw(ErrBadRequest, errorMsg)
 		}
 
-		hashString := hex.EncodeToString(hash.Sum(nil))
-		hashCounters[hashString]++
+		resMaxCounterBody = resBody
+		hashMaxCounter++
 
-		if hashCounters[hashString] > hashMaxCounter {
-			hashMaxCounter = hashCounters[hashString]
-			resMaxCounterBody = resBody
-		}
+		// TODO: Instead of the hash, we should JSON Equivance
+		// hashString := hex.EncodeToString(hash.Sum(nil))
+		// hashCounters[hashString]++
+
+		// if hashCounters[hashString] > hashMaxCounter {
+		// 	hashMaxCounter = hashCounters[hashString]
+		// 	resMaxCounterBody = resBody
+		// }
 
 		return nil
 	})
