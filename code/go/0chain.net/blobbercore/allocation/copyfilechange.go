@@ -104,8 +104,10 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 		return nil, err
 	}
 
-	// TODO store latest inode
-	_ = inodeMeta.LatestInode
+	err = inodeMeta.LatestInode.Save()
+	if err != nil {
+		return nil, common.NewError("inode_save_error", err.Error())
+	}
 
 	for _, fileRef := range fileRefs {
 		stats.NewFileCreated(ctx, fileRef.ID)

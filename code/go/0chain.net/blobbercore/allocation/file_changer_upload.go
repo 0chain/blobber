@@ -113,8 +113,10 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 		return nil, err
 	}
 
-	//TODO store latest inode
-	_ = inodeMeta.LatestInode
+	err = inodeMeta.LatestInode.Save()
+	if err != nil {
+		return nil, common.NewError("inode_save_error", err.Error())
+	}
 
 	stats.NewFileCreated(ctx, newFile.ID)
 	return rootRef, nil
