@@ -370,17 +370,19 @@ func (fsh *StorageHandler) RemoveCollaborator(ctx context.Context, r *http.Reque
 
 func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (interface{}, error) {
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
+	clientPublicKey, _ := ctx.Value(constants.ContextKeyClientKey).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, clientPublicKey)
+
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 	allocationID := allocationObj.ID
-
-	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	if clientID == "" || allocationObj.OwnerID != clientID {
