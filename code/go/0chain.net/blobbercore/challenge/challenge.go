@@ -72,6 +72,12 @@ func syncOpenChallenges(ctx context.Context) {
 			break
 		}
 		for _, c := range challenges.Challenges {
+			toProcessChallenge <- TodoChallenge{
+				Id:        c.ChallengeID,
+				CreatedAt: common.ToTime(c.CreatedAt),
+				Status:    c.Status,
+			}
+
 			challengeIDs = append(challengeIDs, c.ChallengeID)
 			if c.CreatedAt > common.Timestamp(lastChallengeTimestamp) {
 				lastChallengeTimestamp = int(c.CreatedAt)
