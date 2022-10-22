@@ -76,11 +76,11 @@ type ValidationNode struct {
 }
 
 type ChallengeEntity struct {
-	ChallengeID             string                `gorm:"column:challenge_id;size:64;primaryKey" json:"id"`
-	PrevChallengeID         string                `gorm:"column:prev_challenge_id;size:64" json:"prev_id"`
-	RandomNumber            int64                 `gorm:"column:seed;not null;default:0" json:"seed"`
-	AllocationID            string                `gorm:"column:allocation_id;size64;not null" json:"allocation_id"`
-	AllocationRoot          string                `gorm:"column:allocation_root;size:64" json:"allocation_root"`
+	ChallengeID             string                `gorm:"column:challenge_id;size:64;primaryKey" json:"id"` // the ID the challenge
+	PrevChallengeID         string                `gorm:"column:prev_challenge_id;size:64" json:"prev_id"` // challenges are chained. The ID associated with the previous challenge
+	RandomNumber            int64                 `gorm:"column:seed;not null;default:0" json:"seed"` // TODO: challenge random number used for to choose block number
+	AllocationID            string                `gorm:"column:allocation_id;size64;not null" json:"allocation_id"` // Allocation ID associated with the challenge
+	AllocationRoot          string                `gorm:"column:allocation_root;size:64" json:"allocation_root"` // TODO: what is allocation root
 	RespondedAllocationRoot string                `gorm:"column:responded_allocation_root;size:64" json:"responded_allocation_root"`
 	Status                  ChallengeStatus       `gorm:"column:status;type:integer;not null;default:0;index:idx_status" json:"status"`
 	Result                  ChallengeResult       `gorm:"column:result;type:integer;not null;default:0" json:"result"`
@@ -90,9 +90,9 @@ type ChallengeEntity struct {
 	ValidatorsString        datatypes.JSON        `gorm:"column:validators" json:"-"`
 	ValidationTicketsString datatypes.JSON        `gorm:"column:validation_tickets" json:"-"`
 	LastCommitTxnList       datatypes.JSON        `gorm:"column:last_commit_txn_ids" json:"-"`
-	RefID                   int64                 `gorm:"column:ref_id" json:"-"`
-	Validators              []ValidationNode      `gorm:"-" json:"validators"`
-	LastCommitTxnIDs        []string              `gorm:"-" json:"last_commit_txn_ids"`
+	RefID                   int64                 `gorm:"column:ref_id" json:"-"` // objectPath.RefID
+	Validators              []ValidationNode      `gorm:"-" json:"validators"` // validators that are involved in the current allocation
+	LastCommitTxnIDs        []string              `gorm:"-" json:"last_commit_txn_ids"` // 
 	ValidationTickets       []*ValidationTicket   `gorm:"-" json:"validation_tickets"`
 	ObjectPathString        datatypes.JSON        `gorm:"column:object_path" json:"-"`
 	ObjectPath              *reference.ObjectPath `gorm:"-" json:"object_path"`

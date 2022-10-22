@@ -46,18 +46,6 @@ func startWorkers(ctx context.Context) {
 	for i := 0; i < numWorkers; i++ {
 		go challengeProcessor(ctx)
 	}
-	// to be run 1 time on init
-	// loadTodoChallenges(true)
-
-	// // populate all accepted/processed challenges to channel
-	// for {
-	// 	select {
-	// 	case <-ctx.Done():
-	// 		return
-	// 	case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
-	// 		loadTodoChallenges(false)
-	// 	}
-	// }
 }
 
 func challengeProcessor(ctx context.Context) {

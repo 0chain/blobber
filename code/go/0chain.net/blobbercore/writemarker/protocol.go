@@ -70,6 +70,7 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 	return nil
 }
 
+// RedeemMarker redeems a given write marker
 func (wme *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 	if len(wme.CloseTxnID) > 0 {
 		t, err := transaction.VerifyTransaction(wme.CloseTxnID, chain.GetServerChain())

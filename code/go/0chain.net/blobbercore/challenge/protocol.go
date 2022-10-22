@@ -119,8 +119,9 @@ func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error)
 
 // LoadValidationTickets load validation tickets
 func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
-	if len(cr.Validators) == 0 {
 
+	// cancel the challenge if there are no validators assigned to the challenge
+	if len(cr.Validators) == 0 {
 		cr.CancelChallenge(ctx, ErrNoValidator)
 		return ErrNoValidator
 	}
@@ -131,6 +132,8 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		return err
 	}
 
+	// we use a lock to access the write marker. This same write marker is used
+	// by both challenge and commit
 	// Lock allocation changes from happening in handler.CommitWrite function
 	// This lock should be unlocked as soon as possible. We should not defer
 	// unlocking it as it will be locked for longer time and handler.CommitWrite
@@ -344,6 +347,9 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	return cr.Save(ctx)
 }
 
+// CommitChallenge checks if a challenge is still valid (not expired).
+// takes all the LastCommitTxnIDs and verifies them which usually takes a few ns
+// 
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
 	start := time.Now()
 	verifyIterated := 0
@@ -354,6 +360,7 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
 			logging.Logger.Info("[challenge]commit: Verifying the transaction : " + lastTxn)
+			// sequentially verifying these transactions takes time
 			t, err := transaction.VerifyTransaction(lastTxn, chain.GetServerChain())
 			if err == nil {
 				cr.Status = Committed
@@ -428,6 +435,7 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 	}
 	fileChallengedTime := time.Since(start) - verifyTxnTime - submitTime - handleVerify - challengeSaveTime
 	logging.Logger.Info("[challenge]submit: Time taken to submit challenge: ",
+		// time_taken is usually around 3s
 		zap.String("time_taken", time.Since(start).String()),
 		zap.String("challenge_id", cr.ChallengeID),
 		zap.Int("last_txns_verified", verifyIterated),
