@@ -44,6 +44,7 @@ type Allocation struct {
 	Expiration     common.Timestamp `gorm:"column:expiration_date;not null"`
 	// AllocationRoot allcation_root of last write_marker
 	AllocationRoot   string        `gorm:"column:allocation_root;size:64;not null;default:''"`
+	FileMetaRoot     string        `gorm:"column:file_meta_root;size:64;not null;default:''"`
 	BlobberSize      int64         `gorm:"column:blobber_size;not null;default:0"`
 	BlobberSizeUsed  int64         `gorm:"column:blobber_size_used;not null;default:0"`
 	LatestRedeemedWM string        `gorm:"column:latest_redeemed_write_marker;size:64"`

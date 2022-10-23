@@ -7,7 +7,6 @@ import (
 	"math"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -35,6 +34,7 @@ type Ref struct {
 	LookupHash          string `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash_alloc,priority:2" dirlist:"lookup_hash" filelist:"lookup_hash"`
 	Name                string `gorm:"column:name;size:100;not null" dirlist:"name" filelist:"name"`
 	Path                string `gorm:"column:path;size:1000;not null;index:idx_path_alloc,priority:2;index:path_idx" dirlist:"path" filelist:"path"`
+	FileMetaHash        string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
 	Hash                string `gorm:"column:hash;size:64;not null" dirlist:"hash" filelist:"hash"`
 	NumBlocks           int64  `gorm:"column:num_of_blocks;not null;default:0" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
 	PathHash            string `gorm:"column:path_hash;size:64;not null" dirlist:"path_hash" filelist:"path_hash"`
@@ -334,27 +334,32 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*
 	return refs[0], nil
 }
 
+func (r *Ref) GetFileMetaHashData() string {
+	return fmt.Sprintf(
+		"%s:%d:%d:%d:%s",
+		r.Path, r.Size, r.FileID,
+		r.ActualFileSize, r.ActualFileHash)
+}
+
 func (fr *Ref) GetFileHashData() string {
-	hashArray := make([]string, 0, 11)
-	hashArray = append(hashArray,
+	return fmt.Sprintf(
+		"%s:%s:%s:%s:%d:%s:%s:%d:%s:%d:%d",
 		fr.AllocationID,
 		fr.Type, // don't need to add it as well
 		fr.Name, // don't see any utility as fr.Path below has name in it
 		fr.Path,
-		strconv.FormatInt(fr.Size, 10),
+		fr.Size,
 		fr.ContentHash,
 		fr.MerkleRoot,
-		strconv.FormatInt(fr.ActualFileSize, 10),
+		fr.ActualFileSize,
 		fr.ActualFileHash,
-		strconv.FormatInt(fr.ChunkSize, 10),
-		strconv.FormatInt(fr.FileID, 10),
+		fr.ChunkSize,
+		fr.FileID,
 	)
-
-	return strings.Join(hashArray, ":")
 }
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
-
+	fr.FileMetaHash = encryption.Hash(fr.GetFileMetaHashData())
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
 	fr.PathLevel = len(strings.Split(strings.TrimRight(fr.Path, "/"), "/"))
@@ -376,11 +381,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 
 	l := len(r.Children)
 
-	// if l == 0 && !r.childrenLoaded {
-	// 	h = r.Hash
-	// 	return
-	// }
-
 	defer func() {
 		if err == nil && saveToDB {
 			err = r.SaveDirRef(ctx)
@@ -389,6 +389,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 	}()
 
 	childHashes := make([]string, l)
+	childFileMetaHashes := make([]string, l)
 	childPathHashes := make([]string, l)
 	var refNumBlocks, size int64
 
@@ -400,12 +401,14 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 			}
 		}
 
+		childFileMetaHashes[i] = childRef.FileMetaHash
 		childHashes[i] = childRef.Hash
 		childPathHashes[i] = childRef.PathHash
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
 	}
 
+	r.FileMetaHash = encryption.Hash(strings.Join(childFileMetaHashes, ":"))
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.NumBlocks = refNumBlocks
