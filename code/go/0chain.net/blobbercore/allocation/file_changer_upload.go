@@ -108,6 +108,13 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 		HashToBeComputed:    true,
 	}
 
+	fileID, ok := inodeMeta.MetaData[newFile.Path]
+	if !ok || fileID <= 0 {
+		return nil, common.NewError("invalid_parameter",
+			fmt.Sprintf("file path %s has no entry in inodes meta", newFile.Path))
+	}
+	newFile.FileID = fileID
+
 	dirRef.AddChild(newFile)
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
