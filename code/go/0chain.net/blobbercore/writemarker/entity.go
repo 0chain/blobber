@@ -28,7 +28,6 @@ type WriteMarker struct {
 	AllocationRoot         string           `gorm:"column:allocation_root;size:64;primaryKey" json:"allocation_root"`
 	PreviousAllocationRoot string           `gorm:"column:prev_allocation_root;size:64" json:"prev_allocation_root"`
 	FileMetaRoot           string           `gorm:"column:file_meta_root;size:64" json:"file_meta_root"`
-	PreviousFileMetaRoot   string           `gorm:"column:prev_file_meta_root;size:64" json:"prev_file_meta_root"`
 	AllocationID           string           `gorm:"column:allocation_id;size:64;index:idx_seq,unique,priority:1" json:"allocation_id"`
 	Size                   int64            `gorm:"column:size" json:"size"`
 	BlobberID              string           `gorm:"column:blobber_id;size:64" json:"blobber_id"`
@@ -40,11 +39,11 @@ type WriteMarker struct {
 }
 
 func (wm *WriteMarker) GetHashData() string {
-	hashData := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s:%d:%d",
+	hashData := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%d:%d:%d:%d",
 		wm.AllocationRoot, wm.PreviousAllocationRoot,
-		wm.FileMetaRoot, wm.PreviousFileMetaRoot,
-		wm.AllocationID, wm.BlobberID, wm.ClientID,
-		wm.Size, wm.Timestamp)
+		wm.FileMetaRoot, wm.AllocationID, wm.BlobberID,
+		wm.ClientID, wm.Size, wm.Timestamp,
+		wm.FileID, wm.Operation)
 	return hashData
 }
 
