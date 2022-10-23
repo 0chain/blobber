@@ -145,7 +145,7 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		resMaxCounterBody = resBody
 		hashMaxCounter++
 
-		// TODO: Instead of the hash, we should JSON Equivance
+		// TODO: Instead of the hash, we should check JSON Equivance
 		// hashString := hex.EncodeToString(hash.Sum(nil))
 		// hashCounters[hashString]++
 
