@@ -9,7 +9,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/gosdk/constants"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
 	mocket "github.com/selvatico/go-mocket"
@@ -63,23 +63,23 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 				mocket.Catcher.Reset()
 			},
 		},
-		{
-			name:                "Upload file changer fails when max dirs & files reached",
-			allocChange:         &AllocationChange{},
-			hash:                "new_file_hash",
-			allocationID:        alloc.ID,
-			maxDirFilesPerAlloc: 5,
-			expectedMessage:     "max_alloc_dir_files_reached: maximum files and directories already reached",
-			expectingError:      true,
-			setupDbMock: func() {
-				mocket.Catcher.Reset()
+		// {
+		// 	name:                "Upload file changer fails when max dirs & files reached",
+		// 	allocChange:         &AllocationChange{},
+		// 	hash:                "new_file_hash",
+		// 	allocationID:        alloc.ID,
+		// 	maxDirFilesPerAlloc: 5,
+		// 	expectedMessage:     "max_alloc_dir_files_reached: maximum files and directories already reached",
+		// 	expectingError:      true,
+		// 	setupDbMock: func() {
+		// 		mocket.Catcher.Reset()
 
-				query := `SELECT count(*) FROM "reference_objects" WHERE allocation_id = $1`
-				mocket.Catcher.NewMock().WithQuery(query).WithReply([]map[string]interface{}{
-					{"count": 5},
-				})
-			},
-		},
+		// 		query := `SELECT count(*) FROM "reference_objects" WHERE allocation_id = $1`
+		// 		mocket.Catcher.NewMock().WithQuery(query).WithReply([]map[string]interface{}{
+		// 			{"count": 5},
+		// 		})
+		// 	},
+		// },
 	}
 
 	for _, tt := range testCases {
@@ -116,7 +116,8 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 			inodesMeta := func() *InodeMeta {
 				fileID := int64(2)
 				hash := encryption.Hash(strconv.FormatInt(fileID, 10))
-				sign, _ := client.Sign(hash)
+				sign, err := sch.Sign(hash)
+				require.NoError(t, err)
 				in := Inode{
 					AllocationID:   alloc.ID,
 					LatestFileID:   fileID,

@@ -62,7 +62,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 			inodesMeta: func() *InodeMeta {
 				fileID := int64(2)
 				hash := encryption.Hash(strconv.FormatInt(fileID, 10))
-				sign, _ := client.Sign(hash)
+				sign, _ := sch.Sign(hash)
 				in := Inode{
 					AllocationID:   alloc.ID,
 					LatestFileID:   fileID,
@@ -152,6 +152,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 						},
 					},
 				)
+
 			},
 		},
 		{
@@ -163,7 +164,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 			inodesMeta: func() *InodeMeta {
 				fileID := int64(3)
 				hash := encryption.Hash(strconv.FormatInt(fileID, 10))
-				sign, _ := client.Sign(hash)
+				sign, _ := sch.Sign(hash)
 				in := Inode{
 					AllocationID:   alloc.ID,
 					LatestFileID:   fileID,
