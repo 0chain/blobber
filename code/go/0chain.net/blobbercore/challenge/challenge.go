@@ -45,7 +45,7 @@ func syncOpenChallenges(ctx context.Context) {
 	start := time.Now()
 
 	var allOpenChallenges []*ChallengeEntity
-	var todoChallenges []*TodoChallenge
+	// var todoChallenges []*TodoChallenge
 
 	var downloadElapsed, jsonElapsed time.Duration
 
@@ -71,12 +71,17 @@ func syncOpenChallenges(ctx context.Context) {
 			break
 		}
 		for _, c := range challenges.Challenges {
-			todoChallenges = append(todoChallenges, &TodoChallenge{
+			// todoChallenges = append(todoChallenges, &TodoChallenge{
+			// 	Id:        c.ChallengeID,
+			// 	CreatedAt: common.ToTime(c.CreatedAt),
+			// 	Status:    Accepted,
+			// })
+
+			toProcessChallenge <- TodoChallenge{
 				Id:        c.ChallengeID,
 				CreatedAt: common.ToTime(c.CreatedAt),
 				Status:    Accepted,
-			})
-
+			}
 			challengeIDs = append(challengeIDs, c.ChallengeID)
 			if c.CreatedAt > common.Timestamp(lastChallengeTimestamp) {
 				lastChallengeTimestamp = int(c.CreatedAt)
@@ -107,9 +112,9 @@ func syncOpenChallenges(ctx context.Context) {
 
 	// mark the status as Accepted and send it for processing
 	// these challanges will be picked up by challengeProcessor worker
-	for _, todoChallenge := range todoChallenges {
-		toProcessChallenge <- *todoChallenge
-	}
+	// for _, todoChallenge := range todoChallenges {
+	// 	toProcessChallenge <- *todoChallenge
+	// }
 
 	logging.Logger.Info("[challenge]elapsed:pull",
 		zap.Int("count", len(allOpenChallenges)),
