@@ -84,9 +84,9 @@ func syncOpenChallenges(ctx context.Context) {
 			}
 			challengeEntityChan <- c
 		}
-		logging.Logger.Info("challenges_from_chain",
-			zap.Int("challenges", len(challenges.Challenges)),
-			zap.Strings("challenge_ids", challengeIDs))
+		// logging.Logger.Info("challenges_from_chain",
+		// 	zap.Int("challenges", len(challenges.Challenges)),
+		// 	zap.Strings("challenge_ids", challengeIDs))
 
 		jsonElapsed += time.Since(jsonStart)
 		if len(challenges.Challenges) == 0 {
