@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -77,7 +78,6 @@ type ValidationNode struct {
 
 type ChallengeEntity struct {
 	ChallengeID             string                `gorm:"column:challenge_id;size:64;primaryKey" json:"id"`
-	PrevChallengeID         string                `gorm:"column:prev_challenge_id;size:64" json:"prev_id"`
 	RandomNumber            int64                 `gorm:"column:seed;not null;default:0" json:"seed"`
 	AllocationID            string                `gorm:"column:allocation_id;size64;not null" json:"allocation_id"`
 	AllocationRoot          string                `gorm:"column:allocation_root;size:64" json:"allocation_root"`
@@ -145,7 +145,7 @@ func (cr *ChallengeEntity) Save(ctx context.Context) error {
 	return cr.SaveWith(db)
 }
 
-func (cr *ChallengeEntity) SaveWith(db *gorm.DB) error {
+func (cr *ChallengeEntity) MarshallFields() error {
 	err := marshalField(cr.Validators, &cr.ValidatorsString)
 	if err != nil {
 		return err
@@ -162,8 +162,14 @@ func (cr *ChallengeEntity) SaveWith(db *gorm.DB) error {
 	if err != nil {
 		return err
 	}
+	return err
+}
 
-	err = db.Save(cr).Error
+func (cr *ChallengeEntity) SaveWith(db *gorm.DB) error {
+	if err := cr.MarshallFields(); err != nil {
+		return err
+	}
+	err := db.Save(cr).Error
 	return err
 }
 

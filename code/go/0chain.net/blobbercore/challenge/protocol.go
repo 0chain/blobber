@@ -95,6 +95,7 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 	return t, nil
 }
 
+// TODO: does CancelChallenge return error if the challenge doesn't exist??
 func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error) {
 	cancellation := time.Now()
 
@@ -117,7 +118,8 @@ func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error)
 	}
 }
 
-// LoadValidationTickets load validation tickets
+// LoadValidationTickets load validation tickets and updates the challenge
+// status as Processed
 func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	if len(cr.Validators) == 0 {
 
