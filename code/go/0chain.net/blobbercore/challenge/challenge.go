@@ -176,6 +176,8 @@ func validateOnValidators(c *ChallengeEntity) {
 		zap.Any("challenge_id", c.ChallengeID),
 		zap.Time("created", createdTime))
 
+	// 2mins delay is too much
+	// "2022-10-25T13:03:42.684Z\tINFO\tchallenge/challenge.go:179\t[challenge]elapsed:validate \t{\"challenge_id\": \"3f8be35370471e1e3551e6d8e64f82554078fbb8c426c2d9c6bdcb439913bf1b\", \"created\": \"2022-10-25T12:56:57.000Z\", \"start\": \"2022-10-25T12:59:07.998Z\", \"delay\": \"2m10.998355267s\", \"time_taken\": \"4m34.685931162s\"}\n"
 	logging.Logger.Info("[challenge]elapsed:validate ",
 		zap.String("challenge_id", c.ChallengeID),
 		zap.Time("created", createdTime),

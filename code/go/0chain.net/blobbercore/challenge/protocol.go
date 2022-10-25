@@ -132,13 +132,14 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.CancelChallenge(ctx, ErrNoValidator)
 		return err
 	}
-
+	logging.Logger.Info("[challenge]validate: trying to acquire lock: ", zap.Any("challenge_id", cr.ChallengeID))
 	// Lock allocation changes from happening in handler.CommitWrite function
 	// This lock should be unlocked as soon as possible. We should not defer
 	// unlocking it as it will be locked for longer time and handler.CommitWrite
 	// will fail.
 	allocMu := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
 	allocMu.Lock()
+	logging.Logger.Info("[challenge]validate: lock acquired: ", zap.Any("challenge_id", cr.ChallengeID))
 
 	wms, err := writemarker.GetWriteMarkersInRange(ctx, cr.AllocationID, cr.AllocationRoot, allocationObj.AllocationRoot)
 	if err != nil {
@@ -150,6 +151,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		return common.NewError("write_marker_not_found", "Could find the writemarker for the given allocation root on challenge")
 	}
 
+	logging.Logger.Info("[challenge]validate: got GetWriteMarkersInRange: ", zap.Any("challenge_id", cr.ChallengeID))
 	rootRef, err := reference.GetReference(ctx, cr.AllocationID, "/")
 	if err != nil {
 		allocMu.Unlock()
