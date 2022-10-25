@@ -26,7 +26,7 @@ type StorageNode struct {
 	PublicKey string `json:"-"`
 }
 
-//ValidatorProtocolImpl - implementation of the storage protocol
+// ValidatorProtocolImpl - implementation of the storage protocol
 type ValidatorProtocolImpl struct {
 	ServerChain *chain.Chain
 }
@@ -36,38 +36,9 @@ func GetProtocolImpl() *ValidatorProtocolImpl {
 		ServerChain: chain.GetServerChain()}
 }
 
-// func (sp *ValidatorProtocolImpl) AddChallenge(ctx context.Context) (string, error) {
-// 	txn := transaction.NewTransactionEntity()
-
-// 	ri64, err := securerandom.Int64()
-// 	if err != nil {
-// 		return "", common.NewError("random_num_gen_failure", "Failed to generate a random number"+err.Error())
-// 	}
-// 	sn := make(map[string]int64)
-// 	sn["random_number"] = ri64
-
-// 	scData := &transaction.SmartContractTxnData{}
-// 	scData.Name = sct.ADD_CHALLENGE_SC_NAME
-// 	scData.InputArgs = sn
-
-// 	txn.ToClientID = sct.STORAGE_CONTRACT_ADDRESS
-// 	txn.Value = 0
-// 	txn.TransactionType = transaction.TxnTypeSmartContract
-// 	txnBytes, err := json.Marshal(scData)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	txn.TransactionData = string(txnBytes)
-
-// 	err = txn.ComputeHashAndSign()
-// 	if err != nil {
-// 		Logger.Info("Signing Failed during adding challenge", zap.String("err:", err.Error()))
-// 		return "", err
-// 	}
-// 	transaction.SendTransaction(txn, sp.ServerChain)
-// 	return txn.Hash, nil
-// }
-
+// VerifyAllocationTransaction verifies the allocation transaction.
+// Here allocation ID is the transaction id. The transaction output is
+// allocation Object
 func (sp *ValidatorProtocolImpl) VerifyAllocationTransaction(ctx context.Context, allocationID string) (*Allocation, error) {
 	t, err := transaction.VerifyTransaction(allocationID, sp.ServerChain)
 	if err != nil {
@@ -81,6 +52,7 @@ func (sp *ValidatorProtocolImpl) VerifyAllocationTransaction(ctx context.Context
 	return &allocationObj, nil
 }
 
+// VerifyChallengeTransaction
 func (sp *ValidatorProtocolImpl) VerifyChallengeTransaction(ctx context.Context, challengeRequest *ChallengeRequest) (*Challenge, error) {
 	blobberID := ctx.Value(constants.ContextKeyClient).(string)
 	if blobberID == "" {

@@ -18,6 +18,7 @@ type ObjectPath struct {
 }
 
 // TODO needs to be refactored, current implementation can probably be heavily simplified
+// GetObjectPath takes allocation ID and block number
 func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*ObjectPath, error) {
 	rootRef, err := GetRefWithSortedChildren(ctx, allocationID, "/")
 	if err != nil {

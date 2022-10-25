@@ -126,7 +126,9 @@ func validateOnValidators(c *ChallengeEntity) {
 	createdTime := common.ToTime(c.CreatedAt)
 	logging.Logger.Info("[challenge]validate: ",
 		zap.String("challenge_id", c.ChallengeID),
-		zap.Time("created", createdTime))
+		zap.Time("created", createdTime),
+		zap.String("delay", startTime.Sub(createdTime).String()),
+	)
 
 	err := c.UnmarshalFields()
 	if err != nil {
@@ -273,5 +275,4 @@ func commitOnChain(c *ChallengeEntity) {
 		zap.String("commit_on_db", elapsedCommitOnDb.String()),
 		zap.String("time_taken", time.Since(startTime).String()),
 	)
-
 }

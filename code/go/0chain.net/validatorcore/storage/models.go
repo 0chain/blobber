@@ -276,6 +276,11 @@ type ChallengeRequest struct {
 	ChunkSize    int64                            `json:"chunk_size,omitempty"`
 }
 
+// VerifyChallenge verify a given challenge
+// verifies the write marker
+// verifies all the write markers in the challenge and validates if the write markers chain is valid
+// calculate content hash for the data block
+// verify the merkle path for the data block
 func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationObj *Allocation) error {
 	logging.Logger.Info("Verifying object path", zap.Any("challenge_id", challengeObj.ID), zap.Any("seed", challengeObj.RandomNumber))
 	err := cr.ObjPath.Verify(challengeObj.AllocationID, challengeObj.RandomNumber)

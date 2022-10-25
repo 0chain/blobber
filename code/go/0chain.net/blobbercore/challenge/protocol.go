@@ -95,7 +95,7 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 	return t, nil
 }
 
-// TODO: does CancelChallenge return error if the challenge doesn't exist??
+// CancelChallenge return error if the challenge ID does not exist
 func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error) {
 	cancellation := time.Now()
 
@@ -121,6 +121,8 @@ func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error)
 // LoadValidationTickets load validation tickets and updates the challenge
 // status as Processed
 func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
+	startTime := time.Now()
+
 	if len(cr.Validators) == 0 {
 
 		cr.CancelChallenge(ctx, ErrNoValidator)
@@ -132,15 +134,23 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.CancelChallenge(ctx, ErrNoValidator)
 		return err
 	}
-	logging.Logger.Info("[challenge]validate: trying to acquire lock: ", zap.Any("challenge_id", cr.ChallengeID))
+	logging.Logger.Info("[challenge]validate: trying to acquire lock: ",
+		zap.Any("challenge_id", cr.ChallengeID),
+		zap.String("time_taken", time.Since(startTime).String()))
+
+	lockstartTime := time.Now()
 	// Lock allocation changes from happening in handler.CommitWrite function
 	// This lock should be unlocked as soon as possible. We should not defer
 	// unlocking it as it will be locked for longer time and handler.CommitWrite
 	// will fail.
 	allocMu := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
 	allocMu.Lock()
-	logging.Logger.Info("[challenge]validate: lock acquired: ", zap.Any("challenge_id", cr.ChallengeID))
+	inlock := time.Now()
+	logging.Logger.Info("[challenge]validate: lock acquired: ",
+		zap.Any("challenge_id", cr.ChallengeID),
+		zap.String("time_taken", time.Since(lockstartTime).String()))
 
+	// -----------------------------
 	wms, err := writemarker.GetWriteMarkersInRange(ctx, cr.AllocationID, cr.AllocationRoot, allocationObj.AllocationRoot)
 	if err != nil {
 		allocMu.Unlock()
@@ -151,7 +161,10 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		return common.NewError("write_marker_not_found", "Could find the writemarker for the given allocation root on challenge")
 	}
 
-	logging.Logger.Info("[challenge]validate: got GetWriteMarkersInRange: ", zap.Any("challenge_id", cr.ChallengeID))
+	logging.Logger.Info("[challenge]validate: got GetWriteMarkersInRange: ",
+		zap.Any("challenge_id", cr.ChallengeID),
+		zap.String("time_taken", time.Since(inlock).String()))
+
 	rootRef, err := reference.GetReference(ctx, cr.AllocationID, "/")
 	if err != nil {
 		allocMu.Unlock()
@@ -159,6 +172,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		return err
 	}
 
+	// choose a random block number
 	blockNum := int64(0)
 	if rootRef.NumBlocks > 0 {
 		r := rand.New(rand.NewSource(cr.RandomNumber))
@@ -234,6 +248,10 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 
 	allocMu.Unlock()
+	// -----------------------------
+	logging.Logger.Info("[challenge]validate: lock release: ",
+		zap.Any("challenge_id", cr.ChallengeID),
+		zap.String("time_spent", time.Since(lockstartTime).String()))
 
 	postDataBytes, err := json.Marshal(postData)
 	if err != nil {
@@ -258,6 +276,9 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		accessMu.Unlock()
 	}
 
+	// validating with validators
+	validatorStart := time.Now()
+
 	swg := sizedwaitgroup.New(10)
 	for i, validator := range cr.Validators {
 		if cr.ValidationTickets[i] != nil {
@@ -267,6 +288,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			}
 		}
 
+		// its taking 40secs to receive some response from validator
 		url := validator.URL + VALIDATOR_URL
 
 		swg.Add()
@@ -311,6 +333,9 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 
 	swg.Wait()
+	logging.Logger.Info("[challenge]validate: calls to validator complete: ",
+		zap.Any("challenge_id", cr.ChallengeID),
+		zap.String("time_spent", time.Since(validatorStart).String()))
 
 	numSuccess := 0
 	numFailure := 0
@@ -344,6 +369,10 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.CancelChallenge(ctx, ErrNoConsensusChallenge)
 		return ErrNoConsensusChallenge
 	}
+
+	logging.Logger.Info("[challenge]validate: LoadValidationTickets completed: ",
+		zap.Any("challenge_id", cr.ChallengeID),
+		zap.String("time_taken", time.Since(startTime).String()))
 
 	return cr.Save(ctx)
 }
