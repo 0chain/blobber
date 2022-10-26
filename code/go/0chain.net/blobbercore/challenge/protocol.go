@@ -164,12 +164,17 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		zap.Any("challenge_id", cr.ChallengeID),
 		zap.String("time_taken", time.Since(inlock).String()))
 
+	rootRefTime := time.Now()
 	rootRef, err := reference.GetReference(ctx, cr.AllocationID, "/")
 	if err != nil {
 		// allocMu.Unlock()
 		cr.CancelChallenge(ctx, err)
 		return err
 	}
+
+	logging.Logger.Info("[challenge]validate: got GetWriteMarkersInRange: ",
+		zap.Any("challenge_id", cr.ChallengeID),
+		zap.String("time_taken", time.Since(rootRefTime).String()))
 
 	// choose a random block number
 	blockNum := int64(0)
@@ -180,6 +185,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.BlockNum = blockNum
 	}
 
+	getObjectPathTime := time.Now()
 	logging.Logger.Info("[challenge]rand: ", zap.Any("rootRef.NumBlocks", rootRef.NumBlocks), zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ChallengeID), zap.Any("random_seed", cr.RandomNumber))
 	objectPath, err := reference.GetObjectPath(ctx, cr.AllocationID, blockNum)
 	if err != nil {
@@ -187,6 +193,10 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.CancelChallenge(ctx, err)
 		return err
 	}
+
+	logging.Logger.Info("[challenge]validate: got GetWriteMarkersInRange: ",
+		zap.Any("challenge_id", cr.ChallengeID),
+		zap.String("time_taken", time.Since(getObjectPathTime).String()))
 
 	cr.RefID = objectPath.RefID
 	cr.RespondedAllocationRoot = allocationObj.AllocationRoot
@@ -232,9 +242,14 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			maxNumBlocks = int(math.Ceil(float64(objectPath.Size) / float64(merkleChunkSize)))
 		}
 
+		getMerkleTime := time.Now()
 		r := rand.New(rand.NewSource(cr.RandomNumber))
 		blockoffset := r.Intn(maxNumBlocks)
 		blockData, mt, err := filestore.GetFileStore().GetBlocksMerkleTreeForChallenge(cr.AllocationID, inputData, blockoffset)
+
+		logging.Logger.Info("[challenge]validate: got GetWriteMarkersInRange: ",
+			zap.Any("challenge_id", cr.ChallengeID),
+			zap.String("time_taken", time.Since(getMerkleTime).String()))
 
 		if err != nil {
 			// allocMu.Unlock()
