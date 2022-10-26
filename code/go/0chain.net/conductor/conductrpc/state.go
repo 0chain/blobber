@@ -8,6 +8,43 @@ import (
 // state (long polling)
 //
 
+type (
+	// BlobberList
+	BlobberList struct {
+		ReturnError       bool   `json:"return_error" yaml:"return_error" mapstructure:"return_error"`
+		SendWrongData     bool   `json:"send_wrong_data" yaml:"send_wrong_data" mapstructure:"send_wrong_data"`
+		SendWrongMetadata bool   `json:"send_wrong_metadata" yaml:"send_wrong_metadata" mapstructure:"send_wrong_metadata"`
+		NotRespond        bool   `json:"not_respond" yaml:"not_respond" mapstructure:"not_respond"`
+		Adversarial       string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
+	}
+	// BlobberDownload
+	BlobberDownload struct {
+		ReturnError bool   `json:"return_error" yaml:"return_error" mapstructure:"return_error"`
+		NotRespond  bool   `json:"not_respond" yaml:"not_respond" mapstructure:"not_respond"`
+		Adversarial string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
+	}
+	// BlobberUpload
+	BlobberUpload struct {
+		ReturnError bool   `json:"return_error" yaml:"return_error" mapstructure:"return_error"`
+		NotRespond  bool   `json:"not_respond" yaml:"not_respond" mapstructure:"not_respond"`
+		Adversarial string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
+	}
+	// BlobberDelete
+	BlobberDelete struct {
+		ReturnError bool   `json:"return_error" yaml:"return_error" mapstructure:"return_error"`
+		NotRespond  bool   `json:"not_respond" yaml:"not_respond" mapstructure:"not_respond"`
+		Adversarial string `json:"adversarial" yaml:"adversarial" mapstructure:"adversarial"`
+	}
+
+	// AdversarialValidator
+	AdversarialValidator struct {
+		ID                 string `json:"id" yaml:"id" mapstructure:"id"`
+		FailValidChallenge bool   `json:"fail_valid_challenge" yaml:"fail_valid_challenge" mapstructure:"fail_valid_challenge"`
+		DenialOfService    bool   `json:"denial_of_service" yaml:"denial_of_service" mapstructure:"denial_of_service"`
+		PassAllChallenges  bool   `json:"pass_all_challenges" yaml:"pass_all_challenges" mapstructure:"pass_all_challenges"`
+	}
+)
+
 // State is current node state.
 type State struct {
 	// Nodes maps NodeID -> NodeName.
@@ -46,9 +83,14 @@ type State struct {
 	Publish    *config.Bad
 
 	// Blobbers related states
-	StorageTree    *config.Bad // blobber sends bad files/tree responses
-	ValidatorProof *config.Bad // blobber sends invalid proof to validators
-	Challenges     *config.Bad // blobber ignores challenges
+	StorageTree          *config.Bad // blobber sends bad files/tree responses
+	ValidatorProof       *config.Bad // blobber sends invalid proof to validators
+	Challenges           *config.Bad // blobber ignores challenges
+	BlobberList          BlobberList
+	BlobberDownload      BlobberDownload
+	BlobberUpload        BlobberUpload
+	BlobberDelete        BlobberDelete
+	AdversarialValidator AdversarialValidator
 }
 
 // Name returns NodeName by given NodeID.
