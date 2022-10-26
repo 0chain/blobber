@@ -625,61 +625,6 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	resCh <- &refPathResult
 }
 
-func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (*blobberhttp.ObjectPathResult, error) {
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-	allocationID := allocationObj.ID
-
-	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if clientID == "" || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-	path := r.FormValue("path")
-	if path == "" {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
-	}
-
-	blockNumStr := r.FormValue("block_num")
-	if blockNumStr == "" {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
-	}
-
-	blockNum, err := strconv.ParseInt(blockNumStr, 10, 64)
-	if err != nil || blockNum < 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid block number")
-	}
-
-	objectPath, err := reference.GetObjectPath(ctx, allocationID, blockNum)
-	if err != nil {
-		return nil, err
-	}
-
-	var latestWM *writemarker.WriteMarkerEntity
-	if allocationObj.AllocationRoot == "" {
-		latestWM = nil
-	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
-		if err != nil {
-			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
-		}
-	}
-	var objPathResult blobberhttp.ObjectPathResult
-	objPathResult.ObjectPath = objectPath
-	if latestWM != nil {
-		objPathResult.LatestWM = &latestWM.WM
-	}
-	return &objPathResult, nil
-}
-
 func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResult, error) {
 
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
