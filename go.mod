@@ -14,7 +14,6 @@ require (
 	github.com/herumi/bls-go-binary v1.28.2
 	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/koding/cache v0.0.0-20161222233015-e8a81b0b3f20
-	github.com/minio/minio-go v6.0.14+incompatible
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/selvatico/go-mocket v1.0.7

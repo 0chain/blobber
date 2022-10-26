@@ -148,34 +148,6 @@ storage:
   alloc_dir_level: [2, 1]
   file_dir_level: [2, 2, 1]
 
-minio:
-  # Enable or disable minio backup service
-  start: false
-  # The frequency at which the worker should look for files, Ex: 3600 means it will run every 3600 seconds
-  worker_frequency: 3600 # In Seconds
-  # Use SSL for connection or not
-  use_ssl: false
-
-  storage_service_url: "play.min.io"
-  access_id: "Q3AM3UQ867SPQQA43P2F"
-  secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
-  bucket_name: "mytestbucket"
-  region: "us-east-1"
-
-cold_storage:
-  # Minimum file size to be considered for moving to cloud
-  min_file_size: 1048576 #in bytes
-  # Minimum time for which file is not updated or not used
-  file_time_limit_in_hours: 720 #in hours
-  # Number of files to be queried and processed at once
-  job_query_limit: 100
-  # Capacity filled in bytes after which the cloud backup should start work
-  start_capacity_size: 536870912 # 500MB
-  # Delete local copy once the file is moved to cloud
-  delete_local_copy: true
-  # Delete cloud copy if the file is deleted from the blobber by user/other process
-  delete_cloud_copy: true
-
 disk_update:
   # defaults to true. If false, blobber has to manually update blobber's capacity upon increase/decrease
   # If blobber has to limit its capacity to 5% of its capacity then it should turn automaci_update to false.

@@ -14,7 +14,6 @@ type FileInputData struct {
 	Path       string
 	Hash       string
 	MerkleRoot string
-	OnCloud    bool
 
 	// ChunkSize chunk size
 	ChunkSize int64
@@ -49,14 +48,7 @@ type FileStorer interface {
 	DeleteFile(allocID string, contentHash string) error
 	// GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.
 	GetFileBlock(allocID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
-
 	GetBlocksMerkleTreeForChallenge(allocID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error)
-
-	// fPath --> local path of file that is being uploaded
-	MinioUpload(contentHash, fPath string) error
-	MinioDelete(contentHash string) error
-	// fPath --> local path to download file to
-	MinioDownload(contentHash, fPath string) error
 	GetTotalTempFileSizes() (s uint64)
 	GetTempFilesSizeOfAllocation(allocID string) uint64
 	GetTotalCommittedFileSize() uint64
