@@ -171,9 +171,6 @@ func SetupHandlers(r *mux.Router) {
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 
-	r.HandleFunc("/v1/file/objectpath/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler))))
-
 	r.HandleFunc("/v1/file/referencepath/{allocation}",
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
 
@@ -357,17 +354,6 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetReferencePath(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
-}
-
-func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.GetObjectPath(ctx, r)
 	if err != nil {
 		return nil, err
 	}
