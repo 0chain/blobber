@@ -18,7 +18,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
@@ -246,11 +245,11 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		getMerkleTime := time.Now()
 		r := rand.New(rand.NewSource(cr.RandomNumber))
 		blockoffset := r.Intn(maxNumBlocks)
-		allocMu := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
-		allocMu.Lock()
+		// allocMu := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
+		// allocMu.Lock()
 		// calculate content hash for the data block
 		blockData, mt, err := filestore.GetFileStore().GetBlocksMerkleTreeForChallenge(cr.ChallengeID, cr.AllocationID, inputData, blockoffset)
-		allocMu.Unlock()
+		// allocMu.Unlock()
 		logging.Logger.Info("[challenge]validate: got GetWriteMarkersInRange: ",
 			zap.Any("challenge_id", cr.ChallengeID),
 			zap.String("time_taken", time.Since(getMerkleTime).String()))
