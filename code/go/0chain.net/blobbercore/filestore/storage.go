@@ -398,7 +398,7 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(cid string, allocID string,
 				return nil, nil, common.NewError("hash_error", errWrite.Error())
 			}
 
-			logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge  fixedMT.Write", zap.String("time_taken", time.Since(timing).String()), zap.Int("times", times))
+			logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge  fixedMT.Write", zap.String("challenge_id", cid), zap.String("time_taken", time.Since(timing).String()), zap.Int("times", times))
 
 			offset := 0
 
@@ -424,7 +424,7 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(cid string, allocID string,
 			break
 		}
 		times++
-		logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge In loop", zap.String("time_taken", time.Since(timing).String()), zap.Int("times", times))
+		logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge In loop", zap.String("time_taken", time.Since(timing).String()), zap.String("challenge_id", cid), zap.Int("times", times))
 	}
 
 	logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge beforeFor", zap.String("challenge_id", cid), zap.String("time_taken", time.Since(beforeFor).String()), zap.Int("times", times))
