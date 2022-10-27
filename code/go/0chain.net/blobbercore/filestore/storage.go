@@ -381,11 +381,13 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(cid string, allocID string,
 		merkleChunkSize = 1
 	}
 
+	// challenge_id 6m17.553163587s --> without locks
+	// with locks --> 25secs
 	beforeFor := time.Now()
 	times := 0
 	bytesBuf := bytes.NewBuffer(make([]byte, 0))
 	for chunkIndex := 0; chunkIndex < numChunks; chunkIndex++ {
-		// timing := time.Now()
+		timing := time.Now()
 		written, err := io.CopyN(bytesBuf, file, fileData.ChunkSize)
 
 		if written > 0 {
@@ -395,6 +397,8 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(cid string, allocID string,
 			if errWrite != nil {
 				return nil, nil, common.NewError("hash_error", errWrite.Error())
 			}
+
+			logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge  fixedMT.Write", zap.String("time_taken", time.Since(timing).String()), zap.Int("times", times))
 
 			offset := 0
 
@@ -420,7 +424,7 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(cid string, allocID string,
 			break
 		}
 		times++
-		// logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge In loop", zap.String("time_taken", time.Since(timing).String()), zap.Int("times", times))
+		logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge In loop", zap.String("time_taken", time.Since(timing).String()), zap.Int("times", times))
 	}
 
 	logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge beforeFor", zap.String("challenge_id", cid), zap.String("time_taken", time.Since(beforeFor).String()), zap.Int("times", times))
