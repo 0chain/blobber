@@ -8,7 +8,6 @@ import (
 var (
 	deploymentMode int
 	keysFile       string
-	minioFile      string
 	mountPoint     string
 	metadataDB     string
 	logDir         string
@@ -25,7 +24,6 @@ var (
 func init() {
 	flag.IntVar(&deploymentMode, "deployment_mode", 2, "deployment mode: 0=dev,1=test, 2=mainnet")
 	flag.StringVar(&keysFile, "keys_file", "", "keys_file")
-	flag.StringVar(&minioFile, "minio_file", "", "minio_file")
 	flag.StringVar(&mountPoint, "files_dir", "", "Mounted partition where all files will be stored")
 	flag.StringVar(&metadataDB, "db_dir", "", "db_dir")
 	flag.StringVar(&logDir, "log_dir", "", "log_dir")

@@ -73,45 +73,6 @@ func (b *blobberGRPCService) GetFileStats(ctx context.Context, req *blobbergrpc.
 	return convert.GetFileStatsResponseCreator(resp), nil
 }
 
-func (b *blobberGRPCService) ListEntities(ctx context.Context, req *blobbergrpc.ListEntitiesRequest) (*blobbergrpc.ListEntitiesResponse, error) {
-	r, err := http.NewRequest("", "", http.NoBody)
-	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":       {req.Path},
-		"path_hash":  {req.PathHash},
-		"auth_token": {req.AuthToken},
-	}
-
-	resp, err := ListHandler(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return convert.ListEntitesResponseCreator(resp), nil
-}
-
-func (b *blobberGRPCService) GetObjectPath(ctx context.Context, req *blobbergrpc.GetObjectPathRequest) (*blobbergrpc.GetObjectPathResponse, error) {
-	r, err := http.NewRequest("", "", http.NoBody)
-	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":      {req.Path},
-		"block_num": {req.BlockNum},
-	}
-
-	resp, err := ObjectPathHandler(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return convert.GetObjectPathResponseCreator(resp), nil
-}
-
 func (b *blobberGRPCService) GetReferencePath(ctx context.Context, req *blobbergrpc.GetReferencePathRequest) (*blobbergrpc.GetReferencePathResponse, error) {
 	r, err := http.NewRequest("", "", http.NoBody)
 	if err != nil {

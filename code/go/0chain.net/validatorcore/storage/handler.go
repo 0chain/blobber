@@ -10,8 +10,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/didip/tollbooth/v6/limiter"
 	"github.com/spf13/viper"
-
-	"github.com/gorilla/mux"
 )
 
 const (
@@ -20,15 +18,6 @@ const (
 )
 
 var lmt *limiter.Limiter
-
-/*SetupHandlers sets up the necessary API end points */
-func SetupHandlers(r *mux.Router) {
-	ConfigureRateLimiter()
-	r.HandleFunc("/v1/storage/challenge/new",
-		RateLimit(common.ToJSONResponse(SetupContext(ChallengeHandler))))
-
-	r.HandleFunc("/debug", common.ToJSONResponse(DumpGoRoutines))
-}
 
 func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
 	_ = pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)

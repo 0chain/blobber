@@ -9,7 +9,7 @@ max_stake: 100.0
 # maximum allowed number of stake holders
 num_delegates: 50
 # service charge of related blobber
-service_charge: 0.30
+service_charge: 0.10
 
 block_worker: http://192.168.1.100:9091
 
@@ -32,3 +32,10 @@ server_chain:
   network:
     relay_time: 100 # milliseconds
   signature_scheme: "bls0chain"
+# integration tests related configurations
+integration_tests:
+  # address of the server
+  address: host.docker.internal:15210
+  # lock_interval used by nodes to request server to connect to blockchain
+  # after start
+  lock_interval: 1s

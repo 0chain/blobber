@@ -15,7 +15,6 @@
                 "--hostname","Hostname",
                 "--deployment_mode", "0" ,
                 "--keys_file", "../../../../docker.local/keys_config/b0bnode1_keys.txt",
-                "--minio_file" ,"../../../../docker.local/keys_config/minio_config.txt",
 
                 "--files_dir","root/data/blobber/files",
                 "--log_dir" ,"../../../../dev.local/data/blobber/log",
@@ -34,7 +33,6 @@
                 "--hostname","Hostname",
                 "--deployment_mode", "0" ,
                 "--keys_file", "../../../../docker.local/keys_config/b0bnode1_keys.txt",
-                "--minio_file" ,"../../../../docker.local/keys_config/minio_config.txt",
 
                 "--files_dir","root/data/blobber1/files",
                 "--log_dir" ,"../../../../dev.local/data/blobber1/log",
@@ -53,7 +51,6 @@
                 "--hostname","Hostname",
                 "--deployment_mode", "0" ,
                 "--keys_file", "../../../../docker.local/keys_config/b0bnode2_keys.txt",
-                "--minio_file" ,"../../../../docker.local/keys_config/minio_config.txt",
 
                 "--files_dir","root/data/blobber2/files",
                 "--log_dir" ,"../../../../dev.local/data/blobber2/log",
@@ -72,7 +69,6 @@
                 "--hostname","Hostname",
                 "--deployment_mode", "0" ,
                 "--keys_file", "../../../../docker.local/keys_config/b0bnode3_keys.txt",
-                "--minio_file" ,"../../../../docker.local/keys_config/minio_config.txt",
 
                 "--files_dir","root/data/blobber3/files",
                 "--log_dir" ,"../../../../dev.local/data/blobber3/log",
