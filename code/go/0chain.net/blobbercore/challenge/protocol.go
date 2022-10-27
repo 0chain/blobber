@@ -248,6 +248,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		blockoffset := r.Intn(maxNumBlocks)
 		allocMu := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
 		allocMu.Lock()
+		// calculate content hash for the data block
 		blockData, mt, err := filestore.GetFileStore().GetBlocksMerkleTreeForChallenge(cr.AllocationID, inputData, blockoffset)
 		allocMu.Unlock()
 		logging.Logger.Info("[challenge]validate: got GetWriteMarkersInRange: ",
