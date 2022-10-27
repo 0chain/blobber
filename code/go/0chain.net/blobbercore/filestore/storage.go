@@ -343,7 +343,7 @@ func (fs *FileStore) GetFileBlock(allocID string, fileData *FileInputData, block
 	return buffer[:n], nil
 }
 
-func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
+func (fs *FileStore) GetBlocksMerkleTreeForChallenge(cid string, allocID string,
 	fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
 
 	getpath := time.Now()
@@ -357,7 +357,7 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
 		return nil, nil, common.NewError("get_file_path_error", err.Error())
 	}
 
-	logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge GetPathForFile", zap.String("time_taken", time.Since(getpath).String()))
+	logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge GetPathForFile", zap.String("challenge_id", cid), zap.String("time_taken", time.Since(getpath).String()))
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
@@ -385,7 +385,7 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
 	times := 0
 	bytesBuf := bytes.NewBuffer(make([]byte, 0))
 	for chunkIndex := 0; chunkIndex < numChunks; chunkIndex++ {
-		timing := time.Now()
+		// timing := time.Now()
 		written, err := io.CopyN(bytesBuf, file, fileData.ChunkSize)
 
 		if written > 0 {
@@ -420,12 +420,18 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
 			break
 		}
 		times++
-		logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge In loop", zap.String("time_taken", time.Since(timing).String()), zap.Int("times", times))
+		// logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge In loop", zap.String("time_taken", time.Since(timing).String()), zap.Int("times", times))
 	}
 
-	logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge beforeFor", zap.String("time_taken", time.Since(beforeFor).String()), zap.Int("times", times))
+	logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge beforeFor", zap.String("challenge_id", cid), zap.String("time_taken", time.Since(beforeFor).String()), zap.Int("times", times))
 
-	return returnBytes, fixedMT.GetMerkleTree(), nil
+	getMt := time.Now()
+	mt := fixedMT.GetMerkleTree()
+	logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge getMt", zap.String("challenge_id", cid), zap.String("time_taken", time.Since(getMt).String()))
+
+	logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge total exec ", zap.String("challenge_id", cid), zap.String("time_taken", time.Since(getpath).String()))
+
+	return returnBytes, mt, nil
 }
 
 func (fs FileStore) GetCurrentDiskCapacity() uint64 {
