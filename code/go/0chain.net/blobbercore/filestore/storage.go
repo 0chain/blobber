@@ -42,6 +42,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
@@ -345,6 +346,8 @@ func (fs *FileStore) GetFileBlock(allocID string, fileData *FileInputData, block
 func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
 	fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
 
+	getpath := time.Now()
+
 	if blockoffset < 0 || blockoffset >= 1024 {
 		return nil, nil, common.NewError("invalid_block_number", "Invalid block offset")
 	}
@@ -353,6 +356,8 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
 	if err != nil {
 		return nil, nil, common.NewError("get_file_path_error", err.Error())
 	}
+
+	logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge GetPathForFile", zap.String("time_taken", time.Since(getpath).String()))
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
@@ -376,8 +381,11 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
 		merkleChunkSize = 1
 	}
 
+	beforeFor := time.Now()
+	times := 0
 	bytesBuf := bytes.NewBuffer(make([]byte, 0))
 	for chunkIndex := 0; chunkIndex < numChunks; chunkIndex++ {
+		timing := time.Now()
 		written, err := io.CopyN(bytesBuf, file, fileData.ChunkSize)
 
 		if written > 0 {
@@ -411,7 +419,11 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
 		if err != nil && err == io.EOF {
 			break
 		}
+		times++
+		logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge In loop", zap.String("time_taken", time.Since(timing).String()), zap.Int("times", times))
 	}
+
+	logging.Logger.Info("[challenge]:GetBlocksMerkleTreeForChallenge beforeFor", zap.String("time_taken", time.Since(beforeFor).String()), zap.Int("times", times))
 
 	return returnBytes, fixedMT.GetMerkleTree(), nil
 }
