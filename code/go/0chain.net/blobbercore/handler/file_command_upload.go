@@ -112,9 +112,8 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	cmd.reloadChange(connectionObj)
 
 	fileInputData := &filestore.FileInputData{
-		Name:    cmd.fileChanger.Filename,
-		Path:    cmd.fileChanger.Path,
-		OnCloud: false,
+		Name: cmd.fileChanger.Filename,
+		Path: cmd.fileChanger.Path,
 
 		ChunkSize:    cmd.fileChanger.ChunkSize,
 		UploadOffset: cmd.fileChanger.UploadOffset,

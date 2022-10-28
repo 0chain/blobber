@@ -17,7 +17,7 @@ do
     esac
 done
 
-docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/ValidatorDockerfile . -t validator
+docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/IntegrationTestsValidatorDockerfile . -t validator
 docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/IntegrationTestsBlobberDockerfile . -t blobber
 
 for i in $(seq 1 6);

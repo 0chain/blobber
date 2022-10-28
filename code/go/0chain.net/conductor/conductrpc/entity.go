@@ -36,9 +36,10 @@ func (e *Entity) SetState(state *State) {
 // NewEntity creates RPC client for integration tests.
 func NewEntity(id string) (e *Entity) {
 	var (
-		client, err = newClient(viper.GetString("integration_tests.address"))
-		interval    = viper.GetDuration("integration_tests.lock_interval")
-		state       *State
+		conductorAddress = viper.GetString("integration_tests.address")
+		client, err      = newClient(conductorAddress)
+		interval         = viper.GetDuration("integration_tests.lock_interval")
+		state            *State
 	)
 	if err != nil {
 		log.Fatalf("creating RPC client: %v", err)

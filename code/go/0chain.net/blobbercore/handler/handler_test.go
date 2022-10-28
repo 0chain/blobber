@@ -1,3 +1,6 @@
+//go:build !integration_tests
+// +build !integration_tests
+
 package handler
 
 import (
@@ -90,7 +93,7 @@ func init() {
 	filestore.SetFileStore(fs)
 }
 
-func setupHandlers() (*mux.Router, map[string]string) {
+func setupTestHandlers() (*mux.Router, map[string]string) {
 	router := mux.NewRouter()
 
 	sPath := "/v1/file/stats/{allocation}"
@@ -197,7 +200,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 	ownerClient := clients[0]
 
-	router, handlers := setupHandlers()
+	router, handlers := setupTestHandlers()
 
 	sch := zcncrypto.NewSignatureScheme("bls0chain")
 	//sch.Mnemonic = "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"

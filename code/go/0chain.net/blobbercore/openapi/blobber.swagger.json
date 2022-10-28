@@ -1118,9 +1118,6 @@
         "encryptedKey": {
           "type": "string"
         },
-        "onCloud": {
-          "type": "boolean"
-        },
         "commitMetaTxns": {
           "type": "array",
           "items": {

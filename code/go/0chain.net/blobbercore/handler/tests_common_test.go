@@ -1,3 +1,6 @@
+//go:build !integration_tests
+// +build !integration_tests
+
 package handler
 
 import (
@@ -100,18 +103,6 @@ func (mfs *MockFileStore) GetFileBlock(allocID string, fileData *filestore.FileI
 
 func (mfs *MockFileStore) GetBlocksMerkleTreeForChallenge(allocID string, fileData *filestore.FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
 	return nil, nil, nil
-}
-
-func (mfs *MockFileStore) MinioUpload(contentHash, fPath string) error {
-	return nil
-}
-
-func (mfs *MockFileStore) MinioDelete(contentHash string) error {
-	return nil
-}
-
-func (mfs *MockFileStore) MinioDownload(contentHash, fPath string) error {
-	return nil
 }
 
 func (mfs *MockFileStore) GetTotalTempFileSizes() (s uint64) {
