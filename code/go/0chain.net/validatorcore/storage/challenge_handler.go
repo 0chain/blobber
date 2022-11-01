@@ -19,31 +19,10 @@ import (
 
 var lru = cache.NewLRUCache(10000)
 
-func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST instead")
-	}
-	logging.Logger.Info("Got validation request. Decoding the input")
-	requestHash := r.Header.Get("X-App-Request-Hash")
-	h := sha3.New256()
-	tReader := io.TeeReader(r.Body, h)
-	var challengeRequest ChallengeRequest
-	decoder := json.NewDecoder(tReader)
-	err := decoder.Decode(&challengeRequest)
+func challengeHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	challengeRequest, challengeHash, err := NewChallengeRequest(r)
 	if err != nil {
-		logging.Logger.Error("Error decoding the input to validator")
-		return nil, common.NewError("input_decode_error", "Error in decoding the input."+err.Error())
-	}
-	challengeHash := hex.EncodeToString(h.Sum(nil))
-
-	if requestHash != challengeHash {
-		logging.Logger.Error("Header hash and request hash do not match")
-		return nil, common.NewError("invalid_parameters", "Header hash and request hash do not match")
-	}
-
-	if challengeRequest.ObjPath == nil {
-		logging.Logger.Error("Not object path found in the input")
-		return nil, common.NewError("invalid_parameters", "Empty object path or merkle path")
+		return nil, err
 	}
 
 	logging.Logger.Info("Processing validation.", zap.Any("challenge_id", challengeRequest.ChallengeID))
@@ -53,13 +32,9 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 		return retVT, nil
 	}
 
-	var validationTicket ValidationTicket
-	challengeObj, err := GetProtocolImpl().VerifyChallengeTransaction(ctx, &challengeRequest)
+	challengeObj, err := NewChallengeObj(ctx, challengeRequest)
 	if err != nil {
-		logging.Logger.Error("Error verifying the challenge from BC",
-			zap.Any("challenge_id", challengeRequest.ChallengeID),
-			zap.Error(err))
-		return nil, common.NewError("invalid_parameters", "Challenge could not be verified. "+err.Error())
+		return nil, err
 	}
 
 	time.Sleep(1 * time.Second)
@@ -72,27 +47,56 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 
 	err = challengeRequest.VerifyChallenge(challengeObj, allocationObj)
 	if err != nil {
-		errCode := err.Error()
-		commError, ok := err.(*common.Error)
-		if ok {
-			errCode = commError.Code
-		}
-
-		logging.Logger.Error("Validation Failed - Error verifying the challenge", zap.Any("challenge_id", challengeObj.ID), zap.Error(err))
-		validationTicket.BlobberID = challengeObj.BlobberID
-		validationTicket.ChallengeID = challengeObj.ID
-		validationTicket.Result = false
-		validationTicket.MessageCode = errCode
-		validationTicket.Message = err.Error()
-		validationTicket.ValidatorID = node.Self.ID
-		validationTicket.ValidatorKey = node.Self.PublicKey
-		validationTicket.Timestamp = common.Now()
-
-		if err := validationTicket.Sign(); err != nil {
-			return nil, common.NewError("invalid_parameters", err.Error())
-		}
-		return &validationTicket, nil
+		return InvalidValidationTicket(challengeObj, err)
 	}
+
+	return ValidValidationTicket(challengeObj, challengeRequest.ChallengeID, challengeHash)
+}
+
+func NewChallengeRequest(r *http.Request) (*ChallengeRequest, string, error) {
+	if r.Method == "GET" {
+		return nil, "", common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST instead")
+	}
+	logging.Logger.Info("Got validation request. Decoding the input")
+	requestHash := r.Header.Get("X-App-Request-Hash")
+	h := sha3.New256()
+	tReader := io.TeeReader(r.Body, h)
+	var challengeRequest ChallengeRequest
+	decoder := json.NewDecoder(tReader)
+	err := decoder.Decode(&challengeRequest)
+	if err != nil {
+		logging.Logger.Error("Error decoding the input to validator")
+		return nil, "", common.NewError("input_decode_error", "Error in decoding the input."+err.Error())
+	}
+	challengeHash := hex.EncodeToString(h.Sum(nil))
+
+	if requestHash != challengeHash {
+		logging.Logger.Error("Header hash and request hash do not match")
+		return nil, "", common.NewError("invalid_parameters", "Header hash and request hash do not match")
+	}
+
+	if challengeRequest.ObjPath == nil {
+		logging.Logger.Error("Not object path found in the input")
+		return nil, "", common.NewError("invalid_parameters", "Empty object path or merkle path")
+	}
+
+	return &challengeRequest, challengeHash, err
+}
+
+func NewChallengeObj(ctx context.Context, challengeRequest *ChallengeRequest) (*Challenge, error) {
+	challengeObj, err := GetProtocolImpl().VerifyChallengeTransaction(ctx, challengeRequest)
+	if err != nil {
+		logging.Logger.Error("Error verifying the challenge from BC",
+			zap.Any("challenge_id", challengeRequest.ChallengeID),
+			zap.Error(err))
+		return nil, common.NewError("invalid_parameters", "Challenge could not be verified. "+err.Error())
+	}
+
+	return challengeObj, nil
+}
+
+func ValidValidationTicket(challengeObj *Challenge, challengeID string, challengeHash string) (interface{}, error) {
+	var validationTicket ValidationTicket
 
 	validationTicket.BlobberID = challengeObj.BlobberID
 	validationTicket.ChallengeID = challengeObj.ID
@@ -105,8 +109,33 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 	if err := validationTicket.Sign(); err != nil {
 		return nil, common.NewError("invalid_parameters", err.Error())
 	}
-	logging.Logger.Info("Validation passed.", zap.Any("challenge_id", challengeRequest.ChallengeID))
+	logging.Logger.Info("Validation passed.", zap.Any("challenge_id", challengeID))
 
 	lru.Add(challengeHash, &validationTicket) //nolint:errcheck // never returns an error anyway
+	return &validationTicket, nil
+}
+
+func InvalidValidationTicket(challengeObj *Challenge, err error) (interface{}, error) {
+	var validationTicket ValidationTicket
+
+	errCode := err.Error()
+	commError, ok := err.(*common.Error)
+	if ok {
+		errCode = commError.Code
+	}
+
+	logging.Logger.Error("Validation Failed - Error verifying the challenge", zap.Any("challenge_id", challengeObj.ID), zap.Error(err))
+	validationTicket.BlobberID = challengeObj.BlobberID
+	validationTicket.ChallengeID = challengeObj.ID
+	validationTicket.Result = false
+	validationTicket.MessageCode = errCode
+	validationTicket.Message = err.Error()
+	validationTicket.ValidatorID = node.Self.ID
+	validationTicket.ValidatorKey = node.Self.PublicKey
+	validationTicket.Timestamp = common.Now()
+
+	if err := validationTicket.Sign(); err != nil {
+		return nil, common.NewError("invalid_parameters", err.Error())
+	}
 	return &validationTicket, nil
 }

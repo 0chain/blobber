@@ -204,3 +204,33 @@ func ToStatusCode(handler StatusCodeResponderF) ReqRespHandlerf {
 		}
 	}
 }
+
+/*JSONResponderOrNotF - a handler that takes standard request (non-json) and responds with a json response
+* Useful for POST opertaion where the input is posted as json with
+*    Content-type: application/json
+* header
+* For test purposes it is useful to not respond
+ */
+type JSONResponderOrNotF func(ctx context.Context, r *http.Request) (interface{}, error, bool)
+
+/* ToJSONOrNotResponse - An adapter that takes a handler of the form
+* func AHandler(r *http.Request) (interface{}, error)
+* which takes a request object, processes and returns an object or an error
+* and converts into a standard request/response handler or simply does not respond
+* for test purposes
+ */
+func ToJSONOrNotResponse(handler JSONResponderOrNotF) ReqRespHandlerf {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
+		if r.Method == "OPTIONS" {
+			SetupCORSResponse(w, r)
+			return
+		}
+		ctx := r.Context()
+		data, err, shouldRespond := handler(ctx, r)
+
+		if shouldRespond {
+			Respond(w, data, err)
+		}
+	}
+}

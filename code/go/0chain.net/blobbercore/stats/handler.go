@@ -93,18 +93,6 @@ const tpl = `
                     <td>{{ byte_count_in_string .FilesSize }}</td>
                 </tr>
                 <tr>
-                    <td>Cloud Files Size</td>
-                    <td>{{ byte_count_in_string .CloudFilesSize }}</td>
-                </tr>
-                <tr>
-                    <td>Cloud Files Count</td>
-                    <td>{{ .CloudTotalFiles }}</td>
-                </tr>
-                <tr>
-                    <td>Last Minio Scan</td>
-                    <td>{{ time_in_string .LastMinioScan }}</td>
-                </tr>
-                <tr>
                     <td>Num of files</td>
                     <td>{{ .NumWrites }}</td>
                 </tr>

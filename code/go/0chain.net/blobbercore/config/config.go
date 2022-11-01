@@ -102,23 +102,7 @@ type Config struct {
 	TempFilesCleanupFreq          int64
 	TempFilesCleanupNumWorkers    int
 
-	ColdStorageMinimumFileSize   int64
-	ColdStorageTimeLimitInHours  int64
-	ColdStorageJobQueryLimit     int
-	ColdStorageStartCapacitySize uint64
-	ColdStorageDeleteLocalCopy   bool
-	ColdStorageDeleteCloudCopy   bool
-
 	HealthCheckWorkerFreq time.Duration
-
-	MinioStart      bool
-	MinioWorkerFreq int64
-	MinioUseSSL     bool
-	MinioStorageUrl string
-	MinioAccessID   string
-	MinioSecretKey  string
-	MinioBucket     string
-	MinioRegion     string
 
 	ReadPrice        float64
 	WritePrice       float64

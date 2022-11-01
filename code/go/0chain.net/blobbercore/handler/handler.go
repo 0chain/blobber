@@ -113,19 +113,12 @@ func RateLimitByGeneralRL(handler common.ReqRespHandlerf) common.ReqRespHandlerf
 	return common.RateLimit(handler, generalRL)
 }
 
-/*SetupHandlers sets up the necessary API end points */
-func SetupHandlers(r *mux.Router) {
+/*setupHandlers sets up the necessary API end points */
+func setupHandlers(r *mux.Router) {
 	ConfigRateLimits()
 	r.Use(useRecovery, useCors)
 
 	//object operations
-	r.HandleFunc("/v1/file/upload/{allocation}",
-		RateLimitByFileRL(common.ToJSONResponse(WithConnection(UploadHandler))))
-
-	r.HandleFunc("/v1/file/download/{allocation}",
-		RateLimitByFileRL(common.ToByteStream(WithConnection(DownloadHandler)))).
-		Methods(http.MethodGet, http.MethodOptions)
-
 	r.HandleFunc("/v1/file/rename/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RenameHandler)))).
 		Methods(http.MethodPost, http.MethodOptions)
@@ -166,13 +159,6 @@ func SetupHandlers(r *mux.Router) {
 
 	r.HandleFunc("/v1/file/stats/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
-
-	r.HandleFunc("/v1/file/list/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))).
-		Methods(http.MethodGet, http.MethodOptions)
-
-	r.HandleFunc("/v1/file/objectpath/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ObjectPathHandler))))
 
 	r.HandleFunc("/v1/file/referencepath/{allocation}",
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
@@ -325,15 +311,15 @@ func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error)
 	return response, nil
 }
 
-/*DownloadHandler is the handler to respond to download requests from clients*/
-func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+/*downloadHandler is the handler to respond to download requests from clients*/
+func downloadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
 	return storageHandler.DownloadFile(ctx, r)
 }
 
-/*ListHandler is the handler to respond to upload requests fro clients*/
-func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+/*listHandler is the handler to respond to list requests from clients*/
+func listHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
 
@@ -357,17 +343,6 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetReferencePath(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
-}
-
-func ObjectPathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.GetObjectPath(ctx, r)
 	if err != nil {
 		return nil, err
 	}
@@ -429,8 +404,8 @@ func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error)
 	return response, nil
 }
 
-/*UploadHandler is the handler to respond to upload requests fro clients*/
-func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+/*uploadHandler is the handler to respond to upload requests fro clients*/
+func uploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.WriteFile(ctx, r)

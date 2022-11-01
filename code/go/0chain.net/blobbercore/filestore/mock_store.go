@@ -36,11 +36,6 @@ func (fs *MockStore) Initialize() (err error) {
 		return
 	}
 
-	fs.mc, fs.bucket, err = initializeMinio()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -68,18 +63,6 @@ func (fs *MockStore) GetBlocksMerkleTreeForChallenge(allocID string,
 	fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
 
 	return fs.FileStore.GetBlocksMerkleTreeForChallenge(allocID, fileData, blockoffset)
-}
-
-func (fs *MockStore) MinioUpload(contentHash string, fPath string) error {
-	return fs.FileStore.MinioUpload(contentHash, fPath)
-}
-
-func (fs *MockStore) MinioDownload(contentHash string, localPath string) error {
-	return fs.FileStore.MinioDownload(contentHash, localPath)
-}
-
-func (fs *MockStore) MinioDelete(contentHash string) error {
-	return fs.FileStore.MinioDelete(contentHash)
 }
 
 func (fs *MockStore) GetTotalTempFileSizes() (s uint64) {
