@@ -70,7 +70,6 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 	var resMaxCounterBody []byte
 
 	var hashMaxCounter int
-	// hashCounters := make(map[string]int)
 
 	network := zcncore.GetNetwork()
 	numSharders := len(network.Sharders)
@@ -146,14 +145,6 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 		hashMaxCounter++
 
 		// TODO: Instead of the hash, we should JSON Equivance
-		// hashString := hex.EncodeToString(hash.Sum(nil))
-		// hashCounters[hashString]++
-
-		// if hashCounters[hashString] > hashMaxCounter {
-		// 	hashMaxCounter = hashCounters[hashString]
-		// 	resMaxCounterBody = resBody
-		// }
-
 		return nil
 	})
 
