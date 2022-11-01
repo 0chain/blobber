@@ -15,7 +15,6 @@ func SetAdminCredentials() {
 }
 
 func AuthenticateAdmin(handler ReqRespHandlerf) ReqRespHandlerf {
-	SetAdminCredentials()
 	return func(w http.ResponseWriter, r *http.Request) {
 		uname, passwd, ok := r.BasicAuth()
 		if !ok {
