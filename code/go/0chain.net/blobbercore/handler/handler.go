@@ -127,6 +127,10 @@ func setupHandlers(r *mux.Router) {
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CopyHandler)))).
 		Methods(http.MethodPost, http.MethodOptions)
 
+	r.HandleFunc("/v1/file/move/{allocation}",
+		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CopyHandler)))).
+		Methods(http.MethodPost, http.MethodOptions)
+
 	r.HandleFunc("/v1/dir/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CreateDirHandler)))).
 		Methods(http.MethodPost, http.MethodDelete, http.MethodOptions)
@@ -387,6 +391,16 @@ func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.CopyObject(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func MoveHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
+	ctx = setupHandlerContext(ctx, r)
+	response, err := storageHandler.MoveObject(ctx, r)
 	if err != nil {
 		return nil, err
 	}
