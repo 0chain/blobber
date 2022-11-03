@@ -810,7 +810,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 
 	allocationChange := &allocation.AllocationChange{}
 	allocationChange.ConnectionID = connectionObj.ID
-	allocationChange.Size = objectRef.Size
+	allocationChange.Size = 0
 	allocationChange.Operation = constants.FileOperationMove
 	dfc := &allocation.MoveFileChange{
 		ConnectionID: connectionObj.ID,

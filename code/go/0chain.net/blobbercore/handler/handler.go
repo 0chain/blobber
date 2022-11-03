@@ -128,7 +128,7 @@ func setupHandlers(r *mux.Router) {
 		Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/move/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CopyHandler)))).
+		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(MoveHandler)))).
 		Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/v1/dir/{allocation}",
