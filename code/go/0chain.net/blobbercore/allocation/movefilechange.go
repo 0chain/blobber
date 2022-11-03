@@ -91,12 +91,13 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 			if child.Name == srcFields[i] {
 				dirRef = child
 				found = true
+				dirRef.HashToBeComputed = true
 				break
 			}
 		}
 		if !found {
 			return nil, common.NewError("invalid_reference_path",
-				fmt.Sprintf("path %s does not exist", strings.Join(srcFields[:i], "/")))
+				fmt.Sprintf("path %s does not exist", strings.Join(srcFields[:i+1], "/")))
 		}
 	}
 
@@ -117,7 +118,7 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 	}
 
 	for _, fileRef := range fileRefs {
-		stats.NewFileCreated(ctx, fileRef.ID)
+		stats.FileUpdated(ctx, fileRef.ID)
 	}
 	return rootRef, err
 }
@@ -127,45 +128,22 @@ func (rf *MoveFileChange) processCopyRefs(
 	allocationRoot string, ts common.Timestamp) (fileRefs []*reference.Ref) {
 
 	if srcRef.Type == reference.DIRECTORY {
-		newRef := reference.NewDirectoryRef()
-		newRef.AllocationID = rf.AllocationID
-		newRef.Path = filepath.Join(destRef.Path, srcRef.Name)
-		newRef.ParentPath = destRef.Path
-		newRef.Name = srcRef.Name
-		newRef.CreatedAt = ts
-		newRef.UpdatedAt = ts
-		newRef.HashToBeComputed = true
-		destRef.AddChild(newRef)
+		srcRef.Path = filepath.Join(destRef.Path, srcRef.Name)
+		srcRef.ParentPath = destRef.Path
+		srcRef.UpdatedAt = ts
+		srcRef.HashToBeComputed = true
+		destRef.AddChild(srcRef)
 
 		for _, childRef := range srcRef.Children {
-			fileRefs = append(fileRefs, rf.processCopyRefs(ctx, childRef, newRef, allocationRoot, ts)...)
+			fileRefs = append(fileRefs, rf.processCopyRefs(ctx, childRef, srcRef, allocationRoot, ts)...)
 		}
 	} else if srcRef.Type == reference.FILE {
-		newFile := reference.NewFileRef()
-		newFile.ActualFileHash = srcRef.ActualFileHash
-		newFile.ActualFileSize = srcRef.ActualFileSize
-		newFile.AllocationID = srcRef.AllocationID
-		newFile.ContentHash = srcRef.ContentHash
-		newFile.CustomMeta = srcRef.CustomMeta
-		newFile.MerkleRoot = srcRef.MerkleRoot
-		newFile.Name = srcRef.Name
-		newFile.ParentPath = destRef.Path
-		newFile.Path = filepath.Join(destRef.Path, srcRef.Name)
-		newFile.Size = srcRef.Size
-		newFile.MimeType = srcRef.MimeType
-		newFile.WriteMarker = allocationRoot
-		newFile.ThumbnailHash = srcRef.ThumbnailHash
-		newFile.ThumbnailSize = srcRef.ThumbnailSize
-		newFile.ActualThumbnailHash = srcRef.ActualThumbnailHash
-		newFile.ActualThumbnailSize = srcRef.ActualThumbnailSize
-		newFile.EncryptedKey = srcRef.EncryptedKey
-		newFile.ChunkSize = srcRef.ChunkSize
-		newFile.CreatedAt = ts
-		newFile.UpdatedAt = ts
-		newFile.HashToBeComputed = true
-		destRef.AddChild(newFile)
-
-		fileRefs = append(fileRefs, newFile)
+		srcRef.ParentPath = destRef.Path
+		srcRef.Path = filepath.Join(destRef.Path, srcRef.Name)
+		srcRef.UpdatedAt = ts
+		srcRef.HashToBeComputed = true
+		destRef.AddChild(srcRef)
+		fileRefs = append(fileRefs, srcRef)
 	}
 
 	return
