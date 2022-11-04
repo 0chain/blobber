@@ -30,10 +30,17 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 		"parent_path", "size", "hash", "path_hash", "content_hash", "merkle_root",
 		"actual_file_size", "actual_file_hash", "chunk_size",
 		"lookup_hash", "thumbnail_hash", "write_marker", "level", "created_at", "updated_at")
+
 	pathsAdded := make(map[string]bool)
+	var shouldOr bool
 	for _, path := range paths {
 		if _, ok := pathsAdded[path]; !ok {
-			db = db.Where("allocation_id=? AND parent_path=?", allocationID, path)
+			if !shouldOr {
+				db = db.Where("allocation_id=? AND parent_path=?", allocationID, path)
+				shouldOr = true
+			} else {
+				db = db.Or(Ref{ParentPath: path, AllocationID: allocationID})
+			}
 			pathsAdded[path] = true
 		}
 		fields, err := common.GetPathFields(path)
@@ -70,7 +77,8 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 	refMap[rootRef.Path] = rootRef
 	for i := 1; i < len(refs); i++ {
 		if _, ok := refMap[refs[i].ParentPath]; !ok {
-			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
+			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree."+
+				"Path is: "+refs[i].ParentPath)
 		}
 		if _, ok := refMap[refs[i].Path]; !ok {
 			refMap[refs[i].ParentPath].AddChild(&refs[i])
@@ -86,10 +94,16 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
 	pathsAdded := make(map[string]bool)
+	var shouldOr bool
 	for _, path := range paths {
 		path = strings.TrimSuffix(path, "/")
 		if _, ok := pathsAdded[path]; !ok {
-			db = db.Where(Ref{ParentPath: path, AllocationID: allocationID})
+			if shouldOr {
+				db = db.Or(Ref{ParentPath: path, AllocationID: allocationID})
+			} else {
+				db = db.Where(Ref{ParentPath: path, AllocationID: allocationID})
+				shouldOr = true
+			}
 			pathsAdded[path] = true
 		}
 		depth := len(GetSubDirsFromPath(path)) + 1
