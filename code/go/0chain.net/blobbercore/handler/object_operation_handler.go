@@ -723,6 +723,119 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	return result, nil
 }
 
+func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (interface{}, error) {
+
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	valid, err := verifySignatureFromRequest(
+		allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	if allocationObj.IsImmutable {
+		return nil, common.NewError("immutable_allocation", "Cannot copy data in an immutable allocation")
+	}
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	_ = ctx.Value(constants.ContextKeyClientKey).(string)
+
+	allocationID := allocationObj.ID
+
+	if clientID == "" {
+		return nil, common.NewError("invalid_operation", "Invalid client")
+	}
+
+	destPath := r.FormValue("dest")
+	if destPath == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
+	}
+
+	pathHash, err := pathHashFromReq(r, allocationID)
+	if err != nil {
+		return nil, err
+	}
+
+	if clientID == "" || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	connectionID := r.FormValue("connection_id")
+	if connectionID == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	if err != nil {
+		return nil, common.NewError("meta_error", "Error reading metadata for connection")
+	}
+	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(
+		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "merkle_root"})
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+	newPath := filepath.Join(destPath, objectRef.Name)
+	paths, err := common.GetParentPaths(newPath)
+	if err != nil {
+		return nil, err
+	}
+
+	paths = append(paths, newPath)
+
+	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, paths)
+	if err != nil {
+		Logger.Error("Database error", zap.Error(err))
+		return nil, common.NewError("database_error", fmt.Sprintf("Got db error while getting refs for %v", paths))
+	}
+
+	for _, ref := range refs {
+		switch ref.Path {
+		case newPath:
+			return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
+		default:
+			if ref.Type == reference.FILE {
+				return nil, common.NewError("invalid_path", fmt.Sprintf("%v is of file type", ref.Path))
+			}
+		}
+	}
+
+	allocationChange := &allocation.AllocationChange{}
+	allocationChange.ConnectionID = connectionObj.ID
+	allocationChange.Size = 0
+	allocationChange.Operation = constants.FileOperationMove
+	dfc := &allocation.MoveFileChange{
+		ConnectionID: connectionObj.ID,
+		AllocationID: connectionObj.AllocationID,
+		SrcPath:      objectRef.Path,
+		DestPath:     destPath,
+	}
+	dfc.SrcPath = objectRef.Path
+	connectionObj.Size += allocationChange.Size
+	connectionObj.AddChange(allocationChange, dfc)
+
+	err = connectionObj.Save(ctx)
+	if err != nil {
+		Logger.Error("Error in writing the connection meta data", zap.Error(err))
+		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+	}
+
+	result := &blobberhttp.UploadResult{}
+	result.Filename = objectRef.Name
+	result.Hash = objectRef.Hash
+	result.MerkleRoot = objectRef.MerkleRoot
+	result.Size = objectRef.Size
+	return result, nil
+}
+
 func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*blobberhttp.UploadResult, error) {
 
 	path := r.FormValue("path")
