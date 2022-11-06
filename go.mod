@@ -18,7 +18,7 @@ require (
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/selvatico/go-mocket v1.0.7
 	github.com/spf13/viper v1.13.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.23.0
 	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a
 	golang.org/x/net v0.1.0 // indirect
@@ -29,13 +29,13 @@ require (
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gorm.io/datatypes v1.0.7
-	gorm.io/driver/postgres v1.4.4
-	gorm.io/gorm v1.24.0
+	gorm.io/driver/postgres v1.4.5
+	gorm.io/gorm v1.24.1-0.20221019064659-5dd2bb482755
 )
 
 require (
 	golang.org/x/sys v0.1.0
-	gorm.io/driver/sqlite v1.4.2
+	gorm.io/driver/sqlite v1.4.3
 )
 
 require (

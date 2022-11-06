@@ -3,7 +3,6 @@ package transaction
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"hash/fnv"
 	"math"
 
@@ -71,7 +70,6 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 	var resMaxCounterBody []byte
 
 	var hashMaxCounter int
-	hashCounters := make(map[string]int)
 
 	network := zcncore.GetNetwork()
 	numSharders := len(network.Sharders)
@@ -143,13 +141,13 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			return errors.Throw(ErrBadRequest, errorMsg)
 		}
 
-		hashString := hex.EncodeToString(hash.Sum(nil))
-		hashCounters[hashString]++
-
-		if hashCounters[hashString] > hashMaxCounter {
-			hashMaxCounter = hashCounters[hashString]
-			resMaxCounterBody = resBody
-		}
+		// NOTE: This would only return the last response, and no consensus is
+		// actually met. This can be a workaround for the fix. But actually
+		// it's hard to have consensus as the sharders could be in different
+		// LFB when they receive the request, which means they would give
+		// different response.
+		resMaxCounterBody = resBody
+		hashMaxCounter++
 
 		return nil
 	})
