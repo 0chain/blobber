@@ -104,11 +104,6 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 		return nil, err
 	}
 
-	err = inodeMeta.LatestInode.Save()
-	if err != nil {
-		return nil, common.NewError("inode_save_error", err.Error())
-	}
-
 	for _, fileRef := range fileRefs {
 		stats.NewFileCreated(ctx, fileRef.ID)
 	}
@@ -120,66 +115,33 @@ func (rf *CopyFileChange) processCopyRefs(
 	allocationRoot string, ts common.Timestamp, inodesMeta map[string]int64) (
 	fileRefs []*reference.Ref, err error) {
 
-	if srcRef.Type == reference.DIRECTORY {
-		newRef := reference.NewDirectoryRef()
-		newRef.AllocationID = rf.AllocationID
-		newRef.Path = filepath.Join(destRef.Path, srcRef.Name)
-		fileID, ok := inodesMeta[newRef.Path]
-		if !ok || fileID <= 0 {
-			return nil, common.NewError("invalid_parameter",
-				fmt.Sprintf("file path %s has no entry in inodes meta", newRef.Path))
-		}
-		newRef.FileID = fileID
-		newRef.ParentPath = destRef.Path
-		newRef.Name = srcRef.Name
-		newRef.CreatedAt = ts
-		newRef.UpdatedAt = ts
-		newRef.HashToBeComputed = true
-		destRef.AddChild(newRef)
-
+	newRef := *srcRef
+	newRef.ID = 0
+	newRef.Path = filepath.Join(destRef.Path, srcRef.Name)
+	fileID, ok := inodesMeta[newRef.Path]
+	if !ok || fileID <= 0 {
+		return nil, common.NewError("invalid_parameter",
+			fmt.Sprintf("file path %s has no entry in inodes meta", newRef.Path))
+	}
+	newRef.FileID = fileID
+	newRef.ParentPath = destRef.Path
+	newRef.CreatedAt = ts
+	newRef.UpdatedAt = ts
+	newRef.HashToBeComputed = true
+	destRef.AddChild(&newRef)
+	if newRef.Type == reference.DIRECTORY {
 		for _, childRef := range srcRef.Children {
-			fRefs, err := rf.processCopyRefs(ctx, childRef, newRef, allocationRoot, ts, inodesMeta)
+			fRefs, err := rf.processCopyRefs(ctx, childRef, &newRef, allocationRoot, ts, inodesMeta)
 			if err != nil {
 				return nil, err
 			}
 			fileRefs = append(fileRefs, fRefs...)
 		}
-	} else if srcRef.Type == reference.FILE {
-		newFile := reference.NewFileRef()
-		newFile.ActualFileHash = srcRef.ActualFileHash
-		newFile.ActualFileSize = srcRef.ActualFileSize
-		newFile.AllocationID = srcRef.AllocationID
-		newFile.ContentHash = srcRef.ContentHash
-		newFile.CustomMeta = srcRef.CustomMeta
-		newFile.MerkleRoot = srcRef.MerkleRoot
-		newFile.Name = srcRef.Name
-		newFile.ParentPath = destRef.Path
-		newFile.Path = filepath.Join(destRef.Path, srcRef.Name)
-		fileID, ok := inodesMeta[newFile.Path]
-		if !ok || fileID <= 0 {
-			return nil, common.NewError("invalid_parameter",
-				fmt.Sprintf("file path %s has no entry in inodes meta", newFile.Path))
-		}
-		newFile.FileID = fileID
-		newFile.Size = srcRef.Size
-		newFile.MimeType = srcRef.MimeType
-		newFile.WriteMarker = allocationRoot
-		newFile.ThumbnailHash = srcRef.ThumbnailHash
-		newFile.ThumbnailSize = srcRef.ThumbnailSize
-		newFile.ActualThumbnailHash = srcRef.ActualThumbnailHash
-		newFile.ActualThumbnailSize = srcRef.ActualThumbnailSize
-		newFile.EncryptedKey = srcRef.EncryptedKey
-		newFile.ChunkSize = srcRef.ChunkSize
-		newFile.CreatedAt = ts
-		newFile.UpdatedAt = ts
-		newFile.HashToBeComputed = true
-		destRef.AddChild(newFile)
-
-		fileRefs = append(fileRefs, newFile)
+	} else {
+		fileRefs = append(fileRefs, &newRef)
 	}
 
 	return
-
 }
 
 func (rf *CopyFileChange) Marshal() (string, error) {

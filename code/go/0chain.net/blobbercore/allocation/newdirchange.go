@@ -96,11 +96,6 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 		return nil, err
 	}
 
-	err = inodeMeta.LatestInode.Save()
-	if err != nil {
-		return nil, common.NewError("inode_save_error", err.Error())
-	}
-
 	for _, r := range newDirs {
 		if err := stats.NewDirCreated(ctx, r.ID); err != nil {
 			return nil, err

@@ -461,7 +461,12 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		if err != nil {
 			return nil, common.NewError("inode_signature_verification_failed", err.Error())
 		}
+		inodeMeta.LatestInode.AllocationID = allocationID
 
+		err = inodeMeta.LatestInode.Save(ctx)
+		if err != nil {
+			return nil, common.NewError("inode_save_error", err.Error())
+		}
 	}
 
 	err = connectionObj.ApplyChanges(
@@ -469,13 +474,12 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err != nil {
 		return nil, err
 	}
-	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash"})
+	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash"})
 	if err != nil {
 		return nil, err
 	}
 	allocationRoot := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
 	fileMetaRoot := rootRef.FileMetaHash
-
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		if latestWriteMarkerEntity != nil {
@@ -494,7 +498,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		}
 		result.Success = false
 		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
-			" Expected hash: " + fileMetaRoot
+			" Expected hash: " + fileMetaRoot + "; Got: " + writeMarker.FileMetaRoot
 		return &result, common.NewError("file_meta_root_mismatch", result.ErrorMessage)
 	}
 
@@ -523,11 +527,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		if !errors.Is(common.ErrFileWasDeleted, err) {
 			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 		}
-	}
-
-	err = inodeMeta.LatestInode.Save()
-	if err != nil {
-		return nil, common.NewError("inode_save_error", err.Error())
 	}
 
 	result.Changes = connectionObj.Changes

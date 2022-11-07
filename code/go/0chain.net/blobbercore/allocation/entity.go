@@ -1,6 +1,7 @@
 package allocation
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -304,12 +305,12 @@ func (in Inode) TableName() string {
 	return "inode"
 }
 
-func (in *Inode) Save() error {
+func (in *Inode) Save(ctx context.Context) error {
 	if in.AllocationID == "" || in.OwnerSignature == "" ||
 		in.LatestFileID <= 0 {
 		return errors.New("invalid inode parameters")
 	}
-	db := datastore.GetStore().GetDB()
+	db := datastore.GetStore().GetTransaction(ctx)
 
 	return db.Save(in).Error
 }
