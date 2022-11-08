@@ -3,7 +3,7 @@
 set -e
 
 # setup variables
-export NETWORK=atluschimney
+export NETWORK=0chainnetwork
 export DOMAIN=0chaindomain
 export CLUSTER=0chaincluster
 export DELEGATE_WALLET=0chainclientId
@@ -18,7 +18,7 @@ export SERVICE_CHARGE="0.30"
 export GF_ADMIN_USER=0chaingfadminuser
 export GF_ADMIN_PASSWORD=0chaingfadminpassword
 export PROJECT_ROOT=/var/0chain/blobber
-export BLOCK_WORKER_URL=http://${NETWORK}.devnet-0chain.net/dns
+export BLOCK_WORKER_URL=http://${NETWORK}.{DOMAIN}/dns
 
 
 ## cleanup server before starting the deployment
