@@ -53,7 +53,7 @@ jobs:
           cd $HOME
           mkdir .docker 
           cd .docker
-          cat <<EOF >>./.docker/config.json
+          cat <<EOF >>./config.json
           {
             "experimental": "enabled"
           }
