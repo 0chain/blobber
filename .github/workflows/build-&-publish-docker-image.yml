@@ -50,8 +50,9 @@ jobs:
 
       - name: Set up Docker buildx
         run: |
-        cd 
-        mkdir .docker
+        cd $HOME
+        mkdir .docker 
+        cd .docker
         cat <<EOF >>./.docker/config.json
         {
           "experimental": "enabled"
