@@ -383,7 +383,7 @@ services:
     ports:
       - "5051:5051"
       - "31501:31501"
-    command: ./bin/blobber --port 5051 --grpc_port 31501 --hostname ${CLUSTER}.${DOMAIN}  --deployment_mode 0 --keys_file keysconfig/b0bnode01_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keysconfig/minio_config.txt --hosturl https://${CLUSTER}.${DOMAIN}
+    command: ./bin/blobber --port 5051 --grpc_port 31501 --hostname ${CLUSTER}.${DOMAIN}  --deployment_mode 0 --keys_file keysconfig/b0bnode01_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --hosturl https://${CLUSTER}.${DOMAIN}
     networks:
       default:
       testnet0:
