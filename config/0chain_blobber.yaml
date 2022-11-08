@@ -59,7 +59,7 @@ max_stake: 100.0
 # maximum allowed number of stake holders
 num_delegates: 50
 # service charge of the blobber
-service_charge: 0.30
+service_charge: 0.10
 # min submit from miners
 min_submit: 50
 # min confirmation from sharder
@@ -68,9 +68,30 @@ min_confirmation: 50
 block_worker: http://198.18.0.98:9091
 
 
-handlers:
-  rate_limit: 0 # 10 per second . it can't too small one if a large file is download with blocks
-  file_rate_limit: 100 # 100 files per second
+rate_limiters:
+  # Rate limiters will use this duration to clean unused token buckets.
+  # If it is 0 then token will expire in 10 years.
+  default_token_expire_duration: 5m
+  # If blobber is behind some proxy eg. nginx, cloudflare, etc.
+  proxy: true
+
+  # Rate limiter is applied with two parameters. One is ip-address and other is clientID.
+  # Rate limiter will track both parameters independently and will block request if both
+  # ip-address or clientID has reached its limit
+  # Blobber may not provide any rps values and default will work fine.
+
+  # Commit Request Per second. Commit endpoint is resource intensive.
+  # Default is 0.5
+  commit_rps: 1600
+  # File Request Per Second. This rps is used to rate limit basically upload and download requests.
+  # Its better to have 2 request per second. Default is 1
+  file_rps: 1600
+  # Object Request Per Second. This rps is used to rate limit GetReferencePath, GetObjectTree, etc.
+  # which is resource intensive. Default is 0.5
+  object_rps: 1600
+  # General Request Per Second. This rps is used to rate limit endpoints like copy, rename, get file metadata,
+  # get paginated refs, etc. Default is 5
+  general_rps: 1600
 
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
@@ -84,7 +105,7 @@ contentref_cleaner:
   tolerance: 3600
 openconnection_cleaner:
   frequency: 30
-  tolerance: 3600 # 60 * 60 
+  tolerance: 3600 # 60 * 60
 writemarker_redeem:
   frequency: 10
   num_workers: 5
@@ -96,7 +117,7 @@ challenge_response:
   num_workers: 5
   max_retries: 20
 
-healthcheck: 
+healthcheck:
   frequency: 60s # send healthcheck to miners every 60 seconds
 
 pg:
@@ -108,7 +129,7 @@ db:
   password: blobber
   host: postgres
   port: 5432
- 
+
 
 geolocation:
   latitude: 0
@@ -116,10 +137,10 @@ geolocation:
 
 storage:
   files_dir: "/path/to/hdd"
-#  sha256 hash will have 64 characters of hex encoded length. So if dir_level is [2,2] this means for an allocation id 
+#  sha256 hash will have 64 characters of hex encoded length. So if dir_level is [2,2] this means for an allocation id
 #  "4c9bad252272bc6e3969be637610d58f3ab2ff8ca336ea2fadd6171fc68fdd56" directory below will be created.
 #  alloc_dir = {files_dir}/4c/9b/ad252272bc6e3969be637610d58f3ab2ff8ca336ea2fadd6171fc68fdd56
-# 
+#
 #  So this means, there will maximum of 16^4 = 65536 numbers directories for all allocations stored by blobber.
 #  Similarly for some file_hash "ef935503b66b1ce026610edf18bffd756a79676a8fe317d951965b77a77c0227" with dir_level [2, 2, 1]
 #  following path is created for the file:
@@ -127,38 +148,10 @@ storage:
   alloc_dir_level: [2, 1]
   file_dir_level: [2, 2, 1]
 
-minio:
-  # Enable or disable minio backup service
-  start: false
-  # The frequency at which the worker should look for files, Ex: 3600 means it will run every 3600 seconds
-  worker_frequency: 3600 # In Seconds
-  # Use SSL for connection or not
-  use_ssl: false
-
-  storage_service_url: "play.min.io"
-  access_id: "Q3AM3UQ867SPQQA43P2F"
-  secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
-  bucket_name: "mytestbucket"
-  region: "us-east-1"
-
-cold_storage:
-  # Minimum file size to be considered for moving to cloud
-  min_file_size: 1048576 #in bytes
-  # Minimum time for which file is not updated or not used
-  file_time_limit_in_hours: 720 #in hours
-  # Number of files to be queried and processed at once
-  job_query_limit: 100
-  # Capacity filled in bytes after which the cloud backup should start work
-  start_capacity_size: 536870912 # 500MB
-  # Delete local copy once the file is moved to cloud
-  delete_local_copy: true
-  # Delete cloud copy if the file is deleted from the blobber by user/other process
-  delete_cloud_copy: true
-
 disk_update:
   # defaults to true. If false, blobber has to manually update blobber's capacity upon increase/decrease
   # If blobber has to limit its capacity to 5% of its capacity then it should turn automaci_update to false.
-  automatic_update: true 
+  automatic_update: true
   blobber_update_interval: 5m # In minutes
 # integration tests related configurations
 integration_tests:
@@ -167,3 +160,6 @@ integration_tests:
   # lock_interval used by nodes to request server to connect to blockchain
   # after start
   lock_interval: 1s
+admin:
+  username: "admin"
+  password: "password"

@@ -25,7 +25,6 @@ func startHttpServer() {
 		mode = "test net"
 	}
 
-	common.ConfigRateLimits()
 	r := mux.NewRouter()
 	initHandlers(r)
 
@@ -88,4 +87,5 @@ func initHandlers(r *mux.Router) {
 	handler.StartTime = time.Now().UTC()
 	r.HandleFunc("/", handler.HomepageHandler)
 	handler.SetupHandlers(r)
+	common.SetAdminCredentials()
 }

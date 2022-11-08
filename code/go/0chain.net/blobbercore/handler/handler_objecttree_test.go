@@ -1,3 +1,6 @@
+//go:build !integration_tests
+// +build !integration_tests
+
 package handler
 
 import (
@@ -26,12 +29,8 @@ func setupObjectTreeHandlers() (*mux.Router, map[string]string) {
 
 	otPath := "/v1/file/objecttree/{allocation}"
 	otName := "Object_Tree"
-	router.HandleFunc(otPath, common.UserRateLimit(
-		common.ToStatusCode(
-			WithStatusReadOnlyConnection(ObjectTreeHandler),
-		),
-	),
-	).Name(otName)
+	router.HandleFunc(otPath, common.ToStatusCode(
+		WithStatusReadOnlyConnection(ObjectTreeHandler))).Name(otName)
 
 	return router,
 		map[string]string{

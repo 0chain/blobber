@@ -54,14 +54,6 @@ type Stats struct {
 	RedeemedChallenges int64  `json:"num_redeemed_challenges"`
 }
 
-var LastMinioScan time.Time
-
-type MinioStats struct {
-	CloudFilesSize  int64     `json:"cloud_files_size"`
-	CloudTotalFiles int       `json:"cloud_total_files"`
-	LastMinioScan   time.Time `json:"last_minio_scan"`
-}
-
 type Duration int64
 
 func (d Duration) String() string {
@@ -70,7 +62,6 @@ func (d Duration) String() string {
 
 type BlobberStats struct {
 	Stats
-	MinioStats
 	NumAllocation             int64             `json:"num_of_allocations"`
 	ClientID                  string            `json:"-"`
 	PublicKey                 string            `json:"-"`
@@ -127,7 +118,6 @@ func (bs *BlobberStats) loadBasicStats(ctx context.Context) {
 
 	bs.DiskSizeUsed = du
 	bs.loadStats(ctx)
-	bs.loadMinioStats(ctx)
 }
 
 func (bs *BlobberStats) loadDetailedStats(ctx context.Context) {
@@ -257,30 +247,6 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 
 	bs.UsedSize = bs.FilesSize + bs.ThumbnailsSize
 	db.Table("allocations").Count(&bs.NumAllocation)
-}
-
-func (bs *BlobberStats) loadMinioStats(ctx context.Context) {
-	var (
-		db  = datastore.GetStore().GetTransaction(ctx)
-		row *sql.Row
-		err error
-	)
-
-	row = db.Table("reference_objects").
-		Select(`
-			COALESCE (SUM (size), 0) AS cloud_files_size,
-			COUNT (*) AS cloud_total_files`).
-		Where("on_cloud = 'TRUE' and type = 'f'").
-		Row()
-
-	err = row.Scan(&bs.CloudFilesSize, &bs.CloudTotalFiles)
-	if err != nil && err != sql.ErrNoRows {
-		Logger.Error("Error in scanning record for minio stats",
-			zap.Error(err))
-		return
-	}
-
-	bs.LastMinioScan = LastMinioScan
 }
 
 func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {

@@ -55,7 +55,6 @@ local-run:
 	--files_dir ./data/blobber/files \
 	--log_dir ./data/blobber/log \
 	--db_dir ./data/blobber/data  \
-	--minio_file ../docker.local/keys_config/minio_config.txt \
 	--config_dir ../config
     
 

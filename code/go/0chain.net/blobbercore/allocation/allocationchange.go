@@ -157,6 +157,8 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 			acp = new(CopyFileChange)
 		case constants.FileOperationCreateDir:
 			acp = new(NewDir)
+		case constants.FileOperationMove:
+			acp = new(MoveFileChange)
 		}
 
 		if acp == nil {

@@ -1,3 +1,6 @@
+//go:build !integration_tests
+// +build !integration_tests
+
 package handler
 
 import (
@@ -35,12 +38,8 @@ func setupDownloadHandlers() (*mux.Router, map[string]string) {
 
 	dPath := "/v1/file/download/{allocation}"
 	dName := "Download"
-	router.HandleFunc(dPath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithConnection(DownloadHandler),
-		),
-	),
-	).Name(dName)
+	router.HandleFunc(dPath, common.ToJSONResponse(
+		WithConnection(DownloadHandler))).Name(dName)
 
 	return router, map[string]string{
 		dPath: dName,

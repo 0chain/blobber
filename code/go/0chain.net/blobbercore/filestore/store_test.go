@@ -145,7 +145,7 @@ func setupMockForFileManagerInit(mock sqlmock.Sqlmock, ip initParams) {
 		)
 
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects" WHERE`)).
-		WithArgs(aa, aa, aa).
+		WithArgs(aa, aa).
 		WillReturnRows(
 			sqlmock.NewRows([]string{"count"}).AddRow(ip.totalRefs),
 		)
@@ -238,14 +238,15 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 		t.Run(test.testName, func(t *testing.T) {
 			fs.setAllocation(test.allocID, test.alloc)
 			fPath := filepath.Join(fs.mp, randString(10)+".txt")
-			contentHash, commitContentHash, err := generateRandomData(fPath)
+			contentHash, commitContentHash, merkleRoot, err := generateRandomData(fPath)
 			require.Nil(t, err)
 
 			fid := &FileInputData{
-				Name:      test.fileName,
-				Path:      test.remotePath,
-				Hash:      contentHash,
-				ChunkSize: 64 * KB,
+				Name:       test.fileName,
+				Path:       test.remotePath,
+				Hash:       contentHash,
+				MerkleRoot: merkleRoot,
+				ChunkSize:  64 * KB,
 			}
 
 			f, err := os.Open(fPath)
@@ -300,7 +301,7 @@ func TestGetFileBlock(t *testing.T) {
 	}
 	fs.setAllocation(allocID, alloc)
 	fPath := filepath.Join(fs.mp, randString(10)+".txt")
-	_, fileHash, err := generateRandomData(fPath)
+	_, fileHash, _, err := generateRandomData(fPath)
 	require.Nil(t, err)
 
 	permanentFPath, err := fs.GetPathForFile(allocID, fileHash)
@@ -345,7 +346,7 @@ func TestGetFileBlock(t *testing.T) {
 			numBlocks:     10,
 			hash:          randString(64),
 			expectedError: true,
-			errorContains: "file_exist_error",
+			errorContains: "no such file or directory",
 		},
 		{
 			testName:         "successful response",
@@ -366,7 +367,7 @@ func TestGetFileBlock(t *testing.T) {
 			data, err := fs.GetFileBlock(allocID, fid, test.blockNum, test.numBlocks)
 			if test.expectedError {
 				require.NotNil(t, err)
-				require.Contains(t, err.Error(), test.errorContains)
+				require.Contains(t, err.Error(), test.errorContains, "Actual error: ", err.Error())
 				return
 			}
 
@@ -383,7 +384,7 @@ func TestGetMerkleTree(t *testing.T) {
 	defer cleanUp()
 
 	orgFilePath := filepath.Join(fs.mp, randString(5)+".txt")
-	_, commitContentHash, err := generateRandomData(orgFilePath)
+	_, commitContentHash, _, err := generateRandomData(orgFilePath)
 	require.Nil(t, err)
 
 	f, err := os.Open(orgFilePath)
@@ -480,15 +481,15 @@ func setupStorage(t *testing.T) (*FileStore, func()) {
 	return &fs, f
 }
 
-func generateRandomData(fPath string) (string, string, error) {
+func generateRandomData(fPath string) (string, string, string, error) {
 	p := make([]byte, 64*KB*10)
 	_, err := rand.Read(p)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	f, err := os.Create(fPath)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	defer f.Close()
 
@@ -497,7 +498,7 @@ func generateRandomData(fPath string) (string, string, error) {
 
 	_, err = mW.Write(p)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	contentHash := hex.EncodeToString(cHW.Sum(nil))
@@ -509,21 +510,29 @@ func generateRandomData(fPath string) (string, string, error) {
 		data := p[start : start+64*KB]
 		_, err := h.Write(data)
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
 
 		err = hasher.WriteHashToContent(hex.EncodeToString(h.Sum(nil)), count)
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
+		}
+		err = hasher.WriteToChallenge(data, count)
+		if err != nil {
+			return "", "", "", err
 		}
 		count++
 	}
 	commitContentHash, err := hasher.GetContentHash()
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
-	return contentHash, commitContentHash, nil
+	merkleRoot, err := hasher.GetChallengeHash()
+	if err != nil {
+		return "", "", "", err
+	}
+	return contentHash, commitContentHash, merkleRoot, nil
 }
 
 func getMerkleRoot(r io.Reader) (mr string, err error) {

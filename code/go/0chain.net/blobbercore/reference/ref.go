@@ -55,7 +55,6 @@ type Ref struct {
 	EncryptedKey        string `gorm:"column:encrypted_key;size:64" filelist:"encrypted_key"`
 	Children            []*Ref `gorm:"-"`
 	childrenLoaded      bool
-	OnCloud             bool `gorm:"column:on_cloud;default:false" filelist:"on_cloud"`
 
 	CommitMetaTxns []CommitMetaTxn  `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
 	CreatedAt      common.Timestamp `gorm:"column:created_at;index:idx_created_at,sort:desc" dirlist:"created_at" filelist:"created_at"`
@@ -114,7 +113,6 @@ type PaginatedRef struct { //Gorm smart select fields.
 	ActualThumbnailHash string `gorm:"column:actual_thumbnail_hash" json:"actual_thumbnail_hash,omitempty"`
 	EncryptedKey        string `gorm:"column:encrypted_key" json:"encrypted_key,omitempty"`
 
-	OnCloud   bool             `gorm:"column:on_cloud" json:"on_cloud,omitempty"`
 	CreatedAt common.Timestamp `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt common.Timestamp `gorm:"column:updated_at" json:"updated_at,omitempty"`
 

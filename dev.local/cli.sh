@@ -53,7 +53,7 @@ fi
 
 echo "
 **********************************************
-  Welcome to blobber/validator development CLI 
+  Welcome to blobber/validator development CLI
 **********************************************
 
 "
@@ -87,7 +87,7 @@ install_debuggger() {
     base=$(echo "$root" | sed 's/\//\\\//g')
     sed "s/root/$base/g" ./launch.1.json > ../.vscode/launch.json
     rm -rf ./launch.1.json
-    echo "debugbbers are installed" 
+    echo "debugbbers are installed"
 }
 
 cleanAll() {
@@ -156,7 +156,7 @@ install_postgres () {
     -e  POSTGRES_PASSWORD=postgres \
     -v  $root/data/blobber$i/bin:/blobber/bin \
     -v  $root/data/blobber$i/sql:/blobber/sql \
-    postgres:14 bash /blobber/bin/postgres-entrypoint.sh 
+    postgres:14 bash /blobber/bin/postgres-entrypoint.sh
 
     docker rm blobber_postgres_init --force
 }
@@ -197,7 +197,7 @@ start_blobber () {
     echo ">>>>>>>>>>>>>> Blobber $i <<<<<<<<<<<<<<<<"
 
     echo "[1/3] build blobber..."
-    cd ../code/go/0chain.net/blobber   
+    cd ../code/go/0chain.net/blobber
     CGO_ENABLED=1 go build -v -tags "bn256 development" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=dev" -o $root/data/blobber$i/blobber .
 
     echo "[2/3] setup runtime..."
@@ -207,7 +207,6 @@ start_blobber () {
     grpc_port="3150$i"
 
     keys_file="../docker.local/keys_config/b0bnode${i}_keys.txt"
-    minio_file="../docker.local/keys_config/minio_config.txt"
     config_dir="./data/blobber$i/config"
     files_dir="${root}/data/blobber$i/files"
     log_dir="./data/blobber$i/log"
@@ -215,14 +214,14 @@ start_blobber () {
 
     echo "[3/3] run blobber..."
 
-    ./data/blobber$i/blobber --port $port --grpc_port $grpc_port --hostname $hostname --deployment_mode 0 --keys_file $keys_file  --files_dir $files_dir --log_dir $log_dir --db_dir $db_dir  --minio_file $minio_file --config_dir $config_dir
+    ./data/blobber$i/blobber --port $port --grpc_port $grpc_port --hostname $hostname --deployment_mode 0 --keys_file $keys_file  --files_dir $files_dir --log_dir $log_dir --db_dir $db_dir  --config_dir $config_dir
 }
 
 start_validator () {
     echo ">>>>>>>>>>>>>> Validator $i <<<<<<<<<<<<<<<<"
 
     echo "[1/3] build validator..."
-    cd ../code/go/0chain.net/validator   
+    cd ../code/go/0chain.net/validator
     CGO_ENABLED=1 go build -v -tags "bn256 development" -gcflags="-N -l" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=dev" -o $root/data/blobber$i/validator .
 
     echo "[2/3] setup runtime"
@@ -231,7 +230,7 @@ start_validator () {
     cd $root
     port="506$i"
     hostname="localhost"
-    keys_file="../docker.local/keys_config/b0bnode${i}_keys.txt"
+    keys_file="../docker.local/keys_config/b0vnode${i}_keys.txt"
     config_dir="./data/blobber$i/config"
     log_dir="./data/blobber$i/log"
 

@@ -147,7 +147,6 @@ type ref struct {
 	Type         string `gorm:"column:type"`
 	AllocationID string `gorm:"column:allocation_id"`
 	Size         int64  `gorm:"column:size"`
-	OnCloud      bool   `gorm:"column:on_cloud"`
 }
 
 func (ref) TableName() string {
@@ -159,7 +158,6 @@ func getStorageDetails(ctx context.Context, a *allocation, ID string) error {
 	r := map[string]interface{}{
 		"allocation_id": ID,
 		"type":          "f",
-		"on_cloud":      false,
 	}
 	var totalFiles int64
 	if err := db.Model(&ref{}).Where(r).Count(&totalFiles).Error; err != nil {

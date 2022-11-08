@@ -39,7 +39,7 @@ services:
       - ./keys_config:/validator/keysconfig
     ports:
       - "506${BLOBBER}:506${BLOBBER}"
-    command: ./bin/validator --port 506${BLOBBER} --hostname 198.18.0.6${BLOBBER} --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --log_dir /validator/log
+    command: ./bin/validator --port 506${BLOBBER} --hostname 198.18.0.6${BLOBBER} --deployment_mode 0 --keys_file keysconfig/b0vnode${BLOBBER}_keys.txt --log_dir /validator/log
     networks:
       default:
       testnet0:
@@ -63,7 +63,7 @@ services:
     ports:
       - "505${BLOBBER}:505${BLOBBER}"
       - "3150${BLOBBER}:3150${BLOBBER}"
-    command: ./bin/blobber --port 505${BLOBBER} --grpc_port 3150${BLOBBER} --hostname 198.18.0.9${BLOBBER} --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --minio_file keysconfig/minio_config.txt
+    command: ./bin/blobber --port 505${BLOBBER} --grpc_port 3150${BLOBBER} --hostname 198.18.0.9${BLOBBER} --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data
     networks:
       default:
       testnet0:

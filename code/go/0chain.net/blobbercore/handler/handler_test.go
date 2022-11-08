@@ -1,3 +1,6 @@
+//go:build !integration_tests
+// +build !integration_tests
+
 package handler
 
 import (
@@ -67,10 +70,10 @@ func signHash(client *client.Client, hash string) (string, error) {
 
 func init() {
 	resetMockFileBlock()
-	common.ConfigRateLimits()
 	chain.SetServerChain(&chain.Chain{})
 	config.Configuration.SignatureScheme = "bls0chain"
 	logging.Logger = zap.NewNop()
+	ConfigRateLimits()
 
 	dir, err := os.Getwd()
 	if err != nil {
@@ -90,66 +93,41 @@ func init() {
 	filestore.SetFileStore(fs)
 }
 
-func setupHandlers() (*mux.Router, map[string]string) {
+func setupTestHandlers() (*mux.Router, map[string]string) {
 	router := mux.NewRouter()
-
-	opPath := "/v1/file/objectpath/{allocation}"
-	opName := "Object_Path"
-	router.HandleFunc(opPath, common.UserRateLimit(
-		common.ToJSONResponse(
-			WithReadOnlyConnection(ObjectPathHandler),
-		),
-	),
-	).Name(opName)
 
 	sPath := "/v1/file/stats/{allocation}"
 	sName := "Stats"
-	router.HandleFunc(sPath, common.UserRateLimit(
+	router.HandleFunc(sPath,
 		common.ToJSONResponse(
-			WithReadOnlyConnection(FileStatsHandler),
-		),
-	),
-	).Name(sName)
+			WithReadOnlyConnection(FileStatsHandler))).Name(sName)
 
 	collPath := "/v1/file/collaborator/{allocation}"
 	collName := "Collaborator"
-	router.HandleFunc(collPath, common.UserRateLimit(
+	router.HandleFunc(collPath,
 		common.ToJSONResponse(
-			WithReadOnlyConnection(GetCollaboratorHandler),
-		),
-	),
-	).Name(collName)
+			WithReadOnlyConnection(GetCollaboratorHandler))).Name(collName)
 
 	rPath := "/v1/file/rename/{allocation}"
 	rName := "Rename"
-	router.HandleFunc(rPath, common.UserRateLimit(
+	router.HandleFunc(rPath,
 		common.ToJSONResponse(
-			WithReadOnlyConnection(RenameHandler),
-		),
-	),
-	).Name(rName)
+			WithReadOnlyConnection(RenameHandler))).Name(rName)
 
 	cPath := "/v1/file/copy/{allocation}"
 	cName := "Copy"
-	router.HandleFunc(cPath, common.UserRateLimit(
+	router.HandleFunc(cPath,
 		common.ToJSONResponse(
-			WithReadOnlyConnection(CopyHandler),
-		),
-	),
-	).Name(cName)
+			WithReadOnlyConnection(CopyHandler))).Name(cName)
 
 	uPath := "/v1/file/upload/{allocation}"
 	uName := "Upload"
-	router.HandleFunc(uPath, common.UserRateLimit(
+	router.HandleFunc(uPath,
 		common.ToJSONResponse(
-			WithReadOnlyConnection(UploadHandler),
-		),
-	),
-	).Name(uName)
+			WithReadOnlyConnection(UploadHandler))).Name(uName)
 
 	return router,
 		map[string]string{
-			opPath:   opName,
 			sPath:    sName,
 			collPath: collName,
 			rPath:    rName,
@@ -222,7 +200,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 	ownerClient := clients[0]
 
-	router, handlers := setupHandlers()
+	router, handlers := setupTestHandlers()
 
 	sch := zcncrypto.NewSignatureScheme("bls0chain")
 	//sch.Mnemonic = "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
@@ -531,66 +509,6 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	}
 
 	positiveTests := []test{
-		{
-			name: "Object_Path_OK",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: func() *http.Request {
-					handlerName := handlers["/v1/file/objectpath/{allocation}"]
-					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
-					if err != nil {
-						t.Fatal()
-					}
-					q := url.Query()
-					q.Set("block_num", "0")
-					q.Set("path", path)
-					url.RawQuery = q.Encode()
-
-					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
-					if err != nil {
-						t.Fatal(err)
-					}
-
-					r.Header.Set(common.ClientSignatureHeader, sign)
-					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-
-					return r
-				}(),
-			},
-			alloc: alloc,
-			setupDbMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectBegin()
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
-					WithArgs(alloc.Tx).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id"}).
-							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID),
-					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
-					WithArgs(alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "allocation_id"}).
-							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
-					)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, "/", reference.DIRECTORY, alloc.ID, "/").
-					WillReturnRows(
-						sqlmock.NewRows([]string{"path"}).
-							AddRow("/"),
-					)
-
-				mock.ExpectCommit()
-			},
-			wantCode: http.StatusOK,
-		},
 		{
 			name: "Stats_OK",
 			args: args{

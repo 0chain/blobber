@@ -271,7 +271,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		fileData.Name = fileref.Name
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ThumbnailHash
-		fileData.OnCloud = fileref.OnCloud
 		fileData.ChunkSize = fileref.ChunkSize
 		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID, fileData, dr.BlockNum, dr.NumBlocks)
 		if err != nil {
@@ -282,7 +281,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		fileData.Name = fileref.Name
 		fileData.Path = fileref.Path
 		fileData.Hash = fileref.ContentHash
-		fileData.OnCloud = fileref.OnCloud
 		fileData.ChunkSize = fileref.ChunkSize
 
 		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID, fileData, dr.BlockNum, dr.NumBlocks)
@@ -319,7 +317,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 }
 
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
-
+	startTime := time.Now()
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
 	}
@@ -338,6 +336,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("immutable_allocation", "Cannot write to an immutable allocation")
 	}
 
+	elapsedAllocation := time.Since(startTime)
+
 	allocationID := allocationObj.ID
 
 	connectionID, ok := common.GetField(r, "connection_id")
@@ -350,8 +350,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	elapsedGetLock := time.Since(startTime) - elapsedAllocation
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
+		// might be good to check if blobber already has stored writemarker
 		return nil, common.NewErrorf("invalid_parameters",
 			"Invalid connection id. Connection id was not found: %v", err)
 	}
@@ -359,6 +361,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_parameters",
 			"Invalid connection id. Connection does not have any changes.")
 	}
+
+	elapsedGetConnObj := time.Since(startTime) - elapsedAllocation - elapsedGetLock
 
 	var isCollaborator bool
 	for _, change := range connectionObj.Changes {
@@ -427,6 +431,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
 	}
 
+	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj
+
 	var clientIDForWriteRedeem = writeMarker.ClientID
 	if isCollaborator {
 		clientIDForWriteRedeem = allocationObj.OwnerID
@@ -435,6 +441,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
 		return nil, err
 	}
+
+	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
+		elapsedGetConnObj - elapsedVerifyWM
 
 	inodeMeta := &allocation.InodeMeta{}
 	switch writeMarker.Operation {
@@ -474,6 +483,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err != nil {
 		return nil, err
 	}
+
+	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
+		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
+
 	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash"})
 	if err != nil {
 		return nil, err
@@ -546,6 +559,21 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	db.Delete(connectionObj)
+
+	commitOperation := connectionObj.Changes[0].Operation
+	input := connectionObj.Changes[0].Input
+
+	Logger.Info("[commit]"+commitOperation,
+		zap.String("alloc_id", allocationID),
+		zap.String("input", input),
+		zap.Duration("get_alloc", elapsedAllocation),
+		zap.Duration("get-lock", elapsedGetLock),
+		zap.Duration("get-conn-obj", elapsedGetConnObj),
+		zap.Duration("verify-wm", elapsedVerifyWM),
+		zap.Duration("write-pre-redeem", elapsedWritePreRedeem),
+		zap.Duration("apply-changes", elapsedApplyChanges),
+		zap.Duration("total", time.Since(startTime)),
+	)
 	return &result, nil
 }
 
@@ -744,6 +772,119 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	return result, nil
 }
 
+func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (interface{}, error) {
+
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	valid, err := verifySignatureFromRequest(
+		allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	if allocationObj.IsImmutable {
+		return nil, common.NewError("immutable_allocation", "Cannot copy data in an immutable allocation")
+	}
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	_ = ctx.Value(constants.ContextKeyClientKey).(string)
+
+	allocationID := allocationObj.ID
+
+	if clientID == "" {
+		return nil, common.NewError("invalid_operation", "Invalid client")
+	}
+
+	destPath := r.FormValue("dest")
+	if destPath == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
+	}
+
+	pathHash, err := pathHashFromReq(r, allocationID)
+	if err != nil {
+		return nil, err
+	}
+
+	if clientID == "" || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	connectionID := r.FormValue("connection_id")
+	if connectionID == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	if err != nil {
+		return nil, common.NewError("meta_error", "Error reading metadata for connection")
+	}
+	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(
+		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "merkle_root"})
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+	newPath := filepath.Join(destPath, objectRef.Name)
+	paths, err := common.GetParentPaths(newPath)
+	if err != nil {
+		return nil, err
+	}
+
+	paths = append(paths, newPath)
+
+	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, paths)
+	if err != nil {
+		Logger.Error("Database error", zap.Error(err))
+		return nil, common.NewError("database_error", fmt.Sprintf("Got db error while getting refs for %v", paths))
+	}
+
+	for _, ref := range refs {
+		switch ref.Path {
+		case newPath:
+			return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
+		default:
+			if ref.Type == reference.FILE {
+				return nil, common.NewError("invalid_path", fmt.Sprintf("%v is of file type", ref.Path))
+			}
+		}
+	}
+
+	allocationChange := &allocation.AllocationChange{}
+	allocationChange.ConnectionID = connectionObj.ID
+	allocationChange.Size = 0
+	allocationChange.Operation = constants.FileOperationMove
+	dfc := &allocation.MoveFileChange{
+		ConnectionID: connectionObj.ID,
+		AllocationID: connectionObj.AllocationID,
+		SrcPath:      objectRef.Path,
+		DestPath:     destPath,
+	}
+	dfc.SrcPath = objectRef.Path
+	connectionObj.Size += allocationChange.Size
+	connectionObj.AddChange(allocationChange, dfc)
+
+	err = connectionObj.Save(ctx)
+	if err != nil {
+		Logger.Error("Error in writing the connection meta data", zap.Error(err))
+		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+	}
+
+	result := &blobberhttp.UploadResult{}
+	result.Filename = objectRef.Name
+	result.Hash = objectRef.Hash
+	result.MerkleRoot = objectRef.MerkleRoot
+	result.Size = objectRef.Size
+	return result, nil
+}
+
 func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*blobberhttp.UploadResult, error) {
 
 	path := r.FormValue("path")
@@ -890,16 +1031,17 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	elapsedAllocation := time.Since(startTime)
 
+	st := time.Now()
 	allocationID := allocationObj.ID
 	cmd := createFileCommand(r)
 	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
-
-	elapsedValidate := time.Since(startTime) - elapsedAllocation
 
 	if err != nil {
 		return nil, err
 	}
 
+	elapsedValidate := time.Since(st)
+	st = time.Now()
 	existingFileRef := cmd.GetExistingFileRef()
 
 	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
@@ -928,24 +1070,37 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	elapsedRef := time.Since(startTime) - elapsedAllocation - elapsedValidate
-
+	elapsedRef := time.Since(st)
+	st = time.Now()
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
 
+	Logger.Info(fmt.Sprintf("[upload] Acquiring lock for allocation: %s, connection: %s", allocationID, connectionID))
 	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
+
+	Logger.Info(fmt.Sprintf("[upload] Locking for allocation: %s, connection: %s", allocationID, connectionID))
+
 	mutex.Lock()
-	defer mutex.Unlock()
+	Logger.Info(fmt.Sprintf("[upload] Acquired lock for allocation: %s, connection: %s", allocationID, connectionID))
 
-	elapsedAllocationChanges := time.Since(startTime) - elapsedAllocation - elapsedValidate - elapsedRef
+	defer func() {
+		Logger.Info(fmt.Sprintf("[upload] Unlocking lock for allocation: %s, connection: %s", allocationID, connectionID))
+		mutex.Unlock()
+		Logger.Info(fmt.Sprintf("[upload] Unlocked lock for allocation: %s, connection: %s", allocationID, connectionID))
+	}()
 
+	elapsedAllocationChanges := time.Since(st)
+
+	Logger.Info(fmt.Sprintf("[upload] Processing content for allocation %s, connection: %s", allocationID, connectionID))
+	st = time.Now()
 	result, err := cmd.ProcessContent(ctx, r, allocationObj, connectionObj)
 
 	if err != nil {
 		return nil, err
 	}
+	Logger.Info(fmt.Sprintf("[upload] Content processed for allocation: %s, connection: %s", allocationID, connectionID))
 
 	err = cmd.ProcessThumbnail(ctx, r, allocationObj, connectionObj)
 
@@ -953,8 +1108,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, err
 	}
 
-	elapsedProcess := time.Since(startTime) - elapsedAllocation - elapsedValidate - elapsedRef - elapsedAllocationChanges
-
+	elapsedProcess := time.Since(st)
+	st = time.Now()
 	err = cmd.UpdateChange(ctx, connectionObj)
 
 	if err != nil {
@@ -962,7 +1117,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("connection_write_error", err.Error()) //"Error writing the connection meta data")
 	}
 
-	elapsedUpdateChange := time.Since(startTime) - elapsedAllocation - elapsedValidate - elapsedRef - elapsedAllocationChanges - elapsedProcess
+	elapsedUpdateChange := time.Since(st)
 
 	Logger.Info("[upload]elapsed",
 		zap.String("alloc_id", allocationID),

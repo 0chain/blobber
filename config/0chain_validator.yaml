@@ -9,12 +9,16 @@ max_stake: 100.0
 # maximum allowed number of stake holders
 num_delegates: 50
 # service charge of related blobber
-service_charge: 0.30
+service_charge: 0.10
 
 block_worker: http://198.18.0.98:9091
 
-handlers:
-  rate_limit: 10 # 10 per second
+rate_limiters:
+  # Rate limiters will use this duration to clean unused token buckets.
+  # If it is 0 then token will expire in 10 years.
+  default_token_expire_duration: 5m
+  # If blobber is behind some proxy eg. nginx, cloudflare, etc.
+  proxy: true
 
 logging:
   level: "error"
@@ -28,3 +32,10 @@ server_chain:
   network:
     relay_time: 100 # milliseconds
   signature_scheme: "bls0chain"
+# integration tests related configurations
+integration_tests:
+  # address of the server
+  address: host.docker.internal:15210
+  # lock_interval used by nodes to request server to connect to blockchain
+  # after start
+  lock_interval: 1s

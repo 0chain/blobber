@@ -28,7 +28,7 @@ const (
 // eg: client1:alloc1:read --> lock for read pendings
 // client1:alloc1:write --> lock for write pendings
 // client1:alloc1 --> lock for writing read/write pendings
-var pendingMapLock = common.GetLocker()
+var pendingMapLock = common.GetNewLocker()
 
 const (
 	TableNameAllocation = "allocations"

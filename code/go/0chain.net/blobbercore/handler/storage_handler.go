@@ -77,9 +77,6 @@ func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString
 }
 
 func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method != "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
-	}
 	allocationTx := r.FormValue("id")
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 
@@ -111,10 +108,6 @@ func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocat
 }
 
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	alloc, err := fsh.verifyAllocation(ctx, allocationTx, true)
 	if err != nil {
@@ -274,11 +267,11 @@ func (fsh *StorageHandler) validateCollaboratorRequest(ctx context.Context, allo
 
 	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "type"})
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+		return nil, common.NewError("invalid_parameters", fileref.Path+" is an invalid path: "+err.Error())
 	}
 
 	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
+		return nil, common.NewError("invalid_parameters", fileref.Path+" is not a file.")
 	}
 
 	return fileref, nil
@@ -376,9 +369,6 @@ func (fsh *StorageHandler) RemoveCollaborator(ctx context.Context, r *http.Reque
 }
 
 func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
 	if err != nil {
@@ -555,11 +545,6 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 }
 
 func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request, resCh chan<- *blobberhttp.ReferencePathResult, errCh chan<- error) {
-	if r.Method == "POST" {
-		errCh <- common.NewError("invalid_method", "Invalid method used. Use GET instead")
-		return
-	}
-
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
@@ -647,64 +632,6 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	resCh <- &refPathResult
 }
 
-func (fsh *StorageHandler) GetObjectPath(ctx context.Context, r *http.Request) (*blobberhttp.ObjectPathResult, error) {
-	if r.Method == "POST" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
-	}
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-	allocationID := allocationObj.ID
-
-	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if clientID == "" || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-	path := r.FormValue("path")
-	if path == "" {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
-	}
-
-	blockNumStr := r.FormValue("block_num")
-	if blockNumStr == "" {
-		return nil, common.NewError("invalid_parameters", "Invalid path")
-	}
-
-	blockNum, err := strconv.ParseInt(blockNumStr, 10, 64)
-	if err != nil || blockNum < 0 {
-		return nil, common.NewError("invalid_parameters", "Invalid block number")
-	}
-
-	objectPath, err := reference.GetObjectPath(ctx, allocationID, blockNum)
-	if err != nil {
-		return nil, err
-	}
-
-	var latestWM *writemarker.WriteMarkerEntity
-	if allocationObj.AllocationRoot == "" {
-		latestWM = nil
-	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
-		if err != nil {
-			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
-		}
-	}
-	var objPathResult blobberhttp.ObjectPathResult
-	objPathResult.ObjectPath = objectPath
-	if latestWM != nil {
-		objPathResult.LatestWM = &latestWM.WM
-	}
-	return &objPathResult, nil
-}
-
 func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResult, error) {
 
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
@@ -783,20 +710,11 @@ func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Req
 		return nil, common.NewError("invalid_operation", "Client id is required")
 	}
 
-	publicKey, _ := ctx.Value(constants.ContextKeyClientKey).(string)
-	if publicKey == "" {
-		if clientID == allocationObj.OwnerID {
-			publicKey = allocationObj.OwnerPublicKey
-		} else {
-			return nil, common.NewError("empty_public_key", "public key is required")
-		}
-	}
-
 	clientSign := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
 
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+		return nil, common.NewError("invalid_signature", "Invalid signature or invalid access")
 	}
 
 	allocationID := allocationObj.ID
