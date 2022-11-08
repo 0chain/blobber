@@ -24,7 +24,7 @@ func (rf *MoveFileChange) DeleteTempFile() error {
 }
 
 func (rf *MoveFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
+	allocationRoot string, ts common.Timestamp, _ *InodeMeta) (*reference.Ref, error) {
 
 	srcRef, err := reference.GetObjectTree(ctx, rf.AllocationID, rf.SrcPath)
 	if err != nil {

@@ -244,7 +244,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 			}
 
 			err := func() error {
-				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1)
+				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1, nil)
 				if err != nil {
 					return err
 				}
