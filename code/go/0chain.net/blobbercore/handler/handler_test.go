@@ -535,6 +535,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 
 					r.Header.Set(common.ClientSignatureHeader, sign)
+					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 
 					return r
