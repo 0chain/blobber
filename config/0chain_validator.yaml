@@ -11,7 +11,7 @@ num_delegates: 50
 # service charge of related blobber
 service_charge: 0.10
 
-block_worker: http://198.18.0.98:9091
+block_worker: https://load.devnet-0chain.net/dns/
 
 rate_limiters:
   # Rate limiters will use this duration to clean unused token buckets.

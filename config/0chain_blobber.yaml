@@ -65,8 +65,7 @@ min_submit: 50
 # min confirmation from sharder
 min_confirmation: 50
 
-block_worker: http://198.18.0.98:9091
-
+block_worker: https://load.devnet-0chain.net/dns/
 
 rate_limiters:
   # Rate limiters will use this duration to clean unused token buckets.

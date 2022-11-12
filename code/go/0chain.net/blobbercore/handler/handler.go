@@ -180,13 +180,13 @@ func setupHandlers(r *mux.Router) {
 		Methods(http.MethodGet, http.MethodOptions)
 
 	//admin related
-	r.HandleFunc("/_debug", common.AuthenticateAdmin(common.ToJSONResponse(DumpGoRoutines)))
-	r.HandleFunc("/_config", common.AuthenticateAdmin(common.ToJSONResponse(GetConfig)))
-	r.HandleFunc("/_stats", common.AuthenticateAdmin(StatsHandler))
-	r.HandleFunc("/_statsJSON", common.AuthenticateAdmin(common.ToJSONResponse(stats.StatsJSONHandler)))
-	r.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
-	r.HandleFunc("/getstats", common.AuthenticateAdmin(common.ToJSONResponse(stats.GetStatsHandler)))
-	r.HandleFunc("/challengetimings", common.AuthenticateAdmin(common.ToJSONResponse(GetChallengeTimings)))
+	r.HandleFunc("/_debug", common.ToJSONResponse(DumpGoRoutines))
+	r.HandleFunc("/_config", common.ToJSONResponse(GetConfig))
+	r.HandleFunc("/_stats", StatsHandler)
+	r.HandleFunc("/_statsJSON", common.ToJSONResponse(stats.StatsJSONHandler))
+	r.HandleFunc("/_cleanupdisk", common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))
+	r.HandleFunc("/getstats", common.ToJSONResponse(stats.GetStatsHandler))
+	r.HandleFunc("/challengetimings", common.ToJSONResponse(GetChallengeTimings))
 
 	//marketplace related
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
@@ -652,7 +652,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	return map[string]interface{}{"message": "Share info added successfully"}, nil
 }
 
-//PrintCSS - print the common css elements
+// PrintCSS - print the common css elements
 func PrintCSS(w http.ResponseWriter) {
 	fmt.Fprintf(w, "<style>\n")
 	fmt.Fprintf(w, ".number { text-align: right; }\n")
