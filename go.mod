@@ -17,7 +17,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/selvatico/go-mocket v1.0.7
-	github.com/spf13/viper v1.13.0
+	github.com/spf13/viper v1.14.0
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.23.0
 	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a
@@ -34,7 +34,7 @@ require (
 )
 
 require (
-	golang.org/x/sys v0.1.0
+	golang.org/x/sys v0.2.0
 	gorm.io/driver/sqlite v1.4.3
 )
 
