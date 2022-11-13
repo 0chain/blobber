@@ -5,7 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  push: 
+  push:
     branches:
       - master
       - staging
@@ -28,6 +28,9 @@ jobs:
       - name: Buf-lint
         if: success()
         run: make local
+
+      - name: Check swagger generation
+        run: docker.local/bin/test.swagger.sh
 
       - name: Golangci-lint
         uses: golangci/golangci-lint-action@v3
@@ -53,7 +56,7 @@ jobs:
 
       - name: Run tests
         run: |
-          cd $GITHUB_WORKSPACE/code/go/0chain.net/ 
+          cd $GITHUB_WORKSPACE/code/go/0chain.net/
           CGO_ENABLED=1 go test -tags bn256 -race -coverprofile=coverage.txt -covermode=atomic ./...
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2

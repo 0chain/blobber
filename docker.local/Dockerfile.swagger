@@ -1,4 +1,4 @@
-FROM zchain_build_base as cross
+FROM blobber_base as cross
 
 ARG commit_hash="dev"
 ARG tag_name="dev"
@@ -13,7 +13,7 @@ RUN mkdir -p bin &&\
   LDFLAGS="$LDFLAGS -X github.com/go-swagger/go-swagger/cmd/swagger/commands.Version=${tag_name}" &&\
   CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -tags osusergo,netgo -o bin/swagger -ldflags "$LDFLAGS" -a ./cmd/swagger
 
-FROM zchain_build_base
+FROM blobber_base
 
 ENV SRC_DIR=/blobber
 ENV GO111MODULE=on
