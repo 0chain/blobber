@@ -1,19 +1,17 @@
-//	0chain Blobber Api:
-//	 version: 0.0.1
-//	 title: 0chain Blobber Api
-//	Schemes: http, https
-//	Host: localhost:7171
-//	BasePath: /
-//	Produces:
-//	  - application/json
+//  0chain Api:
+//   version: 0.0.1
+//   title: 0chain Api
+//  Schemes: http, https
+//  Host: localhost:7171
+//  BasePath: /
+//  Produces:
+//    - application/json
 //
 // securityDefinitions:
-//
-//	apiKey:
-//	  type: apiKey
-//	  in: header
-//	  name: authorization
-//
+//  apiKey:
+//    type: apiKey
+//    in: header
+//    name: authorization
 // swagger:meta
 package handler
 
@@ -404,9 +402,9 @@ func RecentRefsRequestHandler(ctx context.Context, r *http.Request) (interface{}
 //	+name: allocation
 //	 description: offset
 //	 required: true
-//	 in: query
+//	 in: path
 //	 type: string
-
+//
 // responses:
 //
 //	200: UploadResult
