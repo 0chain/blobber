@@ -8,6 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
+// swagger:model UploadResult
 type UploadResult struct {
 	Filename   string `json:"filename"`
 	Size       int64  `json:"size"`

@@ -396,6 +396,23 @@ func RecentRefsRequestHandler(ctx context.Context, r *http.Request) (interface{}
 	return response, nil
 }
 
+// swagger:route GET /v1/file/rename/{allocation} renameallocation
+// rename an allocation
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: offset
+//	 required: true
+//	 in: query
+//	 type: string
+
+// responses:
+//
+//	200: UploadResult
+//	400:
+//	500:
+
 func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
