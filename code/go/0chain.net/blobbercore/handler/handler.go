@@ -1,17 +1,19 @@
-//  0chain Api:
-//   version: 0.0.1
-//   title: 0chain Api
-//  Schemes: http, https
-//  Host: localhost:7171
-//  BasePath: /
-//  Produces:
-//    - application/json
+//	0chain Api:
+//	 version: 0.0.1
+//	 title: 0chain Api
+//	Schemes: http, https
+//	Host: localhost:7171
+//	BasePath: /
+//	Produces:
+//	  - application/json
 //
 // securityDefinitions:
-//  apiKey:
-//    type: apiKey
-//    in: header
-//    name: authorization
+//
+//	apiKey:
+//	  type: apiKey
+//	  in: header
+//	  name: authorization
+//
 // swagger:meta
 package handler
 
@@ -25,6 +27,8 @@ import (
 	"runtime/pprof"
 	"strconv"
 	"time"
+
+	"github.com/go-openapi/runtime/middleware"
 
 	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
@@ -128,10 +132,26 @@ func RateLimitByGeneralRL(handler common.ReqRespHandlerf) common.ReqRespHandlerf
 	return common.RateLimit(handler, generalRL)
 }
 
+func SetupSwagger() {
+	http.Handle("/swagger.yaml", http.FileServer(http.Dir("/docs")))
+
+	// documentation for developers
+	opts := middleware.SwaggerUIOpts{SpecURL: "swagger.yaml"}
+	sh := middleware.SwaggerUI(opts, nil)
+	http.Handle("/docs", sh)
+
+	// documentation for share
+	opts1 := middleware.RedocOpts{SpecURL: "swagger.yaml", Path: "docs1"}
+	sh1 := middleware.Redoc(opts1, nil)
+	http.Handle("/docs1", sh1)
+}
+
 /*setupHandlers sets up the necessary API end points */
 func setupHandlers(r *mux.Router) {
 	ConfigRateLimits()
 	r.Use(useRecovery, useCors)
+
+	SetupSwagger()
 
 	//object operations
 	r.HandleFunc("/v1/file/rename/{allocation}",
