@@ -309,6 +309,23 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	return ctx
 }
 
+// swagger:route GET /allocation allocation
+// get allocation details
+//
+// parameters:
+//
+//	+name: id
+//	 description: allocation ID
+//	 required: true
+//	 in: query
+//	 type: string
+//
+// responses:
+//
+//	200: CommitResult
+//	400:
+//	500:
+
 func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -320,6 +337,8 @@ func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error
 	return response, nil
 }
 
+
+// TODO: add swagger
 func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -330,6 +349,29 @@ func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 	}
 	return response, nil
 }
+
+// swagger:route POST /v1/file/commitmetatxn/{allocation} commitmetatxn
+// CommitHandler is the handler to respond to upload requests from clients
+//
+// parameters:
+//
+//	+name: auth_token
+//	 description: auth token
+//	 required: true
+//	 in: body
+//	 type: string
+//
+//	+name: txn_id
+//	 description: transaction id
+//	 required: true
+//	 in: body
+//	 type: string
+//
+// responses:
+//
+//	200:
+//	400:
+//	500:
 
 func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
@@ -342,6 +384,7 @@ func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, er
 	return response, nil
 }
 
+// TODO: add swagger
 func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -371,11 +414,28 @@ func listHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-/*CommitHandler is the handler to respond to upload requests from clients*/
+// swagger:route GET /v1/connection/commit/{allocation} commithandler
+// CommitHandler is the handler to respond to upload requests from clients
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: offset
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: CommitResult
+//	400:
+//	500:
+
 func CommitHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
 	return commitHandler(ctx, r)
 }
 
+// TODO: add handler
 func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
@@ -390,9 +450,44 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 	return response, nil
 }
 
+
+// swagger:route GET /v1/file/objecttree/{allocation} referencepath
+// get object tree reference path
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: allocation ID
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: ReferencePathResult
+//	400:
+//	500:
+
 func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
 	return objectTreeHandler(ctx, r)
 }
+
+// swagger:route GET /v1/file/refs/{allocation} refshandler
+// get object tree reference path
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: allocation ID
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: RefResult
+//	400:
+//	500:
 
 func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
@@ -404,6 +499,23 @@ func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 	return response, nil
 }
+
+// swagger:route GET /v1/file/refs/recent/{allocation} recentalloc
+// get recent allocation
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: allocation ID
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: RecentRefResult
+//	400:
+//	500:
 
 func RecentRefsRequestHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
@@ -441,6 +553,23 @@ func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
+// swagger:route GET /v1/file/copy/{allocation} copyallocation
+// copy an allocation
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: offset
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: UploadResult
+//	400:
+//	500:
+
 func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -450,6 +579,23 @@ func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 	return response, nil
 }
+
+// swagger:route GET /v1/file/move/{allocation} moveallocation
+// move an allocation
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: offset
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: UploadResult
+//	400:
+//	500:
 
 func MoveHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
@@ -461,7 +607,23 @@ func MoveHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-/*CreateDirHandler is the handler to respond to create dir for allocation*/
+// swagger:route GET /v1/dir/{allocation} createdirhandler
+// CreateDirHandler is the handler to respond to create dir for allocation
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: offset
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: UploadResult
+//	400:
+//	500:
+
 func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
