@@ -267,11 +267,11 @@ func (fsh *StorageHandler) validateCollaboratorRequest(ctx context.Context, allo
 
 	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "type"})
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", fileref.Path + " is an invalid path: "+err.Error())
+		return nil, common.NewError("invalid_parameters", fileref.Path+" is an invalid path: "+err.Error())
 	}
 
 	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", fileref.Path + " is not a file.")
+		return nil, common.NewError("invalid_parameters", fileref.Path+" is not a file.")
 	}
 
 	return fileref, nil
@@ -703,20 +703,11 @@ func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Req
 		return nil, common.NewError("invalid_operation", "Client id is required")
 	}
 
-	publicKey, _ := ctx.Value(constants.ContextKeyClientKey).(string)
-	if publicKey == "" {
-		if clientID == allocationObj.OwnerID {
-			publicKey = allocationObj.OwnerPublicKey
-		} else {
-			return nil, common.NewError("empty_public_key", "public key is required")
-		}
-	}
-
 	clientSign := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
 
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+		return nil, common.NewError("invalid_signature", "Invalid signature or invalid access")
 	}
 
 	allocationID := allocationObj.ID
