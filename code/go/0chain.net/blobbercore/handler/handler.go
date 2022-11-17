@@ -133,7 +133,7 @@ func RateLimitByGeneralRL(handler common.ReqRespHandlerf) common.ReqRespHandlerf
 }
 
 func SetupSwagger() {
-	http.Handle("/swagger.yaml", http.FileServer(http.Dir("/docs")))
+	// http.Handle("/swagger.yaml", http.FileServer(http.Dir("/docs")))
 
 	// documentation for developers
 	opts := middleware.SwaggerUIOpts{SpecURL: "swagger.yaml"}
@@ -337,7 +337,6 @@ func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error
 	return response, nil
 }
 
-
 // TODO: add swagger
 func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
@@ -449,7 +448,6 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 	}
 	return response, nil
 }
-
 
 // swagger:route GET /v1/file/objecttree/{allocation} referencepath
 // get object tree reference path
