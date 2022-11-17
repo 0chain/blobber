@@ -2,7 +2,12 @@
 
 set -e
 
-cmd="build"
+if [ -z "$DOCKER_IMAGE_BASE" ]; then
+    DOCKER_IMAGE_BASE="blobber_base"
+fi
+
+cmd="build --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE"
+
 dockerfile="docker.local/Dockerfile.swagger"
 platform=""
 

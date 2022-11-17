@@ -29,6 +29,9 @@ jobs:
         if: success()
         run: make local
 
+      - name: Build Base
+        run: ./docker.local/bin/build.base.sh
+
       - name: Check swagger generation
         run: docker.local/bin/test.swagger.sh
 

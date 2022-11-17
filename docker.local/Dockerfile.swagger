@@ -1,4 +1,5 @@
-FROM blobber_base as cross
+ARG  DOCKER_IMAGE_BASE=blobber_base
+FROM $DOCKER_IMAGE_BASE as cross
 
 ARG commit_hash="dev"
 ARG tag_name="dev"
@@ -13,7 +14,7 @@ RUN mkdir -p bin &&\
   LDFLAGS="$LDFLAGS -X github.com/go-swagger/go-swagger/cmd/swagger/commands.Version=${tag_name}" &&\
   CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -tags osusergo,netgo -o bin/swagger -ldflags "$LDFLAGS" -a ./cmd/swagger
 
-FROM blobber_base
+FROM $DOCKER_IMAGE_BASE
 
 ENV SRC_DIR=/blobber
 ENV GO111MODULE=on
