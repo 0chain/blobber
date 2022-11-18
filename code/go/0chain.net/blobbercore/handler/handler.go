@@ -133,17 +133,18 @@ func RateLimitByGeneralRL(handler common.ReqRespHandlerf) common.ReqRespHandlerf
 }
 
 func SetupSwagger() {
-	// http.Handle("/swagger.yaml", http.FileServer(http.Dir("/docs")))
+	mux := http.NewServeMux()
+	mux.Handle("/swagger.yaml", http.FileServer(http.Dir("/docs")))
 
 	// documentation for developers
 	opts := middleware.SwaggerUIOpts{SpecURL: "swagger.yaml"}
 	sh := middleware.SwaggerUI(opts, nil)
-	http.Handle("/docs", sh)
+	mux.Handle("/docs", sh)
 
 	// documentation for share
 	opts1 := middleware.RedocOpts{SpecURL: "swagger.yaml", Path: "docs1"}
 	sh1 := middleware.Redoc(opts1, nil)
-	http.Handle("/docs1", sh1)
+	mux.Handle("/docs1", sh1)
 }
 
 /*setupHandlers sets up the necessary API end points */
