@@ -26,7 +26,7 @@ func SetupHandlers(r *mux.Router) {
 // a handler to respond to block queries
 //
 // responses:
-//  200:
+//  200: ListResult
 //  404:
 /* ListHandler is the handler to respond to list requests from clients*/
 func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {

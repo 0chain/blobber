@@ -56,6 +56,7 @@ type ObjectPathResult struct {
 	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
 }
 
+// swagger:model ListResult
 type ListResult struct {
 	AllocationRoot string                   `json:"allocation_root"`
 	Meta           map[string]interface{}   `json:"meta_data"`
