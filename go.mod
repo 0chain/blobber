@@ -19,7 +19,7 @@ require (
 	github.com/selvatico/go-mocket v1.0.7
 	github.com/spf13/viper v1.14.0
 	github.com/stretchr/testify v1.8.1
-	go.uber.org/zap v1.23.0
+	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a
 	golang.org/x/net v0.1.0 // indirect
 	golang.org/x/time v0.1.0 // indirect
