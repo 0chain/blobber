@@ -28,6 +28,12 @@ var pendingMapLock = common.GetNewLocker()
 
 const (
 	TableNameAllocation = "allocations"
+	CAN_UPLOAD_MASK		= uint8(1) // 0000 0001
+	CAN_DELETE_MASK		= uint8(2) // 0000 0010
+	CAN_UPDATE_MASK		= uint8(4) // 0000 0100
+	CAN_MOVE_MASK		= uint8(8) // 0000 1000
+	CAN_COPY_MASK		= uint8(16)// 0001 0000 
+	CAN_RENAME_MASK 	= uint8(32)// 0010 0000
 )
 
 type Allocation struct {
@@ -50,6 +56,21 @@ type Allocation struct {
 	// Ending and cleaning
 	CleanedUp bool `gorm:"column:cleaned_up;not null;default:false"`
 	Finalized bool `gorm:"column:finalized;not null;default:false"`
+
+	// Flag to determine if anyone can extend this allocation
+	ThirdPartyExtendable bool `json:"third_party_extendable" gorm:"column:third_party_extendable;not null;default:false"`
+
+	// FileOptions to define file restrictions on an allocation for third-parties
+	// default 00000000 for all crud operations suggesting only owner has the below listed abilities.
+	// enabling option/s allows any third party to perform certain ops
+	// 00000001 - 1  - upload
+	// 00000010 - 2  - delete
+	// 00000100 - 4  - update
+	// 00001000 - 8  - move
+	// 00010000 - 16 - copy
+	// 00100000 - 32 - rename
+	FileOptions uint8 `json:"file_options" gorm:"column:file_options;not null;default:63"`
+	
 	// Has many terms
 	// If Preload("Terms") is required replace tag `gorm:"-"` with `gorm:"foreignKey:AllocationID"`
 	Terms []*Terms `gorm:"-"`
@@ -57,6 +78,31 @@ type Allocation struct {
 
 func (Allocation) TableName() string {
 	return TableNameAllocation
+}
+
+func (a *Allocation) CanUpload() bool {
+	return (a.FileOptions & CAN_UPLOAD_MASK) > 0 
+}
+
+func (a *Allocation) CanDelete() bool {
+	return (a.FileOptions & CAN_DELETE_MASK) > 0 
+	
+}
+
+func (a *Allocation) CanUpdate() bool {
+	return (a.FileOptions & CAN_UPDATE_MASK) > 0 
+}
+
+func (a *Allocation) CanMove() bool {
+	return (a.FileOptions & CAN_MOVE_MASK) > 0 
+}
+
+func (a *Allocation) CanCopy() bool {
+	return (a.FileOptions & CAN_COPY_MASK) > 0 
+}
+
+func (a *Allocation) CanRename() bool {
+	return (a.FileOptions & CAN_RENAME_MASK) > 0 
 }
 
 // RestDurationInTimeUnits returns number (float point) of time units until
