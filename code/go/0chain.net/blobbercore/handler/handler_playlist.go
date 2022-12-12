@@ -45,7 +45,7 @@ func LoadPlaylist(ctx *Context) (interface{}, error) {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	return reference.LoadPlaylist(ctx, ctx.AllocationId, q.Get("path"), "", since)
+	return reference.LoadPlaylist(ctx, ctx.AllocationId, q.Get("path"), since)
 }
 
 // LoadPlaylistFile load playlist file
