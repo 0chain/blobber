@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
 type PlaylistFile struct {
@@ -18,7 +20,7 @@ type PlaylistFile struct {
 }
 
 // LoadPlaylist load playlist
-func LoadPlaylist(ctx context.Context, allocationID, path, lookupHash, since string) ([]PlaylistFile, error) {
+func LoadPlaylist(ctx context.Context, allocationID, path, since string) ([]PlaylistFile, error) {
 
 	db := datastore.GetStore().GetDB()
 
@@ -37,9 +39,9 @@ func LoadPlaylist(ctx context.Context, allocationID, path, lookupHash, since str
 	db = db.Table("reference_objects").
 		Select([]string{"lookup_hash", "name", "path", "num_of_blocks", "parent_path", "size", "mimetype", "type"}).Order("id")
 	if sinceId > 0 {
-		db.Where("allocation_id = ? and parent_path = ? and type='f' and id > ?", allocationID, path, sinceId)
+		db.Where("allocation_id = ? and parent_path = ? and type='f' and id > ? and name like '%.ts'", allocationID, path, sinceId)
 	} else {
-		db.Where("allocation_id = ? and parent_path = ? and type='f'", allocationID, path)
+		db.Where("allocation_id = ? and parent_path = ? and type='f' and name like '%.ts'", allocationID, path)
 	}
 
 	if err := db.Find(&files).Error; err != nil {
@@ -55,11 +57,15 @@ func LoadPlaylistFile(ctx context.Context, allocationID, lookupHash string) (*Pl
 
 	file := &PlaylistFile{}
 
-	if err := db.Table("reference_objects").
+	result := db.Table("reference_objects").
 		Select([]string{"lookup_hash", "name", "path", "num_of_blocks", "parent_path", "size", "mimetype", "type"}).
 		Where("allocation_id = ? and lookup_hash = ?", allocationID, lookupHash).
-		First(file).Error; err != nil {
-		return nil, err
+		First(file)
+
+	logging.Logger.Info("playlist", zap.String("allocation_id", allocationID), zap.String("lookup_hash", lookupHash))
+
+	if result.Error != nil {
+		return nil, result.Error
 	}
 
 	return file, nil

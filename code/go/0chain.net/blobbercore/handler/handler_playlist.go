@@ -37,7 +37,7 @@ func LoadPlaylist(ctx *Context) (interface{}, error) {
 			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
 		}
 
-		return reference.LoadPlaylist(ctx, ctx.AllocationId, "", lookupHash, since)
+		return reference.LoadPlaylist(ctx, ctx.AllocationId, fileRef.Path, since)
 
 	}
 
