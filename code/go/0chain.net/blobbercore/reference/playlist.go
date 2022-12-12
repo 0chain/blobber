@@ -30,10 +30,6 @@ func LoadPlaylist(ctx context.Context, allocationID, path, since string) ([]Play
 		db.Raw("SELECT id FROM reference_objects WHERE allocation_id = ? and lookup_hash = ? ", allocationID, since).Row().Scan(&sinceId) //nolint: errcheck
 	}
 
-	if len(path) == 0 {
-		db.Raw("SELECT parent_path FROM reference_objects WHERE allocation_id = ? and lookup_hash = ? ", allocationID, lookupHash).Row().Scan(&path) //nolint: errcheck
-	}
-
 	var files []PlaylistFile
 
 	db = db.Table("reference_objects").
