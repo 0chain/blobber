@@ -19,7 +19,7 @@ func TestPlaylist_LoadPlaylist(t *testing.T) {
 	datastore.UseMocket(true)
 
 	gomocket.Catcher.NewMock().
-		WithQuery(`SELECT "lookup_hash","name","path","num_of_blocks","parent_path","size","mimetype","type" FROM "reference_objects" WHERE allocation_id = $1 and parent_path = $2 and type='f' and name like '%!!(string=path)t(string=)s`).
+		WithQuery(`SELECT "lookup_hash","name","path","num_of_blocks","parent_path","size","mimetype","type" FROM "reference_objects" WHERE allocation_id = $1 and parent_path = $2 and type='f'`).
 		WithArgs("AllocationId", "path").
 		WithReply([]map[string]interface{}{
 			{
