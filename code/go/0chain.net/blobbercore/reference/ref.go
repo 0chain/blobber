@@ -28,7 +28,7 @@ const (
 
 type Ref struct {
 	ID                  int64  `gorm:"column:id;primaryKey"`
-	FileID              int64  `gorm:"column:file_id" dirlist:"file_id" filelist:"file_id"`
+	FileID              string `gorm:"column:file_id" dirlist:"file_id" filelist:"file_id"`
 	Type                string `gorm:"column:type;size:1" dirlist:"type" filelist:"type"`
 	AllocationID        string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_lookup_hash_alloc,priority:1" dirlist:"allocation_id" filelist:"allocation_id"`
 	LookupHash          string `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash_alloc,priority:2" dirlist:"lookup_hash" filelist:"lookup_hash"`
@@ -88,7 +88,7 @@ func (Ref) TableName() string {
 
 type PaginatedRef struct { //Gorm smart select fields.
 	ID                  int64  `gorm:"column:id" json:"id,omitempty"`
-	FileID              int64  `gorm:"file_id" json:"file_id"`
+	FileID              string `gorm:"file_id" json:"file_id"`
 	Type                string `gorm:"column:type" json:"type,omitempty"`
 	AllocationID        string `gorm:"column:allocation_id" json:"allocation_id,omitempty"`
 	LookupHash          string `gorm:"column:lookup_hash" json:"lookup_hash,omitempty"`
@@ -334,14 +334,14 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*
 
 func (r *Ref) GetFileMetaHashData() string {
 	return fmt.Sprintf(
-		"%s:%d:%d:%d:%s",
+		"%s:%d:%s:%d:%s",
 		r.Path, r.Size, r.FileID,
 		r.ActualFileSize, r.ActualFileHash)
 }
 
 func (fr *Ref) GetFileHashData() string {
 	return fmt.Sprintf(
-		"%s:%s:%s:%s:%d:%s:%s:%d:%s:%d:%d",
+		"%s:%s:%s:%s:%d:%s:%s:%d:%s:%d:%s",
 		fr.AllocationID,
 		fr.Type, // don't need to add it as well
 		fr.Name, // don't see any utility as fr.Path below has name in it

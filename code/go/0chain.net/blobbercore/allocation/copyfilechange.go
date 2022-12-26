@@ -19,7 +19,6 @@ type CopyFileChange struct {
 	AllocationID string `json:"allocation_id"`
 	SrcPath      string `json:"path"`
 	DestPath     string `json:"dest_path"`
-	LatestInode  Inode  `json:"latest_inode"`
 }
 
 func (rf *CopyFileChange) DeleteTempFile() error {
@@ -27,7 +26,7 @@ func (rf *CopyFileChange) DeleteTempFile() error {
 }
 
 func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp, inodeMeta *InodeMeta) (*reference.Ref, error) {
+	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 
 	totalRefs, err := reference.CountRefs(rf.AllocationID)
 	if err != nil {
@@ -78,10 +77,10 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 			newRef := reference.NewDirectoryRef()
 			newRef.AllocationID = rf.AllocationID
 			newRef.Path = filepath.Join("/", strings.Join(fields[:i+1], "/"))
-			fileID, ok := inodeMeta.MetaData[newRef.Path]
-			if !ok || fileID <= 0 {
+			fileID, ok := fileIDMeta[newRef.Path]
+			if !ok || fileID == "" {
 				return nil, common.NewError("invalid_parameter",
-					fmt.Sprintf("file path %s has no entry in inodes meta", newRef.Path))
+					fmt.Sprintf("file path %s has no entry in file ID meta", newRef.Path))
 			}
 			newRef.FileID = fileID
 			newRef.ParentPath = filepath.Join("/", strings.Join(fields[:i], "/"))
@@ -94,7 +93,7 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 		}
 	}
 
-	fileRefs, err := rf.processCopyRefs(ctx, srcRef, dirRef, allocationRoot, ts, inodeMeta.MetaData)
+	fileRefs, err := rf.processCopyRefs(ctx, srcRef, dirRef, allocationRoot, ts, fileIDMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -112,16 +111,16 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 
 func (rf *CopyFileChange) processCopyRefs(
 	ctx context.Context, srcRef, destRef *reference.Ref,
-	allocationRoot string, ts common.Timestamp, inodesMeta map[string]int64) (
+	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (
 	fileRefs []*reference.Ref, err error) {
 
 	newRef := *srcRef
 	newRef.ID = 0
 	newRef.Path = filepath.Join(destRef.Path, srcRef.Name)
-	fileID, ok := inodesMeta[newRef.Path]
-	if !ok || fileID <= 0 {
+	fileID, ok := fileIDMeta[newRef.Path]
+	if !ok || fileID == "" {
 		return nil, common.NewError("invalid_parameter",
-			fmt.Sprintf("file path %s has no entry in inodes meta", newRef.Path))
+			fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
 	}
 	newRef.FileID = fileID
 	newRef.ParentPath = destRef.Path
@@ -131,7 +130,7 @@ func (rf *CopyFileChange) processCopyRefs(
 	destRef.AddChild(&newRef)
 	if newRef.Type == reference.DIRECTORY {
 		for _, childRef := range srcRef.Children {
-			fRefs, err := rf.processCopyRefs(ctx, childRef, &newRef, allocationRoot, ts, inodesMeta)
+			fRefs, err := rf.processCopyRefs(ctx, childRef, &newRef, allocationRoot, ts, fileIDMeta)
 			if err != nil {
 				return nil, err
 			}

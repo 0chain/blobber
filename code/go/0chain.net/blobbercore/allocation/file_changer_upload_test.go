@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
@@ -14,7 +13,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/core/zcncrypto"
@@ -44,7 +42,7 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 		name                string
 		context             metadata.MD
 		allocChange         *AllocationChange
-		inodesMeta          *InodeMeta
+		fileIDMeta          map[string]string
 		hash                string
 		allocationID        string
 		maxDirFilesPerAlloc int
@@ -113,25 +111,12 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 				},
 			}
 
-			inodesMeta := func() *InodeMeta {
-				fileID := int64(2)
-				hash := encryption.Hash(strconv.FormatInt(fileID, 10))
-				sign, err := sch.Sign(hash)
-				require.NoError(t, err)
-				in := Inode{
-					AllocationID:   alloc.ID,
-					LatestFileID:   fileID,
-					OwnerSignature: sign,
-				}
-
-				inodesMeta := map[string]int64{
-					filepath.Dir(fPath): 1,
-					fPath:               2,
-				}
-				return &InodeMeta{MetaData: inodesMeta, LatestInode: in}
-			}()
+			fileIDMeta := map[string]string{
+				filepath.Dir(fPath): "fileID#1",
+				fPath:               "fileID#2",
+			}
 			err := func() error {
-				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1, inodesMeta)
+				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1, fileIDMeta)
 				if err != nil {
 					return err
 				}

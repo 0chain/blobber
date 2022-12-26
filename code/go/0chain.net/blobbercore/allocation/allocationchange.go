@@ -22,17 +22,12 @@ const (
 	DeletedConnection    = 3
 )
 
-type InodeMeta struct {
-	MetaData    map[string]int64 `json:"meta_data"`
-	LatestInode Inode            `json:"latest_inode"`
-}
-
 // AllocationChangeProcessor request transaction of file operation. it is president in postgres, and can be rebuilt for next http reqeust(eg CommitHandler)
 type AllocationChangeProcessor interface {
 	CommitToFileStore(ctx context.Context) error
 	DeleteTempFile() error
 	ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string,
-		ts common.Timestamp, inodeMeta *InodeMeta) (*reference.Ref, error)
+		ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error)
 	Marshal() (string, error)
 	Unmarshal(string) error
 }
@@ -174,11 +169,11 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 
 //
 func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot string,
-	ts common.Timestamp, inodeMeta *InodeMeta) error {
+	ts common.Timestamp, fileIDMeta map[string]string) error {
 
 	for idx, change := range cc.Changes {
 		changeProcessor := cc.AllocationChanges[idx]
-		_, err := changeProcessor.ApplyChange(ctx, change, allocationRoot, ts, inodeMeta)
+		_, err := changeProcessor.ApplyChange(ctx, change, allocationRoot, ts, fileIDMeta)
 		if err != nil {
 			return err
 		}

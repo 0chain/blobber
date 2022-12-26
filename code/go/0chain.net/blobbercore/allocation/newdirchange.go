@@ -22,7 +22,7 @@ type NewDir struct {
 }
 
 func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp, inodeMeta *InodeMeta) (*reference.Ref, error) {
+	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 
 	totalRefs, err := reference.CountRefs(nf.AllocationID)
 	if err != nil {
@@ -79,10 +79,10 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 			newRef.CreatedAt = ts
 			newRef.UpdatedAt = ts
 			newRef.HashToBeComputed = true
-			fileID, ok := inodeMeta.MetaData[newRef.Path]
-			if !ok || fileID <= 0 {
+			fileID, ok := fileIDMeta[newRef.Path]
+			if !ok || fileID == "" {
 				return nil, common.NewError("invalid_parameter",
-					fmt.Sprintf("file path %s has no entry in inodes meta", newRef.Path))
+					fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
 			}
 			newRef.FileID = fileID
 			dirRef.AddChild(newRef)

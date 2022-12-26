@@ -445,41 +445,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM
 
-	inodeMeta := &allocation.InodeMeta{}
-	switch writeMarker.Operation {
-	case writemarker.Upload, writemarker.Copy, writemarker.NewDir:
-		// Should contain map of filepath and fileid
-		inodesMetaStr := r.FormValue("inodes_meta")
-		err = json.Unmarshal([]byte(inodesMetaStr), &inodeMeta)
-		if err != nil {
-			return nil, common.NewError("unmarshall_error",
-				fmt.Sprintf("Error while unmarshalling inodes meta data: %v", err))
-		}
-
-		if len(inodeMeta.MetaData) < 1 {
-			return nil, common.NewError("invalid_inode_meta", "inode meta data has no map of path to fileid")
-		}
-
-		if inodeMeta.LatestInode.LatestFileID <= 0 {
-			return nil, common.NewError("invalid_parameters",
-				"Latest file id cannot be less than or equal to 0")
-		}
-
-		inodeMeta.LatestInode.PublicKey = allocationObj.OwnerPublicKey
-		err = inodeMeta.LatestInode.VerifySignature()
-		if err != nil {
-			return nil, common.NewError("inode_signature_verification_failed", err.Error())
-		}
-		inodeMeta.LatestInode.AllocationID = allocationID
-
-		err = inodeMeta.LatestInode.Save(ctx)
-		if err != nil {
-			return nil, common.NewError("inode_save_error", err.Error())
-		}
+	fileIDMetaStr := r.FormValue("file_id_meta")
+	fileIDMeta := make(map[string]string, 0)
+	err = json.Unmarshal([]byte(fileIDMetaStr), fileIDMeta)
+	if err != nil {
+		return nil, common.NewError("unmarshall_error",
+			fmt.Sprintf("Error while unmarshalling file ID meta data: %s", err.Error()))
 	}
 
 	err = connectionObj.ApplyChanges(
-		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, inodeMeta)
+		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
 	if err != nil {
 		return nil, err
 	}

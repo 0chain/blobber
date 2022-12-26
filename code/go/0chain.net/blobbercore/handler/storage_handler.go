@@ -620,12 +620,6 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	var refPathResult blobberhttp.ReferencePathResult
 	refPathResult.ReferencePath = refPath
 	if latestWM != nil {
-		inode, err := allocation.GetInode(allocationID)
-		if err != nil {
-			errCh <- common.NewError("inode_get_error", "Error while getting inode. "+err.Error())
-			return
-		}
-		refPathResult.LatestInode = inode
 		refPathResult.LatestWM = &latestWM.WM
 	}
 

@@ -12,18 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type FileOp int
-
-const (
-	Upload FileOp = iota
-	Update
-	Rename
-	Copy
-	Move
-	Delete
-	NewDir
-)
-
 type WriteMarker struct {
 	AllocationRoot         string           `gorm:"column:allocation_root;size:64;primaryKey" json:"allocation_root"`
 	PreviousAllocationRoot string           `gorm:"column:prev_allocation_root;size:64" json:"prev_allocation_root"`
@@ -34,16 +22,13 @@ type WriteMarker struct {
 	Timestamp              common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
 	ClientID               string           `gorm:"column:client_id;size:64" json:"client_id"`
 	Signature              string           `gorm:"column:signature;size:64" json:"signature"`
-	FileID                 int64            `gorm:"column:file_id" json:"file_id"`
-	Operation              FileOp           `gorm:"column:operation" json:"operation"`
 }
 
 func (wm *WriteMarker) GetHashData() string {
-	hashData := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%d:%d:%d:%d",
+	hashData := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%d:%d",
 		wm.AllocationRoot, wm.PreviousAllocationRoot,
 		wm.FileMetaRoot, wm.AllocationID, wm.BlobberID,
-		wm.ClientID, wm.Size, wm.Timestamp,
-		wm.FileID, wm.Operation)
+		wm.ClientID, wm.Size, wm.Timestamp)
 	return hashData
 }
 

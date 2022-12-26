@@ -2,7 +2,6 @@ package allocation
 
 import (
 	"context"
-	"strconv"
 	"testing"
 	"time"
 
@@ -14,7 +13,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/core/zcncrypto"
@@ -47,7 +45,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 		allocChange         *AllocationChange
 		srcPath             string
 		destination         string
-		inodesMeta          *InodeMeta
+		fileIDMeta          map[string]string
 		allocationID        string
 		maxDirFilesPerAlloc int
 		expectedMessage     string
@@ -59,22 +57,10 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 			allocChange: &AllocationChange{Operation: constants.FileOperationInsert},
 			srcPath:     "/orig.txt",
 			destination: "/",
-			inodesMeta: func() *InodeMeta {
-				fileID := int64(2)
-				hash := encryption.Hash(strconv.FormatInt(fileID, 10))
-				sign, _ := sch.Sign(hash)
-				in := Inode{
-					AllocationID:   alloc.ID,
-					LatestFileID:   fileID,
-					OwnerSignature: sign,
-				}
-
-				inodesMeta := map[string]int64{
-					"/":         1,
-					"/orig.txt": 2,
-				}
-				return &InodeMeta{MetaData: inodesMeta, LatestInode: in}
-			}(),
+			fileIDMeta: map[string]string{
+				"/":         "fileID#1",
+				"/orig.txt": "fileID#2",
+			},
 			allocationID:        alloc.ID,
 			maxDirFilesPerAlloc: 5,
 			expectingError:      false,
@@ -161,23 +147,11 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 			srcPath:      "/orig.txt",
 			destination:  "/target",
 			allocationID: alloc.ID,
-			inodesMeta: func() *InodeMeta {
-				fileID := int64(3)
-				hash := encryption.Hash(strconv.FormatInt(fileID, 10))
-				sign, _ := sch.Sign(hash)
-				in := Inode{
-					AllocationID:   alloc.ID,
-					LatestFileID:   fileID,
-					OwnerSignature: sign,
-				}
-
-				inodesMeta := map[string]int64{
-					"/":                1,
-					"/target":          2,
-					"/target/orig.txt": 3,
-				}
-				return &InodeMeta{MetaData: inodesMeta, LatestInode: in}
-			}(),
+			fileIDMeta: map[string]string{
+				"/":                "fileID#1",
+				"/target":          "fileID#2",
+				"/target/orig.txt": "fileID#3",
+			},
 			maxDirFilesPerAlloc: 5,
 			expectedMessage:     "max_alloc_dir_files_reached: maximum files and directories already reached",
 			expectingError:      true,
@@ -217,7 +191,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 			}
 
 			err := func() error {
-				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1, tc.inodesMeta)
+				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1, tc.fileIDMeta)
 				if err != nil {
 					return err
 				}

@@ -1,15 +1,11 @@
 package allocation
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -279,62 +275,4 @@ func SetWritePool(db *gorm.DB, allocationID string, wp *WritePool) (err error) {
 type ReadPoolRedeem struct {
 	PoolID  string `json:"pool_id"` // read pool ID
 	Balance int64  `json:"balance"` // balance reduction
-}
-
-// Inode is the table used to store and manage unique identification number for a file.
-// Owner needs to send file id while commiting new file/dir.
-// Only the latest file id is required to be signed. For example, if there is upload
-// request with remotepath `/a/b/c.txt` and /a does not exist then /a, /a/b and /a/b/c.txt
-// all will get file id with file id for /a/b/c.txt being the greatest.
-// If before uploading latestFileID was n then /a, /a//usr/share/code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.htmlb and /a/b/c.txt will have n+1,
-// n+2 and n+3 respectively.
-// Onwer is required to sign only n+3.
-type Inode struct {
-	AllocationID string `gorm:"allocation_id;primaryKey" json:"-"`
-	// LatestFileID is the latest number used to provide ID for a file/dir.
-	// Once assigned file id will not be used with other files. This field will
-	// remain immutable for a file. Every other meta data of a file is mutable.
-	LatestFileID int64 `gorm:"latest_file_id" json:"latest_file_id"`
-	// OwnerSignature is the signature of LatestFileID signed by the owner.
-	OwnerSignature string `gorm:"owner_signature" json:"owner_signature"`
-	// Public Key of a client
-	PublicKey string `gorm:"public_key"`
-}
-
-func (in Inode) TableName() string {
-	return "inode"
-}
-
-func (in *Inode) Save(ctx context.Context) error {
-	if in.AllocationID == "" || in.OwnerSignature == "" ||
-		in.LatestFileID <= 0 {
-		return errors.New("invalid inode parameters")
-	}
-	db := datastore.GetStore().GetTransaction(ctx)
-
-	return db.Save(in).Error
-}
-
-func (in Inode) VerifySignature() error {
-	hash := encryption.Hash(strconv.FormatInt(in.LatestFileID, 10))
-	isValid, err := encryption.Verify(in.PublicKey, in.OwnerSignature, hash)
-
-	if err != nil {
-		return err
-	}
-
-	if !isValid {
-		return errors.New("invalid_signature")
-	}
-	return nil
-}
-
-func GetInode(allocID string) (*Inode, error) {
-	in := Inode{}
-	db := datastore.GetStore().GetDB()
-	err := db.Model(Inode{}).Where("allocation_id=?", allocID).First(&in).Error
-	if err != nil {
-		return nil, err
-	}
-	return &in, nil
 }

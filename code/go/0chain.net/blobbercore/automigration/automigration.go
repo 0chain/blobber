@@ -33,7 +33,6 @@ var tableModels = []tableNameI{
 	new(allocation.AllocationChangeCollector),
 	new(allocation.Pending),
 	new(allocation.Terms),
-	new(allocation.Inode),
 	new(allocation.ReadPool),
 	new(allocation.WritePool),
 	new(readmarker.ReadMarkerEntity),

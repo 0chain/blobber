@@ -23,7 +23,7 @@ type UploadFileChanger struct {
 
 // ApplyChange update references, and create a new FileRef
 func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp, inodeMeta *InodeMeta) (*reference.Ref, error) {
+	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 
 	totalRefs, err := reference.CountRefs(nf.AllocationID)
 	if err != nil {
@@ -66,10 +66,10 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 			newRef := reference.NewDirectoryRef()
 			newRef.AllocationID = dirRef.AllocationID
 			newRef.Path = "/" + strings.Join(fields[:i+1], "/")
-			fileID, ok := inodeMeta.MetaData[newRef.Path]
-			if !ok || fileID <= 0 {
+			fileID, ok := fileIDMeta[newRef.Path]
+			if !ok || fileID == "" {
 				return nil, common.NewError("invalid_parameter",
-					fmt.Sprintf("file path %s has no entry in inodes meta", newRef.Path))
+					fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
 			}
 			newRef.FileID = fileID
 			newRef.ParentPath = "/" + strings.Join(fields[:i], "/")
@@ -108,10 +108,10 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 		HashToBeComputed:    true,
 	}
 
-	fileID, ok := inodeMeta.MetaData[newFile.Path]
-	if !ok || fileID <= 0 {
+	fileID, ok := fileIDMeta[newFile.Path]
+	if !ok || fileID == "" {
 		return nil, common.NewError("invalid_parameter",
-			fmt.Sprintf("file path %s has no entry in inodes meta", newFile.Path))
+			fmt.Sprintf("file path %s has no entry in fileID meta", newFile.Path))
 	}
 	newFile.FileID = fileID
 
