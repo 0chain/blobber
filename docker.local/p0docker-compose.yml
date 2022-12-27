@@ -8,9 +8,12 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
+      - ../config/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
     networks:
       default:
+
   postgres-post:
     image: postgres:14
     environment:
@@ -23,8 +26,9 @@ services:
     command: bash /blobber/bin/postgres-entrypoint.sh
     links:
       - postgres:postgres
+
   validator:
-    image: 0chaindev/validator:latest
+    image: 0chaindev/validator:staging
     environment:
       - DOCKER= true
     depends_on:
@@ -33,19 +37,19 @@ services:
       - postgres-post:postgres-post
     volumes:
       - ../config:/validator/config
-      - ./blobber${BLOBBER}/data:/validator/data
-      - ./blobber${BLOBBER}/log:/validator/log
+      - ./validator${BLOBBER}/data:/validator/data
+      - ./validator${BLOBBER}/log:/validator/log
       - ./keys_config:/validator/keysconfig
     ports:
       - "506${BLOBBER}:506${BLOBBER}"
-    command: ./bin/validator --port 506${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0vnode${BLOBBER}_keys.txt --log_dir /validator/log
+    command: ./bin/validator --port 506${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0vnode${BLOBBER}_keys.txt --log_dir /validator/log  --hosturl https://<your-domain>/validator0${BLOBBER}
     networks:
       default:
       testnet0:
         ipv4_address: 198.18.0.6${BLOBBER}
 
   blobber:
-    image: 0chaindev/blobber:latest
+    image: 0chaindev/blobber:staging
     environment:
       - DOCKER= true
     depends_on:
@@ -62,7 +66,7 @@ services:
     ports:
       - "505${BLOBBER}:505${BLOBBER}"
       - "703${BLOBBER}:703${BLOBBER}"
-    command: ./bin/blobber --port 505${BLOBBER} --grpc_port 703${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data
+    command: ./bin/blobber --port 505${BLOBBER} --grpc_port 703${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --hosturl https://<your-domain>/blobber0${BLOBBER}
     networks:
       default:
       testnet0:
