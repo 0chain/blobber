@@ -447,7 +447,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	fileIDMetaStr := r.FormValue("file_id_meta")
 	fileIDMeta := make(map[string]string, 0)
-	err = json.Unmarshal([]byte(fileIDMetaStr), fileIDMeta)
+	err = json.Unmarshal([]byte(fileIDMetaStr), &fileIDMeta)
 	if err != nil {
 		return nil, common.NewError("unmarshall_error",
 			fmt.Sprintf("Error while unmarshalling file ID meta data: %s", err.Error()))
