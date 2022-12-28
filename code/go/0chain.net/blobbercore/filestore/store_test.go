@@ -506,14 +506,10 @@ func generateRandomData(fPath string) (string, string, string, error) {
 	hasher := sdk.CreateHasher(64 * KB)
 	var count int
 	for start := 0; start < len(p); start = start + 64*KB {
-		h := sha256.New()
-		data := p[start : start+64*KB]
-		_, err := h.Write(data)
-		if err != nil {
-			return "", "", "", err
-		}
 
-		err = hasher.WriteHashToContent(hex.EncodeToString(h.Sum(nil)), count)
+		data := p[start : start+64*KB]
+
+		err = hasher.WriteToContent(data, count)
 		if err != nil {
 			return "", "", "", err
 		}

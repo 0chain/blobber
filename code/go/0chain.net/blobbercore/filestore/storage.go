@@ -167,13 +167,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 			}
 			*/
 
-			h := sha256.New()
-			_, err = h.Write(data[:n]) // workaround for data without padding otherwise h.Write(data)
-			if err != nil {
-				return false, common.NewError("hash_write_error", err.Error())
-			}
-
-			err = hasher.WriteHashToContent(hex.EncodeToString(h.Sum(nil)), int(i))
+			err = hasher.WriteToContent(data[:n], int(i))
 			if err != nil {
 				return false, common.NewError("content_hash_write_error", err.Error())
 			}
