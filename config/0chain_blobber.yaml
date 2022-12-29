@@ -18,7 +18,7 @@ info:
 #    3 GB - 3221225472
 #  100 GB - 107374182400
 capacity: 1073741824 # 1 GB bytes total blobber capacity
-read_price: 0.01     # token / GB for reading
+read_price: 0.00     # token / GB for reading
 write_price: 0.10    # token / GB / time_unit for writing
 price_in_usd: false
 price_worker_in_hours: 12
