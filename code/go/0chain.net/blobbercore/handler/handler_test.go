@@ -251,11 +251,11 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				WillReturnRows(
 					sqlmock.NewRows(
 						[]string{
-							"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
+							"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size", "file_options",
 						},
 					).
 						AddRow(
-							alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
+							alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30), alloc.FileOptions,
 						),
 				)
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
@@ -425,8 +425,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
 				WithArgs(alloc.Tx).
 				WillReturnRows(
-					sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id"}).
-						AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID),
+					sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id", "file_options"}).
+						AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, alloc.FileOptions),
 				)
 
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
@@ -547,8 +547,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
 					WithArgs(alloc.Tx).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id"}).
-							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID),
+						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id", "file_options"}).
+							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, alloc.FileOptions),
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
@@ -619,8 +619,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
 					WithArgs(alloc.Tx).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id"}).
-							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID),
+						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id", "file_options"}).
+							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, alloc.FileOptions),
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
@@ -688,8 +688,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
 					WithArgs(alloc.Tx).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id"}).
-							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID),
+						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id", "file_options"}).
+							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, alloc.FileOptions),
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
@@ -770,8 +770,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
 					WithArgs(alloc.Tx).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id"}).
-							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID),
+						sqlmock.NewRows([]string{"id", "tx", "expiration_date", "owner_public_key", "owner_id", "file_options"}).
+							AddRow(alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, alloc.FileOptions),
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
@@ -889,7 +889,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							},
 						).
 							AddRow(
-								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30), uint8(63),
+								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30), alloc.FileOptions,
 							),
 					)
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
