@@ -34,7 +34,7 @@ func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot [
 	if len(nodes) == 1 {
 		buffer := make([]byte, 64)
 		copy(buffer, nodes[0])
-		copy(buffer[32:], nodes[0])
+		copy(buffer[HashSize:], nodes[0])
 		h.Write(nodes[0])
 		h.Write(nodes[0])
 		merkleRoot = h.Sum(nil)
@@ -45,7 +45,7 @@ func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot [
 		if len(nodes) == 1 {
 			break
 		}
-		buffer := make([]byte, len(nodes)*32)
+		buffer := make([]byte, len(nodes)*HashSize)
 		var bufInd int
 		newNodes := make([][]byte, (len(nodes)+1)/2)
 		var nodeInd int
@@ -56,7 +56,7 @@ func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot [
 			h.Reset()
 			newBuf := make([]byte, 64)
 			copy(newBuf, nodes[j])
-			copy(newBuf[32:], nodes[j+1])
+			copy(newBuf[HashSize:], nodes[j+1])
 
 			h.Write(newBuf)
 			newNodes[nodeInd] = h.Sum(nil)
@@ -80,23 +80,23 @@ func (f *fixedMerkleTree) GetMerkleProof(idx int, r io.ReaderAt) (proof [][]byte
 	totalLevelNodes := util.FixedMerkleLeaves
 	proof = make([][]byte, util.FixedMTDepth-1)
 	for i := 0; i < util.FixedMTDepth-1; i++ {
-		b := make([]byte, 32)
+		b := make([]byte, HashSize)
 		var offset int
 		if idx&1 == 0 {
-			offset = (idx+1)*32 + levelOffset
+			offset = (idx+1)*HashSize + levelOffset
 		} else {
-			offset = (idx-1)*32 + levelOffset
+			offset = (idx-1)*HashSize + levelOffset
 		}
 
 		n, err := r.ReadAt(b, int64(offset))
-		if n != 32 {
+		if n != HashSize {
 			return nil, errors.New("incomplete read")
 		}
 		if err != nil {
 			return nil, err
 		}
 		proof[i] = b
-		levelOffset += totalLevelNodes * 32
+		levelOffset += totalLevelNodes * HashSize
 		totalLevelNodes = totalLevelNodes / 2
 	}
 	return
@@ -128,7 +128,7 @@ func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoo
 		if len(nodes) == 1 {
 			break
 		}
-		buffer := make([]byte, len(nodes)*32)
+		buffer := make([]byte, len(nodes)*HashSize)
 		var bufInd int
 		newNodes := make([][]byte, 0)
 		if len(nodes)&1 == 0 {
