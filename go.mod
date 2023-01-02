@@ -35,7 +35,7 @@ require (
 
 require (
 	golang.org/x/sys v0.3.0
-	gorm.io/driver/sqlite v1.4.3
+	gorm.io/driver/sqlite v1.4.4
 )
 
 require (
