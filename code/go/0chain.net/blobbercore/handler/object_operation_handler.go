@@ -103,7 +103,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 
 	writePoolBalance, err := allocation.GetWritePoolsBalance(db, alloc.ID)
 	if err != nil {
-		Logger.Error(err.Error())
+		Logger.Error("write_pre_redeem:get_write_pools_balance", zap.Error(err))
 		return common.NewError("write_pre_redeem", "database error while getting write pool balance")
 	}
 
@@ -963,7 +963,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	return result, nil
 }
 
-//WriteFile stores the file into the blobber files system from the HTTP request
+// WriteFile stores the file into the blobber files system from the HTTP request
 func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
 
 	startTime := time.Now()
