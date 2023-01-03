@@ -12,10 +12,18 @@ import (
 )
 
 const (
-	HashSize = 32
-	FMTSize  = 65472
-	Left     = 0
-	Right    = 1
+	KB = 1024
+	MB = KB * KB
+)
+
+const (
+	FMTLeafContentSize = 64 * KB
+	HashSize           = 32
+	FMTSize            = 65472
+	Left               = 0
+	Right              = 1
+	// ValidationTreeReservedBytes will store three fields required for
+	ValidationTreeReservedBytes = 8 * 3
 )
 
 type fixedMerkleTree struct {
@@ -30,23 +38,15 @@ func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot [
 		nodes[i] = ft.Leaves[i].GetHashBytes()
 	}
 
+	buffer := make([]byte, FMTSize)
+	var bufLen int
 	h := sha256.New()
-	if len(nodes) == 1 {
-		buffer := make([]byte, 64)
-		copy(buffer, nodes[0])
-		copy(buffer[HashSize:], nodes[0])
-		h.Write(nodes[0])
-		h.Write(nodes[0])
-		merkleRoot = h.Sum(nil)
-		return
-	}
 
 	for i := 0; i < util.FixedMTDepth; i++ {
 		if len(nodes) == 1 {
 			break
 		}
 		buffer := make([]byte, len(nodes)*HashSize)
-		var bufInd int
 		newNodes := make([][]byte, (len(nodes)+1)/2)
 		var nodeInd int
 		if len(nodes)&1 == 1 {
@@ -54,52 +54,122 @@ func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot [
 		}
 		for j := 0; j < len(nodes); j += 2 {
 			h.Reset()
-			newBuf := make([]byte, 64)
-			copy(newBuf, nodes[j])
-			copy(newBuf[HashSize:], nodes[j+1])
+			prevBufLen := bufLen
+			bufLen += copy(buffer[bufLen:bufLen+HashSize], nodes[j])
+			bufLen += copy(buffer[bufLen:bufLen+HashSize], nodes[j+1])
 
-			h.Write(newBuf)
+			h.Write(buffer[prevBufLen:bufLen])
 			newNodes[nodeInd] = h.Sum(nil)
 			nodeInd++
-			bufInd += copy(buffer[bufInd:], newBuf)
-		}
-
-		_, err = f.Write(buffer)
-		if err != nil {
-			return nil, err
 		}
 
 		nodes = newNodes
 	}
 
+	_, err = f.Write(buffer)
+	if err != nil {
+		return nil, err
+	}
+
 	return nodes[0], nil
 }
 
-func (f *fixedMerkleTree) GetMerkleProof(idx int, r io.ReaderAt) (proof [][]byte, err error) {
+type fixedMerkleTreeProof struct {
+	idx      int
+	dataSize int64
+}
+
+func NewFMTPRoof(idx int, dataSize int64) *fixedMerkleTreeProof {
+	return &fixedMerkleTreeProof{
+		idx:      idx,
+		dataSize: dataSize,
+	}
+}
+
+func (fp *fixedMerkleTreeProof) CalculateLeafContentLevelForIndex() int {
+	levelFor0Idx := (fp.dataSize + util.MaxMerkleLeavesSize - 1) / util.MaxMerkleLeavesSize
+	if fp.dataSize%util.MaxMerkleLeavesSize == 0 || fp.idx == 0 {
+		return int(levelFor0Idx)
+	}
+
+	prevRowSize := (levelFor0Idx - 1) * util.MaxMerkleLeavesSize
+	curRowSize := fp.dataSize - prevRowSize
+
+	n := int(curRowSize+util.MerkleChunkSize-1) / util.MerkleChunkSize
+
+	if fp.idx > n {
+		return int(levelFor0Idx) - 1
+	}
+	return int(levelFor0Idx)
+}
+
+func (fixedMerkleTreeProof) GetMerkleProof(idx int, r io.ReaderAt) (proof [][]byte, err error) {
 	var levelOffset int
 	totalLevelNodes := util.FixedMerkleLeaves
 	proof = make([][]byte, util.FixedMTDepth-1)
+	b := make([]byte, FMTSize)
+	n, err := r.ReadAt(b, io.SeekStart)
+	if n != FMTSize {
+		return nil, errors.New("incomplete read")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var offset int
+
 	for i := 0; i < util.FixedMTDepth-1; i++ {
-		b := make([]byte, HashSize)
-		var offset int
 		if idx&1 == 0 {
 			offset = (idx+1)*HashSize + levelOffset
 		} else {
 			offset = (idx-1)*HashSize + levelOffset
 		}
 
-		n, err := r.ReadAt(b, int64(offset))
-		if n != HashSize {
-			return nil, errors.New("incomplete read")
-		}
-		if err != nil {
-			return nil, err
-		}
-		proof[i] = b
+		proof[i] = b[offset : offset+HashSize]
 		levelOffset += totalLevelNodes * HashSize
 		totalLevelNodes = totalLevelNodes / 2
 	}
 	return
+}
+
+// r should have offset seeked already
+func (fp *fixedMerkleTreeProof) GetLeafContent(idx int, r io.Reader) (proofByte []byte, err error) {
+	levels := fp.CalculateLeafContentLevelForIndex() + 1
+	proofByte = make([]byte, levels*util.MerkleChunkSize)
+	var proofWritten int
+	idxOffset := idx * util.MerkleChunkSize
+	idxLimit := idxOffset + util.MerkleChunkSize
+	b := make([]byte, 10*MB)
+	var shouldBreak bool
+	for !shouldBreak {
+		n, err := r.Read(b)
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				return nil, err
+			}
+			shouldBreak = true
+		}
+		b = b[:n]
+
+		for i := 0; i < len(b); i += util.MaxMerkleLeavesSize {
+			endIndex := i + util.MaxMerkleLeavesSize
+			if endIndex > len(b) {
+				endIndex = len(b)
+			}
+			data := b[i:endIndex]
+			if idxLimit > len(data) {
+				idxLimit = len(data)
+				if idxOffset > len(data) {
+					idxOffset = len(data)
+				}
+				shouldBreak = true
+			}
+
+			proofWritten += copy(proofByte[proofWritten:proofWritten+util.MerkleChunkSize],
+				data[idxOffset:idxLimit])
+		}
+	}
+	return proofByte[:proofWritten], nil
 }
 
 func getNewFixedMerkleTree() *fixedMerkleTree {
@@ -200,7 +270,6 @@ func (v *validationTreeProof) GetMerkleProofOfMultipleIndexes(r io.ReaderAt, sta
 	return nodeHashes, leftRightIndexes, nil
 }
 
-// merge getFileOffsetsAndNodeIndexes and getNodeIndexes
 func (v *validationTreeProof) getFileOffsetsAndNodeIndexes(startInd, endInd int) ([]int, [][]int) {
 
 	nodeIndexes, leftRightIndexes := v.getNodeIndexes(startInd, endInd)
