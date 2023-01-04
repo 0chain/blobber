@@ -22,10 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	KB = 1024
-)
-
 var hexCharacters = []byte("abcdef0123456789")
 
 func randString(l int) string {
