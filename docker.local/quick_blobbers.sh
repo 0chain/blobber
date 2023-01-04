@@ -3,8 +3,6 @@
 set -e
 
 # setup variables
-export NETWORK=0chainnetwork
-export DOMAIN=0chaindomain
 export CLUSTER=0chaincluster
 export DELEGATE_WALLET=0chainclientId
 export READ_PRICE=0chainreadPrice
@@ -18,8 +16,9 @@ export SERVICE_CHARGE="0.30"
 export GF_ADMIN_USER=0chaingfadminuser
 export GF_ADMIN_PASSWORD=0chaingfadminpassword
 export PROJECT_ROOT=/var/0chain/blobber
-export BLOCK_WORKER_URL=http://${NETWORK}.${DOMAIN}/dns
-
+export BLOCK_WORKER_URL=0chainblockworker
+export BLOBBER_HOST=0chainblobberhost
+# http://${NETWORK}.${DOMAIN}/dns
 
 ## cleanup server before starting the deployment
 docker-compose -f /var/0chain/blobber/docker-compose.yml down --volumes || true
@@ -272,7 +271,7 @@ EOF
 ### Caddyfile
 echo "creating Caddyfile"
 cat <<EOF >${PROJECT_ROOT}/Caddyfile
-${CLUSTER}.${DOMAIN} {
+${BLOBBER_HOST} {
 	log {
 		output file /var/log/access.log {
 			roll_size 1gb
@@ -352,7 +351,7 @@ services:
       - ${PROJECT_ROOT}/keys_config:/validator/keysconfig
     ports:
       - "5061:31401"
-    command: ./bin/validator --port 31401 --hostname ${CLUSTER}.${DOMAIN} --deployment_mode 0 --keys_file keysconfig/b0bnode02_keys.txt --log_dir /validator/log
+    command: ./bin/validator --port 31401 --hostname ${BLOBBER_HOST} --deployment_mode 0 --keys_file keysconfig/b0bnode02_keys.txt --log_dir /validator/log
     networks:
       default:
       testnet0:
@@ -383,7 +382,7 @@ services:
     ports:
       - "5051:5051"
       - "31501:31501"
-    command: ./bin/blobber --port 5051 --grpc_port 31501 --hostname ${CLUSTER}.${DOMAIN}  --deployment_mode 0 --keys_file keysconfig/b0bnode01_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --hosturl https://${CLUSTER}.${DOMAIN}
+    command: ./bin/blobber --port 5051 --grpc_port 31501 --hostname ${BLOBBER_HOST}  --deployment_mode 0 --keys_file keysconfig/b0bnode01_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --hosturl https://${BLOBBER_HOST}
     networks:
       default:
       testnet0:
@@ -466,7 +465,7 @@ services:
   grafana:
     image: grafana/grafana:latest
     environment:
-      GF_SERVER_ROOT_URL: "https://${CLUSTER}.${DOMAIN}/grafana"
+      GF_SERVER_ROOT_URL: "https://${BLOBBER_HOST}/grafana"
       GF_SECURITY_ADMIN_USER: ${GF_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GF_ADMIN_PASSWORD}
     volumes:
