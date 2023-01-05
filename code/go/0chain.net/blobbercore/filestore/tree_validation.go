@@ -9,6 +9,7 @@ import (
 	"io"
 
 	"github.com/0chain/gosdk/core/util"
+	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -22,13 +23,10 @@ const (
 	FMTSize            = 65472
 	Left               = 0
 	Right              = 1
-	// ValidationTreeReservedBytes will store three fields required for
-	ValidationTreeReservedBytes = 8 * 3
 )
 
 type fixedMerkleTree struct {
 	*util.FixedMerkleTree
-	// merkleRoot []byte
 }
 
 func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot []byte, err error) {
@@ -40,13 +38,12 @@ func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot [
 
 	buffer := make([]byte, FMTSize)
 	var bufLen int
-	h := sha256.New()
+	h := sha3.New256()
 
 	for i := 0; i < util.FixedMTDepth; i++ {
 		if len(nodes) == 1 {
 			break
 		}
-		buffer := make([]byte, len(nodes)*HashSize)
 		newNodes := make([][]byte, (len(nodes)+1)/2)
 		var nodeInd int
 		if len(nodes)&1 == 1 {
@@ -174,7 +171,7 @@ func (fp *fixedMerkleTreeProof) GetLeafContent(idx int, r io.Reader) (proofByte 
 
 func getNewFixedMerkleTree() *fixedMerkleTree {
 	return &fixedMerkleTree{
-		FixedMerkleTree: util.NewFixedMerkleTree(0),
+		FixedMerkleTree: util.NewFixedMerkleTree(),
 	}
 }
 
