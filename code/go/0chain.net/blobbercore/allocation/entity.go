@@ -160,11 +160,21 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite int64
 	return nil
 }
 
-func GetWritePoolsBalance(db *gorm.DB, allocationID string) (balance uint64, err error) {
-	err = db.Model(&WritePool{}).Select("sum (balance) as tot_balance").Where(
+func GetWritePoolsBalance(db *gorm.DB, allocationID string) (uint64, error) {
+
+	var balance uint64
+	err := db.Model(&WritePool{}).Select("sum (balance) as tot_balance").Where(
 		"allocation_id = ?", allocationID,
 	).Scan(&balance).Error
-	return
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, nil
+		}
+		return 0, err
+	}
+
+	return balance, nil
 }
 
 func (p *Pending) Save(tx *gorm.DB) error {
