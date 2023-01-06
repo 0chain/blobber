@@ -94,13 +94,13 @@ func (fp *fixedMerkleTreeProof) CalculateLeafContentLevelForIndex() int {
 
 	n := int(curRowSize+util.MerkleChunkSize-1) / util.MerkleChunkSize
 
-	if fp.idx > n {
+	if fp.idx >= n {
 		return int(levelFor0Idx) - 1
 	}
 	return int(levelFor0Idx)
 }
 
-func (fixedMerkleTreeProof) GetMerkleProof(idx int, r io.ReaderAt) (proof [][]byte, err error) {
+func (fp fixedMerkleTreeProof) GetMerkleProof(r io.ReaderAt) (proof [][]byte, err error) {
 	var levelOffset int
 	totalLevelNodes := util.FixedMerkleLeaves
 	proof = make([][]byte, util.FixedMTDepth-1)
@@ -114,6 +114,7 @@ func (fixedMerkleTreeProof) GetMerkleProof(idx int, r io.ReaderAt) (proof [][]by
 	}
 
 	var offset int
+	idx := fp.idx
 
 	for i := 0; i < util.FixedMTDepth-1; i++ {
 		if idx&1 == 0 {
@@ -125,26 +126,28 @@ func (fixedMerkleTreeProof) GetMerkleProof(idx int, r io.ReaderAt) (proof [][]by
 		proof[i] = b[offset : offset+HashSize]
 		levelOffset += totalLevelNodes * HashSize
 		totalLevelNodes = totalLevelNodes / 2
+		idx = idx / 2
 	}
 	return
 }
 
 // r should have offset seeked already
-func (fp *fixedMerkleTreeProof) GetLeafContent(idx int, r io.Reader) (proofByte []byte, err error) {
+func (fp *fixedMerkleTreeProof) GetLeafContent(r io.Reader) (proofByte []byte, err error) {
 	levels := fp.CalculateLeafContentLevelForIndex() + 1
 	proofByte = make([]byte, levels*util.MerkleChunkSize)
 	var proofWritten int
-	idxOffset := idx * util.MerkleChunkSize
+	idxOffset := fp.idx * util.MerkleChunkSize
 	idxLimit := idxOffset + util.MerkleChunkSize
 	b := make([]byte, 10*MB)
-	var shouldBreak bool
-	for !shouldBreak {
+	for {
 		n, err := r.Read(b)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
 				return nil, err
 			}
-			shouldBreak = true
+			if n == 0 {
+				break
+			}
 		}
 		b = b[:n]
 
@@ -159,7 +162,6 @@ func (fp *fixedMerkleTreeProof) GetLeafContent(idx int, r io.Reader) (proofByte 
 				if idxOffset > len(data) {
 					idxOffset = len(data)
 				}
-				shouldBreak = true
 			}
 
 			proofWritten += copy(proofByte[proofWritten:proofWritten+util.MerkleChunkSize],
