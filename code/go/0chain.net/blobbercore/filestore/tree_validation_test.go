@@ -85,7 +85,6 @@ func TestFixedMerkleTreeWrite(t *testing.T) {
 }
 
 func TestFixedMerkleTreeProof(t *testing.T) {
-
 	var size int64
 	var index int
 	for i := 0; i < 100; i++ {
@@ -163,5 +162,194 @@ func TestFixedMerkleTreeProof(t *testing.T) {
 		})
 
 	}
+}
 
+func TestValidationTreeWrite(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		size := getRandomSize(50 * MB)
+		t.Run(fmt.Sprintf("testing with data-size: %d", size), func(t *testing.T) {
+			b := make([]byte, size)
+			n, err := rand.Read(b)
+			require.NoError(t, err)
+			require.EqualValues(t, size, n)
+
+			vt := getNewValidationTree(int64(size))
+			n, err = vt.Write(b)
+			require.NoError(t, err)
+			require.EqualValues(t, size, n)
+
+			err = vt.Finalize()
+			require.NoError(t, err)
+
+			merkleRoot := vt.GetValidationRoot()
+			require.NotNil(t, merkleRoot)
+
+			filename := "merkleproof"
+			defer func() {
+				os.Remove(filename)
+			}()
+
+			f, err := os.Create(filename)
+			require.NoError(t, err)
+
+			merkleRoot1, err := vt.CalculateRootAndStoreNodes(f)
+			require.NoError(t, err)
+
+			f.Close()
+
+			r, err := os.Open(filename)
+			require.NoError(t, err)
+			n1, err := r.Seek(FMTSize, io.SeekStart)
+			require.NoError(t, err)
+			require.EqualValues(t, FMTSize, n1)
+
+			totalLeaves := int((size + util.MaxMerkleLeavesSize - 1) / util.MaxMerkleLeavesSize)
+			nodes := make([]byte, totalLeaves*HashSize)
+			n, err = r.Read(nodes)
+			require.NoError(t, err)
+			require.EqualValues(t, len(nodes), n)
+
+			leaves := make([][]byte, totalLeaves)
+			for i := 0; i < totalLeaves; i++ {
+				off := i * HashSize
+				leaves[i] = nodes[off : off+HashSize]
+			}
+
+			v := util.ValidationTree{}
+			v.SetLeaves(leaves)
+			merkleRoot2 := v.GetValidationRoot()
+			require.True(t, bytes.Equal(merkleRoot, merkleRoot2))
+			require.True(t, bytes.Equal(merkleRoot, merkleRoot1))
+		})
+
+	}
+}
+
+func TestValidationMerkleProof(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		var size int64
+		for {
+			size = rand.Int63n(50 * MB)
+			if size != 0 {
+				break
+			}
+		}
+
+		startInd, endInd := getRandomIndexRange(size)
+
+		t.Run(fmt.Sprintf("Merkle proof test with size: %d, startInd: %d and endInd: %d",
+			size, startInd, endInd), func(t *testing.T) {
+
+			b := make([]byte, size)
+			n, err := rand.Read(b)
+			require.NoError(t, err)
+			require.EqualValues(t, size, n)
+
+			vt := getNewValidationTree(int64(size))
+			n, err = vt.Write(b)
+			require.NoError(t, err)
+			require.EqualValues(t, size, n)
+
+			err = vt.Finalize()
+			require.NoError(t, err)
+
+			filename := "validationmerkleproof"
+			defer func() {
+				os.Remove(filename)
+			}()
+
+			f, err := os.Create(filename)
+			require.NoError(t, err)
+
+			merkleRoot, err := vt.CalculateRootAndStoreNodes(f)
+			require.NoError(t, err)
+
+			n, err = f.Write(b)
+			require.NoError(t, err)
+			require.EqualValues(t, size, n)
+
+			f.Close()
+
+			r, err := os.Open(filename)
+			require.NoError(t, err)
+
+			finfo, err := r.Stat()
+			require.NoError(t, err)
+
+			totalNodes := getValidationTreeTotalNodes(int(size))
+			nodesSize := totalNodes * HashSize
+
+			expectedSize := FMTSize + int(size) + nodesSize
+			require.EqualValues(t, expectedSize, finfo.Size(), fmt.Sprint("Diff is: ", finfo.Size()-int64(expectedSize)))
+
+			vp := validationTreeProof{
+				totalLeaves: int((size + util.MaxMerkleLeavesSize - 1) / util.MaxMerkleLeavesSize),
+				dataSize:    int64(size),
+			}
+
+			t.Logf("StartInd: %d; endInd: %d", startInd, endInd)
+			nodeHashes, indexes, err := vp.GetMerkleProofOfMultipleIndexes(r, startInd, endInd)
+			require.NoError(t, err)
+
+			data := make([]byte, (endInd-startInd+1)*util.MaxMerkleLeavesSize)
+			fileOffset := FMTSize + nodesSize + startInd*util.MaxMerkleLeavesSize
+
+			_, err = r.Seek(int64(fileOffset), io.SeekStart)
+			require.NoError(t, err)
+
+			n, err = r.Read(data)
+			require.NoError(t, err)
+
+			data = data[:n]
+
+			vmp := util.MerklePathForMultiLeafVerification{
+				RootHash: merkleRoot,
+				Index:    indexes,
+				Nodes:    nodeHashes,
+				DataSize: int64(size),
+			}
+
+			err = vmp.VerifyMultipleBlocks(data)
+			require.NoError(t, err)
+		})
+
+	}
+
+}
+
+func getRandomSize(size int64) int64 {
+	for {
+		n := rand.Int63n(size)
+		if n != 0 {
+			return n
+		}
+	}
+}
+
+func getValidationTreeTotalNodes(dataSize int) int {
+	totalLeaves := (dataSize + util.MaxMerkleLeavesSize - 1) / util.MaxMerkleLeavesSize
+	totalNodes := totalLeaves
+	for totalLeaves > 2 {
+		totalLeaves = (totalLeaves + 1) / 2
+		totalNodes += totalLeaves
+	}
+	return totalNodes
+}
+
+func getRandomIndexRange(dataSize int64) (startInd, endInd int) {
+	totalInd := int((dataSize + util.MaxMerkleLeavesSize - 1) / util.MaxMerkleLeavesSize)
+	startInd = rand.Intn(totalInd)
+
+	if startInd == totalInd-1 {
+		endInd = startInd
+		return
+	}
+
+	r := totalInd - startInd
+	endInd = rand.Intn(r)
+	endInd += startInd
+	if endInd >= totalInd {
+		endInd = totalInd - 1
+	}
+	return
 }
