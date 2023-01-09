@@ -4,9 +4,9 @@
 package filestore
 
 import (
-	"crypto/sha256"
 	"errors"
 	"io"
+	"math"
 
 	"github.com/0chain/gosdk/core/util"
 	"golang.org/x/crypto/sha3"
@@ -21,12 +21,25 @@ const (
 	FMTLeafContentSize = 64 * KB
 	HashSize           = 32
 	FMTSize            = 65472
-	Left               = 0
-	Right              = 1
 )
 
 type fixedMerkleTree struct {
 	*util.FixedMerkleTree
+}
+
+func getNodesSize(dataSize, merkleLeafSize int64) int64 {
+	totalLeaves := (dataSize + merkleLeafSize - 1) / merkleLeafSize
+	totalNodes := totalLeaves
+	for totalLeaves > 2 {
+		totalLeaves = (totalLeaves + 1) / 2
+		totalNodes += totalLeaves
+
+	}
+	return totalNodes * HashSize
+}
+
+func calculateDepth(totalLeaves int) int {
+	return int(math.Ceil(math.Log2(float64(totalLeaves)))) + 1
 }
 
 func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot []byte, err error) {
@@ -190,75 +203,103 @@ func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoo
 	nodes := make([][]byte, len(v.GetLeaves()))
 	copy(nodes, v.GetLeaves())
 
-	h := sha256.New()
+	h := sha3.New256()
 	depth := v.CalculateDepth()
 
+	s := getNodesSize(v.GetDataSize(), util.MaxMerkleLeavesSize)
+	buffer := make([]byte, s)
+	var bufInd int
 	for i := 0; i < depth; i++ {
 		if len(nodes) == 1 {
 			break
 		}
-		buffer := make([]byte, len(nodes)*HashSize)
-		var bufInd int
 		newNodes := make([][]byte, 0)
 		if len(nodes)&1 == 0 {
 			for j := 0; j < len(nodes); j += 2 {
 				h.Reset()
-				h.Write(nodes[j])
-				h.Write(nodes[j+1])
-				newNodes = append(newNodes, h.Sum(nil))
+				prevBufInd := bufInd
 				bufInd += copy(buffer[bufInd:], nodes[j])
 				bufInd += copy(buffer[bufInd:], nodes[j+1])
+
+				h.Write(buffer[prevBufInd:bufInd])
+				newNodes = append(newNodes, h.Sum(nil))
 			}
 		} else {
-			for j := 0; j < len(nodes); j += 2 {
+			for j := 0; j < len(nodes)-1; j += 2 {
 				h.Reset()
-				h.Write(nodes[j])
-				h.Write(nodes[j+1])
-				newNodes = append(newNodes, h.Sum(nil))
+				prevBufInd := bufInd
 				bufInd += copy(buffer[bufInd:], nodes[j])
 				bufInd += copy(buffer[bufInd:], nodes[j+1])
+
+				h.Write(buffer[prevBufInd:bufInd])
+				newNodes = append(newNodes, h.Sum(nil))
 			}
 			h.Reset()
-			h.Write(nodes[len(nodes)-1])
+			prevBufInd := bufInd
+			bufInd += copy(buffer[bufInd:], nodes[len(nodes)-1])
+			h.Write(buffer[prevBufInd:bufInd])
 			newNodes = append(newNodes, h.Sum(nil))
-			copy(buffer[bufInd:], nodes[len(nodes)-1])
 		}
 
-		_, err := f.Write(buffer)
-		if err != nil {
-			return nil, err
-		}
 		nodes = newNodes
 	}
+
+	_, err = f.Write(buffer)
+	if err != nil {
+		return nil, err
+	}
+
 	return nodes[0], nil
 }
 
 type validationTreeProof struct {
 	totalLeaves int
 	depth       int
+	dataSize    int64
 }
 
-func (v *validationTreeProof) GetMerkleProofOfMultipleIndexes(r io.ReaderAt, startInd, endInd int) (
+// GetMerkleProofOfMultipleIndexes will get minimum proof based on startInd and endInd values.
+// If endInd - startInd is whole file then no proof is required at all.
+// startInd and endInd is taken as closed interval. So to get proof for data at index 0 both startInd
+// and endInd would be 0.
+func (v *validationTreeProof) GetMerkleProofOfMultipleIndexes(r io.ReadSeeker, startInd, endInd int) (
 	[][][]byte, [][]int, error) {
 
 	if startInd < 0 || endInd < 0 {
 		return nil, nil, errors.New("index cannot be negative")
 	}
 
+	if endInd >= v.totalLeaves {
+		return nil, nil, errors.New("end index cannot be greater than or equal to total leaves")
+	}
+
 	if endInd < startInd {
 		return nil, nil, errors.New("end index cannot be lesser than start index")
 	}
 
+	if v.depth == 0 {
+		v.depth = calculateDepth(v.totalLeaves)
+	}
+
 	offsets, leftRightIndexes := v.getFileOffsetsAndNodeIndexes(startInd, endInd)
+	nodesData := make([]byte, getNodesSize(v.dataSize, util.MaxMerkleLeavesSize))
+	_, err := r.Seek(FMTSize, io.SeekStart)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	_, err = r.Read(nodesData)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	offsetInd := 0
 	nodeHashes := make([][][]byte, len(leftRightIndexes))
 	for i, indexes := range leftRightIndexes {
 		for range indexes {
 			b := make([]byte, HashSize)
-			n, err := r.ReadAt(b, int64(offsets[offsetInd]))
-			if err != nil {
-				return nil, nil, err
-			}
+			off := offsets[offsetInd]
+			n := copy(b, nodesData[off:off+HashSize])
 			if n != HashSize {
 				return nil, nil, errors.New("invalid hash length")
 			}
@@ -269,6 +310,7 @@ func (v *validationTreeProof) GetMerkleProofOfMultipleIndexes(r io.ReaderAt, sta
 	return nodeHashes, leftRightIndexes, nil
 }
 
+// getFileOffsetsAndNodeIndexes
 func (v *validationTreeProof) getFileOffsetsAndNodeIndexes(startInd, endInd int) ([]int, [][]int) {
 
 	nodeIndexes, leftRightIndexes := v.getNodeIndexes(startInd, endInd)
@@ -287,6 +329,7 @@ func (v *validationTreeProof) getFileOffsetsAndNodeIndexes(startInd, endInd int)
 	return offsets, leftRightIndexes
 }
 
+// getNodeIndexes
 func (v *validationTreeProof) getNodeIndexes(startInd, endInd int) ([][]int, [][]int) {
 
 	indexes := make([][]int, 0)
@@ -299,14 +342,14 @@ func (v *validationTreeProof) getNodeIndexes(startInd, endInd int) ([][]int, [][
 
 		nodeOffsets := make([]int, 0)
 		lftRtInd := make([]int, 0)
-		if startInd%2 != 0 {
+		if startInd&1 == 1 {
 			nodeOffsets = append(nodeOffsets, startInd-1)
-			lftRtInd = append(lftRtInd, Left)
+			lftRtInd = append(lftRtInd, util.Left)
 		}
 
-		if endInd != totalNodes-1 && endInd%2 == 0 {
+		if endInd != totalNodes-1 && endInd&1 == 0 {
 			nodeOffsets = append(nodeOffsets, endInd+1)
-			lftRtInd = append(lftRtInd, Right)
+			lftRtInd = append(lftRtInd, util.Right)
 		}
 
 		indexes = append(indexes, nodeOffsets)
@@ -318,9 +361,9 @@ func (v *validationTreeProof) getNodeIndexes(startInd, endInd int) ([][]int, [][
 	return indexes, leftRightIndexes
 }
 
-func getNewValidationTree() *validationTree {
+func getNewValidationTree(dataSize int64) *validationTree {
 	return &validationTree{
-		ValidationTree: util.NewValidationTree(0),
+		ValidationTree: util.NewValidationTree(dataSize),
 	}
 }
 
@@ -334,7 +377,7 @@ type commitHasher struct {
 func GetNewCommitHasher(dataSize int64) *commitHasher {
 	c := new(commitHasher)
 	c.fmt = getNewFixedMerkleTree()
-	c.vt = getNewValidationTree()
+	c.vt = getNewValidationTree(dataSize)
 	c.writer = io.MultiWriter(c.fmt, c.vt)
 	c.isInitialized = true
 	return nil
