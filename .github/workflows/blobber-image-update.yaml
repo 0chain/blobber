@@ -1,0 +1,54 @@
+name: "BLOBBER IMAGE UPDATE"
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: 'Enter Network Name'
+        default: 'demo'
+        required: true
+      domain:
+        description: 'Enter Network Domain'
+        default: '0chain.net'
+        required: true
+      zbox_image:
+        description: 'blobber DOCKER IMAGE to deploy'
+        default: 'staging'
+        required: false
+
+jobs:
+  zbox_deploy:
+    runs-on: [self-hosted, docker-builds]
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: "Install helm"
+        uses: azure/setup-helm@v1
+        with:
+          version: 'v3.2.2'
+
+      - name: "Install kubectl"
+        uses: azure/setup-kubectl@v1
+        id: install
+
+      - name: "Configure helm & kubectl"
+        shell: 'script --return --quiet --command "bash {0}"'
+        run: |
+          echo
+          echo "=================================================="
+          echo "CONFIGURING HELM"
+          echo "=================================================="
+          echo
+          cd ..
+          helm repo remove 0chain-helm
+          helm repo add 0chain-helm http://0chain-helm-chart.s3-website.us-east-2.amazonaws.com/dev/
+          helm repo update
+
+      - name: Setup demo blobber
+        if: ${{ github.event.inputs.network == 'demo' }}
+        run: |
+          mkdir -p ./kubeconf         
+          echo "${{ secrets.DEMO }}" > ./kubeconf/${{ github.event.inputs.network }}-config
+          for (( i = 1 ; i <= 6; i++ )); do
+          kubectl set image deployment/helm-blobber-0${i} helm-blobber-0${i}=0chaindev/blobber:${{ github.event.inputs.blobber }} -n ${{ github.event.inputs.network }}  --kubeconfig "./kubeconf/${{ github.event.inputs.network }}-config"
+          done
