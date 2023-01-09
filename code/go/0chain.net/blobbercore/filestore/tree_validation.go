@@ -18,15 +18,18 @@ const (
 )
 
 const (
-	FMTLeafContentSize = 64 * KB
-	HashSize           = 32
-	FMTSize            = 65472
+	HashSize = 32
+	// FMTSize is the size of tree nodes of fixed merkle tree excluding root node
+	FMTSize     = 65472
+	FMTDisKRead = 10 * MB
 )
 
+// fixedMerkleTree is used to verify fixed merkle tree root and store tree nodes to the file
 type fixedMerkleTree struct {
 	*util.FixedMerkleTree
 }
 
+// getNodesSize will calculate the size required to store tree nodes excluding root node.
 func getNodesSize(dataSize, merkleLeafSize int64) int64 {
 	totalLeaves := (dataSize + merkleLeafSize - 1) / merkleLeafSize
 	totalNodes := totalLeaves
@@ -42,6 +45,8 @@ func calculateDepth(totalLeaves int) int {
 	return int(math.Ceil(math.Log2(float64(totalLeaves)))) + 1
 }
 
+// CalculateRootAndStoreNodes will calculate all the intermediate nodes and write it to
+// f
 func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot []byte, err error) {
 
 	nodes := make([][]byte, len(ft.Leaves))
@@ -84,6 +89,8 @@ func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot [
 	return nodes[0], nil
 }
 
+// fixedMerkleTreeProof is used to calculate merkle proof of certain index and also get the
+// content in batches.
 type fixedMerkleTreeProof struct {
 	idx      int
 	dataSize int64
@@ -96,6 +103,8 @@ func NewFMTPRoof(idx int, dataSize int64) *fixedMerkleTreeProof {
 	}
 }
 
+// CalculateLeafContentLevelForIndex is used to calculate total levels or rows of a column of respective
+// index. So if datasize is 64KB + 1 bytes then 0th index has level 2 and all other levels will have level 1.
 func (fp *fixedMerkleTreeProof) CalculateLeafContentLevelForIndex() int {
 	levelFor0Idx := (fp.dataSize + util.MaxMerkleLeavesSize - 1) / util.MaxMerkleLeavesSize
 	if fp.dataSize%util.MaxMerkleLeavesSize == 0 || fp.idx == 0 {
@@ -113,6 +122,7 @@ func (fp *fixedMerkleTreeProof) CalculateLeafContentLevelForIndex() int {
 	return int(levelFor0Idx)
 }
 
+// GetMerkleProof is used to get merkle proof of leaf or index to be specific.
 func (fp fixedMerkleTreeProof) GetMerkleProof(r io.ReaderAt) (proof [][]byte, err error) {
 	var levelOffset int
 	totalLevelNodes := util.FixedMerkleLeaves
@@ -144,6 +154,8 @@ func (fp fixedMerkleTreeProof) GetMerkleProof(r io.ReaderAt) (proof [][]byte, er
 	return
 }
 
+// GetLeafContent is used to retrieve leaf content of respective index. The data is read in
+// batch of 10 MB. It may be increased to 100MB if disk read make challenge verification slow.
 // r should have offset seeked already
 func (fp *fixedMerkleTreeProof) GetLeafContent(r io.Reader) (proofByte []byte, err error) {
 	levels := fp.CalculateLeafContentLevelForIndex() + 1
@@ -151,7 +163,7 @@ func (fp *fixedMerkleTreeProof) GetLeafContent(r io.Reader) (proofByte []byte, e
 	var proofWritten int
 	idxOffset := fp.idx * util.MerkleChunkSize
 	idxLimit := idxOffset + util.MerkleChunkSize
-	b := make([]byte, 10*MB)
+	b := make([]byte, FMTDisKRead)
 	for {
 		n, err := r.Read(b)
 		if err != nil {
@@ -190,10 +202,13 @@ func getNewFixedMerkleTree() *fixedMerkleTree {
 	}
 }
 
+// validationTree is used to calculate root and store validation tree nodes excluding root node.
 type validationTree struct {
 	*util.ValidationTree
 }
 
+// CalculateRootAndStoreNodes is used to calculate root and write intermediate nodes excluding root
+// node to f
 func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoot []byte, err error) {
 	_, err = f.Seek(FMTSize, io.SeekStart)
 	if err != nil {
@@ -252,6 +267,7 @@ func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoo
 	return nodes[0], nil
 }
 
+// validationTreeProof is used to calculate and retrieve merkle path
 type validationTreeProof struct {
 	totalLeaves int
 	depth       int
@@ -329,7 +345,10 @@ func (v *validationTreeProof) getFileOffsetsAndNodeIndexes(startInd, endInd int)
 	return offsets, leftRightIndexes
 }
 
-// getNodeIndexes
+// getNodeIndexes returns two slices.
+// 1. NodeOffsets will return offset index of node in each level. Each level starts with index zero.
+// 2. leftRightIndexes will return whether the node should be appended to the left or right
+//    with other hash
 func (v *validationTreeProof) getNodeIndexes(startInd, endInd int) ([][]int, [][]int) {
 
 	indexes := make([][]int, 0)
@@ -367,6 +386,8 @@ func getNewValidationTree(dataSize int64) *validationTree {
 	}
 }
 
+// commitHasher is used to calculate and store tree nodes for fixed merkle tree and
+// validation tree when client commits file with the writemarker.
 type commitHasher struct {
 	fmt           *fixedMerkleTree
 	vt            *validationTree
