@@ -26,11 +26,9 @@ package filestore
 //
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -47,14 +45,15 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/util"
-	"github.com/0chain/gosdk/zboxcore/sdk"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/sha3"
 	"golang.org/x/sys/unix"
 )
 
 const (
 	TempDir         = "tmp"
 	MerkleChunkSize = 64
+	ChunkSize       = 64 * KB
 )
 
 func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
@@ -114,97 +113,62 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 }
 
 func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
+
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
-
-	f, err := os.Open(tempFilePath)
+	r, err := os.Open(tempFilePath)
 	if err != nil {
-		return false, common.NewError("file_open_error", err.Error())
-	}
-	defer f.Close()
-
-	fStat, err := f.Stat()
-	if err != nil {
-		return false, common.NewError("stat_error", err.Error())
+		return false, err
 	}
 
-	fileSize := fStat.Size()
+	var fPath string
+	defer func() {
+		if err != nil {
+			os.Remove(fPath)
+		} else {
+			os.Remove(tempFilePath)
+		}
+	}()
+	defer r.Close()
 
-	var hash string
-	switch {
-	case fileData.IsThumbnail:
-		h := sha256.New()
-		_, err := io.Copy(h, f)
+	if fileData.IsThumbnail {
+		h := sha3.New256()
+		_, err = io.Copy(h, r)
 		if err != nil {
 			return false, common.NewError("read_error", err.Error())
 		}
-		hash = hex.EncodeToString(h.Sum(nil))
-	default:
-		/* Uncomment it after padding is done in gosdk
-		if fileSize > fileData.ChunkSize && fileSize%fileData.ChunkSize != 0 { // workaround for data without padding
-			return false, common.NewError("invalid_data",
-				fmt.Sprintf("file size %d is not exactly divisible by chunk size %d", fileSize, fileData.ChunkSize))
-		}
-		*/
-
-		hasher := sdk.CreateHasher(int(fileData.ChunkSize))
-
-		n := int64(math.Ceil(float64(fileSize) / float64(fileData.ChunkSize)))       // workaround for data without padding otherwise fileSize/fileData.ChunkSize
-		n = int64(math.Max(float64(1), float64(n)))                                  // workaround for data without padding otherwise non-existing line
-		chunkSize := int64(math.Min(float64(fileSize), float64(fileData.ChunkSize))) // workaround for data without padding otherwise non-existing line
-
-		for i := int64(0); i < n; i++ {
-			offset := i * chunkSize
-			data := make([]byte, chunkSize)
-			n, err := f.ReadAt(data, offset)
-			if err != nil && !errors.Is(err, io.EOF) {
-				return false, common.NewError("read_error", err.Error())
-			}
-
-			/* Uncomment when padding is done in gosdk
-			if n != int(chunkSize) {
-				return false, common.NewError("read_error",
-					fmt.Sprintf("expected read %d, got %d", chunkSize, n))
-			}
-			*/
-
-			h := sha256.New()
-			_, err = h.Write(data[:n]) // workaround for data without padding otherwise h.Write(data)
-			if err != nil {
-				return false, common.NewError("hash_write_error", err.Error())
-			}
-
-			err = hasher.WriteHashToContent(hex.EncodeToString(h.Sum(nil)), int(i))
-			if err != nil {
-				return false, common.NewError("content_hash_write_error", err.Error())
-			}
-
-			err = hasher.WriteToChallenge(data[:n], int(i))
-			if err != nil {
-				return false, common.NewError("challenge_hash_write_error", err.Error())
-			}
+		hash := hex.EncodeToString(h.Sum(nil))
+		if hash != fileData.ThumbnailHash {
+			return false, common.NewError("hash_mismatch", "calculated thumbnail hash does not match with expected hash")
 		}
 
-		hash, err = hasher.GetContentHash()
+		fPath, err = fs.GetPathForFile(allocID, hash)
 		if err != nil {
-			return false, common.NewError("get_content_hash_error", err.Error())
+			return false, common.NewError("get_file_path_error", err.Error())
 		}
-
-		merkleRoot, err := hasher.GetChallengeHash()
+		err = createDirs(filepath.Dir(fPath))
 		if err != nil {
-			return false, common.NewError("get_challenge_hash_error", err.Error())
+			return false, common.NewError("blob_object_dir_creation_error", err.Error())
 		}
 
-		if merkleRoot != fileData.MerkleRoot {
-			return false, common.NewError("merkle_root_mismatch",
-				fmt.Sprintf("Expected %s got %s", fileData.MerkleRoot, merkleRoot))
+		f, err := os.Create(fPath)
+		if err != nil {
+			return false, err
 		}
+		defer f.Close()
+		_, err = r.Seek(0, io.SeekStart)
+		if err != nil {
+			return false, err
+		}
+
+		_, err = io.Copy(f, r)
+		if err != nil {
+			return false, err
+		}
+
+		return true, nil
 	}
 
-	if hash != fileData.Hash {
-		return false, common.NewError("invalid_hash", "calculated content hash does not match with client's content hash")
-	}
-
-	key := getKey(allocID, fileData.Hash)
+	key := getKey(allocID, fileData.ValidationRoot)
 	l, _ := contentHashMapLock.GetLock(key)
 	l.Lock()
 	defer func() {
@@ -213,22 +177,74 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		}
 	}()
 
-	fileObjectPath, err := fs.GetPathForFile(allocID, fileData.Hash)
+	fPath, err = fs.GetPathForFile(allocID, fileData.ValidationRoot)
 	if err != nil {
 		return false, common.NewError("get_file_path_error", err.Error())
 	}
 
-	err = createDirs(filepath.Dir(fileObjectPath))
+	err = createDirs(filepath.Dir(fPath))
 	if err != nil {
 		return false, common.NewError("blob_object_dir_creation_error", err.Error())
 	}
 
-	//move file from tmp location to the objects folder
-	err = os.Rename(tempFilePath, fileObjectPath)
+	f, err := os.Create(fPath)
 	if err != nil {
-		return false, common.NewError("blob_object_creation_error", err.Error())
+		return false, err
 	}
 
+	defer r.Close()
+
+	fStat, err := r.Stat()
+	if err != nil {
+		return false, common.NewError("stat_error", err.Error())
+	}
+
+	fileSize := fStat.Size()
+	hasher := GetNewCommitHasher(fileSize)
+	_, err = io.Copy(hasher, r)
+	if err != nil {
+		return false, common.NewError("read_write_error", err.Error())
+	}
+
+	err = hasher.Finalize()
+	if err != nil {
+		return false, common.NewError("finalize_error", err.Error())
+	}
+
+	fmtRootBytes, err := hasher.fmt.CalculateRootAndStoreNodes(f)
+	if err != nil {
+		return false, common.NewError("fmt_hash_calculation_error", err.Error())
+	}
+
+	validationRootBytes, err := hasher.vt.CalculateRootAndStoreNodes(f)
+	if err != nil {
+		return false, common.NewError("validation_hash_calculation_error", err.Error())
+	}
+
+	fmtRoot := hex.EncodeToString(fmtRootBytes)
+	validationRoot := hex.EncodeToString(validationRootBytes)
+
+	if fmtRoot != fileData.FixedMerkleRoot {
+		return false, common.NewError("merkle_root_mismatch",
+			fmt.Sprintf("Expected %s got %s", fileData.MerkleRoot, fmtRoot))
+	}
+
+	if validationRoot != fileData.ValidationRoot {
+		return false, common.NewError("invalid_hash",
+			"calculated validation root does not match with client's validation root")
+	}
+
+	_, err = r.Seek(0, io.SeekStart)
+	if err != nil {
+		return false, common.NewError("seek_error", err.Error())
+	}
+
+	_, err = io.Copy(f, r)
+	if err != nil {
+		return false, common.NewError("write_error", err.Error())
+	}
+
+	f.Close()
 	l.Unlock()
 
 	fs.updateAllocTempFileSize(allocID, -fileSize)
@@ -305,115 +321,104 @@ func (fs *FileStore) DeleteTempFile(allocID, conID string, fd *FileInputData) er
 }
 
 // GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.
-func (fs *FileStore) GetFileBlock(allocID string, fileData *FileInputData, blockNum, numBlocks int64) ([]byte, error) {
-	if blockNum < 1 {
+func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error) {
+
+	// todo also differentiate thumbnail and actual file
+	startBlock := readBlockIn.StartBlockNum
+	endBlock := readBlockIn.StartBlockNum + readBlockIn.NumBlocks
+
+	if startBlock < 1 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number must be greater than 0")
 	}
 
-	fileObjectPath, err := fs.GetPathForFile(allocID, fileData.Hash)
+	fileObjectPath, err := fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.ValidationRoot)
 	if err != nil {
 		return nil, common.NewError("get_file_path_error", err.Error())
 	}
+
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
 		return nil, err
 	}
-
 	defer file.Close()
-	fileinfo, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
 
-	filesize := fileinfo.Size()
-	maxBlockNum := int64(math.Ceil(float64(filesize) / float64(fileData.ChunkSize)))
+	filesize := readBlockIn.FileSize
+	maxBlockNum := int64(math.Ceil(float64(filesize) / ChunkSize))
 
-	if blockNum > maxBlockNum {
+	if int64(startBlock) > maxBlockNum {
 		return nil, common.NewError("invalid_block_number",
-			fmt.Sprintf("Invalid block number. Start block %d is greater than maximum blocks %d", blockNum, maxBlockNum))
+			fmt.Sprintf("Invalid block number. Start block %d is greater than maximum blocks %d",
+				startBlock, maxBlockNum))
 	}
 
-	buffer := make([]byte, fileData.ChunkSize*numBlocks)
-	n, err := file.ReadAt(buffer, ((blockNum - 1) * fileData.ChunkSize))
+	vp := validationTreeProof{
+		dataSize: readBlockIn.FileSize,
+	}
+
+	nodes, indexes, nodesSize, err := vp.GetMerkleProofOfMultipleIndexes(file, startBlock, endBlock)
+	if err != nil {
+		return nil, common.NewError("get_merkle_proof_error", err.Error())
+	}
+
+	vmp := &FileDownloadResponse{
+		Nodes:   nodes,
+		Indexes: indexes,
+	}
+
+	fileOffset := nodesSize + int64(startBlock)*ChunkSize
+
+	_, err = file.Seek(fileOffset, io.SeekStart)
+	if err != nil {
+		return nil, common.NewError("seek_error", err.Error())
+	}
+
+	buffer := make([]byte, readBlockIn.NumBlocks*ChunkSize)
+	n, err := file.Read(buffer)
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
 
-	return buffer[:n], nil
+	vmp.Data = buffer[:n]
+	return vmp, nil
 }
 
-func (fs *FileStore) GetBlocksMerkleTreeForChallenge(allocID string,
-	fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
+func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput) (*ChallengeResponse, error) {
 
-	if blockoffset < 0 || blockoffset >= 1024 {
-		return nil, nil, common.NewError("invalid_block_number", "Invalid block offset")
+	if in.BlockOffset < 0 || in.BlockOffset >= util.FixedMerkleLeaves {
+		return nil, common.NewError("invalid_block_number", "Invalid block offset")
 	}
 
-	fileObjectPath, err := fs.GetPathForFile(allocID, fileData.Hash)
+	fileObjectPath, err := fs.GetPathForFile(in.AllocationID, in.ValidationRoot)
 	if err != nil {
-		return nil, nil, common.NewError("get_file_path_error", err.Error())
+		return nil, common.NewError("get_file_path_error", err.Error())
 	}
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	defer file.Close()
 
-	var returnBytes []byte
+	fmp := &fixedMerkleTreeProof{
+		idx:      in.BlockOffset,
+		dataSize: in.FileSize,
+	}
 
-	fi, err := file.Stat()
+	merkleProof, err := fmp.GetMerkleProof(file)
 	if err != nil {
-		return nil, nil, common.NewError("stat_error", err.Error())
+		return nil, common.NewError("get_merkle_proof_error", err.Error())
 	}
 
-	numChunks := int(math.Ceil(float64(fi.Size()) / float64(fileData.ChunkSize)))
-
-	fixedMT := util.NewFixedMerkleTree(int(fileData.ChunkSize))
-	merkleChunkSize := int(fileData.ChunkSize) / 1024
-	if merkleChunkSize == 0 {
-		merkleChunkSize = 1
+	proofByte, err := fmp.GetLeafContent(file)
+	if err != nil {
+		return nil, common.NewError("get_leaf_content_error", err.Error())
 	}
 
-	bytesBuf := bytes.NewBuffer(make([]byte, 0))
-	for chunkIndex := 0; chunkIndex < numChunks; chunkIndex++ {
-		written, err := io.CopyN(bytesBuf, file, fileData.ChunkSize)
-
-		if written > 0 {
-			dataBytes := bytesBuf.Bytes()
-
-			errWrite := fixedMT.Write(dataBytes, chunkIndex)
-			if errWrite != nil {
-				return nil, nil, common.NewError("hash_error", errWrite.Error())
-			}
-
-			offset := 0
-
-			for i := 0; i < len(dataBytes); i += merkleChunkSize {
-				end := i + merkleChunkSize
-				if end > len(dataBytes) {
-					end = len(dataBytes)
-				}
-
-				if offset == blockoffset {
-					returnBytes = append(returnBytes, dataBytes[i:end]...)
-				}
-
-				offset++
-				if offset >= 1024 {
-					offset = 1
-				}
-			}
-			bytesBuf.Reset()
-		}
-
-		if err != nil && err == io.EOF {
-			break
-		}
-	}
-
-	return returnBytes, fixedMT.GetMerkleTree(), nil
+	return &ChallengeResponse{
+		Proof: merkleProof,
+		Data:  proofByte,
+	}, nil
 }
 
 func (fs FileStore) GetCurrentDiskCapacity() uint64 {
@@ -536,12 +541,12 @@ func (fs *FileStore) getAllocDir(allocID string) string {
 	return filepath.Join(fs.mp, getPartialPath(allocID, getDirLevelsForAllocations()))
 }
 
-func (fs *FileStore) GetPathForFile(allocID, contentHash string) (string, error) {
-	if len(allocID) != 64 || len(contentHash) != 64 {
-		return "", errors.New("length of allocationID/contentHash must be 64")
+func (fs *FileStore) GetPathForFile(allocID, hash string) (string, error) {
+	if len(allocID) != 64 || len(hash) != 64 {
+		return "", errors.New("length of allocationID/hash must be 64")
 	}
 
-	return filepath.Join(fs.getAllocDir(allocID), getPartialPath(contentHash, getDirLevelsForFiles())), nil
+	return filepath.Join(fs.getAllocDir(allocID), getPartialPath(hash, getDirLevelsForFiles())), nil
 }
 
 // getPath returns "/" separated strings with the given levels.
