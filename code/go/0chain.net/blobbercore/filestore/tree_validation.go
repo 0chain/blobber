@@ -4,6 +4,7 @@
 package filestore
 
 import (
+	"encoding/hex"
 	"errors"
 	"io"
 	"math"
@@ -415,4 +416,12 @@ func (c *commitHasher) Finalize() error {
 	}
 
 	return c.vt.Finalize()
+}
+
+func (c *commitHasher) GetFixedMerkleRoot() string {
+	return c.fmt.GetMerkleRoot()
+}
+
+func (c *commitHasher) GetValidationMerkleRoot() string {
+	return hex.EncodeToString(c.vt.GetValidationRoot())
 }
