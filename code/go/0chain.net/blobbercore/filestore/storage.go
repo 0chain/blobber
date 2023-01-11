@@ -27,7 +27,6 @@ package filestore
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -82,10 +81,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 		return nil, common.NewError("file_seek_error", err.Error())
 	}
 
-	h := sha256.New()
-	tReader := io.TeeReader(infile, h)
-
-	writtenSize, err := io.Copy(f, tReader)
+	writtenSize, err := io.Copy(f, infile)
 	if err != nil {
 		return nil, common.NewError("file_write_error", err.Error())
 	}
@@ -104,8 +100,6 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	}
 
 	fileRef.Size = writtenSize
-	fileRef.ContentHash = hex.EncodeToString(h.Sum(nil))
-
 	fileRef.Name = fileData.Name
 	fileRef.Path = fileData.Path
 
@@ -225,12 +219,12 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	validationRoot := hex.EncodeToString(validationRootBytes)
 
 	if fmtRoot != fileData.FixedMerkleRoot {
-		return false, common.NewError("merkle_root_mismatch",
-			fmt.Sprintf("Expected %s got %s", fileData.MerkleRoot, fmtRoot))
+		return false, common.NewError("fixed_merkle_root_mismatch",
+			fmt.Sprintf("Expected %s got %s", fileData.FixedMerkleRoot, fmtRoot))
 	}
 
 	if validationRoot != fileData.ValidationRoot {
-		return false, common.NewError("invalid_hash",
+		return false, common.NewError("validation_root_mismatch",
 			"calculated validation root does not match with client's validation root")
 	}
 
@@ -327,11 +321,11 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 	startBlock := readBlockIn.StartBlockNum
 	endBlock := readBlockIn.StartBlockNum + readBlockIn.NumBlocks
 
-	if startBlock < 1 {
-		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number must be greater than 0")
+	if startBlock < 0 {
+		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number cannot be negative")
 	}
 
-	fileObjectPath, err := fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.ValidationRoot)
+	fileObjectPath, err := fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
 	if err != nil {
 		return nil, common.NewError("get_file_path_error", err.Error())
 	}
@@ -388,7 +382,7 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 		return nil, common.NewError("invalid_block_number", "Invalid block offset")
 	}
 
-	fileObjectPath, err := fs.GetPathForFile(in.AllocationID, in.ValidationRoot)
+	fileObjectPath, err := fs.GetPathForFile(in.AllocationID, in.Hash)
 	if err != nil {
 		return nil, common.NewError("get_file_path_error", err.Error())
 	}
@@ -405,6 +399,10 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 		dataSize: in.FileSize,
 	}
 
+	_, err = file.Seek(-in.FileSize, io.SeekEnd)
+	if err != nil {
+		return nil, common.NewError("seek_error", err.Error())
+	}
 	merkleProof, err := fmp.GetMerkleProof(file)
 	if err != nil {
 		return nil, common.NewError("get_merkle_proof_error", err.Error())
