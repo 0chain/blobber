@@ -187,12 +187,12 @@ func CopyObjectResponseCreator(r interface{}) *blobbergrpc.CopyObjectResponse {
 
 	httpResp, _ := r.(*blobberhttp.UploadResult)
 	return &blobbergrpc.CopyObjectResponse{
-		Filename:     httpResp.Filename,
-		Size:         httpResp.Size,
-		ContentHash:  httpResp.Hash,
-		MerkleRoot:   httpResp.MerkleRoot,
-		UploadLength: httpResp.UploadLength,
-		UploadOffset: httpResp.UploadOffset,
+		Filename:        httpResp.Filename,
+		Size:            httpResp.Size,
+		ValidationRoot:  httpResp.ValidationRoot,
+		FixedMerkleRoot: httpResp.FixedMerkleRoot,
+		UploadLength:    httpResp.UploadLength,
+		UploadOffset:    httpResp.UploadOffset,
 	}
 }
 
@@ -203,12 +203,12 @@ func RenameObjectResponseCreator(r interface{}) *blobbergrpc.RenameObjectRespons
 
 	httpResp, _ := r.(*blobberhttp.UploadResult)
 	return &blobbergrpc.RenameObjectResponse{
-		Filename:     httpResp.Filename,
-		Size:         httpResp.Size,
-		ContentHash:  httpResp.Hash,
-		MerkleRoot:   httpResp.MerkleRoot,
-		UploadLength: httpResp.UploadLength,
-		UploadOffset: httpResp.UploadOffset,
+		Filename:        httpResp.Filename,
+		Size:            httpResp.Size,
+		ValidationRoot:  httpResp.ValidationRoot,
+		FixedMerkleRoot: httpResp.FixedMerkleRoot,
+		UploadLength:    httpResp.UploadLength,
+		UploadOffset:    httpResp.UploadOffset,
 	}
 }
 
@@ -241,11 +241,11 @@ func UploadFileResponseCreator(r interface{}) *blobbergrpc.UploadFileResponse {
 
 	httpResp, _ := r.(*blobberhttp.UploadResult)
 	return &blobbergrpc.UploadFileResponse{
-		Filename:     httpResp.Filename,
-		Size:         httpResp.Size,
-		ContentHash:  httpResp.Hash,
-		MerkleRoot:   httpResp.MerkleRoot,
-		UploadLength: httpResp.UploadLength,
-		UploadOffset: httpResp.UploadOffset,
+		Filename:        httpResp.Filename,
+		Size:            httpResp.Size,
+		ValidationRoot:  httpResp.ValidationRoot,
+		FixedMerkleRoot: httpResp.FixedMerkleRoot,
+		UploadLength:    httpResp.UploadLength,
+		UploadOffset:    httpResp.UploadOffset,
 	}
 }

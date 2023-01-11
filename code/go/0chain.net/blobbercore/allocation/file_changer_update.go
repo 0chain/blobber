@@ -78,15 +78,15 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	if fileRef.ThumbnailHash != "" && fileRef.ThumbnailHash != nf.ThumbnailHash {
 		nf.deleteHash[fileRef.ThumbnailHash] = true
 	}
-	if fileRef.ContentHash != "" && fileRef.ContentHash != nf.Hash {
-		nf.deleteHash[fileRef.ContentHash] = true
+	if fileRef.ValidationRoot != "" && fileRef.ValidationRoot != nf.ValidationRoot {
+		nf.deleteHash[fileRef.ValidationRoot] = true
 	}
 	fileRef.ActualFileHash = nf.ActualHash
 	fileRef.ActualFileSize = nf.ActualSize
 	fileRef.MimeType = nf.MimeType
-	fileRef.ContentHash = nf.Hash
+	fileRef.ValidationRoot = nf.ValidationRoot
 	fileRef.CustomMeta = nf.CustomMeta
-	fileRef.MerkleRoot = nf.MerkleRoot
+	fileRef.FixedMerkleRoot = nf.FixedMerkleRoot
 	fileRef.WriteMarker = allocationRoot
 	fileRef.Size = nf.Size
 	fileRef.ThumbnailHash = nf.ThumbnailHash
@@ -108,18 +108,18 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 
 func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	for contenthash := range nf.deleteHash {
+	for hash := range nf.deleteHash {
 		var count int64
 		err := db.Table((&reference.Ref{}).TableName()).
 			Where(
-				db.Where(&reference.Ref{ThumbnailHash: contenthash}).
-					Or(&reference.Ref{ContentHash: contenthash})).
+				db.Where(&reference.Ref{ThumbnailHash: hash}).
+					Or(&reference.Ref{ValidationRoot: hash})).
 			Where(&reference.Ref{AllocationID: nf.AllocationID}).
 			Count(&count).Error
 
 		if err == nil && count == 0 {
-			logging.Logger.Info("Deleting content file", zap.String("content_hash", contenthash))
-			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, contenthash); err != nil {
+			logging.Logger.Info("Deleting content file", zap.String("validation_root", hash))
+			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash); err != nil {
 				logging.Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
 			}
 		}

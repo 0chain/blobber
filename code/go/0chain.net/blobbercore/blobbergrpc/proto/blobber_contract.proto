@@ -221,8 +221,8 @@ message CopyObjectRequest {
 message CopyObjectResponse {
   string filename = 1;
   int64  size = 2;
-  string content_hash = 3;
-  string merkle_root = 4;
+  string validation_root = 3;
+  string fixed_merkle_root = 4;
   //UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
   int64 upload_length = 5;
   //Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
@@ -240,8 +240,8 @@ message RenameObjectRequest {
 message RenameObjectResponse {
   string filename = 1;
   int64  size = 2;
-  string content_hash = 3;
-  string merkle_root = 4;
+  string validation_root = 3;
+  string fixed_merkle_root = 4;
   //UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
   int64 upload_length = 5;
   //Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
@@ -261,8 +261,8 @@ message UploadFileRequest {
 message UploadFileResponse {
   string filename = 1;
   int64 size = 2;
-  string content_hash = 3;
-  string merkle_root = 4;
+  string validation_root = 3;
+  string fixed_merkle_root = 4;
   //UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
   int64 upload_length = 5;
   //Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
@@ -312,9 +312,9 @@ message FileMetaData {
   int64 num_blocks = 6;
   string path_hash = 7;
   string custom_meta = 8;
-  string content_hash = 9;
+  string validation_root = 9;
   int64 size = 10;
-  string merkle_root = 11;
+  string fixed_merkle_root = 11;
   int64 actual_file_size = 12;
   string actual_file_hash = 13;
   string mime_type = 14;

@@ -123,9 +123,9 @@ func (rf *CopyFileChange) processCopyRefs(
 		newFile.ActualFileHash = srcRef.ActualFileHash
 		newFile.ActualFileSize = srcRef.ActualFileSize
 		newFile.AllocationID = srcRef.AllocationID
-		newFile.ContentHash = srcRef.ContentHash
+		newFile.ValidationRoot = srcRef.ValidationRoot
 		newFile.CustomMeta = srcRef.CustomMeta
-		newFile.MerkleRoot = srcRef.MerkleRoot
+		newFile.FixedMerkleRoot = srcRef.FixedMerkleRoot
 		newFile.Name = srcRef.Name
 		newFile.ParentPath = destRef.Path
 		newFile.Path = filepath.Join(destRef.Path, srcRef.Name)

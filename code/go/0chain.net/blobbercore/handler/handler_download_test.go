@@ -357,7 +357,7 @@ func TestHandlers_Download(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "type", "lookup_hash", "content_hash"}).
+						sqlmock.NewRows([]string{"path", "type", "lookup_hash", "validation_root"}).
 							AddRow("/file.txt", "f", filePathHash, "abcd"),
 					)
 
@@ -380,9 +380,8 @@ func TestHandlers_Download(t *testing.T) {
 
 				mock.ExpectCommit()
 			},
-			//one error left check tomorrow
 			wantCode: http.StatusOK,
-			wantBody: "\"bW9jaw==\"\n", //base64encoded for mock string
+			wantBody: "bW9jaw==", //base64encoded for mock string
 		},
 		{
 			name: "DownloadFile_file_return_stale_readmarker",
@@ -459,7 +458,7 @@ func TestHandlers_Download(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "type", "lookup_hash", "content_hash"}).
+						sqlmock.NewRows([]string{"path", "type", "lookup_hash", "validation_root"}).
 							AddRow("/file.txt", "f", filePathHash, "abcd"),
 					)
 
@@ -568,8 +567,8 @@ func TestHandlers_Download(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "chunk_size"}).
-							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", "qCj3sXXeXUAByi1ERIbcfXzWN75dyocYzyRXnkStXio=", 65536),
+						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "chunk_size"}).
+							AddRow("/file.txt", "f", filePathHash, filePathHash, "validation_root", "qCj3sXXeXUAByi1ERIbcfXzWN75dyocYzyRXnkStXio=", 65536),
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
@@ -694,8 +693,8 @@ func TestHandlers_Download(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "chunk_size"}).
-							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", ownerScheme.GetEncryptedKey(), 65536),
+						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "chunk_size"}).
+							AddRow("/file.txt", "f", filePathHash, filePathHash, "validation_root", ownerScheme.GetEncryptedKey(), 65536),
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
@@ -836,8 +835,8 @@ func TestHandlers_Download(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path", "chunk_size"}).
-							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", ownerScheme.GetEncryptedKey(), "/", fileref.CHUNK_SIZE),
+						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path", "chunk_size"}).
+							AddRow("/file.txt", "f", filePathHash, filePathHash, "validation_root", ownerScheme.GetEncryptedKey(), "/", fileref.CHUNK_SIZE),
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
@@ -848,8 +847,8 @@ func TestHandlers_Download(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, rootPathHash).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path"}).
-							AddRow("/", "d", rootPathHash, rootPathHash, "content_hash", "", "."),
+						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path"}).
+							AddRow("/", "d", rootPathHash, rootPathHash, "validation_root", "", "."),
 					)
 
 				gpbk, err := guestScheme.GetPublicKey()
@@ -982,8 +981,8 @@ func TestHandlers_Download(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path", "chunk_size"}).
-							AddRow("/folder1/subfolder1/file.txt", "f", filePathHash, filePathHash, "content_hash", ownerScheme.GetEncryptedKey(), "/folder1/subfolder1", filestore.CHUNK_SIZE),
+						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path", "chunk_size"}).
+							AddRow("/folder1/subfolder1/file.txt", "f", filePathHash, filePathHash, "validation_root", ownerScheme.GetEncryptedKey(), "/folder1/subfolder1", filestore.CHUNK_SIZE),
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
@@ -994,8 +993,8 @@ func TestHandlers_Download(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, rootPathHash).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path"}).
-							AddRow("/folder1", "d", rootPathHash, rootPathHash, "content_hash", "", "."),
+						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path"}).
+							AddRow("/folder1", "d", rootPathHash, rootPathHash, "validation_root", "", "."),
 					)
 
 				gpbk, err := guestScheme.GetPublicKey()
@@ -1128,16 +1127,16 @@ func TestHandlers_Download(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path", "chunk_size"}).
-							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", ownerScheme.GetEncryptedKey(), "/folder2/subfolder1", fileref.CHUNK_SIZE),
+						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path", "chunk_size"}).
+							AddRow("/file.txt", "f", filePathHash, filePathHash, "validation_root", ownerScheme.GetEncryptedKey(), "/folder2/subfolder1", fileref.CHUNK_SIZE),
 					)
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder1")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, rootPathHash).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path"}).
-							AddRow("/folder1", "d", rootPathHash, rootPathHash, "content_hash", "", "/"),
+						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path"}).
+							AddRow("/folder1", "d", rootPathHash, rootPathHash, "validation_root", "", "/"),
 					)
 
 			},
@@ -1162,8 +1161,20 @@ func TestHandlers_Download(t *testing.T) {
 			}
 
 			assert.Equal(t, test.wantCode, test.args.w.Result().StatusCode)
+			data := test.args.w.Body.Bytes()
+			m := make(map[string]interface{})
+			err = json.Unmarshal(data, &m)
+			require.NoError(t, err)
+
 			if test.wantCode != http.StatusOK || test.wantBody != "" {
-				assert.Equal(t, test.wantBody, test.args.w.Body.String())
+				fmt.Println("fprint", test.args.w.Body.String())
+				var body string
+				if m["Data"] != nil {
+					body = m["Data"].(string)
+					assert.Equal(t, test.wantBody, body)
+				} else {
+					assert.Equal(t, test.wantBody, test.args.w.Body.String())
+				}
 			}
 		})
 	}

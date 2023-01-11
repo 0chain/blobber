@@ -125,7 +125,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 
 	result.Filename = cmd.fileChanger.Filename
-	result.Hash = fileOutputData.ContentHash
+	result.ValidationRoot = fileOutputData.ValidationRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := connectionObj.Size
@@ -138,14 +138,6 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}
-
-	if len(cmd.fileChanger.ChunkHash) > 0 && cmd.fileChanger.ChunkHash != fileOutputData.ContentHash {
-		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
-	}
-
-	// Save client's ContentHash in database instead blobber's
-	// it saves time to read and compute hash of fragment from disk again
-	//cmd.fileChanger.Hash = fileOutputData.ContentHash
 
 	cmd.fileChanger.AllocationID = allocationObj.ID
 	cmd.fileChanger.Size = allocationSize
@@ -172,11 +164,8 @@ func (cmd *UploadFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 		}
-		if cmd.fileChanger.ThumbnailHash != thumbOutputData.ContentHash {
-			return common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the thumbnail content")
-		}
 
-		cmd.fileChanger.ThumbnailHash = thumbOutputData.ContentHash
+		cmd.fileChanger.ThumbnailHash = thumbOutputData.ThumbnailHash
 		cmd.fileChanger.ThumbnailSize = thumbOutputData.Size
 		cmd.fileChanger.ThumbnailFilename = thumbInputData.Name
 	}

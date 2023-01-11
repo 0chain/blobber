@@ -105,18 +105,14 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
 
-	result.Hash = fileOutputData.ContentHash
-	//result.MerkleRoot = fileOutputData.MerkleRoot
+	result.ValidationRoot = fileOutputData.ValidationRoot
+	result.FixedMerkleRoot = fileOutputData.FixedMerkleRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := connectionObj.Size
 
 	if fileOutputData.ChunkUploaded {
 		allocationSize += fileOutputData.Size
-	}
-
-	if len(cmd.fileChanger.ChunkHash) > 0 && cmd.fileChanger.ChunkHash != fileOutputData.ContentHash {
-		return result, common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the file content")
 	}
 
 	if allocationObj.BlobberSizeUsed+(allocationSize-cmd.existingFileRef.Size) > allocationObj.BlobberSize {
@@ -152,10 +148,8 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 		}
-		if len(cmd.fileChanger.ThumbnailHash) > 0 && cmd.fileChanger.ThumbnailHash != thumbOutputData.ContentHash {
-			return common.NewError("content_hash_mismatch", "Content hash provided in the meta data does not match the thumbnail content")
-		}
-		cmd.fileChanger.ThumbnailHash = thumbOutputData.ContentHash
+
+		cmd.fileChanger.ThumbnailHash = thumbOutputData.ThumbnailHash
 		cmd.fileChanger.ThumbnailSize = thumbOutputData.Size
 		cmd.fileChanger.ThumbnailFilename = thumbInputData.Name
 	}

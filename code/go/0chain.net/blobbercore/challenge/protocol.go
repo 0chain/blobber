@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"math"
 	"math/rand"
 	"strings"
 	"sync"
@@ -22,6 +21,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
+	sdkUtil "github.com/0chain/gosdk/core/util"
 	"github.com/remeh/sizedwaitgroup"
 
 	"go.uber.org/zap"
@@ -196,37 +196,24 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			return ErrInvalidObjectPath
 		}
 
-		inputData := &filestore.FileInputData{}
-		inputData.Name = objectPath.Meta["name"].(string)
-		inputData.Path = objectPath.Meta["path"].(string)
-		inputData.Hash = objectPath.Meta["content_hash"].(string)
-		inputData.ChunkSize = objectPath.ChunkSize
-
-		maxNumBlocks := 1024
-		merkleChunkSize := objectPath.ChunkSize / 1024
-		// chunksize is less than 1024
-		if merkleChunkSize == 0 {
-			merkleChunkSize = 1
-		}
-
-		// the file is too small, some of 1024 blocks is not filled
-		if objectPath.Size < objectPath.ChunkSize {
-
-			maxNumBlocks = int(math.Ceil(float64(objectPath.Size) / float64(merkleChunkSize)))
-		}
-
 		r := rand.New(rand.NewSource(cr.RandomNumber))
-		blockoffset := r.Intn(maxNumBlocks)
-		blockData, mt, err := filestore.GetFileStore().GetBlocksMerkleTreeForChallenge(cr.AllocationID, inputData, blockoffset)
+		blockoffset := r.Intn(sdkUtil.FixedMerkleLeaves)
+
+		challengeReadInput := &filestore.ChallengeReadBlockInput{
+			Hash:         objectPath.Meta["validation_root"].(string),
+			FileSize:     objectPath.Meta["size"].(int64),
+			BlockOffset:  blockoffset,
+			AllocationID: cr.AllocationID,
+		}
+
+		challengeResponse, err := filestore.GetFileStore().GetBlocksMerkleTreeForChallenge(challengeReadInput)
 
 		if err != nil {
 			allocMu.Unlock()
 			cr.CancelChallenge(ctx, err)
 			return common.NewError("blockdata_not_found", err.Error())
 		}
-		postData["data"] = []byte(blockData)
-		postData["merkle_path"] = mt.GetPathByIndex(blockoffset)
-		postData["chunk_size"] = objectPath.ChunkSize
+		postData["challenge"] = challengeResponse
 	}
 
 	allocMu.Unlock()

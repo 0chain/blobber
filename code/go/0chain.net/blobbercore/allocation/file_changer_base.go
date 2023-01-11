@@ -29,13 +29,13 @@ type BaseFileChanger struct {
 	MimeType string `json:"mimetype,omitempty"`
 	//client side:
 	//client side:
-	MerkleRoot string `json:"merkle_root,omitempty"`
+	FixedMerkleRoot string `json:"fixed_merkle_root,omitempty"`
 
 	//server side: update them by ChangeProcessor
 	AllocationID string `json:"allocation_id"`
 	//client side:
-	Hash string `json:"content_hash,omitempty"`
-	Size int64  `json:"size"`
+	ValidationRoot string `json:"validation_root,omitempty"`
+	Size           int64  `json:"size"`
 	//server side:
 	ThumbnailHash     string `json:"thumbnail_content_hash,omitempty"`
 	ThumbnailSize     int64  `json:"thumbnail_size"`
@@ -57,13 +57,13 @@ func (fc *BaseFileChanger) DeleteTempFile() error {
 	fileInputData := &filestore.FileInputData{}
 	fileInputData.Name = fc.Filename
 	fileInputData.Path = fc.Path
-	fileInputData.Hash = fc.Hash
+	fileInputData.ValidationRoot = fc.ValidationRoot
 	err := filestore.GetFileStore().DeleteTempFile(fc.AllocationID, fc.ConnectionID, fileInputData)
 	if fc.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{}
 		fileInputData.Name = fc.ThumbnailFilename
 		fileInputData.Path = fc.Path
-		fileInputData.Hash = fc.ThumbnailHash
+		fileInputData.ThumbnailHash = fc.ThumbnailHash
 		err = filestore.GetFileStore().DeleteTempFile(fc.AllocationID, fc.ConnectionID, fileInputData)
 	}
 	return err
@@ -73,8 +73,8 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 	fileInputData := &filestore.FileInputData{}
 	fileInputData.Name = fc.Filename
 	fileInputData.Path = fc.Path
-	fileInputData.Hash = fc.Hash
-	fileInputData.MerkleRoot = fc.MerkleRoot
+	fileInputData.ValidationRoot = fc.ValidationRoot
+	fileInputData.FixedMerkleRoot = fc.FixedMerkleRoot
 	fileInputData.ChunkSize = fc.ChunkSize
 	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
 	if err != nil {
@@ -84,7 +84,7 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 		fileInputData := &filestore.FileInputData{}
 		fileInputData.Name = fc.ThumbnailFilename
 		fileInputData.Path = fc.Path
-		fileInputData.Hash = fc.ThumbnailHash
+		fileInputData.ThumbnailHash = fc.ThumbnailHash
 		fileInputData.ChunkSize = fc.ChunkSize
 		fileInputData.IsThumbnail = true
 		_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)

@@ -40,9 +40,9 @@ type Ref struct {
 	ParentPath          string `gorm:"column:parent_path;size:999"`
 	PathLevel           int    `gorm:"column:level;not null;default:0"`
 	CustomMeta          string `gorm:"column:custom_meta;not null" filelist:"custom_meta"`
-	ContentHash         string `gorm:"column:content_hash;size:64;not null" filelist:"content_hash"`
+	ValidationRoot      string `gorm:"column:validation_root;size:64;not null" filelist:"validation_root"`
 	Size                int64  `gorm:"column:size;not null;default:0" dirlist:"size" filelist:"size"`
-	MerkleRoot          string `gorm:"column:merkle_root;size:64;not null" filelist:"merkle_root"`
+	FixedMerkleRoot     string `gorm:"column:fixed_merkle_root;size:64;not null" filelist:"fixed_merkle_root"`
 	ActualFileSize      int64  `gorm:"column:actual_file_size;not null;default:0" filelist:"actual_file_size"`
 	ActualFileHash      string `gorm:"column:actual_file_hash;size:64;not null" filelist:"actual_file_hash"`
 	MimeType            string `gorm:"column:mimetype;size:64;not null" filelist:"mimetype"`
@@ -98,9 +98,9 @@ type PaginatedRef struct { //Gorm smart select fields.
 	ParentPath          string `gorm:"column:parent_path" json:"parent_path,omitempty"`
 	PathLevel           int    `gorm:"column:level" json:"level,omitempty"`
 	CustomMeta          string `gorm:"column:custom_meta" json:"custom_meta,omitempty"`
-	ContentHash         string `gorm:"column:content_hash" json:"content_hash,omitempty"`
+	ValidationRoot      string `gorm:"column:validation_root" json:"validation_root,omitempty"`
 	Size                int64  `gorm:"column:size" json:"size,omitempty"`
-	MerkleRoot          string `gorm:"column:merkle_root" json:"merkle_root,omitempty"`
+	FixedMerkleRoot     string `gorm:"column:fixed_merkle_root" json:"fixed_merkle_root,omitempty"`
 	ActualFileSize      int64  `gorm:"column:actual_file_size" json:"actual_file_size,omitempty"`
 	ActualFileHash      string `gorm:"column:actual_file_hash" json:"actual_file_hash,omitempty"`
 	MimeType            string `gorm:"column:mimetype" json:"mimetype,omitempty"`
@@ -338,8 +338,8 @@ func (fr *Ref) GetFileHashData() string {
 		fr.Name, // don't see any utility as fr.Path below has name in it
 		fr.Path,
 		strconv.FormatInt(fr.Size, 10),
-		fr.ContentHash,
-		fr.MerkleRoot,
+		fr.ValidationRoot,
+		fr.FixedMerkleRoot,
 		strconv.FormatInt(fr.ActualFileSize, 10),
 		fr.ActualFileHash,
 		strconv.FormatInt(fr.ChunkSize, 10),
@@ -484,9 +484,9 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 		"actual_thumbnail_hash": r.ActualThumbnailHash,
 		"actual_thumbnail_size": r.ActualThumbnailSize,
 		"encrypted_key":         r.EncryptedKey,
-		"content_hash":          r.ContentHash,
+		"validation_root":       r.ValidationRoot,
 		"size":                  r.Size,
-		"merkle_root":           r.MerkleRoot,
+		"fixed_merkle_root":     r.FixedMerkleRoot,
 		"actual_file_size":      r.ActualFileSize,
 		"actual_file_hash":      r.ActualFileHash,
 		"chunk_size":            r.ChunkSize,
@@ -512,9 +512,7 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 		"parent_path":   r.ParentPath,
 		"level":         r.PathLevel,
 		"write_marker":  r.WriteMarker,
-		"content_hash":  r.ContentHash,
 		"size":          r.Size,
-		"merkle_root":   r.MerkleRoot,
 		"chunk_size":    r.ChunkSize,
 	})
 	if errors.Is(db.Error, gorm.ErrRecordNotFound) || db.RowsAffected == 0 {

@@ -9,10 +9,11 @@ import (
 )
 
 type UploadResult struct {
-	Filename   string `json:"filename"`
-	Size       int64  `json:"size"`
-	Hash       string `json:"content_hash"`
-	MerkleRoot string `json:"merkle_root"`
+	Filename        string `json:"filename"`
+	Size            int64  `json:"size"`
+	Hash            string `json:"hash"`
+	ValidationRoot  string `json:"validation_root"`
+	FixedMerkleRoot string `json:"fixed_merkle_root"`
 
 	// UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
 	UploadLength int64 `json:"upload_length"`
