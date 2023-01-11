@@ -1,19 +1,17 @@
 package filestore
 
 import (
-	"encoding/json"
 	"mime/multipart"
-
-	"github.com/0chain/gosdk/core/util"
 )
 
 const CHUNK_SIZE = 64 * 1024
 
 type FileInputData struct {
-	Name       string
-	Path       string
-	Hash       string
-	MerkleRoot string
+	Name            string
+	Path            string
+	ValidationRoot  string
+	FixedMerkleRoot string
+	ThumbnailHash   string
 
 	// ChunkSize chunk size
 	ChunkSize int64
@@ -27,11 +25,12 @@ type FileInputData struct {
 }
 
 type FileOutputData struct {
-	Name        string
-	Path        string
-	MerkleRoot  string
-	ContentHash string
-	// Size wirtten size/chunk size
+	Name            string
+	Path            string
+	ValidationRoot  string
+	FixedMerkleRoot string
+	ThumbnailHash   string
+	// Size written size/chunk size
 	Size int64
 	// ChunkUploaded the chunk is uploaded or not.
 	ChunkUploaded bool
@@ -47,8 +46,8 @@ type FileStorer interface {
 	DeleteTempFile(allocID, connID string, fileData *FileInputData) error
 	DeleteFile(allocID string, contentHash string) error
 	// GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.
-	GetFileBlock(allocID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error)
-	GetBlocksMerkleTreeForChallenge(allocID string, fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error)
+	GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error)
+	GetBlocksMerkleTreeForChallenge(cri *ChallengeReadBlockInput) (*ChallengeResponse, error)
 	GetTotalTempFileSizes() (s uint64)
 	GetTempFilesSizeOfAllocation(allocID string) uint64
 	GetTotalCommittedFileSize() uint64
@@ -75,4 +74,29 @@ func SetFileStore(fs FileStorer) {
 }
 func GetFileStore() FileStorer {
 	return fileStore
+}
+
+type FileDownloadResponse struct {
+	Nodes   [][][]byte
+	Indexes [][]int
+	Data    []byte
+}
+
+type ReadBlockInput struct {
+	AllocationID  string
+	FileSize      int64
+	Hash          string
+	StartBlockNum int
+	NumBlocks     int
+}
+
+type ChallengeResponse struct {
+	Proof [][]byte
+	Data  []byte
+}
+type ChallengeReadBlockInput struct {
+	BlockOffset  int
+	FileSize     int64
+	Hash         string
+	AllocationID string
 }

@@ -288,7 +288,7 @@ func TestValidationMerkleProof(t *testing.T) {
 			}
 
 			t.Logf("StartInd: %d; endInd: %d", startInd, endInd)
-			nodeHashes, indexes, err := vp.GetMerkleProofOfMultipleIndexes(r, startInd, endInd)
+			nodeHashes, indexes, _, err := vp.GetMerkleProofOfMultipleIndexes(r, startInd, endInd)
 			require.NoError(t, err)
 
 			data := make([]byte, (endInd-startInd+1)*util.MaxMerkleLeavesSize)

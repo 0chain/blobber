@@ -42,6 +42,10 @@ func getNodesSize(dataSize, merkleLeafSize int64) int64 {
 	return totalNodes * HashSize
 }
 
+func calculateLeaves(dataSize int64) int {
+	return int(math.Ceil(float64(dataSize) / util.MaxMerkleLeavesSize))
+}
+
 func calculateDepth(totalLeaves int) int {
 	return int(math.Ceil(math.Log2(float64(totalLeaves)))) + 1
 }
@@ -280,34 +284,36 @@ type validationTreeProof struct {
 // startInd and endInd is taken as closed interval. So to get proof for data at index 0 both startInd
 // and endInd would be 0.
 func (v *validationTreeProof) GetMerkleProofOfMultipleIndexes(r io.ReadSeeker, startInd, endInd int) (
-	[][][]byte, [][]int, error) {
+	[][][]byte, [][]int, int64, error) {
 
 	if startInd < 0 || endInd < 0 {
-		return nil, nil, errors.New("index cannot be negative")
+		return nil, nil, 0, errors.New("index cannot be negative")
 	}
 
+	v.totalLeaves = calculateLeaves(v.dataSize)
 	if endInd >= v.totalLeaves {
-		return nil, nil, errors.New("end index cannot be greater than or equal to total leaves")
+		endInd = v.totalLeaves
 	}
 
 	if endInd < startInd {
-		return nil, nil, errors.New("end index cannot be lesser than start index")
+		return nil, nil, 0, errors.New("end index cannot be lesser than start index")
 	}
 
 	if v.depth == 0 {
 		v.depth = calculateDepth(v.totalLeaves)
 	}
 
+	nodesSize := getNodesSize(v.dataSize, util.MaxMerkleLeavesSize)
 	offsets, leftRightIndexes := v.getFileOffsetsAndNodeIndexes(startInd, endInd)
-	nodesData := make([]byte, getNodesSize(v.dataSize, util.MaxMerkleLeavesSize))
+	nodesData := make([]byte, nodesSize)
 	_, err := r.Seek(FMTSize, io.SeekStart)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	_, err = r.Read(nodesData)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	offsetInd := 0
@@ -318,13 +324,13 @@ func (v *validationTreeProof) GetMerkleProofOfMultipleIndexes(r io.ReadSeeker, s
 			off := offsets[offsetInd]
 			n := copy(b, nodesData[off:off+HashSize])
 			if n != HashSize {
-				return nil, nil, errors.New("invalid hash length")
+				return nil, nil, 0, errors.New("invalid hash length")
 			}
 			nodeHashes[i] = append(nodeHashes[i], b)
 			offsetInd++
 		}
 	}
-	return nodeHashes, leftRightIndexes, nil
+	return nodeHashes, leftRightIndexes, nodesSize, nil
 }
 
 // getFileOffsetsAndNodeIndexes
@@ -402,7 +408,7 @@ func GetNewCommitHasher(dataSize int64) *commitHasher {
 	c.vt = getNewValidationTree(dataSize)
 	c.writer = io.MultiWriter(c.fmt, c.vt)
 	c.isInitialized = true
-	return nil
+	return c
 }
 
 func (c *commitHasher) Write(b []byte) (int, error) {
