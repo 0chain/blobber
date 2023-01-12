@@ -31,56 +31,59 @@ func (s *storeLeaf) Write([]byte) (int, error) {
 }
 
 func TestFixedMerkleTreeWrite(t *testing.T) {
+	var size int64
 	for i := 0; i < 100; i++ {
-		var n int64
-		for {
-			n = rand.Int63n(50 * MB)
-			if n != 0 {
-				break
-			}
+		if i < 50 {
+			size = getRandomSize(50 * MB)
+		} else {
+			size = getRandomSize(64 * KB)
 		}
 
-		b := make([]byte, n)
-		n1, err := rand.Read(b)
-		require.NoError(t, err)
-		require.EqualValues(t, n, n1)
-
-		t.Log("testing with data-size: ", n)
-
-		ft := getNewFixedMerkleTree()
-		n1, err = ft.Write(b)
-		require.NoError(t, err)
-		require.EqualValues(t, n, n1)
-		err = ft.Finalize()
-		require.NoError(t, err)
-
-		buf := new(bytes.Buffer)
-		merkleRoot, err := ft.CalculateRootAndStoreNodes(buf)
-		require.NoError(t, err)
-
-		leaves := make([]util.Hashable, util.FixedMerkleLeaves)
-		for i := 0; i < util.FixedMerkleLeaves; i++ {
-			p := make([]byte, HashSize)
-			n, err := buf.Read(p)
+		t.Run(fmt.Sprintf("Write test with size %d", size), func(t *testing.T) {
+			b := make([]byte, size)
+			n, err := rand.Read(b)
 			require.NoError(t, err)
-			require.EqualValues(t, HashSize, n)
+			require.EqualValues(t, size, n)
 
-			leaves[i] = &storeLeaf{
-				hash: p,
+			t.Log("testing with data-size: ", n)
+
+			ft := getNewFixedMerkleTree()
+			n, err = ft.Write(b)
+			require.NoError(t, err)
+			require.EqualValues(t, size, n)
+			err = ft.Finalize()
+			require.NoError(t, err)
+
+			buf := new(bytes.Buffer)
+			merkleRoot, err := ft.CalculateRootAndStoreNodes(buf)
+			require.NoError(t, err)
+
+			leaves := make([]util.Hashable, util.FixedMerkleLeaves)
+			for i := 0; i < util.FixedMerkleLeaves; i++ {
+				p := make([]byte, HashSize)
+				n, err := buf.Read(p)
+				require.NoError(t, err)
+				require.EqualValues(t, HashSize, n)
+
+				leaves[i] = &storeLeaf{
+					hash: p,
+				}
 			}
-		}
 
-		p := make([]byte, HashSize)
-		n2, err := buf.Read(p)
-		require.NoError(t, err)
-		require.EqualValues(t, n2, HashSize)
+			p := make([]byte, HashSize)
+			n2, err := buf.Read(p)
+			require.NoError(t, err)
+			require.EqualValues(t, n2, HashSize)
 
-		mt := util.FixedMerkleTree{
-			Leaves: leaves,
-		}
+			mt := util.FixedMerkleTree{
+				Leaves: leaves,
+			}
 
-		computedRoot := mt.GetMerkleRoot()
-		require.Equal(t, computedRoot, hex.EncodeToString(merkleRoot))
+			computedRoot := mt.GetMerkleRoot()
+			require.Equal(t, computedRoot, hex.EncodeToString(merkleRoot))
+
+		})
+
 	}
 }
 
@@ -88,15 +91,13 @@ func TestFixedMerkleTreeProof(t *testing.T) {
 	var size int64
 	var index int
 	for i := 0; i < 100; i++ {
-		for {
-			size = rand.Int63n(50 * MB)
-			if size != 0 {
-				break
-			}
-
-			index = rand.Intn(1024)
+		if i < 50 {
+			size = getRandomSize(50 * MB)
+		} else {
+			size = getRandomSize(64 * KB)
 		}
 
+		index = rand.Intn(1024)
 		t.Run(fmt.Sprintf("Merkleproof with size=%d", size), func(t *testing.T) {
 			filename := "merkleproof"
 			defer func() {
@@ -166,7 +167,13 @@ func TestFixedMerkleTreeProof(t *testing.T) {
 
 func TestValidationTreeWrite(t *testing.T) {
 	for i := 0; i < 100; i++ {
-		size := getRandomSize(50 * MB)
+		var size int64
+		if i < 50 {
+			size = getRandomSize(50 * MB)
+		} else {
+			size = getRandomSize(64 * KB)
+		}
+
 		t.Run(fmt.Sprintf("testing with data-size: %d", size), func(t *testing.T) {
 			b := make([]byte, size)
 			n, err := rand.Read(b)
@@ -228,11 +235,10 @@ func TestValidationTreeWrite(t *testing.T) {
 func TestValidationMerkleProof(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		var size int64
-		for {
-			size = rand.Int63n(50 * MB)
-			if size != 0 {
-				break
-			}
+		if i < 50 {
+			size = getRandomSize(50 * MB)
+		} else {
+			size = getRandomSize(64 * KB)
 		}
 
 		startInd, endInd := getRandomIndexRange(size)
