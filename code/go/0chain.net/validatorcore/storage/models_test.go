@@ -1,6 +1,7 @@
 package storage_test
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -9,6 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/storage"
 
+	"github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -530,6 +532,15 @@ func TestChallengeRequest_VerifyChallenge(t *testing.T) {
 						Children:     nil,
 					},
 				},
+				ChallengeProof: func() *storage.ChallengeProof {
+					randomNumber := int64(1)
+					r := rand.New(rand.NewSource(randomNumber))
+					ind := r.Intn(util.FixedMerkleLeaves)
+
+					return &storage.ChallengeProof{
+						LeafInd: ind,
+					}
+				}(),
 			},
 			ch: &storage.Challenge{
 				RandomNumber: int64(1),
@@ -560,6 +571,15 @@ func TestChallengeRequest_VerifyChallenge(t *testing.T) {
 						Children:     nil,
 					},
 				},
+				ChallengeProof: func() *storage.ChallengeProof {
+					randomNumber := int64(1)
+					r := rand.New(rand.NewSource(randomNumber))
+					ind := r.Intn(util.FixedMerkleLeaves)
+
+					return &storage.ChallengeProof{
+						LeafInd: ind,
+					}
+				}(),
 			},
 			ch: &storage.Challenge{
 				RandomNumber: int64(1),
