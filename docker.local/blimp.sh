@@ -1,12 +1,11 @@
 #!/bin/bash
 
 CONFIG_DIR=$HOME/.zcn
-MINIO_USERNAME=manali_user
-MINIO_PASSWORD=manali_password
-ALLOCATION=837419df249882e67a7d1d3746671fe1d93c35f988e3eb0fd2a0a4aec24f50b5
+MINIO_USERNAME=0chainminiousername
+MINIO_PASSWORD=0chainminiopassword
+ALLOCATION=0chainallocationid
 BLOCK_WORKER_URL=https://dev.0chain.net/dns
-LOCK_TOKENS=1
-MINIO_TOKEN=1234
+MINIO_TOKEN=0chainminiotoken
 
 sudo apt update
 sudo apt install -y unzip curl containerd docker.io
@@ -46,9 +45,7 @@ EOF
 zwallet --configDir ${CONFIG_DIR} faucet --methodName pour --input "new wallet"
 zwallet --configDir ${CONFIG_DIR} faucet --methodName pour --input "{Pay day}"
 
-# when: create_allocation == "yes"
-zbox --configDir ${CONFIG_DIR} newallocation --lock ${LOCK_TOKENS}
-
+# todo: how do you conform if the wallet belongs to an allocationID
 cat <<EOF >${CONFIG_DIR}/allocation.txt
 $ALLOCATION
 EOF
