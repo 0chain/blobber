@@ -91,9 +91,11 @@ type ReadBlockInput struct {
 }
 
 type ChallengeResponse struct {
-	Proof [][]byte
-	Data  []byte
+	Proof   [][]byte `json:"proof"`
+	Data    []byte   `json:"data"`
+	LeafInd int      `json:"leaf_ind"`
 }
+
 type ChallengeReadBlockInput struct {
 	BlockOffset  int
 	FileSize     int64

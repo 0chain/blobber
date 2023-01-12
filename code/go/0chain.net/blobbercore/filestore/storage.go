@@ -414,8 +414,9 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 	}
 
 	return &ChallengeResponse{
-		Proof: merkleProof,
-		Data:  proofByte,
+		Proof:   merkleProof,
+		Data:    proofByte,
+		LeafInd: in.BlockOffset,
 	}, nil
 }
 

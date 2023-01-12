@@ -213,7 +213,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			cr.CancelChallenge(ctx, err)
 			return common.NewError("blockdata_not_found", err.Error())
 		}
-		postData["challenge"] = challengeResponse
+		postData["challenge_proof"] = challengeResponse
 	}
 
 	allocMu.Unlock()
