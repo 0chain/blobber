@@ -4,7 +4,8 @@ CONFIG_DIR=$HOME/.zcn
 MINIO_USERNAME=0chainminiousername
 MINIO_PASSWORD=0chainminiopassword
 ALLOCATION=0chainallocationid
-BLOCK_WORKER_URL=https://dev.0chain.net/dns
+BLOCK_WORKER_URL=0chainblockworkerurl
+# todo: check with team
 MINIO_TOKEN=0chainminiotoken
 
 sudo apt update
@@ -14,14 +15,6 @@ echo "download docker-compose"
 sudo curl -L "https://github.com/docker/compose/releases/download/1.29.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
 docker-compose --version
-
-echo "download zwallet CLI"
-sudo curl -L "https://github.com/0chain/zwalletcli/releases/download/v1.1.6/zwallet-linux.tar.gz" -o /tmp/zwallet-linux.tar.gz
-tar -C /usr/local/bin -xvf /tmp/zwallet-linux.tar.gz
-
-echo "download zbox CLI"
-sudo curl -L "https://github.com/0chain/zboxcli/releases/download/v1.4.0/zbox-linux.tar.gz" -o /tmp/zbox-linux.tar.gz
-tar -C /usr/local/bin -xvf /tmp/zbox-linux.tar.gz
 
 # create config dir
 mkdir -p $CONFIG_DIR
@@ -40,10 +33,6 @@ query_sleep_time: 5
 #   - http://one.devnet-0chain.net:31051
 #   - http://one.devnet-0chain.net:31052
 EOF
-
-# when: create_wallet == "yes"
-zwallet --configDir ${CONFIG_DIR} faucet --methodName pour --input "new wallet"
-zwallet --configDir ${CONFIG_DIR} faucet --methodName pour --input "{Pay day}"
 
 # todo: how do you conform if the wallet belongs to an allocationID
 cat <<EOF >${CONFIG_DIR}/allocation.txt
