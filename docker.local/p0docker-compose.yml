@@ -9,7 +9,7 @@ services:
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - ../config/postgresql.conf:/etc/postgresql/postgresql.conf
-      - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
+      - /mnt/ssd/blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     networks:
       default:
@@ -22,7 +22,6 @@ services:
       POSTGRES_USER: postgres
     volumes:
       - ../bin:/blobber/bin
-      - ../sql:/blobber/sql
     command: bash /blobber/bin/postgres-entrypoint.sh
     links:
       - postgres:postgres
@@ -37,8 +36,8 @@ services:
       - postgres-post:postgres-post
     volumes:
       - ../config:/validator/config
-      - ./validator${BLOBBER}/data:/validator/data
-      - ./validator${BLOBBER}/log:/validator/log
+      - /mnt/hdd/validator${BLOBBER}/data:/validator/data
+      - /mnt/hdd/validator${BLOBBER}/log:/validator/log
       - ./keys_config:/validator/keysconfig
     ports:
       - "506${BLOBBER}:506${BLOBBER}"
@@ -58,11 +57,11 @@ services:
       - validator:validator
     volumes:
       - ../config:/blobber/config
-      - ./blobber${BLOBBER}/files:/blobber/files
-      - ./blobber${BLOBBER}/data:/blobber/data
-      - ./blobber${BLOBBER}/log:/blobber/log
+      - /mnt/hdd/blobber${BLOBBER}/files:/blobber/files
+      - /mnt/hdd/blobber${BLOBBER}/data:/blobber/data
+      - /mnt/hdd/blobber${BLOBBER}/log:/blobber/log
       - ./keys_config:/blobber/keysconfig
-      - ./blobber${BLOBBER}/data/tmp:/tmp
+      - /mnt/hdd/blobber${BLOBBER}/data/tmp:/tmp
     ports:
       - "505${BLOBBER}:505${BLOBBER}"
       - "703${BLOBBER}:703${BLOBBER}"
