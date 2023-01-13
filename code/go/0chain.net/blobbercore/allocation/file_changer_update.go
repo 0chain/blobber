@@ -82,8 +82,10 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 		nf.deleteHash[fileRef.ValidationRoot] = true
 	}
 	fileRef.ActualFileHash = nf.ActualHash
+	fileRef.ActualFileHashSignature = nf.ActualFileHashSignature
 	fileRef.ActualFileSize = nf.ActualSize
 	fileRef.MimeType = nf.MimeType
+	fileRef.ValidationRootSignature = nf.ValidationRootSignature
 	fileRef.ValidationRoot = nf.ValidationRoot
 	fileRef.CustomMeta = nf.CustomMeta
 	fileRef.FixedMerkleRoot = nf.FixedMerkleRoot

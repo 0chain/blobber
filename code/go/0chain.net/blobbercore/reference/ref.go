@@ -28,32 +28,34 @@ const (
 )
 
 type Ref struct {
-	ID                  int64  `gorm:"column:id;primaryKey"`
-	Type                string `gorm:"column:type;size:1" dirlist:"type" filelist:"type"`
-	AllocationID        string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_lookup_hash_alloc,priority:1" dirlist:"allocation_id" filelist:"allocation_id"`
-	LookupHash          string `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash_alloc,priority:2" dirlist:"lookup_hash" filelist:"lookup_hash"`
-	Name                string `gorm:"column:name;size:100;not null" dirlist:"name" filelist:"name"`
-	Path                string `gorm:"column:path;size:1000;not null;index:idx_path_alloc,priority:2;index:path_idx" dirlist:"path" filelist:"path"`
-	Hash                string `gorm:"column:hash;size:64;not null" dirlist:"hash" filelist:"hash"`
-	NumBlocks           int64  `gorm:"column:num_of_blocks;not null;default:0" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
-	PathHash            string `gorm:"column:path_hash;size:64;not null" dirlist:"path_hash" filelist:"path_hash"`
-	ParentPath          string `gorm:"column:parent_path;size:999"`
-	PathLevel           int    `gorm:"column:level;not null;default:0"`
-	CustomMeta          string `gorm:"column:custom_meta;not null" filelist:"custom_meta"`
-	ValidationRoot      string `gorm:"column:validation_root;size:64;not null" filelist:"validation_root"`
-	Size                int64  `gorm:"column:size;not null;default:0" dirlist:"size" filelist:"size"`
-	FixedMerkleRoot     string `gorm:"column:fixed_merkle_root;size:64;not null" filelist:"fixed_merkle_root"`
-	ActualFileSize      int64  `gorm:"column:actual_file_size;not null;default:0" filelist:"actual_file_size"`
-	ActualFileHash      string `gorm:"column:actual_file_hash;size:64;not null" filelist:"actual_file_hash"`
-	MimeType            string `gorm:"column:mimetype;size:64;not null" filelist:"mimetype"`
-	WriteMarker         string `gorm:"column:write_marker;size:64;not null"`
-	ThumbnailSize       int64  `gorm:"column:thumbnail_size;not null;default:0" filelist:"thumbnail_size"`
-	ThumbnailHash       string `gorm:"column:thumbnail_hash;size:64;not null" filelist:"thumbnail_hash"`
-	ActualThumbnailSize int64  `gorm:"column:actual_thumbnail_size;not null;default:0" filelist:"actual_thumbnail_size"`
-	ActualThumbnailHash string `gorm:"column:actual_thumbnail_hash;size:64;not null" filelist:"actual_thumbnail_hash"`
-	EncryptedKey        string `gorm:"column:encrypted_key;size:64" filelist:"encrypted_key"`
-	Children            []*Ref `gorm:"-"`
-	childrenLoaded      bool
+	ID                      int64  `gorm:"column:id;primaryKey"`
+	Type                    string `gorm:"column:type;size:1" dirlist:"type" filelist:"type"`
+	AllocationID            string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_lookup_hash_alloc,priority:1" dirlist:"allocation_id" filelist:"allocation_id"`
+	LookupHash              string `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash_alloc,priority:2" dirlist:"lookup_hash" filelist:"lookup_hash"`
+	Name                    string `gorm:"column:name;size:100;not null" dirlist:"name" filelist:"name"`
+	Path                    string `gorm:"column:path;size:1000;not null;index:idx_path_alloc,priority:2;index:path_idx" dirlist:"path" filelist:"path"`
+	Hash                    string `gorm:"column:hash;size:64;not null" dirlist:"hash" filelist:"hash"`
+	NumBlocks               int64  `gorm:"column:num_of_blocks;not null;default:0" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
+	PathHash                string `gorm:"column:path_hash;size:64;not null" dirlist:"path_hash" filelist:"path_hash"`
+	ParentPath              string `gorm:"column:parent_path;size:999"`
+	PathLevel               int    `gorm:"column:level;not null;default:0"`
+	CustomMeta              string `gorm:"column:custom_meta;not null" filelist:"custom_meta"`
+	ValidationRoot          string `gorm:"column:validation_root;size:64;not null" filelist:"validation_root"`
+	ValidationRootSignature string `gorm:"column:validation_root_signature" json:"validation_root_signature,omitempty"`
+	Size                    int64  `gorm:"column:size;not null;default:0" dirlist:"size" filelist:"size"`
+	FixedMerkleRoot         string `gorm:"column:fixed_merkle_root;size:64;not null" filelist:"fixed_merkle_root"`
+	ActualFileSize          int64  `gorm:"column:actual_file_size;not null;default:0" filelist:"actual_file_size"`
+	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature" json:"actual_file_hash_signature,omitempty"`
+	ActualFileHash          string `gorm:"column:actual_file_hash;size:64;not null" filelist:"actual_file_hash"`
+	MimeType                string `gorm:"column:mimetype;size:64;not null" filelist:"mimetype"`
+	WriteMarker             string `gorm:"column:write_marker;size:64;not null"`
+	ThumbnailSize           int64  `gorm:"column:thumbnail_size;not null;default:0" filelist:"thumbnail_size"`
+	ThumbnailHash           string `gorm:"column:thumbnail_hash;size:64;not null" filelist:"thumbnail_hash"`
+	ActualThumbnailSize     int64  `gorm:"column:actual_thumbnail_size;not null;default:0" filelist:"actual_thumbnail_size"`
+	ActualThumbnailHash     string `gorm:"column:actual_thumbnail_hash;size:64;not null" filelist:"actual_thumbnail_hash"`
+	EncryptedKey            string `gorm:"column:encrypted_key;size:64" filelist:"encrypted_key"`
+	Children                []*Ref `gorm:"-"`
+	childrenLoaded          bool
 
 	CommitMetaTxns []CommitMetaTxn  `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
 	CreatedAt      common.Timestamp `gorm:"column:created_at;index:idx_created_at,sort:desc" dirlist:"created_at" filelist:"created_at"`
@@ -86,30 +88,32 @@ func (Ref) TableName() string {
 }
 
 type PaginatedRef struct { //Gorm smart select fields.
-	ID                  int64  `gorm:"column:id" json:"id,omitempty"`
-	Type                string `gorm:"column:type" json:"type,omitempty"`
-	AllocationID        string `gorm:"column:allocation_id" json:"allocation_id,omitempty"`
-	LookupHash          string `gorm:"column:lookup_hash" json:"lookup_hash,omitempty"`
-	Name                string `gorm:"column:name" json:"name,omitempty"`
-	Path                string `gorm:"column:path" json:"path,omitempty"`
-	Hash                string `gorm:"column:hash" json:"hash,omitempty"`
-	NumBlocks           int64  `gorm:"column:num_of_blocks" json:"num_blocks,omitempty"`
-	PathHash            string `gorm:"column:path_hash" json:"path_hash,omitempty"`
-	ParentPath          string `gorm:"column:parent_path" json:"parent_path,omitempty"`
-	PathLevel           int    `gorm:"column:level" json:"level,omitempty"`
-	CustomMeta          string `gorm:"column:custom_meta" json:"custom_meta,omitempty"`
-	ValidationRoot      string `gorm:"column:validation_root" json:"validation_root,omitempty"`
-	Size                int64  `gorm:"column:size" json:"size,omitempty"`
-	FixedMerkleRoot     string `gorm:"column:fixed_merkle_root" json:"fixed_merkle_root,omitempty"`
-	ActualFileSize      int64  `gorm:"column:actual_file_size" json:"actual_file_size,omitempty"`
-	ActualFileHash      string `gorm:"column:actual_file_hash" json:"actual_file_hash,omitempty"`
-	MimeType            string `gorm:"column:mimetype" json:"mimetype,omitempty"`
-	WriteMarker         string `gorm:"column:write_marker" json:"write_marker,omitempty"`
-	ThumbnailSize       int64  `gorm:"column:thumbnail_size" json:"thumbnail_size,omitempty"`
-	ThumbnailHash       string `gorm:"column:thumbnail_hash" json:"thumbnail_hash,omitempty"`
-	ActualThumbnailSize int64  `gorm:"column:actual_thumbnail_size" json:"actual_thumbnail_size,omitempty"`
-	ActualThumbnailHash string `gorm:"column:actual_thumbnail_hash" json:"actual_thumbnail_hash,omitempty"`
-	EncryptedKey        string `gorm:"column:encrypted_key" json:"encrypted_key,omitempty"`
+	ID                      int64  `gorm:"column:id" json:"id,omitempty"`
+	Type                    string `gorm:"column:type" json:"type,omitempty"`
+	AllocationID            string `gorm:"column:allocation_id" json:"allocation_id,omitempty"`
+	LookupHash              string `gorm:"column:lookup_hash" json:"lookup_hash,omitempty"`
+	Name                    string `gorm:"column:name" json:"name,omitempty"`
+	Path                    string `gorm:"column:path" json:"path,omitempty"`
+	Hash                    string `gorm:"column:hash" json:"hash,omitempty"`
+	NumBlocks               int64  `gorm:"column:num_of_blocks" json:"num_blocks,omitempty"`
+	PathHash                string `gorm:"column:path_hash" json:"path_hash,omitempty"`
+	ParentPath              string `gorm:"column:parent_path" json:"parent_path,omitempty"`
+	PathLevel               int    `gorm:"column:level" json:"level,omitempty"`
+	CustomMeta              string `gorm:"column:custom_meta" json:"custom_meta,omitempty"`
+	ValidationRootSignature string `gorm:"column:validation_root_signature" json:"validation_root_signature,omitempty"`
+	ValidationRoot          string `gorm:"column:validation_root" json:"validation_root,omitempty"`
+	Size                    int64  `gorm:"column:size" json:"size,omitempty"`
+	FixedMerkleRoot         string `gorm:"column:fixed_merkle_root" json:"fixed_merkle_root,omitempty"`
+	ActualFileSize          int64  `gorm:"column:actual_file_size" json:"actual_file_size,omitempty"`
+	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature" json:"actual_file_hash_signature,omitempty"`
+	ActualFileHash          string `gorm:"column:actual_file_hash" json:"actual_file_hash,omitempty"`
+	MimeType                string `gorm:"column:mimetype" json:"mimetype,omitempty"`
+	WriteMarker             string `gorm:"column:write_marker" json:"write_marker,omitempty"`
+	ThumbnailSize           int64  `gorm:"column:thumbnail_size" json:"thumbnail_size,omitempty"`
+	ThumbnailHash           string `gorm:"column:thumbnail_hash" json:"thumbnail_hash,omitempty"`
+	ActualThumbnailSize     int64  `gorm:"column:actual_thumbnail_size" json:"actual_thumbnail_size,omitempty"`
+	ActualThumbnailHash     string `gorm:"column:actual_thumbnail_hash" json:"actual_thumbnail_hash,omitempty"`
+	EncryptedKey            string `gorm:"column:encrypted_key" json:"encrypted_key,omitempty"`
 
 	CreatedAt common.Timestamp `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt common.Timestamp `gorm:"column:updated_at" json:"updated_at,omitempty"`

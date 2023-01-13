@@ -17,6 +17,8 @@ type BaseFileChanger struct {
 	//client side:
 	Path string `json:"filepath" validation:"required"`
 	//client side:
+	ActualFileHashSignature string `json:"actual_file_hash_signature,omitempty" validation:"required"`
+	//client side:
 	ActualHash string `json:"actual_hash,omitempty" validation:"required"`
 	//client side:
 	ActualSize int64 `json:"actual_size,omitempty" validation:"required"`
@@ -33,6 +35,8 @@ type BaseFileChanger struct {
 
 	//server side: update them by ChangeProcessor
 	AllocationID string `json:"allocation_id"`
+	//client side:
+	ValidationRootSignature string `json:"validation_root_signature,omitempty"`
 	//client side:
 	ValidationRoot string `json:"validation_root,omitempty"`
 	Size           int64  `json:"size"`
