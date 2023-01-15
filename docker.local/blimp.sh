@@ -4,7 +4,8 @@ CONFIG_DIR=$HOME/.zcn
 MINIO_USERNAME=0chainminiousername
 MINIO_PASSWORD=0chainminiopassword
 ALLOCATION=0chainallocationid
-BLOCK_WORKER_URL=0chainblockworker
+# BLOCK_WORKER_URL=0chainblockworker
+BLOCK_WORKER_URL=https://helm.0chain.net/dns
 # todo: check with team
 MINIO_TOKEN=0chainminiotoken
 
