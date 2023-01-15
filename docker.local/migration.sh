@@ -23,8 +23,8 @@ sudo curl -L "https://github.com/docker/compose/releases/download/1.29.0/docker-
 sudo chmod +x /usr/local/bin/docker-compose
 docker-compose --version
 
-# sudo curl -L "https://github.com/0chain/s3-migration/raw/staging/.bin/s3migration" -o /usr/local/bin/s3mgrtmigrate
-# chmod +x /usr/local/bin/s3mgrtmigrate
+sudo curl -L "https://s3-mig-binaries.s3.us-east-2.amazonaws.com/s3mgrt" -o /usr/local/bin/s3mgrt
+chmod +x /usr/local/bin/s3mgrt
 
 mkdir -p ${MIGRATION_ROOT}
 
@@ -59,4 +59,4 @@ EOF
 #  --concurrency ${CONCURRENCY} --delete-source ${DELETE_SOURCE} --encrypt ${ENCRYPT} --resume true   --skip 1
 
 cd ${MIGRATION_ROOT}
-/usr/local/bin/s3mgrtmigrate migrate --access-key ${ACCESS_KEY} --secret-key ${SECRET_KEY} --allocation ${ALLOCATION} --bucket ${BUCKET} --region ${REGION}
+/usr/local/bin/s3mgrt migrate --access-key ${ACCESS_KEY} --secret-key ${SECRET_KEY} --allocation ${ALLOCATION} --bucket ${BUCKET} --region ${REGION}
