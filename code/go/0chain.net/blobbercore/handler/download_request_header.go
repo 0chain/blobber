@@ -64,9 +64,9 @@ func (dr *DownloadRequestHeader) Parse() error {
 	dr.PathHash = pathHash
 	dr.Path = path
 
-	blockNum := dr.GetInt64("X-Block-Num", -1)
+	blockNum := dr.GetInt64("X-Block-Num", 0)
 	if blockNum < 0 {
-		return errors.Throw(common.ErrInvalidParameter, "X-Block-Num")
+		return errors.Throw(common.ErrInvalidParameter, "X-Block-Num: ", strconv.Itoa(int(blockNum)))
 	}
 	dr.BlockNum = blockNum
 
