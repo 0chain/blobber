@@ -202,6 +202,9 @@ func TestValidationTreeWrite(t *testing.T) {
 			merkleRoot1, err := vt.CalculateRootAndStoreNodes(f)
 			require.NoError(t, err)
 
+			n, err = f.Write(b)
+			require.NoError(t, err)
+			require.EqualValues(t, size, n)
 			f.Close()
 
 			r, err := os.Open(filename)
@@ -211,22 +214,33 @@ func TestValidationTreeWrite(t *testing.T) {
 			require.EqualValues(t, FMTSize, n1)
 
 			totalLeaves := int((size + util.MaxMerkleLeavesSize - 1) / util.MaxMerkleLeavesSize)
-			nodes := make([]byte, totalLeaves*HashSize)
-			n, err = r.Read(nodes)
-			require.NoError(t, err)
-			require.EqualValues(t, len(nodes), n)
-
 			leaves := make([][]byte, totalLeaves)
-			for i := 0; i < totalLeaves; i++ {
-				off := i * HashSize
-				leaves[i] = nodes[off : off+HashSize]
+			if totalLeaves == 1 {
+				b := make([]byte, size)
+				n, err = r.Read(b)
+				require.NoError(t, err)
+				require.EqualValues(t, size, n)
+				leaves[0] = encryption.RawHash(b)
+			} else {
+				nodes := make([]byte, totalLeaves*HashSize)
+				n, err = r.Read(nodes)
+				require.NoError(t, err)
+				require.EqualValues(t, len(nodes), n)
+
+				for i := 0; i < totalLeaves; i++ {
+					off := i * HashSize
+					leaves[i] = nodes[off : off+HashSize]
+				}
 			}
+
+			t.Log("Length of leaves: ", len(leaves))
+			t.Log("0th leaf: ", hex.EncodeToString(leaves[0]))
 
 			v := util.ValidationTree{}
 			v.SetLeaves(leaves)
 			merkleRoot2 := v.GetValidationRoot()
-			require.True(t, bytes.Equal(merkleRoot, merkleRoot2))
 			require.True(t, bytes.Equal(merkleRoot, merkleRoot1))
+			require.Equal(t, hex.EncodeToString(merkleRoot), hex.EncodeToString(merkleRoot2))
 		})
 
 	}
@@ -282,10 +296,9 @@ func TestValidationMerkleProof(t *testing.T) {
 			finfo, err := r.Stat()
 			require.NoError(t, err)
 
-			totalNodes := getValidationTreeTotalNodes(int(size))
-			nodesSize := totalNodes * HashSize
+			nodesSize := getNodesSize(size, util.MaxMerkleLeavesSize)
 
-			expectedSize := FMTSize + int(size) + nodesSize
+			expectedSize := FMTSize + size + nodesSize
 			require.EqualValues(t, expectedSize, finfo.Size(), fmt.Sprint("Diff is: ", finfo.Size()-int64(expectedSize)))
 
 			vp := validationTreeProof{
@@ -298,7 +311,7 @@ func TestValidationMerkleProof(t *testing.T) {
 			require.NoError(t, err)
 
 			data := make([]byte, (endInd-startInd+1)*util.MaxMerkleLeavesSize)
-			fileOffset := FMTSize + nodesSize + startInd*util.MaxMerkleLeavesSize
+			fileOffset := FMTSize + nodesSize + int64(startInd*util.MaxMerkleLeavesSize)
 
 			_, err = r.Seek(int64(fileOffset), io.SeekStart)
 			require.NoError(t, err)
@@ -330,16 +343,6 @@ func getRandomSize(size int64) int64 {
 			return n
 		}
 	}
-}
-
-func getValidationTreeTotalNodes(dataSize int) int {
-	totalLeaves := (dataSize + util.MaxMerkleLeavesSize - 1) / util.MaxMerkleLeavesSize
-	totalNodes := totalLeaves
-	for totalLeaves > 2 {
-		totalLeaves = (totalLeaves + 1) / 2
-		totalNodes += totalLeaves
-	}
-	return totalNodes
 }
 
 func getRandomIndexRange(dataSize int64) (startInd, endInd int) {

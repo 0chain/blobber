@@ -107,7 +107,6 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 }
 
 func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
-
 	logging.Logger.Info("Committing file")
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
 	r, err := os.Open(tempFilePath)
