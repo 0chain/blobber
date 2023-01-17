@@ -149,7 +149,6 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
 		}
 
-		cmd.fileChanger.ThumbnailHash = thumbOutputData.ThumbnailHash
 		cmd.fileChanger.ThumbnailSize = thumbOutputData.Size
 		cmd.fileChanger.ThumbnailFilename = thumbInputData.Name
 	}
