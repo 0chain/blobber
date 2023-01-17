@@ -41,11 +41,11 @@ type Ref struct {
 	PathLevel               int    `gorm:"column:level;not null;default:0"`
 	CustomMeta              string `gorm:"column:custom_meta;not null" filelist:"custom_meta"`
 	ValidationRoot          string `gorm:"column:validation_root;size:64;not null" filelist:"validation_root"`
-	ValidationRootSignature string `gorm:"column:validation_root_signature" json:"validation_root_signature,omitempty"`
+	ValidationRootSignature string `gorm:"column:validation_root_signature;size:64" filelist:"validation_root_signature" json:"validation_root_signature,omitempty"`
 	Size                    int64  `gorm:"column:size;not null;default:0" dirlist:"size" filelist:"size"`
 	FixedMerkleRoot         string `gorm:"column:fixed_merkle_root;size:64;not null" filelist:"fixed_merkle_root"`
 	ActualFileSize          int64  `gorm:"column:actual_file_size;not null;default:0" filelist:"actual_file_size"`
-	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature" json:"actual_file_hash_signature,omitempty"`
+	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature;size:64" filelist:"actual_file_hash_signature"  json:"actual_file_hash_signature,omitempty"`
 	ActualFileHash          string `gorm:"column:actual_file_hash;size:64;not null" filelist:"actual_file_hash"`
 	MimeType                string `gorm:"column:mimetype;size:64;not null" filelist:"mimetype"`
 	WriteMarker             string `gorm:"column:write_marker;size:64;not null"`
@@ -470,37 +470,7 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 
 func (r *Ref) SaveFileRef(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Model(r).Where("id = ?", r.ID).Updates(map[string]interface{}{
-		"allocation_id":         r.AllocationID,
-		"lookup_hash":           r.LookupHash,
-		"name":                  r.Name,
-		"path":                  r.Path,
-		"hash":                  r.Hash,
-		"num_of_blocks":         r.NumBlocks,
-		"path_hash":             r.PathHash,
-		"parent_path":           r.ParentPath,
-		"level":                 r.PathLevel,
-		"write_marker":          r.WriteMarker,
-		"mimetype":              r.MimeType,
-		"custom_meta":           r.CustomMeta,
-		"thumbnail_hash":        r.ThumbnailHash,
-		"thumbnail_size":        r.ThumbnailSize,
-		"actual_thumbnail_hash": r.ActualThumbnailHash,
-		"actual_thumbnail_size": r.ActualThumbnailSize,
-		"encrypted_key":         r.EncryptedKey,
-		"validation_root":       r.ValidationRoot,
-		"size":                  r.Size,
-		"fixed_merkle_root":     r.FixedMerkleRoot,
-		"actual_file_size":      r.ActualFileSize,
-		"actual_file_hash":      r.ActualFileHash,
-		"chunk_size":            r.ChunkSize,
-	})
-	if errors.Is(db.Error, gorm.ErrRecordNotFound) || db.RowsAffected == 0 {
-		err := db.Save(r).Error
-		return err
-	} else {
-		return db.Error
-	}
+	return db.Save(r).Error
 }
 
 func (r *Ref) SaveDirRef(ctx context.Context) error {
