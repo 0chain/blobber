@@ -33,6 +33,9 @@ type fixedMerkleTree struct {
 // getNodesSize will calculate the size required to store tree nodes excluding root node.
 func getNodesSize(dataSize, merkleLeafSize int64) int64 {
 	totalLeaves := (dataSize + merkleLeafSize - 1) / merkleLeafSize
+	if totalLeaves == 1 {
+		return 0
+	}
 	totalNodes := totalLeaves
 	for totalLeaves > 2 {
 		totalLeaves = (totalLeaves + 1) / 2
