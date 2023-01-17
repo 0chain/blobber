@@ -274,6 +274,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			Hash:          fileref.ThumbnailHash,
 			StartBlockNum: int(dr.BlockNum),
 			NumBlocks:     int(dr.NumBlocks),
+			IsThumbnail:   true,
 		}
 
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)

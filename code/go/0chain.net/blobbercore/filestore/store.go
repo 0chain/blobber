@@ -88,6 +88,7 @@ type ReadBlockInput struct {
 	Hash          string
 	StartBlockNum int
 	NumBlocks     int
+	IsThumbnail   bool
 }
 
 type ChallengeResponse struct {
