@@ -72,7 +72,7 @@ type FileMetaData struct {
 	CustomMeta      string `json:"custom_meta" mapstructure:"custom_meta"`
 	ValidationRoot  string `json:"validation_root" mapstructure:"validation_root"`
 	Size            int64  `json:"size" mapstructure:"size"`
-	FixedMerkleRoot []byte `json:"fixed_merkle_root" mapstructure:"fixed_merkle_root"`
+	FixedMerkleRoot string `json:"fixed_merkle_root" mapstructure:"fixed_merkle_root"`
 	ActualFileSize  int64  `json:"actual_file_size" mapstructure:"actual_file_size"`
 	ActualFileHash  string `json:"actual_file_hash" mapstructure:"actual_file_hash"`
 	ChunkSize       int64  `json:"chunk_size" mapstructure:"chunk_size"`
@@ -87,7 +87,7 @@ func (fr *FileMetaData) GetHashData() string {
 		fr.Path,
 		strconv.FormatInt(fr.Size, 10),
 		fr.ValidationRoot,
-		hex.EncodeToString(fr.FixedMerkleRoot),
+		fr.FixedMerkleRoot,
 		strconv.FormatInt(fr.ActualFileSize, 10),
 		fr.ActualFileHash,
 		strconv.FormatInt(fr.ChunkSize, 10),
@@ -332,14 +332,16 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 
 	logging.Logger.Info("Verifying data block and merkle path", zap.Any("challenge_id", challengeObj.ID))
 	fHash := encryption.RawHash(cr.ChallengeProof.Data)
+	fixedMerkleRoot, _ := hex.DecodeString(cr.ObjPath.Meta.FixedMerkleRoot)
 	fmp := &util.FixedMerklePath{
 		LeafHash: fHash,
-		RootHash: cr.ObjPath.Meta.FixedMerkleRoot,
+		RootHash: fixedMerkleRoot,
 		Nodes:    cr.ChallengeProof.Proof,
 		LeafInd:  cr.ChallengeProof.LeafInd,
 	}
 
 	if !fmp.VerifyMerklePath() {
+		logging.Logger.Error("Failed to verify merkle path for the data block")
 		return common.NewError("challenge_validation_failed", "Failed to verify the merkle path for the data block")
 	}
 	return nil
