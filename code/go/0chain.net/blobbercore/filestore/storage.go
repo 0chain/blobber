@@ -108,6 +108,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 
 func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
 
+	logging.Logger.Info("Committing file")
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
 	r, err := os.Open(tempFilePath)
 	if err != nil {
@@ -132,7 +133,9 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		}
 		hash := hex.EncodeToString(h.Sum(nil))
 		if hash != fileData.ThumbnailHash {
-			return false, common.NewError("hash_mismatch", "calculated thumbnail hash does not match with expected hash")
+			return false, common.NewError("hash_mismatch",
+				fmt.Sprintf("calculated thumbnail hash does not match with expected hash. Expected %s, got %s.",
+					fileData.ThumbnailHash, hash))
 		}
 
 		fPath, err = fs.GetPathForFile(allocID, hash)
@@ -314,10 +317,56 @@ func (fs *FileStore) DeleteTempFile(allocID, conID string, fd *FileInputData) er
 	return nil
 }
 
+func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error) {
+
+	startBlock := readBlockIn.StartBlockNum
+	if startBlock < 0 {
+		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number cannot be negative")
+	}
+
+	fileObjectPath, err := fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
+	if err != nil {
+		return nil, common.NewError("get_file_path_error", err.Error())
+	}
+
+	file, err := os.Open(fileObjectPath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	filesize := readBlockIn.FileSize
+	maxBlockNum := int64(math.Ceil(float64(filesize) / ChunkSize))
+
+	if int64(startBlock) > maxBlockNum {
+		return nil, common.NewError("invalid_block_number",
+			fmt.Sprintf("Invalid block number. Start block %d is greater than maximum blocks %d",
+				startBlock, maxBlockNum))
+	}
+
+	fileOffset := int64(startBlock) * ChunkSize
+	_, err = file.Seek(fileOffset, io.SeekStart)
+	if err != nil {
+		return nil, common.NewError("seek_error", err.Error())
+	}
+
+	buffer := make([]byte, readBlockIn.NumBlocks*ChunkSize)
+	n, err := file.Read(buffer)
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+
+	return &FileDownloadResponse{
+		Data: buffer[:n],
+	}, nil
+}
+
 // GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.
 func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error) {
+	if readBlockIn.IsThumbnail {
+		return fs.GetFileThumbnail(readBlockIn)
+	}
 
-	// todo also differentiate thumbnail and actual file
 	startBlock := readBlockIn.StartBlockNum
 	endBlock := readBlockIn.StartBlockNum + readBlockIn.NumBlocks
 
@@ -359,7 +408,7 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 		Indexes: indexes,
 	}
 
-	fileOffset := nodesSize + int64(startBlock)*ChunkSize
+	fileOffset := FMTSize + nodesSize + int64(startBlock)*ChunkSize
 
 	_, err = file.Seek(fileOffset, io.SeekStart)
 	if err != nil {
