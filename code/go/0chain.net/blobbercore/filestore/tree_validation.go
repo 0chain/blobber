@@ -291,7 +291,7 @@ func (v *validationTreeProof) GetMerkleProofOfMultipleIndexes(r io.ReadSeeker, s
 	}
 
 	v.totalLeaves = calculateLeaves(v.dataSize)
-	if endInd >= v.totalLeaves {
+	if endInd > v.totalLeaves {
 		endInd = v.totalLeaves
 	}
 
