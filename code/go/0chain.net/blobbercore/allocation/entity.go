@@ -3,6 +3,7 @@ package allocation
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -162,12 +163,11 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite int64
 
 func GetWritePoolsBalance(db *gorm.DB, allocationID string) (uint64, error) {
 
-	var balance uint64
-	row := db.Model(&WritePool{}).Select("sum (balance) as tot_balance").Where(
-		"allocation_id = ?", allocationID,
-	).Row()
+	var balance string
 
-	err := row.Err()
+	err := db.Model(&WritePool{}).Select("sum (balance) as tot_balance").Where(
+		"allocation_id = ?", allocationID,
+	).Scan(&balance).Error
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -176,12 +176,16 @@ func GetWritePoolsBalance(db *gorm.DB, allocationID string) (uint64, error) {
 		return 0, err
 	}
 
-	err = row.Scan(&balance)
-	if err != nil {
-		return 0, err
+	if balance == "" {
+		return 0, nil
 	}
 
-	return balance, nil
+	i, err := strconv.ParseUint(balance, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid balance: %s %w", balance, err)
+	}
+
+	return i, nil
 }
 
 func (p *Pending) Save(tx *gorm.DB) error {
