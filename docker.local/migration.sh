@@ -14,7 +14,7 @@ DELETE_SOURCE=false
 ENCRYPT=false
 REGION=us-east-2
 # BLOCK_WORKER_URL=0chainblockworkerurl
-BLOCK_WORKER_URL=https://demo.0chain.net/dns
+BLOCK_WORKER_URL=https://helm.0chain.net/dns
 sudo apt update
 sudo apt install -y unzip curl containerd docker.io
 
