@@ -160,16 +160,16 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite int64
 	return nil
 }
 
+type WritePoolsBalance struct {
+	TotBalance uint64 `gorm:"column:tot_balance"`
+}
+
 func GetWritePoolsBalance(db *gorm.DB, allocationID string) (uint64, error) {
 
-	type WritePoolSum struct {
-		TotBalance uint64 `gorm:"column:tot_balance"`
-	}
-	wps := &WritePoolSum{}
+	wps := &WritePoolsBalance{}
 
-	err := db.Model(&WritePool{}).Select("sum (balance) as tot_balance").Where(
-		"allocation_id = ?", allocationID,
-	).First(wps).Error
+	err := db.Raw("select sum (balance) as tot_balance from write_pools where allocation_id = ?", allocationID).
+		First(wps).Error
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
