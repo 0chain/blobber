@@ -367,7 +367,7 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 	}
 
 	startBlock := readBlockIn.StartBlockNum
-	endBlock := readBlockIn.StartBlockNum + readBlockIn.NumBlocks
+	endBlock := readBlockIn.StartBlockNum + readBlockIn.NumBlocks - 1
 
 	if startBlock < 0 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number cannot be negative")
