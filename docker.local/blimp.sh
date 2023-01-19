@@ -58,7 +58,7 @@ services:
       - db:/var/lib/postgresql/data
 
   api:
-    image: 0chaindev/blimp-logsearchapi:v0.0.2
+    image: 0chaindev/blimp-logsearchapi:v0.0.3
     depends_on:
       - db
     ports:
