@@ -8,7 +8,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 const (
@@ -260,13 +259,7 @@ func UpdateReadPool(db *gorm.DB, rp *ReadPool) error {
 }
 
 func SetWritePool(db *gorm.DB, allocationID string, wp *WritePool) (err error) {
-	const query = `allocation_id = ?`
-
-	var stub *WritePool
-
-	err = db.Model(&WritePool{}).
-		Where(query, allocationID).
-		Delete(&stub).Error
+	err = db.Delete(&WritePool{}, "allocation_id = ?", allocationID).Error
 	if err != nil {
 		return
 	}
@@ -275,9 +268,7 @@ func SetWritePool(db *gorm.DB, allocationID string, wp *WritePool) (err error) {
 		return
 	}
 
-	err = db.Model(&WritePool{}).Clauses(clause.OnConflict{
-		DoUpdates: clause.AssignmentColumns([]string{"balance"}),
-	}).Create(wp).Error
+	err = db.Create(wp).Error
 	return
 }
 
