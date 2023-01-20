@@ -8,7 +8,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 const (
@@ -206,12 +205,16 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite int64
 	return nil
 }
 
+type WritePoolsBalance struct {
+	TotBalance uint64 `gorm:"column:tot_balance"`
+}
+
 func GetWritePoolsBalance(db *gorm.DB, allocationID string) (uint64, error) {
 
-	var balance uint64
-	err := db.Model(&WritePool{}).Select("sum (balance) as tot_balance").Where(
-		"allocation_id = ?", allocationID,
-	).Scan(&balance).Error
+	wps := &WritePoolsBalance{}
+
+	err := db.Raw("select sum (balance) as tot_balance from write_pools where allocation_id = ?", allocationID).
+		First(wps).Error
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -220,7 +223,7 @@ func GetWritePoolsBalance(db *gorm.DB, allocationID string) (uint64, error) {
 		return 0, err
 	}
 
-	return balance, nil
+	return wps.TotBalance, nil
 }
 
 func (p *Pending) Save(tx *gorm.DB) error {
@@ -302,13 +305,7 @@ func UpdateReadPool(db *gorm.DB, rp *ReadPool) error {
 }
 
 func SetWritePool(db *gorm.DB, allocationID string, wp *WritePool) (err error) {
-	const query = `allocation_id = ?`
-
-	var stub *WritePool
-
-	err = db.Model(&WritePool{}).
-		Where(query, allocationID).
-		Delete(&stub).Error
+	err = db.Delete(&WritePool{}, "allocation_id = ?", allocationID).Error
 	if err != nil {
 		return
 	}
@@ -317,9 +314,7 @@ func SetWritePool(db *gorm.DB, allocationID string, wp *WritePool) (err error) {
 		return
 	}
 
-	err = db.Model(&WritePool{}).Clauses(clause.OnConflict{
-		DoUpdates: clause.AssignmentColumns([]string{"balance"}),
-	}).Create(wp).Error
+	err = db.Create(wp).Error
 	return
 }
 
