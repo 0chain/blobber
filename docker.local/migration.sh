@@ -54,7 +54,7 @@ query_sleep_time: 5
 #   - http://one.devnet-0chain.net:31052
 EOF
 
-/usr/local/bin/docker-compose -f ${MIGRATION_ROOT}/docker-compose.yml up -d
+# /usr/local/bin/docker-compose -f ${MIGRATION_ROOT}/docker-compose.yml up -d
 
 #  --concurrency ${CONCURRENCY} --delete-source ${DELETE_SOURCE} --encrypt ${ENCRYPT} --resume true   --skip 1
 
