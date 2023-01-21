@@ -1,6 +1,7 @@
 #!/bin/bash
 
 CONFIG_DIR=$HOME/.zcn
+MIGRATION_ROOT=$HOME/.s3migration
 MINIO_USERNAME=0chainminiousername
 MINIO_PASSWORD=0chainminiopassword
 ALLOCATION=0chainallocationid
@@ -56,6 +57,12 @@ blimp76ghf.devnet-0chain.net:8080 {
 blimp76ghf.devnet-0chain.net:9000 {
 	route {
 		reverse_proxy minioclient:9000
+	}
+}
+
+blimp76ghf.devnet-0chain.net:9012 {
+	route {
+		reverse_proxy s3mgrt:8080
 	}
 }
 
@@ -123,7 +130,7 @@ services:
     links:
       - api:api
     volumes:
-      - /root/.zcn:/root/.zcn
+      - ${CONFIG_DIR}:/root/.zcn
 
   minioclient:
     image: 0chaindev/blimp-clientapi:v0.0.3
@@ -132,7 +139,13 @@ services:
       - minioserver
     environment:
       MINIO_SERVER: "minioserver:9000"
-
+      
+  s3mgrt:
+    image: bmanu199/s3mgrt:latest
+    restart: always
+    volumes:
+      - ${MIGRATION_ROOT}:/migrate
+      
 volumes:
   db:
     driver: local
