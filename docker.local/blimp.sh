@@ -66,11 +66,6 @@ blimp76ghf.devnet-0chain.net:9012 {
 	}
 }
 
-blimp76ghf.devnet-0chain.net:9012 {
-	route {
-		reverse_proxy s3mgrt:8080
-	}
-}
 EOF
 
 # create docker-compose
