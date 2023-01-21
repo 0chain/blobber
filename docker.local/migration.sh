@@ -25,13 +25,33 @@ docker-compose --version
 
 sudo curl -L "https://s3-mig-binaries.s3.us-east-2.amazonaws.com/s3mgrt" -o /usr/local/bin/s3mgrt
 chmod +x /usr/local/bin/s3mgrt
-
+CONFIG_DIR=$HOME/.zcn
 mkdir -p ${MIGRATION_ROOT}
+
+cat <<EOF >${CONFIG_DIR}/Caddyfile2
+blimp76ghf.devnet-0chain.net:9012 {
+	route {
+		reverse_proxy s3mgrt:8080
+	}
+}
+EOF
 
 cat <<EOF >${MIGRATION_ROOT}/docker-compose.yml
 version: '3.8'
 services:
-  db:
+  caddy:
+    image: caddy:latest
+    ports:
+      - 80:80
+      - 9012:9012
+    volumes:
+      - ${CONFIG_DIR}/Caddyfile2:/etc/caddy/Caddyfile
+      - ${CONFIG_DIR}/caddy/site:/srv
+      - ${CONFIG_DIR}/caddy/caddy_data:/data
+      - ${CONFIG_DIR}/caddy/caddy_config:/config
+    restart: "always"
+    
+  s3mgrt:
     image: bmanu199/s3mgrt:latest
     restart: always
     ports:
@@ -54,7 +74,7 @@ query_sleep_time: 5
 #   - http://one.devnet-0chain.net:31052
 EOF
 
-# /usr/local/bin/docker-compose -f ${MIGRATION_ROOT}/docker-compose.yml up -d
+/usr/local/bin/docker-compose -f ${MIGRATION_ROOT}/docker-compose.yml up -d
 
 #  --concurrency ${CONCURRENCY} --delete-source ${DELETE_SOURCE} --encrypt ${ENCRYPT} --resume true   --skip 1
 
