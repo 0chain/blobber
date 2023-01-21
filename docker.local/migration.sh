@@ -36,7 +36,7 @@ blimp76ghf.devnet-0chain.net:9012 {
 }
 EOF
 
-cat <<EOF >${MIGRATION_ROOT}/docker-compose.yml
+cat <<EOF >${CONFIG_DIR}/migration-compose.yml
 version: '3.8'
 services:
   caddy:
@@ -57,21 +57,7 @@ services:
       - ${MIGRATION_ROOT}:/migrate
 EOF
 
-cat <<EOF >${MIGRATION_ROOT}/config.yaml
-block_worker: ${BLOCK_WORKER_URL}
-signature_scheme: bls0chain
-min_submit: 50
-min_confirmation: 50
-confirmation_chain_length: 3
-max_txn_query: 5
-query_sleep_time: 5
-# # OPTIONAL - Uncomment to use/ Add more if you want
-# preferred_blobbers:
-#   - http://one.devnet-0chain.net:31051
-#   - http://one.devnet-0chain.net:31052
-EOF
-
-/usr/local/bin/docker-compose -f ${MIGRATION_ROOT}/docker-compose.yml up -d
+/usr/local/bin/docker-compose -f ${CONFIG_DIR}/migration-compose.yml up -d
 
 #  --concurrency ${CONCURRENCY} --delete-source ${DELETE_SOURCE} --encrypt ${ENCRYPT} --resume true   --skip 1
 
