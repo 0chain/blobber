@@ -42,7 +42,6 @@ services:
   caddy:
     image: caddy:latest
     ports:
-      - 80:80
       - 9012:9012
     volumes:
       - ${CONFIG_DIR}/Caddyfile2:/etc/caddy/Caddyfile
@@ -54,8 +53,6 @@ services:
   s3mgrt:
     image: bmanu199/s3mgrt:latest
     restart: always
-    ports:
-      - '9012:8080'
     volumes:
       - ${MIGRATION_ROOT}:/migrate
 EOF
