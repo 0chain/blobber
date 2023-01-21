@@ -59,12 +59,6 @@ blimp76ghf.devnet-0chain.net:9000 {
 	}
 }
 
-blimp76ghf.devnet-0chain.net:3001 {
-	route {
-		reverse_proxy minioclient:3001
-	}
-}
-
 blimp76ghf.devnet-0chain.net:9012 {
 	route {
 		reverse_proxy s3mgrt:8080
