@@ -28,6 +28,10 @@ chmod +x /usr/local/bin/s3mgrt
 CONFIG_DIR=$HOME/.zcn
 mkdir -p ${MIGRATION_ROOT}
 
+cat <<EOF >${CONFIG_DIR}/allocation.txt
+$ALLOCATION
+EOF
+
 cat <<EOF >${CONFIG_DIR}/Caddyfile
 blimp76ghf.devnet-0chain.net:3001 {
 	route {
