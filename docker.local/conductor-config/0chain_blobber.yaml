@@ -55,7 +55,7 @@ delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49b
 # min stake allowed, tokens
 min_stake: 1.0
 # max stake allowed, tokens
-max_stake: 20000.0
+max_stake: 100.0
 # maximum allowed number of stake holders
 num_delegates: 50
 # service charge of the blobber
@@ -65,7 +65,8 @@ min_submit: 50
 # min confirmation from sharder
 min_confirmation: 50
 
-block_worker: https://dev.0chain.net/dns
+block_worker: http://198.18.0.98:9091
+
 
 rate_limiters:
   # Rate limiters will use this duration to clean unused token buckets.
