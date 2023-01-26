@@ -120,7 +120,12 @@ jobs:
           export DOCKER_IMAGE_BASE="${VALIDATOR_REGISTRY}:base"
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_VALIDATOR="-t ${VALIDATOR_REGISTRY}:${TAG} -t ${VALIDATOR_REGISTRY}:${TAG}-${SHORT_SHA}"
-          docker buildx create --use blobber_buildx
+          # docker buildx create --use blobber_buildx
+          docker buildx create --name blobber_buildx \
+            --driver docker-container \
+            --driver-opt network=host \
+            --buildkitd-flags '--allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host' \
+            --use
           ./docker.local/bin/build.base.sh && ./docker.local/bin/build.validator.sh
 
 
