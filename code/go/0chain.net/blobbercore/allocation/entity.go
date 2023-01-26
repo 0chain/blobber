@@ -8,7 +8,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 const (
@@ -24,7 +23,7 @@ const (
 // eg: client1:alloc1:read --> lock for read pendings
 // client1:alloc1:write --> lock for write pendings
 // client1:alloc1 --> lock for writing read/write pendings
-var pendingMapLock = common.GetLocker()
+var pendingMapLock = common.GetNewLocker()
 
 const (
 	TableNameAllocation = "allocations"
@@ -246,24 +245,13 @@ func UpdateReadPool(db *gorm.DB, rp *ReadPool) error {
 }
 
 func SetWritePool(db *gorm.DB, allocationID string, wp *WritePool) (err error) {
-	const query = `allocation_id = ?`
-
-	var stub *WritePool
-
-	err = db.Model(&WritePool{}).
-		Where(query, allocationID).
-		Delete(&stub).Error
-	if err != nil {
-		return
-	}
+	err = db.Delete(&WritePool{}, "allocation_id = ?", allocationID).Error
 
 	if wp == nil {
 		return
 	}
 
-	err = db.Model(&WritePool{}).Clauses(clause.OnConflict{
-		DoUpdates: clause.AssignmentColumns([]string{"balance"}),
-	}).Create(wp).Error
+	err = db.Create(wp).Error
 	return
 }
 
