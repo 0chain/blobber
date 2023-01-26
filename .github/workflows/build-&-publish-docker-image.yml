@@ -59,7 +59,7 @@ jobs:
           # docker buildx create --name builder --driver docker-container --use
           # docker buildx inspect --bootstrap
           docker context create blobber_buildx
-          docker buildx create --name blobber_buildx --use
+          docker buildx create blobber_buildx
 
       # - name: Set up QEMU
       #   run: |
