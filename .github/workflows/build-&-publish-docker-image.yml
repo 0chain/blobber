@@ -58,6 +58,7 @@ jobs:
           # docker buildx rm builder
           # docker buildx create --name builder --driver docker-container --use
           # docker buildx inspect --bootstrap
+          docker buildx use blobber_buildx || docker buildx create --name blobber_buildx --use
 
       # - name: Set up QEMU
       #   run: |
