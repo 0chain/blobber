@@ -8,6 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -23,7 +24,7 @@ const (
 // eg: client1:alloc1:read --> lock for read pendings
 // client1:alloc1:write --> lock for write pendings
 // client1:alloc1 --> lock for writing read/write pendings
-var pendingMapLock = common.GetNewLocker()
+var pendingMapLock = common.GetLocker()
 
 const (
 	TableNameAllocation = "allocations"
@@ -159,25 +160,11 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite int64
 	return nil
 }
 
-type WritePoolsBalance struct {
-	TotBalance uint64 `gorm:"column:tot_balance"`
-}
-
-func GetWritePoolsBalance(db *gorm.DB, allocationID string) (uint64, error) {
-
-	wps := &WritePoolsBalance{}
-
-	err := db.Raw("select sum (balance) as tot_balance from write_pools where allocation_id = ?", allocationID).
-		First(wps).Error
-
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, nil
-		}
-		return 0, err
-	}
-
-	return wps.TotBalance, nil
+func GetWritePoolsBalance(db *gorm.DB, allocationID string) (balance uint64, err error) {
+	err = db.Model(&WritePool{}).Select("COALESCE(SUM(balance),0) as tot_balance").Where(
+		"allocation_id = ?", allocationID,
+	).Scan(&balance).Error
+	return
 }
 
 func (p *Pending) Save(tx *gorm.DB) error {
@@ -259,7 +246,13 @@ func UpdateReadPool(db *gorm.DB, rp *ReadPool) error {
 }
 
 func SetWritePool(db *gorm.DB, allocationID string, wp *WritePool) (err error) {
-	err = db.Delete(&WritePool{}, "allocation_id = ?", allocationID).Error
+	const query = `allocation_id = ?`
+
+	var stub *WritePool
+
+	err = db.Model(&WritePool{}).
+		Where(query, allocationID).
+		Delete(&stub).Error
 	if err != nil {
 		return
 	}
@@ -268,7 +261,9 @@ func SetWritePool(db *gorm.DB, allocationID string, wp *WritePool) (err error) {
 		return
 	}
 
-	err = db.Create(wp).Error
+	err = db.Model(&WritePool{}).Clauses(clause.OnConflict{
+		DoUpdates: clause.AssignmentColumns([]string{"balance"}),
+	}).Create(wp).Error
 	return
 }
 
