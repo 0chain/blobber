@@ -28,4 +28,4 @@ echo "2> download herumi"
 
 echo ""
 echo "3> docker build"
-DOCKER_BUILDKIT=1 docker $DOCKER_BUILD --progress=plain --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/base.Dockerfile . -t $DOCKER_IMAGE_BASE --driver docker-container --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host' --use
+DOCKER_BUILDKIT=1 docker $DOCKER_BUILD --progress=plain --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/base.Dockerfile . -t $DOCKER_IMAGE_BASE --buildkitd-flags '--allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host'
