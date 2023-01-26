@@ -47,6 +47,7 @@ jobs:
       
       - name: Set up Docker Buildx
         run: |
+          sudo apt-get install -y docker-ce
           docker buildx | true
           export DOCKER_CLI_EXPERIMENTAL=enabled
           docker buildx | true
