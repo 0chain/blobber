@@ -246,6 +246,9 @@ func UpdateReadPool(db *gorm.DB, rp *ReadPool) error {
 
 func SetWritePool(db *gorm.DB, allocationID string, wp *WritePool) (err error) {
 	err = db.Delete(&WritePool{}, "allocation_id = ?", allocationID).Error
+	if err != nil {
+		return
+	}
 
 	if wp == nil {
 		return
