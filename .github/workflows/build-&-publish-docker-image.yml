@@ -49,6 +49,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
         with:
           driver: kubernetes
+          use: false
           buildkitd-flags: --debug
         
       - name: Login to Docker Hub
