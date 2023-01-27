@@ -68,7 +68,7 @@ jobs:
           export DOCKER_IMAGE_BASE="${BLOBBER_REGISTRY}:base"
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
-          docker buildx create --buildkitd-flags '--allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.none' --use blobber_buildx
+          docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
           ./docker.local/bin/build.base.sh && ./docker.local/bin/build.blobber.sh
 
   validator:
