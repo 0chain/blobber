@@ -50,9 +50,7 @@ jobs:
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
           sudo apt-get update -y
           sudo apt-get install docker-ce docker-ce-cli containerd.io -y
-          docker buildx || true
           export DOCKER_CLI_EXPERIMENTAL=enabled
-          docker buildx || true
           docker run --privileged --rm tonistiigi/binfmt --install all
           docker context create blobber_buildx
       
@@ -102,9 +100,7 @@ jobs:
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
           sudo apt-get update -y
           sudo apt-get install docker-ce docker-ce-cli containerd.io -y
-          docker buildx || true
           export DOCKER_CLI_EXPERIMENTAL=enabled
-          docker buildx || true
           docker run --privileged --rm tonistiigi/binfmt --install all
           docker context create blobber_buildx
         
@@ -120,14 +116,7 @@ jobs:
           export DOCKER_IMAGE_BASE="${VALIDATOR_REGISTRY}:base"
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_VALIDATOR="-t ${VALIDATOR_REGISTRY}:${TAG} -t ${VALIDATOR_REGISTRY}:${TAG}-${SHORT_SHA}"
-          # docker buildx create --use blobber_buildx
-          export DOCKER_TLS_VERIFY=""
-          export DOCKER_TLS_CERTDIR=""
-          docker buildx create --name blobber_buildx \
-            --driver docker-container \
-            --driver-opt network=host \
-            --buildkitd-flags '--allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host' \
-            --use
+          docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
           ./docker.local/bin/build.base.sh && ./docker.local/bin/build.validator.sh
 
 
