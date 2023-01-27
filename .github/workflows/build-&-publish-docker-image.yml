@@ -50,7 +50,6 @@ jobs:
         with:
           driver: kubernetes
           driver-opts: |
-            image=moby/buildkit:master
             rootless=true
 
         
@@ -62,8 +61,6 @@ jobs:
 
       - name: Build blobber
         run: |
-          docker buildx ls
-          docker buildx use default
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
           export DOCKER_IMAGE_BASE="${BLOBBER_REGISTRY}:base"
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
