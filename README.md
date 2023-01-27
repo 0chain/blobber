@@ -43,9 +43,14 @@ git clone https://github.com/0chain/blobber.git
 2. In the git/blobber run the following command
   
 ```
+chmod +x ./docker.local/bin/blobber.init.setup.sh
 ./docker.local/bin/blobber.init.setup.sh
 ```
-
+**NOTE**: For mac user please run below:
+```
+chmod +x ./docker.local/bin/blobber.init.setup-mac.sh
+./docker.local/bin/blobber.init.setup-mac.sh
+```
 ## Building and Starting the Nodes
   
 1. Setup a network called testnet0 for each of these node containers to talk to each other.
