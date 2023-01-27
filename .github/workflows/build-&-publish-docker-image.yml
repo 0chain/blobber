@@ -20,7 +20,7 @@ env:
 
 jobs:
   blobber:
-    runs-on: [self-hosted, docker-builds]
+    runs-on: [docker-builds]
     steps:
       - name: Set docker image tag 
         run: |
@@ -64,7 +64,7 @@ jobs:
           ./docker.local/bin/build.base.sh && ./docker.local/bin/build.blobber.sh
 
   validator:
-    runs-on: [self-hosted, docker-builds]
+    runs-on: [docker-builds]
     steps:
       - name: Set docker image tag 
         run: |
