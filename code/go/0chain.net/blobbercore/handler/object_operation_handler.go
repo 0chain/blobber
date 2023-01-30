@@ -103,13 +103,13 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 
 	writePoolBalance, err := allocation.GetWritePoolsBalance(db, alloc.ID)
 	if err != nil {
-		Logger.Error("write_pre_redeem:get_write_pools_balance", zap.Error(err))
+		Logger.Error("write_pre_redeem:get_write_pools_balance", zap.Error(err), zap.String("allocation_id", alloc.ID))
 		return common.NewError("write_pre_redeem", "database error while getting write pool balance")
 	}
 
 	pendingWriteSize, err := allocation.GetPendingWrite(db, payerID, alloc.ID)
 	if err != nil {
-		Logger.Error(err.Error())
+		Logger.Error("write_pre_redeem:get_pending_write", zap.Error(err), zap.String("allocation_id", alloc.ID), zap.String("payer_id", payerID))
 		return common.NewError("write_pre_redeem", "database error while getting pending writes")
 	}
 
