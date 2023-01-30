@@ -35,7 +35,7 @@ services:
     links:
       - postgres-post:postgres-post
     volumes:
-      - ../config:/validator/config
+      - ./conductor-config:/validator/config
       - ./blobber${BLOBBER}/data:/validator/data
       - ./blobber${BLOBBER}/log:/validator/log
       - ./keys_config:/validator/keysconfig
@@ -56,7 +56,7 @@ services:
     links:
       - validator:validator
     volumes:
-      - ../config:/blobber/config
+      - ./conductor-config:/blobber/config
       - ./blobber${BLOBBER}/files:/blobber/files
       - ./blobber${BLOBBER}/data:/blobber/data
       - ./blobber${BLOBBER}/log:/blobber/log

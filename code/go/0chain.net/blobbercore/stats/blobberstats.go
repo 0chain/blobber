@@ -72,13 +72,13 @@ type BlobberStats struct {
 	AllocationListPagination  *Pagination       `json:"allocation_list_pagination,omitempty"`
 
 	// configurations
-	Capacity         int64         `json:"capacity"`
-	ReadPrice        float64       `json:"read_price"`
-	WritePrice       float64       `json:"write_price"`
-	MinLockDemand    float64       `json:"min_lock_demand"`
-	MaxOfferDuration time.Duration `json:"max_offer_duration"`
-	ReadLockTimeout  Duration      `json:"read_lock_timeout"`
-	WriteLockTimeout Duration      `json:"write_lock_timeout"`
+	Capacity         int64    `json:"capacity"`
+	ReadPrice        float64  `json:"read_price"`
+	WritePrice       float64  `json:"write_price"`
+	MinLockDemand    float64  `json:"min_lock_demand"`
+	MaxOfferDuration Duration `json:"max_offer_duration"`
+	ReadLockTimeout  Duration `json:"read_lock_timeout"`
+	WriteLockTimeout Duration `json:"write_lock_timeout"`
 
 	AllocationStats []*AllocationStats `json:"-"`
 
@@ -110,7 +110,7 @@ func (bs *BlobberStats) loadBasicStats(ctx context.Context) {
 	bs.ReadPrice = config.Configuration.ReadPrice
 	bs.WritePrice = config.Configuration.WritePrice
 	bs.MinLockDemand = config.Configuration.MinLockDemand
-	bs.MaxOfferDuration = config.Configuration.MaxOfferDuration
+	bs.MaxOfferDuration = Duration(config.Configuration.MaxOfferDuration.Seconds())
 	bs.ReadLockTimeout = Duration(config.Configuration.ReadLockTimeout)
 	bs.WriteLockTimeout = Duration(config.Configuration.WriteLockTimeout)
 	//

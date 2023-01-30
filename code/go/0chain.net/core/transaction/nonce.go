@@ -1,11 +1,12 @@
 package transaction
 
 import (
+	"sync"
+	"time"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
-	"sync"
-	"time"
 )
 
 var monitor = &nonceMonitor{
@@ -55,7 +56,7 @@ func (m *nonceMonitor) recordFailedNonce(nonce int64) {
 	m.failed[nonce]++
 
 	// when failing for same nonce often, should reschedule nonce for refresh from balance.
-	if m.failed[nonce]%10 == 0 {
+	if m.failed[nonce] > 0 {
 		m.shouldRefreshFromBalance = true
 		logging.Logger.Info("Frequent failures at nonce.", zap.Any("nonce", nonce), zap.Any("highestSuccess", m.highestSuccess))
 	}
