@@ -506,6 +506,7 @@ if [ ! -f ${PROJECT_ROOT}/keys_config/b0bnode01_keys.txt ]; then
     while [ ! -f ${PROJECT_ROOT}/keys_config/b0bnode01_keys.txt ]; do echo "wait for keys_config/b0bnode01_keys.txt"; sleep 1; done
 fi
 
+/usr/local/bin/docker-compose -f ${PROJECT_ROOT}/docker-compose.yml pull
 /usr/local/bin/docker-compose -f ${PROJECT_ROOT}/docker-compose.yml up -d
 
 
