@@ -27,12 +27,12 @@ var pendingMapLock = common.GetNewLocker()
 
 const (
 	TableNameAllocation = "allocations"
-	CAN_UPLOAD_MASK		= uint8(1) // 0000 0001
-	CAN_DELETE_MASK		= uint8(2) // 0000 0010
-	CAN_UPDATE_MASK		= uint8(4) // 0000 0100
-	CAN_MOVE_MASK		= uint8(8) // 0000 1000
-	CAN_COPY_MASK		= uint8(16)// 0001 0000 
-	CAN_RENAME_MASK 	= uint8(32)// 0010 0000
+	CanUploadMask       = uint8(1)  // 0000 0001
+	CanDeleteMask       = uint8(2)  // 0000 0010
+	CanUpdateMask       = uint8(4)  // 0000 0100
+	CanMoveMask         = uint8(8)  // 0000 1000
+	CanCopyMask         = uint8(16) // 0001 0000
+	CanRenameMask       = uint8(32) // 0010 0000
 )
 
 type Allocation struct {
@@ -69,7 +69,7 @@ type Allocation struct {
 	// 00010000 - 16 - copy
 	// 00100000 - 32 - rename
 	FileOptions uint8 `json:"file_options" gorm:"column:file_options;not null;default:63"`
-	
+
 	// Has many terms
 	// If Preload("Terms") is required replace tag `gorm:"-"` with `gorm:"foreignKey:AllocationID"`
 	Terms []*Terms `gorm:"-"`
@@ -80,28 +80,28 @@ func (Allocation) TableName() string {
 }
 
 func (a *Allocation) CanUpload() bool {
-	return (a.FileOptions & CAN_UPLOAD_MASK) > 0 
+	return (a.FileOptions & CanUploadMask) > 0
 }
 
 func (a *Allocation) CanDelete() bool {
-	return (a.FileOptions & CAN_DELETE_MASK) > 0 
-	
+	return (a.FileOptions & CanDeleteMask) > 0
+
 }
 
 func (a *Allocation) CanUpdate() bool {
-	return (a.FileOptions & CAN_UPDATE_MASK) > 0 
+	return (a.FileOptions & CanUpdateMask) > 0
 }
 
 func (a *Allocation) CanMove() bool {
-	return (a.FileOptions & CAN_MOVE_MASK) > 0 
+	return (a.FileOptions & CanMoveMask) > 0
 }
 
 func (a *Allocation) CanCopy() bool {
-	return (a.FileOptions & CAN_COPY_MASK) > 0 
+	return (a.FileOptions & CanCopyMask) > 0
 }
 
 func (a *Allocation) CanRename() bool {
-	return (a.FileOptions & CAN_RENAME_MASK) > 0 
+	return (a.FileOptions & CanRenameMask) > 0
 }
 
 // RestDurationInTimeUnits returns number (float point) of time units until
