@@ -27,12 +27,12 @@ var pendingMapLock = common.GetNewLocker()
 
 const (
 	TableNameAllocation = "allocations"
-	CanUploadMask       = uint8(1)  // 0000 0001
-	CanDeleteMask       = uint8(2)  // 0000 0010
-	CanUpdateMask       = uint8(4)  // 0000 0100
-	CanMoveMask         = uint8(8)  // 0000 1000
-	CanCopyMask         = uint8(16) // 0001 0000
-	CanRenameMask       = uint8(32) // 0010 0000
+	CanUploadMask       = uint16(1)  // 0000 0001
+	CanDeleteMask       = uint16(2)  // 0000 0010
+	CanUpdateMask       = uint16(4)  // 0000 0100
+	CanMoveMask         = uint16(8)  // 0000 1000
+	CanCopyMask         = uint16(16) // 0001 0000
+	CanRenameMask       = uint16(32) // 0010 0000
 )
 
 type Allocation struct {
@@ -68,7 +68,7 @@ type Allocation struct {
 	// 00001000 - 8  - move
 	// 00010000 - 16 - copy
 	// 00100000 - 32 - rename
-	FileOptions uint8 `json:"file_options" gorm:"column:file_options;not null;default:63"`
+	FileOptions uint16 `json:"file_options" gorm:"column:file_options;not null;default:63"`
 
 	// Has many terms
 	// If Preload("Terms") is required replace tag `gorm:"-"` with `gorm:"foreignKey:AllocationID"`

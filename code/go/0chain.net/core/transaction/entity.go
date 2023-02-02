@@ -111,7 +111,7 @@ type StorageAllocation struct {
 	IsImmutable    bool                 `json:"is_immutable"`
 	WritePool      uint64               `json:"write_pool"`
 	ThirdPartyExtendable bool			`json:"third_party_extendable"`
-	FileOptions	   uint8				`json:"file_options"`
+	FileOptions	   uint16				`json:"file_options"`
 }
 
 func (sa *StorageAllocation) Until() common.Timestamp {
