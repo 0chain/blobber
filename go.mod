@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.8.11
+	github.com/0chain/gosdk v1.8.12
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/gorilla/handlers v1.5.1
@@ -39,7 +39,8 @@ require (
 )
 
 require (
-	github.com/Luzifer/go-openssl/v4 v4.1.0 // indirect
+	github.com/0chain/common v0.0.5 // indirect
+	github.com/Luzifer/go-openssl/v3 v3.1.0 // indirect
 	github.com/btcsuite/btcd v0.23.4 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
