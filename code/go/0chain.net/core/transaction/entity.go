@@ -110,7 +110,6 @@ type StorageAllocation struct {
 	TimeUnit       time.Duration        `json:"time_unit"`
 	IsImmutable    bool                 `json:"is_immutable"`
 	WritePool      uint64               `json:"write_pool"`
-	ThirdPartyExtendable bool			`json:"third_party_extendable"`
 	FileOptions	   uint16				`json:"file_options"`
 }
 
