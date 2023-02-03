@@ -51,7 +51,6 @@ type Allocation struct {
 	LatestRedeemedWM string        `gorm:"column:latest_redeemed_write_marker;size:64"`
 	IsRedeemRequired bool          `gorm:"column:is_redeem_required"`
 	TimeUnit         time.Duration `gorm:"column:time_unit;not null;default:172800000000000"`
-	IsImmutable      bool          `gorm:"is_immutable;not null"`
 	// Ending and cleaning
 	CleanedUp bool `gorm:"column:cleaned_up;not null;default:false"`
 	Finalized bool `gorm:"column:finalized;not null;default:false"`

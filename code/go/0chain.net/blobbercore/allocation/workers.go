@@ -213,7 +213,6 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 	a.TotalSize = sa.Size
 	a.Finalized = sa.Finalized
 	a.FileOptions = sa.FileOptions
-	a.IsImmutable = sa.IsImmutable
 	
 	// update terms
 	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))

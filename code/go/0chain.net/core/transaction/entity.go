@@ -108,7 +108,6 @@ type StorageAllocation struct {
 	BlobberDetails []*BlobberAllocation `json:"blobber_details"`
 	Finalized      bool                 `json:"finalized"`
 	TimeUnit       time.Duration        `json:"time_unit"`
-	IsImmutable    bool                 `json:"is_immutable"`
 	WritePool      uint64               `json:"write_pool"`
 	FileOptions	   uint16				`json:"file_options"`
 }
