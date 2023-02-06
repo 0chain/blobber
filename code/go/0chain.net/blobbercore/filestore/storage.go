@@ -113,6 +113,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	if err != nil {
 		return false, err
 	}
+	defer r.Close()
 
 	var fPath string
 	defer func() {
@@ -122,7 +123,6 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 			os.Remove(tempFilePath)
 		}
 	}()
-	defer r.Close()
 
 	if fileData.IsThumbnail {
 		h := sha3.New256()
@@ -188,14 +188,14 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		return false, err
 	}
 
-	defer r.Close()
+	defer f.Close()
 
-	fStat, err := r.Stat()
+	rStat, err := r.Stat()
 	if err != nil {
 		return false, common.NewError("stat_error", err.Error())
 	}
 
-	fileSize := fStat.Size()
+	fileSize := rStat.Size()
 	hasher := GetNewCommitHasher(fileSize)
 	_, err = io.Copy(hasher, r)
 	if err != nil {
@@ -240,7 +240,6 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		return false, common.NewError("write_error", err.Error())
 	}
 
-	f.Close()
 	l.Unlock()
 
 	fs.updateAllocTempFileSize(allocID, -fileSize)
