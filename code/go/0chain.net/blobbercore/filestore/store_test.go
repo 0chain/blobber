@@ -593,7 +593,6 @@ mainloop:
 		n, err = r.Read(b)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				err = nil
 				if n == 0 {
 					break
 				}
@@ -603,7 +602,7 @@ mainloop:
 		}
 		if n != 64*KB {
 			fmt.Println("n is ", n)
-			return "", errors.New("huhu invalid byte length. Must be 64 KB")
+			return "", errors.New("invalid byte length. Must be 64 KB")
 		}
 
 		_, err = fixedMT.Write(b)
@@ -615,7 +614,7 @@ mainloop:
 		continue
 	final:
 		if n != 64*KB {
-			return "", errors.New("hehe invalid byte length. Must be 64 KB")
+			return "", errors.New("invalid byte length. Must be 64 KB")
 		}
 
 		_, err = fixedMT.Write(b)
