@@ -54,7 +54,7 @@ func calculateDepth(totalLeaves int) int {
 }
 
 // CalculateRootAndStoreNodes will calculate all the intermediate nodes and write it to
-// f
+// f in bytes format
 func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot []byte, err error) {
 
 	nodes := make([][]byte, len(ft.Leaves))
@@ -112,7 +112,7 @@ func NewFMTPRoof(idx int, dataSize int64) *fixedMerkleTreeProof {
 }
 
 // CalculateLeafContentLevelForIndex is used to calculate total levels or rows of a column of respective
-// index. So if datasize is 64KB + 1 bytes then 0th index has level 2 and all other levels will have level 1.
+// index. So if datasize is 64KB + 1 bytes then 0th index has level 2 and all other index will have level 1.
 func (fp *fixedMerkleTreeProof) CalculateLeafContentLevelForIndex() int {
 	levelFor0Idx := (fp.dataSize + util.MaxMerkleLeavesSize - 1) / util.MaxMerkleLeavesSize
 	if fp.dataSize%util.MaxMerkleLeavesSize == 0 || fp.idx == 0 {
@@ -149,9 +149,9 @@ func (fp fixedMerkleTreeProof) GetMerkleProof(r io.ReaderAt) (proof [][]byte, er
 
 	for i := 0; i < util.FixedMTDepth-1; i++ {
 		if idx&1 == 0 {
-			offset = (idx+1)*HashSize + levelOffset
+			offset = (idx+1)*HashSize + levelOffset // take right neighbour for left(even) index
 		} else {
-			offset = (idx-1)*HashSize + levelOffset
+			offset = (idx-1)*HashSize + levelOffset // take left neighbour for right(odd)  index
 		}
 
 		proof[i] = b[offset : offset+HashSize]
