@@ -149,4 +149,5 @@ volumes:
 
 EOF
 
+sudo docker-compose -f ${CONFIG_DIR}/docker-compose.yml down
 sudo docker-compose -f ${CONFIG_DIR}/docker-compose.yml up -d
