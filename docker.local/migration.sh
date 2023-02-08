@@ -12,9 +12,17 @@ BUCKET=0chainbucket
 BLIMP_DOMAIN=0chainblimpdomain
 
 CONCURRENCY=1
-DELETE_SOURCE=false
-ENCRYPT=false
-REGION=us-east-2
+DELETE_SOURCE=0chaindeletesource
+ENCRYPT=0chainencrypt
+REGION=0chainregion
+SKIP=0chainskip
+NEWER_THAN=0chainnewerthan
+OLDER_THAN=0chainolderthan
+PREFIX=0chainprefix
+RESUME=0chainresume
+MIGRATE_TO=0chainmigrateto
+WORKING_DIR=0chainwd
+
 # BLOCK_WORKER_URL=0chainblockworkerurl
 BLOCK_WORKER_URL=https://helm.0chain.net/dns
 sudo apt update
@@ -136,5 +144,19 @@ EOF
 
 #  --concurrency ${CONCURRENCY} --delete-source ${DELETE_SOURCE} --encrypt ${ENCRYPT} --resume true   --skip 1
 
+flags="--access-key ${ACCESS_KEY} --secret-key ${SECRET_KEY} --allocation ${ALLOCATION} --bucket ${BUCKET} "
+
+# setup optional parameters
+if [ $ENCRYPT == "true" ]; then flags=$flags" --encrypt true"; fi
+if [ $DELETE_SOURCE == "true" ]; then flags=$flags" --delete-source true"; fi
+if [ $REGION != "0chainregion" ]; then flags=$flags"--region ${REGION}"; fi
+if [ $SKIP != "0chainskip" ]; then flags=$flags" --skip ${SKIP}"; fi
+if [ $NEWER_THAN != "0chainnewerthan" ]; then flags=$flags" --newer-than ${SKIP}"; fi
+if [ $OLDER_THAN != "0chainolderthan" ]; then flags=$flags" --older-than ${SKIP}"; fi
+if [ $PREFIX != "0chainprefix" ]; then flags=$flags" --prefix ${PREFIX}"; fi
+if [ $RESUME == "true" ]; then flags=$flags" --resume ${RESUME}"; fi
+if [ $MIGRATE_TO != "0chainmigrateto" ]; then flags=$flags" --migrate-to ${MIGRATE_TO}"; fi
+if [ $WORKING_DIR != "0chainwd" ]; then flags=$flags" --wd ${WORKING_DIR}"; fi
+
 cd ${MIGRATION_ROOT}
-/usr/local/bin/s3mgrt migrate --access-key ${ACCESS_KEY} --secret-key ${SECRET_KEY} --allocation ${ALLOCATION} --bucket ${BUCKET} --region ${REGION}
+/usr/local/bin/s3mgrt migrate $flags
