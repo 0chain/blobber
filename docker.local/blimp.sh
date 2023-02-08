@@ -9,6 +9,7 @@ ALLOCATION=0chainallocationid
 BLOCK_WORKER_URL=https://helm.0chain.net/dns
 # todo: check with team
 MINIO_TOKEN=0chainminiotoken
+BLIMP_DOMAIN=0chainblimpdomain
 
 sudo apt update
 sudo apt install -y unzip curl containerd docker.io
@@ -42,25 +43,25 @@ $ALLOCATION
 EOF
 
 cat <<EOF >${CONFIG_DIR}/Caddyfile
-blimp76ghf.devnet-0chain.net:3001 {
+${BLIMP_DOMAIN}:3001 {
 	route {
 		reverse_proxy minioclient:3001
 	}
 }
 
-blimp76ghf.devnet-0chain.net:8080 {
+${BLIMP_DOMAIN}:8080 {
 	route {
 		reverse_proxy api:8080
 	}
 }
 
-blimp76ghf.devnet-0chain.net:9000 {
+${BLIMP_DOMAIN}:9000 {
 	route {
 		reverse_proxy minioclient:9000
 	}
 }
 
-blimp76ghf.devnet-0chain.net:9012 {
+${BLIMP_DOMAIN}:9012 {
 	route {
 		reverse_proxy s3mgrt:8080
 	}
