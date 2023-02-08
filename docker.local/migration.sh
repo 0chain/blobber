@@ -9,6 +9,8 @@ BUCKET=0chainbucket
 # SECRET_KEY=tPYIDKffgUzdoXUBgX67Lw90PdEYS22xZt62cJQ7
 # ALLOCATION=1467bdcedb20e62928eb18960c501c1c50ff35c927b86b34a8f0b00eb29a6d06
 # BUCKET=cloud-mig
+BLIMP_DOMAIN=0chainblimpdomain
+
 CONCURRENCY=1
 DELETE_SOURCE=false
 ENCRYPT=false
@@ -33,22 +35,22 @@ $ALLOCATION
 EOF
 
 cat <<EOF >${CONFIG_DIR}/Caddyfile
-blimp76ghf.devnet-0chain.net:3001 {
+${BLIMP_DOMAIN}:3001 {
 	route {
 		reverse_proxy minioclient:3001
 	}
 }
-blimp76ghf.devnet-0chain.net:8080 {
+${BLIMP_DOMAIN}:8080 {
 	route {
 		reverse_proxy api:8080
 	}
 }
-blimp76ghf.devnet-0chain.net:9000 {
+${BLIMP_DOMAIN}:9000 {
 	route {
 		reverse_proxy minioclient:9000
 	}
 }
-blimp76ghf.devnet-0chain.net:9012 {
+${BLIMP_DOMAIN}:9012 {
 	route {
 		reverse_proxy s3mgrt:8080
 	}
