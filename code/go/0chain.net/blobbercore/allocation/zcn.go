@@ -56,7 +56,7 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 	alloc.UsedSize = sa.UsedSize
 	alloc.Finalized = sa.Finalized
 	alloc.TimeUnit = sa.TimeUnit
-	alloc.IsImmutable = sa.IsImmutable
+	alloc.FileOptions = sa.FileOptions
 
 	// related terms
 	terms := make([]*Terms, 0, len(sa.BlobberDetails))

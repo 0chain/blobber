@@ -52,6 +52,5 @@ func BlobberHealthCheck() (*transaction.Transaction, error) {
 		return nil, err
 	}
 
-	setBlobberHealthCheckError(err)
 	return txn, nil
 }
