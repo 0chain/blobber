@@ -196,12 +196,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	isOwner := clientID == alloc.OwnerID
-	isCollaborator := reference.IsACollaborator(ctx, fileref.ID, clientID)
 
 	var authToken *readmarker.AuthTicket
 	var shareInfo *reference.ShareInfo
 
-	if !(isOwner || isCollaborator) {
+	if !isOwner {
 		authTokenString := dr.AuthToken
 		if authTokenString == "" {
 			return nil, common.NewError("invalid_client", "authticket is required")
@@ -364,29 +363,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	elapsedGetConnObj := time.Since(startTime) - elapsedAllocation - elapsedGetLock
 
-	var isCollaborator bool
-	for _, change := range connectionObj.Changes {
-		if change.Operation != constants.FileOperationUpdate {
-			continue
-		}
-
-		updateFileChange := new(allocation.UpdateFileChanger)
-		if err := updateFileChange.Unmarshal(change.Input); err != nil {
-			return nil, err
-		}
-		fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, updateFileChange.Path, []string{"id"})
-		if err != nil {
-			return nil, err
-		}
-		isCollaborator = reference.IsACollaborator(ctx, fileRef.ID, clientID)
-		break
-	}
-
 	if clientID == "" || clientKey == "" {
 		return nil, common.NewError("invalid_params", "Please provide clientID and clientKey")
 	}
 
-	if (allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID) && !isCollaborator {
+	if (allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID) {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
@@ -434,9 +415,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj
 
 	var clientIDForWriteRedeem = writeMarker.ClientID
-	if isCollaborator {
-		clientIDForWriteRedeem = allocationObj.OwnerID
-	}
 
 	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
 		return nil, err
@@ -993,14 +971,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	elapsedValidate := time.Since(st)
 	st = time.Now()
-	existingFileRef := cmd.GetExistingFileRef()
 
-	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
-
-	if isCollaborator {
-		publicKey = ctx.Value(constants.ContextKeyClientKey).(string)
-	}
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
 

@@ -102,12 +102,6 @@ func setupTestHandlers() (*mux.Router, map[string]string) {
 		common.ToJSONResponse(
 			WithReadOnlyConnection(FileStatsHandler))).Name(sName)
 
-	collPath := "/v1/file/collaborator/{allocation}"
-	collName := "Collaborator"
-	router.HandleFunc(collPath,
-		common.ToJSONResponse(
-			WithReadOnlyConnection(GetCollaboratorHandler))).Name(collName)
-
 	rPath := "/v1/file/rename/{allocation}"
 	rName := "Rename"
 	router.HandleFunc(rPath,
@@ -129,7 +123,6 @@ func setupTestHandlers() (*mux.Router, map[string]string) {
 	return router,
 		map[string]string{
 			sPath:    sName,
-			collPath: collName,
 			rPath:    rName,
 			cPath:    cName,
 			uPath:    uName,

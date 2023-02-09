@@ -141,19 +141,6 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}",
 		RateLimitByCommmitRL(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
 
-	// collaborator
-	r.HandleFunc("/v1/file/collaborator/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(AddCollaboratorHandler)))).
-		Methods(http.MethodOptions, http.MethodPost)
-
-	r.HandleFunc("/v1/file/collaborator/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(GetCollaboratorHandler)))).
-		Methods(http.MethodOptions, http.MethodGet)
-
-	r.HandleFunc("/v1/file/collaborator/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RemoveCollaboratorHandler)))).
-		Methods(http.MethodOptions, http.MethodDelete)
-
 	//object info related apis
 	r.HandleFunc("/allocation",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(AllocationHandler))))
