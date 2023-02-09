@@ -133,7 +133,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 	a.UsedSize = sa.UsedSize
 	a.Finalized = sa.Finalized
 	a.TimeUnit = sa.TimeUnit
-	a.IsImmutable = sa.IsImmutable
+	a.FileOptions = sa.FileOptions
 
 	m := map[string]interface{}{
 		"allocation_id":  a.ID,

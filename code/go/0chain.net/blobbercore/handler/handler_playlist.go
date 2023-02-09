@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/base64"
 	"errors"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -24,12 +25,17 @@ func LoadPlaylist(ctx *Context) (interface{}, error) {
 			return nil, errors.New("lookup_hash_missed: auth_token and lookup_hash are required")
 		}
 
-		fileRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, ctx.AllocationId, lookupHash, []string{"id", "path", "lookup_hash", "type", "name"})
+		fileRef, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, ctx.Store.GetDB(), ctx.AllocationId, lookupHash, []string{"id", "path", "lookup_hash", "type", "name"})
 		if err != nil {
 			return nil, common.NewError("invalid_lookup_hash", err.Error())
 		}
 
-		authToken, err := verifyAuthTicket(ctx, ctx.Store.GetDB(), authTokenString, ctx.Allocation, fileRef, ctx.ClientID)
+		at, err := base64.StdEncoding.DecodeString(authTokenString)
+		if err != nil {
+			return nil, common.NewError("invalid_auth_ticket", err.Error())
+		}
+
+		authToken, err := verifyAuthTicket(ctx, ctx.Store.GetDB(), string(at), ctx.Allocation, fileRef, ctx.ClientID)
 		if err != nil {
 			return nil, err
 		}
@@ -37,7 +43,7 @@ func LoadPlaylist(ctx *Context) (interface{}, error) {
 			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
 		}
 
-		return reference.LoadPlaylist(ctx, ctx.AllocationId, "", lookupHash, since)
+		return reference.LoadPlaylist(ctx, ctx.AllocationId, fileRef.Path, since)
 
 	}
 
@@ -45,7 +51,7 @@ func LoadPlaylist(ctx *Context) (interface{}, error) {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	return reference.LoadPlaylist(ctx, ctx.AllocationId, q.Get("path"), "", since)
+	return reference.LoadPlaylist(ctx, ctx.AllocationId, q.Get("path"), since)
 }
 
 // LoadPlaylistFile load playlist file
@@ -61,13 +67,15 @@ func LoadPlaylistFile(ctx *Context) (interface{}, error) {
 
 	//load playlist with auth ticket
 	if len(authTokenString) > 0 {
-
-		fileRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, ctx.AllocationId, lookupHash, []string{"id", "path", "lookup_hash", "type", "name"})
+		fileRef, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, ctx.Store.GetDB(), ctx.AllocationId, lookupHash, []string{"id", "path", "lookup_hash", "type", "name"})
 		if err != nil {
 			return nil, common.NewError("invalid_lookup_hash", err.Error())
 		}
-
-		authToken, err := verifyAuthTicket(ctx, ctx.Store.GetDB(), authTokenString, ctx.Allocation, fileRef, ctx.ClientID)
+		at, err := base64.StdEncoding.DecodeString(authTokenString)
+		if err != nil {
+			return nil, common.NewError("invalid_auth_ticket", err.Error())
+		}
+		authToken, err := verifyAuthTicket(ctx, ctx.Store.GetDB(), string(at), ctx.Allocation, fileRef, ctx.ClientID)
 		if err != nil {
 			return nil, err
 		}
