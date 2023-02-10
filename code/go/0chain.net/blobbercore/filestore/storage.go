@@ -113,10 +113,10 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	if err != nil {
 		return false, err
 	}
-	defer r.Close()
 
 	var fPath string
 	defer func() {
+		r.Close()
 		if err != nil {
 			os.Remove(fPath)
 		} else {
