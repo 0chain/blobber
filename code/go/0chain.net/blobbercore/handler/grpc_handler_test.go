@@ -71,6 +71,7 @@ func makeTestAllocation(exp common.Timestamp) *allocation.Allocation {
 			},
 		},
 		Expiration: exp,
+		FileOptions: 63, // 0011 1111 (All Allowed)
 	}
 	return &alloc
 }
