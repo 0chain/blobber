@@ -338,7 +338,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if allocationObj.IsImmutable {
+	if allocationObj.FileOptions == 0 {
 		return nil, common.NewError("immutable_allocation", "Cannot write to an immutable allocation")
 	}
 
@@ -541,8 +541,8 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if allocationObj.IsImmutable {
-		return nil, common.NewError("immutable_allocation", "Cannot rename data in an immutable allocation")
+	if !allocationObj.CanRename() {
+		return nil, common.NewError("prohibited_allocation_file_options", "Cannot rename data in this allocation.")
 	}
 
 	allocationID := allocationObj.ID
@@ -631,13 +631,13 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
+	if !allocationObj.CanCopy() {
+		return nil, common.NewError("prohibited_allocation_file_options", "Cannot copy data from this allocation.")
+	}
+
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	if allocationObj.IsImmutable {
-		return nil, common.NewError("immutable_allocation", "Cannot copy data in an immutable allocation")
 	}
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
@@ -739,14 +739,14 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
+	if !allocationObj.CanMove() {
+		return nil, common.NewError("prohibited_allocation_file_options", "Cannot move data in this allocation.")
+	}
+
 	valid, err := verifySignatureFromRequest(
 		allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	if allocationObj.IsImmutable {
-		return nil, common.NewError("immutable_allocation", "Cannot copy data in an immutable allocation")
 	}
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
@@ -994,6 +994,18 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	elapsedAllocation := time.Since(startTime)
 
+	if r.Method == http.MethodPost && !allocationObj.CanUpload() {
+		return nil, common.NewError("prohibited_allocation_file_options", "Cannot upload data to this allocation.")
+	}
+
+	if r.Method == http.MethodPut && !allocationObj.CanUpdate() {
+		return nil, common.NewError("prohibited_allocation_file_options", "Cannot update data in this allocation.")
+	}
+
+	if r.Method == http.MethodDelete && !allocationObj.CanDelete() {
+		return nil, common.NewError("prohibited_allocation_file_options", "Cannot delete data in this allocation.")
+	}
+
 	st := time.Now()
 	allocationID := allocationObj.ID
 	cmd := createFileCommand(r)
@@ -1018,10 +1030,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	if allocationObj.IsImmutable {
-		return nil, common.NewError("immutable_allocation", "Cannot write to an immutable allocation")
 	}
 
 	if clientID == "" {
