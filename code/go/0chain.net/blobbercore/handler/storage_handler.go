@@ -232,42 +232,6 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 	return result, nil
 }
 
-func (fsh *StorageHandler) getAllocationObject(ctx context.Context, r *http.Request) (*allocation.Allocation, string, error) {
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
-	if err != nil {
-		return nil, "", common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-
-	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, "", common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-
-	return allocationObj, clientID, nil
-}
-
-func (fsh *StorageHandler) validateCollaboratorRequest(ctx context.Context, allocationID string, r *http.Request) (*reference.Ref, error) {
-	pathHash, err := pathHashFromReq(r, allocationID)
-	if err != nil {
-		return nil, err
-	}
-
-	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "type"})
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", fileref.Path+" is an invalid path: "+err.Error())
-	}
-
-	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", fileref.Path+" is not a file.")
-	}
-
-	return fileref, nil
-}
-
 func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (interface{}, error) {
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
