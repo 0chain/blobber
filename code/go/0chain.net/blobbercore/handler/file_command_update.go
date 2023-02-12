@@ -65,7 +65,7 @@ func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 	if allocationObj.OwnerID != clientID &&
 		allocationObj.RepairerID != clientID {
-		return common.NewError("invalid_operation", "Operation needs to be performed by the owner, collaborator or the payer of the allocation")
+		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
 	_, thumbHeader, _ := req.FormFile(UploadThumbnailFile)
