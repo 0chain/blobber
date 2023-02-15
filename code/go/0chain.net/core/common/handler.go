@@ -1,7 +1,6 @@
 package common
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -47,9 +46,8 @@ func Respond(w http.ResponseWriter, data interface{}, err error) {
 		if cerr, ok := err.(*Error); ok {
 			data["code"] = cerr.Code
 		}
-		buf := bytes.NewBuffer(nil)
-		json.NewEncoder(buf).Encode(data) //nolint:errcheck // checked in previous step
-		http.Error(w, buf.String(), 400)
+		w.WriteHeader(400)
+		json.NewEncoder(w).Encode(data)
 	} else if data != nil {
 		json.NewEncoder(w).Encode(data) //nolint:errcheck // checked in previous step
 	}
@@ -97,7 +95,6 @@ func SetupCORSResponse(w http.ResponseWriter, r *http.Request) {
 func ToJSONResponse(handler JSONResponderF) ReqRespHandlerf {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
-		w.Header().Set("Content-Type", "application/json")
 		if r.Method == "OPTIONS" {
 			SetupCORSResponse(w, r)
 			return
