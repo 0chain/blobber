@@ -28,12 +28,6 @@ func GetFileMetaDataResponseCreator(httpResp interface{}) *blobbergrpc.GetFileMe
 	r, _ := httpResp.(map[string]interface{})
 
 	var resp blobbergrpc.GetFileMetaDataResponse
-	collaborators, _ := r["collaborators"].([]reference.Collaborator)
-	for i := 0; i < len(collaborators); i++ {
-		c := collaborators[i]
-		resp.Collaborators = append(resp.Collaborators, CollaboratorToGRPCCollaborator(&c))
-	}
-
 	resp.MetaData = FileRefToFileRefGRPC(reference.ListingDataToRef(r))
 	return &resp
 }
@@ -155,29 +149,6 @@ func GetCommitMetaTxnResponseCreator(r interface{}) *blobbergrpc.CommitMetaTxnRe
 	})
 
 	return &blobbergrpc.CommitMetaTxnResponse{Message: msg.Msg}
-}
-
-func CollaboratorResponseCreator(r interface{}) *blobbergrpc.CollaboratorResponse {
-	if r == nil {
-		return nil
-	}
-
-	msg, _ := r.(struct {
-		Msg string `json:"msg"`
-	})
-	var resp blobbergrpc.CollaboratorResponse
-	if msg.Msg != "" {
-		resp.Message = msg.Msg
-		return &resp
-	}
-
-	collabs, _ := r.([]reference.Collaborator)
-	for i := 0; i < len(collabs); i++ {
-		c := collabs[i]
-		resp.Collaborators = append(resp.Collaborators, CollaboratorToGRPCCollaborator(&c))
-	}
-
-	return &resp
 }
 
 func CopyObjectResponseCreator(r interface{}) *blobbergrpc.CopyObjectResponse {

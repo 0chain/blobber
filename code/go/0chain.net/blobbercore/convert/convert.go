@@ -197,30 +197,6 @@ func FileStatsGRPCToFileStats(fileStats *blobbergrpc.FileStats) *stats.FileStats
 	}
 }
 
-func CollaboratorToGRPCCollaborator(c *reference.Collaborator) *blobbergrpc.Collaborator {
-	if c == nil {
-		return nil
-	}
-
-	return &blobbergrpc.Collaborator{
-		RefId:     c.RefID,
-		ClientId:  c.ClientID,
-		CreatedAt: c.CreatedAt.UnixNano(),
-	}
-}
-
-func GRPCCollaboratorToCollaborator(c *blobbergrpc.Collaborator) *reference.Collaborator {
-	if c == nil {
-		return nil
-	}
-
-	return &reference.Collaborator{
-		RefID:     c.RefId,
-		ClientID:  c.ClientId,
-		CreatedAt: time.Unix(0, c.CreatedAt),
-	}
-}
-
 func ReferencePathToReferencePathGRPC(recursionCount *int, refPath *reference.ReferencePath) *blobbergrpc.ReferencePath {
 	if refPath == nil {
 		return nil

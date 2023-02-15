@@ -6,19 +6,6 @@ option go_package = "code/go/0chain.net/blobbercore/blobbergrpc";
 
 import "google/api/annotations.proto";
 
-message CollaboratorRequest {
-  string allocation = 1;
-  string collab_id = 2;
-  string method = 3;
-  string path = 4;
-  string path_hash = 5;
-}
-
-message CollaboratorResponse {
-  string message = 1;
-  repeated Collaborator collaborators = 2;
-}
-
 message CalculateHashRequest {
   string allocation = 1;
   string path = 2;
@@ -157,18 +144,11 @@ message GetFileMetaDataRequest {
 
 message GetFileMetaDataResponse {
   FileRef meta_data = 1;
-  repeated Collaborator collaborators = 2;
 }
 
 message CommitMetaTxn {
   int64 ref_id = 1;
   string txn_id = 2;
-  int64 created_at = 3;
-}
-
-message Collaborator {
-  int64 ref_id = 1;
-  string client_id = 2;
   int64 created_at = 3;
 }
 
