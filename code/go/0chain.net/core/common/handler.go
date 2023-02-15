@@ -50,8 +50,8 @@ func Respond(w http.ResponseWriter, data interface{}, err error) {
 		}
 		w.WriteHeader(400)
 		buf := bytes.NewBuffer(nil)
-		json.NewEncoder(buf).Encode(data)              //nolint:errcheck // checked in previous step
-		json.NewEncoder(w).Encode(buf.String() + "\n") //nolint:errcheck // checked in previous step
+		json.NewEncoder(buf).Encode(data)       //nolint:errcheck // checked in previous step
+		json.NewEncoder(w).Encode(buf.String()) //nolint:errcheck // checked in previous step
 	} else if data != nil {
 		json.NewEncoder(w).Encode(data) //nolint:errcheck // checked in previous step
 	}
