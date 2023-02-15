@@ -280,7 +280,7 @@ func TestHandlers_Download(t *testing.T) {
 
 			},
 			wantCode: http.StatusBadRequest,
-			wantBody: "{\"code\":\"download_file\",\"error\":\"download_file: invalid file path: record not found\"}\n\n",
+			wantBody: "{\"code\":\"download_file\",\"error\":\"download_file: invalid file path: record not found\"}\n",
 		},
 		{
 			name: "DownloadFile_Unencrypted_return_file",
@@ -475,7 +475,7 @@ func TestHandlers_Download(t *testing.T) {
 				mock.ExpectCommit()
 			},
 			wantCode: http.StatusBadRequest,
-			wantBody: "{\"code\":\"stale_read_marker\",\"error\":\"stale_read_marker: \"}\n\n",
+			wantBody: "{\"code\":\"stale_read_marker\",\"error\":\"stale_read_marker: \"}\n",
 		},
 		{
 			name: "DownloadFile_Encrypted_Permission_Denied_Unshared_File",
@@ -584,7 +584,7 @@ func TestHandlers_Download(t *testing.T) {
 				mock.ExpectCommit()
 			},
 			wantCode: http.StatusBadRequest,
-			wantBody: "{\"error\":\"client does not have permission to download the file. share does not exist\"}\n\n",
+			wantBody: "{\"error\":\"client does not have permission to download the file. share does not exist\"}\n",
 		},
 		{
 			name: "DownloadFile_Encrypted_Permission_Allowed_shared_File",
@@ -1118,7 +1118,7 @@ func TestHandlers_Download(t *testing.T) {
 
 			},
 			wantCode: http.StatusBadRequest,
-			wantBody: "{\"code\":\"download_file\",\"error\":\"download_file: cannot verify auth ticket: invalid_parameters: Auth ticket is not valid for the resource being requested\"}\n\n",
+			wantBody: "{\"code\":\"download_file\",\"error\":\"download_file: cannot verify auth ticket: invalid_parameters: Auth ticket is not valid for the resource being requested\"}\n",
 		},
 	}
 
