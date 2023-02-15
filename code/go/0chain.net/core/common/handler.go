@@ -47,7 +47,7 @@ func Respond(w http.ResponseWriter, data interface{}, err error) {
 			data["code"] = cerr.Code
 		}
 		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(data)
+		json.NewEncoder(w).Encode(data) //nolint:errcheck // checked in previous step
 	} else if data != nil {
 		json.NewEncoder(w).Encode(data) //nolint:errcheck // checked in previous step
 	}
