@@ -49,7 +49,9 @@ func Respond(w http.ResponseWriter, data interface{}, err error) {
 		}
 		buf := bytes.NewBuffer(nil)
 		json.NewEncoder(buf).Encode(data) //nolint:errcheck // checked in previous step
-		http.Error(w, buf.String(), 400)
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(400)
+		fmt.Fprintln(w, buf.String())
 	} else if data != nil {
 		json.NewEncoder(w).Encode(data) //nolint:errcheck // checked in previous step
 	}
