@@ -47,18 +47,6 @@ func commitHandler(ctx context.Context, r *http.Request) (interface{}, int, erro
 	return response, http.StatusOK, nil
 }
 
-func AddCollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	return storageHandler.AddCollaborator(setupHandlerContext(ctx, r), r)
-}
-
-func GetCollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	return storageHandler.GetCollaborator(setupHandlerContext(ctx, r), r)
-}
-
-func RemoveCollaboratorHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	return storageHandler.RemoveCollaborator(setupHandlerContext(ctx, r), r)
-}
-
 func HomepageHandler(w http.ResponseWriter, r *http.Request) {
 	mc := chain.GetServerChain()
 

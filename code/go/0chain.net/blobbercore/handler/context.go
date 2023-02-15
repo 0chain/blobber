@@ -219,10 +219,6 @@ func WithVerify(r *http.Request) (*Context, error) {
 
 		publicKey := alloc.OwnerPublicKey
 
-		// request by collaborator
-		if alloc.OwnerID != ctx.ClientID {
-			publicKey = ctx.ClientKey
-		}
 		valid, err := verifySignatureFromRequest(ctx.AllocationId, ctx.Signature, publicKey)
 
 		if !valid {
