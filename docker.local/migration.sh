@@ -7,7 +7,7 @@ ALLOCATION=0chainallocation
 BUCKET=0chainbucket
 # ALLOCATION=1467bdcedb20e62928eb18960c501c1c50ff35c927b86b34a8f0b00eb29a6d06
 # BUCKET=cloud-mig
-BLIMP_DOMAIN=0chainblimpdomain
+BLIMP_DOMAIN=blimpdomain
 
 CONCURRENCY=1
 DELETE_SOURCE=0chaindeletesource
