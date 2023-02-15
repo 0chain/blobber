@@ -361,10 +361,6 @@ func TestHandlers_Download(t *testing.T) {
 							AddRow("/file.txt", "f", filePathHash, "abcd"),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
-					WithArgs(ownerClient.ClientID).
-					WillReturnError(gorm.ErrRecordNotFound)
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
 					WithArgs(ownerClient.ClientID).
 					WillReturnRows(
@@ -462,10 +458,6 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"path", "type", "lookup_hash", "content_hash"}).
 							AddRow("/file.txt", "f", filePathHash, "abcd"),
 					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
-					WithArgs(ownerClient.ClientID).
-					WillReturnError(gorm.ErrRecordNotFound)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
 					WithArgs(ownerClient.ClientID).
@@ -571,10 +563,6 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "chunk_size"}).
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", "qCj3sXXeXUAByi1ERIbcfXzWN75dyocYzyRXnkStXio=", 65536),
 					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
-					WithArgs(client.GetClientID()).
-					WillReturnError(gorm.ErrRecordNotFound)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
 					WithArgs(client.GetClientID()).
@@ -697,10 +685,6 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "chunk_size"}).
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", ownerScheme.GetEncryptedKey(), 65536),
 					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
-					WithArgs(guestClient.ClientID).
-					WillReturnError(gorm.ErrRecordNotFound)
 
 				guestPublicEncryptedKey, err := guestScheme.GetPublicKey()
 				if err != nil {
@@ -839,10 +823,6 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path", "chunk_size"}).
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "content_hash", ownerScheme.GetEncryptedKey(), "/", fileref.CHUNK_SIZE),
 					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
-					WithArgs(guestClient.ClientID).
-					WillReturnError(gorm.ErrRecordNotFound)
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
@@ -985,10 +965,6 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "content_hash", "encrypted_key", "parent_path", "chunk_size"}).
 							AddRow("/folder1/subfolder1/file.txt", "f", filePathHash, filePathHash, "content_hash", ownerScheme.GetEncryptedKey(), "/folder1/subfolder1", filestore.CHUNK_SIZE),
 					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "collaborators" WHERE`)).
-					WithArgs(guestClient.ClientID).
-					WillReturnError(gorm.ErrRecordNotFound)
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder1")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).

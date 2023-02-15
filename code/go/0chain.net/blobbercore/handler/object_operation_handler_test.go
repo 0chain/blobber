@@ -77,7 +77,6 @@ func TestDownloadFile(t *testing.T) {
 
 		parameters struct {
 			isOwner         bool
-			isCollaborator  bool
 			isRepairer      bool
 			useAuthTicket   bool
 			isRevoked       bool
@@ -235,18 +234,6 @@ func TestDownloadFile(t *testing.T) {
 			}},
 		)
 
-		var collaboratorRtv int
-		if p.isCollaborator {
-			collaboratorRtv = 1
-		}
-		mocket.Catcher.NewMock().OneTime().WithQuery(
-			`SELECT count(*) FROM "collaborators" WHERE`,
-		).WithArgs(
-			mockClient.ClientID,
-		).WithReply(
-			[]map[string]interface{}{{"count": collaboratorRtv}},
-		)
-
 		var funds int64
 		if p.isFundedBlobber || p.isFunded0Chain {
 			funds = mockBigBalance
@@ -358,7 +345,7 @@ func TestDownloadFile(t *testing.T) {
 				Tx: mockAllocationTx,
 			}
 		}
-		require.True(t, (p.isOwner && !p.isCollaborator && !p.useAuthTicket) || !p.isOwner)
+		require.True(t, (p.isOwner && !p.useAuthTicket) || !p.isOwner)
 		p.inData.pathHash = fileref.GetReferenceLookup(p.inData.allocationID, p.inData.remotefilepath)
 		p.payerId = mockOwner
 	}
@@ -368,7 +355,6 @@ func TestDownloadFile(t *testing.T) {
 			name: "ok_owner_funded_blobber",
 			parameters: parameters{
 				isOwner:         true,
-				isCollaborator:  false,
 				isRepairer:      false,
 				useAuthTicket:   false,
 				isRevoked:       false,
@@ -381,7 +367,6 @@ func TestDownloadFile(t *testing.T) {
 			name: "ok_owner_funded_0chain",
 			parameters: parameters{
 				isOwner:         true,
-				isCollaborator:  false,
 				isRepairer:      false,
 				useAuthTicket:   false,
 				isRevoked:       false,
@@ -394,7 +379,6 @@ func TestDownloadFile(t *testing.T) {
 			name: "err_owner_not_funded",
 			parameters: parameters{
 				isOwner:         true,
-				isCollaborator:  false,
 				isRepairer:      false,
 				useAuthTicket:   false,
 				isRevoked:       false,
@@ -408,39 +392,9 @@ func TestDownloadFile(t *testing.T) {
 			},
 		},
 		{
-			name: "err_collaborator_without_authticket",
-			parameters: parameters{
-				isOwner:         false,
-				isCollaborator:  true,
-				isRepairer:      false,
-				useAuthTicket:   false,
-				isRevoked:       false,
-				isFundedBlobber: true,
-				isFunded0Chain:  true,
-				rxPay:           false,
-			},
-			want: want{
-				err: false,
-			},
-		},
-		{
-			name: "ok_collaborator_with_authticket",
-			parameters: parameters{
-				isOwner:         false,
-				isCollaborator:  true,
-				isRepairer:      false,
-				useAuthTicket:   true,
-				isRevoked:       false,
-				isFundedBlobber: true,
-				isFunded0Chain:  true,
-				rxPay:           false,
-			},
-		},
-		{
 			name: "ok_authTicket_wp_owner",
 			parameters: parameters{
 				isOwner:         false,
-				isCollaborator:  false,
 				isRepairer:      false,
 				useAuthTicket:   true,
 				isRevoked:       false,
@@ -453,7 +407,6 @@ func TestDownloadFile(t *testing.T) {
 			name: "ok_authTicket_wp_3rdParty_funded_0chain",
 			parameters: parameters{
 				isOwner:         false,
-				isCollaborator:  false,
 				isRepairer:      false,
 				useAuthTicket:   true,
 				isRevoked:       false,
@@ -466,7 +419,6 @@ func TestDownloadFile(t *testing.T) {
 			name: "err_authTicket_wp_3rdParty_revoked",
 			parameters: parameters{
 				isOwner:         false,
-				isCollaborator:  false,
 				isRepairer:      false,
 				useAuthTicket:   true,
 				isRevoked:       true,
@@ -483,7 +435,6 @@ func TestDownloadFile(t *testing.T) {
 			name: "ok_authTicket_wp_owner",
 			parameters: parameters{
 				isOwner:         false,
-				isCollaborator:  false,
 				isRepairer:      false,
 				useAuthTicket:   true,
 				isRevoked:       false,
@@ -496,7 +447,6 @@ func TestDownloadFile(t *testing.T) {
 			name: "ok_repairer_with_authticket",
 			parameters: parameters{
 				isOwner:         false,
-				isCollaborator:  false,
 				isRepairer:      true,
 				useAuthTicket:   true,
 				isRevoked:       false,
@@ -509,7 +459,6 @@ func TestDownloadFile(t *testing.T) {
 			name: "err_repairer_without_authticket",
 			parameters: parameters{
 				isOwner:         false,
-				isCollaborator:  false,
 				isRepairer:      true,
 				useAuthTicket:   false,
 				isRevoked:       false,
