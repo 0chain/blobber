@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -40,6 +41,7 @@ type JSONReqResponderF func(ctx context.Context, json map[string]interface{}) (i
 func Respond(w http.ResponseWriter, data interface{}, err error) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if err != nil {
 		data := make(map[string]interface{}, 2)
 		data["error"] = err.Error()
@@ -47,7 +49,9 @@ func Respond(w http.ResponseWriter, data interface{}, err error) {
 			data["code"] = cerr.Code
 		}
 		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(data) //nolint:errcheck // checked in previous step
+		buf := bytes.NewBuffer(nil)
+		json.NewEncoder(buf).Encode(data)              //nolint:errcheck // checked in previous step
+		json.NewEncoder(w).Encode(buf.String() + "\n") //nolint:errcheck // checked in previous step
 	} else if data != nil {
 		json.NewEncoder(w).Encode(data) //nolint:errcheck // checked in previous step
 	}

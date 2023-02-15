@@ -140,7 +140,7 @@ func TestHandlers_Share(t *testing.T) {
 			alloc:       alloc,
 			setupDbMock: baseSetupDbMock,
 			wantCode:    http.StatusBadRequest,
-			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n",
+			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n\n",
 		}
 		negativeTests = append(negativeTests, emptySignature)
 
@@ -174,7 +174,7 @@ func TestHandlers_Share(t *testing.T) {
 			alloc:       alloc,
 			setupDbMock: baseSetupDbMock,
 			wantCode:    http.StatusBadRequest,
-			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n",
+			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n\n",
 		}
 		negativeTests = append(negativeTests, wrongSignature)
 	}

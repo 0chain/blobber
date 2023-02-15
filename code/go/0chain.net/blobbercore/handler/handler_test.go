@@ -336,7 +336,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			alloc:       alloc,
 			setupDbMock: baseSetupDbMock,
 			wantCode:    http.StatusBadRequest,
-			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n",
+			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n\n",
 		}
 		uploadNegativeTests = append(uploadNegativeTests, emptySignature)
 
@@ -402,7 +402,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			alloc:       alloc,
 			setupDbMock: baseSetupDbMock,
 			wantCode:    http.StatusBadRequest,
-			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n",
+			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n\n",
 		}
 		uploadNegativeTests = append(uploadNegativeTests, wrongSignature)
 	}
@@ -458,7 +458,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			alloc:       alloc,
 			setupDbMock: baseSetupDbMock,
 			wantCode:    http.StatusBadRequest,
-			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n",
+			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n\n",
 		}
 		negativeTests = append(negativeTests, emptySignature)
 
@@ -496,7 +496,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			alloc:       alloc,
 			setupDbMock: baseSetupDbMock,
 			wantCode:    http.StatusBadRequest,
-			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n",
+			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: Invalid signature\"}\n\n",
 		}
 		negativeTests = append(negativeTests, wrongSignature)
 	}
