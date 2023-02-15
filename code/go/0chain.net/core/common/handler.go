@@ -41,6 +41,7 @@ type JSONReqResponderF func(ctx context.Context, json map[string]interface{}) (i
 func Respond(w http.ResponseWriter, data interface{}, err error) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if err != nil {
 		data := make(map[string]interface{}, 2)
 		data["error"] = err.Error()
@@ -49,7 +50,6 @@ func Respond(w http.ResponseWriter, data interface{}, err error) {
 		}
 		buf := bytes.NewBuffer(nil)
 		json.NewEncoder(buf).Encode(data) //nolint:errcheck // checked in previous step
-		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.WriteHeader(400)
 		fmt.Fprintln(w, buf.String())
 	} else if data != nil {
