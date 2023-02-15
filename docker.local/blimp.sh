@@ -9,7 +9,7 @@ ALLOCATION=0chainallocationid
 BLOCK_WORKER_URL=https://helm.0chain.net/dns
 # todo: check with team
 MINIO_TOKEN=0chainminiotoken
-BLIMP_DOMAIN=0chainblimpdomain
+BLIMP_DOMAIN=blimpdomain
 
 sudo apt update
 sudo apt install -y unzip curl containerd docker.io
