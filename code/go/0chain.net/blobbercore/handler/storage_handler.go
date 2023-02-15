@@ -55,7 +55,7 @@ func (fsh *StorageHandler) verifyAllocation(ctx context.Context, tx string, read
 			"use of expired allocation")
 	}
 
-	return
+	return alloc, nil
 }
 
 func (fsh *StorageHandler) convertGormError(err error) error {
