@@ -118,7 +118,7 @@ services:
     container_name: minioserver
     command: ["minio", "gateway", "zcn"]
     environment:
-      MINIO_AUDIT_WEBHOOK_ENDPOINT: http://api:8080/api/ingest?token=12345
+      MINIO_AUDIT_WEBHOOK_ENDPOINT: http://api:8080/api/ingest?token=${MINIO_TOKEN}
       MINIO_AUDIT_WEBHOOK_AUTH_TOKEN: 12345
       MINIO_AUDIT_WEBHOOK_ENABLE: "on"
       MINIO_ROOT_USER: manali
