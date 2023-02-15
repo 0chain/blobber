@@ -97,6 +97,7 @@ func SetupCORSResponse(w http.ResponseWriter, r *http.Request) {
 func ToJSONResponse(handler JSONResponderF) ReqRespHandlerf {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
+		w.Header().Set("Content-Type", "application/json")
 		if r.Method == "OPTIONS" {
 			SetupCORSResponse(w, r)
 			return
