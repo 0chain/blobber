@@ -141,19 +141,6 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}",
 		RateLimitByCommmitRL(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
 
-	// collaborator
-	r.HandleFunc("/v1/file/collaborator/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(AddCollaboratorHandler)))).
-		Methods(http.MethodOptions, http.MethodPost)
-
-	r.HandleFunc("/v1/file/collaborator/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(GetCollaboratorHandler)))).
-		Methods(http.MethodOptions, http.MethodGet)
-
-	r.HandleFunc("/v1/file/collaborator/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RemoveCollaboratorHandler)))).
-		Methods(http.MethodOptions, http.MethodDelete)
-
 	//object info related apis
 	r.HandleFunc("/allocation",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(AllocationHandler))))
@@ -544,7 +531,6 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	path, _ := common.GetField(r, "path")
 	refereeClientID, _ := common.GetField(r, "refereeClientID")
 	filePathHash := fileref.GetReferenceLookup(allocationID, path)
-	//_, err = reference.GetReferenceByLookupHashForAddCollaborator(ctx, allocationID, filePathHash)
 	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())

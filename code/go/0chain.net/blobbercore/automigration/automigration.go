@@ -25,7 +25,6 @@ var tableModels = []tableNameI{
 	new(reference.Ref),
 	new(reference.CommitMetaTxn),
 	new(reference.ShareInfo),
-	new(reference.Collaborator),
 	new(challenge.ChallengeEntity),
 	new(challenge.ChallengeTiming),
 	new(allocation.Allocation),
