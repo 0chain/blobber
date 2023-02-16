@@ -8,7 +8,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 const (
@@ -28,6 +27,12 @@ var pendingMapLock = common.GetNewLocker()
 
 const (
 	TableNameAllocation = "allocations"
+	CanUploadMask       = uint16(1)  // 0000 0001
+	CanDeleteMask       = uint16(2)  // 0000 0010
+	CanUpdateMask       = uint16(4)  // 0000 0100
+	CanMoveMask         = uint16(8)  // 0000 1000
+	CanCopyMask         = uint16(16) // 0001 0000
+	CanRenameMask       = uint16(32) // 0010 0000
 )
 
 type Allocation struct {
@@ -47,10 +52,21 @@ type Allocation struct {
 	LatestRedeemedWM string        `gorm:"column:latest_redeemed_write_marker;size:64"`
 	IsRedeemRequired bool          `gorm:"column:is_redeem_required"`
 	TimeUnit         time.Duration `gorm:"column:time_unit;not null;default:172800000000000"`
-	IsImmutable      bool          `gorm:"is_immutable;not null"`
 	// Ending and cleaning
 	CleanedUp bool `gorm:"column:cleaned_up;not null;default:false"`
 	Finalized bool `gorm:"column:finalized;not null;default:false"`
+
+	// FileOptions to define file restrictions on an allocation for third-parties
+	// default 00000000 for all crud operations suggesting only owner has the below listed abilities.
+	// enabling option/s allows any third party to perform certain ops
+	// 00000001 - 1  - upload
+	// 00000010 - 2  - delete
+	// 00000100 - 4  - update
+	// 00001000 - 8  - move
+	// 00010000 - 16 - copy
+	// 00100000 - 32 - rename
+	FileOptions uint16 `json:"file_options" gorm:"column:file_options;not null;default:63"`
+
 	// Has many terms
 	// If Preload("Terms") is required replace tag `gorm:"-"` with `gorm:"foreignKey:AllocationID"`
 	Terms []*Terms `gorm:"-"`
@@ -58,6 +74,31 @@ type Allocation struct {
 
 func (Allocation) TableName() string {
 	return TableNameAllocation
+}
+
+func (a *Allocation) CanUpload() bool {
+	return (a.FileOptions & CanUploadMask) > 0
+}
+
+func (a *Allocation) CanDelete() bool {
+	return (a.FileOptions & CanDeleteMask) > 0
+
+}
+
+func (a *Allocation) CanUpdate() bool {
+	return (a.FileOptions & CanUpdateMask) > 0
+}
+
+func (a *Allocation) CanMove() bool {
+	return (a.FileOptions & CanMoveMask) > 0
+}
+
+func (a *Allocation) CanCopy() bool {
+	return (a.FileOptions & CanCopyMask) > 0
+}
+
+func (a *Allocation) CanRename() bool {
+	return (a.FileOptions & CanRenameMask) > 0
 }
 
 // RestDurationInTimeUnits returns number (float point) of time units until
@@ -161,21 +202,11 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite int64
 	return nil
 }
 
-func GetWritePoolsBalance(db *gorm.DB, allocationID string) (uint64, error) {
-
-	var balance uint64
-	err := db.Model(&WritePool{}).Select("sum (balance) as tot_balance").Where(
+func GetWritePoolsBalance(db *gorm.DB, allocationID string) (balance uint64, err error) {
+	err = db.Model(&WritePool{}).Select("COALESCE(SUM(balance),0) as tot_balance").Where(
 		"allocation_id = ?", allocationID,
 	).Scan(&balance).Error
-
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, nil
-		}
-		return 0, err
-	}
-
-	return balance, nil
+	return
 }
 
 func (p *Pending) Save(tx *gorm.DB) error {
@@ -257,13 +288,7 @@ func UpdateReadPool(db *gorm.DB, rp *ReadPool) error {
 }
 
 func SetWritePool(db *gorm.DB, allocationID string, wp *WritePool) (err error) {
-	const query = `allocation_id = ?`
-
-	var stub *WritePool
-
-	err = db.Model(&WritePool{}).
-		Where(query, allocationID).
-		Delete(&stub).Error
+	err = db.Delete(&WritePool{}, "allocation_id = ?", allocationID).Error
 	if err != nil {
 		return
 	}
@@ -272,9 +297,7 @@ func SetWritePool(db *gorm.DB, allocationID string, wp *WritePool) (err error) {
 		return
 	}
 
-	err = db.Model(&WritePool{}).Clauses(clause.OnConflict{
-		DoUpdates: clause.AssignmentColumns([]string{"balance"}),
-	}).Create(wp).Error
+	err = db.Create(wp).Error
 	return
 }
 

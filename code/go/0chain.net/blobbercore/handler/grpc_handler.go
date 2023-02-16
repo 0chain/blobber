@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 
@@ -129,34 +128,4 @@ func (b *blobberGRPCService) CommitMetaTxn(ctx context.Context, req *blobbergrpc
 	}
 
 	return convert.GetCommitMetaTxnResponseCreator(resp), nil
-}
-
-func (b *blobberGRPCService) Collaborator(ctx context.Context, req *blobbergrpc.CollaboratorRequest) (*blobbergrpc.CollaboratorResponse, error) {
-	r, err := http.NewRequest(strings.ToUpper(req.Method), "", http.NoBody)
-	if err != nil {
-		return nil, err
-	}
-	httpRequestWithMetaData(r, getGRPCMetaDataFromCtx(ctx), req.Allocation)
-	r.Form = map[string][]string{
-		"path":      {req.Path},
-		"path_hash": {req.PathHash},
-		"collab_id": {req.CollabId},
-	}
-
-	var resp interface{}
-
-	switch req.Method {
-	case http.MethodPost:
-		resp, err = AddCollaboratorHandler(ctx, r)
-	case http.MethodGet:
-		resp, err = GetCollaboratorHandler(ctx, r)
-	case http.MethodDelete:
-		resp, err = RemoveCollaboratorHandler(ctx, r)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return convert.CollaboratorResponseCreator(resp), nil
 }
