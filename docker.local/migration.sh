@@ -120,7 +120,7 @@ services:
     volumes:
       - ${CONFIG_DIR}:/root/.zcn
   minioclient:
-    image: 0chaindev/blimp-clientapi:v0.0.3
+    image: 0chaindev/blimp-clientapi:v0.0.4
     container_name: minioclient
     depends_on:
       - minioserver
