@@ -114,7 +114,7 @@ services:
       - db
 
   minioserver:
-    image: 0chaindev/blimp-minioserver:v0.0.1
+    image: 0chaindev/blimp-minioserver:v0.0.2
     container_name: minioserver
     command: ["minio", "gateway", "zcn"]
     environment:
