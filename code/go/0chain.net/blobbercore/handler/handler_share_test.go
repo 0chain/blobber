@@ -31,6 +31,7 @@ import (
 const (
 	insertShare = "InsertShare"
 	revokeShare = "RevokeShare"
+	listShare   = "ListShare"
 )
 
 func setupShareHandlers() (*mux.Router, map[string]string) {
@@ -45,10 +46,15 @@ func setupShareHandlers() (*mux.Router, map[string]string) {
 		common.ToJSONResponse(
 			WithReadOnlyConnection(RevokeShare))).Name(revokeShare).Methods(http.MethodDelete)
 
+	router.HandleFunc(sharePath,
+		common.ToJSONResponse(
+			WithReadOnlyConnection(ListShare))).Name(revokeShare).Methods(http.MethodGet)
+
 	return router,
 		map[string]string{
 			insertShare: http.MethodPost,
 			revokeShare: http.MethodDelete,
+			listShare:   http.MethodGet,
 		}
 }
 
