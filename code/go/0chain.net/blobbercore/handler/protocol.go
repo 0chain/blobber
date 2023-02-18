@@ -10,12 +10,11 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
-
 	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
 )
@@ -103,7 +102,7 @@ func RegisterBlobber(ctx context.Context) error {
 		return nil
 	}
 
-	txnHash, err := SendHealthCheck()
+	txnHash, err := SendHealthCheck(common.ProviderTypeBlobber)
 	if err != nil {
 		logging.Logger.Error("Failed to send healthcheck transaction", zap.String("txn_hash", txnHash))
 		return err
@@ -220,6 +219,15 @@ var ErrBlobberHasRemoved = errors.New("blobber has been removed")
 // ErrBlobberNotFound it is not registered on chain
 var ErrBlobberNotFound = errors.New("blobber is not found")
 
+// ErrValidatorHasRemoved represents service health check error, where the
+// Validator has removed (by owner, in case the Validator doesn't provide its
+// service anymore). Thus the Validator shouldn't send the health check
+// transactions.
+var ErrValidatorHasRemoved = errors.New("validator has been removed")
+
+// ErrValidatorNotFound it is not registered on chain
+var ErrValidatorNotFound = errors.New("validator is not found")
+
 func TransactionVerify(txn *transaction.Transaction) (t *transaction.Transaction, err error) {
 	msg := fmt.Sprintf("Verifying transaction: max_retries: %d", util.MAX_RETRIES)
 	logging.Logger.Info(msg)
@@ -245,8 +253,18 @@ func WalletRegister() error {
 }
 
 // SendHealthCheck send heartbeat to blockchain
-func SendHealthCheck() (string, error) {
-	txn, err := BlobberHealthCheck()
+func SendHealthCheck(provider common.ProviderType) (string, error) {
+
+	var txn *transaction.Transaction
+	var err error
+
+	switch common.ProviderTypeBlobber {
+	case common.ProviderTypeBlobber:
+		txn, err = BlobberHealthCheck()
+	case common.ProviderTypeValidator:
+		txn, err = ValidatorHealthCheck()
+	}
+
 	if err != nil {
 		return "", err
 	}

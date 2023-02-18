@@ -12,6 +12,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/build"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common/handler"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
@@ -76,6 +77,7 @@ func main() {
 	config.Configuration.MaxStake = int64(viper.GetFloat64("max_stake") * 1e10)
 	config.Configuration.NumDelegates = viper.GetInt("num_delegates")
 	config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
+	config.Configuration.HealthCheckWorkerFreq = viper.GetDuration("healthcheck.frequency")
 
 	//address := publicIP + ":" + portString
 	address := ":" + *portString
@@ -198,6 +200,9 @@ func RegisterValidator() {
 			Logger.Error("Add validator transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txn.Hash))
 		}
 	}
+
+	go handler.StartHealthCheck(common.GetRootContext(), common.ProviderTypeValidator)
+
 }
 
 func SetupValidatorOnBC(logDir string) error {
