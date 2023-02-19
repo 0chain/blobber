@@ -136,28 +136,32 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID, startAllocationRo
 	db := datastore.GetStore().GetTransaction(ctx)
 	var seqRange []int64
 	err := db.Table((WriteMarkerEntity{}).TableName()).
-		Where(WriteMarker{AllocationRoot: startAllocationRoot, AllocationID: allocationID}).
-		Or(WriteMarker{AllocationRoot: endAllocationRoot, AllocationID: allocationID}).
-		Order("sequence").
-		Pluck("sequence", &seqRange).Error
+		Where("allocation_id=?", allocationID).
+		Where("allocation_root=? OR allocation_root=?", startAllocationRoot, endAllocationRoot).
+		Order("sequence").Pluck("sequence", &seqRange).Error
 	if err != nil {
 		return nil, err
 	}
+	if len(seqRange) == 0 || len(seqRange) > 2 {
+		return nil, common.NewError("write_marker_not_found", "Could not find the right write markers in the range")
+	}
+
 	if len(seqRange) == 1 {
 		seqRange = append(seqRange, seqRange[0])
 	}
-	if len(seqRange) == 2 {
-		retMarkers := make([]*WriteMarkerEntity, 0)
-		err = db.Where("allocation_id=? and  sequence BETWEEN ? AND ?", allocationID, seqRange[0], seqRange[1]).Order("sequence").Find(&retMarkers).Error
-		if err != nil {
-			return nil, err
-		}
-		if len(retMarkers) == 0 {
-			return nil, common.NewError("write_marker_not_found", "Could not find the write markers in the range")
-		}
-		return retMarkers, nil
+
+	retMarkers := make([]*WriteMarkerEntity, 0)
+	err = db.Where("allocation_id=? AND sequence BETWEEN ? AND ?",
+		allocationID, seqRange[0], seqRange[1]).Order("sequence").
+		Find(&retMarkers).Error
+	if err != nil {
+		return nil, err
 	}
-	return nil, common.NewError("write_marker_not_found", "Could not find the right write markers in the range")
+
+	if len(retMarkers) == 0 {
+		return nil, common.NewError("write_marker_not_found", "Could not find the write markers in the range")
+	}
+	return retMarkers, nil
 }
 
 func (wm *WriteMarkerEntity) Save(ctx context.Context) error {
