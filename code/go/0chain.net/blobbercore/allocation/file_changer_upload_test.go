@@ -61,23 +61,23 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 				mocket.Catcher.Reset()
 			},
 		},
-		// {
-		// 	name:                "Upload file changer fails when max dirs & files reached",
-		// 	allocChange:         &AllocationChange{},
-		// 	hash:                "new_file_hash",
-		// 	allocationID:        alloc.ID,
-		// 	maxDirFilesPerAlloc: 5,
-		// 	expectedMessage:     "max_alloc_dir_files_reached: maximum files and directories already reached",
-		// 	expectingError:      true,
-		// 	setupDbMock: func() {
-		// 		mocket.Catcher.Reset()
+		{
+			name:                "Upload file changer fails when max dirs & files reached",
+			allocChange:         &AllocationChange{},
+			hash:                "new_file_hash",
+			allocationID:        alloc.ID,
+			maxDirFilesPerAlloc: 5,
+			expectedMessage:     "max_alloc_dir_files_reached: maximum files and directories already reached",
+			expectingError:      true,
+			setupDbMock: func() {
+				mocket.Catcher.Reset()
 
-		// 		query := `SELECT count(*) FROM "reference_objects" WHERE allocation_id = $1`
-		// 		mocket.Catcher.NewMock().WithQuery(query).WithReply([]map[string]interface{}{
-		// 			{"count": 5},
-		// 		})
-		// 	},
-		// },
+				query := `SELECT count(*) FROM "reference_objects" WHERE allocation_id = $1`
+				mocket.Catcher.NewMock().WithQuery(query).WithReply([]map[string]interface{}{
+					{"count": 5},
+				})
+			},
+		},
 	}
 
 	for _, tt := range testCases {
