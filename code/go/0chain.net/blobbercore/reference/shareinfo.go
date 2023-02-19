@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"gorm.io/gorm"
 )
 
@@ -30,17 +31,13 @@ func AddShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
 	return db.Model(&ShareInfo{}).Create(shareInfo).Error
 }
 
-// ListShareInfo returns list of files I shared?? or list of files shared with??
-func ListShareInfoOwnerID(ctx context.Context, ownerID string) error {
-	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Model(&ShareInfo{}).Where("owner_id=?", ownerID).Error // todo: fix
-}
-
-// ListShareInfo returns list of files I shared?? or list of files shared with??
-func ListShareInfoClientID(ctx context.Context, clientID string) ([]ShareInfo, error) {
+// ListShareInfo returns list of files by a given clientID
+func ListShareInfoClientID(ctx context.Context, clientID string, limit common.Pagination) ([]ShareInfo, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	var shares []ShareInfo
-	err := db.Where("client_id <> ?", clientID).Find(&shares).Error
+	query := db.Where("client_id = ?", clientID).Where("revoked = ?", false).Limit(limit.Limit).Offset(limit.Offset)
+
+	err := query.Find(&shares).Error
 	return shares, err
 }
 

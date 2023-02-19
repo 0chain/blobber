@@ -663,6 +663,11 @@ func ListShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
 	)
 
+	limit, err := common.GetOffsetLimitOrderParam(r.URL.Query())
+	if err != nil {
+		return nil, err
+	}
+
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -679,7 +684,7 @@ func ListShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, common.NewError("invalid_client", "Client has no access to share file")
 	}
 
-	shares, err := reference.ListShareInfoClientID(ctx, clientID)
+	shares, err := reference.ListShareInfoClientID(ctx, clientID, limit)
 	if err != nil {
 		Logger.Error("failed_to_list_share", zap.Error(err))
 		return nil, common.NewError("failed_to_list_share", "failed to list file share")
