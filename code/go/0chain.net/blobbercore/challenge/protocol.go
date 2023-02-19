@@ -125,18 +125,18 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		return ErrNoValidator
 	}
 
+	// Lock allocation changes from happening in handler.CommitWrite function
+	// This lock should be unlocked as soon as possible. We should not defer
+	// unlocking it as it will be locked for longer time and handler.CommitWrite
+	// will fail.
+	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), cr.AllocationID)
+	allocMu.Lock()
+
 	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
 	if err != nil {
 		cr.CancelChallenge(ctx, ErrNoValidator)
 		return err
 	}
-
-	// Lock allocation changes from happening in handler.CommitWrite function
-	// This lock should be unlocked as soon as possible. We should not defer
-	// unlocking it as it will be locked for longer time and handler.CommitWrite
-	// will fail.
-	allocMu := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
-	allocMu.Lock()
 
 	wms, err := writemarker.GetWriteMarkersInRange(ctx, cr.AllocationID, cr.AllocationRoot, allocationObj.AllocationRoot)
 	if err != nil {
