@@ -74,6 +74,12 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 		}
 
 		if !found {
+
+			if change.Operation == constants.FileOperationCopy {
+				return nil, common.NewError("invalid_path",
+						fmt.Sprintf("destpath does not exist."))
+			}
+
 			newRef := reference.NewDirectoryRef()
 			newRef.AllocationID = rf.AllocationID
 			newRef.Path = filepath.Join("/", strings.Join(fields[:i+1], "/"))
