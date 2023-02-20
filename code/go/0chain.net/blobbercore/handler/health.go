@@ -46,8 +46,8 @@ func BlobberHealthCheck() (*transaction.Transaction, error) {
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
 		transaction.BLOBBER_HEALTH_CHECK, common.Now(), 0)
 	if err != nil {
-		logging.Logger.Info("Failed to health check blobber on the blockchain",
-			zap.String("err:", err.Error()))
+		logging.Logger.Error("Failed to health check blobber on the blockchain",
+			zap.Error(err))
 		setBlobberHealthCheckError(err)
 
 		return nil, err
@@ -56,44 +56,22 @@ func BlobberHealthCheck() (*transaction.Transaction, error) {
 	return txn, nil
 }
 
-// set and get implementations validator check for /_stats for validator health check
-
-// var (
-// 	validatorHealthCheckError error
-// 	validatorHealthCheckMutex sync.RWMutex
-// )
-
-// func setValidatorHealthCheckError(err error) {
-// 	validatorHealthCheckMutex.Lock()
-// 	validatorHealthCheckError = err
-// 	validatorHealthCheckMutex.Unlock()
-// }
-
-// func getValidatorHealthCheckError() error {
-// 	validatorHealthCheckMutex.RLock()
-// 	err := validatorHealthCheckError
-// 	validatorHealthCheckMutex.RUnlock()
-// 	return err
-// }
-
 func ValidatorHealthCheck() (*transaction.Transaction, error) {
 
 	if valConfig.Configuration.Capacity == 0 {
-		// setValidatorHealthCheckError(ErrValidatorHasRemoved)
 		return nil, ErrValidatorHasRemoved
 	}
 
 	txn, err := transaction.NewTransactionEntity()
 
 	if err != nil {
-		// setValidatorHealthCheckError(err)
+
 		return nil, err
 	}
 
 	if err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.VALIDATOR_HEALTH_CHECK, common.Now(), 0); err != nil {
-		logging.Logger.Info("Failed to health check validator on the blockchain",
-			zap.String("err:", err.Error()))
-		// setValidatorHealthCheckError(err)
+		logging.Logger.Error("Failed to health check validator on the blockchain",
+			zap.Error(err))
 		return nil, err
 	}
 
