@@ -392,18 +392,21 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 				startBlock, maxBlockNum))
 	}
 
-	vp := validationTreeProof{
-		dataSize: readBlockIn.FileSize,
-	}
+	nodesSize := getNodesSize(filesize, util.MaxMerkleLeavesSize)
+	vmp := &FileDownloadResponse{}
 
-	nodes, indexes, nodesSize, err := vp.GetMerkleProofOfMultipleIndexes(file, startBlock, endBlock)
-	if err != nil {
-		return nil, common.NewError("get_merkle_proof_error", err.Error())
-	}
+	if readBlockIn.VerifyDownload {
+		vp := validationTreeProof{
+			dataSize: readBlockIn.FileSize,
+		}
 
-	vmp := &FileDownloadResponse{
-		Nodes:   nodes,
-		Indexes: indexes,
+		nodes, indexes, err := vp.GetMerkleProofOfMultipleIndexes(file, nodesSize, startBlock, endBlock)
+		if err != nil {
+			return nil, common.NewError("get_merkle_proof_error", err.Error())
+		}
+
+		vmp.Nodes = nodes
+		vmp.Indexes = indexes
 	}
 
 	fileOffset := FMTSize + nodesSize + int64(startBlock)*ChunkSize

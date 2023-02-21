@@ -286,11 +286,11 @@ type validationTreeProof struct {
 // If endInd - startInd is whole file then no proof is required at all.
 // startInd and endInd is taken as closed interval. So to get proof for data at index 0 both startInd
 // and endInd would be 0.
-func (v *validationTreeProof) GetMerkleProofOfMultipleIndexes(r io.ReadSeeker, startInd, endInd int) (
-	[][][]byte, [][]int, int64, error) {
+func (v *validationTreeProof) GetMerkleProofOfMultipleIndexes(r io.ReadSeeker, nodesSize int64, startInd, endInd int) (
+	[][][]byte, [][]int, error) {
 
 	if startInd < 0 || endInd < 0 {
-		return nil, nil, 0, errors.New("index cannot be negative")
+		return nil, nil, errors.New("index cannot be negative")
 	}
 
 	v.totalLeaves = calculateLeaves(v.dataSize)
@@ -299,24 +299,24 @@ func (v *validationTreeProof) GetMerkleProofOfMultipleIndexes(r io.ReadSeeker, s
 	}
 
 	if endInd < startInd {
-		return nil, nil, 0, errors.New("end index cannot be lesser than start index")
+		return nil, nil, errors.New("end index cannot be lesser than start index")
 	}
 
 	if v.depth == 0 {
 		v.depth = calculateDepth(v.totalLeaves)
 	}
 
-	nodesSize := getNodesSize(v.dataSize, util.MaxMerkleLeavesSize)
+	// nodesSize := getNodesSize(v.dataSize, util.MaxMerkleLeavesSize)
 	offsets, leftRightIndexes := v.getFileOffsetsAndNodeIndexes(startInd, endInd)
 	nodesData := make([]byte, nodesSize)
 	_, err := r.Seek(FMTSize, io.SeekStart)
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, nil, err
 	}
 
 	_, err = r.Read(nodesData)
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, nil, err
 	}
 
 	offsetInd := 0
@@ -327,13 +327,13 @@ func (v *validationTreeProof) GetMerkleProofOfMultipleIndexes(r io.ReadSeeker, s
 			off := offsets[offsetInd]
 			n := copy(b, nodesData[off:off+HashSize])
 			if n != HashSize {
-				return nil, nil, 0, errors.New("invalid hash length")
+				return nil, nil, errors.New("invalid hash length")
 			}
 			nodeHashes[i] = append(nodeHashes[i], b)
 			offsetInd++
 		}
 	}
-	return nodeHashes, leftRightIndexes, nodesSize, nil
+	return nodeHashes, leftRightIndexes, nil
 }
 
 // getFileOffsetsAndNodeIndexes

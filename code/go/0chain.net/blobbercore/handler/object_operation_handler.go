@@ -282,11 +282,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		}
 	} else {
 		rbi := &filestore.ReadBlockInput{
-			AllocationID:  alloc.ID,
-			FileSize:      fileref.Size,
-			Hash:          fileref.ValidationRoot,
-			StartBlockNum: int(dr.BlockNum),
-			NumBlocks:     int(dr.NumBlocks),
+			AllocationID:   alloc.ID,
+			FileSize:       fileref.Size,
+			Hash:           fileref.ValidationRoot,
+			StartBlockNum:  int(dr.BlockNum),
+			NumBlocks:      int(dr.NumBlocks),
+			VerifyDownload: dr.VerifyDownload,
 		}
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
 		if err != nil {
@@ -373,7 +374,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_params", "Please provide clientID and clientKey")
 	}
 
-	if (allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID) {
+	if allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 

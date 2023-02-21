@@ -83,12 +83,13 @@ type FileDownloadResponse struct {
 }
 
 type ReadBlockInput struct {
-	AllocationID  string
-	FileSize      int64
-	Hash          string
-	StartBlockNum int
-	NumBlocks     int
-	IsThumbnail   bool
+	AllocationID   string
+	FileSize       int64
+	Hash           string
+	StartBlockNum  int
+	NumBlocks      int
+	IsThumbnail    bool
+	VerifyDownload bool
 }
 
 type ChallengeResponse struct {

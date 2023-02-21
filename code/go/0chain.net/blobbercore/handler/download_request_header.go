@@ -13,16 +13,16 @@ import (
 
 // DownloadRequestHeader metedata of download request
 type DownloadRequestHeader struct {
-	req          *http.Request
-	allocationID string
-	PathHash     string
-	Path         string
-	BlockNum     int64
-	NumBlocks    int64
-	ReadMarker   readmarker.ReadMarker
-	AuthToken    string
-	RxPay        bool
-	DownloadMode string
+	req            *http.Request
+	allocationID   string
+	PathHash       string
+	Path           string
+	BlockNum       int64
+	NumBlocks      int64
+	ReadMarker     readmarker.ReadMarker
+	AuthToken      string
+	VerifyDownload bool
+	DownloadMode   string
 }
 
 func FromDownloadRequest(allocationID string, req *http.Request) (*DownloadRequestHeader, error) {
@@ -89,9 +89,8 @@ func (dr *DownloadRequestHeader) Parse() error {
 
 	dr.AuthToken = dr.Get("X-Auth-Token")
 
-	dr.RxPay = dr.Get("X-Rxpay") == "true"
 	dr.DownloadMode = dr.Get("X-Mode")
-
+	dr.VerifyDownload = dr.Get("X-Verify-Download") == "true"
 	return nil
 }
 
