@@ -51,7 +51,11 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 
 	sn := &ChallengeResponse{}
 	sn.ChallengeID = cr.ChallengeID
-	sn.ValidationTickets = cr.ValidationTickets
+	for _, vt := range cr.ValidationTickets {
+		if vt != nil {
+			sn.ValidationTickets = append(sn.ValidationTickets, vt)
+		}
+	}
 
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CHALLENGE_RESPONSE, sn, 0)
 	if err != nil {
