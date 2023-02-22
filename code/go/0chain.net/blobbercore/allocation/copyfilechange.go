@@ -12,6 +12,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+
+	"github.com/0chain/gosdk/constants"
 )
 
 type CopyFileChange struct {
