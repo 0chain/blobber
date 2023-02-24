@@ -20,6 +20,7 @@ PREFIX=0chainprefix
 RESUME=0chainresume
 MIGRATE_TO=0chainmigrateto
 WORKING_DIR=0chainwd
+CONFIG_DIR=$HOME/.zcn
 
 # BLOCK_WORKER_URL=0chainblockworkerurl
 BLOCK_WORKER_URL=https://helm.0chain.net/dns
@@ -33,8 +34,16 @@ docker-compose --version
 
 sudo curl -L "https://s3-mig-binaries.s3.us-east-2.amazonaws.com/s3mgrt" -o /usr/local/bin/s3mgrt
 chmod +x /usr/local/bin/s3mgrt
-CONFIG_DIR=$HOME/.zcn
+
 mkdir -p ${MIGRATION_ROOT}
+
+# check if wallet.json file exists
+test -f n; echo $?
+if [ ! -f ${CONFIG_DIR}/wallet.json ]
+then
+	echo "wallet.json does not exist in ${CONFIG_DIR}. Exiting..."
+	exit 1
+fi
 
 cat <<EOF >${CONFIG_DIR}/allocation.txt
 $ALLOCATION
