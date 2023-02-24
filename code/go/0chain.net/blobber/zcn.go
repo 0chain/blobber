@@ -69,7 +69,6 @@ func registerOnChain() error {
 
 	// go StartHealthCheck(ctx, common.ProviderTypeBlobber)
 	go handleCommon.StartHealthCheck(ctx, common.ProviderTypeBlobber)
-	go startRefreshSettings(ctx)
 
 	if config.Configuration.PriceInUSD {
 		go refreshPriceOnChain(ctx)

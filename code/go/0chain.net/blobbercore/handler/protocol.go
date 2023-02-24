@@ -114,7 +114,7 @@ func RegisterBlobber(ctx context.Context) error {
 // UpdateBlobber update blobber
 func UpdateBlobber(ctx context.Context) error {
 
-	txn, err := sendSmartContractBlobberAdd(ctx)
+	txn, err := sendSmartContractBlobberUpdate(ctx)
 	if err != nil {
 		return err
 	}
