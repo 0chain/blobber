@@ -22,6 +22,14 @@ docker-compose --version
 # create config dir
 mkdir -p $CONFIG_DIR
 
+# check if wallet.json file exists
+test -f n; echo $?
+if [ ! -f ${CONFIG_DIR}/wallet.json ]
+then
+	echo "wallet.json does not exist in ${CONFIG_DIR}. Exiting..."
+	exit 1
+fi
+
 # create config.yaml
 cat <<EOF >${CONFIG_DIR}/config.yaml
 block_worker: ${BLOCK_WORKER_URL}
