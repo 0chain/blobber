@@ -7,6 +7,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	valConfig "github.com/0chain/blobber/code/go/0chain.net/validatorcore/config"
 	"go.uber.org/zap"
 )
 
@@ -45,12 +46,34 @@ func BlobberHealthCheck() (*transaction.Transaction, error) {
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
 		transaction.BLOBBER_HEALTH_CHECK, common.Now(), 0)
 	if err != nil {
-		logging.Logger.Info("Failed to health check on the blockchain",
-			zap.String("err:", err.Error()))
+		logging.Logger.Error("Failed to health check blobber on the blockchain",
+			zap.Error(err))
 		setBlobberHealthCheckError(err)
 
 		return nil, err
 	}
 
 	return txn, nil
+}
+
+func ValidatorHealthCheck() (*transaction.Transaction, error) {
+
+	if valConfig.Configuration.Capacity == 0 {
+		return nil, ErrValidatorHasRemoved
+	}
+
+	txn, err := transaction.NewTransactionEntity()
+
+	if err != nil {
+
+		return nil, err
+	}
+
+	if err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.VALIDATOR_HEALTH_CHECK, common.Now(), 0); err != nil {
+		logging.Logger.Error("Failed to health check validator on the blockchain",
+			zap.Error(err))
+		return nil, err
+	}
+
+	return txn, err
 }
