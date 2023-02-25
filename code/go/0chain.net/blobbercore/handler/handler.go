@@ -149,7 +149,7 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/meta/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
 
-	r.HandleFunc("/v1/file/meta/{allocation}/{keyword:.*} ",
+	r.HandleFunc("/v1/file/meta/{allocation}/{keyword:.*}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(SearchFilesMetaHandler))))
 
 	r.HandleFunc("/v1/file/stats/{allocation}",
