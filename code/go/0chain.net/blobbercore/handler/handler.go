@@ -148,6 +148,9 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/meta/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
 
+	r.HandleFunc("/v1/file/meta/{allocation}/{keyword}",
+		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(SearchFilesMetaHandler))))
+
 	r.HandleFunc("/v1/file/stats/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
 
@@ -285,6 +288,20 @@ func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetFileMeta(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func SearchFilesMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+	keyword := r.FormValue("keyword")
+	if keyword == "" {
+		return nil, common.NewError("invalid_parameters", "Missing keyword parameter")
+	}
+
+	response, err := storageHandler.GetFilesMetaByKeyword(ctx, r, keyword)
 	if err != nil {
 		return nil, err
 	}
@@ -648,7 +665,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	return map[string]interface{}{"message": "Share info added successfully"}, nil
 }
 
-//PrintCSS - print the common css elements
+// PrintCSS - print the common css elements
 func PrintCSS(w http.ResponseWriter) {
 	fmt.Fprintf(w, "<style>\n")
 	fmt.Fprintf(w, ".number { text-align: right; }\n")
