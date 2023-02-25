@@ -79,7 +79,7 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 
 			if change.Operation == constants.FileOperationCopy {
 				return nil, common.NewError("invalid_path",
-						fmt.Sprintf("destpath does not exist."))
+						fmt.Sprintf("%s destpath does not exist.", rf.DestPath))
 			}
 
 			newRef := reference.NewDirectoryRef()
