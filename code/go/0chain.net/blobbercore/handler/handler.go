@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime/pprof"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/0chain/gosdk/constants"
@@ -148,7 +149,7 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/meta/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
 
-	r.HandleFunc("/v1/file/meta/{allocation}/{keyword}",
+	r.HandleFunc("/v1/file/meta/{allocation}/{keyword:.*} ",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(SearchFilesMetaHandler))))
 
 	r.HandleFunc("/v1/file/stats/{allocation}",
@@ -296,9 +297,10 @@ func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 
 func SearchFilesMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
-	keyword := r.FormValue("keyword")
-	if keyword == "" {
-		return nil, common.NewError("invalid_parameters", "Missing keyword parameter")
+	vars := mux.Vars(r)
+	keyword := vars["keyword"]
+	if keyword == "" || strings.TrimSpace(keyword) == "" {
+		return nil, common.NewError("invalid_parameters", "Keyword is empty or whitespace-only")
 	}
 
 	response, err := storageHandler.GetFilesMetaByKeyword(ctx, r, keyword)

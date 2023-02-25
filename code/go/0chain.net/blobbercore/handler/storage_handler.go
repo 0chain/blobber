@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"gorm.io/gorm"
 
@@ -178,10 +177,6 @@ func (fsh *StorageHandler) GetFilesMetaByKeyword(ctx context.Context, r *http.Re
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
-	if keyword == "" || strings.TrimSpace(keyword) == "" {
-		return nil, common.NewError("invalid_keyword", "Keyword is empty or whitespace-only")
 	}
 
 	filerefs, err := reference.GetReferencesByName(ctx, allocationID, keyword)
