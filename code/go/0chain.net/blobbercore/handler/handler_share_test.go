@@ -5,6 +5,7 @@ package handler
 
 import (
 	"bytes"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -42,13 +43,11 @@ func setupShareHandlers() (*mux.Router, map[string]string) {
 	router.HandleFunc(sharePath, common.ToJSONResponse(
 		WithReadOnlyConnection(InsertShare))).Name(insertShare).Methods(http.MethodPost)
 
-	router.HandleFunc(sharePath,
-		common.ToJSONResponse(
-			WithReadOnlyConnection(RevokeShare))).Name(revokeShare).Methods(http.MethodDelete)
+	router.HandleFunc(sharePath, common.ToJSONResponse(
+		WithReadOnlyConnection(RevokeShare))).Name(revokeShare).Methods(http.MethodDelete)
 
-	router.HandleFunc(sharePath,
-		common.ToJSONResponse(
-			WithReadOnlyConnection(ListShare))).Name(revokeShare).Methods(http.MethodGet)
+	router.HandleFunc(sharePath, common.ToJSONResponse(
+		WithReadOnlyConnection(ListShare))).Name(listShare).Methods(http.MethodGet)
 
 	return router,
 		map[string]string{
@@ -130,6 +129,7 @@ func TestHandlers_Share(t *testing.T) {
 			args: args{
 				w: httptest.NewRecorder(),
 				r: func() *http.Request {
+					fmt.Println(name)
 					url, err := router.Get(name).URL("allocation", alloc.Tx)
 					if err != nil {
 						t.Fatal()
