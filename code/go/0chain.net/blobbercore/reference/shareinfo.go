@@ -32,10 +32,10 @@ func AddShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
 }
 
 // ListShareInfo returns list of files by a given clientID
-func ListShareInfoClientID(ctx context.Context, clientID string, limit common.Pagination) ([]ShareInfo, error) {
+func ListShareInfoClientID(ctx context.Context, ownerID string, limit common.Pagination) ([]ShareInfo, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	var shares []ShareInfo
-	query := db.Where("client_id = ?", clientID).Where("revoked = ?", false).Limit(limit.Limit).Offset(limit.Offset)
+	query := db.Where("owner_id = ?", ownerID).Where("revoked = ?", false).Limit(limit.Limit).Offset(limit.Offset)
 
 	err := query.Find(&shares).Error
 	return shares, err
