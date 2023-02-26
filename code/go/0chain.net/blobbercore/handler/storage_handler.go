@@ -166,7 +166,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	return result, nil
 }
 
-func (fsh *StorageHandler) GetFilesMetaByKeyword(ctx context.Context, r *http.Request, keyword string) (result []map[string]interface{}, err error) {
+func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Request, name string) (result []map[string]interface{}, err error) {
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	alloc, err := fsh.verifyAllocation(ctx, allocationTx, true)
 	if err != nil {
@@ -179,7 +179,7 @@ func (fsh *StorageHandler) GetFilesMetaByKeyword(ctx context.Context, r *http.Re
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	filerefs, err := reference.GetReferencesByName(ctx, allocationID, keyword)
+	filerefs, err := reference.GetReferencesByName(ctx, allocationID, name)
 	if err != nil {
 		return nil, common.NewError("files_not_found", "No files in this allocation matched the search keyword."+err.Error())
 	}
