@@ -281,23 +281,23 @@ func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error
 	return response, nil
 }
 
-func FileMetaHandler(ctx context.Context, r *http.Request) (response interface{}, err error) {
+func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
 
 	name := r.FormValue("name")
 	if strings.TrimSpace(name) != "" {
-		response, err = storageHandler.GetFilesMetaByName(ctx, r, name)
+		response, err := storageHandler.GetFilesMetaByName(ctx, r, name)
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		response, err = storageHandler.GetFileMeta(ctx, r)
-		if err != nil {
-			return nil, err
-		}
+		return response, nil
 	}
-	return
+	response, err := storageHandler.GetFileMeta(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
 }
 
 func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, error) {
