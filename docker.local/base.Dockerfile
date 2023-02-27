@@ -18,8 +18,7 @@ RUN echo "https://mirrors.aliyun.com/alpine/v3.14/main" >> /etc/apk/repositories
 # Install Herumi's cryptography
 WORKDIR /tmp
 
-COPY ./docker.local/bin/mcl.tar.gz ./ && \
-     ./docker.local/bin/bls.tar.gz ./
+COPY ./docker.local/bin/mcl.tar.gz ./docker.local/bin/bls.tar.gz ./
 
 RUN tar zxvf mcl.tar.gz && rm mcl.tar.gz && mv mcl* mcl && \
     tar zxvf bls.tar.gz && rm bls.tar.gz && mv bls* bls && \
