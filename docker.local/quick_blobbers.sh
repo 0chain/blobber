@@ -481,6 +481,16 @@ services:
     ports:
       - "3001:3001"
     restart: "always"
+  
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command:
+      --label-enable
+      --label "com.example.watchtower.enable=true"
+      --label "com.example.watchtower.image=0chaindev/blobber"
+      --label "com.example.watchtower.tag=staging"
 
 networks:
   default:
