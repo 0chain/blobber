@@ -88,7 +88,6 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 		Type:                reference.FILE,
 		Size:                nf.Size,
 		MimeType:            nf.MimeType,
-		WriteMarker:         allocationRoot,
 		ThumbnailHash:       nf.ThumbnailHash,
 		ThumbnailSize:       nf.ThumbnailSize,
 		ActualThumbnailHash: nf.ActualThumbnailHash,

@@ -131,7 +131,6 @@ func (rf *CopyFileChange) processCopyRefs(
 		newFile.Path = filepath.Join(destRef.Path, srcRef.Name)
 		newFile.Size = srcRef.Size
 		newFile.MimeType = srcRef.MimeType
-		newFile.WriteMarker = allocationRoot
 		newFile.ThumbnailHash = srcRef.ThumbnailHash
 		newFile.ThumbnailSize = srcRef.ThumbnailSize
 		newFile.ActualThumbnailHash = srcRef.ActualThumbnailHash

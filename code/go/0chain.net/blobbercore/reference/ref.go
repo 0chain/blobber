@@ -46,7 +46,6 @@ type Ref struct {
 	ActualFileSize      int64  `gorm:"column:actual_file_size;not null;default:0" filelist:"actual_file_size"`
 	ActualFileHash      string `gorm:"column:actual_file_hash;size:64;not null" filelist:"actual_file_hash"`
 	MimeType            string `gorm:"column:mimetype;size:64;not null" filelist:"mimetype"`
-	WriteMarker         string `gorm:"column:write_marker;size:64;not null"`
 	ThumbnailSize       int64  `gorm:"column:thumbnail_size;not null;default:0" filelist:"thumbnail_size"`
 	ThumbnailHash       string `gorm:"column:thumbnail_hash;size:64;not null" filelist:"thumbnail_hash"`
 	ActualThumbnailSize int64  `gorm:"column:actual_thumbnail_size;not null;default:0" filelist:"actual_thumbnail_size"`
@@ -476,7 +475,6 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 		"path_hash":             r.PathHash,
 		"parent_path":           r.ParentPath,
 		"level":                 r.PathLevel,
-		"write_marker":          r.WriteMarker,
 		"mimetype":              r.MimeType,
 		"custom_meta":           r.CustomMeta,
 		"thumbnail_hash":        r.ThumbnailHash,
@@ -511,7 +509,6 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 		"path_hash":     r.PathHash,
 		"parent_path":   r.ParentPath,
 		"level":         r.PathLevel,
-		"write_marker":  r.WriteMarker,
 		"content_hash":  r.ContentHash,
 		"size":          r.Size,
 		"merkle_root":   r.MerkleRoot,
