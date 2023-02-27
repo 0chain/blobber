@@ -14,7 +14,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
@@ -25,24 +24,6 @@ func setupWorkers(ctx context.Context) {
 	writemarker.SetupWorkers(ctx)
 	allocation.StartUpdateWorker(ctx, config.Configuration.UpdateAllocationsInterval)
 	updateCCTWorker(ctx)
-}
-
-func refreshPriceOnChain(ctx context.Context) {
-	var REPEAT_DELAY = 60 * 60 * time.Duration(viper.GetInt("price_worker_in_hours")) // 12 hours with default settings
-	var err error
-	for {
-		select {
-		case <-ctx.Done():
-			return
-
-		case <-time.After(REPEAT_DELAY * time.Second):
-			err = handler.RefreshPriceOnChain(common.GetRootContext())
-			if err != nil {
-				logging.Logger.Error("refresh price on chain ", zap.Error(err))
-			}
-		}
-
-	}
 }
 
 // startRefreshSettings sync settings from blockchain
