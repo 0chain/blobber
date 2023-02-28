@@ -18,7 +18,7 @@ func TestWriteMarker_GetHashData(t *testing.T) {
 	wm, wallet, err := setupEntityTest(t)
 	require.NoError(t, err)
 
-	want := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v:%v:%v:%v", "alloc_root", "prev_alloc_root", "file_meta_root", "alloc_id", "blobber_id", wallet.ClientID, 1, wm.Timestamp, 2, 2)
+	want := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v:%v", "alloc_root", "prev_alloc_root", "file_meta_root", "alloc_id", "blobber_id", wallet.ClientID, 1, wm.Timestamp)
 	got := wm.GetHashData()
 	t.Logf("Want: %s. Got: %s", want, got)
 	assert.Equal(t, want, got)
@@ -115,8 +115,6 @@ func setupEntityTest(t *testing.T) (*writemarker.WriteMarker, *zcncrypto.Wallet,
 	wm := &writemarker.WriteMarker{
 		AllocationRoot:         "alloc_root",
 		FileMetaRoot:           "file_meta_root",
-		FileID:                 2,
-		Operation:              2,
 		PreviousAllocationRoot: "prev_alloc_root",
 		AllocationID:           "alloc_id",
 		Size:                   int64(1),
