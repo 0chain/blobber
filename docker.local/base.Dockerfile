@@ -2,9 +2,6 @@ FROM golang:1.18.1-alpine3.15 as blobber_base
 
 LABEL zchain="blobber"
 
-# https://mirrors.alpinelinux.org/
-# RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-
 RUN echo "https://mirrors.aliyun.com/alpine/v3.14/main" >> /etc/apk/repositories && \
     echo "https://mirrors.aliyun.com/alpine/v3.14/community" >> /etc/apk/repositories && \
     echo "https://sjc.edge.kernel.org/alpine/v3.14/main" >> /etc/apk/repositories && \
