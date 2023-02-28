@@ -37,7 +37,7 @@ type ObjectEntity interface {
 
 type DirMetaData struct {
 	CreationDate common.Timestamp `json:"created_at" mapstructure:"created_at"`
-	FileID       int64            `json:"file_id" mapstructure:"file_id"`
+	FileID       string           `json:"file_id" mapstructure:"file_id"`
 	Type         string           `json:"type" mapstructure:"type"`
 	Name         string           `json:"name" mapstructure:"name"`
 	Path         string           `json:"path" mapstructure:"path"`
@@ -82,7 +82,7 @@ type FileMetaData struct {
 
 func (fr *FileMetaData) GetHashData() string {
 	return fmt.Sprintf(
-		"%s:%s:%s:%s:%d:%s:%s:%d:%s:%d:%d",
+		"%s:%s:%s:%s:%d:%s:%s:%d:%s:%d:%s",
 		fr.AllocationID,
 		fr.Type, // don't need to add it as well
 		fr.Name, // don't see any utility as fr.Path below has name in it
