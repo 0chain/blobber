@@ -271,7 +271,7 @@ func commitOnChain(c *ChallengeEntity, id string) {
 	tx := datastore.GetStore().GetTransaction(ctx)
 
 	if c == nil {
-		c := &ChallengeEntity{}
+		c = &ChallengeEntity{}
 
 		if err := tx.Model(&ChallengeEntity{}).
 			Where("challenge_id = ? and status = ?", id, Processed).

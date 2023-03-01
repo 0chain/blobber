@@ -1,40 +1,27 @@
 package main
 
-import (
-	"errors"
-	"fmt"
-	"log"
-	"net"
-	"strconv"
+// func startGRPCServer() {
+// 	r := mux.NewRouter()
+// 	initHandlers(r)
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/gorilla/mux"
-	"google.golang.org/grpc/reflection"
-)
+// 	grpcServer := handler.NewGRPCServerWithMiddlewares(r)
+// 	reflection.Register(grpcServer)
 
-func startGRPCServer() {
-	r := mux.NewRouter()
-	initHandlers(r)
+// 	if grpcPort <= 0 {
+// 		logging.Logger.Error("grpc port missing")
+// 		panic(errors.New("grpc port missing"))
+// 	}
 
-	grpcServer := handler.NewGRPCServerWithMiddlewares(r)
-	reflection.Register(grpcServer)
+// 	logging.Logger.Info("started grpc server on to grpc requests on port - " + strconv.Itoa(grpcPort))
 
-	if grpcPort <= 0 {
-		logging.Logger.Error("grpc port missing")
-		panic(errors.New("grpc port missing"))
-	}
+// 	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", grpcPort))
+// 	if err != nil {
+// 		log.Fatalf("failed to listen: %v", err)
+// 		panic(err)
+// 	}
 
-	logging.Logger.Info("started grpc server on to grpc requests on port - " + strconv.Itoa(grpcPort))
+// 	fmt.Print("> starting grpc server	[OK]\n")
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", grpcPort))
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-		panic(err)
-	}
+// 	log.Fatal(grpcServer.Serve(lis))
 
-	fmt.Print("> starting grpc server	[OK]\n")
-
-	log.Fatal(grpcServer.Serve(lis))
-
-}
+// }

@@ -4,7 +4,7 @@ LABEL zchain="validator"
 
 RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep
 
-ENV SRC_DIR=/blobber
+ENV SRC_DIR=/validator
 ENV GO111MODULE=on
 
 # Download the dependencies:
@@ -25,9 +25,7 @@ RUN apk add gmp gmp-dev openssl-dev
 COPY --from=validator_build  /usr/local/lib/libmcl*.so \
                         /usr/local/lib/libbls*.so \
                         /usr/local/lib/
-ENV APP_DIR=/blobber
+ENV APP_DIR=/validator
 WORKDIR $APP_DIR
 COPY --from=validator_build $APP_DIR/code/go/0chain.net/validator/validator $APP_DIR/bin/validator
-COPY --from=validator_build $APP_DIR/config $APP_DIR/config
-COPY --from=validator_build $APP_DIR/docker.local/keys_config $APP_DIR/keysconfig
 
