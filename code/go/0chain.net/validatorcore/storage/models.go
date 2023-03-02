@@ -37,6 +37,7 @@ type ObjectEntity interface {
 
 type DirMetaData struct {
 	CreationDate common.Timestamp `json:"created_at" mapstructure:"created_at"`
+	FileID       string           `json:"file_id" mapstructure:"file_id"`
 	Type         string           `json:"type" mapstructure:"type"`
 	Name         string           `json:"name" mapstructure:"name"`
 	Path         string           `json:"path" mapstructure:"path"`
@@ -63,6 +64,7 @@ func (r *DirMetaData) CalculateHash() string {
 func (r *DirMetaData) GetNumBlocks() int64 {
 	return r.NumBlocks
 }
+
 func (r *DirMetaData) GetType() string {
 	return r.Type
 }
@@ -79,20 +81,20 @@ type FileMetaData struct {
 }
 
 func (fr *FileMetaData) GetHashData() string {
-	hashArray := make([]string, 0)
-	hashArray = append(hashArray,
+	return fmt.Sprintf(
+		"%s:%s:%s:%s:%d:%s:%s:%d:%s:%d:%s",
 		fr.AllocationID,
-		fr.Type,
-		fr.Name,
+		fr.Type, // don't need to add it as well
+		fr.Name, // don't see any utility as fr.Path below has name in it
 		fr.Path,
-		strconv.FormatInt(fr.Size, 10),
+		fr.Size,
 		fr.ContentHash,
 		fr.MerkleRoot,
-		strconv.FormatInt(fr.ActualFileSize, 10),
+		fr.ActualFileSize,
 		fr.ActualFileHash,
-		strconv.FormatInt(fr.ChunkSize, 10),
+		fr.ChunkSize,
+		fr.FileID,
 	)
-	return strings.Join(hashArray, ":")
 }
 
 func (fr *FileMetaData) GetHash() string {
