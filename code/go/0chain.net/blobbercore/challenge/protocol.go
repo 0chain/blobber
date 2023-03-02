@@ -187,6 +187,8 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 	postData["write_markers"] = markersArray
 
+	var proofGenTime common.Timestamp = -1
+
 	if blockNum > 0 {
 		if objectPath.Meta["type"] != reference.FILE {
 			allocMu.Unlock()
@@ -217,6 +219,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 		r := rand.New(rand.NewSource(cr.RandomNumber))
 		blockoffset := r.Intn(maxNumBlocks)
+		t1 := common.Now()
 		blockData, mt, err := filestore.GetFileStore().GetBlocksMerkleTreeForChallenge(cr.AllocationID, inputData, blockoffset)
 
 		if err != nil {
@@ -224,11 +227,18 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			cr.CancelChallenge(ctx, err)
 			return common.NewError("blockdata_not_found", err.Error())
 		}
+		proofGenTime = common.Now() - t1
+
 		postData["data"] = []byte(blockData)
 		postData["merkle_path"] = mt.GetPathByIndex(blockoffset)
 		postData["chunk_size"] = objectPath.ChunkSize
 	}
 
+	UpdateChallengeTimingProofGenerationAndFileSize(
+		cr.ChallengeID,
+		proofGenTime,
+		objectPath.Meta["size"].(int64),
+	)
 	allocMu.Unlock()
 
 	postDataBytes, err := json.Marshal(postData)
