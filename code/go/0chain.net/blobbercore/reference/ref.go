@@ -7,7 +7,6 @@ import (
 	"math"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -29,11 +28,13 @@ const (
 
 type Ref struct {
 	ID                  int64  `gorm:"column:id;primaryKey"`
+	FileID              string `gorm:"column:file_id" dirlist:"file_id" filelist:"file_id"`
 	Type                string `gorm:"column:type;size:1" dirlist:"type" filelist:"type"`
 	AllocationID        string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_lookup_hash_alloc,priority:1" dirlist:"allocation_id" filelist:"allocation_id"`
 	LookupHash          string `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash_alloc,priority:2" dirlist:"lookup_hash" filelist:"lookup_hash"`
 	Name                string `gorm:"column:name;size:100;not null;index:idx_name" dirlist:"name" filelist:"name"`
 	Path                string `gorm:"column:path;size:1000;not null;index:idx_path_alloc,priority:2;index:path_idx" dirlist:"path" filelist:"path"`
+	FileMetaHash        string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
 	Hash                string `gorm:"column:hash;size:64;not null" dirlist:"hash" filelist:"hash"`
 	NumBlocks           int64  `gorm:"column:num_of_blocks;not null;default:0" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
 	PathHash            string `gorm:"column:path_hash;size:64;not null" dirlist:"path_hash" filelist:"path_hash"`
@@ -87,6 +88,7 @@ func (Ref) TableName() string {
 
 type PaginatedRef struct { //Gorm smart select fields.
 	ID                  int64  `gorm:"column:id" json:"id,omitempty"`
+	FileID              string `gorm:"file_id" json:"file_id"`
 	Type                string `gorm:"column:type" json:"type,omitempty"`
 	AllocationID        string `gorm:"column:allocation_id" json:"allocation_id,omitempty"`
 	LookupHash          string `gorm:"column:lookup_hash" json:"lookup_hash,omitempty"`
@@ -339,26 +341,32 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*
 	return refs[0], nil
 }
 
+func (r *Ref) GetFileMetaHashData() string {
+	return fmt.Sprintf(
+		"%s:%d:%s:%d:%s",
+		r.Path, r.Size, r.FileID,
+		r.ActualFileSize, r.ActualFileHash)
+}
+
 func (fr *Ref) GetFileHashData() string {
-	hashArray := make([]string, 0, 10)
-	hashArray = append(hashArray,
+	return fmt.Sprintf(
+		"%s:%s:%s:%s:%d:%s:%s:%d:%s:%d:%s",
 		fr.AllocationID,
 		fr.Type, // don't need to add it as well
 		fr.Name, // don't see any utility as fr.Path below has name in it
 		fr.Path,
-		strconv.FormatInt(fr.Size, 10),
+		fr.Size,
 		fr.ContentHash,
 		fr.MerkleRoot,
-		strconv.FormatInt(fr.ActualFileSize, 10),
+		fr.ActualFileSize,
 		fr.ActualFileHash,
-		strconv.FormatInt(fr.ChunkSize, 10),
+		fr.ChunkSize,
+		fr.FileID,
 	)
-
-	return strings.Join(hashArray, ":")
 }
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
-
+	fr.FileMetaHash = encryption.Hash(fr.GetFileMetaHashData())
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
 	fr.PathLevel = len(strings.Split(strings.TrimRight(fr.Path, "/"), "/"))
@@ -380,11 +388,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 
 	l := len(r.Children)
 
-	// if l == 0 && !r.childrenLoaded {
-	// 	h = r.Hash
-	// 	return
-	// }
-
 	defer func() {
 		if err == nil && saveToDB {
 			err = r.SaveDirRef(ctx)
@@ -393,6 +396,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 	}()
 
 	childHashes := make([]string, l)
+	childFileMetaHashes := make([]string, l)
 	childPathHashes := make([]string, l)
 	var refNumBlocks, size int64
 
@@ -404,12 +408,14 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 			}
 		}
 
+		childFileMetaHashes[i] = childRef.FileMetaHash
 		childHashes[i] = childRef.Hash
 		childPathHashes[i] = childRef.PathHash
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
 	}
 
+	r.FileMetaHash = encryption.Hash(strings.Join(childFileMetaHashes, ":"))
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.NumBlocks = refNumBlocks
@@ -481,6 +487,8 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 		"name":                  r.Name,
 		"path":                  r.Path,
 		"hash":                  r.Hash,
+		"file_meta_hash":        r.FileMetaHash,
+		"file_id":               r.FileID,
 		"num_of_blocks":         r.NumBlocks,
 		"path_hash":             r.PathHash,
 		"parent_path":           r.ParentPath,
@@ -511,20 +519,22 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 func (r *Ref) SaveDirRef(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Model(r).Where("id = ?", r.ID).Updates(map[string]interface{}{
-		"allocation_id": r.AllocationID,
-		"lookup_hash":   r.LookupHash,
-		"name":          r.Name,
-		"path":          r.Path,
-		"hash":          r.Hash,
-		"num_of_blocks": r.NumBlocks,
-		"path_hash":     r.PathHash,
-		"parent_path":   r.ParentPath,
-		"level":         r.PathLevel,
-		"write_marker":  r.WriteMarker,
-		"content_hash":  r.ContentHash,
-		"size":          r.Size,
-		"merkle_root":   r.MerkleRoot,
-		"chunk_size":    r.ChunkSize,
+		"allocation_id":  r.AllocationID,
+		"lookup_hash":    r.LookupHash,
+		"name":           r.Name,
+		"path":           r.Path,
+		"hash":           r.Hash,
+		"file_meta_hash": r.FileMetaHash,
+		"num_of_blocks":  r.NumBlocks,
+		"path_hash":      r.PathHash,
+		"parent_path":    r.ParentPath,
+		"level":          r.PathLevel,
+		"write_marker":   r.WriteMarker,
+		"content_hash":   r.ContentHash,
+		"size":           r.Size,
+		"merkle_root":    r.MerkleRoot,
+		"chunk_size":     r.ChunkSize,
+		"file_id":        r.FileID,
 	})
 	if errors.Is(db.Error, gorm.ErrRecordNotFound) || db.RowsAffected == 0 {
 		err := db.Save(r).Error

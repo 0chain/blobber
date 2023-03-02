@@ -519,6 +519,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 			return
 		}
 	}
+
 	var refPathResult blobberhttp.ReferencePathResult
 	refPathResult.ReferencePath = refPath
 	if latestWM != nil {
