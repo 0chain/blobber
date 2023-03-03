@@ -2,18 +2,19 @@ package allocation
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/gosdk/constants"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
 	mocket "github.com/selvatico/go-mocket"
@@ -42,6 +43,7 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 		context             metadata.MD
 		allocChange         *AllocationChange
 		validationRoot      string
+		fileIDMeta          map[string]string
 		allocationID        string
 		maxDirFilesPerAlloc int
 		expectedMessage     string
@@ -96,10 +98,11 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 			db := datastore.GetStore().GetDB().Begin()
 			ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
 
+			fPath := "/new"
 			change := &UploadFileChanger{
 				BaseFileChanger: BaseFileChanger{
-					Filename:       "new",
-					Path:           "/",
+					Filename:       filepath.Base(fPath),
+					Path:           "/new",
 					ActualSize:     2310,
 					AllocationID:   tc.allocationID,
 					ValidationRoot: tc.validationRoot,
@@ -108,8 +111,12 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 				},
 			}
 
+			fileIDMeta := map[string]string{
+				filepath.Dir(fPath): "fileID#1",
+				fPath:               "fileID#2",
+			}
 			err := func() error {
-				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1)
+				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1, fileIDMeta)
 				if err != nil {
 					return err
 				}

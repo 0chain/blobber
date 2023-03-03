@@ -109,7 +109,7 @@ type StorageAllocation struct {
 	Finalized      bool                 `json:"finalized"`
 	TimeUnit       time.Duration        `json:"time_unit"`
 	WritePool      uint64               `json:"write_pool"`
-	FileOptions	   uint16				`json:"file_options"`
+	FileOptions    uint16               `json:"file_options"`
 }
 
 func (sa *StorageAllocation) Until() common.Timestamp {
@@ -132,6 +132,7 @@ const (
 	CHALLENGE_RESPONSE       = "challenge_response"
 	BLOBBER_HEALTH_CHECK     = "blobber_health_check"
 	FINALIZE_ALLOCATION      = "finalize_allocation"
+	VALIDATOR_HEALTH_CHECK   = "validator_health_check"
 )
 
 const STORAGE_CONTRACT_ADDRESS = "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d7"

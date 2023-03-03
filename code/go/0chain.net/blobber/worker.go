@@ -14,6 +14,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -43,27 +44,6 @@ func refreshPriceOnChain(ctx context.Context) {
 			}
 		}
 
-	}
-}
-
-func startHealthCheck(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(config.Configuration.HealthCheckWorkerFreq):
-			go func() {
-				start := time.Now()
-
-				txnHash, err := handler.SendHealthCheck()
-				end := time.Now()
-				if err == nil {
-					logging.Logger.Info("success to send heartbeat", zap.String("txn_hash", txnHash), zap.Time("start", start), zap.Time("end", end), zap.Duration("duration", end.Sub(start)))
-				} else {
-					logging.Logger.Warn("failed to send heartbeat", zap.String("txn_hash", txnHash), zap.Time("start", start), zap.Time("end", end), zap.Duration("duration", end.Sub(start)))
-				}
-			}()
-		}
 	}
 }
 

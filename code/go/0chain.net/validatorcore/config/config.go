@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/config"
 	"github.com/spf13/viper"
@@ -50,6 +51,8 @@ type Config struct {
 	NumDelegates int `json:"num_delegates"`
 	// ServiceCharge of related blobber.
 	ServiceCharge float64 `json:"service_charge"`
+	// HealthCheckInterval for blobber.
+	HealthCheckWorkerFreq time.Duration
 }
 
 /*Configuration of the system */
