@@ -379,7 +379,7 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 					"list": []map[string]interface{}{
 						{
 							"path":    "file.txt",
-							"hash":    "7c1cf322267fc4cd1dc252a1b18e3686bc653da20a8715d068cadafd0d96efeb",
+							"hash":    "12994107b906551b07350276e9b775af0c4689b1b70e656e75fae5c82aa9d823",
 							"type":    "f",
 							"file_id": "3",
 						},
@@ -435,13 +435,13 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 					"list": []map[string]interface{}{
 						{
 							"path":    "dir2",
-							"hash":    "c2a5549b3c592cf5f2fd73a8abf650ef44438d22d6c5b25b28edb4016b7cebdc",
+							"hash":    "99f8c50accd7090635d9f1fa7094724665a2aede0fb629139e1502fa1cae8954",
 							"type":    "d",
 							"file_id": "3",
 							"list": []map[string]interface{}{
 								{
 									"path":    "file.txt",
-									"hash":    "7c1cf322267fc4cd1dc252a1b18e3686bc653da20a8715d068cadafd0d96efeb",
+									"hash":    "f33f3cb4a59eba8826b1e8174770732fd6ef1289a8d852ae32d9f192ce4b1041",
 									"type":    "f",
 									"file_id": "4",
 								},
