@@ -5,6 +5,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -101,6 +102,10 @@ func UpdateChallengeTimingCompleteValidation(challengeID string, completeValidat
 
 func UpdateChallengeTimingProofGenerationAndFileSize(
 	challengeID string, proofGenTime common.Timestamp, size int64) error {
+
+	if proofGenTime == 0 || size == 0 {
+		logging.Logger.Error(fmt.Sprintf("Proof gen time: %d, size: %d", proofGenTime, size))
+	}
 
 	c := &ChallengeTiming{
 		ChallengeID:  challengeID,
