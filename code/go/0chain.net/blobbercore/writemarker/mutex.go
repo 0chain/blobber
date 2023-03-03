@@ -32,7 +32,10 @@ type Mutex struct {
 	ML *common.MapLocker
 }
 
-// Lock
+// Lock will create/update lock in postgres.
+// If no lock exists for an allocation then new lock is created.
+// If lock exists and is of same connection ID then lock's createdAt is updated
+// If lock exists and is of other connection ID then `pending` response is sent.
 func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, requestTime *time.Time) (*LockResult, error) {
 	if allocationID == "" {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "allocationID")
@@ -77,48 +80,30 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 				Status:    LockStatusOK,
 				CreatedAt: lock.CreatedAt.Unix(),
 			}, nil
-
 		}
 
 		//native postgres error
 		return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
-
 	}
 
-	timeout := lock.CreatedAt.Add(config.Configuration.WriteMarkerLockTimeout)
-
-	// locked, but it is timeout
-	if now.After(timeout) {
-
-		lock.ConnectionID = connectionID
-		lock.CreatedAt = *requestTime
-
-		err = db.Table(TableNameWriteLock).Where("allocation_id=?", allocationID).Save(&lock).Error
-		if err != nil {
-			return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
-		}
-
+	if lock.ConnectionID != connectionID {
+		// pending
 		return &LockResult{
-			Status:    LockStatusOK,
-			CreatedAt: lock.CreatedAt.Unix(),
-		}, nil
-
-	}
-
-	//try lock by same session, return old lock directly
-	if lock.ConnectionID == connectionID && lock.CreatedAt.Equal(*requestTime) {
-		return &LockResult{
-			Status:    LockStatusOK,
+			Status:    LockStatusPending,
 			CreatedAt: lock.CreatedAt.Unix(),
 		}, nil
 	}
 
-	// pending
+	lock.CreatedAt = *requestTime
+	err = db.Table(TableNameWriteLock).Where("allocation_id=?", allocationID).Save(&lock).Error
+	if err != nil {
+		return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
+	}
+
 	return &LockResult{
-		Status:    LockStatusPending,
+		Status:    LockStatusOK,
 		CreatedAt: lock.CreatedAt.Unix(),
 	}, nil
-
 }
 
 func (*Mutex) Unlock(ctx context.Context, allocationID string, connectionID string) error {

@@ -102,10 +102,4 @@ service BlobberService {
     };
   }
 
-  rpc Collaborator(CollaboratorRequest) returns (CollaboratorResponse) {
-    option (google.api.http) = {
-      post: "/v2/file/collaborator/{allocation}"
-      body: "*"
-    };
-  }
 }

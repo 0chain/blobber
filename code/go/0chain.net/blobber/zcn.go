@@ -9,6 +9,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	handleCommon "github.com/0chain/blobber/code/go/0chain.net/core/common/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/zcncore"
 )
@@ -66,7 +67,8 @@ func registerOnChain() error {
 	ctx := common.GetRootContext()
 	go setupWorkers(ctx)
 
-	go startHealthCheck(ctx)
+	// go StartHealthCheck(ctx, common.ProviderTypeBlobber)
+	go handleCommon.StartHealthCheck(ctx, common.ProviderTypeBlobber)
 	go startRefreshSettings(ctx)
 
 	if config.Configuration.PriceInUSD {

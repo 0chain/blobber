@@ -196,12 +196,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	isOwner := clientID == alloc.OwnerID
-	isCollaborator := reference.IsACollaborator(ctx, fileref.ID, clientID)
 
 	var authToken *readmarker.AuthTicket
 	var shareInfo *reference.ShareInfo
 
-	if !(isOwner || isCollaborator) {
+	if !isOwner {
 		authTokenString := dr.AuthToken
 		if authTokenString == "" {
 			return nil, common.NewError("invalid_client", "authticket is required")
@@ -364,29 +363,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	elapsedGetConnObj := time.Since(startTime) - elapsedAllocation - elapsedGetLock
 
-	var isCollaborator bool
-	for _, change := range connectionObj.Changes {
-		if change.Operation != constants.FileOperationUpdate {
-			continue
-		}
-
-		updateFileChange := new(allocation.UpdateFileChanger)
-		if err := updateFileChange.Unmarshal(change.Input); err != nil {
-			return nil, err
-		}
-		fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, updateFileChange.Path, []string{"id"})
-		if err != nil {
-			return nil, err
-		}
-		isCollaborator = reference.IsACollaborator(ctx, fileRef.ID, clientID)
-		break
-	}
-
 	if clientID == "" || clientKey == "" {
 		return nil, common.NewError("invalid_params", "Please provide clientID and clientKey")
 	}
 
-	if (allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID) && !isCollaborator {
+	if (allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID) {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
@@ -434,9 +415,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj
 
 	var clientIDForWriteRedeem = writeMarker.ClientID
-	if isCollaborator {
-		clientIDForWriteRedeem = allocationObj.OwnerID
-	}
 
 	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
 		return nil, err
@@ -445,7 +423,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM
 
-	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot, writeMarker.Timestamp)
+	fileIDMetaStr := r.FormValue("file_id_meta")
+	fileIDMeta := make(map[string]string, 0)
+	err = json.Unmarshal([]byte(fileIDMetaStr), &fileIDMeta)
+	if err != nil {
+		return nil, common.NewError("unmarshall_error",
+			fmt.Sprintf("Error while unmarshalling file ID meta data: %s", err.Error()))
+	}
+
+	err = connectionObj.ApplyChanges(
+		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -453,20 +440,34 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
 
-	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash"})
+	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash"})
 	if err != nil {
 		return nil, err
 	}
 	allocationRoot := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
+	fileMetaRoot := rootRef.FileMetaHash
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		if latestWriteMarkerEntity != nil {
 			result.WriteMarker = &latestWriteMarkerEntity.WM
 		}
 		result.Success = false
-		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root. Expected hash: " + allocationRoot
+		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
+			" Expected hash: " + allocationRoot
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
+
+	if fileMetaRoot != writeMarker.FileMetaRoot {
+		// result.AllocationRoot = allocationObj.AllocationRoot
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = &latestWriteMarkerEntity.WM
+		}
+		result.Success = false
+		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
+			" Expected hash: " + fileMetaRoot + "; Got: " + writeMarker.FileMetaRoot
+		return &result, common.NewError("file_meta_root_mismatch", result.ErrorMessage)
+	}
+
 	writemarkerEntity.ConnectionID = connectionObj.ID
 	writemarkerEntity.ClientPublicKey = clientKey
 
@@ -480,6 +481,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
 	allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
 	allocationUpdates["allocation_root"] = allocationRoot
+	allocationUpdates["file_meta_root"] = fileMetaRoot
 	allocationUpdates["is_redeem_required"] = true
 
 	err = db.Model(allocationObj).Updates(allocationUpdates).Error
@@ -1005,14 +1007,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	elapsedValidate := time.Since(st)
 	st = time.Now()
-	existingFileRef := cmd.GetExistingFileRef()
 
-	isCollaborator := existingFileRef != nil && reference.IsACollaborator(ctx, existingFileRef.ID, clientID)
 	publicKey := allocationObj.OwnerPublicKey
-
-	if isCollaborator {
-		publicKey = ctx.Value(constants.ContextKeyClientKey).(string)
-	}
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
 

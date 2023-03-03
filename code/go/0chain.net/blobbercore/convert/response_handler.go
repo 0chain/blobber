@@ -15,13 +15,7 @@ func GetAllocationResponseHandler(resp *blobbergrpc.GetAllocationResponse) *allo
 }
 
 func GetFileMetaDataResponseHandler(resp *blobbergrpc.GetFileMetaDataResponse) map[string]interface{} {
-	var collaborators []reference.Collaborator
-	for _, c := range resp.Collaborators {
-		collaborators = append(collaborators, *GRPCCollaboratorToCollaborator(c))
-	}
-
 	result := FileRefGRPCToFileRef(resp.MetaData).GetListingData(context.Background())
-	result["collaborators"] = collaborators
 	return result
 }
 
@@ -121,25 +115,6 @@ func GetCommitMetaTxnHandlerResponse(response *blobbergrpc.CommitMetaTxnResponse
 	}
 
 	return result
-}
-
-func CollaboratorResponse(response *blobbergrpc.CollaboratorResponse) interface{} {
-	if msg := response.GetMessage(); msg != "" {
-		return struct {
-			Msg string `json:"msg"`
-		}{Msg: msg}
-	}
-
-	if collaborators := response.GetCollaborators(); collaborators != nil {
-		collabs := make([]reference.Collaborator, 0, len(collaborators))
-		for _, c := range collaborators {
-			collabs = append(collabs, *GRPCCollaboratorToCollaborator(c))
-		}
-
-		return collabs
-	}
-
-	return nil
 }
 
 func CopyObjectResponseHandler(copyObjectResponse *blobbergrpc.CopyObjectResponse) *blobberhttp.UploadResult {

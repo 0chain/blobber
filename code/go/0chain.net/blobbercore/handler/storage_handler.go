@@ -132,14 +132,10 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	var (
 		isOwner        = clientID == alloc.OwnerID
 		isRepairer     = clientID == alloc.RepairerID
-		isCollaborator = reference.IsACollaborator(ctx, fileref.ID, clientID)
 	)
 
-	if isOwner || isCollaborator {
+	if isOwner {
 		publicKey := alloc.OwnerPublicKey
-		if isCollaborator {
-			publicKey = ctx.Value(constants.ContextKeyClientKey).(string)
-		}
 
 		valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
 		if !valid || err != nil {
@@ -156,14 +152,9 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 
 	result["commit_meta_txns"] = commitMetaTxns
 
-	collaborators, err := reference.GetCollaborators(ctx, fileref.ID)
-	if err != nil {
-		Logger.Error("Failed to get collaborators from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
-	}
 
-	result["collaborators"] = collaborators
 
-	if !isOwner && !isRepairer && !isCollaborator {
+	if !isOwner && !isRepairer {
 		var authTokenString = r.FormValue("auth_token")
 
 		// check auth token
@@ -237,133 +228,6 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 	}{
 		Msg: "Added commitMetaTxn successfully",
 	}
-
-	return result, nil
-}
-
-func (fsh *StorageHandler) getAllocationObject(ctx context.Context, r *http.Request) (*allocation.Allocation, string, error) {
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
-	if err != nil {
-		return nil, "", common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-
-	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, "", common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-
-	return allocationObj, clientID, nil
-}
-
-func (fsh *StorageHandler) validateCollaboratorRequest(ctx context.Context, allocationID string, r *http.Request) (*reference.Ref, error) {
-	pathHash, err := pathHashFromReq(r, allocationID)
-	if err != nil {
-		return nil, err
-	}
-
-	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "type"})
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", fileref.Path+" is an invalid path: "+err.Error())
-	}
-
-	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", fileref.Path+" is not a file.")
-	}
-
-	return fileref, nil
-}
-
-func (fsh *StorageHandler) AddCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
-
-	allocationObj, clientID, err := fsh.getAllocationObject(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	fileref, err := fsh.validateCollaboratorRequest(ctx, allocationObj.ID, r)
-	if err != nil {
-		return nil, err
-	}
-
-	collabClientID := r.FormValue("collab_id")
-	if collabClientID == "" {
-		return nil, common.NewError("invalid_parameter", "collab_id not present in the params")
-	}
-
-	var result struct {
-		Msg string `json:"msg"`
-	}
-
-	if clientID == "" || clientID != allocationObj.OwnerID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
-	if reference.IsACollaborator(ctx, fileref.ID, collabClientID) {
-		result.Msg = "Given client ID is already a collaborator"
-		return result, nil
-	}
-
-	err = reference.AddCollaborator(ctx, fileref.ID, collabClientID)
-	if err != nil {
-		return nil, common.NewError("add_collaborator_failed", "Failed to add collaborator with err :"+err.Error())
-	}
-	result.Msg = "Added collaborator successfully"
-
-	return result, nil
-}
-
-func (fsh *StorageHandler) GetCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
-	allocationObj, _, err := fsh.getAllocationObject(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	fileref, err := fsh.validateCollaboratorRequest(ctx, allocationObj.ID, r)
-	if err != nil {
-		return nil, err
-	}
-
-	collaborators, err := reference.GetCollaborators(ctx, fileref.ID)
-	if err != nil {
-		return nil, common.NewError("get_collaborator_failed", "Failed to get collaborators from refID with err:"+err.Error())
-	}
-
-	return collaborators, nil
-}
-
-func (fsh *StorageHandler) RemoveCollaborator(ctx context.Context, r *http.Request) (interface{}, error) {
-	allocationObj, clientID, err := fsh.getAllocationObject(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-
-	fileref, err := fsh.validateCollaboratorRequest(ctx, allocationObj.ID, r)
-	if err != nil {
-		return nil, err
-	}
-
-	collabClientID, ok := common.GetField(r, "collab_id")
-	if !ok {
-		return nil, common.NewError("invalid_parameter", "collab_id not present in the params")
-	}
-
-	var result struct {
-		Msg string `json:"msg"`
-	}
-
-	if clientID == "" || clientID != allocationObj.OwnerID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
-	err = reference.RemoveCollaborator(ctx, fileref.ID, collabClientID)
-	if err != nil {
-		return nil, common.NewError("delete_collaborator_failed", "Failed to delete collaborator from refID with err:"+err.Error())
-	}
-	result.Msg = "Removed collaborator successfully"
 
 	return result, nil
 }
@@ -512,16 +376,6 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		if child.Type == reference.DIRECTORY || clientID != allocationObj.OwnerID {
 			continue
 		}
-		// getting collaborators for sub dirs
-		collaborators, err := reference.GetCollaborators(ctx, child.ID)
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			Logger.Error("Failed to get collaborators from refID", zap.Error(err), zap.Any("ref_id", dirref.ID))
-			return nil, err
-		}
-		if result.Meta["collaborators"] == nil {
-			result.Meta["collaborators"] = []reference.Collaborator{}
-		}
-		result.Meta["collaborators"] = append(result.Meta["collaborators"].([]reference.Collaborator), collaborators...)
 	}
 
 	return &result, nil
@@ -569,13 +423,6 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 
 	publicKey := allocationObj.OwnerPublicKey
 
-	// it is not owner, check if it is a colloborator
-	if allocationObj.OwnerID != clientID && len(clientID) > 0 {
-		if reference.IsCollaboratorInAllPaths(ctx, allocationID, paths, clientID) {
-			publicKey = ctx.Value(constants.ContextKeyClientKey).(string)
-		}
-	}
-
 	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
 	if !valid || err != nil {
 		errCh <- common.NewError("invalid_signature", "could not verify the allocation owner or colloborator")
@@ -616,6 +463,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 			return
 		}
 	}
+
 	var refPathResult blobberhttp.ReferencePathResult
 	refPathResult.ReferencePath = refPath
 	if latestWM != nil {
@@ -819,7 +667,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 			return nil, err
 		}
 
-		if clientID == allocationObj.OwnerID || clientID == allocationObj.RepairerID || reference.IsACollaborator(ctx, pathRef.ID, clientID) {
+		if clientID == allocationObj.OwnerID || clientID == allocationObj.RepairerID {
 			break
 		}
 		if authTokenStr == "" {
