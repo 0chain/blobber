@@ -136,8 +136,14 @@ func ReloadFromChain(ctx context.Context, db *gorm.DB) (*zcncore.Blobber, error)
 	Configuration.MinLockDemand = b.Terms.MinLockDemand
 	Configuration.MinStake = int64(b.StakePoolSettings.MinStake)
 	Configuration.NumDelegates = b.StakePoolSettings.NumDelegates
-	Configuration.ReadPrice = b.Terms.ReadPrice.ToToken()
-	Configuration.WritePrice = b.Terms.WritePrice.ToToken()
+	Configuration.ReadPrice, err = b.Terms.ReadPrice.ToToken()
+	if err != nil {
+		logging.Logger.Error("Invalid read price config", zap.Error(err))
+	}
+	Configuration.WritePrice, err = b.Terms.WritePrice.ToToken()
+	if err != nil {
+		logging.Logger.Error("Invalid write price config", zap.Error(err))
+	}
 	Configuration.ServiceCharge = b.StakePoolSettings.ServiceCharge
 
 	return b, Update(ctx, db)
