@@ -181,7 +181,7 @@ func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Reque
 
 	filerefs, err := reference.GetReferencesByName(ctx, allocationID, name)
 	if err != nil {
-		return nil, common.NewError("files_not_found", "No files in this allocation matched the search keyword."+err.Error())
+		Logger.Info("No files in this allocation matched the search keyword", zap.Error(err))
 	}
 
 	var (
