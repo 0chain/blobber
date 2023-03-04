@@ -191,6 +191,8 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 	postData["write_markers"] = markersArray
 
+	var proofGenTime common.Timestamp = -1
+
 	if blockNum > 0 {
 		if objectPath.Meta["type"] != reference.FILE {
 			allocMu.Unlock()
@@ -210,6 +212,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			AllocationID: cr.AllocationID,
 		}
 
+		t1 := common.Now()
 		challengeResponse, err := filestore.GetFileStore().GetBlocksMerkleTreeForChallenge(challengeReadInput)
 
 		if err != nil {
@@ -217,9 +220,15 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			cr.CancelChallenge(ctx, err)
 			return common.NewError("blockdata_not_found", err.Error())
 		}
+		proofGenTime = common.Now() - t1
 		postData["challenge_proof"] = challengeResponse
 	}
 
+	UpdateChallengeTimingProofGenerationAndFileSize(
+		cr.ChallengeID,
+		proofGenTime,
+		objectPath.Meta["size"].(int64),
+	)
 	allocMu.Unlock()
 
 	postDataBytes, err := json.Marshal(postData)

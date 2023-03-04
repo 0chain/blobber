@@ -5,6 +5,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -17,6 +18,10 @@ type ChallengeTiming struct {
 	CreatedAtChain common.Timestamp `gorm:"created_at_chain" json:"created_at_chain"`
 	// CreatedAtBlobber is when synchronized and created at blobber.
 	CreatedAtBlobber common.Timestamp `gorm:"created_at_blobber" json:"created_at_blobber"`
+	// FileSize is size of file that was randomly selected for challenge
+	FileSize int64 `gorm:"file_size" json:"file_size"`
+	// ProofGenTime is the time taken to generate challenge proof for the file
+	ProofGenTime common.Timestamp `gorm:"proof_gen_time" json:"proof_gen_time"`
 	// CompleteValidation is when all validation tickets are all received.
 	CompleteValidation common.Timestamp `gorm:"complete_validation" json:"complete_validation"`
 	// TxnSubmission is when challenge response is first sent to blockchain.
@@ -93,6 +98,23 @@ func UpdateChallengeTimingCompleteValidation(challengeID string, completeValidat
 	})
 
 	return err
+}
+
+func UpdateChallengeTimingProofGenerationAndFileSize(
+	challengeID string, proofGenTime common.Timestamp, size int64) error {
+
+	if proofGenTime == 0 || size == 0 {
+		logging.Logger.Error(fmt.Sprintf("Proof gen time: %d, size: %d", proofGenTime, size))
+	}
+
+	c := &ChallengeTiming{
+		ChallengeID:  challengeID,
+		ProofGenTime: proofGenTime,
+		FileSize:     size,
+	}
+
+	db := datastore.GetStore().GetDB()
+	return db.Save(c).Error
 }
 
 func UpdateChallengeTimingTxnSubmission(challengeID string, txnSubmission common.Timestamp) error {
