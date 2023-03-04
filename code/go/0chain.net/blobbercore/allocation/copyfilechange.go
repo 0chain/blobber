@@ -26,7 +26,7 @@ func (rf *CopyFileChange) DeleteTempFile() error {
 }
 
 func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
+	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 
 	totalRefs, err := reference.CountRefs(rf.AllocationID)
 	if err != nil {
@@ -77,6 +77,12 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 			newRef := reference.NewDirectoryRef()
 			newRef.AllocationID = rf.AllocationID
 			newRef.Path = filepath.Join("/", strings.Join(fields[:i+1], "/"))
+			fileID, ok := fileIDMeta[newRef.Path]
+			if !ok || fileID == "" {
+				return nil, common.NewError("invalid_parameter",
+					fmt.Sprintf("file path %s has no entry in file ID meta", newRef.Path))
+			}
+			newRef.FileID = fileID
 			newRef.ParentPath = filepath.Join("/", strings.Join(fields[:i], "/"))
 			newRef.Name = fields[i]
 			newRef.HashToBeComputed = true
@@ -87,7 +93,10 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 		}
 	}
 
-	fileRefs := rf.processCopyRefs(ctx, srcRef, dirRef, allocationRoot, ts)
+	fileRefs, err := rf.processCopyRefs(ctx, srcRef, dirRef, allocationRoot, ts, fileIDMeta)
+	if err != nil {
+		return nil, err
+	}
 
 	_, err = rootRef.CalculateHash(ctx, true)
 	if err != nil {
@@ -102,52 +111,36 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 
 func (rf *CopyFileChange) processCopyRefs(
 	ctx context.Context, srcRef, destRef *reference.Ref,
-	allocationRoot string, ts common.Timestamp) (fileRefs []*reference.Ref) {
+	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (
+	fileRefs []*reference.Ref, err error) {
 
-	if srcRef.Type == reference.DIRECTORY {
-		newRef := reference.NewDirectoryRef()
-		newRef.AllocationID = rf.AllocationID
-		newRef.Path = filepath.Join(destRef.Path, srcRef.Name)
-		newRef.ParentPath = destRef.Path
-		newRef.Name = srcRef.Name
-		newRef.CreatedAt = ts
-		newRef.UpdatedAt = ts
-		newRef.HashToBeComputed = true
-		destRef.AddChild(newRef)
-
+	newRef := *srcRef
+	newRef.ID = 0
+	newRef.Path = filepath.Join(destRef.Path, srcRef.Name)
+	fileID, ok := fileIDMeta[newRef.Path]
+	if !ok || fileID == "" {
+		return nil, common.NewError("invalid_parameter",
+			fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
+	}
+	newRef.FileID = fileID
+	newRef.ParentPath = destRef.Path
+	newRef.CreatedAt = ts
+	newRef.UpdatedAt = ts
+	newRef.HashToBeComputed = true
+	destRef.AddChild(&newRef)
+	if newRef.Type == reference.DIRECTORY {
 		for _, childRef := range srcRef.Children {
-			fileRefs = append(fileRefs, rf.processCopyRefs(ctx, childRef, newRef, allocationRoot, ts)...)
+			fRefs, err := rf.processCopyRefs(ctx, childRef, &newRef, allocationRoot, ts, fileIDMeta)
+			if err != nil {
+				return nil, err
+			}
+			fileRefs = append(fileRefs, fRefs...)
 		}
-	} else if srcRef.Type == reference.FILE {
-		newFile := reference.NewFileRef()
-		newFile.ActualFileHash = srcRef.ActualFileHash
-		newFile.ActualFileSize = srcRef.ActualFileSize
-		newFile.AllocationID = srcRef.AllocationID
-		newFile.ContentHash = srcRef.ContentHash
-		newFile.CustomMeta = srcRef.CustomMeta
-		newFile.MerkleRoot = srcRef.MerkleRoot
-		newFile.Name = srcRef.Name
-		newFile.ParentPath = destRef.Path
-		newFile.Path = filepath.Join(destRef.Path, srcRef.Name)
-		newFile.Size = srcRef.Size
-		newFile.MimeType = srcRef.MimeType
-		newFile.WriteMarker = allocationRoot
-		newFile.ThumbnailHash = srcRef.ThumbnailHash
-		newFile.ThumbnailSize = srcRef.ThumbnailSize
-		newFile.ActualThumbnailHash = srcRef.ActualThumbnailHash
-		newFile.ActualThumbnailSize = srcRef.ActualThumbnailSize
-		newFile.EncryptedKey = srcRef.EncryptedKey
-		newFile.ChunkSize = srcRef.ChunkSize
-		newFile.CreatedAt = ts
-		newFile.UpdatedAt = ts
-		newFile.HashToBeComputed = true
-		destRef.AddChild(newFile)
-
-		fileRefs = append(fileRefs, newFile)
+	} else {
+		fileRefs = append(fileRefs, &newRef)
 	}
 
 	return
-
 }
 
 func (rf *CopyFileChange) Marshal() (string, error) {

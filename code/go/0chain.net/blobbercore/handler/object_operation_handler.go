@@ -423,7 +423,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM
 
-	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot, writeMarker.Timestamp)
+	fileIDMetaStr := r.FormValue("file_id_meta")
+	fileIDMeta := make(map[string]string, 0)
+	err = json.Unmarshal([]byte(fileIDMetaStr), &fileIDMeta)
+	if err != nil {
+		return nil, common.NewError("unmarshall_error",
+			fmt.Sprintf("Error while unmarshalling file ID meta data: %s", err.Error()))
+	}
+
+	err = connectionObj.ApplyChanges(
+		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -431,20 +440,34 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
 
-	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash"})
+	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash"})
 	if err != nil {
 		return nil, err
 	}
 	allocationRoot := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
+	fileMetaRoot := rootRef.FileMetaHash
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		if latestWriteMarkerEntity != nil {
 			result.WriteMarker = &latestWriteMarkerEntity.WM
 		}
 		result.Success = false
-		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root. Expected hash: " + allocationRoot
+		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
+			" Expected hash: " + allocationRoot
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
+
+	if fileMetaRoot != writeMarker.FileMetaRoot {
+		// result.AllocationRoot = allocationObj.AllocationRoot
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = &latestWriteMarkerEntity.WM
+		}
+		result.Success = false
+		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
+			" Expected hash: " + fileMetaRoot + "; Got: " + writeMarker.FileMetaRoot
+		return &result, common.NewError("file_meta_root_mismatch", result.ErrorMessage)
+	}
+
 	writemarkerEntity.ConnectionID = connectionObj.ID
 	writemarkerEntity.ClientPublicKey = clientKey
 
@@ -458,6 +481,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
 	allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
 	allocationUpdates["allocation_root"] = allocationRoot
+	allocationUpdates["file_meta_root"] = fileMetaRoot
 	allocationUpdates["is_redeem_required"] = true
 
 	err = db.Model(allocationObj).Updates(allocationUpdates).Error
