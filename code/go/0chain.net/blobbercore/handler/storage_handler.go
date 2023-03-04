@@ -179,11 +179,6 @@ func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Reque
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	filerefs, err := reference.GetReferencesByName(ctx, allocationID, name)
-	if err != nil {
-		Logger.Info("No files in this allocation matched the search keyword", zap.Error(err))
-	}
-
 	var (
 		isOwner    = clientID == alloc.OwnerID
 		isRepairer = clientID == alloc.RepairerID
@@ -196,6 +191,12 @@ func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Reque
 		if !valid || err != nil {
 			return nil, common.NewError("invalid_signature", "Invalid signature")
 		}
+	}
+
+	filerefs, err := reference.GetReferencesByName(ctx, allocationID, name)
+	if err != nil {
+		Logger.Info("No files in current allocation matched the search keyword", zap.Error(err))
+		return result, nil
 	}
 
 	for _, fileref := range filerefs {
