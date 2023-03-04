@@ -224,11 +224,21 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		postData["challenge_proof"] = challengeResponse
 	}
 
-	UpdateChallengeTimingProofGenerationAndFileSize(
+	err = UpdateChallengeTimingProofGenerationAndFileSize(
 		cr.ChallengeID,
 		proofGenTime,
 		objectPath.Meta["size"].(int64),
 	)
+	if err != nil {
+		logging.Logger.Error("[challengetiming]txnverification",
+			zap.Any("challenge_id", cr.ChallengeID),
+			zap.Time("created", common.ToTime(cr.CreatedAt)),
+			zap.Int64("proof_gen_time", int64(proofGenTime)),
+			zap.Error(err))
+
+		allocMu.Unlock()
+		return err
+	}
 	allocMu.Unlock()
 
 	postDataBytes, err := json.Marshal(postData)
