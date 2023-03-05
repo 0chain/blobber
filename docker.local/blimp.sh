@@ -71,6 +71,9 @@ ${BLIMP_DOMAIN}:9000 {
 
 EOF
 
+
+sudo docker-compose -f ${CONFIG_DIR}/docker-compose.yml down
+
 # create docker-compose
 cat <<EOF >${CONFIG_DIR}/docker-compose.yml
 version: '3.8'
@@ -145,5 +148,4 @@ volumes:
 
 EOF
 
-sudo docker-compose -f ${CONFIG_DIR}/docker-compose.yml down
 sudo docker-compose -f ${CONFIG_DIR}/docker-compose.yml up -d
