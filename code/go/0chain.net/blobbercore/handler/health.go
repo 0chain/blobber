@@ -7,7 +7,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	valConfig "github.com/0chain/blobber/code/go/0chain.net/validatorcore/config"
 	"go.uber.org/zap"
 )
 
@@ -57,10 +56,6 @@ func BlobberHealthCheck() (*transaction.Transaction, error) {
 }
 
 func ValidatorHealthCheck() (*transaction.Transaction, error) {
-
-	if valConfig.Configuration.DelegateWallet == "" {
-		return nil, ErrValidatorHasRemoved
-	}
 
 	txn, err := transaction.NewTransactionEntity()
 
