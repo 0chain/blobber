@@ -58,7 +58,7 @@ func BlobberHealthCheck() (*transaction.Transaction, error) {
 
 func ValidatorHealthCheck() (*transaction.Transaction, error) {
 
-	if valConfig.Configuration.Capacity == 0 {
+	if valConfig.Configuration.DelegateWallet == "" {
 		return nil, ErrValidatorHasRemoved
 	}
 
