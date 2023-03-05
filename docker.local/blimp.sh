@@ -69,12 +69,6 @@ ${BLIMP_DOMAIN}:9000 {
 	}
 }
 
-${BLIMP_DOMAIN}:9012 {
-	route {
-		reverse_proxy s3mgrt:8080
-	}
-}
-
 EOF
 
 # create docker-compose
@@ -144,12 +138,6 @@ services:
       - minioserver
     environment:
       MINIO_SERVER: "minioserver:9000"
-      
-  s3mgrt:
-    image: bmanu199/s3mgrt:latest
-    restart: always
-    volumes:
-      - ${MIGRATION_ROOT}:/migrate
       
 volumes:
   db:
