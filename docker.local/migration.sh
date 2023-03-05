@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MIGRATION_ROOT=$HOME/.s3migration
+MIGRATION_ROOT=$HOME/s3migration
 ACCESS_KEY=0chainaccesskey
 SECRET_KEY=0chainsecretkey
 ALLOCATION=0chainallocation
