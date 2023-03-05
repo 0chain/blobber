@@ -57,6 +57,8 @@ ${BLIMP_DOMAIN}:9012 {
 }
 EOF
 
+sudo docker-compose -f ${CONFIG_DIR}/docker-compose.yml down
+
 # create docker-compose
 cat <<EOF >${CONFIG_DIR}/docker-compose.yml
 version: '3.8'
@@ -84,7 +86,6 @@ volumes:
     driver: local
 EOF
 
-sudo docker-compose -f ${CONFIG_DIR}/docker-compose.yml down
 /usr/local/bin/docker-compose -f ${CONFIG_DIR}/docker-compose.yml up -d
 
 #  --concurrency ${CONCURRENCY} --delete-source ${DELETE_SOURCE} --encrypt ${ENCRYPT} --resume true   --skip 1
