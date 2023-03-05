@@ -53,7 +53,8 @@ func main() {
 		panic(err)
 	}
 
-	go startGRPCServer()
+	// todo: activate this when gRPC functionalities are implemented
+	// go startGRPCServer()
 
 	startHttpServer()
 }

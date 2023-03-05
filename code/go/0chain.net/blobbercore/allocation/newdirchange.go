@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -21,7 +22,7 @@ type NewDir struct {
 }
 
 func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
+	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 
 	totalRefs, err := reference.CountRefs(nf.AllocationID)
 	if err != nil {
@@ -78,12 +79,17 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 			newRef.CreatedAt = ts
 			newRef.UpdatedAt = ts
 			newRef.HashToBeComputed = true
+			fileID, ok := fileIDMeta[newRef.Path]
+			if !ok || fileID == "" {
+				return nil, common.NewError("invalid_parameter",
+					fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
+			}
+			newRef.FileID = fileID
 			dirRef.AddChild(newRef)
 			newDirs = append(newDirs, newRef)
 			dirRef = newRef
 
 		}
-
 	}
 
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {

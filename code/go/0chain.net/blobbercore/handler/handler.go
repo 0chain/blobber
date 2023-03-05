@@ -194,6 +194,11 @@ func setupHandlers(r *mux.Router) {
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RevokeShare)))).
 		Methods(http.MethodOptions, http.MethodDelete)
 
+	// list files shared in this allocation
+	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
+		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(ListShare)))).
+		Methods(http.MethodOptions, http.MethodGet)
+
 	// lightweight http handler without heavy postgres transaction to improve performance
 
 	r.HandleFunc("/v1/writemarker/lock/{allocation}",
@@ -648,7 +653,48 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	return map[string]interface{}{"message": "Share info added successfully"}, nil
 }
 
-//PrintCSS - print the common css elements
+// ListShare a list of files that clientID has shared
+func ListShare(ctx context.Context, r *http.Request) (interface{}, error) {
+
+	ctx = setupHandlerContext(ctx, r)
+
+	var (
+		allocationID = ctx.Value(constants.ContextKeyAllocation).(string)
+		clientID     = ctx.Value(constants.ContextKeyClient).(string)
+	)
+
+	limit, err := common.GetOffsetLimitOrderParam(r.URL.Query())
+	if err != nil {
+		return nil, err
+	}
+
+	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	sign := r.Header.Get(common.ClientSignatureHeader)
+
+	valid, err := verifySignatureFromRequest(allocationID, sign, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_client", "Client has no access to share file")
+	}
+
+	shares, err := reference.ListShareInfoClientID(ctx, clientID, limit)
+	if err != nil {
+		Logger.Error("failed_to_list_share", zap.Error(err))
+		return nil, common.NewError("failed_to_list_share", "failed to list file share")
+	}
+
+	// get the files shared in that allocation
+	return shares, nil
+}
+
+// PrintCSS - print the common css elements
 func PrintCSS(w http.ResponseWriter) {
 	fmt.Fprintf(w, "<style>\n")
 	fmt.Fprintf(w, ".number { text-align: right; }\n")
