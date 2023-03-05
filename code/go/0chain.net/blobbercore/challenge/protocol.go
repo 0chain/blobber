@@ -138,6 +138,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
 	if err != nil {
+		allocMu.Unlock()
 		cr.CancelChallenge(ctx, ErrNoValidator)
 		return err
 	}
