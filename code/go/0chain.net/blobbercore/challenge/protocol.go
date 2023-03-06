@@ -192,7 +192,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 	postData["write_markers"] = markersArray
 
-	var proofGenTime common.Timestamp = -1
+	var proofGenTime int64 = -1
 
 	if blockNum > 0 {
 		if objectPath.Meta["type"] != reference.FILE {
@@ -213,7 +213,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			AllocationID: cr.AllocationID,
 		}
 
-		t1 := common.Now()
+		t1 := time.Now()
 		challengeResponse, err := filestore.GetFileStore().GetBlocksMerkleTreeForChallenge(challengeReadInput)
 
 		if err != nil {
@@ -221,14 +221,20 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			cr.CancelChallenge(ctx, err)
 			return common.NewError("blockdata_not_found", err.Error())
 		}
-		proofGenTime = common.Now() - t1
+		proofGenTime = time.Since(t1).Milliseconds()
+		logging.Logger.Info("Proof gen logs: ",
+			zap.Int64("block num", blockNum),
+			zap.Int64("file size", objectPath.Meta["size"].(int64)),
+			zap.String("file path", objectPath.Meta["name"].(string)),
+			zap.Int64("proof gen time", proofGenTime),
+		)
 		postData["challenge_proof"] = challengeResponse
 	}
 
 	err = UpdateChallengeTimingProofGenerationAndFileSize(
 		cr.ChallengeID,
 		proofGenTime,
-		objectPath.Meta["size"].(int64),
+		objectPath.Size,
 	)
 	if err != nil {
 		logging.Logger.Error("[challengetiming]txnverification",
