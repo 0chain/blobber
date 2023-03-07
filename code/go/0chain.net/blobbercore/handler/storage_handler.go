@@ -130,8 +130,8 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	}
 
 	var (
-		isOwner        = clientID == alloc.OwnerID
-		isRepairer     = clientID == alloc.RepairerID
+		isOwner    = clientID == alloc.OwnerID
+		isRepairer = clientID == alloc.RepairerID
 	)
 
 	if isOwner {
@@ -152,8 +152,6 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 
 	result["commit_meta_txns"] = commitMetaTxns
 
-
-
 	if !isOwner && !isRepairer {
 		var authTokenString = r.FormValue("auth_token")
 
@@ -163,6 +161,65 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		}
 
 		delete(result, "path")
+	}
+
+	return result, nil
+}
+
+func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Request, name string) (result []map[string]interface{}, err error) {
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	alloc, err := fsh.verifyAllocation(ctx, allocationTx, true)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+	allocationID := alloc.ID
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID == "" {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	var (
+		isOwner    = clientID == alloc.OwnerID
+		isRepairer = clientID == alloc.RepairerID
+	)
+
+	if isOwner {
+		publicKey := alloc.OwnerPublicKey
+
+		valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
+		if !valid || err != nil {
+			return nil, common.NewError("invalid_signature", "Invalid signature")
+		}
+	}
+
+	filerefs, err := reference.GetReferencesByName(ctx, allocationID, name)
+	if err != nil {
+		Logger.Info("No files in current allocation matched the search keyword", zap.Error(err))
+		return result, nil
+	}
+
+	for _, fileref := range filerefs {
+		converted := fileref.GetListingData(ctx)
+		commitMetaTxns, err := reference.GetCommitMetaTxns(ctx, fileref.ID)
+		if err != nil {
+			Logger.Error("Failed to get commitMetaTxns from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
+		}
+		converted["commit_meta_txns"] = commitMetaTxns
+		result = append(result, converted)
+	}
+
+	if !isOwner && !isRepairer {
+		var authTokenString = r.FormValue("auth_token")
+
+		// check auth token
+		for i, fileref := range filerefs {
+			if authToken, err := fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
+				return nil, common.NewErrorf("file_meta", "cannot verify auth ticket: %v", err)
+			}
+
+			delete(result[i], "path")
+		}
 	}
 
 	return result, nil
@@ -463,6 +520,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 			return
 		}
 	}
+
 	var refPathResult blobberhttp.ReferencePathResult
 	refPathResult.ReferencePath = refPath
 	if latestWM != nil {
@@ -610,9 +668,9 @@ func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Req
 	}, nil
 }
 
-//Retrieves file refs. One can use three types to refer to regular, updated and deleted. Regular type gives all undeleted rows.
-//Updated gives rows that is updated compared to the date given. And deleted gives deleted refs compared to the date given.
-//Updated date time format should be as declared in above constant; OffsetDateLayout
+// Retrieves file refs. One can use three types to refer to regular, updated and deleted. Regular type gives all undeleted rows.
+// Updated gives rows that is updated compared to the date given. And deleted gives deleted refs compared to the date given.
+// Updated date time format should be as declared in above constant; OffsetDateLayout
 func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobberhttp.RefResult, error) {
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
