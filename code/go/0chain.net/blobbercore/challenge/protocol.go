@@ -222,12 +222,15 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			return common.NewError("blockdata_not_found", err.Error())
 		}
 		proofGenTime = time.Since(t1).Milliseconds()
-		logging.Logger.Info("Proof gen logs: ",
-			zap.Int64("block num", blockNum),
-			zap.Int64("file size", objectPath.Meta["size"].(int64)),
-			zap.String("file path", objectPath.Meta["name"].(string)),
-			zap.Int64("proof gen time", proofGenTime),
-		)
+
+		if objectPath.Meta["size"] != nil {
+			logging.Logger.Info("Proof gen logs: ",
+				zap.Int64("block num", blockNum),
+				zap.Int64("file size", objectPath.Meta["size"].(int64)),
+				zap.String("file path", objectPath.Meta["name"].(string)),
+				zap.Int64("proof gen time", proofGenTime),
+			)
+		}
 		postData["challenge_proof"] = challengeResponse
 	}
 

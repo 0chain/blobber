@@ -32,7 +32,7 @@ type Ref struct {
 	Type                    string `gorm:"column:type;size:1" dirlist:"type" filelist:"type"`
 	AllocationID            string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_lookup_hash_alloc,priority:1" dirlist:"allocation_id" filelist:"allocation_id"`
 	LookupHash              string `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash_alloc,priority:2" dirlist:"lookup_hash" filelist:"lookup_hash"`
-	Name                    string `gorm:"column:name;size:100;not null" dirlist:"name" filelist:"name"`
+	Name                    string `gorm:"column:name;size:100;not null;index:idx_name_gin:gin" dirlist:"name" filelist:"name"`
 	Path                    string `gorm:"column:path;size:1000;not null;index:idx_path_alloc,priority:2;index:path_idx" dirlist:"path" filelist:"path"`
 	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
 	Hash                    string `gorm:"column:hash;size:64;not null" dirlist:"hash" filelist:"hash"`
@@ -235,6 +235,18 @@ func GetReferenceByLookupHash(ctx context.Context, allocationID, pathHash string
 		return nil, err
 	}
 	return ref, nil
+}
+
+func GetReferencesByName(ctx context.Context, allocationID, name string) (refs []*Ref, err error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	err = db.Model(&Ref{}).
+		Where("allocation_id = ? AND name @@ plainto_tsquery(?)", allocationID, name).
+		Order("ts_rank_cd(to_tsvector('english', name), plainto_tsquery(?)) DESC").
+		Find(&refs).Error
+	if err != nil {
+		return nil, err
+	}
+	return refs, nil
 }
 
 // IsRefExist checks if ref with given path exists and returns error other than gorm.ErrRecordNotFound
