@@ -87,7 +87,7 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	fileRef.ContentHash = nf.Hash
 	fileRef.CustomMeta = nf.CustomMeta
 	fileRef.MerkleRoot = nf.MerkleRoot
-	fileRef.WriteMarker = allocationRoot
+	fileRef.AllocationRoot = allocationRoot
 	fileRef.Size = nf.Size
 	fileRef.ThumbnailHash = nf.ThumbnailHash
 	fileRef.ThumbnailSize = nf.ThumbnailSize
