@@ -81,11 +81,11 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	return sn, nil
 }
 
-// RegisterBlobber register blobber if it doesn't registered yet. sync terms and stake pool settings from blockchain if it is registered
+// RegisterBlobber register blobber if it is not registered yet
 func RegisterBlobber(ctx context.Context) error {
 
-	b, err := config.ReloadFromChain(ctx, datastore.GetStore().GetDB())
-	if err != nil || b.BaseURL != node.Self.GetURLBase() { // blobber is not registered yet, baseURL is changed
+	_, err := config.ReloadFromChain(ctx, datastore.GetStore().GetDB())
+	if err != nil { // blobber is not registered yet
 		txn, err := sendSmartContractBlobberAdd(ctx)
 		if err != nil {
 			logging.Logger.Error("Error when sending add request to blockchain", zap.Any("err", err))
@@ -109,25 +109,6 @@ func RegisterBlobber(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// UpdateBlobber update blobber
-func UpdateBlobber(ctx context.Context) error {
-
-	txn, err := sendSmartContractBlobberAdd(ctx)
-	if err != nil {
-		return err
-	}
-
-	t, err := TransactionVerify(txn)
-	if err != nil {
-		logging.Logger.Error("Failed to verify blobber update transaction", zap.Any("err", err), zap.String("txn.Hash", txn.Hash))
-		return err
-	}
-
-	logging.Logger.Info("Verified blobber update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-	return nil
-
 }
 
 func RefreshPriceOnChain(ctx context.Context) error {
@@ -164,47 +145,6 @@ func sendSmartContractBlobberAdd(ctx context.Context) (*transaction.Transaction,
 		logging.Logger.Error("Failed to set blobber on the blockchain",
 			zap.String("err:", err.Error()))
 		return nil, err
-	}
-
-	return txn, nil
-}
-
-// UpdateBlobberOnChain updates latest changes in blobber's settings, capacity,etc.
-func UpdateBlobberOnChain(ctx context.Context) error {
-
-	txn, err := sendSmartContractBlobberUpdate(ctx)
-	if err != nil {
-		return err
-	}
-
-	if t, err := TransactionVerify(txn); err != nil {
-		logging.Logger.Error("Failed to verify blobber update transaction", zap.Any("err", err), zap.String("txn.Hash", txn.Hash))
-	} else {
-		logging.Logger.Info("Verified blobber update transaction", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-	}
-
-	return err
-}
-
-// sendSmartContractBlobberUpdate update blobber on blockchain
-func sendSmartContractBlobberUpdate(ctx context.Context) (*transaction.Transaction, error) {
-	// initialize storage node (ie blobber)
-	txn, err := transaction.NewTransactionEntity()
-	if err != nil {
-		return nil, err
-	}
-
-	sn, err := getStorageNode()
-	if err != nil {
-		return nil, err
-	}
-
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
-		transaction.UPDATE_BLOBBER_SC_NAME, sn, 0)
-	if err != nil {
-		logging.Logger.Error("Failed to set blobber on the blockchain",
-			zap.String("err:", err.Error()))
-		return txn, err
 	}
 
 	return txn, nil
