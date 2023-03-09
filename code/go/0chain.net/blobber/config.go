@@ -50,8 +50,6 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.HealthCheckWorkerFreq = viper.GetDuration("healthcheck.frequency")
 
 	config.Configuration.ChallengeResolveFreq = viper.GetInt64("challenge_response.frequency")
-	config.Configuration.ChallengeResolveNumWorkers = viper.GetInt("challenge_response.num_workers")
-	config.Configuration.ChallengeMaxRetires = viper.GetInt("challenge_response.max_retries")
 
 	config.Configuration.AutomaticUpdate = viper.GetBool("disk_update.automatic_update")
 	blobberUpdateIntrv := viper.GetDuration("disk_update.blobber_update_interval")

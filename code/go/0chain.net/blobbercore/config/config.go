@@ -22,8 +22,6 @@ func SetupDefaultConfig() {
 	viper.SetDefault("readmarker_redeem.frequency", 10)
 	viper.SetDefault("readmarker_redeem.num_workers", 5)
 	viper.SetDefault("challenge_response.frequency", 10)
-	viper.SetDefault("challenge_response.num_workers", 5)
-	viper.SetDefault("challenge_response.max_retries", 10)
 
 	viper.SetDefault("healthcheck.frequency", "60s")
 
@@ -96,9 +94,7 @@ type Config struct {
 	WMRedeemNumWorkers            int
 	RMRedeemFreq                  int64
 	RMRedeemNumWorkers            int
-	ChallengeResolveFreq          int64
-	ChallengeResolveNumWorkers    int
-	ChallengeMaxRetires           int
+	ChallengeResolveFreq          int64 // number of seconds interval to request blockchain for open challenges
 	TempFilesCleanupFreq          int64
 	TempFilesCleanupNumWorkers    int
 
