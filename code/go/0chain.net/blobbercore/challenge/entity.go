@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -101,6 +102,8 @@ type ChallengeEntity struct {
 	// This time is taken from Blockchain challenge object.
 	CreatedAt common.Timestamp `gorm:"created_at" json:"created"`
 	UpdatedAt time.Time        `gorm:"updated_at;type:timestamp without time zone;not null;default:current_timestamp" json:"-"`
+
+	ChallengeTiming *ChallengeTiming
 }
 
 func (ChallengeEntity) TableName() string {
@@ -163,7 +166,7 @@ func (cr *ChallengeEntity) SaveWith(db *gorm.DB) error {
 		return err
 	}
 
-	err = db.Save(cr).Error
+	err = db.Create(cr).Error
 	return err
 }
 

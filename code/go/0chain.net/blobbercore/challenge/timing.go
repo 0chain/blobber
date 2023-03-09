@@ -29,29 +29,21 @@ type ChallengeTiming struct {
 	// TxnVerification is when challenge response is verified on blockchain.
 	TxnVerification common.Timestamp `gorm:"txn_verification" json:"txn_verification"`
 	// Cancelled is when challenge is cancelled by blobber due to expiration or bad challenge data (eg. invalid ref or not a file) which is impossible to validate.
-	Cancelled common.Timestamp `gorm:"cancelled" json:"cancelled"`
+	// Cancelled common.Timestamp `gorm:"cancelled" json:"cancelled"`
 	// Expiration is when challenge is marked as expired by blobber.
 	Expiration common.Timestamp `gorm:"expiration" json:"expiration"`
 
-	// ClosedAt is when challenge is closed (eg. expired, cancelled, or completed/verified).
+	// ClosedAt is duration in seconds a challenge is closed (eg. expired, cancelled, or completed/verified)
+	// after challenge Creation Date
 	ClosedAt common.Timestamp `gorm:"column:closed_at;index:idx_closed_at,sort:desc;" json:"closed"`
-
-	// UpdatedAt is when row is last updated.
-	UpdatedAt common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" json:"updated"`
 }
 
 func (ChallengeTiming) TableName() string {
 	return "challenge_timing"
 }
 
-func (c *ChallengeTiming) BeforeCreate(tx *gorm.DB) error {
-	c.UpdatedAt = common.Now()
-	c.CreatedAtBlobber = common.Now()
-	return nil
-}
-
-func (c *ChallengeTiming) BeforeSave(tx *gorm.DB) error {
-	c.UpdatedAt = common.Now()
+func (ct *ChallengeTiming) Save() error {
+	// TODO create challengetiming row
 	return nil
 }
 
