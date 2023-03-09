@@ -368,7 +368,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	return cr.Save(ctx)
 }
 
-func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
+func (cr *ChallengeEntity) CommitChallenge(ctx context.Context) error {
 	start := time.Now()
 	verifyIterated := 0
 	if time.Since(common.ToTime(cr.CreatedAt)) > config.StorageSCConfig.ChallengeCompletionTime {
@@ -407,10 +407,6 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		}
 	}
 	verifyTxnTime := time.Since(start)
-
-	if verifyOnly {
-		return nil
-	}
 
 	t, err := cr.SubmitChallengeToBC(ctx)
 
