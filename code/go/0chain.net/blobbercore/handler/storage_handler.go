@@ -325,7 +325,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 
 	result := fileref.GetListingData(ctx)
 	fileStats, _ := stats.GetFileStats(ctx, fileref.ID)
-	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.WriteMarker)
+	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.AllocationRoot)
 	if wm != nil && fileStats != nil {
 		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
 		fileStats.OnChain = wm.OnChain()

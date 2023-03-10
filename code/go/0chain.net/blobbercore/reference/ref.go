@@ -49,7 +49,7 @@ type Ref struct {
 	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature;size:64" filelist:"actual_file_hash_signature"  json:"actual_file_hash_signature,omitempty"`
 	ActualFileHash          string `gorm:"column:actual_file_hash;size:64;not null" filelist:"actual_file_hash"`
 	MimeType                string `gorm:"column:mimetype;size:64;not null" filelist:"mimetype"`
-	WriteMarker             string `gorm:"column:write_marker;size:64;not null"`
+	AllocationRoot          string `gorm:"column:allocation_root;size:64;not null"`
 	ThumbnailSize           int64  `gorm:"column:thumbnail_size;not null;default:0" filelist:"thumbnail_size"`
 	ThumbnailHash           string `gorm:"column:thumbnail_hash;size:64;not null" filelist:"thumbnail_hash"`
 	ActualThumbnailSize     int64  `gorm:"column:actual_thumbnail_size;not null;default:0" filelist:"actual_thumbnail_size"`
@@ -110,7 +110,7 @@ type PaginatedRef struct { //Gorm smart select fields.
 	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature" json:"actual_file_hash_signature,omitempty"`
 	ActualFileHash          string `gorm:"column:actual_file_hash" json:"actual_file_hash,omitempty"`
 	MimeType                string `gorm:"column:mimetype" json:"mimetype,omitempty"`
-	WriteMarker             string `gorm:"column:write_marker" json:"write_marker,omitempty"`
+	AllocationRoot          string `gorm:"column:allocation_root" json:"allocation_root,omitempty"`
 	ThumbnailSize           int64  `gorm:"column:thumbnail_size" json:"thumbnail_size,omitempty"`
 	ThumbnailHash           string `gorm:"column:thumbnail_hash" json:"thumbnail_hash,omitempty"`
 	ActualThumbnailSize     int64  `gorm:"column:actual_thumbnail_size" json:"actual_thumbnail_size,omitempty"`
@@ -494,20 +494,20 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 func (r *Ref) SaveDirRef(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Model(r).Where("id = ?", r.ID).Updates(map[string]interface{}{
-		"allocation_id":  r.AllocationID,
-		"lookup_hash":    r.LookupHash,
-		"name":           r.Name,
-		"path":           r.Path,
-		"hash":           r.Hash,
-		"file_meta_hash": r.FileMetaHash,
-		"num_of_blocks":  r.NumBlocks,
-		"path_hash":      r.PathHash,
-		"parent_path":    r.ParentPath,
-		"level":          r.PathLevel,
-		"write_marker":   r.WriteMarker,
-		"size":           r.Size,
-		"chunk_size":     r.ChunkSize,
-		"file_id":        r.FileID,
+		"allocation_id":   r.AllocationID,
+		"lookup_hash":     r.LookupHash,
+		"name":            r.Name,
+		"path":            r.Path,
+		"hash":            r.Hash,
+		"file_meta_hash":  r.FileMetaHash,
+		"num_of_blocks":   r.NumBlocks,
+		"path_hash":       r.PathHash,
+		"parent_path":     r.ParentPath,
+		"level":           r.PathLevel,
+		"allocation_root": r.AllocationRoot,
+		"size":            r.Size,
+		"chunk_size":      r.ChunkSize,
+		"file_id":         r.FileID,
 	})
 	if errors.Is(db.Error, gorm.ErrRecordNotFound) || db.RowsAffected == 0 {
 		err := db.Save(r).Error
