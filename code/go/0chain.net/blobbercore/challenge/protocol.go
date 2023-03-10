@@ -12,7 +12,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
@@ -59,14 +58,7 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 		return nil, err
 	}
 
-	txnSubmitted := time.Now()
-	if err := UpdateChallengeTimingTxnSubmission(cr.ChallengeID, common.Timestamp(txnSubmitted.Unix())); err != nil {
-		logging.Logger.Error("[challengetiming]txnsubmission",
-			zap.Any("challenge_id", cr.ChallengeID),
-			zap.Time("created", common.ToTime(cr.CreatedAt)),
-			zap.Time("txn_submission", txnSubmitted),
-			zap.Error(err))
-	}
+	cr.ChallengeTiming.TxnSubmission = common.Now()
 
 	logging.Logger.Info("Verifying challenge response to blockchain.", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
 	var (
@@ -96,24 +88,10 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 }
 
 func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error) {
-	cancellation := time.Now()
-
-	db := datastore.GetStore().GetDB()
-	if err := db.Model(&ChallengeEntity{}).
-		Where("challenge_id = ?", cr.ChallengeID).
-		Updates(map[string]interface{}{
-			"status":         Cancelled,
-			"updated_at":     cancellation.UTC(),
-			"status_message": errReason.Error(),
-		}).Error; err != nil {
-		logging.Logger.Error("[challenge]cancel:db ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
-	}
-
-	if err := UpdateChallengeTimingCancellation(cr.ChallengeID, common.Timestamp(cancellation.Unix()), errReason); err != nil {
-		logging.Logger.Error("[challengetiming]cancellation",
-			zap.Any("challenge_id", cr.ChallengeID),
-			zap.Time("cancellation", cancellation),
-			zap.Error(err))
+	cancellation := common.Now()
+	cr.ChallengeTiming.ClosedAt = cancellation
+	if errReason == ErrExpiredCCT {
+		cr.ChallengeTiming.Expiration = cancellation
 	}
 }
 
@@ -242,16 +220,8 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		zap.Int64("proof gen time", proofGenTime),
 	)
 
-	err = UpdateChallengeTimingProofGenerationAndFileSize(
-		cr.ChallengeID,
-		proofGenTime,
-		objectPath.Size,
-	)
-	if err != nil {
-		allocMu.Unlock()
-		logging.Logger.Error(err.Error())
-		return err
-	}
+	cr.ChallengeTiming.FileSize = objectPath.Size
+	cr.ChallengeTiming.ProofGenTime = proofGenTime
 
 	allocMu.Unlock()
 
@@ -391,15 +361,8 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context) error {
 					FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
 				}
 
-				txnVerification := time.Now()
-				if err := UpdateChallengeTimingTxnVerification(cr.ChallengeID, common.Timestamp(txnVerification.Unix())); err != nil {
-					logging.Logger.Error("[challengetiming]txnverification",
-						zap.Any("challenge_id", cr.ChallengeID),
-						zap.Time("created", common.ToTime(cr.CreatedAt)),
-						zap.Time("txn_verified", txnVerification),
-						zap.Error(err))
-				}
-
+				cr.ChallengeTiming.TxnVerification = common.Now()
+				cr.ChallengeTiming.ClosedAt = cr.ChallengeTiming.TxnVerification
 				return nil
 			}
 			logging.Logger.Error("[challenge]trans: Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
@@ -431,14 +394,7 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context) error {
 		cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
 		cr.UpdatedAt = time.Now().UTC()
 
-		txnVerification := time.Now()
-		if err := UpdateChallengeTimingTxnVerification(cr.ChallengeID, common.Timestamp(txnVerification.Unix())); err != nil {
-			logging.Logger.Error("[challengetiming]txnverification",
-				zap.Any("challenge_id", cr.ChallengeID),
-				zap.Time("created", common.ToTime(cr.CreatedAt)),
-				zap.Time("txn_verified", txnVerification),
-				zap.Error(err))
-		}
+		cr.ChallengeTiming.TxnVerification = common.Now()
 	}
 	handleVerify := time.Since(start) - verifyTxnTime - submitTime
 	err = cr.Save(ctx)

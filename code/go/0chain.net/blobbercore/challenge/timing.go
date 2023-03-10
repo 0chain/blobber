@@ -5,8 +5,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -28,8 +26,6 @@ type ChallengeTiming struct {
 	TxnSubmission common.Timestamp `gorm:"txn_submission" json:"txn_submission"`
 	// TxnVerification is when challenge response is verified on blockchain.
 	TxnVerification common.Timestamp `gorm:"txn_verification" json:"txn_verification"`
-	// Cancelled is when challenge is cancelled by blobber due to expiration or bad challenge data (eg. invalid ref or not a file) which is impossible to validate.
-	// Cancelled common.Timestamp `gorm:"cancelled" json:"cancelled"`
 	// Expiration is when challenge is marked as expired by blobber.
 	Expiration common.Timestamp `gorm:"expiration" json:"expiration"`
 
@@ -43,99 +39,8 @@ func (ChallengeTiming) TableName() string {
 }
 
 func (ct *ChallengeTiming) Save() error {
-	// TODO create challengetiming row
-	return nil
-}
-
-func CreateChallengeTiming(challengeID string, createdAt common.Timestamp) error {
-	c := &ChallengeTiming{
-		ChallengeID:    challengeID,
-		CreatedAtChain: createdAt,
-	}
-
-	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		return tx.Create(c).Error
-	})
-
-	return err
-}
-
-func UpdateChallengeTimingCancellation(challengeID string, cancellation common.Timestamp, reason error) error {
-	c := &ChallengeTiming{
-		ChallengeID: challengeID,
-	}
-
-	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		values := map[string]interface{}{
-			"closed_at": cancellation,
-		}
-
-		if reason == ErrExpiredCCT {
-			values["expiration"] = cancellation
-		}
-
-		return tx.Model(&c).Updates(values).Error
-	})
-
-	return err
-}
-
-func UpdateChallengeTimingCompleteValidation(challengeID string, completeValidation common.Timestamp) error {
-	c := &ChallengeTiming{
-		ChallengeID: challengeID,
-	}
-
-	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		return tx.Model(&c).Update("complete_validation", completeValidation).Error
-	})
-
-	return err
-}
-
-func UpdateChallengeTimingProofGenerationAndFileSize(
-	challengeID string, proofGenTime, size int64) error {
-
-	if proofGenTime == 0 || size == 0 {
-		logging.Logger.Error(fmt.Sprintf("Proof gen time: %d, size: %d", proofGenTime, size))
-	}
-
-	c := &ChallengeTiming{
-		ChallengeID:  challengeID,
-		ProofGenTime: proofGenTime,
-		FileSize:     size,
-	}
-
 	db := datastore.GetStore().GetDB()
-	return db.Save(c).Error
-}
-
-func UpdateChallengeTimingTxnSubmission(challengeID string, txnSubmission common.Timestamp) error {
-	c := &ChallengeTiming{
-		ChallengeID: challengeID,
-	}
-
-	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		return tx.Model(&c).Update("txn_submission", txnSubmission).Error
-	})
-
-	return err
-}
-
-func UpdateChallengeTimingTxnVerification(challengeID string, txnVerification common.Timestamp) error {
-	c := &ChallengeTiming{
-		ChallengeID: challengeID,
-	}
-
-	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		values := map[string]interface{}{
-			"txn_verification": txnVerification,
-			"closed_at":        txnVerification,
-		}
-
-		return tx.Model(&c).Updates(values).Error
-	})
-
-	return err
+	return db.Save(ct).Error
 }
 
 func GetChallengeTimings(from common.Timestamp, limit common.Pagination) ([]*ChallengeTiming, error) {

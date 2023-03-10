@@ -40,7 +40,7 @@ func init() {
 // be descending order.
 func syncOpenChallenges_New(ctx context.Context) {
 	var lastTimeStamp int64
-	offset := 0
+	// offset := 0
 	challengeRespTime := time.Now()
 	for {
 		d := time.Since(challengeRespTime)
@@ -88,7 +88,7 @@ func syncOpenChallenges_New(ctx context.Context) {
 			// update with last challenge's CreatedAt in the slice
 			lastTimeStamp = int64(challengeResponse.Challenges[len(challengeResponse.Challenges)-1].CreatedAt)
 		}
-		offset += len(challengeResponse.Challenges)
+		// offset += len(challengeResponse.Challenges)
 	}
 }
 
@@ -109,6 +109,7 @@ func ProcessChallenge_New(ctx context.Context) {
 			chalEntity.StatusMessage = err.Error()
 			goto L1
 		}
+		chalEntity.ChallengeTiming.CompleteValidation = common.Now()
 
 		err = chalEntity.CommitChallenge(ctx)
 		if err != nil {
