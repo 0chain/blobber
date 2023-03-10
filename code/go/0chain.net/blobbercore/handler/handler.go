@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime/pprof"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/0chain/gosdk/constants"
@@ -289,6 +290,14 @@ func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 
 	ctx = setupHandlerContext(ctx, r)
 
+	name := r.FormValue("name")
+	if strings.TrimSpace(name) != "" {
+		response, err := storageHandler.GetFilesMetaByName(ctx, r, name)
+		if err != nil {
+			return nil, err
+		}
+		return response, nil
+	}
 	response, err := storageHandler.GetFileMeta(ctx, r)
 	if err != nil {
 		return nil, err
