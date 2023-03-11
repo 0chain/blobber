@@ -5,8 +5,8 @@ MIGRATION_ROOT=$HOME/.s3migration
 MINIO_USERNAME=0chainminiousername
 MINIO_PASSWORD=0chainminiopassword
 ALLOCATION=0chainallocationid
-# BLOCK_WORKER_URL=0chainblockworker
-BLOCK_WORKER_URL=https://helm.0chain.net/dns
+BLOCK_WORKER_URL=0chainblockworker
+# BLOCK_WORKER_URL=https://helm.0chain.net/dns
 # todo: check with team
 MINIO_TOKEN=0chainminiotoken
 BLIMP_DOMAIN=blimpdomain
@@ -39,10 +39,6 @@ min_confirmation: 50
 confirmation_chain_length: 3
 max_txn_query: 5
 query_sleep_time: 5
-# # OPTIONAL - Uncomment to use/ Add more if you want
-# preferred_blobbers:
-#   - http://one.devnet-0chain.net:31051
-#   - http://one.devnet-0chain.net:31052
 EOF
 
 # todo: how do you conform if the wallet belongs to an allocationID
