@@ -22,8 +22,8 @@ MIGRATE_TO=0chainmigrateto
 WORKING_DIR=0chainwd
 CONFIG_DIR=$HOME/.zcn
 
-# BLOCK_WORKER_URL=0chainblockworkerurl
-BLOCK_WORKER_URL=https://helm.0chain.net/dns
+BLOCK_WORKER_URL=0chainblockworkerurl
+# BLOCK_WORKER_URL=https://helm.0chain.net/dns
 sudo apt update
 sudo apt install -y unzip curl containerd docker.io
 
@@ -44,6 +44,17 @@ then
 	echo "wallet.json does not exist in ${CONFIG_DIR}. Exiting..."
 	exit 1
 fi
+
+# create config.yaml
+cat <<EOF >${CONFIG_DIR}/config.yaml
+block_worker: ${BLOCK_WORKER_URL}
+signature_scheme: bls0chain
+min_submit: 50
+min_confirmation: 50
+confirmation_chain_length: 3
+max_txn_query: 5
+query_sleep_time: 5
+EOF
 
 cat <<EOF >${CONFIG_DIR}/allocation.txt
 $ALLOCATION
