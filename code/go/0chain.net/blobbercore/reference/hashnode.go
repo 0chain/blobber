@@ -14,7 +14,7 @@ func LoadRootHashnode(ctx context.Context, allocationID string) (*Hashnode, erro
 	db := datastore.GetStore().GetDB()
 
 	db = db.Raw(`
-SELECT allocation_id, type, name, path, content_hash, merkle_root, actual_file_hash, chunk_size,size,actual_file_size, parent_path
+SELECT allocation_id, type, name, path, validation_root, fixed_merkle_root, actual_file_hash, chunk_size,size,actual_file_size, parent_path
 FROM reference_objects
 WHERE allocation_id = ?
 ORDER BY level desc, path`, allocationID)
