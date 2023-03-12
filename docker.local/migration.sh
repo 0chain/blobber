@@ -22,7 +22,7 @@ MIGRATE_TO=0chainmigrateto
 WORKING_DIR=0chainwd
 CONFIG_DIR=$HOME/.zcn
 
-BLOCK_WORKER_URL=0chainblockworkerurl
+BLOCK_WORKER_URL=0chainblockworker
 # BLOCK_WORKER_URL=https://helm.0chain.net/dns
 sudo apt update
 sudo apt install -y unzip curl containerd docker.io
