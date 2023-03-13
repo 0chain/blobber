@@ -42,8 +42,8 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 		name                string
 		context             metadata.MD
 		allocChange         *AllocationChange
+		validationRoot      string
 		fileIDMeta          map[string]string
-		hash                string
 		allocationID        string
 		maxDirFilesPerAlloc int
 		expectedMessage     string
@@ -53,7 +53,7 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 		{
 			name:                "Upload file changer success",
 			allocChange:         &AllocationChange{Operation: constants.FileOperationInsert},
-			hash:                "new_file_hash",
+			validationRoot:      "new_validation_root",
 			allocationID:        alloc.ID,
 			maxDirFilesPerAlloc: 5,
 			expectingError:      false,
@@ -64,7 +64,7 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 		{
 			name:                "Upload file changer fails when max dirs & files reached",
 			allocChange:         &AllocationChange{},
-			hash:                "new_file_hash",
+			validationRoot:      "new_validation_root",
 			allocationID:        alloc.ID,
 			maxDirFilesPerAlloc: 5,
 			expectedMessage:     "max_alloc_dir_files_reached: maximum files and directories already reached",
@@ -101,13 +101,13 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 			fPath := "/new"
 			change := &UploadFileChanger{
 				BaseFileChanger: BaseFileChanger{
-					Filename:     filepath.Base(fPath),
-					Path:         "/new",
-					ActualSize:   2310,
-					AllocationID: tc.allocationID,
-					Hash:         tc.hash,
-					Size:         2310,
-					ChunkSize:    65536,
+					Filename:       filepath.Base(fPath),
+					Path:           "/new",
+					ActualSize:     2310,
+					AllocationID:   tc.allocationID,
+					ValidationRoot: tc.validationRoot,
+					Size:           2310,
+					ChunkSize:      65536,
 				},
 			}
 

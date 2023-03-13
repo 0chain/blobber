@@ -111,8 +111,10 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 
 func (rf *CopyFileChange) processCopyRefs(
 	ctx context.Context, srcRef, destRef *reference.Ref,
-	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (
-	fileRefs []*reference.Ref, err error) {
+	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string,
+) (
+	fileRefs []*reference.Ref, err error,
+) {
 
 	newRef := *srcRef
 	newRef.ID = 0

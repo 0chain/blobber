@@ -191,6 +191,7 @@ func RegisterValidator() {
 			t, err := transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
 			if err == nil {
 				Logger.Info("Transaction for adding validator accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
+				go handler.StartHealthCheck(common.GetRootContext(), common.ProviderTypeValidator)
 				return
 			}
 			verifyRetries++
@@ -200,8 +201,6 @@ func RegisterValidator() {
 			Logger.Error("Add validator transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txn.Hash))
 		}
 	}
-
-	go handler.StartHealthCheck(common.GetRootContext(), common.ProviderTypeValidator)
 
 }
 
