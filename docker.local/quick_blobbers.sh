@@ -522,6 +522,8 @@ fi
 
 /usr/local/bin/docker-compose -f ${PROJECT_ROOT}/docker-compose.yml up -d
 
+while [ ! -d ${PROJECT_ROOT}/caddy_data/caddy/certificates ]; do echo "waiting for certificates to be provisioned"; sleep 1; done
+
 cd ${PROJECT_ROOT}/chimeny-dashboard
 ansible-playbook --extra-vars "{'blobber_host': '${BLOBBER_HOST}', 'grafana_username': '${GF_ADMIN_USER}', 'grafana_password': '${GF_ADMIN_PASSWORD}'}" grafana.yaml
 
