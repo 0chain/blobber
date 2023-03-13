@@ -24,6 +24,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/storage"
 
+	"github.com/0chain/gosdk/zboxcore/sdk"
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -181,6 +182,15 @@ func main() {
 func RegisterValidator() {
 	registrationRetries := 0
 	//ctx := badgerdbstore.GetStorageProvider().WithConnection(common.GetRootContext())
+
+	_, err := sdk.GetValidator(node.Self.ID)
+
+	if err == nil {
+		Logger.Info("Validator already registered")
+		go handler.StartHealthCheck(common.GetRootContext(), common.ProviderTypeValidator)
+		return
+	}
+
 	for registrationRetries < 10 {
 		txn, err := storage.GetProtocolImpl().RegisterValidator(common.GetRootContext())
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
