@@ -523,7 +523,7 @@ fi
 /usr/local/bin/docker-compose -f ${PROJECT_ROOT}/docker-compose.yml up -d
 
 cd ${PROJECT_ROOT}/chimeny-dashboard
-ansible-playbook --extra-vars '{"blobber_host": "${BLOBBER_HOST}", "grafana_username": "${GF_ADMIN_USER}", "grafana_password": "${GF_ADMIN_PASSWORD}"}' grafana.yaml
+ansible-playbook --extra-vars "{'blobber_host': '${BLOBBER_HOST}', 'grafana_username': '${GF_ADMIN_USER}', 'grafana_password': '${GF_ADMIN_PASSWORD}'}" grafana.yaml
 
 
 ## setup node monitoring
