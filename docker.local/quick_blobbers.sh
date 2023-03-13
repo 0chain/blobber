@@ -19,7 +19,7 @@ export GF_ADMIN_USER=0chaingfadminuser
 export GF_ADMIN_PASSWORD=0chaingfadminpassword
 export PROJECT_ROOT=/var/0chain/blobber
 export BLOCK_WORKER_URL=http://${NETWORK}.${DOMAIN}/dns
-
+export DEBIAN_FRONTEND=noninteractive
 
 ## cleanup server before starting the deployment
 docker-compose -f /var/0chain/blobber/docker-compose.yml down --volumes || true
