@@ -19,6 +19,7 @@ export PROJECT_ROOT=/var/0chain/blobber
 export BLOCK_WORKER_URL=0chainblockworker
 export BLOBBER_HOST=0chainblobberhost
 # http://${NETWORK}.${DOMAIN}/dns
+export DEBIAN_FRONTEND=noninteractive
 
 ## cleanup server before starting the deployment
 docker-compose -f /var/0chain/blobber/docker-compose.yml down --volumes || true
@@ -521,7 +522,7 @@ fi
 
 /usr/local/bin/docker-compose -f ${PROJECT_ROOT}/docker-compose.yml up -d
 
-cd ${PROJECT_ROOT}chimeny-dashboard
+cd ${PROJECT_ROOT}/chimeny-dashboard
 ansible-playbook --extra-vars '{"blobber_host": "${BLOBBER_HOST}", "grafana_username": "${GF_ADMIN_USER}", "grafana_password": "${GF_ADMIN_PASSWORD}"}' grafana.yaml
 
 
