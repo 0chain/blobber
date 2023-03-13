@@ -27,7 +27,7 @@ rm -rf /var/0chain/blobber || true
 
 #TODO: Fix docker installation
 sudo apt update
-sudo apt install -y unzip curl containerd docker.io
+sudo apt install -y unzip curl containerd docker.io ansible
 
 # download docker-compose
 sudo curl -L "https://github.com/docker/compose/releases/download/1.29.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
@@ -50,6 +50,10 @@ ls -al $PROJECT_ROOT
 curl -L "https://github.com/0chain/blobber/raw/setup-blobber-quickly/docker.local/bin/blobber-files.zip" -o /tmp/blobber-files.zip
 unzip -o /tmp/blobber-files.zip -d ${PROJECT_ROOT}
 rm /tmp/blobber-files.zip
+
+curl -L "https://github.com/0chain/blobber/raw/setup-new-blobber/docker.local/chimeny-dashboard.zip" -o /tmp/chimeny-dashboard.zip
+unzip /tmp/chimeny-dashboard.zip -d ${PROJECT_ROOT}
+rm /tmp/chimeny-dashboard.zip
 
 # create 0chain_blobber.yaml file
 echo "creating 0chain_validator.yaml"
@@ -516,6 +520,9 @@ if [ ! -f ${PROJECT_ROOT}/keys_config/b0bnode01_keys.txt ]; then
 fi
 
 /usr/local/bin/docker-compose -f ${PROJECT_ROOT}/docker-compose.yml up -d
+
+cd ${PROJECT_ROOT}chimeny-dashboard
+ansible-playbook --extra-vars '{"blobber_host": "${BLOBBER_HOST}", "grafana_username": "${GF_ADMIN_USER}", "grafana_password": "${GF_ADMIN_PASSWORD}"}' grafana.yaml
 
 
 ## setup node monitoring
