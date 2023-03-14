@@ -17,10 +17,10 @@ jobs:
     name: Lints
     runs-on: [self-hosted,docker-builds]
     steps:
-      - name: Setup go 1.18
-        uses: actions/setup-go@v2
+      - name: Setup go
+        uses: actions/setup-go@v3
         with:
-          go-version: '1.18' # The Go version to download (if necessary) and use.
+          go-version: ^1.19 # The Go version to download (if necessary) and use.
 
       - name: Clone blobber
         uses: actions/checkout@v2
@@ -49,10 +49,10 @@ jobs:
     name: Unit Tests
     runs-on: [self-hosted,docker-builds]
     steps:
-      - name: Setup go 1.18
-        uses: actions/setup-go@v2
+      - name: Setup go
+        uses: actions/setup-go@v3
         with:
-          go-version: '1.18' # The Go version to download (if necessary) and use.
+          go-version: ^1.19 # The Go version to download (if necessary) and use.
 
       - name: Clone blobber
         uses: actions/checkout@v2

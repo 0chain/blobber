@@ -53,8 +53,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 	l.Lock()
 	defer l.Unlock()
 
-	now := time.Now()
-	if requestTime.After(now.Add(config.Configuration.WriteMarkerLockTimeout)) {
+	if time.Now().After((*requestTime).Add(config.Configuration.WriteMarkerLockTimeout)) {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "requestTime")
 	}
 
@@ -87,7 +86,20 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 	}
 
 	if lock.ConnectionID != connectionID {
-		// pending
+		if time.Since(lock.CreatedAt) > config.Configuration.WriteMarkerLockTimeout {
+			// Lock expired. Provide lock to other connection id
+			lock.ConnectionID = connectionID
+			lock.CreatedAt = *requestTime
+			err = db.Model(&WriteLock{}).Where("allocation_id=?", allocationID).Save(&lock).Error
+			if err != nil {
+				return nil, errors.New("db_error", err.Error())
+			}
+			return &LockResult{
+				Status:    LockStatusOK,
+				CreatedAt: lock.CreatedAt.Unix(),
+			}, nil
+		}
+
 		return &LockResult{
 			Status:    LockStatusPending,
 			CreatedAt: lock.CreatedAt.Unix(),

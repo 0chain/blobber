@@ -119,11 +119,11 @@ func GetCommitMetaTxnHandlerResponse(response *blobbergrpc.CommitMetaTxnResponse
 
 func CopyObjectResponseHandler(copyObjectResponse *blobbergrpc.CopyObjectResponse) *blobberhttp.UploadResult {
 	return &blobberhttp.UploadResult{
-		Filename:     copyObjectResponse.Filename,
-		Size:         copyObjectResponse.Size,
-		Hash:         copyObjectResponse.ContentHash,
-		MerkleRoot:   copyObjectResponse.MerkleRoot,
-		UploadLength: copyObjectResponse.UploadLength,
-		UploadOffset: copyObjectResponse.UploadOffset,
+		Filename:        copyObjectResponse.Filename,
+		Size:            copyObjectResponse.Size,
+		ValidationRoot:  copyObjectResponse.ValidationRoot,
+		FixedMerkleRoot: copyObjectResponse.FixedMerkleRoot,
+		UploadLength:    copyObjectResponse.UploadLength,
+		UploadOffset:    copyObjectResponse.UploadOffset,
 	}
 }

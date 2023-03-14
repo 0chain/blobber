@@ -2,12 +2,10 @@ package allocation
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"mime/multipart"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/gosdk/core/util"
 )
 
 type MockFileStore struct {
@@ -23,11 +21,11 @@ func (mfs *MockFileStore) WriteFile(allocID, connID string,
 	b := bytes.NewBuffer(make([]byte, 0))
 	n, _ := io.Copy(b, infile)
 	return &filestore.FileOutputData{
-		Name:        fileData.Name,
-		Path:        fileData.Path,
-		MerkleRoot:  "",
-		ContentHash: fileData.Hash,
-		Size:        n,
+		Name:            fileData.Name,
+		Path:            fileData.Path,
+		FixedMerkleRoot: "",
+		ValidationRoot:  fileData.ValidationRoot,
+		Size:            n,
 	}, nil
 }
 
@@ -43,12 +41,12 @@ func (mfs *MockFileStore) DeleteFile(allocID string, contentHash string) error {
 	return nil
 }
 
-func (mfs *MockFileStore) GetFileBlock(allocID string, fileData *filestore.FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
+func (mfs *MockFileStore) GetFileBlock(rin *filestore.ReadBlockInput) (*filestore.FileDownloadResponse, error) {
 	return nil, nil
 }
 
-func (mfs *MockFileStore) GetBlocksMerkleTreeForChallenge(allocID string, fileData *filestore.FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
-	return nil, nil, nil
+func (mfs *MockFileStore) GetBlocksMerkleTreeForChallenge(cir *filestore.ChallengeReadBlockInput) (*filestore.ChallengeResponse, error) {
+	return nil, nil
 }
 
 func (mfs *MockFileStore) GetTotalTempFileSizes() (s uint64) {
