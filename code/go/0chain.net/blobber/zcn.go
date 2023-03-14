@@ -11,7 +11,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	handleCommon "github.com/0chain/blobber/code/go/0chain.net/core/common/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/gosdk/zboxcore/sdk"
 	"github.com/0chain/gosdk/zcncore"
 )
 
@@ -35,14 +34,6 @@ func registerOnChain() error {
 	err = filestore.GetFileStore().CalculateCurrentDiskCapacity()
 	if err != nil {
 		return err
-	}
-
-	_, err = sdk.GetBlobber(node.Self.ID)
-
-	if err == nil {
-		fmt.Print("blobber already registered on the blockchain\n")
-		startWorkers()
-		return nil
 	}
 
 	// setup blobber (add or update) on the blockchain (multiple attempts)
@@ -97,12 +88,6 @@ func setupServerChain() error {
 		return err
 	}
 	if err := zcncore.SetWalletInfo(node.Self.GetWalletString(), false); err != nil {
-		return err
-	}
-
-	var blob []string
-	if err := sdk.InitStorageSDK(node.Self.GetWalletString(), serverChain.BlockWorker,
-		config.Configuration.ChainID, config.Configuration.SignatureScheme, blob, int64(0)); err != nil {
 		return err
 	}
 
