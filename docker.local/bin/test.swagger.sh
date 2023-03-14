@@ -35,6 +35,8 @@ platform="linux/arm64"
 # done
 
 DOCKER_BUILDKIT=1 docker $DOCKER_BUILD --progress=plain --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f $dockerfile . -t swagger_test
+docker buildx ls
+docker ps -a
 
 docker run $platform $INTERACTIVE -v $(pwd):/codecov  swagger_test bash -c "\
 cd /codecov/code/go/0chain.net/; \
