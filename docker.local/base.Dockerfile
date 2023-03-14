@@ -1,15 +1,15 @@
-FROM golang:1.18.1-alpine3.15 as blobber_base
+FROM golang:1.19-alpine3.17 as blobber_base
 
 LABEL zchain="blobber"
 
-RUN echo "https://mirrors.aliyun.com/alpine/v3.14/main" >> /etc/apk/repositories && \
-    echo "https://mirrors.aliyun.com/alpine/v3.14/community" >> /etc/apk/repositories && \
-    echo "https://sjc.edge.kernel.org/alpine/v3.14/main" >> /etc/apk/repositories && \
-    echo "https://sjc.edge.kernel.org/alpine/v3.14/community" >> /etc/apk/repositories && \
-    echo "https://uk.alpinelinux.org/alpine/v3.14/main" >> /etc/apk/repositories && \
-    echo "https://uk.alpinelinux.org/alpine/v3.14/community" >> /etc/apk/repositories && \
-    echo "https://dl-4.alpinelinux.org/alpine/v3.14/main" >> /etc/apk/repositories && \
-    echo "https://dl-4.alpinelinux.org/alpine/v3.14/community" >> /etc/apk/repositories && \
+RUN echo "https://mirrors.aliyun.com/alpine/v3.17/main" >> /etc/apk/repositories && \
+    echo "https://mirrors.aliyun.com/alpine/v3.17/community" >> /etc/apk/repositories && \
+    echo "https://sjc.edge.kernel.org/alpine/v3.17/main" >> /etc/apk/repositories && \
+    echo "https://sjc.edge.kernel.org/alpine/v3.17/community" >> /etc/apk/repositories && \
+    echo "https://uk.alpinelinux.org/alpine/v3.17/main" >> /etc/apk/repositories && \
+    echo "https://uk.alpinelinux.org/alpine/v3.17/community" >> /etc/apk/repositories && \
+    echo "https://dl-4.alpinelinux.org/alpine/v3.17/main" >> /etc/apk/repositories && \
+    echo "https://dl-4.alpinelinux.org/alpine/v3.17/community" >> /etc/apk/repositories && \
     apk add --update --no-cache build-base linux-headers git cmake bash perl grep gmp gmp-dev openssl-dev 
 
 # Install Herumi's cryptography
