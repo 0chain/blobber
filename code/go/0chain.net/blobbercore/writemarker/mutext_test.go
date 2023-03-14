@@ -175,7 +175,7 @@ func TestMutext_LockShouldNotWork(t *testing.T) {
 			name:         "Lock should not work if request_time is timeout",
 			allocationID: "lock_allocation_id",
 			connectionID: "lock_connection_id",
-			requestTime:  time.Now().Add(31 * time.Second),
+			requestTime:  time.Now().Add(-31 * time.Second),
 			mock: func() {
 				config.Configuration.WriteMarkerLockTimeout = 30 * time.Second
 			},

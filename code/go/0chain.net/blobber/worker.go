@@ -13,10 +13,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
-	"github.com/0chain/gosdk/zcncore"
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
@@ -29,35 +26,16 @@ func setupWorkers(ctx context.Context) {
 	updateCCTWorker(ctx)
 }
 
-func refreshPriceOnChain(ctx context.Context) {
-	var REPEAT_DELAY = 60 * 60 * time.Duration(viper.GetInt("price_worker_in_hours")) // 12 hours with default settings
-	var err error
-	for {
-		select {
-		case <-ctx.Done():
-			return
-
-		case <-time.After(REPEAT_DELAY * time.Second):
-			err = handler.RefreshPriceOnChain(common.GetRootContext())
-			if err != nil {
-				logging.Logger.Error("refresh price on chain ", zap.Error(err))
-			}
-		}
-
-	}
-}
-
 // startRefreshSettings sync settings from blockchain
 func startRefreshSettings(ctx context.Context) {
 	const REPEAT_DELAY = 60 * 3 // 3 minutes
 	var err error
-	var b *zcncore.Blobber
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(REPEAT_DELAY * time.Second):
-			b, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
+			_, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
 			if err != nil {
 				logging.Logger.Warn("failed to refresh blobber settings from chain", zap.Error(err))
 				continue
@@ -65,15 +43,6 @@ func startRefreshSettings(ctx context.Context) {
 
 			logging.Logger.Info("success to refresh blobber settings from chain")
 
-			//	BaseURL is changed, register blobber to refresh it on blockchain again
-			if b.BaseURL != node.Self.GetURLBase() {
-				err = handler.UpdateBlobber(context.TODO())
-				if err == nil {
-					logging.Logger.Info("success to refresh blobber BaseURL on chain")
-				} else {
-					logging.Logger.Warn("failed to refresh blobber BaseURL on chain", zap.Error(err))
-				}
-			}
 		}
 
 	}

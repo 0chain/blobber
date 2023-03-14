@@ -27,9 +27,9 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Model(&Ref{}).Select("id", "allocation_id", "type", "name", "path",
-		"parent_path", "size", "hash", "file_meta_hash", "path_hash", "content_hash", "merkle_root",
+		"parent_path", "size", "hash", "file_meta_hash", "path_hash", "validation_root", "fixed_merkle_root",
 		"actual_file_size", "actual_file_hash", "chunk_size",
-		"lookup_hash", "thumbnail_hash", "write_marker", "level", "created_at", "updated_at")
+		"lookup_hash", "thumbnail_hash", "allocation_root", "level", "created_at", "updated_at")
 
 	pathsAdded := make(map[string]bool)
 	var shouldOr bool
