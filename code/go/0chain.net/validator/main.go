@@ -224,6 +224,11 @@ func SetupValidatorOnBC(logDir string) error {
 	if err := zcncore.SetWalletInfo(node.Self.GetWalletString(), false); err != nil {
 		return err
 	}
+	var blob []string
+	if err := sdk.InitStorageSDK(node.Self.GetWalletString(), serverChain.BlockWorker,
+		config.Configuration.ChainID, config.Configuration.SignatureScheme, blob, int64(0)); err != nil {
+		return err
+	}
 	go RegisterValidator()
 	return nil
 }
