@@ -37,11 +37,11 @@ func cleanupAllocationFiles(db *gorm.DB, allocationObj allocation.Allocation) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	_ = filestore.GetFileStore().IterateObjects(allocationObj.ID, func(contentHash string, contentSize int64) {
+	_ = filestore.GetFileStore().IterateObjects(allocationObj.ID, func(hash string, contentSize int64) {
 		var refs []reference.Ref
 		err := db.Table((reference.Ref{}).TableName()).
-			Where(reference.Ref{ContentHash: contentHash, Type: reference.FILE}).
-			Or(reference.Ref{ThumbnailHash: contentHash, Type: reference.FILE}).
+			Where(reference.Ref{ValidationRoot: hash, Type: reference.FILE}).
+			Or(reference.Ref{ThumbnailHash: hash, Type: reference.FILE}).
 			Find(&refs).Error
 
 		if err != nil {
@@ -51,10 +51,10 @@ func cleanupAllocationFiles(db *gorm.DB, allocationObj allocation.Allocation) {
 
 		if len(refs) == 0 {
 			logging.Logger.Info("hash has no references. Deleting from disk",
-				zap.Any("count", len(refs)), zap.String("hash", contentHash))
+				zap.Any("count", len(refs)), zap.String("hash", hash))
 
-			if err = filestore.GetFileStore().DeleteFile(allocationObj.ID, contentHash); err != nil {
-				logging.Logger.Error("FileStore_DeleteFile", zap.String("content_hash", contentHash), zap.Error(err))
+			if err = filestore.GetFileStore().DeleteFile(allocationObj.ID, hash); err != nil {
+				logging.Logger.Error("FileStore_DeleteFile", zap.String("validation_root", hash), zap.Error(err))
 			}
 		}
 	})

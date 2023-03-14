@@ -64,7 +64,7 @@ func BenchmarkUploadFileWithDisk(b *testing.B) {
 				RemotePath: "/" + fileName,
 			}
 
-			hasher := sdk.CreateHasher(bm.ChunkSize)
+			hasher := sdk.CreateHasher(int64(bm.ChunkSize))
 			isFinal := false
 
 			body, formData, _ := formBuilder.Build(fileMeta, hasher, strconv.FormatInt(time.Now().UnixNano(), 10), int64(bm.ChunkSize), 0, 0, isFinal, "", [][]byte{chunkBytes}, nil)
@@ -157,7 +157,7 @@ func BenchmarkUploadFileWithNoDisk(b *testing.B) {
 				RemotePath: "/" + fileName,
 			}
 
-			hasher := sdk.CreateHasher(bm.ChunkSize)
+			hasher := sdk.CreateHasher(int64(bm.ChunkSize))
 			isFinal := false
 
 			body, formData, _ := formBuilder.Build(fileMeta, hasher, strconv.FormatInt(time.Now().UnixNano(), 10), int64(bm.ChunkSize), 0, 0, isFinal, "", [][]byte{chunkBytes}, nil)

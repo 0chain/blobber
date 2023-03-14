@@ -338,7 +338,7 @@ func deleteFiles(ctx context.Context, allocID string, conn *AllocationChangeColl
 // delete reference
 func deleteFile(ctx context.Context, path string, conn *AllocationChangeCollector) (err error) {
 	var fileRef *reference.Ref
-	fileRef, err = reference.GetLimitedRefFieldsByPath(ctx, conn.AllocationID, path, []string{"path", "name", "size", "hash", "merkle_root"})
+	fileRef, err = reference.GetLimitedRefFieldsByPath(ctx, conn.AllocationID, path, []string{"path", "name", "size", "hash", "fixed_merkle_root"})
 	if err != nil {
 		return
 	}

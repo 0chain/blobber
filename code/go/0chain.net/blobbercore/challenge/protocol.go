@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"math"
 	"math/rand"
 	"strings"
 	"sync"
@@ -22,6 +21,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
+	sdkUtil "github.com/0chain/gosdk/core/util"
 	"github.com/remeh/sizedwaitgroup"
 
 	"go.uber.org/zap"
@@ -51,7 +51,11 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 
 	sn := &ChallengeResponse{}
 	sn.ChallengeID = cr.ChallengeID
-	sn.ValidationTickets = cr.ValidationTickets
+	for _, vt := range cr.ValidationTickets {
+		if vt != nil {
+			sn.ValidationTickets = append(sn.ValidationTickets, vt)
+		}
+	}
 
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CHALLENGE_RESPONSE, sn, 0)
 	if err != nil {
@@ -125,18 +129,19 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		return ErrNoValidator
 	}
 
-	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
-	if err != nil {
-		cr.CancelChallenge(ctx, ErrNoValidator)
-		return err
-	}
-
 	// Lock allocation changes from happening in handler.CommitWrite function
 	// This lock should be unlocked as soon as possible. We should not defer
 	// unlocking it as it will be locked for longer time and handler.CommitWrite
 	// will fail.
-	allocMu := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
+	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), cr.AllocationID)
 	allocMu.Lock()
+
+	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
+	if err != nil {
+		allocMu.Unlock()
+		cr.CancelChallenge(ctx, ErrNoValidator)
+		return err
+	}
 
 	wms, err := writemarker.GetWriteMarkersInRange(ctx, cr.AllocationID, cr.AllocationRoot, allocationObj.AllocationRoot)
 	if err != nil {
@@ -198,29 +203,18 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			return ErrInvalidObjectPath
 		}
 
-		inputData := &filestore.FileInputData{}
-		inputData.Name = objectPath.Meta["name"].(string)
-		inputData.Path = objectPath.Meta["path"].(string)
-		inputData.Hash = objectPath.Meta["content_hash"].(string)
-		inputData.ChunkSize = objectPath.ChunkSize
-
-		maxNumBlocks := 1024
-		merkleChunkSize := objectPath.ChunkSize / 1024
-		// chunksize is less than 1024
-		if merkleChunkSize == 0 {
-			merkleChunkSize = 1
-		}
-
-		// the file is too small, some of 1024 blocks is not filled
-		if objectPath.Size < objectPath.ChunkSize {
-
-			maxNumBlocks = int(math.Ceil(float64(objectPath.Size) / float64(merkleChunkSize)))
-		}
-
 		r := rand.New(rand.NewSource(cr.RandomNumber))
-		blockoffset := r.Intn(maxNumBlocks)
+		blockoffset := r.Intn(sdkUtil.FixedMerkleLeaves)
+
+		challengeReadInput := &filestore.ChallengeReadBlockInput{
+			Hash:         objectPath.Meta["validation_root"].(string),
+			FileSize:     objectPath.Meta["size"].(int64),
+			BlockOffset:  blockoffset,
+			AllocationID: cr.AllocationID,
+		}
+
 		t1 := time.Now()
-		blockData, mt, err := filestore.GetFileStore().GetBlocksMerkleTreeForChallenge(cr.AllocationID, inputData, blockoffset)
+		challengeResponse, err := filestore.GetFileStore().GetBlocksMerkleTreeForChallenge(challengeReadInput)
 
 		if err != nil {
 			allocMu.Unlock()
@@ -228,18 +222,16 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			return common.NewError("blockdata_not_found", err.Error())
 		}
 		proofGenTime = time.Since(t1).Milliseconds()
-		postData["data"] = []byte(blockData)
-		postData["merkle_path"] = mt.GetPathByIndex(blockoffset)
-		postData["chunk_size"] = objectPath.ChunkSize
-	}
 
-	if objectPath.Meta["size"] != nil {
-		logging.Logger.Info("Proof gen logs: ",
-			zap.Int64("block num", blockNum),
-			zap.Int64("file size", objectPath.Meta["size"].(int64)),
-			zap.String("file path", objectPath.Meta["name"].(string)),
-			zap.Int64("proof gen time", proofGenTime),
-		)
+		if objectPath.Meta["size"] != nil {
+			logging.Logger.Info("Proof gen logs: ",
+				zap.Int64("block num", blockNum),
+				zap.Int64("file size", objectPath.Meta["size"].(int64)),
+				zap.String("file path", objectPath.Meta["name"].(string)),
+				zap.Int64("proof gen time", proofGenTime),
+			)
+		}
+		postData["challenge_proof"] = challengeResponse
 	}
 
 	err = UpdateChallengeTimingProofGenerationAndFileSize(
@@ -248,11 +240,15 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		objectPath.Size,
 	)
 	if err != nil {
+		logging.Logger.Error("[challengetiming]txnverification",
+			zap.Any("challenge_id", cr.ChallengeID),
+			zap.Time("created", common.ToTime(cr.CreatedAt)),
+			zap.Int64("proof_gen_time", int64(proofGenTime)),
+			zap.Error(err))
+
 		allocMu.Unlock()
-		logging.Logger.Error(err.Error())
 		return err
 	}
-
 	allocMu.Unlock()
 
 	postDataBytes, err := json.Marshal(postData)
