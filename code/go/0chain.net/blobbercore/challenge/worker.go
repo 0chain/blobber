@@ -13,6 +13,6 @@ type TodoChallenge struct {
 
 // SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {
-	go syncOpenChallenges_New(ctx)
-	go ProcessChallenge_New(ctx)
+	go syncOpenChallenges(ctx)
+	go ProcessChallenge(ctx)
 }

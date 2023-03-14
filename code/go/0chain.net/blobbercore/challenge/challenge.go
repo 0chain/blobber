@@ -38,7 +38,7 @@ func init() {
 // maximum of 50 challenges in each request. It uses request params to request challenges
 // namely blobberID, limit, from(challenges greater than `from` date) and sort(which should)
 // be descending order.
-func syncOpenChallenges_New(ctx context.Context) {
+func syncOpenChallenges(ctx context.Context) {
 	var lastTimeStamp int64
 	// offset := 0
 	challengeRespTime := time.Now()
@@ -92,7 +92,7 @@ func syncOpenChallenges_New(ctx context.Context) {
 	}
 }
 
-func ProcessChallenge_New(ctx context.Context) {
+func ProcessChallenge(ctx context.Context) {
 	for chalEntity := range unProcessedChallengeCh {
 		var err error
 		t := common.ToTime(chalEntity.CreatedAt)
