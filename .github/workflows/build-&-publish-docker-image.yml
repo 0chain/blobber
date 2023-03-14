@@ -53,6 +53,7 @@ jobs:
           export DOCKER_CLI_EXPERIMENTAL=enabled
           docker run --privileged --rm tonistiigi/binfmt --install all
           docker context create blobber_buildx
+          iptables -t nat -A POSTROUTING -s 172.17.0.0/16 -j MASQUERADE
       
       - name: Login to Docker Hub
         uses: docker/login-action@v1
