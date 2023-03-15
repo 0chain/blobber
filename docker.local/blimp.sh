@@ -49,7 +49,7 @@ _contains () {  # Check if space-separated list $1 contains line $2
 
 allocations=$(zbox listallocations --silent --json | jq -r ' .[] | .id')
 
-if ! _contains "${allocations}" "${allocation}"; then
+if ! _contains "${allocations}" "${ALLOCATION}"; then
   echo "given allocation does not belong to the wallet"
   exit 1
 fi
