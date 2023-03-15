@@ -1,5 +1,5 @@
 ARG image_tag
-FROM golang:1.18.1-alpine3.15 as blobber_build
+FROM golang:1.19-alpine3.17 as blobber_build
 
 RUN apk add --update --no-cache build-base linux-headers git cmake bash perl grep
 
@@ -35,7 +35,7 @@ ARG go_bls_tag
 RUN CGO_ENABLED=1 go build -v -tags ${go_build_mode} -tags ${go_bls_tag} -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=${image_tag}"
 
 # Copy the build artifact into a minimal runtime image:
-FROM golang:1.18.1-alpine3.15
+FROM golang:1.19-alpine3.17
 RUN apk add gmp gmp-dev openssl-dev
 COPY --from=blobber_build  /usr/local/lib/libmcl*.so \
                         /usr/local/lib/libbls*.so \
