@@ -198,11 +198,13 @@ func SendHealthCheck(provider common.ProviderType) (string, error) {
 	var txn *transaction.Transaction
 	var err error
 
-	switch common.ProviderTypeBlobber {
+	switch provider {
 	case common.ProviderTypeBlobber:
 		txn, err = BlobberHealthCheck()
 	case common.ProviderTypeValidator:
 		txn, err = ValidatorHealthCheck()
+	default:
+		return "", errors.New("unknown provider type")
 	}
 
 	if err != nil {

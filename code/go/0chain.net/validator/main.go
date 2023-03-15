@@ -193,6 +193,11 @@ func RegisterValidator() {
 
 	for registrationRetries < 10 {
 		txn, err := storage.GetProtocolImpl().RegisterValidator(common.GetRootContext())
+		if err != nil {
+			Logger.Error("Error registering validator", zap.Any("err", err))
+			registrationRetries++
+			continue
+		}
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 		txnVerified := false
 		verifyRetries := 0
@@ -210,6 +215,7 @@ func RegisterValidator() {
 		if !txnVerified {
 			Logger.Error("Add validator transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txn.Hash))
 		}
+		registrationRetries++
 	}
 
 }
