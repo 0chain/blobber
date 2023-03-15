@@ -25,7 +25,7 @@ CONFIG_DIR=$HOME/.zcn
 BLOCK_WORKER_URL=0chainblockworker
 # BLOCK_WORKER_URL=https://helm.0chain.net/dns
 sudo apt update
-sudo apt install -y unzip curl containerd docker.io
+sudo apt install -y unzip curl containerd docker.io jq
 
 echo "download docker-compose"
 sudo curl -L "https://github.com/docker/compose/releases/download/1.29.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
@@ -55,6 +55,19 @@ confirmation_chain_length: 3
 max_txn_query: 5
 query_sleep_time: 5
 EOF
+
+# conform if the wallet belongs to an allocationID
+
+_contains () {  # Check if space-separated list $1 contains line $2
+  echo "$1" | tr ' ' '\n' | grep -F -x -q "$2"
+}
+
+allocations=$(zbox listallocations --silent --json | jq -r ' .[] | .id')
+
+if ! _contains "${allocations}" "${ALLOCATION}"; then
+  echo "given allocation does not belong to the wallet"
+  exit 1
+fi
 
 cat <<EOF >${CONFIG_DIR}/allocation.txt
 $ALLOCATION
