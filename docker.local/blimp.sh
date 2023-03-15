@@ -103,7 +103,7 @@ services:
       - db:/var/lib/postgresql/data
 
   api:
-    image: 0chaindev/blimp-logsearchapi:v0.0.3
+    image: 0chaindev/blimp-logsearchapi:pr-13-6882a858
     depends_on:
       - db
     environment:
@@ -115,7 +115,7 @@ services:
       - db
 
   minioserver:
-    image: 0chaindev/blimp-minioserver:v0.0.2
+    image: 0chaindev/blimp-minioserver:pr-13-6882a858
     container_name: minioserver
     command: ["minio", "gateway", "zcn"]
     environment:
@@ -131,7 +131,7 @@ services:
       - ${CONFIG_DIR}:/root/.zcn
 
   minioclient:
-    image: 0chaindev/blimp-clientapi:v0.0.4
+    image: 0chaindev/blimp-clientapi:pr-13-6882a858
     container_name: minioclient
     depends_on:
       - minioserver
