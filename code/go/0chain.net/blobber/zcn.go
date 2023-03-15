@@ -61,11 +61,7 @@ func registerOnChain() error {
 	if err != nil {
 		return err
 	}
-	startWorkers()
-	return err
-}
 
-func startWorkers() {
 	fmt.Print("	[OK]\n")
 
 	ctx := common.GetRootContext()
@@ -74,6 +70,8 @@ func startWorkers() {
 	// go StartHealthCheck(ctx, common.ProviderTypeBlobber)
 	go handleCommon.StartHealthCheck(ctx, common.ProviderTypeBlobber)
 	go startRefreshSettings(ctx)
+
+	return err
 }
 
 func setupServerChain() error {
