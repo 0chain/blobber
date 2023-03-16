@@ -24,6 +24,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/storage"
 
+	"github.com/0chain/gosdk/zboxcore/sdk"
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -181,8 +182,22 @@ func main() {
 func RegisterValidator() {
 	registrationRetries := 0
 	//ctx := badgerdbstore.GetStorageProvider().WithConnection(common.GetRootContext())
+
+	_, err := sdk.GetValidator(node.Self.ID)
+
+	if err == nil {
+		Logger.Info("Validator already registered")
+		go handler.StartHealthCheck(common.GetRootContext(), common.ProviderTypeValidator)
+		return
+	}
+
 	for registrationRetries < 10 {
 		txn, err := storage.GetProtocolImpl().RegisterValidator(common.GetRootContext())
+		if err != nil {
+			Logger.Error("Error registering validator", zap.Any("err", err))
+			registrationRetries++
+			continue
+		}
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 		txnVerified := false
 		verifyRetries := 0
@@ -200,6 +215,7 @@ func RegisterValidator() {
 		if !txnVerified {
 			Logger.Error("Add validator transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txn.Hash))
 		}
+		registrationRetries++
 	}
 
 }
@@ -212,6 +228,11 @@ func SetupValidatorOnBC(logDir string) error {
 		return err
 	}
 	if err := zcncore.SetWalletInfo(node.Self.GetWalletString(), false); err != nil {
+		return err
+	}
+	var blob []string
+	if err := sdk.InitStorageSDK(node.Self.GetWalletString(), serverChain.BlockWorker,
+		config.Configuration.ChainID, config.Configuration.SignatureScheme, blob, int64(0)); err != nil {
 		return err
 	}
 	go RegisterValidator()
