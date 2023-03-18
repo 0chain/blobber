@@ -3,18 +3,18 @@
 set -e
 
 echo "1> set DOCKER_IMAGE & DOCKER_BUILD"
-if [ -z "$DOCKER_BUILD" ]; then
-    if [ "x86_64" != "$(uname -m)" ]; then
-        #docker buildx use blobber_buildx || docker buildx create --name blobber_buildx --use
-        DOCKER_BUILD="buildx build --platform linux/arm64"
-    else
-        DOCKER_BUILD="build"
-    fi
-fi
+# if [ -z "$DOCKER_BUILD" ]; then
+#     if [ "x86_64" != "$(uname -m)" ]; then
+#         #docker buildx use blobber_buildx || docker buildx create --name blobber_buildx --use
+#         DOCKER_BUILD="buildx build --platform linux/arm64"
+#     else
+#         DOCKER_BUILD="build"
+#     fi
+# fi
 
-if [ -z "$DOCKER_IMAGE_BASE" ]; then
-    DOCKER_IMAGE_BASE="blobber_base"
-fi
+# if [ -z "$DOCKER_IMAGE_BASE" ]; then
+#     DOCKER_IMAGE_BASE="blobber_base"
+# fi
 
 dockerfile="docker.local/Dockerfile.swagger"
 platform="linux/arm64"
