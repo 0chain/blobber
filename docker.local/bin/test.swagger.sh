@@ -3,12 +3,12 @@
 set -e
 
 echo "1> set DOCKER_IMAGE & DOCKER_BUILD"
-if [ -z "$DOCKER_BUILD" ]; then
+if [ -z "$DOCKER_BUILDX" ]; then
     if [ "x86_64" != "$(uname -m)" ]; then
         #docker buildx use blobber_buildx || docker buildx create --name blobber_buildx --use
-        DOCKER_BUILD="buildx build --platform linux/arm64"
+        DOCKER_BUILDX="buildx build --platform linux/amd64,linux/arm64"
     else
-        DOCKER_BUILD="build"
+        DOCKER_BUILDX="build"
     fi
 fi
 
@@ -19,14 +19,14 @@ fi
 dockerfile="docker.local/Dockerfile.swagger"
 platform=""
 
-DOCKER_BUILDKIT=1 docker buildx build --platform linux/amd64,linux/arm64 --progress=plain --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f $dockerfile . -t swagger_test
+DOCKER_BUILDKIT=1 docker $DOCKER_BUILDX --progress=plain --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f $dockerfile . -t swagger_test
 
 echo "swagger_test docker image is successfully build"
 echo "print docker conatiners."
 docker ps -a
 echo "print docker images"
 docker images
-
+sleep 600
 docker run $platform $INTERACTIVE -v $(pwd):/codecov swagger_test uname -a bash -c "\
 cd /codecov/code/go/0chain.net/; \
 swagger generate spec -w . -m -o swagger.yaml; \
