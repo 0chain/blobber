@@ -12,12 +12,12 @@ echo "1> set DOCKER_IMAGE & DOCKER_BUILD"
 #     fi
 # fi
 
-# if [ -z "$DOCKER_IMAGE_BASE" ]; then
-#     DOCKER_IMAGE_BASE="blobber_base"
-# fi
+if [ -z "$DOCKER_IMAGE_BASE" ]; then
+    DOCKER_IMAGE_BASE="blobber_base"
+fi
 
 dockerfile="docker.local/Dockerfile.swagger"
-platform="linux/arm64"
+platform=""
 
 DOCKER_BUILDKIT=1 docker $DOCKER_BUILD --progress=plain --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f $dockerfile . -t swagger_test
 
