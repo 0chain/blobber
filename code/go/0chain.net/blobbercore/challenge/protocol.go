@@ -424,6 +424,10 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 
 		cr.CancelChallenge(ctx, err)
 		logging.Logger.Error("[challenge]submit: Error while submitting challenge to BC.", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+		if err = cr.Save(ctx); err != nil {
+			return err
+		}
+		return err
 	} else {
 		cr.Status = Committed
 		cr.StatusMessage = t.TransactionOutput
