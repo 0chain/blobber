@@ -20,7 +20,7 @@ fi
 
 dockerfile="docker.local/Dockerfile.swagger"
 platform=""
-INTERACTIVE=""
+INTERACTIVE="-it"
 
 # for arg in "$@"
 # do
@@ -39,9 +39,7 @@ DOCKER_BUILDKIT=1 docker $DOCKER_BUILD --progress=plain --build-arg DOCKER_IMAGE
 
 echo "swagger_test docker image is successfully build"
 
-sleep 600s
-
-docker run $platform $INTERACTIVE -v $(pwd):/codecov $DOCKER_IMAGE_SWAGGER uname -a bash -c "\
+docker run $platform $INTERACTIVE -v $(pwd):/codecov $DOCKER_IMAGE_SWAGGER bash -c "\
 cd /codecov/code/go/0chain.net/; \
 swagger generate spec -w . -m -o swagger.yaml; \
 swagger generate markdown -f swagger.yaml --output=swagger.md"
