@@ -514,12 +514,14 @@ EOF
 
 if [ ! -f ${PROJECT_ROOT}/keys_config/b0bnode01_keys.txt ]; then
     echo "creating keys"
+    /usr/local/bin/docker-compose -f ${PROJECT_ROOT}/zchain-compose.yml pull
     /usr/local/bin/docker-compose -f ${PROJECT_ROOT}/zchain-compose.yml up -d
 
     # wait for the keys keys_config/b0bnode01_keys.txt is created or not
     while [ ! -f ${PROJECT_ROOT}/keys_config/b0bnode01_keys.txt ]; do echo "wait for keys_config/b0bnode01_keys.txt"; sleep 1; done
 fi
 
+/usr/local/bin/docker-compose -f ${PROJECT_ROOT}/docker-compose.yml  pull
 /usr/local/bin/docker-compose -f ${PROJECT_ROOT}/docker-compose.yml up -d
 
 while [ ! -d ${PROJECT_ROOT}/caddy_data/caddy/certificates ]; do echo "waiting for certificates to be provisioned"; sleep 2; done
