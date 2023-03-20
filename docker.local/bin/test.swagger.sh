@@ -16,11 +16,15 @@ if [ -z "$DOCKER_IMAGE_BASE" ]; then
     DOCKER_IMAGE_BASE="blobber_base"
 fi
 
+if [ -z "$DOCKER_IMAGE_SWAGGER" ]; then
+    DOCKER_IMAGE_SWAGGER="swagger"
+fi
+
 # cmd="build --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE"
 
 dockerfile="docker.local/Dockerfile.swagger"
 platform=""
-INTERACTIVE="-it"
+INTERACTIVE=""
 
 # for arg in "$@"
 # do
