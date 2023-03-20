@@ -15,7 +15,7 @@ on:
 jobs:
   linter:
     name: Lints
-    runs-on: [self-hosted,docker-builds]
+    runs-on: [self-hosted,arc-runner]
     steps:
       - name: Setup go
         uses: actions/setup-go@v3
