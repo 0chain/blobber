@@ -345,7 +345,7 @@ services:
       - postgres:postgres
 
   validator:
-    image: 0chaindev/validator:staging-ccd9e2f9
+    image: 0chaindev/validator:staging
     environment:
       - DOCKER= true
     depends_on:
@@ -367,7 +367,7 @@ services:
     restart: "always"
 
   blobber:
-    image: 0chaindev/blobber:staging-ccd9e2f9
+    image: 0chaindev/blobber:staging
     environment:
       DOCKER: "true"
       DB_NAME: blobber_meta
