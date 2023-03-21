@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"runtime"
 	"strconv"
@@ -147,6 +148,7 @@ func main() {
 	Logger.Info("Starting validator", zap.Int("available_cpus", runtime.NumCPU()), zap.String("port", *portString), zap.String("chain_id", config.GetServerChainID()), zap.String("mode", mode))
 	var server *http.Server
 	r := mux.NewRouter()
+	AttachProfiler(r)
 	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
@@ -254,4 +256,11 @@ func HomePageHandler(w http.ResponseWriter, r *http.Request) {
 	for _, sharder := range network.Sharders {
 		fmt.Fprintf(w, "%v\n", sharder)
 	}
+}
+
+func AttachProfiler(router *mux.Router) {
+	router.HandleFunc("/debug/pprof/", pprof.Index)
+	router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 }
