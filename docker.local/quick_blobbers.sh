@@ -252,6 +252,9 @@ block_worker: ${BLOCK_WORKER_URL}
 handlers:
   rate_limit: 10 # 10 per second
 
+healthcheck:
+  frequency: 60s # send healthcheck to miners every 60 seconds
+
 logging:
   level: "error"
   console: true # printing log to console is only supported in development mode
