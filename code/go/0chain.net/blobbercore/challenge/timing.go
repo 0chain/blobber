@@ -28,7 +28,8 @@ type ChallengeTiming struct {
 	TxnVerification common.Timestamp `gorm:"txn_verification" json:"txn_verification"`
 	// Expiration is when challenge is marked as expired by blobber.
 	Expiration common.Timestamp `gorm:"expiration" json:"expiration"`
-
+	// RetriesInChain is number of times challenge submission and verification request is sent to blockchain
+	RetriesInChain int `gorm:"retries_in_chain" json:"retries_in_chain"`
 	// ClosedAt is duration in seconds a challenge is closed (eg. expired, cancelled, or completed/verified)
 	// after challenge Creation Date
 	ClosedAt common.Timestamp `gorm:"column:closed_at;index:idx_closed_at,sort:desc;" json:"closed"`
