@@ -370,9 +370,22 @@ const (
 	Waiting
 )
 
+// TODO Add sequence number in each challenge and compare sequence number to put them in order
+// Trying to solve following problem.
+// Consider challenges C1, C2 and C3 with transactions T1, T2 and T3 with nonce 1, 2 and 3 respectively.
+// Lets suppose that we send these transactions asynchronously to the blockchain and C2 failed immediately and is not going to succeed.
+// C1 is still processing.
+// C3 is not going to work because its previous nonce is missing.
+// First we should check if C1 is still processing and if so wait for it.
+// Otherwise if we send C3 with nonce 2 and then C1 fails then again C3 will fail.
+// Wait for C1. If comes with error then remove it and send C3 with nonce 1.
+//
+// We need to also take care of the fact that there are other processes(write/read marker redeeming) that uses
+// nonceMonitor which will update latest nonce value.
+
 func ProcessChallengeTransactions() {
 	dblLinkedMu := &sync.Mutex{}
-
+	var latestCResp *ChallengeResponse
 	const guideNum = 10
 	guideCh := make(chan struct{}, guideNum)
 	stopToProcessCh := make(chan *ChallengeResponse, 1)
@@ -443,15 +456,20 @@ func ProcessChallengeTransactions() {
 					break D
 				}
 			}
+
+			latestCResp = oldestCresp
 			dblLinkedMu.Unlock()
 		}
 	}()
 
 	for cResp := range processChalCh {
-
 		dblLinkedMu.Lock()
 		guideCh <- struct{}{}
 
+		cResp.prevCResp = latestCResp
+		if latestCResp != nil {
+			latestCResp.nextCResp = cResp
+		}
 		go tryChallengeTransaction(cResp, doneCh, stopToProcessCh, dblLinkedMu, guideCh, transaction.GetNextUnusedNonce())
 
 		dblLinkedMu.Unlock()
