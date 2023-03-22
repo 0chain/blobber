@@ -14,7 +14,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -38,8 +37,16 @@ var (
 )
 
 type ChallengeResponse struct {
-	ChallengeID       string              `json:"challenge_id"`
-	ValidationTickets []*ValidationTicket `json:"validation_tickets"`
+	nextCResp, prevCResp *ChallengeResponse // doubly linked list
+	ChallengeCreatedAt   common.Timestamp
+	notifyCh             chan NotifyStatus
+	ChallengeID          string              `json:"challenge_id"`
+	ValidationTickets    []*ValidationTicket `json:"validation_tickets"`
+	Sequence             uint64
+	ErrCh                chan error
+	DoneCh               chan struct{}
+	restartWithNonceCh   chan int64
+	challengeTiming      *ChallengeTiming
 }
 
 func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transaction.Transaction, error) {
@@ -68,13 +75,9 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 	var (
 		t *transaction.Transaction
 	)
-	for i := 0; i < 3; i++ {
-		t, err = transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
-		if err == nil {
-			break
-		}
-		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-	}
+
+	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+	t, err = transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
 
 	if err != nil {
 		logging.Logger.Error("Error verifying the challenge response transaction",
@@ -88,10 +91,11 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 		zap.Any("txn.hash", t.Hash),
 		zap.Any("txn.output", t.TransactionOutput),
 		zap.String("challenge_id", cr.ChallengeID))
+
 	return t, nil
 }
 
-func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error) {
+func (cr *ChallengeEntity) CancelChallenge(errReason error) {
 	cancellation := common.Now()
 	cr.ChallengeTiming.ClosedAt = cancellation
 	if errReason == ErrExpiredCCT {
@@ -103,7 +107,7 @@ func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error)
 func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	if len(cr.Validators) == 0 {
 
-		cr.CancelChallenge(ctx, ErrNoValidator)
+		cr.CancelChallenge(ErrNoValidator)
 		return ErrNoValidator
 	}
 
@@ -117,7 +121,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
 	if err != nil {
 		allocMu.Unlock()
-		cr.CancelChallenge(ctx, ErrNoValidator)
+		cr.CancelChallenge(ErrNoValidator)
 		return err
 	}
 
@@ -134,7 +138,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	rootRef, err := reference.GetReference(ctx, cr.AllocationID, "/")
 	if err != nil {
 		allocMu.Unlock()
-		cr.CancelChallenge(ctx, err)
+		cr.CancelChallenge(err)
 		return err
 	}
 
@@ -150,7 +154,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	objectPath, err := reference.GetObjectPath(ctx, cr.AllocationID, blockNum)
 	if err != nil {
 		allocMu.Unlock()
-		cr.CancelChallenge(ctx, err)
+		cr.CancelChallenge(err)
 		return err
 	}
 
@@ -177,7 +181,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			allocMu.Unlock()
 			logging.Logger.Info("Block number to be challenged for file:", zap.Any("block", objectPath.FileBlockNum), zap.Any("meta", objectPath.Meta), zap.Any("obejct_path", objectPath))
 
-			cr.CancelChallenge(ctx, ErrInvalidObjectPath)
+			cr.CancelChallenge(ErrInvalidObjectPath)
 			return ErrInvalidObjectPath
 		}
 
@@ -196,7 +200,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 		if err != nil {
 			allocMu.Unlock()
-			cr.CancelChallenge(ctx, err)
+			cr.CancelChallenge(err)
 			return common.NewError("blockdata_not_found", err.Error())
 		}
 		proofGenTime = time.Since(t1).Milliseconds()
@@ -227,7 +231,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	postDataBytes, err := json.Marshal(postData)
 	if err != nil {
 		logging.Logger.Error("[db]form: " + err.Error())
-		cr.CancelChallenge(ctx, err)
+		cr.CancelChallenge(err)
 		return err
 	}
 	responses := make(map[string]ValidationTicket)
@@ -330,90 +334,223 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.Status = Processed
 		cr.UpdatedAt = time.Now().UTC()
 	} else {
-		cr.CancelChallenge(ctx, ErrNoConsensusChallenge)
+		cr.CancelChallenge(ErrNoConsensusChallenge)
 		return ErrNoConsensusChallenge
 	}
 
 	return cr.Save(ctx)
 }
 
+var processChalCh = make(chan *ChallengeResponse)
+
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context) error {
-	start := time.Now()
-	verifyIterated := 0
-	if time.Since(common.ToTime(cr.CreatedAt)) > config.StorageSCConfig.ChallengeCompletionTime {
-		cr.CancelChallenge(ctx, ErrExpiredCCT)
-		return ErrExpiredCCT
+	cResp := &ChallengeResponse{
+		ChallengeCreatedAt: cr.CreatedAt,
+		ChallengeID:        cr.ChallengeID,
+		ErrCh:              make(chan error, 1),
+		restartWithNonceCh: make(chan int64, 1),
+		challengeTiming:    cr.ChallengeTiming,
 	}
-	if len(cr.LastCommitTxnIDs) > 0 {
-		for _, lastTxn := range cr.LastCommitTxnIDs {
-			logging.Logger.Info("[challenge]commit: Verifying the transaction : " + lastTxn)
-			t, err := transaction.VerifyTransaction(lastTxn, chain.GetServerChain())
-			if err == nil {
-				cr.Status = Committed
-				cr.StatusMessage = t.TransactionOutput
-				cr.CommitTxnID = t.Hash
-				cr.UpdatedAt = time.Now().UTC()
-				if err := cr.Save(ctx); err != nil {
-					logging.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
-				}
-				if cr.RefID != 0 {
-					FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
-				}
 
-				cr.ChallengeTiming.TxnVerification = common.Now()
-				cr.ChallengeTiming.ClosedAt = cr.ChallengeTiming.TxnVerification
-				return nil
+	for _, vt := range cr.ValidationTickets {
+		if vt != nil {
+			cResp.ValidationTickets = append(cResp.ValidationTickets, vt)
+		}
+	}
+
+	processChalCh <- cResp
+	return <-cResp.ErrCh
+}
+
+type NotifyStatus int
+
+const (
+	Success NotifyStatus = iota
+	Failed
+	Waiting
+)
+
+func ProcessChallengeTransactions() {
+	dblLinkedMu := &sync.Mutex{}
+
+	const guideNum = 10
+	guideCh := make(chan struct{}, guideNum)
+	stopToProcessCh := make(chan *ChallengeResponse, 1)
+	doneCh := make(chan *ChallengeResponse, 1) // if done unlink from next cResp
+
+	go func() {
+		for crp := range doneCh {
+			dblLinkedMu.Lock()
+			crp.challengeTiming.ClosedAt = common.Now()
+			crp.nextCResp.prevCResp = nil
+			dblLinkedMu.Unlock()
+		}
+	}()
+
+	go func() {
+		for {
+			cResp := <-stopToProcessCh
+			dblLinkedMu.Lock()
+			oldestCresp := cResp
+			for {
+				if oldestCresp.prevCResp != nil {
+					oldestCresp = oldestCresp.prevCResp
+				} else {
+					break
+				}
 			}
-			logging.Logger.Error("[challenge]trans: Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
-			verifyIterated++
+
+			for {
+				status := <-oldestCresp.notifyCh
+				var shouldRemove bool
+				if status == Failed {
+					shouldRemove = true
+					oldestCresp.challengeTiming.ClosedAt = common.Now()
+					goto L1
+				} else if time.Since(common.ToTime(cResp.ChallengeCreatedAt)) > config.StorageSCConfig.ChallengeCompletionTime {
+					shouldRemove = true
+					oldestCresp.challengeTiming.ClosedAt = common.Now()
+					oldestCresp.ErrCh <- ErrExpiredCCT
+					oldestCresp.restartWithNonceCh <- 0 // send zero to cancel the awaiting goroutine
+					goto L1
+				}
+
+				oldestCresp.restartWithNonceCh <- transaction.GetNextUnusedNonce()
+
+			L1:
+				if shouldRemove {
+					if oldestCresp.prevCResp != nil {
+						oldestCresp.prevCResp.nextCResp = oldestCresp.nextCResp
+					}
+					if oldestCresp.nextCResp != nil {
+						oldestCresp.nextCResp.prevCResp = oldestCresp.prevCResp
+					}
+				}
+
+				if oldestCresp.nextCResp != nil {
+					oldestCresp = oldestCresp.nextCResp
+				} else {
+					break
+				}
+			}
+
+			// deplete all the challenges in buffer
+		D:
+			for {
+				select {
+				case <-stopToProcessCh:
+				default:
+					break D
+				}
+			}
+			dblLinkedMu.Unlock()
 		}
+	}()
+
+	for cResp := range processChalCh {
+
+		dblLinkedMu.Lock()
+		guideCh <- struct{}{}
+
+		go tryChallengeTransaction(cResp, doneCh, stopToProcessCh, dblLinkedMu, guideCh, transaction.GetNextUnusedNonce())
+
+		dblLinkedMu.Unlock()
 	}
-	verifyTxnTime := time.Since(start)
-
-	t, err := cr.SubmitChallengeToBC(ctx)
-
-	submitTime := time.Since(start) - verifyTxnTime
-
-	if err != nil {
-		if t != nil {
-			cr.CommitTxnID = t.Hash
-			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
-		}
-
-		if IsValueNotPresentError(err) {
-			err = ErrValNotPresent
-		}
-
-		cr.CancelChallenge(ctx, err)
-		logging.Logger.Error("[challenge]submit: Error while submitting challenge to BC.", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
-	} else {
-		cr.Status = Committed
-		cr.StatusMessage = t.TransactionOutput
-		cr.CommitTxnID = t.Hash
-		cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
-		cr.UpdatedAt = time.Now().UTC()
-
-		cr.ChallengeTiming.TxnVerification = common.Now()
-	}
-	handleVerify := time.Since(start) - verifyTxnTime - submitTime
-	err = cr.Save(ctx)
-	challengeSaveTime := time.Since(start) - verifyTxnTime - submitTime - handleVerify
-	if cr.RefID != 0 {
-		FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
-	}
-	fileChallengedTime := time.Since(start) - verifyTxnTime - submitTime - handleVerify - challengeSaveTime
-	logging.Logger.Info("[challenge]submit: Time taken to submit challenge: ",
-		zap.String("time_taken", time.Since(start).String()),
-		zap.String("challenge_id", cr.ChallengeID),
-		zap.Int("last_txns_verified", verifyIterated),
-		zap.String("verify_txn_time", verifyTxnTime.String()),
-		zap.String("submit_challenge_time", submitTime.String()),
-		zap.String("handle_verify_time", handleVerify.String()),
-		zap.String("challenge_save_time", challengeSaveTime.String()),
-		zap.String("file_challenged_time", fileChallengedTime.String()))
-	return err
 }
 
 func IsValueNotPresentError(err error) bool {
 	return strings.Contains(err.Error(), ValueNotPresent)
+}
+
+func tryChallengeTransaction(
+	cResp *ChallengeResponse,
+	doneCh chan *ChallengeResponse,
+	stopToProcessCh chan *ChallengeResponse,
+	dblLinkedMu *sync.Mutex,
+	guideCh chan struct{},
+	nonce int64,
+) {
+	defer func() {
+		<-guideCh
+	}()
+
+	var txn *transaction.Transaction
+	var err error
+
+	ctx, ctxCncl := context.WithCancel(context.TODO())
+	defer ctxCncl()
+
+	var t *transaction.Transaction
+	for {
+		cResp.challengeTiming.RetriesInChain++
+		for i := 0; i < 2; i++ {
+			txn, err = transaction.NewTransactionEntity()
+			if err != nil {
+				goto L1
+			}
+			cResp.challengeTiming.TxnSubmission = common.Now()
+			err = txn.ExecuteSmartContractWithNonce(
+				transaction.STORAGE_CONTRACT_ADDRESS,
+				transaction.CHALLENGE_RESPONSE,
+				cResp,
+				0,
+				nonce,
+			)
+			if err == nil {
+				break
+			}
+			logging.Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
+		}
+		if err != nil {
+			goto L1
+		}
+
+		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+		t, err = transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
+
+		if err != nil {
+			logging.Logger.Error("Error verifying the challenge response transaction",
+				zap.String("err:", err.Error()),
+				zap.String("txn", txn.Hash),
+				zap.String("challenge_id", cResp.ChallengeID))
+			goto L1
+		} else {
+			logging.Logger.Info("Challenge committed and accepted",
+				zap.Any("txn.hash", t.Hash),
+				zap.Any("txn.output", t.TransactionOutput),
+				zap.String("challenge_id", cResp.ChallengeID))
+
+			cResp.challengeTiming.TxnVerification = common.Now()
+			ctxCncl()
+		}
+
+	L1:
+		select {
+		case <-ctx.Done():
+			doneCh <- cResp
+			cResp.notifyCh <- Success
+			cResp.ErrCh <- nil
+			return
+		default:
+			if dblLinkedMu.TryLock() {
+				select {
+				case nonce = <-cResp.restartWithNonceCh:
+					dblLinkedMu.Unlock()
+					continue
+				default:
+					stopToProcessCh <- cResp
+					cResp.notifyCh <- Failed
+					cResp.ErrCh <- err
+					dblLinkedMu.Unlock()
+					return
+				}
+			}
+
+			cResp.notifyCh <- Waiting
+			nonce = <-cResp.restartWithNonceCh
+			if nonce == 0 {
+				return
+			}
+		}
+	}
 }

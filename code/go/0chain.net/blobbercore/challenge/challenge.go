@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -93,44 +94,59 @@ func syncOpenChallenges(ctx context.Context) {
 }
 
 func ProcessChallenge(ctx context.Context) {
+	guideCh := make(chan struct{}, config.Configuration.ChallengeNumWorkers)
 	for chalEntity := range unProcessedChallengeCh {
-		var err error
-		t := common.ToTime(chalEntity.CreatedAt)
-		if time.Since(t) > config.StorageSCConfig.ChallengeCompletionTime {
-			chalEntity.Status = Cancelled
-			chalEntity.StatusMessage = "expired challenge"
-			goto L1
+		select {
+		case <-ctx.Done():
+			return
+		default:
 		}
 
-		err = chalEntity.LoadValidationTickets(ctx)
-		if err != nil {
-			// log error and continue
-			chalEntity.Status = Cancelled
-			chalEntity.StatusMessage = err.Error()
-			goto L1
-		}
-		chalEntity.ChallengeTiming.CompleteValidation = common.Now()
+		guideCh <- struct{}{}
 
-		err = chalEntity.CommitChallenge(ctx)
-		if err != nil {
-			chalEntity.Status = Cancelled
-			chalEntity.StatusMessage = err.Error()
-			goto L1
-		}
+		go func(chalEntity *ChallengeEntity) {
+			defer func() {
+				<-guideCh
+			}()
 
-		chalEntity.Status = Committed
+			ctx := datastore.GetStore().CreateTransaction(context.TODO())
+			defer func() {
+				if err := chalEntity.Save(ctx); err != nil {
+					logging.Logger.Error(err.Error())
+				}
 
-	L1:
-		go func() {
-			err = chalEntity.Save(ctx)
-			if err != nil {
-				logging.Logger.Error(err.Error())
+				if err := chalEntity.ChallengeTiming.Save(); err != nil {
+					logging.Logger.Error(err.Error())
+				}
+			}()
+
+			var err error
+			t := common.ToTime(chalEntity.CreatedAt)
+			if time.Since(t) > config.StorageSCConfig.ChallengeCompletionTime {
+				chalEntity.Status = Cancelled
+				chalEntity.StatusMessage = "expired challenge"
+				return
 			}
 
-			err = chalEntity.ChallengeTiming.Save()
+			err = chalEntity.LoadValidationTickets(ctx)
 			if err != nil {
-				logging.Logger.Error(err.Error())
+				chalEntity.Status = Cancelled
+				chalEntity.StatusMessage = err.Error()
+				return
 			}
-		}()
+			chalEntity.ChallengeTiming.CompleteValidation = common.Now()
+
+			err = chalEntity.CommitChallenge(ctx)
+			if err != nil {
+				chalEntity.Status = Cancelled
+				chalEntity.StatusMessage = err.Error()
+				chalEntity.UpdatedAt = time.Now().UTC()
+				return
+			}
+			chalEntity.UpdatedAt = time.Now().UTC()
+			chalEntity.Status = Committed
+
+		}(chalEntity)
+
 	}
 }
