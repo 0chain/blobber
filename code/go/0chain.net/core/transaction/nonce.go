@@ -24,6 +24,10 @@ type nonceMonitor struct {
 	shouldRefreshFromBalance bool
 }
 
+func GetNextUnusedNonce() int64 {
+	return monitor.getNextUnusedNonce()
+}
+
 func (m *nonceMonitor) getNextUnusedNonce() int64 {
 	m.Lock()
 	defer m.Unlock()

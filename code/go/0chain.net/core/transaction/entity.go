@@ -157,9 +157,16 @@ func (t *Transaction) GetTransaction() zcncore.TransactionScheme {
 	return t.zcntxn
 }
 
-func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val uint64) error {
+func (t *Transaction) ExecuteSmartContractWithNonce(
+	address, methodName string, input interface{}, val uint64, nonce int64) error {
+
+	var err error
+	defer func() {
+		if err != nil {
+			monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
+		}
+	}()
 	t.wg.Add(1)
-	nonce := monitor.getNextUnusedNonce()
 	if err := t.zcntxn.SetTransactionNonce(nonce); err != nil {
 		logging.Logger.Error("Failed to set nonce.",
 			zap.Any("hash", t.zcntxn.GetTransactionHash()),
@@ -171,14 +178,13 @@ func (t *Transaction) ExecuteSmartContract(address, methodName string, input int
 		zap.Any("hash", t.zcntxn.GetTransactionHash()),
 		zap.Any("nonce", nonce))
 
-	_, err := t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
+	_, err = t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
 	if err != nil {
 		t.wg.Done()
 		logging.Logger.Error("Failed to execute SC.",
 			zap.Any("hash", t.zcntxn.GetTransactionHash()),
 			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
 			zap.Any("error", err))
-		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return err
 	}
 
@@ -190,10 +196,14 @@ func (t *Transaction) ExecuteSmartContract(address, methodName string, input int
 			zap.Any("hash", t.zcntxn.GetTransactionHash()),
 			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
 			zap.Any("error", err))
-		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return common.NewError("transaction_send_error", t.zcntxn.GetTransactionError())
 	}
 	return nil
+}
+
+func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val uint64) error {
+	nonce := monitor.getNextUnusedNonce()
+	return t.ExecuteSmartContractWithNonce(address, methodName, input, val, nonce)
 }
 
 func (t *Transaction) Verify() error {

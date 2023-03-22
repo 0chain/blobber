@@ -50,6 +50,13 @@ func VerifyTransaction(txnHash string, chain *chain.Chain) (*Transaction, error)
 
 // VerifyTransactionWithNonce verifies a transaction with known nonce.
 func VerifyTransactionWithNonce(txnHash string, nonce int64) (*Transaction, error) {
+	var err error
+	defer func() {
+		if err != nil {
+			monitor.recordFailedNonce(nonce)
+		}
+	}()
+
 	txn, err := NewTransactionEntity()
 	if err != nil {
 		return nil, err
