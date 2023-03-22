@@ -114,6 +114,7 @@ readmarker_redeem:
 challenge_response:
   # frequency is the number of seconds interval to request blockchain for open challenges
   frequency: 10
+  num_workers: 10
 
 healthcheck:
   frequency: 60s # send healthcheck to miners every 60 seconds
