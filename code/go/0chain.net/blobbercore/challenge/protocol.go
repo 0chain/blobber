@@ -383,7 +383,7 @@ const (
 // We need to also take care of the fact that there are other processes(write/read marker redeeming) that uses
 // nonceMonitor which will update latest nonce value.
 
-func ProcessChallengeTransactions() {
+func ProcessChallengeTransactions(ctx context.Context) {
 	dblLinkedMu := &sync.Mutex{}
 	var latestCResp *ChallengeResponse
 	const guideNum = 10
@@ -393,6 +393,12 @@ func ProcessChallengeTransactions() {
 
 	go func() {
 		for crp := range doneCh {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
 			dblLinkedMu.Lock()
 			crp.challengeTiming.ClosedAt = common.Now()
 			crp.nextCResp.prevCResp = nil
@@ -401,8 +407,13 @@ func ProcessChallengeTransactions() {
 	}()
 
 	go func() {
-		for {
-			cResp := <-stopToProcessCh
+		for cResp := range stopToProcessCh {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
 			dblLinkedMu.Lock()
 			oldestCresp := cResp
 			for {

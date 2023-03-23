@@ -15,4 +15,5 @@ type TodoChallenge struct {
 func SetupWorkers(ctx context.Context) {
 	go syncOpenChallenges(ctx)
 	go ProcessChallenge(ctx)
+	go ProcessChallengeTransactions(ctx)
 }
