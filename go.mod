@@ -7,7 +7,7 @@ require (
 	github.com/0chain/gosdk v1.8.14
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
-	github.com/go-openapi/runtime v0.24.2
+	github.com/go-openapi/runtime v0.25.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
