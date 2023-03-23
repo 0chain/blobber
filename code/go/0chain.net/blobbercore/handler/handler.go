@@ -1,3 +1,19 @@
+//	0chain Blobber API:
+//	 version: 0.0.1
+//	 title: 0chain Blobber API
+//	Schemes: http, https
+//	BasePath: /
+//	Produces:
+//	  - application/json
+//
+// securityDefinitions:
+//
+//	apiKey:
+//	  type: apiKey
+//	  in: header
+//	  name: authorization
+//
+// swagger:meta
 package handler
 
 import (
@@ -11,6 +27,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/go-openapi/runtime/middleware"
 
 	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
@@ -114,6 +132,20 @@ func RateLimitByGeneralRL(handler common.ReqRespHandlerf) common.ReqRespHandlerf
 	return common.RateLimit(handler, generalRL)
 }
 
+func SetupSwagger() {
+	http.Handle("/swagger.yaml", http.FileServer(http.Dir("/docs")))
+
+	// documentation for developers
+	opts := middleware.SwaggerUIOpts{SpecURL: "swagger.yaml"}
+	sh := middleware.SwaggerUI(opts, nil)
+	http.Handle("/docs", sh)
+
+	// documentation for share
+	opts1 := middleware.RedocOpts{SpecURL: "swagger.yaml", Path: "docs1"}
+	sh1 := middleware.Redoc(opts1, nil)
+	http.Handle("/docs1", sh1)
+}
+
 /*setupHandlers sets up the necessary API end points */
 func setupHandlers(r *mux.Router) {
 	ConfigRateLimits()
@@ -147,13 +179,13 @@ func setupHandlers(r *mux.Router) {
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(AllocationHandler))))
 
 	r.HandleFunc("/v1/file/meta/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
+		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler)))) // TODO: add swagger
 
 	r.HandleFunc("/v1/file/stats/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
+		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)))) // TODO: add swagger
 
 	r.HandleFunc("/v1/file/referencepath/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
+		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))) // TODO: add handler
 
 	r.HandleFunc("/v1/file/objecttree/{allocation}",
 		RateLimitByObjectRL(common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler)))).
@@ -275,6 +307,23 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	return ctx
 }
 
+// swagger:route GET /allocation allocation
+// get allocation details
+//
+// parameters:
+//
+//	+name: id
+//	 description: allocation ID
+//	 required: true
+//	 in: query
+//	 type: string
+//
+// responses:
+//
+//	200: CommitResult
+//	400:
+//	500:
+
 func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -305,6 +354,29 @@ func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 	return response, nil
 }
 
+// swagger:route POST /v1/file/commitmetatxn/{allocation} commitmetatxn
+// CommitHandler is the handler to respond to upload requests from clients
+//
+// parameters:
+//
+//	+name: auth_token
+//	 description: auth token
+//	 required: true
+//	 in: body
+//	 type: string
+//
+//	+name: txn_id
+//	 description: transaction id
+//	 required: true
+//	 in: body
+//	 type: string
+//
+// responses:
+//
+//	200:
+//	400:
+//	500:
+
 func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -316,6 +388,7 @@ func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, er
 	return response, nil
 }
 
+// TODO: add swagger
 func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -345,7 +418,23 @@ func listHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-/*CommitHandler is the handler to respond to upload requests from clients*/
+// swagger:route GET /v1/connection/commit/{allocation} commithandler
+// CommitHandler is the handler to respond to upload requests from clients
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: the allocation ID
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: CommitResult
+//	400:
+//	500:
+
 func CommitHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
 	return commitHandler(ctx, r)
 }
@@ -364,9 +453,43 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 	return response, nil
 }
 
+// swagger:route GET /v1/file/objecttree/{allocation} referencepath
+// get object tree reference path
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: allocation ID
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: ReferencePathResult
+//	400:
+//	500:
+
 func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
 	return objectTreeHandler(ctx, r)
 }
+
+// swagger:route GET /v1/file/refs/{allocation} refshandler
+// get object tree reference path
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: allocation ID
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: RefResult
+//	400:
+//	500:
 
 func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
@@ -379,6 +502,23 @@ func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
+// swagger:route GET /v1/file/refs/recent/{allocation} recentalloc
+// get recent allocation
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: allocation ID
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: RecentRefResult
+//	400:
+//	500:
+
 func RecentRefsRequestHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.GetRecentlyAddedRefs(ctx, r)
@@ -387,6 +527,23 @@ func RecentRefsRequestHandler(ctx context.Context, r *http.Request) (interface{}
 	}
 	return response, nil
 }
+
+// swagger:route GET /v1/file/rename/{allocation} renameallocation
+// rename an allocation
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: the allocation ID
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: UploadResult
+//	400:
+//	500:
 
 func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
@@ -398,6 +555,23 @@ func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
+// swagger:route GET /v1/file/copy/{allocation} copyallocation
+// copy an allocation
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: the allocation ID
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: UploadResult
+//	400:
+//	500:
+
 func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -407,6 +581,23 @@ func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 	return response, nil
 }
+
+// swagger:route GET /v1/file/move/{allocation} moveallocation
+// move an allocation
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: the allocation ID
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: UploadResult
+//	400:
+//	500:
 
 func MoveHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
@@ -418,7 +609,23 @@ func MoveHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-/*CreateDirHandler is the handler to respond to create dir for allocation*/
+// swagger:route GET /v1/dir/{allocation} createdirhandler
+// CreateDirHandler is the handler to respond to create dir for allocation
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: the allocation ID
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200: UploadResult
+//	400:
+//	500:
+
 func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -532,7 +739,7 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, common.NewError("invalid_parameters", "Invalid allocation ID passed."+err.Error())
 	}
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
@@ -589,7 +796,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
 	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, common.NewError("invalid_parameters", "Invalid allocation ID passed."+err.Error())
 	}
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
