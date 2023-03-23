@@ -8,6 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
+// swagger:model UploadResult
 type UploadResult struct {
 	Filename        string `json:"filename"`
 	Size            int64  `json:"size"`
@@ -21,6 +22,7 @@ type UploadResult struct {
 	UploadOffset int64 `json:"upload_offset"`
 }
 
+// swagger:model CommitResult
 type CommitResult struct {
 	AllocationRoot string                         `json:"allocation_root"`
 	WriteMarker    *writemarker.WriteMarker       `json:"write_marker"`
@@ -30,11 +32,13 @@ type CommitResult struct {
 	//Result         []*UploadResult         `json:"result"`
 }
 
+// swagger:model ReferencePathResult
 type ReferencePathResult struct {
 	*reference.ReferencePath
 	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
 }
 
+// swagger:model RefResult
 type RefResult struct {
 	TotalPages int                       `json:"total_pages"`
 	OffsetPath string                    `json:"offset_path,omitempty"` //used for pagination; index for path is created in database
@@ -43,6 +47,7 @@ type RefResult struct {
 	LatestWM   *writemarker.WriteMarker  `json:"latest_write_marker"`
 }
 
+// swagger:model RecentRefResult
 type RecentRefResult struct {
 	Offset int                       `json:"offset"`
 	Refs   []*reference.PaginatedRef `json:"refs"`
@@ -52,6 +57,7 @@ type ObjectPathResult struct {
 	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
 }
 
+// swagger:model ListResult
 type ListResult struct {
 	AllocationRoot string                   `json:"allocation_root"`
 	Meta           map[string]interface{}   `json:"meta_data"`
