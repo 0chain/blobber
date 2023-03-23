@@ -44,7 +44,7 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 	cmd.path = path
 
 	var err error
-	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByPath(ctx, allocationObj.ID, path, []string{"path", "name", "size", "hash", "merkle_root"})
+	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByPath(ctx, allocationObj.ID, path, []string{"path", "name", "size", "hash", "fixed_merkle_root"})
 	if err != nil {
 		if errors.Is(gorm.ErrRecordNotFound, err) {
 			return common.ErrFileWasDeleted
@@ -71,8 +71,8 @@ func (cmd *DeleteFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	result := blobberhttp.UploadResult{}
 	result.Filename = cmd.existingFileRef.Name
-	result.Hash = cmd.existingFileRef.Hash
-	result.MerkleRoot = cmd.existingFileRef.MerkleRoot
+	result.ValidationRoot = cmd.existingFileRef.ValidationRoot
+	result.FixedMerkleRoot = cmd.existingFileRef.FixedMerkleRoot
 	result.Size = cmd.existingFileRef.Size
 
 	cmd.allocationChange = &allocation.AllocationChange{}

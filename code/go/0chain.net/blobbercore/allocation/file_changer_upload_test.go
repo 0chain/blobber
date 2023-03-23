@@ -2,18 +2,19 @@ package allocation
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/gosdk/constants"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
 	mocket "github.com/selvatico/go-mocket"
@@ -41,7 +42,8 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 		name                string
 		context             metadata.MD
 		allocChange         *AllocationChange
-		hash                string
+		validationRoot      string
+		fileIDMeta          map[string]string
 		allocationID        string
 		maxDirFilesPerAlloc int
 		expectedMessage     string
@@ -51,7 +53,7 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 		{
 			name:                "Upload file changer success",
 			allocChange:         &AllocationChange{Operation: constants.FileOperationInsert},
-			hash:                "new_file_hash",
+			validationRoot:      "new_validation_root",
 			allocationID:        alloc.ID,
 			maxDirFilesPerAlloc: 5,
 			expectingError:      false,
@@ -62,7 +64,7 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 		{
 			name:                "Upload file changer fails when max dirs & files reached",
 			allocChange:         &AllocationChange{},
-			hash:                "new_file_hash",
+			validationRoot:      "new_validation_root",
 			allocationID:        alloc.ID,
 			maxDirFilesPerAlloc: 5,
 			expectedMessage:     "max_alloc_dir_files_reached: maximum files and directories already reached",
@@ -96,20 +98,25 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 			db := datastore.GetStore().GetDB().Begin()
 			ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
 
+			fPath := "/new"
 			change := &UploadFileChanger{
 				BaseFileChanger: BaseFileChanger{
-					Filename:     "new",
-					Path:         "/",
-					ActualSize:   2310,
-					AllocationID: tc.allocationID,
-					Hash:         tc.hash,
-					Size:         2310,
-					ChunkSize:    65536,
+					Filename:       filepath.Base(fPath),
+					Path:           "/new",
+					ActualSize:     2310,
+					AllocationID:   tc.allocationID,
+					ValidationRoot: tc.validationRoot,
+					Size:           2310,
+					ChunkSize:      65536,
 				},
 			}
 
+			fileIDMeta := map[string]string{
+				filepath.Dir(fPath): "fileID#1",
+				fPath:               "fileID#2",
+			}
 			err := func() error {
-				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1)
+				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1, fileIDMeta)
 				if err != nil {
 					return err
 				}

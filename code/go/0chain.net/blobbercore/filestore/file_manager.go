@@ -1,10 +1,7 @@
 package filestore
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,16 +60,8 @@ func (fs *FileStore) IterateObjects(allocationID string, handler FileObjectHandl
 	tmpPrefix := filepath.Join(allocDir, TempDir)
 	return filepath.Walk(allocDir, func(path string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() && !strings.HasPrefix(path, tmpPrefix) {
-			f, err := os.Open(path)
-			if err != nil {
-				return nil
-			}
-			defer f.Close()
-			h := sha256.New()
-			if _, err := io.Copy(h, f); err != nil {
-				return nil
-			}
-			handler(hex.EncodeToString(h.Sum(nil)), info.Size())
+			p := strings.ReplaceAll(path, allocDir, "")
+			handler(strings.ReplaceAll(p, "/", ""), info.Size())
 		}
 		return nil
 	})

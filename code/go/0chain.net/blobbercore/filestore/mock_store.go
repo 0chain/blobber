@@ -1,13 +1,11 @@
 package filestore
 
 import (
-	"encoding/json"
 	"fmt"
 	"mime/multipart"
 	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/gosdk/core/util"
 )
 
 type MockStore struct {
@@ -55,14 +53,13 @@ func (fs *MockStore) DeleteFile(allocationID string, contentHash string) error {
 	return fs.FileStore.DeleteFile(allocationID, contentHash)
 }
 
-func (fs *MockStore) GetFileBlock(allocID string, fileData *FileInputData, blockNum int64, numBlocks int64) ([]byte, error) {
-	return fs.FileStore.GetFileBlock(allocID, fileData, blockNum, numBlocks)
+func (fs *MockStore) GetFileBlock(rbi *ReadBlockInput) (*FileDownloadResponse, error) {
+	return fs.FileStore.GetFileBlock(rbi)
 }
 
-func (fs *MockStore) GetBlocksMerkleTreeForChallenge(allocID string,
-	fileData *FileInputData, blockoffset int) (json.RawMessage, util.MerkleTreeI, error) {
+func (fs *MockStore) GetBlocksMerkleTreeForChallenge(cri *ChallengeReadBlockInput) (*ChallengeResponse, error) {
 
-	return fs.FileStore.GetBlocksMerkleTreeForChallenge(allocID, fileData, blockoffset)
+	return fs.FileStore.GetBlocksMerkleTreeForChallenge(cri)
 }
 
 func (fs *MockStore) GetTotalTempFileSizes() (s uint64) {

@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"bytes"
+	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -37,6 +37,7 @@ type ObjectEntity interface {
 
 type DirMetaData struct {
 	CreationDate common.Timestamp `json:"created_at" mapstructure:"created_at"`
+	FileID       string           `json:"file_id" mapstructure:"file_id"`
 	Type         string           `json:"type" mapstructure:"type"`
 	Name         string           `json:"name" mapstructure:"name"`
 	Path         string           `json:"path" mapstructure:"path"`
@@ -63,36 +64,37 @@ func (r *DirMetaData) CalculateHash() string {
 func (r *DirMetaData) GetNumBlocks() int64 {
 	return r.NumBlocks
 }
+
 func (r *DirMetaData) GetType() string {
 	return r.Type
 }
 
 type FileMetaData struct {
-	DirMetaData    `mapstructure:",squash"`
-	CustomMeta     string `json:"custom_meta" mapstructure:"custom_meta"`
-	ContentHash    string `json:"content_hash" mapstructure:"content_hash"`
-	Size           int64  `json:"size" mapstructure:"size"`
-	MerkleRoot     string `json:"merkle_root" mapstructure:"merkle_root"`
-	ActualFileSize int64  `json:"actual_file_size" mapstructure:"actual_file_size"`
-	ActualFileHash string `json:"actual_file_hash" mapstructure:"actual_file_hash"`
-	ChunkSize      int64  `json:"chunk_size" mapstructure:"chunk_size"`
+	DirMetaData     `mapstructure:",squash"`
+	CustomMeta      string `json:"custom_meta" mapstructure:"custom_meta"`
+	ValidationRoot  string `json:"validation_root" mapstructure:"validation_root"`
+	Size            int64  `json:"size" mapstructure:"size"`
+	FixedMerkleRoot string `json:"fixed_merkle_root" mapstructure:"fixed_merkle_root"`
+	ActualFileSize  int64  `json:"actual_file_size" mapstructure:"actual_file_size"`
+	ActualFileHash  string `json:"actual_file_hash" mapstructure:"actual_file_hash"`
+	ChunkSize       int64  `json:"chunk_size" mapstructure:"chunk_size"`
 }
 
 func (fr *FileMetaData) GetHashData() string {
-	hashArray := make([]string, 0)
-	hashArray = append(hashArray,
+	return fmt.Sprintf(
+		"%s:%s:%s:%s:%d:%s:%s:%d:%s:%d:%s",
 		fr.AllocationID,
-		fr.Type,
-		fr.Name,
+		fr.Type, // don't need to add it as well
+		fr.Name, // don't see any utility as fr.Path below has name in it
 		fr.Path,
-		strconv.FormatInt(fr.Size, 10),
-		fr.ContentHash,
-		fr.MerkleRoot,
-		strconv.FormatInt(fr.ActualFileSize, 10),
+		fr.Size,
+		fr.ValidationRoot,
+		fr.FixedMerkleRoot,
+		fr.ActualFileSize,
 		fr.ActualFileHash,
-		strconv.FormatInt(fr.ChunkSize, 10),
+		fr.ChunkSize,
+		fr.FileID,
 	)
-	return strings.Join(hashArray, ":")
 }
 
 func (fr *FileMetaData) GetHash() string {
@@ -189,7 +191,6 @@ func (op *ObjectPath) VerifyBlockNum(challengeRand int64) error {
 		return nil
 	}
 	r := rand.New(rand.NewSource(challengeRand))
-	//rand.Seed(challengeRand)
 	blockNum := r.Int63n(op.RootObject.NumBlocks)
 	blockNum++
 
@@ -267,13 +268,26 @@ type Allocation struct {
 	OwnerPublicKey string           `json:"owner_public_key"`
 }
 
+type ChallengeProof struct {
+	Proof   [][]byte `json:"proof"`
+	Data    []byte   `json:"data"`
+	LeafInd int      `json:"leaf_ind"`
+}
+
 type ChallengeRequest struct {
-	ChallengeID  string                           `json:"challenge_id"`
-	ObjPath      *ObjectPath                      `json:"object_path,omitempty"`
-	WriteMarkers []*writemarker.WriteMarkerEntity `json:"write_markers,omitempty"`
-	DataBlock    []byte                           `json:"data,omitempty"`
-	MerklePath   *util.MTPath                     `json:"merkle_path,omitempty"`
-	ChunkSize    int64                            `json:"chunk_size,omitempty"`
+	ChallengeID    string                           `json:"challenge_id"`
+	ObjPath        *ObjectPath                      `json:"object_path,omitempty"`
+	WriteMarkers   []*writemarker.WriteMarkerEntity `json:"write_markers,omitempty"`
+	ChallengeProof *ChallengeProof                  `json:"challenge_proof"`
+}
+
+func (cr *ChallengeRequest) verifyBlockNum(challengeObj *Challenge) error {
+	r := rand.New(rand.NewSource(challengeObj.RandomNumber))
+	blockNum := r.Intn(util.FixedMerkleLeaves)
+	if blockNum != cr.ChallengeProof.LeafInd {
+		return fmt.Errorf("expected block num %d, got %d", blockNum, cr.ChallengeProof.LeafInd)
+	}
+	return nil
 }
 
 func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationObj *Allocation) error {
@@ -281,6 +295,11 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 	err := cr.ObjPath.Verify(challengeObj.AllocationID, challengeObj.RandomNumber)
 	if err != nil {
 		return common.NewError("challenge_validation_failed", "Failed to verify the object path."+err.Error())
+	}
+
+	err = cr.verifyBlockNum(challengeObj)
+	if err != nil {
+		return common.NewError("challenge_validation_failed", "Failed to verify block num."+err.Error())
 	}
 
 	if len(cr.WriteMarkers) == 0 {
@@ -314,16 +333,17 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 	}
 
 	logging.Logger.Info("Verifying data block and merkle path", zap.Any("challenge_id", challengeObj.ID))
-	//contentHash := encryption.Hash(cr.DataBlock)
-
-	contentHasher := util.NewCompactMerkleTree(nil)
-	err = contentHasher.Reload(cr.ChunkSize, bytes.NewReader(cr.DataBlock))
-	if err != nil {
-		return common.NewError("challenge_validation_failed", "Failed to calculate content hash for the data block")
+	fHash := encryption.RawHash(cr.ChallengeProof.Data)
+	fixedMerkleRoot, _ := hex.DecodeString(cr.ObjPath.Meta.FixedMerkleRoot)
+	fmp := &util.FixedMerklePath{
+		LeafHash: fHash,
+		RootHash: fixedMerkleRoot,
+		Nodes:    cr.ChallengeProof.Proof,
+		LeafInd:  cr.ChallengeProof.LeafInd,
 	}
 
-	merkleVerify := util.VerifyMerklePath(contentHasher.GetMerkleRoot(), cr.MerklePath, cr.ObjPath.Meta.MerkleRoot)
-	if !merkleVerify {
+	if !fmp.VerifyMerklePath() {
+		logging.Logger.Error("Failed to verify merkle path for the data block")
 		return common.NewError("challenge_validation_failed", "Failed to verify the merkle path for the data block")
 	}
 	return nil

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/gorilla/mux"
@@ -17,7 +18,7 @@ import (
 )
 
 func TestWriteMarkerHandlers_Lock(t *testing.T) {
-
+	config.Configuration.WriteMarkerLockTimeout = time.Second * 30
 	datastore.UseMocket(true)
 
 	r := mux.NewRouter()
