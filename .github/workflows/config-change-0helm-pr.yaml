@@ -40,15 +40,17 @@ jobs:
       - name: "Copy 0chain.yaml and sc.yaml in 0helm one-pool-staging-test branch"
         if: ${{ contains(steps.changed-files.outputs.modified_files, 'config/0chain_blobber.yaml') || contains(steps.changed-files.outputs.modified_files, 'config/0chain_validator.yaml') }}
         run: |
-          cp config/0chain_blobber.yaml ../0helm/values/activeset/common/0chain_blobber.yaml
-          cp config/0chain_validator.yaml ../0helm/values/activeset/common/0chain_validator.yaml
+          touch 0helm/updated_configs/0chain_blobber.yaml
+          touch 0helm/updated_configs/0chain_validator.yaml
+          cp config/0chain_blobber.yaml 0helm/updated_configs/0chain_blobber.yaml
+          cp config/0chain_validator.yaml 0helm/updated_configs/0chain_validator.yaml
 
       - name: Push Updated Code in 0helm one-pool-staging-test branch
         uses: peaceiris/actions-gh-pages@v3
         with:
           personal_token: ${{ secrets.ACCESS_TOKEN }}
-          publish_dir: ./0helm/values/activeset/common
-          destination_dir: ./0helm/updated_configs
+          publish_dir: ./0helm/updated_configs
+          destination_dir: updated_configs
           publish_branch: one-pool-staging-test
           keep_files: true
           external_repository: "0chain/0helm"
@@ -61,9 +63,9 @@ jobs:
     needs: [ConfigChange]
     steps:
       - name: Raise PR
-        uses: devops-infra/action-pull-request@v0.5.5
-        with:
-          github_token: ${{ secrets.ACCESS_TOKEN }}
-          source_branch: one-pool-staging-test
-          target_branch: development
-          title: Update blobber/validator config file
+        run: |
+          curl -X POST \
+          -H "Authorization: Bearer ${{secrets.ACCESS_TOKEN}}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/0chain/0helm/actions/workflows/raise_pr.yaml/dispatches \
+          -d '{"ref": "staging"}'
