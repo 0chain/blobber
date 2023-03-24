@@ -5,7 +5,7 @@
 [![codecov](https://codecov.io/gh/0chain/blobber/branch/staging/graph/badge.svg)](https://codecov.io/gh/0chain/blobber)
 
 # Blobber Setup
-This readme provide instructions on how to run blobber locally
+This readme provides instructions on how to run blobber locally
 
 ## Table of Contents  
 
@@ -62,7 +62,7 @@ Note: Run all scripts as sudo
 
 2. Set up the block_worker URL
 
-A block worker URL is a field in the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` configuration files that require the URL of bloockchain network you want to connect to.For testing purposes we will connect to the beta 0chain network and replace the default URL in blobber/config/0chain_validator.yaml and 0chain_blobber.yaml with the below-mentioned URL.
+A block worker URL is a field in the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` configuration files that require the URL of blockchain network you want to connect to. For testing purposes we will connect to the beta 0chain network and replace the default URL in blobber/config/0chain_validator.yaml and 0chain_blobber.yaml with the below-mentioned URL.
 ```
 block_worker: http://beta.0chain.net/dns
 ```
@@ -189,7 +189,7 @@ Sample Response:
 
 Note: When starting multiple blobbers, it could happen that blobbers are not being registered properly (not returned on `zbox ls-blobbers`). 
    
-Blobber registration takes sometime and adding at least 5 second wait before starting the next blobber usually avoids the issue.
+Blobber registration takes some time and adding at least 5 second wait before starting the next blobber usually avoids the issue.
   
 14. Now you can create allocations on blobber and store files. 
 
