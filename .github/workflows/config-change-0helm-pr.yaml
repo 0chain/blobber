@@ -1,0 +1,69 @@
+name: config_change_PR
+
+on:
+  push:
+   branches: 
+     - staging
+   paths:
+      - config/0chain_blobber.yaml
+      - config/0chain_validator.yaml
+  
+  pull_request:
+    branches: 
+      - staging
+    types:
+      - closed
+    paths:
+      - config/0chain_blobber.yaml
+      - config/0chain_validator.yaml
+   
+jobs:
+  ConfigChange:
+    runs-on: arc-runner
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Get changed files using defaults
+        id: changed-files
+        uses: tj-actions/changed-files@v18.4
+
+      - name: "Clone 0helm"
+        if: ${{ contains(steps.changed-files.outputs.modified_files, 'config/0chain_blobber.yaml') || contains(steps.changed-files.outputs.modified_files, 'config/0chain_validator.yaml') }}
+        uses: actions/checkout@v2
+        with:
+          ref: one-pool-staging-test
+          repository: 0chain/0helm
+          fetch-depth: 1
+          path: ./0helm
+          token: ${{ secrets.ACCESS_TOKEN }}
+
+      - name: "Copy 0chain.yaml and sc.yaml in 0helm one-pool-staging-test branch"
+        if: ${{ contains(steps.changed-files.outputs.modified_files, 'config/0chain_blobber.yaml') || contains(steps.changed-files.outputs.modified_files, 'config/0chain_validator.yaml') }}
+        run: |
+          cp config/0chain_blobber.yaml ../0helm/values/activeset/common/0chain_blobber.yaml
+          cp config/0chain_validator.yaml ../0helm/values/activeset/common/0chain_validator.yaml
+
+      - name: Push Updated Code in 0helm one-pool-staging-test branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          personal_token: ${{ secrets.ACCESS_TOKEN }}
+          publish_dir: ./0helm/values/activeset/common
+          destination_dir: ./0helm/updated_configs
+          publish_branch: one-pool-staging-test
+          keep_files: true
+          external_repository: "0chain/0helm"
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"
+
+  PR:
+    runs-on: 'arc-runner'
+    environment: 'HelmRepo'
+    needs: [ConfigChange]
+    steps:
+      - name: Raise PR
+        uses: devops-infra/action-pull-request@v0.5.5
+        with:
+          github_token: ${{ secrets.ACCESS_TOKEN }}
+          source_branch: one-pool-staging-test
+          target_branch: development
+          title: Update blobber/validator config file
