@@ -3,6 +3,7 @@ package challenge
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -76,12 +77,14 @@ func syncOpenChallenges(ctx context.Context) {
 			break
 		}
 
+		logging.Logger.Info(fmt.Sprintf("Got %d new challenges", len(challengeResponse.Challenges)))
 		for _, chal := range challengeResponse.Challenges {
 			chal.ChallengeTiming = &ChallengeTiming{
 				ChallengeID:      chal.ChallengeID,
 				CreatedAtChain:   chal.CreatedAt,
 				CreatedAtBlobber: common.Now(),
 			}
+			logging.Logger.Info("Sending challenge in channel to process.", zap.String("challenge_id", chal.ChallengeID))
 			unProcessedChallengeCh <- chal
 		}
 
@@ -108,7 +111,7 @@ func ProcessChallenge(ctx context.Context) {
 			defer func() {
 				<-guideCh
 			}()
-
+			logging.Logger.Info("Processing challenge", zap.String("challenge_id", chalEntity.ChallengeID))
 			ctx := datastore.GetStore().CreateTransaction(context.TODO())
 			defer func() {
 				if err := chalEntity.Save(ctx); err != nil {

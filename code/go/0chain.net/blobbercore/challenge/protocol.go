@@ -476,7 +476,7 @@ func ProcessChallengeTransactions(ctx context.Context) {
 	for cResp := range processChalCh {
 		dblLinkedMu.Lock()
 		guideCh <- struct{}{}
-
+		logging.Logger.Info("Committing challenge", zap.String("challenge_id", cResp.ChallengeID))
 		cResp.prevCResp = latestCResp
 		if latestCResp != nil {
 			latestCResp.nextCResp = cResp
