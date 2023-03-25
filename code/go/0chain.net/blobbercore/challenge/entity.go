@@ -25,20 +25,17 @@ type (
 )
 
 const (
-	Accepted ChallengeStatus = iota + 1
-	Processed
+	Completed ChallengeStatus = iota + 1
 	Committed
 	Cancelled
 )
 
 func (s ChallengeStatus) String() string {
 	switch s {
-	case Accepted:
-		return "Accepted"
-	case Processed:
-		return "Processed"
+	case Completed:
+		return "Completed"
 	case Committed:
-		return "Committed"
+		return "Commited"
 	case Cancelled:
 		return "Cancelled"
 	default:
@@ -97,12 +94,13 @@ type ChallengeEntity struct {
 	ValidationTickets       []*ValidationTicket   `gorm:"-" json:"validation_tickets"`
 	ObjectPathString        datatypes.JSON        `gorm:"column:object_path" json:"-"`
 	ObjectPath              *reference.ObjectPath `gorm:"-" json:"object_path"`
-
 	// This time is taken from Blockchain challenge object.
 	CreatedAt common.Timestamp `gorm:"created_at" json:"created"`
 	UpdatedAt time.Time        `gorm:"updated_at;type:timestamp without time zone;not null;default:current_timestamp" json:"-"`
 
-	ChallengeTiming *ChallengeTiming `gorm:"-" json:"-"`
+	ChallengeTiming *ChallengeTiming     `gorm:"-" json:"-"`
+	StatusCh        chan ChallengeStatus `gorm:"-" json:"-"`
+	ErrCh           chan error           `gorm:"-" json:"-"`
 }
 
 func (ChallengeEntity) TableName() string {

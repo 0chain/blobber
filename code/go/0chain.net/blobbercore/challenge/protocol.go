@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"math/rand"
-	"strings"
 	"sync"
 	"time"
 
@@ -37,62 +36,16 @@ var (
 )
 
 type ChallengeResponse struct {
-	nextCResp, prevCResp *ChallengeResponse // doubly linked list
-	ChallengeCreatedAt   common.Timestamp
-	notifyCh             chan NotifyStatus
+	nextCResp, prevCResp *ChallengeResponse  `json:"-"` // doubly linked list
+	ChallengeCreatedAt   common.Timestamp    `json:"-"`
+	notifyCh             chan NotifyStatus   `json:"-"`
 	ChallengeID          string              `json:"challenge_id"`
 	ValidationTickets    []*ValidationTicket `json:"validation_tickets"`
-	Sequence             uint64
-	ErrCh                chan error
-	DoneCh               chan struct{}
-	restartWithNonceCh   chan int64
-	challengeTiming      *ChallengeTiming
-}
-
-func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transaction.Transaction, error) {
-	txn, err := transaction.NewTransactionEntity()
-	if err != nil {
-		return nil, err
-	}
-
-	sn := &ChallengeResponse{}
-	sn.ChallengeID = cr.ChallengeID
-	for _, vt := range cr.ValidationTickets {
-		if vt != nil {
-			sn.ValidationTickets = append(sn.ValidationTickets, vt)
-		}
-	}
-
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CHALLENGE_RESPONSE, sn, 0)
-	if err != nil {
-		logging.Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
-		return nil, err
-	}
-
-	cr.ChallengeTiming.TxnSubmission = common.Now()
-
-	logging.Logger.Info("Verifying challenge response to blockchain.", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
-	var (
-		t *transaction.Transaction
-	)
-
-	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-	t, err = transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
-
-	if err != nil {
-		logging.Logger.Error("Error verifying the challenge response transaction",
-			zap.String("err:", err.Error()),
-			zap.String("txn", txn.Hash),
-			zap.String("challenge_id", cr.ChallengeID))
-		return txn, err
-	}
-
-	logging.Logger.Info("Challenge committed and accepted",
-		zap.Any("txn.hash", t.Hash),
-		zap.Any("txn.output", t.TransactionOutput),
-		zap.String("challenge_id", cr.ChallengeID))
-
-	return t, nil
+	Sequence             uint64              `json:"-"`
+	ErrCh                chan error          `json:"-"`
+	DoneCh               chan struct{}       `json:"-"`
+	restartWithNonceCh   chan int64          `json:"-"`
+	challengeTiming      *ChallengeTiming    `json:"-"`
 }
 
 func (cr *ChallengeEntity) CancelChallenge(errReason error) {
@@ -105,18 +58,21 @@ func (cr *ChallengeEntity) CancelChallenge(errReason error) {
 
 // LoadValidationTickets load validation tickets
 func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
+	logging.Logger.Info("Loading validation tickets")
 	if len(cr.Validators) == 0 {
-
+		logging.Logger.Error("No validators")
 		cr.CancelChallenge(ErrNoValidator)
 		return ErrNoValidator
 	}
 
+	logging.Logger.Info("Acquiring lock")
 	// Lock allocation changes from happening in handler.CommitWrite function
 	// This lock should be unlocked as soon as possible. We should not defer
 	// unlocking it as it will be locked for longer time and handler.CommitWrite
 	// will fail.
 	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), cr.AllocationID)
 	allocMu.Lock()
+	logging.Logger.Info("Lock cquired")
 
 	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
 	if err != nil {
@@ -331,36 +287,16 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			logging.Logger.Error("[challenge]validate: ", zap.String("challenge_id", cr.ChallengeID), zap.Any("block_num", cr.BlockNum), zap.Any("object_path", objectPath))
 		}
 
-		cr.Status = Processed
 		cr.UpdatedAt = time.Now().UTC()
 	} else {
 		cr.CancelChallenge(ErrNoConsensusChallenge)
 		return ErrNoConsensusChallenge
 	}
 
-	return cr.Save(ctx)
+	return nil
 }
 
-var processChalCh = make(chan *ChallengeResponse)
-
-func (cr *ChallengeEntity) CommitChallenge(ctx context.Context) error {
-	cResp := &ChallengeResponse{
-		ChallengeCreatedAt: cr.CreatedAt,
-		ChallengeID:        cr.ChallengeID,
-		ErrCh:              make(chan error, 1),
-		restartWithNonceCh: make(chan int64, 1),
-		challengeTiming:    cr.ChallengeTiming,
-	}
-
-	for _, vt := range cr.ValidationTickets {
-		if vt != nil {
-			cResp.ValidationTickets = append(cResp.ValidationTickets, vt)
-		}
-	}
-
-	processChalCh <- cResp
-	return <-cResp.ErrCh
-}
+var commitChalCh = make(chan *ChallengeResponse)
 
 type NotifyStatus int
 
@@ -401,7 +337,12 @@ func ProcessChallengeTransactions(ctx context.Context) {
 
 			dblLinkedMu.Lock()
 			crp.challengeTiming.ClosedAt = common.Now()
-			crp.nextCResp.prevCResp = nil
+			if crp.nextCResp != nil {
+				crp.nextCResp.prevCResp = nil
+			}
+			if crp.prevCResp != nil {
+				crp.prevCResp.nextCResp = crp.nextCResp
+			}
 			dblLinkedMu.Unlock()
 		}
 	}()
@@ -443,6 +384,8 @@ func ProcessChallengeTransactions(ctx context.Context) {
 
 			L1:
 				if shouldRemove {
+					logging.Logger.Error("Removing challenge from committing",
+						zap.String("challenge_id", oldestCresp.ChallengeID))
 					if oldestCresp.prevCResp != nil {
 						oldestCresp.prevCResp.nextCResp = oldestCresp.nextCResp
 					}
@@ -473,22 +416,19 @@ func ProcessChallengeTransactions(ctx context.Context) {
 		}
 	}()
 
-	for cResp := range processChalCh {
-		dblLinkedMu.Lock()
+	for cResp := range commitChalCh {
 		guideCh <- struct{}{}
+		dblLinkedMu.Lock()
 		logging.Logger.Info("Committing challenge", zap.String("challenge_id", cResp.ChallengeID))
 		cResp.prevCResp = latestCResp
 		if latestCResp != nil {
 			latestCResp.nextCResp = cResp
 		}
+		latestCResp = cResp
 		go tryChallengeTransaction(cResp, doneCh, stopToProcessCh, dblLinkedMu, guideCh, transaction.GetNextUnusedNonce())
 
 		dblLinkedMu.Unlock()
 	}
-}
-
-func IsValueNotPresentError(err error) bool {
-	return strings.Contains(err.Error(), ValueNotPresent)
 }
 
 func tryChallengeTransaction(
@@ -556,9 +496,11 @@ func tryChallengeTransaction(
 	L1:
 		select {
 		case <-ctx.Done():
+			logging.Logger.Info("Sending to done channel")
 			doneCh <- cResp
 			cResp.notifyCh <- Success
 			cResp.ErrCh <- nil
+			logging.Logger.Info("returning after being successful")
 			return
 		default:
 			if dblLinkedMu.TryLock() {
@@ -580,6 +522,49 @@ func tryChallengeTransaction(
 			if nonce == 0 {
 				return
 			}
+		}
+	}
+}
+
+// seqManagerCh will simply receive challenges in order and based on the status
+// received on the statusCh it will send challenge to commit to blockchain.
+var seqManagerCh = make(chan *ChallengeEntity, 10)
+
+func sequenceManager(ctx context.Context) {
+	cct := config.StorageSCConfig.ChallengeCompletionTime
+
+	for chalEnt := range seqManagerCh {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		d := cct - time.Since(common.ToTime(chalEnt.CreatedAt))
+		t := time.NewTimer(d)
+		var status ChallengeStatus
+		select {
+		case status = <-chalEnt.StatusCh:
+		case <-t.C:
+			continue
+		}
+
+		if status == Completed {
+			cResp := &ChallengeResponse{
+				ChallengeCreatedAt: chalEnt.CreatedAt,
+				ChallengeID:        chalEnt.ChallengeID,
+				notifyCh:           make(chan NotifyStatus, 1),
+				ErrCh:              chalEnt.ErrCh,
+				restartWithNonceCh: make(chan int64, 1),
+				challengeTiming:    chalEnt.ChallengeTiming,
+			}
+
+			for _, vt := range chalEnt.ValidationTickets {
+				if vt != nil {
+					cResp.ValidationTickets = append(cResp.ValidationTickets, vt)
+				}
+			}
+			commitChalCh <- cResp
 		}
 	}
 }

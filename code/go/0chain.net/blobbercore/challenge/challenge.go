@@ -79,6 +79,8 @@ func syncOpenChallenges(ctx context.Context) {
 
 		logging.Logger.Info(fmt.Sprintf("Got %d new challenges", len(challengeResponse.Challenges)))
 		for _, chal := range challengeResponse.Challenges {
+			chal.StatusCh = make(chan ChallengeStatus, 1)
+			chal.ErrCh = make(chan error)
 			chal.ChallengeTiming = &ChallengeTiming{
 				ChallengeID:      chal.ChallengeID,
 				CreatedAtChain:   chal.CreatedAt,
@@ -107,6 +109,7 @@ func ProcessChallenge(ctx context.Context) {
 
 		guideCh <- struct{}{}
 
+		seqManagerCh <- chalEntity
 		go func(chalEntity *ChallengeEntity) {
 			defer func() {
 				<-guideCh
@@ -114,6 +117,8 @@ func ProcessChallenge(ctx context.Context) {
 			logging.Logger.Info("Processing challenge", zap.String("challenge_id", chalEntity.ChallengeID))
 			ctx := datastore.GetStore().CreateTransaction(context.TODO())
 			defer func() {
+				logging.Logger.Info("Saving challenge entity and challenge timing to database")
+				chalEntity.UpdatedAt = time.Now().UTC()
 				if err := chalEntity.Save(ctx); err != nil {
 					logging.Logger.Error(err.Error())
 				}
@@ -126,6 +131,7 @@ func ProcessChallenge(ctx context.Context) {
 			var err error
 			t := common.ToTime(chalEntity.CreatedAt)
 			if time.Since(t) > config.StorageSCConfig.ChallengeCompletionTime {
+				chalEntity.StatusCh <- Cancelled
 				chalEntity.Status = Cancelled
 				chalEntity.StatusMessage = "expired challenge"
 				return
@@ -133,20 +139,21 @@ func ProcessChallenge(ctx context.Context) {
 
 			err = chalEntity.LoadValidationTickets(ctx)
 			if err != nil {
+				chalEntity.StatusCh <- Cancelled
 				chalEntity.Status = Cancelled
 				chalEntity.StatusMessage = err.Error()
 				return
 			}
 			chalEntity.ChallengeTiming.CompleteValidation = common.Now()
 
-			err = chalEntity.CommitChallenge(ctx)
+			chalEntity.StatusCh <- Completed
+			err = <-chalEntity.ErrCh
 			if err != nil {
+				logging.Logger.Error("Challenge commit error", zap.Error(err))
 				chalEntity.Status = Cancelled
-				chalEntity.StatusMessage = err.Error()
-				chalEntity.UpdatedAt = time.Now().UTC()
+				chalEntity.StatusMessage = "Completed but cancelled due to error: " + err.Error()
 				return
 			}
-			chalEntity.UpdatedAt = time.Now().UTC()
 			chalEntity.Status = Committed
 
 		}(chalEntity)
