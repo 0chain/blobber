@@ -35,9 +35,6 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.ChainID = viper.GetString("server_chain.id")
 	config.Configuration.SignatureScheme = viper.GetString("server_chain.signature_scheme")
 
-	config.Configuration.ContentRefWorkerFreq = viper.GetInt64("contentref_cleaner.frequency")
-	config.Configuration.ContentRefWorkerTolerance = viper.GetInt64("contentref_cleaner.tolerance")
-
 	config.Configuration.OpenConnectionWorkerFreq = viper.GetInt64("openconnection_cleaner.frequency")
 	config.Configuration.OpenConnectionWorkerTolerance = viper.GetInt64("openconnection_cleaner.tolerance")
 
