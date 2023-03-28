@@ -51,6 +51,7 @@ import (
 
 const (
 	TempDir         = "tmp"
+	PreCommitDir    = "precommit"
 	MerkleChunkSize = 64
 	ChunkSize       = 64 * KB
 )
@@ -106,10 +107,60 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	return fileRef, nil
 }
 
-func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
-	logging.Logger.Info("Committing file")
+func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
+
+	logging.Logger.Info("Pre Committing file")
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
+
 	r, err := os.Open(tempFilePath)
+	if err != nil {
+		return false, err
+	}
+	var fPath string
+	defer func() {
+		r.Close()
+		if err != nil {
+			os.Remove(fPath)
+		} else {
+			os.Remove(tempFilePath)
+		}
+	}()
+
+	preCommitPath := fs.getPreCommitPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
+
+	if err = createDirs(filepath.Dir(preCommitPath)); err != nil {
+		return false, common.NewError("dir_creation_error", err.Error())
+	}
+
+	f, err := os.OpenFile(preCommitPath, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return false, common.NewError("file_open_error", err.Error())
+	}
+	defer f.Close()
+
+	_, err = f.Seek(fileData.UploadOffset, io.SeekStart)
+	if err != nil {
+		return false, common.NewError("file_seek_error", err.Error())
+	}
+
+	_, err = io.Copy(f, r)
+
+	if err != nil {
+		return false, common.NewError("file_write_error", err.Error())
+	}
+
+	return true, nil
+}
+
+func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
+	_, err := fs.PreCommitWrite(allocID, conID, fileData)
+	if err != nil {
+		return false, err
+	}
+	logging.Logger.Info("Committing file")
+	preCommitPath := fs.getPreCommitPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
+
+	r, err := os.Open(preCommitPath)
 	if err != nil {
 		return false, err
 	}
@@ -120,7 +171,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		if err != nil {
 			os.Remove(fPath)
 		} else {
-			os.Remove(tempFilePath)
+			os.Remove(preCommitPath)
 		}
 	}()
 
@@ -616,8 +667,16 @@ func (fs *FileStore) getAllocTempDir(allocID string) string {
 	return filepath.Join(fs.getAllocDir(allocID), TempDir)
 }
 
+func (fs *FileStore) getPreCommitDir(allocationID string) string {
+	return filepath.Join(fs.getAllocDir(allocationID), PreCommitDir)
+}
+
 func (fs *FileStore) getTempPathForFile(allocId, fileName, pathHash, connectionID string) string {
 	return filepath.Join(fs.getAllocTempDir(allocId), fileName+"."+pathHash+"."+connectionID)
+}
+
+func (fs *FileStore) getPreCommitPathForFile(allocId, fileName, pathHash, connectionID string) string {
+	return filepath.Join(fs.getPreCommitDir(allocId), fileName+"."+pathHash+"."+connectionID)
 }
 
 func (fs *FileStore) updateAllocTempFileSize(allocID string, size int64) {
