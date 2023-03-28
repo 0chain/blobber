@@ -1,17 +1,17 @@
 package filestore
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/big"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -29,15 +29,18 @@ func init() {
 
 var hexCharacters = []byte("abcdef0123456789")
 
-func randString(l int) string {
-	var s string
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-	for i := 0; i < l; i++ {
-		c := hexCharacters[r.Intn(len(hexCharacters))]
-		s += string(c)
+func randString(n int) string {
+	ret := make([]byte, n)
+	for i := 0; i < n; i++ {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(hexCharacters))))
+		if err != nil {
+			return ""
+		}
+		ret[i] = hexCharacters[num.Int64()]
 	}
-	return s
+	return string(ret)
 }
+
 func TestStoreState(t *testing.T) {
 	fs := FileStore{
 		mAllocs: make(map[string]*allocation),

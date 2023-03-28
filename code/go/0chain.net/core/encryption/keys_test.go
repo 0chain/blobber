@@ -3,6 +3,7 @@ package encryption
 import (
 	"testing"
 
+	"github.com/0chain/gosdk/core/sys"
 	"github.com/0chain/gosdk/zboxcore/client"
 	"github.com/herumi/bls-go-binary/bls"
 	"github.com/stretchr/testify/require"
@@ -16,7 +17,7 @@ func TestSignatureVerify(t *testing.T) {
 	require.Nil(t, serr)
 	require.NotNil(t, sig)
 
-	res, err := client.VerifySignature(
+	res, err := sys.Verify(
 		"fb0eb9351978091da350348211888b06ed1ce84ae40d08de3cc826cd85197188",
 		allocationId,
 	)
