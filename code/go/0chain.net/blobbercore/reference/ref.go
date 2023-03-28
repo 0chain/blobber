@@ -62,10 +62,10 @@ type Ref struct {
 	CreatedAt      common.Timestamp `gorm:"column:created_at;index:idx_created_at,sort:desc" dirlist:"created_at" filelist:"created_at"`
 	UpdatedAt      common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" dirlist:"updated_at" filelist:"updated_at"`
 
-	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
-
-	ChunkSize        int64 `gorm:"column:chunk_size;not null;default:65536" dirlist:"chunk_size" filelist:"chunk_size"`
-	HashToBeComputed bool  `gorm:"-"`
+	DeletedAt        gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
+	IsPreCommit      bool           `gorm:"column:is_pre_commit;not null;default:false" filelist:"is_pre_commit"`
+	ChunkSize        int64          `gorm:"column:chunk_size;not null;default:65536" dirlist:"chunk_size" filelist:"chunk_size"`
+	HashToBeComputed bool           `gorm:"-"`
 }
 
 // BeforeCreate Hook that gets executed to update create and update date
