@@ -278,17 +278,17 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			if test.differentHash {
 				fid.ValidationRoot = randString(64)
 			}
-			success, err := fs.PreCommitWrite(test.allocID, test.connID, fid)
+			success, err := fs.CommitWrite(test.allocID, test.connID, fid)
 			if test.expectedErrorOnCommit {
 				if err == nil {
-					success, err = fs.PreCommitWrite(test.allocID, test.connID, fid)
+					success, err = fs.CommitWrite(test.allocID, test.connID, fid)
 				}
 				require.NotNil(t, err)
 				require.False(t, success)
 			} else {
 				require.Nil(t, err)
 				require.True(t, success)
-				success, err = fs.PreCommitWrite(test.allocID, test.connID, fid)
+				success, err = fs.CommitWrite(test.allocID, test.connID, fid)
 				require.Nil(t, err)
 				require.True(t, success)
 			}

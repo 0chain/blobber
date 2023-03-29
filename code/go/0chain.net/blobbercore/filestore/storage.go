@@ -107,7 +107,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	return fileRef, nil
 }
 
-func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
+func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
 
 	logging.Logger.Info("Pre Committing file")
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
@@ -115,7 +115,7 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 	r, err := os.Open(tempFilePath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return fs.CommitWrite(allocID, conID, fileData)
+			return fs.PreCommitWrite(allocID, conID, fileData)
 		}
 		return false, err
 	}
@@ -143,7 +143,7 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 	check_file, err := os.Stat(preCommitPath)
 
 	if err != nil && check_file.Size() > 0 {
-		_, err = fs.CommitWrite(allocID, conID, fileData)
+		_, err = fs.PreCommitWrite(allocID, conID, fileData)
 	}
 
 	if err != nil {
@@ -166,7 +166,7 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 	return true, nil
 }
 
-func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
+func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
 
 	logging.Logger.Info("Committing file")
 	preCommitPath := fs.getPreCommitPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
