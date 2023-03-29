@@ -2,10 +2,11 @@ package filestore
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/big"
 	"os"
 	"testing"
 
@@ -87,6 +88,15 @@ func TestFixedMerkleTreeWrite(t *testing.T) {
 	}
 }
 
+func randomInt(max int64) int64 {
+	i := big.NewInt(max)
+	randInt, err := rand.Int(rand.Reader, i)
+	if err != nil {
+		return 0
+	}
+	return randInt.Int64()
+}
+
 func TestFixedMerkleTreeProof(t *testing.T) {
 	var size int64
 	var index int
@@ -97,7 +107,8 @@ func TestFixedMerkleTreeProof(t *testing.T) {
 			size = getRandomSize(64 * KB)
 		}
 
-		index = rand.Intn(1024)
+		index = int(randomInt(1024))
+
 		t.Run(fmt.Sprintf("Merkleproof with size=%d", size), func(t *testing.T) {
 			filename := "merkleproof"
 			defer func() {
@@ -338,7 +349,7 @@ func TestValidationMerkleProof(t *testing.T) {
 
 func getRandomSize(size int64) int64 {
 	for {
-		n := rand.Int63n(size)
+		n := randomInt(size)
 		if n != 0 {
 			return n
 		}
@@ -347,7 +358,7 @@ func getRandomSize(size int64) int64 {
 
 func getRandomIndexRange(dataSize int64) (startInd, endInd int) {
 	totalInd := int((dataSize + util.MaxMerkleLeavesSize - 1) / util.MaxMerkleLeavesSize)
-	startInd = rand.Intn(totalInd)
+	startInd = int(randomInt(int64(totalInd)))
 
 	if startInd == totalInd-1 {
 		endInd = startInd
@@ -355,7 +366,7 @@ func getRandomIndexRange(dataSize int64) (startInd, endInd int) {
 	}
 
 	r := totalInd - startInd
-	endInd = rand.Intn(r)
+	endInd = int(randomInt(int64(r)))
 	endInd += startInd
 	if endInd >= totalInd {
 		endInd = totalInd - 1
