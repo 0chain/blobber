@@ -114,19 +114,22 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 
 	r, err := os.Open(tempFilePath)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fs.CommitWrite(allocID, conID, fileData)
+		}
 		return false, err
 	}
-	var fPath string
+	var preCommitPath string
 	defer func() {
 		r.Close()
 		if err != nil {
-			os.Remove(fPath)
+			os.Remove(preCommitPath)
 		} else {
 			os.Remove(tempFilePath)
 		}
 	}()
 
-	preCommitPath := fs.getPreCommitPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
+	preCommitPath = fs.getPreCommitPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
 
 	if err = createDirs(filepath.Dir(preCommitPath)); err != nil {
 		return false, common.NewError("dir_creation_error", err.Error())
@@ -136,6 +139,17 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 	if err != nil {
 		return false, common.NewError("file_open_error", err.Error())
 	}
+
+	check_file, err := os.Stat(preCommitPath)
+
+	if err != nil && check_file.Size() > 0 {
+		_, err = fs.CommitWrite(allocID, conID, fileData)
+	}
+
+	if err != nil {
+		return false, err
+	}
+
 	defer f.Close()
 
 	_, err = f.Seek(fileData.UploadOffset, io.SeekStart)
@@ -153,13 +167,10 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 }
 
 func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
-	_, err := fs.PreCommitWrite(allocID, conID, fileData)
-	if err != nil {
-		return false, err
-	}
+
 	logging.Logger.Info("Committing file")
 	preCommitPath := fs.getPreCommitPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
-
+	// copy from precommit to final path
 	r, err := os.Open(preCommitPath)
 	if err != nil {
 		return false, err
@@ -170,8 +181,6 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		r.Close()
 		if err != nil {
 			os.Remove(fPath)
-		} else {
-			os.Remove(preCommitPath)
 		}
 	}()
 
