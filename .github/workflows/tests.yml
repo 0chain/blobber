@@ -25,6 +25,9 @@ jobs:
       - name: Clone blobber
         uses: actions/checkout@v2
 
+      - name: Install Make Command
+        run: sudo apt install && sudo apt install build-essential -y
+
       - name: Buf-lint
         if: success()
         run: make local
