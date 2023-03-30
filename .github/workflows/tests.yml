@@ -28,7 +28,7 @@ jobs:
       - name: Install Make Command
         run: |
           sudo apt-get update
-          sudo apt-get -y install build-essential nghttp2 libnghttp2-dev libssl-dev
+          sudo apt-get -y install build-essential nghttp2 libnghttp2-dev libssl-dev wget
 
       - name: Buf-lint
         if: success()
@@ -52,7 +52,7 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    runs-on: [self-hosted,docker-builds]
+    runs-on: [self-hosted,arc-runner]
     steps:
       - name: Setup go
         uses: actions/setup-go@v3
