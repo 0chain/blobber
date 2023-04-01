@@ -5,10 +5,13 @@ ACCESS_KEY=0chainaccesskey
 SECRET_KEY=0chainsecretkey
 ALLOCATION=0chainallocation
 BUCKET=0chainbucket
-# ALLOCATION=1467bdcedb20e62928eb18960c501c1c50ff35c927b86b34a8f0b00eb29a6d06
-# BUCKET=cloud-mig
 BLIMP_DOMAIN=blimpdomain
+WALLET_ID=0chainwalletid
+WALLET_PUBLIC_KEY=0chainwalletpublickey
+WALLET_PRIVATE_KEY=0chainwalletprivatekey
+BLOCK_WORKER_URL=0chainblockworker
 
+# optional params
 CONCURRENCY=1
 DELETE_SOURCE=0chaindeletesource
 ENCRYPT=0chainencrypt
@@ -22,8 +25,7 @@ MIGRATE_TO=0chainmigrateto
 WORKING_DIR=0chainwd
 CONFIG_DIR=$HOME/.zcn
 
-BLOCK_WORKER_URL=0chainblockworker
-# BLOCK_WORKER_URL=https://helm.0chain.net/dns
+
 sudo apt update
 sudo apt install -y unzip curl containerd docker.io jq
 
@@ -37,13 +39,20 @@ chmod +x /usr/local/bin/s3mgrt
 
 mkdir -p ${MIGRATION_ROOT}
 
-# check if wallet.json file exists
-test -f n; echo $?
-if [ ! -f ${CONFIG_DIR}/wallet.json ]
-then
-	echo "wallet.json does not exist in ${CONFIG_DIR}. Exiting..."
-	exit 1
-fi
+# create wallet.json
+cat <<EOF >${CONFIG_DIR}/wallet.json
+{
+  "client_id": "${WALLET_ID}",
+  "client_key": "${WALLET_PRIVATE_KEY}",
+  "keys": [
+    {
+      "public_key": "${WALLET_PRIVATE_KEY}",
+      "private_key": "${WALLET_PRIVATE_KEY}"
+    }
+  ],
+  "version": "1.0"
+}
+EOF
 
 # create config.yaml
 cat <<EOF >${CONFIG_DIR}/config.yaml
