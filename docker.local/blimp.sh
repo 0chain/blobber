@@ -6,10 +6,11 @@ MINIO_USERNAME=0chainminiousername
 MINIO_PASSWORD=0chainminiopassword
 ALLOCATION=0chainallocationid
 BLOCK_WORKER_URL=0chainblockworker
-# BLOCK_WORKER_URL=https://helm.0chain.net/dns
-# todo: check with team
 MINIO_TOKEN=0chainminiotoken
 BLIMP_DOMAIN=blimpdomain
+WALLET_ID=0chainwalletid
+WALLET_PUBLIC_KEY=0chainwalletpublickey
+WALLET_PRIVATE_KEY=0chainwalletprivatekey
 
 sudo apt update
 sudo apt install -y unzip curl containerd docker.io jq
@@ -29,6 +30,21 @@ then
 	echo "wallet.json does not exist in ${CONFIG_DIR}. Exiting..."
 	exit 1
 fi
+
+# create config.yaml
+cat <<EOF >${CONFIG_DIR}/wallet.json
+{
+  "client_id": "${WALLET_ID}",
+  "client_key": "${WALLET_PRIVATE_KEY}",
+  "keys": [
+    {
+      "public_key": "${WALLET_PRIVATE_KEY}",
+      "private_key": "${WALLET_PRIVATE_KEY}"
+    }
+  ],
+  "version": "1.0"
+}
+EOF
 
 # create config.yaml
 cat <<EOF >${CONFIG_DIR}/config.yaml
@@ -60,14 +76,14 @@ $ALLOCATION
 EOF
 
 cat <<EOF >${CONFIG_DIR}/Caddyfile
-${BLIMP_DOMAIN}:3001 {
-	route {
+${BLIMP_DOMAIN} {
+	route /minioclient/* {
+		uri strip_prefix /minioclient
 		reverse_proxy minioclient:3001
 	}
-}
-
-${BLIMP_DOMAIN}:8080 {
-	route {
+	
+	route /logsearch/* {
+		uri strip_prefix /logsearch
 		reverse_proxy api:8080
 	}
 }
