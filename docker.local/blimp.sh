@@ -31,7 +31,7 @@ then
 	exit 1
 fi
 
-# create config.yaml
+# create wallet.json
 cat <<EOF >${CONFIG_DIR}/wallet.json
 {
   "client_id": "${WALLET_ID}",
