@@ -74,11 +74,12 @@ $ALLOCATION
 EOF
 
 cat <<EOF >${CONFIG_DIR}/Caddyfile
-${BLIMP_DOMAIN}:9012 {
-	route {
+${BLIMP_DOMAIN} {
+	route /s3migration {
 		reverse_proxy s3mgrt:8080
 	}
 }
+
 EOF
 
 sudo docker-compose -f ${CONFIG_DIR}/docker-compose.yml down
