@@ -72,12 +72,6 @@ ${BLIMP_DOMAIN}:8080 {
 	}
 }
 
-${BLIMP_DOMAIN}:9000 {
-	route {
-		reverse_proxy minioclient:9000
-	}
-}
-
 EOF
 
 
@@ -92,9 +86,7 @@ services:
     ports:
       - 80:80
       - 8080:8080
-      - 9000:9000
       - 3001:3001
-      - 9012:9012
     volumes:
       - ${CONFIG_DIR}/Caddyfile:/etc/caddy/Caddyfile
       - ${CONFIG_DIR}/caddy/site:/srv
