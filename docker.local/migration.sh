@@ -47,7 +47,7 @@ cat <<EOF >${CONFIG_DIR}/wallet.json
   "keys": [
     {
       "public_key": "${WALLET_PRIVATE_KEY}",
-      "private_key": "${WALLET_PRIVATE_KEY}"
+      "private_key": "${WALLET_PUBLIC_KEY}"
     }
   ],
   "version": "1.0"
