@@ -100,8 +100,7 @@ services:
     image: caddy:latest
     ports:
       - 80:80
-      - 8080:8080
-      - 3001:3001
+      - 443:443
     volumes:
       - ${CONFIG_DIR}/Caddyfile:/etc/caddy/Caddyfile
       - ${CONFIG_DIR}/caddy/site:/srv
