@@ -43,11 +43,11 @@ mkdir -p ${MIGRATION_ROOT}
 cat <<EOF >${CONFIG_DIR}/wallet.json
 {
   "client_id": "${WALLET_ID}",
-  "client_key": "${WALLET_PRIVATE_KEY}",
+  "client_key": "${WALLET_PUBLIC_KEY}",
   "keys": [
     {
-      "public_key": "${WALLET_PRIVATE_KEY}",
-      "private_key": "${WALLET_PUBLIC_KEY}"
+      "public_key": "${WALLET_PUBLIC_KEY}",
+      "private_key": "${WALLET_PRIVATE_KEY}"
     }
   ],
   "version": "1.0"
