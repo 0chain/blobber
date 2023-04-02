@@ -87,5 +87,6 @@ func initHandlers(r *mux.Router) {
 	handler.StartTime = time.Now().UTC()
 	r.HandleFunc("/", handler.HomepageHandler)
 	handler.SetupHandlers(r)
+	handler.SetupSwagger()
 	common.SetAdminCredentials()
 }

@@ -45,6 +45,7 @@ jobs:
       - name: Set up Docker Buildx
         run: |
           sudo apt-get update -y
+          sudo apt-get install wget
           sudo apt-get install ca-certificates curl gnupg lsb-release -y
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
@@ -64,6 +65,7 @@ jobs:
         run: |
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
           export DOCKER_IMAGE_BASE="${BLOBBER_REGISTRY}:base"
+          export DOCKER_IMAGE_SWAGGER="${BLOBBER_REGISTRY}:swagger_test"
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
           docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
@@ -95,6 +97,7 @@ jobs:
       - name: Set up Docker Buildx
         run: |
           sudo apt-get update -y
+          sudo apt-get install wget
           sudo apt-get install ca-certificates curl gnupg lsb-release -y
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
