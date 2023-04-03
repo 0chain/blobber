@@ -542,11 +542,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			acp := new(allocation.UpdateFileChanger)
 			if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
 				logging.Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+				break
 			}
 			acp.IsTemp = false
 			newChange := *c
 			connectionObj.AddChange(&newChange, acp)
-		default:
 		}
 
 	}

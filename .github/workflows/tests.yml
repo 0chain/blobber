@@ -53,7 +53,7 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    runs-on: [self-hosted,docker-builds]
+    runs-on: [self-hosted,arc-runner]
     steps:
       - name: Setup go
         uses: actions/setup-go@v3
@@ -62,6 +62,11 @@ jobs:
 
       - name: Clone blobber
         uses: actions/checkout@v2
+
+      - name: Install Make Command
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install build-essential nghttp2 libnghttp2-dev libssl-dev wget
 
       - name: Run tests
         run: |
