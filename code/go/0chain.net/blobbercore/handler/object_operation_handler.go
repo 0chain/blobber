@@ -550,10 +550,15 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		}
 
 	}
-	err = connectionObj.Save(ctx)
-	if err != nil {
-		Logger.Error("Error in writing the connection meta data", zap.Error(err))
-		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+
+	if len(connectionObj.Changes) > 0 {
+		err = connectionObj.Save(ctx)
+		if err != nil {
+			Logger.Error("Error in writing the connection meta data", zap.Error(err))
+			return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+		}
+	} else {
+		db.Delete(connectionObj)
 	}
 
 	Logger.Info("[commit]"+commitOperation,
