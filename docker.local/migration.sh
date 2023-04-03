@@ -87,6 +87,7 @@ ${BLIMP_DOMAIN} {
 	route /s3migration {
 		reverse_proxy s3mgrt:8080
 	}
+
 }
 
 EOF
@@ -101,7 +102,7 @@ services:
     image: caddy:latest
     ports:
       - 80:80
-      - 9012:9012
+      - 443:443
     volumes:
       - ${CONFIG_DIR}/Caddyfile:/etc/caddy/Caddyfile
       - ${CONFIG_DIR}/caddy/site:/srv
