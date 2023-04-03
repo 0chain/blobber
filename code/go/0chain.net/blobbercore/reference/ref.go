@@ -63,7 +63,7 @@ type Ref struct {
 	UpdatedAt      common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" dirlist:"updated_at" filelist:"updated_at"`
 
 	DeletedAt        gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
-	IsPreCommit      bool           `gorm:"column:is_pre_commit;not null;default:false" filelist:"is_pre_commit"`
+	IsTemp           bool           `gorm:"column:is_temp;not null;default:false" filelist:"is_temp"`
 	ChunkSize        int64          `gorm:"column:chunk_size;not null;default:65536" dirlist:"chunk_size" filelist:"chunk_size"`
 	HashToBeComputed bool           `gorm:"-"`
 }
@@ -508,6 +508,7 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 		"size":            r.Size,
 		"chunk_size":      r.ChunkSize,
 		"file_id":         r.FileID,
+		"is_temp":         r.IsTemp,
 	})
 	if errors.Is(db.Error, gorm.ErrRecordNotFound) || db.RowsAffected == 0 {
 		err := db.Save(r).Error

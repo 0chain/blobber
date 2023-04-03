@@ -25,6 +25,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"gorm.io/gorm"
@@ -512,16 +513,48 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	result.WriteMarker = &writeMarker
 	result.Success = true
 	result.ErrorMessage = ""
+	commitOperation := connectionObj.Changes[0].Operation
+	input := connectionObj.Changes[0].Input
 
 	//Delete connection object and its changes
 	for _, c := range connectionObj.Changes {
 		db.Delete(c)
 	}
 
-	db.Delete(connectionObj)
+	// db.Delete(connectionObj)
 
-	commitOperation := connectionObj.Changes[0].Operation
-	input := connectionObj.Changes[0].Input
+	connectionObj.Changes = []*allocation.AllocationChange{}
+	connectionObj.AllocationChanges = []allocation.AllocationChangeProcessor{}
+
+	for _, c := range result.Changes {
+
+		switch c.Operation {
+		case constants.FileOperationInsert:
+			acp := new(allocation.UploadFileChanger)
+			if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
+				logging.Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+				break
+			}
+			acp.IsTemp = false
+			newChange := *c
+			connectionObj.AddChange(&newChange, acp)
+		case constants.FileOperationUpdate:
+			acp := new(allocation.UpdateFileChanger)
+			if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
+				logging.Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+			}
+			acp.IsTemp = false
+			newChange := *c
+			connectionObj.AddChange(&newChange, acp)
+		default:
+		}
+
+	}
+	err = connectionObj.Save(ctx)
+	if err != nil {
+		Logger.Error("Error in writing the connection meta data", zap.Error(err))
+		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+	}
 
 	Logger.Info("[commit]"+commitOperation,
 		zap.String("alloc_id", allocationID),

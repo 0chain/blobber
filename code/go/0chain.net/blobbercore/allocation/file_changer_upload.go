@@ -108,6 +108,7 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 		CreatedAt:               ts,
 		UpdatedAt:               ts,
 		HashToBeComputed:        true,
+		IsTemp:                  nf.IsTemp,
 	}
 
 	fileID, ok := fileIDMeta[newFile.Path]
