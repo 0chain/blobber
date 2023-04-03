@@ -25,7 +25,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"gorm.io/gorm"
@@ -532,7 +531,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		case constants.FileOperationInsert:
 			acp := new(allocation.UploadFileChanger)
 			if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
-				logging.Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+				Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+				break
+			}
+			if !acp.IsTemp {
 				break
 			}
 			acp.IsTemp = false
@@ -541,7 +543,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		case constants.FileOperationUpdate:
 			acp := new(allocation.UpdateFileChanger)
 			if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
-				logging.Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+				Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+				break
+			}
+			if !acp.IsTemp {
 				break
 			}
 			acp.IsTemp = false
