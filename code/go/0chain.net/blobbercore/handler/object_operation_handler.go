@@ -553,7 +553,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			newChange := *c
 			connectionObj.AddChange(&newChange, acp)
 		}
-
 	}
 
 	if len(connectionObj.Changes) > 0 {

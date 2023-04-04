@@ -152,7 +152,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 
 	defer f.Close()
 
-	_, err = f.Seek(fileData.UploadOffset, io.SeekStart)
+	_, err = f.Seek(0, io.SeekStart)
 	if err != nil {
 		return false, common.NewError("file_seek_error", err.Error())
 	}
