@@ -141,13 +141,11 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	}
 
 	check_file, err := os.Stat(preCommitPath)
-
 	if err != nil && check_file.Size() > 0 {
 		_, err = fs.PreCommitWrite(allocID, conID, fileData)
-	}
-
-	if err != nil {
-		return false, err
+		if err != nil {
+			return false, err
+		}
 	}
 
 	defer f.Close()
@@ -158,7 +156,6 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	}
 
 	_, err = io.Copy(f, r)
-
 	if err != nil {
 		return false, common.NewError("file_write_error", err.Error())
 	}
@@ -181,9 +178,10 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 		r.Close()
 		if err != nil {
 			os.Remove(fPath)
+		} else {
+			os.Truncate(preCommitPath, 0)
 		}
 	}()
-
 	if fileData.IsThumbnail {
 		h := sha3.New256()
 		_, err = io.Copy(h, r)
@@ -266,7 +264,6 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 	if err != nil {
 		return false, common.NewError("finalize_error", err.Error())
 	}
-
 	fmtRootBytes, err := hasher.fmt.CalculateRootAndStoreNodes(f)
 	if err != nil {
 		return false, common.NewError("fmt_hash_calculation_error", err.Error())
@@ -284,7 +281,6 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 		return false, common.NewError("fixed_merkle_root_mismatch",
 			fmt.Sprintf("Expected %s got %s", fileData.FixedMerkleRoot, fmtRoot))
 	}
-
 	if validationRoot != fileData.ValidationRoot {
 		return false, common.NewError("validation_root_mismatch",
 			"calculated validation root does not match with client's validation root")
