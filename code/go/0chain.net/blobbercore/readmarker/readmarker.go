@@ -157,7 +157,11 @@ func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, latestRedeemedRC 
 	if isCreate {
 		return db.Create(rmEntity).Error
 	}
-	return db.Model(rmEntity).Updates(rmEntity).Error
+	return db.Model(rmEntity).Updates(map[string]interface{}{
+		"timestamp": rm.Timestamp,
+		"counter":   rm.ReadCounter,
+		"signature": rm.Signature,
+	}).Error
 }
 
 // Sync read marker with 0chain to be sure its correct.
