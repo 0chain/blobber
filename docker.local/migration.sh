@@ -126,7 +126,7 @@ EOF
 
 #  --concurrency ${CONCURRENCY} --delete-source ${DELETE_SOURCE} --encrypt ${ENCRYPT} --resume true   --skip 1
 
-flags="--access-key ${ACCESS_KEY} --secret-key ${SECRET_KEY} --allocation ${ALLOCATION} --bucket ${BUCKET} "
+flags="--wd ${MIGRATION_ROOT} --access-key ${ACCESS_KEY} --secret-key ${SECRET_KEY} --allocation ${ALLOCATION} --bucket ${BUCKET} "
 
 # setup optional parameters
 if [ $ENCRYPT == "true" ]; then flags=$flags" --encrypt true"; fi
@@ -138,7 +138,7 @@ if [ $OLDER_THAN != "0chainolderthan" ]; then flags=$flags" --older-than ${SKIP}
 if [ $PREFIX != "0chainprefix" ]; then flags=$flags" --prefix ${PREFIX}"; fi
 if [ $RESUME == "true" ]; then flags=$flags" --resume ${RESUME}"; fi
 if [ $MIGRATE_TO != "0chainmigrateto" ]; then flags=$flags" --migrate-to ${MIGRATE_TO}"; fi
-if [ $WORKING_DIR != "0chainwd" ]; then flags=$flags" --wd ${WORKING_DIR}"; fi
+# if [ $WORKING_DIR != "0chainwd" ]; then flags=$flags" --wd ${WORKING_DIR}"; fi
 
 cd ${MIGRATION_ROOT}
 /usr/local/bin/s3mgrt migrate $flags
