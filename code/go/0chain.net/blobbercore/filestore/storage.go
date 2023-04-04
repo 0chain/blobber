@@ -179,7 +179,7 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 		if err != nil {
 			os.Remove(fPath)
 		} else {
-			os.Truncate(preCommitPath, 0)
+			_ = os.Truncate(preCommitPath, 0)
 		}
 	}()
 	if fileData.IsThumbnail {
