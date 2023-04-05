@@ -122,8 +122,6 @@ volumes:
     driver: local
 EOF
 
-/usr/local/bin/docker-compose -f ${CONFIG_DIR}/docker-compose.yml up -d
-
 #  --concurrency ${CONCURRENCY} --delete-source ${DELETE_SOURCE} --encrypt ${ENCRYPT} --resume true   --skip 1
 
 flags="--wd ${MIGRATION_ROOT} --access-key ${ACCESS_KEY} --secret-key ${SECRET_KEY} --allocation ${ALLOCATION} --bucket ${BUCKET} "
@@ -140,5 +138,5 @@ if [ $RESUME == "true" ]; then flags=$flags" --resume ${RESUME}"; fi
 if [ $MIGRATE_TO != "0chainmigrateto" ]; then flags=$flags" --migrate-to ${MIGRATE_TO}"; fi
 # if [ $WORKING_DIR != "0chainwd" ]; then flags=$flags" --wd ${WORKING_DIR}"; fi
 
-cd ${MIGRATION_ROOT}
 /usr/local/bin/s3mgrt migrate $flags
+/usr/local/bin/docker-compose -f ${CONFIG_DIR}/docker-compose.yml up -d
