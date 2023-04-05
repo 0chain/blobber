@@ -3,6 +3,7 @@ package readmarker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
@@ -13,6 +14,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/constants"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 // Lock write access to readmarkers table for specific client:allocationId combination.
@@ -27,9 +29,9 @@ var ReadmarkerMapLock = common.GetNewLocker()
 
 type ReadMarker struct {
 	ClientID        string           `gorm:"column:client_id;size:64;primaryKey" json:"client_id"`
+	AllocationID    string           `gorm:"column:allocation_id;size:64;primaryKey" json:"allocation_id"`
 	ClientPublicKey string           `gorm:"column:client_public_key;size:128" json:"client_public_key"`
 	BlobberID       string           `gorm:"-" json:"blobber_id"`
-	AllocationID    string           `gorm:"column:allocation_id;size:64" json:"allocation_id"`
 	OwnerID         string           `gorm:"column:owner_id;size:64" json:"owner_id"`
 	Timestamp       common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
 	ReadCounter     int64            `gorm:"column:counter" json:"counter"`
@@ -100,10 +102,28 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 	return nil
 }
 
-func GetLatestReadMarkerEntity(ctx context.Context, clientID string) (*ReadMarkerEntity, error) {
+func GetLatestReadMarkerEntity(ctx context.Context, clientID, allocID string) (*ReadMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	rm := &ReadMarkerEntity{}
-	err := db.First(rm, "client_id = ?", clientID).Error
+	err := db.First(rm, "client_id = ? AND allocation_id = ?", clientID, allocID).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		latestRM, err := GetLatestReadMarkerEntityFromChain(clientID, allocID)
+		if err != nil {
+			return nil, err
+		}
+		if latestRM == nil {
+			return nil, nil
+		}
+
+		rm.LatestRM = latestRM
+		rm.LatestRedeemedRC = latestRM.ReadCounter
+		err = db.Create(rm).Error
+		if err != nil {
+			return nil, err
+		}
+		return rm, nil
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +133,7 @@ func GetLatestReadMarkerEntity(ctx context.Context, clientID string) (*ReadMarke
 func GetRedeemRequiringRMEntities(ctx context.Context) ([]*ReadMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	var rms []*ReadMarkerEntity
-	err := db.Model(&ReadMarkerEntity{}).Where("counter <> latest_redeemed_rc").Order("created_at asc").Find(&rms).Error
+	err := db.Model(&ReadMarkerEntity{}).Where("counter > latest_redeemed_rc").Order("updated_at asc").Find(&rms).Error
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +157,11 @@ func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, latestRedeemedRC 
 	if isCreate {
 		return db.Create(rmEntity).Error
 	}
-	return db.Model(rmEntity).Updates(rmEntity).Error
+	return db.Model(rmEntity).Updates(map[string]interface{}{
+		"timestamp": rm.Timestamp,
+		"counter":   rm.ReadCounter,
+		"signature": rm.Signature,
+	}).Error
 }
 
 // Sync read marker with 0chain to be sure its correct.
