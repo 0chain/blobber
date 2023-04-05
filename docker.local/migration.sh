@@ -139,4 +139,8 @@ if [ $MIGRATE_TO != "0chainmigrateto" ]; then flags=$flags" --migrate-to ${MIGRA
 # if [ $WORKING_DIR != "0chainwd" ]; then flags=$flags" --wd ${WORKING_DIR}"; fi
 
 /usr/local/bin/s3mgrt migrate $flags
+
+cp s3migration.log ${MIGRATION_ROOT}/s3migration.log
+cp cmdlog.log ${MIGRATION_ROOT}/cmdlog.log
 /usr/local/bin/docker-compose -f ${CONFIG_DIR}/docker-compose.yml up -d
+
