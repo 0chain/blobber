@@ -40,6 +40,7 @@ type AllocationChangeCollector struct {
 	Changes           []*AllocationChange         `gorm:"foreignKey:ConnectionID"`
 	AllocationChanges []AllocationChangeProcessor `gorm:"-"`
 	Status            int                         `gorm:"column:status;not null;default:0"`
+	IsPrecomit        bool                        `gorm:"column:is_precommit;not null;default:false"`
 	datastore.ModelWithTS
 }
 
@@ -90,7 +91,7 @@ func (change *AllocationChange) Save(ctx context.Context) error {
 }
 
 // GetAllocationChanges reload connection's changes in allocation from postgres.
-//	1. update connection's status with NewConnection if id is not found in postgres
+//  1. update connection's status with NewConnection if id is not found in postgres
 //  2. mark as NewConnection if id is marked as DeleteConnection
 func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clientID string) (*AllocationChangeCollector, error) {
 	cc := &AllocationChangeCollector{}
@@ -116,6 +117,23 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 		return cc, nil
 	}
 	return nil, err
+}
+
+func GetAllocationPreCommitChanges(ctx context.Context, allocationId, clientId string) (*AllocationChangeCollector, error) {
+
+	cc := &AllocationChangeCollector{}
+
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	err := db.Where("allocation_id = ? and client_id = ? and is_precommit = ?", allocationId, clientId, true).Preload("Changes").First(cc).Error
+
+	if err == nil {
+		cc.ComputeProperties()
+		return cc, nil
+	}
+
+	return nil, err
+
 }
 
 func (cc *AllocationChangeCollector) AddChange(allocationChange *AllocationChange, changeProcessor AllocationChangeProcessor) {
@@ -167,7 +185,6 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 	}
 }
 
-//
 func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot string,
 	ts common.Timestamp, fileIDMeta map[string]string) error {
 

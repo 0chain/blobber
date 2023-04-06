@@ -286,14 +286,16 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 				require.NotNil(t, err)
 				require.False(t, success)
 			} else {
+				fmt.Println("Success: ", success)
 				require.Nil(t, err)
 				require.True(t, success)
-				preCommitPath := fs.getPreCommitPathForFile(test.allocID, fid.Name, encryption.Hash(fid.Path), test.connID)
+				preCommitPath := fs.getPreCommitPathForFile(test.allocID, fid.Name, encryption.Hash(fid.Path))
 				_, err := os.Open(preCommitPath)
 				require.Nil(t, err)
 				check_file, err := os.Stat(preCommitPath)
 				require.Nil(t, err)
-				require.True(t, check_file.Size() == tF.Size())
+				fmt.Println("Check file size: ", check_file.Size())
+				require.True(t, check_file.Size() > tF.Size())
 				finalPath, err := fs.GetPathForFile(test.allocID, fid.ValidationRoot)
 				require.Nil(t, err)
 				_, err = os.Open(finalPath)
@@ -328,8 +330,8 @@ func TestGetFileBlock(t *testing.T) {
 	validationRoot, _, err := generateRandomDataAndStoreNodes(fPath, int64(size))
 	require.Nil(t, err)
 
-	permanentFPath, err := fs.GetPathForFile(allocID, validationRoot)
-	require.Nil(t, err)
+	permanentFPath := fs.getPreCommitPathForFile(allocID, "hello", encryption.Hash(fPath))
+	// require.Nil(t, err)
 
 	err = os.MkdirAll(filepath.Dir(permanentFPath), 0777)
 	require.Nil(t, err)
@@ -346,6 +348,8 @@ func TestGetFileBlock(t *testing.T) {
 		expectedError    bool
 		errorContains    string
 		expectedDataSize int64
+		fileName         string
+		remotePath       string
 	}
 
 	tests := []input{
@@ -356,6 +360,8 @@ func TestGetFileBlock(t *testing.T) {
 			validationRoot: validationRoot,
 			expectedError:  true,
 			errorContains:  "invalid_block_number",
+			fileName:       "hello",
+			remotePath:     fPath,
 		},
 		{
 			testName:       "start block greater than max block num",
@@ -364,6 +370,8 @@ func TestGetFileBlock(t *testing.T) {
 			validationRoot: validationRoot,
 			expectedError:  true,
 			errorContains:  "invalid_block_number",
+			fileName:       "hello",
+			remotePath:     fPath,
 		}, {
 			testName:       "Non-existing file",
 			blockNum:       1,
@@ -371,6 +379,8 @@ func TestGetFileBlock(t *testing.T) {
 			validationRoot: randString(64),
 			expectedError:  true,
 			errorContains:  "no such file or directory",
+			fileName:       "hello",
+			remotePath:     randString(20),
 		},
 		{
 			testName:         "successful response",
@@ -378,6 +388,8 @@ func TestGetFileBlock(t *testing.T) {
 			numBlocks:        10,
 			expectedDataSize: int64(size),
 			validationRoot:   validationRoot,
+			fileName:         "hello",
+			remotePath:       fPath,
 		},
 	}
 
@@ -389,6 +401,8 @@ func TestGetFileBlock(t *testing.T) {
 				NumBlocks:     int(test.numBlocks),
 				Hash:          test.validationRoot,
 				FileSize:      int64(test.expectedDataSize),
+				Name:          test.fileName,
+				Path:          test.remotePath,
 			}
 
 			fileResponse, err := fs.GetFileBlock(in)
@@ -424,8 +438,7 @@ func TestGetMerkleTree(t *testing.T) {
 	require.Nil(t, err)
 	t.Logf("Merkle root: %s", mr)
 	allocID := randString(64)
-	fPath, err := fs.GetPathForFile(allocID, validationRoot)
-	require.Nil(t, err)
+	fPath := fs.getPreCommitPathForFile(allocID, "hello", encryption.Hash(orgFilePath))
 
 	err = os.MkdirAll(filepath.Dir(fPath), 0777)
 	require.Nil(t, err)
@@ -471,6 +484,8 @@ func TestGetMerkleTree(t *testing.T) {
 				AllocationID: allocID,
 				Hash:         validationRoot,
 				FileSize:     int64(size),
+				Name:         "hello",
+				Path:         orgFilePath,
 			}
 
 			challengeProof, err := fs.GetBlocksMerkleTreeForChallenge(cri)

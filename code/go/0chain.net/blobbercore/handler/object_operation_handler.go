@@ -274,6 +274,8 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			StartBlockNum: int(dr.BlockNum),
 			NumBlocks:     int(dr.NumBlocks),
 			IsThumbnail:   true,
+			Path:          fileref.Path,
+			Name:          fileref.Name,
 		}
 
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
@@ -288,6 +290,8 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			StartBlockNum:  int(dr.BlockNum),
 			NumBlocks:      int(dr.NumBlocks),
 			VerifyDownload: dr.VerifyDownload,
+			Path:           fileref.Path,
+			Name:           fileref.Name,
 		}
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
 		if err != nil {
@@ -357,13 +361,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	defer mutex.Unlock()
 
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
+	preCommitConnectionObj, _ := allocation.GetAllocationPreCommitChanges(ctx, allocationID, clientID)
+
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+
 	if err != nil {
 		// might be good to check if blobber already has stored writemarker
 		return nil, common.NewErrorf("invalid_parameters",
 			"Invalid connection id. Connection id was not found: %v", err)
 	}
-	if len(connectionObj.Changes) == 0 {
+	if len(connectionObj.Changes) == 0 && preCommitConnectionObj == nil {
 		return nil, common.NewError("invalid_parameters",
 			"Invalid connection id. Connection does not have any changes.")
 	}
@@ -443,6 +450,13 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err != nil {
 		return nil, err
 	}
+	if preCommitConnectionObj != nil {
+		err = preCommitConnectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
+
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
@@ -495,6 +509,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err != nil {
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
+
+	if preCommitConnectionObj != nil {
+		err = preCommitConnectionObj.CommitToFileStore(ctx)
+		if err != nil {
+			if !errors.Is(common.ErrFileWasDeleted, err) {
+				return nil, common.NewError("file_store_error", "Error committing preCommit Changes to file store. "+err.Error())
+			}
+		}
+	}
+
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
 		if !errors.Is(common.ErrFileWasDeleted, err) {
@@ -518,6 +542,15 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	//Delete connection object and its changes
 	for _, c := range connectionObj.Changes {
 		db.Delete(c)
+	}
+
+	if preCommitConnectionObj != nil {
+
+		for _, c := range preCommitConnectionObj.Changes {
+			db.Delete(c)
+		}
+
+		db.Delete(preCommitConnectionObj)
 	}
 
 	// db.Delete(connectionObj)
@@ -556,6 +589,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	if len(connectionObj.Changes) > 0 {
+		connectionObj.IsPrecomit = true
 		err = connectionObj.Save(ctx)
 		if err != nil {
 			Logger.Error("Error in writing the connection meta data", zap.Error(err))

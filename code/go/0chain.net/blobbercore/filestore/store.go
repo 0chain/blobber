@@ -90,6 +90,8 @@ type ReadBlockInput struct {
 	NumBlocks      int
 	IsThumbnail    bool
 	VerifyDownload bool
+	Path           string
+	Name           string
 }
 
 type ChallengeResponse struct {
@@ -103,4 +105,6 @@ type ChallengeReadBlockInput struct {
 	FileSize     int64
 	Hash         string
 	AllocationID string
+	Path         string
+	Name         string
 }
