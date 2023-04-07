@@ -290,7 +290,7 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			} else {
 				require.Nil(t, err)
 				require.True(t, success)
-				preCommitPath := fs.getPreCommitPathForFile(test.allocID, fid.Name, encryption.Hash(fid.Path))
+				preCommitPath := fs.getPreCommitPathForFile(test.allocID, fid.Name, encryption.Hash(fid.Path), fid.ValidationRoot)
 				_, err := os.Open(preCommitPath)
 				require.Nil(t, err)
 				check_file, err := os.Stat(preCommitPath)
@@ -330,7 +330,7 @@ func TestGetFileBlock(t *testing.T) {
 	validationRoot, _, err := generateRandomDataAndStoreNodes(fPath, int64(size))
 	require.Nil(t, err)
 
-	permanentFPath := fs.getPreCommitPathForFile(allocID, "hello", encryption.Hash(fPath))
+	permanentFPath := fs.getPreCommitPathForFile(allocID, "hello", encryption.Hash(fPath), validationRoot)
 	// require.Nil(t, err)
 
 	err = os.MkdirAll(filepath.Dir(permanentFPath), 0777)
@@ -438,7 +438,7 @@ func TestGetMerkleTree(t *testing.T) {
 	require.Nil(t, err)
 	t.Logf("Merkle root: %s", mr)
 	allocID := randString(64)
-	fPath := fs.getPreCommitPathForFile(allocID, "hello", encryption.Hash(orgFilePath))
+	fPath := fs.getPreCommitPathForFile(allocID, "hello", encryption.Hash(orgFilePath), validationRoot)
 
 	err = os.MkdirAll(filepath.Dir(fPath), 0777)
 	require.Nil(t, err)

@@ -201,7 +201,13 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	logging.Logger.Info("Committing file")
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
 
-	preCommitPath := fs.getPreCommitPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path))
+	fileHash := fileData.ValidationRoot
+
+	if fileData.IsThumbnail {
+		fileHash = fileData.ThumbnailHash
+	}
+
+	preCommitPath := fs.getPreCommitPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), fileHash)
 
 	err := createDirs(filepath.Dir(preCommitPath))
 	if err != nil {
@@ -346,7 +352,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 }
 
 func (fs *FileStore) DeleteFile(allocID, contentHash, path, name string) error {
-	fileObjectPath := fs.getPreCommitPathForFile(allocID, name, encryption.Hash(path))
+	fileObjectPath := fs.getPreCommitPathForFile(allocID, name, encryption.Hash(path), contentHash)
 
 	finfo, err := os.Stat(fileObjectPath)
 	if err != nil {
@@ -422,7 +428,7 @@ func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloa
 		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number cannot be negative")
 	}
 
-	fileObjectPath := fs.getPreCommitPathForFile(readBlockIn.AllocationID, readBlockIn.Name, encryption.Hash(readBlockIn.Path))
+	fileObjectPath := fs.getPreCommitPathForFile(readBlockIn.AllocationID, readBlockIn.Name, encryption.Hash(readBlockIn.Path), readBlockIn.Hash)
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
@@ -478,7 +484,7 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number cannot be negative")
 	}
 
-	fileObjectPath := fs.getPreCommitPathForFile(readBlockIn.AllocationID, readBlockIn.Name, encryption.Hash(readBlockIn.Path))
+	fileObjectPath := fs.getPreCommitPathForFile(readBlockIn.AllocationID, readBlockIn.Name, encryption.Hash(readBlockIn.Path), readBlockIn.Hash)
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
@@ -545,11 +551,20 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 		return nil, common.NewError("invalid_block_number", "Invalid block offset")
 	}
 
-	fileObjectPath := fs.getPreCommitPathForFile(in.AllocationID, in.Name, encryption.Hash(in.Path))
+	fileObjectPath := fs.getPreCommitPathForFile(in.AllocationID, in.Name, encryption.Hash(in.Path), in.Hash)
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, os.ErrNotExist) {
+			fileObjectPath, err = fs.GetPathForFile(in.AllocationID, in.Hash)
+			if err != nil {
+				return nil, err
+			}
+			file, err = os.Open(fileObjectPath)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	defer file.Close()
@@ -734,8 +749,8 @@ func (fs *FileStore) getTempPathForFile(allocId, fileName, pathHash, connectionI
 	return filepath.Join(fs.getAllocTempDir(allocId), fileName+"."+pathHash+"."+connectionID)
 }
 
-func (fs *FileStore) getPreCommitPathForFile(allocId, fileName, pathHash string) string {
-	return filepath.Join(fs.getPreCommitDir(allocId), fileName+"."+pathHash)
+func (fs *FileStore) getPreCommitPathForFile(allocId, fileName, pathHash, hash string) string {
+	return filepath.Join(fs.getPreCommitDir(allocId), fileName+"."+pathHash+"."+hash)
 }
 
 func (fs *FileStore) updateAllocTempFileSize(allocID string, size int64) {
