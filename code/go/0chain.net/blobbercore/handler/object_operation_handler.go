@@ -585,6 +585,18 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			acp.IsTemp = false
 			newChange := *c
 			connectionObj.AddChange(&newChange, acp)
+		case constants.FileOperationDelete:
+			acp := new(allocation.DeleteFileChange)
+			if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
+				Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+				break
+			}
+			if !acp.IsTemp {
+				break
+			}
+			acp.IsTemp = false
+			newChange := *c
+			connectionObj.AddChange(&newChange, acp)
 		}
 	}
 

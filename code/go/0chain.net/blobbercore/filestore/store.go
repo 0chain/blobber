@@ -22,6 +22,7 @@ type FileInputData struct {
 	//IsFinal  the request is final chunk
 	IsFinal     bool
 	IsThumbnail bool
+	IsTemp      bool
 }
 
 type FileOutputData struct {
@@ -44,7 +45,7 @@ type FileStorer interface {
 	WriteFile(allocID, connID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error)
 	CommitWrite(allocID, connID string, fileData *FileInputData) (bool, error)
 	DeleteTempFile(allocID, connID string, fileData *FileInputData) error
-	DeleteFile(allocID string, contentHash string) error
+	DeleteFile(allocID string, contentHash, path, name string) error
 	// GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.
 	GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error)
 	GetBlocksMerkleTreeForChallenge(cri *ChallengeReadBlockInput) (*ChallengeResponse, error)

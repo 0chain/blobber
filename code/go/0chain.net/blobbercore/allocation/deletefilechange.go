@@ -28,6 +28,7 @@ type DeleteFileChange struct {
 	Path         string `json:"path"`
 	Size         int64  `json:"size"`
 	Hash         string `json:"hash"`
+	IsTemp       bool   `json:"is_temp"`
 }
 
 func (nf *DeleteFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
@@ -101,7 +102,7 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 					}()
 
 					if count == 0 {
-						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ValidationRoot)
+						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ValidationRoot, nf.Path, nf.Name)
 						if err != nil {
 							logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
 								zap.String("validation_root", res.ValidationRoot))
@@ -109,7 +110,7 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 					}
 
 					if res.ThumbnailHash != "" {
-						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ThumbnailHash)
+						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ThumbnailHash, nf.Path, nf.Name)
 						if err != nil {
 							logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
 								zap.String("thumbnail", res.ThumbnailHash))

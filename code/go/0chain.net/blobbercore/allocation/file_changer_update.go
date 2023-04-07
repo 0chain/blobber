@@ -122,7 +122,7 @@ func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
 
 		if err == nil && count == 0 {
 			logging.Logger.Info("Deleting content file", zap.String("validation_root", hash))
-			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash); err != nil {
+			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash, nf.Path, nf.Filename); err != nil {
 				logging.Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
 			}
 		}

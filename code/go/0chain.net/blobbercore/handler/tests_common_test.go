@@ -92,7 +92,7 @@ func (mfs *MockFileStore) DeleteTempFile(allocID, connID string, fileData *files
 	return nil
 }
 
-func (mfs *MockFileStore) DeleteFile(allocID string, contentHash string) error {
+func (mfs *MockFileStore) DeleteFile(allocID string, contentHash, path, name string) error {
 	return nil
 }
 

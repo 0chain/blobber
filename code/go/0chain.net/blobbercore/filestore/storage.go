@@ -200,7 +200,6 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 
 	logging.Logger.Info("Committing file")
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
-	// copy from precommit to final path
 
 	preCommitPath := fs.getPreCommitPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path))
 
@@ -213,23 +212,32 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	if err != nil {
 		return false, common.NewError("file_open_error", err.Error())
 	}
-	defer f.Close()
+
 	check_file, err := os.Stat(preCommitPath)
-	if err != nil && check_file.Size() > 0 {
+
+	if err == nil && check_file.Size() > 0 {
 		_, err = fs.PreCommitWrite(allocID, conID, fileData, f, preCommitPath)
 		if err != nil {
+			f.Close()
 			return false, err
 		}
+	} else if err != nil {
+		f.Close()
+		os.Remove(preCommitPath)
+		return false, err
 	}
 
 	r, err := os.Open(tempFilePath)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			fmt.Println("File does not exist")
-			return fs.PreCommitWrite(allocID, conID, fileData, f, preCommitPath)
+		if errors.Is(err, os.ErrNotExist) && !fileData.IsTemp {
+			f.Close()
+			_ = os.Remove(preCommitPath)
+			return true, nil
 		}
 		return false, err
 	}
+
+	defer f.Close()
 
 	defer func() {
 		r.Close()
@@ -337,15 +345,24 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	return true, nil
 }
 
-func (fs *FileStore) DeleteFile(allocID, contentHash string) error {
-	fileObjectPath, err := fs.GetPathForFile(allocID, contentHash)
-	if err != nil {
-		return common.NewError("get_file_path_error", err.Error())
-	}
+func (fs *FileStore) DeleteFile(allocID, contentHash, path, name string) error {
+	fileObjectPath := fs.getPreCommitPathForFile(allocID, name, encryption.Hash(path))
 
 	finfo, err := os.Stat(fileObjectPath)
 	if err != nil {
-		return err
+
+		//PreCommitPath doesn't exist. Check if file exists in FinalPath
+
+		fileObjectPath, err = fs.GetPathForFile(allocID, contentHash)
+		if err != nil {
+			return err
+		}
+
+		finfo, err = os.Stat(fileObjectPath)
+
+		if err != nil {
+			return err
+		}
 	}
 	size := finfo.Size()
 
@@ -409,7 +426,16 @@ func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloa
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, os.ErrNotExist) {
+			fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
+			if err != nil {
+				return nil, err
+			}
+			file, err = os.Open(fileObjectPath)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 	defer file.Close()
 
@@ -456,7 +482,17 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
-		return nil, err
+
+		if errors.Is(err, os.ErrNotExist) {
+			fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
+			if err != nil {
+				return nil, err
+			}
+			file, err = os.Open(fileObjectPath)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 	defer file.Close()
 
