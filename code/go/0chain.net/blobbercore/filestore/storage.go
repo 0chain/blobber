@@ -749,8 +749,8 @@ func (fs *FileStore) getTempPathForFile(allocId, fileName, pathHash, connectionI
 	return filepath.Join(fs.getAllocTempDir(allocId), fileName+"."+pathHash+"."+connectionID)
 }
 
-func (fs *FileStore) getPreCommitPathForFile(allocId, fileName, pathHash, hash string) string {
-	return filepath.Join(fs.getPreCommitDir(allocId), fileName+"."+pathHash+"."+hash)
+func (fs *FileStore) getPreCommitPathForFile(allocId, namee, pathHash, hash string) string {
+	return filepath.Join(fs.getPreCommitDir(allocId), pathHash+"."+hash)
 }
 
 func (fs *FileStore) updateAllocTempFileSize(allocID string, size int64) {
