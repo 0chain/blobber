@@ -235,7 +235,8 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 
 	r, err := os.Open(tempFilePath)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) && !fileData.IsTemp {
+		// TODO : Check for fileData.IsTemp , if true then return error
+		if errors.Is(err, os.ErrNotExist) {
 			f.Close()
 			_ = os.Remove(preCommitPath)
 			return true, nil

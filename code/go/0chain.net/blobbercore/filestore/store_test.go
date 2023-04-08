@@ -21,6 +21,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/sha3"
 )
 
 func init() {
@@ -312,6 +313,102 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			}
 		})
 	}
+
+}
+
+func TestStorageUploadUpdate(t *testing.T) {
+
+	fs, cleanUp := setupStorage(t)
+	defer cleanUp()
+
+	allocID := randString(64)
+	connID := randString(64)
+	fileName := randString(5)
+	remotePath := filepath.Join("/", randString(5)+".txt")
+	alloc := &allocation{
+		mu:    &sync.Mutex{},
+		tmpMU: &sync.Mutex{},
+	}
+
+	fs.setAllocation(allocID, alloc)
+
+	fPath := filepath.Join(fs.mp, randString(10)+".txt")
+	size := 640 * KB
+	validationRoot, fixedMerkleRoot, err := generateRandomData(fPath, int64(size))
+	require.Nil(t, err)
+
+	fid := &FileInputData{
+		Name:            fileName,
+		Path:            remotePath,
+		ValidationRoot:  validationRoot,
+		FixedMerkleRoot: fixedMerkleRoot,
+		ChunkSize:       64 * KB,
+	}
+
+	f, err := os.Open(fPath)
+	require.Nil(t, err)
+	defer f.Close()
+
+	_, err = fs.WriteFile(allocID, connID, fid, f)
+	require.Nil(t, err)
+
+	pathHash := encryption.Hash(remotePath)
+	tempFilePath := fs.getTempPathForFile(allocID, fileName, pathHash, connID)
+	tF, err := os.Stat(tempFilePath)
+	require.Nil(t, err)
+
+	finfo, err := f.Stat()
+	require.Nil(t, err)
+
+	require.Equal(t, finfo.Size(), tF.Size())
+
+	fid.IsTemp = true
+
+	success, err := fs.CommitWrite(allocID, connID, fid)
+
+	require.Nil(t, err)
+	require.True(t, success)
+
+	// write thumbnail file
+
+	thumbFileName := randString(5)
+
+	_, _, err = generateRandomData(fPath, int64(size))
+	require.Nil(t, err)
+
+	fid.Name = thumbFileName
+	fid.IsThumbnail = true
+
+	f, err = os.Open(fPath)
+	require.Nil(t, err)
+
+	_, err = fs.WriteFile(allocID, connID, fid, f)
+	require.Nil(t, err)
+
+	tempFilePath = fs.getTempPathForFile(allocID, thumbFileName, pathHash, connID)
+	finfo, err = os.Stat(tempFilePath)
+	require.Nil(t, err)
+	require.Equal(t, finfo.Size(), int64(size))
+
+	f, err = os.Open(tempFilePath)
+	require.Nil(t, err)
+
+	h := sha3.New256()
+	_, err = io.Copy(h, f)
+	require.Nil(t, err)
+	fid.ThumbnailHash = hex.EncodeToString(h.Sum(nil))
+
+	success, err = fs.CommitWrite(allocID, connID, fid)
+
+	require.Nil(t, err)
+	require.True(t, success)
+
+	preCommitPath := fs.getPreCommitPathForFile(allocID, fileName, pathHash, fid.ThumbnailHash)
+	_, err = os.Open(preCommitPath)
+	require.Nil(t, err)
+	check_file, err := os.Stat(preCommitPath)
+	require.Nil(t, err)
+	require.True(t, check_file.Size() == int64(size))
 
 }
 

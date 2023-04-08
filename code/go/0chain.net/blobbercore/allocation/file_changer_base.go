@@ -99,14 +99,6 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 		}
 	}
 
-	// allocationChange := &AllocationChange{}
-	fileChanger := &UploadFileChanger{}
-
-	fileChanger.BaseFileChanger = *fc
-
-	fileChanger.BaseFileChanger.IsTemp = false
-	// allocationChange.Operation = constants.FileOperationInsert
-
 	// release WriteMarkerMutex
 	datastore.GetStore().GetTransaction(ctx).Exec("DELETE FROM write_locks WHERE allocation_id = ? and connection_id = ? ", fc.AllocationID, fc.ConnectionID)
 
