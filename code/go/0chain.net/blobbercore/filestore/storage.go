@@ -242,6 +242,14 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 			return true, nil
 		}
 		return false, err
+	} else {
+		// check if file is empty
+		check_file, err := os.Stat(tempFilePath)
+		if err == nil && check_file.Size() == 0 {
+			f.Close()
+			_ = os.Remove(preCommitPath)
+			return true, nil
+		}
 	}
 
 	defer f.Close()

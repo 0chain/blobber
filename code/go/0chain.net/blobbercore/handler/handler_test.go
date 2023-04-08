@@ -270,7 +270,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						AddRow(),
 				)
 			mock.ExpectExec(`INSERT INTO "allocation_connections"`).
-				WithArgs(aa, aa, aa, aa, aa, aa, aa).
+				WithArgs(aa, aa, aa, aa, aa, aa, aa, aa).
 				WillReturnResult(sqlmock.NewResult(0, 0))
 			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "allocation_changes"`)).
 				WithArgs(aa, aa, aa, aa, aa, aa).
@@ -641,7 +641,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 				aa := sqlmock.AnyArg()
 				mock.ExpectExec(`INSERT INTO "allocation_connections"`).
-					WithArgs(aa, aa, aa, aa, aa, aa, aa).
+					WithArgs(aa, aa, aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "allocation_changes"`)).
@@ -726,7 +726,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow("/dest", reference.DIRECTORY),
 					)
 				mock.ExpectExec(`INSERT INTO "allocation_connections"`).
-					WithArgs(aa, aa, aa, aa, aa, aa, aa).
+					WithArgs(aa, aa, aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "allocation_changes"`)).
@@ -836,7 +836,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 							AddRow(),
 					)
 				mock.ExpectExec(`INSERT INTO "allocation_connections"`).
-					WithArgs(aa, aa, aa, aa, aa, aa, aa).
+					WithArgs(aa, aa, aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 				mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "allocation_changes"`)).
 					WithArgs(aa, aa, aa, aa, aa, aa).

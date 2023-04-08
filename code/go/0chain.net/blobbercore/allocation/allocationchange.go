@@ -40,7 +40,7 @@ type AllocationChangeCollector struct {
 	Changes           []*AllocationChange         `gorm:"foreignKey:ConnectionID"`
 	AllocationChanges []AllocationChangeProcessor `gorm:"-"`
 	Status            int                         `gorm:"column:status;not null;default:0"`
-	// IsPrecomit        bool                        `gorm:"column:is_precommit;not null;default:false"`
+	IsPrecomit        bool                        `gorm:"column:is_precommit;not null;default:false"`
 	datastore.ModelWithTS
 }
 
@@ -119,22 +119,23 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 	return nil, err
 }
 
-// func GetAllocationPreCommitChanges(ctx context.Context, allocationId, clientId string) (*AllocationChangeCollector, error) {
+// Get the precommit changes for the allocation
+func GetAllocationPreCommitChanges(ctx context.Context, allocationId, clientId string) (*AllocationChangeCollector, error) {
 
-// 	cc := &AllocationChangeCollector{}
+	cc := &AllocationChangeCollector{}
 
-// 	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetStore().GetTransaction(ctx)
 
-// 	err := db.Where("allocation_id = ? and client_id = ? and is_precommit = ?", allocationId, clientId, true).Preload("Changes").First(cc).Error
+	err := db.Where("allocation_id = ? and client_id = ? and is_precommit = ?", allocationId, clientId, true).Preload("Changes").First(cc).Error
 
-// 	if err == nil {
-// 		cc.ComputeProperties()
-// 		return cc, nil
-// 	}
+	if err == nil {
+		cc.ComputeProperties()
+		return cc, nil
+	}
 
-// 	return nil, err
+	return nil, err
 
-// }
+}
 
 func (cc *AllocationChangeCollector) AddChange(allocationChange *AllocationChange, changeProcessor AllocationChangeProcessor) {
 	cc.AllocationChanges = append(cc.AllocationChanges, changeProcessor)
