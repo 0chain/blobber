@@ -232,7 +232,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		pendNumBlocks int64
 	)
 
-	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID)
+	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID, alloc.ID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, common.NewErrorf("download_file", "couldn't get read marker from DB: %v", err)
 	}

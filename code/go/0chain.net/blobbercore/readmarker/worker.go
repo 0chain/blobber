@@ -25,8 +25,9 @@ func redeemReadMarker(ctx context.Context, rmEntity *ReadMarkerEntity) (err erro
 	logging.Logger.Info("Redeeming the read marker", zap.Any("rm", rmEntity.LatestRM))
 
 	params := map[string]string{
-		"blobber": rmEntity.LatestRM.BlobberID,
-		"client":  rmEntity.LatestRM.ClientID,
+		"blobber":    rmEntity.LatestRM.BlobberID,
+		"client":     rmEntity.LatestRM.ClientID,
+		"allocation": rmEntity.LatestRM.AllocationID,
 	}
 
 	latestRM := ReadMarker{BlobberID: rmEntity.LatestRM.BlobberID, ClientID: rmEntity.LatestRM.ClientID}
