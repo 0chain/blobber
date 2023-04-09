@@ -573,7 +573,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 				break
 			}
 
-			reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, false)
+			_ = reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, false)
 
 		case constants.FileOperationUpdate:
 			acp := new(allocation.UpdateFileChanger)
@@ -584,7 +584,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			if !acp.IsTemp {
 				break
 			}
-			reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, false)
+			_ = reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, false)
 		case constants.FileOperationDelete:
 			acp := new(allocation.DeleteFileChange)
 			if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
@@ -594,7 +594,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			if !acp.IsTemp {
 				break
 			}
-			reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, false)
+			_ = reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, false)
 		}
 	}
 
