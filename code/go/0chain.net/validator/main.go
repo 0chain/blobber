@@ -74,8 +74,6 @@ func main() {
 	if w := config.Configuration.DelegateWallet; len(w) != 64 {
 		log.Fatal("invalid delegate wallet:", w)
 	}
-	config.Configuration.MinStake = int64(viper.GetFloat64("min_stake") * 1e10)
-	config.Configuration.MaxStake = int64(viper.GetFloat64("max_stake") * 1e10)
 	config.Configuration.NumDelegates = viper.GetInt("num_delegates")
 	config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
 	config.Configuration.HealthCheckWorkerFreq = viper.GetDuration("healthcheck.frequency")

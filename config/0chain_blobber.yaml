@@ -4,13 +4,6 @@ logging:
   level: "info"
   console: true # printing log to console is only supported in development mode
 
-info:
-  name: my_blobber
-  logo_url: https://google.com
-  description: this is my test blobber
-  website_url: https://google.com
-
-
 # for testing
 #  500 MB - 536870912
 #    1 GB - 1073741824
@@ -39,10 +32,6 @@ min_lock_demand: 0.1
 # in the future, prices can be changed
 max_offer_duration: 744h # 31 day
 
-# these timeouts required by blobber to check client pools, perform
-# a task and redeem tokens, it should be big enough
-read_lock_timeout: 1m
-write_lock_timeout: 1m
 
 # update_allocations_interval used to refresh known allocation objects from SC
 update_allocations_interval: 1m
@@ -128,11 +117,6 @@ db:
   password: blobber
   host: postgres
   port: 5432
-
-
-geolocation:
-  latitude: 0
-  longitude: 0
 
 storage:
   files_dir: "/path/to/hdd"

@@ -68,13 +68,6 @@ func setupConfig(configDir string, deploymentMode int) {
 
 	config.Configuration.PriceInUSD = viper.GetBool("price_in_usd")
 
-	config.Configuration.ReadLockTimeout = int64(
-		viper.GetDuration("read_lock_timeout") / time.Second,
-	)
-	config.Configuration.WriteLockTimeout = int64(
-		viper.GetDuration("write_lock_timeout") / time.Second,
-	)
-
 	config.Configuration.WriteMarkerLockTimeout = viper.GetDuration("write_marker_lock_timeout")
 
 	config.Configuration.UpdateAllocationsInterval =
@@ -106,15 +99,6 @@ func setupConfig(configDir string, deploymentMode int) {
 
 	transaction.MinConfirmation = config.Configuration.MinConfirmation
 
-	config.Configuration.Name = viper.GetString("info.name")
-	config.Configuration.WebsiteUrl = viper.GetString("info.website_url")
-	config.Configuration.LogoUrl = viper.GetString("info.logo_url")
-	config.Configuration.Description = viper.GetString("info.description")
-
-	config.Configuration.Geolocation = config.GeolocationConfig{}
-	config.Configuration.Geolocation.Latitude = viper.GetFloat64("geolocation.latitude")
-	config.Configuration.Geolocation.Longitude = viper.GetFloat64("geolocation.longitude")
-
 	fmt.Print("		[OK]\n")
 }
 
@@ -134,10 +118,7 @@ func reloadConfig() error {
 
 	config.Configuration.Capacity = viper.GetInt64("capacity")
 
-	config.Configuration.MaxOfferDuration = viper.GetDuration("max_offer_duration")
-	config.Configuration.MaxStake = int64(viper.GetFloat64("max_stake") * 1e10)
 	config.Configuration.MinLockDemand = viper.GetFloat64("min_lock_demand")
-	config.Configuration.MinStake = int64(viper.GetFloat64("min_stake") * 1e10)
 	config.Configuration.NumDelegates = viper.GetInt("num_delegates")
 	config.Configuration.ReadPrice = viper.GetFloat64("read_price")
 	config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
