@@ -25,14 +25,6 @@ docker-compose --version
 mkdir -p ${CONFIG_DIR}
 mkdir -p ${CONFIG_DIR_BLIMP}
 
-# check if wallet.json file exists
-test -f n; echo $?
-if [ ! -f ${CONFIG_DIR_BLIMP}/wallet.json ]
-then
-	echo "wallet.json does not exist in ${CONFIG_DIR_BLIMP}. Exiting..."
-	exit 1
-fi
-
 cat <<EOF >${CONFIG_DIR_BLIMP}/wallet.json
 {
   "client_id": "${WALLET_ID}",
