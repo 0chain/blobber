@@ -83,7 +83,14 @@ cat <<EOF >${CONFIG_DIR}/allocation.txt
 $ALLOCATION
 EOF
 
-cat <<EOF >${CONFIG_DIR}/Caddyfile
+# create a seperate folder to store caddy files
+mkdir -p ${CONFIG_DIR}/caddyfiles
+
+cat <<EOF > ${CONFIG_DIR}/caddyfiles/Caddyfile
+import /etc/caddy/*.caddy
+EOF
+
+cat <<EOF >${CONFIG_DIR}/caddyfiles/migration.caddy
 ${BLIMP_DOMAIN} {
 	route /s3migration {
 		reverse_proxy s3mgrt:8080
@@ -105,21 +112,71 @@ services:
       - 80:80
       - 443:443
     volumes:
-      - ${CONFIG_DIR}/Caddyfile:/etc/caddy/Caddyfile
+      - ${CONFIG_DIR}/caddyfiles:/etc/caddy
       - ${CONFIG_DIR}/caddy/site:/srv
       - ${CONFIG_DIR}/caddy/caddy_data:/data
       - ${CONFIG_DIR}/caddy/caddy_config:/config
     restart: "always"
+
+  db:
+    image: postgres:13-alpine
+    container_name: postgres-db
+    restart: always
+    command: -c "log_statement=all"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - db:/var/lib/postgresql/data
+
+  api:
+    image: 0chaindev/blimp-logsearchapi:pr-13-6882a858
+    depends_on:
+      - db
+    environment:
+      LOGSEARCH_PG_CONN_STR: "postgres://postgres:postgres@postgres-db/postgres?sslmode=disable"
+      LOGSEARCH_AUDIT_AUTH_TOKEN: 12345
+      MINIO_LOG_QUERY_AUTH_TOKEN: 12345
+      LOGSEARCH_DISK_CAPACITY_GB: 5
+    links:
+      - db
+
+  minioserver:
+    image: 0chaindev/blimp-minioserver:pr-18-0dd2027e
+    container_name: minioserver
+    command: ["minio", "gateway", "zcn"]
+    environment:
+      MINIO_AUDIT_WEBHOOK_ENDPOINT: http://api:8080/api/ingest?token=${MINIO_TOKEN}
+      MINIO_AUDIT_WEBHOOK_AUTH_TOKEN: 12345
+      MINIO_AUDIT_WEBHOOK_ENABLE: "on"
+      MINIO_ROOT_USER: ${MINIO_USERNAME}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
+      MINIO_BROWSER: "OFF"
+    links:
+      - api:api
+    volumes:
+      - ${CONFIG_DIR}:/root/.zcn
+
+  minioclient:
+    image: 0chaindev/blimp-clientapi:pr-13-6882a858
+    container_name: minioclient
+    depends_on:
+      - minioserver
+    environment:
+      MINIO_SERVER: "minioserver:9000"
 
   s3mgrt:
     image: bmanu199/s3mgrt:latest
     restart: always
     volumes:
       - ${MIGRATION_ROOT}:/migrate
-      
+
 volumes:
   db:
     driver: local
+
 EOF
 
 #  --concurrency ${CONCURRENCY} --delete-source ${DELETE_SOURCE} --encrypt ${ENCRYPT} --resume true   --skip 1

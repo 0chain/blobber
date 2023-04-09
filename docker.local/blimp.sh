@@ -69,24 +69,30 @@ if ! _contains "${allocations}" "${ALLOCATION}"; then
   exit 1
 fi
 
-
+# todo: verify if updating the allocation ID causes issues to the existing deployment
 cat <<EOF >${CONFIG_DIR}/allocation.txt
 $ALLOCATION
 EOF
 
-cat <<EOF >${CONFIG_DIR}/Caddyfile
+# create a seperate folder to store caddy files
+mkdir -p ${CONFIG_DIR}/caddyfiles
+
+cat <<EOF > ${CONFIG_DIR}/caddyfiles/Caddyfile
+import /etc/caddy/*.caddy
+EOF
+
+cat <<EOF >${CONFIG_DIR}/caddyfiles/blimp.caddy
 ${BLIMP_DOMAIN} {
 	route /minioclient/* {
 		uri strip_prefix /minioclient
 		reverse_proxy minioclient:3001
 	}
-	
+
 	route /logsearch/* {
 		uri strip_prefix /logsearch
 		reverse_proxy api:8080
 	}
 }
-
 EOF
 
 
@@ -102,7 +108,7 @@ services:
       - 80:80
       - 443:443
     volumes:
-      - ${CONFIG_DIR}/Caddyfile:/etc/caddy/Caddyfile
+      - ${CONFIG_DIR}/caddyfiles:/etc/caddy
       - ${CONFIG_DIR}/caddy/site:/srv
       - ${CONFIG_DIR}/caddy/caddy_data:/data
       - ${CONFIG_DIR}/caddy/caddy_config:/config
@@ -156,7 +162,13 @@ services:
       - minioserver
     environment:
       MINIO_SERVER: "minioserver:9000"
-      
+
+  s3mgrt:
+    image: bmanu199/s3mgrt:latest
+    restart: always
+    volumes:
+      - ${MIGRATION_ROOT}:/migrate
+
 volumes:
   db:
     driver: local
