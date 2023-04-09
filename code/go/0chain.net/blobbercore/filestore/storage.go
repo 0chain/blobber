@@ -129,11 +129,6 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 			return false, common.NewError("read_error", err.Error())
 		}
 		hash := hex.EncodeToString(h.Sum(nil))
-		if hash != fileData.ThumbnailHash {
-			return false, common.NewError("hash_mismatch",
-				fmt.Sprintf("calculated thumbnail hash does not match with expected hash. Expected %s, got %s.",
-					fileData.ThumbnailHash, hash))
-		}
 
 		fPath, err = fs.GetPathForFile(allocID, hash)
 
