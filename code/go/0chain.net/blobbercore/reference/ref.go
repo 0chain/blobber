@@ -518,6 +518,24 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 	}
 }
 
+func UpdateIsTemp(ctx context.Context, allocationID, path string, isTemp bool) error {
+
+	ref, err := GetReference(ctx, allocationID, path)
+	if err != nil {
+		return err
+	}
+
+	if ref.IsTemp == isTemp {
+		return nil
+	}
+
+	ref.IsTemp = isTemp
+
+	db := datastore.GetStore().GetTransaction(ctx)
+	return db.Model(ref).Where("id = ?", ref.ID).Update("is_temp", isTemp).Error
+
+}
+
 func (r *Ref) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Save(r).Error

@@ -40,7 +40,6 @@ type AllocationChangeCollector struct {
 	Changes           []*AllocationChange         `gorm:"foreignKey:ConnectionID"`
 	AllocationChanges []AllocationChangeProcessor `gorm:"-"`
 	Status            int                         `gorm:"column:status;not null;default:0"`
-	IsPrecomit        bool                        `gorm:"column:is_precommit;not null;default:false"`
 	datastore.ModelWithTS
 }
 

@@ -558,62 +558,45 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	db.Delete(connectionObj)
 
-	connectionObj.Changes = []*allocation.AllocationChange{}
-	connectionObj.AllocationChanges = []allocation.AllocationChangeProcessor{}
+	//Update the Ref Table
 
-	// for _, c := range result.Changes {
+	for _, c := range connectionObj.Changes {
 
-	// 	switch c.Operation {
-	// 	case constants.FileOperationInsert:
-	// 		acp := new(allocation.UploadFileChanger)
-	// 		if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
-	// 			Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
-	// 			break
-	// 		}
-	// 		if !acp.IsTemp {
-	// 			break
-	// 		}
-	// 		acp.IsTemp = false
-	// 		newChange := *c
-	// 		connectionObj.AddChange(&newChange, acp)
-	// 	case constants.FileOperationUpdate:
-	// 		acp := new(allocation.UpdateFileChanger)
-	// 		if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
-	// 			Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
-	// 			break
-	// 		}
-	// 		if !acp.IsTemp {
-	// 			break
-	// 		}
-	// 		acp.IsTemp = false
-	// 		newChange := *c
-	// 		connectionObj.AddChange(&newChange, acp)
-	// 	case constants.FileOperationDelete:
-	// 		acp := new(allocation.DeleteFileChange)
-	// 		if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
-	// 			Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
-	// 			break
-	// 		}
-	// 		if !acp.IsTemp {
-	// 			break
-	// 		}
-	// 		acp.IsTemp = false
-	// 		newChange := *c
-	// 		connectionObj.AddChange(&newChange, acp)
-	// 		newChange.Save(ctx)
-	// 	}
-	// }
+		switch c.Operation {
+		case constants.FileOperationInsert:
+			acp := new(allocation.UploadFileChanger)
+			if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
+				Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+				break
+			}
+			if !acp.IsTemp {
+				break
+			}
 
-	// if len(connectionObj.Changes) > 0 {
-	// 	connectionObj.IsPrecomit = true
-	// 	err = connectionObj.Save(ctx)
-	// 	if err != nil {
-	// 		Logger.Error("Error in writing the connection meta data", zap.Error(err))
-	// 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
-	// 	}
-	// } else {
-	// 	db.Delete(connectionObj)
-	// }
+			reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, false)
+
+		case constants.FileOperationUpdate:
+			acp := new(allocation.UpdateFileChanger)
+			if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
+				Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+				break
+			}
+			if !acp.IsTemp {
+				break
+			}
+			reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, false)
+		case constants.FileOperationDelete:
+			acp := new(allocation.DeleteFileChange)
+			if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
+				Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+				break
+			}
+			if !acp.IsTemp {
+				break
+			}
+			reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, false)
+		}
+	}
 
 	Logger.Info("[commit]"+commitOperation,
 		zap.String("alloc_id", allocationID),
