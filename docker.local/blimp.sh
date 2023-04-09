@@ -1,6 +1,7 @@
 #!/bin/bash
 
 CONFIG_DIR=$HOME/.zcn
+CONFIG_DIR_BLIMP=${CONFIG_DIR}/blimp # to store wallet.json, config.json, allocation.json
 MIGRATION_ROOT=$HOME/.s3migration
 MINIO_USERNAME=0chainminiousername
 MINIO_PASSWORD=0chainminiopassword
@@ -21,17 +22,18 @@ sudo chmod +x /usr/local/bin/docker-compose
 docker-compose --version
 
 # create config dir
-mkdir -p $CONFIG_DIR
+mkdir -p ${CONFIG_DIR}
+mkdir -p ${CONFIG_DIR_BLIMP}
 
 # check if wallet.json file exists
 test -f n; echo $?
-if [ ! -f ${CONFIG_DIR}/wallet.json ]
+if [ ! -f ${CONFIG_DIR_BLIMP}/wallet.json ]
 then
-	echo "wallet.json does not exist in ${CONFIG_DIR}. Exiting..."
+	echo "wallet.json does not exist in ${CONFIG_DIR_BLIMP}. Exiting..."
 	exit 1
 fi
 
-cat <<EOF >${CONFIG_DIR}/wallet.json
+cat <<EOF >${CONFIG_DIR_BLIMP}/wallet.json
 {
   "client_id": "${WALLET_ID}",
   "client_key": "${WALLET_PUBLIC_KEY}",
@@ -46,7 +48,7 @@ cat <<EOF >${CONFIG_DIR}/wallet.json
 EOF
 
 # create config.yaml
-cat <<EOF >${CONFIG_DIR}/config.yaml
+cat <<EOF >${CONFIG_DIR_BLIMP}/config.yaml
 block_worker: ${BLOCK_WORKER_URL}
 signature_scheme: bls0chain
 min_submit: 50
@@ -62,7 +64,7 @@ _contains () {  # Check if space-separated list $1 contains line $2
   echo "$1" | tr ' ' '\n' | grep -F -x -q "$2"
 }
 
-allocations=$(zbox listallocations --silent --json | jq -r ' .[] | .id')
+allocations=$(zbox listallocations --configDir ${CONFIG_DIR_BLIMP} --silent --json | jq -r ' .[] | .id')
 
 if ! _contains "${allocations}" "${ALLOCATION}"; then
   echo "given allocation does not belong to the wallet"
@@ -70,7 +72,7 @@ if ! _contains "${allocations}" "${ALLOCATION}"; then
 fi
 
 # todo: verify if updating the allocation ID causes issues to the existing deployment
-cat <<EOF >${CONFIG_DIR}/allocation.txt
+cat <<EOF >${CONFIG_DIR_BLIMP}/allocation.txt
 $ALLOCATION
 EOF
 
@@ -153,7 +155,7 @@ services:
     links:
       - api:api
     volumes:
-      - ${CONFIG_DIR}:/root/.zcn
+      - ${CONFIG_DIR_BLIMP}:/root/.zcn
 
   minioclient:
     image: 0chaindev/blimp-clientapi:pr-13-6882a858

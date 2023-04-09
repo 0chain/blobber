@@ -24,6 +24,7 @@ RESUME=0chainresume
 MIGRATE_TO=0chainmigrateto
 WORKING_DIR=0chainwd
 CONFIG_DIR=$HOME/.zcn
+CONFIG_DIR_MIGRATION=${CONFIG_DIR}/migration # to store wallet.json, config.json, allocation.json
 
 
 sudo apt update
@@ -39,9 +40,11 @@ chmod +x /usr/local/bin/s3mgrt
 /usr/local/bin/s3mgrt --version
 
 mkdir -p ${MIGRATION_ROOT}
+mkdir -p ${CONFIG_DIR}
+mkdir -p ${CONFIG_DIR_MIGRATION}
 
 # create wallet.json
-cat <<EOF >${CONFIG_DIR}/wallet.json
+cat <<EOF >${CONFIG_DIR_MIGRATION}/wallet.json
 {
   "client_id": "${WALLET_ID}",
   "client_key": "${WALLET_PUBLIC_KEY}",
@@ -56,7 +59,7 @@ cat <<EOF >${CONFIG_DIR}/wallet.json
 EOF
 
 # create config.yaml
-cat <<EOF >${CONFIG_DIR}/config.yaml
+cat <<EOF >${CONFIG_DIR_MIGRATION}/config.yaml
 block_worker: ${BLOCK_WORKER_URL}
 signature_scheme: bls0chain
 min_submit: 50
@@ -72,14 +75,14 @@ _contains () {  # Check if space-separated list $1 contains line $2
   echo "$1" | tr ' ' '\n' | grep -F -x -q "$2"
 }
 
-allocations=$(zbox listallocations --silent --json | jq -r ' .[] | .id')
+allocations=$(zbox listallocations --configDir ${CONFIG_DIR_MIGRATION} --silent --json | jq -r ' .[] | .id')
 
 if ! _contains "${allocations}" "${ALLOCATION}"; then
   echo "given allocation does not belong to the wallet"
   exit 1
 fi
 
-cat <<EOF >${CONFIG_DIR}/allocation.txt
+cat <<EOF >${CONFIG_DIR_MIGRATION}/allocation.txt
 $ALLOCATION
 EOF
 
@@ -157,7 +160,7 @@ services:
     links:
       - api:api
     volumes:
-      - ${CONFIG_DIR}:/root/.zcn
+      - ${CONFIG_DIR_MIGRATION}:/root/.zcn
 
   minioclient:
     image: 0chaindev/blimp-clientapi:pr-13-6882a858
@@ -179,7 +182,7 @@ volumes:
 
 EOF
 
-#  --concurrency ${CONCURRENCY} --delete-source ${DELETE_SOURCE} --encrypt ${ENCRYPT} --resume true   --skip 1
+/usr/local/bin/docker-compose -f ${CONFIG_DIR}/docker-compose.yml up -d
 
 flags="--wd ${MIGRATION_ROOT} --access-key ${ACCESS_KEY} --secret-key ${SECRET_KEY} --allocation ${ALLOCATION} --bucket ${BUCKET} "
 
@@ -195,9 +198,9 @@ if [ $RESUME == "true" ]; then flags=$flags" --resume ${RESUME}"; fi
 if [ $MIGRATE_TO != "0chainmigrateto" ]; then flags=$flags" --migrate-to ${MIGRATE_TO}"; fi
 # if [ $WORKING_DIR != "0chainwd" ]; then flags=$flags" --wd ${WORKING_DIR}"; fi
 
+cd ${MIGRATION_ROOT}
 /usr/local/bin/s3mgrt migrate $flags
 
-cp s3migration.log ${MIGRATION_ROOT}/s3migration.log
-cp cmdlog.log ${MIGRATION_ROOT}/cmdlog.log
-/usr/local/bin/docker-compose -f ${CONFIG_DIR}/docker-compose.yml up -d
+# cp s3migration.log ${MIGRATION_ROOT}/s3migration.log
+# cp cmdlog.log ${MIGRATION_ROOT}/cmdlog.log
 
