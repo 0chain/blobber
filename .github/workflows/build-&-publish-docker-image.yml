@@ -170,10 +170,7 @@ jobs:
           blobber_image: ${{ env.TAG }}-${{ env.SHORT_SHA }}
           validator_image: ${{ env.TAG }}-${{ env.SHORT_SHA }}
           zbox_image: staging
-          zblock_image: staging
           zdns_image: staging
-          explorer_image: latest
-          zsearch_image: staging
           zbox_cli_branch: staging
           zwallet_cli_branch: staging
           custom_go_sdk_version: staging
