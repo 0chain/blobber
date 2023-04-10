@@ -55,11 +55,8 @@ jobs:
       blobber_branch:  ${{ github.ref_name }}
       validator_branch:  ${{ github.ref_name }}
       zbox_branch: ${{ github.event.inputs.zbox_branch }}
-      zblock_branch: ${{ github.event.inputs.zblock_branch }}
       zdns_branch: ${{ github.event.inputs.zdns_branch }}
-      explorer_branch: master
       test_file_filter: ${{ github.event.inputs.test_file_filter }}
-      zsearch_branch: staging
       skip_tests: ${{ github.event.inputs.skip_tests }}
     secrets:
       SVC_ACCOUNT_SECRET: ${{ secrets.SVC_ACCOUNT_SECRET }}
