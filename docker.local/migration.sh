@@ -184,7 +184,7 @@ EOF
 
 /usr/local/bin/docker-compose -f ${CONFIG_DIR}/docker-compose.yml up -d
 
-flags="--wd ${MIGRATION_ROOT} --access-key ${ACCESS_KEY} --secret-key ${SECRET_KEY} --allocation ${ALLOCATION} --bucket ${BUCKET} "
+flags="--configDir ${CONFIG_DIR_MIGRATION} --wd ${MIGRATION_ROOT} --access-key ${ACCESS_KEY} --secret-key ${SECRET_KEY} --allocation ${ALLOCATION} --bucket ${BUCKET} "
 
 # setup optional parameters
 if [ $ENCRYPT == "true" ]; then flags=$flags" --encrypt true"; fi
