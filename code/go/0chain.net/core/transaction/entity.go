@@ -52,8 +52,6 @@ type Terms struct {
 	// allocation should be locked for the blobber rewards even if
 	// user never write something to the blobber.
 	MinLockDemand float64 `json:"min_lock_demand"`
-	// MaxOfferDuration with this prices and the demand.
-	MaxOfferDuration time.Duration `json:"max_offer_duration"`
 }
 
 type StakePoolSettings struct {

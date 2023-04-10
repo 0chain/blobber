@@ -72,11 +72,10 @@ type BlobberStats struct {
 	AllocationListPagination  *Pagination       `json:"allocation_list_pagination,omitempty"`
 
 	// configurations
-	Capacity         int64    `json:"capacity"`
-	ReadPrice        float64  `json:"read_price"`
-	WritePrice       float64  `json:"write_price"`
-	MinLockDemand    float64  `json:"min_lock_demand"`
-	MaxOfferDuration Duration `json:"max_offer_duration"`
+	Capacity      int64   `json:"capacity"`
+	ReadPrice     float64 `json:"read_price"`
+	WritePrice    float64 `json:"write_price"`
+	MinLockDemand float64 `json:"min_lock_demand"`
 
 	AllocationStats []*AllocationStats `json:"-"`
 

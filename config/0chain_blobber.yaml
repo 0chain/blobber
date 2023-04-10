@@ -28,9 +28,6 @@ price_worker_in_hours: 12
 #     allocation_size * write_price * min_lock_demand
 #
 min_lock_demand: 0.1
-# max_offer_duration restrict long contracts where,
-# in the future, prices can be changed
-max_offer_duration: 744h # 31 day
 
 
 # update_allocations_interval used to refresh known allocation objects from SC
@@ -41,10 +38,6 @@ max_dirs_files: 50000
 
 # delegate wallet (must be set)
 delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'
-# min stake allowed, tokens
-min_stake: 1.0
-# max stake allowed, tokens
-max_stake: 20000.0
 # maximum allowed number of stake holders
 num_delegates: 50
 # service charge of the blobber

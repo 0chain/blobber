@@ -136,7 +136,6 @@ const tpl = `
                 <tr><td>Read price</td><td>{{ .ReadPrice }}</td></tr>
                 <tr><td>Write price</td><td>{{ .WritePrice }}</td></tr>
                 <tr><td>Min lock demand</td><td>{{ .MinLockDemand }}</td></tr>
-                <tr><td>Max offer duration</td><td>{{ .MaxOfferDuration }}</td></tr>
             </table>
         </td>
         <td valign='top'>
