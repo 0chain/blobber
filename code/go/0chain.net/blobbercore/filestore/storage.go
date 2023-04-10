@@ -281,6 +281,8 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 			return false, err
 		}
 
+		logging.Logger.Info("Thumbnail file committed successfully", zap.String("file", fileData.Name), zap.String("allocID", allocID), zap.String("thumbnailHash", hash))
+
 		return true, nil
 	}
 
@@ -437,6 +439,7 @@ func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloa
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			logging.Logger.Info("file not found in precommit path. Trying final path", zap.String("hash", readBlockIn.Hash), zap.String("allocId", readBlockIn.AllocationID))
 			fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
 			if err != nil {
 				return nil, err
@@ -445,9 +448,23 @@ func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloa
 			if err != nil {
 				return nil, err
 			}
+		} else {
+			logging.Logger.Error("error opening thumbnail file", zap.Error(err), zap.String("hash", readBlockIn.Hash), zap.String("allocId", readBlockIn.AllocationID))
+			return nil, err
 		}
 	}
 	defer file.Close()
+
+	h := sha3.New256()
+	_, err = io.Copy(h, file)
+	if err != nil {
+		return nil, common.NewError("read_error", err.Error())
+	}
+	hash := hex.EncodeToString(h.Sum(nil))
+
+	if hash != readBlockIn.Hash {
+		return nil, common.NewError("hash_mismatch", fmt.Sprintf("Hash mismatch. Expected %s, got %s", readBlockIn.Hash, hash))
+	}
 
 	filesize := readBlockIn.FileSize
 	maxBlockNum := int64(math.Ceil(float64(filesize) / ChunkSize))
@@ -502,6 +519,9 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 			if err != nil {
 				return nil, err
 			}
+		} else {
+			logging.Logger.Error("error opening file", zap.Error(err))
+			return nil, err
 		}
 	}
 	defer file.Close()

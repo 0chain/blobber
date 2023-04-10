@@ -1,6 +1,7 @@
 package filestore
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -372,7 +373,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	// write thumbnail file
 
 	thumbFileName := randString(5)
-
+	size = 1687
 	_, _, err = generateRandomData(fPath, int64(size))
 	require.Nil(t, err)
 
@@ -383,6 +384,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.Nil(t, err)
 
 	_, err = fs.WriteFile(allocID, connID, fid, f)
+	f.Close()
 	require.Nil(t, err)
 
 	tempFilePath = fs.getTempPathForFile(allocID, thumbFileName, pathHash, connID)
@@ -396,6 +398,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	h := sha3.New256()
 	_, err = io.Copy(h, f)
 	require.Nil(t, err)
+	f.Close()
 	fid.ThumbnailHash = hex.EncodeToString(h.Sum(nil))
 
 	success, err = fs.CommitWrite(allocID, connID, fid)
@@ -404,11 +407,87 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.True(t, success)
 
 	preCommitPath := fs.getPreCommitPathForFile(allocID, fileName, pathHash, fid.ThumbnailHash)
-	_, err = os.Open(preCommitPath)
+	preFile, err := os.Open(preCommitPath)
 	require.Nil(t, err)
+	defer preFile.Close()
 	check_file, err := os.Stat(preCommitPath)
 	require.Nil(t, err)
 	require.True(t, check_file.Size() == int64(size))
+
+	_, _, err = generateRandomData(fPath, int64(size))
+	require.Nil(t, err)
+
+	f, err = os.Open(fPath)
+	require.Nil(t, err)
+
+	_, err = fs.WriteFile(allocID, connID, fid, f)
+	f.Close()
+	require.Nil(t, err)
+
+	tempFilePath = fs.getTempPathForFile(allocID, thumbFileName, pathHash, connID)
+
+	finfo, err = os.Stat(tempFilePath)
+	require.Nil(t, err)
+	require.Equal(t, finfo.Size(), int64(size))
+
+	f, err = os.Open(tempFilePath)
+	require.Nil(t, err)
+
+	h = sha3.New256()
+	_, err = io.Copy(h, f)
+	require.Nil(t, err)
+	f.Close()
+	fid.ThumbnailHash = hex.EncodeToString(h.Sum(nil))
+	fid.IsThumbnail = false
+	fid.Name = fileName
+
+	success, err = fs.CommitWrite(allocID, connID, fid)
+
+	require.Nil(t, err)
+	require.True(t, success)
+
+	fid.IsThumbnail = true
+	fid.Name = thumbFileName
+
+	success, err = fs.CommitWrite(allocID, connID, fid)
+
+	require.Nil(t, err)
+	require.True(t, success)
+
+	preCommitPath = fs.getPreCommitPathForFile(allocID, fileName, pathHash, fid.ThumbnailHash)
+
+	preFile, err = os.Open(preCommitPath)
+
+	require.Nil(t, err)
+	defer preFile.Close()
+	check_file, err = os.Stat(preCommitPath)
+	require.Nil(t, err)
+
+	require.True(t, check_file.Size() == int64(size))
+
+	h = sha3.New256()
+	_, err = io.Copy(h, preFile)
+	require.Nil(t, err)
+	require.Equal(t, hex.EncodeToString(h.Sum(nil)), fid.ThumbnailHash)
+
+	input := &ReadBlockInput{
+		AllocationID: allocID,
+		Path:         remotePath,
+		FileSize:     int64(size),
+		Hash:         fid.ThumbnailHash,
+		Name:         fileName,
+		IsThumbnail:  true,
+		NumBlocks:    1,
+	}
+
+	data, err := fs.GetFileBlock(input)
+	require.Nil(t, err)
+	require.Equal(t, size, len(data.Data))
+	h = sha3.New256()
+	buf := bytes.NewReader(data.Data)
+	_, err = io.Copy(h, buf)
+	require.Nil(t, err)
+	require.Equal(t, hex.EncodeToString(h.Sum(nil)), fid.ThumbnailHash)
 
 }
 
