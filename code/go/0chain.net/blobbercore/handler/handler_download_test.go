@@ -362,7 +362,7 @@ func TestHandlers_Download(t *testing.T) {
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(ownerClient.ClientID).
+					WithArgs(ownerClient.ClientID, alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"client_id"}).
 							AddRow(ownerClient.ClientID),
@@ -371,7 +371,7 @@ func TestHandlers_Download(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(ownerClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa).
+					WithArgs(aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectCommit()
@@ -459,7 +459,7 @@ func TestHandlers_Download(t *testing.T) {
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(ownerClient.ClientID).
+					WithArgs(ownerClient.ClientID, alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"client_id", "counter"}).
 							AddRow(ownerClient.ClientID, 23),
@@ -468,7 +468,7 @@ func TestHandlers_Download(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(ownerClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa).
+					WithArgs(aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectCommit()
@@ -703,7 +703,7 @@ func TestHandlers_Download(t *testing.T) {
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(guestClient.ClientID).
+					WithArgs(guestClient.ClientID, alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"client_id"}).
 							AddRow(guestClient.ClientID),
@@ -712,7 +712,7 @@ func TestHandlers_Download(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa).
+					WithArgs(aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectCommit()
@@ -845,7 +845,7 @@ func TestHandlers_Download(t *testing.T) {
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(guestClient.ClientID).
+					WithArgs(guestClient.ClientID, alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"client_id"}).
 							AddRow(guestClient.ClientID),
@@ -854,7 +854,7 @@ func TestHandlers_Download(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa).
+					WithArgs(aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectCommit()
@@ -987,7 +987,7 @@ func TestHandlers_Download(t *testing.T) {
 					)
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(guestClient.ClientID).
+					WithArgs(guestClient.ClientID, alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"client_id"}).
 							AddRow(guestClient.ClientID),
@@ -996,7 +996,7 @@ func TestHandlers_Download(t *testing.T) {
 				aa := sqlmock.AnyArg()
 
 				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(guestClient.ClientKey, alloc.ID, alloc.OwnerID, aa, aa, aa, aa).
+					WithArgs(aa, aa, aa, aa, aa, aa).
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectCommit()
