@@ -128,8 +128,6 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 		}
 		hash := hex.EncodeToString(h.Sum(nil))
 
-		fmt.Println("Thumbnail hash: ", hash)
-
 		fPath, err = fs.GetPathForFile(allocID, hash)
 
 		if err != nil {
@@ -161,13 +159,6 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 		if err != nil {
 			return false, err
 		}
-
-		finalStat, err := f.Stat()
-		if err != nil {
-			return false, err
-		}
-
-		fmt.Println("Thumbnail finalPath file size: ", finalStat.Size())
 
 		return true, nil
 
@@ -234,6 +225,16 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 			f.Close()
 			return false, err
 		}
+		err = f.Truncate(0)
+		if err != nil {
+			f.Close()
+			return false, err
+		}
+		_, err = f.Seek(0, io.SeekStart)
+		if err != nil {
+			f.Close()
+			return false, err
+		}
 	} else if err != nil {
 		f.Close()
 		os.Remove(preCommitPath)
@@ -259,7 +260,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		}
 	}
 
-	f.Close()
+	defer f.Close()
 
 	defer func() {
 		r.Close()
@@ -270,18 +271,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		}
 	}()
 
-	f, err = os.Create(preCommitPath)
-	if err != nil {
-		return false, err
-	}
-	defer f.Close()
-
 	if fileData.IsThumbnail {
-		stat, err := r.Stat()
-		if err != nil {
-			return false, err
-		}
-		fmt.Println("Thumbnail temp size: ", stat.Size())
 
 		h := sha3.New256()
 		_, err = io.Copy(h, r)
@@ -304,12 +294,6 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		if err != nil {
 			return false, err
 		}
-
-		stat, err = f.Stat()
-		if err != nil {
-			return false, err
-		}
-		fmt.Println("Thumbnail preCommit final size: ", stat.Size())
 
 		logging.Logger.Info("Thumbnail file committed successfully", zap.String("file", fileData.Name), zap.String("allocID", allocID), zap.String("thumbnailHash", hash))
 
@@ -485,17 +469,19 @@ func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloa
 	}
 	defer file.Close()
 
-	h := sha3.New256()
-	_, err = io.Copy(h, file)
-	if err != nil {
-		return nil, common.NewError("read_error", err.Error())
-	}
-	hash := hex.EncodeToString(h.Sum(nil))
+	if readBlockIn.VerifyDownload {
+		h := sha3.New256()
+		_, err = io.Copy(h, file)
+		if err != nil {
+			return nil, common.NewError("read_error", err.Error())
+		}
+		hash := hex.EncodeToString(h.Sum(nil))
 
-	if hash != readBlockIn.Hash {
-		return nil, common.NewError("hash_mismatch", fmt.Sprintf("Hash mismatch. Expected %s, got %s", readBlockIn.Hash, hash))
-	}
+		if hash != readBlockIn.Hash {
+			return nil, common.NewError("hash_mismatch", fmt.Sprintf("Hash mismatch. Expected %s, got %s", readBlockIn.Hash, hash))
+		}
 
+	}
 	filesize := readBlockIn.FileSize
 	maxBlockNum := int64(math.Ceil(float64(filesize) / ChunkSize))
 
