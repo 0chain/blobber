@@ -116,8 +116,6 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 	defer func() {
 		if err != nil {
 			os.Remove(fPath)
-		} else {
-			_ = os.Truncate(preCommitPath, 0)
 		}
 	}()
 
@@ -129,6 +127,8 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 			return false, common.NewError("read_error", err.Error())
 		}
 		hash := hex.EncodeToString(h.Sum(nil))
+
+		fmt.Println("Thumbnail hash: ", hash)
 
 		fPath, err = fs.GetPathForFile(allocID, hash)
 
@@ -152,10 +152,22 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 			return false, err
 		}
 
+		_, err = r.Seek(0, io.SeekStart)
+		if err != nil {
+			return false, common.NewError("seek_error", err.Error())
+		}
+
 		_, err = io.Copy(f, r)
 		if err != nil {
 			return false, err
 		}
+
+		finalStat, err := f.Stat()
+		if err != nil {
+			return false, err
+		}
+
+		fmt.Println("Thumbnail finalPath file size: ", finalStat.Size())
 
 		return true, nil
 
@@ -247,7 +259,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		}
 	}
 
-	defer f.Close()
+	f.Close()
 
 	defer func() {
 		r.Close()
@@ -258,7 +270,19 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		}
 	}()
 
+	f, err = os.Create(preCommitPath)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
 	if fileData.IsThumbnail {
+		stat, err := r.Stat()
+		if err != nil {
+			return false, err
+		}
+		fmt.Println("Thumbnail temp size: ", stat.Size())
+
 		h := sha3.New256()
 		_, err = io.Copy(h, r)
 		if err != nil {
@@ -280,6 +304,12 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		if err != nil {
 			return false, err
 		}
+
+		stat, err = f.Stat()
+		if err != nil {
+			return false, err
+		}
+		fmt.Println("Thumbnail preCommit final size: ", stat.Size())
 
 		logging.Logger.Info("Thumbnail file committed successfully", zap.String("file", fileData.Name), zap.String("allocID", allocID), zap.String("thumbnailHash", hash))
 
@@ -773,8 +803,8 @@ func (fs *FileStore) getTempPathForFile(allocId, fileName, pathHash, connectionI
 	return filepath.Join(fs.getAllocTempDir(allocId), fileName+"."+pathHash+"."+connectionID)
 }
 
-func (fs *FileStore) getPreCommitPathForFile(allocId, namee, pathHash, hash string) string {
-	return filepath.Join(fs.getPreCommitDir(allocId), pathHash+"."+hash)
+func (fs *FileStore) getPreCommitPathForFile(allocId, name, pathHash, hash string) string {
+	return filepath.Join(fs.getPreCommitDir(allocId), name+"."+pathHash)
 }
 
 func (fs *FileStore) updateAllocTempFileSize(allocID string, size int64) {

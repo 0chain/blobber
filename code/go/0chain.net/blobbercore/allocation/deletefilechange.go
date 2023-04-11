@@ -22,13 +22,14 @@ var (
 )
 
 type DeleteFileChange struct {
-	ConnectionID string `json:"connection_id"`
-	AllocationID string `json:"allocation_id"`
-	Name         string `json:"name"`
-	Path         string `json:"path"`
-	Size         int64  `json:"size"`
-	Hash         string `json:"hash"`
-	IsTemp       bool   `json:"is_temp"`
+	ConnectionID      string `json:"connection_id"`
+	AllocationID      string `json:"allocation_id"`
+	Name              string `json:"name"`
+	Path              string `json:"path"`
+	Size              int64  `json:"size"`
+	Hash              string `json:"hash"`
+	IsTemp            bool   `json:"is_temp"`
+	ThumbnailFilename string `json:"thumbnail_filename"`
 }
 
 func (nf *DeleteFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
@@ -110,7 +111,7 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 					}
 
 					if res.ThumbnailHash != "" {
-						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ThumbnailHash, nf.Path, nf.Name)
+						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ThumbnailHash, nf.Path, nf.ThumbnailFilename)
 						if err != nil {
 							logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
 								zap.String("thumbnail", res.ThumbnailHash))

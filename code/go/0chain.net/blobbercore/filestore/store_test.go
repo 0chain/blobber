@@ -345,33 +345,30 @@ func TestStorageUploadUpdate(t *testing.T) {
 		FixedMerkleRoot: fixedMerkleRoot,
 		ChunkSize:       64 * KB,
 	}
-
+	// checkc if file to be uploaded exists
 	f, err := os.Open(fPath)
 	require.Nil(t, err)
-	defer f.Close()
-
+	// Write file to temp location
 	_, err = fs.WriteFile(allocID, connID, fid, f)
 	require.Nil(t, err)
+	f.Close()
 
+	// check if file is written to temp location
 	pathHash := encryption.Hash(remotePath)
 	tempFilePath := fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	tF, err := os.Stat(tempFilePath)
 	require.Nil(t, err)
 
-	finfo, err := f.Stat()
-	require.Nil(t, err)
-
-	require.Equal(t, finfo.Size(), tF.Size())
+	require.Equal(t, int64(size), tF.Size())
 
 	fid.IsTemp = true
-
+	// Commit file to pre-commit location
 	success, err := fs.CommitWrite(allocID, connID, fid)
 
 	require.Nil(t, err)
 	require.True(t, success)
 
-	// write thumbnail file
-
+	// Upload thumbnail
 	thumbFileName := randString(5)
 	size = 1687
 	_, _, err = generateRandomData(fPath, int64(size))
@@ -382,16 +379,18 @@ func TestStorageUploadUpdate(t *testing.T) {
 
 	f, err = os.Open(fPath)
 	require.Nil(t, err)
-
+	// Write thumbnail file to temp location
 	_, err = fs.WriteFile(allocID, connID, fid, f)
 	f.Close()
 	require.Nil(t, err)
 
+	// check if thumbnail file is written to temp location
 	tempFilePath = fs.getTempPathForFile(allocID, thumbFileName, pathHash, connID)
-	finfo, err = os.Stat(tempFilePath)
+	finfo, err := os.Stat(tempFilePath)
 	require.Nil(t, err)
 	require.Equal(t, finfo.Size(), int64(size))
 
+	// Check if the hash of the thumbnail file is same as the hash of the uploaded thumbnail file
 	f, err = os.Open(tempFilePath)
 	require.Nil(t, err)
 
@@ -400,13 +399,15 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.Nil(t, err)
 	f.Close()
 	fid.ThumbnailHash = hex.EncodeToString(h.Sum(nil))
-
+	prevThumbHash := fid.ThumbnailHash
+	fid.Name = thumbFileName
+	// Commit thumbnail file to pre-commit location
 	success, err = fs.CommitWrite(allocID, connID, fid)
 
 	require.Nil(t, err)
 	require.True(t, success)
-
-	preCommitPath := fs.getPreCommitPathForFile(allocID, fileName, pathHash, fid.ThumbnailHash)
+	// Get the path of the pre-commit location of the thumbnail file and check if the file exists
+	preCommitPath := fs.getPreCommitPathForFile(allocID, thumbFileName, pathHash, fid.ThumbnailHash)
 	preFile, err := os.Open(preCommitPath)
 	require.Nil(t, err)
 	defer preFile.Close()
@@ -414,22 +415,26 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.Nil(t, err)
 	require.True(t, check_file.Size() == int64(size))
 
+	// Update the thumbnail file
 	_, _, err = generateRandomData(fPath, int64(size))
 	require.Nil(t, err)
 
 	f, err = os.Open(fPath)
 	require.Nil(t, err)
 
+	// Write thumbnail file to temp location
 	_, err = fs.WriteFile(allocID, connID, fid, f)
-	f.Close()
-	require.Nil(t, err)
 
+	require.Nil(t, err)
+	f.Close()
+	// check if thumbnail file is written to temp location
 	tempFilePath = fs.getTempPathForFile(allocID, thumbFileName, pathHash, connID)
 
 	finfo, err = os.Stat(tempFilePath)
 	require.Nil(t, err)
 	require.Equal(t, finfo.Size(), int64(size))
 
+	// Check if the hash of the thumbnail file is same as the hash of the updated thumbnail file
 	f, err = os.Open(tempFilePath)
 	require.Nil(t, err)
 
@@ -441,20 +446,24 @@ func TestStorageUploadUpdate(t *testing.T) {
 	fid.IsThumbnail = false
 	fid.Name = fileName
 
+	// Empty Commit should do nothing
 	success, err = fs.CommitWrite(allocID, connID, fid)
 
 	require.Nil(t, err)
 	require.True(t, success)
 
+	// Set fields to commit thumbnail file
 	fid.IsThumbnail = true
 	fid.Name = thumbFileName
 
+	// Commit thumbnail file to pre-commit location
 	success, err = fs.CommitWrite(allocID, connID, fid)
 
 	require.Nil(t, err)
 	require.True(t, success)
 
-	preCommitPath = fs.getPreCommitPathForFile(allocID, fileName, pathHash, fid.ThumbnailHash)
+	// Get the path of the pre-commit location of the thumbnail file and check if the file exists
+	preCommitPath = fs.getPreCommitPathForFile(allocID, thumbFileName, pathHash, fid.ThumbnailHash)
 
 	preFile, err = os.Open(preCommitPath)
 
@@ -462,7 +471,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	defer preFile.Close()
 	check_file, err = os.Stat(preCommitPath)
 	require.Nil(t, err)
-
+	fmt.Println("check_file.Size", check_file.Size())
 	require.True(t, check_file.Size() == int64(size))
 
 	h = sha3.New256()
@@ -475,7 +484,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 		Path:         remotePath,
 		FileSize:     int64(size),
 		Hash:         fid.ThumbnailHash,
-		Name:         fileName,
+		Name:         thumbFileName,
 		IsThumbnail:  true,
 		NumBlocks:    1,
 	}
@@ -488,7 +497,16 @@ func TestStorageUploadUpdate(t *testing.T) {
 	_, err = io.Copy(h, buf)
 	require.Nil(t, err)
 	require.Equal(t, hex.EncodeToString(h.Sum(nil)), fid.ThumbnailHash)
-
+	fPath, err = fs.GetPathForFile(allocID, prevThumbHash)
+	require.Nil(t, err)
+	fmt.Println("prev thumb hash: ", prevThumbHash)
+	f, err = os.Open(fPath)
+	require.Nil(t, err)
+	h = sha3.New256()
+	_, err = io.Copy(h, f)
+	require.Nil(t, err)
+	require.Equal(t, hex.EncodeToString(h.Sum(nil)), prevThumbHash)
+	f.Close()
 }
 
 func TestGetFileBlock(t *testing.T) {

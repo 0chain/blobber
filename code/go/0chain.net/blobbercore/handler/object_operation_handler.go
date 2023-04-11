@@ -275,7 +275,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			NumBlocks:     int(dr.NumBlocks),
 			IsThumbnail:   true,
 			Path:          fileref.Path,
-			Name:          fileref.Name,
+			Name:          fileref.ThumbnailFilename,
 		}
 
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
@@ -940,7 +940,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 	fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, connectionObj.AllocationID, path,
-		[]string{"path", "name", "size", "hash", "validation_root", "fixed_merkle_root"})
+		[]string{"path", "name", "size", "hash", "validation_root", "fixed_merkle_root", "thumbnail_filename"})
 
 	if err != nil {
 		Logger.Error("invalid_file", zap.Error(err))
@@ -955,7 +955,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		allocationChange.Operation = constants.FileOperationDelete
 		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ID,
 			AllocationID: connectionObj.AllocationID, Name: fileRef.Name,
-			Hash: fileRef.Hash, Path: fileRef.Path, Size: deleteSize}
+			Hash: fileRef.Hash, Path: fileRef.Path, Size: deleteSize, ThumbnailFilename: fileRef.ThumbnailFilename}
 
 		connectionObj.Size += allocationChange.Size
 		connectionObj.AddChange(allocationChange, dfc)
