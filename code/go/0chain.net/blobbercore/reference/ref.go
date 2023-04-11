@@ -495,22 +495,22 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 func (r *Ref) SaveDirRef(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Model(r).Where("id = ?", r.ID).Updates(map[string]interface{}{
-		"allocation_id":   r.AllocationID,
-		"lookup_hash":     r.LookupHash,
-		"name":            r.Name,
-		"path":            r.Path,
-		"hash":            r.Hash,
-		"file_meta_hash":  r.FileMetaHash,
-		"num_of_blocks":   r.NumBlocks,
-		"path_hash":       r.PathHash,
-		"parent_path":     r.ParentPath,
-		"level":           r.PathLevel,
-		"allocation_root": r.AllocationRoot,
-		"size":            r.Size,
-		"chunk_size":      r.ChunkSize,
-		"file_id":         r.FileID,
-		"is_temp":         r.IsTemp,
-		"thumbnail_name":  r.ThumbnailFilename,
+		"allocation_id":      r.AllocationID,
+		"lookup_hash":        r.LookupHash,
+		"name":               r.Name,
+		"path":               r.Path,
+		"hash":               r.Hash,
+		"file_meta_hash":     r.FileMetaHash,
+		"num_of_blocks":      r.NumBlocks,
+		"path_hash":          r.PathHash,
+		"parent_path":        r.ParentPath,
+		"level":              r.PathLevel,
+		"allocation_root":    r.AllocationRoot,
+		"size":               r.Size,
+		"chunk_size":         r.ChunkSize,
+		"file_id":            r.FileID,
+		"is_temp":            r.IsTemp,
+		"thumbnail_filename": r.ThumbnailFilename,
 	})
 	if errors.Is(db.Error, gorm.ErrRecordNotFound) || db.RowsAffected == 0 {
 		err := db.Save(r).Error
