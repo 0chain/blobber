@@ -3,7 +3,6 @@ package challenge
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -42,59 +41,52 @@ func init() {
 // be descending order.
 func syncOpenChallenges(ctx context.Context) {
 	var lastTimeStamp int64
-	// offset := 0
-	challengeRespTime := time.Now()
+	ticker := time.NewTicker(challengeRequestInterval)
+	defer ticker.Stop()
+
 	for {
-		d := time.Since(challengeRespTime)
-		cri := challengeRequestInterval
-		if d > cri {
-			cri = 0
-		} else {
-			cri = cri - d
-		}
-		<-time.After(cri)
-
-		params := map[string]string{
-			"blobber": node.Self.ID,
-			"limit":   strconv.Itoa(challengeMaxQueryLimit),
-			"from":    strconv.FormatInt(lastTimeStamp, 10),
-			// should avoid use of offset because `from` parameter has already filtered the challenges
-			// "offset":  strconv.Itoa(offset),
-			"sort": challengeOrder,
-		}
-
-		retBytes, err := transaction.MakeSCRestAPICall(
-			transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain())
-		if err != nil {
-			logging.Logger.Error("[challenge]open: ", zap.Error(err))
-			break
-		}
-		challengeRespTime = time.Now()
-
-		var challengeResponse BCChallengeResponse
-		if err := json.Unmarshal(retBytes, &challengeResponse); err != nil {
-			logging.Logger.Error("[challenge]json: ", zap.Error(err))
-			break
-		}
-
-		logging.Logger.Info(fmt.Sprintf("Got %d new challenges", len(challengeResponse.Challenges)))
-		for _, chal := range challengeResponse.Challenges {
-			chal.StatusCh = make(chan ChallengeStatus, 1)
-			chal.ErrCh = make(chan error)
-			chal.ChallengeTiming = &ChallengeTiming{
-				ChallengeID:      chal.ChallengeID,
-				CreatedAtChain:   chal.CreatedAt,
-				CreatedAtBlobber: common.Now(),
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			params := map[string]string{
+				"blobber": node.Self.ID,
+				"limit":   strconv.Itoa(challengeMaxQueryLimit),
+				"from":    strconv.FormatInt(lastTimeStamp, 10),
+				"sort":    challengeOrder,
 			}
-			logging.Logger.Info("Sending challenge in channel to process.", zap.String("challenge_id", chal.ChallengeID))
-			unProcessedChallengeCh <- chal
-		}
 
-		if len(challengeResponse.Challenges) > 0 {
-			// update with last challenge's CreatedAt in the slice
-			lastTimeStamp = int64(challengeResponse.Challenges[len(challengeResponse.Challenges)-1].CreatedAt)
+			retBytes, err := transaction.MakeSCRestAPICall(
+				transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain())
+			if err != nil {
+				logging.Logger.Error("[challenge]open: ", zap.Error(err))
+				continue
+			}
+
+			var challengeResponse BCChallengeResponse
+			if err := json.Unmarshal(retBytes, &challengeResponse); err != nil {
+				logging.Logger.Error("[challenge]json: ", zap.Error(err))
+				continue
+			}
+
+			logging.Logger.Info("Got new challenges", zap.Int("count", len(challengeResponse.Challenges)))
+			for _, chal := range challengeResponse.Challenges {
+				chal.StatusCh = make(chan ChallengeStatus, 1)
+				chal.ErrCh = make(chan error)
+				chal.ChallengeTiming = &ChallengeTiming{
+					ChallengeID:      chal.ChallengeID,
+					CreatedAtChain:   chal.CreatedAt,
+					CreatedAtBlobber: common.Now(),
+				}
+				logging.Logger.Info("Sending challenge in channel to process.", zap.String("challenge_id", chal.ChallengeID))
+				unProcessedChallengeCh <- chal
+			}
+
+			if len(challengeResponse.Challenges) > 0 {
+				// update with last challenge's CreatedAt in the slice
+				lastTimeStamp = int64(challengeResponse.Challenges[len(challengeResponse.Challenges)-1].CreatedAt)
+			}
 		}
-		// offset += len(challengeResponse.Challenges)
 	}
 }
 
@@ -111,14 +103,12 @@ func ProcessChallenge(ctx context.Context) {
 
 		seqManagerCh <- chalEntity
 		go func(chalEntity *ChallengeEntity) {
-			defer func() {
-				<-guideCh
-			}()
 			logging.Logger.Info("Processing challenge", zap.String("challenge_id", chalEntity.ChallengeID))
-			ctx := datastore.GetStore().CreateTransaction(context.TODO())
+			ctx := datastore.GetStore().CreateTransaction(ctx)
 			defer func() {
 				logging.Logger.Info("Saving challenge entity and challenge timing to database")
 				chalEntity.UpdatedAt = time.Now().UTC()
+
 				if err := chalEntity.Save(ctx); err != nil {
 					logging.Logger.Error(err.Error())
 				}
@@ -126,22 +116,20 @@ func ProcessChallenge(ctx context.Context) {
 				if err := chalEntity.ChallengeTiming.Save(); err != nil {
 					logging.Logger.Error(err.Error())
 				}
+
+				<-guideCh
 			}()
 
 			var err error
 			t := common.ToTime(chalEntity.CreatedAt)
 			if time.Since(t) > config.StorageSCConfig.ChallengeCompletionTime {
-				chalEntity.StatusCh <- Cancelled
-				chalEntity.Status = Cancelled
-				chalEntity.StatusMessage = "expired challenge"
+				updateChallengeStatus(chalEntity, Cancelled, "expired challenge")
 				return
 			}
 
 			err = chalEntity.LoadValidationTickets(ctx)
 			if err != nil {
-				chalEntity.StatusCh <- Cancelled
-				chalEntity.Status = Cancelled
-				chalEntity.StatusMessage = err.Error()
+				updateChallengeStatus(chalEntity, Cancelled, err.Error())
 				return
 			}
 			chalEntity.ChallengeTiming.CompleteValidation = common.Now()
@@ -150,13 +138,17 @@ func ProcessChallenge(ctx context.Context) {
 			err = <-chalEntity.ErrCh
 			if err != nil {
 				logging.Logger.Error("Challenge commit error", zap.Error(err))
-				chalEntity.Status = Cancelled
-				chalEntity.StatusMessage = "Completed but cancelled due to error: " + err.Error()
+				updateChallengeStatus(chalEntity, Cancelled, "Completed but cancelled due to error: "+err.Error())
 				return
 			}
 			chalEntity.Status = Committed
 
 		}(chalEntity)
-
 	}
+}
+
+func updateChallengeStatus(chalEntity *ChallengeEntity, status ChallengeStatus, statusMessage string) {
+	chalEntity.StatusCh <- status
+	chalEntity.Status = status
+	chalEntity.StatusMessage = statusMessage
 }
