@@ -72,7 +72,6 @@ func TestDownloadFile(t *testing.T) {
 			encryptedKey   string
 			contentMode    string
 			numBlocks      int64
-			rxPay          bool
 		}
 
 		parameters struct {
@@ -82,7 +81,6 @@ func TestDownloadFile(t *testing.T) {
 			isRevoked       bool
 			isFundedBlobber bool
 			isFunded0Chain  bool
-			rxPay           bool
 			payerId         client.Client
 
 			// client input from gosdk's BlockDownloadRequest,
@@ -124,9 +122,6 @@ func TestDownloadFile(t *testing.T) {
 		require.NoError(t, err)
 		req.Header.Set("X-Path-Hash", p.inData.pathHash)
 		req.Header.Set("X-Path", p.inData.remotefilepath)
-		if p.inData.rxPay {
-			req.Header.Set("X-Rxpay", "true")
-		}
 		req.Header.Set("X-Block-Num", fmt.Sprintf("%d", p.inData.blockNum))
 		req.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", p.inData.numBlocks))
 		req.Header.Set("X-Read-Marker", string(rmData))
@@ -168,6 +163,12 @@ func TestDownloadFile(t *testing.T) {
 
 				mbytes, err := json.Marshal(&rp)
 				require.NoError(t, err)
+				return mbytes, nil
+			case "/latestreadmarker":
+				t.Logf("params: %v", params)
+				require.EqualValues(t, p.payerId.ClientID, params["client"])
+
+				mbytes, _ := json.Marshal(make(map[string]interface{}))
 				return mbytes, nil
 			default:
 				require.Fail(t, "unexpected REST API endpoint call: "+relativePath)
@@ -282,9 +283,8 @@ func TestDownloadFile(t *testing.T) {
 
 		mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
 			require.EqualValues(t, client.GetClientID(), args[0].Value)
-			require.EqualValues(t, client.GetClientPublicKey(), args[1].Value)
-			// require.EqualValues(t, mockBlobberId, args[2].Value)
-			require.EqualValues(t, mockAllocationId, args[2].Value)
+			require.EqualValues(t, mockAllocationId, args[1].Value)
+			require.EqualValues(t, client.GetClientPublicKey(), args[2].Value)
 			require.EqualValues(t, mockOwner.ClientID, args[3].Value)
 			require.EqualValues(t, now, args[4].Value)
 			require.EqualValues(t, p.inData.numBlocks, args[5].Value)
@@ -331,7 +331,6 @@ func TestDownloadFile(t *testing.T) {
 			encryptedKey:   mockEncryptKey,
 			contentMode:    "",
 			numBlocks:      1,
-			rxPay:          p.rxPay,
 		}
 		if p.isRepairer {
 			p.allocation = allocation.Allocation{
@@ -347,7 +346,11 @@ func TestDownloadFile(t *testing.T) {
 		}
 		require.True(t, (p.isOwner && !p.useAuthTicket) || !p.isOwner)
 		p.inData.pathHash = fileref.GetReferenceLookup(p.inData.allocationID, p.inData.remotefilepath)
-		p.payerId = mockOwner
+		if p.isOwner {
+			p.payerId = mockOwner
+		} else {
+			p.payerId = mockClient
+		}
 	}
 
 	tests := []test{
@@ -360,7 +363,6 @@ func TestDownloadFile(t *testing.T) {
 				isRevoked:       false,
 				isFundedBlobber: true,
 				isFunded0Chain:  false,
-				rxPay:           false,
 			},
 		},
 		{
@@ -372,7 +374,6 @@ func TestDownloadFile(t *testing.T) {
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
-				rxPay:           false,
 			},
 		},
 		{
@@ -384,7 +385,6 @@ func TestDownloadFile(t *testing.T) {
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  false,
-				rxPay:           false,
 			},
 			want: want{
 				err:    true,
@@ -400,7 +400,6 @@ func TestDownloadFile(t *testing.T) {
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
-				rxPay:           false,
 			},
 		},
 		{
@@ -412,7 +411,6 @@ func TestDownloadFile(t *testing.T) {
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
-				rxPay:           false,
 			},
 		},
 		{
@@ -424,7 +422,6 @@ func TestDownloadFile(t *testing.T) {
 				isRevoked:       true,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
-				rxPay:           false,
 			},
 			want: want{
 				err:    true,
@@ -440,7 +437,6 @@ func TestDownloadFile(t *testing.T) {
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
-				rxPay:           true,
 			},
 		},
 		{
@@ -452,7 +448,6 @@ func TestDownloadFile(t *testing.T) {
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
-				rxPay:           true,
 			},
 		},
 		{
@@ -464,7 +459,6 @@ func TestDownloadFile(t *testing.T) {
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
-				rxPay:           true,
 			},
 			want: want{
 				err:    true,
