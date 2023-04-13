@@ -22,6 +22,10 @@ type DeleteFileCommand struct {
 	path             string
 }
 
+func (cmd *DeleteFileCommand) ProcessRollback(ctx context.Context, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
+	return nil
+}
+
 func (cmd *DeleteFileCommand) GetExistingFileRef() *reference.Ref {
 	return cmd.existingFileRef
 }

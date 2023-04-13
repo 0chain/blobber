@@ -156,6 +156,38 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 	return nil
 }
 
+func (cmd *UpdateFileCommand) ProcessRollback(ctx context.Context, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
+	cmd.allocationChange = &allocation.AllocationChange{}
+	cmd.allocationChange.Size = 0 - cmd.existingFileRef.Size
+	cmd.allocationChange.ConnectionID = connectionObj.ID
+
+	fileInputData := &filestore.FileInputData{
+		Name:           cmd.existingFileRef.Name,
+		Path:           cmd.fileChanger.Path,
+		ValidationRoot: cmd.fileChanger.ValidationRoot,
+		ThumbnailHash:  cmd.fileChanger.ThumbnailHash,
+	}
+
+	output, err := filestore.GetFileStore().WriteRollback(allocationObj.ID, fileInputData)
+
+	if err != nil {
+		return common.NewError("rollback_error", "Failed to rollback the file. "+err.Error())
+	}
+
+	cmd.fileChanger.Size = output.Size
+	cmd.fileChanger.ThumbnailSize = output.ThumbnailSize
+	cmd.fileChanger.AllocationID = allocationObj.ID
+	cmd.allocationChange.Size += output.Size
+	cmd.allocationChange.Operation = sdkConst.FileOperationUpdate
+	cmd.fileChanger.Filename = cmd.existingFileRef.Name
+	cmd.fileChanger.ThumbnailFilename = cmd.existingFileRef.ThumbnailFilename
+	cmd.fileChanger.IsRollback = true
+
+	connectionObj.Size = cmd.allocationChange.Size
+
+	return nil
+}
+
 func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
 		if c.Operation != sdkConst.FileOperationUpdate {

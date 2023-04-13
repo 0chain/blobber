@@ -29,6 +29,8 @@ type FileCommand interface {
 	// ProcessThumbnail flush thumbnail file to FileStorage if it has.
 	ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error
 
+	ProcessRollback(ctx context.Context, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error
+
 	// UpdateChange update AllocationChangeProcessor. It will be president in db for committing transcation
 	UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error
 }

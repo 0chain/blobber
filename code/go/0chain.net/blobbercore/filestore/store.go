@@ -35,6 +35,7 @@ type FileOutputData struct {
 	Size int64
 	// ChunkUploaded the chunk is uploaded or not.
 	ChunkUploaded bool
+	ThumbnailSize int64
 }
 
 type FileObjectHandler func(contentHash string, contentSize int64)
@@ -43,6 +44,7 @@ type FileStorer interface {
 	// WriteFile write chunk file into disk
 	Initialize() error
 	WriteFile(allocID, connID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error)
+	WriteRollback(allocID string, fileData *FileInputData) (*FileOutputData, error)
 	CommitWrite(allocID, connID string, fileData *FileInputData) (bool, error)
 	DeleteTempFile(allocID, connID string, fileData *FileInputData) error
 	DeleteFile(allocID string, contentHash, path, name string) error

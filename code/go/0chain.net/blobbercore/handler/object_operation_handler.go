@@ -361,7 +361,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	defer mutex.Unlock()
 
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
-	// preCommitConnectionObj, _ := allocation.GetAllocationPreCommitChanges(ctx, allocationID, clientID)
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 
@@ -445,14 +444,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			fmt.Sprintf("Error while unmarshalling file ID meta data: %s", err.Error()))
 	}
 
-	// if preCommitConnectionObj != nil {
-	// 	err = preCommitConnectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
-
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
 	err = connectionObj.ApplyChanges(
 		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
 	if err != nil {
@@ -511,15 +502,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
 
-	// if preCommitConnectionObj != nil {
-	// 	err = preCommitConnectionObj.CommitToFileStore(ctx)
-	// 	if err != nil {
-	// 		if !errors.Is(common.ErrFileWasDeleted, err) {
-	// 			return nil, common.NewError("file_store_error", "Error committing preCommit Changes to file store. "+err.Error())
-	// 		}
-	// 	}
-	// }
-
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
 		if !errors.Is(common.ErrFileWasDeleted, err) {
@@ -544,17 +526,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	for _, c := range connectionObj.Changes {
 		db.Delete(c)
 	}
-
-	// if preCommitConnectionObj != nil {
-
-	// 	preCommitConnectionObj.DeleteChanges(ctx)
-
-	// 	for _, c := range preCommitConnectionObj.Changes {
-	// 		db.Delete(c)
-	// 	}
-
-	// 	db.Delete(preCommitConnectionObj)
-	// }
 
 	db.Delete(connectionObj)
 
@@ -1186,3 +1157,117 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	return &result, nil
 }
+
+func (fsh *StorageHandler) WriteRollback(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
+
+	startTime := time.Now()
+
+	if r.Method != "PUT" {
+		return nil, common.NewError("invalid_method", "Invalid method used for the rollback URL. Use  PUT instead")
+	}
+
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	elapsedAllocation := time.Since(startTime)
+
+	st := time.Now()
+	allocationID := allocationObj.ID
+	cmd := createFileCommand(r)
+	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	elapsedValidate := time.Since(st)
+	st = time.Now()
+
+	publicKey := allocationObj.OwnerPublicKey
+
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
+
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	if clientID == "" {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+	}
+
+	connectionID, ok := common.GetField(r, "connection_id")
+	if !ok {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+
+	elapsedRef := time.Since(st)
+	st = time.Now()
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	if err != nil {
+		return nil, common.NewError("meta_error", "Error reading metadata for connection")
+	}
+
+	if len(connectionObj.Changes) > 0 {
+		return nil, common.NewError("invalid_operation", "No changes allowed")
+	}
+
+	Logger.Info(fmt.Sprintf("[rollback] Acquiring lock for allocation: %s, connection: %s", allocationID, connectionID))
+	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
+
+	Logger.Info(fmt.Sprintf("[rollback] Locking for allocation: %s, connection: %s", allocationID, connectionID))
+
+	mutex.Lock()
+	Logger.Info(fmt.Sprintf("[rollback] Acquired lock for allocation: %s, connection: %s", allocationID, connectionID))
+
+	defer func() {
+		Logger.Info(fmt.Sprintf("[rollback] Unlocking lock for allocation: %s, connection: %s", allocationID, connectionID))
+		mutex.Unlock()
+		Logger.Info(fmt.Sprintf("[rollback] Unlocked lock for allocation: %s, connection: %s", allocationID, connectionID))
+	}()
+
+	elapsedAllocationChanges := time.Since(st)
+
+	Logger.Info(fmt.Sprintf("[rollback] Processing content for allocation %s, connection: %s", allocationID, connectionID))
+	st = time.Now()
+
+	err = cmd.ProcessRollback(ctx, allocationObj, connectionObj)
+	if err != nil {
+		return nil, err
+	}
+
+	elapsedProcess := time.Since(st)
+
+	Logger.Info(fmt.Sprintf("[rollback] Content processed for allocation: %s, connection: %s", allocationID, connectionID))
+	st = time.Now()
+	err = cmd.UpdateChange(ctx, connectionObj)
+	if err != nil {
+		Logger.Error("Error in writing the connection meta data", zap.Error(err))
+		return nil, common.NewError("connection_write_error", err.Error()) //"Error writing the connection meta data")
+	}
+
+	elapsedUpdateChange := time.Since(st)
+
+	Logger.Info("[upload]elapsed",
+		zap.String("alloc_id", allocationID),
+		zap.String("file", cmd.GetPath()),
+		zap.Duration("get_alloc", elapsedAllocation),
+		zap.Duration("validate", elapsedValidate),
+		zap.Duration("ref", elapsedRef),
+		zap.Duration("load_changes", elapsedAllocationChanges),
+		zap.Duration("process", elapsedProcess),
+		zap.Duration("update_changes", elapsedUpdateChange),
+		zap.Duration("total", time.Since(startTime)),
+	)
+
+	return &blobberhttp.UploadResult{}, nil
+}
+
+// func (fsh *StorageHandler) CommitRollback(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
+
+// 	return nil, nil
+// }

@@ -84,6 +84,10 @@ func (mfs *MockFileStore) WriteFile(allocID, connID string,
 	}, nil
 }
 
+func (mfs *MockFileStore) WriteRollback(allocID string, fileData *filestore.FileInputData) (*filestore.FileOutputData, error) {
+	return nil, nil
+}
+
 func (mfs *MockFileStore) CommitWrite(allocID, connID string, fileData *filestore.FileInputData) (bool, error) {
 	return true, nil
 }

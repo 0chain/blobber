@@ -32,6 +32,10 @@ type UploadFileCommand struct {
 	fileChanger      *allocation.UploadFileChanger
 }
 
+func (cmd *UploadFileCommand) ProcessRollback(ctx context.Context, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
+	return nil
+}
+
 func (cmd *UploadFileCommand) GetExistingFileRef() *reference.Ref {
 	return nil
 }

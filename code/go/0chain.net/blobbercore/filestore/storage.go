@@ -371,6 +371,36 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	return true, nil
 }
 
+func (fs *FileStore) WriteRollback(allocID string, fileData *FileInputData) (*FileOutputData, error) {
+	// Calculate thumbnail size
+	thumbPath, err := fs.GetPathForFile(allocID, fileData.ThumbnailHash)
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := os.Stat(thumbPath)
+	if err != nil {
+		return nil, err
+	}
+
+	fileOutput := &FileOutputData{}
+
+	fileOutput.ThumbnailSize = f.Size()
+	// Calculate file size
+	filePath, err := fs.GetPathForFile(allocID, fileData.ValidationRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	f, err = os.Stat(filePath)
+	if err != nil {
+		return nil, err
+	}
+	fileOutput.Size = f.Size()
+
+	return fileOutput, nil
+}
+
 func (fs *FileStore) DeleteFile(allocID, contentHash, path, name string) error {
 	fileObjectPath := fs.getPreCommitPathForFile(allocID, name, encryption.Hash(path), contentHash)
 
