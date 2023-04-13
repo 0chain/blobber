@@ -204,3 +204,19 @@ func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 
 	return connectionObj.Save(ctx)
 }
+
+func (cmd *UpdateFileCommand) ProcessRollback(allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
+
+	cmd.fileChanger.AllocationID = allocationObj.ID
+
+	if cmd.fileChanger.ValidationRoot == cmd.existingFileRef.ValidationRoot {
+		return nil
+	}
+	if cmd.fileChanger.ValidationRoot != cmd.existingFileRef.PrevValidationRoot {
+		return common.NewError("invalid_operation", fmt.Sprintf("Validation root %s is not equal to previous validation root %s", cmd.fileChanger.ValidationRoot, cmd.existingFileRef.PrevValidationRoot))
+	}
+
+	// rollback file
+
+	return nil
+}

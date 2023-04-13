@@ -423,7 +423,7 @@ func (fs *FileStore) RenameFileChange(allocID, path, name, newName string) error
 
 func (fs *FileStore) DeleteFile(allocID, contentHash, path, name string) error {
 	fileObjectPath := fs.getPreCommitPathForFile(allocID, name, encryption.Hash(path), contentHash)
-
+	toDecrAlloc := false
 	finfo, err := os.Stat(fileObjectPath)
 	if err != nil {
 
@@ -439,6 +439,7 @@ func (fs *FileStore) DeleteFile(allocID, contentHash, path, name string) error {
 		if err != nil {
 			return err
 		}
+		toDecrAlloc = true
 	}
 	size := finfo.Size()
 
@@ -463,8 +464,9 @@ func (fs *FileStore) DeleteFile(allocID, contentHash, path, name string) error {
 	if err != nil {
 		return err
 	}
-
-	fs.incrDecrAllocFileSizeAndNumber(allocID, -size, -1)
+	if toDecrAlloc {
+		fs.incrDecrAllocFileSizeAndNumber(allocID, -size, -1)
+	}
 	return nil
 }
 

@@ -361,7 +361,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	defer mutex.Unlock()
 
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
-	// preCommitConnectionObj, _ := allocation.GetAllocationPreCommitChanges(ctx, allocationID, clientID)
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 
@@ -1188,4 +1187,64 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	)
 
 	return &result, nil
+}
+
+func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
+
+	startTime := time.Now()
+	if r.Method != "PUT" {
+		return nil, common.NewError("invalid_method", "Invalid method used for the rolllback URL. Use PUT instead")
+	}
+
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
+	clientKeyBytes, _ := hex.DecodeString(clientKey)
+
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	elapsedAllocation := time.Since(startTime)
+
+	allocationID := allocationObj.ID
+	connectionID, ok := common.GetField(r, "connection_id")
+	if !ok {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+	cmd := createFileCommand(r)
+	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
+	if err != nil {
+		return nil, err
+	}
+	// Lock will compete with other CommitWrites and Challenge validation
+	mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	elapsedGetLock := time.Since(startTime) - elapsedAllocation
+
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+
+	if err != nil {
+		// might be good to check if blobber already has stored writemarker
+		return nil, common.NewErrorf("invalid_parameters",
+			"Invalid connection id. Connection id was not found: %v", err)
+	}
+
+	if allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	writeMarkerString := r.FormValue("write_marker")
+	writeMarker := writemarker.WriteMarker{}
+	err = json.Unmarshal([]byte(writeMarkerString), &writeMarker)
+	if err != nil {
+		return nil, common.NewErrorf("invalid_parameters",
+			"Invalid parameters. Error parsing the writemarker for commit: %v",
+			err)
+	}
+
+	return nil, nil
 }
