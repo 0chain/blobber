@@ -424,6 +424,7 @@ func (fs *FileStore) RenameFileChange(allocID, path, name, newName string) error
 func (fs *FileStore) DeleteFile(allocID, contentHash, path, name string) error {
 	fileObjectPath := fs.getPreCommitPathForFile(allocID, name, encryption.Hash(path), contentHash)
 	toDecrAlloc := false
+
 	finfo, err := os.Stat(fileObjectPath)
 	if err != nil {
 
