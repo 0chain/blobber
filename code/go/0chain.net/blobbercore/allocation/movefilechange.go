@@ -7,16 +7,19 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
 type MoveFileChange struct {
-	ConnectionID string `json:"connection_id"`
-	AllocationID string `json:"allocation_id"`
-	SrcPath      string `json:"path"`
-	DestPath     string `json:"dest_path"`
+	ConnectionID      string `json:"connection_id"`
+	AllocationID      string `json:"allocation_id"`
+	SrcPath           string `json:"path"`
+	DestPath          string `json:"dest_path"`
+	Name              string `json:"name"`
+	ThumbnailFilename string `json:"thumbnail_filename"`
 }
 
 func (rf *MoveFileChange) DeleteTempFile() error {
@@ -164,5 +167,5 @@ func (rf *MoveFileChange) Unmarshal(input string) error {
 }
 
 func (rf *MoveFileChange) CommitToFileStore(ctx context.Context) error {
-	return nil
+	return filestore.GetFileStore().MoveCommit(rf.AllocationID, rf.SrcPath, rf.DestPath, rf.Name, rf.ThumbnailFilename)
 }

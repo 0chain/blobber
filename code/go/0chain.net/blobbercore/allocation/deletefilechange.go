@@ -67,16 +67,18 @@ func (nf *DeleteFileChange) DeleteTempFile() error {
 func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	type Result struct {
-		Id             string
-		ValidationRoot string
-		ThumbnailHash  string
+		Id                 string
+		ValidationRoot     string
+		ThumbnailHash      string
+		PrevValidationRoot string
+		PrevThumbnailHash  string
 	}
 
 	limitCh := make(chan struct{}, 10)
 	wg := &sync.WaitGroup{}
 	var results []Result
 	err := db.Model(&reference.Ref{}).Unscoped().
-		Select("id", "validation_root", "thumbnail_hash").
+		Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash").
 		Where("allocation_id=? AND path LIKE ? AND type=? AND deleted_at is not NULL",
 			nf.AllocationID, nf.Path+"%", reference.FILE).
 		FindInBatches(&results, 100, func(tx *gorm.DB, batch int) error {
@@ -108,6 +110,13 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 							logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
 								zap.String("validation_root", res.ValidationRoot))
 						}
+						if res.PrevValidationRoot != "" {
+							err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.PrevValidationRoot, nf.Path, nf.Name)
+							if err != nil {
+								logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
+									zap.String("validation_root", res.PrevValidationRoot))
+							}
+						}
 					}
 
 					if res.ThumbnailHash != "" {
@@ -115,6 +124,13 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 						if err != nil {
 							logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
 								zap.String("thumbnail", res.ThumbnailHash))
+						}
+						if res.PrevThumbnailHash != "" {
+							err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.PrevThumbnailHash, nf.Path, nf.ThumbnailFilename)
+							if err != nil {
+								logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
+									zap.String("thumbnail", res.PrevThumbnailHash))
+							}
 						}
 					}
 

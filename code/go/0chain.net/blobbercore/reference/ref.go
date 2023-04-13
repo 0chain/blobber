@@ -43,6 +43,7 @@ type Ref struct {
 	PathLevel               int    `gorm:"column:level;not null;default:0"`
 	CustomMeta              string `gorm:"column:custom_meta;not null" filelist:"custom_meta"`
 	ValidationRoot          string `gorm:"column:validation_root;size:64;not null" filelist:"validation_root"`
+	PrevValidationRoot      string `gorm:"column:prev_validation_root" filelist:"prev_validation_root" json:"prev_validation_root"`
 	ValidationRootSignature string `gorm:"column:validation_root_signature;size:64" filelist:"validation_root_signature" json:"validation_root_signature,omitempty"`
 	Size                    int64  `gorm:"column:size;not null;default:0" dirlist:"size" filelist:"size"`
 	FixedMerkleRoot         string `gorm:"column:fixed_merkle_root;size:64;not null" filelist:"fixed_merkle_root"`
@@ -53,6 +54,7 @@ type Ref struct {
 	AllocationRoot          string `gorm:"column:allocation_root;size:64;not null"`
 	ThumbnailSize           int64  `gorm:"column:thumbnail_size;not null;default:0" filelist:"thumbnail_size"`
 	ThumbnailHash           string `gorm:"column:thumbnail_hash;size:64;not null" filelist:"thumbnail_hash"`
+	PrevThumbnailHash       string `gorm:"column:prev_thumbnail_hash" filelist:"prev_thumbnail_hash"`
 	ActualThumbnailSize     int64  `gorm:"column:actual_thumbnail_size;not null;default:0" filelist:"actual_thumbnail_size"`
 	ActualThumbnailHash     string `gorm:"column:actual_thumbnail_hash;size:64;not null" filelist:"actual_thumbnail_hash"`
 	EncryptedKey            string `gorm:"column:encrypted_key;size:64" filelist:"encrypted_key"`

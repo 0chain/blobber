@@ -121,14 +121,11 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 
 	if fileData.IsThumbnail {
 
-		h := sha3.New256()
-		_, err = io.Copy(h, r)
-		if err != nil {
-			return false, common.NewError("read_error", err.Error())
+		if fileData.PrevThumbnailHash != "" {
+			fPath, err = fs.GetPathForFile(allocID, fileData.PrevThumbnailHash)
+		} else {
+			fPath, err = fs.GetPathForFile(allocID, fileData.ThumbnailHash)
 		}
-		hash := hex.EncodeToString(h.Sum(nil))
-
-		fPath, err = fs.GetPathForFile(allocID, hash)
 
 		if err != nil {
 			return false, common.NewError("thumbnail_file_path_error", err.Error())
@@ -163,8 +160,11 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 		return true, nil
 
 	}
-
-	fPath, err = fs.GetPathForFile(allocID, fileData.ValidationRoot)
+	if fileData.PrevValidationRoot != "" {
+		fPath, err = fs.GetPathForFile(allocID, fileData.PrevValidationRoot)
+	} else {
+		fPath, err = fs.GetPathForFile(allocID, fileData.ValidationRoot)
+	}
 	if err != nil {
 		return false, common.NewError("get_file_path_error", err.Error())
 	}
@@ -369,6 +369,56 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	// ref that refers to this file therefore it will be skipped
 	fs.incrDecrAllocFileSizeAndNumber(allocID, fileSize, 1)
 	return true, nil
+}
+
+func (fs *FileStore) MoveCommit(allocID, srcPath, destPath, fileName, thumbFileName string) error {
+
+	srcPath = encryption.Hash(srcPath)
+	destPath = encryption.Hash(destPath)
+
+	srcFilePath := fs.getPreCommitPathForFile(allocID, fileName, srcPath, "")
+	destFilePath := fs.getPreCommitPathForFile(allocID, fileName, destPath, "")
+
+	_, err := os.Stat(srcFilePath)
+	if err != nil {
+		err := os.Rename(srcFilePath, destFilePath)
+		if err != nil {
+			return err
+		}
+	}
+
+	if thumbFileName != "" {
+		srcThumbPath := fs.getPreCommitPathForFile(allocID, thumbFileName, srcPath, "")
+		destThumbPath := fs.getPreCommitPathForFile(allocID, thumbFileName, destPath, "")
+		_, err := os.Stat(srcThumbPath)
+		if err != nil {
+			err = os.Rename(srcThumbPath, destThumbPath)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (fs *FileStore) RenameFileChange(allocID, path, name, newName string) error {
+
+	hashPath := encryption.Hash(path)
+
+	filePath := fs.getPreCommitPathForFile(allocID, name, hashPath, "")
+	destPath := fs.getPreCommitPathForFile(allocID, newName, hashPath, "")
+
+	_, err := os.Stat(filePath)
+
+	if err != nil {
+		err = os.Rename(filePath, destPath)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (fs *FileStore) DeleteFile(allocID, contentHash, path, name string) error {

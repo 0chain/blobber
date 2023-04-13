@@ -38,10 +38,12 @@ type BaseFileChanger struct {
 	//client side:
 	ValidationRootSignature string `json:"validation_root_signature,omitempty"`
 	//client side:
-	ValidationRoot string `json:"validation_root,omitempty"`
-	Size           int64  `json:"size"`
+	ValidationRoot     string `json:"validation_root,omitempty"`
+	PrevValidationRoot string `json:"prev_validation_root"`
+	Size               int64  `json:"size"`
 	//server side:
 	ThumbnailHash     string `json:"thumbnail_content_hash,omitempty"`
+	PrevThumbnailHash string `json:"prev_thumbnail_hash"`
 	ThumbnailSize     int64  `json:"thumbnail_size"`
 	ThumbnailFilename string `json:"thumbnail_filename"`
 
@@ -82,6 +84,7 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 	fileInputData.FixedMerkleRoot = fc.FixedMerkleRoot
 	fileInputData.ChunkSize = fc.ChunkSize
 	fileInputData.IsTemp = fc.IsTemp
+	fileInputData.PrevValidationRoot = fc.PrevValidationRoot
 	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
 	if err != nil {
 		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
@@ -91,6 +94,7 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 		fileInputData.Name = fc.ThumbnailFilename
 		fileInputData.Path = fc.Path
 		fileInputData.ThumbnailHash = fc.ThumbnailHash
+		fileInputData.PrevThumbnailHash = fc.PrevThumbnailHash
 		fileInputData.ChunkSize = fc.ChunkSize
 		fileInputData.IsThumbnail = true
 		_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -18,6 +19,7 @@ type RenameFileChange struct {
 	AllocationID string `json:"allocation_id"`
 	Path         string `json:"path"`
 	NewName      string `json:"new_name"`
+	Name         string `json:"name"`
 }
 
 func (rf *RenameFileChange) DeleteTempFile() error {
@@ -134,5 +136,5 @@ func (rf *RenameFileChange) Unmarshal(input string) error {
 }
 
 func (rf *RenameFileChange) CommitToFileStore(ctx context.Context) error {
-	return nil
+	return filestore.GetFileStore().RenameFileChange(rf.AllocationID, rf.Path, rf.Name, rf.NewName)
 }

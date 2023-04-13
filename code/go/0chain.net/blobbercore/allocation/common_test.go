@@ -57,6 +57,14 @@ func (mfs *MockFileStore) GetTempFilesSizeOfAllocation(allocID string) uint64 {
 	return 0
 }
 
+func (mfs *MockFileStore) MoveCommit(allocID, srcPath, destPath, fileName, thumbFileName string) error {
+	return nil
+}
+
+func (mfs *MockFileStore) RenameFileChange(allocID, path, name, newName string) error {
+	return nil
+}
+
 func (mfs *MockFileStore) GetTotalCommittedFileSize() uint64 {
 	return 0
 }

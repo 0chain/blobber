@@ -7,11 +7,13 @@ import (
 const CHUNK_SIZE = 64 * 1024
 
 type FileInputData struct {
-	Name            string
-	Path            string
-	ValidationRoot  string
-	FixedMerkleRoot string
-	ThumbnailHash   string
+	Name               string
+	Path               string
+	ValidationRoot     string
+	FixedMerkleRoot    string
+	ThumbnailHash      string
+	PrevValidationRoot string
+	PrevThumbnailHash  string
 
 	// ChunkSize chunk size
 	ChunkSize int64
@@ -44,6 +46,8 @@ type FileStorer interface {
 	Initialize() error
 	WriteFile(allocID, connID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error)
 	CommitWrite(allocID, connID string, fileData *FileInputData) (bool, error)
+	MoveCommit(allocID, srcPath, destPath, fileName, thumbFileName string) error
+	RenameFileChange(allocID, path, name, newName string) error
 	DeleteTempFile(allocID, connID string, fileData *FileInputData) error
 	DeleteFile(allocID string, contentHash, path, name string) error
 	// GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.

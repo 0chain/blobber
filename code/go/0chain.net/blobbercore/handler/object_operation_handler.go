@@ -692,6 +692,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID, Path: objectRef.Path}
 	dfc.NewName = new_name
+	dfc.Name = objectRef.Name
 	connectionObj.Size += allocationChange.Size
 	connectionObj.AddChange(allocationChange, dfc)
 
@@ -874,7 +875,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	defer mutex.Unlock()
 
 	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(
-		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
+		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root", "thumbnail_filename"})
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -909,10 +910,12 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	allocationChange.Size = 0
 	allocationChange.Operation = constants.FileOperationMove
 	dfc := &allocation.MoveFileChange{
-		ConnectionID: connectionObj.ID,
-		AllocationID: connectionObj.AllocationID,
-		SrcPath:      objectRef.Path,
-		DestPath:     destPath,
+		ConnectionID:      connectionObj.ID,
+		AllocationID:      connectionObj.AllocationID,
+		SrcPath:           objectRef.Path,
+		DestPath:          destPath,
+		Name:              objectRef.Name,
+		ThumbnailFilename: objectRef.ThumbnailFilename,
 	}
 	dfc.SrcPath = objectRef.Path
 	connectionObj.Size += allocationChange.Size

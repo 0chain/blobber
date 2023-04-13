@@ -88,6 +88,14 @@ func (mfs *MockFileStore) CommitWrite(allocID, connID string, fileData *filestor
 	return true, nil
 }
 
+func (mfs *MockFileStore) MoveCommit(allocID, srcPath, destPath, fileName, thumbFileName string) error {
+	return nil
+}
+
+func (mfs *MockFileStore) RenameFileChange(allocID, path, name, newName string) error {
+	return nil
+}
+
 func (mfs *MockFileStore) DeleteTempFile(allocID, connID string, fileData *filestore.FileInputData) error {
 	return nil
 }

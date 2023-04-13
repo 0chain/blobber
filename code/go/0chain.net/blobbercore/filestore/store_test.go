@@ -223,21 +223,21 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			shouldCommit:          true,
 			expectedErrorOnCommit: false,
 		},
-		// {
-		// 	testName:   "Should fail",
-		// 	allocID:    randString(64),
-		// 	connID:     randString(64),
-		// 	fileName:   randString(5),
-		// 	remotePath: filepath.Join("/", randString(5)+".txt"),
-		// 	alloc: &allocation{
-		// 		mu:    &sync.Mutex{},
-		// 		tmpMU: &sync.Mutex{},
-		// 	},
+		{
+			testName:   "Should fail",
+			allocID:    randString(64),
+			connID:     randString(64),
+			fileName:   randString(5),
+			remotePath: filepath.Join("/", randString(5)+".txt"),
+			alloc: &allocation{
+				mu:    &sync.Mutex{},
+				tmpMU: &sync.Mutex{},
+			},
 
-		// 	differentHash:         true,
-		// 	shouldCommit:          true,
-		// 	expectedErrorOnCommit: true,
-		// },
+			differentHash:         true,
+			shouldCommit:          true,
+			expectedErrorOnCommit: true,
+		},
 	}
 
 	for _, test := range tests {
@@ -283,6 +283,7 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			fid.IsTemp = true
 			success, err := fs.CommitWrite(test.allocID, test.connID, fid)
 			fid.IsTemp = false
+			fid.PrevValidationRoot = validationRoot
 			if test.expectedErrorOnCommit {
 				if err == nil {
 					success, err = fs.CommitWrite(test.allocID, test.connID, fid)
@@ -455,7 +456,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	// Set fields to commit thumbnail file
 	fid.IsThumbnail = true
 	fid.Name = thumbFileName
-
+	fid.PrevThumbnailHash = prevThumbHash
 	// Commit thumbnail file to pre-commit location
 	success, err = fs.CommitWrite(allocID, connID, fid)
 
