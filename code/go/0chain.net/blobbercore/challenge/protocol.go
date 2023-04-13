@@ -33,6 +33,7 @@ var (
 	ErrInvalidObjectPath    = errors.New("invalid_object_path: Object path was not for a file")
 	ErrExpiredCCT           = errors.New("expired challenge completion time")
 	ErrValNotPresent        = errors.New("chain responded: " + ValueNotPresent)
+	ErrFailedChallenge      = errors.New("failed to execute challenge response transaction")
 )
 
 type ChallengeResponse struct {
@@ -72,7 +73,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	// will fail.
 	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), cr.AllocationID)
 	allocMu.Lock()
-	logging.Logger.Info("Lock cquired")
+	logging.Logger.Info("Lock acquired")
 
 	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
 	if err != nil {
@@ -357,41 +358,28 @@ func ProcessChallengeTransactions(ctx context.Context) {
 
 			dblLinkedMu.Lock()
 			oldestCresp := cResp
-			for {
-				if oldestCresp.prevCResp != nil {
-					oldestCresp = oldestCresp.prevCResp
-				} else {
-					break
-				}
+			for oldestCresp.prevCResp != nil {
+				oldestCresp = oldestCresp.prevCResp
 			}
 
 			for {
 				status := <-oldestCresp.notifyCh
-				var shouldRemove bool
-				if status == Failed {
-					shouldRemove = true
+				if status == Failed || time.Since(common.ToTime(cResp.ChallengeCreatedAt)) > config.StorageSCConfig.ChallengeCompletionTime {
 					oldestCresp.challengeTiming.ClosedAt = common.Now()
-					goto L1
-				} else if time.Since(common.ToTime(cResp.ChallengeCreatedAt)) > config.StorageSCConfig.ChallengeCompletionTime {
-					shouldRemove = true
-					oldestCresp.challengeTiming.ClosedAt = common.Now()
-					oldestCresp.ErrCh <- ErrExpiredCCT
+					if status == Failed {
+						oldestCresp.ErrCh <- ErrFailedChallenge
+					} else {
+						oldestCresp.ErrCh <- ErrExpiredCCT
+					}
 					oldestCresp.restartWithNonceCh <- 0 // send zero to cancel the awaiting goroutine
-					goto L1
-				}
-
-				oldestCresp.restartWithNonceCh <- transaction.GetNextUnusedNonce()
-
-			L1:
-				if shouldRemove {
-					logging.Logger.Error("Removing challenge from committing",
-						zap.String("challenge_id", oldestCresp.ChallengeID))
 					if oldestCresp.prevCResp != nil {
 						oldestCresp.prevCResp.nextCResp = oldestCresp.nextCResp
 					}
 					if oldestCresp.nextCResp != nil {
 						oldestCresp.nextCResp.prevCResp = oldestCresp.prevCResp
 					}
+				} else {
+					oldestCresp.restartWithNonceCh <- transaction.GetNextUnusedNonce()
 				}
 
 				if oldestCresp.nextCResp != nil {
@@ -401,15 +389,7 @@ func ProcessChallengeTransactions(ctx context.Context) {
 				}
 			}
 
-			// deplete all the challenges in buffer
-		D:
-			for {
-				select {
-				case <-stopToProcessCh:
-				default:
-					break D
-				}
-			}
+			depleteChallengeBuffer(stopToProcessCh)
 
 			latestCResp = oldestCresp
 			dblLinkedMu.Unlock()
@@ -425,103 +405,143 @@ func ProcessChallengeTransactions(ctx context.Context) {
 			latestCResp.nextCResp = cResp
 		}
 		latestCResp = cResp
-		go tryChallengeTransaction(cResp, doneCh, stopToProcessCh, dblLinkedMu, guideCh, transaction.GetNextUnusedNonce())
+		params := challengeTransactionParams{
+			cResp:           cResp,
+			doneCh:          doneCh,
+			stopToProcessCh: stopToProcessCh,
+			dblLinkedMu:     dblLinkedMu,
+			guideCh:         guideCh,
+			nonce:           transaction.GetNextUnusedNonce(),
+		}
+		go tryChallengeTransaction(params)
 
 		dblLinkedMu.Unlock()
 	}
 }
 
-func tryChallengeTransaction(
-	cResp *ChallengeResponse,
-	doneCh chan *ChallengeResponse,
-	stopToProcessCh chan *ChallengeResponse,
-	dblLinkedMu *sync.Mutex,
-	guideCh chan struct{},
-	nonce int64,
-) {
+type challengeTransactionParams struct {
+	cResp           *ChallengeResponse
+	doneCh          chan *ChallengeResponse
+	stopToProcessCh chan *ChallengeResponse
+	dblLinkedMu     *sync.Mutex
+	guideCh         chan struct{}
+	nonce           int64
+}
+
+func tryChallengeTransaction(params challengeTransactionParams) {
 	defer func() {
-		<-guideCh
+		<-params.guideCh
 	}()
 
 	var txn *transaction.Transaction
 	var err error
 
-	ctx, ctxCncl := context.WithCancel(context.TODO())
+	ctx, ctxCncl := context.WithCancel(context.Background())
 	defer ctxCncl()
 
-	var t *transaction.Transaction
 	for {
-		cResp.challengeTiming.RetriesInChain++
+		params.cResp.challengeTiming.RetriesInChain++
 		for i := 0; i < 2; i++ {
 			txn, err = transaction.NewTransactionEntity()
 			if err != nil {
-				goto L1
+				break
 			}
-			cResp.challengeTiming.TxnSubmission = common.Now()
+			params.cResp.challengeTiming.TxnSubmission = common.Now()
 			err = txn.ExecuteSmartContractWithNonce(
 				transaction.STORAGE_CONTRACT_ADDRESS,
 				transaction.CHALLENGE_RESPONSE,
-				cResp,
+				params.cResp,
 				0,
-				nonce,
+				params.nonce,
 			)
 			if err == nil {
 				break
 			}
-			logging.Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
+			logging.Logger.Info("Failed submitting challenge to the mining network", zap.Error(err))
 		}
 		if err != nil {
-			goto L1
+			break
 		}
 
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-		t, err = transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
+		t, err := transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
 
 		if err != nil {
 			logging.Logger.Error("Error verifying the challenge response transaction",
-				zap.String("err:", err.Error()),
+				zap.Error(err),
 				zap.String("txn", txn.Hash),
-				zap.String("challenge_id", cResp.ChallengeID))
-			goto L1
+				zap.String("challenge_id", params.cResp.ChallengeID))
+			break
 		} else {
 			logging.Logger.Info("Challenge committed and accepted",
 				zap.Any("txn.hash", t.Hash),
 				zap.Any("txn.output", t.TransactionOutput),
-				zap.String("challenge_id", cResp.ChallengeID))
+				zap.String("challenge_id", params.cResp.ChallengeID))
 
-			cResp.challengeTiming.TxnVerification = common.Now()
+			params.cResp.challengeTiming.TxnVerification = common.Now()
 			ctxCncl()
 		}
+	}
 
-	L1:
-		select {
-		case <-ctx.Done():
-			logging.Logger.Info("Sending to done channel")
-			doneCh <- cResp
-			cResp.notifyCh <- Success
-			cResp.ErrCh <- nil
-			logging.Logger.Info("returning after being successful")
+	select {
+	case <-ctx.Done():
+		params.dblLinkedMu.Lock()
+		defer params.dblLinkedMu.Unlock()
+		params.doneCh <- params.cResp
+		params.cResp.notifyCh <- Success
+		params.cResp.ErrCh <- nil
+	default:
+		params.dblLinkedMu.Lock()
+		defer params.dblLinkedMu.Unlock()
+		if params.nonce, err = handleChallengeTransactionError(params.cResp, params.stopToProcessCh, params.nonce); err != nil {
+			params.cResp.notifyCh <- Failed
+			params.cResp.ErrCh <- err
 			return
-		default:
-			if dblLinkedMu.TryLock() {
-				select {
-				case nonce = <-cResp.restartWithNonceCh:
-					dblLinkedMu.Unlock()
-					continue
-				default:
-					stopToProcessCh <- cResp
-					cResp.notifyCh <- Failed
-					cResp.ErrCh <- err
-					dblLinkedMu.Unlock()
-					return
-				}
-			}
+		}
+		params.cResp.notifyCh <- Waiting
+		params.nonce = <-params.cResp.restartWithNonceCh
+		if params.nonce == 0 {
+			return
+		}
+	}
+}
 
-			cResp.notifyCh <- Waiting
-			nonce = <-cResp.restartWithNonceCh
-			if nonce == 0 {
-				return
+func handleChallengeTransactionError(cResp *ChallengeResponse, stopToProcessCh chan *ChallengeResponse, nonce int64) (int64, error) {
+	oldestCresp := cResp
+	for oldestCresp.prevCResp != nil {
+		oldestCresp = oldestCresp.prevCResp
+	}
+
+	for {
+		status := <-oldestCresp.notifyCh
+		if status == Failed || time.Since(common.ToTime(cResp.ChallengeCreatedAt)) > config.StorageSCConfig.ChallengeCompletionTime {
+			oldestCresp.challengeTiming.ClosedAt = common.Now()
+			if status == Failed {
+				return nonce, ErrFailedChallenge
 			}
+			return nonce, ErrExpiredCCT
+		}
+
+		nonce = transaction.GetNextUnusedNonce()
+		oldestCresp.restartWithNonceCh <- nonce
+
+		if oldestCresp.nextCResp != nil {
+			oldestCresp = oldestCresp.nextCResp
+		} else {
+			break
+		}
+	}
+
+	depleteChallengeBuffer(stopToProcessCh)
+	return nonce, nil
+}
+
+func depleteChallengeBuffer(stopToProcessCh chan *ChallengeResponse) {
+	for {
+		select {
+		case <-stopToProcessCh:
+		default:
+			return
 		}
 	}
 }

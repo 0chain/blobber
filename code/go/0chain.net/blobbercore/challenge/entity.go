@@ -35,7 +35,7 @@ func (s ChallengeStatus) String() string {
 	case Completed:
 		return "Completed"
 	case Committed:
-		return "Commited"
+		return "Committed"
 	case Cancelled:
 		return "Cancelled"
 	default:
