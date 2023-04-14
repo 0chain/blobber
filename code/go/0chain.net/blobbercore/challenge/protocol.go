@@ -45,6 +45,7 @@ type ChallengeResponse struct {
 	Sequence             uint64              `json:"-"`
 	ErrCh                chan error          `json:"-"`
 	DoneCh               chan struct{}       `json:"-"`
+	waitPrevCRespCh      chan struct{}       `json:"-"`
 	restartWithNonceCh   chan int64          `json:"-"`
 	challengeTiming      *ChallengeTiming    `json:"-"`
 }
@@ -405,6 +406,8 @@ func ProcessChallengeTransactions(ctx context.Context) {
 			latestCResp.nextCResp = cResp
 		}
 		latestCResp = cResp
+
+		cResp.waitPrevCRespCh = make(chan struct{})
 		params := challengeTransactionParams{
 			cResp:           cResp,
 			doneCh:          doneCh,
@@ -438,6 +441,12 @@ func tryChallengeTransaction(params challengeTransactionParams) {
 
 	ctx, ctxCncl := context.WithCancel(context.Background())
 	defer ctxCncl()
+
+	// Wait for the previous challenge to complete or fail before processing the current challenge
+	if params.cResp.prevCResp != nil {
+		<-params.cResp.prevCResp.waitPrevCRespCh
+	}
+	defer close(params.cResp.waitPrevCRespCh)
 
 	for {
 		params.cResp.challengeTiming.RetriesInChain++
