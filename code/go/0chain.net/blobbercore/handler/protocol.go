@@ -181,17 +181,6 @@ func TransactionVerify(txn *transaction.Transaction) (t *transaction.Transaction
 	return nil, errors.New("[txn]max retries exceeded with " + txn.Hash)
 }
 
-func WalletRegister() error {
-	wcb := &WalletCallback{}
-	wcb.wg = &sync.WaitGroup{}
-	wcb.wg.Add(1)
-	if err := zcncore.RegisterToMiners(node.Self.GetWallet(), wcb); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // SendHealthCheck send heartbeat to blockchain
 func SendHealthCheck(provider common.ProviderType) (string, error) {
 
