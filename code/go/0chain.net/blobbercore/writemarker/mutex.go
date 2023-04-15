@@ -54,7 +54,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 	defer l.Unlock()
 
 	if time.Now().After((*requestTime).Add(config.Configuration.WriteMarkerLockTimeout)) {
-		return nil, errors.Throw(constants.ErrInvalidParameter, "requestTime")
+		return nil, errors.Throw(constants.ErrInvalidParameter, "requestTime ahead of current time")
 	}
 
 	db := datastore.GetStore().GetDB()
