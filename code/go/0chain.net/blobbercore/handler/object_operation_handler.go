@@ -927,7 +927,8 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 			return nil, common.NewError("directory_exists", "Directory already exists`")
 		}
 
-		return nil, common.NewError("duplicate_file", "File at path already exists")
+		msg := fmt.Sprintf("File at path :%s: already exists", exisitingRef.Path)
+		return nil, common.NewError("duplicate_file", msg)
 	}
 	if !filepath.IsAbs(dirPath) {
 		return nil, common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", dirPath))
