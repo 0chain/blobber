@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"path/filepath"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -136,5 +135,5 @@ func (rf *RenameFileChange) Unmarshal(input string) error {
 }
 
 func (rf *RenameFileChange) CommitToFileStore(ctx context.Context) error {
-	return filestore.GetFileStore().RenameFileChange(rf.AllocationID, rf.Path, rf.Name, rf.NewName)
+	return nil
 }

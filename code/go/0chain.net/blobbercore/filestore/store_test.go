@@ -293,7 +293,7 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			} else {
 				require.Nil(t, err)
 				require.True(t, success)
-				preCommitPath := fs.getPreCommitPathForFile(test.allocID, fid.Name, encryption.Hash(fid.Path), fid.ValidationRoot)
+				preCommitPath := fs.getPreCommitPathForFile(test.allocID, fid.ValidationRoot)
 				_, err := os.Open(preCommitPath)
 				require.Nil(t, err)
 				check_file, err := os.Stat(preCommitPath)
@@ -408,7 +408,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.Nil(t, err)
 	require.True(t, success)
 	// Get the path of the pre-commit location of the thumbnail file and check if the file exists
-	preCommitPath := fs.getPreCommitPathForFile(allocID, thumbFileName, pathHash, fid.ThumbnailHash)
+	preCommitPath := fs.getPreCommitPathForFile(allocID, fid.ThumbnailHash)
 	preFile, err := os.Open(preCommitPath)
 	require.Nil(t, err)
 	defer preFile.Close()
@@ -464,7 +464,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.True(t, success)
 
 	// Get the path of the pre-commit location of the thumbnail file and check if the file exists
-	preCommitPath = fs.getPreCommitPathForFile(allocID, thumbFileName, pathHash, fid.ThumbnailHash)
+	preCommitPath = fs.getPreCommitPathForFile(allocID, fid.ThumbnailHash)
 
 	preFile, err = os.Open(preCommitPath)
 
@@ -525,7 +525,7 @@ func TestGetFileBlock(t *testing.T) {
 	validationRoot, _, err := generateRandomDataAndStoreNodes(fPath, int64(size))
 	require.Nil(t, err)
 
-	permanentFPath := fs.getPreCommitPathForFile(allocID, "hello", encryption.Hash(fPath), validationRoot)
+	permanentFPath := fs.getPreCommitPathForFile(allocID, validationRoot)
 	// require.Nil(t, err)
 
 	err = os.MkdirAll(filepath.Dir(permanentFPath), 0777)
@@ -633,7 +633,7 @@ func TestGetMerkleTree(t *testing.T) {
 	require.Nil(t, err)
 	t.Logf("Merkle root: %s", mr)
 	allocID := randString(64)
-	fPath := fs.getPreCommitPathForFile(allocID, "hello", encryption.Hash(orgFilePath), validationRoot)
+	fPath := fs.getPreCommitPathForFile(allocID, validationRoot)
 
 	err = os.MkdirAll(filepath.Dir(fPath), 0777)
 	require.Nil(t, err)

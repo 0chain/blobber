@@ -105,13 +105,13 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 					}()
 
 					if count == 0 {
-						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ValidationRoot, nf.Path, nf.Name)
+						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ValidationRoot)
 						if err != nil {
 							logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
 								zap.String("validation_root", res.ValidationRoot))
 						}
 						if res.PrevValidationRoot != "" {
-							err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.PrevValidationRoot, nf.Path, nf.Name)
+							err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.PrevValidationRoot)
 							if err != nil {
 								logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
 									zap.String("validation_root", res.PrevValidationRoot))
@@ -120,13 +120,13 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 					}
 
 					if res.ThumbnailHash != "" {
-						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ThumbnailHash, nf.Path, nf.ThumbnailFilename)
+						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ThumbnailHash)
 						if err != nil {
 							logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
 								zap.String("thumbnail", res.ThumbnailHash))
 						}
 						if res.PrevThumbnailHash != "" {
-							err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.PrevThumbnailHash, nf.Path, nf.ThumbnailFilename)
+							err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.PrevThumbnailHash)
 							if err != nil {
 								logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
 									zap.String("thumbnail", res.PrevThumbnailHash))

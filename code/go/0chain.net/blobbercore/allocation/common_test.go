@@ -37,12 +37,16 @@ func (mfs *MockFileStore) DeleteTempFile(allocID, connID string, fileData *files
 	return nil
 }
 
-func (mfs *MockFileStore) DeleteFile(allocID string, contentHash, path, name string) error {
+func (mfs *MockFileStore) DeleteFile(allocID, contentHash string) error {
 	return nil
 }
 
 func (mfs *MockFileStore) GetFileBlock(rin *filestore.ReadBlockInput) (*filestore.FileDownloadResponse, error) {
 	return nil, nil
+}
+
+func (mfs *MockFileStore) GetFilePathSize(allocID, contentHash, thumbHash string) (int64, int64, error) {
+	return 0, 0, nil
 }
 
 func (mfs *MockFileStore) GetBlocksMerkleTreeForChallenge(cir *filestore.ChallengeReadBlockInput) (*filestore.ChallengeResponse, error) {
@@ -55,14 +59,6 @@ func (mfs *MockFileStore) GetTotalTempFileSizes() (s uint64) {
 
 func (mfs *MockFileStore) GetTempFilesSizeOfAllocation(allocID string) uint64 {
 	return 0
-}
-
-func (mfs *MockFileStore) MoveCommit(allocID, srcPath, destPath, fileName, thumbFileName string) error {
-	return nil
-}
-
-func (mfs *MockFileStore) RenameFileChange(allocID, path, name, newName string) error {
-	return nil
 }
 
 func (mfs *MockFileStore) GetTotalCommittedFileSize() uint64 {

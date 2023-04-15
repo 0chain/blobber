@@ -218,3 +218,7 @@ func (cmd *UploadFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 
 	return connectionObj.Save(ctx)
 }
+
+func (cmd *UploadFileCommand) ProcessRollback(allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
+	return nil
+}

@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -167,5 +166,5 @@ func (rf *MoveFileChange) Unmarshal(input string) error {
 }
 
 func (rf *MoveFileChange) CommitToFileStore(ctx context.Context) error {
-	return filestore.GetFileStore().MoveCommit(rf.AllocationID, rf.SrcPath, rf.DestPath, rf.Name, rf.ThumbnailFilename)
+	return nil
 }

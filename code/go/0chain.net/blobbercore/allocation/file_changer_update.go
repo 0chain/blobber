@@ -81,11 +81,20 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 
 	fileRef.HashToBeComputed = true
 	nf.deleteHash = make(map[string]int)
-	if fileRef.PrevThumbnailHash != "" && fileRef.PrevThumbnailHash != nf.ThumbnailHash {
-		nf.deleteHash[fileRef.PrevThumbnailHash] = int(THUMBNAIL)
-	}
-	if fileRef.PrevValidationRoot != "" && fileRef.PrevValidationRoot != nf.ValidationRoot {
-		nf.deleteHash[fileRef.PrevValidationRoot] = int(CONTENT)
+	if nf.IsRollback {
+		if fileRef.ThumbnailHash != "" && fileRef.ThumbnailHash != nf.ThumbnailHash {
+			nf.deleteHash[fileRef.ThumbnailHash] = int(THUMBNAIL)
+		}
+		if fileRef.ValidationRoot != "" && fileRef.ValidationRoot != nf.ValidationRoot {
+			nf.deleteHash[fileRef.ValidationRoot] = int(CONTENT)
+		}
+	} else {
+		if fileRef.PrevThumbnailHash != "" && fileRef.PrevThumbnailHash != nf.ThumbnailHash {
+			nf.deleteHash[fileRef.PrevThumbnailHash] = int(THUMBNAIL)
+		}
+		if fileRef.PrevValidationRoot != "" && fileRef.PrevValidationRoot != nf.ValidationRoot {
+			nf.deleteHash[fileRef.PrevValidationRoot] = int(CONTENT)
+		}
 	}
 	fileRef.ActualFileHash = nf.ActualHash
 	fileRef.ActualFileHashSignature = nf.ActualFileHashSignature
@@ -131,7 +140,7 @@ func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
 
 			if err == nil && count == 0 {
 				logging.Logger.Info("Deleting thumbnail file", zap.String("thumbnail_hash", hash))
-				if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash, nf.Path, nf.ThumbnailFilename); err != nil {
+				if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash); err != nil {
 					logging.Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
 				}
 			}
@@ -144,7 +153,7 @@ func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
 
 			if err == nil && count == 0 {
 				logging.Logger.Info("Deleting content file", zap.String("validation_root", hash))
-				if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash, nf.Path, nf.Filename); err != nil {
+				if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash); err != nil {
 					logging.Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
 				}
 			}

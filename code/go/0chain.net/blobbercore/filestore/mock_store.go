@@ -49,8 +49,8 @@ func (fs *MockStore) DeleteTempFile(allocID, connID string, fileData *FileInputD
 	return fs.FileStore.DeleteTempFile(allocID, connID, fileData)
 }
 
-func (fs *MockStore) DeleteFile(allocationID string, contentHash string, path string, name string) error {
-	return fs.FileStore.DeleteFile(allocationID, contentHash, path, name)
+func (fs *MockStore) DeleteFile(allocationID, contentHash string) error {
+	return fs.FileStore.DeleteFile(allocationID, contentHash)
 }
 
 func (fs *MockStore) GetFileBlock(rbi *ReadBlockInput) (*FileDownloadResponse, error) {

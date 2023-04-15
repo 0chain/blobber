@@ -46,10 +46,8 @@ type FileStorer interface {
 	Initialize() error
 	WriteFile(allocID, connID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error)
 	CommitWrite(allocID, connID string, fileData *FileInputData) (bool, error)
-	MoveCommit(allocID, srcPath, destPath, fileName, thumbFileName string) error
-	RenameFileChange(allocID, path, name, newName string) error
 	DeleteTempFile(allocID, connID string, fileData *FileInputData) error
-	DeleteFile(allocID string, contentHash, path, name string) error
+	DeleteFile(allocID, contentHash string) error
 	// GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.
 	GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error)
 	GetBlocksMerkleTreeForChallenge(cri *ChallengeReadBlockInput) (*ChallengeResponse, error)
@@ -57,6 +55,7 @@ type FileStorer interface {
 	GetTempFilesSizeOfAllocation(allocID string) uint64
 	GetTotalCommittedFileSize() uint64
 	GetCommittedFileSizeOfAllocation(allocID string) uint64
+	GetFilePathSize(allocID, filehash, thumbHash string) (int64, int64, error)
 	GetTotalFilesSize() uint64
 	GetTotalFilesSizeOfAllocation(allocID string) uint64
 

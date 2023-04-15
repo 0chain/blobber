@@ -361,7 +361,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	defer mutex.Unlock()
 
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
-	// preCommitConnectionObj, _ := allocation.GetAllocationPreCommitChanges(ctx, allocationID, clientID)
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 
@@ -445,14 +444,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			fmt.Sprintf("Error while unmarshalling file ID meta data: %s", err.Error()))
 	}
 
-	// if preCommitConnectionObj != nil {
-	// 	err = preCommitConnectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
-
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
 	err = connectionObj.ApplyChanges(
 		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
 	if err != nil {
@@ -511,15 +502,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
 
-	// if preCommitConnectionObj != nil {
-	// 	err = preCommitConnectionObj.CommitToFileStore(ctx)
-	// 	if err != nil {
-	// 		if !errors.Is(common.ErrFileWasDeleted, err) {
-	// 			return nil, common.NewError("file_store_error", "Error committing preCommit Changes to file store. "+err.Error())
-	// 		}
-	// 	}
-	// }
-
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
 		if !errors.Is(common.ErrFileWasDeleted, err) {
@@ -544,17 +526,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	for _, c := range connectionObj.Changes {
 		db.Delete(c)
 	}
-
-	// if preCommitConnectionObj != nil {
-
-	// 	preCommitConnectionObj.DeleteChanges(ctx)
-
-	// 	for _, c := range preCommitConnectionObj.Changes {
-	// 		db.Delete(c)
-	// 	}
-
-	// 	db.Delete(preCommitConnectionObj)
-	// }
 
 	db.Delete(connectionObj)
 
@@ -1188,4 +1159,158 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	)
 
 	return &result, nil
+}
+
+func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
+
+	// startTime := time.Now()
+	if r.Method != "PUT" {
+		return nil, common.NewError("invalid_method", "Invalid method used for the rolllback URL. Use PUT instead")
+	}
+
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
+	clientKeyBytes, _ := hex.DecodeString(clientKey)
+
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		Logger.Error("Error in verifying allocation", zap.Error(err))
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	if allocationObj.AllocationRoot == "" {
+		Logger.Error("Allocation root is not set", zap.String("allocation_id", allocationObj.ID))
+		return nil, common.NewError("invalid_parameters", "Allocation root is not set")
+	}
+	// elapsedAllocation := time.Since(startTime)
+
+	allocationID := allocationObj.ID
+	connectionID, ok := common.GetField(r, "connection_id")
+	if !ok {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+	cmd := createFileCommand(r)
+	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
+	if err != nil {
+		Logger.Error("Error in validating the command", zap.Error(err))
+		return nil, err
+	}
+	// Lock will compete with other CommitWrites and Challenge validation
+	mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// elapsedGetLock := time.Since(startTime) - elapsedAllocation
+
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+
+	if err != nil {
+		// might be good to check if blobber already has stored writemarker
+		return nil, common.NewErrorf("invalid_parameters",
+			"Invalid connection id. Connection id was not found: %v", err)
+	}
+
+	if allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	writeMarkerString := r.FormValue("write_marker")
+	writeMarker := writemarker.WriteMarker{}
+	err = json.Unmarshal([]byte(writeMarkerString), &writeMarker)
+	if err != nil {
+		return nil, common.NewErrorf("invalid_parameters",
+			"Invalid parameters. Error parsing the writemarker for commit: %v",
+			err)
+	}
+
+	// process rollback
+	err = cmd.ProcessRollback(allocationObj, connectionObj)
+	if err != nil {
+		Logger.Error("Error in processing rollback", zap.Error(err))
+		return nil, err
+	}
+
+	// TODO: verify the write marker
+
+	// var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
+	// latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
+	// 	allocationObj.AllocationRoot)
+	// if err != nil {
+	// 	return nil, common.NewErrorf("latest_write_marker_read_error",
+	// 		"Error reading the latest write marker for allocation: %v", err)
+	// }
+
+	writemarkerEntity := &writemarker.WriteMarkerEntity{}
+	writemarkerEntity.WM = writeMarker
+
+	err = writemarkerEntity.VerifyMarker(ctx, allocationObj, connectionObj)
+
+	if err != nil {
+		return nil, common.NewError("write_marker_verification_failed", "Verification of the write marker failed: "+err.Error())
+	}
+
+	var clientIDForWriteRedeem = writeMarker.ClientID
+
+	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
+		return nil, err
+	}
+
+	// apply the rollback
+	fileIDMeta := make(map[string]string, 0)
+	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
+	if err != nil {
+		Logger.Error("Error in applying the changes", zap.Error(err))
+		return nil, err
+	}
+
+	//TODO: do writemarker operations , get allocation root and ref
+
+	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash"})
+	if err != nil {
+		return nil, err
+	}
+
+	allocationRoot := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
+	fileMetaRoot := rootRef.FileMetaHash
+
+	if allocationRoot != writeMarker.AllocationRoot {
+		return nil, common.NewError("allocation_root_mismatch", "Allocation root in the write marker does not match the calculated allocation root."+
+			" Expected hash: "+allocationRoot)
+	}
+
+	if fileMetaRoot != writeMarker.FileMetaRoot {
+		return nil, common.NewError("file_meta_root_mismatch", "File meta root in the write marker does not match the calculated file meta root."+
+			" Expected hash: "+fileMetaRoot+"; Got: "+writeMarker.FileMetaRoot)
+	}
+
+	writemarkerEntity.ConnectionID = connectionObj.ID
+	writemarkerEntity.ClientPublicKey = clientKey
+
+	err = writemarkerEntity.Save(ctx)
+	if err != nil {
+		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
+	}
+
+	db := datastore.GetStore().GetTransaction(ctx)
+	allocationUpdates := make(map[string]interface{})
+	allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
+	allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
+	allocationUpdates["is_redeem_required"] = true // TODO: check if this is required
+	allocationUpdates["allocation_root"] = allocationRoot
+	allocationUpdates["file_meta_root"] = fileMetaRoot
+
+	err = db.Model(allocationObj).Updates(allocationUpdates).Error
+	if err != nil {
+		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
+	}
+
+	err = connectionObj.CommitToFileStore(ctx)
+	if err != nil {
+		if !errors.Is(common.ErrFileWasDeleted, err) {
+			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+		}
+	}
+
+	return nil, nil
 }
