@@ -1,6 +1,7 @@
 #!/bin/bash
 
-MIGRATION_ROOT=$HOME/s3migration
+MIGRATION_ROOT=$HOME/s3migration/state
+MIGRATION_LOGS=$HOME/s3migration/logs
 ACCESS_KEY=0chainaccesskey
 SECRET_KEY=0chainsecretkey
 ALLOCATION=0chainallocation
@@ -40,6 +41,7 @@ chmod +x /usr/local/bin/s3mgrt
 /usr/local/bin/s3mgrt --version
 
 mkdir -p ${MIGRATION_ROOT}
+mkdir -p ${MIGRATION_LOGS}
 mkdir -p ${CONFIG_DIR}
 mkdir -p ${CONFIG_DIR_MIGRATION}
 
@@ -175,6 +177,7 @@ services:
     restart: always
     volumes:
       - ${MIGRATION_ROOT}:/migrate
+      - ${MIGRATION_LOGS}:/migratelogs
 
 volumes:
   db:
@@ -198,9 +201,7 @@ if [ $RESUME == "true" ]; then flags=$flags" --resume ${RESUME}"; fi
 if [ $MIGRATE_TO != "0chainmigrateto" ]; then flags=$flags" --migrate-to ${MIGRATE_TO}"; fi
 # if [ $WORKING_DIR != "0chainwd" ]; then flags=$flags" --wd ${WORKING_DIR}"; fi
 
-cd ${MIGRATION_ROOT}
+cd ${MIGRATION_LOGS}
 /usr/local/bin/s3mgrt migrate $flags
 
-# cp s3migration.log ${MIGRATION_ROOT}/s3migration.log
-# cp cmdlog.log ${MIGRATION_ROOT}/cmdlog.log
 
