@@ -171,6 +171,9 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/connection/commit/{allocation}",
 		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnection(CommitHandler))))
 
+	r.HandleFunc("/v1/connection/rollback/{allocation}",
+		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnection(RollbackHandler))))
+
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}",
 		RateLimitByCommmitRL(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
 
@@ -437,6 +440,10 @@ func listHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 func CommitHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
 	return commitHandler(ctx, r)
+}
+
+func RollbackHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
+	return rollbackHandler(ctx, r)
 }
 
 func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {

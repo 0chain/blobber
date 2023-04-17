@@ -32,11 +32,26 @@ func objectTreeHandler(ctx context.Context, r *http.Request) (interface{}, int, 
 	return response, http.StatusOK, nil
 }
 
-/*CommitHandler is the handler to respond to upload requests fro clients*/
+/*CommitHandler is the handler to respond to upload requests from clients*/
 func commitHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.CommitWrite(ctx, r)
+	if err != nil {
+		if errors.Is(common.ErrFileWasDeleted, err) {
+			return response, http.StatusNoContent, nil
+		}
+		return nil, http.StatusBadRequest, err
+	}
+
+	return response, http.StatusOK, nil
+}
+
+// RollbackHandler is the handler to respond to upload requests from clients
+func rollbackHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
+	ctx = setupHandlerContext(ctx, r)
+
+	response, err := storageHandler.Rollback(ctx, r)
 	if err != nil {
 		if errors.Is(common.ErrFileWasDeleted, err) {
 			return response, http.StatusNoContent, nil

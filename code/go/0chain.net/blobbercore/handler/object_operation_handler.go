@@ -1162,7 +1162,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
 
-	// startTime := time.Now()
+	startTime := time.Now()
 	if r.Method != "PUT" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the rolllback URL. Use PUT instead")
 	}
@@ -1182,7 +1182,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		Logger.Error("Allocation root is not set", zap.String("allocation_id", allocationObj.ID))
 		return nil, common.NewError("invalid_parameters", "Allocation root is not set")
 	}
-	// elapsedAllocation := time.Since(startTime)
+	elapsedAllocation := time.Since(startTime)
 
 	allocationID := allocationObj.ID
 	connectionID, ok := common.GetField(r, "connection_id")
@@ -1200,9 +1200,15 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	// elapsedGetLock := time.Since(startTime) - elapsedAllocation
+	elapsedGetLock := time.Since(startTime) - elapsedAllocation
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+
+	elapsedGetConnObj := time.Since(startTime) - elapsedAllocation - elapsedGetLock
+
+	if clientID == "" || clientKey == "" {
+		return nil, common.NewError("invalid_params", "Please provide clientID and clientKey")
+	}
 
 	if err != nil {
 		// might be good to check if blobber already has stored writemarker
@@ -1223,6 +1229,8 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 			err)
 	}
 
+	var result blobberhttp.CommitResult
+
 	// process rollback
 	err = cmd.ProcessRollback(allocationObj, connectionObj)
 	if err != nil {
@@ -1230,28 +1238,41 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, err
 	}
 
-	// var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
-	// latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
-	// 	allocationObj.AllocationRoot)
-	// if err != nil {
-	// 	return nil, common.NewErrorf("latest_write_marker_read_error",
-	// 		"Error reading the latest write marker for allocation: %v", err)
-	// }
+	if len(connectionObj.Changes) == 0 {
+		return &result, nil
+	}
+
+	if allocationObj.BlobberSizeUsed+connectionObj.Size > allocationObj.BlobberSize {
+		return nil, common.NewError("max_allocation_size",
+			"Max size reached for the allocation with this blobber")
+	}
+
+	var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
+	latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
+		allocationObj.AllocationRoot)
+	if err != nil {
+		return nil, common.NewErrorf("latest_write_marker_read_error",
+			"Error reading the latest write marker for allocation: %v", err)
+	}
 
 	writemarkerEntity := &writemarker.WriteMarkerEntity{}
 	writemarkerEntity.WM = writeMarker
 
 	err = writemarkerEntity.VerifyMarker(ctx, allocationObj, connectionObj)
-
 	if err != nil {
 		return nil, common.NewError("write_marker_verification_failed", "Verification of the write marker failed: "+err.Error())
 	}
+
+	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj
 
 	var clientIDForWriteRedeem = writeMarker.ClientID
 
 	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
 		return nil, err
 	}
+
+	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
+		elapsedGetConnObj - elapsedVerifyWM
 
 	// apply the rollback
 	fileIDMeta := make(map[string]string, 0)
@@ -1260,6 +1281,9 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		Logger.Error("Error in applying the changes", zap.Error(err))
 		return nil, err
 	}
+
+	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
+		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
 
 	//get allocation root and ref
 	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash"})
@@ -1271,13 +1295,24 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	fileMetaRoot := rootRef.FileMetaHash
 
 	if allocationRoot != writeMarker.AllocationRoot {
-		return nil, common.NewError("allocation_root_mismatch", "Allocation root in the write marker does not match the calculated allocation root."+
-			" Expected hash: "+allocationRoot)
+		result.AllocationRoot = allocationObj.AllocationRoot
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = &latestWriteMarkerEntity.WM
+		}
+		result.Success = false
+		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
+			" Expected hash: " + allocationRoot
+		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
 
 	if fileMetaRoot != writeMarker.FileMetaRoot {
-		return nil, common.NewError("file_meta_root_mismatch", "File meta root in the write marker does not match the calculated file meta root."+
-			" Expected hash: "+fileMetaRoot+"; Got: "+writeMarker.FileMetaRoot)
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = &latestWriteMarkerEntity.WM
+		}
+		result.Success = false
+		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
+			" Expected hash: " + fileMetaRoot + "; Got: " + writeMarker.FileMetaRoot
+		return &result, common.NewError("file_meta_root_mismatch", result.ErrorMessage)
 	}
 
 	writemarkerEntity.ConnectionID = connectionObj.ID
@@ -1308,5 +1343,26 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		}
 	}
 
-	return nil, nil
+	result.Changes = connectionObj.Changes
+
+	result.AllocationRoot = allocationObj.AllocationRoot
+	result.WriteMarker = &writeMarker
+	result.Success = true
+	result.ErrorMessage = ""
+	commitOperation := connectionObj.Changes[0].Operation
+	input := connectionObj.Changes[0].Input
+
+	Logger.Info("[commit]"+commitOperation,
+		zap.String("alloc_id", allocationID),
+		zap.String("input", input),
+		zap.Duration("get_alloc", elapsedAllocation),
+		zap.Duration("get-lock", elapsedGetLock),
+		zap.Duration("get-conn-obj", elapsedGetConnObj),
+		zap.Duration("verify-wm", elapsedVerifyWM),
+		zap.Duration("write-pre-redeem", elapsedWritePreRedeem),
+		zap.Duration("apply-changes", elapsedApplyChanges),
+		zap.Duration("total", time.Since(startTime)),
+	)
+
+	return &result, nil
 }
