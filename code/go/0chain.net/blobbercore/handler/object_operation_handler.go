@@ -530,7 +530,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	db.Delete(connectionObj)
 
 	//Update the Ref Table
-
 	for _, c := range connectionObj.Changes {
 
 		switch c.Operation {
@@ -1231,8 +1230,6 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, err
 	}
 
-	// TODO: verify the write marker
-
 	// var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
 	// latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
 	// 	allocationObj.AllocationRoot)
@@ -1264,8 +1261,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, err
 	}
 
-	//TODO: do writemarker operations , get allocation root and ref
-
+	//get allocation root and ref
 	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash"})
 	if err != nil {
 		return nil, err
@@ -1296,7 +1292,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	allocationUpdates := make(map[string]interface{})
 	allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
 	allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
-	allocationUpdates["is_redeem_required"] = true // TODO: check if this is required
+	allocationUpdates["is_redeem_required"] = true
 	allocationUpdates["allocation_root"] = allocationRoot
 	allocationUpdates["file_meta_root"] = fileMetaRoot
 

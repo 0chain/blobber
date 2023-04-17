@@ -143,18 +143,24 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 		}
 
 		defer f.Close()
-		if err != nil {
-			return false, err
-		}
+		// if err != nil {
+		// 	return false, err
+		// }
 
-		_, err = r.Seek(0, io.SeekStart)
-		if err != nil {
-			return false, common.NewError("seek_error", err.Error())
-		}
+		// _, err = r.Seek(0, io.SeekStart)
+		// if err != nil {
+		// 	return false, common.NewError("seek_error", err.Error())
+		// }
 
-		_, err = io.Copy(f, r)
+		// _, err = io.Copy(f, r)
+		// if err != nil {
+		// 	return false, err
+		// }
+
+		err = os.Rename(preCommitPath, fPath)
+
 		if err != nil {
-			return false, err
+			return false, common.NewError("file_rename_error", err.Error())
 		}
 
 		return true, nil
@@ -181,14 +187,20 @@ func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputDa
 
 	defer f.Close()
 
-	_, err = r.Seek(0, io.SeekStart)
-	if err != nil {
-		return false, common.NewError("seek_error", err.Error())
-	}
+	// _, err = r.Seek(0, io.SeekStart)
+	// if err != nil {
+	// 	return false, common.NewError("seek_error", err.Error())
+	// }
 
-	_, err = io.Copy(f, r)
+	// _, err = io.Copy(f, r)
+	// if err != nil {
+	// 	return false, common.NewError("write_error", err.Error())
+	// }
+
+	err = os.Rename(preCommitPath, fPath)
+
 	if err != nil {
-		return false, common.NewError("write_error", err.Error())
+		return false, common.NewError("file_rename_error", err.Error())
 	}
 
 	return true, nil
@@ -253,7 +265,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 
 	r, err := os.Open(tempFilePath)
 	if err != nil {
-		// TODO : Check for fileData.IsTemp , if true then return error
+
 		if errors.Is(err, os.ErrNotExist) {
 			f.Close()
 			_ = os.Remove(preCommitPath)
@@ -267,6 +279,10 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 			f.Close()
 			_ = os.Remove(preCommitPath)
 			return true, nil
+		} else if err != nil {
+			f.Close()
+			_ = os.Remove(preCommitPath)
+			return false, err
 		}
 	}
 
@@ -304,8 +320,6 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		if err != nil {
 			return false, err
 		}
-
-		logging.Logger.Info("Thumbnail file committed successfully", zap.String("file", fileData.Name), zap.String("allocID", allocID), zap.String("thumbnailHash", hash))
 
 		return true, nil
 	}
@@ -413,8 +427,9 @@ func (fs *FileStore) GetFilePathSize(allocID, filehash, thumbHash string) (int64
 
 }
 
-func (fs *FileStore) DeleteFile(allocID, contentHash string) error {
-	fileObjectPath, err := fs.GetPathForFile(allocID, contentHash)
+func (fs *FileStore) DeleteFile(allocID, validationRoot string) error {
+
+	fileObjectPath, err := fs.GetPathForFile(allocID, validationRoot)
 	if err != nil {
 		return err
 	}
@@ -423,9 +438,8 @@ func (fs *FileStore) DeleteFile(allocID, contentHash string) error {
 	finfo, err := os.Stat(fileObjectPath)
 	if err != nil {
 
-		//PreCommitPath doesn't exist. Check if file exists in FinalPath
-
-		fileObjectPath = fs.getPreCommitPathForFile(allocID, contentHash)
+		//FinalPath doesn't exist. Check if file exists in PreCommitPath
+		fileObjectPath = fs.getPreCommitPathForFile(allocID, validationRoot)
 		if err != nil {
 			return err
 		}
@@ -439,7 +453,7 @@ func (fs *FileStore) DeleteFile(allocID, contentHash string) error {
 	}
 	size := finfo.Size()
 
-	key := getKey(allocID, contentHash)
+	key := getKey(allocID, validationRoot)
 
 	// isNew is checked if a fresh lock is acquired. If lock is just holded by this process then it will actually delete
 	// the file.
@@ -453,7 +467,7 @@ func (fs *FileStore) DeleteFile(allocID, contentHash string) error {
 
 		return common.NewError("not_new_lock",
 			fmt.Sprintf("lock is acquired by other process to process on content. allocation id: %s content hash: %s",
-				allocID, contentHash))
+				allocID, validationRoot))
 	}
 	l.Lock()
 	defer l.Unlock()
