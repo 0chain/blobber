@@ -16,6 +16,7 @@ do
         ;;
     esac
 done
+pwd
 
 sed -i "s,https://dev.0chain.net/dns,http://127.0.0.1:9091,g" "../config/0chain_blobber.yaml"
 sed -i "s,https://dev.0chain.net/dns,http://127.0.0.1:9091,g" "../config/0chain_validator.yaml"
