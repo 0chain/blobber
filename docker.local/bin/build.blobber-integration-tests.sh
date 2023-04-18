@@ -18,8 +18,8 @@ do
 done
 pwd
 
-sed -i "s,https://dev.0chain.net/dns,http://127.0.0.1:9091,g" "../config/0chain_blobber.yaml"
-sed -i "s,https://dev.0chain.net/dns,http://127.0.0.1:9091,g" "../config/0chain_validator.yaml"
+sed -i "s,https://dev.0chain.net/dns,http://127.0.0.1:9091,g" "./config/0chain_blobber.yaml"
+sed -i "s,https://dev.0chain.net/dns,http://127.0.0.1:9091,g" "./config/0chain_validator.yaml"
 
 docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/IntegrationTestsValidatorDockerfile . -t validator --network host
 docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/IntegrationTestsBlobberDockerfile . -t blobber --network host
