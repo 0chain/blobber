@@ -232,7 +232,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		pendNumBlocks int64
 	)
 
-	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID)
+	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID, alloc.ID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, common.NewErrorf("download_file", "couldn't get read marker from DB: %v", err)
 	}
@@ -262,27 +262,34 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 
 	// reading is allowed
 	var (
-		downloadMode = dr.DownloadMode
-		respData     []byte
+		downloadMode         = dr.DownloadMode
+		fileDownloadResponse *filestore.FileDownloadResponse
+		// respData             []byte
 	)
 	if downloadMode == DownloadContentThumb {
-		var fileData = &filestore.FileInputData{}
-		fileData.Name = fileref.Name
-		fileData.Path = fileref.Path
-		fileData.Hash = fileref.ThumbnailHash
-		fileData.ChunkSize = fileref.ChunkSize
-		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID, fileData, dr.BlockNum, dr.NumBlocks)
+		rbi := &filestore.ReadBlockInput{
+			AllocationID:  alloc.ID,
+			FileSize:      fileref.ThumbnailSize,
+			Hash:          fileref.ThumbnailHash,
+			StartBlockNum: int(dr.BlockNum),
+			NumBlocks:     int(dr.NumBlocks),
+			IsThumbnail:   true,
+		}
+
+		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
 		if err != nil {
 			return nil, common.NewErrorf("download_file", "couldn't get thumbnail block: %v", err)
 		}
 	} else {
-		var fileData = &filestore.FileInputData{}
-		fileData.Name = fileref.Name
-		fileData.Path = fileref.Path
-		fileData.Hash = fileref.ContentHash
-		fileData.ChunkSize = fileref.ChunkSize
-
-		respData, err = filestore.GetFileStore().GetFileBlock(alloc.ID, fileData, dr.BlockNum, dr.NumBlocks)
+		rbi := &filestore.ReadBlockInput{
+			AllocationID:   alloc.ID,
+			FileSize:       fileref.Size,
+			Hash:           fileref.ValidationRoot,
+			StartBlockNum:  int(dr.BlockNum),
+			NumBlocks:      int(dr.NumBlocks),
+			VerifyDownload: dr.VerifyDownload,
+		}
+		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
 		if err != nil {
 			return nil, common.NewErrorf("download_file", "couldn't get file block: %v", err)
 		}
@@ -305,14 +312,14 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		chunkEncoder = &RawChunkEncoder{}
 	}
 
-	chunkData, err := chunkEncoder.Encode(int(fileref.ChunkSize), respData)
-
+	chunkData, err := chunkEncoder.Encode(int(fileref.ChunkSize), fileDownloadResponse.Data)
 	if err != nil {
 		return nil, err
 	}
 
+	fileDownloadResponse.Data = chunkData
 	stats.FileBlockDownloaded(ctx, fileref.ID)
-	return chunkData, nil
+	return fileDownloadResponse, nil
 }
 
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
@@ -367,7 +374,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_params", "Please provide clientID and clientKey")
 	}
 
-	if (allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID) {
+	if allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
@@ -423,7 +430,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM
 
-	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot, writeMarker.Timestamp)
+	fileIDMetaStr := r.FormValue("file_id_meta")
+	fileIDMeta := make(map[string]string, 0)
+	err = json.Unmarshal([]byte(fileIDMetaStr), &fileIDMeta)
+	if err != nil {
+		return nil, common.NewError("unmarshall_error",
+			fmt.Sprintf("Error while unmarshalling file ID meta data: %s", err.Error()))
+	}
+
+	err = connectionObj.ApplyChanges(
+		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -431,20 +447,34 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
 
-	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash"})
+	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash"})
 	if err != nil {
 		return nil, err
 	}
 	allocationRoot := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
+	fileMetaRoot := rootRef.FileMetaHash
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		if latestWriteMarkerEntity != nil {
 			result.WriteMarker = &latestWriteMarkerEntity.WM
 		}
 		result.Success = false
-		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root. Expected hash: " + allocationRoot
+		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
+			" Expected hash: " + allocationRoot
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
+
+	if fileMetaRoot != writeMarker.FileMetaRoot {
+		// result.AllocationRoot = allocationObj.AllocationRoot
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = &latestWriteMarkerEntity.WM
+		}
+		result.Success = false
+		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
+			" Expected hash: " + fileMetaRoot + "; Got: " + writeMarker.FileMetaRoot
+		return &result, common.NewError("file_meta_root_mismatch", result.ErrorMessage)
+	}
+
 	writemarkerEntity.ConnectionID = connectionObj.ID
 	writemarkerEntity.ClientPublicKey = clientKey
 
@@ -458,6 +488,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
 	allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
 	allocationUpdates["allocation_root"] = allocationRoot
+	allocationUpdates["file_meta_root"] = fileMetaRoot
 	allocationUpdates["is_redeem_required"] = true
 
 	err = db.Model(allocationObj).Updates(allocationUpdates).Error
@@ -559,7 +590,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "merkle_root"})
+	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -588,7 +619,8 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	result := &blobberhttp.UploadResult{}
 	result.Filename = new_name
 	result.Hash = objectRef.Hash
-	result.MerkleRoot = objectRef.MerkleRoot
+	result.ValidationRoot = objectRef.ValidationRoot
+	result.FixedMerkleRoot = objectRef.FixedMerkleRoot
 	result.Size = objectRef.Size
 
 	return result, nil
@@ -647,7 +679,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "merkle_root"})
+	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -696,7 +728,8 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	result := &blobberhttp.UploadResult{}
 	result.Filename = objectRef.Name
 	result.Hash = objectRef.Hash
-	result.MerkleRoot = objectRef.MerkleRoot
+	result.ValidationRoot = objectRef.ValidationRoot
+	result.FixedMerkleRoot = objectRef.FixedMerkleRoot
 	result.Size = objectRef.Size
 	return result, nil
 }
@@ -756,7 +789,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	defer mutex.Unlock()
 
 	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(
-		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "merkle_root"})
+		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -809,7 +842,8 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	result := &blobberhttp.UploadResult{}
 	result.Filename = objectRef.Name
 	result.Hash = objectRef.Hash
-	result.MerkleRoot = objectRef.MerkleRoot
+	result.ValidationRoot = objectRef.ValidationRoot
+	result.FixedMerkleRoot = objectRef.FixedMerkleRoot
 	result.Size = objectRef.Size
 	return result, nil
 }
@@ -820,7 +854,9 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
-	fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, connectionObj.AllocationID, path, []string{"path", "name", "size", "hash", "merkle_root"})
+	fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, connectionObj.AllocationID, path,
+		[]string{"path", "name", "size", "hash", "validation_root", "fixed_merkle_root"})
+
 	if err != nil {
 		Logger.Error("invalid_file", zap.Error(err))
 	}
@@ -842,7 +878,8 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		result := &blobberhttp.UploadResult{}
 		result.Filename = fileRef.Name
 		result.Hash = fileRef.Hash
-		result.MerkleRoot = fileRef.MerkleRoot
+		result.ValidationRoot = fileRef.ValidationRoot
+		result.FixedMerkleRoot = fileRef.FixedMerkleRoot
 		result.Size = fileRef.Size
 
 		return result, nil

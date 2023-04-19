@@ -45,6 +45,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 		allocChange         *AllocationChange
 		srcPath             string
 		destination         string
+		fileIDMeta          map[string]string
 		allocationID        string
 		maxDirFilesPerAlloc int
 		expectedMessage     string
@@ -52,10 +53,14 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 		setupDbMock         func()
 	}{
 		{
-			name:                "Copy file success",
-			allocChange:         &AllocationChange{Operation: constants.FileOperationInsert},
-			srcPath:             "/orig.txt",
-			destination:         "/",
+			name:        "Copy file success",
+			allocChange: &AllocationChange{Operation: constants.FileOperationInsert},
+			srcPath:     "/orig.txt",
+			destination: "/",
+			fileIDMeta: map[string]string{
+				"/":         "fileID#1",
+				"/orig.txt": "fileID#2",
+			},
 			allocationID:        alloc.ID,
 			maxDirFilesPerAlloc: 5,
 			expectingError:      false,
@@ -66,81 +71,87 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 				mocket.Catcher.NewMock().WithQuery(query).WithReply(
 					[]map[string]interface{}{
 						{
-							"id":             1,
-							"level":          0,
-							"lookup_hash":    "lookup_hash_root",
-							"path":           "/",
-							"name":           "/",
-							"allocation_id":  alloc.ID,
-							"parent_path":    "",
-							"content_hash":   "",
-							"thumbnail_size": 00,
-							"thumbnail_hash": "",
-							"type":           reference.DIRECTORY,
-							"created_at":     common.Now() - 3600,
-							"updated_at":     common.Now() - 1800,
+							"id":              1,
+							"level":           0,
+							"lookup_hash":     "lookup_hash_root",
+							"path":            "/",
+							"name":            "/",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "",
+							"validation_root": "",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.DIRECTORY,
+							"created_at":      common.Now() - 3600,
+							"updated_at":      common.Now() - 1800,
 						},
 						{
-							"id":             2,
-							"level":          1,
-							"lookup_hash":    "lookup_hash",
-							"path":           "/orig.txt",
-							"name":           "orig.txt",
-							"allocation_id":  alloc.ID,
-							"parent_path":    "/",
-							"content_hash":   "content_hash",
-							"thumbnail_size": 00,
-							"thumbnail_hash": "",
-							"type":           reference.FILE,
-							"created_at":     common.Now() - 3600,
-							"updated_at":     common.Now() - 1800,
+							"id":              2,
+							"level":           1,
+							"lookup_hash":     "lookup_hash",
+							"path":            "/orig.txt",
+							"name":            "orig.txt",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "/",
+							"validation_root": "validation_root",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.FILE,
+							"created_at":      common.Now() - 3600,
+							"updated_at":      common.Now() - 1800,
 						},
 					},
 				)
 
-				q2 := `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","path_hash","content_hash","merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","write_marker","level","created_at","updated_at" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR (parent_path = $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				q2 := `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","file_meta_hash","path_hash","validation_root","fixed_merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","allocation_root","level","created_at","updated_at" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR (parent_path = $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().WithQuery(q2).WithReply(
 					[]map[string]interface{}{
 						{
-							"id":             1,
-							"level":          1,
-							"lookup_hash":    "lookup_hash_root",
-							"path":           "/",
-							"name":           "/",
-							"allocation_id":  alloc.ID,
-							"parent_path":    "",
-							"content_hash":   "",
-							"thumbnail_size": 00,
-							"thumbnail_hash": "",
-							"type":           reference.DIRECTORY,
-							"created_at":     common.Now() - 3600,
-							"updated_at":     common.Now() - 1800,
+							"id":              1,
+							"level":           1,
+							"lookup_hash":     "lookup_hash_root",
+							"path":            "/",
+							"name":            "/",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "",
+							"validation_root": "",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.DIRECTORY,
+							"created_at":      common.Now() - 3600,
+							"updated_at":      common.Now() - 1800,
 						},
 						{
-							"id":             2,
-							"level":          2,
-							"lookup_hash":    "lookup_hash",
-							"path":           "/orig.txt",
-							"name":           "orig.txt",
-							"allocation_id":  alloc.ID,
-							"parent_path":    "/",
-							"content_hash":   "content_hash",
-							"thumbnail_size": 00,
-							"thumbnail_hash": "",
-							"type":           reference.FILE,
-							"created_at":     common.Now() - 3600,
-							"updated_at":     common.Now() - 1800,
+							"id":              2,
+							"level":           2,
+							"lookup_hash":     "lookup_hash",
+							"path":            "/orig.txt",
+							"name":            "orig.txt",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "/",
+							"validation_root": "validation_root",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.FILE,
+							"created_at":      common.Now() - 3600,
+							"updated_at":      common.Now() - 1800,
 						},
 					},
 				)
+
 			},
 		},
 		{
-			name:                "Copy file fails when max dirs & files reached",
-			allocChange:         &AllocationChange{},
-			srcPath:             "/orig.txt",
-			destination:         "/target",
-			allocationID:        alloc.ID,
+			name:         "Copy file fails when max dirs & files reached",
+			allocChange:  &AllocationChange{},
+			srcPath:      "/orig.txt",
+			destination:  "/target",
+			allocationID: alloc.ID,
+			fileIDMeta: map[string]string{
+				"/":                "fileID#1",
+				"/target":          "fileID#2",
+				"/target/orig.txt": "fileID#3",
+			},
 			maxDirFilesPerAlloc: 5,
 			expectedMessage:     "max_alloc_dir_files_reached: maximum files and directories already reached",
 			expectingError:      true,
@@ -180,7 +191,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 			}
 
 			err := func() error {
-				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1)
+				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1, tc.fileIDMeta)
 				if err != nil {
 					return err
 				}

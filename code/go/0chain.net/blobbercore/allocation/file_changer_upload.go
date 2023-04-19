@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -22,7 +23,7 @@ type UploadFileChanger struct {
 
 // ApplyChange update references, and create a new FileRef
 func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp) (*reference.Ref, error) {
+	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 
 	totalRefs, err := reference.CountRefs(nf.AllocationID)
 	if err != nil {
@@ -65,40 +66,56 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 			newRef := reference.NewDirectoryRef()
 			newRef.AllocationID = dirRef.AllocationID
 			newRef.Path = "/" + strings.Join(fields[:i+1], "/")
+			fileID, ok := fileIDMeta[newRef.Path]
+			if !ok || fileID == "" {
+				return nil, common.NewError("invalid_parameter",
+					fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
+			}
+			newRef.FileID = fileID
 			newRef.ParentPath = "/" + strings.Join(fields[:i], "/")
 			newRef.Name = fields[i]
 			newRef.CreatedAt = ts
 			newRef.UpdatedAt = ts
 			newRef.HashToBeComputed = true
+
 			dirRef.AddChild(newRef)
 			dirRef = newRef
 		}
 	}
 
 	newFile := &reference.Ref{
-		ActualFileHash:      nf.ActualHash,
-		ActualFileSize:      nf.ActualSize,
-		AllocationID:        dirRef.AllocationID,
-		ContentHash:         nf.Hash,
-		CustomMeta:          nf.CustomMeta,
-		MerkleRoot:          nf.MerkleRoot,
-		Name:                nf.Filename,
-		Path:                nf.Path,
-		ParentPath:          dirRef.Path,
-		Type:                reference.FILE,
-		Size:                nf.Size,
-		MimeType:            nf.MimeType,
-		WriteMarker:         allocationRoot,
-		ThumbnailHash:       nf.ThumbnailHash,
-		ThumbnailSize:       nf.ThumbnailSize,
-		ActualThumbnailHash: nf.ActualThumbnailHash,
-		ActualThumbnailSize: nf.ActualThumbnailSize,
-		EncryptedKey:        nf.EncryptedKey,
-		ChunkSize:           nf.ChunkSize,
-		CreatedAt:           ts,
-		UpdatedAt:           ts,
-		HashToBeComputed:    true,
+		ActualFileHash:          nf.ActualHash,
+		ActualFileHashSignature: nf.ActualFileHashSignature,
+		ActualFileSize:          nf.ActualSize,
+		AllocationID:            dirRef.AllocationID,
+		ValidationRoot:          nf.ValidationRoot,
+		ValidationRootSignature: nf.ValidationRootSignature,
+		CustomMeta:              nf.CustomMeta,
+		FixedMerkleRoot:         nf.FixedMerkleRoot,
+		Name:                    nf.Filename,
+		Path:                    nf.Path,
+		ParentPath:              dirRef.Path,
+		Type:                    reference.FILE,
+		Size:                    nf.Size,
+		MimeType:                nf.MimeType,
+		AllocationRoot:          allocationRoot,
+		ThumbnailHash:           nf.ThumbnailHash,
+		ThumbnailSize:           nf.ThumbnailSize,
+		ActualThumbnailHash:     nf.ActualThumbnailHash,
+		ActualThumbnailSize:     nf.ActualThumbnailSize,
+		EncryptedKey:            nf.EncryptedKey,
+		ChunkSize:               nf.ChunkSize,
+		CreatedAt:               ts,
+		UpdatedAt:               ts,
+		HashToBeComputed:        true,
 	}
+
+	fileID, ok := fileIDMeta[newFile.Path]
+	if !ok || fileID == "" {
+		return nil, common.NewError("invalid_parameter",
+			fmt.Sprintf("file path %s has no entry in fileID meta", newFile.Path))
+	}
+	newFile.FileID = fileID
 
 	dirRef.AddChild(newFile)
 	if _, err := rootRef.CalculateHash(ctx, true); err != nil {

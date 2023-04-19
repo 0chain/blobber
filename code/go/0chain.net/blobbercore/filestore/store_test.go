@@ -1,42 +1,46 @@
 package filestore
 
 import (
-	"crypto/sha256"
+	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
-	"math/rand"
+	"math/big"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/util"
-	"github.com/0chain/gosdk/zboxcore/sdk"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
-const (
-	KB = 1024
-)
+func init() {
+	logging.Logger = zap.NewNop()
+}
 
 var hexCharacters = []byte("abcdef0123456789")
 
-func randString(l int) string {
-	var s string
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-	for i := 0; i < l; i++ {
-		c := hexCharacters[r.Intn(len(hexCharacters))]
-		s += string(c)
+func randString(n int) string {
+	ret := make([]byte, n)
+	for i := 0; i < n; i++ {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(hexCharacters))))
+		if err != nil {
+			return ""
+		}
+		ret[i] = hexCharacters[num.Int64()]
 	}
-	return s
+	return string(ret)
 }
+
 func TestStoreState(t *testing.T) {
 	fs := FileStore{
 		mAllocs: make(map[string]*allocation),
@@ -238,22 +242,23 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 		t.Run(test.testName, func(t *testing.T) {
 			fs.setAllocation(test.allocID, test.alloc)
 			fPath := filepath.Join(fs.mp, randString(10)+".txt")
-			contentHash, commitContentHash, merkleRoot, err := generateRandomData(fPath)
+			size := 640 * KB
+			validationRoot, fixedMerkleRoot, err := generateRandomData(fPath, int64(size))
 			require.Nil(t, err)
 
 			fid := &FileInputData{
-				Name:       test.fileName,
-				Path:       test.remotePath,
-				Hash:       contentHash,
-				MerkleRoot: merkleRoot,
-				ChunkSize:  64 * KB,
+				Name:            test.fileName,
+				Path:            test.remotePath,
+				ValidationRoot:  validationRoot,
+				FixedMerkleRoot: fixedMerkleRoot,
+				ChunkSize:       64 * KB,
 			}
 
 			f, err := os.Open(fPath)
 			require.Nil(t, err)
 			defer f.Close()
 
-			fod, err := fs.WriteFile(test.allocID, test.connID, fid, f)
+			_, err = fs.WriteFile(test.allocID, test.connID, fid, f)
 			require.Nil(t, err)
 
 			pathHash := encryption.Hash(test.remotePath)
@@ -265,18 +270,14 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			require.Nil(t, err)
 
 			require.Equal(t, finfo.Size(), tF.Size())
-			require.Equal(t, fid.Hash, fod.ContentHash)
 
 			if !test.shouldCommit {
 				return
 			}
 
 			if test.differentHash {
-				fid.Hash = randString(64)
-			} else {
-				fid.Hash = commitContentHash
+				fid.ValidationRoot = randString(64)
 			}
-
 			success, err := fs.CommitWrite(test.allocID, test.connID, fid)
 			if test.expectedErrorOnCommit {
 				require.NotNil(t, err)
@@ -301,10 +302,11 @@ func TestGetFileBlock(t *testing.T) {
 	}
 	fs.setAllocation(allocID, alloc)
 	fPath := filepath.Join(fs.mp, randString(10)+".txt")
-	_, fileHash, _, err := generateRandomData(fPath)
+	size := 640 * KB
+	validationRoot, _, err := generateRandomDataAndStoreNodes(fPath, int64(size))
 	require.Nil(t, err)
 
-	permanentFPath, err := fs.GetPathForFile(allocID, fileHash)
+	permanentFPath, err := fs.GetPathForFile(allocID, validationRoot)
 	require.Nil(t, err)
 
 	err = os.MkdirAll(filepath.Dir(permanentFPath), 0777)
@@ -318,53 +320,56 @@ func TestGetFileBlock(t *testing.T) {
 		blockNum  int64
 		numBlocks int64
 
-		hash             string
+		validationRoot   string
 		expectedError    bool
 		errorContains    string
-		expectedDataSize int
+		expectedDataSize int64
 	}
 
 	tests := []input{
 		{
-			testName:      "start block less than 1",
-			blockNum:      0,
-			numBlocks:     10,
-			hash:          fileHash,
-			expectedError: true,
-			errorContains: "invalid_block_number",
+			testName:       "start block less than 0",
+			blockNum:       -1,
+			numBlocks:      10,
+			validationRoot: validationRoot,
+			expectedError:  true,
+			errorContains:  "invalid_block_number",
 		},
 		{
-			testName:      "start block greater than max block num",
-			blockNum:      20,
-			numBlocks:     10,
-			hash:          fileHash,
-			expectedError: true,
-			errorContains: "invalid_block_number",
+			testName:       "start block greater than max block num",
+			blockNum:       20,
+			numBlocks:      10,
+			validationRoot: validationRoot,
+			expectedError:  true,
+			errorContains:  "invalid_block_number",
 		}, {
-			testName:      "Non-existing file",
-			blockNum:      1,
-			numBlocks:     10,
-			hash:          randString(64),
-			expectedError: true,
-			errorContains: "no such file or directory",
+			testName:       "Non-existing file",
+			blockNum:       1,
+			numBlocks:      10,
+			validationRoot: randString(64),
+			expectedError:  true,
+			errorContains:  "no such file or directory",
 		},
 		{
 			testName:         "successful response",
-			blockNum:         1,
+			blockNum:         0,
 			numBlocks:        10,
-			expectedDataSize: 10 * 64 * KB,
-			hash:             fileHash,
+			expectedDataSize: int64(size),
+			validationRoot:   validationRoot,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-			fid := &FileInputData{
-				Hash:      test.hash,
-				ChunkSize: 64 * KB,
+			in := &ReadBlockInput{
+				AllocationID:  allocID,
+				StartBlockNum: int(test.blockNum),
+				NumBlocks:     int(test.numBlocks),
+				Hash:          test.validationRoot,
+				FileSize:      int64(test.expectedDataSize),
 			}
 
-			data, err := fs.GetFileBlock(allocID, fid, test.blockNum, test.numBlocks)
+			fileResponse, err := fs.GetFileBlock(in)
 			if test.expectedError {
 				require.NotNil(t, err)
 				require.Contains(t, err.Error(), test.errorContains, "Actual error: ", err.Error())
@@ -372,7 +377,7 @@ func TestGetFileBlock(t *testing.T) {
 			}
 
 			require.Nil(t, err)
-			require.Equal(t, len(data), test.expectedDataSize)
+			require.EqualValues(t, test.expectedDataSize, len(fileResponse.Data))
 
 		})
 	}
@@ -384,17 +389,20 @@ func TestGetMerkleTree(t *testing.T) {
 	defer cleanUp()
 
 	orgFilePath := filepath.Join(fs.mp, randString(5)+".txt")
-	_, commitContentHash, _, err := generateRandomData(orgFilePath)
+	size := 640 * KB
+	validationRoot, fixedMerkleRoot, err := generateRandomDataAndStoreNodes(orgFilePath, int64(size))
 	require.Nil(t, err)
 
 	f, err := os.Open(orgFilePath)
 	require.Nil(t, err)
 
-	mr, err := getMerkleRoot(f)
+	finfo, _ := f.Stat()
+	fmt.Println("Size: ", finfo.Size())
+	mr, err := getFixedMerkleRoot(f, int64(size))
 	require.Nil(t, err)
 	t.Logf("Merkle root: %s", mr)
 	allocID := randString(64)
-	fPath, err := fs.GetPathForFile(allocID, commitContentHash)
+	fPath, err := fs.GetPathForFile(allocID, validationRoot)
 	require.Nil(t, err)
 
 	err = os.MkdirAll(filepath.Dir(fPath), 0777)
@@ -436,11 +444,14 @@ func TestGetMerkleTree(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-			fd := &FileInputData{
-				Hash:      commitContentHash,
-				ChunkSize: 64 * KB,
+			cri := &ChallengeReadBlockInput{
+				BlockOffset:  test.blockOffset,
+				AllocationID: allocID,
+				Hash:         validationRoot,
+				FileSize:     int64(size),
 			}
-			rb, fixedMtI, err := fs.GetBlocksMerkleTreeForChallenge(allocID, fd, test.blockOffset)
+
+			challengeProof, err := fs.GetBlocksMerkleTreeForChallenge(cri)
 
 			if test.expectedError {
 				require.NotNil(t, err)
@@ -450,9 +461,15 @@ func TestGetMerkleTree(t *testing.T) {
 
 			require.Nil(t, err)
 
-			require.Equal(t, mr, fixedMtI.GetRoot())
+			rootHash, _ := hex.DecodeString(fixedMerkleRoot)
+			fmp := &util.FixedMerklePath{
+				LeafHash: encryption.RawHash(challengeProof.Data),
+				RootHash: rootHash,
+				Nodes:    challengeProof.Proof,
+				LeafInd:  test.blockOffset,
+			}
 
-			_ = rb // TODO work. Need to add test if return bytes can satisfy merkle tree with the given merkle  tree
+			require.True(t, fmp.VerifyMerklePath())
 		})
 	}
 }
@@ -481,62 +498,95 @@ func setupStorage(t *testing.T) (*FileStore, func()) {
 	return &fs, f
 }
 
-func generateRandomData(fPath string) (string, string, string, error) {
-	p := make([]byte, 64*KB*10)
+func generateRandomData(fPath string, size int64) (string, string, error) {
+	p := make([]byte, size)
 	_, err := rand.Read(p)
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
 	f, err := os.Create(fPath)
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
 	defer f.Close()
 
-	cHW := sha256.New()
-	mW := io.MultiWriter(f, cHW)
-
-	_, err = mW.Write(p)
+	cH := GetNewCommitHasher(size)
+	_, err = cH.Write(p)
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
 
-	contentHash := hex.EncodeToString(cHW.Sum(nil))
-
-	hasher := sdk.CreateHasher(64 * KB)
-	var count int
-	for start := 0; start < len(p); start = start + 64*KB {
-		h := sha256.New()
-		data := p[start : start+64*KB]
-		_, err := h.Write(data)
-		if err != nil {
-			return "", "", "", err
-		}
-
-		err = hasher.WriteHashToContent(hex.EncodeToString(h.Sum(nil)), count)
-		if err != nil {
-			return "", "", "", err
-		}
-		err = hasher.WriteToChallenge(data, count)
-		if err != nil {
-			return "", "", "", err
-		}
-		count++
-	}
-	commitContentHash, err := hasher.GetContentHash()
+	err = cH.Finalize()
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
 
-	merkleRoot, err := hasher.GetChallengeHash()
+	fixedMerkleRoot := cH.fmt.GetMerkleRoot()
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
-	return contentHash, commitContentHash, merkleRoot, nil
+
+	validationMerkleRoot := cH.vt.GetValidationRoot()
+	if err != nil {
+		return "", "", err
+	}
+
+	_, err = f.Write(p)
+	if err != nil {
+		return "", "", err
+	}
+
+	return hex.EncodeToString(validationMerkleRoot), fixedMerkleRoot, nil
 }
 
-func getMerkleRoot(r io.Reader) (mr string, err error) {
-	fixedMT := util.NewFixedMerkleTree(64 * KB)
+func generateRandomDataAndStoreNodes(fPath string, size int64) (string, string, error) {
+	p := make([]byte, size)
+	_, err := rand.Read(p)
+	if err != nil {
+		return "", "", err
+	}
+	f, err := os.Create(fPath)
+	if err != nil {
+		return "", "", err
+	}
+	defer f.Close()
+
+	cH := GetNewCommitHasher(size)
+	_, err = cH.Write(p)
+	if err != nil {
+		return "", "", err
+	}
+
+	err = cH.Finalize()
+	if err != nil {
+		return "", "", err
+	}
+
+	fixedMerkleRoot, err := cH.fmt.CalculateRootAndStoreNodes(f)
+	if err != nil {
+		return "", "", err
+	}
+
+	validationMerkleRoot, err := cH.vt.CalculateRootAndStoreNodes(f)
+	if err != nil {
+		return "", "", err
+	}
+
+	_, err = f.Write(p)
+	if err != nil {
+		return "", "", err
+	}
+
+	return hex.EncodeToString(validationMerkleRoot), hex.EncodeToString(fixedMerkleRoot), nil
+}
+
+func getFixedMerkleRoot(r io.ReadSeeker, dataSize int64) (mr string, err error) {
+	_, err = r.Seek(-dataSize, io.SeekEnd)
+	if err != nil {
+		return
+	}
+
+	fixedMT := util.NewFixedMerkleTree()
 	var count int
 mainloop:
 	for {
@@ -546,7 +596,6 @@ mainloop:
 		n, err = r.Read(b)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				err = nil
 				if n == 0 {
 					break
 				}
@@ -555,10 +604,11 @@ mainloop:
 			return
 		}
 		if n != 64*KB {
+			fmt.Println("n is ", n)
 			return "", errors.New("invalid byte length. Must be 64 KB")
 		}
 
-		err = fixedMT.Write(b, count)
+		_, err = fixedMT.Write(b)
 		if err != nil {
 			return
 		}
@@ -570,7 +620,7 @@ mainloop:
 			return "", errors.New("invalid byte length. Must be 64 KB")
 		}
 
-		err = fixedMT.Write(b, count)
+		_, err = fixedMT.Write(b)
 		if err != nil {
 			return
 		}
@@ -578,6 +628,11 @@ mainloop:
 		break mainloop
 	}
 
-	mr = fixedMT.GetMerkleTree().GetRoot()
+	err = fixedMT.Finalize()
+	if err != nil {
+		return
+	}
+
+	mr = fixedMT.GetMerkleRoot()
 	return
 }

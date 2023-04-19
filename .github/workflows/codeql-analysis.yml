@@ -12,6 +12,7 @@
 name: "CodeQL"
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '43 17 * * 1'
 
@@ -38,9 +39,9 @@ jobs:
 
     - name: Setup go 1.18
       if: success()
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
-        go-version: 1.18
+        go-version: ^1.19
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL

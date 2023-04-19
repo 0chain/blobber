@@ -34,10 +34,10 @@ jobs:
           echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
           echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
           
-      - name: Setup go 1.18
-        uses: actions/setup-go@v2
+      - name: Setup go 
+        uses: actions/setup-go@v3
         with:
-          go-version: '1.18' # The Go version to download (if necessary) and use.
+          go-version: ^1.19 # The Go version to download (if necessary) and use.
 
       - name: Clone blobber
         uses: actions/checkout@v1
@@ -45,6 +45,7 @@ jobs:
       - name: Set up Docker Buildx
         run: |
           sudo apt-get update -y
+          sudo apt-get install wget
           sudo apt-get install ca-certificates curl gnupg lsb-release -y
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
@@ -64,6 +65,7 @@ jobs:
         run: |
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
           export DOCKER_IMAGE_BASE="${BLOBBER_REGISTRY}:base"
+          export DOCKER_IMAGE_SWAGGER="${BLOBBER_REGISTRY}:swagger_test"
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
           docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
@@ -84,10 +86,10 @@ jobs:
           echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
           echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
 
-      - name: Setup go 1.18
-        uses: actions/setup-go@v2
+      - name: Setup go
+        uses: actions/setup-go@v3
         with:
-          go-version: '1.18' # The Go version to download (if necessary) and use.
+          go-version: ^1.19 # The Go version to download (if necessary) and use.
 
       - name: Clone blobber
         uses: actions/checkout@v1
@@ -95,6 +97,7 @@ jobs:
       - name: Set up Docker Buildx
         run: |
           sudo apt-get update -y
+          sudo apt-get install wget
           sudo apt-get install ca-certificates curl gnupg lsb-release -y
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
@@ -174,6 +177,7 @@ jobs:
           zbox_cli_branch: staging
           zwallet_cli_branch: staging
           custom_go_sdk_version: staging
+          SUBGRAPH_API_URL: ${{ secrets.SUBGRAPH_API_URL }}
           TENDERLY_FORK_ID: ${{ secrets.TENDERLY_FORK_ID }}
 
       - name: "Run System tests"

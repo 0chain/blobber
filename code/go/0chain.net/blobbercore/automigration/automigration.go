@@ -88,6 +88,9 @@ func createDB(db *gorm.DB) (err error) {
 		if rs := db.Exec(stmt); rs.Error != nil {
 			return rs.Error
 		}
+		if rs := db.Exec("CREATE EXTENSION IF NOT EXISTS pg_trgm;"); rs.Error != nil {
+			return rs.Error
+		}
 	}
 	return
 }

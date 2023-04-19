@@ -15,22 +15,20 @@ import (
 type WriteMarker struct {
 	AllocationRoot         string           `gorm:"column:allocation_root;size:64;primaryKey" json:"allocation_root"`
 	PreviousAllocationRoot string           `gorm:"column:prev_allocation_root;size:64" json:"prev_allocation_root"`
+	FileMetaRoot           string           `gorm:"column:file_meta_root;size:64" json:"file_meta_root"`
 	AllocationID           string           `gorm:"column:allocation_id;size:64;index:idx_seq,unique,priority:1" json:"allocation_id"`
 	Size                   int64            `gorm:"column:size" json:"size"`
 	BlobberID              string           `gorm:"column:blobber_id;size:64" json:"blobber_id"`
 	Timestamp              common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
 	ClientID               string           `gorm:"column:client_id;size:64" json:"client_id"`
 	Signature              string           `gorm:"column:signature;size:64" json:"signature"`
-
-	LookupHash  string `gorm:"column:lookup_hash;size:64;" json:"lookup_hash"`
-	Name        string `gorm:"column:name;size:100;" json:"name"`
-	ContentHash string `gorm:"column:content_hash;size:64;" json:"content_hash"`
 }
 
 func (wm *WriteMarker) GetHashData() string {
-	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v", wm.AllocationRoot,
-		wm.PreviousAllocationRoot, wm.AllocationID, wm.BlobberID, wm.ClientID,
-		wm.Size, wm.Timestamp)
+	hashData := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%d:%d",
+		wm.AllocationRoot, wm.PreviousAllocationRoot,
+		wm.FileMetaRoot, wm.AllocationID, wm.BlobberID,
+		wm.ClientID, wm.Size, wm.Timestamp)
 	return hashData
 }
 
@@ -140,28 +138,32 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID, startAllocationRo
 	db := datastore.GetStore().GetTransaction(ctx)
 	var seqRange []int64
 	err := db.Table((WriteMarkerEntity{}).TableName()).
-		Where(WriteMarker{AllocationRoot: startAllocationRoot, AllocationID: allocationID}).
-		Or(WriteMarker{AllocationRoot: endAllocationRoot, AllocationID: allocationID}).
-		Order("sequence").
-		Pluck("sequence", &seqRange).Error
+		Where("allocation_id=?", allocationID).
+		Where("allocation_root=? OR allocation_root=?", startAllocationRoot, endAllocationRoot).
+		Order("sequence").Pluck("sequence", &seqRange).Error
 	if err != nil {
 		return nil, err
 	}
+	if len(seqRange) == 0 || len(seqRange) > 2 {
+		return nil, common.NewError("write_marker_not_found", "Could not find the right write markers in the range")
+	}
+
 	if len(seqRange) == 1 {
 		seqRange = append(seqRange, seqRange[0])
 	}
-	if len(seqRange) == 2 {
-		retMarkers := make([]*WriteMarkerEntity, 0)
-		err = db.Where("allocation_id=? and  sequence BETWEEN ? AND ?", allocationID, seqRange[0], seqRange[1]).Order("sequence").Find(&retMarkers).Error
-		if err != nil {
-			return nil, err
-		}
-		if len(retMarkers) == 0 {
-			return nil, common.NewError("write_marker_not_found", "Could not find the write markers in the range")
-		}
-		return retMarkers, nil
+
+	retMarkers := make([]*WriteMarkerEntity, 0)
+	err = db.Where("allocation_id=? AND sequence BETWEEN ? AND ?",
+		allocationID, seqRange[0], seqRange[1]).Order("sequence").
+		Find(&retMarkers).Error
+	if err != nil {
+		return nil, err
 	}
-	return nil, common.NewError("write_marker_not_found", "Could not find the right write markers in the range")
+
+	if len(retMarkers) == 0 {
+		return nil, common.NewError("write_marker_not_found", "Could not find the write markers in the range")
+	}
+	return retMarkers, nil
 }
 
 func (wm *WriteMarkerEntity) Save(ctx context.Context) error {

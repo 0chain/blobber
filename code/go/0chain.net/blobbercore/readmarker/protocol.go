@@ -2,10 +2,13 @@ package readmarker
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	zLogger "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"gorm.io/gorm"
 
@@ -69,4 +72,29 @@ func (rme *ReadMarkerEntity) RedeemReadMarker(ctx context.Context) (err error) {
 	}
 
 	return
+}
+
+func GetLatestReadMarkerEntityFromChain(clientID, allocID string) (*ReadMarker, error) {
+	params := map[string]string{
+		"blobber":    node.Self.ID,
+		"client":     clientID,
+		"allocation": allocID,
+	}
+
+	latestRMBytes, err := transaction.MakeSCRestAPICall(
+		transaction.STORAGE_CONTRACT_ADDRESS, "/latestreadmarker", params,
+		chain.GetServerChain())
+
+	if err != nil {
+		return nil, err
+	}
+	latestRM := &ReadMarker{}
+	err = json.Unmarshal(latestRMBytes, latestRM)
+	if err != nil {
+		return nil, err
+	}
+	if latestRM.ClientID == "" { // RMs are not yet redeemed and thus it is empty
+		return nil, nil
+	}
+	return latestRM, nil
 }

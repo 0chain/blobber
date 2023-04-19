@@ -55,11 +55,8 @@ jobs:
       blobber_branch:  ${{ github.ref_name }}
       validator_branch:  ${{ github.ref_name }}
       zbox_branch: ${{ github.event.inputs.zbox_branch }}
-      zblock_branch: ${{ github.event.inputs.zblock_branch }}
       zdns_branch: ${{ github.event.inputs.zdns_branch }}
-      explorer_branch: master
       test_file_filter: ${{ github.event.inputs.test_file_filter }}
-      zsearch_branch: staging
       skip_tests: ${{ github.event.inputs.skip_tests }}
     secrets:
       SVC_ACCOUNT_SECRET: ${{ secrets.SVC_ACCOUNT_SECRET }}
@@ -72,5 +69,6 @@ jobs:
       DEV7KC: ${{ secrets.DEV7KC }}
       DEV8KC: ${{ secrets.DEV8KC }}
       DEV9KC: ${{ secrets.DEV9KC }}
+      SUBGRAPH_API_URL: ${{ secrets.SUBGRAPH_API_URL }}
       TENDERLY_FORK_ID: ${{ secrets.TENDERLY_FORK_ID }}
       DEVOPS_CHANNEL_WEBHOOK_URL: ${{ secrets.DEVOPS_CHANNEL_WEBHOOK_URL }}
