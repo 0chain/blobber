@@ -16,17 +16,13 @@ do
         ;;
     esac
 done
-pwd
-
-sed -i "s,https://dev.0chain.net/dns,http://127.0.0.1:9091,g" "./config/0chain_blobber.yaml"
-sed -i "s,https://dev.0chain.net/dns,http://127.0.0.1:9091,g" "./config/0chain_validator.yaml"
 
 docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/IntegrationTestsValidatorDockerfile . -t validator --network host
 docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/IntegrationTestsBlobberDockerfile . -t blobber --network host
 
 for i in $(seq 1 6);
 do
-  BLOBBER=$i docker-compose -p blobber$i -f docker.local/docker-compose.yml build --force-rm
+  BLOBBER=$i docker-compose -p blobber$i -f docker.local/conductor-b0docker-compose.yml build --force-rm
 done
 
 docker.local/bin/sync_clock.sh
