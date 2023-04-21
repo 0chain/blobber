@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -87,6 +88,18 @@ func (change *AllocationChange) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	return db.Save(change).Error
+}
+
+func (change *AllocationChange) GetAffectedFilePath() (string, error) {
+	inputMap := make(map[string]interface{})
+	err := json.Unmarshal([]byte(change.Input), &inputMap)
+	if err != nil {
+		return "", err
+	}
+	if path, ok := inputMap["filepath"].(string); ok {
+		return path, nil
+	}
+	return "", nil
 }
 
 // GetAllocationChanges reload connection's changes in allocation from postgres.

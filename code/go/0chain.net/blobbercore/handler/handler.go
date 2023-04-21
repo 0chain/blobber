@@ -266,9 +266,20 @@ func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF
 	}
 }
 
+var connectionObjLocker = common.GetNewLocker()
+
 func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 	return func(ctx context.Context, r *http.Request) (resp interface{}, err error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
+		connectionID := r.FormValue("connection_id")
+		// This lock should be locked used in handler otherwise it may panic.
+		lock, _ := connectionObjLocker.GetLock(connectionID)
+		defer func() {
+			Logger.Info(fmt.Sprintf("Unlocking lock for connection: %s", connectionID))
+			lock.TryUnlock()
+			Logger.Info(fmt.Sprintf("Unlocked lock for connection: %s", connectionID))
+
+		}()
 		resp, err = handler(ctx, r)
 
 		defer func() {
