@@ -16,6 +16,7 @@ import (
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -239,7 +240,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 	err := db.Transaction(func(tx *gorm.DB) error {
 
-		err := tx.Exec("SELECT id,validation_root,prev_validation_root,thumbnail_hash,prev_thumbnail_hash FROM reference_objects WHERE allocation_id=? AND is_temp=? AND type=? FOR UPDATE", a.AllocationID, true, reference.FILE).
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("allocation_id=? AND is_temp=? AND type=?", a.AllocationID, true, reference.FILE).
 			FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
 
 				for _, ref := range refs {

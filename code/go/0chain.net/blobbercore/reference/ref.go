@@ -14,6 +14,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -246,7 +247,8 @@ func GetReferenceByLookupHashForDownload(ctx context.Context, allocationID, path
 
 	err := db.Transaction(func(tx *gorm.DB) error {
 
-		err := tx.Exec("SELECT * FROM reference_objects WHERE allocation_id = ? AND lookup_hash = ? FOR UPDATE", allocationID, pathHash).First(ref).Error
+		// err := tx.Exec("SELECT * FROM reference_objects WHERE allocation_id=? AND lookup_hash=? FOR UPDATE", allocationID, pathHash).First(ref).Error
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
 		if err != nil {
 			return err
 		}
