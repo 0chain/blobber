@@ -206,6 +206,15 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		r := rand.New(rand.NewSource(cr.RandomNumber))
 		blockoffset := r.Intn(sdkUtil.FixedMerkleLeaves)
 
+		fromPreCommit := false
+
+		if objectPath.Meta["is_temp"] != nil {
+			fromPreCommit = objectPath.Meta["is_temp"].(bool)
+			if fromPreCommit {
+				fromPreCommit = objectPath.Meta["validation_root"].(string) != objectPath.Meta["prev_validation_root"].(string)
+			}
+		}
+
 		challengeReadInput := &filestore.ChallengeReadBlockInput{
 			Hash:         objectPath.Meta["validation_root"].(string),
 			FileSize:     objectPath.Meta["size"].(int64),
@@ -213,6 +222,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			AllocationID: cr.AllocationID,
 			Name:         objectPath.Meta["name"].(string),
 			Path:         objectPath.Meta["path"].(string),
+			IsTemp:       fromPreCommit,
 		}
 
 		t1 := time.Now()

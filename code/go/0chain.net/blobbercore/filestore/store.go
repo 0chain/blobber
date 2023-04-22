@@ -48,6 +48,8 @@ type FileStorer interface {
 	CommitWrite(allocID, connID string, fileData *FileInputData) (bool, error)
 	DeleteTempFile(allocID, connID string, fileData *FileInputData) error
 	DeleteFile(allocID, contentHash string) error
+	MoveToFilestore(allocID, hash string) error
+	DeleteFromFilestore(allocID, hash string) error
 	// GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.
 	GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error)
 	GetBlocksMerkleTreeForChallenge(cri *ChallengeReadBlockInput) (*ChallengeResponse, error)
@@ -96,6 +98,7 @@ type ReadBlockInput struct {
 	VerifyDownload bool
 	Path           string
 	Name           string
+	IsTemp         bool
 }
 
 type ChallengeResponse struct {
@@ -111,4 +114,5 @@ type ChallengeReadBlockInput struct {
 	AllocationID string
 	Path         string
 	Name         string
+	IsTemp       bool
 }

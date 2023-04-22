@@ -33,6 +33,14 @@ func (mfs *MockFileStore) CommitWrite(allocID, connID string, fileData *filestor
 	return true, nil
 }
 
+func (mfs *MockFileStore) MoveToFilestore(allocID, hash string) error {
+	return nil
+}
+
+func (mfs *MockFileStore) DeleteFromFilestore(allocID, hash string) error {
+	return nil
+}
+
 func (mfs *MockFileStore) DeleteTempFile(allocID, connID string, fileData *filestore.FileInputData) error {
 	return nil
 }

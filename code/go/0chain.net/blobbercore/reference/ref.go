@@ -240,6 +240,25 @@ func GetReferenceByLookupHash(ctx context.Context, allocationID, pathHash string
 	return ref, nil
 }
 
+func GetReferenceByLookupHashForDownload(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
+	ref := &Ref{}
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	err := db.Transaction(func(tx *gorm.DB) error {
+
+		err := tx.Exec("SELECT * FROM reference_objects WHERE allocation_id = ? AND lookup_hash = ? FOR UPDATE", allocationID, pathHash).First(ref).Error
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
+}
+
 func GetReferencesByName(ctx context.Context, allocationID, name string) (refs []*Ref, err error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	err = db.Model(&Ref{}).
@@ -490,6 +509,7 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 }
 
 func (r *Ref) SaveFileRef(ctx context.Context) error {
+	r.IsTemp = true
 	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Save(r).Error
 }
@@ -511,7 +531,7 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 		"size":               r.Size,
 		"chunk_size":         r.ChunkSize,
 		"file_id":            r.FileID,
-		"is_temp":            r.IsTemp,
+		"is_temp":            true,
 		"thumbnail_filename": r.ThumbnailFilename,
 	})
 	if errors.Is(db.Error, gorm.ErrRecordNotFound) || db.RowsAffected == 0 {

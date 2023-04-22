@@ -3,9 +3,12 @@ package allocation
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -199,6 +202,7 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 }
 
 func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error {
+
 	for _, change := range a.AllocationChanges {
 		err := change.CommitToFileStore(ctx)
 		if err != nil {
@@ -214,4 +218,169 @@ func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) {
 			logging.Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
 		}
 	}
+}
+
+type Result struct {
+	Id                 string
+	ValidationRoot     string
+	PrevValidationRoot string
+	ThumbnailHash      string
+	PrevThumbnailHash  string
+}
+
+// TODO: Need to speed up this function
+func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
+
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	var refs []*Result
+	limitCh := make(chan struct{}, 10)
+	wg := &sync.WaitGroup{}
+
+	err := db.Transaction(func(tx *gorm.DB) error {
+
+		err := tx.Exec("SELECT id,validation_root,prev_validation_root,thumbnail_hash,prev_thumbnail_hash FROM reference_objects WHERE allocation_id=? AND is_temp=? AND type=? FOR UPDATE", a.AllocationID, true, reference.FILE).
+			FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
+
+				for _, ref := range refs {
+
+					limitCh <- struct{}{}
+					wg.Add(1)
+
+					go func(ref *Result) {
+						defer func() {
+							<-limitCh
+							wg.Done()
+						}()
+
+						if ref.ValidationRoot != ref.PrevValidationRoot {
+							if ref.PrevValidationRoot != "" {
+								err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevValidationRoot)
+								if err != nil {
+									logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
+										zap.String("validation_root", ref.ValidationRoot))
+								}
+							}
+							err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ValidationRoot)
+							if err != nil {
+								logging.Logger.Error(fmt.Sprintf("Error while moving file: %s", err.Error()),
+									zap.String("validation_root", ref.ValidationRoot))
+							}
+						}
+
+						if ref.ThumbnailHash != "" && ref.ThumbnailHash != ref.PrevThumbnailHash {
+							if ref.PrevThumbnailHash != "" {
+								err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevThumbnailHash)
+								if err != nil {
+									logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail file: %s", err.Error()),
+										zap.String("thumbnail_hash", ref.ThumbnailHash))
+								}
+							}
+							err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ThumbnailHash)
+							if err != nil {
+								logging.Logger.Error(fmt.Sprintf("Error while moving thumbnail file: %s", err.Error()),
+									zap.String("thumbnail_hash", ref.ThumbnailHash))
+							}
+						}
+
+					}(ref)
+				}
+
+				return nil
+			}).Error
+
+		if err != nil {
+			return err
+		}
+
+		err = tx.Exec("UPDATE reference_objects SET is_temp=?, prev_validation_root=validation_root, prev_thumbnail_hash=thumbnail_hash WHERE allocation_id=? AND is_temp=?", false, a.AllocationID, true).Error
+
+		return err
+	})
+
+	wg.Wait()
+
+	if err != nil {
+		return err
+	}
+	return deleteFromFileStore(ctx, a.AllocationID)
+}
+
+func deleteFromFileStore(ctx context.Context, allocationID string) error {
+
+	db := datastore.GetStore().GetTransaction(ctx)
+	limitCh := make(chan struct{}, 10)
+	wg := &sync.WaitGroup{}
+	var results []Result
+
+	err := db.Model(&reference.Ref{}).Unscoped().Select("id", "validation_root", "thumbnail_hash").
+		Where("allocation_id=? AND is_temp=? AND type=? AND deleted_at is not NULL", allocationID, true, reference.FILE).
+		FindInBatches(&results, 100, func(tx *gorm.DB, batch int) error {
+
+			for _, res := range results {
+				var count int64
+				tx.Model(&reference.Ref{}).
+					Where("allocation_id=? AND validation_root=?", allocationID, res.ValidationRoot).
+					Count(&count)
+
+				if count != 0 && res.ThumbnailHash == "" {
+					continue
+				}
+
+				limitCh <- struct{}{}
+				wg.Add(1)
+
+				go func(res Result, count int64) {
+					defer func() {
+						<-limitCh
+						wg.Done()
+					}()
+
+					if count == 0 {
+						err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.ValidationRoot)
+						if err != nil {
+							logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
+								zap.String("validation_root", res.ValidationRoot))
+						}
+					}
+
+					if res.PrevValidationRoot != "" {
+						err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.PrevValidationRoot)
+						if err != nil {
+							logging.Logger.Error(fmt.Sprintf("Error while deleting prev file file: %s", err.Error()),
+								zap.String("validation_root", res.PrevValidationRoot))
+						}
+					}
+
+					if res.ThumbnailHash != "" {
+						err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.ThumbnailHash)
+						if err != nil {
+							logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
+								zap.String("thumbnail", res.ThumbnailHash))
+						}
+						if res.PrevThumbnailHash != "" {
+							err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.PrevThumbnailHash)
+							if err != nil {
+								logging.Logger.Error(fmt.Sprintf("Error while deleting prev thumbnail: %s", err.Error()),
+									zap.String("thumbnail", res.PrevThumbnailHash))
+							}
+						}
+					}
+
+				}(res, count)
+
+			}
+			return nil
+		}).Error
+
+	wg.Wait()
+	if err != nil {
+		logging.Logger.Error("DeleteFromFileStore", zap.Error(err))
+		return err
+	}
+
+	return db.Model(&reference.Ref{}).Unscoped().
+		Delete(&reference.Ref{},
+			"allocation_id = ? AND deleted_at IS NOT NULL",
+			allocationID).Error
 }

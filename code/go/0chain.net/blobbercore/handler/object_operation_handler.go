@@ -186,7 +186,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
 	}
 
-	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)
+	fileref, err := reference.GetReferenceByLookupHashForDownload(ctx, alloc.ID, dr.PathHash)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid file path: %v", err)
 	}
@@ -266,7 +266,13 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		fileDownloadResponse *filestore.FileDownloadResponse
 		// respData             []byte
 	)
+	fromPreCommit := false
 	if downloadMode == DownloadContentThumb {
+
+		if fileref.IsTemp {
+			fromPreCommit = fileref.ThumbnailHash != fileref.PrevThumbnailHash
+		}
+
 		rbi := &filestore.ReadBlockInput{
 			AllocationID:  alloc.ID,
 			FileSize:      fileref.ThumbnailSize,
@@ -276,6 +282,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			IsThumbnail:   true,
 			Path:          fileref.Path,
 			Name:          fileref.ThumbnailFilename,
+			IsTemp:        fromPreCommit,
 		}
 
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
@@ -283,6 +290,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			return nil, common.NewErrorf("download_file", "couldn't get thumbnail block: %v", err)
 		}
 	} else {
+
+		if fileref.IsTemp {
+			fromPreCommit = fileref.ValidationRoot != fileref.PrevValidationRoot
+		}
+
 		rbi := &filestore.ReadBlockInput{
 			AllocationID:   alloc.ID,
 			FileSize:       fileref.Size,
@@ -292,6 +304,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			VerifyDownload: dr.VerifyDownload,
 			Path:           fileref.Path,
 			Name:           fileref.Name,
+			IsTemp:         fromPreCommit,
 		}
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
 		if err != nil {
@@ -444,6 +457,14 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			fmt.Sprintf("Error while unmarshalling file ID meta data: %s", err.Error()))
 	}
 
+	// Move preCommitDir to finalDir
+	err = connectionObj.MoveToFilestore(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	elapsedMoveToFilestore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
+
 	err = connectionObj.ApplyChanges(
 		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
 	if err != nil {
@@ -530,53 +551,53 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	db.Delete(connectionObj)
 
 	//Update the Ref Table
-	for _, c := range connectionObj.Changes {
+	// for _, c := range connectionObj.Changes {
 
-		switch c.Operation {
-		case constants.FileOperationInsert:
-			acp := new(allocation.UploadFileChanger)
-			if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
-				Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
-				break
-			}
-			if !acp.IsTemp {
-				break
-			}
+	// 	switch c.Operation {
+	// 	case constants.FileOperationInsert:
+	// 		acp := new(allocation.UploadFileChanger)
+	// 		if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
+	// 			Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+	// 			break
+	// 		}
+	// 		if acp.IsTemp {
+	// 			break
+	// 		}
 
-			err = reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, false)
-			if err != nil {
-				Logger.Error("AllocationChangeCollector_updateIsTemp", zap.Error(err))
-			}
+	// 		err = reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, true)
+	// 		if err != nil {
+	// 			Logger.Error("AllocationChangeCollector_updateIsTemp", zap.Error(err))
+	// 		}
 
-		case constants.FileOperationUpdate:
-			acp := new(allocation.UpdateFileChanger)
-			if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
-				Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
-				break
-			}
-			if !acp.IsTemp {
-				break
-			}
-			err = reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, false)
-			if err != nil {
-				Logger.Error("AllocationChangeCollector_updateIsTemp", zap.Error(err))
-			}
+	// 	case constants.FileOperationUpdate:
+	// 		acp := new(allocation.UpdateFileChanger)
+	// 		if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
+	// 			Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+	// 			break
+	// 		}
+	// 		if acp.IsTemp {
+	// 			break
+	// 		}
+	// 		err = reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, true)
+	// 		if err != nil {
+	// 			Logger.Error("AllocationChangeCollector_updateIsTemp", zap.Error(err))
+	// 		}
 
-		case constants.FileOperationDelete:
-			acp := new(allocation.DeleteFileChange)
-			if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
-				Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
-				break
-			}
-			if !acp.IsTemp {
-				break
-			}
-			err = reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, false)
-			if err != nil {
-				Logger.Error("AllocationChangeCollector_updateIsTemp", zap.Error(err))
-			}
-		}
-	}
+	// 	case constants.FileOperationDelete:
+	// 		acp := new(allocation.DeleteFileChange)
+	// 		if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
+	// 			Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
+	// 			break
+	// 		}
+	// 		if acp.IsTemp {
+	// 			break
+	// 		}
+	// 		err = reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, true)
+	// 		if err != nil {
+	// 			Logger.Error("AllocationChangeCollector_updateIsTemp", zap.Error(err))
+	// 		}
+	// 	}
+	// }
 
 	Logger.Info("[commit]"+commitOperation,
 		zap.String("alloc_id", allocationID),
@@ -586,6 +607,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		zap.Duration("get-conn-obj", elapsedGetConnObj),
 		zap.Duration("verify-wm", elapsedVerifyWM),
 		zap.Duration("write-pre-redeem", elapsedWritePreRedeem),
+		zap.Duration("move-to-filestore", elapsedMoveToFilestore),
 		zap.Duration("apply-changes", elapsedApplyChanges),
 		zap.Duration("total", time.Since(startTime)),
 	)

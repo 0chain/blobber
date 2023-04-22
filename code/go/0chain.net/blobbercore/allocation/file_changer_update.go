@@ -81,26 +81,18 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 
 	fileRef.HashToBeComputed = true
 	nf.deleteHash = make(map[string]int)
-	if nf.IsRollback {
-		if fileRef.ThumbnailHash != "" && fileRef.ThumbnailHash != nf.ThumbnailHash {
-			nf.deleteHash[fileRef.ThumbnailHash] = int(THUMBNAIL)
-		}
-		if fileRef.ValidationRoot != "" && fileRef.ValidationRoot != nf.ValidationRoot {
-			nf.deleteHash[fileRef.ValidationRoot] = int(CONTENT)
-		}
-	} else {
-		if fileRef.PrevThumbnailHash != "" && fileRef.PrevThumbnailHash != nf.ThumbnailHash {
-			nf.deleteHash[fileRef.PrevThumbnailHash] = int(THUMBNAIL)
-		}
-		if fileRef.PrevValidationRoot != "" && fileRef.PrevValidationRoot != nf.ValidationRoot {
-			nf.deleteHash[fileRef.PrevValidationRoot] = int(CONTENT)
-		}
+
+	if fileRef.ThumbnailHash != "" && fileRef.ThumbnailHash != nf.ThumbnailHash {
+		nf.deleteHash[fileRef.ThumbnailHash] = int(THUMBNAIL)
 	}
+	if fileRef.ValidationRoot != "" && fileRef.ValidationRoot != nf.ValidationRoot {
+		nf.deleteHash[fileRef.ValidationRoot] = int(CONTENT)
+	}
+
 	fileRef.ActualFileHash = nf.ActualHash
 	fileRef.ActualFileHashSignature = nf.ActualFileHashSignature
 	fileRef.ActualFileSize = nf.ActualSize
 	fileRef.MimeType = nf.MimeType
-	fileRef.PrevValidationRoot = nf.PrevValidationRoot
 	fileRef.ValidationRootSignature = nf.ValidationRootSignature
 	fileRef.ValidationRoot = nf.ValidationRoot
 	fileRef.CustomMeta = nf.CustomMeta
@@ -108,7 +100,6 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	fileRef.AllocationRoot = allocationRoot
 	fileRef.Size = nf.Size
 	fileRef.ThumbnailHash = nf.ThumbnailHash
-	fileRef.PrevThumbnailHash = nf.PrevThumbnailHash
 	fileRef.ThumbnailSize = nf.ThumbnailSize
 	fileRef.ActualThumbnailHash = nf.ActualThumbnailHash
 	fileRef.ActualThumbnailSize = nf.ActualThumbnailSize
