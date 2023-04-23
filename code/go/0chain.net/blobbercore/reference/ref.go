@@ -133,11 +133,11 @@ func GetReferenceLookup(allocationID, path string) string {
 }
 
 func NewDirectoryRef() *Ref {
-	return &Ref{Type: DIRECTORY}
+	return &Ref{Type: DIRECTORY, IsTemp: true}
 }
 
 func NewFileRef() *Ref {
-	return &Ref{Type: FILE}
+	return &Ref{Type: FILE, IsTemp: true}
 }
 
 // Mkdir create dirs if they don't exits. do nothing if dir exists. last dir will be return without child
@@ -511,9 +511,14 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 }
 
 func (r *Ref) SaveFileRef(ctx context.Context) error {
-	r.IsTemp = true
+	r.IsTemp = false
 	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Save(r).Error
+	err := db.Delete(r).Error
+	if err != nil {
+		return err
+	}
+	r.IsTemp = true
+	return db.Create(r).Error
 }
 
 func (r *Ref) SaveDirRef(ctx context.Context) error {
@@ -532,13 +537,18 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 		"allocation_root":    r.AllocationRoot,
 		"size":               r.Size,
 		"chunk_size":         r.ChunkSize,
+		"is_temp":            false,
 		"file_id":            r.FileID,
-		"is_temp":            true,
 		"thumbnail_filename": r.ThumbnailFilename,
 	})
 	if errors.Is(db.Error, gorm.ErrRecordNotFound) || db.RowsAffected == 0 {
-		err := db.Save(r).Error
-		return err
+		r.IsTemp = false
+		err := db.Delete(r).Error
+		if err != nil {
+			return err
+		}
+		r.IsTemp = true
+		return db.Create(r).Error
 	} else {
 		return db.Error
 	}

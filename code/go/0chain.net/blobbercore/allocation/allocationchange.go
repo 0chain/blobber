@@ -292,6 +292,8 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 				return nil
 			}).Error
 
+		wg.Wait()
+
 		if err != nil {
 			logging.Logger.Error("Error while moving to filestore", zap.Error(err))
 			return err
@@ -301,8 +303,6 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 		return err
 	})
-
-	wg.Wait()
 
 	if err != nil {
 		return err
