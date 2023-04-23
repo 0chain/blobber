@@ -16,10 +16,13 @@ func DeleteObject(ctx context.Context, allocationID, objPath string, ts common.T
 
 	db := datastore.GetStore().GetTransaction(ctx)
 
-	err := db.Model(&Ref{}).Where("allocation_id=? AND path != ? AND (path=? OR path LIKE ?)", allocationID, "/", objPath, likePath).Update("is_temp", true).Error
+	// err := db.Model(&Ref{}).Where("allocation_id=? AND path != ? AND (path=? OR path LIKE ?)", allocationID, "/", objPath, likePath).Update("is_temp", true).Error
+
+	err := db.Exec("UPDATE reference_objects SET is_temp=? WHERE allocation_id=? AND path != ? AND (path=? OR path LIKE ?)", true, allocationID, "/", objPath, likePath).Error
 	if err != nil {
 		return nil, err
 	}
+
 	err = db.Delete(&Ref{}, "allocation_id=? AND path != ? AND (path=? OR path LIKE ?)",
 		allocationID, "/", objPath, likePath).Error
 

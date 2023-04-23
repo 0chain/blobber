@@ -186,7 +186,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
 	}
 
-	fileref, err := reference.GetReferenceByLookupHashForDownload(ctx, alloc.ID, dr.PathHash)
+	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid file path: %v", err)
 	}
@@ -460,7 +460,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	// Move preCommitDir to finalDir
 	err = connectionObj.MoveToFilestore(ctx)
 	if err != nil {
-		return nil, err
+		return nil, common.NewError("move_to_filestore_error", fmt.Sprintf("Error while moving to filestore: %s", err.Error()))
 	}
 
 	elapsedMoveToFilestore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
