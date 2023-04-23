@@ -511,9 +511,8 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 }
 
 func (r *Ref) SaveFileRef(ctx context.Context) error {
-	r.IsTemp = false
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Delete(r).Error
+	err := db.Delete(&Ref{}, "id=?", r.ID).Error
 	if err != nil {
 		return err
 	}
@@ -542,8 +541,7 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 		"thumbnail_filename": r.ThumbnailFilename,
 	})
 	if errors.Is(db.Error, gorm.ErrRecordNotFound) || db.RowsAffected == 0 {
-		r.IsTemp = false
-		err := db.Delete(r).Error
+		err := db.Delete(&Ref{}, "id=?", r.ID).Error
 		if err != nil {
 			return err
 		}
