@@ -240,7 +240,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 	err := db.Transaction(func(tx *gorm.DB) error {
 
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("allocation_id=? AND is_temp=? AND type=?", a.AllocationID, true, reference.FILE).
+		err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "UPDATE"}).Where("allocation_id=? AND is_temp=? AND type=?", a.AllocationID, true, reference.FILE).
 			FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
 
 				for _, ref := range refs {
@@ -345,7 +345,7 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 						}
 					}
 
-					if res.PrevValidationRoot != "" {
+					if res.PrevValidationRoot != "" && res.PrevValidationRoot != res.ValidationRoot {
 						err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.PrevValidationRoot)
 						if err != nil {
 							logging.Logger.Error(fmt.Sprintf("Error while deleting prev file file: %s", err.Error()),
@@ -359,7 +359,7 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 							logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
 								zap.String("thumbnail", res.ThumbnailHash))
 						}
-						if res.PrevThumbnailHash != "" {
+						if res.PrevThumbnailHash != "" && res.PrevThumbnailHash != res.ThumbnailHash {
 							err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.PrevThumbnailHash)
 							if err != nil {
 								logging.Logger.Error(fmt.Sprintf("Error while deleting prev thumbnail: %s", err.Error()),
@@ -375,7 +375,7 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 		}).Error
 
 	wg.Wait()
-	if err != nil {
+	if err != nil && err != gorm.ErrRecordNotFound {
 		logging.Logger.Error("DeleteFromFileStore", zap.Error(err))
 		return err
 	}
