@@ -232,6 +232,8 @@ type Result struct {
 // TODO: Need to speed up this function
 func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
+	logging.Logger.Info("Move to filestore", zap.String("allocation_id", a.AllocationID))
+
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	var refs []*Result
@@ -240,7 +242,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 	err := db.Transaction(func(tx *gorm.DB) error {
 
-		err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "UPDATE"}).Where("allocation_id=? AND is_temp=? AND type=?", a.AllocationID, true, reference.FILE).
+		err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Where("allocation_id=? AND is_temp=? AND type=?", a.AllocationID, true, reference.FILE).
 			FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
 
 				for _, ref := range refs {
@@ -291,6 +293,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 			}).Error
 
 		if err != nil {
+			logging.Logger.Error("Error while moving to filestore", zap.Error(err))
 			return err
 		}
 

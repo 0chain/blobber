@@ -186,7 +186,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
 	}
 
-	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)
+	fileref, err := reference.GetReferenceByLookupHashForDownload(ctx, alloc.ID, dr.PathHash)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid file path: %v", err)
 	}
