@@ -119,11 +119,11 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 
 	cmd.fileChanger.AllocationID = allocationObj.ID
-	cmd.fileChanger.Size = allocationSize
+	cmd.fileChanger.Size += fileOutputData.Size
 
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionObj.ID
-	cmd.allocationChange.Size = allocationSize - cmd.existingFileRef.Size
+	cmd.allocationChange.Size = cmd.fileChanger.Size - cmd.existingFileRef.Size
 	cmd.allocationChange.Operation = sdkConst.FileOperationUpdate
 
 	if cmd.fileChanger.IsFinal {
@@ -157,7 +157,8 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 
 func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
-		if c.Operation != sdkConst.FileOperationUpdate {
+		filePath, _ := c.GetAffectedFilePath()
+		if c.Operation != sdkConst.FileOperationUpdate || cmd.fileChanger.Path != filePath {
 			continue
 		}
 
@@ -180,7 +181,8 @@ func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationC
 // UpdateChange add UpdateFileChanger in db
 func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	for _, c := range connectionObj.Changes {
-		if c.Operation != sdkConst.FileOperationUpdate {
+		filePath, _ := c.GetAffectedFilePath()
+		if c.Operation != sdkConst.FileOperationUpdate || cmd.fileChanger.Path != filePath {
 			continue
 		}
 
