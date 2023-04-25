@@ -61,9 +61,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: generate swagger
-        run: docker.local/bin/test.swagger.sh
-
       - name: Build blobber
         run: |
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
@@ -72,7 +69,7 @@ jobs:
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
           docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
-          ./docker.local/bin/build.base.sh && ./docker.local/bin/build.blobber.sh
+          ./docker.local/bin/build.base.sh && docker.local/bin/test.swagger.sh && ./docker.local/bin/build.blobber.sh
 
   validator:
     runs-on: [self-hosted, arc-runner]
