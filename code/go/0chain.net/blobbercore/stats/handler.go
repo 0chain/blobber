@@ -274,7 +274,7 @@ const tpl = `
         <td rowspan=2>{{ .AllocationID }}</td>
         <td>{{ byte_count_in_string .UsedSize }}</td>
         <td>{{ byte_count_in_string_for_uint64 .DiskSizeUsed }}</td>
-        <td>{{ byte_count_in_string .TempFolderSize }}</td>
+        <td>{{ byte_count_in_string_for_uint64 .TempFolderSize }}</td>
         <td>{{ .NumWrites }}</td>
         <td>{{ .BlockWrites }}</td>
         <td>{{ .NumReads }}</td>
