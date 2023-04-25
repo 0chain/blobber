@@ -1,0 +1,59 @@
+0chain-core-sdk [INFO]   2023/04/05 20:58:58.905486 wallet_base.go:310: ******* Wallet SDK Version:v1.8.14-4-g9941e17f ******* (SetLogFile)
+0chain-core-sdk [INFO]   2023/04/05 20:58:59.816729 transaction_base.go:139: ******* Wallet SDK Version:v1.8.14-4-g9941e17f ******* (InitZCNSDK)
+0chain-core-sdk [INFO]   2023/04/05 20:58:59.823686 transaction.go:263: New transaction interface
+0chain-core-sdk [INFO]   2023/04/05 20:59:00.635699 wallet_base.go:270: Minimum miners used for submit :2
+0chain-core-sdk [INFO]   2023/04/05 20:59:00.635962 transaction_base.go:345: Submitting smart contract transaction to http://65.108.43.110:7074 with JSON {
+  "hash": "56f5291c31b04010eb57a1ae94758af1973e4a1d54a680246b0e0e9b7f39fa75",
+  "version": "1.0",
+  "client_id": "2c4bc226802df76aa318601156736661aa061196f057230f6794d2d04216eefb",
+  "public_key": "9ff5647b09897712e57b54f3226dfd013070d98bf6ee665590b659f309ac9916bf7328dcba40e626686943301da2ac1de27c84987eb2c85e3bfb8e174b009191",
+  "to_client_id": "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d3",
+  "transaction_data": "{\"name\":\"pour\",\"input\":\"{}\"}",
+  "transaction_value": 10000000000,
+  "signature": "1b39a14cfeccf9881b18d41ddd319a7b3f0e609dfb15c9b35a6658830f61a81a",
+  "creation_date": 1680692339,
+  "transaction_type": 1000,
+  "transaction_fee": 0,
+  "transaction_nonce": 1,
+  "txn_output_hash": "",
+  "transaction_status": 0
+}
+0chain-core-sdk [INFO]   2023/04/05 20:59:00.635990 transaction_base.go:345: Submitting smart contract transaction to http://65.108.43.110:7073 with JSON {
+  "hash": "56f5291c31b04010eb57a1ae94758af1973e4a1d54a680246b0e0e9b7f39fa75",
+  "version": "1.0",
+  "client_id": "2c4bc226802df76aa318601156736661aa061196f057230f6794d2d04216eefb",
+  "public_key": "9ff5647b09897712e57b54f3226dfd013070d98bf6ee665590b659f309ac9916bf7328dcba40e626686943301da2ac1de27c84987eb2c85e3bfb8e174b009191",
+  "to_client_id": "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d3",
+  "transaction_data": "{\"name\":\"pour\",\"input\":\"{}\"}",
+  "transaction_value": 10000000000,
+  "signature": "1b39a14cfeccf9881b18d41ddd319a7b3f0e609dfb15c9b35a6658830f61a81a",
+  "creation_date": 1680692339,
+  "transaction_type": 1000,
+  "transaction_fee": 0,
+  "transaction_nonce": 1,
+  "txn_output_hash": "",
+  "transaction_status": 0
+}
+0chain-core-sdk [DEBUG]  2023/04/05 20:59:01.384746 transaction_base.go:375: finish txn submitting, http://65.108.43.110:7074/v1/transaction/put, Status: 200 OK, output:{"async":true,"entity":{"hash":"56f5291c31b04010eb57a1ae94758af1973e4a1d54a680246b0e0e9b7f39fa75","version":"1.0","client_id":"2c4bc226802df76aa318601156736661aa061196f057230f6794d2d04216eefb","public_key":"9ff5647b09897712e57b54f3226dfd013070d98bf6ee665590b659f309ac9916bf7328dcba40e626686943301da2ac1de27c84987eb2c85e3bfb8e174b009191","to_client_id":"6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d3","chain_id":"0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe","transaction_data":"{\"name\":\"pour\",\"input\":\"{}\"}","transaction_value":10000000000,"signature":"1b39a14cfeccf9881b18d41ddd319a7b3f0e609dfb15c9b35a6658830f61a81a","creation_date":1680692339,"transaction_fee":0,"transaction_nonce":1,"transaction_type":1000,"txn_output_hash":"","transaction_status":0}}
+0chain-core-sdk [INFO]   2023/04/05 20:59:01.385426 transaction_query.go:131: zcn: check health http://65.108.43.110:7172/v1/healthcheck
+0chain-core-sdk [INFO]   2023/04/05 20:59:01.385461 transaction_query.go:131: zcn: check health http://65.108.43.110:7171/v1/healthcheck
+0chain-core-sdk [DEBUG]  2023/04/05 20:59:02.060736 transaction_query.go:360: GEThttp://65.108.43.110:7172/v1/transaction/get/confirmation?hash=56f5291c31b04010eb57a1ae94758af1973e4a1d54a680246b0e0e9b7f39fa75&content=lfb
+0chain-core-sdk [DEBUG]  2023/04/05 20:59:02.400629 transaction_query.go:370: {"error":{"code":"entity_not_found","msg":"txn_summary not found with id = 56f5291c31b04010eb57a1ae94758af1973e4a1d54a680246b0e0e9b7f39fa75"},"latest_finalized_block":{"version":"1.0","creation_date":1680692341,"hash":"7e15c90092e252cfccab80fb54dddeccf645d0451fae16e8792741040e0e7ad7","miner_id":"31810bd1258ae95955fb40c7ef72498a556d3587121376d9059119d280f34929","round":527524,"round_random_seed":-2974986435915158074,"state_changes_count":9,"merkle_tree_root":"7a6be171cdea58ba0c58ccbbdd3ff33ebd5336c0ecfa15882482f6f8794ce75c","state_hash":"pSGoUi38FMHPaqVYgayHMYhUQArmi++wnwVs++0qz6g=","receipt_merkle_tree_root":"515130b3011de8233818880ca817db82f02f6e6ec36fb977d672cc3ea3e39e1a","num_txns":2}}
+0chain-core-sdk [31m[ERROR]  2023/04/05 20:59:02.400864 transaction_query.go:496: txn confirmation parse header errortxn confirmation not found.[0m
+0chain-core-sdk [INFO]   2023/04/05 20:59:02.401067 transaction.go:919: zcn: transaction not confirmed now: 1680692342, LFB creation time:1680692341
+0chain-core-sdk [INFO]   2023/04/05 20:59:05.402455 transaction_query.go:131: zcn: check health http://65.108.43.110:7171/v1/healthcheck
+0chain-core-sdk [INFO]   2023/04/05 20:59:05.402483 transaction_query.go:131: zcn: check health http://65.108.43.110:7172/v1/healthcheck
+0chain-core-sdk [DEBUG]  2023/04/05 20:59:05.754597 transaction_query.go:360: GEThttp://65.108.43.110:7172/v1/transaction/get/confirmation?hash=56f5291c31b04010eb57a1ae94758af1973e4a1d54a680246b0e0e9b7f39fa75&content=lfb
+0chain-core-sdk [DEBUG]  2023/04/05 20:59:06.097842 transaction_query.go:370: {"confirmation":{"version":"1.0","hash":"56f5291c31b04010eb57a1ae94758af1973e4a1d54a680246b0e0e9b7f39fa75","block_hash":"acdf1d2a25d77839a4eca5ffcd97ba3876cec981fe160249cec36f9da4866afd","previous_block_hash":"cf98d6d9b2761bea95457749a0c6b8ab1e33153e08499d668ff322b5af64af3f","txn":{"hash":"56f5291c31b04010eb57a1ae94758af1973e4a1d54a680246b0e0e9b7f39fa75","version":"1.0","client_id":"2c4bc226802df76aa318601156736661aa061196f057230f6794d2d04216eefb","public_key":"9ff5647b09897712e57b54f3226dfd013070d98bf6ee665590b659f309ac9916bf7328dcba40e626686943301da2ac1de27c84987eb2c85e3bfb8e174b009191","to_client_id":"6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d3","chain_id":"0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe","transaction_data":"{\"name\":\"pour\",\"input\":\"{}\"}","transaction_value":10000000000,"signature":"1b39a14cfeccf9881b18d41ddd319a7b3f0e609dfb15c9b35a6658830f61a81a","creation_date":1680692339,"transaction_fee":0,"transaction_nonce":1,"transaction_type":1000,"transaction_output":"{\"from\":\"6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d3\",\"to\":\"2c4bc226802df76aa318601156736661aa061196f057230f6794d2d04216eefb\",\"amount\":10000000000}","txn_output_hash":"4f87f8d1aa0bc1e628f33650c44c9977777b90e8f7aff8dbc202a061cb732dba","transaction_status":1},"creation_date":1680692342,"miner_id":"8877e3da19b4cb51e59b4646ec7c0cf4849bc7b860257d69ddbf753b9a981e1b","round":527527,"transaction_status":1,"round_random_seed":2215394464740899809,"state_changes_count":18,"merkle_tree_root":"e3b43c8d3a2b2637235d3d1aa462c85d4afd8794913d6a1444461a9ea8d7f522","merkle_tree_path":{"nodes":["be164abcf1775cdb949ec68ceae1db83dfaae9ff13c6fa6ff56049b8fad15e1f","bd0d76e92160ae78f0cc16f9f6306897b6c4a29ba8e106f9ce1630b59cb39ffa"],"leaf_index":0},"receipt_merkle_tree_root":"d82580fd50dc1408837676c3d8fd72f32bd2beda02ca3519a2df5cb9c6a9c3b2","receipt_merkle_tree_path":{"nodes":["a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a","661dcb8e2591916c2c99fb88555b4ba1546062a44cb3fe4d52cebb1674f2b255"],"leaf_index":0}},"latest_finalized_block":{"version":"1.0","creation_date":1680692345,"hash":"0b8b1b53703ccea8abe70711c339fe67c7496e857c41e91e85ad087bed3acff2","miner_id":"bfa64c67f49bceec8be618b1b6f558bdbaf9c100fd95d55601fa2190a4e548d8","round":527542,"round_random_seed":-2644322190363123991,"state_changes_count":9,"merkle_tree_root":"b06cef2b4d136ae50fe22f35576342d222b996d1fc38b08dcc0542247c97fac6","state_hash":"b8d/ADFAZWZAyb+ii/uYashMPERa7IckyVOiD8CMYY4=","receipt_merkle_tree_root":"515130b3011de8233818880ca817db82f02f6e6ec36fb977d672cc3ea3e39e1a","num_txns":2}}
+0chain-core-sdk [DEBUG]  2023/04/05 20:59:06.098829 transaction_base.go:752: Confirmation round: 527527
+0chain-core-sdk [INFO]   2023/04/05 20:59:06.098881 transaction_base.go:556: Query from http://65.108.43.110:7172/v1/block/get?round=527528&content=header
+0chain-core-sdk [INFO]   2023/04/05 20:59:06.098888 transaction_base.go:556: Query from http://65.108.43.110:7171/v1/block/get?round=527528&content=header
+0chain-core-sdk [DEBUG]  2023/04/05 20:59:06.437468 transaction_base.go:705: http://65.108.43.110:7171/v1/block/get?round=527528&content=header200 OK
+0chain-core-sdk [INFO]   2023/04/05 20:59:06.437628 transaction_base.go:556: Query from http://65.108.43.110:7172/v1/block/get?round=527529&content=header
+0chain-core-sdk [INFO]   2023/04/05 20:59:06.437650 transaction_base.go:556: Query from http://65.108.43.110:7171/v1/block/get?round=527529&content=header
+0chain-core-sdk [DEBUG]  2023/04/05 20:59:06.881733 transaction_base.go:705: http://65.108.43.110:7171/v1/block/get?round=527529&content=header200 OK
+0chain-core-sdk [INFO]   2023/04/05 20:59:24.704394 wallet_base.go:310: ******* Wallet SDK Version:v1.8.14-4-g9941e17f ******* (SetLogFile)
+0box-sdk        [INFO]   2023/04/05 20:59:24.705088 sdk.go:76: ******* Storage SDK Version: v1.8.14-4-g9941e17f *******
+0chain-core-sdk [INFO]   2023/04/05 20:59:25.453127 transaction_base.go:137: ******* Wallet SDK Version:v1.8.14-4-g9941e17f ******* (InitZCNSDK)
+0box-sdk        [DEBUG]  2023/04/05 20:59:26.235623 networkworker.go:105: Get network result:{"miners":["http://65.108.43.110:7073","http://65.108.43.110:7071","http://65.108.43.110:7072","http://65.108.43.110:7074"],"sharders":["http://65.108.43.110:7171","http://65.108.43.110:7172"]}
+0box-sdk        [INFO]   2023/04/05 20:59:27.668821 sdk.go:1375: estimate txn fee{fee 18 0  <nil>} {txn 23 0  0xc00039e270}
