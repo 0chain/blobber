@@ -320,6 +320,100 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 
 }
 
+func TestDeletePreCommitDir(t *testing.T) {
+
+	fs, cleanUp := setupStorage(t)
+	defer cleanUp()
+
+	allocID := randString(64)
+	connID := randString(64)
+	fileName := randString(5)
+	remotePath := filepath.Join("/", randString(5)+".txt")
+	alloc := &allocation{
+		mu:    &sync.Mutex{},
+		tmpMU: &sync.Mutex{},
+	}
+
+	fs.setAllocation(allocID, alloc)
+
+	fPath := filepath.Join(fs.mp, randString(10)+".txt")
+	size := 640 * KB
+	validationRoot, fixedMerkleRoot, err := generateRandomData(fPath, int64(size))
+	require.Nil(t, err)
+
+	fid := &FileInputData{
+		Name:            fileName,
+		Path:            remotePath,
+		ValidationRoot:  validationRoot,
+		FixedMerkleRoot: fixedMerkleRoot,
+		ChunkSize:       64 * KB,
+	}
+	// checkc if file to be uploaded exists
+	f, err := os.Open(fPath)
+	require.Nil(t, err)
+	// Write file to temp location
+	_, err = fs.WriteFile(allocID, connID, fid, f)
+	require.Nil(t, err)
+	f.Close()
+
+	// check if file is written to temp location
+	pathHash := encryption.Hash(remotePath)
+	tempFilePath := fs.getTempPathForFile(allocID, fileName, pathHash, connID)
+	tF, err := os.Stat(tempFilePath)
+	require.Nil(t, err)
+
+	require.Equal(t, int64(size), tF.Size())
+
+	fid.IsTemp = true
+	// Commit file to pre-commit location
+	success, err := fs.CommitWrite(allocID, connID, fid)
+	require.Nil(t, err)
+	require.True(t, success)
+
+	// Move data to final location
+	err = fs.MoveToFilestore(allocID, validationRoot)
+	require.Nil(t, err)
+	prevValidationRoot := validationRoot
+
+	validationRoot, fixedMerkleRoot, err = generateRandomData(fPath, int64(size))
+	require.Nil(t, err)
+
+	fid.ValidationRoot = validationRoot
+	fid.FixedMerkleRoot = fixedMerkleRoot
+
+	// Write file to temp location
+	f, err = os.Open(fPath)
+	require.Nil(t, err)
+	// Write file to temp location
+	_, err = fs.WriteFile(allocID, connID, fid, f)
+	require.Nil(t, err)
+	f.Close()
+	tempFilePath = fs.getTempPathForFile(allocID, fileName, pathHash, connID)
+	_, err = os.Stat(tempFilePath)
+	require.Nil(t, err)
+
+	success, err = fs.CommitWrite(allocID, connID, fid)
+	require.Nil(t, err)
+	require.True(t, success)
+
+	preCommitPath := fs.getPreCommitPathForFile(allocID, validationRoot)
+	_, err = os.Open(preCommitPath)
+	require.Nil(t, err)
+
+	err = fs.DeletePreCommitDir(allocID)
+	require.Nil(t, err)
+
+	preCommitPath = fs.getPreCommitPathForFile(allocID, validationRoot)
+	_, err = os.Open(preCommitPath)
+	require.NotNil(t, err)
+
+	finalPath, err := fs.GetPathForFile(allocID, prevValidationRoot)
+	require.Nil(t, err)
+	_, err = os.Open(finalPath)
+	require.Nil(t, err)
+
+}
+
 func TestStorageUploadUpdate(t *testing.T) {
 
 	fs, cleanUp := setupStorage(t)

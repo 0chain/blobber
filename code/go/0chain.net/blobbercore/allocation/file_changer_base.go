@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
@@ -108,9 +107,6 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 			return common.NewError("file_store_error", "Error committing thumbnail to file store. "+err.Error())
 		}
 	}
-
-	// release WriteMarkerMutex
-	datastore.GetStore().GetTransaction(ctx).Exec("DELETE FROM write_locks WHERE allocation_id = ? and connection_id = ? ", fc.AllocationID, fc.ConnectionID)
 
 	return nil
 }

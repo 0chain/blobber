@@ -96,6 +96,10 @@ func (mfs *MockFileStore) DeleteFromFilestore(allocID, hash string) error {
 	return nil
 }
 
+func (mfs *MockFileStore) DeletePreCommitDir(allocID string) error {
+	return nil
+}
+
 func (mfs *MockFileStore) DeleteTempFile(allocID, connID string, fileData *filestore.FileInputData) error {
 	return nil
 }

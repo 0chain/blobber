@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// TODO: Soft delete on preCommit
 type FileStats struct {
 	ID                       int64         `gorm:"column:id;primaryKey" json:"-"`
 	RefID                    int64         `gorm:"column:ref_id;unique" json:"-"`

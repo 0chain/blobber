@@ -438,6 +438,53 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	return &result, nil
 }
 
+func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Request) (*blobberhttp.LatestWriteMarkerResult, error) {
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID == "" {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
+	publicKey := allocationObj.OwnerPublicKey
+
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "could not verify the allocation owner")
+	}
+
+	var latestWM *writemarker.WriteMarkerEntity
+	var prevWM *writemarker.WriteMarkerEntity
+	if allocationObj.AllocationRoot == "" {
+		latestWM = nil
+	} else {
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+		if err != nil {
+			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
+		}
+		if latestWM == nil {
+			return nil, common.NewError("latest_write_marker_read_error", "Latest write marker not found for allocation.")
+		}
+		prevWM, err = writemarker.GetWriteMarkerEntity(ctx, latestWM.WM.PreviousAllocationRoot)
+		if err != nil {
+			return nil, common.NewError("latest_write_marker_read_error", "Error reading the previous write marker for allocation."+err.Error())
+		}
+	}
+
+	var result blobberhttp.LatestWriteMarkerResult
+	result.LatestWM = &latestWM.WM
+	if prevWM != nil {
+		result.PrevWM = &prevWM.WM
+	}
+
+	return &result, nil
+}
+
 func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResult, error) {
 	resCh := make(chan *blobberhttp.ReferencePathResult)
 	errCh := make(chan error)
