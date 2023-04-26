@@ -258,7 +258,15 @@ func setupHandlers(r *mux.Router) {
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
-		res, err := handler(ctx, r)
+		connectionID := r.FormValue("connection_id")
+		lock, _ := connectionObjLocker.GetLock(connectionID)
+		defer func() {
+			Logger.Info(fmt.Sprintf("Unlocking lock for connection: %s", connectionID))
+			lock.TryUnlock()
+			Logger.Info(fmt.Sprintf("Unlocked lock for connection: %s", connectionID))
+
+		}()
+		res, err := handler(ctx, r)	
 		defer func() {
 			GetMetaDataStore().GetTransaction(ctx).Rollback()
 		}()
