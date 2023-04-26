@@ -1185,9 +1185,11 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
 
 	startTime := time.Now()
-	if r.Method != "PUT" {
-		return nil, common.NewError("invalid_method", "Invalid method used for the rolllback URL. Use PUT instead")
+	if r.Method == "GET" {
+		return nil, common.NewError("invalid_method", "Invalid method used for the rolllback URL. Use POST instead")
 	}
+
+	Logger.Info("Rollback request received")
 
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
@@ -1204,18 +1206,13 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		Logger.Error("Allocation root is not set", zap.String("allocation_id", allocationObj.ID))
 		return nil, common.NewError("invalid_parameters", "Allocation root is not set")
 	}
+
 	elapsedAllocation := time.Since(startTime)
 
 	allocationID := allocationObj.ID
 	connectionID, ok := common.GetField(r, "connection_id")
 	if !ok {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
-	}
-	cmd := createFileCommand(r)
-	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
-	if err != nil {
-		Logger.Error("Error in validating the command", zap.Error(err))
-		return nil, err
 	}
 	// Lock will compete with other CommitWrites and Challenge validation
 	mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
@@ -1224,18 +1221,8 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
 
-	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
-
-	elapsedGetConnObj := time.Since(startTime) - elapsedAllocation - elapsedGetLock
-
 	if clientID == "" || clientKey == "" {
 		return nil, common.NewError("invalid_params", "Please provide clientID and clientKey")
-	}
-
-	if err != nil {
-		// might be good to check if blobber already has stored writemarker
-		return nil, common.NewErrorf("invalid_parameters",
-			"Invalid connection id. Connection id was not found: %v", err)
 	}
 
 	if allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID {
@@ -1253,22 +1240,6 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	var result blobberhttp.CommitResult
 
-	// process rollback
-	err = cmd.ProcessRollback(allocationObj, connectionObj)
-	if err != nil {
-		Logger.Error("Error in processing rollback", zap.Error(err))
-		return nil, err
-	}
-
-	if len(connectionObj.Changes) == 0 {
-		return &result, nil
-	}
-
-	if allocationObj.BlobberSizeUsed+connectionObj.Size > allocationObj.BlobberSize {
-		return nil, common.NewError("max_allocation_size",
-			"Max size reached for the allocation with this blobber")
-	}
-
 	var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
 	latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
 		allocationObj.AllocationRoot)
@@ -1280,12 +1251,12 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	writemarkerEntity := &writemarker.WriteMarkerEntity{}
 	writemarkerEntity.WM = writeMarker
 
-	err = writemarkerEntity.VerifyMarker(ctx, allocationObj, connectionObj)
+	err = writemarkerEntity.VerifyRollbackMarker(ctx, allocationObj)
 	if err != nil {
 		return nil, common.NewError("write_marker_verification_failed", "Verification of the write marker failed: "+err.Error())
 	}
 
-	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj
+	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock
 
 	var clientIDForWriteRedeem = writeMarker.ClientID
 
@@ -1293,19 +1264,13 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, err
 	}
 
-	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj - elapsedVerifyWM
+	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM
 
-	// apply the rollback
-	fileIDMeta := make(map[string]string, 0)
-	err = connectionObj.ApplyChanges(ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
+	err = allocation.ApplyRollback(ctx, allocationID)
 	if err != nil {
-		Logger.Error("Error in applying the changes", zap.Error(err))
-		return nil, err
+		return nil, common.NewError("allocation_rollback_error", "Error applying the rollback for allocation: "+err.Error())
 	}
-
-	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
+	elapsedApplyRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM - elapsedWritePreRedeem
 
 	//get allocation root and ref
 	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash"})
@@ -1313,7 +1278,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, err
 	}
 
-	allocationRoot := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
+	allocationRoot := rootRef.Hash
 	fileMetaRoot := rootRef.FileMetaHash
 
 	if allocationRoot != writeMarker.AllocationRoot {
@@ -1337,7 +1302,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return &result, common.NewError("file_meta_root_mismatch", result.ErrorMessage)
 	}
 
-	writemarkerEntity.ConnectionID = connectionObj.ID
+	writemarkerEntity.ConnectionID = connectionID
 	writemarkerEntity.ClientPublicKey = clientKey
 
 	err = writemarkerEntity.Save(ctx)
@@ -1347,8 +1312,8 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	db := datastore.GetStore().GetTransaction(ctx)
 	allocationUpdates := make(map[string]interface{})
-	allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
-	allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
+	allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used - ?", latestWriteMarkerEntity.WM.Size)
+	allocationUpdates["used_size"] = gorm.Expr("used_size - ?", latestWriteMarkerEntity.WM.Size)
 	allocationUpdates["is_redeem_required"] = true
 	allocationUpdates["allocation_root"] = allocationRoot
 	allocationUpdates["file_meta_root"] = fileMetaRoot
@@ -1358,32 +1323,28 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
 
-	err = connectionObj.CommitToFileStore(ctx)
+	err = allocation.CommitRollback(allocationID)
 	if err != nil {
-		if !errors.Is(common.ErrFileWasDeleted, err) {
-			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-		}
+		Logger.Error("Error committing the rollback for allocation", zap.Error(err))
 	}
 
-	result.Changes = connectionObj.Changes
+	elapsedCommitRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM - elapsedWritePreRedeem
 
 	result.AllocationRoot = allocationObj.AllocationRoot
 	result.WriteMarker = &writeMarker
 	result.Success = true
 	result.ErrorMessage = ""
-	commitOperation := connectionObj.Changes[0].Operation
-	input := connectionObj.Changes[0].Input
+	commitOperation := "rollback"
 
 	Logger.Info("[commit]"+commitOperation,
 		zap.String("alloc_id", allocationID),
-		zap.String("input", input),
 		zap.Duration("get_alloc", elapsedAllocation),
 		zap.Duration("get-lock", elapsedGetLock),
-		zap.Duration("get-conn-obj", elapsedGetConnObj),
 		zap.Duration("verify-wm", elapsedVerifyWM),
 		zap.Duration("write-pre-redeem", elapsedWritePreRedeem),
-		zap.Duration("apply-changes", elapsedApplyChanges),
+		zap.Duration("apply-rollback", elapsedApplyRollback),
 		zap.Duration("total", time.Since(startTime)),
+		zap.Duration("commit-rollback", elapsedCommitRollback),
 	)
 
 	return &result, nil

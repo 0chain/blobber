@@ -104,6 +104,10 @@ func (mfs *MockFileStore) DeleteFile(allocID, contentHash string) error {
 	return nil
 }
 
+func (mfs *MockFileStore) DeletePreCommitDir(allocID string) error {
+	return nil
+}
+
 func (mfs *MockFileStore) GetFileBlock(in *filestore.ReadBlockInput) (*filestore.FileDownloadResponse, error) {
 	return &filestore.FileDownloadResponse{
 		Data: mockFileBlock,
