@@ -190,9 +190,6 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/referencepath/{allocation}",
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))) // TODO: add handler
 
-	r.HandleFunc("/v1/file/latestwritemarker/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(WriteMarkerHandler))))
-
 	r.HandleFunc("/v1/file/objecttree/{allocation}",
 		RateLimitByObjectRL(common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
@@ -457,17 +454,6 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetReferencePath(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
-}
-
-func WriteMarkerHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.GetLatestWriteMarker(ctx, r)
 	if err != nil {
 		return nil, err
 	}

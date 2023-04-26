@@ -50,7 +50,6 @@ type FileStorer interface {
 	DeleteFile(allocID, contentHash string) error
 	MoveToFilestore(allocID, hash string) error
 	DeleteFromFilestore(allocID, hash string) error
-	DeletePreCommitDir(allocID string) error
 	// GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.
 	GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error)
 	GetBlocksMerkleTreeForChallenge(cri *ChallengeReadBlockInput) (*ChallengeResponse, error)

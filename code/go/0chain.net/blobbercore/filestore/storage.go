@@ -141,22 +141,6 @@ func (fs *FileStore) DeleteFromFilestore(allocID, hash string) error {
 	return nil
 }
 
-func (fs *FileStore) DeletePreCommitDir(allocID string) error {
-
-	preCommitDir := fs.getPreCommitDir(allocID)
-	err := os.RemoveAll(preCommitDir)
-	if err != nil {
-		return common.NewError("pre_commit_dir_deletion_error", err.Error())
-	}
-	tempDir := fs.getAllocTempDir(allocID)
-	err = os.RemoveAll(tempDir)
-	if err != nil {
-		return common.NewError("temp_dir_deletion_error", err.Error())
-	}
-
-	return nil
-}
-
 func (fs *FileStore) PreCommitWrite(allocID, conID string, fileData *FileInputData, r *os.File, preCommitPath string) (bool, error) {
 
 	logging.Logger.Info("Pre Committing file")
