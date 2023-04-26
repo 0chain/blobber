@@ -39,6 +39,7 @@ const (
 	EncryptionHeaderSize = 128 + 128
 	// ReEncryptionHeaderSize re-encryption header size in chunk
 	ReEncryptionHeaderSize = 256
+	AllocationConnections  = "allocation_connections"
 )
 
 func readPreRedeem(
@@ -581,14 +582,13 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	lock, _ := connectionObjLocker.GetLock(connectionID);  // It will be unlocked from WithConnection();
-	lock.Lock()
+	mutex := lock.GetMutex(AllocationConnections, connectionID) // It will be unlocked from WithConnection();
+	mutex.Lock()
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
-
 
 	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
 
@@ -671,8 +671,9 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	lock, _ := connectionObjLocker.GetLock(connectionID);  // It will be unlocked from WithConnection();
-	lock.Lock()
+	mutex := lock.GetMutex(AllocationConnections, connectionID) // It will be unlocked from WithConnection();
+
+	mutex.Lock()
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
@@ -779,8 +780,8 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	lock, _ := connectionObjLocker.GetLock(connectionID);  // It will be unlocked from WithConnection();
-	lock.Lock()
+	mutex := lock.GetMutex(AllocationConnections, connectionID) // It will be unlocked from WithConnection();
+	mutex.Lock()
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
@@ -944,8 +945,8 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	lock, _ := connectionObjLocker.GetLock(connectionID);  // It will be unlocked from WithConnection();
-	lock.Lock()
+	mutex := lock.GetMutex(AllocationConnections, connectionID) // It will be unlocked from WithConnection();
+	mutex.Lock()
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
@@ -1038,11 +1039,11 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	st = time.Now()
 
 	Logger.Info(fmt.Sprintf("[upload] Acquiring lock for allocation: %s, connection: %s", allocationID, connectionID))
-	lock, _ := connectionObjLocker.GetLock(connectionID);  // It will be unlocked from WithConnection();
+	mutex := lock.GetMutex(AllocationConnections, connectionID) // It will be unlocked from WithConnection();
 
 	Logger.Info(fmt.Sprintf("[upload] Locking for allocation: %s, connection: %s", allocationID, connectionID))
 
-	lock.Lock()
+	mutex.Lock()
 	Logger.Info(fmt.Sprintf("[upload] Acquired lock for allocation: %s, connection: %s", allocationID, connectionID))
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)

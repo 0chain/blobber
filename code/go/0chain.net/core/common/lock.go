@@ -15,8 +15,6 @@ type Lock struct {
 
 	// Parent Map
 	pMap *MapLocker
-
-	tryUnlockMu *sync.Mutex
 }
 
 // Lock Acquire lock
@@ -46,21 +44,6 @@ func (l *Lock) Unlock() {
 	l.countMu.Unlock()
 }
 
-// TryUnlock unlock the lock if it is already locked otherwise do nothing.
-// Don't use tryUnlock and Unlock together for the same lock otherwise it may panic
-func (l *Lock) TryUnlock() {
-	l.tryUnlockMu.Lock()
-	defer l.tryUnlockMu.Unlock()
-	if l.actualLock.TryLock() {
-		// If succeed then unlock it safely
-		l.Unlock()
-	} else {
-		// The lock is already acquired by other process, and tryUnlockMu make sure that
-		// lock is not unlocked by other TryUnlock().
-		l.Unlock()
-	}
-}
-
 type MapLocker struct {
 	m *sync.Map
 	// Reduce updating lock with GetLock call with same key
@@ -77,11 +60,10 @@ func (m *MapLocker) GetLock(key string) (l *Lock, isNew bool) {
 	}
 
 	l = &Lock{
-		key:         key,
-		pMap:        m,
-		actualLock:  new(sync.Mutex),
-		countMu:     new(sync.Mutex),
-		tryUnlockMu: new(sync.Mutex),
+		key:        key,
+		pMap:       m,
+		actualLock: new(sync.Mutex),
+		countMu:    new(sync.Mutex),
 	}
 	isNew = true
 	m.m.Store(key, l)
