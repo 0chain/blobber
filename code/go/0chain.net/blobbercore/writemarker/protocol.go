@@ -135,7 +135,7 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 	if wme == nil {
 		return common.NewError("invalid_write_marker", "No Write Marker was found")
 	}
-	if wme.WM.PreviousAllocationRoot == wme.WM.AllocationRoot {
+	if wme.WM.PreviousAllocationRoot != wme.WM.AllocationRoot {
 		return common.NewError("invalid_write_marker", "Invalid write marker. Prev Allocation root does not match the allocation root of write marker")
 	}
 	if wme.WM.BlobberID != node.Self.ID {
