@@ -276,7 +276,6 @@ func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF
 	}
 }
 
-var connectionObjLocker = common.GetNewLocker()
 
 func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 	return func(ctx context.Context, r *http.Request) (resp interface{}, err error) {
