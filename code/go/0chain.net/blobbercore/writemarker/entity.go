@@ -19,7 +19,7 @@ type WriteMarker struct {
 	AllocationID           string           `gorm:"column:allocation_id;size:64;index:idx_seq,unique,priority:1" json:"allocation_id"`
 	Size                   int64            `gorm:"column:size" json:"size"`
 	BlobberID              string           `gorm:"column:blobber_id;size:64" json:"blobber_id"`
-	Timestamp              common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
+	Timestamp              common.Timestamp `gorm:"column:timestamp;primaryKey" json:"timestamp"`
 	ClientID               string           `gorm:"column:client_id;size:64" json:"client_id"`
 	Signature              string           `gorm:"column:signature;size:64" json:"signature"`
 }
