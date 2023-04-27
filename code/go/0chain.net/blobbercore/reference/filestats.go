@@ -76,7 +76,7 @@ func FileBlockDownloaded(ctx context.Context, refID int64) {
 func GetFileStats(ctx context.Context, refID int64) (*FileStats, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
-	err := db.Model(stats).Where(FileStats{RefID: refID}).Preload("Ref").First(stats).Error
+	err := db.Unscoped().Model(stats).Where(FileStats{RefID: refID}).Preload("Ref").First(stats).Error
 	if err != nil {
 		return nil, err
 	}
