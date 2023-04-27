@@ -12,8 +12,6 @@ import (
 // SetupDefaultConfig - setup the default config options that can be overridden via the config file
 func SetupDefaultConfig() {
 	viper.SetDefault("logging.level", "info")
-	viper.SetDefault("contentref_cleaner.frequency", 30)
-	viper.SetDefault("contentref_cleaner.tolerance", 3600)
 
 	viper.SetDefault("openconnection_cleaner.tolerance", 3600)
 	viper.SetDefault("openconnection_cleaner.frequency", 30)
@@ -31,15 +29,10 @@ func SetupDefaultConfig() {
 	viper.SetDefault("read_price", 0.0)
 	viper.SetDefault("write_price", 0.0)
 	viper.SetDefault("min_lock_demand", 0.0)
-	viper.SetDefault("max_offer_duration", time.Duration(0))
 
-	viper.SetDefault("read_lock_timeout", time.Duration(-1))
-	viper.SetDefault("write_lock_timeout", time.Duration(-1))
 	viper.SetDefault("write_marker_lock_timeout", time.Second*30)
 
 	viper.SetDefault("delegate_wallet", "")
-	viper.SetDefault("min_stake", 1.0)
-	viper.SetDefault("max_stake", 100.0)
 	viper.SetDefault("num_delegates", 100)
 	viper.SetDefault("service_charge", 0.3)
 
@@ -73,11 +66,6 @@ const (
 	DeploymentMainNet     = 2
 )
 
-type GeolocationConfig struct {
-	Latitude  float64 `mapstructure:"latitude"`
-	Longitude float64 `mapstructure:"longitude"`
-}
-
 type Config struct {
 	*config.Config
 	DBHost                        string
@@ -88,8 +76,6 @@ type Config struct {
 	DBUserName                    string
 	DBPassword                    string
 	DBTablesToKeep                []string
-	ContentRefWorkerFreq          int64
-	ContentRefWorkerTolerance     int64
 	OpenConnectionWorkerFreq      int64
 	OpenConnectionWorkerTolerance int64
 	WMRedeemFreq                  int64
@@ -104,14 +90,11 @@ type Config struct {
 
 	HealthCheckWorkerFreq time.Duration
 
-	ReadPrice        float64
-	WritePrice       float64
-	PriceInUSD       bool
-	MinLockDemand    float64
-	MaxOfferDuration time.Duration
+	ReadPrice     float64
+	WritePrice    float64
+	PriceInUSD    bool
+	MinLockDemand float64
 
-	ReadLockTimeout  int64 // seconds
-	WriteLockTimeout int64 // seconds
 	// WriteMarkerLockTimeout lock is released automatically if it is timeout
 	WriteMarkerLockTimeout time.Duration
 
@@ -121,30 +104,15 @@ type Config struct {
 
 	// DelegateWallet for pool owner.
 	DelegateWallet string `json:"delegate_wallet"`
-	// MinStake allowed.
-	MinStake int64 `json:"min_stake"`
-	// MaxStake allowed.
-	MaxStake int64 `json:"max_stake"`
 	// NumDelegates maximum allowed.
 	NumDelegates int `json:"num_delegates"`
 	// ServiceCharge for blobber.
 	ServiceCharge float64 `json:"service_charge"`
 
-	Geolocation GeolocationConfig `mapstructure:"geolocation"`
-
 	// MinSubmit minial submit from miners
 	MinSubmit int
 	// MinConfirmation minial confirmation from sharders
 	MinConfirmation int
-
-	// Name the name of blobber
-	Name string
-	// LogoUrl logo of blobber
-	LogoUrl string
-	// Description general information of blobber
-	Description string
-	// WebsiteUrl the website of blobber (if any)
-	WebsiteUrl string
 
 	// MountPoint is where allocation files are stored. This is basically arranged in RAID5.
 	MountPoint    string
@@ -166,16 +134,6 @@ func TestNet() bool {
 /*Development - is the programming running in development mode? */
 func Development() bool {
 	return Configuration.DeploymentMode == DeploymentDevelopment
-}
-
-// get validated geolocatiion
-func Geolocation() GeolocationConfig {
-	g := Configuration.Geolocation
-	if g.Latitude > 90.00 || g.Latitude < -90.00 ||
-		g.Longitude > 180.00 || g.Longitude < -180.00 {
-		panic("Fatal error in config file")
-	}
-	return g
 }
 
 /*ErrSupportedChain error for indicating which chain is supported by the server */

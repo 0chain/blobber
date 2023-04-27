@@ -138,8 +138,6 @@ func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (*transa
 	sn.ID = node.Self.ID
 	sn.BaseURL = node.Self.GetURLBase()
 	sn.StakePoolSettings.DelegateWallet = config.Configuration.DelegateWallet
-	sn.StakePoolSettings.MinStake = config.Configuration.MinStake
-	sn.StakePoolSettings.MaxStake = config.Configuration.MaxStake
 	sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
 	sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
 
