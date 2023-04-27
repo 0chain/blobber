@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
 	"github.com/0chain/gosdk/constants"
 
@@ -335,7 +334,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	}
 
 	fileDownloadResponse.Data = chunkData
-	stats.FileBlockDownloaded(ctx, fileref.ID)
+	reference.FileBlockDownloaded(ctx, fileref.ID)
 	return fileDownloadResponse, nil
 }
 

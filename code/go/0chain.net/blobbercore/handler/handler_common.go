@@ -56,6 +56,7 @@ func rollbackHandler(ctx context.Context, r *http.Request) (interface{}, int, er
 		if errors.Is(common.ErrFileWasDeleted, err) {
 			return response, http.StatusNoContent, nil
 		}
+		Logger.Error("rollbackHandler_request_failed", zap.Error(err))
 		return nil, http.StatusBadRequest, err
 	}
 

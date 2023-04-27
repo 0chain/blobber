@@ -8,7 +8,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	stats2 "github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 )
 
 func GetAllocationResponseCreator(resp interface{}) *blobbergrpc.GetAllocationResponse {
@@ -43,7 +42,7 @@ func GetFileStatsResponseCreator(r interface{}) *blobbergrpc.GetFileStatsRespons
 	resp.MetaData = FileRefToFileRefGRPC(reference.ListingDataToRef(httpResp))
 
 	respRaw, _ := json.Marshal(httpResp)
-	var stats stats2.FileStats
+	var stats reference.FileStats
 	_ = json.Unmarshal(respRaw, &stats)
 	resp.Stats = FileStatsToFileStatsGRPC(&stats)
 
