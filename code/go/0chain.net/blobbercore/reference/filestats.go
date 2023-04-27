@@ -51,14 +51,14 @@ func NewFileCreated(ctx context.Context, refID int64) {
 	stats := &FileStats{RefID: refID}
 	stats.NumBlockDownloads = 0
 	stats.NumUpdates = 1
-	db.Save(stats)
+	db.Save(&stats)
 }
 
 func FileUpdated(ctx context.Context, refID, newRefID int64) {
 	db := datastore.GetStore().GetTransaction(ctx)
-	var stats *FileStats
+	stats := FileStats{}
 
-	db.Model(stats).Clauses(clause.Returning{}).Delete(&FileStats{}, "id=?", refID)
+	db.Model(&stats).Clauses(clause.Returning{}).Delete(&FileStats{}, "id=?", refID)
 	stats.RefID = newRefID
 	stats.NumUpdates += 1
 	db.Create(stats)
