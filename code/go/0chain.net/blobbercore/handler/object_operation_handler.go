@@ -1272,11 +1272,12 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	elapsedApplyRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM - elapsedWritePreRedeem
 
 	//get allocation root and ref
-	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash"})
+	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash", "is_temp"})
 	if err != nil {
 		return nil, err
 	}
 
+	Logger.Info("rollback_root_ref", zap.Any("root_ref", rootRef))
 	allocationRoot := rootRef.Hash
 	fileMetaRoot := rootRef.FileMetaHash
 
@@ -1335,7 +1336,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	result.ErrorMessage = ""
 	commitOperation := "rollback"
 
-	Logger.Info("[commit]"+commitOperation,
+	Logger.Info("[rollback]"+commitOperation,
 		zap.String("alloc_id", allocationID),
 		zap.Duration("get_alloc", elapsedAllocation),
 		zap.Duration("get-lock", elapsedGetLock),

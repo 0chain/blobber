@@ -523,35 +523,13 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 
 func (r *Ref) SaveDirRef(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Model(r).Where("id = ?", r.ID).Updates(map[string]interface{}{
-		"allocation_id":      r.AllocationID,
-		"lookup_hash":        r.LookupHash,
-		"name":               r.Name,
-		"path":               r.Path,
-		"hash":               r.Hash,
-		"file_meta_hash":     r.FileMetaHash,
-		"num_of_blocks":      r.NumBlocks,
-		"path_hash":          r.PathHash,
-		"parent_path":        r.ParentPath,
-		"level":              r.PathLevel,
-		"allocation_root":    r.AllocationRoot,
-		"size":               r.Size,
-		"chunk_size":         r.ChunkSize,
-		"is_temp":            false,
-		"file_id":            r.FileID,
-		"thumbnail_filename": r.ThumbnailFilename,
-	})
-	if errors.Is(db.Error, gorm.ErrRecordNotFound) || db.RowsAffected == 0 {
-		err := db.Delete(&Ref{}, "id=?", r.ID).Error
-		if err != nil && err != gorm.ErrRecordNotFound {
-			return err
-		}
-		r.IsTemp = true
-		r.ID = 0
-		return db.Create(r).Error
-	} else {
-		return db.Error
+	err := db.Delete(&Ref{}, "id=?", r.ID).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return err
 	}
+	r.IsTemp = true
+	r.ID = 0
+	return db.Create(r).Error
 }
 
 func UpdateIsTemp(ctx context.Context, allocationID, path string, isTemp bool) error {
