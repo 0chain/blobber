@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"gorm.io/gorm/clause"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
@@ -51,6 +52,12 @@ func syncOpenChallenges(ctx context.Context) {
 	var downloadElapsed, jsonElapsed time.Duration
 
 	for {
+		select {
+		case <-ctx.Done():
+			logging.Logger.Info("sync open challenges main loop ended")
+			return
+		default:
+		}
 		var challenges BCChallengeResponse
 		var challengeIDs []string
 		challenges.Challenges = make([]*ChallengeEntity, 0)
@@ -354,11 +361,15 @@ func loadTodoChallenges(doProcessed bool) {
 	from := now - int64(config.StorageSCConfig.ChallengeCompletionTime.Seconds())
 
 	db = db.Model(&ChallengeEntity{}).
-		Where("created_at > ? AND status in (?)", from, Accepted)
+		Where("created_at > ? AND status in (?)", from, Accepted).Order(clause.OrderByColumn{
+		Column: clause.Column{Name: "block_num"},
+	})
 
 	if doProcessed {
 		db = db.Model(&ChallengeEntity{}).
-			Where("created_at > ? AND status in (?,?)", from, Accepted, Processed)
+			Where("created_at > ? AND status in (?,?)", from, Accepted, Processed).Order(clause.OrderByColumn{
+			Column: clause.Column{Name: "block_num"},
+		})
 	}
 
 	rows, err := db.Order("created_at").
