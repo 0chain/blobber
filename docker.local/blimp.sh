@@ -14,7 +14,7 @@ WALLET_PUBLIC_KEY=0chainwalletpublickey
 WALLET_PRIVATE_KEY=0chainwalletprivatekey
 
 sudo apt update
-sudo apt install -y unzip curl containerd docker.io jq
+DEBIAN_FRONTEND=noninteractive sudo apt install -y unzip curl containerd docker.io jq
 
 echo "download docker-compose"
 sudo curl -L "https://github.com/docker/compose/releases/download/1.29.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
