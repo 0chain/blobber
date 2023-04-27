@@ -126,6 +126,10 @@ cd $HOME/.zcn/
 ```
 **_Note: Replace the localhost form `docker.local/p0docker-compose.yml` to your public IP if you are trying to connect to another network ._**
 
+If you have trouble with `insufficient balance to pay fee` errors when starting blobbers, you can turn 
+off fees in [0chain.yaml.server_chain.smart_contract.miner](https://github.com/0chain/0chain/blob/staging/docker.local/config/0chain.yaml#L104)
+adjusting true to false.
+
 ## Troubleshooting
 
 12. Ensure the port mapping is all correct:

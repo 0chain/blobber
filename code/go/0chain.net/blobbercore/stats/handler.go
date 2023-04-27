@@ -136,9 +136,6 @@ const tpl = `
                 <tr><td>Read price</td><td>{{ .ReadPrice }}</td></tr>
                 <tr><td>Write price</td><td>{{ .WritePrice }}</td></tr>
                 <tr><td>Min lock demand</td><td>{{ .MinLockDemand }}</td></tr>
-                <tr><td>Max offer duration</td><td>{{ .MaxOfferDuration }}</td></tr>
-                <tr><td>Read lock timeout</td><td>{{ .ReadLockTimeout }}</td></tr>
-                <tr><td>Write lock timeout</td><td>{{ .WriteLockTimeout }}</td></tr>
             </table>
         </td>
         <td valign='top'>
@@ -274,7 +271,7 @@ const tpl = `
         <td rowspan=2>{{ .AllocationID }}</td>
         <td>{{ byte_count_in_string .UsedSize }}</td>
         <td>{{ byte_count_in_string_for_uint64 .DiskSizeUsed }}</td>
-        <td>{{ byte_count_in_string .TempFolderSize }}</td>
+        <td>{{ byte_count_in_string_for_uint64 .TempFolderSize }}</td>
         <td>{{ .NumWrites }}</td>
         <td>{{ .BlockWrites }}</td>
         <td>{{ .NumReads }}</td>
