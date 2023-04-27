@@ -14,7 +14,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/config"
 
 	"github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
 )
 
@@ -128,14 +127,6 @@ func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet, err string)
 }
 
 func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (*transaction.Transaction, error) {
-	wcb := &WalletCallback{}
-	wcb.wg = &sync.WaitGroup{}
-	wcb.wg.Add(1)
-	err := zcncore.RegisterToMiners(node.Self.GetWallet(), wcb)
-	if err != nil {
-		return nil, err
-	}
-
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	txn, err := transaction.NewTransactionEntity()
