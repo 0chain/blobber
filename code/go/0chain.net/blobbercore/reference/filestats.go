@@ -55,6 +55,9 @@ func NewFileCreated(ctx context.Context, refID int64) {
 }
 
 func FileUpdated(ctx context.Context, refID, newRefID int64) {
+	if refID == 0 {
+		return
+	}
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := FileStats{}
 
