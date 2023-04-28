@@ -1336,7 +1336,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	result.ErrorMessage = ""
 	commitOperation := "rollback"
 
-	Logger.Info("[commit]"+commitOperation,
+	Logger.Info("[rollback]"+commitOperation,
 		zap.String("alloc_id", allocationID),
 		zap.Duration("get_alloc", elapsedAllocation),
 		zap.Duration("get-lock", elapsedGetLock),
