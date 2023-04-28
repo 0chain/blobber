@@ -68,11 +68,16 @@ func FileUpdated(ctx context.Context, refID, newRefID int64) {
 	} else {
 		logging.Logger.Info("FileUpdatedGetFileStats", zap.Any("stats", stats))
 	}
-	db.Delete(&FileStats{}, "ref_id=?", refID)
-	stats.RefID = newRefID
-	stats.ID = 0
-	stats.NumUpdates += 1
-	err = db.Create(&stats).Error
+	db.Delete(&FileStats{}, "id=?", stats.ID)
+	newStats := &FileStats{RefID: newRefID}
+	newStats.NumUpdates = stats.NumUpdates + 1
+	newStats.NumBlockDownloads = stats.NumBlockDownloads
+	newStats.SuccessChallenges = stats.SuccessChallenges
+	newStats.FailedChallenges = stats.FailedChallenges
+	newStats.LastChallengeResponseTxn = stats.LastChallengeResponseTxn
+	newStats.WriteMarkerRedeemTxn = stats.WriteMarkerRedeemTxn
+	newStats.OnChain = stats.OnChain
+	err = db.Create(newStats).Error
 	if err != nil {
 		logging.Logger.Error("FileUpdatedCreate", zap.Error(err))
 	}
