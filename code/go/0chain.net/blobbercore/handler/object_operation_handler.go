@@ -144,7 +144,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 	return
 }
 
-func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (resp interface{}, err error) {
+func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (interface{}, error) {
 	// get client and allocation ids
 	var (
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
@@ -156,34 +156,18 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		return nil, common.NewError("download_file", "invalid client")
 	}
 
-	alloc, err = fsh.verifyAllocation(ctx, allocationTx, false)
+	alloc, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid allocation id passed: %v", err)
 	}
-
-	key := clientID + ":" + alloc.ID
-	lock, isNewLock := readmarker.ReadmarkerMapLock.GetLock(key)
-	if !isNewLock {
-		return nil, common.NewErrorf("lock_exists", fmt.Sprintf("lock exists for key: %v", key))
-	}
-
-	lock.Lock()
-	defer lock.Unlock()
 
 	dr, err := FromDownloadRequest(allocationTx, r)
 	if err != nil {
 		return nil, err
 	}
 
-	if dr.ReadMarker.ClientID != clientID { // We might well remove client id from request header
+	if dr.ClientID != clientID {
 		return nil, common.NewError("invalid_client", "header clientID and readmarker clientID are different")
-	}
-
-	rmObj := new(readmarker.ReadMarkerEntity)
-	rmObj.LatestRM = &dr.ReadMarker
-
-	if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
-		return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
 	}
 
 	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)
@@ -193,6 +177,68 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 
 	if fileref.Type != reference.FILE {
 		return nil, common.NewErrorf("download_file", "path is not a file: %v", err)
+	}
+
+	if dr.SubmitRM {
+		key := clientID + ":" + alloc.ID
+		lock, isNewLock := readmarker.ReadmarkerMapLock.GetLock(key)
+		if !isNewLock {
+			return nil, common.NewErrorf("lock_exists", fmt.Sprintf("lock exists for key: %v", key))
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+
+		rmObj := new(readmarker.ReadMarkerEntity)
+		rmObj.LatestRM = &dr.ReadMarker
+
+		if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
+			return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
+		}
+
+		// create read marker
+		var (
+			rme           *readmarker.ReadMarkerEntity
+			latestRM      *readmarker.ReadMarker
+			pendNumBlocks int64
+		)
+
+		rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID, alloc.ID)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, common.NewErrorf("download_file", "couldn't get read marker from DB: %v", err)
+		}
+
+		if rme != nil {
+			latestRM = rme.LatestRM
+			if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
+				return nil, common.NewErrorf("download_file", "couldn't get number of blocks pending redeeming: %v", err)
+			}
+		}
+
+		if latestRM != nil && latestRM.ReadCounter+(dr.ReadMarker.ReadCounter) > dr.ReadMarker.ReadCounter {
+			latestRM.BlobberID = node.Self.ID
+			return &blobberhttp.DownloadResponse{
+				Success:      false,
+				LatestRM:     latestRM,
+				Path:         fileref.Path,
+				AllocationID: fileref.AllocationID,
+			}, common.NewError("stale_read_marker", "")
+		}
+
+		// check out read pool tokens if read_price > 0
+		err = readPreRedeem(ctx, alloc, dr.ReadMarker.ReadCounter, pendNumBlocks, clientID)
+		if err != nil {
+			return nil, common.NewErrorf("download_file", "pre-redeeming read marker: %v", err)
+		}
+
+		err = readmarker.SaveLatestReadMarker(ctx, &dr.ReadMarker, 0, latestRM == nil)
+		if err != nil {
+			Logger.Error(err.Error())
+			return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
+		}
+		return &blobberhttp.DownloadResponse{
+			Success: true,
+		}, nil
 	}
 
 	isOwner := clientID == alloc.OwnerID
@@ -224,40 +270,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			return nil, common.NewErrorf("download_file", "the file is not available until: %v", shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
 		}
 
-	}
-	// create read marker
-	var (
-		rme           *readmarker.ReadMarkerEntity
-		latestRM      *readmarker.ReadMarker
-		pendNumBlocks int64
-	)
-
-	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID, alloc.ID)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, common.NewErrorf("download_file", "couldn't get read marker from DB: %v", err)
-	}
-
-	if rme != nil {
-		latestRM = rme.LatestRM
-		if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
-			return nil, common.NewErrorf("download_file", "couldn't get number of blocks pending redeeming: %v", err)
-		}
-	}
-
-	if latestRM != nil && latestRM.ReadCounter+(dr.NumBlocks) > dr.ReadMarker.ReadCounter {
-		latestRM.BlobberID = node.Self.ID
-		return &blobberhttp.DownloadResponse{
-			Success:      false,
-			LatestRM:     latestRM,
-			Path:         fileref.Path,
-			AllocationID: fileref.AllocationID,
-		}, common.NewError("stale_read_marker", "")
-	}
-
-	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, alloc, dr.NumBlocks, pendNumBlocks, clientID)
-	if err != nil {
-		return nil, common.NewErrorf("download_file", "pre-redeeming read marker: %v", err)
 	}
 
 	// reading is allowed
@@ -293,12 +305,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		if err != nil {
 			return nil, common.NewErrorf("download_file", "couldn't get file block: %v", err)
 		}
-	}
-
-	err = readmarker.SaveLatestReadMarker(ctx, &dr.ReadMarker, 0, latestRM == nil)
-	if err != nil {
-		Logger.Error(err.Error())
-		return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
 	}
 
 	var chunkEncoder ChunkEncoder

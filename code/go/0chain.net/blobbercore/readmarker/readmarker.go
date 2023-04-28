@@ -83,10 +83,6 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 	currentTS := common.Now()
 	if rm.LatestRM.Timestamp > currentTS {
 		zLogger.Logger.Error("Timestamp is for future in the read marker", zap.Any("rm", rm), zap.Any("now", currentTS))
-	}
-	currentTS = common.Now()
-	if rm.LatestRM.Timestamp > (currentTS + 2) {
-		zLogger.Logger.Error("Timestamp is for future in the read marker", zap.Any("rm", rm), zap.Any("now", currentTS))
 		return common.NewError("read_marker_validation_failed", "Timestamp is for future in the read marker")
 	}
 

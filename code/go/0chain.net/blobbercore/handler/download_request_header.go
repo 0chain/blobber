@@ -15,6 +15,7 @@ import (
 type DownloadRequestHeader struct {
 	req            *http.Request
 	allocationID   string
+	ClientID       string
 	PathHash       string
 	Path           string
 	BlockNum       int64
@@ -23,6 +24,7 @@ type DownloadRequestHeader struct {
 	AuthToken      string
 	VerifyDownload bool
 	DownloadMode   string
+	SubmitRM       bool
 }
 
 func FromDownloadRequest(allocationID string, req *http.Request) (*DownloadRequestHeader, error) {
@@ -76,15 +78,24 @@ func (dr *DownloadRequestHeader) Parse() error {
 	}
 	dr.NumBlocks = numBlocks
 
-	readMarker := dr.Get("X-Read-Marker")
+	clientID := dr.Get("X-Client-ID")
 
-	if readMarker == "" {
-		return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
+	if clientID == "" {
+		return errors.Throw(common.ErrInvalidParameter, "X-Client-ID")
 	}
 
-	err := json.Unmarshal([]byte(readMarker), &dr.ReadMarker)
-	if err != nil {
-		return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
+	dr.ClientID = clientID
+
+	dr.SubmitRM = dr.Get("X-Submit-RM") == "true"
+	if dr.SubmitRM {
+		readMarker := dr.Get("X-Read-Marker")
+		if readMarker == "" {
+			return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
+		}
+		err := json.Unmarshal([]byte(readMarker), &dr.ReadMarker)
+		if err != nil {
+			return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
+		}
 	}
 
 	dr.AuthToken = dr.Get("X-Auth-Token")
