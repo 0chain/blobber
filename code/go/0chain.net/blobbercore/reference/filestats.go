@@ -8,7 +8,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type FileStats struct {
@@ -62,15 +61,14 @@ func FileUpdated(ctx context.Context, refID, newRefID int64) {
 		return
 	}
 	db := datastore.GetStore().GetTransaction(ctx)
-	stats := FileStats{}
-	logging.Logger.Info("FileUpdated", zap.Int64("refID", refID), zap.Int64("newRefID", newRefID))
-	err := db.Model(&stats).Clauses(clause.Returning{}).Delete(&FileStats{}, "ref_id=?", refID).Error
+	stats, err := GetFileStats(ctx, refID)
 	if err != nil {
-		logging.Logger.Error("FileUpdatedDelete", zap.Error(err))
+		logging.Logger.Error("FileUpdatedGetFileStats", zap.Error(err))
 		return
 	} else {
-		logging.Logger.Info("FileUpdatedStats", zap.Any("stats", stats))
+		logging.Logger.Info("FileUpdatedGetFileStats", zap.Any("stats", stats))
 	}
+	db.Delete(&FileStats{}, "ref_id=?", refID)
 	stats.RefID = newRefID
 	stats.ID = 0
 	stats.NumUpdates += 1
