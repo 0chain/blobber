@@ -14,7 +14,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/config"
 
 	"github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
 )
 
@@ -26,7 +25,7 @@ type StorageNode struct {
 	PublicKey string `json:"-"`
 }
 
-//ValidatorProtocolImpl - implementation of the storage protocol
+// ValidatorProtocolImpl - implementation of the storage protocol
 type ValidatorProtocolImpl struct {
 	ServerChain *chain.Chain
 }
@@ -128,14 +127,6 @@ func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet, err string)
 }
 
 func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (*transaction.Transaction, error) {
-	wcb := &WalletCallback{}
-	wcb.wg = &sync.WaitGroup{}
-	wcb.wg.Add(1)
-	err := zcncore.RegisterToMiners(node.Self.GetWallet(), wcb)
-	if err != nil {
-		return nil, err
-	}
-
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 
 	txn, err := transaction.NewTransactionEntity()
@@ -147,8 +138,6 @@ func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (*transa
 	sn.ID = node.Self.ID
 	sn.BaseURL = node.Self.GetURLBase()
 	sn.StakePoolSettings.DelegateWallet = config.Configuration.DelegateWallet
-	sn.StakePoolSettings.MinStake = config.Configuration.MinStake
-	sn.StakePoolSettings.MaxStake = config.Configuration.MaxStake
 	sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
 	sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
 

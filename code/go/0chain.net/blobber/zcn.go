@@ -23,15 +23,9 @@ func registerOnChain() error {
 	// setup wallet
 	fmt.Print("	+ connect to miners: ")
 
-	var err error
-
-	err = handler.WalletRegister()
-	if err != nil {
-		return err
-	}
 	fmt.Print("	[OK]\n")
 
-	err = filestore.GetFileStore().CalculateCurrentDiskCapacity()
+	err := filestore.GetFileStore().CalculateCurrentDiskCapacity()
 	if err != nil {
 		return err
 	}
