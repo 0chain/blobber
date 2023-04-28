@@ -64,7 +64,7 @@ func FileUpdated(ctx context.Context, refID, newRefID int64) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := FileStats{}
 	logging.Logger.Info("FileUpdated", zap.Int64("refID", refID), zap.Int64("newRefID", newRefID))
-	err := db.Model(&stats).Clauses(clause.Returning{}).Delete(&FileStats{}, "id=?", refID).Error
+	err := db.Model(&stats).Clauses(clause.Returning{}).Delete(&FileStats{}, "ref_id=?", refID).Error
 	if err != nil {
 		logging.Logger.Error("FileUpdatedDelete", zap.Error(err))
 		return
@@ -72,6 +72,7 @@ func FileUpdated(ctx context.Context, refID, newRefID int64) {
 		logging.Logger.Info("FileUpdatedStats", zap.Any("stats", stats))
 	}
 	stats.RefID = newRefID
+	stats.ID = 0
 	stats.NumUpdates += 1
 	err = db.Create(&stats).Error
 	if err != nil {
