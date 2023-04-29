@@ -14,7 +14,6 @@ import (
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
@@ -89,7 +88,7 @@ func GRPCAllocationToAllocation(alloc *blobbergrpc.Allocation) *allocation.Alloc
 	}
 }
 
-func FileStatsToFileStatsGRPC(fileStats *stats.FileStats) *blobbergrpc.FileStats {
+func FileStatsToFileStatsGRPC(fileStats *reference.FileStats) *blobbergrpc.FileStats {
 	if fileStats == nil {
 		return nil
 	}
@@ -176,12 +175,12 @@ func ReadMakerGRPCToReadMaker(rm *blobbergrpc.ReadMarker) *readmarker.ReadMarker
 	}
 }
 
-func FileStatsGRPCToFileStats(fileStats *blobbergrpc.FileStats) *stats.FileStats {
+func FileStatsGRPCToFileStats(fileStats *blobbergrpc.FileStats) *reference.FileStats {
 	if fileStats == nil {
 		return nil
 	}
 
-	return &stats.FileStats{
+	return &reference.FileStats{
 		ID:                       fileStats.Id,
 		RefID:                    fileStats.RefId,
 		NumUpdates:               fileStats.NumUpdates,

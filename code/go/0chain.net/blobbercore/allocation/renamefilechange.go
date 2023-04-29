@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
@@ -52,7 +51,7 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 	affectedRef.Path = newPath
 	affectedRef.UpdatedAt = ts
 	if affectedRef.Type == reference.FILE {
-		stats.FileUpdated(ctx, affectedRef.ID)
+		affectedRef.IsTemp = true
 	} else {
 		rf.processChildren(ctx, affectedRef, ts)
 	}
@@ -113,7 +112,7 @@ func (rf *RenameFileChange) processChildren(ctx context.Context, curRef *referen
 		newPath := filepath.Join(curRef.Path, childRef.Name)
 		childRef.UpdatePath(newPath, curRef.Path)
 		if childRef.Type == reference.FILE {
-			stats.FileUpdated(ctx, childRef.ID)
+			childRef.IsTemp = true
 		}
 		if childRef.Type == reference.DIRECTORY {
 			rf.processChildren(ctx, childRef, ts)

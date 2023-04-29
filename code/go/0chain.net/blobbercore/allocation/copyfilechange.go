@@ -10,7 +10,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
@@ -104,7 +103,7 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 	}
 
 	for _, fileRef := range fileRefs {
-		stats.NewFileCreated(ctx, fileRef.ID)
+		reference.NewFileCreated(ctx, fileRef.ID)
 	}
 	return rootRef, err
 }

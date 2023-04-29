@@ -8,7 +8,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"go.uber.org/zap"
 
@@ -105,15 +104,13 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	fileRef.ActualThumbnailSize = nf.ActualThumbnailSize
 	fileRef.EncryptedKey = nf.EncryptedKey
 	fileRef.ChunkSize = nf.ChunkSize
-	fileRef.IsTemp = nf.IsTemp
+	fileRef.IsTemp = true
 	fileRef.ThumbnailFilename = nf.ThumbnailFilename
 
 	_, err = rootRef.CalculateHash(ctx, true)
 	if err != nil {
 		return nil, err
 	}
-
-	stats.FileUpdated(ctx, fileRef.ID)
 
 	return rootRef, err
 }

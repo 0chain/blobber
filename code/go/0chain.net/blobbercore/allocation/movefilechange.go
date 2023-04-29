@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
@@ -120,7 +119,7 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 	}
 
 	for _, fileRef := range fileRefs {
-		stats.FileUpdated(ctx, fileRef.ID)
+		fileRef.IsTemp = true
 	}
 	return rootRef, err
 }

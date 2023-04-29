@@ -512,24 +512,51 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 
 func (r *Ref) SaveFileRef(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Delete(&Ref{}, "id=?", r.ID).Error
-	if err != nil && err != gorm.ErrRecordNotFound {
-		return err
+	toUpdateFileStat := r.IsTemp
+	prevID := r.ID
+	if r.ID > 0 {
+		err := db.Delete(&Ref{}, "id=?", r.ID).Error
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return err
+		}
 	}
 	r.IsTemp = true
 	r.ID = 0
-	return db.Create(r).Error
+	err := db.Create(r).Error
+	if err != nil {
+		return err
+	}
+
+	if toUpdateFileStat {
+		FileUpdated(ctx, prevID, r.ID)
+	}
+
+	return nil
 }
 
 func (r *Ref) SaveDirRef(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Delete(&Ref{}, "id=?", r.ID).Error
-	if err != nil && err != gorm.ErrRecordNotFound {
-		return err
+	toUpdateFileStat := r.IsTemp
+	prevID := r.ID
+	if r.ID > 0 {
+		err := db.Delete(&Ref{}, "id=?", r.ID).Error
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return err
+		}
 	}
 	r.IsTemp = true
 	r.ID = 0
-	return db.Create(r).Error
+	err := db.Create(r).Error
+
+	if err != nil {
+		return err
+	}
+
+	if toUpdateFileStat {
+		FileUpdated(ctx, prevID, r.ID)
+	}
+
+	return nil
 }
 
 func UpdateIsTemp(ctx context.Context, allocationID, path string, isTemp bool) error {
