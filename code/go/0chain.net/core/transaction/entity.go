@@ -16,7 +16,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
 
-//Transaction entity that encapsulates the transaction related data and meta data
+// Transaction entity that encapsulates the transaction related data and meta data
 type Transaction struct {
 	Hash              string           `json:"hash,omitempty"`
 	Version           string           `json:"version,omitempty"`
@@ -52,44 +52,24 @@ type Terms struct {
 	// allocation should be locked for the blobber rewards even if
 	// user never write something to the blobber.
 	MinLockDemand float64 `json:"min_lock_demand"`
-	// MaxOfferDuration with this prices and the demand.
-	MaxOfferDuration time.Duration `json:"max_offer_duration"`
 }
 
 type StakePoolSettings struct {
 	// DelegateWallet for pool owner.
 	DelegateWallet string `json:"delegate_wallet"`
-	// MinStake allowed.
-	MinStake int64 `json:"min_stake"`
-	// MaxStake allowed.
-	MaxStake int64 `json:"max_stake"`
 	// NumDelegates maximum allowed.
 	NumDelegates int `json:"num_delegates"`
 	// ServiceCharge of the blobber.
 	ServiceCharge float64 `json:"service_charge"`
 }
 
-type StorageNodeGeolocation struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-}
-
-type Info struct {
-	Name        string `json:"name"`
-	WebsiteUrl  string `json:"website_url"`
-	LogoUrl     string `json:"logo_url"`
-	Description string `json:"description"`
-}
-
 type StorageNode struct {
-	ID                string                 `json:"id"`
-	BaseURL           string                 `json:"url"`
-	Geolocation       StorageNodeGeolocation `json:"geolocation"`
-	Terms             Terms                  `json:"terms"`
-	Capacity          int64                  `json:"capacity"`
-	PublicKey         string                 `json:"-"`
-	StakePoolSettings StakePoolSettings      `json:"stake_pool_settings"`
-	Information       Info                   `json:"info"`
+	ID                string            `json:"id"`
+	BaseURL           string            `json:"url"`
+	Terms             Terms             `json:"terms"`
+	Capacity          int64             `json:"capacity"`
+	PublicKey         string            `json:"-"`
+	StakePoolSettings StakePoolSettings `json:"stake_pool_settings"`
 }
 
 type BlobberAllocation struct {

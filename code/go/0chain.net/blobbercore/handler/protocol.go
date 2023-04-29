@@ -40,7 +40,6 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn := &transaction.StorageNode{}
 	sn.ID = node.Self.ID
 	sn.BaseURL = node.Self.GetURLBase()
-	sn.Geolocation = transaction.StorageNodeGeolocation(config.Geolocation())
 	if err != nil {
 		return nil, err
 	}
@@ -66,18 +65,11 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn.Terms.ReadPrice = zcncore.ConvertToValue(readPrice)
 	sn.Terms.WritePrice = zcncore.ConvertToValue(writePrice)
 	sn.Terms.MinLockDemand = config.Configuration.MinLockDemand
-	sn.Terms.MaxOfferDuration = config.Configuration.MaxOfferDuration
 
 	sn.StakePoolSettings.DelegateWallet = config.Configuration.DelegateWallet
-	sn.StakePoolSettings.MinStake = config.Configuration.MinStake
-	sn.StakePoolSettings.MaxStake = config.Configuration.MaxStake
 	sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
 	sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
 
-	sn.Information.Name = config.Configuration.Name
-	sn.Information.Description = config.Configuration.Description
-	sn.Information.WebsiteUrl = config.Configuration.WebsiteUrl
-	sn.Information.LogoUrl = config.Configuration.LogoUrl
 	return sn, nil
 }
 
@@ -179,17 +171,6 @@ func TransactionVerify(txn *transaction.Transaction) (t *transaction.Transaction
 	}
 
 	return nil, errors.New("[txn]max retries exceeded with " + txn.Hash)
-}
-
-func WalletRegister() error {
-	wcb := &WalletCallback{}
-	wcb.wg = &sync.WaitGroup{}
-	wcb.wg.Add(1)
-	if err := zcncore.RegisterToMiners(node.Self.GetWallet(), wcb); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // SendHealthCheck send heartbeat to blockchain

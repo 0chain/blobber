@@ -70,7 +70,8 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 	}
 
 	if isExist {
-		return common.NewError("duplicate_file", "File at path already exists")
+		msg := fmt.Sprintf("File at path :%s: already exists", fileChanger.Path)
+		return common.NewError("duplicate_file", msg)
 	}
 
 	if allocationObj.OwnerID != clientID &&

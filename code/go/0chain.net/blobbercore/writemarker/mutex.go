@@ -2,6 +2,7 @@ package writemarker
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -54,7 +55,8 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 	defer l.Unlock()
 
 	if time.Now().After((*requestTime).Add(config.Configuration.WriteMarkerLockTimeout)) {
-		return nil, errors.Throw(constants.ErrInvalidParameter, "requestTime")
+		msg := fmt.Sprintf("requestTime: %d is ahead of current time %d", requestTime.Unix(), time.Now().Unix())
+		return nil, errors.Throw(constants.ErrInvalidParameter, msg)
 	}
 
 	db := datastore.GetStore().GetDB()
