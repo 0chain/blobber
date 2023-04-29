@@ -120,11 +120,12 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMa
 }
 
 // AllocationRootMustUnique allocation_root must be unique in write_markers
-func AllocationRootMustUnique(ctx context.Context, allocation_root string) error {
+func AllocationRootMustUnique(ctx context.Context, allocation_root string, timestamp int64) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-
+	wm := &WriteMarkerEntity{}
+	db.Debug().First(wm, "allocation_root = ?", allocation_root)
 	var c int64
-	db.Raw("SELECT 1 FROM write_markers WHERE allocation_root = ? and status<>2 ", allocation_root).
+	db.Raw("SELECT 1 FROM write_markers WHERE allocation_root = ? and timestamp=? and status<>2 ", allocation_root, timestamp).
 		Count(&c)
 
 	if c > 0 {
