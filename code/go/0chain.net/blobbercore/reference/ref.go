@@ -515,16 +515,32 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 	toUpdateFileStat := r.IsTemp
 	prevID := r.ID
 	if r.ID > 0 {
-		err := db.Delete(&Ref{}, "id=?", r.ID).Error
-		if err != nil && err != gorm.ErrRecordNotFound {
+		err := db.Transaction(func(tx *gorm.DB) error {
+
+			err := tx.Delete(&Ref{}, "id=?", r.ID).Error
+			if err != nil {
+				return err
+			}
+
+			r.ID = 0
+			r.IsTemp = true
+			err = tx.Create(r).Error
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+
+		if err != nil {
 			return err
 		}
-	}
-	r.IsTemp = true
-	r.ID = 0
-	err := db.Create(r).Error
-	if err != nil {
-		return err
+	} else {
+		r.IsTemp = true
+		r.ID = 0
+		err := db.Create(r).Error
+		if err != nil {
+			return err
+		}
 	}
 
 	if toUpdateFileStat {
@@ -538,24 +554,59 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	toUpdateFileStat := r.IsTemp
 	prevID := r.ID
+	rf := &Ref{}
 	if r.ID > 0 {
-		err := db.Delete(&Ref{}, "id=?", r.ID).Error
-		if err != nil && err != gorm.ErrRecordNotFound {
+		err := db.Transaction(func(tx *gorm.DB) error {
+
+			err := tx.Where("id = ?", r.ID).First(rf).Error
+			if err != nil {
+				return err
+			}
+			err = tx.Delete(&Ref{}, "id=?", r.ID).Error
+			if err != nil {
+				return err
+			}
+
+			rf.ID = 0
+			rf.IsTemp = true
+			rf.AllocationID = r.AllocationID
+			rf.Path = r.Path
+			rf.LookupHash = r.LookupHash
+			rf.Name = r.Name
+			rf.Hash = r.Hash
+			rf.FileMetaHash = r.FileMetaHash
+			rf.NumBlocks = r.NumBlocks
+			rf.PathHash = r.PathHash
+			rf.ParentPath = r.ParentPath
+			rf.PathLevel = r.PathLevel
+			rf.AllocationRoot = r.AllocationRoot
+			rf.Size = r.Size
+			rf.ChunkSize = r.ChunkSize
+			rf.FileID = r.FileID
+
+			err = tx.Create(rf).Error
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+
+		if err != nil {
+			return err
+		}
+	} else {
+		rf = r
+		rf.IsTemp = true
+		rf.ID = 0
+		err := db.Create(rf).Error
+		if err != nil {
 			return err
 		}
 	}
-	r.IsTemp = true
-	r.ID = 0
-	err := db.Create(r).Error
-
-	if err != nil {
-		return err
-	}
 
 	if toUpdateFileStat {
-		FileUpdated(ctx, prevID, r.ID)
+		FileUpdated(ctx, prevID, rf.ID)
 	}
-
 	return nil
 }
 
