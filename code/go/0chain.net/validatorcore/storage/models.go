@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -317,12 +316,14 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 			return err
 		}
 		if cr.WriteMarkers[i].WM.PreviousAllocationRoot != cr.WriteMarkers[i-1].WM.AllocationRoot {
-			return common.NewError("write_marker_validation_failed", "Write markers chain is invalid")
+			if cr.WriteMarkers[i].WM.Timestamp != cr.WriteMarkers[i-1].WM.Timestamp {
+				return common.NewError("write_marker_validation_failed", "Write markers chain is invalid")
+			}
 		}
 	}
 	latestWM := cr.WriteMarkers[len(cr.WriteMarkers)-1].WM
 	rootRef := cr.ObjPath.RootObject
-	allocationRootCalculated := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(latestWM.Timestamp), 10))
+	allocationRootCalculated := rootRef.Hash
 
 	if latestWM.AllocationRoot != allocationRootCalculated {
 		return common.NewError("challenge_validation_failed", "Allocation root does not match")
