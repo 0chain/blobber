@@ -434,6 +434,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		if latestWriteMarkerEntity != nil {
 			result.WriteMarker = &latestWriteMarkerEntity.WM
 		}
+		Logger.Error("verify_writemarker_failed", zap.Error(err))
 		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
 	}
 
