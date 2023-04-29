@@ -518,7 +518,7 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 		err := db.Transaction(func(tx *gorm.DB) error {
 
 			err := tx.Delete(&Ref{}, "id=?", r.ID).Error
-			if err != nil {
+			if err != nil && err != gorm.ErrRecordNotFound {
 				return err
 			}
 
@@ -558,10 +558,11 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 	if r.ID > 0 {
 		err := db.Transaction(func(tx *gorm.DB) error {
 
-			err := tx.Where("id = ?", r.ID).First(rf).Error
+			err := tx.Model(&Ref{}).Where("id = ?", r.ID).First(rf).Error
 			if err != nil {
 				return err
 			}
+
 			err = tx.Delete(&Ref{}, "id=?", r.ID).Error
 			if err != nil {
 				return err
@@ -583,6 +584,7 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 			rf.Size = r.Size
 			rf.ChunkSize = r.ChunkSize
 			rf.FileID = r.FileID
+			rf.UpdatedAt = r.UpdatedAt
 
 			err = tx.Create(rf).Error
 			if err != nil {
@@ -590,18 +592,17 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 			}
 			return nil
 		})
-
 		if err != nil {
 			return err
 		}
 	} else {
-		rf = r
-		rf.IsTemp = true
-		rf.ID = 0
-		err := db.Create(rf).Error
+		r.IsTemp = true
+		r.ID = 0
+		err := db.Create(r).Error
 		if err != nil {
 			return err
 		}
+		rf.ID = r.ID
 	}
 
 	if toUpdateFileStat {

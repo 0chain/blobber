@@ -56,6 +56,7 @@ func NewFileCreated(ctx context.Context, refID int64) {
 	db.Save(&stats)
 }
 
+// TODO: Wrap the following functions in a transaction
 func FileUpdated(ctx context.Context, refID, newRefID int64) {
 	if refID == 0 {
 		return
