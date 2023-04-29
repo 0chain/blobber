@@ -63,10 +63,6 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 		return common.NewError("write_marker_validation_failed", "Write marker signature is not valid")
 	}
 
-	if err := AllocationRootMustUnique(ctx, wme.WM.AllocationRoot); err != nil {
-		return err
-	}
-
 	return nil
 }
 
