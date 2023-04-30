@@ -469,9 +469,11 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 		if latestWM == nil {
 			return nil, common.NewError("latest_write_marker_read_error", "Latest write marker not found for allocation.")
 		}
-		prevWM, err = writemarker.GetWriteMarkerEntity(ctx, latestWM.WM.PreviousAllocationRoot, allocationObj.ID)
-		if err != nil {
-			return nil, common.NewError("latest_write_marker_read_error", "Error reading the previous write marker for allocation."+err.Error())
+		if latestWM.WM.PreviousAllocationRoot != "" {
+			prevWM, err = writemarker.GetWriteMarkerEntity(ctx, latestWM.WM.PreviousAllocationRoot, allocationObj.ID)
+			if err != nil {
+				return nil, common.NewError("latest_write_marker_read_error", "Error reading the previous write marker for allocation."+err.Error())
+			}
 		}
 	}
 
