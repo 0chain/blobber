@@ -149,7 +149,7 @@ func SetupSwagger() {
 /*setupHandlers sets up the necessary API end points */
 func setupHandlers(r *mux.Router) {
 	ConfigRateLimits()
-	r.Use(useRecovery, useCors)
+	r.Use(UseRecovery, UseCors)
 
 	//object operations
 	r.HandleFunc("/v1/file/rename/{allocation}",

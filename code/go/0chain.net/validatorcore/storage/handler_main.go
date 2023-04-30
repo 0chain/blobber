@@ -4,6 +4,7 @@
 package storage
 
 import (
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/gorilla/mux"
 )
@@ -11,6 +12,8 @@ import (
 /* SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
 	ConfigureRateLimiter()
+	r.Use(handler.UseRecovery, handler.UseCors)
+
 	r.HandleFunc("/v1/storage/challenge/new",
 		RateLimit(common.ToJSONResponse(SetupContext(ChallengeHandler))))
 
