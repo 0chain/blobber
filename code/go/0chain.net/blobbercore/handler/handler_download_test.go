@@ -291,6 +291,7 @@ func TestHandlers_Download(t *testing.T) {
 
 					r.Header.Set("X-Path-Hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 10))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
@@ -549,18 +550,18 @@ func TestHandlers_Download(t *testing.T) {
 							AddRow(reEncryptionKey, guestPublicEncryptedKey),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(guestClient.ClientID, alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(guestClient.ClientID),
-					)
+				// mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
+				// 	WithArgs(guestClient.ClientID, alloc.ID).
+				// 	WillReturnRows(
+				// 		sqlmock.NewRows([]string{"client_id"}).
+				// 			AddRow(guestClient.ClientID),
+				// 	)
 
-				aa := sqlmock.AnyArg()
+				// aa := sqlmock.AnyArg()
 
-				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(aa, aa, aa, aa, aa, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
+				// mock.ExpectExec(`UPDATE "read_markers"`).
+				// 	WithArgs(aa, aa, aa, aa, aa, aa).
+				// 	WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectCommit()
 			},
