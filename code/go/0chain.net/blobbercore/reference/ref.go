@@ -67,7 +67,7 @@ type Ref struct {
 	UpdatedAt      common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" dirlist:"updated_at" filelist:"updated_at"`
 
 	DeletedAt        gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
-	IsTemp           bool           `gorm:"column:is_temp;not null;default:false" filelist:"is_temp"`
+	IsTemp           bool           `gorm:"column:is_temp;not null;default:false" filelist:"is_temp"; dirlist:"is_temp"`
 	ChunkSize        int64          `gorm:"column:chunk_size;not null;default:65536" dirlist:"chunk_size" filelist:"chunk_size"`
 	HashToBeComputed bool           `gorm:"-"`
 }

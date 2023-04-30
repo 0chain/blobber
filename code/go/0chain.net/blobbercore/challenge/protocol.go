@@ -206,13 +206,15 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		r := rand.New(rand.NewSource(cr.RandomNumber))
 		blockoffset := r.Intn(sdkUtil.FixedMerkleLeaves)
 
-		fromPreCommit := false
+		fromPreCommit := true
 
 		if objectPath.Meta["is_temp"] != nil {
 			fromPreCommit = objectPath.Meta["is_temp"].(bool)
 			if fromPreCommit {
 				fromPreCommit = objectPath.Meta["validation_root"].(string) != objectPath.Meta["prev_validation_root"].(string)
 			}
+		} else {
+			logging.Logger.Error("is_temp_is_nil", zap.Any("object_path", objectPath))
 		}
 
 		challengeReadInput := &filestore.ChallengeReadBlockInput{
