@@ -476,7 +476,9 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 	}
 
 	var result blobberhttp.LatestWriteMarkerResult
-	result.LatestWM = &latestWM.WM
+	if latestWM != nil {
+		result.LatestWM = &latestWM.WM
+	}
 	if prevWM != nil {
 		result.PrevWM = &prevWM.WM
 	}
