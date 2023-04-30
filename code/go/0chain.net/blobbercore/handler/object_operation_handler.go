@@ -262,6 +262,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 	}
 
+	// check out read pool tokens if read_price > 0
+	err = readPreRedeem(ctx, alloc, dr.ReadMarker.ReadCounter, 0, clientID)
+	if err != nil {
+		return nil, common.NewErrorf("download_file", "pre-redeeming read marker: %v", err)
+	}
+
 	var (
 		downloadMode         = dr.DownloadMode
 		fileDownloadResponse *filestore.FileDownloadResponse
