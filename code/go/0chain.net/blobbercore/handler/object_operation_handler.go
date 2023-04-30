@@ -167,7 +167,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	}
 
 	if dr.ClientID != clientID {
-		return nil, common.NewError("invalid_client", "header clientID and readmarker clientID are different")
+		return nil, common.NewError("invalid_client", "header clientID and ctx clientID are different")
 	}
 
 	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)

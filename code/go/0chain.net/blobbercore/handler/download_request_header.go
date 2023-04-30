@@ -78,10 +78,10 @@ func (dr *DownloadRequestHeader) Parse() error {
 	}
 	dr.NumBlocks = numBlocks
 
-	clientID := dr.Get("X-Client-ID")
+	clientID := dr.Get("X-App-Client-ID")
 
 	if clientID == "" {
-		return errors.Throw(common.ErrInvalidParameter, "X-Client-ID")
+		return errors.Throw(common.ErrInvalidParameter, "X-App-Client-ID")
 	}
 
 	dr.ClientID = clientID
