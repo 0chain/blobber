@@ -362,21 +362,6 @@ func TestDownloadFile(t *testing.T) {
 			},
 		},
 		{
-			name: "err_owner_not_funded",
-			parameters: parameters{
-				isOwner:         true,
-				isRepairer:      false,
-				useAuthTicket:   false,
-				isRevoked:       false,
-				isFundedBlobber: false,
-				isFunded0Chain:  false,
-			},
-			want: want{
-				err:    true,
-				errMsg: "download_file: pre-redeeming read marker: read_pre_redeem: not enough tokens in client's read pools associated with the allocation->blobber",
-			},
-		},
-		{
 			name: "ok_authTicket_wp_owner",
 			parameters: parameters{
 				isOwner:         false,

@@ -215,6 +215,16 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			}
 		}
 
+		if latestRM != nil && latestRM.ReadCounter+(dr.ReadMarker.SessionRC) > dr.ReadMarker.ReadCounter {
+			latestRM.BlobberID = node.Self.ID
+			return &blobberhttp.DownloadResponse{
+				Success:      false,
+				LatestRM:     latestRM,
+				Path:         fileref.Path,
+				AllocationID: fileref.AllocationID,
+			}, common.NewError("stale_read_marker", "")
+		}
+
 		// check out read pool tokens if read_price > 0
 		err = readPreRedeem(ctx, alloc, dr.ReadMarker.ReadCounter, pendNumBlocks, clientID)
 		if err != nil {
