@@ -291,7 +291,6 @@ func TestHandlers_Download(t *testing.T) {
 
 					r.Header.Set("X-Path-Hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 10))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
