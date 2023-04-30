@@ -107,6 +107,8 @@ func TestDownloadFile(t *testing.T) {
 		req *http.Request,
 		p parameters,
 	) {
+		req.Header.Set("X-App-Client-ID", client.GetClientID())
+		req.Header.Set("X-App-Client-Key", client.GetClientPublicKey())
 		req.Header.Set("X-Path-Hash", p.inData.pathHash)
 		req.Header.Set("X-Path", p.inData.remotefilepath)
 		req.Header.Set("X-Block-Num", fmt.Sprintf("%d", p.inData.blockNum))

@@ -330,20 +330,6 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"path", "type", "lookup_hash", "validation_root"}).
 							AddRow("/file.txt", "f", filePathHash, "abcd"),
 					)
-
-				// mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-				// 	WithArgs(ownerClient.ClientID, alloc.ID).
-				// 	WillReturnRows(
-				// 		sqlmock.NewRows([]string{"client_id"}).
-				// 			AddRow(ownerClient.ClientID),
-				// 	)
-
-				// aa := sqlmock.AnyArg()
-
-				// mock.ExpectExec(`UPDATE "read_markers"`).
-				// 	WithArgs(aa, aa, aa, aa, aa, aa).
-				// 	WillReturnResult(sqlmock.NewResult(0, 0))
-
 				mock.ExpectCommit()
 			},
 			wantCode: http.StatusOK,
@@ -422,20 +408,6 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "chunk_size"}).
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "validation_root", "qCj3sXXeXUAByi1ERIbcfXzWN75dyocYzyRXnkStXio=", 65536),
 					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(client.GetClientID()).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(client.GetClientID()),
-					)
-
-				aa := sqlmock.AnyArg()
-
-				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(client.GetClientPublicKey(), alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
 					WithArgs(client.GetClientID(), filePathHash).
 					WillReturnError(gorm.ErrRecordNotFound)
@@ -549,20 +521,6 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"re_encryption_key", "client_encryption_public_key"}).
 							AddRow(reEncryptionKey, guestPublicEncryptedKey),
 					)
-
-				// mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-				// 	WithArgs(guestClient.ClientID, alloc.ID).
-				// 	WillReturnRows(
-				// 		sqlmock.NewRows([]string{"client_id"}).
-				// 			AddRow(guestClient.ClientID),
-				// 	)
-
-				// aa := sqlmock.AnyArg()
-
-				// mock.ExpectExec(`UPDATE "read_markers"`).
-				// 	WithArgs(aa, aa, aa, aa, aa, aa).
-				// 	WillReturnResult(sqlmock.NewResult(0, 0))
-
 				mock.ExpectCommit()
 			},
 			wantCode: http.StatusOK,
@@ -677,20 +635,6 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"re_encryption_key", "client_encryption_public_key"}).
 							AddRow(reEncryptionKey, gpbk),
 					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(guestClient.ClientID, alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(guestClient.ClientID),
-					)
-
-				aa := sqlmock.AnyArg()
-
-				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(aa, aa, aa, aa, aa, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
-
 				mock.ExpectCommit()
 			},
 			wantCode: http.StatusOK,
@@ -805,20 +749,6 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"re_encryption_key", "client_encryption_public_key"}).
 							AddRow(reEncryptionKey, gpbk),
 					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(guestClient.ClientID, alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(guestClient.ClientID),
-					)
-
-				aa := sqlmock.AnyArg()
-
-				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(aa, aa, aa, aa, aa, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
-
 				mock.ExpectCommit()
 			},
 			wantCode: http.StatusOK,
