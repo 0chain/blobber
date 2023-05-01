@@ -146,7 +146,7 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID, startAllocationRo
 	if err != nil {
 		return nil, err
 	}
-	if len(seqRange) == 0 || len(seqRange) > 2 {
+	if len(seqRange) == 0 {
 		return nil, common.NewError("write_marker_not_found", "Could not find the right write markers in the range")
 	}
 
@@ -156,7 +156,7 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID, startAllocationRo
 
 	retMarkers := make([]*WriteMarkerEntity, 0)
 	err = db.Where("allocation_id=? AND sequence BETWEEN ? AND ?",
-		allocationID, seqRange[0], seqRange[1]).Order("sequence").
+		allocationID, seqRange[0], seqRange[len(seqRange)-1]).Order("sequence").
 		Find(&retMarkers).Error
 	if err != nil {
 		return nil, err
