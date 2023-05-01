@@ -1247,6 +1247,10 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, common.NewErrorf("latest_write_marker_read_error",
 			"Error reading the latest write marker for allocation: %v", err)
 	}
+	if latestWriteMarkerEntity == nil {
+		return nil, common.NewError("latest_write_marker_not_found",
+			"Latest write marker not found for allocation")
+	}
 
 	writemarkerEntity := &writemarker.WriteMarkerEntity{}
 	writemarkerEntity.WM = writeMarker

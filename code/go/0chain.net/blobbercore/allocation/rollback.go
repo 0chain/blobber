@@ -18,7 +18,7 @@ func ApplyRollback(ctx context.Context, allocationID string) error {
 	err := db.Transaction(func(tx *gorm.DB) error {
 		err := db.Model(&reference.Ref{}).Unscoped().
 			Delete(&reference.Ref{},
-				"allocation_id=? AND is_temp=?",
+				"allocation_id=? AND is_temp=? AND deleted_at IS NULL",
 				allocationID, true).Error
 		if err != nil {
 			return err
