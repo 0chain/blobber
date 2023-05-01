@@ -1278,8 +1278,11 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	//get allocation root and ref
 	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash", "is_temp"})
-	if err != nil {
-		return nil, err
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, common.NewError("root_ref_read_error", "Error reading the root reference: "+err.Error())
+	}
+	if err == gorm.ErrRecordNotFound {
+		rootRef = &reference.Ref{}
 	}
 
 	Logger.Info("rollback_root_ref", zap.Any("root_ref", rootRef))
