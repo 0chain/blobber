@@ -21,39 +21,32 @@ func redeemWriterMarkersForAllocation(allocationObj *allocation.Allocation) {
 	db := datastore.GetStore().GetDB()
 	var err error
 
-	var writemarkers []*WriteMarkerEntity
+	var writemarker *WriteMarkerEntity
 
 	err = db.Not(WriteMarkerEntity{Status: Committed}).
 		Where(WriteMarker{AllocationID: allocationObj.ID}).
 		Order("sequence").
-		Find(&writemarkers).Error
+		First(&writemarker).Error
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker. failed to load allocation's writemarker ",
 			zap.Any("allocation", allocationObj.ID),
 			zap.Any("error", err))
 		return
 	}
-	startredeem := false
-	for _, wm := range writemarkers {
-		if wm.WM.PreviousAllocationRoot == allocationObj.LatestRedeemedWM && !startredeem {
-			startredeem = true
-		}
-		if startredeem || allocationObj.LatestRedeemedWM == "" {
-			err = redeemWriteMarker(allocationObj, wm)
-			if err != nil {
-				return
-			}
-		}
+
+	err = redeemWriteMarker(allocationObj, writemarker)
+	if err != nil {
+		return
 	}
 
-	if allocationObj.LatestRedeemedWM == allocationObj.AllocationRoot {
-		err = db.Exec("UPDATE allocations SET is_redeem_required=? WHERE id = ? ", false, allocationObj.ID).Error
-		if err != nil {
-			logging.Logger.Error("Error redeeming the write marker. failed to update allocation's is_redeem_required ",
-				zap.Any("allocation", allocationObj.ID),
-				zap.Any("error", err))
-		}
-	}
+	// if allocationObj.LatestRedeemedWM == allocationObj.AllocationRoot {
+	// 	err = db.Exec("UPDATE allocations SET is_redeem_required=? WHERE id = ? ", false, allocationObj.ID).Error
+	// 	if err != nil {
+	// 		logging.Logger.Error("Error redeeming the write marker. failed to update allocation's is_redeem_required ",
+	// 			zap.Any("allocation", allocationObj.ID),
+	// 			zap.Any("error", err))
+	// 	}
+	// }
 }
 
 func redeemWriteMarker(allocationObj *allocation.Allocation, wm *WriteMarkerEntity) error {
@@ -72,7 +65,16 @@ func redeemWriteMarker(allocationObj *allocation.Allocation, wm *WriteMarkerEnti
 		}
 	}()
 
-	err := wm.RedeemMarker(ctx)
+	err := db.Exec("SELECT is_redeem_required FROM allocations WHERE id=? FOR NO KEY UPDATE", allocationObj.ID).Error
+	if err != nil {
+		logging.Logger.Error("Error redeeming the write marker. Allocation lock failed",
+			zap.Any("allocation", allocationObj.ID),
+			zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
+		shouldRollback = true
+		return err
+	}
+
+	err = wm.RedeemMarker(ctx)
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker.",
 			zap.Any("allocation", allocationObj.ID),
@@ -83,8 +85,8 @@ func redeemWriteMarker(allocationObj *allocation.Allocation, wm *WriteMarkerEnti
 		return err
 	}
 
-	err = db.Exec("UPDATE allocations SET latest_redeemed_write_marker=? WHERE id=?",
-		wm.WM.AllocationRoot, allocationObj.ID).Error
+	err = db.Exec("UPDATE allocations SET latest_redeemed_write_marker=?,is_redeem_required=? WHERE id=?",
+		wm.WM.AllocationRoot, false, allocationObj.ID).Error
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
 			zap.Any("allocation", allocationObj.ID),

@@ -25,9 +25,11 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"go.uber.org/zap"
 
@@ -86,6 +88,25 @@ func readPreRedeem(
 	}
 
 	return
+}
+
+func checkPendingMarkers(ctx context.Context, allocationID string) (bool, error) {
+
+	db := datastore.GetStore().GetDB()
+
+	alloc := &allocation.Allocation{}
+
+	err := db.Transaction(func(tx *gorm.DB) error {
+
+		err := tx.Clauses(clause.Locking{Strength: "SHARE"}).Select("is_redeem_required").Where("id = ?", allocationID).First(alloc).Error
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	return alloc.IsRedeemRequired, err
 }
 
 func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMarker *writemarker.WriteMarker, payerID string) (err error) {
@@ -355,6 +376,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
 	mutex.Lock()
 	defer mutex.Unlock()
+
+	status, err := checkPendingMarkers(ctx, allocationObj.ID)
+	if err != nil {
+		logging.Logger.Error("Error checking pending markers: " + err.Error())
+		return nil, common.NewError("pending_markers", "Error checking pending markers"+err.Error())
+	}
+	if status {
+		logging.Logger.Error("Pending markers found for allocation: " + allocationObj.ID)
+		return nil, common.NewError("pending_markers", "Pending markers found for allocation: "+allocationObj.ID)
+	}
 
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
