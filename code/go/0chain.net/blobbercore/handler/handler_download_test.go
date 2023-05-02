@@ -338,12 +338,6 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"client_id"}).
 							AddRow(ownerClient.ClientID),
 					)
-				aa := sqlmock.AnyArg()
-
-				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(aa, aa, aa, aa, aa, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
-
 				mock.ExpectCommit()
 			},
 			wantCode: http.StatusOK,
