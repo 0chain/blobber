@@ -24,6 +24,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"gorm.io/gorm"
@@ -477,9 +478,12 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	writemarkerEntity.ConnectionID = connectionObj.ID
 	writemarkerEntity.ClientPublicKey = clientKey
 
-	err = writemarkerEntity.Save(ctx)
+	logging.Logger.Info("write_marker_alloc", zap.Any("alloc", allocationObj.ID), zap.Any("wm", writemarkerEntity.WM))
+
+	err = writemarkerEntity.Create(ctx)
 	if err != nil {
-		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
+		logging.Logger.Error("Error persisting the write marker entity: " + err.Error())
+		return nil, common.NewError("write_marker_error", "Error persisting the write marker"+err.Error())
 	}
 
 	db := datastore.GetStore().GetTransaction(ctx)

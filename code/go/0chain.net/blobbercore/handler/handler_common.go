@@ -10,6 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/build"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
@@ -41,6 +42,7 @@ func commitHandler(ctx context.Context, r *http.Request) (interface{}, int, erro
 		if errors.Is(common.ErrFileWasDeleted, err) {
 			return response, http.StatusNoContent, nil
 		}
+		logging.Logger.Error("commit_write_failed", zap.Error(err))
 		return nil, http.StatusBadRequest, err
 	}
 
