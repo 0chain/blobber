@@ -25,6 +25,11 @@ type StorageNode struct {
 	PublicKey string `json:"-"`
 }
 
+type Params struct {
+	Params map[string]string
+	mapLock sync.Mutex
+}
+
 // ValidatorProtocolImpl - implementation of the storage protocol
 type ValidatorProtocolImpl struct {
 	ServerChain *chain.Chain
@@ -85,10 +90,12 @@ func (sp *ValidatorProtocolImpl) VerifyChallengeTransaction(ctx context.Context,
 	if blobberID == "" {
 		return nil, common.NewError("invalid_client", "Call from an invalid client")
 	}
-	params := make(map[string]string)
-	params["blobber"] = blobberID
-	params["challenge"] = challengeRequest.ChallengeID
-	challengeBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getchallenge", params, chain.GetServerChain())
+	params := Params{}
+	params.mapLock.Lock()
+	params.Params["blobber"] = blobberID
+	params.Params["challenge"] = challengeRequest.ChallengeID
+	params.mapLock.Unlock()
+	challengeBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getchallenge", params.Params, chain.GetServerChain())
 
 	if err != nil {
 		return nil, common.NewError("invalid_challenge", "Invalid challenge id. Challenge not found in blockchain. "+err.Error())
