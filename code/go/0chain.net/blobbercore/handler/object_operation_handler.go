@@ -549,55 +549,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	db.Delete(connectionObj)
 
-	//Update the Ref Table
-	// for _, c := range connectionObj.Changes {
-
-	// 	switch c.Operation {
-	// 	case constants.FileOperationInsert:
-	// 		acp := new(allocation.UploadFileChanger)
-	// 		if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
-	// 			Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
-	// 			break
-	// 		}
-	// 		if acp.IsTemp {
-	// 			break
-	// 		}
-
-	// 		err = reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, true)
-	// 		if err != nil {
-	// 			Logger.Error("AllocationChangeCollector_updateIsTemp", zap.Error(err))
-	// 		}
-
-	// 	case constants.FileOperationUpdate:
-	// 		acp := new(allocation.UpdateFileChanger)
-	// 		if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
-	// 			Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
-	// 			break
-	// 		}
-	// 		if acp.IsTemp {
-	// 			break
-	// 		}
-	// 		err = reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, true)
-	// 		if err != nil {
-	// 			Logger.Error("AllocationChangeCollector_updateIsTemp", zap.Error(err))
-	// 		}
-
-	// 	case constants.FileOperationDelete:
-	// 		acp := new(allocation.DeleteFileChange)
-	// 		if err := json.Unmarshal([]byte(c.Input), acp); err != nil {
-	// 			Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
-	// 			break
-	// 		}
-	// 		if acp.IsTemp {
-	// 			break
-	// 		}
-	// 		err = reference.UpdateIsTemp(ctx, acp.AllocationID, acp.Path, true)
-	// 		if err != nil {
-	// 			Logger.Error("AllocationChangeCollector_updateIsTemp", zap.Error(err))
-	// 		}
-	// 	}
-	// }
-
 	Logger.Info("[commit]"+commitOperation,
 		zap.String("alloc_id", allocationID),
 		zap.String("input", input),

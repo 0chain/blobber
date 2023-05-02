@@ -90,7 +90,3 @@ func (cmd *DeleteFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 	//DO NOTHING
 	return nil
 }
-
-func (cmd *DeleteFileCommand) ProcessRollback(allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
-	return nil
-}
