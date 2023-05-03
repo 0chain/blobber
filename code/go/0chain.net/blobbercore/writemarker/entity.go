@@ -176,6 +176,6 @@ func (wm *WriteMarkerEntity) Save(ctx context.Context) error {
 	if sem == nil {
 		sem = SetLock(wm.WM.AllocationID)
 	}
-	err = sem.Acquire(ctx, 1)
-	return err
+	_ = sem.Acquire(ctx, 1)
+	return nil
 }
