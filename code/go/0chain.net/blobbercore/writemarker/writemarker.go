@@ -38,11 +38,13 @@ func startRedeemWorker(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case wm := <-writeMarkerChan:
-			sem.Acquire(ctx, 1)
-			go func() {
-				redeemWriteMarker(wm)
-				sem.Release(1)
-			}()
+			err := sem.Acquire(ctx, 1)
+			if err == nil {
+				go func() {
+					redeemWriteMarker(wm)
+					sem.Release(1)
+				}()
+			}
 		}
 	}
 }

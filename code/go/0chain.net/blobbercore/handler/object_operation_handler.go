@@ -378,7 +378,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		logging.Logger.Error("Error checking pending markers: " + err.Error())
 		return nil, common.NewError("pending_markers", "Error checking pending markers"+err.Error())
 	}
-	if status {
+	if !status {
 		logging.Logger.Error("Pending markers found for allocation: " + allocationObj.ID)
 		return nil, common.NewError("pending_markers", "Pending markers found for allocation: "+allocationObj.ID)
 	}
