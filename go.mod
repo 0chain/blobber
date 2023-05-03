@@ -36,6 +36,8 @@ require (
 	gorm.io/gorm v1.25.0
 )
 
+require golang.org/x/sync v0.1.0
+
 require (
 	github.com/0chain/common v0.0.6-0.20230127095721-8df4d1d72565 // indirect
 	github.com/Luzifer/go-openssl/v3 v3.1.0 // indirect

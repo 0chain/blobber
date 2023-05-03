@@ -29,7 +29,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	"go.uber.org/zap"
 
@@ -92,21 +91,18 @@ func readPreRedeem(
 
 func checkPendingMarkers(ctx context.Context, allocationID string) (bool, error) {
 
-	db := datastore.GetStore().GetDB()
-
-	alloc := &allocation.Allocation{}
-
-	err := db.Transaction(func(tx *gorm.DB) error {
-
-		err := tx.Clauses(clause.Locking{Strength: "SHARE"}).Select("is_redeem_required").Where("id = ?", allocationID).First(alloc).Error
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	return alloc.IsRedeemRequired, err
+	mut := writemarker.GetLock(allocationID)
+	if mut == nil {
+		return true, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	err := mut.Acquire(ctx, 1)
+	if err != nil {
+		return false, common.NewError("check_pending_markers", "write marker is still not redeemed")
+	}
+	mut.Release(1)
+	return true, nil
 }
 
 func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMarker *writemarker.WriteMarker, payerID string) (err error) {
