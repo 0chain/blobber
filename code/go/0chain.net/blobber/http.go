@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -77,9 +76,11 @@ func startServer(wg *sync.WaitGroup, r *mux.Router, mode string, port int, isTls
 	handler.HandleShutdown(common.GetRootContext())
 
 	if isTls {
-		log.Fatal(server.ListenAndServeTLS(httpsCertFile, httpsKeyFile))
+		err := server.ListenAndServeTLS(httpsCertFile, httpsKeyFile)
+		logging.Logger.Fatal("validator failed", zap.Error(err))
 	} else {
-		log.Fatal(server.ListenAndServe())
+		err := server.ListenAndServe()
+		logging.Logger.Fatal("validator failed", zap.Error(err))
 	}
 }
 

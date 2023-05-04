@@ -2,7 +2,6 @@ package writemarker
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -37,7 +36,7 @@ type Mutex struct {
 // If no lock exists for an allocation then new lock is created.
 // If lock exists and is of same connection ID then lock's createdAt is updated
 // If lock exists and is of other connection ID then `pending` response is sent.
-func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, requestTime *time.Time) (*LockResult, error) {
+func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string) (*LockResult, error) {
 	if allocationID == "" {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "allocationID")
 	}
@@ -46,18 +45,9 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 		return nil, errors.Throw(constants.ErrInvalidParameter, "connectionID")
 	}
 
-	if requestTime == nil {
-		return nil, errors.Throw(constants.ErrInvalidParameter, "requestTime")
-	}
-
 	l, _ := m.ML.GetLock(allocationID)
 	l.Lock()
 	defer l.Unlock()
-
-	if time.Now().After((*requestTime).Add(config.Configuration.WriteMarkerLockTimeout)) {
-		msg := fmt.Sprintf("requestTime: %d is ahead of current time %d", requestTime.Unix(), time.Now().Unix())
-		return nil, errors.Throw(constants.ErrInvalidParameter, msg)
-	}
 
 	db := datastore.GetStore().GetDB()
 
@@ -69,7 +59,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 			lock = WriteLock{
 				AllocationID: allocationID,
 				ConnectionID: connectionID,
-				CreatedAt:    *requestTime,
+				CreatedAt:    time.Now(),
 			}
 
 			err = db.Table(TableNameWriteLock).Create(&lock).Error
@@ -91,7 +81,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 		if time.Since(lock.CreatedAt) > config.Configuration.WriteMarkerLockTimeout {
 			// Lock expired. Provide lock to other connection id
 			lock.ConnectionID = connectionID
-			lock.CreatedAt = *requestTime
+			lock.CreatedAt = time.Now()
 			err = db.Model(&WriteLock{}).Where("allocation_id=?", allocationID).Save(&lock).Error
 			if err != nil {
 				return nil, errors.New("db_error", err.Error())
@@ -108,7 +98,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string, req
 		}, nil
 	}
 
-	lock.CreatedAt = *requestTime
+	lock.CreatedAt = time.Now()
 	err = db.Table(TableNameWriteLock).Where("allocation_id=?", allocationID).Save(&lock).Error
 	if err != nil {
 		return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
