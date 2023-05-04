@@ -9,6 +9,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"golang.org/x/sync/semaphore"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"go.uber.org/zap"
 )
@@ -26,7 +27,11 @@ func SetupWorkers(ctx context.Context) {
 	}
 	var res []Res
 
-	db.Model(&allocation.Allocation{}).Select("id").Find(&res)
+	err := db.Model(&allocation.Allocation{}).Select("id").Find(&res).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		logging.Logger.Error("error_getting_allocations_worker",
+			zap.Any("error", err))
+	}
 
 	writeMarkerMap = make(map[string]*semaphore.Weighted)
 
@@ -88,7 +93,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	allocationID := wm.WM.AllocationID
 	shouldRollback := false
-
+	logging.Logger.Info("Redeeming the write marker.", zap.String("allocation", allocationID))
 	defer func() {
 		if shouldRollback {
 			if rollbackErr := db.Rollback().Error; rollbackErr != nil {
@@ -122,8 +127,16 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 	if mut != nil {
 		mut.Release(1)
 	}
-	err = db.Exec("UPDATE allocations SET latest_redeemed_write_marker=?,is_redeem_required=(allocation_root NOT LIKE ?) WHERE id=?",
-		wm.WM.AllocationRoot, wm.WM.AllocationRoot, allocationID).Error
+	err = db.Transaction(func(tx *gorm.DB) error {
+		err = tx.Model(&allocation.Allocation{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Where("id=?", allocationID).Error
+		if err != nil {
+			return err
+		}
+		err = db.Exec("UPDATE allocations SET latest_redeemed_write_marker=?,is_redeem_required=(allocation_root NOT LIKE ?) WHERE id=?",
+			wm.WM.AllocationRoot, wm.WM.AllocationRoot, allocationID).Error
+		return err
+	})
+
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
 			zap.Any("allocation", allocationID),
@@ -167,6 +180,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 // }
 
 func startRedeem(ctx context.Context) {
+	logging.Logger.Info("Start Redeem writemarkers")
 	writeMarkerChan = make(chan *WriteMarkerEntity, 100)
 	go startRedeemWorker(ctx)
 	db := datastore.GetStore().GetDB()
