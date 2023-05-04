@@ -33,11 +33,12 @@ func GetConnectionObjSize(connectionID string) int64 {
 	return connectionObjSize.Size
 }
 
-// UpdateConnectionObjSize updates the connection size to updatedSize in memory 
-func UpdateConnectionObjSize(connectionID string, updatedSize int64) {
+// UpdateConnectionObjSize updates the connection size by addSize in memory 
+func UpdateConnectionObjSize(connectionID string, addSize int64) {
 	connectionObjMutex.Lock()
 	defer connectionObjMutex.Unlock()
-	connectionObjSizeMap[connectionID] = ConnectionObjSize{Size: updatedSize, UpdatedAt: time.Now()}
+	connectionObjSize, _ := connectionObjSizeMap[connectionID];
+	connectionObjSizeMap[connectionID] = ConnectionObjSize{Size: connectionObjSize.Size + addSize, UpdatedAt: time.Now()}
 }
 
 // DeleteConnectionObjEntry remove the connectionID entry from map
