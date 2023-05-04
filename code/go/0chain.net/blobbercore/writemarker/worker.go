@@ -3,6 +3,7 @@ package writemarker
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -36,7 +37,7 @@ func SetupWorkers(ctx context.Context) {
 	writeMarkerMap = make(map[string]*semaphore.Weighted)
 
 	for _, r := range res {
-		writeMarkerMap[r.ID] = semaphore.NewWeighted(2)
+		writeMarkerMap[r.ID] = semaphore.NewWeighted(1)
 	}
 
 	go startRedeem(ctx)
@@ -51,7 +52,7 @@ func GetLock(allocationID string) *semaphore.Weighted {
 func SetLock(allocationID string) *semaphore.Weighted {
 	mut.Lock()
 	defer mut.Unlock()
-	writeMarkerMap[allocationID] = semaphore.NewWeighted(2)
+	writeMarkerMap[allocationID] = semaphore.NewWeighted(1)
 	return writeMarkerMap[allocationID]
 }
 
@@ -60,6 +61,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	allocationID := wm.WM.AllocationID
 	shouldRollback := false
+	start := time.Now()
 	logging.Logger.Info("Redeeming the write marker.", zap.String("allocation", allocationID))
 	defer func() {
 		if shouldRollback {
@@ -70,12 +72,34 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 			}
 		}
 	}()
-
-	err := wm.RedeemMarker(ctx)
+	alloc := &allocation.Allocation{}
+	err := db.Model(&allocation.Allocation{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("allocation_root").Where("id=?", allocationID).First(alloc).Error
 	if err != nil {
+		logging.Logger.Error("Error redeeming the write marker.", zap.Any("allocation", allocationID), zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
+		go tryAgain(wm)
+		shouldRollback = true
+		return err
+	}
+
+	if alloc.AllocationRoot != wm.WM.AllocationRoot {
+		logging.Logger.Info("Stale write marker. Allocation root mismatch",
+			zap.Any("allocation", allocationID),
+			zap.Any("wm", wm.WM.AllocationRoot), zap.Any("error", err))
+		mut := GetLock(allocationID)
+		if mut != nil {
+			mut.Release(1)
+		}
+		_ = wm.UpdateStatus(ctx, Rollbacked, "", "")
+		err = db.Commit().Error
+		return err
+	}
+
+	err = wm.RedeemMarker(ctx)
+	if err != nil {
+		elapsedTime := time.Since(start)
 		logging.Logger.Error("Error redeeming the write marker.",
 			zap.Any("allocation", allocationID),
-			zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
+			zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err), zap.Any("elapsedTime", elapsedTime))
 		go tryAgain(wm)
 		shouldRollback = true
 
@@ -85,15 +109,9 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 	if mut != nil {
 		mut.Release(1)
 	}
-	err = db.Transaction(func(tx *gorm.DB) error {
-		err = tx.Model(&allocation.Allocation{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Where("id=?", allocationID).Error
-		if err != nil {
-			return err
-		}
-		err = db.Exec("UPDATE allocations SET latest_redeemed_write_marker=?,is_redeem_required=(allocation_root NOT LIKE ?) WHERE id=?",
-			wm.WM.AllocationRoot, wm.WM.AllocationRoot, allocationID).Error
-		return err
-	})
+
+	err = db.Exec("UPDATE allocations SET latest_redeemed_write_marker=?,is_redeem_required=(allocation_root NOT LIKE ?) WHERE id=?",
+		wm.WM.AllocationRoot, wm.WM.AllocationRoot, allocationID).Error
 
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
@@ -111,10 +129,10 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 		shouldRollback = true
 		return err
 	}
-
+	elapsedTime := time.Since(start)
 	logging.Logger.Info("Success Redeeming the write marker",
 		zap.Any("allocation", allocationID),
-		zap.Any("wm", wm.WM.AllocationRoot), zap.Any("txn", wm.CloseTxnID))
+		zap.Any("wm", wm.WM.AllocationRoot), zap.Any("txn", wm.CloseTxnID), zap.Any("elapsedTime", elapsedTime))
 
 	return nil
 }

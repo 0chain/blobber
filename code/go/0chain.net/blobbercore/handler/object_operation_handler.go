@@ -94,7 +94,7 @@ func checkPendingMarkers(ctx context.Context, allocationID string) error {
 	if mut == nil {
 		return nil
 	}
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	err := mut.Acquire(ctx, 1)
 	if err != nil {
@@ -370,7 +370,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	err = checkPendingMarkers(ctx, allocationObj.ID)
 	if err != nil {
 		Logger.Error("Error checking pending markers", zap.Error(err))
-		return nil, common.NewError("pending_markers", "Error checking pending markers"+err.Error())
+		return nil, common.NewError("pending_markers", "previous marker is still pending to be redeemed")
 	}
 
 	// Lock will compete with other CommitWrites and Challenge validation

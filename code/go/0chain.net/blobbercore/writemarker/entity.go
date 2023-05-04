@@ -35,9 +35,10 @@ func (wm *WriteMarker) GetHashData() string {
 type WriteMarkerStatus int
 
 const (
-	Accepted  WriteMarkerStatus = 0
-	Committed WriteMarkerStatus = 1
-	Failed    WriteMarkerStatus = 2
+	Accepted   WriteMarkerStatus = 0
+	Committed  WriteMarkerStatus = 1
+	Failed     WriteMarkerStatus = 2
+	Rollbacked WriteMarkerStatus = 3
 )
 
 type WriteMarkerEntity struct {
