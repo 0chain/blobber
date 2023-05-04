@@ -89,20 +89,20 @@ func readPreRedeem(
 	return
 }
 
-func checkPendingMarkers(ctx context.Context, allocationID string) (bool, error) {
+func checkPendingMarkers(ctx context.Context, allocationID string) error {
 
 	mut := writemarker.GetLock(allocationID)
 	if mut == nil {
-		return true, nil
+		return nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	err := mut.Acquire(ctx, 1)
 	if err != nil {
-		return false, common.NewError("check_pending_markers", "write marker is still not redeemed")
+		return common.NewError("check_pending_markers", "write marker is still not redeemed")
 	}
 	mut.Release(1)
-	return true, nil
+	return nil
 }
 
 func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMarker *writemarker.WriteMarker, payerID string) (err error) {
@@ -368,20 +368,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
+	err = checkPendingMarkers(ctx, allocationObj.ID)
+	if err != nil {
+		logging.Logger.Error("Error checking pending markers", zap.Error(err))
+		return nil, common.NewError("pending_markers", "Error checking pending markers"+err.Error())
+	}
+
 	// Lock will compete with other CommitWrites and Challenge validation
 	mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
 	mutex.Lock()
 	defer mutex.Unlock()
-
-	status, err := checkPendingMarkers(ctx, allocationObj.ID)
-	if err != nil {
-		logging.Logger.Error("Error checking pending markers: " + err.Error())
-		return nil, common.NewError("pending_markers", "Error checking pending markers"+err.Error())
-	}
-	if !status {
-		logging.Logger.Error("Pending markers found for allocation: " + allocationObj.ID)
-		return nil, common.NewError("pending_markers", "Pending markers found for allocation: "+allocationObj.ID)
-	}
 
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
