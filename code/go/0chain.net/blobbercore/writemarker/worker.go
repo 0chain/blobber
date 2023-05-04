@@ -36,7 +36,7 @@ func SetupWorkers(ctx context.Context) {
 	writeMarkerMap = make(map[string]*semaphore.Weighted)
 
 	for _, r := range res {
-		writeMarkerMap[r.ID] = semaphore.NewWeighted(2)
+		writeMarkerMap[r.ID] = semaphore.NewWeighted(1)
 	}
 
 	go startRedeem(ctx)
@@ -51,7 +51,7 @@ func GetLock(allocationID string) *semaphore.Weighted {
 func SetLock(allocationID string) *semaphore.Weighted {
 	mut.Lock()
 	defer mut.Unlock()
-	writeMarkerMap[allocationID] = semaphore.NewWeighted(2)
+	writeMarkerMap[allocationID] = semaphore.NewWeighted(1)
 	return writeMarkerMap[allocationID]
 }
 
