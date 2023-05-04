@@ -174,7 +174,8 @@ func main() {
 	fmt.Printf("[+] %-24s    %s\n", "start server on "+address, "[OK]")
 	Logger.Info("Ready to listen to the requests")
 	startTime = time.Now().UTC()
-	log.Fatal(server.ListenAndServe())
+	err = server.ListenAndServe()
+	logging.Logger.Fatal("validator failed", zap.Error(err))
 }
 
 func RegisterValidator() {
