@@ -37,7 +37,7 @@ func GetConnectionObjSize(connectionID string) int64 {
 func UpdateConnectionObjSize(connectionID string, addSize int64) {
 	connectionObjMutex.Lock()
 	defer connectionObjMutex.Unlock()
-	connectionObjSize, _ := connectionObjSizeMap[connectionID];
+	connectionObjSize := connectionObjSizeMap[connectionID];
 	connectionObjSizeMap[connectionID] = ConnectionObjSize{Size: connectionObjSize.Size + addSize, UpdatedAt: time.Now()}
 }
 
@@ -55,7 +55,7 @@ func cleanConnectionObj() {
 	connectionObjMutex.Lock()
 	defer connectionObjMutex.Unlock()
 	for connectionID, connectionObjSize := range connectionObjSizeMap {
-		diff := time.Now().Sub(connectionObjSize.UpdatedAt)
+		diff := time.Since(connectionObjSize.UpdatedAt)
 		if diff >= ConnectionObjTimeout {
 			delete(connectionObjSizeMap, connectionID)
 		}
