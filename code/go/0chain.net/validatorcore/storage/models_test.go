@@ -36,7 +36,7 @@ func TestDirMetaData_CalculateHash(t *testing.T) {
 			dmd: storage.DirMetaData{
 				Hash: "hash0",
 			},
-			want: "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+			want: "763c38be0664691418d38f5ccde0162c9ff11fbda1b946d56476bdaa90fd13d6",
 		},
 		{
 			name: "with children",
@@ -48,7 +48,7 @@ func TestDirMetaData_CalculateHash(t *testing.T) {
 					},
 				},
 			},
-			want: "5f2ec2d6c64c3e0bed5af21673e7e824d1f91f484ebcfe7a4758949e6d9eb6e0",
+			want: "cf04ad708ac8dc61996ce6e3719cfb18ab7fe6cc0fa42f4f162bd1c8c1902c95",
 		},
 		{
 			name: "with nested children",
@@ -65,7 +65,7 @@ func TestDirMetaData_CalculateHash(t *testing.T) {
 					},
 				},
 			},
-			want: "5f2ec2d6c64c3e0bed5af21673e7e824d1f91f484ebcfe7a4758949e6d9eb6e0",
+			want: "cf04ad708ac8dc61996ce6e3719cfb18ab7fe6cc0fa42f4f162bd1c8c1902c95",
 		},
 	}
 
