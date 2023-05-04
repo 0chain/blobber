@@ -8,29 +8,6 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-// func redeemWriteMarkers() {
-
-// 	db := datastore.GetStore().GetDB()
-// 	var allocations []*allocation.Allocation
-// 	db.Where(&allocation.Allocation{IsRedeemRequired: true}).
-// 		Find(&allocations)
-// 	if len(allocations) > 0 {
-
-// 		logging.Logger.Info("Redeem writemarkers for allocations",
-// 			zap.Any("numOfAllocations", len(allocations)))
-
-// 		swg := sizedwaitgroup.New(config.Configuration.WMRedeemNumWorkers)
-// 		for _, allocationObj := range allocations {
-// 			swg.Add()
-// 			go func(allocationObj *allocation.Allocation) {
-// 				redeemWriterMarkersForAllocation(allocationObj)
-// 				swg.Done()
-// 			}(allocationObj)
-// 		}
-// 		swg.Wait()
-// 	}
-// }
-
 func startRedeemWorker(ctx context.Context) {
 	logging.Logger.Info("Starting redeem worker")
 	sem := semaphore.NewWeighted(int64(config.Configuration.WMRedeemNumWorkers))

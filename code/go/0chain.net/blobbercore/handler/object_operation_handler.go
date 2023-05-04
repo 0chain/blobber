@@ -25,7 +25,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"gorm.io/gorm"
@@ -370,7 +369,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	err = checkPendingMarkers(ctx, allocationObj.ID)
 	if err != nil {
-		logging.Logger.Error("Error checking pending markers", zap.Error(err))
+		Logger.Error("Error checking pending markers", zap.Error(err))
 		return nil, common.NewError("pending_markers", "Error checking pending markers"+err.Error())
 	}
 

@@ -36,7 +36,7 @@ func SetupWorkers(ctx context.Context) {
 	writeMarkerMap = make(map[string]*semaphore.Weighted)
 
 	for _, r := range res {
-		writeMarkerMap[r.ID] = semaphore.NewWeighted(1)
+		writeMarkerMap[r.ID] = semaphore.NewWeighted(2)
 	}
 
 	go startRedeem(ctx)
@@ -51,42 +51,9 @@ func GetLock(allocationID string) *semaphore.Weighted {
 func SetLock(allocationID string) *semaphore.Weighted {
 	mut.Lock()
 	defer mut.Unlock()
-	writeMarkerMap[allocationID] = semaphore.NewWeighted(1)
+	writeMarkerMap[allocationID] = semaphore.NewWeighted(2)
 	return writeMarkerMap[allocationID]
 }
-
-// func redeemWriterMarkersForAllocation(allocationObj *allocation.Allocation) {
-
-// 	db := datastore.GetStore().GetDB()
-// 	var err error
-
-// 	var writemarker *WriteMarkerEntity
-
-// 	err = db.Not(WriteMarkerEntity{Status: Committed}).
-// 		Where(WriteMarker{AllocationID: allocationObj.ID}).
-// 		Order("sequence").
-// 		First(&writemarker).Error
-// 	if err != nil {
-// 		logging.Logger.Error("Error redeeming the write marker. failed to load allocation's writemarker ",
-// 			zap.Any("allocation", allocationObj.ID),
-// 			zap.Any("error", err))
-// 		return
-// 	}
-
-// 	err = redeemWriteMarker(allocationObj, writemarker)
-// 	if err != nil {
-// 		return
-// 	}
-
-// if allocationObj.LatestRedeemedWM == allocationObj.AllocationRoot {
-// 	err = db.Exec("UPDATE allocations SET is_redeem_required=? WHERE id = ? ", false, allocationObj.ID).Error
-// 	if err != nil {
-// 		logging.Logger.Error("Error redeeming the write marker. failed to update allocation's is_redeem_required ",
-// 			zap.Any("allocation", allocationObj.ID),
-// 			zap.Any("error", err))
-// 	}
-// }
-// }
 
 func redeemWriteMarker(wm *WriteMarkerEntity) error {
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
@@ -103,15 +70,6 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 			}
 		}
 	}()
-
-	// err := db.Exec("SELECT is_redeem_required FROM allocations WHERE id=? FOR NO KEY UPDATE", allocationID).Error
-	// if err != nil {
-	// 	logging.Logger.Error("Error redeeming the write marker. Allocation lock failed",
-	// 		zap.Any("allocation", allocationID),
-	// 		zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
-	// 	shouldRollback = true
-	// 	return err
-	// }
 
 	err := wm.RedeemMarker(ctx)
 	if err != nil {
@@ -161,27 +119,9 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 	return nil
 }
 
-// func startRedeemWriteMarkers(ctx context.Context) {
-// 	var ticker = time.NewTicker(
-// 		time.Duration(config.Configuration.WMRedeemFreq) * time.Second,
-// 	)
-
-// 	logging.Logger.Info("Redeem writemarkers",
-// 		zap.Any("numOfWorkers", config.Configuration.WMRedeemNumWorkers))
-
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			return
-// 		case <-ticker.C:
-// 			redeemWriteMarkers()
-// 		}
-// 	}
-// }
-
 func startRedeem(ctx context.Context) {
 	logging.Logger.Info("Start Redeem writemarkers")
-	writeMarkerChan = make(chan *WriteMarkerEntity, 100)
+	writeMarkerChan = make(chan *WriteMarkerEntity, 200)
 	go startRedeemWorker(ctx)
 	db := datastore.GetStore().GetDB()
 
