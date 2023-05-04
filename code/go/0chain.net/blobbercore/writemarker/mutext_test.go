@@ -142,7 +142,7 @@ func TestMutext_LockShouldWork(t *testing.T) {
 				if it.mock != nil {
 					it.mock()
 				}
-				r, err := m.Lock(context.TODO(), it.allocationID, it.connectionID, &it.requestTime)
+				r, err := m.Lock(context.TODO(), it.allocationID, it.connectionID)
 
 				it.assert(test, r, err)
 
@@ -151,54 +151,4 @@ func TestMutext_LockShouldWork(t *testing.T) {
 
 	}
 
-}
-
-func TestMutext_LockShouldNotWork(t *testing.T) {
-
-	datastore.UseMocket(true)
-
-	config.Configuration.WriteMarkerLockTimeout = 30 * time.Second
-
-	m := &Mutex{
-		ML: common.GetNewLocker(),
-	}
-
-	tests := []struct {
-		name         string
-		allocationID string
-		connectionID string
-		requestTime  time.Time
-		mock         func()
-		assert       func(*testing.T, *LockResult, error)
-	}{
-		{
-			name:         "Lock should not work if request_time is timeout",
-			allocationID: "lock_allocation_id",
-			connectionID: "lock_connection_id",
-			requestTime:  time.Now().Add(-31 * time.Second),
-			mock: func() {
-				config.Configuration.WriteMarkerLockTimeout = 30 * time.Second
-			},
-			assert: func(test *testing.T, r *LockResult, err error) {
-				require.Nil(test, r)
-				require.NotNil(test, err)
-			},
-		},
-	}
-
-	for _, it := range tests {
-
-		t.Run(it.name,
-			func(test *testing.T) {
-				if it.mock != nil {
-					it.mock()
-				}
-				r, err := m.Lock(context.TODO(), it.allocationID, it.connectionID, &it.requestTime)
-
-				it.assert(test, r, err)
-
-			},
-		)
-
-	}
 }
