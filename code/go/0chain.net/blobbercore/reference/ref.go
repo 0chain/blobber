@@ -369,6 +369,7 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*
 			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
 		}
 	}
+
 	return refs[0], nil
 }
 
@@ -554,39 +555,15 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	toUpdateFileStat := r.IsTemp
 	prevID := r.ID
-	rf := &Ref{}
 	if r.ID > 0 {
 		err := db.Transaction(func(tx *gorm.DB) error {
 
-			err := tx.Model(&Ref{}).Where("id = ?", r.ID).First(rf).Error
-			if err != nil {
+			err := tx.Delete(&Ref{}, "id=?", r.ID).Error
+			if err != nil && err != gorm.ErrRecordNotFound {
 				return err
 			}
-
-			err = tx.Delete(&Ref{}, "id=?", r.ID).Error
-			if err != nil {
-				return err
-			}
-
-			rf.ID = 0
-			rf.IsTemp = true
-			rf.AllocationID = r.AllocationID
-			rf.Path = r.Path
-			rf.LookupHash = r.LookupHash
-			rf.Name = r.Name
-			rf.Hash = r.Hash
-			rf.FileMetaHash = r.FileMetaHash
-			rf.NumBlocks = r.NumBlocks
-			rf.PathHash = r.PathHash
-			rf.ParentPath = r.ParentPath
-			rf.PathLevel = r.PathLevel
-			rf.AllocationRoot = r.AllocationRoot
-			rf.Size = r.Size
-			rf.ChunkSize = r.ChunkSize
-			rf.FileID = r.FileID
-			rf.UpdatedAt = r.UpdatedAt
-
-			err = tx.Create(rf).Error
+			r.IsTemp = true
+			err = tx.Create(r).Error
 			if err != nil {
 				return err
 			}
@@ -602,11 +579,10 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		rf.ID = r.ID
 	}
 
 	if toUpdateFileStat {
-		FileUpdated(ctx, prevID, rf.ID)
+		FileUpdated(ctx, prevID, r.ID)
 	}
 	return nil
 }

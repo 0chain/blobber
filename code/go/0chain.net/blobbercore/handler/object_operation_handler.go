@@ -504,7 +504,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	writemarkerEntity.ConnectionID = connectionObj.ID
 	writemarkerEntity.ClientPublicKey = clientKey
 
-	err = writemarkerEntity.Save(ctx)
+	err = writemarkerEntity.Create(ctx)
 	if err != nil {
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
 	}
@@ -1264,7 +1264,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	writemarkerEntity.ConnectionID = connectionID
 	writemarkerEntity.ClientPublicKey = clientKey
 
-	err = writemarkerEntity.Save(ctx)
+	err = writemarkerEntity.Create(ctx)
 	if err != nil {
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
 	}
