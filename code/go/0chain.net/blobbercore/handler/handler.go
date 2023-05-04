@@ -44,7 +44,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
@@ -259,15 +258,7 @@ func setupHandlers(r *mux.Router) {
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
-		connectionID := r.FormValue("connection_id")
-		// This lock should be locked used in handler otherwise it may panic.
-		mutex := lock.GetMutex("allocation_connections", connectionID)
-		defer func() {
-			Logger.Info(fmt.Sprintf("Unlocking lock for connection: %s", connectionID))
-			mutex.TryUnlock()
-			Logger.Info(fmt.Sprintf("Unlocked lock for connection: %s", connectionID))
 
-		}()
 		res, err := handler(ctx, r)	
 		defer func() {
 			GetMetaDataStore().GetTransaction(ctx).Rollback()
@@ -280,15 +271,7 @@ func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF
 func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 	return func(ctx context.Context, r *http.Request) (resp interface{}, err error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
-		connectionID := r.FormValue("connection_id")
-		// This lock should be locked used in handler otherwise it may panic.
-		mutex := lock.GetMutex("allocation_connections", connectionID)
-		defer func() {
-			Logger.Info(fmt.Sprintf("Unlocking lock for connection: %s", connectionID))
-			mutex.TryUnlock()
-			Logger.Info(fmt.Sprintf("Unlocked lock for connection: %s", connectionID))
 
-		}()
 		resp, err = handler(ctx, r)
 
 		defer func() {

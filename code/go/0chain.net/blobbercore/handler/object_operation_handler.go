@@ -582,9 +582,6 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	mutex := lock.GetMutex(AllocationConnections, connectionID) // It will be unlocked from WithConnection();
-	mutex.Lock()
-
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
@@ -671,9 +668,6 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	mutex := lock.GetMutex(AllocationConnections, connectionID) // It will be unlocked from WithConnection();
-
-	mutex.Lock()
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
@@ -780,8 +774,6 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	mutex := lock.GetMutex(AllocationConnections, connectionID) // It will be unlocked from WithConnection();
-	mutex.Lock()
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
@@ -946,8 +938,6 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	mutex := lock.GetMutex(AllocationConnections, connectionID) // It will be unlocked from WithConnection();
-	mutex.Lock()
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
@@ -1038,14 +1028,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	elapsedRef := time.Since(st)
 	st = time.Now()
-
-	Logger.Info(fmt.Sprintf("[upload] Acquiring lock for allocation: %s, connection: %s", allocationID, connectionID))
-	mutex := lock.GetMutex(AllocationConnections, connectionID) // It will be unlocked from WithConnection();
-
-	Logger.Info(fmt.Sprintf("[upload] Locking for allocation: %s, connection: %s", allocationID, connectionID))
-
-	mutex.Lock()
-	Logger.Info(fmt.Sprintf("[upload] Acquired lock for allocation: %s, connection: %s", allocationID, connectionID))
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {

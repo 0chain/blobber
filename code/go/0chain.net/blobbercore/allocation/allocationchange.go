@@ -117,6 +117,7 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 
 	if err == nil {
 		cc.ComputeProperties()
+		cc.Size = common.GetConnectionObjSize(connectionID);
 		return cc, nil
 	}
 
