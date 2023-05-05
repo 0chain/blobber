@@ -115,7 +115,10 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root, allocationID str
 	db := datastore.GetStore().GetTransaction(ctx)
 	wm := &WriteMarkerEntity{}
 	// err := db.First(wm, "allocation_root = ?", allocation_root).Error
-	err := db.Table((WriteMarkerEntity{}).TableName()).Where("allocation_root=? and allocation_id=?", allocation_root, allocationID).Order("sequence").Last(wm).Error
+	err := db.Table((WriteMarkerEntity{}).TableName()).
+		Where("allocation_root=? and allocation_id=?", allocation_root, allocationID).
+		Order("sequence desc").
+		Take(wm).Error
 	if err != nil {
 		return nil, err
 	}
@@ -143,9 +146,9 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAlloc
 	// seq of start allocation root
 	startWM := WriteMarkerEntity{}
 	err := db.Table((WriteMarkerEntity{}).TableName()).
-		Where("allocation_id=? AND allocation_root=? AND timestamp=?", allocationID, startAllocationRoot, startTimestamp).
+		Where("allocation_root=? AND timestamp=?", startAllocationRoot, startTimestamp).
 		Select("sequence").
-		First(&startWM).Error
+		Take(&startWM).Error
 
 	if err != nil {
 		return nil, common.NewError("write_marker_not_found", "Could not find the start write marker in the range")
@@ -156,7 +159,8 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAlloc
 	err = db.Table((WriteMarkerEntity{}).TableName()).
 		Where("allocation_id=? AND allocation_root=?", allocationID, endAllocationRoot).
 		Select("sequence").
-		Order("sequence").Last(&endWM).Error
+		Order("sequence desc").
+		Take(&endWM).Error
 	if err != nil {
 		return nil, common.NewError("write_marker_not_found", "Could not find the end write marker in the range")
 	}
