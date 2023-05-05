@@ -23,7 +23,7 @@ func setupWorkers(ctx context.Context) {
 	readmarker.SetupWorkers(ctx)
 	writemarker.SetupWorkers(ctx)
 	allocation.StartUpdateWorker(ctx, config.Configuration.UpdateAllocationsInterval)
-	common.SetupWorkers(ctx)
+	allocation.SetupWorkers(ctx)
 	updateCCTWorker(ctx)
 }
 
