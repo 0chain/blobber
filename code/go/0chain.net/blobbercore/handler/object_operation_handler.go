@@ -520,7 +520,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	db.Delete(connectionObj)
-	common.DeleteConnectionObjEntry(connectionID);
+	common.DeleteConnectionObjEntry(connectionID)
 
 	commitOperation := connectionObj.Changes[0].Operation
 	input := connectionObj.Changes[0].Input
@@ -865,7 +865,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 			Hash: fileRef.Hash, Path: fileRef.Path, Size: deleteSize}
 
 		common.UpdateConnectionObjSize(connectionObj.ID, allocationChange.Size)
-	
+
 		connectionObj.AddChange(allocationChange, dfc)
 
 		result := &blobberhttp.UploadResult{}

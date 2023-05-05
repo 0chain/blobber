@@ -112,7 +112,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	if fileOutputData.ChunkUploaded {
 		allocationSize += fileOutputData.Size
-		common.UpdateConnectionObjSize(connectionObj.ID, fileOutputData.Size);
+		common.UpdateConnectionObjSize(connectionObj.ID, fileOutputData.Size)
 	}
 
 	if allocationObj.BlobberSizeUsed+(allocationSize-cmd.existingFileRef.Size) > allocationObj.BlobberSize {
