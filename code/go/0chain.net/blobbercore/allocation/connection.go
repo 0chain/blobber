@@ -1,4 +1,4 @@
-package common
+package allocation
 
 import (
 	"context"
@@ -27,40 +27,36 @@ type ConnectionObjSize struct {
 func GetConnectionObjSize(connectionID string) int64 {
 	connectionObjMutex.Lock()
 	defer connectionObjMutex.Unlock()
-	connectionObjSize, ok := connectionObjSizeMap[connectionID]
-	if !ok {
-		return 0
-	}
-	return connectionObjSize.Size
+	return connectionObjSizeMap[connectionID].Size
 }
 
 // UpdateConnectionObjSize updates the connection size by addSize in memory
 func UpdateConnectionObjSize(connectionID string, addSize int64) {
 	connectionObjMutex.Lock()
-	defer connectionObjMutex.Unlock()
 	connectionObjSize := connectionObjSizeMap[connectionID]
 	connectionObjSizeMap[connectionID] = ConnectionObjSize{Size: connectionObjSize.Size + addSize, UpdatedAt: time.Now()}
+	connectionObjMutex.Unlock()
 }
 
 // DeleteConnectionObjEntry remove the connectionID entry from map
 // If the given connectionID is not present, then it is no-op.
 func DeleteConnectionObjEntry(connectionID string) {
 	connectionObjMutex.Lock()
-	defer connectionObjMutex.Unlock()
 	delete(connectionObjSizeMap, connectionID)
+	connectionObjMutex.Unlock()
 }
 
 // cleanConnectionObj cleans the connectionObjSize map. It deletes the rows
 // for which deadline is exceeded.
 func cleanConnectionObj() {
 	connectionObjMutex.Lock()
-	defer connectionObjMutex.Unlock()
 	for connectionID, connectionObjSize := range connectionObjSizeMap {
 		diff := time.Since(connectionObjSize.UpdatedAt)
 		if diff >= ConnectionObjTimeout {
 			delete(connectionObjSizeMap, connectionID)
 		}
 	}
+	connectionObjMutex.Unlock()
 }
 
 func startCleanConnectionObj(ctx context.Context) {

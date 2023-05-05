@@ -119,7 +119,7 @@ func (change *AllocationChange) GetOrParseAffectedFilePath() (string, error) {
 }
 
 // GetAllocationChanges reload connection's changes in allocation from postgres.
-//	1. update connection's status with NewConnection if id is not found in postgres
+//  1. update connection's status with NewConnection if id is not found in postgres
 //  2. mark as NewConnection if id is marked as DeleteConnection
 func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clientID string) (*AllocationChangeCollector, error) {
 	cc := &AllocationChangeCollector{}
@@ -134,7 +134,7 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 	if err == nil {
 		cc.ComputeProperties()
 		// Load connection Obj size from memory
-		cc.Size = common.GetConnectionObjSize(connectionID)
+		cc.Size = GetConnectionObjSize(connectionID)
 		return cc, nil
 	}
 
@@ -198,7 +198,6 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 	}
 }
 
-//
 func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot string,
 	ts common.Timestamp, fileIDMeta map[string]string) error {
 

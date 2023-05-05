@@ -134,7 +134,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	// only update connection size when the chunk is uploaded.
 	if fileOutputData.ChunkUploaded {
 		allocationSize += fileOutputData.Size
-		common.UpdateConnectionObjSize(connectionObj.ID, fileOutputData.Size)
+		allocation.UpdateConnectionObjSize(connectionObj.ID, fileOutputData.Size)
 	}
 
 	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {

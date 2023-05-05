@@ -39,7 +39,6 @@ const (
 	EncryptionHeaderSize = 128 + 128
 	// ReEncryptionHeaderSize re-encryption header size in chunk
 	ReEncryptionHeaderSize = 256
-	AllocationConnections  = "allocation_connections"
 )
 
 func readPreRedeem(
@@ -520,7 +519,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	db.Delete(connectionObj)
-	common.DeleteConnectionObjEntry(connectionID)
+	allocation.DeleteConnectionObjEntry(connectionID)
 
 	commitOperation := connectionObj.Changes[0].Operation
 	input := connectionObj.Changes[0].Input
@@ -605,7 +604,6 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID, Path: objectRef.Path}
 	dfc.NewName = new_name
-	common.UpdateConnectionObjSize(connectionID, allocationChange.Size)
 	connectionObj.AddChange(allocationChange, dfc)
 
 	err = connectionObj.Save(ctx)
@@ -711,7 +709,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID, DestPath: destPath}
 	dfc.SrcPath = objectRef.Path
-	common.UpdateConnectionObjSize(connectionID, allocationChange.Size)
+	allocation.UpdateConnectionObjSize(connectionID, allocationChange.Size)
 	connectionObj.AddChange(allocationChange, dfc)
 
 	err = connectionObj.Save(ctx)
@@ -822,7 +820,6 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 		DestPath:     destPath,
 	}
 	dfc.SrcPath = objectRef.Path
-	common.UpdateConnectionObjSize(connectionID, allocationChange.Size)
 	connectionObj.AddChange(allocationChange, dfc)
 
 	err = connectionObj.Save(ctx)
@@ -864,7 +861,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 			AllocationID: connectionObj.AllocationID, Name: fileRef.Name,
 			Hash: fileRef.Hash, Path: fileRef.Path, Size: deleteSize}
 
-		common.UpdateConnectionObjSize(connectionObj.ID, allocationChange.Size)
+		allocation.UpdateConnectionObjSize(connectionObj.ID, allocationChange.Size)
 
 		connectionObj.AddChange(allocationChange, dfc)
 
@@ -949,7 +946,6 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	allocationChange.ConnectionID = connectionObj.ID
 	allocationChange.Size = 0
 	allocationChange.Operation = constants.FileOperationCreateDir
-	common.UpdateConnectionObjSize(connectionID, allocationChange.Size)
 	var newDir allocation.NewDir
 	newDir.ConnectionID = connectionID
 	newDir.Path = dirPath
