@@ -562,6 +562,7 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 			if err != nil && err != gorm.ErrRecordNotFound {
 				return err
 			}
+			r.ID = 0
 			r.IsTemp = true
 			err = tx.Create(r).Error
 			if err != nil {
@@ -574,7 +575,6 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 		}
 	} else {
 		r.IsTemp = true
-		r.ID = 0
 		err := db.Create(r).Error
 		if err != nil {
 			return err
