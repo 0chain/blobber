@@ -115,7 +115,7 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root, allocationID str
 	db := datastore.GetStore().GetTransaction(ctx)
 	wm := &WriteMarkerEntity{}
 	// err := db.First(wm, "allocation_root = ?", allocation_root).Error
-	err := db.Table((WriteMarkerEntity{}).TableName()).Where("allocation_root=? and allocation_id=?", allocation_root, allocationID).Order("sequence").First(wm).Error
+	err := db.Table((WriteMarkerEntity{}).TableName()).Where("allocation_root=? and allocation_id=?", allocation_root, allocationID).Order("sequence").Last(wm).Error
 	if err != nil {
 		return nil, err
 	}
