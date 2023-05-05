@@ -159,7 +159,7 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 
 func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
-		filePath, _ := c.GetAffectedFilePath()
+		filePath, _ := c.GetOrParseAffectedFilePath()
 		if c.Operation != sdkConst.FileOperationUpdate || cmd.fileChanger.Path != filePath {
 			continue
 		}
@@ -183,7 +183,7 @@ func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationC
 // UpdateChange add UpdateFileChanger in db
 func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	for _, c := range connectionObj.Changes {
-		filePath, _ := c.GetAffectedFilePath()
+		filePath, _ := c.GetOrParseAffectedFilePath()
 		if c.Operation != sdkConst.FileOperationUpdate || cmd.fileChanger.Path != filePath {
 			continue
 		}

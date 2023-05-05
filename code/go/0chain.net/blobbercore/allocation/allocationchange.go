@@ -66,6 +66,7 @@ type AllocationChange struct {
 	ConnectionID string                    `gorm:"column:connection_id;size:64;not null"`
 	Connection   AllocationChangeCollector `gorm:"foreignKey:ConnectionID"` // References allocation_connections(id)
 	Input        string                    `gorm:"column:input"`
+	FilePath     string                    `gorm:"-"`
 	datastore.ModelWithTS
 }
 
@@ -90,9 +91,9 @@ func (change *AllocationChange) Save(ctx context.Context) error {
 	return db.Save(change).Error
 }
 
-func (change *AllocationChange) GetAffectedFilePath() (string, error) {
+func ParseAffectedFilePath(input string) (string, error) {
 	inputMap := make(map[string]interface{})
-	err := json.Unmarshal([]byte(change.Input), &inputMap)
+	err := json.Unmarshal([]byte(input), &inputMap)
 	if err != nil {
 		return "", err
 	}
@@ -100,6 +101,21 @@ func (change *AllocationChange) GetAffectedFilePath() (string, error) {
 		return path, nil
 	}
 	return "", nil
+}
+
+func (change *AllocationChange) GetOrParseAffectedFilePath() (string, error) {
+
+	// Check if change.FilePath has value
+	if change.FilePath != "" {
+		return change.FilePath, nil
+	}
+	filePath, err := ParseAffectedFilePath(change.Input)
+	if err != nil {
+		return "", err
+	}
+	change.FilePath = filePath
+	return filePath, nil
+
 }
 
 // GetAllocationChanges reload connection's changes in allocation from postgres.
@@ -118,7 +134,7 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 	if err == nil {
 		cc.ComputeProperties()
 		// Load connection Obj size from memory
-		cc.Size = common.GetConnectionObjSize(connectionID);
+		cc.Size = common.GetConnectionObjSize(connectionID)
 		return cc, nil
 	}
 

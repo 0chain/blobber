@@ -20,8 +20,7 @@ type Mutex struct {
 	// usedby how objects it is used by
 	usedby int
 
-	mu          *sync.Mutex
-	tryUnlockMu *sync.Mutex
+	mu *sync.Mutex
 }
 
 // Lock implements Locker.Lock
@@ -38,21 +37,6 @@ func (m *Mutex) Unlock() {
 	m.mu.Unlock()
 }
 
-// TryUnlock unlock the lock if it is already locked otherwise do nothing.
-// Don't use tryUnlock and Unlock together for the same lock otherwise it may panic
-func (m *Mutex) TryUnlock() {
-	m.tryUnlockMu.Lock()
-	defer m.tryUnlockMu.Unlock()
-	if m.mu.TryLock() {
-		// If succeed then unlock it safely
-		m.mu.Unlock()
-	} else {
-		// The lock is already acquired by other process, and tryUnlockMu make sure that
-		// lock is not unlocked by other TryUnlock().
-		m.Unlock()
-	}
-}
-
 // GetMutex get mutex by table and key
 func GetMutex(tablename, key string) *Mutex {
 	lockKey := tablename + ":" + key
@@ -65,9 +49,8 @@ func GetMutex(tablename, key string) *Mutex {
 	}
 
 	m := &Mutex{
-		usedby:      1,
-		mu:          &sync.Mutex{},
-		tryUnlockMu: &sync.Mutex{},
+		usedby: 1,
+		mu:     &sync.Mutex{},
 	}
 
 	lockPool[lockKey] = m

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"sync"
 	"time"
 )
@@ -33,16 +34,16 @@ func GetConnectionObjSize(connectionID string) int64 {
 	return connectionObjSize.Size
 }
 
-// UpdateConnectionObjSize updates the connection size by addSize in memory 
+// UpdateConnectionObjSize updates the connection size by addSize in memory
 func UpdateConnectionObjSize(connectionID string, addSize int64) {
 	connectionObjMutex.Lock()
 	defer connectionObjMutex.Unlock()
-	connectionObjSize := connectionObjSizeMap[connectionID];
+	connectionObjSize := connectionObjSizeMap[connectionID]
 	connectionObjSizeMap[connectionID] = ConnectionObjSize{Size: connectionObjSize.Size + addSize, UpdatedAt: time.Now()}
 }
 
 // DeleteConnectionObjEntry remove the connectionID entry from map
-// If the given connectionID is not present, then it is no-op. 
+// If the given connectionID is not present, then it is no-op.
 func DeleteConnectionObjEntry(connectionID string) {
 	connectionObjMutex.Lock()
 	defer connectionObjMutex.Unlock()
@@ -62,11 +63,20 @@ func cleanConnectionObj() {
 	}
 }
 
-func init() {
-	go func() {
-		for {
-			time.Sleep(ConnectionObjCleanInterval)
+func startCleanConnectionObj(ctx context.Context) {
+	ticker := time.NewTicker(ConnectionObjCleanInterval)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
 			cleanConnectionObj()
 		}
-	}()
+
+	}
+}
+
+func SetupWorkers(ctx context.Context) {
+	go startCleanConnectionObj(ctx)
 }

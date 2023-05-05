@@ -176,7 +176,7 @@ func (cmd *UploadFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 
 func (cmd *UploadFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
-		filePath, _ := c.GetAffectedFilePath()
+		filePath, _ := c.GetOrParseAffectedFilePath()
 		if c.Operation != constants.FileOperationInsert || cmd.fileChanger.Path != filePath {
 			continue
 		}
@@ -200,7 +200,7 @@ func (cmd *UploadFileCommand) reloadChange(connectionObj *allocation.AllocationC
 // UpdateChange replace AddFileChange in db
 func (cmd *UploadFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	for _, c := range connectionObj.Changes {
-		filePath, _ := c.GetAffectedFilePath()
+		filePath, _ := c.GetOrParseAffectedFilePath()
 		if c.Operation != constants.FileOperationInsert || cmd.fileChanger.Path != filePath {
 			continue
 		}
