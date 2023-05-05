@@ -308,7 +308,10 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 	logging.Logger.Info("Verifying write marker", zap.Any("challenge_id", challengeObj.ID))
 	err = cr.WriteMarkers[0].WM.Verify(allocationObj.ID, challengeObj.AllocationRoot, cr.WriteMarkers[0].ClientPublicKey)
 	if err != nil {
-		return err
+		return common.NewError("write_marker_validation_failed", "Failed to verify the write marker. "+err.Error())
+	}
+	if cr.WriteMarkers[0].WM.Timestamp != challengeObj.Timestamp {
+		return common.NewError("write_marker_validation_failed", "Write marker timestamp does not match with challenge timestamp")
 	}
 	for i := 1; i < len(cr.WriteMarkers); i++ {
 		err = cr.WriteMarkers[i].WM.Verify(allocationObj.ID, cr.WriteMarkers[i].WM.AllocationRoot, cr.WriteMarkers[i].ClientPublicKey)
@@ -351,12 +354,13 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 }
 
 type Challenge struct {
-	ID             string         `json:"id"`
-	Validators     []*StorageNode `json:"validators"`
-	RandomNumber   int64          `json:"seed"`
-	AllocationID   string         `json:"allocation_id"`
-	AllocationRoot string         `json:"allocation_root"`
-	BlobberID      string         `json:"blobber_id"`
+	ID             string           `json:"id"`
+	Validators     []*StorageNode   `json:"validators"`
+	RandomNumber   int64            `json:"seed"`
+	AllocationID   string           `json:"allocation_id"`
+	AllocationRoot string           `json:"allocation_root"`
+	BlobberID      string           `json:"blobber_id"`
+	Timestamp      common.Timestamp `json:"timestamp"`
 }
 
 type ValidationTicket struct {

@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -97,6 +98,7 @@ type ChallengeEntity struct {
 	ObjectPathString        datatypes.JSON        `gorm:"column:object_path" json:"-"`
 	ObjectPath              *reference.ObjectPath `gorm:"-" json:"object_path"`
 	Sequence                int64                 `gorm:"column:sequence;unique;autoIncrement;<-:false"`
+	Timestamp               common.Timestamp      `gorm:"column:timestamp;not null;default:0" json:"timestamp"`
 
 	// This time is taken from Blockchain challenge object.
 	CreatedAt common.Timestamp `gorm:"created_at" json:"created"`

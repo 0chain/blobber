@@ -136,40 +136,34 @@ func AllocationRootMustUnique(ctx context.Context, allocation_root string, times
 	return nil
 }
 
-func GetWriteMarkersInRange(ctx context.Context, allocationID, startAllocationRoot, endAllocationRoot string) ([]*WriteMarkerEntity, error) {
+// TODO: Remove allocation ID after duplicate writemarker fix
+func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAllocationRoot string, startTimestamp common.Timestamp, endAllocationRoot string) ([]*WriteMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
-	type Res struct {
-		AllocationRoot string
-		Sequence       int64
-	}
-	var res []Res
+
+	// seq of start allocation root
+	var startSeq int64
 	err := db.Table((WriteMarkerEntity{}).TableName()).
-		Where("allocation_id=?", allocationID).
-		Select("allocation_root", "sequence").
-		Where("allocation_root=? OR allocation_root=?", startAllocationRoot, endAllocationRoot).
-		Order("sequence").Find(&res).Error
+		Where("allocation_id=? AND allocation_root=? AND timestamp=?", allocationID, startAllocationRoot, startTimestamp).
+		Select("sequence").
+		First(&startSeq).Error
+
 	if err != nil {
-		return nil, err
-	}
-	if len(res) == 0 {
-		return nil, common.NewError("write_marker_not_found", "Could not find the right write markers in the range")
+		return nil, common.NewError("write_marker_not_found", "Could not find the start write marker in the range")
 	}
 
-	if len(res) == 1 {
-		res = append(res, res[0])
-	}
-
-	ind := 0
-	for i := 0; i < len(res); i++ {
-		if res[i].AllocationRoot == startAllocationRoot {
-			ind = i
-			break
-		}
+	// seq of end allocation root
+	var endSeq int64
+	err = db.Table((WriteMarkerEntity{}).TableName()).
+		Where("allocation_id=? AND allocation_root=?", allocationID, endAllocationRoot).
+		Select("sequence").
+		Order("sequence").Last(&endSeq).Error
+	if err != nil {
+		return nil, common.NewError("write_marker_not_found", "Could not find the end write marker in the range")
 	}
 
 	retMarkers := make([]*WriteMarkerEntity, 0)
 	err = db.Where("allocation_id=? AND sequence BETWEEN ? AND ?",
-		allocationID, res[ind].Sequence, res[len(res)-1].Sequence).Order("sequence").
+		allocationID, startSeq, endSeq).Order("sequence").
 		Find(&retMarkers).Error
 	if err != nil {
 		return nil, err

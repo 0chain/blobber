@@ -143,7 +143,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		return err
 	}
 
-	wms, err := writemarker.GetWriteMarkersInRange(ctx, cr.AllocationID, cr.AllocationRoot, allocationObj.AllocationRoot)
+	wms, err := writemarker.GetWriteMarkersInRange(ctx, cr.AllocationID, cr.AllocationRoot, cr.Timestamp, allocationObj.AllocationRoot)
 	if err != nil {
 		allocMu.Unlock()
 		return err
