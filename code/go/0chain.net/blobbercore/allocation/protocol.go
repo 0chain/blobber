@@ -202,6 +202,7 @@ func RequestReadPoolStat(clientID string) (*ReadPool, error) {
 		return nil, fmt.Errorf("decoding read pools stat response: %v, \n==> resp: %s", err, string(resp))
 	}
 
+	readPool.ClientID = clientID
 	return &readPool, nil
 }
 
