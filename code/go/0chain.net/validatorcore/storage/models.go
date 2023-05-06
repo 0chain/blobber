@@ -128,6 +128,7 @@ func (op *ObjectPath) Parse(input map[string]interface{}, allocationID string) (
 	}
 	t, ok := input[LIST_TAG]
 	if ok {
+		logging.Logger.Debug("Parsing list", zap.Any("list", t))
 		switch reflect.TypeOf(t).Kind() {
 		case reflect.Slice:
 			s := reflect.ValueOf(t)
@@ -175,11 +176,14 @@ func (op *ObjectPath) Parse(input map[string]interface{}, allocationID string) (
 		default:
 			return nil, common.NewError("invalid_object_path", "Invalid object path. List should be an array")
 		}
+	} else {
+		logging.Logger.Debug("parsing list failed")
 	}
 
 	newHash := rootDir.CalculateHash()
 
 	if newHash != rootDir.GetHash() {
+		logging.Logger.Error("Hash mismatch for root directory", zap.Any("newhash", newHash), zap.Any("given_hash", rootDir.GetHash()))
 		return nil, common.NewError("hash_mismatch", "Object path error since there is a mismatch in the dir hashes. "+rootDir.Path)
 	}
 	return &rootDir, nil
