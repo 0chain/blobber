@@ -84,7 +84,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 	if alloc.AllocationRoot != wm.WM.AllocationRoot {
 		logging.Logger.Info("Stale write marker. Allocation root mismatch",
 			zap.Any("allocation", allocationID),
-			zap.Any("wm", wm.WM.AllocationRoot), zap.Any("error", err))
+			zap.Any("wm", wm.WM.AllocationRoot), zap.Any("alloc_root", alloc.AllocationRoot))
 		mut := GetLock(allocationID)
 		if mut != nil {
 			mut.Release(1)
