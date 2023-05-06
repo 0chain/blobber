@@ -59,12 +59,12 @@ func (r *DirMetaData) GetPath() string {
 }
 
 func (r *DirMetaData) CalculateHash() string {
-	childPath := make([]ObjectEntity, len(r.Children))
-	copy(childPath, r.Children)
-	childPath = SortChildren(childPath)
+	// childPath := make([]ObjectEntity, len(r.Children))
+	// copy(childPath, r.Children)
+	// childPath = SortChildren(childPath)
 
 	childHashes := make([]string, len(r.Children))
-	for index, childRef := range childPath {
+	for index, childRef := range r.Children {
 		childHashes[index] = childRef.GetHash()
 	}
 

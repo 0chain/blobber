@@ -324,7 +324,7 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*
 		Ref{ParentPath: path, AllocationID: allocationID}).
 		Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
 
-	err := db.Order("path").Find(&refs).Error
+	err := db.Order("ascii(path)").Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}
