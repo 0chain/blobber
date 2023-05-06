@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -33,6 +34,7 @@ type ObjectEntity interface {
 	GetHash() string
 	CalculateHash() string
 	GetType() string
+	GetPath() string
 }
 
 type DirMetaData struct {
@@ -52,13 +54,30 @@ func (r *DirMetaData) GetHash() string {
 	return r.Hash
 }
 
+func (r *DirMetaData) GetPath() string {
+	return r.Path
+}
+
 func (r *DirMetaData) CalculateHash() string {
+	childPath := make([]ObjectEntity, len(r.Children))
+	copy(childPath, r.Children)
+	childPath = SortChildren(childPath)
+
 	childHashes := make([]string, len(r.Children))
-	for index, childRef := range r.Children {
+	for index, childRef := range childPath {
 		childHashes[index] = childRef.GetHash()
 	}
 
 	return encryption.Hash(strings.Join(childHashes, ":"))
+}
+
+func SortChildren(children []ObjectEntity) []ObjectEntity {
+
+	sort.SliceStable(children, func(i, j int) bool {
+		return children[i].GetPath() < children[j].GetPath()
+	})
+
+	return children
 }
 
 func (r *DirMetaData) GetNumBlocks() int64 {
