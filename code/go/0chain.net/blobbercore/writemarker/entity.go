@@ -151,6 +151,7 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAlloc
 		Take(&startWM).Error
 
 	if err != nil {
+		logging.Logger.Error("write_marker_not_found", zap.Error(err), zap.Any("allocation_root", startAllocationRoot), zap.Any("timestamp", startTimestamp))
 		return nil, common.NewError("write_marker_not_found", "Could not find the start write marker in the range")
 	}
 
