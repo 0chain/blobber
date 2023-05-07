@@ -110,6 +110,11 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 			}
 			foundBlobber = true
 			a.AllocationRoot = ""
+
+			logging.Logger.Debug("jayash Blobber Details : ",
+				zap.Any("SASIZE", sa.Size),
+				zap.Any("SA", sa),
+				zap.Any("blobberDetails", sa.BlobberDetails))
 			a.BlobberSize = (sa.Size + int64(len(sa.BlobberDetails)-1)) /
 				int64(len(sa.BlobberDetails))
 			a.BlobberSizeUsed = 0
