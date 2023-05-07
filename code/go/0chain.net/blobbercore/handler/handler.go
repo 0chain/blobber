@@ -152,6 +152,10 @@ func setupHandlers(r *mux.Router) {
 	r.Use(useRecovery, useCors)
 
 	//object operations
+	r.HandleFunc("/v1/connection/create/{allocation}",
+		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CreateConnectionHandler)))).
+		Methods(http.MethodPost)
+
 	r.HandleFunc("/v1/file/rename/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RenameHandler)))).
 		Methods(http.MethodPost, http.MethodOptions)
@@ -259,14 +263,13 @@ func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
 
-		res, err := handler(ctx, r)	
+		res, err := handler(ctx, r)
 		defer func() {
 			GetMetaDataStore().GetTransaction(ctx).Rollback()
 		}()
 		return res, err
 	}
 }
-
 
 func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 	return func(ctx context.Context, r *http.Request) (resp interface{}, err error) {
@@ -419,6 +422,31 @@ func listHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 	return response, nil
+}
+
+// swagger:route GET /v1/connection/commit/{allocation} connectionHandler
+// connectionHandler is the handler to respond to create connection requests from clients
+//
+// parameters:
+//
+//	+name: allocation
+//	 description: the allocation ID
+//	 required: true
+//	 in: path
+//	 type: string
+//
+// responses:
+//
+//	200:
+//	400:
+//	500:
+func CreateConnectionHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+	err := storageHandler.CreateConnection(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
 }
 
 // swagger:route GET /v1/connection/commit/{allocation} commithandler
