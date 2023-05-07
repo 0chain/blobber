@@ -129,7 +129,6 @@ func (op *ObjectPath) Parse(input map[string]interface{}, allocationID string) (
 	}
 	t, ok := input[LIST_TAG]
 	if ok {
-		logging.Logger.Debug("Parsing list", zap.Any("list", t))
 		switch reflect.TypeOf(t).Kind() {
 		case reflect.Slice:
 			s := reflect.ValueOf(t)
@@ -177,8 +176,6 @@ func (op *ObjectPath) Parse(input map[string]interface{}, allocationID string) (
 		default:
 			return nil, common.NewError("invalid_object_path", "Invalid object path. List should be an array")
 		}
-	} else {
-		logging.Logger.Debug("parsing list failed")
 	}
 
 	newHash := rootDir.CalculateHash()
