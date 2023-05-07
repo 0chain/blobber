@@ -15,10 +15,11 @@ import (
 	"go.uber.org/zap"
 )
 
-var writeMarkerChan chan *WriteMarkerEntity
-
-var writeMarkerMap map[string]*semaphore.Weighted
-var mut = &sync.RWMutex{}
+var (
+	writeMarkerChan chan *WriteMarkerEntity
+	writeMarkerMap  map[string]*semaphore.Weighted
+	mut             sync.RWMutex
+)
 
 func SetupWorkers(ctx context.Context) {
 
@@ -138,7 +139,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 }
 
 func startRedeem(ctx context.Context) {
-	logging.Logger.Info("Start Redeem writemarkers")
+	logging.Logger.Info("Start redeeming writemarkers")
 	writeMarkerChan = make(chan *WriteMarkerEntity, 200)
 	go startRedeemWorker(ctx)
 	db := datastore.GetStore().GetDB()

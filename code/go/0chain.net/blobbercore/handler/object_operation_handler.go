@@ -500,23 +500,27 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	writemarkerEntity.ConnectionID = connectionObj.ID
 	writemarkerEntity.ClientPublicKey = clientKey
 
-	err = writemarkerEntity.Save(ctx)
-	if err != nil {
-		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
-	}
+	db := datastore.GetStore().GetDB()
 
-	db := datastore.GetStore().GetTransaction(ctx)
-	allocationUpdates := make(map[string]interface{})
-	allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
-	allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
-	allocationUpdates["allocation_root"] = allocationRoot
-	allocationUpdates["file_meta_root"] = fileMetaRoot
-	allocationUpdates["is_redeem_required"] = true
+	err = db.Transaction(func(tx *gorm.DB) error {
 
-	err = db.Model(allocationObj).Updates(allocationUpdates).Error
-	if err != nil {
-		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
-	}
+		if err = tx.Save(writemarkerEntity).Error; err != nil {
+			return common.NewError("write_marker_error", "Error persisting the write marker")
+		}
+
+		allocationUpdates := make(map[string]interface{})
+		allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
+		allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
+		allocationUpdates["allocation_root"] = allocationRoot
+		allocationUpdates["file_meta_root"] = fileMetaRoot
+		allocationUpdates["is_redeem_required"] = true
+
+		if err = tx.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
+			return common.NewError("allocation_write_error", "Error persisting the allocation object")
+		}
+
+		return nil
+	})
 
 	err = writemarkerEntity.SendToChan(ctx)
 	if err != nil {
