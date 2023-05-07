@@ -519,7 +519,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	db.Delete(connectionObj)
-	allocation.DeleteConnectionObjEntry(connectionID)
+	go allocation.DeleteConnectionObjEntry(connectionID)
 
 	commitOperation := connectionObj.Changes[0].Operation
 	input := connectionObj.Changes[0].Input

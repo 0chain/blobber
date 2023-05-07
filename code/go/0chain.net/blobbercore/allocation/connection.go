@@ -14,7 +14,7 @@ var (
 )
 
 var (
-	connectionObjSizeMap = make(map[string]ConnectionObjSize)
+	connectionObjSizeMap = make(map[string]*ConnectionObjSize)
 	connectionObjMutex   sync.Mutex
 )
 
@@ -27,15 +27,28 @@ type ConnectionObjSize struct {
 func GetConnectionObjSize(connectionID string) int64 {
 	connectionObjMutex.Lock()
 	defer connectionObjMutex.Unlock()
+	connectionObjSize := connectionObjSizeMap[connectionID]
+	if connectionObjSize == nil {
+		return 0
+	}
 	return connectionObjSizeMap[connectionID].Size
 }
 
 // UpdateConnectionObjSize updates the connection size by addSize in memory
 func UpdateConnectionObjSize(connectionID string, addSize int64) {
 	connectionObjMutex.Lock()
+	defer connectionObjMutex.Unlock()
 	connectionObjSize := connectionObjSizeMap[connectionID]
-	connectionObjSizeMap[connectionID] = ConnectionObjSize{Size: connectionObjSize.Size + addSize, UpdatedAt: time.Now()}
-	connectionObjMutex.Unlock()
+	if connectionObjSize == nil {
+		connectionObjSizeMap[connectionID] = &ConnectionObjSize{
+			Size:      addSize,
+			UpdatedAt: time.Now(),
+		}
+		return
+	}
+
+	connectionObjSize.Size = connectionObjSize.Size + addSize
+	connectionObjSize.UpdatedAt = time.Now()
 }
 
 // DeleteConnectionObjEntry remove the connectionID entry from map
