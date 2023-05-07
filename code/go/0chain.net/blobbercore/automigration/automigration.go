@@ -122,9 +122,9 @@ func grantPrivileges(db *gorm.DB) error {
 		fmt.Sprintf("GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO %s;", config.Configuration.DBUserName),
 	}
 	for _, stmt := range stmts {
-		rs := db.Raw(stmt)
-		if rs.Error != nil {
-			return rs.Error
+		err := db.Exec(stmt).Error
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -139,9 +139,9 @@ func MigrateSchema(db *gorm.DB) error {
 	if err := db.AutoMigrate(tables...); err != nil {
 		return err
 	}
-	rs := db.Exec(`ALTER TABLE reference_objects ALTER COLUMN path TYPE varchar(1000) COLLATE "POSIX"`)
-	if rs.Error != nil {
-		return rs.Error
+	err := db.Exec(`ALTER TABLE reference_objects ALTER COLUMN path TYPE varchar(1000) COLLATE "POSIX"`).Error
+	if err != nil {
+		return err
 	}
 	return nil
 }
