@@ -139,7 +139,7 @@ func MigrateSchema(db *gorm.DB) error {
 	if err := db.AutoMigrate(tables...); err != nil {
 		return err
 	}
-	rs := db.Raw(`ALTER TABLE reference_objects ALTER COLUMN path TYPE varchar(1000) COLLATE "POSIX"`)
+	rs := db.Exec(`ALTER TABLE reference_objects ALTER COLUMN path TYPE varchar(1000) COLLATE "POSIX"`)
 	if rs.Error != nil {
 		return rs.Error
 	}
