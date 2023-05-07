@@ -424,7 +424,7 @@ func listHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-// swagger:route GET /v1/connection/commit/{allocation} connectionHandler
+// swagger:route GET /v1/connection/create/{allocation} connectionHandler
 // connectionHandler is the handler to respond to create connection requests from clients
 //
 // parameters:
