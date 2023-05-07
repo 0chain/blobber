@@ -522,6 +522,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil
 	})
 
+	if err != nil {
+		return nil, err
+	}
+
 	err = writemarkerEntity.SendToChan(ctx)
 	if err != nil {
 		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
