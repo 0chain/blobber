@@ -136,7 +136,14 @@ func MigrateSchema(db *gorm.DB) error {
 		tables = append(tables, tbl)
 	}
 
-	return db.AutoMigrate(tables...)
+	if err := db.AutoMigrate(tables...); err != nil {
+		return err
+	}
+	rs := db.Raw(`ALTER TABLE reference_objects ALTER COLUMN path TYPE varchar(1000) COLLATE "POSIX"`)
+	if rs.Error != nil {
+		return rs.Error
+	}
+	return nil
 }
 
 // DropSchemas is used for integration tests to clear DB.
