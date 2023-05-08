@@ -179,35 +179,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, common.NewErrorf("download_file", "path is not a file: %v", err)
 	}
 
-	// create read marker
-	var (
-		rme              *readmarker.ReadMarkerEntity
-		latestRM         *readmarker.ReadMarker
-		latestRedeemedRC int64
-		pendNumBlocks    int64
-	)
-
-	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID, alloc.ID)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, common.NewErrorf("download_file", "couldn't get read marker from DB: %v", err)
-	}
-
-	if rme != nil {
-		latestRM = rme.LatestRM
-		latestRedeemedRC = rme.LatestRedeemedRC
-		if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
-			return nil, common.NewErrorf("download_file", "couldn't get number of blocks pending redeeming: %v", err)
-		}
-	}
-
-	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, alloc, dr.TotalReqBlocks, pendNumBlocks, clientID)
-	if err != nil {
-		return nil, common.NewErrorf("download_file", "pre-redeeming read marker: %v", err)
-	}
+	key := clientID + ":" + alloc.ID
+	quotaManager := getQuotaManager()
 
 	if dr.SubmitRM {
-		key := clientID + ":" + alloc.ID
+
 		lock, isNewLock := readmarker.ReadmarkerMapLock.GetLock(key)
 		if !isNewLock {
 			return nil, common.NewErrorf("lock_exists", fmt.Sprintf("lock exists for key: %v", key))
@@ -215,6 +191,33 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 		lock.Lock()
 		defer lock.Unlock()
+
+		// create read marker
+		var (
+			rme              *readmarker.ReadMarkerEntity
+			latestRM         *readmarker.ReadMarker
+			latestRedeemedRC int64
+			pendNumBlocks    int64
+		)
+
+		rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID, alloc.ID)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, common.NewErrorf("download_file", "couldn't get read marker from DB: %v", err)
+		}
+
+		if rme != nil {
+			latestRM = rme.LatestRM
+			latestRedeemedRC = rme.LatestRedeemedRC
+			if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
+				return nil, common.NewErrorf("download_file", "couldn't get number of blocks pending redeeming: %v", err)
+			}
+		}
+
+		// check out read pool tokens if read_price > 0
+		err = readPreRedeem(ctx, alloc, dr.ReadMarker.SessionRC, pendNumBlocks, clientID)
+		if err != nil {
+			return nil, common.NewErrorf("download_file", "pre-redeeming read marker: %v", err)
+		}
 
 		if latestRM != nil && latestRM.ReadCounter+(dr.ReadMarker.SessionRC) > dr.ReadMarker.ReadCounter {
 			latestRM.BlobberID = node.Self.ID
@@ -239,9 +242,20 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
 		}
 
+		quotaManager.createOrUpdateQuota(dr.ReadMarker.SessionRC, key)
+
 		return &blobberhttp.DownloadResponse{
 			Success: true,
 		}, nil
+	}
+
+	dq := quotaManager.getDownloadQuota(key)
+	if dq == nil {
+		return nil, common.NewError("download_file", "no download quota")
+	}
+
+	if dq.Quota < dr.NumBlocks {
+		return nil, common.NewError("download_file", "not enough quota left")
 	}
 
 	isOwner := clientID == alloc.OwnerID
@@ -321,6 +335,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	}
 
 	chunkData, err := chunkEncoder.Encode(int(fileref.ChunkSize), fileDownloadResponse.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	err = quotaManager.consumeQuota(key, dr.NumBlocks)
 	if err != nil {
 		return nil, err
 	}
