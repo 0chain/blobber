@@ -78,16 +78,13 @@ func (dr *DownloadRequestHeader) Parse() error {
 	}
 	dr.NumBlocks = numBlocks
 
-	dr.SubmitRM = dr.Get("X-Submit-RM") == "true"
-	if dr.SubmitRM {
-		readMarker := dr.Get("X-Read-Marker")
-		if readMarker == "" {
-			return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
-		}
+	readMarker := dr.Get("X-Read-Marker")
+	if readMarker != "" {
 		err := json.Unmarshal([]byte(readMarker), &dr.ReadMarker)
 		if err != nil {
 			return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
 		}
+		dr.SubmitRM = true
 	}
 
 	dr.AuthToken = dr.Get("X-Auth-Token")
