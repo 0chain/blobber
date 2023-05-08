@@ -79,12 +79,6 @@ func (dr *DownloadRequestHeader) Parse() error {
 	}
 	dr.NumBlocks = numBlocks
 
-	totalReqBlocks := dr.GetInt64("X-Total-Req-Blocks", 0)
-	if totalReqBlocks <= 0 {
-		return errors.Throw(common.ErrInvalidParameter, "X-Total-Req-Blocks")
-	}
-	dr.TotalReqBlocks = totalReqBlocks
-
 	clientID := dr.Get("X-App-Client-ID")
 
 	if clientID == "" {
