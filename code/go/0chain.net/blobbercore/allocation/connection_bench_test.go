@@ -31,8 +31,8 @@ func BenchmarkConnectionObj(b *testing.B) {
 				UpdateConnectionObjSize(connectionID, int64(v.input))
 
 				newConnectionID := shortuuid.New()
-				GetConnectionObjSize(newConnectionID)
-				UpdateConnectionObjSize(newConnectionID, int64(v.input))
+				go GetConnectionObjSize(newConnectionID)
+				go UpdateConnectionObjSize(newConnectionID, int64(v.input))
 
 			}
 		})
