@@ -166,10 +166,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, err
 	}
 
-	if dr.ClientID != clientID {
-		return nil, common.NewError("invalid_client", "header clientID and ctx clientID are different")
-	}
-
 	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid file path: %v", err)
@@ -182,8 +178,38 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	key := clientID + ":" + alloc.ID
 	quotaManager := getQuotaManager()
 
-	if dr.SubmitRM {
+	isOwner := clientID == alloc.OwnerID
 
+	var authToken *readmarker.AuthTicket
+	var shareInfo *reference.ShareInfo
+
+	if !isOwner {
+		authTokenString := dr.AuthToken
+		if authTokenString == "" {
+			return nil, common.NewError("invalid_client", "authticket is required")
+		}
+
+		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
+			return nil, common.NewErrorf("download_file", "cannot verify auth ticket: %v", err)
+		}
+
+		shareInfo, err = reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
+		if err != nil || shareInfo == nil {
+			return nil, errors.New("client does not have permission to download the file. share does not exist")
+		}
+
+		if shareInfo.Revoked {
+			return nil, errors.New("client does not have permission to download the file. share revoked")
+		}
+
+		availableAt := shareInfo.AvailableAt.Unix()
+		if common.Timestamp(availableAt) > common.Now() {
+			return nil, common.NewErrorf("download_file", "the file is not available until: %v", shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
+		}
+
+	}
+
+	if dr.SubmitRM {
 		lock, isNewLock := readmarker.ReadmarkerMapLock.GetLock(key)
 		if !isNewLock {
 			return nil, common.NewErrorf("lock_exists", fmt.Sprintf("lock exists for key: %v", key))
@@ -229,6 +255,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			}, common.NewError("stale_read_marker", "")
 		}
 
+		if dr.ReadMarker.ClientID != clientID {
+			return nil, common.NewError("invalid_client", "header clientID and readmarker clientID are different")
+		}
+
 		rmObj := new(readmarker.ReadMarkerEntity)
 		rmObj.LatestRM = &dr.ReadMarker
 
@@ -244,9 +274,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 		quotaManager.createOrUpdateQuota(dr.ReadMarker.SessionRC, key)
 
-		return &blobberhttp.DownloadResponse{
-			Success: true,
-		}, nil
+		if dr.NumBlocks == 0 {
+			return &blobberhttp.DownloadResponse{
+				Success: true,
+			}, nil
+		}
 	}
 
 	dq := quotaManager.getDownloadQuota(key)
@@ -256,37 +288,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 	if dq.Quota < dr.NumBlocks {
 		return nil, common.NewError("download_file", "not enough quota left")
-	}
-
-	isOwner := clientID == alloc.OwnerID
-
-	var authToken *readmarker.AuthTicket
-	var shareInfo *reference.ShareInfo
-
-	if !isOwner {
-		authTokenString := dr.AuthToken
-		if authTokenString == "" {
-			return nil, common.NewError("invalid_client", "authticket is required")
-		}
-
-		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
-			return nil, common.NewErrorf("download_file", "cannot verify auth ticket: %v", err)
-		}
-
-		shareInfo, err = reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
-		if err != nil || shareInfo == nil {
-			return nil, errors.New("client does not have permission to download the file. share does not exist")
-		}
-
-		if shareInfo.Revoked {
-			return nil, errors.New("client does not have permission to download the file. share revoked")
-		}
-
-		availableAt := shareInfo.AvailableAt.Unix()
-		if common.Timestamp(availableAt) > common.Now() {
-			return nil, common.NewErrorf("download_file", "the file is not available until: %v", shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
-		}
-
 	}
 
 	var (

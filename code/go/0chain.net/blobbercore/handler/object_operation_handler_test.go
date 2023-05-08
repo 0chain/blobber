@@ -106,13 +106,27 @@ func TestDownloadFile(t *testing.T) {
 		t *testing.T,
 		req *http.Request,
 		p parameters,
-	) {
-		req.Header.Set("X-App-Client-ID", client.GetClientID())
-		req.Header.Set("X-App-Client-Key", client.GetClientPublicKey())
+	) *marker.ReadMarker {
+		rm := &marker.ReadMarker{}
+		rm.ClientID = client.GetClientID()
+		rm.ClientPublicKey = client.GetClientPublicKey()
+		rm.BlobberID = p.inData.blobber.ID
+		rm.AllocationID = p.inData.allocationID
+		rm.OwnerID = mockOwner.ClientID
+		rm.Timestamp = now
+		// set another value to size
+		rm.ReadCounter = p.inData.numBlocks
+		rm.SessionRC = p.inData.numBlocks
+		err := rm.Sign()
+		require.NoError(t, err)
+		rmData, err := json.Marshal(rm)
+		require.NoError(t, err)
 		req.Header.Set("X-Path-Hash", p.inData.pathHash)
 		req.Header.Set("X-Path", p.inData.remotefilepath)
 		req.Header.Set("X-Block-Num", fmt.Sprintf("%d", p.inData.blockNum))
 		req.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", p.inData.numBlocks))
+		req.Header.Set("X-Submit-RM", fmt.Sprint(true))
+		req.Header.Set("X-Read-Marker", string(rmData))
 		if p.useAuthTicket {
 			authTicket := &marker.AuthTicket{
 				AllocationID: p.inData.allocationID,
@@ -131,6 +145,7 @@ func TestDownloadFile(t *testing.T) {
 		if len(p.inData.contentMode) > 0 {
 			req.Header.Set("X-Mode", p.inData.contentMode)
 		}
+		return rm
 	}
 
 	makeMockMakeSCRestAPICall := func(t *testing.T, p parameters) func(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) ([]byte, error) {
@@ -167,6 +182,7 @@ func TestDownloadFile(t *testing.T) {
 	setupInMock := func(
 		t *testing.T,
 		p parameters,
+		rm marker.ReadMarker,
 	) {
 		if p.isRepairer {
 			mocket.Catcher.NewMock().OneTime().WithQuery(
@@ -221,16 +237,6 @@ func TestDownloadFile(t *testing.T) {
 			}},
 		)
 
-		var funds int64
-		if p.isFundedBlobber || p.isFunded0Chain {
-			funds = mockBigBalance
-		}
-
-		mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
-		}).OneTime().WithQuery(`SELECT * FROM "read_pools" WHERE`).WithReply(
-			[]map[string]interface{}{{"client_id": p.payerId.ClientID, "balance": funds}},
-		)
-
 		if p.useAuthTicket {
 			mocket.Catcher.NewMock().OneTime().WithQuery(
 				`SELECT * FROM "reference_objects" WHERE`,
@@ -259,11 +265,22 @@ func TestDownloadFile(t *testing.T) {
 				}},
 			)
 		}
+
+		var funds int64
+		if p.isFundedBlobber || p.isFunded0Chain {
+			funds = mockBigBalance
+		}
+
+		mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
+		}).OneTime().WithQuery(`SELECT * FROM "read_pools" WHERE`).WithReply(
+			[]map[string]interface{}{{"client_id": p.payerId.ClientID, "balance": funds}},
+		)
 	}
 
 	setupOutMock := func(
 		t *testing.T,
 		p parameters,
+		rm marker.ReadMarker,
 	) {
 
 		mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
@@ -300,10 +317,10 @@ func TestDownloadFile(t *testing.T) {
 		return ctx
 	}
 
-	setupRequest := func(p parameters) *http.Request {
+	setupRequest := func(p parameters) (*http.Request, *marker.ReadMarker) {
 		req := httptest.NewRequest(http.MethodGet, "/v1/file/download/", nil)
-		addToForm(t, req, p)
-		return req
+		rm := addToForm(t, req, p)
+		return req, rm
 	}
 
 	setupParams := func(p *parameters) {
@@ -359,6 +376,21 @@ func TestDownloadFile(t *testing.T) {
 				isRevoked:       false,
 				isFundedBlobber: false,
 				isFunded0Chain:  true,
+			},
+		},
+		{
+			name: "err_owner_not_funded",
+			parameters: parameters{
+				isOwner:         true,
+				isRepairer:      false,
+				useAuthTicket:   false,
+				isRevoked:       false,
+				isFundedBlobber: false,
+				isFunded0Chain:  false,
+			},
+			want: want{
+				err:    true,
+				errMsg: "download_file: pre-redeeming read marker: read_pre_redeem: not enough tokens in client's read pools associated with the allocation->blobber",
 			},
 		},
 		{
@@ -446,10 +478,10 @@ func TestDownloadFile(t *testing.T) {
 					require.NoError(t, client.PopulateClient(mockClientWallet, "bls0chain"))
 				}
 				transaction.MakeSCRestAPICall = makeMockMakeSCRestAPICall(t, test.parameters)
-				request := setupRequest(test.parameters)
+				request, rm := setupRequest(test.parameters)
 				datastore.MocketTheStore(t, mocketLogging)
-				setupInMock(t, test.parameters)
-				setupOutMock(t, test.parameters)
+				setupInMock(t, test.parameters, *rm)
+				setupOutMock(t, test.parameters, *rm)
 
 				var sh StorageHandler
 				_, err := sh.DownloadFile(setupCtx(test.parameters), request)

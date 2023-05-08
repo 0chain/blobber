@@ -13,10 +13,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
 	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 	"github.com/0chain/gosdk/zboxcore/fileref"
+	"github.com/0chain/gosdk/zboxcore/marker"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -213,6 +216,20 @@ func TestHandlers_Download(t *testing.T) {
 
 					remotePath := "/file.txt"
 
+					rm := &marker.ReadMarker{}
+					rm.ClientID = ownerClient.ClientID
+					rm.ClientPublicKey = ownerClient.ClientKey
+					rm.BlobberID = node.Self.ID
+					rm.AllocationID = alloc.ID
+					rm.OwnerID = ownerClient.ClientID
+					rm.ReadCounter = 1
+					rm.SessionRC = 1
+					rm.Signature, err = signHash(ownerClient, rm.GetHash())
+					if err != nil {
+						t.Fatal(err)
+					}
+					rmData, err := json.Marshal(rm)
+					require.NoError(t, err)
 					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
 					if err != nil {
 						require.NoError(t, err)
@@ -227,7 +244,8 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Path-Hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Total-Req-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
+					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
@@ -279,6 +297,21 @@ func TestHandlers_Download(t *testing.T) {
 					}
 
 					remotePath := "/file.txt"
+
+					rm := &marker.ReadMarker{}
+					rm.ClientID = ownerClient.ClientID
+					rm.ClientPublicKey = ownerClient.ClientKey
+					rm.BlobberID = node.Self.ID
+					rm.AllocationID = alloc.ID
+					rm.ReadCounter = 1
+					rm.SessionRC = 1
+					rm.OwnerID = ownerClient.ClientID
+					rm.Signature, err = signHash(ownerClient, rm.GetHash())
+					if err != nil {
+						t.Fatal(err)
+					}
+					rmData, err := json.Marshal(rm)
+					require.NoError(t, err)
 					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
 					if err != nil {
 						t.Fatal(err)
@@ -293,7 +326,8 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Path-Hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Total-Req-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
+					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
@@ -332,16 +366,124 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"path", "type", "lookup_hash", "validation_root"}).
 							AddRow("/file.txt", "f", filePathHash, "abcd"),
 					)
+
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
 					WithArgs(ownerClient.ClientID, alloc.ID).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"client_id"}).
 							AddRow(ownerClient.ClientID),
 					)
+
+				aa := sqlmock.AnyArg()
+
+				mock.ExpectExec(`UPDATE "read_markers"`).
+					WithArgs(aa, aa, aa, aa, aa, aa).
+					WillReturnResult(sqlmock.NewResult(0, 0))
+
 				mock.ExpectCommit()
 			},
 			wantCode: http.StatusOK,
 			wantBody: "bW9jaw==", //base64encoded for mock string
+		},
+		{
+			name: "DownloadFile_file_return_stale_readmarker",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: func() *http.Request {
+					handlerName := handlers["/v1/file/download/{allocation}"]
+					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
+					if err != nil {
+						t.Fatal()
+					}
+
+					remotePath := "/file.txt"
+
+					rm := &marker.ReadMarker{}
+					rm.ClientID = ownerClient.ClientID
+					rm.ClientPublicKey = ownerClient.ClientKey
+					rm.BlobberID = node.Self.ID
+					rm.AllocationID = alloc.ID
+					rm.ReadCounter = 1
+					rm.SessionRC = 1
+					rm.OwnerID = ownerClient.ClientID
+					rm.Signature, err = signHash(ownerClient, rm.GetHash())
+					if err != nil {
+						t.Fatal(err)
+					}
+					rmData, err := json.Marshal(rm)
+					require.NoError(t, err)
+					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					hash := encryption.Hash(alloc.Tx)
+					sign, err := sch.Sign(hash)
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					r.Header.Set("X-Path-Hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
+					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
+					r.Header.Set("X-Read-Marker", string(rmData))
+					r.Header.Set(common.ClientSignatureHeader, sign)
+					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
+
+					return r
+				}(),
+			},
+			alloc: alloc,
+			setupDbMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
+					WithArgs(alloc.Tx).
+					WillReturnRows(
+						sqlmock.NewRows(
+							[]string{
+								"id", "tx", "expiration_date", "owner_public_key", "owner_id", "blobber_size",
+							},
+						).
+							AddRow(
+								alloc.ID, alloc.Tx, alloc.Expiration, alloc.OwnerPublicKey, alloc.OwnerID, int64(1<<30),
+							),
+					)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "terms" WHERE`)).
+					WithArgs(alloc.ID).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"id", "allocation_id"}).
+							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
+					)
+
+				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
+					WithArgs(alloc.ID, filePathHash).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"path", "type", "lookup_hash", "validation_root"}).
+							AddRow("/file.txt", "f", filePathHash, "abcd"),
+					)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
+					WithArgs(ownerClient.ClientID, alloc.ID).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"client_id", "counter"}).
+							AddRow(ownerClient.ClientID, 23),
+					)
+
+				aa := sqlmock.AnyArg()
+
+				mock.ExpectExec(`UPDATE "read_markers"`).
+					WithArgs(aa, aa, aa, aa).
+					WillReturnResult(sqlmock.NewResult(0, 0))
+
+				mock.ExpectCommit()
+			},
+			wantCode: http.StatusBadRequest,
+			wantBody: "{\"code\":\"stale_read_marker\",\"error\":\"stale_read_marker: \"}\n\n",
 		},
 		{
 			name: "DownloadFile_Encrypted_Permission_Denied_Unshared_File",
@@ -362,6 +504,20 @@ func TestHandlers_Download(t *testing.T) {
 						t.Fatal(err)
 					}
 
+					rm := &marker.ReadMarker{}
+					rm.ClientID = guestClient.ClientID
+					rm.ClientPublicKey = guestClient.ClientKey
+					rm.BlobberID = node.Self.ID
+					rm.AllocationID = alloc.ID
+					rm.ReadCounter = 1
+					rm.SessionRC = 1
+					rm.OwnerID = ownerClient.ClientID
+					rm.Signature, err = signHash(guestClient, rm.GetHash())
+					if err != nil {
+						t.Fatal(err)
+					}
+					rmData, err := json.Marshal(rm)
+					require.NoError(t, err)
 					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
 					if err != nil {
 						t.Fatal(err)
@@ -373,11 +529,12 @@ func TestHandlers_Download(t *testing.T) {
 						t.Fatal(err)
 					}
 
+					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set("X-Path-Hash", pathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Auth-Token", authTicket)
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Total-Req-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
+					r.Header.Set("X-Auth-Token", authTicket)
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -417,18 +574,9 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "chunk_size"}).
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "validation_root", "qCj3sXXeXUAByi1ERIbcfXzWN75dyocYzyRXnkStXio=", 65536),
 					)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(guestClient.ClientID, alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(guestClient.ClientID),
-					)
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
-					WithArgs(client.GetClientID(), filePathHash).
+					WithArgs(guestClient.ClientID, filePathHash).
 					WillReturnError(gorm.ErrRecordNotFound)
-
-				mock.ExpectCommit()
 			},
 			wantCode: http.StatusBadRequest,
 			wantBody: "{\"error\":\"client does not have permission to download the file. share does not exist\"}\n\n",
@@ -451,7 +599,20 @@ func TestHandlers_Download(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-
+					rm := &marker.ReadMarker{}
+					rm.ClientID = guestClient.ClientID
+					rm.ClientPublicKey = guestClient.ClientKey
+					rm.BlobberID = node.Self.ID
+					rm.AllocationID = alloc.ID
+					rm.ReadCounter = 1
+					rm.SessionRC = 1
+					rm.OwnerID = ownerClient.ClientID
+					rm.Signature, err = signHash(guestClient, rm.GetHash())
+					if err != nil {
+						t.Fatal(err)
+					}
+					rmData, err := json.Marshal(rm)
+					require.NoError(t, err)
 					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
 					if err != nil {
 						t.Fatal(err)
@@ -463,11 +624,12 @@ func TestHandlers_Download(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set("X-Path-Hash", pathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
 					r.Header.Set("X-Auth-Token", authTicket)
-					r.Header.Set("X-Total-Req-Blocks", fmt.Sprintf("%d", 1))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -522,13 +684,6 @@ func TestHandlers_Download(t *testing.T) {
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "validation_root", ownerScheme.GetEncryptedKey(), 65536),
 					)
 
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(guestClient.ClientID, alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(guestClient.ClientID),
-					)
-
 				guestPublicEncryptedKey, err := guestScheme.GetPublicKey()
 				if err != nil {
 					t.Fatal(err)
@@ -545,6 +700,20 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"re_encryption_key", "client_encryption_public_key"}).
 							AddRow(reEncryptionKey, guestPublicEncryptedKey),
 					)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
+					WithArgs(guestClient.ClientID, alloc.ID).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"client_id"}).
+							AddRow(guestClient.ClientID),
+					)
+
+				aa := sqlmock.AnyArg()
+
+				mock.ExpectExec(`UPDATE "read_markers"`).
+					WithArgs(aa, aa, aa, aa, aa, aa).
+					WillReturnResult(sqlmock.NewResult(0, 0))
+
 				mock.ExpectCommit()
 			},
 			wantCode: http.StatusOK,
@@ -569,6 +738,21 @@ func TestHandlers_Download(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+					rm := &marker.ReadMarker{}
+					rm.ClientID = guestClient.ClientID
+					rm.ClientPublicKey = guestClient.ClientKey
+					rm.BlobberID = node.Self.ID
+					rm.AllocationID = alloc.ID
+					rm.ReadCounter = 1
+					rm.SessionRC = 1
+					rm.OwnerID = ownerClient.ClientID
+					rm.Signature, err = signHash(guestClient, rm.GetHash())
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					rmData, err := json.Marshal(rm)
+					require.NoError(t, err)
 
 					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
 					if err != nil {
@@ -581,11 +765,12 @@ func TestHandlers_Download(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Path-Hash", filePathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Auth-Token", authTicket)
-					r.Header.Set("X-Total-Req-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
+					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -631,18 +816,13 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
+
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
 					WithArgs(alloc.ID, filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path", "chunk_size"}).
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "validation_root", ownerScheme.GetEncryptedKey(), "/", fileref.CHUNK_SIZE),
-					)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(guestClient.ClientID, alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(guestClient.ClientID),
 					)
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/")
@@ -665,8 +845,21 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"re_encryption_key", "client_encryption_public_key"}).
 							AddRow(reEncryptionKey, gpbk),
 					)
-				mock.ExpectCommit()
 
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
+					WithArgs(guestClient.ClientID, alloc.ID).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"client_id"}).
+							AddRow(guestClient.ClientID),
+					)
+
+				aa := sqlmock.AnyArg()
+
+				mock.ExpectExec(`UPDATE "read_markers"`).
+					WithArgs(aa, aa, aa, aa, aa, aa).
+					WillReturnResult(sqlmock.NewResult(0, 0))
+
+				mock.ExpectCommit()
 			},
 			wantCode: http.StatusOK,
 			wantBody: "",
@@ -690,6 +883,21 @@ func TestHandlers_Download(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+					rm := &marker.ReadMarker{}
+					rm.ClientID = guestClient.ClientID
+					rm.ClientPublicKey = guestClient.ClientKey
+					rm.BlobberID = node.Self.ID
+					rm.AllocationID = alloc.ID
+					rm.ReadCounter = 1
+					rm.SessionRC = 1
+					rm.OwnerID = alloc.OwnerID
+					rm.Signature, err = signHash(guestClient, rm.GetHash())
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					rmData, err := json.Marshal(rm)
+					require.NoError(t, err)
 
 					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
 					if err != nil {
@@ -706,7 +914,8 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Auth-Token", authTicket)
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Total-Req-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
+					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -760,12 +969,6 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path", "chunk_size"}).
 							AddRow("/folder1/subfolder1/file.txt", "f", filePathHash, filePathHash, "validation_root", ownerScheme.GetEncryptedKey(), "/folder1/subfolder1", filestore.CHUNK_SIZE),
 					)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(guestClient.ClientID, alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(guestClient.ClientID),
-					)
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder1")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
@@ -787,6 +990,20 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"re_encryption_key", "client_encryption_public_key"}).
 							AddRow(reEncryptionKey, gpbk),
 					)
+
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
+					WithArgs(guestClient.ClientID, alloc.ID).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"client_id"}).
+							AddRow(guestClient.ClientID),
+					)
+
+				aa := sqlmock.AnyArg()
+
+				mock.ExpectExec(`UPDATE "read_markers"`).
+					WithArgs(aa, aa, aa, aa, aa, aa).
+					WillReturnResult(sqlmock.NewResult(0, 0))
+
 				mock.ExpectCommit()
 			},
 			wantCode: http.StatusOK,
@@ -811,6 +1028,21 @@ func TestHandlers_Download(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+					rm := &marker.ReadMarker{}
+					rm.ClientID = guestClient.ClientID
+					rm.ClientPublicKey = guestClient.ClientKey
+					rm.BlobberID = node.Self.ID
+					rm.AllocationID = alloc.ID
+					rm.ReadCounter = 1
+					rm.SessionRC = 1
+					rm.OwnerID = alloc.OwnerID
+					rm.Signature, err = signHash(guestClient, rm.GetHash())
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					rmData, err := json.Marshal(rm)
+					require.NoError(t, err)
 
 					r, err := http.NewRequest(http.MethodGet, url.String(), nil)
 					if err != nil {
@@ -823,11 +1055,12 @@ func TestHandlers_Download(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set("X-Path-Hash", filePathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
 					r.Header.Set("X-Auth-Token", authTicket)
-					r.Header.Set("X-Total-Req-Blocks", fmt.Sprintf("%d", 1))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -881,12 +1114,6 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path", "chunk_size"}).
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "validation_root", ownerScheme.GetEncryptedKey(), "/folder2/subfolder1", fileref.CHUNK_SIZE),
 					)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(guestClient.ClientID, alloc.ID).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(guestClient.ClientID),
-					)
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder1")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
@@ -917,9 +1144,6 @@ func TestHandlers_Download(t *testing.T) {
 				test.end()
 			}
 
-			fmt.Println("test name", test.name)
-			fmt.Println("XXXX", test.args.w.Body.String())
-
 			assert.Equal(t, test.wantCode, test.args.w.Result().StatusCode)
 			data := test.args.w.Body.Bytes()
 			m := make(map[string]interface{})
@@ -927,7 +1151,6 @@ func TestHandlers_Download(t *testing.T) {
 			require.NoError(t, err)
 
 			if test.wantCode != http.StatusOK || test.wantBody != "" {
-				fmt.Println("test name", test.name)
 				fmt.Println("fprint", test.args.w.Body.String())
 				var body string
 				if m["Data"] != nil {
