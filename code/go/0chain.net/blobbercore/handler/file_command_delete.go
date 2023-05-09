@@ -67,7 +67,7 @@ func (cmd *DeleteFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	cmd.changeProcessor = &allocation.DeleteFileChange{ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID, Name: cmd.existingFileRef.Name,
-		Hash: cmd.existingFileRef.Hash, Path: cmd.existingFileRef.Path, Size: deleteSize, IsTemp: true, ThumbnailFilename: cmd.existingFileRef.ThumbnailFilename}
+		Hash: cmd.existingFileRef.Hash, Path: cmd.existingFileRef.Path, Size: deleteSize}
 
 	result := blobberhttp.UploadResult{}
 	result.Filename = cmd.existingFileRef.Name

@@ -222,8 +222,6 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			FileSize:     objectPath.Meta["size"].(int64),
 			BlockOffset:  blockoffset,
 			AllocationID: cr.AllocationID,
-			Name:         objectPath.Meta["name"].(string),
-			Path:         objectPath.Meta["path"].(string),
 			IsTemp:       fromPreCommit,
 		}
 

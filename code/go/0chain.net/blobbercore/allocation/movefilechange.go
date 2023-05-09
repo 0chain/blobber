@@ -12,12 +12,10 @@ import (
 )
 
 type MoveFileChange struct {
-	ConnectionID      string `json:"connection_id"`
-	AllocationID      string `json:"allocation_id"`
-	SrcPath           string `json:"path"`
-	DestPath          string `json:"dest_path"`
-	Name              string `json:"name"`
-	ThumbnailFilename string `json:"thumbnail_filename"`
+	ConnectionID string `json:"connection_id"`
+	AllocationID string `json:"allocation_id"`
+	SrcPath      string `json:"path"`
+	DestPath     string `json:"dest_path"`
 }
 
 func (rf *MoveFileChange) DeleteTempFile() error {

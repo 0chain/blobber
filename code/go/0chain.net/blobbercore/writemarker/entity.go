@@ -185,12 +185,6 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAlloc
 	return retMarkers, nil
 }
 
-func (wm *WriteMarkerEntity) Save(ctx context.Context) error {
-	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Save(wm).Error
-	return err
-}
-
 func (wm *WriteMarkerEntity) Create(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Create(wm).Error

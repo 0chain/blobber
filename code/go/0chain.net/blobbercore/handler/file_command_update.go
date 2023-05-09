@@ -121,7 +121,6 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	cmd.fileChanger.AllocationID = allocationObj.ID
 	cmd.fileChanger.Size = allocationSize
 	cmd.fileChanger.IsTemp = true
-	cmd.fileChanger.PrevValidationRoot = cmd.existingFileRef.ValidationRoot
 
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionObj.ID
@@ -152,7 +151,6 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 
 		cmd.fileChanger.ThumbnailSize = thumbOutputData.Size
 		cmd.fileChanger.ThumbnailFilename = thumbInputData.Name
-		cmd.fileChanger.PrevThumbnailHash = cmd.existingFileRef.ThumbnailHash
 	}
 
 	return nil

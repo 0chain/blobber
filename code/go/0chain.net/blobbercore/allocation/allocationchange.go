@@ -122,24 +122,6 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 	return nil, err
 }
 
-// Get the precommit changes for the allocation
-func GetAllocationPreCommitChanges(ctx context.Context, allocationId, clientId string) (*AllocationChangeCollector, error) {
-
-	cc := &AllocationChangeCollector{}
-
-	db := datastore.GetStore().GetTransaction(ctx)
-
-	err := db.Where("allocation_id = ? and client_id = ? and is_precommit = ?", allocationId, clientId, true).Preload("Changes").First(cc).Error
-
-	if err == nil {
-		cc.ComputeProperties()
-		return cc, nil
-	}
-
-	return nil, err
-
-}
-
 func (cc *AllocationChangeCollector) AddChange(allocationChange *AllocationChange, changeProcessor AllocationChangeProcessor) {
 	cc.AllocationChanges = append(cc.AllocationChanges, changeProcessor)
 	allocationChange.Input, _ = changeProcessor.Marshal()

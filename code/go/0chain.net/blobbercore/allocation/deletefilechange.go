@@ -22,14 +22,12 @@ var (
 )
 
 type DeleteFileChange struct {
-	ConnectionID      string `json:"connection_id"`
-	AllocationID      string `json:"allocation_id"`
-	Name              string `json:"name"`
-	Path              string `json:"path"`
-	Size              int64  `json:"size"`
-	Hash              string `json:"hash"`
-	IsTemp            bool   `json:"is_temp"`
-	ThumbnailFilename string `json:"thumbnail_filename"`
+	ConnectionID string `json:"connection_id"`
+	AllocationID string `json:"allocation_id"`
+	Name         string `json:"name"`
+	Path         string `json:"path"`
+	Size         int64  `json:"size"`
+	Hash         string `json:"hash"`
 }
 
 func (nf *DeleteFileChange) ApplyChange(ctx context.Context, change *AllocationChange,

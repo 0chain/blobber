@@ -7,13 +7,11 @@ import (
 const CHUNK_SIZE = 64 * 1024
 
 type FileInputData struct {
-	Name               string
-	Path               string
-	ValidationRoot     string
-	FixedMerkleRoot    string
-	ThumbnailHash      string
-	PrevValidationRoot string
-	PrevThumbnailHash  string
+	Name            string
+	Path            string
+	ValidationRoot  string
+	FixedMerkleRoot string
+	ThumbnailHash   string
 
 	// ChunkSize chunk size
 	ChunkSize int64
@@ -24,7 +22,6 @@ type FileInputData struct {
 	//IsFinal  the request is final chunk
 	IsFinal     bool
 	IsThumbnail bool
-	IsTemp      bool
 }
 
 type FileOutputData struct {
@@ -97,8 +94,6 @@ type ReadBlockInput struct {
 	NumBlocks      int
 	IsThumbnail    bool
 	VerifyDownload bool
-	Path           string
-	Name           string
 	IsTemp         bool
 }
 
@@ -113,7 +108,5 @@ type ChallengeReadBlockInput struct {
 	FileSize     int64
 	Hash         string
 	AllocationID string
-	Path         string
-	Name         string
 	IsTemp       bool
 }

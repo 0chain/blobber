@@ -278,8 +278,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			StartBlockNum: int(dr.BlockNum),
 			NumBlocks:     int(dr.NumBlocks),
 			IsThumbnail:   true,
-			Path:          fileref.Path,
-			Name:          fileref.ThumbnailFilename,
 			IsTemp:        fromPreCommit,
 		}
 
@@ -300,8 +298,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			StartBlockNum:  int(dr.BlockNum),
 			NumBlocks:      int(dr.NumBlocks),
 			VerifyDownload: dr.VerifyDownload,
-			Path:           fileref.Path,
-			Name:           fileref.Name,
 			IsTemp:         fromPreCommit,
 		}
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
@@ -853,12 +849,10 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	allocationChange.Size = 0
 	allocationChange.Operation = constants.FileOperationMove
 	dfc := &allocation.MoveFileChange{
-		ConnectionID:      connectionObj.ID,
-		AllocationID:      connectionObj.AllocationID,
-		SrcPath:           objectRef.Path,
-		DestPath:          destPath,
-		Name:              objectRef.Name,
-		ThumbnailFilename: objectRef.ThumbnailFilename,
+		ConnectionID: connectionObj.ID,
+		AllocationID: connectionObj.AllocationID,
+		SrcPath:      objectRef.Path,
+		DestPath:     destPath,
 	}
 	dfc.SrcPath = objectRef.Path
 	connectionObj.Size += allocationChange.Size
@@ -901,7 +895,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		allocationChange.Operation = constants.FileOperationDelete
 		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ID,
 			AllocationID: connectionObj.AllocationID, Name: fileRef.Name,
-			Hash: fileRef.Hash, Path: fileRef.Path, Size: deleteSize, ThumbnailFilename: fileRef.ThumbnailFilename}
+			Hash: fileRef.Hash, Path: fileRef.Path, Size: deleteSize}
 
 		connectionObj.Size += allocationChange.Size
 		connectionObj.AddChange(allocationChange, dfc)
@@ -1265,22 +1259,33 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	writemarkerEntity.ConnectionID = connectionID
 	writemarkerEntity.ClientPublicKey = clientKey
 	Logger.Info("rollback_writemarker", zap.Any("writemarker", writemarkerEntity.WM))
-	err = writemarkerEntity.Create(ctx)
-	if err != nil {
-		return nil, common.NewError("write_marker_error", "Error persisting the write marker"+err.Error())
-	}
 
-	db := datastore.GetStore().GetTransaction(ctx)
-	allocationUpdates := make(map[string]interface{})
-	allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used - ?", latestWriteMarkerEntity.WM.Size)
-	allocationUpdates["used_size"] = gorm.Expr("used_size - ?", latestWriteMarkerEntity.WM.Size)
-	allocationUpdates["is_redeem_required"] = true
-	allocationUpdates["allocation_root"] = allocationRoot
-	allocationUpdates["file_meta_root"] = fileMetaRoot
+	db := datastore.GetStore().GetDB()
 
-	err = db.Model(allocationObj).Updates(allocationUpdates).Error
+	err = db.Transaction(func(tx *gorm.DB) error {
+
+		err = writemarkerEntity.Create(ctx)
+		if err != nil {
+			return common.NewError("write_marker_error", "Error persisting the write marker"+err.Error())
+		}
+
+		allocationUpdates := make(map[string]interface{})
+		allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used - ?", latestWriteMarkerEntity.WM.Size)
+		allocationUpdates["used_size"] = gorm.Expr("used_size - ?", latestWriteMarkerEntity.WM.Size)
+		allocationUpdates["is_redeem_required"] = true
+		allocationUpdates["allocation_root"] = allocationRoot
+		allocationUpdates["file_meta_root"] = fileMetaRoot
+
+		err = db.Model(allocationObj).Updates(allocationUpdates).Error
+		if err != nil {
+			common.NewError("allocation_write_error", "Error persisting the allocation object")
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
+		return nil, err
 	}
 
 	err = allocation.CommitRollback(allocationID)

@@ -557,7 +557,6 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 	prevID := r.ID
 	if r.ID > 0 {
 		err := db.Transaction(func(tx *gorm.DB) error {
-
 			err := tx.Delete(&Ref{}, "id=?", r.ID).Error
 			if err != nil && err != gorm.ErrRecordNotFound {
 				return err
@@ -585,24 +584,6 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 		FileUpdated(ctx, prevID, r.ID)
 	}
 	return nil
-}
-
-func UpdateIsTemp(ctx context.Context, allocationID, path string, isTemp bool) error {
-
-	ref, err := GetReference(ctx, allocationID, path)
-	if err != nil {
-		return err
-	}
-
-	if ref.IsTemp == isTemp {
-		return nil
-	}
-
-	ref.IsTemp = isTemp
-
-	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Model(ref).Where("id = ?", ref.ID).Update("is_temp", isTemp).Error
-
 }
 
 func (r *Ref) Save(ctx context.Context) error {

@@ -280,10 +280,7 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			if test.differentHash {
 				fid.ValidationRoot = randString(64)
 			}
-			fid.IsTemp = true
 			success, err := fs.CommitWrite(test.allocID, test.connID, fid)
-			fid.IsTemp = false
-			fid.PrevValidationRoot = validationRoot
 			errr := fs.MoveToFilestore(test.allocID, validationRoot)
 			require.Nil(t, errr)
 			if test.expectedErrorOnCommit {
@@ -364,7 +361,6 @@ func TestDeletePreCommitDir(t *testing.T) {
 
 	require.Equal(t, int64(size), tF.Size())
 
-	fid.IsTemp = true
 	// Commit file to pre-commit location
 	success, err := fs.CommitWrite(allocID, connID, fid)
 	require.Nil(t, err)
@@ -458,7 +454,6 @@ func TestStorageUploadUpdate(t *testing.T) {
 
 	require.Equal(t, int64(size), tF.Size())
 
-	fid.IsTemp = true
 	// Commit file to pre-commit location
 	success, err := fs.CommitWrite(allocID, connID, fid)
 
@@ -560,7 +555,6 @@ func TestStorageUploadUpdate(t *testing.T) {
 	// Set fields to commit thumbnail file
 	fid.IsThumbnail = true
 	fid.Name = thumbFileName
-	fid.PrevThumbnailHash = prevThumbHash
 	// Commit thumbnail file to pre-commit location
 	success, err = fs.CommitWrite(allocID, connID, fid)
 
@@ -586,10 +580,8 @@ func TestStorageUploadUpdate(t *testing.T) {
 
 	input := &ReadBlockInput{
 		AllocationID: allocID,
-		Path:         remotePath,
 		FileSize:     int64(size),
 		Hash:         fid.ThumbnailHash,
-		Name:         thumbFileName,
 		IsThumbnail:  true,
 		NumBlocks:    1,
 		IsTemp:       true,
@@ -701,8 +693,6 @@ func TestGetFileBlock(t *testing.T) {
 				NumBlocks:     int(test.numBlocks),
 				Hash:          test.validationRoot,
 				FileSize:      int64(test.expectedDataSize),
-				Name:          test.fileName,
-				Path:          test.remotePath,
 				IsTemp:        true,
 			}
 
@@ -785,8 +775,6 @@ func TestGetMerkleTree(t *testing.T) {
 				AllocationID: allocID,
 				Hash:         validationRoot,
 				FileSize:     int64(size),
-				Name:         "hello",
-				Path:         orgFilePath,
 				IsTemp:       true,
 			}
 
