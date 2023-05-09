@@ -1,8 +1,10 @@
 package handler
 
 import (
-	"errors"
+	"fmt"
 	"sync"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
 type DownloadQuota struct {
@@ -50,21 +52,23 @@ func (qm *QuotaManager) createOrUpdateQuota(numBlocks int64, key string) {
 func (qm *QuotaManager) consumeQuota(key string, numBlocks int64) error {
 	dq := qm.getDownloadQuota(key)
 	if dq == nil {
-		return errors.New("quota not found")
+		return common.NewError("consume_quota", "no download quota")
 	}
-	shouldDelete := dq.consumeQuota(numBlocks)
-	if shouldDelete {
+	err := dq.consumeQuota(numBlocks)
+	if err != nil {
+		return err
+	}
+	if dq.Quota == 0 {
 		qm.m.Delete(key)
 	}
 	return nil
 }
-
-func (dq *DownloadQuota) consumeQuota(numBlocks int64) bool {
+func (dq *DownloadQuota) consumeQuota(numBlocks int64) error {
 	dq.Lock()
 	defer dq.Unlock()
 	if dq.Quota < numBlocks {
-		return false
+		return common.NewError("consume_quota", fmt.Sprintf("insufficient quota: available %v, requested %v", dq.Quota, numBlocks))
 	}
 	dq.Quota -= numBlocks
-	return dq.Quota == 0
+	return nil
 }

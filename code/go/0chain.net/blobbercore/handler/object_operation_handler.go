@@ -287,7 +287,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	}
 
 	if dq.Quota < dr.NumBlocks {
-		return nil, common.NewError("download_file", "not enough quota left")
+		return nil, common.NewError("download_file", fmt.Sprintf("insufficient quota: available %v, requested %v", dq.Quota, dr.NumBlocks))
 	}
 
 	var (
@@ -342,7 +342,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 	err = quotaManager.consumeQuota(key, dr.NumBlocks)
 	if err != nil {
-		return nil, err
+		return nil, common.NewError("download_file", err.Error())
 	}
 
 	fileDownloadResponse.Data = chunkData
