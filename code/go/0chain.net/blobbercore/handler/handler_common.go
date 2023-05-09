@@ -41,6 +41,7 @@ func commitHandler(ctx context.Context, r *http.Request) (interface{}, int, erro
 		if errors.Is(common.ErrFileWasDeleted, err) {
 			return response, http.StatusNoContent, nil
 		}
+		Logger.Error("Error in handling the request." + err.Error())
 		return nil, http.StatusBadRequest, err
 	}
 
