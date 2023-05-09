@@ -450,6 +450,7 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 	if err != nil {
 		return nil, err
 	}
+	Logger.Info("ReferencePathHandler", zap.Any("response", response.ReferencePath))
 	return response, nil
 }
 
