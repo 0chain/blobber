@@ -1290,12 +1290,11 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 		err = db.Model(allocationObj).Updates(allocationUpdates).Error
 		if err != nil {
-			common.NewError("allocation_write_error", "Error persisting the allocation object")
+			return common.NewError("allocation_write_error", "Error persisting the allocation object")
 		}
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
