@@ -81,6 +81,7 @@ func (cmd *DeleteFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	cmd.allocationChange.Operation = constants.FileOperationDelete
 
 	connectionObj.Size += cmd.allocationChange.Size
+	allocation.UpdateConnectionObjSize(connectionObj.ID, cmd.allocationChange.Size)
 
 	return result, nil
 }

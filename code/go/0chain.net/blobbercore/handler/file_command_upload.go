@@ -134,6 +134,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	// only update connection size when the chunk is uploaded.
 	if fileOutputData.ChunkUploaded {
 		allocationSize += fileOutputData.Size
+		allocation.UpdateConnectionObjSize(connectionObj.ID, fileOutputData.Size)
 	}
 
 	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
@@ -141,12 +142,11 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 
 	cmd.fileChanger.AllocationID = allocationObj.ID
-	cmd.fileChanger.Size = allocationSize
-	cmd.fileChanger.IsTemp = true
+	cmd.fileChanger.Size += fileOutputData.Size
 
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionObj.ID
-	cmd.allocationChange.Size = allocationSize
+	cmd.allocationChange.Size = cmd.fileChanger.Size
 	cmd.allocationChange.Operation = constants.FileOperationInsert
 
 	connectionObj.Size = allocationSize
@@ -176,7 +176,8 @@ func (cmd *UploadFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 
 func (cmd *UploadFileCommand) reloadChange(connectionObj *allocation.AllocationChangeCollector) {
 	for _, c := range connectionObj.Changes {
-		if c.Operation != constants.FileOperationInsert {
+		filePath, _ := c.GetOrParseAffectedFilePath()
+		if c.Operation != constants.FileOperationInsert || cmd.fileChanger.Path != filePath {
 			continue
 		}
 
@@ -199,7 +200,8 @@ func (cmd *UploadFileCommand) reloadChange(connectionObj *allocation.AllocationC
 // UpdateChange replace AddFileChange in db
 func (cmd *UploadFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	for _, c := range connectionObj.Changes {
-		if c.Operation != constants.FileOperationInsert {
+		filePath, _ := c.GetOrParseAffectedFilePath()
+		if c.Operation != constants.FileOperationInsert || cmd.fileChanger.Path != filePath {
 			continue
 		}
 		c.Size = connectionObj.Size
