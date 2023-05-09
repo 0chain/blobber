@@ -97,7 +97,7 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	fileRef.ActualThumbnailSize = nf.ActualThumbnailSize
 	fileRef.EncryptedKey = nf.EncryptedKey
 	fileRef.ChunkSize = nf.ChunkSize
-	logging.Logger.Info("UpdateFileChanger", zap.Any("rootRef", rootRef))
+
 	_, err = rootRef.CalculateHash(ctx, true)
 	if err != nil {
 		return nil, err
