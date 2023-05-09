@@ -322,6 +322,47 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	return fileDownloadResponse, nil
 }
 
+func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request) error {
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		return common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	if !allocationObj.CanRename() {
+		return common.NewError("prohibited_allocation_file_options", "Cannot rename data in this allocation.")
+	}
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	_ = ctx.Value(constants.ContextKeyClientKey).(string)
+
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	if clientID == "" {
+		return common.NewError("invalid_operation", "Invalid client")
+	}
+
+	connectionID := r.FormValue("connection_id")
+	if connectionID == "" {
+		return common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationObj.ID, clientID)
+	if err != nil {
+		return common.NewError("meta_error", "Error reading metadata for connection")
+	}
+	err = connectionObj.Save(ctx)
+	if err != nil {
+		Logger.Error("Error in writing the connection meta data", zap.Error(err))
+		return common.NewError("connection_write_error", "Error writing the connection meta data")
+	}
+
+	return nil
+}
+
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
 	startTime := time.Now()
 	if r.Method == "GET" {
@@ -519,6 +560,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	db.Delete(connectionObj)
+	go allocation.DeleteConnectionObjEntry(connectionID)
 
 	commitOperation := connectionObj.Changes[0].Operation
 	input := connectionObj.Changes[0].Input
@@ -586,10 +628,6 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
 
-	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
-	mutex.Lock()
-	defer mutex.Unlock()
-
 	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
 
 	if err != nil {
@@ -607,7 +645,6 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID, Path: objectRef.Path}
 	dfc.NewName = new_name
-	connectionObj.Size += allocationChange.Size
 	connectionObj.AddChange(allocationChange, dfc)
 
 	err = connectionObj.Save(ctx)
@@ -675,9 +712,6 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
-	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
-	mutex.Lock()
-	defer mutex.Unlock()
 
 	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
 
@@ -716,7 +750,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID, DestPath: destPath}
 	dfc.SrcPath = objectRef.Path
-	connectionObj.Size += allocationChange.Size
+	allocation.UpdateConnectionObjSize(connectionID, allocationChange.Size)
 	connectionObj.AddChange(allocationChange, dfc)
 
 	err = connectionObj.Save(ctx)
@@ -784,9 +818,6 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
-	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
-	mutex.Lock()
-	defer mutex.Unlock()
 
 	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(
 		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
@@ -830,7 +861,6 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 		DestPath:     destPath,
 	}
 	dfc.SrcPath = objectRef.Path
-	connectionObj.Size += allocationChange.Size
 	connectionObj.AddChange(allocationChange, dfc)
 
 	err = connectionObj.Save(ctx)
@@ -872,7 +902,8 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 			AllocationID: connectionObj.AllocationID, Name: fileRef.Name,
 			Hash: fileRef.Hash, Path: fileRef.Path, Size: deleteSize}
 
-		connectionObj.Size += allocationChange.Size
+		allocation.UpdateConnectionObjSize(connectionObj.ID, allocationChange.Size)
+
 		connectionObj.AddChange(allocationChange, dfc)
 
 		result := &blobberhttp.UploadResult{}
@@ -952,15 +983,10 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
 
-	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
-	mutex.Lock()
-	defer mutex.Unlock()
-
 	allocationChange := &allocation.AllocationChange{}
 	allocationChange.ConnectionID = connectionObj.ID
 	allocationChange.Size = 0
 	allocationChange.Operation = constants.FileOperationCreateDir
-	connectionObj.Size += allocationChange.Size
 	var newDir allocation.NewDir
 	newDir.ConnectionID = connectionID
 	newDir.Path = dirPath
@@ -1041,24 +1067,11 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	elapsedRef := time.Since(st)
 	st = time.Now()
+
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
-
-	Logger.Info(fmt.Sprintf("[upload] Acquiring lock for allocation: %s, connection: %s", allocationID, connectionID))
-	mutex := lock.GetMutex(connectionObj.TableName(), connectionID)
-
-	Logger.Info(fmt.Sprintf("[upload] Locking for allocation: %s, connection: %s", allocationID, connectionID))
-
-	mutex.Lock()
-	Logger.Info(fmt.Sprintf("[upload] Acquired lock for allocation: %s, connection: %s", allocationID, connectionID))
-
-	defer func() {
-		Logger.Info(fmt.Sprintf("[upload] Unlocking lock for allocation: %s, connection: %s", allocationID, connectionID))
-		mutex.Unlock()
-		Logger.Info(fmt.Sprintf("[upload] Unlocked lock for allocation: %s, connection: %s", allocationID, connectionID))
-	}()
 
 	elapsedAllocationChanges := time.Since(st)
 
