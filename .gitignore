@@ -17,4 +17,3 @@ out/
 **/tmp/
 *.tar.gz
 **/descriptor.proto
-**/objectpath_test.go

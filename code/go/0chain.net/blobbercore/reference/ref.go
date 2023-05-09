@@ -12,6 +12,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 
 	"gorm.io/gorm"
 )
@@ -373,6 +375,10 @@ func (fr *Ref) GetFileHashData() string {
 }
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
+	if fr.FileID == "" {
+		logging.Logger.Error("Empty FileID", zap.String("path", fr.Path))
+		return "", common.NewError("invalid_file_id", "FileID is empty for "+fr.Path)
+	}
 	fr.FileMetaHash = encryption.Hash(fr.GetFileMetaHashData())
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
