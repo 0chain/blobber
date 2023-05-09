@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -65,6 +66,7 @@ type AllocationChange struct {
 	ConnectionID string                    `gorm:"column:connection_id;size:64;not null"`
 	Connection   AllocationChangeCollector `gorm:"foreignKey:ConnectionID"` // References allocation_connections(id)
 	Input        string                    `gorm:"column:input"`
+	FilePath     string                    `gorm:"-"`
 	datastore.ModelWithTS
 }
 
@@ -89,8 +91,35 @@ func (change *AllocationChange) Save(ctx context.Context) error {
 	return db.Save(change).Error
 }
 
+func ParseAffectedFilePath(input string) (string, error) {
+	inputMap := make(map[string]interface{})
+	err := json.Unmarshal([]byte(input), &inputMap)
+	if err != nil {
+		return "", err
+	}
+	if path, ok := inputMap["filepath"].(string); ok {
+		return path, nil
+	}
+	return "", nil
+}
+
+func (change *AllocationChange) GetOrParseAffectedFilePath() (string, error) {
+
+	// Check if change.FilePath has value
+	if change.FilePath != "" {
+		return change.FilePath, nil
+	}
+	filePath, err := ParseAffectedFilePath(change.Input)
+	if err != nil {
+		return "", err
+	}
+	change.FilePath = filePath
+	return filePath, nil
+
+}
+
 // GetAllocationChanges reload connection's changes in allocation from postgres.
-//	1. update connection's status with NewConnection if id is not found in postgres
+//  1. update connection's status with NewConnection if id is not found in postgres
 //  2. mark as NewConnection if id is marked as DeleteConnection
 func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clientID string) (*AllocationChangeCollector, error) {
 	cc := &AllocationChangeCollector{}
@@ -104,6 +133,8 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 
 	if err == nil {
 		cc.ComputeProperties()
+		// Load connection Obj size from memory
+		cc.Size = GetConnectionObjSize(connectionID)
 		return cc, nil
 	}
 
@@ -167,7 +198,6 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 	}
 }
 
-//
 func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot string,
 	ts common.Timestamp, fileIDMeta map[string]string) error {
 
