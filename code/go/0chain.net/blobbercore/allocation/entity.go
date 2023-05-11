@@ -3,6 +3,8 @@ package allocation
 import (
 	"errors"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -131,7 +133,9 @@ func (a *Allocation) GetRequiredReadBalance(blobberID string, numBlocks int64) (
 func (a *Allocation) GetRequiredWriteBalance(blobberID string, writeSize int64, wmt common.Timestamp) (value uint64) {
 	for _, d := range a.Terms {
 		if d.BlobberID == blobberID {
+
 			value = uint64(sizeInGB(writeSize)*float64(d.WritePrice)) * uint64(a.RestDurationInTimeUnits(wmt))
+			logging.Logger.Debug("jayash GetRequiredWriteBalance", zap.Any("d.WritePrice", d.WritePrice), zap.Any("writeSize", writeSize), zap.Any("a.RestDurationInTimeUnits(wmt)", a.RestDurationInTimeUnits(wmt)), zap.Any("value", value))
 			break
 		}
 	}
