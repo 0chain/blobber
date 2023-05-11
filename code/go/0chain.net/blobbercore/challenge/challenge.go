@@ -7,9 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"gorm.io/gorm/clause"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -28,7 +25,6 @@ type BCChallengeResponse struct {
 
 var lastChallengeTimestamp int
 
-// syncOpenChallenges get challenge from blockchain , and add them in database
 func syncOpenChallenges(ctx context.Context) {
 	const incrOffset = 20
 	defer func() {
@@ -46,8 +42,6 @@ func syncOpenChallenges(ctx context.Context) {
 		params["from"] = strconv.Itoa(lastChallengeTimestamp)
 	}
 	start := time.Now()
-
-	var allOpenChallenges []*ChallengeEntity
 
 	var downloadElapsed, jsonElapsed time.Duration
 
@@ -79,10 +73,14 @@ func syncOpenChallenges(ctx context.Context) {
 			break
 		}
 		for _, c := range challenges.Challenges {
+			if c == nil {
+				continue
+			}
 			challengeIDs = append(challengeIDs, c.ChallengeID)
 			if c.CreatedAt > common.Timestamp(lastChallengeTimestamp) {
 				lastChallengeTimestamp = int(c.CreatedAt)
 			}
+			toProcessChallenge <- c
 		}
 		logging.Logger.Info("challenges_from_chain",
 			zap.Int("challenges", len(challenges.Challenges)),
@@ -92,29 +90,14 @@ func syncOpenChallenges(ctx context.Context) {
 		if len(challenges.Challenges) == 0 {
 			break
 		}
-		allOpenChallenges = append(allOpenChallenges, challenges.Challenges...)
 		offset += incrOffset
 		params["offset"] = strconv.Itoa(offset)
 	}
 
-	dbTimeStart := time.Now()
-	logging.Logger.Info("Starting saving challenges",
-		zap.Int("challenges", len(allOpenChallenges)))
-
-	if len(allOpenChallenges) == 0 {
-		return
-	}
-
-	saved := saveNewChallenges(ctx, allOpenChallenges)
-
 	logging.Logger.Info("[challenge]elapsed:pull",
-		zap.Int("count", len(allOpenChallenges)),
-		zap.Int("saved", saved),
 		zap.String("download", downloadElapsed.String()),
 		zap.String("json", jsonElapsed.String()),
-		zap.String("db", time.Since(dbTimeStart).String()),
 		zap.String("time_taken", time.Since(start).String()))
-
 }
 
 func saveNewChallenges(ctx context.Context, ce []*ChallengeEntity) int {
@@ -180,27 +163,13 @@ func saveNewChallenges(ctx context.Context, ce []*ChallengeEntity) int {
 	return saved
 }
 
-func validateOnValidators(id string) {
+func validateOnValidators(c *ChallengeEntity) {
 	startTime := time.Now()
 
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	defer ctx.Done()
 
-	c := &ChallengeEntity{}
-
 	tx := datastore.GetStore().GetTransaction(ctx)
-
-	if err := tx.Model(&ChallengeEntity{}).
-		Where("challenge_id = ? and status = ?", id, Accepted).
-		Find(c).Error; err != nil {
-
-		logging.Logger.Error("[challenge]validate: ",
-			zap.Any("challenge_id", id),
-			zap.Error(err))
-
-		tx.Rollback()
-		return
-	}
 
 	createdTime := common.ToTime(c.CreatedAt)
 	logging.Logger.Info("[challenge]validate: ",
@@ -228,6 +197,7 @@ func validateOnValidators(id string) {
 			zap.Any("challenge_id", c.ChallengeID),
 			zap.Time("created", createdTime),
 			zap.Error(err))
+		//TODO: Should we delete the challenge from map or send it back to the todo channel?
 		tx.Rollback()
 		return
 	}
@@ -260,15 +230,9 @@ func validateOnValidators(id string) {
 		zap.Time("start", startTime),
 		zap.String("delay", startTime.Sub(createdTime).String()),
 		zap.String("time_taken", time.Since(startTime).String()))
-
-	//nextCommitChallenge <- TodoChallenge{
-	//	Id:        c.ChallengeID,
-	//	CreatedAt: createdTime,
-	//}
-	commitOnChain(c, c.ChallengeID)
 }
 
-func commitOnChain(c *ChallengeEntity, id string) {
+func commitOnChain(c *ChallengeEntity, id string) (*transaction.Transaction, error) {
 
 	startTime := time.Now()
 
@@ -276,22 +240,6 @@ func commitOnChain(c *ChallengeEntity, id string) {
 	defer ctx.Done()
 
 	tx := datastore.GetStore().GetTransaction(ctx)
-
-	if c == nil {
-		c = &ChallengeEntity{}
-
-		if err := tx.Model(&ChallengeEntity{}).
-			Where("challenge_id = ? and status = ?", id, Processed).
-			Find(c).Error; err != nil {
-
-			logging.Logger.Error("[challenge]commit: ",
-				zap.Any("challenge_id", id),
-				zap.Error(err))
-
-			tx.Rollback()
-			return
-		}
-	}
 
 	createdTime := common.ToTime(c.CreatedAt)
 	logging.Logger.Info("[challenge]commit",
@@ -311,17 +259,18 @@ func commitOnChain(c *ChallengeEntity, id string) {
 		tx.Rollback()
 
 		c.CancelChallenge(ctx, err)
-		return
+		return nil, nil
 	}
 
 	elapsedLoad := time.Since(startTime)
-	if err := c.CommitChallenge(ctx, false); err != nil {
+	txn, err := c.CommitChallenge(ctx, true)
+	if err != nil {
 		logging.Logger.Error("[challenge]commit",
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Time("created", createdTime),
 			zap.Error(err))
 		tx.Rollback()
-		return
+		return txn, err
 	}
 
 	elapsedCommitOnChain := time.Since(startTime) - elapsedLoad
@@ -331,7 +280,7 @@ func commitOnChain(c *ChallengeEntity, id string) {
 			zap.Time("created", createdTime),
 			zap.Error(err))
 		tx.Rollback()
-		return
+		return txn, err
 	}
 
 	elapsedCommitOnDb := time.Since(startTime) - elapsedLoad - elapsedCommitOnChain
@@ -352,68 +301,68 @@ func commitOnChain(c *ChallengeEntity, id string) {
 		zap.String("commit_on_db", elapsedCommitOnDb.String()),
 		zap.String("time_taken", time.Since(startTime).String()),
 	)
-
+	return txn, nil
 }
 
-func loadTodoChallenges(doProcessed bool) {
-	db := datastore.GetStore().GetDB()
-	now := time.Now().Unix()
-	from := now - int64(config.StorageSCConfig.ChallengeCompletionTime.Seconds())
+// func loadTodoChallenges(doProcessed bool) {
+// 	db := datastore.GetStore().GetDB()
+// 	now := time.Now().Unix()
+// 	from := now - int64(config.StorageSCConfig.ChallengeCompletionTime.Seconds())
 
-	db = db.Model(&ChallengeEntity{}).
-		Where("created_at > ? AND status in (?)", from, Accepted).Order(clause.OrderByColumn{
-		Column: clause.Column{Name: "block_num"},
-	})
+// 	db = db.Model(&ChallengeEntity{}).
+// 		Where("created_at > ? AND status in (?)", from, Accepted).Order(clause.OrderByColumn{
+// 		Column: clause.Column{Name: "block_num"},
+// 	})
 
-	if doProcessed {
-		db = db.Model(&ChallengeEntity{}).
-			Where("created_at > ? AND status in (?,?)", from, Accepted, Processed).Order(clause.OrderByColumn{
-			Column: clause.Column{Name: "block_num"},
-		})
-	}
+// 	if doProcessed {
+// 		db = db.Model(&ChallengeEntity{}).
+// 			Where("created_at > ? AND status in (?,?)", from, Accepted, Processed).Order(clause.OrderByColumn{
+// 			Column: clause.Column{Name: "block_num"},
+// 		})
+// 	}
 
-	rows, err := db.Order("created_at").
-		Select("challenge_id", "created_at", "status").Rows()
+// 	rows, err := db.Order("created_at").
+// 		Select("challenge_id", "created_at", "status").Rows()
 
-	if err != nil {
-		logging.Logger.Error("[challenge]todo",
-			zap.Error(err))
-		return
-	}
-	defer rows.Close()
+// 	if err != nil {
+// 		logging.Logger.Error("[challenge]todo",
+// 			zap.Error(err))
+// 		return
+// 	}
+// 	defer rows.Close()
 
-	for rows.Next() {
+// 	for rows.Next() {
 
-		var challengeID string
-		var createdAt common.Timestamp
-		var status ChallengeStatus
+// 		var challengeID string
+// 		var createdAt common.Timestamp
+// 		var status ChallengeStatus
 
-		err := rows.Scan(&challengeID, &createdAt, &status)
-		if err != nil {
-			logging.Logger.Error("[challenge]todo",
-				zap.Error(err))
-			continue
-		}
+// 		err := rows.Scan(&challengeID, &createdAt, &status)
+// 		if err != nil {
+// 			logging.Logger.Error("[challenge]todo",
+// 				zap.Error(err))
+// 			continue
+// 		}
 
-		if challengeID == "" {
-			logging.Logger.Warn("[challenge]todo: get empty challenge id from db")
-			continue
-		}
+// 		if challengeID == "" {
+// 			logging.Logger.Warn("[challenge]todo: get empty challenge id from db")
+// 			continue
+// 		}
 
-		createdTime := common.ToTime(createdAt)
+// 		createdTime := common.ToTime(createdAt)
 
-		logging.Logger.Info("[challenge]todo",
-			zap.String("challenge_id", challengeID),
-			zap.String("status", status.String()),
-			zap.Time("created_at", createdTime),
-			zap.Duration("delay", time.Since(createdTime)))
+// 		logging.Logger.Info("[challenge]todo",
+// 			zap.String("challenge_id", challengeID),
+// 			zap.String("status", status.String()),
+// 			zap.Time("created_at", createdTime),
+// 			zap.Duration("delay", time.Since(createdTime)))
 
-		toProcessChallenge <- TodoChallenge{
-			Id:        challengeID,
-			CreatedAt: common.ToTime(createdAt),
-			Status:    status,
-		}
+// 		toProcessChallenge <- TodoChallenge{
+// 			Id:        challengeID,
+// 			CreatedAt: common.ToTime(createdAt),
+// 			Status:    status,
+// 		}
 
-	}
+// 	}
 
-}
+// }
