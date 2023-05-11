@@ -53,6 +53,7 @@ func (r *DirMetaData) GetHash() string {
 }
 
 func (r *DirMetaData) CalculateHash() string {
+
 	childHashes := make([]string, len(r.Children))
 	for index, childRef := range r.Children {
 		childHashes[index] = childRef.GetHash()
@@ -180,6 +181,7 @@ func (op *ObjectPath) Parse(input map[string]interface{}, allocationID string) (
 	newHash := rootDir.CalculateHash()
 
 	if newHash != rootDir.GetHash() {
+		logging.Logger.Error("Hash mismatch for root directory", zap.Any("newhash", newHash), zap.Any("given_hash", rootDir.GetHash()))
 		return nil, common.NewError("hash_mismatch", "Object path error since there is a mismatch in the dir hashes. "+rootDir.Path)
 	}
 	return &rootDir, nil

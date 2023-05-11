@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func useCors(h http.Handler) http.Handler {
+func UseCors(h http.Handler) http.Handler {
 
 	allowedMethods := []string{"GET", "HEAD", "POST", "PUT",
 		"DELETE", "OPTIONS"}
@@ -35,7 +35,7 @@ func useCors(h http.Handler) http.Handler {
 	})
 }
 
-func useRecovery(h http.Handler) http.Handler {
+func UseRecovery(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
