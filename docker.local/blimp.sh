@@ -12,7 +12,6 @@ BLIMP_DOMAIN=blimpdomain
 WALLET_ID=0chainwalletid
 WALLET_PUBLIC_KEY=0chainwalletpublickey
 WALLET_PRIVATE_KEY=0chainwalletprivatekey
-WALLET_MNEMONICS=0chainmnemonics
 
 sudo apt update
 DEBIAN_FRONTEND=noninteractive sudo apt install -y unzip curl containerd docker.io jq
@@ -36,7 +35,7 @@ cat <<EOF >${CONFIG_DIR_BLIMP}/wallet.json
       "private_key": "${WALLET_PRIVATE_KEY}"
     }
   ],
-  "mnemonics": "${WALLET_MNEMONICS}", 
+  "mnemonics": "0chainmnemonics", 
   "version": "1.0"
 }
 EOF
