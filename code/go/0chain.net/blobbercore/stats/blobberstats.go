@@ -361,16 +361,16 @@ func (bs *BlobberStats) loadChallengeStats(ctx context.Context) {
 		}
 
 		bs.TotalChallenges += total
-		if status == 3 {
-			bs.RedeemedChallenges += total
-		} else {
-			bs.OpenChallenges += total
-		}
 
-		if result == 1 {
+		if result == 1 && status == 3 {
 			bs.SuccessChallenges += total
+			bs.RedeemedChallenges += total
 		} else if result == 2 {
 			bs.FailedChallenges += total
+		} else {
+			if status != 3 {
+				bs.OpenChallenges += total
+			}
 		}
 	}
 
