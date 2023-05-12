@@ -421,8 +421,9 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 	return t, err
 }
 
-func (cr *ChallengeEntity) VerifyChallengeTransaction(ctx context.Context, txn *transaction.Transaction) error {
-
+func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transaction) error {
+	ctx := datastore.GetStore().CreateTransaction(context.TODO())
+	defer ctx.Done()
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
 			logging.Logger.Info("[challenge]commit: Verifying the transaction : " + lastTxn)

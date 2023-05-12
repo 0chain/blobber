@@ -147,7 +147,7 @@ func (cr *ChallengeEntity) Save(ctx context.Context) error {
 			logging.Logger.Error("saveChallenge", zap.Any("err", r))
 		}
 	}()
-	db := datastore.GetStore().GetDB()
+	db := datastore.GetStore().GetTransaction(ctx)
 	return cr.SaveWith(db)
 }
 

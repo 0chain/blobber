@@ -173,7 +173,7 @@ func commitOnChainWorker(ctx context.Context) {
 							logging.Logger.Error("verifyChallengeTransaction", zap.Any("err", r))
 						}
 					}()
-					err := challenge.VerifyChallengeTransaction(ctx, txn)
+					err := challenge.VerifyChallengeTransaction(txn)
 					if err == nil || err != ErrValNotPresent {
 						deleteChallenge(int64(challenge.CreatedAt))
 					}
