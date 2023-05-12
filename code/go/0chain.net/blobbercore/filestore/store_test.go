@@ -584,7 +584,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 		Hash:         fid.ThumbnailHash,
 		IsThumbnail:  true,
 		NumBlocks:    1,
-		IsTemp:       true,
+		IsPrecommit:  true,
 	}
 
 	data, err := fs.GetFileBlock(input)
@@ -693,7 +693,7 @@ func TestGetFileBlock(t *testing.T) {
 				NumBlocks:     int(test.numBlocks),
 				Hash:          test.validationRoot,
 				FileSize:      int64(test.expectedDataSize),
-				IsTemp:        true,
+				IsPrecommit:   true,
 			}
 
 			fileResponse, err := fs.GetFileBlock(in)
@@ -775,7 +775,7 @@ func TestGetMerkleTree(t *testing.T) {
 				AllocationID: allocID,
 				Hash:         validationRoot,
 				FileSize:     int64(size),
-				IsTemp:       true,
+				IsPrecommit:  true,
 			}
 
 			challengeProof, err := fs.GetBlocksMerkleTreeForChallenge(cri)

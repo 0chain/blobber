@@ -107,7 +107,7 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 		CreatedAt:               ts,
 		UpdatedAt:               ts,
 		HashToBeComputed:        true,
-		IsTemp:                  true,
+		IsPrecommit:             true,
 		ThumbnailFilename:       nf.ThumbnailFilename,
 	}
 

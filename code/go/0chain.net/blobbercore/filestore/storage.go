@@ -431,7 +431,7 @@ func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloa
 	if startBlock < 0 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number cannot be negative")
 	}
-	if readBlockIn.IsTemp {
+	if readBlockIn.IsPrecommit {
 		fileObjectPath = fs.getPreCommitPathForFile(readBlockIn.AllocationID,
 			readBlockIn.Hash)
 	} else {
@@ -501,7 +501,7 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 	if startBlock < 0 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number cannot be negative")
 	}
-	if readBlockIn.IsTemp {
+	if readBlockIn.IsPrecommit {
 		fileObjectPath = fs.getPreCommitPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
 	} else {
 		fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
@@ -567,7 +567,7 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 		return nil, common.NewError("invalid_block_number", "Invalid block offset")
 	}
 
-	if in.IsTemp {
+	if in.IsPrecommit {
 		fileObjectPath = fs.getPreCommitPathForFile(in.AllocationID, in.Hash)
 	} else {
 		fileObjectPath, err = fs.GetPathForFile(in.AllocationID, in.Hash)

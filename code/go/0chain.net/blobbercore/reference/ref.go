@@ -67,7 +67,7 @@ type Ref struct {
 	UpdatedAt      common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" dirlist:"updated_at" filelist:"updated_at"`
 
 	DeletedAt        gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
-	IsTemp           bool           `gorm:"column:is_temp;not null;default:false" filelist:"is_temp" dirlist:"is_temp"`
+	IsPrecommit      bool           `gorm:"column:is_precommit;not null;default:false" filelist:"is_precommit" dirlist:"is_precommit"`
 	ChunkSize        int64          `gorm:"column:chunk_size;not null;default:65536" dirlist:"chunk_size" filelist:"chunk_size"`
 	HashToBeComputed bool           `gorm:"-"`
 }
@@ -133,11 +133,11 @@ func GetReferenceLookup(allocationID, path string) string {
 }
 
 func NewDirectoryRef() *Ref {
-	return &Ref{Type: DIRECTORY, IsTemp: true}
+	return &Ref{Type: DIRECTORY, IsPrecommit: true}
 }
 
 func NewFileRef() *Ref {
-	return &Ref{Type: FILE, IsTemp: true}
+	return &Ref{Type: FILE, IsPrecommit: true}
 }
 
 // Mkdir create dirs if they don't exits. do nothing if dir exists. last dir will be return without child
@@ -513,7 +513,7 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 
 func (r *Ref) SaveFileRef(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	toUpdateFileStat := r.IsTemp
+	toUpdateFileStat := r.IsPrecommit
 	prevID := r.ID
 	if r.ID > 0 {
 		err := db.Transaction(func(tx *gorm.DB) error {
@@ -524,7 +524,7 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 			}
 
 			r.ID = 0
-			r.IsTemp = true
+			r.IsPrecommit = true
 			err = tx.Create(r).Error
 			if err != nil {
 				return err
@@ -536,7 +536,7 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 			return err
 		}
 	} else {
-		r.IsTemp = true
+		r.IsPrecommit = true
 		r.ID = 0
 		err := db.Create(r).Error
 		if err != nil {
@@ -553,7 +553,7 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 
 func (r *Ref) SaveDirRef(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	toUpdateFileStat := r.IsTemp
+	toUpdateFileStat := r.IsPrecommit
 	prevID := r.ID
 	if r.ID > 0 {
 		err := db.Transaction(func(tx *gorm.DB) error {
@@ -562,7 +562,7 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 				return err
 			}
 			r.ID = 0
-			r.IsTemp = true
+			r.IsPrecommit = true
 			err = tx.Create(r).Error
 			if err != nil {
 				return err
@@ -573,7 +573,7 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 			return err
 		}
 	} else {
-		r.IsTemp = true
+		r.IsPrecommit = true
 		err := db.Create(r).Error
 		if err != nil {
 			return err

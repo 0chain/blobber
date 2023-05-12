@@ -51,7 +51,7 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 	affectedRef.Path = newPath
 	affectedRef.UpdatedAt = ts
 	if affectedRef.Type == reference.FILE {
-		affectedRef.IsTemp = true
+		affectedRef.IsPrecommit = true
 	} else {
 		rf.processChildren(ctx, affectedRef, ts)
 	}
@@ -112,7 +112,7 @@ func (rf *RenameFileChange) processChildren(ctx context.Context, curRef *referen
 		newPath := filepath.Join(curRef.Path, childRef.Name)
 		childRef.UpdatePath(newPath, curRef.Path)
 		if childRef.Type == reference.FILE {
-			childRef.IsTemp = true
+			childRef.IsPrecommit = true
 		}
 		if childRef.Type == reference.DIRECTORY {
 			rf.processChildren(ctx, childRef, ts)

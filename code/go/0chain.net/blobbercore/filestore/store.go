@@ -94,7 +94,7 @@ type ReadBlockInput struct {
 	NumBlocks      int
 	IsThumbnail    bool
 	VerifyDownload bool
-	IsTemp         bool
+	IsPrecommit    bool
 }
 
 type ChallengeResponse struct {
@@ -108,5 +108,5 @@ type ChallengeReadBlockInput struct {
 	FileSize     int64
 	Hash         string
 	AllocationID string
-	IsTemp       bool
+	IsPrecommit  bool
 }

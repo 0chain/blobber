@@ -255,7 +255,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 	err := db.Transaction(func(tx *gorm.DB) error {
 
-		err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash").Where("allocation_id=? AND is_temp=? AND type=?", a.AllocationID, true, reference.FILE).
+		err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
 			FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
 
 				for _, ref := range refs {
@@ -312,7 +312,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 			return err
 		}
 
-		err = tx.Exec("UPDATE reference_objects SET is_temp=?, prev_validation_root=validation_root, prev_thumbnail_hash=thumbnail_hash WHERE allocation_id=? AND is_temp=?", false, a.AllocationID, true).Error
+		err = tx.Exec("UPDATE reference_objects SET is_precommit=?, prev_validation_root=validation_root, prev_thumbnail_hash=thumbnail_hash WHERE allocation_id=? AND is_precommit=?", false, a.AllocationID, true).Error
 
 		return err
 	})
@@ -331,7 +331,7 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 	var results []Result
 
 	err := db.Model(&reference.Ref{}).Unscoped().Select("id", "validation_root", "thumbnail_hash").
-		Where("allocation_id=? AND is_temp=? AND type=? AND deleted_at is not NULL", allocationID, true, reference.FILE).
+		Where("allocation_id=? AND is_precommit=? AND type=? AND deleted_at is not NULL", allocationID, true, reference.FILE).
 		FindInBatches(&results, 100, func(tx *gorm.DB, batch int) error {
 
 			for _, res := range results {

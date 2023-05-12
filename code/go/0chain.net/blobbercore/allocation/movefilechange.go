@@ -117,7 +117,7 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 	}
 
 	for _, fileRef := range fileRefs {
-		fileRef.IsTemp = true
+		fileRef.IsPrecommit = true
 	}
 	return rootRef, err
 }

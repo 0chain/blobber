@@ -208,13 +208,13 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 		fromPreCommit := true
 
-		if objectPath.Meta["is_temp"] != nil {
-			fromPreCommit = objectPath.Meta["is_temp"].(bool)
+		if objectPath.Meta["is_precommit"] != nil {
+			fromPreCommit = objectPath.Meta["is_precommit"].(bool)
 			if fromPreCommit {
 				fromPreCommit = objectPath.Meta["validation_root"].(string) != objectPath.Meta["prev_validation_root"].(string)
 			}
 		} else {
-			logging.Logger.Error("is_temp_is_nil", zap.Any("object_path", objectPath))
+			logging.Logger.Error("is_precommit_is_nil", zap.Any("object_path", objectPath))
 		}
 
 		challengeReadInput := &filestore.ChallengeReadBlockInput{
@@ -222,7 +222,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			FileSize:     objectPath.Meta["size"].(int64),
 			BlockOffset:  blockoffset,
 			AllocationID: cr.AllocationID,
-			IsTemp:       fromPreCommit,
+			IsPrecommit:  fromPreCommit,
 		}
 
 		t1 := time.Now()
