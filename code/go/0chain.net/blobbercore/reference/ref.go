@@ -537,7 +537,6 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 		}
 	} else {
 		r.IsPrecommit = true
-		r.ID = 0
 		err := db.Create(r).Error
 		if err != nil {
 			return err
@@ -557,7 +556,20 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 	prevID := r.ID
 	if r.ID > 0 {
 		err := db.Transaction(func(tx *gorm.DB) error {
-			err := tx.Delete(&Ref{}, "id=?", r.ID).Error
+			// FIXME: temporary fix
+
+			var cnt int64
+			err := tx.Model(&Ref{}).Where("allocation_id=? AND path=? and deleted_at IS NOT NULL", r.AllocationID, r.Path).Count(&cnt).Error
+			if err != nil {
+				return err
+			}
+			if cnt > 0 {
+				r.IsPrecommit = true
+				err = tx.Save(r).Error
+				return err
+			}
+
+			err = tx.Delete(&Ref{}, "id=?", r.ID).Error
 			if err != nil && err != gorm.ErrRecordNotFound {
 				return err
 			}
