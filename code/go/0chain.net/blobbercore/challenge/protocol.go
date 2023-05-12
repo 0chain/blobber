@@ -475,6 +475,9 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(ctx context.Context, txn *
 
 		if t != nil {
 			cr.CommitTxnID = t.Hash
+			if cr.LastCommitTxnIDs == nil {
+				cr.LastCommitTxnIDs = make([]string, 0)
+			}
 			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
 		}
 
