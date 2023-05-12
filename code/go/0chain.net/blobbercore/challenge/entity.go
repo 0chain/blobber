@@ -142,7 +142,12 @@ func unMarshalField(stringObj datatypes.JSON, dest interface{}) error {
 }
 
 func (cr *ChallengeEntity) Save(ctx context.Context) error {
-	db := datastore.GetStore().GetTransaction(ctx)
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Logger.Error("saveChallenge", zap.Any("err", r))
+		}
+	}()
+	db := datastore.GetStore().GetDB()
 	return cr.SaveWith(db)
 }
 
@@ -159,9 +164,6 @@ func (cr *ChallengeEntity) SaveWith(db *gorm.DB) error {
 	err = marshalField(cr.ValidationTickets, &cr.ValidationTicketsString)
 	if err != nil {
 		return err
-	}
-	if cr.ObjectPath == nil {
-		cr.ObjectPath = &reference.ObjectPath{}
 	}
 	err = marshalField(cr.ObjectPath, &cr.ObjectPathString)
 	if err != nil {

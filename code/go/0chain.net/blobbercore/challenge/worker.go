@@ -170,7 +170,7 @@ func commitOnChainWorker(ctx context.Context) {
 				go func(challenge *ChallengeEntity) {
 					defer func() {
 						if r := recover(); r != nil {
-							logging.Logger.Error("verifyTransactionWorker", zap.Any("err", r))
+							logging.Logger.Error("verifyChallengeTransaction", zap.Any("err", r))
 						}
 					}()
 					err := challenge.VerifyChallengeTransaction(ctx, txn)
