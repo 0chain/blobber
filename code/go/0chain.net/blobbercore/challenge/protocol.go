@@ -467,6 +467,10 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(ctx context.Context, txn *
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 	}
 
+	if cr.LastCommitTxnIDs == nil {
+		cr.LastCommitTxnIDs = make([]string, 0)
+	}
+
 	if err != nil {
 		logging.Logger.Error("Error verifying the challenge response transaction",
 			zap.String("err:", err.Error()),
@@ -475,9 +479,6 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(ctx context.Context, txn *
 
 		if t != nil {
 			cr.CommitTxnID = t.Hash
-			if cr.LastCommitTxnIDs == nil {
-				cr.LastCommitTxnIDs = make([]string, 0)
-			}
 			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
 		}
 

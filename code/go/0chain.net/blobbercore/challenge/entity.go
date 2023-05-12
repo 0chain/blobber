@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -146,6 +147,7 @@ func (cr *ChallengeEntity) Save(ctx context.Context) error {
 }
 
 func (cr *ChallengeEntity) SaveWith(db *gorm.DB) error {
+
 	err := marshalField(cr.Validators, &cr.ValidatorsString)
 	if err != nil {
 		return err
@@ -157,6 +159,9 @@ func (cr *ChallengeEntity) SaveWith(db *gorm.DB) error {
 	err = marshalField(cr.ValidationTickets, &cr.ValidationTicketsString)
 	if err != nil {
 		return err
+	}
+	if cr.ObjectPath == nil {
+		cr.ObjectPath = &reference.ObjectPath{}
 	}
 	err = marshalField(cr.ObjectPath, &cr.ObjectPathString)
 	if err != nil {
