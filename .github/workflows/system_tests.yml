@@ -7,12 +7,8 @@ on:
         description: 'system_tests branch containing the tests you wish to run'
         default: 'master'
         required: true
-      miner_branch:
-        description: 'miner branch to deploy'
-        default: 'staging'
-        required: true
-      sharder_branch:
-        description: 'sharder branch to deploy'
+      miner_sharder_branch:
+        description: 'miner/sharder branch to deploy'
         default: 'staging'
         required: true
       zbox_cli_branch:
@@ -52,8 +48,8 @@ jobs:
     uses: 0chain/actions/.github/workflows/manual_system_tests.yml@master
     with:
       system_tests_branch: ${{ github.event.inputs.system_tests_branch }}
-      miner_branch: ${{ github.event.inputs.miner_branch }}
-      sharder_branch: ${{ github.event.inputs.sharder_branch }}
+      miner_branch: ${{ github.event.inputs.miner_sharder_branch }}
+      sharder_branch: ${{ github.event.inputs.miner_sharder_branch }}
       zbox_cli_branch: ${{ github.event.inputs.zbox_cli_branch }}
       zwallet_cli_branch: ${{ github.event.inputs.zwallet_cli_branch }}
       blobber_branch:  ${{ github.ref_name }}
