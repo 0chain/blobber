@@ -15,6 +15,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
+	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -100,7 +101,7 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 
 func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error) {
 	cancellation := time.Now()
-
+	deleteChallenge(cr.BlockNum)
 	db := datastore.GetStore().GetDB()
 	cr.Status = Cancelled
 	cr.StatusMessage = errReason.Error()
@@ -418,6 +419,96 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 		zap.String("challenge_save_time", challengeSaveTime.String()),
 		zap.String("file_challenged_time", fileChallengedTime.String()))
 	return t, err
+}
+
+func (cr *ChallengeEntity) VerifyChallengeTransaction(ctx context.Context, txn *transaction.Transaction) error {
+
+	if len(cr.LastCommitTxnIDs) > 0 {
+		for _, lastTxn := range cr.LastCommitTxnIDs {
+			logging.Logger.Info("[challenge]commit: Verifying the transaction : " + lastTxn)
+			t, err := transaction.VerifyTransaction(lastTxn, chain.GetServerChain())
+			if err == nil {
+				cr.Status = Committed
+				cr.StatusMessage = t.TransactionOutput
+				cr.CommitTxnID = t.Hash
+				cr.UpdatedAt = time.Now().UTC()
+				if err := cr.Save(ctx); err != nil {
+					logging.Logger.Error("[challenge]db: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+				}
+				if cr.RefID != 0 {
+					FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
+				}
+
+				txnVerification := time.Now()
+				if err := UpdateChallengeTimingTxnVerification(cr.ChallengeID, common.Timestamp(txnVerification.Unix())); err != nil {
+					logging.Logger.Error("[challengetiming]txnverification",
+						zap.Any("challenge_id", cr.ChallengeID),
+						zap.Time("created", common.ToTime(cr.CreatedAt)),
+						zap.Time("txn_verified", txnVerification),
+						zap.Error(err))
+				}
+
+				return nil
+			}
+			logging.Logger.Error("[challenge]trans: Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+		}
+	}
+
+	logging.Logger.Info("Verifying challenge response to blockchain.", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
+	var (
+		t   *transaction.Transaction
+		err error
+	)
+	for i := 0; i < 3; i++ {
+		t, err = transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
+		if err == nil {
+			break
+		}
+		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+	}
+
+	if err != nil {
+		logging.Logger.Error("Error verifying the challenge response transaction",
+			zap.String("err:", err.Error()),
+			zap.String("txn", txn.Hash),
+			zap.String("challenge_id", cr.ChallengeID))
+
+		if t != nil {
+			cr.CommitTxnID = t.Hash
+			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
+		}
+
+		if IsValueNotPresentError(err) {
+			err = ErrValNotPresent
+		}
+		logging.Logger.Error("[challenge]submit: Error while submitting challenge to BC.", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+		if err = cr.Save(ctx); err != nil {
+			return err
+		}
+		return err
+	}
+
+	cr.Status = Committed
+	cr.StatusMessage = t.TransactionOutput
+	cr.CommitTxnID = t.Hash
+	cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
+	cr.UpdatedAt = time.Now().UTC()
+	_ = cr.Save(ctx)
+
+	txnVerification := time.Now()
+	if err := UpdateChallengeTimingTxnVerification(cr.ChallengeID, common.Timestamp(txnVerification.Unix())); err != nil {
+		logging.Logger.Error("[challengetiming]txnverification",
+			zap.Any("challenge_id", cr.ChallengeID),
+			zap.Time("created", common.ToTime(cr.CreatedAt)),
+			zap.Time("txn_verified", txnVerification),
+			zap.Error(err))
+	}
+
+	if cr.RefID != 0 {
+		FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
+	}
+
+	return nil
 }
 
 func IsValueNotPresentError(err error) bool {
