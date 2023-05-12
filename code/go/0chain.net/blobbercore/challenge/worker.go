@@ -232,7 +232,7 @@ func createChallenge(it *ChallengeEntity) {
 	}
 	logging.Logger.Info("create_challenge", zap.Int64("created_at", int64(it.CreatedAt)))
 	challengeMapLock.Lock()
-	challengeMap.Put(it.CreatedAt, it)
+	challengeMap.Put(int64(it.CreatedAt), it)
 	challengeMapLock.Unlock()
 }
 
