@@ -99,7 +99,7 @@ func challengeProcessor(ctx context.Context) {
 }
 
 func processChallenge(ctx context.Context, it *ChallengeEntity) {
-	if exist := isProcessed(it.BlockNum, it.ChallengeID); exist {
+	if exist := isProcessed(int64(it.CreatedAt), it.ChallengeID); exist {
 		// already processed
 		return
 	}
@@ -161,17 +161,24 @@ func commitOnChainWorker(ctx context.Context) {
 			continue
 		}
 
-		for index, challenge := range challenges {
+		logging.Logger.Info("committing_challenge_tickets", zap.Any("num", len(challenges)), zap.Any("challenges", challenges))
+
+		for _, challenge := range challenges {
 			txn, _ := challenge.getCommitTransaction()
 			if txn != nil {
 				swg.Add()
-				go func(index int, challenge *ChallengeEntity) {
+				go func(challenge *ChallengeEntity) {
+					defer func() {
+						if r := recover(); r != nil {
+							logging.Logger.Error("verifyTransactionWorker", zap.Any("err", r))
+						}
+					}()
 					err := challenge.VerifyChallengeTransaction(ctx, txn)
 					if err == nil || err != ErrValNotPresent {
-						deleteChallenge(challenge.BlockNum)
+						deleteChallenge(int64(challenge.CreatedAt))
 					}
 					swg.Done()
-				}(index, challenge)
+				}(challenge)
 			}
 		}
 
@@ -219,8 +226,13 @@ func isProcessed(key int64, id string) bool {
 }
 
 func createChallenge(it *ChallengeEntity) {
+	if it == nil {
+		logging.Logger.Error("create_nil_challenge")
+		return
+	}
+	logging.Logger.Info("create_challenge", zap.Int64("created_at", int64(it.CreatedAt)))
 	challengeMapLock.Lock()
-	challengeMap.Put(it.BlockNum, it)
+	challengeMap.Put(it.CreatedAt, it)
 	challengeMapLock.Unlock()
 }
 

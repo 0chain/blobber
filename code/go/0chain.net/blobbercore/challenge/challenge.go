@@ -101,7 +101,6 @@ func syncOpenChallenges(ctx context.Context) {
 }
 
 func validateOnValidators(c *ChallengeEntity) {
-	startTime := time.Now()
 
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	defer ctx.Done()
@@ -135,7 +134,7 @@ func validateOnValidators(c *ChallengeEntity) {
 			zap.Time("created", createdTime),
 			zap.Error(err))
 		//TODO: Should we delete the challenge from map or send it back to the todo channel?
-		deleteChallenge(c.BlockNum)
+		deleteChallenge(int64(c.CreatedAt))
 		tx.Rollback()
 		return
 	}
@@ -162,12 +161,6 @@ func validateOnValidators(c *ChallengeEntity) {
 		zap.Any("challenge_id", c.ChallengeID),
 		zap.Time("created", createdTime))
 
-	logging.Logger.Info("[challenge]elapsed:validate ",
-		zap.String("challenge_id", c.ChallengeID),
-		zap.Time("created", createdTime),
-		zap.Time("start", startTime),
-		zap.String("delay", startTime.Sub(createdTime).String()),
-		zap.String("time_taken", time.Since(startTime).String()))
 }
 
 func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, error) {
