@@ -167,7 +167,7 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	defer ctx.Done()
 
-	tx := datastore.GetStore().GetTransaction(ctx)
+	// tx := datastore.GetStore().GetTransaction(ctx)
 
 	createdTime := common.ToTime(c.CreatedAt)
 	logging.Logger.Info("[challenge]commit",
@@ -175,20 +175,20 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 		zap.Time("created", createdTime),
 		zap.Any("openchallenge", c))
 
-	if err := c.UnmarshalFields(); err != nil {
-		logging.Logger.Error("[challenge]commit",
-			zap.String("challenge_id", c.ChallengeID),
-			zap.Time("created", createdTime),
-			zap.String("validators", string(c.ValidatorsString)),
-			zap.String("lastCommitTxnList", string(c.LastCommitTxnList)),
-			zap.String("validationTickets", string(c.ValidationTicketsString)),
-			zap.String("ObjectPath", string(c.ObjectPathString)),
-			zap.Error(err))
-		tx.Rollback()
+	// if err := c.UnmarshalFields(); err != nil {
+	// 	logging.Logger.Error("[challenge]commit",
+	// 		zap.String("challenge_id", c.ChallengeID),
+	// 		zap.Time("created", createdTime),
+	// 		zap.String("validators", string(c.ValidatorsString)),
+	// 		zap.String("lastCommitTxnList", string(c.LastCommitTxnList)),
+	// 		zap.String("validationTickets", string(c.ValidationTicketsString)),
+	// 		zap.String("ObjectPath", string(c.ObjectPathString)),
+	// 		zap.Error(err))
+	// 	tx.Rollback()
 
-		c.CancelChallenge(ctx, err)
-		return nil, nil
-	}
+	// 	c.CancelChallenge(ctx, err)
+	// 	return nil, nil
+	// }
 
 	if time.Since(common.ToTime(c.CreatedAt)) > config.StorageSCConfig.ChallengeCompletionTime {
 		c.CancelChallenge(ctx, ErrExpiredCCT)
@@ -211,7 +211,6 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 	}
 
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CHALLENGE_RESPONSE, sn, 0)
-
 	if err != nil {
 		logging.Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
 		return nil, err

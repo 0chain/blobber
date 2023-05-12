@@ -488,7 +488,7 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transacti
 		}
 		return err
 	}
-
+	logging.Logger.Info("Challenge committed and accepted", zap.String("txn.hash", t.Hash), zap.String("txn.output", t.TransactionOutput), zap.String("challenge_id", cr.ChallengeID))
 	cr.Status = Committed
 	cr.StatusMessage = t.TransactionOutput
 	cr.CommitTxnID = t.Hash
