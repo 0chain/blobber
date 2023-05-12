@@ -63,7 +63,6 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 	allocationID := wm.WM.AllocationID
 	shouldRollback := false
 	start := time.Now()
-	logging.Logger.Info("Redeeming the write marker.", zap.String("allocation", allocationID))
 	defer func() {
 		if shouldRollback {
 			if rollbackErr := db.Rollback().Error; rollbackErr != nil {
@@ -111,8 +110,8 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 		mut.Release(1)
 	}
 
-	err = db.Exec("UPDATE allocations SET latest_redeemed_write_marker=?,is_redeem_required=(allocation_root NOT LIKE ?) WHERE id=?",
-		wm.WM.AllocationRoot, wm.WM.AllocationRoot, allocationID).Error
+	err = db.Exec("UPDATE allocations SET latest_redeemed_write_marker=?,is_redeem_required=? WHERE id=?",
+		wm.WM.AllocationRoot, false, allocationID).Error
 
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
