@@ -69,6 +69,11 @@ func startWorkers(ctx context.Context) {
 }
 
 func challengeProcessor(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Logger.Error("[processor]challenge", zap.Any("err", r))
+		}
+	}()
 	numWorkers := config.Configuration.ChallengeResolveNumWorkers
 	sem := semaphore.NewWeighted(int64(numWorkers))
 	logging.Logger.Info("initializing challenge workers",
@@ -136,6 +141,11 @@ func processChallenge(ctx context.Context, it *ChallengeEntity) {
 }
 
 func commitOnChainWorker(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Logger.Error("[commitWorker]challenge", zap.Any("err", r))
+		}
+	}()
 	swg := sizedwaitgroup.New(5)
 	for {
 		select {
@@ -183,6 +193,10 @@ func getBatch(batchSize int) (chall []*ChallengeEntity) {
 			break
 		}
 		ticket := it.Value().(*ChallengeEntity)
+		if ticket == nil {
+			logging.Logger.Error("ticket is nil")
+			continue
+		}
 		if ticket.Status != Processed && len(ticket.ValidationTickets) == 0 {
 			break
 		}
