@@ -288,11 +288,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
 		}
 
-		quotaManager.createOrUpdateQuota(dr.ReadMarker.SessionRC, key)
+		updatedQuota := quotaManager.createOrUpdateQuota(dr.ReadMarker.SessionRC, key)
 
 		if dr.NumBlocks == 0 {
 			return &blobberhttp.DownloadResponse{
-				Success: true,
+				Success:        true,
+				AvailableQuota: updatedQuota,
 			}, nil
 		}
 	}
