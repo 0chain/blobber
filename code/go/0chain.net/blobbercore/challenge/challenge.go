@@ -41,7 +41,7 @@ func syncOpenChallenges(ctx context.Context) {
 	params := make(map[string]string)
 	params["blobber"] = node.Self.ID
 	params["offset"] = strconv.Itoa(offset)
-	params["limit"] = "40"
+	params["limit"] = "100"
 	if lastChallengeTimestamp > 0 {
 		params["from"] = strconv.Itoa(lastChallengeTimestamp)
 	}
