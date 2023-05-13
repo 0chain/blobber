@@ -39,30 +39,40 @@ func (qm *QuotaManager) getDownloadQuota(key string) *DownloadQuota {
 	return value.(*DownloadQuota)
 }
 
-// TODO: Factor in excess quota
 func (qm *QuotaManager) createOrUpdateQuota(numBlocks int64, key string) {
-	dq, _ := qm.m.LoadOrStore(key, &DownloadQuota{})
-	downloadQuota := dq.(*DownloadQuota)
-
+	dqInterface, loaded := qm.m.Load(key)
+	if !loaded {
+		dq := &DownloadQuota{
+			Quota: numBlocks,
+		}
+		qm.m.Store(key, dq)
+		return
+	}
+	downloadQuota := dqInterface.(*DownloadQuota)
 	downloadQuota.Lock()
 	downloadQuota.Quota += numBlocks
 	downloadQuota.Unlock()
+
 }
 
 func (qm *QuotaManager) consumeQuota(key string, numBlocks int64) error {
-	dq := qm.getDownloadQuota(key)
-	if dq == nil {
+	dqInterface, ok := qm.m.Load(key)
+	if !ok {
 		return common.NewError("consume_quota", "no download quota")
 	}
+	dq := dqInterface.(*DownloadQuota)
 	err := dq.consumeQuota(numBlocks)
 	if err != nil {
 		return err
 	}
+	dq.Lock()
 	if dq.Quota == 0 {
 		qm.m.Delete(key)
 	}
+	dq.Unlock()
 	return nil
 }
+
 func (dq *DownloadQuota) consumeQuota(numBlocks int64) error {
 	dq.Lock()
 	defer dq.Unlock()
