@@ -65,10 +65,9 @@ type ListResult struct {
 }
 
 type DownloadResponse struct {
-	Success        bool                   `json:"success"`
-	Data           []byte                 `json:"data"`
-	AllocationID   string                 `json:"-"`
-	Path           string                 `json:"-"`
-	LatestRM       *readmarker.ReadMarker `json:"latest_rm"`
-	AvailableQuota int64                  `json:"quota"`
+	Success      bool                   `json:"success"`
+	Data         []byte                 `json:"data"`
+	AllocationID string                 `json:"-"`
+	Path         string                 `json:"-"`
+	LatestRM     *readmarker.ReadMarker `json:"latest_rm"`
 }

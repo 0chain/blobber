@@ -39,21 +39,19 @@ func (qm *QuotaManager) getDownloadQuota(key string) *DownloadQuota {
 	return value.(*DownloadQuota)
 }
 
-func (qm *QuotaManager) createOrUpdateQuota(numBlocks int64, key string) int64 {
+func (qm *QuotaManager) createOrUpdateQuota(numBlocks int64, key string) {
 	dqInterface, loaded := qm.m.Load(key)
 	if !loaded {
 		dq := &DownloadQuota{
 			Quota: numBlocks,
 		}
 		qm.m.Store(key, dq)
-		return numBlocks
+		return
 	}
 	downloadQuota := dqInterface.(*DownloadQuota)
 	downloadQuota.Lock()
 	downloadQuota.Quota += numBlocks
 	downloadQuota.Unlock()
-
-	return downloadQuota.Quota
 }
 
 func (qm *QuotaManager) consumeQuota(key string, numBlocks int64) error {

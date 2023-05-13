@@ -82,6 +82,8 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(data) //nolint:errcheck
 			}
+		} else {
+			w.WriteHeader(http.StatusOK)
 		}
 	}
 }

@@ -54,6 +54,11 @@ func (dr *DownloadRequestHeader) Parse() error {
 		return errors.Throw(common.ErrInvalidParameter, "req")
 	}
 
+	clientID := dr.Get("X-App-Client-ID")
+	if clientID != "" {
+		dr.ClientID = clientID
+	}
+
 	pathHash := dr.Get("X-Path-Hash")
 	path := dr.Get("X-Path")
 	if pathHash == "" {
