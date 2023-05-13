@@ -35,9 +35,10 @@ func (wm *WriteMarker) GetHashData() string {
 type WriteMarkerStatus int
 
 const (
-	Accepted  WriteMarkerStatus = 0
-	Committed WriteMarkerStatus = 1
-	Failed    WriteMarkerStatus = 2
+	Accepted   WriteMarkerStatus = 0
+	Committed  WriteMarkerStatus = 1
+	Failed     WriteMarkerStatus = 2
+	Rollbacked WriteMarkerStatus = 3
 )
 
 type WriteMarkerEntity struct {
@@ -169,5 +170,23 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID, startAllocationRo
 func (wm *WriteMarkerEntity) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Save(wm).Error
-	return err
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (wm *WriteMarkerEntity) SendToChan(ctx context.Context) error {
+
+	sem := GetLock(wm.WM.AllocationID)
+	if sem == nil {
+		sem = SetLock(wm.WM.AllocationID)
+	}
+	err := sem.Acquire(ctx, 1)
+	if err != nil {
+		return err
+	}
+	writeMarkerChan <- wm
+	return nil
 }

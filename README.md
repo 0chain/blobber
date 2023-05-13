@@ -13,8 +13,6 @@ This readme provides instructions on how to run blobber locally
 
 - [Building and Starting the Blobber](#building-and-starting-the-nodes) 
 
-- [Troubleshooting](#troubleshooting)
-
 - [Connect to other network](#connect-to-other-network)
 
 - [Miscellaneous](#miscellaneous) - [Cleanup](#cleanup)
@@ -29,10 +27,10 @@ This readme provides instructions on how to run blobber locally
 
 ### Required OS and Software Dependencies
 
-- Linux (Tested on Ubuntu Desktop 20.02)
-- MacOS
-- Docker([Link](https://docs.docker.com/engine/install/)
-- Docker Compose([Link](https://docs.docker.com/compose/install/))  
+ - Linux (Ubuntu Preferred) Version: 20.04 and Above
+ - Mac(Apple Silicon or Intel) Version: Big Sur and Above
+ - Windows(Requires WSL ) Version: Windows 11 or 10 version 2004 and above
+ - Docker is available for Linux, macOS and Windows platforms. Find instructions for the preferred operating system [here](https://docs.docker.com/engine/install/#supported-platforms).
 
 ### Directory Setup for Blobbers
 
@@ -64,7 +62,7 @@ Note: Run all scripts as sudo
 
 A block worker URL is a field in the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` configuration files that require the URL of blockchain network you want to connect to. For testing purposes we will connect to the beta 0chain network and replace the default URL in blobber/config/0chain_validator.yaml and 0chain_blobber.yaml with the below-mentioned URL.
 ```
-block_worker: http://beta.0chain.net/dns
+block_worker: https://demo.zus.network/dns
 ```
 
 3. Go back to the blobber directory and build blobber containers using the scripts below
@@ -84,37 +82,24 @@ To link to local gosdk so that the changes are reflected on the blobber build pl
 ```
 For Mac with Apple M1 chip use the following [guide](https://github.com/0chain/blobber/blob/staging/dev.local/README.md) to build and start blobbers.
 
-Now register a Wallet using zboxcli to perform storage operations on blobbers.Build instructions for zbox are [here](https://github.com/0chain/zboxcli#installation-guides)
+4. Now create a wallet using zwalletcli and install zboxcli to perform storage operations on blobbers.Instructions for creating wallet and installing zboxcli are available [here](https://github.com/0chain/zboxcli#installation-guides)
 
-5. Verify whether Zbox has properly build by running the following command
-```
-./zbox
-```
-
-6. To register a wallet on Zbox to be used both by the blockchain and blobbers. Use the following Zbox command
- ```
-./zbox register
-```
-Successful Response:
-```
-Wallet Registered
-```
-7. Now navigate to the .zcn folder (this is created during zbox build) 
+5. Once the wallet is created , the wallet information will be stored in wallet.json located in the .zcn folder of the Linux home directory. Now navigate to the .zcn folder (this is created during zbox build) 
 ```
 cd $HOME/.zcn/
 ```
-8. Open the wallet.json file. It should be similar to the similar to the output below:
+6. Open the wallet.json file. It should be similar to the similar to the output below:
 ```
 {"client_id":"4af719e1fdb6244159f17922382f162387bae3708250cab6bc1c20cd85fb594c",
 "client_key":"da1769bd0203b9c84dc19846ed94155b58d1ffeb3bbe35d38db5bf2fddf5a91c91b22bc7c89dd87e1f1fecbb17ef0db93517dd3886a64274997ea46824d2c119","keys":[{"public_key":"da1769bd0203b9c84dc19846ed94155b58d1ffeb3bbe35d38db5bf2fddf5a91c91b22bc7c89dd87e1f1fecbb17ef0db93517dd3886a64274997ea46824d2c1>
 "private_key":"542f6be49108f52203ce75222601397aad32e554451371581ba0eca56b093d19"}],"mnemonics":"butter whisper wheat hope duck mention bird half wedding aim good regret maximum illegal much inch immune unlock resource congress drift>
 "version":"1.0","date_created":"2021-09-09T20:22:56+05:30"}
 ```
-9. Copy the client_id value and paste it into blobbers and validators settings. The files can be found in `blobber/config` directory.
+7. Copy the client_id value and paste it into blobbers and validators settings. The files can be found in `blobber/config` directory.
   
-10. Open both the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` and edit the `delegate_wallet` value with your `client_id` value.
+8. Open both the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` and edit the `delegate_wallet` value with your `client_id` value.
 
-11 Now run the blobbers by navigating into blobber directories for Blobber1 (git/blobber/docker.local/blobber1) and run the container using
+9. Now run the blobbers by navigating into blobber directories for Blobber1 (git/blobber/docker.local/blobber1) and run the container using
 
 ```
 # For locally build images
@@ -126,13 +111,13 @@ cd $HOME/.zcn/
 ```
 **_Note: Replace the localhost form `docker.local/p0docker-compose.yml` to your public IP if you are trying to connect to another network ._**
 
-If you have trouble with `insufficient balance to pay fee` errors when starting blobbers, you can turn 
-off fees in [0chain.yaml.server_chain.smart_contract.miner](https://github.com/0chain/0chain/blob/staging/docker.local/config/0chain.yaml#L104)
-adjusting true to false.
+If you are facing `insufficient balance to pay fee` errors when starting blobbers, you can turn 
+off fees in [0chain.yaml.server_chain.smart_contract.miner](https://github.com/0chain/0chain/blob/3c38dfd0920675d86876a5b8895272cb66ded9ad/docker.local/config/0chain.yaml#LL96C3-L96C16)
+by adjusting true to false.
 
 ## Troubleshooting
 
-12. Ensure the port mapping is all correct:
+10. Ensure the port mapping is all correct:
 
 ```
 docker ps
@@ -140,7 +125,7 @@ docker ps
 ```
 This should display the container image blobber_blobber and should have the ports mapped like "0.0.0.0:5050->5050/tcp"
 
-13. Now check whether the blobber has registered to the blockchain by running the following zbox command
+11. Now check whether the blobber has registered to the blockchain by running the following zbox command
 
 ```
 ./zbox ls-blobbers
@@ -195,7 +180,7 @@ Note: When starting multiple blobbers, it could happen that blobbers are not bei
    
 Blobber registration takes some time and adding at least 5 second wait before starting the next blobber usually avoids the issue.
   
-14. Now you can create allocations on blobber and store files. 
+12. Now you can create allocations on blobber and store files. 
 
 Note: If unable to create new allocations as shown below.
 
@@ -223,11 +208,11 @@ block_worker: http://198.18.0.98:9091
 
 This works as a dns service, You need to know the above url for any network you want to connect, Just replace it in the above mentioned file.
 
-For example: If you want to connect to test network
+For example: If you want to connect to demo network
   
 ```
 
-block_worker: https://test.0chain.net/dns
+block_worker: https://demo.zus.network/dns
 
 ```
 
