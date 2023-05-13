@@ -184,7 +184,7 @@ func requestAllocation(allocID string) (sa *transaction.StorageAllocation, err e
 	}
 	sa = new(transaction.StorageAllocation)
 
-	logging.Logger.Debug("jayash B", zap.Any("b", string(b)), zap.Any("allocID", allocID), zap.Any("sa", sa))
+	logging.Logger.Info("jayash B", zap.Any("b", string(b)), zap.Any("allocID", allocID), zap.Any("sa", sa))
 	err = json.Unmarshal(b, sa)
 	return
 }

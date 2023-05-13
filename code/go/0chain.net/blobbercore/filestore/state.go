@@ -100,7 +100,7 @@ func (fs *FileStore) initMap() error {
 func (fs *FileStore) incrDecrAllocFileSizeAndNumber(allocID string, size int64, fileNumber int64) {
 	alloc := fs.getAllocation(allocID)
 	if alloc == nil {
-		logging.Logger.Debug("alloc is nil", zap.String("allocation_id", allocID))
+		logging.Logger.Info("alloc is nil", zap.String("allocation_id", allocID))
 		return
 	}
 
