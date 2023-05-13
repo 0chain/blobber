@@ -183,6 +183,8 @@ func requestAllocation(allocID string) (sa *transaction.StorageAllocation, err e
 		return
 	}
 	sa = new(transaction.StorageAllocation)
+
+	logging.Logger.Debug("jayash B", zap.Any("b", string(b)), zap.Any("allocID", allocID), zap.Any("sa", sa))
 	err = json.Unmarshal(b, sa)
 	return
 }
@@ -213,7 +215,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 	a.TotalSize = sa.Size
 	a.Finalized = sa.Finalized
 	a.FileOptions = sa.FileOptions
-	
+
 	// update terms
 	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))
 	for _, d := range sa.BlobberDetails {
