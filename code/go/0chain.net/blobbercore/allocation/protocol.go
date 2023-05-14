@@ -52,6 +52,8 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
+	updateAllocation(ctx, &Allocation{ID: allocationTx, Tx: allocationTx})
+
 	a = new(Allocation)
 	err = tx.Model(&Allocation{}).
 		Where(&Allocation{Tx: allocationTx}).
