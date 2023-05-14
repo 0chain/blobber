@@ -367,7 +367,20 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
 	start := time.Now()
 	verifyIterated := 0
+
+	logging.Logger.Info("[challenge]commit: Committing the challenge",
+		zap.String("challenge_id", cr.ChallengeID),
+		zap.Any("block_num", cr.BlockNum),
+		zap.Any("created_at", cr.CreatedAt),
+		zap.Any("challenge_completion_time", config.StorageSCConfig.ChallengeCompletionTime),
+		zap.Any("completed_time", time.Since(common.ToTime(cr.CreatedAt))),
+	)
+
 	if time.Since(common.ToTime(cr.CreatedAt)) > config.StorageSCConfig.ChallengeCompletionTime {
+		logging.Logger.Info("expiring challenge",
+			zap.Any("created_at", time.Since(common.ToTime(cr.CreatedAt))),
+			zap.Any("challenge_id", cr.ChallengeID))
+
 		cr.CancelChallenge(ctx, ErrExpiredCCT)
 		return ErrExpiredCCT
 	}
