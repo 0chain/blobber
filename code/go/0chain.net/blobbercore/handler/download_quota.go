@@ -13,7 +13,8 @@ type DownloadQuota struct {
 }
 
 type QuotaManager struct {
-	m sync.Map
+	m   map[string]*DownloadQuota
+	mux sync.RWMutex
 }
 
 var quotaManagerInstance *QuotaManager
@@ -27,44 +28,41 @@ func getQuotaManager() *QuotaManager {
 }
 
 func newQuotaManager() *QuotaManager {
-	return &QuotaManager{}
+	return &QuotaManager{
+		m: make(map[string]*DownloadQuota),
+	}
 }
 
 func (qm *QuotaManager) getDownloadQuota(key string) *DownloadQuota {
-	value, ok := qm.m.Load(key)
-	if !ok {
-		return nil
-	}
-
-	return value.(*DownloadQuota)
+	qm.mux.RLock()
+	defer qm.mux.RUnlock()
+	return qm.m[key]
 }
 
 func (qm *QuotaManager) createOrUpdateQuota(numBlocks int64, key string) {
-	dqInterface, loaded := qm.m.Load(key)
-	if !loaded {
-		dq := &DownloadQuota{
+	qm.mux.Lock()
+	defer qm.mux.Unlock()
+
+	if dq, ok := qm.m[key]; ok {
+		dq.Lock()
+		dq.Quota += numBlocks
+		dq.Unlock()
+	} else {
+		qm.m[key] = &DownloadQuota{
 			Quota: numBlocks,
 		}
-		qm.m.Store(key, dq)
-		return
 	}
-	downloadQuota := dqInterface.(*DownloadQuota)
-	downloadQuota.Lock()
-	downloadQuota.Quota += numBlocks
-	downloadQuota.Unlock()
 }
 
 func (qm *QuotaManager) consumeQuota(key string, numBlocks int64) error {
-	dqInterface, ok := qm.m.Load(key)
+	qm.mux.Lock()
+	dq, ok := qm.m[key]
+	qm.mux.Unlock()
+
 	if !ok {
 		return common.NewError("consume_quota", "no download quota")
 	}
-	dq := dqInterface.(*DownloadQuota)
-	err := dq.consumeQuota(numBlocks)
-	if err != nil {
-		return err
-	}
-	return nil
+	return dq.consumeQuota(numBlocks)
 }
 
 func (dq *DownloadQuota) consumeQuota(numBlocks int64) error {
