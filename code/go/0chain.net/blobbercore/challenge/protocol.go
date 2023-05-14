@@ -116,6 +116,7 @@ func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error)
 			zap.Time("cancellation", cancellation),
 			zap.Error(err))
 	}
+	logging.Logger.Error("[challenge]canceled", zap.String("challenge_id", cr.ChallengeID), zap.Error(errReason))
 }
 
 // LoadValidationTickets load validation tickets
@@ -482,7 +483,6 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transacti
 		if IsValueNotPresentError(err) {
 			err = ErrValNotPresent
 		}
-		logging.Logger.Error("[challenge]submit: Error while submitting challenge to BC.", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 		if err = cr.Save(ctx); err != nil {
 			return err
 		}

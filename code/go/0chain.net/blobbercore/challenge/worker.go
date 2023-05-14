@@ -150,6 +150,7 @@ func commitOnChainWorker(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			logging.Logger.Info("exiting commitOnChainWorker")
 			return
 		default:
 		}
@@ -190,6 +191,8 @@ func getBatch(batchSize int) (chall []*ChallengeEntity) {
 	challengeMapLock.RLock()
 	defer challengeMapLock.RUnlock()
 
+	logging.Logger.Info("getBatch", zap.Any("size", challengeMap.Size()))
+
 	if challengeMap.Size() == 0 {
 		return
 	}
@@ -200,10 +203,6 @@ func getBatch(batchSize int) (chall []*ChallengeEntity) {
 			break
 		}
 		ticket := it.Value().(*ChallengeEntity)
-		if ticket == nil {
-			logging.Logger.Error("ticket is nil")
-			continue
-		}
 		if ticket.Status != Processed && len(ticket.ValidationTickets) == 0 {
 			break
 		}
