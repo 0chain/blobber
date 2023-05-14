@@ -115,6 +115,16 @@ func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error)
 		logging.Logger.Error("[challenge]cancel:db ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 	}
 
+	// get the data and log it to verify if the update was successful
+	var challenge ChallengeEntity
+	if err := db.Model(&ChallengeEntity{}).
+		Where("challenge_id = ?", cr.ChallengeID).
+		First(&challenge).Error; err != nil {
+		logging.Logger.Error("[challenge]cancel:db ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+	} else {
+		logging.Logger.Info("[challenge]cancel:db ", zap.String("challenge_id", cr.ChallengeID), zap.Any("challenge", challenge))
+	}
+
 	if err := UpdateChallengeTimingCancellation(cr.ChallengeID, common.Timestamp(cancellation.Unix()), errReason); err != nil {
 		logging.Logger.Error("[challengetiming]cancellation",
 			zap.Any("challenge_id", cr.ChallengeID),
