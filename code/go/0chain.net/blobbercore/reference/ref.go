@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -569,12 +568,11 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 				err = tx.Save(r).Error
 				return err
 			}
-			refUpdates := map[string]any{
-				"deleted_at":   gorm.DeletedAt{Time: time.Now(), Valid: true},
-				"is_precommit": false,
-				"updated_at":   r.UpdatedAt,
+			err = tx.Exec("UPDATE reference_objects SET is_precommit=? WHERE id=?", false, r.ID).Error
+			if err != nil && err != gorm.ErrRecordNotFound {
+				return err
 			}
-			err = tx.Model(r).Where("id=?", r.ID).Updates(refUpdates).Error
+			err = tx.Delete(&Ref{}, "id=?", r.ID).Error
 			if err != nil && err != gorm.ErrRecordNotFound {
 				return err
 			}
