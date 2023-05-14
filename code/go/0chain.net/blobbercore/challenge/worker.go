@@ -138,7 +138,7 @@ func commitOnChainWorker(ctx context.Context) {
 							logging.Logger.Error("verifyChallengeTransaction", zap.Any("err", r))
 						}
 					}()
-					logging.Logger.Info("submitting_challenge_start", zap.Any("challenge_id", challenge.ChallengeID))
+					logging.Logger.Info("submitting_challenge_start", zap.Any("challenge_id", challenge.ChallengeID), zap.Any("createdAt", challenge.CreatedAt), zap.Any("nonce", txn.GetTransaction().GetTransactionNonce()))
 					err := challenge.VerifyChallengeTransaction(txn)
 					logging.Logger.Info("submitting_challenge_over", zap.Any("challenge_id", challenge.ChallengeID), zap.Any("err", err))
 					if err == nil || err != ErrValNotPresent {

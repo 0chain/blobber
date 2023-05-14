@@ -486,7 +486,7 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transacti
 		_ = cr.Save(ctx)
 		return err
 	}
-	logging.Logger.Info("Challenge committed and accepted", zap.String("txn.hash", t.Hash), zap.String("txn.output", t.TransactionOutput), zap.String("challenge_id", cr.ChallengeID))
+	logging.Logger.Info("Success response from BC for challenge response transaction", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
 	cr.Status = Committed
 	cr.StatusMessage = t.TransactionOutput
 	cr.CommitTxnID = t.Hash
@@ -506,7 +506,7 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transacti
 	if cr.RefID != 0 {
 		FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
 	}
-
+	logging.Logger.Info("Challenge committed and accepted", zap.String("txn.hash", t.Hash), zap.String("txn.output", t.TransactionOutput), zap.String("challenge_id", cr.ChallengeID))
 	return nil
 }
 
