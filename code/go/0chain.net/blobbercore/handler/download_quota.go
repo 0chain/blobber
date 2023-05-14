@@ -64,11 +64,6 @@ func (qm *QuotaManager) consumeQuota(key string, numBlocks int64) error {
 	if err != nil {
 		return err
 	}
-	dq.Lock()
-	if dq.Quota == 0 {
-		qm.m.Delete(key)
-	}
-	dq.Unlock()
 	return nil
 }
 
