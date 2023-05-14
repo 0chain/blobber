@@ -74,6 +74,11 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 		return          // found in DB
 	}
 
+	//updateAllocation(ctx, &Allocation{
+	//	Tx: allocationTx,
+	//	ID: allocationTx,
+	//})
+
 	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
 	if err != nil {
 		return nil, common.NewError("invalid_allocation",
