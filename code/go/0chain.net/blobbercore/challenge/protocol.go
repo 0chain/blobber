@@ -487,6 +487,12 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transacti
 			err = ErrValNotPresent
 		}
 		_ = cr.Save(ctx)
+		if commitErr := tx.Commit().Error; commitErr != nil {
+			logging.Logger.Error("[challenge]verify(Commit): ",
+				zap.Any("challenge_id", cr.ChallengeID),
+				zap.Error(commitErr))
+			tx.Rollback()
+		}
 		return err
 	}
 	logging.Logger.Info("Success response from BC for challenge response transaction", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
@@ -510,7 +516,7 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transacti
 		FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
 	}
 	if err := tx.Commit().Error; err != nil {
-		logging.Logger.Error("[challenge]validate(Commit): ",
+		logging.Logger.Error("[challenge]verify(Commit): ",
 			zap.Any("challenge_id", cr.ChallengeID),
 			zap.Error(err))
 		tx.Rollback()
