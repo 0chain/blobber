@@ -572,6 +572,7 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 			refUpdates := map[string]any{
 				"deleted_at":   gorm.DeletedAt{Time: time.Now(), Valid: true},
 				"is_precommit": false,
+				"updated_at":   r.UpdatedAt,
 			}
 			err = tx.Model(&Ref{}).Where("id=?", r.ID).Updates(refUpdates).Error
 			if err != nil && err != gorm.ErrRecordNotFound {
