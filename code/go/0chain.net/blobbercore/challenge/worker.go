@@ -129,7 +129,8 @@ func commitOnChainWorker(ctx context.Context) {
 		logging.Logger.Info("committing_challenge_tickets", zap.Any("num", len(challenges)), zap.Any("challenges", challenges))
 
 		for _, challenge := range challenges {
-			txn, _ := challenge.getCommitTransaction()
+			chall := challenge
+			txn, _ := chall.getCommitTransaction()
 			if txn != nil {
 				wg.Add(1)
 				go func(challenge *ChallengeEntity) {
@@ -145,7 +146,7 @@ func commitOnChainWorker(ctx context.Context) {
 					if err == nil || err != ErrValNotPresent {
 						deleteChallenge(int64(challenge.CreatedAt))
 					}
-				}(&challenge)
+				}(&chall)
 			}
 		}
 
