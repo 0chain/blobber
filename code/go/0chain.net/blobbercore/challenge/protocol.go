@@ -101,8 +101,8 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 
 func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error) {
 	cancellation := time.Now()
-	deleteChallenge(int64(cr.CreatedAt))
 	db := datastore.GetStore().GetDB()
+	deleteChallenge(int64(cr.CreatedAt))
 	cr.Status = Cancelled
 	cr.StatusMessage = errReason.Error()
 	cr.UpdatedAt = cancellation.UTC()
@@ -483,9 +483,7 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transacti
 		if IsValueNotPresentError(err) {
 			err = ErrValNotPresent
 		}
-		if err = cr.Save(ctx); err != nil {
-			return err
-		}
+		_ = cr.Save(ctx)
 		return err
 	}
 	logging.Logger.Info("Challenge committed and accepted", zap.String("txn.hash", t.Hash), zap.String("txn.output", t.TransactionOutput), zap.String("challenge_id", cr.ChallengeID))

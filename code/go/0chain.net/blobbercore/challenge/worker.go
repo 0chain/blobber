@@ -2,16 +2,12 @@ package challenge
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/emirpasic/gods/maps/treemap"
-	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/zap"
 	"golang.org/x/sync/semaphore"
 )
@@ -37,8 +33,9 @@ func Int64Comparator(a, b interface{}) int {
 
 var (
 	toProcessChallenge = make(chan *ChallengeEntity, 100)
-	challengeMap       = treemap.NewWith(Int64Comparator)
-	challengeMapLock   = sync.RWMutex{}
+	// toSubmitChannel    = make(chan *ChallengeEntity, 100)
+	challengeMap     = treemap.NewWith(Int64Comparator)
+	challengeMapLock = sync.RWMutex{}
 )
 
 const batchSize = 5
@@ -85,6 +82,7 @@ func challengeProcessor(ctx context.Context) {
 			return
 
 		case it := <-toProcessChallenge:
+			it.createChallenge()
 			err := sem.Acquire(ctx, 1)
 			if err != nil {
 				logging.Logger.Error("failed to acquire semaphore", zap.Error(err))
@@ -99,43 +97,9 @@ func challengeProcessor(ctx context.Context) {
 }
 
 func processChallenge(ctx context.Context, it *ChallengeEntity) {
-	if exist := isProcessed(int64(it.CreatedAt), it.ChallengeID); exist {
-		// already processed
-		return
-	}
 
 	logging.Logger.Info("processing_challenge",
 		zap.String("challenge_id", it.ChallengeID))
-
-	now := time.Now()
-	createdAt := common.ToTime(it.CreatedAt)
-	if now.Sub(createdAt) > config.StorageSCConfig.ChallengeCompletionTime {
-		c := &ChallengeEntity{ChallengeID: it.ChallengeID}
-		c.CancelChallenge(ctx, ErrExpiredCCT)
-
-		logging.Logger.Error("[challenge]timeout",
-			zap.Any("challenge_id", it.ChallengeID),
-			zap.String("status", it.Status.String()),
-			zap.Time("created", createdAt),
-			zap.Time("start", now),
-			zap.String("delay", now.Sub(createdAt).String()),
-			zap.String("cct", config.StorageSCConfig.ChallengeCompletionTime.String()))
-		return
-	}
-	createChallenge(it)
-	if err := CreateChallengeTiming(it.ChallengeID, it.CreatedAt); err != nil {
-		logging.Logger.Error("[challengetiming]add: ",
-			zap.String("challenge_id", it.ChallengeID),
-			zap.Time("created", createdAt),
-			zap.Error(err))
-	}
-	logging.Logger.Info("[challenge]next:"+strings.ToLower(it.Status.String()),
-		zap.Any("challenge_id", it.ChallengeID),
-		zap.String("status", it.Status.String()),
-		zap.Time("created", createdAt),
-		zap.Time("start", now),
-		zap.String("delay", now.Sub(createdAt).String()),
-		zap.String("cct", config.StorageSCConfig.ChallengeCompletionTime.String()))
 
 	validateOnValidators(it)
 }
@@ -146,7 +110,7 @@ func commitOnChainWorker(ctx context.Context) {
 			logging.Logger.Error("[commitWorker]challenge", zap.Any("err", r))
 		}
 	}()
-	swg := sizedwaitgroup.New(5)
+	wg := sync.WaitGroup{}
 	for {
 		select {
 		case <-ctx.Done():
@@ -155,7 +119,7 @@ func commitOnChainWorker(ctx context.Context) {
 		default:
 		}
 		// Batch size to commit on chain
-
+		logging.Logger.Info("get_commit_batch")
 		challenges := getBatch(batchSize)
 		if len(challenges) == 0 {
 			time.Sleep(2 * time.Second)
@@ -167,23 +131,25 @@ func commitOnChainWorker(ctx context.Context) {
 		for _, challenge := range challenges {
 			txn, _ := challenge.getCommitTransaction()
 			if txn != nil {
-				swg.Add()
+				wg.Add(1)
 				go func(challenge *ChallengeEntity) {
 					defer func() {
 						if r := recover(); r != nil {
 							logging.Logger.Error("verifyChallengeTransaction", zap.Any("err", r))
 						}
 					}()
+					logging.Logger.Info("submitting_challenge_start", zap.Any("challenge_id", challenge.ChallengeID))
 					err := challenge.VerifyChallengeTransaction(txn)
+					logging.Logger.Info("submitting_challenge_over", zap.Any("challenge_id", challenge.ChallengeID), zap.Any("err", err))
 					if err == nil || err != ErrValNotPresent {
 						deleteChallenge(int64(challenge.CreatedAt))
 					}
-					swg.Done()
+					wg.Done()
 				}(challenge)
 			}
 		}
 
-		swg.Wait()
+		wg.Wait()
 	}
 }
 
@@ -211,24 +177,7 @@ func getBatch(batchSize int) (chall []*ChallengeEntity) {
 	return
 }
 
-func isProcessed(key int64, id string) bool {
-	challengeMapLock.RLock()
-	_, ok := challengeMap.Get(key)
-	challengeMapLock.RUnlock()
-	if ok {
-		return ok
-	}
-	db := datastore.GetStore().GetDB()
-	var count int64
-	db.Model(&ChallengeEntity{}).Where("challenge_id=?", id).Count(&count)
-	return count > 0
-}
-
-func createChallenge(it *ChallengeEntity) {
-	if it == nil {
-		logging.Logger.Error("create_nil_challenge")
-		return
-	}
+func (it *ChallengeEntity) createChallenge() {
 	logging.Logger.Info("create_challenge", zap.Int64("created_at", int64(it.CreatedAt)))
 	challengeMapLock.Lock()
 	challengeMap.Put(int64(it.CreatedAt), it)
