@@ -62,7 +62,14 @@ func (qm *QuotaManager) consumeQuota(key string, numBlocks int64) error {
 	if !ok {
 		return common.NewError("consume_quota", "no download quota")
 	}
-	return dq.consumeQuota(numBlocks)
+	err := dq.consumeQuota(numBlocks)
+	if err != nil {
+		return err
+	}
+	if dq.Quota == 0 {
+		delete(qm.m, key)
+	}
+	return nil
 }
 
 func (dq *DownloadQuota) consumeQuota(numBlocks int64) error {
