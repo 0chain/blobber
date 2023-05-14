@@ -134,6 +134,7 @@ func commitOnChainWorker(ctx context.Context) {
 				wg.Add(1)
 				go func(challenge *ChallengeEntity) {
 					defer func() {
+						wg.Done()
 						if r := recover(); r != nil {
 							logging.Logger.Error("verifyChallengeTransaction", zap.Any("err", r))
 						}
@@ -144,8 +145,7 @@ func commitOnChainWorker(ctx context.Context) {
 					if err == nil || err != ErrValNotPresent {
 						deleteChallenge(int64(challenge.CreatedAt))
 					}
-					wg.Done()
-				}(challenge)
+				}(&challenge)
 			}
 		}
 
@@ -153,11 +153,9 @@ func commitOnChainWorker(ctx context.Context) {
 	}
 }
 
-func getBatch(batchSize int) (chall []*ChallengeEntity) {
+func getBatch(batchSize int) (chall []ChallengeEntity) {
 	challengeMapLock.RLock()
 	defer challengeMapLock.RUnlock()
-
-	logging.Logger.Info("getBatch", zap.Any("size", challengeMap.Size()))
 
 	if challengeMap.Size() == 0 {
 		return
@@ -169,10 +167,11 @@ func getBatch(batchSize int) (chall []*ChallengeEntity) {
 			break
 		}
 		ticket := it.Value().(*ChallengeEntity)
-		if ticket.Status != Processed && len(ticket.ValidationTickets) == 0 {
+		if ticket.Status != Processed {
 			break
 		}
-		chall = append(chall, ticket)
+		logging.Logger.Info("get_batch_info", zap.Any("challenge_id", ticket.ChallengeID), zap.Any("tickets", ticket.ValidationTickets))
+		chall = append(chall, *ticket)
 	}
 	return
 }

@@ -425,6 +425,9 @@ func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool)
 func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transaction) error {
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	defer ctx.Done()
+
+	tx := datastore.GetStore().GetTransaction(ctx)
+
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
 			logging.Logger.Info("[challenge]commit: Verifying the transaction : " + lastTxn)
@@ -505,6 +508,12 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transacti
 
 	if cr.RefID != 0 {
 		FileChallenged(ctx, cr.RefID, cr.Result, cr.CommitTxnID)
+	}
+	if err := tx.Commit().Error; err != nil {
+		logging.Logger.Error("[challenge]validate(Commit): ",
+			zap.Any("challenge_id", cr.ChallengeID),
+			zap.Error(err))
+		tx.Rollback()
 	}
 	logging.Logger.Info("Challenge committed and accepted", zap.String("txn.hash", t.Hash), zap.String("txn.output", t.TransactionOutput), zap.String("challenge_id", cr.ChallengeID))
 	return nil
