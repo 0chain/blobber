@@ -102,6 +102,8 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error) {
 	cancellation := time.Now()
 
+	logging.Logger.Debug("Cancelling challenge", zap.String("challenge_id", cr.ChallengeID), zap.Error(errReason))
+
 	db := datastore.GetStore().GetDB()
 	if err := db.Model(&ChallengeEntity{}).
 		Where("challenge_id = ?", cr.ChallengeID).
