@@ -117,8 +117,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 			}
 			foundBlobber = true
 			a.AllocationRoot = ""
-			a.BlobberSize = (sa.Size + int64(len(sa.BlobberDetails)-1)) /
-				int64(len(sa.BlobberDetails))
+			a.BlobberSize = sa.Size / sa.DataShards
 			a.BlobberSizeUsed = 0
 			break
 		}
