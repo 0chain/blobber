@@ -571,7 +571,7 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 			}
 
 			utc, _ := time.LoadLocation("Local")
-			err = db.Exec("UPDATE reference_objects SET deleted_at=?,is_precommit=? WHERE id = ? AND deleted_at=NULL", time.Now().In(utc), false, 5).Error
+			err = db.Exec("UPDATE reference_objects SET deleted_at=?,is_precommit=? WHERE id = ? AND deleted_at=NULL", time.Now().In(utc), false, r.ID).Error
 			if err != nil && err != gorm.ErrRecordNotFound {
 				return err
 			}
