@@ -191,7 +191,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, common.NewErrorf("download_file", "path is not a file: %v", err)
 	}
 
-	key := dr.ClientID + ":" + alloc.ID
+	key := clientID + ":" + alloc.ID
 	quotaManager := getQuotaManager()
 
 	isOwner := clientID == alloc.OwnerID
@@ -288,16 +288,16 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
 		}
 
-		quotaManager.createOrUpdateQuota(dr.ReadMarker.SessionRC, key)
+		quotaManager.createOrUpdateQuota(dr.ReadMarker.SessionRC, dr.ConnectionID)
 
 		if dr.NumBlocks == 0 {
 			return nil, nil
 		}
 	}
 
-	dq := quotaManager.getDownloadQuota(key)
+	dq := quotaManager.getDownloadQuota(dr.ConnectionID)
 	if dq == nil {
-		return nil, common.NewError("download_file", fmt.Sprintf("no download quota for %v", key))
+		return nil, common.NewError("download_file", fmt.Sprintf("no download quota for %v", dr.ConnectionID))
 	}
 
 	if dq.Quota < dr.NumBlocks {
@@ -354,7 +354,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, err
 	}
 
-	err = quotaManager.consumeQuota(key, dr.NumBlocks)
+	err = quotaManager.consumeQuota(dr.ConnectionID, dr.NumBlocks)
 	if err != nil {
 		return nil, common.NewError("download_file", err.Error())
 	}

@@ -25,6 +25,7 @@ type DownloadRequestHeader struct {
 	VerifyDownload bool
 	DownloadMode   string
 	SubmitRM       bool
+	ConnectionID   string
 }
 
 func FromDownloadRequest(allocationID string, req *http.Request) (*DownloadRequestHeader, error) {
@@ -59,6 +60,11 @@ func (dr *DownloadRequestHeader) Parse() error {
 		dr.ClientID = clientID
 	}
 
+	connectionID := dr.Get("X-Connection-ID")
+	if connectionID != "" {
+		dr.ConnectionID = connectionID
+	}
+
 	pathHash := dr.Get("X-Path-Hash")
 	path := dr.Get("X-Path")
 	if pathHash == "" {
@@ -77,8 +83,8 @@ func (dr *DownloadRequestHeader) Parse() error {
 	}
 	dr.BlockNum = blockNum
 
-	numBlocks := dr.GetInt64("X-Num-Blocks", 1)
-	if numBlocks <= 0 {
+	numBlocks := dr.GetInt64("X-Num-Blocks", 0)
+	if numBlocks < 0 {
 		return errors.Throw(common.ErrInvalidParameter, "X-Num-Blocks")
 	}
 	dr.NumBlocks = numBlocks
