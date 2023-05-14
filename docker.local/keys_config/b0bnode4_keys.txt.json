@@ -1,0 +1,11 @@
+{
+  "client_id": "2a4d5a5c6c0976873f426128d2ff23a060ee715bccf0fd3ca5e987d57f25b78e",
+  "client_key": "1a97fb9074d9b46d99104bef4beebb56d1a3c47b14f7f87399219a32c2ea7609deaef7d63b33f7e7498df8e39efdb69e93f7b14266be626abe34ea4c5f869c19",
+  "keys": [
+    {
+      "public_key": "1a97fb9074d9b46d99104bef4beebb56d1a3c47b14f7f87399219a32c2ea7609deaef7d63b33f7e7498df8e39efdb69e93f7b14266be626abe34ea4c5f869c19",
+      "private_key": "81f34514f462e6348e79c9c37c150ebeb63b080f682dba8173115582540e3922"
+    }
+  ],
+  "version": "1.0"
+}
