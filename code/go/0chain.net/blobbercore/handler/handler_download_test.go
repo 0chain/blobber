@@ -579,7 +579,7 @@ func TestHandlers_Download(t *testing.T) {
 					WillReturnError(gorm.ErrRecordNotFound)
 			},
 			wantCode: http.StatusBadRequest,
-			wantBody: "{\"error\":\"client does not have permission to download the file. share does not exist\"}\n\n",
+			wantBody: "{\"code\":\"invalid_share\",\"error\":\"invalid_share: client does not have permission to download the file. share does not exist\"}\n\n",
 		},
 		{
 			name: "DownloadFile_Encrypted_Permission_Allowed_shared_File",
@@ -1125,7 +1125,7 @@ func TestHandlers_Download(t *testing.T) {
 
 			},
 			wantCode: http.StatusBadRequest,
-			wantBody: "{\"code\":\"download_file\",\"error\":\"download_file: cannot verify auth ticket: invalid_parameters: Auth ticket is not valid for the resource being requested\"}\n\n",
+			wantBody: "{\"code\":\"invalid_authticket\",\"error\":\"invalid_authticket: cannot verify auth ticket: invalid_parameters: Auth ticket is not valid for the resource being requested\"}\n\n",
 		},
 	}
 

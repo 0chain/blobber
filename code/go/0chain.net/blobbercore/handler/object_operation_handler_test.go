@@ -390,7 +390,7 @@ func TestDownloadFile(t *testing.T) {
 			},
 			want: want{
 				err:    true,
-				errMsg: "download_file: pre-redeeming read marker: read_pre_redeem: not enough tokens in client's read pools associated with the allocation->blobber",
+				errMsg: "not_enough_tokens: pre-redeeming read marker: read_pre_redeem: not enough tokens in client's read pools associated with the allocation->blobber",
 			},
 		},
 		{
@@ -427,7 +427,7 @@ func TestDownloadFile(t *testing.T) {
 			},
 			want: want{
 				err:    true,
-				errMsg: "client does not have permission to download the file. share revoked",
+				errMsg: "invalid_share: client does not have permission to download the file. share revoked",
 			},
 		},
 		{
@@ -464,7 +464,7 @@ func TestDownloadFile(t *testing.T) {
 			},
 			want: want{
 				err:    true,
-				errMsg: "invalid_client: authticket is required",
+				errMsg: "invalid_authticket: authticket is required",
 			},
 		},
 	}
