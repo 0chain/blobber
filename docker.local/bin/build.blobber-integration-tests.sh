@@ -17,8 +17,8 @@ do
     esac
 done
 
-docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/IntegrationTestsValidatorDockerfile . -t validator --network host
-docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/IntegrationTestsBlobberDockerfile . -t blobber --network host
+docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/IntegrationTestsValidator.Dockerfile . -t validator --network host
+docker $cmd --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/IntegrationTestsBlobber.Dockerfile . -t blobber --network host
 
 for i in $(seq 1 6);
 do
