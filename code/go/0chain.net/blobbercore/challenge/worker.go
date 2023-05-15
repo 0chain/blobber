@@ -121,7 +121,6 @@ func commitOnChainWorker(ctx context.Context) {
 		default:
 		}
 		// Batch size to commit on chain
-		logging.Logger.Info("get_commit_batch")
 		challenges := getBatch(batchSize)
 		if len(challenges) == 0 {
 			time.Sleep(2 * time.Second)
@@ -142,9 +141,7 @@ func commitOnChainWorker(ctx context.Context) {
 							logging.Logger.Error("verifyChallengeTransaction", zap.Any("err", r))
 						}
 					}()
-					logging.Logger.Info("submitting_challenge_start", zap.Any("challenge_id", challenge.ChallengeID), zap.Any("createdAt", challenge.CreatedAt), zap.Any("nonce", txn.GetTransaction().GetTransactionNonce()))
 					err := challenge.VerifyChallengeTransaction(txn)
-					logging.Logger.Info("submitting_challenge_over", zap.Any("challenge_id", challenge.ChallengeID), zap.Any("err", err))
 					if err == nil || err != ErrEntityNotFound {
 						deleteChallenge(int64(challenge.CreatedAt))
 					}
@@ -173,7 +170,6 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 		if ticket.Status != Processed {
 			break
 		}
-		logging.Logger.Info("get_batch_info", zap.Any("challenge_id", ticket.ChallengeID), zap.Any("tickets", ticket.ValidationTickets))
 		chall = append(chall, *ticket)
 	}
 	return
@@ -185,7 +181,6 @@ func (it *ChallengeEntity) createChallenge() bool {
 		challengeMapLock.Unlock()
 		return false
 	}
-	logging.Logger.Info("create_challenge", zap.Int64("created_at", int64(it.CreatedAt)))
 	challengeMap.Put(int64(it.CreatedAt), it)
 	challengeMapLock.Unlock()
 	return true
