@@ -26,10 +26,9 @@ func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, err
 func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Model(&Ref{}).Select("id", "allocation_id", "type", "name", "path",
-		"parent_path", "size", "hash", "file_meta_hash", "path_hash", "validation_root", "fixed_merkle_root",
-		"actual_file_size", "actual_file_hash", "chunk_size",
-		"lookup_hash", "thumbnail_hash", "allocation_root", "level", "created_at", "updated_at")
+	db = db.Model(&Ref{}).Select("id", "allocation_id", "type", "name", "path", "parent_path", "size", "hash", "file_meta_hash",
+		"path_hash", "validation_root", "fixed_merkle_root", "actual_file_size", "actual_file_hash", "chunk_size",
+		"lookup_hash", "thumbnail_hash", "allocation_root", "level", "created_at", "updated_at", "file_id")
 
 	pathsAdded := make(map[string]bool)
 	var shouldOr bool
@@ -183,10 +182,10 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 	return &refs[0], nil
 }
 
-//This function retrieves reference_objects tables rows with pagination. Check for issue https://github.com/0chain/gosdk/issues/117
-//Might need to consider covering index for efficient search https://blog.crunchydata.com/blog/why-covering-indexes-are-incredibly-helpful
-//To retrieve refs efficiently form pagination index is created in postgresql on path column so it can be used to paginate refs
-//very easily and effectively; Same case for offsetDate.
+// This function retrieves reference_objects tables rows with pagination. Check for issue https://github.com/0chain/gosdk/issues/117
+// Might need to consider covering index for efficient search https://blog.crunchydata.com/blog/why-covering-indexes-are-incredibly-helpful
+// To retrieve refs efficiently form pagination index is created in postgresql on path column so it can be used to paginate refs
+// very easily and effectively; Same case for offsetDate.
 func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, level, pageLimit int) (refs *[]PaginatedRef, totalPages int, newOffsetPath string, err error) {
 	var totalRows int64
 	var pRefs []PaginatedRef
@@ -240,7 +239,7 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 	return
 }
 
-//Retrieves updated refs compared to some update_at value. Useful to localCache
+// Retrieves updated refs compared to some update_at value. Useful to localCache
 func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type,
 	updatedDate, offsetDate string, level, pageLimit int, dateLayOut string) (
 
