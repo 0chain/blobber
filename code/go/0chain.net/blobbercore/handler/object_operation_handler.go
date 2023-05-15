@@ -607,7 +607,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	connectionObj.DeleteChanges(ctx)
 
 	db.Model(connectionObj).Updates(allocation.AllocationChangeCollector{Status: allocation.CommittedConnection})
-
+	reference.GetAllRefs()
 	result.AllocationRoot = allocationObj.AllocationRoot
 	result.WriteMarker = &writeMarker
 	result.Success = true
@@ -1354,7 +1354,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	}
 
 	elapsedCommitRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM - elapsedWritePreRedeem
-
+	reference.GetAllRefs()
 	result.AllocationRoot = allocationObj.AllocationRoot
 	result.WriteMarker = &writeMarker
 	result.Success = true
