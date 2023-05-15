@@ -76,11 +76,15 @@ func syncOpenChallenges(ctx context.Context) {
 			logging.Logger.Error("[challenge]json: ", zap.String("resp", string(retBytes)), zap.Error(err))
 			break
 		}
+		sort.Slice(challenges.Challenges, func(i, j int) bool {
+			return challenges.Challenges[i].CreatedAt < challenges.Challenges[j].CreatedAt
+		})
 		for _, c := range challenges.Challenges {
 			challengeIDs = append(challengeIDs, c.ChallengeID)
 			if c.CreatedAt > common.Timestamp(lastChallengeTimestamp) {
 				lastChallengeTimestamp = int(c.CreatedAt)
 			}
+			toProcessChallenge <- c
 		}
 		logging.Logger.Info("challenges_from_chain",
 			zap.Int("challenges", len(challenges.Challenges)),
@@ -90,7 +94,6 @@ func syncOpenChallenges(ctx context.Context) {
 		if len(challenges.Challenges) == 0 {
 			break
 		}
-		allOpenChallenges = append(allOpenChallenges, challenges.Challenges...)
 		offset += incrOffset
 		params["offset"] = strconv.Itoa(offset)
 	}
@@ -103,11 +106,8 @@ func syncOpenChallenges(ctx context.Context) {
 		return
 	}
 
-	saved := saveNewChallenges(ctx, allOpenChallenges)
-
 	logging.Logger.Info("[challenge]elapsed:pull",
 		zap.Int("count", len(allOpenChallenges)),
-		zap.Int("saved", saved),
 		zap.String("download", downloadElapsed.String()),
 		zap.String("json", jsonElapsed.String()),
 		zap.String("db", time.Since(dbTimeStart).String()),
@@ -188,6 +188,12 @@ func validateOnValidators(c *ChallengeEntity) {
 	defer ctx.Done()
 
 	tx := datastore.GetStore().GetTransaction(ctx)
+
+	if err := CreateChallengeTiming(c.ChallengeID, c.CreatedAt); err != nil {
+		logging.Logger.Error("[challengetiming]add: ",
+			zap.String("challenge_id", c.ChallengeID),
+			zap.Error(err))
+	}
 
 	createdTime := common.ToTime(c.CreatedAt)
 	logging.Logger.Info("[challenge]validate: ",
@@ -307,7 +313,21 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CHALLENGE_RESPONSE, sn, 0)
 	if err != nil {
 		logging.Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
+		c.CancelChallenge(ctx, err)
+		if err := tx.Commit().Error; err != nil {
+			logging.Logger.Error("[challenge]verify(Commit): ",
+				zap.Any("challenge_id", c.ChallengeID),
+				zap.Error(err))
+			tx.Rollback()
+		}
 		return nil, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		logging.Logger.Error("[challenge]verify(Commit): ",
+			zap.Any("challenge_id", c.ChallengeID),
+			zap.Error(err))
+		tx.Rollback()
 	}
 
 	return txn, nil

@@ -103,7 +103,7 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 
 func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error) {
 	cancellation := time.Now()
-	db := datastore.GetStore().GetDB()
+	db := datastore.GetStore().GetTransaction(ctx)
 	deleteChallenge(int64(cr.CreatedAt))
 	cr.Status = Cancelled
 	cr.StatusMessage = errReason.Error()

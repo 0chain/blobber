@@ -82,7 +82,9 @@ func challengeProcessor(ctx context.Context) {
 			return
 
 		case it := <-toProcessChallenge:
-			it.createChallenge()
+			if ok := it.createChallenge(); !ok {
+				continue
+			}
 			err := sem.Acquire(ctx, 1)
 			if err != nil {
 				logging.Logger.Error("failed to acquire semaphore", zap.Error(err))
@@ -177,11 +179,16 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 	return
 }
 
-func (it *ChallengeEntity) createChallenge() {
-	logging.Logger.Info("create_challenge", zap.Int64("created_at", int64(it.CreatedAt)))
+func (it *ChallengeEntity) createChallenge() bool {
 	challengeMapLock.Lock()
+	if _, ok := challengeMap.Get(int64(it.CreatedAt)); ok {
+		challengeMapLock.Unlock()
+		return false
+	}
+	logging.Logger.Info("create_challenge", zap.Int64("created_at", int64(it.CreatedAt)))
 	challengeMap.Put(int64(it.CreatedAt), it)
 	challengeMapLock.Unlock()
+	return true
 }
 
 func deleteChallenge(key int64) {
