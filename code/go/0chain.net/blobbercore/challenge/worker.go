@@ -33,9 +33,8 @@ func Int64Comparator(a, b interface{}) int {
 
 var (
 	toProcessChallenge = make(chan *ChallengeEntity, 100)
-	// toSubmitChannel    = make(chan *ChallengeEntity, 100)
-	challengeMap     = treemap.NewWith(Int64Comparator)
-	challengeMapLock = sync.RWMutex{}
+	challengeMap       = treemap.NewWith(Int64Comparator)
+	challengeMapLock   = sync.RWMutex{}
 )
 
 const batchSize = 5
@@ -148,7 +147,6 @@ func commitOnChainWorker(ctx context.Context) {
 				}(&chall)
 			}
 		}
-
 		wg.Wait()
 	}
 }

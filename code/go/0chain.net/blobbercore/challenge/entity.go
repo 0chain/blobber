@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -141,11 +138,6 @@ func unMarshalField(stringObj datatypes.JSON, dest interface{}) error {
 }
 
 func (cr *ChallengeEntity) Save(ctx context.Context) error {
-	defer func() {
-		if r := recover(); r != nil {
-			logging.Logger.Error("saveChallenge", zap.Any("err", r))
-		}
-	}()
 	db := datastore.GetStore().GetTransaction(ctx)
 	return cr.SaveWith(db)
 }
