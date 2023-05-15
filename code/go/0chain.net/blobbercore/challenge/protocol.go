@@ -29,6 +29,7 @@ import (
 
 const VALIDATOR_URL = "/v1/storage/challenge/new"
 const ValueNotPresent = "value not present"
+const EntityNotFound = "entity not found"
 
 var (
 	ErrNoValidator          = errors.New("no validators assigned to the challenge")
@@ -36,6 +37,7 @@ var (
 	ErrInvalidObjectPath    = errors.New("invalid_object_path: Object path was not for a file")
 	ErrExpiredCCT           = errors.New("expired challenge completion time")
 	ErrValNotPresent        = errors.New("chain responded: " + ValueNotPresent)
+	ErrEntityNotFound       = errors.New("chain responded: " + EntityNotFound)
 )
 
 type ChallengeResponse struct {
@@ -452,7 +454,12 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transacti
 						zap.Time("txn_verified", txnVerification),
 						zap.Error(err))
 				}
-
+				if err := tx.Commit().Error; err != nil {
+					logging.Logger.Error("[challenge]verify(Commit): ",
+						zap.Any("challenge_id", cr.ChallengeID),
+						zap.Error(err))
+					tx.Rollback()
+				}
 				return nil
 			}
 			logging.Logger.Error("[challenge]trans: Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
@@ -483,8 +490,8 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transacti
 			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
 		}
 
-		if IsValueNotPresentError(err) {
-			err = ErrValNotPresent
+		if IsEntityNotFoundError(err) {
+			err = ErrEntityNotFound
 		}
 		_ = cr.Save(ctx)
 		if commitErr := tx.Commit().Error; commitErr != nil {
@@ -527,4 +534,8 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transacti
 
 func IsValueNotPresentError(err error) bool {
 	return strings.Contains(err.Error(), ValueNotPresent)
+}
+
+func IsEntityNotFoundError(err error) bool {
+	return strings.Contains(err.Error(), EntityNotFound)
 }

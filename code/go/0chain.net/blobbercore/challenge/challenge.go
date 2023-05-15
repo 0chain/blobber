@@ -249,7 +249,7 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	defer ctx.Done()
 
-	// tx := datastore.GetStore().GetTransaction(ctx)
+	tx := datastore.GetStore().GetTransaction(ctx)
 
 	createdTime := common.ToTime(c.CreatedAt)
 	logging.Logger.Info("[challenge]commit",
@@ -274,6 +274,12 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 
 	if time.Since(common.ToTime(c.CreatedAt)) > config.StorageSCConfig.ChallengeCompletionTime {
 		c.CancelChallenge(ctx, ErrExpiredCCT)
+		if err := tx.Commit().Error; err != nil {
+			logging.Logger.Error("[challenge]verify(Commit): ",
+				zap.Any("challenge_id", c.ChallengeID),
+				zap.Error(err))
+			tx.Rollback()
+		}
 		return nil, ErrExpiredCCT
 	}
 
@@ -281,6 +287,12 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 	if err != nil {
 		logging.Logger.Error("[challenge]createTxn", zap.Error(err))
 		c.CancelChallenge(ctx, err)
+		if err := tx.Commit().Error; err != nil {
+			logging.Logger.Error("[challenge]verify(Commit): ",
+				zap.Any("challenge_id", c.ChallengeID),
+				zap.Error(err))
+			tx.Rollback()
+		}
 		return nil, err
 	}
 
