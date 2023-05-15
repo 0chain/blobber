@@ -21,7 +21,7 @@ type NewDir struct {
 	AllocationID string `json:"allocation_id"`
 }
 
-func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
+func (nf *NewDir) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 
 	totalRefs, err := reference.CountRefs(nf.AllocationID)
@@ -35,11 +35,6 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 	}
 
 	err = nf.Unmarshal(change.Input)
-	if err != nil {
-		return nil, err
-	}
-
-	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, nf.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -90,10 +85,6 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 			dirRef = newRef
 
 		}
-	}
-
-	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-		return nil, err
 	}
 
 	for _, r := range newDirs {

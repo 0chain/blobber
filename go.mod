@@ -36,7 +36,10 @@ require (
 	gorm.io/gorm v1.25.0
 )
 
-require golang.org/x/sync v0.1.0
+require (
+	github.com/lithammer/shortuuid/v3 v3.0.7
+	golang.org/x/sync v0.1.0
+)
 
 require (
 	github.com/0chain/common v0.0.6-0.20230127095721-8df4d1d72565 // indirect
@@ -83,7 +86,6 @@ require (
 	github.com/klauspost/compress v1.16.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
 	github.com/klauspost/reedsolomon v1.11.7 // indirect
-	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/machinebox/graphql v0.2.2 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect

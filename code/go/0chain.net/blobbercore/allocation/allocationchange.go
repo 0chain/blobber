@@ -201,15 +201,19 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 
 func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot string,
 	ts common.Timestamp, fileIDMeta map[string]string) error {
-
+	rootRef, err := cc.GetRootRef(ctx)
+	if err != nil {
+		return err
+	}
 	for idx, change := range cc.Changes {
 		changeProcessor := cc.AllocationChanges[idx]
-		_, err := changeProcessor.ApplyChange(ctx, change, allocationRoot, ts, fileIDMeta)
+		_, err := changeProcessor.ApplyChange(ctx, rootRef, change, allocationRoot, ts, fileIDMeta)
 		if err != nil {
 			return err
 		}
 	}
-	return nil
+	_, err = rootRef.CalculateHash(ctx, true)
+	return err
 }
 
 func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error {

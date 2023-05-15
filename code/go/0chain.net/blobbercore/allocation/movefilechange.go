@@ -23,17 +23,10 @@ func (rf *MoveFileChange) DeleteTempFile() error {
 	return nil
 }
 
-func (rf *MoveFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
+func (rf *MoveFileChange) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, _ map[string]string) (*reference.Ref, error) {
 
-	srcRef, err := reference.GetObjectTree(ctx, rf.AllocationID, rf.SrcPath)
-	if err != nil {
-		return nil, err
-	}
-
-	rootRef, err := reference.GetReferenceForHashCalculationFromPaths(ctx, rf.AllocationID,
-		[]string{rf.DestPath, filepath.Dir(rf.SrcPath)})
-
+	srcRef, err := rootRef.GetSrcPath(rf.SrcPath)
 	if err != nil {
 		return nil, err
 	}
@@ -106,21 +99,22 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 		if child.Name == srcFileName {
 			dirRef.RemoveChild(i)
 			removed = true
+			break
 		}
 	}
 	if !removed {
 		return nil, common.NewError("incomplete_move",
 			"move operation rejected as it cannot be completed")
 	}
-	_, err = rootRef.CalculateHash(ctx, true)
-	if err != nil {
-		return nil, err
-	}
+	// _, err = rootRef.CalculateHash(ctx, true)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	for _, fileRef := range fileRefs {
 		stats.FileUpdated(ctx, fileRef.ID)
 	}
-	return rootRef, err
+	return rootRef, nil
 }
 
 func (rf *MoveFileChange) processCopyRefs(
@@ -168,5 +162,5 @@ func (rf *MoveFileChange) CommitToFileStore(ctx context.Context) error {
 }
 
 func (rf *MoveFileChange) GetPath() []string {
-	return []string{rf.DestPath, rf.SrcPath}
+	return []string{rf.DestPath, filepath.Dir(rf.SrcPath)}
 }

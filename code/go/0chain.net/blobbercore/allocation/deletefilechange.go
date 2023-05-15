@@ -33,14 +33,14 @@ type DeleteFileChange struct {
 func (nf *DeleteFileChange) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, _ map[string]string) (*reference.Ref, error) {
 
-	rootRef, err := reference.DeleteObject(ctx, nf.AllocationID, filepath.Clean(nf.Path), ts)
+	_, err := reference.DeleteObject(ctx, rootRef, nf.AllocationID, filepath.Clean(nf.Path), ts)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-		return nil, err
-	}
+	// if _, err := rootRef.CalculateHash(ctx, true); err != nil {
+	// 	return nil, err
+	// }
 
 	return nil, nil
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
-func DeleteObject(ctx context.Context, allocationID, objPath string, ts common.Timestamp) (*Ref, error) {
+func DeleteObject(ctx context.Context, rootRef *Ref, allocationID, objPath string, ts common.Timestamp) (*Ref, error) {
 	likePath := objPath + "/%"
 	if objPath == "/" {
 		likePath = "/%"
@@ -23,10 +23,6 @@ func DeleteObject(ctx context.Context, allocationID, objPath string, ts common.T
 	}
 
 	parentPath := filepath.Dir(objPath)
-	rootRef, err := GetReferencePath(ctx, allocationID, parentPath)
-	if err != nil {
-		return nil, err
-	}
 
 	rootRef.UpdatedAt = ts
 	fields, err := common.GetPathFields(parentPath)

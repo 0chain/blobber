@@ -26,10 +26,9 @@ func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, err
 func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Model(&Ref{}).Select("id", "allocation_id", "type", "name", "path",
-		"parent_path", "size", "hash", "file_meta_hash", "path_hash", "validation_root", "fixed_merkle_root",
-		"actual_file_size", "actual_file_hash", "chunk_size",
-		"lookup_hash", "thumbnail_hash", "allocation_root", "level", "created_at", "updated_at")
+	db = db.Model(&Ref{}).Select("id", "allocation_id", "type", "name", "path", "parent_path", "size", "hash", "file_meta_hash",
+		"path_hash", "validation_root", "fixed_merkle_root", "actual_file_size", "actual_file_hash", "chunk_size",
+		"lookup_hash", "thumbnail_hash", "allocation_root", "level", "created_at", "updated_at", "file_id")
 
 	pathsAdded := make(map[string]bool)
 	var shouldOr bool
@@ -94,7 +93,8 @@ func (rootRef *Ref) GetSrcPath(path string) (*Ref, error) {
 	path = filepath.Clean(path)
 
 	if path == "/" {
-		return rootRef, nil
+		newRoot := *rootRef
+		return &newRoot, nil
 	}
 
 	fields, err := common.GetPathFields(path)
@@ -112,10 +112,11 @@ func (rootRef *Ref) GetSrcPath(path string) (*Ref, error) {
 			}
 		}
 		if !found {
-			return nil, common.NewError("invalid_path", "path not found")
+			return nil, common.NewError("invalid_path", "ref is not found")
 		}
 	}
-	return dirRef, nil
+	newDirRef := *dirRef
+	return &newDirRef, nil
 }
 
 // GetReferencePathFromPaths validate and build full dir tree from db, and CalculateHash and return root Ref

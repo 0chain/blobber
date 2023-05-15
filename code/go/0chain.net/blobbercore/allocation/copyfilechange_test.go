@@ -103,7 +103,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 					},
 				)
 
-				q2 := `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","file_meta_hash","path_hash","validation_root","fixed_merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","allocation_root","level","created_at","updated_at" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR (parent_path = $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				q2 := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR "reference_objects"."allocation_id" = $5 OR (parent_path = $6 AND allocation_id = $7)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().WithQuery(q2).WithReply(
 					[]map[string]interface{}{
 						{
@@ -189,8 +189,9 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 				SrcPath:      tc.srcPath,
 				DestPath:     tc.destination,
 			}
-			rootRef := &reference.Ref{Type: reference.DIRECTORY, AllocationID: tc.allocationID, Name: "/", Path: "/", ParentPath: "", PathLevel: 1}
-			err := func() error {
+			rootRef, err := reference.GetReferencePathFromPaths(ctx, alloc.ID, []string{change.SrcPath, change.DestPath})
+			require.Nil(t, err)
+			err = func() error {
 				_, err := change.ApplyChange(ctx, rootRef, tc.allocChange, "/", common.Now()-1, tc.fileIDMeta)
 				if err != nil {
 					return err
