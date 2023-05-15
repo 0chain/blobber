@@ -194,7 +194,6 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 			logging.Logger.Error("[challenge]verify(Commit): ",
 				zap.Any("challenge_id", c.ChallengeID),
 				zap.Error(err))
-			tx.Rollback()
 		}
 		return nil, ErrExpiredCCT
 	}
@@ -207,7 +206,6 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 			logging.Logger.Error("[challenge]verify(Commit): ",
 				zap.Any("challenge_id", c.ChallengeID),
 				zap.Error(err))
-			tx.Rollback()
 		}
 		return nil, err
 	}
@@ -228,7 +226,6 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 			logging.Logger.Error("[challenge]verify(Commit): ",
 				zap.Any("challenge_id", c.ChallengeID),
 				zap.Error(err))
-			tx.Rollback()
 		}
 		return nil, err
 	}
@@ -237,7 +234,6 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 		logging.Logger.Error("[challenge]verify(Commit): ",
 			zap.Any("challenge_id", c.ChallengeID),
 			zap.Error(err))
-		tx.Rollback()
 	}
 
 	return txn, nil

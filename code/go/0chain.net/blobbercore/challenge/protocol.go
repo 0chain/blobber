@@ -318,6 +318,7 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transacti
 			t, err := transaction.VerifyTransaction(lastTxn, chain.GetServerChain())
 			if err == nil {
 				cr.SaveChallengeResult(ctx, t, false)
+				return nil
 			}
 			logging.Logger.Error("[challenge]trans: Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
 		}
