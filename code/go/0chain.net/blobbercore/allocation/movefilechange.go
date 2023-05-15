@@ -166,3 +166,7 @@ func (rf *MoveFileChange) Unmarshal(input string) error {
 func (rf *MoveFileChange) CommitToFileStore(ctx context.Context) error {
 	return nil
 }
+
+func (rf *MoveFileChange) GetPath() []string {
+	return []string{rf.DestPath, rf.SrcPath}
+}

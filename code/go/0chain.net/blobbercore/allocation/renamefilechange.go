@@ -136,3 +136,8 @@ func (rf *RenameFileChange) Unmarshal(input string) error {
 func (rf *RenameFileChange) CommitToFileStore(ctx context.Context) error {
 	return nil
 }
+
+func (rf *RenameFileChange) GetPath() []string {
+	newPath := filepath.Join(filepath.Dir(rf.Path), rf.NewName)
+	return []string{rf.Path, newPath}
+}

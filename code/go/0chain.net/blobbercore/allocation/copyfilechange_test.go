@@ -189,9 +189,9 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 				SrcPath:      tc.srcPath,
 				DestPath:     tc.destination,
 			}
-
+			rootRef := &reference.Ref{Type: reference.DIRECTORY, AllocationID: tc.allocationID, Name: "/", Path: "/", ParentPath: "", PathLevel: 1}
 			err := func() error {
-				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1, tc.fileIDMeta)
+				_, err := change.ApplyChange(ctx, rootRef, tc.allocChange, "/", common.Now()-1, tc.fileIDMeta)
 				if err != nil {
 					return err
 				}

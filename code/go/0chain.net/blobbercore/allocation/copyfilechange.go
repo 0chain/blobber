@@ -25,7 +25,7 @@ func (rf *CopyFileChange) DeleteTempFile() error {
 	return nil
 }
 
-func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
+func (rf *CopyFileChange) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 
 	totalRefs, err := reference.CountRefs(rf.AllocationID)
@@ -38,12 +38,7 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 			"maximum files and directories already reached: %v", err)
 	}
 
-	srcRef, err := reference.GetObjectTree(ctx, rf.AllocationID, rf.SrcPath)
-	if err != nil {
-		return nil, err
-	}
-
-	rootRef, err := reference.GetReferencePath(ctx, rf.AllocationID, rf.DestPath)
+	srcRef, err := rootRef.GetSrcPath(rf.SrcPath)
 	if err != nil {
 		return nil, err
 	}
@@ -98,10 +93,10 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 		return nil, err
 	}
 
-	_, err = rootRef.CalculateHash(ctx, true)
-	if err != nil {
-		return nil, err
-	}
+	// _, err = rootRef.CalculateHash(ctx, true)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	for _, fileRef := range fileRefs {
 		stats.NewFileCreated(ctx, fileRef.ID)
@@ -160,4 +155,8 @@ func (rf *CopyFileChange) Unmarshal(input string) error {
 
 func (rf *CopyFileChange) CommitToFileStore(ctx context.Context) error {
 	return nil
+}
+
+func (rf *CopyFileChange) GetPath() []string {
+	return []string{rf.DestPath, rf.SrcPath}
 }

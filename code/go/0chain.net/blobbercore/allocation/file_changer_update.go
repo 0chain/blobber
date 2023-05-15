@@ -22,16 +22,11 @@ type UpdateFileChanger struct {
 	BaseFileChanger
 }
 
-func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *AllocationChange,
+func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, _ map[string]string) (*reference.Ref, error) {
 
 	path := filepath.Clean(nf.Path)
 	fields, err := common.GetPathFields(path)
-	if err != nil {
-		return nil, err
-	}
-
-	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, path)
 	if err != nil {
 		return nil, err
 	}
@@ -98,10 +93,10 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	fileRef.EncryptedKey = nf.EncryptedKey
 	fileRef.ChunkSize = nf.ChunkSize
 
-	_, err = rootRef.CalculateHash(ctx, true)
-	if err != nil {
-		return nil, err
-	}
+	// _, err = rootRef.CalculateHash(ctx, true)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	stats.FileUpdated(ctx, fileRef.ID)
 
@@ -144,4 +139,8 @@ func (nf *UpdateFileChanger) Unmarshal(input string) error {
 	}
 
 	return util.UnmarshalValidation(nf)
+}
+
+func (nf *UpdateFileChanger) GetPath() []string {
+	return []string{nf.Path}
 }

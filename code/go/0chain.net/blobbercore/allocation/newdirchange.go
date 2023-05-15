@@ -128,3 +128,7 @@ func (nf *NewDir) DeleteTempFile() error {
 func (nfch *NewDir) CommitToFileStore(ctx context.Context) error {
 	return nil
 }
+
+func (nfc *NewDir) GetPath() []string {
+	return []string{nfc.Path}
+}

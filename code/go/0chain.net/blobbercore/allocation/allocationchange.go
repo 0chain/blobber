@@ -27,8 +27,9 @@ const (
 type AllocationChangeProcessor interface {
 	CommitToFileStore(ctx context.Context) error
 	DeleteTempFile() error
-	ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string,
+	ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange, allocationRoot string,
 		ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error)
+	GetPath() []string
 	Marshal() (string, error)
 	Unmarshal(string) error
 }
@@ -227,4 +228,13 @@ func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) {
 			logging.Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
 		}
 	}
+}
+
+func (a *AllocationChangeCollector) GetRootRef(ctx context.Context) (*reference.Ref, error) {
+	paths := make([]string, 0)
+
+	for _, change := range a.AllocationChanges {
+		paths = append(paths, change.GetPath()...)
+	}
+	return reference.GetReferencePathFromPaths(ctx, a.AllocationID, paths)
 }

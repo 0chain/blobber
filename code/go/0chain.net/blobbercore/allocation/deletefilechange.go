@@ -30,7 +30,7 @@ type DeleteFileChange struct {
 	Hash         string `json:"hash"`
 }
 
-func (nf *DeleteFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
+func (nf *DeleteFileChange) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, _ map[string]string) (*reference.Ref, error) {
 
 	rootRef, err := reference.DeleteObject(ctx, nf.AllocationID, filepath.Clean(nf.Path), ts)
@@ -132,4 +132,8 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 		Delete(&reference.Ref{},
 			"allocation_id = ? AND path LIKE ? AND deleted_at IS NOT NULL",
 			nf.AllocationID, nf.Path+"%").Error
+}
+
+func (nf *DeleteFileChange) GetPath() []string {
+	return []string{nf.Path}
 }
