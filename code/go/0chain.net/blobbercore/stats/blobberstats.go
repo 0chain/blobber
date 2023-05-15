@@ -273,7 +273,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
             SUM(file_stats.num_of_block_downloads) as num_of_reads,
             SUM(reference_objects.num_of_blocks) as num_of_block_writes,
             COUNT(*) as num_of_writes,
-            allocations.size AS allocated_size,
+            allocations.blobber_size AS allocated_size,
             allocations.expiration_date AS expiration_date`).
 		Joins(`INNER JOIN file_stats
             ON reference_objects.id = file_stats.ref_id`).
@@ -282,7 +282,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
             ON allocations.id = reference_objects.allocation_id`).
 		Where(`reference_objects.type = 'f'`).
 		Group(`reference_objects.allocation_id, allocations.expiration_date`).
-		Group(`reference_objects.allocation_id, allocations.size`).
+		Group(`reference_objects.allocation_id, allocations.blobber_size`).
 		Rows()
 
 	if err != nil {
