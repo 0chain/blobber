@@ -7,7 +7,7 @@ logging:
 info:
   name: my_blobber
   logo_url: https://google.com
-  description: this is my test blobber
+  description: this is my conductor test blobber
   website_url: https://google.com
 
 
