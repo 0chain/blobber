@@ -1330,12 +1330,11 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		}
 		err = tx.Create(writemarkerEntity).Error
 		if err != nil {
-			return common.NewError("write_marker_error", "Error persisting the write marker"+err.Error())
+			return common.NewError("write_marker_error", "Error persisting the write marker "+err.Error())
 		}
 
-		err = db.Model(allocationObj).Updates(allocationUpdates).Error
-		if err != nil {
-			return common.NewError("allocation_write_error", "Error persisting the allocation object")
+		if err = tx.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
+			return common.NewError("allocation_write_error", "Error persisting the allocation object "+err.Error())
 		}
 
 		return nil
@@ -1343,7 +1342,6 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	if err != nil {
 		return nil, err
 	}
-
 	if !alloc.IsRedeemRequired {
 		err = writemarkerEntity.SendToChan(ctx)
 		if err != nil {
