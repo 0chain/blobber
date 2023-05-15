@@ -561,7 +561,7 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 			// FIXME: temporary fix
 
 			var cnt int64
-			err := tx.Model(&Ref{}).Where("allocation_id=? AND path=? and deleted_at IS NOT NULL", r.AllocationID, r.Path).Count(&cnt).Error
+			err := tx.Unscoped().Model(&Ref{}).Where("allocation_id=? AND path=? and deleted_at IS NOT NULL", r.AllocationID, r.Path).Count(&cnt).Error
 			if err != nil {
 				return err
 			}

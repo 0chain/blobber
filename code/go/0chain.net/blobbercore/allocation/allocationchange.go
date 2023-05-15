@@ -312,7 +312,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 			return err
 		}
 
-		err = tx.Exec("UPDATE reference_objects SET is_precommit=?, prev_validation_root=validation_root, prev_thumbnail_hash=thumbnail_hash WHERE allocation_id=? AND is_precommit=?", false, a.AllocationID, true).Error
+		err = tx.Exec("UPDATE reference_objects SET is_precommit=?, prev_validation_root=validation_root, prev_thumbnail_hash=thumbnail_hash WHERE allocation_id=? AND is_precommit=? AND deleted_at is NULL", false, a.AllocationID, true).Error
 
 		return err
 	})
