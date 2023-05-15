@@ -26,7 +26,7 @@ func ApplyRollback(ctx context.Context, allocationID string) error {
 
 		// err = db.Exec("UPDATE file_stats SET deleted_at=NULL WHERE ref_id IN (SELECT id FROM reference_objects WHERE allocation_id=? AND deleted_at IS NOT NULL)", allocationID).Error
 		// revive soft deleted ref rows
-		err = db.Exec("UPDATE reference_objects SET deleted_at=NULL WHERE allocation_id=? AND deleted_at IS NOT NULL", allocationID).Error
+		err = db.Exec("UPDATE reference_objects SET deleted_at=NULL,is_precommit=? WHERE allocation_id=? AND deleted_at IS NOT NULL", false, allocationID).Error
 		if err != nil {
 			return err
 		}
