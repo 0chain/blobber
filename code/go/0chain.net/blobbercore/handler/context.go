@@ -202,8 +202,7 @@ func WithVerify(r *http.Request) (*Context, error) {
 	ctx.Signature = r.Header.Get(common.ClientSignatureHeader)
 
 	if len(ctx.AllocationId) > 0 {
-		alloc, err := allocation.VerifyAllocationTransaction(ctx, ctx.AllocationId, false)
-		//alloc, err := allocation.GetOrCreate(ctx, ctx.Store, ctx.AllocationId)
+		alloc, err := allocation.GetOrCreate(ctx, ctx.Store, ctx.AllocationId)
 
 		if err != nil {
 			if errors.Is(common.ErrBadRequest, err) {
