@@ -202,20 +202,20 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	if !isOwner {
 		authTokenString := dr.AuthToken
 		if authTokenString == "" {
-			return nil, common.NewError("invalid_client", "authticket is required")
+			return nil, common.NewError("invalid_authticket", "authticket is required")
 		}
 
 		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
-			return nil, common.NewErrorf("download_file", "cannot verify auth ticket: %v", err)
+			return nil, common.NewErrorf("invalid_authticket", "cannot verify auth ticket: %v", err)
 		}
 
 		shareInfo, err = reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
 		if err != nil || shareInfo == nil {
-			return nil, errors.New("client does not have permission to download the file. share does not exist")
+			return nil, common.NewError("invalid_share", "client does not have permission to download the file. share does not exist")
 		}
 
 		if shareInfo.Revoked {
-			return nil, errors.New("client does not have permission to download the file. share revoked")
+			return nil, common.NewError("invalid_share", "client does not have permission to download the file. share revoked")
 		}
 
 		availableAt := shareInfo.AvailableAt.Unix()
@@ -258,7 +258,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		// check out read pool tokens if read_price > 0
 		err = readPreRedeem(ctx, alloc, dr.ReadMarker.SessionRC, pendNumBlocks, clientID)
 		if err != nil {
-			return nil, common.NewErrorf("download_file", "pre-redeeming read marker: %v", err)
+			return nil, common.NewErrorf("not_enough_tokens", "pre-redeeming read marker: %v", err)
 		}
 
 		if latestRM != nil && latestRM.ReadCounter+(dr.ReadMarker.SessionRC) > dr.ReadMarker.ReadCounter {
