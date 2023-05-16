@@ -2,6 +2,8 @@ package allocation
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -124,9 +126,9 @@ func TestBlobberCore_DeleteFile(t *testing.T) {
 			},
 		},
 		{
-			name:                "Delete directory success",
+			name:                "Delete file inside nested directory success",
 			allocChange:         &AllocationChange{},
-			srcPath:             "/old_dir",
+			srcPath:             "/old_dir/old_file",
 			allocationID:        alloc.ID,
 			maxDirFilesPerAlloc: 5,
 			expectingError:      false,
@@ -184,7 +186,7 @@ func TestBlobberCore_DeleteFile(t *testing.T) {
 					},
 				)
 
-				q2 := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR "reference_objects"."allocation_id" = $5 OR (parent_path = $6 AND allocation_id = $7)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				q2 := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR ("reference_objects"."allocation_id" = $5 AND "reference_objects"."parent_path" = $6) OR (parent_path = $7 AND allocation_id = $8)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%`
 				mocket.Catcher.NewMock().WithQuery(q2).WithReply(
 					[]map[string]interface{}{
 						{
@@ -261,13 +263,19 @@ func TestBlobberCore_DeleteFile(t *testing.T) {
 				Path:         tc.srcPath,
 			}
 			rootRef, err := reference.GetReferencePathFromPaths(ctx, tc.allocationID, []string{change.Path})
+			fmt.Printf("rootRef: %+v\n", rootRef)
 			require.Nil(t, err)
 			err = func() error {
 				_, err := change.ApplyChange(ctx, rootRef, tc.allocChange, "/", common.Now()-1, nil)
 				if err != nil {
 					return err
 				}
-				require.Equal(t, 0, len(rootRef.Children))
+				if strings.Contains(tc.name, "Delete file inside nested directory success") {
+					require.Equal(t, 1, len(rootRef.Children))
+					require.Equal(t, 0, len(rootRef.Children[0].Children))
+				} else {
+					require.Equal(t, 0, len(rootRef.Children))
+				}
 
 				return change.CommitToFileStore(ctx)
 			}()

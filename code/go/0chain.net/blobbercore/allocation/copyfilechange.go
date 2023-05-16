@@ -10,7 +10,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
@@ -88,7 +87,7 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 		}
 	}
 
-	fileRefs, err := rf.processCopyRefs(ctx, srcRef, dirRef, allocationRoot, ts, fileIDMeta)
+	_, err = rf.processCopyRefs(ctx, srcRef, dirRef, allocationRoot, ts, fileIDMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -98,9 +97,9 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 	// 	return nil, err
 	// }
 
-	for _, fileRef := range fileRefs {
-		stats.NewFileCreated(ctx, fileRef.ID)
-	}
+	// for _, fileRef := range fileRefs {
+	// 	stats.NewFileCreated(ctx, fileRef.ID)
+	// }
 	return rootRef, err
 }
 

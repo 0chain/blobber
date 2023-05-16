@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -84,9 +83,7 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, rootRef *reference.
 	}
 
 	found := false
-	fmt.Printf("dirRef: %+v\n", dirRef)
 	for i, child := range dirRef.Children {
-		fmt.Println("child.Path: ", child.Path, "rf.Path: ", rf.Path)
 		if child.Path == rf.Path {
 			dirRef.RemoveChild(i)
 			dirRef.AddChild(affectedRef)

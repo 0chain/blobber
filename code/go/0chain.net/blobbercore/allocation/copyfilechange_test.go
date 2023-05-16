@@ -196,7 +196,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 				if err != nil {
 					return err
 				}
-
+				require.Equal(t, 2, len(rootRef.Children))
 				return change.CommitToFileStore(ctx)
 			}()
 

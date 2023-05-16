@@ -22,7 +22,7 @@ func DeleteObject(ctx context.Context, rootRef *Ref, allocationID, objPath strin
 		return nil, err
 	}
 
-	parentPath := filepath.Dir(objPath)
+	parentPath, deleteFileName := filepath.Split(objPath)
 
 	rootRef.UpdatedAt = ts
 	fields, err := common.GetPathFields(parentPath)
@@ -50,7 +50,12 @@ func DeleteObject(ctx context.Context, rootRef *Ref, allocationID, objPath strin
 		}
 	}
 
-	dirRef.Children = nil
+	for i, child := range dirRef.Children {
+		if child.Name == deleteFileName {
+			dirRef.RemoveChild(i)
+			break
+		}
+	}
 
 	rootRef.HashToBeComputed = true
 	rootRef.childrenLoaded = true
