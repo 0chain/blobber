@@ -124,12 +124,9 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 
 	wg.Wait()
 
-	if err != nil {
-		return err
-	}
-
-	return db.Model(&reference.Ref{}).Unscoped().
-		Delete(&reference.Ref{},
-			"allocation_id = ? AND path LIKE ? AND deleted_at IS NOT NULL",
-			nf.AllocationID, nf.Path+"%").Error
+	return err
+	// return db.Model(&reference.Ref{}).Unscoped().
+	// 	Delete(&reference.Ref{},
+	// 		"allocation_id = ? AND path LIKE ? AND deleted_at IS NOT NULL",
+	// 		nf.AllocationID, nf.Path+"%").Error
 }

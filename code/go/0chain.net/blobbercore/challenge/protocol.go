@@ -85,7 +85,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		return err
 	}
 
-	wms, err := writemarker.GetWriteMarkersInRange(ctx, cr.AllocationID, cr.AllocationRoot, allocationObj.AllocationRoot)
+	wms, err := writemarker.GetWriteMarkersInRange(ctx, cr.AllocationID, cr.AllocationRoot, cr.Timestamp, allocationObj.AllocationRoot)
 	if err != nil {
 		allocMu.RUnlock()
 		return err
@@ -148,11 +148,23 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		r := rand.New(rand.NewSource(cr.RandomNumber))
 		blockoffset := r.Intn(sdkUtil.FixedMerkleLeaves)
 
+		fromPreCommit := true
+
+		if objectPath.Meta["is_precommit"] != nil {
+			fromPreCommit = objectPath.Meta["is_precommit"].(bool)
+			if fromPreCommit {
+				fromPreCommit = objectPath.Meta["validation_root"].(string) != objectPath.Meta["prev_validation_root"].(string)
+			}
+		} else {
+			logging.Logger.Error("is_precommit_is_nil", zap.Any("object_path", objectPath))
+		}
+
 		challengeReadInput := &filestore.ChallengeReadBlockInput{
 			Hash:         objectPath.Meta["validation_root"].(string),
 			FileSize:     objectPath.Meta["size"].(int64),
 			BlockOffset:  blockoffset,
 			AllocationID: cr.AllocationID,
+			IsPrecommit:  fromPreCommit,
 		}
 
 		t1 := time.Now()
