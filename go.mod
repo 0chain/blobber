@@ -36,7 +36,7 @@ require (
 	gorm.io/gorm v1.25.0
 )
 
-require golang.org/x/sync v0.1.0
+require golang.org/x/sync v0.2.0
 
 require (
 	github.com/0chain/common v0.0.6-0.20230127095721-8df4d1d72565 // indirect
@@ -121,8 +121,6 @@ require (
 	gorm.io/driver/mysql v1.4.7 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
-
-require golang.org/x/sync v0.1.0
 
 // temporary, for development
 // replace github.com/0chain/gosdk => ../gosdk
