@@ -2,12 +2,14 @@ package challenge
 
 import (
 	"context"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/emirpasic/gods/maps/treemap"
 	"go.uber.org/zap"
+	"golang.org/x/sync/semaphore"
 )
 
 type TodoChallenge struct {
@@ -16,7 +18,26 @@ type TodoChallenge struct {
 	Status    ChallengeStatus
 }
 
-var toProcessChallenge = make(chan TodoChallenge, config.Configuration.ChallengeResolveNumWorkers)
+func Int64Comparator(a, b interface{}) int {
+	aAsserted := a.(int64)
+	bAsserted := b.(int64)
+	switch {
+	case aAsserted > bAsserted:
+		return 1
+	case aAsserted < bAsserted:
+		return -1
+	default:
+		return 0
+	}
+}
+
+var (
+	toProcessChallenge = make(chan *ChallengeEntity, 100)
+	challengeMap       = treemap.NewWith(Int64Comparator)
+	challengeMapLock   = sync.RWMutex{}
+)
+
+const batchSize = 5
 
 // SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {
@@ -37,31 +58,22 @@ func startPullWorker(ctx context.Context) {
 }
 
 func startWorkers(ctx context.Context) {
-
-	numWorkers := config.Configuration.ChallengeResolveNumWorkers
-	logging.Logger.Info("initializing challenge workers",
-		zap.Int("num_workers", numWorkers))
-
 	// start challenge listeners
-	for i := 0; i < numWorkers; i++ {
-		go challengeProcessor(ctx)
-	}
-	// to be run 1 time on init
-	loadTodoChallenges(true)
+	go challengeProcessor(ctx)
 
-	// populate all accepted/processed challenges to channel
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(time.Duration(config.Configuration.ChallengeResolveFreq) * time.Second):
-			loadTodoChallenges(false)
-		}
-	}
+	go commitOnChainWorker(ctx)
 }
 
 func challengeProcessor(ctx context.Context) {
-
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Logger.Error("[processor]challenge", zap.Any("err", r))
+		}
+	}()
+	numWorkers := config.Configuration.ChallengeResolveNumWorkers
+	sem := semaphore.NewWeighted(int64(numWorkers))
+	logging.Logger.Info("initializing challenge workers",
+		zap.Int("num_workers", numWorkers))
 	for {
 		select {
 		case <-ctx.Done():
@@ -69,48 +81,111 @@ func challengeProcessor(ctx context.Context) {
 			return
 
 		case it := <-toProcessChallenge:
-
-			logging.Logger.Info("processing_challenge",
-				zap.String("challenge_id", it.Id))
-
-			now := time.Now()
-			if now.Sub(it.CreatedAt) > config.StorageSCConfig.ChallengeCompletionTime {
-				c := &ChallengeEntity{ChallengeID: it.Id}
-				c.CancelChallenge(ctx, ErrExpiredCCT)
-
-				logging.Logger.Error("[challenge]timeout",
-					zap.Any("challenge_id", it.Id),
-					zap.String("status", it.Status.String()),
-					zap.Time("created", it.CreatedAt),
-					zap.Time("start", now),
-					zap.String("delay", now.Sub(it.CreatedAt).String()),
-					zap.String("cct", config.StorageSCConfig.ChallengeCompletionTime.String()))
+			if ok := it.createChallenge(); !ok {
 				continue
 			}
-
-			logging.Logger.Info("[challenge]next:"+strings.ToLower(it.Status.String()),
-				zap.Any("challenge_id", it.Id),
-				zap.String("status", it.Status.String()),
-				zap.Time("created", it.CreatedAt),
-				zap.Time("start", now),
-				zap.String("delay", now.Sub(it.CreatedAt).String()),
-				zap.String("cct", config.StorageSCConfig.ChallengeCompletionTime.String()))
-
-			switch it.Status {
-			case Accepted:
-				validateOnValidators(it.Id)
-			case Processed:
-				commitOnChain(nil, it.Id)
-			default:
-				logging.Logger.Warn("[challenge]skipped",
-					zap.Any("challenge_id", it.Id),
-					zap.String("status", it.Status.String()),
-					zap.Time("created", it.CreatedAt),
-					zap.Time("start", now),
-					zap.String("delay", now.Sub(it.CreatedAt).String()),
-					zap.String("cct", config.StorageSCConfig.ChallengeCompletionTime.String()))
+			err := sem.Acquire(ctx, 1)
+			if err != nil {
+				logging.Logger.Error("failed to acquire semaphore", zap.Error(err))
+				continue
 			}
-
+			go func(it *ChallengeEntity) {
+				processChallenge(ctx, it)
+				sem.Release(1)
+			}(it)
 		}
 	}
+}
+
+func processChallenge(ctx context.Context, it *ChallengeEntity) {
+
+	logging.Logger.Info("processing_challenge",
+		zap.String("challenge_id", it.ChallengeID))
+
+	validateOnValidators(it)
+}
+
+func commitOnChainWorker(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Logger.Error("[commitWorker]challenge", zap.Any("err", r))
+		}
+	}()
+	wg := sync.WaitGroup{}
+	for {
+		select {
+		case <-ctx.Done():
+			logging.Logger.Info("exiting commitOnChainWorker")
+			return
+		default:
+		}
+		// Batch size to commit on chain
+		challenges := getBatch(batchSize)
+		if len(challenges) == 0 {
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		logging.Logger.Info("committing_challenge_tickets", zap.Any("num", len(challenges)), zap.Any("challenges", challenges))
+
+		for _, challenge := range challenges {
+			chall := challenge
+			txn, _ := chall.getCommitTransaction()
+			if txn != nil {
+				wg.Add(1)
+				go func(challenge *ChallengeEntity) {
+					defer func() {
+						wg.Done()
+						if r := recover(); r != nil {
+							logging.Logger.Error("verifyChallengeTransaction", zap.Any("err", r))
+						}
+					}()
+					err := challenge.VerifyChallengeTransaction(txn)
+					if err == nil || err != ErrEntityNotFound {
+						deleteChallenge(int64(challenge.CreatedAt))
+					}
+				}(&chall)
+			}
+		}
+		wg.Wait()
+	}
+}
+
+func getBatch(batchSize int) (chall []ChallengeEntity) {
+	challengeMapLock.RLock()
+	defer challengeMapLock.RUnlock()
+
+	if challengeMap.Size() == 0 {
+		return
+	}
+
+	it := challengeMap.Iterator()
+	for it.Next() {
+		if len(chall) >= batchSize {
+			break
+		}
+		ticket := it.Value().(*ChallengeEntity)
+		if ticket.Status != Processed {
+			break
+		}
+		chall = append(chall, *ticket)
+	}
+	return
+}
+
+func (it *ChallengeEntity) createChallenge() bool {
+	challengeMapLock.Lock()
+	if _, ok := challengeMap.Get(int64(it.CreatedAt)); ok {
+		challengeMapLock.Unlock()
+		return false
+	}
+	challengeMap.Put(int64(it.CreatedAt), it)
+	challengeMapLock.Unlock()
+	return true
+}
+
+func deleteChallenge(key int64) {
+	challengeMapLock.Lock()
+	challengeMap.Remove(key)
+	challengeMapLock.Unlock()
 }
