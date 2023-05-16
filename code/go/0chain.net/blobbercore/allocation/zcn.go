@@ -59,17 +59,18 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 	}
 
 	// set/update fields
-	alloc.ID = sa.ID
-	alloc.Tx = sa.Tx
-	alloc.Expiration = sa.Expiration
-	alloc.OwnerID = sa.OwnerID
-	alloc.OwnerPublicKey = sa.OwnerPublicKey
+	alloc.ID = allocation.ID
+	alloc.Tx = allocation.Tx
+	alloc.Expiration = allocation.Expiration
+	alloc.OwnerID = allocation.OwnerID
+	alloc.OwnerPublicKey = allocation.OwnerPublicKey
 	alloc.RepairerID = t.ClientID // blobber node id
-	alloc.TotalSize = sa.Size
-	alloc.UsedSize = sa.UsedSize
-	alloc.Finalized = sa.Finalized
-	alloc.TimeUnit = sa.TimeUnit
-	alloc.FileOptions = sa.FileOptions
+	alloc.TotalSize = allocation.Size
+	alloc.UsedSize = allocation.UsedSize
+	alloc.Finalized = allocation.Finalized
+	alloc.TimeUnit = allocation.TimeUnit
+	alloc.FileOptions = allocation.FileOptions
+	alloc.BlobberSize = (allocation.Size + allocation.DataShards - 1) / allocation.DataShards
 
 	// related terms
 	terms := make([]*Terms, 0, len(sa.BlobberDetails))
