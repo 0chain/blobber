@@ -1011,7 +1011,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	}
 
 	exisitingRef, err := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
-	if err != nil {
+	if err != nil && err != gorm.ErrRecordNotFound {
 		Logger.Error("Error file reference", zap.Error(err))
 	}
 
