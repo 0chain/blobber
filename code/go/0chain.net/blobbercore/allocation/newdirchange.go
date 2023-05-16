@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
@@ -87,11 +86,11 @@ func (nf *NewDir) ApplyChange(ctx context.Context, rootRef *reference.Ref, chang
 		}
 	}
 
-	for _, r := range newDirs {
-		if err := stats.NewDirCreated(ctx, r.ID); err != nil {
-			return nil, err
-		}
-	}
+	// for _, r := range newDirs {
+	// 	if err := stats.NewDirCreated(ctx, r.ID); err != nil {
+	// 		return nil, err
+	// 	}
+	// }
 
 	return rootRef, nil
 }

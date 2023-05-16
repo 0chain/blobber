@@ -504,6 +504,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	err = connectionObj.ApplyChanges(
 		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
 	if err != nil {
+		Logger.Error("Error applying changes", zap.Error(err))
 		return nil, err
 	}
 

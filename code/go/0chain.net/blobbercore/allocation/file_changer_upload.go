@@ -10,7 +10,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -117,7 +116,7 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	// 	return nil, err
 	// }
 
-	stats.NewFileCreated(ctx, newFile.ID)
+	// stats.NewFileCreated(ctx, newFile.ID)
 	return rootRef, nil
 }
 

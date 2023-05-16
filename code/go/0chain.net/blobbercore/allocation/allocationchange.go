@@ -202,6 +202,7 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot string,
 	ts common.Timestamp, fileIDMeta map[string]string) error {
 	rootRef, err := cc.GetRootRef(ctx)
+	logging.Logger.Info("GetRootRef", zap.Any("rootRef", rootRef))
 	if err != nil {
 		return err
 	}
@@ -212,6 +213,7 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 			return err
 		}
 	}
+	logging.Logger.Info("ApplyChanges", zap.Any("rootRef", rootRef))
 	_, err = rootRef.CalculateHash(ctx, true)
 	return err
 }
