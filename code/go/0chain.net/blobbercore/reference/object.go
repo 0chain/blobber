@@ -22,7 +22,9 @@ func DeleteObject(ctx context.Context, rootRef *Ref, allocationID, objPath strin
 		return nil, err
 	}
 	if objPath == "/" {
-		rootRef = nil
+		rootRef.Children = nil
+		rootRef.HashToBeComputed = true
+		rootRef.childrenLoaded = true
 		return rootRef, nil
 	}
 	parentPath, deleteFileName := filepath.Split(objPath)
