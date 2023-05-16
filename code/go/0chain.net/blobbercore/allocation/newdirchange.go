@@ -49,7 +49,6 @@ func (nf *NewDir) ApplyChange(ctx context.Context, rootRef *reference.Ref, chang
 	}
 
 	dirRef := rootRef
-	var newDirs []*reference.Ref
 	for i := 0; i < len(fields); i++ {
 		found := false
 		for _, child := range dirRef.Children {
@@ -80,16 +79,9 @@ func (nf *NewDir) ApplyChange(ctx context.Context, rootRef *reference.Ref, chang
 			}
 			newRef.FileID = fileID
 			dirRef.AddChild(newRef)
-			newDirs = append(newDirs, newRef)
 			dirRef = newRef
 		}
 	}
-
-	// for _, r := range newDirs {
-	// 	if err := stats.NewDirCreated(ctx, r.ID); err != nil {
-	// 		return nil, err
-	// 	}
-	// }
 
 	return rootRef, nil
 }

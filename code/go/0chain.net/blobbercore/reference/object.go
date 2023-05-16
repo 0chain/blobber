@@ -21,7 +21,10 @@ func DeleteObject(ctx context.Context, rootRef *Ref, allocationID, objPath strin
 	if err != nil {
 		return nil, err
 	}
-
+	if objPath == "/" {
+		rootRef = nil
+		return rootRef, nil
+	}
 	parentPath, deleteFileName := filepath.Split(objPath)
 
 	rootRef.UpdatedAt = ts
