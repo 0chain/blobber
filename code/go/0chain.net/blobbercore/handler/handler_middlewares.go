@@ -16,7 +16,8 @@ func UseCors(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				logging.Logger.Error("[recover]http", zap.String("url", r.URL.String()), zap.Any("err", err))
+				escapedUrl := sanitizeString(r.URL.String())
+				logging.Logger.Error("[recover]http", zap.String("url", escapedUrl), zap.Any("err", err))
 			}
 		}()
 
@@ -39,7 +40,8 @@ func UseRecovery(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				logging.Logger.Error("[recover]http", zap.String("url", r.URL.String()), zap.Any("err", err))
+				escapedUrl := sanitizeString(r.URL.String())
+				logging.Logger.Error("[recover]http", zap.String("url", escapedUrl), zap.Any("err", err))
 			}
 		}()
 

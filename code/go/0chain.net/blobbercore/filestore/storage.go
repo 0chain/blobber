@@ -617,6 +617,7 @@ func (fs *FileStore) getAllocTempDir(allocID string) string {
 }
 
 func (fs *FileStore) getTempPathForFile(allocId, fileName, pathHash, connectionID string) string {
+	fileName = sanitizeFileName(fileName)
 	return filepath.Join(fs.getAllocTempDir(allocId), fileName+"."+pathHash+"."+connectionID)
 }
 
@@ -691,4 +692,12 @@ func createDirs(dir string) error {
 		}
 	}
 	return nil
+}
+
+// Remove any directory traversal characters
+func sanitizeFileName(fileName string) string {
+	fileName = strings.ReplaceAll(fileName, "../", "")
+	fileName = strings.ReplaceAll(fileName, "..\\", "")
+	fileName = filepath.Base(fileName)
+	return fileName
 }
