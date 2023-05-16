@@ -3,6 +3,7 @@ package allocation
 import (
 	"encoding/json"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -14,6 +15,9 @@ import (
 )
 
 // SyncAllocation try to pull allocation from blockchain, and insert it in db.
+// Check if the allocation already exists in the db by allocation ID.
+// If exists, update the allocation with the latest data from blockchain but do not overwrite the allocation root.
+// If not exists, create a new allocation in db.
 func SyncAllocation(allocationTx string) (*Allocation, error) {
 
 	logging.Logger.Info("SyncAllocation jayash", zap.Any("tx", allocationTx))
@@ -29,28 +33,30 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 	var sa transaction.StorageAllocation
 	err = json.Unmarshal([]byte(t.TransactionOutput), &sa)
 	if err != nil {
-		return nil, errors.ThrowLog(err.Error(), common.ErrInternal, "Error decoding the allocation transaction output.")
+		return nil, errors.ThrowLog(err.Error(), common.ErrInternal, "Error decoding the edbAllocation transaction output.")
 	}
 
 	logging.Logger.Info("jayash SA", zap.Any("SA", sa))
 
-	allocation, _ := requestAllocation(sa.ID)
-
 	db := datastore.GetStore().GetDB()
-
 	a := new(Allocation)
 
 	var isExist bool
 	err = db.Model(&Allocation{}).
 		Where("id = ?", sa.ID).
 		First(a).Error
+	logging.Logger.Error("jayash special edbAllocation", zap.Any("a", a), zap.Any("err", err))
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
 	}
 
 	isExist = a.ID != ""
 
-	logging.Logger.Info("jayash Allocation", zap.Any("allocation", allocation))
+	logging.Logger.Info("jayash isExist", zap.Any("isExist", isExist))
+
+	edbAllocation, _ := requestAllocation(sa.ID)
+
+	logging.Logger.Info("jayash Allocation", zap.Any("edbAllocation", edbAllocation))
 
 	alloc := &Allocation{}
 
@@ -61,8 +67,8 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 				belongToThisBlobber = true
 
 				alloc.AllocationRoot = ""
-				alloc.BlobberSize = (allocation.Size + allocation.DataShards - 1) /
-					allocation.DataShards
+				alloc.BlobberSize = (edbAllocation.Size + edbAllocation.DataShards - 1) /
+					edbAllocation.DataShards
 				alloc.BlobberSizeUsed = 0
 
 				break
@@ -75,18 +81,28 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 	}
 
 	// set/update fields
-	alloc.ID = allocation.ID
-	alloc.Tx = allocation.Tx
-	alloc.Expiration = allocation.Expiration
-	alloc.OwnerID = allocation.OwnerID
-	alloc.OwnerPublicKey = allocation.OwnerPublicKey
+	alloc.ID = edbAllocation.ID
+	alloc.Tx = edbAllocation.Tx
+	alloc.Expiration = edbAllocation.Expiration
+	alloc.OwnerID = edbAllocation.OwnerID
+	alloc.OwnerPublicKey = edbAllocation.OwnerPublicKey
 	alloc.RepairerID = t.ClientID // blobber node id
-	alloc.TotalSize = allocation.Size
-	alloc.UsedSize = allocation.UsedSize
-	alloc.Finalized = allocation.Finalized
-	alloc.TimeUnit = allocation.TimeUnit
-	alloc.FileOptions = allocation.FileOptions
-	alloc.BlobberSize = (allocation.Size + allocation.DataShards - 1) / allocation.DataShards
+	alloc.TotalSize = edbAllocation.Size
+	alloc.UsedSize = edbAllocation.UsedSize
+	alloc.Finalized = edbAllocation.Finalized
+	alloc.TimeUnit = edbAllocation.TimeUnit
+	alloc.FileOptions = edbAllocation.FileOptions
+	alloc.BlobberSize = (edbAllocation.Size + edbAllocation.DataShards - 1) / edbAllocation.DataShards
+
+	m := map[string]interface{}{
+		"allocation_id":  alloc.ID,
+		"allocated_size": alloc.BlobberSize,
+	}
+
+	err = filestore.GetFileStore().UpdateAllocationMetaData(m)
+	if err != nil {
+		return nil, common.NewError("meta_data_update_error", err.Error())
+	}
 
 	// related terms
 	terms := make([]*Terms, 0, len(sa.BlobberDetails))
@@ -101,22 +117,46 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 
 	logging.Logger.Info("jayash onlyAlloc", zap.Any("alloc", alloc))
 
-	// check if allocation exists by id in db and update it or create new one
-	datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		if err := tx.Table(TableNameAllocation).Where(Allocation{ID: alloc.ID}).Assign(alloc).FirstOrCreate(alloc).Error; err != nil {
-			logging.Logger.Info("jayash DB Error", zap.Any("err1", err))
-			return err
-		}
-
-		for _, term := range terms {
-			if err := tx.Table(TableNameTerms).FirstOrCreate(term, term).Error; err != nil {
-				logging.Logger.Info("jayash DB Error", zap.Any("err2", err))
+	// check if edbAllocation exists by id in db and update it or create new one
+	if isExist {
+		err = db.Transaction(func(tx *gorm.DB) error {
+			if err = tx.Model(&Allocation{}).
+				Where("id = ?", alloc.ID).
+				Updates(alloc).Error; err != nil {
+				logging.Logger.Info("jayash error1", zap.Any("err", err))
 				return err
 			}
-		}
 
-		return nil
-	})
+			if err = tx.Model(&Terms{}).
+				Where("allocation_id = ?", alloc.ID).
+				Delete(&Terms{}).Error; err != nil {
+				logging.Logger.Info("jayash error2", zap.Any("err", err))
+				return err
+			}
+
+			if err = tx.Model(&Terms{}).
+				Create(terms).Error; err != nil {
+				logging.Logger.Info("jayash error3", zap.Any("err", err))
+				return err
+			}
+
+			return nil
+		})
+	} else {
+		err = db.Transaction(func(tx *gorm.DB) error {
+			if err = tx.Create(alloc).Error; err != nil {
+				logging.Logger.Info("jayash error4", zap.Any("err", err))
+				return err
+			}
+
+			if err = tx.Create(terms).Error; err != nil {
+				logging.Logger.Info("jayash error5", zap.Any("err", err))
+				return err
+			}
+
+			return nil
+		})
+	}
 
 	return alloc, err
 }

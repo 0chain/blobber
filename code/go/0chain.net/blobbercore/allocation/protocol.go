@@ -3,14 +3,12 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	"gorm.io/gorm"
+	"go.uber.org/zap"
 )
 
 // GetAllocationByID from DB. This function doesn't load related terms.
@@ -46,36 +44,11 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 
 // VerifyAllocationTransaction try to get allocation from postgres.if it doesn't exists, get it from sharders, and insert it into postgres.
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string, readonly bool) (a *Allocation, err error) {
-	var tx = datastore.GetStore().GetTransaction(ctx)
-
-	db := datastore.GetStore().GetDB()
-
-	sa := &Allocation{}
-	result := db.Table(TableNameAllocation).Where(SQLWhereGetByTx, allocationTx).First(sa)
-
-	if result.Error != nil {
-		sa, err = SyncAllocation(allocationTx)
-		if err != nil {
-			return nil, err
-		}
+	a, err = SyncAllocation(allocationTx)
+	if err != nil {
+		logging.Logger.Error("VerifyAllocationTransaction jayash", zap.Any("allocationTx", allocationTx), zap.Any("err", err))
+		return nil, err
 	}
-
-	updateAllocation(ctx, &Allocation{
-		ID:        sa.ID,
-		Tx:        sa.Tx,
-		OwnerID:   sa.OwnerID,
-		Finalized: sa.Finalized,
-	})
-
-	// get allocation
-	a = new(Allocation)
-	err = tx.Model(&Allocation{}).
-		Where(&Allocation{ID: a.ID}).
-		First(a).Error
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
-	}
-
 	return a, nil
 }
 
