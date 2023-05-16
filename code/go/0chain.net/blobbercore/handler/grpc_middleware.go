@@ -79,7 +79,8 @@ func NewGRPCServerWithMiddlewares(r *mux.Router) *grpc.Server {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
 				if err := recover(); err != nil {
-					logging.Logger.Error("[recover]grpc", zap.String("url", r.URL.String()), zap.Any("err", err))
+					escapedUrl := sanitizeString(r.URL.String())
+					logging.Logger.Error("[recover]grpc", zap.String("url", escapedUrl), zap.Any("err", err))
 				}
 			}()
 			if wrappedServer.IsGrpcWebRequest(r) {
