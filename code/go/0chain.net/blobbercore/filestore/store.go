@@ -44,7 +44,10 @@ type FileStorer interface {
 	WriteFile(allocID, connID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error)
 	CommitWrite(allocID, connID string, fileData *FileInputData) (bool, error)
 	DeleteTempFile(allocID, connID string, fileData *FileInputData) error
-	DeleteFile(allocID string, contentHash string) error
+	DeleteFile(allocID, contentHash string) error
+	MoveToFilestore(allocID, hash string) error
+	DeleteFromFilestore(allocID, hash string) error
+	DeletePreCommitDir(allocID string) error
 	// GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.
 	GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error)
 	GetBlocksMerkleTreeForChallenge(cri *ChallengeReadBlockInput) (*ChallengeResponse, error)
@@ -52,6 +55,7 @@ type FileStorer interface {
 	GetTempFilesSizeOfAllocation(allocID string) uint64
 	GetTotalCommittedFileSize() uint64
 	GetCommittedFileSizeOfAllocation(allocID string) uint64
+	GetFilePathSize(allocID, filehash, thumbHash string) (int64, int64, error)
 	GetTotalFilesSize() uint64
 	GetTotalFilesSizeOfAllocation(allocID string) uint64
 
@@ -90,6 +94,7 @@ type ReadBlockInput struct {
 	NumBlocks      int
 	IsThumbnail    bool
 	VerifyDownload bool
+	IsPrecommit    bool
 }
 
 type ChallengeResponse struct {
@@ -103,4 +108,5 @@ type ChallengeReadBlockInput struct {
 	FileSize     int64
 	Hash         string
 	AllocationID string
+	IsPrecommit  bool
 }

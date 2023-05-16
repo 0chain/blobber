@@ -12,7 +12,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"gorm.io/gorm"
 )
@@ -37,7 +36,7 @@ var tableModels = []tableNameI{
 	new(readmarker.ReadMarkerEntity),
 	new(writemarker.WriteMarkerEntity),
 	new(writemarker.WriteLock),
-	new(stats.FileStats),
+	new(reference.FileStats),
 	new(config.Settings),
 }
 
