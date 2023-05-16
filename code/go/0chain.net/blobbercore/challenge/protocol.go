@@ -102,8 +102,6 @@ func (cr *ChallengeEntity) SubmitChallengeToBC(ctx context.Context) (*transactio
 func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error) {
 	cancellation := time.Now()
 
-	logging.Logger.Info("Cancelling challenge", zap.String("challenge_id", cr.ChallengeID), zap.Error(errReason))
-
 	db := datastore.GetStore().GetDB()
 	if err := db.Model(&ChallengeEntity{}).
 		Where("challenge_id = ?", cr.ChallengeID).
@@ -113,16 +111,6 @@ func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error)
 			"status_message": errReason.Error(),
 		}).Error; err != nil {
 		logging.Logger.Error("[challenge]cancel:db ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
-	}
-
-	// get the data and log it to verify if the update was successful
-	var challenge ChallengeEntity
-	if err := db.Model(&ChallengeEntity{}).
-		Where("challenge_id = ?", cr.ChallengeID).
-		First(&challenge).Error; err != nil {
-		logging.Logger.Error("[challenge]cancel:db ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
-	} else {
-		logging.Logger.Info("[challenge]cancel:db ", zap.String("challenge_id", cr.ChallengeID), zap.Any("challenge", challenge))
 	}
 
 	if err := UpdateChallengeTimingCancellation(cr.ChallengeID, common.Timestamp(cancellation.Unix()), errReason); err != nil {
@@ -379,20 +367,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 func (cr *ChallengeEntity) CommitChallenge(ctx context.Context, verifyOnly bool) error {
 	start := time.Now()
 	verifyIterated := 0
-
-	logging.Logger.Info("[challenge]commit: Committing the challenge",
-		zap.String("challenge_id", cr.ChallengeID),
-		zap.Any("block_num", cr.BlockNum),
-		zap.Any("created_at", cr.CreatedAt),
-		zap.Any("challenge_completion_time", config.StorageSCConfig.ChallengeCompletionTime),
-		zap.Any("completed_time", time.Since(common.ToTime(cr.CreatedAt))),
-	)
-
 	if time.Since(common.ToTime(cr.CreatedAt)) > config.StorageSCConfig.ChallengeCompletionTime {
-		logging.Logger.Info("expiring challenge",
-			zap.Any("created_at", time.Since(common.ToTime(cr.CreatedAt))),
-			zap.Any("challenge_id", cr.ChallengeID))
-
 		cr.CancelChallenge(ctx, ErrExpiredCCT)
 		return ErrExpiredCCT
 	}

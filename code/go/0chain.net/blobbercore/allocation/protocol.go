@@ -7,10 +7,13 @@ import (
 	"fmt"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -83,119 +86,102 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 			"Error decoding the allocation transaction output."+err.Error())
 	}
 
-	updateAllocation(ctx, &Allocation{
-		ID:        sa.ID,
-		Tx:        sa.Tx,
-		OwnerID:   sa.OwnerID,
-		Finalized: sa.Finalized,
-	})
-
-	// get allocation
-	a = new(Allocation)
+	var isExist bool
 	err = tx.Model(&Allocation{}).
-		Where(&Allocation{ID: sa.ID}).
+		Where("id = ?", sa.ID).
 		First(a).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
+		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
 	}
 
-	return a, nil
+	isExist = (a.ID != "")
 
-	//var isExist bool
-	//err = tx.Model(&Allocation{}).
-	//	Where("id = ?", sa.ID).
-	//	First(a).Error
-	//if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-	//	return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
-	//}
-	//
-	//isExist = (a.ID != "")
-	//
-	//logging.Logger.Info("VerifyAllocationTransaction",
-	//	zap.Bool("isExist", isExist),
-	//	zap.Any("allocation", a),
-	//	zap.Any("storageAllocation", sa),
-	//	zap.String("node.Self.ID", node.Self.ID))
-	//
-	//if !isExist {
-	//	foundBlobber := false
-	//	for _, blobberConnection := range sa.BlobberDetails {
-	//		if blobberConnection.BlobberID != node.Self.ID {
-	//			continue
-	//		}
-	//		foundBlobber = true
-	//		a.AllocationRoot = ""
-	//		a.BlobberSize = (sa.Size + sa.DataShards - 1) / sa.DataShards
-	//		a.BlobberSizeUsed = 0
-	//		break
-	//	}
-	//	if !foundBlobber {
-	//		return nil, common.NewError("invalid_blobber",
-	//			"Blobber is not part of the open connection transaction")
-	//	}
-	//}
-	//
-	//// set/update fields
-	//a.ID = sa.ID
-	//a.Tx = sa.Tx
-	//a.Expiration = sa.Expiration
-	//a.OwnerID = sa.OwnerID
-	//a.OwnerPublicKey = sa.OwnerPublicKey
-	//a.RepairerID = t.ClientID // blobber node id
-	//a.TotalSize = sa.Size
-	//a.UsedSize = sa.UsedSize
-	//a.Finalized = sa.Finalized
-	//a.TimeUnit = sa.TimeUnit
-	//a.FileOptions = sa.FileOptions
-	//
-	//m := map[string]interface{}{
-	//	"allocation_id":  a.ID,
-	//	"allocated_size": (sa.Size + int64(len(sa.BlobberDetails)-1)) / int64(len(sa.BlobberDetails)),
-	//}
-	//
-	//err = filestore.GetFileStore().UpdateAllocationMetaData(m)
-	//if err != nil {
-	//	return nil, common.NewError("meta_data_update_error", err.Error())
-	//}
-	//// go update allocation data in file store map
-	//// related terms
-	//a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))
-	//for _, d := range sa.BlobberDetails {
-	//	a.Terms = append(a.Terms, &Terms{
-	//		BlobberID:    d.BlobberID,
-	//		AllocationID: a.ID,
-	//		ReadPrice:    d.Terms.ReadPrice,
-	//		WritePrice:   d.Terms.WritePrice,
-	//	})
-	//}
-	//
-	//if readonly {
-	//	return a, nil
-	//}
-	//
-	//logging.Logger.Info("Saving the allocation to DB")
-	//
-	//if isExist {
-	//	err = tx.Save(a).Error
-	//} else {
-	//	err = tx.Create(a).Error
-	//}
-	//
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//// save/update related terms
-	//for _, t := range a.Terms {
-	//	if isExist {
-	//		err = tx.Save(t).Error
-	//	} else {
-	//		err = tx.Create(t).Error
-	//	}
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//}
+	logging.Logger.Info("VerifyAllocationTransaction",
+		zap.Bool("isExist", isExist),
+		zap.Any("allocation", a),
+		zap.Any("storageAllocation", sa),
+		zap.String("node.Self.ID", node.Self.ID))
+
+	if !isExist {
+		foundBlobber := false
+		for _, blobberConnection := range sa.BlobberDetails {
+			if blobberConnection.BlobberID != node.Self.ID {
+				continue
+			}
+			foundBlobber = true
+			a.AllocationRoot = ""
+			a.BlobberSize = (sa.Size + int64(len(sa.BlobberDetails)-1)) /
+				int64(len(sa.BlobberDetails))
+			a.BlobberSizeUsed = 0
+			break
+		}
+		if !foundBlobber {
+			return nil, common.NewError("invalid_blobber",
+				"Blobber is not part of the open connection transaction")
+		}
+	}
+
+	// set/update fields
+	a.ID = sa.ID
+	a.Tx = sa.Tx
+	a.Expiration = sa.Expiration
+	a.OwnerID = sa.OwnerID
+	a.OwnerPublicKey = sa.OwnerPublicKey
+	a.RepairerID = t.ClientID // blobber node id
+	a.TotalSize = sa.Size
+	a.UsedSize = sa.UsedSize
+	a.Finalized = sa.Finalized
+	a.TimeUnit = sa.TimeUnit
+	a.FileOptions = sa.FileOptions
+
+	m := map[string]interface{}{
+		"allocation_id":  a.ID,
+		"allocated_size": (sa.Size + int64(len(sa.BlobberDetails)-1)) / int64(len(sa.BlobberDetails)),
+	}
+
+	err = filestore.GetFileStore().UpdateAllocationMetaData(m)
+	if err != nil {
+		return nil, common.NewError("meta_data_update_error", err.Error())
+	}
+	// go update allocation data in file store map
+	// related terms
+	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))
+	for _, d := range sa.BlobberDetails {
+		a.Terms = append(a.Terms, &Terms{
+			BlobberID:    d.BlobberID,
+			AllocationID: a.ID,
+			ReadPrice:    d.Terms.ReadPrice,
+			WritePrice:   d.Terms.WritePrice,
+		})
+	}
+
+	if readonly {
+		return a, nil
+	}
+
+	logging.Logger.Info("Saving the allocation to DB")
+
+	if isExist {
+		err = tx.Save(a).Error
+	} else {
+		err = tx.Create(a).Error
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// save/update related terms
+	for _, t := range a.Terms {
+		if isExist {
+			err = tx.Save(t).Error
+		} else {
+			err = tx.Create(t).Error
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return a, nil
 }

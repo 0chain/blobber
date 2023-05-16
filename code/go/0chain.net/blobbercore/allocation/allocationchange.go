@@ -156,7 +156,6 @@ func (cc *AllocationChangeCollector) AddChange(allocationChange *AllocationChang
 }
 
 func (cc *AllocationChangeCollector) Save(ctx context.Context) error {
-
 	db := datastore.GetStore().GetTransaction(ctx)
 	if cc.Status == NewConnection {
 		cc.Status = InProgressConnection
