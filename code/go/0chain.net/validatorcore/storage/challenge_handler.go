@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/cache"
@@ -25,7 +26,8 @@ func challengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 		return nil, err
 	}
 
-	logging.Logger.Info("Processing validation.", zap.Any("challenge_id", challengeRequest.ChallengeID))
+	escapedChallengeID := sanitizeString(challengeRequest.ChallengeID)
+	logging.Logger.Info("Processing validation.", zap.String("challenge_id", escapedChallengeID))
 	vt, err := lru.Get(challengeHash)
 	retVT, ok := vt.(*ValidationTicket)
 	if vt != nil && err == nil && ok {
@@ -41,7 +43,7 @@ func challengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 
 	allocationObj, err := GetProtocolImpl().VerifyAllocationTransaction(ctx, challengeObj.AllocationID)
 	if err != nil {
-		logging.Logger.Error("Error verifying the allocation from BC", zap.Any("allocation_id", challengeObj.AllocationID), zap.Error(err))
+		logging.Logger.Error("Error verifying the allocation from BC", zap.String("allocation_id", challengeObj.AllocationID), zap.Error(err))
 		return nil, common.NewError("invalid_parameters", "Allocation could not be verified. "+err.Error())
 	}
 
@@ -91,8 +93,9 @@ func NewChallengeRequest(r *http.Request) (*ChallengeRequest, string, error) {
 func NewChallengeObj(ctx context.Context, challengeRequest *ChallengeRequest) (*Challenge, error) {
 	challengeObj, err := GetProtocolImpl().VerifyChallengeTransaction(ctx, challengeRequest)
 	if err != nil {
+		escapedChallengeID := sanitizeString(challengeRequest.ChallengeID)
 		logging.Logger.Error("Error verifying the challenge from BC",
-			zap.Any("challenge_id", challengeRequest.ChallengeID),
+			zap.String("challenge_id", escapedChallengeID),
 			zap.Error(err))
 		return nil, common.NewError("invalid_parameters", "Challenge could not be verified. "+err.Error())
 	}
@@ -114,7 +117,7 @@ func ValidValidationTicket(challengeObj *Challenge, challengeID string, challeng
 	if err := validationTicket.Sign(); err != nil {
 		return nil, common.NewError("invalid_parameters", err.Error())
 	}
-	logging.Logger.Info("Validation passed.", zap.Any("challenge_id", challengeID))
+	logging.Logger.Info("Validation passed.", zap.String("challenge_id", challengeID))
 
 	lru.Add(challengeHash, &validationTicket) //nolint:errcheck // never returns an error anyway
 	return &validationTicket, nil
@@ -129,7 +132,7 @@ func InvalidValidationTicket(challengeObj *Challenge, err error) (interface{}, e
 		errCode = commError.Code
 	}
 
-	logging.Logger.Error("Validation Failed - Error verifying the challenge", zap.Any("challenge_id", challengeObj.ID), zap.Error(err))
+	logging.Logger.Error("Validation Failed - Error verifying the challenge", zap.String("challenge_id", challengeObj.ID), zap.Error(err))
 	validationTicket.BlobberID = challengeObj.BlobberID
 	validationTicket.ChallengeID = challengeObj.ID
 	validationTicket.Result = false
@@ -143,4 +146,10 @@ func InvalidValidationTicket(challengeObj *Challenge, err error) (interface{}, e
 		return nil, common.NewError("invalid_parameters", err.Error())
 	}
 	return &validationTicket, nil
+}
+
+func sanitizeString(input string) string {
+	sanitized := strings.ReplaceAll(input, "\n", "")
+	sanitized = strings.ReplaceAll(sanitized, "\r", "")
+	return sanitized
 }
