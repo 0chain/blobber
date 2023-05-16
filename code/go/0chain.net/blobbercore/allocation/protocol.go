@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -49,9 +48,16 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
-	sa, err := SyncAllocation(allocationTx)
-	if err != nil {
-		return nil, err
+	db := datastore.GetStore().GetDB()
+
+	sa := &Allocation{}
+	result := db.Table(TableNameAllocation).Where(SQLWhereGetByTx, allocationTx).First(sa)
+
+	if result.Error != nil {
+		sa, err = SyncAllocation(allocationTx)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	updateAllocation(ctx, &Allocation{
