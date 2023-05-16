@@ -224,7 +224,7 @@ func (op *ObjectPath) VerifyBlockNum(challengeRand int64) error {
 		}
 	}
 	if !found {
-		logging.Logger.Error("File for Block num was not found in object path", zap.String("object_path_hash", op.Meta.Hash), zap.Int64("rand_seed", challengeRand), zap.Int64("blocknum", blockNum), zap.Int64("root_blocks", op.RootObject.NumBlocks))
+		logging.Logger.Error("File for Block num was not found in object path", zap.Int64("rand_seed", challengeRand), zap.Int64("blocknum", blockNum), zap.Int64("root_blocks", op.RootObject.NumBlocks))
 		return common.NewError("invalid_object_path", "File for Block num was not found in object path")
 	}
 
