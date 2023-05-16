@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -282,6 +283,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		fileDownloadResponse *filestore.FileDownloadResponse
 		// respData             []byte
 	)
+
+	if dr.BlockNum > math.MaxInt32 || dr.NumBlocks > math.MaxInt32 {
+		return nil, common.NewErrorf("download_file", "BlockNum or NumBlocks is too large to convert to int")
+	}
+
 	if downloadMode == DownloadContentThumb {
 		rbi := &filestore.ReadBlockInput{
 			AllocationID:  alloc.ID,
