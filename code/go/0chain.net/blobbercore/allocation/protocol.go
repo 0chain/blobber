@@ -49,11 +49,16 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
+	sa, err := SyncAllocation(allocationTx)
+	if err != nil {
+		return nil, err
+	}
+
 	updateAllocation(ctx, &Allocation{
-		ID:        a.ID,
-		Tx:        a.Tx,
-		OwnerID:   a.OwnerID,
-		Finalized: a.Finalized,
+		ID:        sa.ID,
+		Tx:        sa.Tx,
+		OwnerID:   sa.OwnerID,
+		Finalized: sa.Finalized,
 	})
 
 	// get allocation
