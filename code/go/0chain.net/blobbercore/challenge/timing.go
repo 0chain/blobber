@@ -62,7 +62,7 @@ func CreateChallengeTiming(challengeID string, createdAt common.Timestamp) error
 	}
 
 	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		return tx.Create(c).Error
+		return tx.Save(c).Error
 	})
 
 	return err

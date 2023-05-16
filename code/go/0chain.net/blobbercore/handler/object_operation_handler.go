@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
@@ -124,7 +126,8 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 
 	pendingWriteSize, err := allocation.GetPendingWrite(db, payerID, alloc.ID)
 	if err != nil {
-		Logger.Error("write_pre_redeem:get_pending_write", zap.Error(err), zap.String("allocation_id", alloc.ID), zap.String("payer_id", payerID))
+		escapedPayerID := sanitizeString(payerID)
+		Logger.Error("write_pre_redeem:get_pending_write", zap.Error(err), zap.String("allocation_id", alloc.ID), zap.String("payer_id", escapedPayerID))
 		return common.NewError("write_pre_redeem", "database error while getting pending writes")
 	}
 
@@ -281,6 +284,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		fileDownloadResponse *filestore.FileDownloadResponse
 		// respData             []byte
 	)
+
+	if dr.BlockNum > math.MaxInt32 || dr.NumBlocks > math.MaxInt32 {
+		return nil, common.NewErrorf("download_file", "BlockNum or NumBlocks is too large to convert to int")
+	}
+
 	fromPreCommit := false
 	if downloadMode == DownloadContentThumb {
 
@@ -1134,14 +1142,20 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	elapsedAllocationChanges := time.Since(st)
 
-	Logger.Info(fmt.Sprintf("[upload] Processing content for allocation %s, connection: %s", allocationID, connectionID))
+	Logger.Info("[upload] Processing content for allocation and connection",
+		zap.String("allocationID", allocationID),
+		zap.String("connectionID", connectionID),
+	)
 	st = time.Now()
 	result, err := cmd.ProcessContent(ctx, r, allocationObj, connectionObj)
 
 	if err != nil {
 		return nil, err
 	}
-	Logger.Info(fmt.Sprintf("[upload] Content processed for allocation: %s, connection: %s", allocationID, connectionID))
+	Logger.Info("[upload] Content processed for allocation and connection",
+		zap.String("allocationID", allocationID),
+		zap.String("connectionID", connectionID),
+	)
 
 	err = cmd.ProcessThumbnail(ctx, r, allocationObj, connectionObj)
 
@@ -1173,6 +1187,12 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	)
 
 	return &result, nil
+}
+
+func sanitizeString(input string) string {
+	sanitized := strings.ReplaceAll(input, "\n", "")
+	sanitized = strings.ReplaceAll(sanitized, "\r", "")
+	return sanitized
 }
 
 func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {

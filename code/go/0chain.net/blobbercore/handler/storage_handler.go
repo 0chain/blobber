@@ -358,7 +358,9 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		return nil, err
 	}
 
-	Logger.Info("Path Hash for list dir :" + pathHash)
+	escapedPathHash := sanitizeString(pathHash)
+
+	Logger.Info("Path Hash for list dir :" + escapedPathHash)
 	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "path", "lookup_hash", "type", "name"})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
