@@ -49,51 +49,17 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
-	a = new(Allocation)
-	err = tx.Model(&Allocation{}).
-		Where(&Allocation{Tx: allocationTx}).
-		First(a).Error
-
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
-	}
-
-	if err == nil {
-		// load related terms
-		var terms []*Terms
-		err = tx.Model(terms).
-			Where("allocation_id = ?", a.ID).
-			Find(&terms).Error
-		if err != nil {
-			return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
-		}
-		a.Terms = terms // set field
-		return          // found in DB
-	}
-
-	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
-	if err != nil {
-		return nil, common.NewError("invalid_allocation",
-			"Invalid Allocation id. Allocation not found in blockchain. "+err.Error())
-	}
-	var sa transaction.StorageAllocation
-	err = json.Unmarshal([]byte(t.TransactionOutput), &sa)
-	if err != nil {
-		return nil, common.NewError("transaction_output_decode_error",
-			"Error decoding the allocation transaction output."+err.Error())
-	}
-
 	updateAllocation(ctx, &Allocation{
-		ID:        sa.ID,
-		Tx:        sa.Tx,
-		OwnerID:   sa.OwnerID,
-		Finalized: sa.Finalized,
+		ID:        a.ID,
+		Tx:        a.Tx,
+		OwnerID:   a.OwnerID,
+		Finalized: a.Finalized,
 	})
 
 	// get allocation
 	a = new(Allocation)
 	err = tx.Model(&Allocation{}).
-		Where(&Allocation{ID: sa.ID}).
+		Where(&Allocation{ID: a.ID}).
 		First(a).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
