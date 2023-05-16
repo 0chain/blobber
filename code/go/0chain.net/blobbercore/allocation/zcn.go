@@ -36,26 +36,42 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 
 	allocation, _ := requestAllocation(sa.ID)
 
+	db := datastore.GetStore().GetDB()
+
+	a := new(Allocation)
+
+	var isExist bool
+	err = db.Model(&Allocation{}).
+		Where("id = ?", sa.ID).
+		First(a).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
+	}
+
+	isExist = a.ID != ""
+
 	logging.Logger.Info("jayash Allocation", zap.Any("allocation", allocation))
 
 	alloc := &Allocation{}
 
-	belongToThisBlobber := false
-	for _, blobberConnection := range sa.BlobberDetails {
-		if blobberConnection.BlobberID == node.Self.ID {
-			belongToThisBlobber = true
+	if !isExist {
+		belongToThisBlobber := false
+		for _, blobberConnection := range sa.BlobberDetails {
+			if blobberConnection.BlobberID == node.Self.ID {
+				belongToThisBlobber = true
 
-			alloc.AllocationRoot = ""
-			alloc.BlobberSize = (allocation.Size + allocation.DataShards - 1) /
-				allocation.DataShards
-			alloc.BlobberSizeUsed = 0
+				alloc.AllocationRoot = ""
+				alloc.BlobberSize = (allocation.Size + allocation.DataShards - 1) /
+					allocation.DataShards
+				alloc.BlobberSizeUsed = 0
 
-			break
+				break
+			}
 		}
-	}
-	if !belongToThisBlobber {
-		return nil, errors.Throw(common.ErrBadRequest,
-			"Blobber is not part of the open connection transaction")
+		if !belongToThisBlobber {
+			return nil, errors.Throw(common.ErrBadRequest,
+				"Blobber is not part of the open connection transaction")
+		}
 	}
 
 	// set/update fields
