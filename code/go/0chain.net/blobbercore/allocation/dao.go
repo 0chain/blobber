@@ -4,8 +4,10 @@ import (
 	"context"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/constants"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -16,6 +18,8 @@ func GetOrCreate(ctx context.Context, store datastore.Store, allocationTx string
 	if len(allocationTx) == 0 {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "tx")
 	}
+
+	logging.Logger.Info("func GetOrCreate", zap.String("tx", allocationTx))
 
 	alloc := &Allocation{}
 	result := db.Table(TableNameAllocation).Where(SQLWhereGetByTx, allocationTx).First(alloc)
@@ -28,8 +32,11 @@ func GetOrCreate(ctx context.Context, store datastore.Store, allocationTx string
 		return nil, errors.ThrowLog(result.Error.Error(), common.ErrBadDataStore)
 	}
 
-	return SyncAllocation(allocationTx)
+	res, err := SyncAllocation(allocationTx)
 
+	logging.Logger.Info("jayash SyncAllocation", zap.Any("res", res))
+
+	return res, err
 }
 
 const (

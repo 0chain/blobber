@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"strconv"
 	"time"
 
@@ -191,6 +193,8 @@ func WithVerify(r *http.Request) (*Context, error) {
 		Store:   datastore.GetStore(),
 	}
 
+	logging.Logger.Info("WithVerify", zap.Any("request", r), zap.Any("ctx", ctx))
+
 	ctx.Vars = mux.Vars(r)
 	if ctx.Vars == nil {
 		ctx.Vars = make(map[string]string)
@@ -202,6 +206,8 @@ func WithVerify(r *http.Request) (*Context, error) {
 	ctx.Signature = r.Header.Get(common.ClientSignatureHeader)
 
 	if len(ctx.AllocationId) > 0 {
+
+		logging.Logger.Info("GET OR CREATE", zap.Any("allocation", ctx.AllocationId))
 		alloc, err := allocation.GetOrCreate(ctx, ctx.Store, ctx.AllocationId)
 
 		if err != nil {

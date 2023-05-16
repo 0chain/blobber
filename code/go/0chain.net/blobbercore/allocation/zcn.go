@@ -5,26 +5,38 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/errors"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 // SyncAllocation try to pull allocation from blockchain, and insert it in db.
 func SyncAllocation(allocationTx string) (*Allocation, error) {
+
+	logging.Logger.Info("SyncAllocation jayash", zap.Any("tx", allocationTx))
+
 	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
 	if err != nil {
 		return nil, errors.Throw(common.ErrBadRequest,
 			"Invalid Allocation id. Allocation not found in blockchain.")
 	}
+
+	logging.Logger.Info("jayash TX output", zap.Any("tOutput", t.TransactionOutput))
+
 	var sa transaction.StorageAllocation
 	err = json.Unmarshal([]byte(t.TransactionOutput), &sa)
 	if err != nil {
 		return nil, errors.ThrowLog(err.Error(), common.ErrInternal, "Error decoding the allocation transaction output.")
 	}
 
+	logging.Logger.Info("jayash SA", zap.Any("SA", sa))
+
 	allocation, _ := requestAllocation(sa.ID)
+
+	logging.Logger.Info("jayash Allocation", zap.Any("allocation", allocation))
 
 	alloc := &Allocation{}
 
@@ -70,14 +82,18 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 		})
 	}
 
+	logging.Logger.Info("jayash onlyAlloc", zap.Any("alloc", alloc))
+
 	// check if allocation exists by id in db and update it or create new one
 	datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
 		if err := tx.Table(TableNameAllocation).Where(Allocation{ID: alloc.ID}).Assign(alloc).FirstOrCreate(alloc).Error; err != nil {
+			logging.Logger.Info("jayash DB Error", zap.Any("err1", err))
 			return err
 		}
 
 		for _, term := range terms {
 			if err := tx.Table(TableNameTerms).FirstOrCreate(term, term).Error; err != nil {
+				logging.Logger.Info("jayash DB Error", zap.Any("err2", err))
 				return err
 			}
 		}
