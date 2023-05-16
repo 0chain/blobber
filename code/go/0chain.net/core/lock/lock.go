@@ -20,12 +20,20 @@ type Mutex struct {
 	// usedby how objects it is used by
 	usedby int
 
-	mu *sync.Mutex
+	mu *sync.RWMutex
 }
 
 // Lock implements Locker.Lock
 func (m *Mutex) Lock() {
 	m.mu.Lock()
+}
+
+func (m *Mutex) RLock() {
+	m.mu.RLock()
+}
+
+func (m *Mutex) RUnlock() {
+	m.mu.RUnlock()
 }
 
 // Unlock implements Locker.Unlock, and mark mutex as unlock object
@@ -50,7 +58,7 @@ func GetMutex(tablename, key string) *Mutex {
 
 	m := &Mutex{
 		usedby: 1,
-		mu:     &sync.Mutex{},
+		mu:     &sync.RWMutex{},
 	}
 
 	lockPool[lockKey] = m

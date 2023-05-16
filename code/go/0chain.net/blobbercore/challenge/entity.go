@@ -3,10 +3,7 @@ package challenge
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -146,6 +143,7 @@ func (cr *ChallengeEntity) Save(ctx context.Context) error {
 }
 
 func (cr *ChallengeEntity) SaveWith(db *gorm.DB) error {
+
 	err := marshalField(cr.Validators, &cr.ValidatorsString)
 	if err != nil {
 		return err
@@ -205,44 +203,4 @@ func GetChallengeEntity(ctx context.Context, challengeID string) (*ChallengeEnti
 		return nil, err
 	}
 	return cr, nil
-}
-
-// getStatus check challenge if exists in db
-// nolint
-func getStatus(db *gorm.DB, challengeIDs ...string) map[string]*ChallengeStatus {
-
-	if len(challengeIDs) == 0 {
-		logging.Logger.Error("cannot fetch ids: 0")
-		return nil
-	}
-
-	challToStatus := make(map[string]*ChallengeStatus)
-
-	rows, err := db.Model(&ChallengeEntity{}).
-		Where("challenge_id IN ?", challengeIDs).
-		Select("challenge_id, status").Rows()
-	if err != nil {
-		logging.Logger.Error("error_fetching_status",
-			zap.Error(err))
-	}
-	defer rows.Close()
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil
-	}
-
-	for rows.Next() {
-		var challengeID string
-		var status ChallengeStatus
-
-		err = rows.Scan(&challengeID, &status)
-		if err != nil {
-			logging.Logger.Error("[challenge]get_status",
-				zap.Error(err))
-			continue
-		}
-
-		challToStatus[challengeID] = &status
-	}
-
-	return challToStatus
 }
