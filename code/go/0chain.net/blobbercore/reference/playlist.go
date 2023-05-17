@@ -2,6 +2,7 @@ package reference
 
 import (
 	"context"
+	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -58,11 +59,18 @@ func LoadPlaylistFile(ctx context.Context, allocationID, lookupHash string) (*Pl
 		Where("allocation_id = ? and lookup_hash = ?", allocationID, lookupHash).
 		First(file)
 
-	logging.Logger.Info("playlist", zap.String("allocation_id", allocationID), zap.String("lookup_hash", lookupHash))
+	escapedLookupHash := sanitizeString(lookupHash)
+	logging.Logger.Info("playlist", zap.String("allocation_id", allocationID), zap.String("lookup_hash", escapedLookupHash))
 
 	if result.Error != nil {
 		return nil, result.Error
 	}
 
 	return file, nil
+}
+
+func sanitizeString(input string) string {
+	sanitized := strings.ReplaceAll(input, "\n", "")
+	sanitized = strings.ReplaceAll(sanitized, "\r", "")
+	return sanitized
 }

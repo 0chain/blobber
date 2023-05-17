@@ -262,6 +262,42 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 						},
 					},
 				)
+
+				query = `SELECT * FROM "reference_objects" WHERE id = $1 AND "reference_objects"."deleted_at" IS NULL ORDER BY "reference_objects"."id" LIMIT 1`
+				mocket.Catcher.NewMock().WithQuery(query).WithReply(
+					[]map[string]interface{}{
+						{
+							"id":          1,
+							"level":       1,
+							"lookup_hash": "lookup_hash_root",
+							"path":        "/",
+							"parent_path": "",
+							"name":        "",
+							"type":        "d",
+							"created_at":  common.Now() - 3600,
+						},
+						{
+							"id":          2,
+							"level":       2,
+							"lookup_hash": "lookup_hash",
+							"path":        "/old_dir",
+							"parent_path": "/",
+							"name":        "old_dir",
+							"type":        "d",
+							"created_at":  common.Now() - 1800,
+						},
+						{
+							"id":          3,
+							"level":       3,
+							"lookup_hash": "lookup_hash",
+							"path":        "/old_dir/abc.def",
+							"parent_path": "/old_dir",
+							"name":        "abc.def",
+							"type":        "f",
+							"created_at":  common.Now() - 1800,
+						},
+					},
+				)
 			},
 		},
 		{
@@ -347,6 +383,42 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 					[]map[string]interface{}{
 						{
 							"rows_affected": 1,
+						},
+					},
+				)
+
+				query = `SELECT * FROM "reference_objects" WHERE id = $1 AND "reference_objects"."deleted_at" IS NULL ORDER BY "reference_objects"."id" LIMIT 1`
+				mocket.Catcher.NewMock().WithQuery(query).WithReply(
+					[]map[string]interface{}{
+						{
+							"id":          1,
+							"level":       1,
+							"lookup_hash": "lookup_hash_root",
+							"path":        "/",
+							"parent_path": "",
+							"name":        "",
+							"type":        "d",
+							"created_at":  common.Now() - 3600,
+						},
+						{
+							"id":          2,
+							"level":       2,
+							"lookup_hash": "lookup_hash",
+							"path":        "/old_dir",
+							"parent_path": "/",
+							"name":        "old_dir",
+							"type":        "d",
+							"created_at":  common.Now() - 1800,
+						},
+						{
+							"id":          3,
+							"level":       3,
+							"lookup_hash": "lookup_hash",
+							"path":        "/old_dir/abc.def",
+							"parent_path": "/old_dir",
+							"name":        "abc.def",
+							"type":        "f",
+							"created_at":  common.Now() - 1800,
 						},
 					},
 				)

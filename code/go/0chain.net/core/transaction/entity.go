@@ -90,6 +90,9 @@ type StorageAllocation struct {
 	TimeUnit       time.Duration        `json:"time_unit"`
 	WritePool      uint64               `json:"write_pool"`
 	FileOptions    uint16               `json:"file_options"`
+
+	DataShards   int64 `json:"data_shards"`
+	ParityShards int64 `json:"parity_shards"`
 }
 
 func (sa *StorageAllocation) Until() common.Timestamp {

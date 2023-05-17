@@ -20,7 +20,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
@@ -324,11 +323,11 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 
 	result := fileref.GetListingData(ctx)
-	fileStats, err := stats.GetFileStats(ctx, fileref.ID)
+	fileStats, err := reference.GetFileStats(ctx, fileref.ID)
 	if err != nil {
 		return nil, common.NewError("bad_db_operation", "Error retrieving file stats. "+err.Error())
 	}
-	wm, err := writemarker.GetWriteMarkerEntity(ctx, fileref.AllocationRoot)
+	wm, err := writemarker.GetWriteMarkerEntity(ctx, fileref.AllocationRoot, allocationID)
 	if err != nil {
 		return nil, common.NewError("bad_db_operation", "Error retrieving write marker. "+err.Error())
 	}
@@ -368,7 +367,9 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		return nil, err
 	}
 
-	Logger.Info("Path Hash for list dir :" + pathHash)
+	escapedPathHash := sanitizeString(pathHash)
+
+	Logger.Info("Path Hash for list dir :" + escapedPathHash)
 	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "path", "lookup_hash", "type", "name"})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -442,6 +443,57 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		if child.Type == reference.DIRECTORY || clientID != allocationObj.OwnerID {
 			continue
 		}
+	}
+
+	return &result, nil
+}
+
+func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Request) (*blobberhttp.LatestWriteMarkerResult, error) {
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID == "" {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
+	publicKey := allocationObj.OwnerPublicKey
+
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "could not verify the allocation owner")
+	}
+
+	var latestWM *writemarker.WriteMarkerEntity
+	var prevWM *writemarker.WriteMarkerEntity
+	if allocationObj.AllocationRoot == "" {
+		latestWM = nil
+	} else {
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot, allocationObj.ID)
+		if err != nil {
+			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
+		}
+		if latestWM == nil {
+			return nil, common.NewError("latest_write_marker_read_error", "Latest write marker not found for allocation.")
+		}
+		if latestWM.WM.PreviousAllocationRoot != "" {
+			prevWM, err = writemarker.GetWriteMarkerEntity(ctx, latestWM.WM.PreviousAllocationRoot, allocationObj.ID)
+			if err != nil {
+				return nil, common.NewError("latest_write_marker_read_error", "Error reading the previous write marker for allocation."+err.Error())
+			}
+		}
+	}
+
+	var result blobberhttp.LatestWriteMarkerResult
+	if latestWM != nil {
+		result.LatestWM = &latestWM.WM
+	}
+	if prevWM != nil {
+		result.PrevWM = &prevWM.WM
 	}
 
 	return &result, nil
@@ -523,7 +575,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot, allocationObj.ID)
 		if err != nil {
 			errCh <- common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 			return
@@ -591,7 +643,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot, allocationObj.ID)
 		if err != nil {
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
@@ -850,7 +902,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot, allocationObj.ID)
 		if err != nil {
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}

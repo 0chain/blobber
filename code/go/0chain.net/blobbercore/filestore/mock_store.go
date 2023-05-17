@@ -49,7 +49,7 @@ func (fs *MockStore) DeleteTempFile(allocID, connID string, fileData *FileInputD
 	return fs.FileStore.DeleteTempFile(allocID, connID, fileData)
 }
 
-func (fs *MockStore) DeleteFile(allocationID string, contentHash string) error {
+func (fs *MockStore) DeleteFile(allocationID, contentHash string) error {
 	return fs.FileStore.DeleteFile(allocationID, contentHash)
 }
 
