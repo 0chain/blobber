@@ -71,3 +71,8 @@ type DownloadResponse struct {
 	Path         string                 `json:"-"`
 	LatestRM     *readmarker.ReadMarker `json:"latest_rm"`
 }
+
+type LatestWriteMarkerResult struct {
+	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
+	PrevWM   *writemarker.WriteMarker `json:"prev_write_marker"`
+}

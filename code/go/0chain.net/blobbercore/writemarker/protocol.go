@@ -60,12 +60,9 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 		return common.NewError("write_marker_validation_failed", "Error during verifying signature. "+err.Error())
 	}
 	if !sigOK {
+		Logger.Error("write_marker_sig_error", zap.Any("wm", wme.WM))
 		return common.NewError("write_marker_validation_failed", "Write marker signature is not valid")
 	}
-
-	// if err := AllocationRootMustUnique(ctx, wme.WM.AllocationRoot); err != nil {
-	// 	return err
-	// }
 
 	return nil
 }
@@ -128,4 +125,47 @@ func (wme *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 	wme.CloseTxnID = t.Hash
 	err = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
 	return err
+}
+
+func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAllocation *allocation.Allocation) error {
+
+	if wme == nil {
+		return common.NewError("invalid_write_marker", "No Write Marker was found")
+	}
+	if wme.WM.PreviousAllocationRoot != wme.WM.AllocationRoot {
+		return common.NewError("invalid_write_marker", "Invalid write marker. Prev Allocation root does not match the allocation root of write marker")
+	}
+	if wme.WM.BlobberID != node.Self.ID {
+		return common.NewError("write_marker_validation_failed", "Write Marker is not for the blobber")
+	}
+
+	if wme.WM.AllocationID != dbAllocation.ID {
+		return common.NewError("write_marker_validation_failed", "Write Marker is not for the same allocation transaction")
+	}
+
+	if wme.WM.Size != 0 {
+		return common.NewError("empty write_marker_validation_failed", fmt.Sprintf("Write Marker size is %v but should be 0", wme.WM.Size))
+	}
+
+	clientPublicKey := ctx.Value(constants.ContextKeyClientKey).(string)
+	if clientPublicKey == "" {
+		return common.NewError("write_marker_validation_failed", "Could not get the public key of the client")
+	}
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID == "" || clientID != wme.WM.ClientID {
+		return common.NewError("write_marker_validation_failed", "Write Marker is not by the same client who uploaded")
+	}
+
+	hashData := wme.WM.GetHashData()
+	signatureHash := encryption.Hash(hashData)
+	sigOK, err := encryption.Verify(clientPublicKey, wme.WM.Signature, signatureHash)
+	if err != nil {
+		return common.NewError("write_marker_validation_failed", "Error during verifying signature. "+err.Error())
+	}
+	if !sigOK {
+		return common.NewError("write_marker_validation_failed", "Write marker signature is not valid")
+	}
+
+	return nil
 }

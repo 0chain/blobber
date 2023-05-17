@@ -9,17 +9,19 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type WriteMarker struct {
-	AllocationRoot         string           `gorm:"column:allocation_root;size:64;primaryKey" json:"allocation_root"`
+	AllocationRoot         string           `gorm:"column:allocation_root;size:64;primaryKey;index:idx_alloc" json:"allocation_root"`
 	PreviousAllocationRoot string           `gorm:"column:prev_allocation_root;size:64" json:"prev_allocation_root"`
 	FileMetaRoot           string           `gorm:"column:file_meta_root;size:64" json:"file_meta_root"`
-	AllocationID           string           `gorm:"column:allocation_id;size:64;index:idx_seq,unique,priority:1" json:"allocation_id"`
+	AllocationID           string           `gorm:"column:allocation_id;size:64;index:idx_seq,unique,priority:1;index:idx_alloc" json:"allocation_id"`
 	Size                   int64            `gorm:"column:size" json:"size"`
 	BlobberID              string           `gorm:"column:blobber_id;size:64" json:"blobber_id"`
-	Timestamp              common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
+	Timestamp              common.Timestamp `gorm:"column:timestamp;primaryKey" json:"timestamp"`
 	ClientID               string           `gorm:"column:client_id;size:64" json:"client_id"`
 	Signature              string           `gorm:"column:signature;size:64" json:"signature"`
 }
@@ -35,9 +37,10 @@ func (wm *WriteMarker) GetHashData() string {
 type WriteMarkerStatus int
 
 const (
-	Accepted  WriteMarkerStatus = 0
-	Committed WriteMarkerStatus = 1
-	Failed    WriteMarkerStatus = 2
+	Accepted   WriteMarkerStatus = 0
+	Committed  WriteMarkerStatus = 1
+	Failed     WriteMarkerStatus = 2
+	Rollbacked WriteMarkerStatus = 3
 )
 
 type WriteMarkerEntity struct {
@@ -109,10 +112,14 @@ func (wm *WriteMarkerEntity) OnChain() bool {
 }
 
 // GetWriteMarkerEntity get WriteMarkerEntity from postgres
-func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMarkerEntity, error) {
+func GetWriteMarkerEntity(ctx context.Context, allocation_root, allocationID string) (*WriteMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	wm := &WriteMarkerEntity{}
-	err := db.First(wm, "allocation_root = ?", allocation_root).Error
+	// err := db.First(wm, "allocation_root = ?", allocation_root).Error
+	err := db.Table((WriteMarkerEntity{}).TableName()).
+		Where("allocation_root=? and allocation_id=?", allocation_root, allocationID).
+		Order("sequence desc").
+		Take(wm).Error
 	if err != nil {
 		return nil, err
 	}
@@ -120,11 +127,10 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMa
 }
 
 // AllocationRootMustUnique allocation_root must be unique in write_markers
-func AllocationRootMustUnique(ctx context.Context, allocation_root string) error {
+func AllocationRootMustUnique(ctx context.Context, allocation_root string, timestamp int64) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-
 	var c int64
-	db.Raw("SELECT 1 FROM write_markers WHERE allocation_root = ? and status<>2 ", allocation_root).
+	db.Raw("SELECT 1 FROM write_markers WHERE allocation_root = ? and timestamp=? and status<>2 ", allocation_root, timestamp).
 		Count(&c)
 
 	if c > 0 {
@@ -134,27 +140,36 @@ func AllocationRootMustUnique(ctx context.Context, allocation_root string) error
 	return nil
 }
 
-func GetWriteMarkersInRange(ctx context.Context, allocationID, startAllocationRoot, endAllocationRoot string) ([]*WriteMarkerEntity, error) {
+// TODO: Remove allocation ID after duplicate writemarker fix
+func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAllocationRoot string, startTimestamp common.Timestamp, endAllocationRoot string) ([]*WriteMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
-	var seqRange []int64
+
+	// seq of start allocation root
+	startWM := WriteMarkerEntity{}
 	err := db.Table((WriteMarkerEntity{}).TableName()).
-		Where("allocation_id=?", allocationID).
-		Where("allocation_root=? OR allocation_root=?", startAllocationRoot, endAllocationRoot).
-		Order("sequence").Pluck("sequence", &seqRange).Error
+		Where("allocation_root=? AND timestamp=?", startAllocationRoot, startTimestamp).
+		Select("sequence").
+		Take(&startWM).Error
+
 	if err != nil {
-		return nil, err
-	}
-	if len(seqRange) == 0 || len(seqRange) > 2 {
-		return nil, common.NewError("write_marker_not_found", "Could not find the right write markers in the range")
+		logging.Logger.Error("write_marker_not_found", zap.Error(err), zap.Any("allocation_root", startAllocationRoot), zap.Any("timestamp", startTimestamp))
+		return nil, common.NewError("write_marker_not_found", "Could not find the start write marker in the range")
 	}
 
-	if len(seqRange) == 1 {
-		seqRange = append(seqRange, seqRange[0])
+	// seq of end allocation root
+	endWM := WriteMarkerEntity{}
+	err = db.Table((WriteMarkerEntity{}).TableName()).
+		Where("allocation_id=? AND allocation_root=?", allocationID, endAllocationRoot).
+		Select("sequence").
+		Order("sequence desc").
+		Take(&endWM).Error
+	if err != nil {
+		return nil, common.NewError("write_marker_not_found", "Could not find the end write marker in the range")
 	}
 
 	retMarkers := make([]*WriteMarkerEntity, 0)
 	err = db.Where("allocation_id=? AND sequence BETWEEN ? AND ?",
-		allocationID, seqRange[0], seqRange[1]).Order("sequence").
+		allocationID, startWM.Sequence, endWM.Sequence).Order("sequence").
 		Find(&retMarkers).Error
 	if err != nil {
 		return nil, err
@@ -163,17 +178,30 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID, startAllocationRo
 	if len(retMarkers) == 0 {
 		return nil, common.NewError("write_marker_not_found", "Could not find the write markers in the range")
 	}
-	return retMarkers, nil
-}
 
-func (wm *WriteMarkerEntity) Save(ctx context.Context) error {
-	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Save(wm).Error
-	return err
+	if retMarkers[0].WM.AllocationRoot != startAllocationRoot {
+		logging.Logger.Error("write_marker_root_mismatch", zap.Any("expected", startAllocationRoot), zap.Any("actual", retMarkers[0].WM.AllocationRoot))
+	}
+
+	return retMarkers, nil
 }
 
 func (wm *WriteMarkerEntity) Create(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Create(wm).Error
 	return err
+}
+
+func (wm *WriteMarkerEntity) SendToChan(ctx context.Context) error {
+
+	sem := GetLock(wm.WM.AllocationID)
+	if sem == nil {
+		sem = SetLock(wm.WM.AllocationID)
+	}
+	err := sem.Acquire(ctx, 1)
+	if err != nil {
+		return err
+	}
+	writeMarkerChan <- wm
+	return nil
 }

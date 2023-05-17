@@ -63,7 +63,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
 
-				query := `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","file_meta_hash","path_hash","validation_root","fixed_merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","allocation_root","level","created_at","updated_at" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				query := `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","file_meta_hash","path_hash","validation_root","fixed_merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","allocation_root","level","created_at","updated_at","file_id" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().WithQuery(query).WithReply(
 					[]map[string]interface{}{
 						{
@@ -106,6 +106,40 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 					},
 				)
 
+				query = `SELECT * FROM "reference_objects" WHERE id = $1 AND "reference_objects"."deleted_at" IS NULL ORDER BY "reference_objects"."id" LIMIT 1`
+				mocket.Catcher.NewMock().WithQuery(query).WithReply(
+					[]map[string]interface{}{
+						{
+							"id":              1,
+							"level":           0,
+							"lookup_hash":     "lookup_hash_root",
+							"path":            "/",
+							"name":            "/",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "",
+							"validation_root": "",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.DIRECTORY,
+							"created_at":      common.Now() - 3600,
+						},
+						{
+							"id":              2,
+							"level":           1,
+							"lookup_hash":     "lookup_hash",
+							"path":            "/test_file",
+							"name":            "test_file",
+							"validation_root": "validation_root",
+							"thumbnail_size":  300,
+							"thumbnail_hash":  "thumbnail_hash",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "/",
+							"type":            reference.FILE,
+							"created_at":      common.Now() - 3600,
+						},
+					},
+				)
+
 			},
 		},
 		{
@@ -121,7 +155,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
 
-				query := `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","file_meta_hash","path_hash","validation_root","fixed_merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","allocation_root","level","created_at","updated_at" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				query := `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","file_meta_hash","path_hash","validation_root","fixed_merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","allocation_root","level","created_at","updated_at","file_id" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().WithQuery(query).WithReply(
 					[]map[string]interface{}{
 						{
@@ -164,6 +198,40 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 					},
 				)
 
+				query = `SELECT * FROM "reference_objects" WHERE id = $1 AND "reference_objects"."deleted_at" IS NULL ORDER BY "reference_objects"."id" LIMIT 1`
+				mocket.Catcher.NewMock().WithQuery(query).WithReply(
+					[]map[string]interface{}{
+						{
+							"id":              1,
+							"level":           0,
+							"lookup_hash":     "lookup_hash_root",
+							"path":            "/",
+							"name":            "/",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "",
+							"validation_root": "",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.DIRECTORY,
+							"created_at":      common.Now() - 3600,
+						},
+						{
+							"id":              2,
+							"level":           1,
+							"lookup_hash":     "lookup_hash",
+							"path":            "/test_file",
+							"name":            "test_file",
+							"validation_root": "validation_root",
+							"thumbnail_size":  300,
+							"thumbnail_hash":  "thumbnail_hash",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "/",
+							"type":            reference.FILE,
+							"created_at":      common.Now() - 3600,
+						},
+					},
+				)
+
 			},
 		},
 		{
@@ -178,7 +246,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 			expectingError: false,
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
-				query := `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","file_meta_hash","path_hash","validation_root","fixed_merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","allocation_root","level","created_at","updated_at" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				query := `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","file_meta_hash","path_hash","validation_root","fixed_merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","allocation_root","level","created_at","updated_at","file_id" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().WithQuery(query).WithReply(
 					[]map[string]interface{}{
 						{
@@ -217,6 +285,40 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 					[]map[string]interface{}{
 						{
 							"rows_affected": 1,
+						},
+					},
+				)
+
+				query = `SELECT * FROM "reference_objects" WHERE id = $1 AND "reference_objects"."deleted_at" IS NULL ORDER BY "reference_objects"."id" LIMIT 1`
+				mocket.Catcher.NewMock().WithQuery(query).WithReply(
+					[]map[string]interface{}{
+						{
+							"id":              1,
+							"level":           0,
+							"lookup_hash":     "lookup_hash_root",
+							"path":            "/",
+							"name":            "/",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "",
+							"validation_root": "",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.DIRECTORY,
+							"created_at":      common.Now() - 3600,
+						},
+						{
+							"id":              2,
+							"level":           1,
+							"lookup_hash":     "lookup_hash",
+							"path":            "/test_file",
+							"name":            "test_file",
+							"validation_root": "validation_root",
+							"thumbnail_size":  300,
+							"thumbnail_hash":  "thumbnail_hash",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "/",
+							"type":            reference.FILE,
+							"created_at":      common.Now() - 3600,
 						},
 					},
 				)

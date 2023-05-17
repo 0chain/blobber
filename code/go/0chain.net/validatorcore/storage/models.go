@@ -148,7 +148,7 @@ func (op *ObjectPath) Parse(input map[string]interface{}, allocationID string) (
 					fileObj.AllocationID = allocationID
 					newHash := fileObj.CalculateHash()
 					if newHash != fileObj.GetHash() {
-						logging.Logger.Error("Hash mismatch for file.", zap.Any("hashdata", fileObj.GetHashData()), zap.Any("newhash", newHash), zap.Any("given_hash", fileObj.GetHash()))
+						logging.Logger.Error("Hash mismatch for file.", zap.String("hashdata", fileObj.GetHashData()), zap.String("newhash", newHash), zap.String("given_hash", fileObj.GetHash()))
 						return nil, common.NewError("hash_mismatch", "Object path error since there is a mismatch in the file hashes. "+fileObj.Path)
 					}
 					rootDir.Children[i] = &fileObj
@@ -162,7 +162,7 @@ func (op *ObjectPath) Parse(input map[string]interface{}, allocationID string) (
 						dirObj.AllocationID = allocationID
 						newHash := dirObj.CalculateHash()
 						if newHash != dirObj.GetHash() {
-							logging.Logger.Error("Hash mismatch for directory.", zap.Any("newhash", newHash), zap.Any("given_hash", dirObj.GetHash()), zap.Any("dirObj", dirObj))
+							logging.Logger.Error("Hash mismatch for directory.", zap.String("newhash", newHash), zap.String("given_hash", dirObj.GetHash()), zap.String("dirObj_path", dirObj.Path))
 							return nil, common.NewError("hash_mismatch", "Object path error since there is a mismatch in the dir hashes. "+dirObj.Path)
 						}
 					} else {
@@ -184,7 +184,7 @@ func (op *ObjectPath) Parse(input map[string]interface{}, allocationID string) (
 	newHash := rootDir.CalculateHash()
 
 	if newHash != rootDir.GetHash() {
-		logging.Logger.Error("Hash mismatch for root directory", zap.Any("newhash", newHash), zap.Any("given_hash", rootDir.GetHash()))
+		logging.Logger.Error("Hash mismatch for root directory", zap.String("newhash", newHash), zap.String("given_hash", rootDir.GetHash()))
 		return nil, common.NewError("hash_mismatch", "Object path error since there is a mismatch in the dir hashes. "+rootDir.Path)
 	}
 	return &rootDir, nil
@@ -227,12 +227,12 @@ func (op *ObjectPath) VerifyBlockNum(challengeRand int64) error {
 		}
 	}
 	if !found {
-		logging.Logger.Error("File for Block num was not found in object path", zap.Any("object_path", op), zap.Any("rand_seed", challengeRand), zap.Any("blocknum", blockNum), zap.Any("root_blocks", op.RootObject.NumBlocks))
+		logging.Logger.Error("File for Block num was not found in object path", zap.Int64("rand_seed", challengeRand), zap.Int64("blocknum", blockNum), zap.Int64("root_blocks", op.RootObject.NumBlocks))
 		return common.NewError("invalid_object_path", "File for Block num was not found in object path")
 	}
 
 	if op.Meta.GetHash() != curRef.GetHash() {
-		logging.Logger.Error("Block num was not for the same file as object path", zap.Any("curRef", curRef), zap.Any("object_path", op), zap.Any("rand_seed", challengeRand), zap.Any("blocknum", blockNum), zap.Any("root_blocks", op.RootObject.NumBlocks))
+		logging.Logger.Error("Block num was not for the same file as object path", zap.String("curRef_hash", curRef.GetHash()), zap.String("object_path_hash", op.Meta.GetHash()), zap.Int64("rand_seed", challengeRand), zap.Int64("blocknum", blockNum), zap.Int64("root_blocks", op.RootObject.NumBlocks))
 		return common.NewError("invalid_object_path", "Block num was not for the same file as object path")
 	}
 
@@ -244,7 +244,7 @@ func (op *ObjectPath) VerifyPath(allocationID string) error {
 	op.RootObject = rootDir
 
 	if err != nil {
-		logging.Logger.Error("Error parsing the object path", zap.Any("object_path", op))
+		logging.Logger.Error("Error parsing the object path")
 		return common.NewError("invalid_object_path", "Error parsing the object path. "+err.Error())
 	}
 	if op.RootHash != rootDir.Hash {
@@ -296,7 +296,7 @@ func (cr *ChallengeRequest) verifyBlockNum(challengeObj *Challenge) error {
 }
 
 func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationObj *Allocation) error {
-	logging.Logger.Info("Verifying object path", zap.Any("challenge_id", challengeObj.ID), zap.Any("seed", challengeObj.RandomNumber))
+	logging.Logger.Info("Verifying object path", zap.String("challenge_id", challengeObj.ID), zap.Int64("seed", challengeObj.RandomNumber))
 	err := cr.ObjPath.Verify(challengeObj.AllocationID, challengeObj.RandomNumber)
 	if err != nil {
 		return common.NewError("challenge_validation_failed", "Failed to verify the object path."+err.Error())
@@ -311,10 +311,13 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 		return common.NewError("challenge_validation_failed", "Invalid write marker")
 	}
 
-	logging.Logger.Info("Verifying write marker", zap.Any("challenge_id", challengeObj.ID))
+	logging.Logger.Info("Verifying write marker", zap.String("challenge_id", challengeObj.ID))
 	err = cr.WriteMarkers[0].WM.Verify(allocationObj.ID, challengeObj.AllocationRoot, cr.WriteMarkers[0].ClientPublicKey)
 	if err != nil {
-		return err
+		return common.NewError("write_marker_validation_failed", "Failed to verify the write marker. "+err.Error())
+	}
+	if cr.WriteMarkers[0].WM.Timestamp != challengeObj.Timestamp {
+		return common.NewError("write_marker_validation_failed", "Write marker timestamp does not match with challenge timestamp")
 	}
 	for i := 1; i < len(cr.WriteMarkers); i++ {
 		err = cr.WriteMarkers[i].WM.Verify(allocationObj.ID, cr.WriteMarkers[i].WM.AllocationRoot, cr.WriteMarkers[i].ClientPublicKey)
@@ -322,7 +325,9 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 			return err
 		}
 		if cr.WriteMarkers[i].WM.PreviousAllocationRoot != cr.WriteMarkers[i-1].WM.AllocationRoot {
-			return common.NewError("write_marker_validation_failed", "Write markers chain is invalid")
+			if cr.WriteMarkers[i].WM.Timestamp != cr.WriteMarkers[i-1].WM.Timestamp {
+				return common.NewError("write_marker_validation_failed", "Write markers chain is invalid")
+			}
 		}
 	}
 	latestWM := cr.WriteMarkers[len(cr.WriteMarkers)-1].WM
@@ -337,7 +342,7 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 		return nil
 	}
 
-	logging.Logger.Info("Verifying data block and merkle path", zap.Any("challenge_id", challengeObj.ID))
+	logging.Logger.Info("Verifying data block and merkle path", zap.String("challenge_id", challengeObj.ID))
 	fHash := encryption.RawHash(cr.ChallengeProof.Data)
 	fixedMerkleRoot, _ := hex.DecodeString(cr.ObjPath.Meta.FixedMerkleRoot)
 	fmp := &util.FixedMerklePath{
@@ -355,12 +360,13 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 }
 
 type Challenge struct {
-	ID             string         `json:"id"`
-	Validators     []*StorageNode `json:"validators"`
-	RandomNumber   int64          `json:"seed"`
-	AllocationID   string         `json:"allocation_id"`
-	AllocationRoot string         `json:"allocation_root"`
-	BlobberID      string         `json:"blobber_id"`
+	ID             string           `json:"id"`
+	Validators     []*StorageNode   `json:"validators"`
+	RandomNumber   int64            `json:"seed"`
+	AllocationID   string           `json:"allocation_id"`
+	AllocationRoot string           `json:"allocation_root"`
+	BlobberID      string           `json:"blobber_id"`
+	Timestamp      common.Timestamp `json:"timestamp"`
 }
 
 type ValidationTicket struct {

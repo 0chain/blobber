@@ -36,6 +36,8 @@ require (
 	gorm.io/gorm v1.25.0
 )
 
+require golang.org/x/sync v0.1.0
+
 require (
 	github.com/0chain/common v0.0.6-0.20230127095721-8df4d1d72565 // indirect
 	github.com/Luzifer/go-openssl/v3 v3.1.0 // indirect
@@ -49,6 +51,7 @@ require (
 	github.com/deckarep/golang-set/v2 v2.2.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
+	github.com/emirpasic/gods v1.18.1
 	github.com/ethereum/go-ethereum v1.11.4 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
@@ -81,7 +84,7 @@ require (
 	github.com/klauspost/compress v1.16.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
 	github.com/klauspost/reedsolomon v1.11.7 // indirect
-	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
+	github.com/lithammer/shortuuid/v3 v3.0.7
 	github.com/machinebox/graphql v0.2.2 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -118,6 +121,8 @@ require (
 	gorm.io/driver/mysql v1.4.7 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
+
+require golang.org/x/sync v0.1.0
 
 // temporary, for development
 // replace github.com/0chain/gosdk => ../gosdk
