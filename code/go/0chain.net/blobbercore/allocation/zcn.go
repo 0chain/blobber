@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// SyncAllocation try to pull allocation from blockchain, and insert it in db.
+// SyncAllocation try to pull allocation using allocation ID from blockchain, and insert it in db.
 func SyncAllocation(allocationTx string) (*Allocation, error) {
 	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
 	if err != nil {
