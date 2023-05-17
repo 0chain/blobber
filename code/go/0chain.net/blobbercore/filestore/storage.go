@@ -815,6 +815,8 @@ func (fs *FileStore) GetCommittedFileSizeOfAllocation(allocID string) uint64 {
 
 // GetTotalFilesSize Get total file sizes of all allocations; committed or not committed
 func (fs *FileStore) GetTotalFilesSize() (s uint64) {
+	logging.Logger.Info("GetTotalFilesSize", zap.Any("allocs", fs.mAllocs), zap.Any("allocs", len(fs.mAllocs)), zap.Any("fs", fs))
+
 	for _, alloc := range fs.mAllocs {
 		s += alloc.filesSize + alloc.tmpFileSize
 	}
