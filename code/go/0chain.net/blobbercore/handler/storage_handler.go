@@ -300,7 +300,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
 	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
+		return nil, common.NewError("invalid_signature", "Invalid signature. "+err.Error())
 	}
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
@@ -324,16 +324,25 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 
 	result := fileref.GetListingData(ctx)
-	fileStats, _ := stats.GetFileStats(ctx, fileref.ID)
-	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.AllocationRoot)
+	fileStats, err := stats.GetFileStats(ctx, fileref.ID)
+	if err != nil {
+		return nil, common.NewError("bad_db_operation", "Error retrieving file stats. "+err.Error())
+	}
+	wm, err := writemarker.GetWriteMarkerEntity(ctx, fileref.AllocationRoot)
+	if err != nil {
+		return nil, common.NewError("bad_db_operation", "Error retrieving write marker. "+err.Error())
+	}
 	if wm != nil && fileStats != nil {
 		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
 		fileStats.OnChain = wm.OnChain()
 	}
-	var statsMap map[string]interface{}
-	statsBytes, _ := json.Marshal(fileStats)
+	statsMap := make(map[string]interface{})
+	statsBytes, err := json.Marshal(fileStats)
+	if err != nil {
+		return nil, common.NewError("json_marshal_error", "Error marshaling file stats to JSON. "+err.Error())
+	}
 	if err := json.Unmarshal(statsBytes, &statsMap); err != nil {
-		return nil, err
+		return nil, common.NewError("json_unmarshal_error", "Error unmarshaling stats bytes to map. "+err.Error())
 	}
 	for k, v := range statsMap {
 		result[k] = v
@@ -482,7 +491,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 
 	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
 	if !valid || err != nil {
-		errCh <- common.NewError("invalid_signature", "could not verify the allocation owner or colloborator")
+		errCh <- common.NewError("invalid_signature", "could not verify the allocation owner or collaborator")
 		return
 	}
 	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
@@ -812,6 +821,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	}
 
 	refType := r.FormValue("refType")
+
 	var refs *[]reference.PaginatedRef
 	var totalPages int
 	var newOffsetPath string
