@@ -25,7 +25,15 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 		return nil, errors.ThrowLog(err.Error(), common.ErrInternal, "Error decoding the allocation transaction output.")
 	}
 
+	db := datastore.GetStore().GetDB()
 	alloc := &Allocation{}
+	result := db.Table(TableNameAllocation).Where(SQLWhereGetByTx, allocationTx).First(alloc)
+
+	if result.Error == nil {
+		return alloc, nil
+	}
+
+	alloc = &Allocation{}
 
 	belongToThisBlobber := false
 	for _, blobberConnection := range sa.BlobberDetails {

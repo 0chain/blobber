@@ -52,9 +52,21 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
+	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
+	if err != nil {
+		return nil, common.NewError("invalid_allocation",
+			"Invalid Allocation id. Allocation not found in blockchain. "+err.Error())
+	}
+	var sa transaction.StorageAllocation
+	err = json.Unmarshal([]byte(t.TransactionOutput), &sa)
+	if err != nil {
+		return nil, common.NewError("transaction_output_decode_error",
+			"Error decoding the allocation transaction output."+err.Error())
+	}
+
 	a = new(Allocation)
 	err = tx.Model(&Allocation{}).
-		Where(&Allocation{Tx: allocationTx}).
+		Where(&Allocation{ID: sa.ID}).
 		First(a).Error
 
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -72,18 +84,6 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 		}
 		a.Terms = terms // set field
 		return          // found in DB
-	}
-
-	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
-	if err != nil {
-		return nil, common.NewError("invalid_allocation",
-			"Invalid Allocation id. Allocation not found in blockchain. "+err.Error())
-	}
-	var sa transaction.StorageAllocation
-	err = json.Unmarshal([]byte(t.TransactionOutput), &sa)
-	if err != nil {
-		return nil, common.NewError("transaction_output_decode_error",
-			"Error decoding the allocation transaction output."+err.Error())
 	}
 
 	var isExist bool
@@ -121,22 +121,24 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 		}
 	}
 
+	edbAllocation, err := requestAllocation(sa.ID)
+
 	// set/update fields
-	a.ID = sa.ID
-	a.Tx = sa.Tx
-	a.Expiration = sa.Expiration
-	a.OwnerID = sa.OwnerID
-	a.OwnerPublicKey = sa.OwnerPublicKey
+	a.ID = edbAllocation.ID
+	a.Tx = edbAllocation.Tx
+	a.Expiration = edbAllocation.Expiration
+	a.OwnerID = edbAllocation.OwnerID
+	a.OwnerPublicKey = edbAllocation.OwnerPublicKey
 	a.RepairerID = t.ClientID // blobber node id
-	a.TotalSize = sa.Size
-	a.UsedSize = sa.UsedSize
-	a.Finalized = sa.Finalized
-	a.TimeUnit = sa.TimeUnit
-	a.FileOptions = sa.FileOptions
+	a.TotalSize = edbAllocation.Size
+	a.UsedSize = edbAllocation.UsedSize
+	a.Finalized = edbAllocation.Finalized
+	a.TimeUnit = edbAllocation.TimeUnit
+	a.FileOptions = edbAllocation.FileOptions
 
 	m := map[string]interface{}{
 		"allocation_id":  a.ID,
-		"allocated_size": (sa.Size + int64(len(sa.BlobberDetails)-1)) / int64(len(sa.BlobberDetails)),
+		"allocated_size": (edbAllocation.Size + edbAllocation.DataShards - 1) / sa.DataShards,
 	}
 
 	err = filestore.GetFileStore().UpdateAllocationMetaData(m)
