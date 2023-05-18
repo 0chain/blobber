@@ -175,6 +175,9 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/connection/commit/{allocation}",
 		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnection(CommitHandler))))
 
+	r.HandleFunc("/v1/connection/rollback/{allocation}",
+		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnection(RollbackHandler))))
+
 	r.HandleFunc("/v1/file/commitmetatxn/{allocation}",
 		RateLimitByCommmitRL(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
 
@@ -190,6 +193,9 @@ func setupHandlers(r *mux.Router) {
 
 	r.HandleFunc("/v1/file/referencepath/{allocation}",
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))) // TODO: add handler
+
+	r.HandleFunc("/v1/file/latestwritemarker/{allocation}",
+		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(WriteMarkerHandler))))
 
 	r.HandleFunc("/v1/file/objecttree/{allocation}",
 		RateLimitByObjectRL(common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler)))).
@@ -470,6 +476,10 @@ func CommitHandler(ctx context.Context, r *http.Request) (interface{}, int, erro
 	return commitHandler(ctx, r)
 }
 
+func RollbackHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
+	return rollbackHandler(ctx, r)
+}
+
 func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
@@ -478,6 +488,17 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetReferencePath(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func WriteMarkerHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
+	ctx = setupHandlerContext(ctx, r)
+
+	response, err := storageHandler.GetLatestWriteMarker(ctx, r)
 	if err != nil {
 		return nil, err
 	}

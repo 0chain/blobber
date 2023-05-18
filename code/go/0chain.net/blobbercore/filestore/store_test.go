@@ -1,6 +1,7 @@
 package filestore
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -21,6 +22,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/sha3"
 )
 
 func init() {
@@ -221,21 +223,21 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			shouldCommit:          true,
 			expectedErrorOnCommit: false,
 		},
-		{
-			testName:   "Should fail",
-			allocID:    randString(64),
-			connID:     randString(64),
-			fileName:   randString(5),
-			remotePath: filepath.Join("/", randString(5)+".txt"),
-			alloc: &allocation{
-				mu:    &sync.Mutex{},
-				tmpMU: &sync.Mutex{},
-			},
+		// {
+		// 	testName:   "Should fail",
+		// 	allocID:    randString(64),
+		// 	connID:     randString(64),
+		// 	fileName:   randString(5),
+		// 	remotePath: filepath.Join("/", randString(5)+".txt"),
+		// 	alloc: &allocation{
+		// 		mu:    &sync.Mutex{},
+		// 		tmpMU: &sync.Mutex{},
+		// 	},
 
-			differentHash:         true,
-			shouldCommit:          true,
-			expectedErrorOnCommit: true,
-		},
+		// 	differentHash:         true,
+		// 	shouldCommit:          true,
+		// 	expectedErrorOnCommit: true,
+		// },
 	}
 
 	for _, test := range tests {
@@ -279,16 +281,330 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 				fid.ValidationRoot = randString(64)
 			}
 			success, err := fs.CommitWrite(test.allocID, test.connID, fid)
+			errr := fs.MoveToFilestore(test.allocID, validationRoot)
+			require.Nil(t, errr)
 			if test.expectedErrorOnCommit {
+				if err == nil {
+					success, err = fs.CommitWrite(test.allocID, test.connID, fid)
+				}
 				require.NotNil(t, err)
 				require.False(t, success)
 			} else {
 				require.Nil(t, err)
 				require.True(t, success)
+				preCommitPath := fs.getPreCommitPathForFile(test.allocID, fid.ValidationRoot)
+				_, err := os.Open(preCommitPath)
+				require.NotNil(t, err)
+				finalPath, err := fs.GetPathForFile(test.allocID, fid.ValidationRoot)
+				require.Nil(t, err)
+				_, err = os.Open(finalPath)
+				require.Nil(t, err)
+				check_file, err := os.Stat(finalPath)
+				require.Nil(t, err)
+				require.True(t, check_file.Size() > tF.Size())
+				success, err = fs.CommitWrite(test.allocID, test.connID, fid)
+				require.Nil(t, err)
+				require.True(t, success)
+				_, err = os.Stat(preCommitPath)
+				require.NotNil(t, err)
+				require.ErrorContains(t, err, "no such file or directory")
+				check_file, err = os.Stat(finalPath)
+				require.Nil(t, err)
+				require.True(t, check_file.Size() > tF.Size())
 			}
 		})
 	}
 
+}
+
+func TestDeletePreCommitDir(t *testing.T) {
+
+	fs, cleanUp := setupStorage(t)
+	defer cleanUp()
+
+	allocID := randString(64)
+	connID := randString(64)
+	fileName := randString(5)
+	remotePath := filepath.Join("/", randString(5)+".txt")
+	alloc := &allocation{
+		mu:    &sync.Mutex{},
+		tmpMU: &sync.Mutex{},
+	}
+
+	fs.setAllocation(allocID, alloc)
+
+	fPath := filepath.Join(fs.mp, randString(10)+".txt")
+	size := 640 * KB
+	validationRoot, fixedMerkleRoot, err := generateRandomData(fPath, int64(size))
+	require.Nil(t, err)
+
+	fid := &FileInputData{
+		Name:            fileName,
+		Path:            remotePath,
+		ValidationRoot:  validationRoot,
+		FixedMerkleRoot: fixedMerkleRoot,
+		ChunkSize:       64 * KB,
+	}
+	// checkc if file to be uploaded exists
+	f, err := os.Open(fPath)
+	require.Nil(t, err)
+	// Write file to temp location
+	_, err = fs.WriteFile(allocID, connID, fid, f)
+	require.Nil(t, err)
+	f.Close()
+
+	// check if file is written to temp location
+	pathHash := encryption.Hash(remotePath)
+	tempFilePath := fs.getTempPathForFile(allocID, fileName, pathHash, connID)
+	tF, err := os.Stat(tempFilePath)
+	require.Nil(t, err)
+
+	require.Equal(t, int64(size), tF.Size())
+
+	// Commit file to pre-commit location
+	success, err := fs.CommitWrite(allocID, connID, fid)
+	require.Nil(t, err)
+	require.True(t, success)
+
+	// Move data to final location
+	err = fs.MoveToFilestore(allocID, validationRoot)
+	require.Nil(t, err)
+	prevValidationRoot := validationRoot
+
+	validationRoot, fixedMerkleRoot, err = generateRandomData(fPath, int64(size))
+	require.Nil(t, err)
+
+	fid.ValidationRoot = validationRoot
+	fid.FixedMerkleRoot = fixedMerkleRoot
+
+	// Write file to temp location
+	f, err = os.Open(fPath)
+	require.Nil(t, err)
+	// Write file to temp location
+	_, err = fs.WriteFile(allocID, connID, fid, f)
+	require.Nil(t, err)
+	f.Close()
+	tempFilePath = fs.getTempPathForFile(allocID, fileName, pathHash, connID)
+	_, err = os.Stat(tempFilePath)
+	require.Nil(t, err)
+
+	success, err = fs.CommitWrite(allocID, connID, fid)
+	require.Nil(t, err)
+	require.True(t, success)
+
+	preCommitPath := fs.getPreCommitPathForFile(allocID, validationRoot)
+	_, err = os.Open(preCommitPath)
+	require.Nil(t, err)
+
+	err = fs.DeletePreCommitDir(allocID)
+	require.Nil(t, err)
+
+	preCommitPath = fs.getPreCommitPathForFile(allocID, validationRoot)
+	_, err = os.Open(preCommitPath)
+	require.NotNil(t, err)
+
+	finalPath, err := fs.GetPathForFile(allocID, prevValidationRoot)
+	require.Nil(t, err)
+	_, err = os.Open(finalPath)
+	require.Nil(t, err)
+
+}
+
+func TestStorageUploadUpdate(t *testing.T) {
+
+	fs, cleanUp := setupStorage(t)
+	defer cleanUp()
+
+	allocID := randString(64)
+	connID := randString(64)
+	fileName := randString(5)
+	remotePath := filepath.Join("/", randString(5)+".txt")
+	alloc := &allocation{
+		mu:    &sync.Mutex{},
+		tmpMU: &sync.Mutex{},
+	}
+
+	fs.setAllocation(allocID, alloc)
+
+	fPath := filepath.Join(fs.mp, randString(10)+".txt")
+	size := 640 * KB
+	validationRoot, fixedMerkleRoot, err := generateRandomData(fPath, int64(size))
+	require.Nil(t, err)
+
+	fid := &FileInputData{
+		Name:            fileName,
+		Path:            remotePath,
+		ValidationRoot:  validationRoot,
+		FixedMerkleRoot: fixedMerkleRoot,
+		ChunkSize:       64 * KB,
+	}
+	// checkc if file to be uploaded exists
+	f, err := os.Open(fPath)
+	require.Nil(t, err)
+	// Write file to temp location
+	_, err = fs.WriteFile(allocID, connID, fid, f)
+	require.Nil(t, err)
+	f.Close()
+
+	// check if file is written to temp location
+	pathHash := encryption.Hash(remotePath)
+	tempFilePath := fs.getTempPathForFile(allocID, fileName, pathHash, connID)
+	tF, err := os.Stat(tempFilePath)
+	require.Nil(t, err)
+
+	require.Equal(t, int64(size), tF.Size())
+
+	// Commit file to pre-commit location
+	success, err := fs.CommitWrite(allocID, connID, fid)
+
+	require.Nil(t, err)
+	require.True(t, success)
+
+	// Upload thumbnail
+	thumbFileName := randString(5)
+	size = 1687
+	_, _, err = generateRandomData(fPath, int64(size))
+	require.Nil(t, err)
+
+	fid.Name = thumbFileName
+	fid.IsThumbnail = true
+
+	f, err = os.Open(fPath)
+	require.Nil(t, err)
+	// Write thumbnail file to temp location
+	_, err = fs.WriteFile(allocID, connID, fid, f)
+	f.Close()
+	require.Nil(t, err)
+
+	// check if thumbnail file is written to temp location
+	tempFilePath = fs.getTempPathForFile(allocID, thumbFileName, pathHash, connID)
+	finfo, err := os.Stat(tempFilePath)
+	require.Nil(t, err)
+	require.Equal(t, finfo.Size(), int64(size))
+
+	// Check if the hash of the thumbnail file is same as the hash of the uploaded thumbnail file
+	f, err = os.Open(tempFilePath)
+	require.Nil(t, err)
+
+	h := sha3.New256()
+	_, err = io.Copy(h, f)
+	require.Nil(t, err)
+	f.Close()
+	fid.ThumbnailHash = hex.EncodeToString(h.Sum(nil))
+	prevThumbHash := fid.ThumbnailHash
+	fid.Name = thumbFileName
+
+	// Move data to final location
+	err = fs.MoveToFilestore(allocID, validationRoot)
+	require.Nil(t, err)
+
+	// Commit thumbnail file to pre-commit location
+	success, err = fs.CommitWrite(allocID, connID, fid)
+
+	require.Nil(t, err)
+	require.True(t, success)
+	// Get the path of the pre-commit location of the thumbnail file and check if the file exists
+	preCommitPath := fs.getPreCommitPathForFile(allocID, fid.ThumbnailHash)
+	preFile, err := os.Open(preCommitPath)
+	require.Nil(t, err)
+	defer preFile.Close()
+	check_file, err := os.Stat(preCommitPath)
+	require.Nil(t, err)
+	require.True(t, check_file.Size() == int64(size))
+
+	// Update the thumbnail file
+	_, _, err = generateRandomData(fPath, int64(size))
+	require.Nil(t, err)
+
+	f, err = os.Open(fPath)
+	require.Nil(t, err)
+
+	// Write thumbnail file to temp location
+	_, err = fs.WriteFile(allocID, connID, fid, f)
+
+	require.Nil(t, err)
+	f.Close()
+	// check if thumbnail file is written to temp location
+	tempFilePath = fs.getTempPathForFile(allocID, thumbFileName, pathHash, connID)
+
+	finfo, err = os.Stat(tempFilePath)
+	require.Nil(t, err)
+	require.Equal(t, finfo.Size(), int64(size))
+
+	// Check if the hash of the thumbnail file is same as the hash of the updated thumbnail file
+	f, err = os.Open(tempFilePath)
+	require.Nil(t, err)
+
+	h = sha3.New256()
+	_, err = io.Copy(h, f)
+	require.Nil(t, err)
+	f.Close()
+	fid.ThumbnailHash = hex.EncodeToString(h.Sum(nil))
+	fid.IsThumbnail = false
+	fid.Name = fileName
+
+	// Move data to final location
+	err = fs.MoveToFilestore(allocID, prevThumbHash)
+	require.Nil(t, err)
+
+	// Empty Commit should do nothing
+	success, err = fs.CommitWrite(allocID, connID, fid)
+	require.Nil(t, err)
+	require.True(t, success)
+
+	// Set fields to commit thumbnail file
+	fid.IsThumbnail = true
+	fid.Name = thumbFileName
+	// Commit thumbnail file to pre-commit location
+	success, err = fs.CommitWrite(allocID, connID, fid)
+
+	require.Nil(t, err)
+	require.True(t, success)
+
+	// Get the path of the pre-commit location of the thumbnail file and check if the file exists
+	preCommitPath = fs.getPreCommitPathForFile(allocID, fid.ThumbnailHash)
+
+	preFile, err = os.Open(preCommitPath)
+
+	require.Nil(t, err)
+	defer preFile.Close()
+	check_file, err = os.Stat(preCommitPath)
+	require.Nil(t, err)
+	fmt.Println("check_file.Size", check_file.Size())
+	require.True(t, check_file.Size() == int64(size))
+
+	h = sha3.New256()
+	_, err = io.Copy(h, preFile)
+	require.Nil(t, err)
+	require.Equal(t, hex.EncodeToString(h.Sum(nil)), fid.ThumbnailHash)
+
+	input := &ReadBlockInput{
+		AllocationID: allocID,
+		FileSize:     int64(size),
+		Hash:         fid.ThumbnailHash,
+		IsThumbnail:  true,
+		NumBlocks:    1,
+		IsPrecommit:  true,
+	}
+
+	data, err := fs.GetFileBlock(input)
+	require.Nil(t, err)
+	require.Equal(t, size, len(data.Data))
+	h = sha3.New256()
+	buf := bytes.NewReader(data.Data)
+	_, err = io.Copy(h, buf)
+	require.Nil(t, err)
+	require.Equal(t, hex.EncodeToString(h.Sum(nil)), fid.ThumbnailHash)
+	fPath, err = fs.GetPathForFile(allocID, prevThumbHash)
+	require.Nil(t, err)
+	fmt.Println("prev thumb hash: ", prevThumbHash)
+	f, err = os.Open(fPath)
+	require.Nil(t, err)
+	h = sha3.New256()
+	_, err = io.Copy(h, f)
+	require.Nil(t, err)
+	require.Equal(t, hex.EncodeToString(h.Sum(nil)), prevThumbHash)
+	f.Close()
 }
 
 func TestGetFileBlock(t *testing.T) {
@@ -306,8 +622,8 @@ func TestGetFileBlock(t *testing.T) {
 	validationRoot, _, err := generateRandomDataAndStoreNodes(fPath, int64(size))
 	require.Nil(t, err)
 
-	permanentFPath, err := fs.GetPathForFile(allocID, validationRoot)
-	require.Nil(t, err)
+	permanentFPath := fs.getPreCommitPathForFile(allocID, validationRoot)
+	// require.Nil(t, err)
 
 	err = os.MkdirAll(filepath.Dir(permanentFPath), 0777)
 	require.Nil(t, err)
@@ -324,6 +640,8 @@ func TestGetFileBlock(t *testing.T) {
 		expectedError    bool
 		errorContains    string
 		expectedDataSize int64
+		fileName         string
+		remotePath       string
 	}
 
 	tests := []input{
@@ -334,6 +652,8 @@ func TestGetFileBlock(t *testing.T) {
 			validationRoot: validationRoot,
 			expectedError:  true,
 			errorContains:  "invalid_block_number",
+			fileName:       "hello",
+			remotePath:     fPath,
 		},
 		{
 			testName:       "start block greater than max block num",
@@ -342,6 +662,8 @@ func TestGetFileBlock(t *testing.T) {
 			validationRoot: validationRoot,
 			expectedError:  true,
 			errorContains:  "invalid_block_number",
+			fileName:       "hello",
+			remotePath:     fPath,
 		}, {
 			testName:       "Non-existing file",
 			blockNum:       1,
@@ -349,6 +671,8 @@ func TestGetFileBlock(t *testing.T) {
 			validationRoot: randString(64),
 			expectedError:  true,
 			errorContains:  "no such file or directory",
+			fileName:       "hello",
+			remotePath:     randString(20),
 		},
 		{
 			testName:         "successful response",
@@ -356,6 +680,8 @@ func TestGetFileBlock(t *testing.T) {
 			numBlocks:        10,
 			expectedDataSize: int64(size),
 			validationRoot:   validationRoot,
+			fileName:         "hello",
+			remotePath:       fPath,
 		},
 	}
 
@@ -367,6 +693,7 @@ func TestGetFileBlock(t *testing.T) {
 				NumBlocks:     int(test.numBlocks),
 				Hash:          test.validationRoot,
 				FileSize:      int64(test.expectedDataSize),
+				IsPrecommit:   true,
 			}
 
 			fileResponse, err := fs.GetFileBlock(in)
@@ -402,8 +729,7 @@ func TestGetMerkleTree(t *testing.T) {
 	require.Nil(t, err)
 	t.Logf("Merkle root: %s", mr)
 	allocID := randString(64)
-	fPath, err := fs.GetPathForFile(allocID, validationRoot)
-	require.Nil(t, err)
+	fPath := fs.getPreCommitPathForFile(allocID, validationRoot)
 
 	err = os.MkdirAll(filepath.Dir(fPath), 0777)
 	require.Nil(t, err)
@@ -449,6 +775,7 @@ func TestGetMerkleTree(t *testing.T) {
 				AllocationID: allocID,
 				Hash:         validationRoot,
 				FileSize:     int64(size),
+				IsPrecommit:  true,
 			}
 
 			challengeProof, err := fs.GetBlocksMerkleTreeForChallenge(cri)

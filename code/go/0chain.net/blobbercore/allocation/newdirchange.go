@@ -82,7 +82,6 @@ func (nf *NewDir) ApplyChange(ctx context.Context, rootRef *reference.Ref, chang
 			dirRef = newRef
 		}
 	}
-
 	return rootRef, nil
 }
 
