@@ -102,7 +102,7 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	fileRef.IsPrecommit = true
 	fileRef.ThumbnailFilename = nf.ThumbnailFilename
 
-	return rootRef, err
+	return rootRef, nil
 }
 
 func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
