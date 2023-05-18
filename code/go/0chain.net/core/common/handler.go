@@ -71,12 +71,7 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 				responseString, _ := json.Marshal(data)
 				http.Error(w, string(responseString), 400)
 			} else {
-				errorString, errMarshal := json.Marshal(err)
-				if errMarshal == nil {
-					http.Error(w, string(errorString), 400)
-				} else {
-					http.Error(w, err.Error(), 400)
-				}
+				http.Error(w, err.Error(), 400)
 			}
 		} else if data != nil {
 			rawdata, ok := data.([]byte)
@@ -87,8 +82,6 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(data) //nolint:errcheck
 			}
-		} else {
-			w.WriteHeader(http.StatusOK)
 		}
 	}
 }
