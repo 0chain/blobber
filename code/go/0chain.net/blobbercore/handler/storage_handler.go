@@ -299,7 +299,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
 	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature. "+err.Error())
+		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
@@ -327,10 +327,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, common.NewError("bad_db_operation", "Error retrieving file stats. "+err.Error())
 	}
-	wm, err := writemarker.GetWriteMarkerEntity(ctx, fileref.AllocationRoot, allocationID)
-	if err != nil {
-		return nil, common.NewError("bad_db_operation", "Error retrieving write marker. "+err.Error())
-	}
+	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.AllocationRoot, allocationID)
 	if wm != nil && fileStats != nil {
 		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
 		fileStats.OnChain = wm.OnChain()
