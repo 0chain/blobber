@@ -400,7 +400,7 @@ func (fr *Ref) GetFileHashData() string {
 }
 
 func (r *Ref) GetHashData() string {
-	return fmt.Sprintf("%s:%s", r.AllocationID, r.Path)
+	return fmt.Sprintf("%s:%s:%s", r.AllocationID, r.Path, r.FileID)
 }
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {

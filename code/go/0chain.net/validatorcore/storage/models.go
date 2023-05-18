@@ -52,7 +52,6 @@ func (r *DirMetaData) GetHash() string {
 }
 
 func (r *DirMetaData) CalculateHash() string {
-
 	childHashes := make([]string, len(r.Children))
 	for index, childRef := range r.Children {
 		childHashes[index] = childRef.GetHash()
@@ -70,7 +69,8 @@ func (r *DirMetaData) GetType() string {
 }
 
 func (r *DirMetaData) GetHashData() string {
-	return fmt.Sprintf("%s:%s", r.AllocationID, r.Path)
+	return fmt.Sprintf("%s:%s:%s", r.AllocationID, r.Path, r.FileID)
+
 }
 
 type FileMetaData struct {
