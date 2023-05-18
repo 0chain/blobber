@@ -123,6 +123,11 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 
 	edbAllocation, err := requestAllocation(sa.ID)
 
+	if err != nil {
+		return nil, common.NewError("invalid_allocation",
+			"Invalid Allocation id. Allocation not found in blockchain. "+err.Error())
+	}
+
 	// set/update fields
 	a.ID = edbAllocation.ID
 	a.Tx = edbAllocation.Tx
