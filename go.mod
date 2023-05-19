@@ -32,7 +32,7 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/datatypes v1.2.0
 	gorm.io/driver/postgres v1.5.0
-	gorm.io/driver/sqlite v1.4.4
+	gorm.io/driver/sqlite v1.5.1
 	gorm.io/gorm v1.25.0
 )
 
@@ -121,8 +121,6 @@ require (
 	gorm.io/driver/mysql v1.4.7 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
-
-require golang.org/x/sync v0.1.0
 
 // temporary, for development
 // replace github.com/0chain/gosdk => ../gosdk
