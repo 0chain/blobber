@@ -19,7 +19,7 @@ require (
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/selvatico/go-mocket v1.0.7
 	github.com/spf13/viper v1.15.0
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.8.0
 	golang.org/x/net v0.9.0 // indirect
@@ -121,8 +121,6 @@ require (
 	gorm.io/driver/mysql v1.4.7 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
-
-require golang.org/x/sync v0.1.0
 
 // temporary, for development
 // replace github.com/0chain/gosdk => ../gosdk
