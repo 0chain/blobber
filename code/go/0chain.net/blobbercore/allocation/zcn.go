@@ -1,41 +1,22 @@
 package allocation
 
 import (
-	"encoding/json"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/errors"
-	"github.com/0chain/gosdk/zcnbridge/log"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 // SyncAllocation try to pull allocation using allocation ID from blockchain, and insert it in db.
 func SyncAllocation(allocationTx string) (*Allocation, error) {
-	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
+
+	sa, err := requestAllocation(allocationTx)
 	if err != nil {
-		return nil, errors.Throw(common.ErrBadRequest,
-			"Invalid Allocation id. Allocation not found in blockchain.")
-	}
-	var sa transaction.StorageAllocation
-	err = json.Unmarshal([]byte(t.TransactionOutput), &sa)
-	if err != nil {
-		return nil, errors.ThrowLog(err.Error(), common.ErrInternal, "Error decoding the allocation transaction output.")
+		return nil, errors.Wrap(err, "failed to request allocation")
 	}
 
-	db := datastore.GetStore().GetDB()
 	alloc := &Allocation{}
-	result := db.Table(TableNameAllocation).Where("allocations.id = ?", sa.ID).First(alloc)
-	log.Logger.Error("jayash test", zap.Any("result", result), zap.Any("error", result.Error), zap.Any("alloc", alloc))
-
-	if result.Error == nil && alloc.ID == sa.ID {
-		return alloc, nil
-	}
-
-	alloc = &Allocation{}
 
 	belongToThisBlobber := false
 	for _, blobberConnection := range sa.BlobberDetails {
@@ -61,7 +42,7 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 	alloc.Expiration = sa.Expiration
 	alloc.OwnerID = sa.OwnerID
 	alloc.OwnerPublicKey = sa.OwnerPublicKey
-	alloc.RepairerID = t.ClientID // blobber node id
+	alloc.RepairerID = node.Self.ID // blobber node id
 	alloc.TotalSize = sa.Size
 	alloc.UsedSize = sa.UsedSize
 	alloc.Finalized = sa.Finalized
