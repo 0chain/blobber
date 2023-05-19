@@ -53,7 +53,7 @@ func cleanupAllocationFiles(db *gorm.DB, allocationObj allocation.Allocation) {
 			logging.Logger.Info("hash has no references. Deleting from disk",
 				zap.Any("count", len(refs)), zap.String("hash", hash))
 
-			if err = filestore.GetFileStore().DeleteFile(allocationObj.ID, hash); err != nil {
+			if err = filestore.GetFileStore().DeleteFromFilestore(allocationObj.ID, hash); err != nil {
 				logging.Logger.Error("FileStore_DeleteFile", zap.String("validation_root", hash), zap.Error(err))
 			}
 		}

@@ -38,10 +38,6 @@ func (nf *DeleteFileChange) ApplyChange(ctx context.Context, rootRef *reference.
 		return nil, err
 	}
 
-	// if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-	// 	return nil, err
-	// }
-
 	return nil, nil
 }
 
@@ -107,14 +103,14 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 								zap.String("validation_root", res.ValidationRoot))
 						}
 					}
-
-					if res.ThumbnailHash != "" {
-						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ThumbnailHash)
-						if err != nil {
-							logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
-								zap.String("thumbnail", res.ThumbnailHash))
-						}
-					}
+					// We don't increase alloc size for thumbnail so we don't need to decrease it
+					// if res.ThumbnailHash != "" {
+					// 	err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ThumbnailHash)
+					// 	if err != nil {
+					// 		logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
+					// 			zap.String("thumbnail", res.ThumbnailHash))
+					// 	}
+					// }
 
 				}(res, count)
 

@@ -92,14 +92,6 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 		return nil, err
 	}
 
-	// _, err = rootRef.CalculateHash(ctx, true)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// for _, fileRef := range fileRefs {
-	// 	stats.NewFileCreated(ctx, fileRef.ID)
-	// }
 	return rootRef, err
 }
 

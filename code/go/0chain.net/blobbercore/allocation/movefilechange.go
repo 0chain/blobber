@@ -105,10 +105,6 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 		return nil, common.NewError("incomplete_move",
 			"move operation rejected as it cannot be completed")
 	}
-	// _, err = rootRef.CalculateHash(ctx, true)
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	for _, fileRef := range fileRefs {
 		fileRef.IsPrecommit = true

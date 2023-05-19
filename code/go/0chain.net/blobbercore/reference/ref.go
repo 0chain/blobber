@@ -518,25 +518,18 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 	toUpdateFileStat := r.IsPrecommit
 	prevID := r.ID
 	if r.ID > 0 {
-		err := db.Transaction(func(tx *gorm.DB) error {
+		err := db.Delete(&Ref{}, "id=?", r.ID).Error
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return err
+		}
 
-			err := tx.Delete(&Ref{}, "id=?", r.ID).Error
-			if err != nil && err != gorm.ErrRecordNotFound {
-				return err
-			}
-
-			r.ID = 0
-			r.IsPrecommit = true
-			err = tx.Create(r).Error
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-
+		r.ID = 0
+		r.IsPrecommit = true
+		err = db.Create(r).Error
 		if err != nil {
 			return err
 		}
+
 		if toUpdateFileStat {
 			FileUpdated(ctx, prevID, r.ID)
 		}
@@ -557,18 +550,17 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 	toUpdateFileStat := r.IsPrecommit
 	prevID := r.ID
 	if r.ID > 0 {
-		err := db.Transaction(func(tx *gorm.DB) error {
-			err := tx.Delete(&Ref{}, "id=?", r.ID).Error
-			if err != nil && err != gorm.ErrRecordNotFound {
-				return err
-			}
-			r.ID = 0
-			r.IsPrecommit = true
-			return tx.Create(r).Error
-		})
+		err := db.Delete(&Ref{}, "id=?", r.ID).Error
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return err
+		}
+		r.ID = 0
+		r.IsPrecommit = true
+		err = db.Create(r).Error
 		if err != nil {
 			return err
 		}
+
 		if toUpdateFileStat {
 			FileUpdated(ctx, prevID, r.ID)
 		}

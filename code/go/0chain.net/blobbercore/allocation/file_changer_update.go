@@ -76,9 +76,6 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	fileRef.HashToBeComputed = true
 	nf.deleteHash = make(map[string]int)
 
-	if fileRef.ThumbnailHash != "" && fileRef.ThumbnailHash != nf.ThumbnailHash {
-		nf.deleteHash[fileRef.ThumbnailHash] = int(THUMBNAIL)
-	}
 	if fileRef.ValidationRoot != "" && fileRef.ValidationRoot != nf.ValidationRoot {
 		nf.deleteHash[fileRef.ValidationRoot] = int(CONTENT)
 	}
@@ -107,33 +104,17 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 
 func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	for hash, fileType := range nf.deleteHash {
+	for hash := range nf.deleteHash {
+		var count int64
+		err := db.Table((&reference.Ref{}).TableName()).
+			Where(&reference.Ref{ValidationRoot: hash}).
+			Where(&reference.Ref{AllocationID: nf.AllocationID}).
+			Count(&count).Error
 
-		if fileType == int(THUMBNAIL) {
-			var count int64
-			err := db.Table((&reference.Ref{}).TableName()).
-				Where(&reference.Ref{ThumbnailHash: hash}).
-				Where(&reference.Ref{AllocationID: nf.AllocationID}).
-				Count(&count).Error
-
-			if err == nil && count == 0 {
-				logging.Logger.Info("Deleting thumbnail file", zap.String("thumbnail_hash", hash))
-				if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash); err != nil {
-					logging.Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
-				}
-			}
-		} else {
-			var count int64
-			err := db.Table((&reference.Ref{}).TableName()).
-				Where(&reference.Ref{ValidationRoot: hash}).
-				Where(&reference.Ref{AllocationID: nf.AllocationID}).
-				Count(&count).Error
-
-			if err == nil && count == 0 {
-				logging.Logger.Info("Deleting content file", zap.String("validation_root", hash))
-				if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash); err != nil {
-					logging.Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
-				}
+		if err == nil && count == 0 {
+			logging.Logger.Info("Deleting content file", zap.String("validation_root", hash))
+			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash); err != nil {
+				logging.Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
 			}
 		}
 	}

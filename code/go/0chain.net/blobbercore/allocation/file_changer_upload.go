@@ -114,11 +114,7 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	newFile.FileID = fileID
 
 	dirRef.AddChild(newFile)
-	// if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-	// 	return nil, err
-	// }
 
-	// stats.NewFileCreated(ctx, newFile.ID)
 	return rootRef, nil
 }
 

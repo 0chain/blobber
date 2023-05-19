@@ -95,7 +95,6 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, rootRef *reference.
 		return nil, common.NewError("file_not_found", "File to rename not found in blobber")
 	}
 
-	// _, err = rootRef.CalculateHash(ctx, true)
 	return rootRef, nil
 }
 

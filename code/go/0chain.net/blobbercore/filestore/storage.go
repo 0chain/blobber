@@ -350,27 +350,12 @@ func (fs *FileStore) DeleteFile(allocID, validationRoot string) error {
 	if err != nil {
 		return err
 	}
-	// toDecrAlloc := true
 
 	finfo, err := os.Stat(fileObjectPath)
 	if err != nil {
 		return err
 	}
-	// if err != nil {
 
-	// 	//FinalPath doesn't exist. Check if file exists in PreCommitPath
-	// 	fileObjectPath = fs.getPreCommitPathForFile(allocID, validationRoot)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	finfo, err = os.Stat(fileObjectPath)
-
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	toDecrAlloc = false
-	// }
 	size := finfo.Size()
 
 	key := getKey(allocID, validationRoot)
@@ -390,11 +375,6 @@ func (fs *FileStore) DeleteFile(allocID, validationRoot string) error {
 	}
 	l.Lock()
 	defer l.Unlock()
-
-	// err = os.Remove(fileObjectPath)
-	// if err != nil {
-	// 	return err
-	// }
 
 	fs.incrDecrAllocFileSizeAndNumber(allocID, -size, -1)
 
