@@ -54,7 +54,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 
 	a = new(Allocation)
 	err = tx.Model(&Allocation{}).
-		Where(&Allocation{ID: allocationTx}).
+		Where(&Allocation{Tx: allocationTx}).
 		First(a).Error
 
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -74,9 +74,21 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 		return          // found in DB
 	}
 
+	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
+	if err != nil {
+		return nil, common.NewError("invalid_allocation",
+			"Invalid Allocation id. Allocation not found in blockchain. "+err.Error())
+	}
+	var sa transaction.StorageAllocation
+	err = json.Unmarshal([]byte(t.TransactionOutput), &sa)
+	if err != nil {
+		return nil, common.NewError("transaction_output_decode_error",
+			"Error decoding the allocation transaction output."+err.Error())
+	}
+
 	var isExist bool
 	err = tx.Model(&Allocation{}).
-		Where("id = ?", allocationTx).
+		Where("id = ?", sa.ID).
 		First(a).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
@@ -89,7 +101,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 		zap.Any("allocation", a),
 		zap.String("node.Self.ID", node.Self.ID))
 
-	edbAllocation, err := requestAllocation(allocationTx)
+	edbAllocation, err := requestAllocation(sa.ID)
 
 	if !isExist {
 		foundBlobber := false
@@ -121,7 +133,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 	a.Expiration = edbAllocation.Expiration
 	a.OwnerID = edbAllocation.OwnerID
 	a.OwnerPublicKey = edbAllocation.OwnerPublicKey
-	a.RepairerID = node.Self.ID // blobber node id
+	a.RepairerID = t.ClientID // blobber node id
 	a.TotalSize = edbAllocation.Size
 	a.UsedSize = edbAllocation.UsedSize
 	a.Finalized = edbAllocation.Finalized
