@@ -116,7 +116,7 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 				filepath.Dir(fPath): "fileID#1",
 				fPath:               "fileID#2",
 			}
-			rootRef, _ := reference.GetReferencePathFromPaths(ctx, tc.allocationID, []string{change.Path})
+			rootRef, _ := reference.GetReferencePathFromPaths(ctx, tc.allocationID, []string{change.Path}, []string{})
 			err := func() error {
 				_, err := change.ApplyChange(ctx, rootRef, tc.allocChange, "/", common.Now()-1, fileIDMeta)
 				if err != nil {

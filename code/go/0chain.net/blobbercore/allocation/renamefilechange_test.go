@@ -436,7 +436,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 		ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
 		t.Run(tc.name, func(t *testing.T) {
 			change := &RenameFileChange{AllocationID: alloc.ID, Path: tc.path, NewName: tc.newName}
-			rootRef, err := reference.GetReferencePathFromPaths(ctx, alloc.ID, []string{change.Path})
+			rootRef, err := reference.GetReferencePathFromPaths(ctx, alloc.ID, []string{change.Path}, []string{})
 			require.Nil(t, err)
 			response, err := change.ApplyChange(ctx, rootRef, tc.allocChange, tc.allocRoot, common.Now()-1, nil)
 

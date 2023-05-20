@@ -391,9 +391,13 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 
 func (a *AllocationChangeCollector) GetRootRef(ctx context.Context) (*reference.Ref, error) {
 	paths := make([]string, 0)
-
+	objTreePath := make([]string, 0)
 	for _, change := range a.AllocationChanges {
-		paths = append(paths, change.GetPath()...)
+		allPaths := change.GetPath()
+		paths = append(paths, allPaths...)
+		if len(allPaths) > 1 {
+			objTreePath = append(objTreePath, allPaths[1])
+		}
 	}
-	return reference.GetReferencePathFromPaths(ctx, a.AllocationID, paths)
+	return reference.GetReferencePathFromPaths(ctx, a.AllocationID, paths, objTreePath)
 }

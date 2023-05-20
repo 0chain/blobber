@@ -358,7 +358,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
-			rootRef, _ := reference.GetReferencePathFromPaths(ctx, tc.allocationID, []string{change.Path})
+			rootRef, _ := reference.GetReferencePathFromPaths(ctx, tc.allocationID, []string{change.Path}, []string{})
 			_, err := func() (*reference.Ref, error) {
 				resp, err := change.ApplyChange(ctx, rootRef, tc.allocChange, tc.allocRoot, common.Now()-1, nil)
 				if err != nil {

@@ -120,7 +120,7 @@ func (rootRef *Ref) GetSrcPath(path string) (*Ref, error) {
 }
 
 // GetReferencePathFromPaths validate and build full dir tree from db, and CalculateHash and return root Ref
-func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
+func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths, objTreePath []string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
 	pathsAdded := make(map[string]bool)
@@ -170,10 +170,27 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 		if _, ok := refMap[refs[i].ParentPath]; !ok {
 			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
 		}
-
 		refMap[refs[i].ParentPath].AddChild(&refs[i])
 		refMap[refs[i].Path] = &refs[i]
 
+	}
+
+	for _, path := range objTreePath {
+		ref, err := GetObjectTree(ctx, allocationID, path)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := refMap[path]; !ok {
+			_, found := refMap[ref.ParentPath]
+			if !found {
+				return nil, common.NewError("invalid_dir_tree", "DB has invalid tree Parent path not found for object tree.")
+			}
+			refMap[ref.ParentPath].AddChild(ref)
+			refMap[ref.Path] = ref
+		} else {
+			refMap[ref.Path].Children = ref.Children
+			refMap[ref.Path].childrenLoaded = true
+		}
 	}
 
 	return &refs[0], nil

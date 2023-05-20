@@ -2,12 +2,12 @@ package allocation
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	mocket "github.com/selvatico/go-mocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,7 +17,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
-	mocket "github.com/selvatico/go-mocket"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
 )
@@ -97,7 +96,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 					},
 				)
 
-				q2 := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 OR (parent_path = $2 AND allocation_id = $3)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				q2 := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 OR ("reference_objects"."allocation_id" = $2 AND "reference_objects"."parent_path" = $3) OR ("reference_objects"."allocation_id" = $4 AND "reference_objects"."parent_path" = $5) OR (parent_path = $6 AND allocation_id = $7)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path%`
 				mocket.Catcher.NewMock().WithQuery(q2).WithReply(
 					[]map[string]interface{}{
 						{
@@ -186,7 +185,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 					[]map[string]interface{}{
 						{
 							"id":              1,
-							"level":           0,
+							"level":           1,
 							"lookup_hash":     "lookup_hash_root",
 							"path":            "/",
 							"name":            "/",
@@ -201,7 +200,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 						},
 						{
 							"id":              2,
-							"level":           1,
+							"level":           2,
 							"lookup_hash":     "lookup_hash",
 							"path":            "/orig.txt",
 							"name":            "orig.txt",
@@ -217,7 +216,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 					},
 				)
 
-				q2 := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR "reference_objects"."allocation_id" = $5 OR (parent_path = $6 AND allocation_id = $7)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				q2 := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR ("reference_objects"."allocation_id" = $5 AND "reference_objects"."parent_path" = $6) OR (parent_path = $7 AND allocation_id = $8)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().WithQuery(q2).WithReply(
 					[]map[string]interface{}{
 						{
@@ -272,7 +271,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 						},
 						{
 							"id":              2,
-							"level":           1,
+							"level":           2,
 							"lookup_hash":     "lookup_hash",
 							"path":            "/orig.txt",
 							"name":            "orig.txt",
@@ -314,7 +313,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 				SrcPath:      tc.srcPath,
 				DestPath:     tc.destination,
 			}
-			rootRef, err := reference.GetReferencePathFromPaths(ctx, tc.allocationID, []string{change.DestPath, filepath.Dir(change.SrcPath)})
+			rootRef, err := reference.GetReferencePathFromPaths(ctx, tc.allocationID, []string{change.DestPath, change.SrcPath}, []string{change.SrcPath})
 			require.Nil(t, err)
 			err = func() error {
 				_, err := change.ApplyChange(ctx, rootRef, tc.allocChange, "/", common.Now()-1, nil)

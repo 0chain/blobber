@@ -39,10 +39,7 @@ func TestMultiOp(t *testing.T) {
 	fileIDMeta := make(map[string]string)
 	fileIDMeta["/"] = randName()
 	changes := uploadChanges(alloc.ID, "new_validation_root", fileIDMeta)
-	// paths := make([]string, 0, len(changes))
-	// for _, change := range changes {
-	// 	paths = append(paths, change.Path)
-	// }
+
 	config.Configuration.MaxAllocationDirFiles = 100
 	rootRef := &reference.Ref{Type: reference.DIRECTORY, AllocationID: alloc.ID, Name: "/", Path: "/", ParentPath: "", PathLevel: 1}
 

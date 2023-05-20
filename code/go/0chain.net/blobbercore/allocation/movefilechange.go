@@ -157,5 +157,5 @@ func (rf *MoveFileChange) CommitToFileStore(ctx context.Context) error {
 }
 
 func (rf *MoveFileChange) GetPath() []string {
-	return []string{rf.DestPath, filepath.Dir(rf.SrcPath)}
+	return []string{rf.DestPath, rf.SrcPath}
 }

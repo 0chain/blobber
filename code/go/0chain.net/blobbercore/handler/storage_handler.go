@@ -537,7 +537,8 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 		errCh <- common.NewError("invalid_signature", "could not verify the allocation owner or colloborator")
 		return
 	}
-	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths)
+	objTreePath := []string{}
+	rootRef, err := reference.GetReferencePathFromPaths(ctx, allocationID, paths, objTreePath)
 	if err != nil {
 		errCh <- err
 		return

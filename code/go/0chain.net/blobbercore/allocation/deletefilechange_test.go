@@ -262,7 +262,7 @@ func TestBlobberCore_DeleteFile(t *testing.T) {
 				AllocationID: tc.allocationID,
 				Path:         tc.srcPath,
 			}
-			rootRef, err := reference.GetReferencePathFromPaths(ctx, tc.allocationID, []string{change.Path})
+			rootRef, err := reference.GetReferencePathFromPaths(ctx, tc.allocationID, []string{change.Path}, []string{})
 			fmt.Printf("rootRef: %+v\n", rootRef)
 			require.Nil(t, err)
 			err = func() error {
