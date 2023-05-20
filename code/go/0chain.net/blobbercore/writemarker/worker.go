@@ -89,7 +89,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 		if mut != nil {
 			mut.Release(1)
 		}
-		_ = wm.UpdateStatus(ctx, Rollbacked, "", "")
+		_ = wm.UpdateStatus(ctx, Rollbacked, "rollbacked", "")
 		err = db.Commit().Error
 		return err
 	}
