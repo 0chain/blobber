@@ -69,7 +69,7 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 		}
 	}
 
-	fileRefs := rf.processCopyRefs(ctx, srcRef, dirRef, allocationRoot, ts)
+	fileRefs := rf.processMoveRefs(ctx, srcRef, dirRef, allocationRoot, ts)
 
 	srcParentPath, srcFileName := filepath.Split(rf.SrcPath)
 	srcFields, err := common.GetPathFields(srcParentPath)
@@ -112,7 +112,7 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 	return rootRef, nil
 }
 
-func (rf *MoveFileChange) processCopyRefs(
+func (rf *MoveFileChange) processMoveRefs(
 	ctx context.Context, srcRef, destRef *reference.Ref,
 	allocationRoot string, ts common.Timestamp) (fileRefs []*reference.Ref) {
 
@@ -124,7 +124,7 @@ func (rf *MoveFileChange) processCopyRefs(
 		destRef.AddChild(srcRef)
 
 		for _, childRef := range srcRef.Children {
-			fileRefs = append(fileRefs, rf.processCopyRefs(ctx, childRef, srcRef, allocationRoot, ts)...)
+			fileRefs = append(fileRefs, rf.processMoveRefs(ctx, childRef, srcRef, allocationRoot, ts)...)
 		}
 	} else if srcRef.Type == reference.FILE {
 		srcRef.ParentPath = destRef.Path
