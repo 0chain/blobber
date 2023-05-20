@@ -476,7 +476,7 @@ func (r *Ref) AddChild(child *Ref) {
 	var ltFound bool
 	// Add child in sorted fashion
 	for i, ref := range r.Children {
-		if strings.Compare(child.Path, ref.Path) == 0 {
+		if strings.Compare(child.Name, ref.Name) == 0 {
 			r.Children[i] = child
 			return
 		}
