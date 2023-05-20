@@ -456,11 +456,12 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 	r.Size = size
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
-
+	logging.Logger.Info("AfterDirHash", zap.Any("ref", r))
 	return r.Hash, err
 }
 
 func (r *Ref) CalculateHash(ctx context.Context, saveToDB bool) (string, error) {
+	logging.Logger.Info("CalculateHash", zap.Any("ref", r))
 	if r.Type == DIRECTORY {
 		return r.CalculateDirHash(ctx, saveToDB)
 	}
