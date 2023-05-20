@@ -518,22 +518,15 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 	toUpdateFileStat := r.IsPrecommit
 	prevID := r.ID
 	if r.ID > 0 {
-		err := db.Transaction(func(tx *gorm.DB) error {
 
-			err := tx.Delete(&Ref{}, "id=?", r.ID).Error
-			if err != nil && err != gorm.ErrRecordNotFound {
-				return err
-			}
+		err := db.Delete(&Ref{}, "id=?", r.ID).Error
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return err
+		}
 
-			r.ID = 0
-			r.IsPrecommit = true
-			err = tx.Create(r).Error
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-
+		r.ID = 0
+		r.IsPrecommit = true
+		err = db.Create(r).Error
 		if err != nil {
 			return err
 		}
@@ -557,36 +550,30 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 	toUpdateFileStat := r.IsPrecommit
 	prevID := r.ID
 	if r.ID > 0 {
-		err := db.Transaction(func(tx *gorm.DB) error {
-			// FIXME: temporary fix
+		// FIXME: temporary fix
 
-			var cnt int64
-			err := tx.Unscoped().Model(&Ref{}).Where("allocation_id=? AND path=? and deleted_at IS NOT NULL", r.AllocationID, r.Path).Count(&cnt).Error
-			if err != nil {
-				return err
-			}
-			logging.Logger.Info("SaveDirRef", zap.Any("cnt", cnt), zap.Any("path", r.Path))
-			if cnt > 0 {
-				r.IsPrecommit = true
-				err = tx.Save(r).Error
-				return err
-			}
-			err = tx.Exec("UPDATE reference_objects SET is_precommit=? WHERE id=?", false, r.ID).Error
-			if err != nil && err != gorm.ErrRecordNotFound {
-				return err
-			}
-			err = tx.Delete(&Ref{}, "id=?", r.ID).Error
-			if err != nil && err != gorm.ErrRecordNotFound {
-				return err
-			}
-			r.ID = 0
+		var cnt int64
+		err := db.Unscoped().Model(&Ref{}).Where("allocation_id=? AND path=? and deleted_at IS NOT NULL", r.AllocationID, r.Path).Count(&cnt).Error
+		if err != nil {
+			return err
+		}
+		logging.Logger.Info("SaveDirRef", zap.Any("cnt", cnt), zap.Any("path", r.Path))
+		if cnt > 0 {
 			r.IsPrecommit = true
-			err = tx.Create(r).Error
-			if err != nil {
-				return err
-			}
-			return nil
-		})
+			err = db.Save(r).Error
+			return err
+		}
+		err = db.Exec("UPDATE reference_objects SET is_precommit=? WHERE id=?", false, r.ID).Error
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return err
+		}
+		err = db.Delete(&Ref{}, "id=?", r.ID).Error
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return err
+		}
+		r.ID = 0
+		r.IsPrecommit = true
+		err = db.Create(r).Error
 		if err != nil {
 			return err
 		}
@@ -697,4 +684,14 @@ func GetAllRefs() {
 	db := datastore.GetStore().GetDB()
 	db.Find(&refs)
 	logging.Logger.Info("GetAllRefs", zap.Any("refs", refs), zap.Int("len", len(refs)))
+}
+
+func GetAllRows(ctx context.Context, allocationID string) ([]*Ref, error) {
+	var refs []*Ref
+	db := datastore.GetStore().GetTransaction(ctx)
+	err := db.Where("allocation_id=?", allocationID).Find(&refs).Error
+	if err != nil {
+		return nil, err
+	}
+	return refs, nil
 }
