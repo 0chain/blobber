@@ -453,7 +453,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 		size += childRef.Size
 	}
 
-	r.FileMetaHash = encryption.Hash(strings.Join(childFileMetaHashes, ":"))
+	r.FileMetaHash = encryption.Hash(r.GetHashData() + strings.Join(childFileMetaHashes, ":"))
 	r.Hash = encryption.Hash(r.GetHashData() + strings.Join(childHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.NumBlocks = refNumBlocks
