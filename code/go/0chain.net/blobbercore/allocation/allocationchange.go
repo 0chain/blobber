@@ -247,75 +247,70 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 	logging.Logger.Info("Move to filestore", zap.String("allocation_id", a.AllocationID))
 
-	db := datastore.GetStore().GetTransaction(ctx)
+	tx := datastore.GetStore().GetTransaction(ctx)
 
 	var refs []*Result
 	limitCh := make(chan struct{}, 10)
 	wg := &sync.WaitGroup{}
 
-	err := db.Transaction(func(tx *gorm.DB) error {
+	err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
+		FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
 
-		err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
-			FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
+			for _, ref := range refs {
 
-				for _, ref := range refs {
+				limitCh <- struct{}{}
+				wg.Add(1)
 
-					limitCh <- struct{}{}
-					wg.Add(1)
+				go func(ref *Result) {
+					defer func() {
+						<-limitCh
+						wg.Done()
+					}()
 
-					go func(ref *Result) {
-						defer func() {
-							<-limitCh
-							wg.Done()
-						}()
-
-						if ref.ValidationRoot != ref.PrevValidationRoot {
-							if ref.PrevValidationRoot != "" {
-								err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevValidationRoot)
-								if err != nil {
-									logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
-										zap.String("validation_root", ref.ValidationRoot))
-								}
-							}
-							err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ValidationRoot)
+					if ref.ValidationRoot != ref.PrevValidationRoot {
+						if ref.PrevValidationRoot != "" {
+							err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevValidationRoot)
 							if err != nil {
-								logging.Logger.Error(fmt.Sprintf("Error while moving file: %s", err.Error()),
+								logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
 									zap.String("validation_root", ref.ValidationRoot))
 							}
 						}
+						err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ValidationRoot)
+						if err != nil {
+							logging.Logger.Error(fmt.Sprintf("Error while moving file: %s", err.Error()),
+								zap.String("validation_root", ref.ValidationRoot))
+						}
+					}
 
-						if ref.ThumbnailHash != "" && ref.ThumbnailHash != ref.PrevThumbnailHash {
-							if ref.PrevThumbnailHash != "" {
-								err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevThumbnailHash)
-								if err != nil {
-									logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail file: %s", err.Error()),
-										zap.String("thumbnail_hash", ref.ThumbnailHash))
-								}
-							}
-							err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ThumbnailHash)
+					if ref.ThumbnailHash != "" && ref.ThumbnailHash != ref.PrevThumbnailHash {
+						if ref.PrevThumbnailHash != "" {
+							err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevThumbnailHash)
 							if err != nil {
-								logging.Logger.Error(fmt.Sprintf("Error while moving thumbnail file: %s", err.Error()),
+								logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail file: %s", err.Error()),
 									zap.String("thumbnail_hash", ref.ThumbnailHash))
 							}
 						}
+						err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ThumbnailHash)
+						if err != nil {
+							logging.Logger.Error(fmt.Sprintf("Error while moving thumbnail file: %s", err.Error()),
+								zap.String("thumbnail_hash", ref.ThumbnailHash))
+						}
+					}
 
-					}(ref)
-				}
+				}(ref)
+			}
 
-				return nil
-			}).Error
+			return nil
+		}).Error
 
-		wg.Wait()
+	wg.Wait()
 
-		if err != nil {
-			logging.Logger.Error("Error while moving to filestore", zap.Error(err))
-			return err
-		}
-
-		err = tx.Exec("UPDATE reference_objects SET is_precommit=?, prev_validation_root=validation_root, prev_thumbnail_hash=thumbnail_hash WHERE allocation_id=? AND is_precommit=? AND deleted_at is NULL", false, a.AllocationID, true).Error
-
+	if err != nil {
+		logging.Logger.Error("Error while moving to filestore", zap.Error(err))
 		return err
-	})
+	}
+
+	err = tx.Exec("UPDATE reference_objects SET is_precommit=?, prev_validation_root=validation_root, prev_thumbnail_hash=thumbnail_hash WHERE allocation_id=? AND is_precommit=? AND deleted_at is NULL", false, a.AllocationID, true).Error
 
 	if err != nil {
 		return err
