@@ -525,8 +525,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	// Move preCommitDir to finalDir
-	refs, _ := reference.GetAllRows(ctx, allocationID)
-	Logger.Info("pre_move_filestore", zap.Any("refs", refs))
 	err = connectionObj.MoveToFilestore(ctx)
 	if err != nil {
 		return nil, common.NewError("move_to_filestore_error", fmt.Sprintf("Error while moving to filestore: %s", err.Error()))
@@ -539,9 +537,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err != nil {
 		return nil, err
 	}
-
-	refs, _ = reference.GetAllRows(ctx, allocationID)
-	Logger.Info("post_apply_filestore", zap.Any("refs", refs))
 
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem

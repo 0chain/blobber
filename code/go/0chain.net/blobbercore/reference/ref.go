@@ -14,7 +14,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
-
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -448,7 +447,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
 	}
-	logging.Logger.Info("ChildHashes", zap.Any("hashes", childHashes), zap.Any("path", r.Path))
 	r.FileMetaHash = encryption.Hash(strings.Join(childFileMetaHashes, ":"))
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
@@ -456,12 +454,10 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 	r.Size = size
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
-	logging.Logger.Info("AfterDirHash", zap.Any("ref", r))
 	return r.Hash, err
 }
 
 func (r *Ref) CalculateHash(ctx context.Context, saveToDB bool) (string, error) {
-	logging.Logger.Info("CalculateHash", zap.Any("ref", r))
 	if r.Type == DIRECTORY {
 		return r.CalculateDirHash(ctx, saveToDB)
 	}
@@ -689,14 +685,4 @@ func GetAllRefs() {
 	db := datastore.GetStore().GetDB()
 	db.Find(&refs)
 	logging.Logger.Info("GetAllRefs", zap.Any("refs", refs), zap.Int("len", len(refs)))
-}
-
-func GetAllRows(ctx context.Context, allocationID string) ([]*Ref, error) {
-	var refs []*Ref
-	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where("allocation_id=?", allocationID).Find(&refs).Error
-	if err != nil {
-		return nil, err
-	}
-	return refs, nil
 }
