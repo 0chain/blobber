@@ -19,10 +19,10 @@ require (
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/selvatico/go-mocket v1.0.7
 	github.com/spf13/viper v1.15.0
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	go.uber.org/zap v1.24.0
-	golang.org/x/crypto v0.8.0
-	golang.org/x/net v0.9.0 // indirect
+	golang.org/x/crypto v0.9.0
+	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sys v0.8.0
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4
@@ -31,14 +31,14 @@ require (
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/datatypes v1.2.0
-	gorm.io/driver/postgres v1.5.0
-	gorm.io/driver/sqlite v1.4.4
-	gorm.io/gorm v1.25.0
+	gorm.io/driver/postgres v1.5.2
+	gorm.io/driver/sqlite v1.5.1
+	gorm.io/gorm v1.25.1
 )
 
 require (
 	github.com/lithammer/shortuuid/v3 v3.0.7
-	golang.org/x/sync v0.1.0
+	golang.org/x/sync v0.2.0
 )
 
 require (
@@ -124,8 +124,6 @@ require (
 	gorm.io/driver/mysql v1.4.7 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
-
-require golang.org/x/sync v0.1.0
 
 // temporary, for development
 // replace github.com/0chain/gosdk => ../gosdk
