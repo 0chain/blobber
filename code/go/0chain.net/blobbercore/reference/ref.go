@@ -14,7 +14,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
-
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -448,7 +447,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
 	}
-
 	r.FileMetaHash = encryption.Hash(strings.Join(childFileMetaHashes, ":"))
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
@@ -456,7 +454,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 	r.Size = size
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
-
 	return r.Hash, err
 }
 
@@ -475,6 +472,10 @@ func (r *Ref) AddChild(child *Ref) {
 	var ltFound bool
 	// Add child in sorted fashion
 	for i, ref := range r.Children {
+		if strings.Compare(child.Name, ref.Name) == 0 {
+			r.Children[i] = child
+			return
+		}
 		if strings.Compare(child.Path, ref.Path) == -1 {
 			index = i
 			ltFound = true
