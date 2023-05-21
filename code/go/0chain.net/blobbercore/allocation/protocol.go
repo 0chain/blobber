@@ -99,20 +99,19 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 	logging.Logger.Info("VerifyAllocationTransaction",
 		zap.Bool("isExist", isExist),
 		zap.Any("allocation", a),
+		zap.Any("storageAllocation", sa),
 		zap.String("node.Self.ID", node.Self.ID))
-
-	edbAllocation, err := requestAllocation(sa.ID)
 
 	if !isExist {
 		foundBlobber := false
-		for _, blobberConnection := range edbAllocation.BlobberDetails {
+		for _, blobberConnection := range sa.BlobberDetails {
 			if blobberConnection.BlobberID != node.Self.ID {
 				continue
 			}
 			foundBlobber = true
 			a.AllocationRoot = ""
-			a.BlobberSize = (edbAllocation.Size + int64(len(edbAllocation.BlobberDetails)-1)) /
-				int64(len(edbAllocation.BlobberDetails))
+			a.BlobberSize = (sa.Size + int64(len(sa.BlobberDetails)-1)) /
+				int64(len(sa.BlobberDetails))
 			a.BlobberSizeUsed = 0
 			break
 		}
@@ -122,27 +121,22 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 		}
 	}
 
-	if err != nil {
-		return nil, common.NewError("invalid_allocation",
-			"Invalid Allocation id. Allocation not found in blockchain. "+err.Error())
-	}
-
 	// set/update fields
-	a.ID = edbAllocation.ID
-	a.Tx = edbAllocation.Tx
-	a.Expiration = edbAllocation.Expiration
-	a.OwnerID = edbAllocation.OwnerID
-	a.OwnerPublicKey = edbAllocation.OwnerPublicKey
+	a.ID = sa.ID
+	a.Tx = sa.Tx
+	a.Expiration = sa.Expiration
+	a.OwnerID = sa.OwnerID
+	a.OwnerPublicKey = sa.OwnerPublicKey
 	a.RepairerID = t.ClientID // blobber node id
-	a.TotalSize = edbAllocation.Size
-	a.UsedSize = edbAllocation.UsedSize
-	a.Finalized = edbAllocation.Finalized
-	a.TimeUnit = edbAllocation.TimeUnit
-	a.FileOptions = edbAllocation.FileOptions
+	a.TotalSize = sa.Size
+	a.UsedSize = sa.UsedSize
+	a.Finalized = sa.Finalized
+	a.TimeUnit = sa.TimeUnit
+	a.FileOptions = sa.FileOptions
 
 	m := map[string]interface{}{
 		"allocation_id":  a.ID,
-		"allocated_size": (edbAllocation.Size + edbAllocation.DataShards - 1) / edbAllocation.DataShards,
+		"allocated_size": (sa.Size + int64(len(sa.BlobberDetails)-1)) / int64(len(sa.BlobberDetails)),
 	}
 
 	err = filestore.GetFileStore().UpdateAllocationMetaData(m)
@@ -151,8 +145,8 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 	}
 	// go update allocation data in file store map
 	// related terms
-	a.Terms = make([]*Terms, 0, len(edbAllocation.BlobberDetails))
-	for _, d := range edbAllocation.BlobberDetails {
+	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))
+	for _, d := range sa.BlobberDetails {
 		a.Terms = append(a.Terms, &Terms{
 			BlobberID:    d.BlobberID,
 			AllocationID: a.ID,
