@@ -127,7 +127,7 @@ func (wme *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 	return err
 }
 
-func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAllocation *allocation.Allocation) error {
+func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAllocation *allocation.Allocation, latestWM *WriteMarkerEntity) error {
 
 	if wme == nil {
 		return common.NewError("invalid_write_marker", "No Write Marker was found")
@@ -145,6 +145,10 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 
 	if wme.WM.Size != 0 {
 		return common.NewError("empty write_marker_validation_failed", fmt.Sprintf("Write Marker size is %v but should be 0", wme.WM.Size))
+	}
+
+	if wme.WM.AllocationRoot != latestWM.WM.PreviousAllocationRoot {
+		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker allocation root %v does not match the previous allocation root of latest write marker %v", wme.WM.AllocationRoot, latestWM.WM.PreviousAllocationRoot))
 	}
 
 	clientPublicKey := ctx.Value(constants.ContextKeyClientKey).(string)
