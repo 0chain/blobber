@@ -786,6 +786,10 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
+	dirPath := filepath.Dir(objectRef.Path)
+	if dirPath == destPath {
+		return nil, common.NewError("invalid_parameters", "Invalid destination path. Cannot copy to the same directory.")
+	}
 	newPath := filepath.Join(destPath, objectRef.Name)
 	paths, err := common.GetParentPaths(newPath)
 	if err != nil {

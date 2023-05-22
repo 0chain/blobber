@@ -56,10 +56,12 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 			name:        "Copy file success",
 			allocChange: &AllocationChange{Operation: constants.FileOperationInsert},
 			srcPath:     "/orig.txt",
-			destination: "/",
+			destination: "/new",
 			fileIDMeta: map[string]string{
-				"/":         "fileID#1",
-				"/orig.txt": "fileID#2",
+				"/":             "fileID#1",
+				"/orig.txt":     "fileID#2",
+				"/new":          "fileID#3",
+				"/new/orig.txt": "fileID#4",
 			},
 			allocationID:        alloc.ID,
 			maxDirFilesPerAlloc: 5,
@@ -103,7 +105,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 					},
 				)
 
-				q2 := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 OR ("reference_objects"."allocation_id" = $2 AND "reference_objects"."parent_path" = $3) OR ("reference_objects"."allocation_id" = $4 AND "reference_objects"."parent_path" = $5) OR (parent_path = $6 AND allocation_id = $7)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				q2 := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR ("reference_objects"."allocation_id" = $5 AND "reference_objects"."parent_path" = $6) OR (parent_path = $7 AND allocation_id = $8)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().WithQuery(q2).WithReply(
 					[]map[string]interface{}{
 						{
@@ -177,65 +179,65 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 
 			},
 		},
-		// {
-		// 	name:         "Copy file fails when max dirs & files reached",
-		// 	allocChange:  &AllocationChange{},
-		// 	srcPath:      "/orig.txt",
-		// 	destination:  "/target",
-		// 	allocationID: alloc.ID,
-		// 	fileIDMeta: map[string]string{
-		// 		"/":                "fileID#1",
-		// 		"/target":          "fileID#2",
-		// 		"/target/orig.txt": "fileID#3",
-		// 	},
-		// 	maxDirFilesPerAlloc: 5,
-		// 	expectedMessage:     "max_alloc_dir_files_reached: maximum files and directories already reached",
-		// 	expectingError:      true,
-		// 	setupDbMock: func() {
-		// 		mocket.Catcher.Reset()
+		{
+			name:         "Copy file fails when max dirs & files reached",
+			allocChange:  &AllocationChange{},
+			srcPath:      "/orig.txt",
+			destination:  "/target",
+			allocationID: alloc.ID,
+			fileIDMeta: map[string]string{
+				"/":                "fileID#1",
+				"/target":          "fileID#2",
+				"/target/orig.txt": "fileID#3",
+			},
+			maxDirFilesPerAlloc: 5,
+			expectedMessage:     "max_alloc_dir_files_reached: maximum files and directories already reached",
+			expectingError:      true,
+			setupDbMock: func() {
+				mocket.Catcher.Reset()
 
-		// 		query := `SELECT count(*) FROM "reference_objects" WHERE allocation_id = $1`
-		// 		mocket.Catcher.NewMock().WithQuery(query).WithReply([]map[string]interface{}{
-		// 			{"count": 5},
-		// 		})
+				query := `SELECT count(*) FROM "reference_objects" WHERE allocation_id = $1`
+				mocket.Catcher.NewMock().WithQuery(query).WithReply([]map[string]interface{}{
+					{"count": 5},
+				})
 
-		// 		query = `SELECT * FROM "reference_objects" WHERE id = $1 AND "reference_objects"."deleted_at" IS NULL ORDER BY "reference_objects"."id" LIMIT 1`
-		// 		mocket.Catcher.NewMock().WithQuery(query).WithReply(
-		// 			[]map[string]interface{}{
-		// 				{
-		// 					"id":              1,
-		// 					"level":           0,
-		// 					"lookup_hash":     "lookup_hash_root",
-		// 					"path":            "/",
-		// 					"name":            "/",
-		// 					"allocation_id":   alloc.ID,
-		// 					"parent_path":     "",
-		// 					"validation_root": "",
-		// 					"thumbnail_size":  00,
-		// 					"thumbnail_hash":  "",
-		// 					"type":            reference.DIRECTORY,
-		// 					"created_at":      common.Now() - 3600,
-		// 					"updated_at":      common.Now() - 1800,
-		// 				},
-		// 				{
-		// 					"id":              2,
-		// 					"level":           1,
-		// 					"lookup_hash":     "lookup_hash",
-		// 					"path":            "/orig.txt",
-		// 					"name":            "orig.txt",
-		// 					"allocation_id":   alloc.ID,
-		// 					"parent_path":     "/",
-		// 					"validation_root": "validation_root",
-		// 					"thumbnail_size":  00,
-		// 					"thumbnail_hash":  "",
-		// 					"type":            reference.FILE,
-		// 					"created_at":      common.Now() - 3600,
-		// 					"updated_at":      common.Now() - 1800,
-		// 				},
-		// 			},
-		// 		)
-		// 	},
-		// },
+				query = `SELECT * FROM "reference_objects" WHERE id = $1 AND "reference_objects"."deleted_at" IS NULL ORDER BY "reference_objects"."id" LIMIT 1`
+				mocket.Catcher.NewMock().WithQuery(query).WithReply(
+					[]map[string]interface{}{
+						{
+							"id":              1,
+							"level":           0,
+							"lookup_hash":     "lookup_hash_root",
+							"path":            "/",
+							"name":            "/",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "",
+							"validation_root": "",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.DIRECTORY,
+							"created_at":      common.Now() - 3600,
+							"updated_at":      common.Now() - 1800,
+						},
+						{
+							"id":              2,
+							"level":           1,
+							"lookup_hash":     "lookup_hash",
+							"path":            "/orig.txt",
+							"name":            "orig.txt",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "/",
+							"validation_root": "validation_root",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.FILE,
+							"created_at":      common.Now() - 3600,
+							"updated_at":      common.Now() - 1800,
+						},
+					},
+				)
+			},
+		},
 	}
 
 	for _, tt := range testCases {

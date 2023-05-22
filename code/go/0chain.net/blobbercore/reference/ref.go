@@ -474,6 +474,7 @@ func (r *Ref) AddChild(child *Ref) {
 	for i, ref := range r.Children {
 		if strings.Compare(child.Name, ref.Name) == 0 {
 			r.Children[i] = child
+			r.childrenLoaded = true
 			return
 		}
 		if strings.Compare(child.Path, ref.Path) == -1 {
