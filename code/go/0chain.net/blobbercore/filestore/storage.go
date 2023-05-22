@@ -423,7 +423,18 @@ func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloa
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
-		return nil, common.NewError("read_error", err.Error())
+		if readBlockIn.IsPrecommit {
+			fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
+			if err != nil {
+				return nil, common.NewError("get_file_path_error", err.Error())
+			}
+			file, err = os.Open(fileObjectPath)
+			if err != nil {
+				return nil, common.NewError("read_error", err.Error())
+			}
+		} else {
+			return nil, common.NewError("read_error", err.Error())
+		}
 	}
 	defer file.Close()
 
@@ -489,10 +500,20 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 			return nil, common.NewError("get_file_path_error", err.Error())
 		}
 	}
-
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
-		return nil, err
+		if readBlockIn.IsPrecommit {
+			fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
+			if err != nil {
+				return nil, common.NewError("get_file_path_error", err.Error())
+			}
+			file, err = os.Open(fileObjectPath)
+			if err != nil {
+				return nil, common.NewError("read_error", err.Error())
+			}
+		} else {
+			return nil, err
+		}
 	}
 	defer file.Close()
 
@@ -558,7 +579,18 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
-		return nil, err
+		if in.IsPrecommit {
+			fileObjectPath, err = fs.GetPathForFile(in.AllocationID, in.Hash)
+			if err != nil {
+				return nil, common.NewError("get_file_path_error", err.Error())
+			}
+			file, err = os.Open(fileObjectPath)
+			if err != nil {
+				return nil, common.NewError("read_error", err.Error())
+			}
+		} else {
+			return nil, err
+		}
 	}
 
 	defer file.Close()
