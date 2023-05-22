@@ -1268,7 +1268,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	writemarkerEntity := &writemarker.WriteMarkerEntity{}
 	writemarkerEntity.WM = writeMarker
 
-	err = writemarkerEntity.VerifyRollbackMarker(ctx, allocationObj)
+	err = writemarkerEntity.VerifyRollbackMarker(ctx, allocationObj, latestWriteMarkerEntity)
 	if err != nil {
 		return nil, common.NewError("write_marker_verification_failed", "Verification of the write marker failed: "+err.Error())
 	}
