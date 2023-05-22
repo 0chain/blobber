@@ -59,6 +59,27 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 	if rm == nil || rm.LatestRM == nil {
 		return common.NewError("invalid_read_marker", "No read marker was found")
 	}
+
+	if len(rm.LatestRM.ClientID) > 64 {
+		return common.NewError("read_marker_validation_failed", "ClientID exceeds maximum length")
+	}
+
+	if len(rm.LatestRM.AllocationID) > 64 {
+		return common.NewError("read_marker_validation_failed", "AllocationID exceeds maximum length")
+	}
+
+	if len(rm.LatestRM.ClientPublicKey) > 128 {
+		return common.NewError("read_marker_validation_failed", "ClientPublicKey exceeds maximum length")
+	}
+
+	if len(rm.LatestRM.OwnerID) > 64 {
+		return common.NewError("read_marker_validation_failed", "OwnerID exceeds maximum length")
+	}
+
+	if len(rm.LatestRM.Signature) > 64 {
+		return common.NewError("read_marker_validation_failed", "Signature exceeds maximum length")
+	}
+
 	if rm.LatestRM.AllocationID != sa.ID {
 		return common.NewError("read_marker_validation_failed", "Read Marker is not for the same allocation")
 	}
