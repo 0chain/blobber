@@ -267,7 +267,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 				var count int64
 				tx.Model(&reference.Ref{}).
-					Where("allocation_id=? AND validation_root=?", a.AllocationID, ref.ValidationRoot).
+					Where("allocation_id=? AND validation_root=? AND type=?", a.AllocationID, ref.PrevValidationRoot, reference.FILE).
 					Count(&count)
 
 				limitCh <- struct{}{}
