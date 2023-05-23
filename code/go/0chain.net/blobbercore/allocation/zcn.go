@@ -24,24 +24,37 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 		return nil, errors.ThrowLog(err.Error(), common.ErrInternal, "Error decoding the allocation transaction output.")
 	}
 
+	// check if sa.ID is already in db
+	db := datastore.GetStore().GetDB()
 	alloc := &Allocation{}
+	result := db.Table(TableNameAllocation).Where("allocations.id = ?", sa.ID).First(alloc)
 
-	belongToThisBlobber := false
-	for _, blobberConnection := range sa.BlobberDetails {
-		if blobberConnection.BlobberID == node.Self.ID {
-			belongToThisBlobber = true
+	isExists := false
 
-			alloc.AllocationRoot = ""
-			alloc.BlobberSize = (sa.Size + int64(len(sa.BlobberDetails)-1)) /
-				int64(len(sa.BlobberDetails))
-			alloc.BlobberSizeUsed = 0
-
-			break
-		}
+	if result.Error == nil && alloc.ID == sa.ID {
+		isExists = true
 	}
-	if !belongToThisBlobber {
-		return nil, errors.Throw(common.ErrBadRequest,
-			"Blobber is not part of the open connection transaction")
+
+	alloc = &Allocation{}
+
+	if !isExists {
+		belongToThisBlobber := false
+		for _, blobberConnection := range sa.BlobberDetails {
+			if blobberConnection.BlobberID == node.Self.ID {
+				belongToThisBlobber = true
+
+				alloc.AllocationRoot = ""
+				alloc.BlobberSize = (sa.Size + int64(len(sa.BlobberDetails)-1)) /
+					int64(len(sa.BlobberDetails))
+				alloc.BlobberSizeUsed = 0
+
+				break
+			}
+		}
+		if !belongToThisBlobber {
+			return nil, errors.Throw(common.ErrBadRequest,
+				"Blobber is not part of the open connection transaction")
+		}
 	}
 
 	// set/update fields
@@ -52,7 +65,9 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 	alloc.OwnerPublicKey = sa.OwnerPublicKey
 	alloc.RepairerID = t.ClientID // blobber node id
 	alloc.TotalSize = sa.Size
-	alloc.UsedSize = sa.UsedSize
+	if !isExists {
+		alloc.UsedSize = sa.UsedSize
+	}
 	alloc.Finalized = sa.Finalized
 	alloc.TimeUnit = sa.TimeUnit
 	alloc.FileOptions = sa.FileOptions
