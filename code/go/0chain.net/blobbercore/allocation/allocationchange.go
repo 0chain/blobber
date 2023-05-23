@@ -279,8 +279,8 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 						wg.Done()
 					}()
 
-					if count != 0 {
-						if ref.PrevValidationRoot != "" && ref.ValidationRoot != ref.PrevValidationRoot {
+					if count == 0 {
+						if ref.PrevValidationRoot != "" {
 							err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevValidationRoot)
 							if err != nil {
 								logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
