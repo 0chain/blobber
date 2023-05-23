@@ -24,15 +24,7 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 		return nil, errors.ThrowLog(err.Error(), common.ErrInternal, "Error decoding the allocation transaction output.")
 	}
 
-	db := datastore.GetStore().GetDB()
 	alloc := &Allocation{}
-	result := db.Table(TableNameAllocation).Where("allocations.id = ?", sa.ID).First(alloc)
-
-	if result.Error == nil && alloc.ID == sa.ID {
-		return alloc, nil
-	}
-
-	alloc = &Allocation{}
 
 	belongToThisBlobber := false
 	for _, blobberConnection := range sa.BlobberDetails {
@@ -77,12 +69,12 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 	}
 
 	err = datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		if err := tx.Table(TableNameAllocation).Create(alloc).Error; err != nil {
+		if err := tx.Table(TableNameAllocation).Save(alloc).Error; err != nil {
 			return err
 		}
 
 		for _, term := range terms {
-			if err := tx.Table(TableNameTerms).Create(term).Error; err != nil {
+			if err := tx.Table(TableNameTerms).Save(term).Error; err != nil {
 				return err
 			}
 		}
