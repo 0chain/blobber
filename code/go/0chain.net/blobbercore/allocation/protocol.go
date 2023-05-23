@@ -52,21 +52,9 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 func VerifyAllocationTransaction(ctx context.Context, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
-	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
-	if err != nil {
-		return nil, common.NewError("invalid_allocation",
-			"Invalid Allocation id. Allocation not found in blockchain. "+err.Error())
-	}
-	var sa transaction.StorageAllocation
-	err = json.Unmarshal([]byte(t.TransactionOutput), &sa)
-	if err != nil {
-		return nil, common.NewError("transaction_output_decode_error",
-			"Error decoding the allocation transaction output."+err.Error())
-	}
-
 	a = new(Allocation)
 	err = tx.Model(&Allocation{}).
-		Where(&Allocation{ID: sa.ID}).
+		Where(&Allocation{Tx: allocationTx}).
 		First(a).Error
 
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -84,6 +72,18 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 		}
 		a.Terms = terms // set field
 		return          // found in DB
+	}
+
+	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
+	if err != nil {
+		return nil, common.NewError("invalid_allocation",
+			"Invalid Allocation id. Allocation not found in blockchain. "+err.Error())
+	}
+	var sa transaction.StorageAllocation
+	err = json.Unmarshal([]byte(t.TransactionOutput), &sa)
+	if err != nil {
+		return nil, common.NewError("transaction_output_decode_error",
+			"Error decoding the allocation transaction output."+err.Error())
 	}
 
 	var isExist bool
