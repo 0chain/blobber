@@ -116,6 +116,7 @@ func TestDownloadFile(t *testing.T) {
 		rm.Timestamp = now
 		// set another value to size
 		rm.ReadCounter = p.inData.numBlocks
+		rm.SessionRC = p.inData.numBlocks
 		err := rm.Sign()
 		require.NoError(t, err)
 		rmData, err := json.Marshal(rm)
@@ -124,6 +125,7 @@ func TestDownloadFile(t *testing.T) {
 		req.Header.Set("X-Path", p.inData.remotefilepath)
 		req.Header.Set("X-Block-Num", fmt.Sprintf("%d", p.inData.blockNum))
 		req.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", p.inData.numBlocks))
+		req.Header.Set("X-Submit-RM", fmt.Sprint(true))
 		req.Header.Set("X-Read-Marker", string(rmData))
 		if p.useAuthTicket {
 			authTicket := &marker.AuthTicket{
@@ -235,16 +237,6 @@ func TestDownloadFile(t *testing.T) {
 			}},
 		)
 
-		var funds int64
-		if p.isFundedBlobber || p.isFunded0Chain {
-			funds = mockBigBalance
-		}
-
-		mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
-		}).OneTime().WithQuery(`SELECT * FROM "read_pools" WHERE`).WithReply(
-			[]map[string]interface{}{{"client_id": p.payerId.ClientID, "balance": funds}},
-		)
-
 		if p.useAuthTicket {
 			mocket.Catcher.NewMock().OneTime().WithQuery(
 				`SELECT * FROM "reference_objects" WHERE`,
@@ -273,6 +265,16 @@ func TestDownloadFile(t *testing.T) {
 				}},
 			)
 		}
+
+		var funds int64
+		if p.isFundedBlobber || p.isFunded0Chain {
+			funds = mockBigBalance
+		}
+
+		mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
+		}).OneTime().WithQuery(`SELECT * FROM "read_pools" WHERE`).WithReply(
+			[]map[string]interface{}{{"client_id": p.payerId.ClientID, "balance": funds}},
+		)
 	}
 
 	setupOutMock := func(
@@ -388,7 +390,7 @@ func TestDownloadFile(t *testing.T) {
 			},
 			want: want{
 				err:    true,
-				errMsg: "download_file: pre-redeeming read marker: read_pre_redeem: not enough tokens in client's read pools associated with the allocation->blobber",
+				errMsg: "not_enough_tokens: pre-redeeming read marker: read_pre_redeem: not enough tokens in client's read pools associated with the allocation->blobber",
 			},
 		},
 		{
@@ -425,7 +427,7 @@ func TestDownloadFile(t *testing.T) {
 			},
 			want: want{
 				err:    true,
-				errMsg: "client does not have permission to download the file. share revoked",
+				errMsg: "invalid_share: client does not have permission to download the file. share revoked",
 			},
 		},
 		{
@@ -462,7 +464,7 @@ func TestDownloadFile(t *testing.T) {
 			},
 			want: want{
 				err:    true,
-				errMsg: "invalid_client: authticket is required",
+				errMsg: "invalid_authticket: authticket is required",
 			},
 		},
 	}

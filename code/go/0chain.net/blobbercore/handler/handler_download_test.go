@@ -223,6 +223,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.AllocationID = alloc.ID
 					rm.OwnerID = ownerClient.ClientID
 					rm.ReadCounter = 1
+					rm.SessionRC = 1
 					rm.Signature, err = signHash(ownerClient, rm.GetHash())
 					if err != nil {
 						t.Fatal(err)
@@ -242,6 +243,8 @@ func TestHandlers_Download(t *testing.T) {
 
 					r.Header.Set("X-Path-Hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
 					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
@@ -301,6 +304,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
+					rm.SessionRC = 1
 					rm.OwnerID = ownerClient.ClientID
 					rm.Signature, err = signHash(ownerClient, rm.GetHash())
 					if err != nil {
@@ -321,6 +325,8 @@ func TestHandlers_Download(t *testing.T) {
 
 					r.Header.Set("X-Path-Hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
 					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
@@ -398,6 +404,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
+					rm.SessionRC = 1
 					rm.OwnerID = ownerClient.ClientID
 					rm.Signature, err = signHash(ownerClient, rm.GetHash())
 					if err != nil {
@@ -418,6 +425,8 @@ func TestHandlers_Download(t *testing.T) {
 
 					r.Header.Set("X-Path-Hash", fileref.GetReferenceLookup(alloc.Tx, remotePath))
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
 					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
@@ -501,6 +510,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
+					rm.SessionRC = 1
 					rm.OwnerID = ownerClient.ClientID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
@@ -522,6 +532,8 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set("X-Path-Hash", pathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
 					r.Header.Set("X-Auth-Token", authTicket)
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
@@ -562,28 +574,12 @@ func TestHandlers_Download(t *testing.T) {
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "chunk_size"}).
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "validation_root", "qCj3sXXeXUAByi1ERIbcfXzWN75dyocYzyRXnkStXio=", 65536),
 					)
-
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "read_markers" WHERE`)).
-					WithArgs(client.GetClientID()).
-					WillReturnRows(
-						sqlmock.NewRows([]string{"client_id"}).
-							AddRow(client.GetClientID()),
-					)
-
-				aa := sqlmock.AnyArg()
-
-				mock.ExpectExec(`UPDATE "read_markers"`).
-					WithArgs(client.GetClientPublicKey(), alloc.ID, alloc.OwnerID, aa, aa, aa, aa, aa, aa, aa, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
-
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
-					WithArgs(client.GetClientID(), filePathHash).
+					WithArgs(guestClient.ClientID, filePathHash).
 					WillReturnError(gorm.ErrRecordNotFound)
-
-				mock.ExpectCommit()
 			},
 			wantCode: http.StatusBadRequest,
-			wantBody: "{\"error\":\"client does not have permission to download the file. share does not exist\"}\n\n",
+			wantBody: "{\"code\":\"invalid_share\",\"error\":\"invalid_share: client does not have permission to download the file. share does not exist\"}\n\n",
 		},
 		{
 			name: "DownloadFile_Encrypted_Permission_Allowed_shared_File",
@@ -609,6 +605,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
+					rm.SessionRC = 1
 					rm.OwnerID = ownerClient.ClientID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
@@ -630,6 +627,8 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set("X-Path-Hash", pathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
 					r.Header.Set("X-Auth-Token", authTicket)
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
@@ -745,6 +744,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
+					rm.SessionRC = 1
 					rm.OwnerID = ownerClient.ClientID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
@@ -768,6 +768,8 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Path-Hash", filePathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Auth-Token", authTicket)
+					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
 					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
@@ -887,6 +889,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
+					rm.SessionRC = 1
 					rm.OwnerID = alloc.OwnerID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
@@ -910,6 +913,8 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Path-Hash", filePathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Auth-Token", authTicket)
+					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
 					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
@@ -1029,6 +1034,7 @@ func TestHandlers_Download(t *testing.T) {
 					rm.BlobberID = node.Self.ID
 					rm.AllocationID = alloc.ID
 					rm.ReadCounter = 1
+					rm.SessionRC = 1
 					rm.OwnerID = alloc.OwnerID
 					rm.Signature, err = signHash(guestClient, rm.GetHash())
 					if err != nil {
@@ -1052,6 +1058,8 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Read-Marker", string(rmData))
 					r.Header.Set("X-Path-Hash", filePathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
+					r.Header.Set("X-Submit-RM", fmt.Sprint(true))
 					r.Header.Set("X-Auth-Token", authTicket)
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
@@ -1117,7 +1125,7 @@ func TestHandlers_Download(t *testing.T) {
 
 			},
 			wantCode: http.StatusBadRequest,
-			wantBody: "{\"code\":\"download_file\",\"error\":\"download_file: cannot verify auth ticket: invalid_parameters: Auth ticket is not valid for the resource being requested\"}\n\n",
+			wantBody: "{\"code\":\"invalid_authticket\",\"error\":\"invalid_authticket: cannot verify auth ticket: invalid_parameters: Auth ticket is not valid for the resource being requested\"}\n\n",
 		},
 	}
 

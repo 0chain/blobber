@@ -15,6 +15,7 @@ import (
 type DownloadRequestHeader struct {
 	req            *http.Request
 	allocationID   string
+	ClientID       string
 	PathHash       string
 	Path           string
 	BlockNum       int64
@@ -23,6 +24,8 @@ type DownloadRequestHeader struct {
 	AuthToken      string
 	VerifyDownload bool
 	DownloadMode   string
+	SubmitRM       bool
+	ConnectionID   string
 }
 
 func FromDownloadRequest(allocationID string, req *http.Request) (*DownloadRequestHeader, error) {
@@ -52,6 +55,16 @@ func (dr *DownloadRequestHeader) Parse() error {
 		return errors.Throw(common.ErrInvalidParameter, "req")
 	}
 
+	clientID := dr.Get("X-App-Client-ID")
+	if clientID != "" {
+		dr.ClientID = clientID
+	}
+
+	connectionID := dr.Get("X-Connection-ID")
+	if connectionID != "" {
+		dr.ConnectionID = connectionID
+	}
+
 	pathHash := dr.Get("X-Path-Hash")
 	path := dr.Get("X-Path")
 	if pathHash == "" {
@@ -70,21 +83,19 @@ func (dr *DownloadRequestHeader) Parse() error {
 	}
 	dr.BlockNum = blockNum
 
-	numBlocks := dr.GetInt64("X-Num-Blocks", 1)
-	if numBlocks <= 0 {
+	numBlocks := dr.GetInt64("X-Num-Blocks", 0)
+	if numBlocks < 0 {
 		return errors.Throw(common.ErrInvalidParameter, "X-Num-Blocks")
 	}
 	dr.NumBlocks = numBlocks
 
 	readMarker := dr.Get("X-Read-Marker")
-
-	if readMarker == "" {
-		return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
-	}
-
-	err := json.Unmarshal([]byte(readMarker), &dr.ReadMarker)
-	if err != nil {
-		return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
+	if readMarker != "" {
+		err := json.Unmarshal([]byte(readMarker), &dr.ReadMarker)
+		if err != nil {
+			return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
+		}
+		dr.SubmitRM = true
 	}
 
 	dr.AuthToken = dr.Get("X-Auth-Token")
