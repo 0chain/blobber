@@ -8,6 +8,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/errors"
+	"github.com/0chain/gosdk/zcnbridge/log"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -27,6 +29,7 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 	db := datastore.GetStore().GetDB()
 	alloc := &Allocation{}
 	result := db.Table(TableNameAllocation).Where("allocations.id = ?", sa.ID).First(alloc)
+	log.Logger.Error("jayash test", zap.Any("result", result), zap.Any("error", result.Error), zap.Any("alloc", alloc))
 
 	if result.Error == nil && alloc.ID == sa.ID {
 		return alloc, nil
