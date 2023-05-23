@@ -14,7 +14,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
-
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -448,7 +447,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
 	}
-
 	r.FileMetaHash = encryption.Hash(strings.Join(childFileMetaHashes, ":"))
 	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
@@ -456,7 +454,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 	r.Size = size
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
-
 	return r.Hash, err
 }
 
@@ -475,6 +472,10 @@ func (r *Ref) AddChild(child *Ref) {
 	var ltFound bool
 	// Add child in sorted fashion
 	for i, ref := range r.Children {
+		if strings.Compare(child.Name, ref.Name) == 0 {
+			r.Children[i] = child
+			return
+		}
 		if strings.Compare(child.Path, ref.Path) == -1 {
 			index = i
 			ltFound = true
@@ -518,22 +519,15 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 	toUpdateFileStat := r.IsPrecommit
 	prevID := r.ID
 	if r.ID > 0 {
-		err := db.Transaction(func(tx *gorm.DB) error {
 
-			err := tx.Delete(&Ref{}, "id=?", r.ID).Error
-			if err != nil && err != gorm.ErrRecordNotFound {
-				return err
-			}
+		err := db.Delete(&Ref{}, "id=?", r.ID).Error
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return err
+		}
 
-			r.ID = 0
-			r.IsPrecommit = true
-			err = tx.Create(r).Error
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-
+		r.ID = 0
+		r.IsPrecommit = true
+		err = db.Create(r).Error
 		if err != nil {
 			return err
 		}
@@ -557,36 +551,30 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 	toUpdateFileStat := r.IsPrecommit
 	prevID := r.ID
 	if r.ID > 0 {
-		err := db.Transaction(func(tx *gorm.DB) error {
-			// FIXME: temporary fix
+		// FIXME: temporary fix
 
-			var cnt int64
-			err := tx.Unscoped().Model(&Ref{}).Where("allocation_id=? AND path=? and deleted_at IS NOT NULL", r.AllocationID, r.Path).Count(&cnt).Error
-			if err != nil {
-				return err
-			}
-			logging.Logger.Info("SaveDirRef", zap.Any("cnt", cnt), zap.Any("path", r.Path))
-			if cnt > 0 {
-				r.IsPrecommit = true
-				err = tx.Save(r).Error
-				return err
-			}
-			err = tx.Exec("UPDATE reference_objects SET is_precommit=? WHERE id=?", false, r.ID).Error
-			if err != nil && err != gorm.ErrRecordNotFound {
-				return err
-			}
-			err = tx.Delete(&Ref{}, "id=?", r.ID).Error
-			if err != nil && err != gorm.ErrRecordNotFound {
-				return err
-			}
-			r.ID = 0
+		var cnt int64
+		err := db.Unscoped().Model(&Ref{}).Where("allocation_id=? AND path=? and deleted_at IS NOT NULL", r.AllocationID, r.Path).Count(&cnt).Error
+		if err != nil {
+			return err
+		}
+		logging.Logger.Info("SaveDirRef", zap.Any("cnt", cnt), zap.Any("path", r.Path))
+		if cnt > 0 {
 			r.IsPrecommit = true
-			err = tx.Create(r).Error
-			if err != nil {
-				return err
-			}
-			return nil
-		})
+			err = db.Save(r).Error
+			return err
+		}
+		err = db.Exec("UPDATE reference_objects SET is_precommit=? WHERE id=?", false, r.ID).Error
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return err
+		}
+		err = db.Delete(&Ref{}, "id=?", r.ID).Error
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return err
+		}
+		r.ID = 0
+		r.IsPrecommit = true
+		err = db.Create(r).Error
 		if err != nil {
 			return err
 		}
