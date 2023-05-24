@@ -807,6 +807,9 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 
 	path, _ := common.GetField(r, "path")
+	if path == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid file path")
+	}
 	refereeClientID, _ := common.GetField(r, "refereeClientID")
 	filePathHash := fileref.GetReferenceLookup(allocationID, path)
 	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})

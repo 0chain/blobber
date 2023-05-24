@@ -148,7 +148,7 @@ func TestHandlers_ReferencePath(t *testing.T) {
 			alloc:       alloc,
 			setupDbMock: baseSetupDbMock,
 			wantCode:    http.StatusBadRequest,
-			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: could not verify the allocation owner or colloborator\"}\n\n",
+			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: could not verify the allocation owner or collaborator\"}\n\n",
 		}
 		negativeTests = append(negativeTests, emptySignature)
 
@@ -192,7 +192,7 @@ func TestHandlers_ReferencePath(t *testing.T) {
 			alloc:       alloc,
 			setupDbMock: baseSetupDbMock,
 			wantCode:    http.StatusBadRequest,
-			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: could not verify the allocation owner or colloborator\"}\n\n",
+			wantBody:    "{\"code\":\"invalid_signature\",\"error\":\"invalid_signature: could not verify the allocation owner or collaborator\"}\n\n",
 		}
 		negativeTests = append(negativeTests, wrongSignature)
 	}
