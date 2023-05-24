@@ -599,8 +599,8 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 
 	stat, err := file.Stat()
 	if err == nil {
-		if stat.Size() != in.FileSize {
-			logging.Logger.Error("GetBlocksMerkleTreeForChallenge", zap.Int64("stat.Size()", stat.Size()), zap.Int64("in.FileSize", in.FileSize), zap.String("fileObjectPath", fileObjectPath), zap.String("allocationID", in.AllocationID))
+		if stat.Size()-FMTSize != in.FileSize {
+			logging.Logger.Error("GetBlocksMerkleTreeForChallenge", zap.Int64("stat.Size()", stat.Size()-FMTSize), zap.Int64("in.FileSize", in.FileSize), zap.String("fileObjectPath", fileObjectPath), zap.String("allocationID", in.AllocationID))
 		}
 	}
 
