@@ -481,7 +481,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	elapsedGetConnObj := time.Since(startTime) - elapsedAllocation - elapsedGetLock
 
 	if clientID == "" || clientKey == "" {
-		return nil, common.NewError("invalid_params", "Please provide clientID and clientKey")
+		return nil, common.NewError("invalid_parameters", "Please provide clientID and clientKey")
 	}
 
 	if allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID {
@@ -494,6 +494,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	writeMarkerString := r.FormValue("write_marker")
+	if writeMarkerString == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid write marker passed")
+	}
 	writeMarker := writemarker.WriteMarker{}
 	err = json.Unmarshal([]byte(writeMarkerString), &writeMarker)
 	if err != nil {
@@ -542,6 +545,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		elapsedGetConnObj - elapsedVerifyWM
 
 	fileIDMetaStr := r.FormValue("file_id_meta")
+	if fileIDMetaStr == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid file ID meta passed")
+	}
 	fileIDMeta := make(map[string]string, 0)
 	err = json.Unmarshal([]byte(fileIDMetaStr), &fileIDMeta)
 	if err != nil {

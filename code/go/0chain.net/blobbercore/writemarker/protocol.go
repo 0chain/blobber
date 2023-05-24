@@ -28,6 +28,35 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 	if wme == nil {
 		return common.NewError("invalid_write_marker", "No Write Marker was found")
 	}
+
+	if len(wme.WM.AllocationRoot) > 64 {
+		return common.NewError("write_marker_validation_failed", "AllocationRoot exceeds maximum length")
+	}
+
+	if len(wme.WM.PreviousAllocationRoot) > 64 {
+		return common.NewError("write_marker_validation_failed", "PreviousAllocationRoot exceeds maximum length")
+	}
+
+	if len(wme.WM.FileMetaRoot) > 64 {
+		return common.NewError("write_marker_validation_failed", "FileMetaRoot exceeds maximum length")
+	}
+
+	if len(wme.WM.AllocationID) > 64 {
+		return common.NewError("write_marker_validation_failed", "AllocationID exceeds maximum length")
+	}
+
+	if len(wme.WM.BlobberID) > 64 {
+		return common.NewError("write_marker_validation_failed", "BlobberID exceeds maximum length")
+	}
+
+	if len(wme.WM.ClientID) > 64 {
+		return common.NewError("write_marker_validation_failed", "ClientID exceeds maximum length")
+	}
+
+	if len(wme.WM.Signature) > 64 {
+		return common.NewError("write_marker_validation_failed", "Signature exceeds maximum length")
+	}
+
 	if wme.WM.PreviousAllocationRoot != dbAllocation.AllocationRoot {
 		return common.NewError("invalid_write_marker", "Invalid write marker. Prev Allocation root does not match the allocation root on record")
 	}

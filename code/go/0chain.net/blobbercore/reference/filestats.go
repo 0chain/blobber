@@ -98,7 +98,7 @@ func GetFileStats(ctx context.Context, refID int64) (*FileStats, error) {
 		return nil, err
 	}
 
-	return stats, err
+	return stats, nil
 }
 
 func DeleteFileStats(ctx context.Context, refID int64) error {
