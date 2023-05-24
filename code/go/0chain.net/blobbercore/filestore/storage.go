@@ -122,6 +122,10 @@ func (fs *FileStore) MoveToFilestore(allocID, hash string) error {
 	}
 
 	_ = os.Rename(preCommitPath, fPath)
+	afterRename, err := os.Stat(fPath)
+	if err == nil {
+		logging.Logger.Info("File moved to filestore", zap.String("path", fPath), zap.Int64("size", afterRename.Size()))
+	}
 
 	return nil
 }
@@ -590,6 +594,13 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 			}
 		} else {
 			return nil, err
+		}
+	}
+
+	stat, err := file.Stat()
+	if err == nil {
+		if stat.Size() != in.FileSize {
+			logging.Logger.Error("GetBlocksMerkleTreeForChallenge", zap.Int64("stat.Size()", stat.Size()), zap.Int64("in.FileSize", in.FileSize), zap.String("fileObjectPath", fileObjectPath), zap.String("allocationID", in.AllocationID))
 		}
 	}
 
