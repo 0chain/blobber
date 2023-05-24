@@ -238,6 +238,127 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 				)
 			},
 		},
+		{
+			name:        "Copy directory success",
+			allocChange: &AllocationChange{Operation: constants.FileOperationInsert},
+			srcPath:     "/target",
+			destination: "/new",
+			fileIDMeta: map[string]string{
+				"/":                    "fileID#1",
+				"/new/target/orig.txt": "fileID#2",
+				"/new":                 "fileID#3",
+				"/new/target":          "fileID#4",
+			},
+			allocationID:        alloc.ID,
+			maxDirFilesPerAlloc: 5,
+			expectingError:      false,
+			setupDbMock: func() {
+				mocket.Catcher.Reset()
+
+				q2 := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR ("reference_objects"."allocation_id" = $5 AND "reference_objects"."parent_path" = $6) OR (parent_path = $7 AND allocation_id = $8)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				mocket.Catcher.NewMock().WithQuery(q2).WithReply(
+					[]map[string]interface{}{
+						{
+							"id":              1,
+							"level":           1,
+							"lookup_hash":     "lookup_hash_root",
+							"path":            "/",
+							"name":            "/",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "",
+							"validation_root": "",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.DIRECTORY,
+							"created_at":      common.Now() - 3600,
+							"updated_at":      common.Now() - 1800,
+						},
+						{
+							"id":              2,
+							"level":           2,
+							"lookup_hash":     "lookup_hash",
+							"path":            "/target",
+							"name":            "target",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "/",
+							"validation_root": "validation_root",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.DIRECTORY,
+							"created_at":      common.Now() - 3600,
+							"updated_at":      common.Now() - 1800,
+						},
+						{
+							"id":              3,
+							"level":           3,
+							"lookup_hash":     "lookup_hash",
+							"path":            "/target/orig.txt",
+							"name":            "orig.txt",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "/target",
+							"validation_root": "validation_root",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.FILE,
+							"created_at":      common.Now() - 3600,
+							"updated_at":      common.Now() - 1800,
+						},
+					},
+				)
+
+				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."path" = $2 OR (path LIKE $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				mocket.Catcher.NewMock().WithQuery(query).WithReply(
+					[]map[string]interface{}{
+						{
+							"id":              1,
+							"level":           1,
+							"lookup_hash":     "lookup_hash_root",
+							"path":            "/",
+							"name":            "/",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "",
+							"validation_root": "",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.DIRECTORY,
+							"created_at":      common.Now() - 3600,
+							"updated_at":      common.Now() - 1800,
+						},
+						{
+							"id":              2,
+							"level":           2,
+							"lookup_hash":     "lookup_hash",
+							"path":            "/target",
+							"name":            "target",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "/",
+							"validation_root": "validation_root",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.DIRECTORY,
+							"created_at":      common.Now() - 3600,
+							"updated_at":      common.Now() - 1800,
+						},
+						{
+							"id":              3,
+							"level":           3,
+							"lookup_hash":     "lookup_hash",
+							"path":            "/target/orig.txt",
+							"name":            "orig.txt",
+							"allocation_id":   alloc.ID,
+							"parent_path":     "/target",
+							"validation_root": "validation_root",
+							"thumbnail_size":  00,
+							"thumbnail_hash":  "",
+							"type":            reference.FILE,
+							"created_at":      common.Now() - 3600,
+							"updated_at":      common.Now() - 1800,
+						},
+					},
+				)
+
+			},
+		},
 	}
 
 	for _, tt := range testCases {

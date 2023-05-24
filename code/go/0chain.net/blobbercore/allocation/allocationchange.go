@@ -394,6 +394,7 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 			allocationID).Error
 }
 
+// Note: We are also fetching refPath for srcPath in copy operation
 func (a *AllocationChangeCollector) GetRootRef(ctx context.Context) (*reference.Ref, error) {
 	paths := make([]string, 0)
 	objTreePath := make([]string, 0)

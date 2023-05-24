@@ -468,13 +468,14 @@ func (r *Ref) AddChild(child *Ref) {
 	if r.Children == nil {
 		r.Children = make([]*Ref, 0)
 	}
+	r.childrenLoaded = true
 	var index int
 	var ltFound bool
 	// Add child in sorted fashion
 	for i, ref := range r.Children {
 		if strings.Compare(child.Name, ref.Name) == 0 {
 			r.Children[i] = child
-			r.childrenLoaded = true
+
 			return
 		}
 		if strings.Compare(child.Path, ref.Path) == -1 {
@@ -489,7 +490,6 @@ func (r *Ref) AddChild(child *Ref) {
 	} else {
 		r.Children = append(r.Children, child)
 	}
-	r.childrenLoaded = true
 }
 
 func (r *Ref) RemoveChild(idx int) {
