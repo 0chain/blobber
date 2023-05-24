@@ -192,7 +192,7 @@ func (rm *ReadMarkerEntity) Sync(ctx context.Context) error {
 	}
 
 	// save the fresh read pools information
-	err = allocation.SetReadPool(db, rp)
+	err = allocation.UpsertReadPool(db, rp)
 	if err != nil {
 		return common.NewErrorf("rme_sync", "can't update read pools from sharders: %v", err)
 	}

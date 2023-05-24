@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"gorm.io/gorm/clause"
 
 	"gorm.io/gorm"
 )
@@ -267,18 +268,13 @@ func GetReadPoolsBalance(db *gorm.DB, clientID string) (int64, error) {
 	return rp.Balance, nil
 }
 
-func SetReadPool(db *gorm.DB, rp *ReadPool) error {
-	var erp ReadPool //find existing read pool
-	err := db.Model(&ReadPool{}).Where("client_id = ?", rp.ClientID).FirstOrCreate(&erp, rp).Error
-	if err != nil {
-		return err
-	}
+func UpsertReadPool(db *gorm.DB, rp *ReadPool) error {
+	updateFields := []string{"balance"}
 
-	if erp.Balance == rp.Balance {
-		return nil
-	}
-	// update existing
-	return UpdateReadPool(db, rp)
+	return db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "client_id"}},
+		DoUpdates: clause.AssignmentColumns(updateFields), // column needed to be updated
+	}).Create(&rp).Error
 }
 
 func UpdateReadPool(db *gorm.DB, rp *ReadPool) error {
