@@ -87,7 +87,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationID string, reado
 		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
 	}
 
-	isExist = (a.ID != "")
+	isExist = a.ID != ""
 
 	logging.Logger.Info("VerifyAllocationTransaction",
 		zap.Bool("isExist", isExist),

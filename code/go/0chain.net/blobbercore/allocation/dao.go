@@ -11,15 +11,15 @@ import (
 )
 
 // GetOrCreate, get allocation if it exists in db. if not, try to sync it from blockchain, and insert it in db.
-func GetOrCreate(ctx context.Context, store datastore.Store, allocationTx string) (*Allocation, error) {
+func GetOrCreate(ctx context.Context, store datastore.Store, allocationId string) (*Allocation, error) {
 	db := store.GetDB()
 
-	if len(allocationTx) == 0 {
+	if len(allocationId) == 0 {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "tx")
 	}
 
 	alloc := &Allocation{}
-	result := db.Table(TableNameAllocation).Where(SQLWhereGetByTx, allocationTx).First(alloc)
+	result := db.Table(TableNameAllocation).Where(SQLWhereGetById, allocationId).First(alloc)
 
 	if result.Error == nil {
 		return alloc, nil
@@ -29,12 +29,13 @@ func GetOrCreate(ctx context.Context, store datastore.Store, allocationTx string
 		return nil, errors.ThrowLog(result.Error.Error(), common.ErrBadDataStore)
 	}
 
-	return SyncAllocation(allocationTx)
+	return SyncAllocation(allocationId)
 
 }
 
 const (
 	SQLWhereGetByTx = "allocations.tx = ?"
+	SQLWhereGetById = "allocations.id = ?"
 )
 
 // DryRun  Creates a prepared statement when executing any SQL and caches them to speed up future calls
