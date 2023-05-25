@@ -597,13 +597,7 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 		}
 	}
 
-	stat, err := file.Stat()
-	if err == nil {
-		if stat.Size()-FMTSize != in.FileSize {
-			logging.Logger.Error("GetBlocksMerkleTreeForChallenge", zap.Int64("stat.Size()", stat.Size()-FMTSize), zap.Int64("in.FileSize", in.FileSize), zap.String("fileObjectPath", fileObjectPath), zap.String("allocationID", in.AllocationID))
-		}
-	}
-
+	stat, _ := file.Stat()
 	defer file.Close()
 
 	fmp := &fixedMerkleTreeProof{
@@ -622,6 +616,9 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 
 	proofByte, err := fmp.GetLeafContent(file)
 	if err != nil {
+		if stat != nil {
+			logging.Logger.Error("merkle_proof_error", zap.Error(err), zap.String("file_path", fileObjectPath), zap.Int64("file_size", stat.Size()), zap.Int64("file_offset", in.FileSize))
+		}
 		return nil, common.NewError("get_leaf_content_error", err.Error())
 	}
 
