@@ -473,12 +473,14 @@ func (r *Ref) AddChild(child *Ref) {
 	if r.Children == nil {
 		r.Children = make([]*Ref, 0)
 	}
+	r.childrenLoaded = true
 	var index int
 	var ltFound bool
 	// Add child in sorted fashion
 	for i, ref := range r.Children {
 		if strings.Compare(child.Name, ref.Name) == 0 {
 			r.Children[i] = child
+
 			return
 		}
 		if strings.Compare(child.Path, ref.Path) == -1 {
@@ -493,7 +495,6 @@ func (r *Ref) AddChild(child *Ref) {
 	} else {
 		r.Children = append(r.Children, child)
 	}
-	r.childrenLoaded = true
 }
 
 func (r *Ref) RemoveChild(idx int) {
@@ -524,7 +525,6 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 	toUpdateFileStat := r.IsPrecommit
 	prevID := r.ID
 	if r.ID > 0 {
-
 		err := db.Delete(&Ref{}, "id=?", r.ID).Error
 		if err != nil && err != gorm.ErrRecordNotFound {
 			return err
@@ -536,16 +536,17 @@ func (r *Ref) SaveFileRef(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+
+		if toUpdateFileStat {
+			FileUpdated(ctx, prevID, r.ID)
+		}
 	} else {
 		r.IsPrecommit = true
 		err := db.Create(r).Error
 		if err != nil {
 			return err
 		}
-	}
-
-	if toUpdateFileStat {
-		FileUpdated(ctx, prevID, r.ID)
+		NewFileCreated(ctx, r.ID)
 	}
 
 	return nil
@@ -556,24 +557,7 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 	toUpdateFileStat := r.IsPrecommit
 	prevID := r.ID
 	if r.ID > 0 {
-		// FIXME: temporary fix
-
-		var cnt int64
-		err := db.Unscoped().Model(&Ref{}).Where("allocation_id=? AND path=? and deleted_at IS NOT NULL", r.AllocationID, r.Path).Count(&cnt).Error
-		if err != nil {
-			return err
-		}
-		logging.Logger.Info("SaveDirRef", zap.Any("cnt", cnt), zap.Any("path", r.Path))
-		if cnt > 0 {
-			r.IsPrecommit = true
-			err = db.Save(r).Error
-			return err
-		}
-		err = db.Exec("UPDATE reference_objects SET is_precommit=? WHERE id=?", false, r.ID).Error
-		if err != nil && err != gorm.ErrRecordNotFound {
-			return err
-		}
-		err = db.Delete(&Ref{}, "id=?", r.ID).Error
+		err := db.Delete(&Ref{}, "id=?", r.ID).Error
 		if err != nil && err != gorm.ErrRecordNotFound {
 			return err
 		}
@@ -583,16 +567,17 @@ func (r *Ref) SaveDirRef(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+
+		if toUpdateFileStat {
+			FileUpdated(ctx, prevID, r.ID)
+		}
 	} else {
 		r.IsPrecommit = true
 		err := db.Create(r).Error
 		if err != nil {
 			return err
 		}
-	}
-
-	if toUpdateFileStat {
-		FileUpdated(ctx, prevID, r.ID)
+		NewDirCreated(ctx, r.ID)
 	}
 	return nil
 }

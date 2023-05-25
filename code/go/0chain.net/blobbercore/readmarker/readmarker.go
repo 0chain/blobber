@@ -36,6 +36,7 @@ type ReadMarker struct {
 	Timestamp       common.Timestamp `gorm:"column:timestamp" json:"timestamp"`
 	ReadCounter     int64            `gorm:"column:counter" json:"counter"`
 	Signature       string           `gorm:"column:signature;size:64" json:"signature"`
+	SessionRC       int64            `gorm:"column:session_rc" json:"session_rc"`
 }
 
 func (rm *ReadMarker) GetHashData() string {
@@ -59,6 +60,27 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 	if rm == nil || rm.LatestRM == nil {
 		return common.NewError("invalid_read_marker", "No read marker was found")
 	}
+
+	if len(rm.LatestRM.ClientID) > 64 {
+		return common.NewError("read_marker_validation_failed", "ClientID exceeds maximum length")
+	}
+
+	if len(rm.LatestRM.AllocationID) > 64 {
+		return common.NewError("read_marker_validation_failed", "AllocationID exceeds maximum length")
+	}
+
+	if len(rm.LatestRM.ClientPublicKey) > 128 {
+		return common.NewError("read_marker_validation_failed", "ClientPublicKey exceeds maximum length")
+	}
+
+	if len(rm.LatestRM.OwnerID) > 64 {
+		return common.NewError("read_marker_validation_failed", "OwnerID exceeds maximum length")
+	}
+
+	if len(rm.LatestRM.Signature) > 64 {
+		return common.NewError("read_marker_validation_failed", "Signature exceeds maximum length")
+	}
+
 	if rm.LatestRM.AllocationID != sa.ID {
 		return common.NewError("read_marker_validation_failed", "Read Marker is not for the same allocation")
 	}
@@ -82,10 +104,6 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 	}
 	currentTS := common.Now()
 	if rm.LatestRM.Timestamp > currentTS {
-		zLogger.Logger.Error("Timestamp is for future in the read marker", zap.Any("rm", rm), zap.Any("now", currentTS))
-	}
-	currentTS = common.Now()
-	if rm.LatestRM.Timestamp > (currentTS + 2) {
 		zLogger.Logger.Error("Timestamp is for future in the read marker", zap.Any("rm", rm), zap.Any("now", currentTS))
 		return common.NewError("read_marker_validation_failed", "Timestamp is for future in the read marker")
 	}
@@ -174,7 +192,7 @@ func (rm *ReadMarkerEntity) Sync(ctx context.Context) error {
 	}
 
 	// save the fresh read pools information
-	err = allocation.SetReadPool(db, rp)
+	err = allocation.UpsertReadPool(db, rp)
 	if err != nil {
 		return common.NewErrorf("rme_sync", "can't update read pools from sharders: %v", err)
 	}

@@ -20,7 +20,7 @@ type NewDir struct {
 	AllocationID string `json:"allocation_id"`
 }
 
-func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
+func (nf *NewDir) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 
 	totalRefs, err := reference.CountRefs(nf.AllocationID)
@@ -38,11 +38,6 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 		return nil, err
 	}
 
-	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, nf.Path)
-	if err != nil {
-		return nil, err
-	}
-
 	if rootRef.CreatedAt == 0 {
 		rootRef.CreatedAt = ts
 	}
@@ -54,7 +49,6 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 	}
 
 	dirRef := rootRef
-	var newDirs []*reference.Ref
 	for i := 0; i < len(fields); i++ {
 		found := false
 		for _, child := range dirRef.Children {
@@ -85,22 +79,9 @@ func (nf *NewDir) ApplyChange(ctx context.Context, change *AllocationChange,
 			}
 			newRef.FileID = fileID
 			dirRef.AddChild(newRef)
-			newDirs = append(newDirs, newRef)
 			dirRef = newRef
-
 		}
 	}
-
-	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-		return nil, err
-	}
-
-	for _, r := range newDirs {
-		if err := reference.NewDirCreated(ctx, r.ID); err != nil {
-			return nil, err
-		}
-	}
-
 	return rootRef, nil
 }
 
@@ -126,4 +107,8 @@ func (nf *NewDir) DeleteTempFile() error {
 
 func (nfch *NewDir) CommitToFileStore(ctx context.Context) error {
 	return nil
+}
+
+func (nfc *NewDir) GetPath() []string {
+	return []string{nfc.Path}
 }

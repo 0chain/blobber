@@ -8,6 +8,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -115,8 +116,9 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 				filepath.Dir(fPath): "fileID#1",
 				fPath:               "fileID#2",
 			}
+			rootRef, _ := reference.GetReferencePathFromPaths(ctx, tc.allocationID, []string{change.Path}, []string{})
 			err := func() error {
-				_, err := change.ApplyChange(ctx, tc.allocChange, "/", common.Now()-1, fileIDMeta)
+				_, err := change.ApplyChange(ctx, rootRef, tc.allocChange, "/", common.Now()-1, fileIDMeta)
 				if err != nil {
 					return err
 				}

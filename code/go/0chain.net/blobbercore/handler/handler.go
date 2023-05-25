@@ -602,6 +602,7 @@ func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.RenameObject(ctx, r)
 	if err != nil {
+		Logger.Error("renameHandler", zap.Error(err))
 		return nil, err
 	}
 	return response, nil
@@ -629,6 +630,7 @@ func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.CopyObject(ctx, r)
 	if err != nil {
+		Logger.Error("copyHandler", zap.Error(err))
 		return nil, err
 	}
 	return response, nil
@@ -656,6 +658,7 @@ func MoveHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.MoveObject(ctx, r)
 	if err != nil {
+		Logger.Error("moveHandler", zap.Error(err))
 		return nil, err
 	}
 	return response, nil
@@ -683,6 +686,7 @@ func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error)
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.CreateDir(ctx, r)
 	if err != nil {
+		Logger.Error("createDirHandler", zap.Error(err))
 		return nil, err
 	}
 	return response, nil
@@ -694,6 +698,7 @@ func uploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.WriteFile(ctx, r)
 	if err != nil {
+		Logger.Error("writeFileHandler", zap.Error(err))
 		return nil, err
 	}
 	return response, nil
@@ -802,6 +807,9 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 
 	path, _ := common.GetField(r, "path")
+	if path == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid file path")
+	}
 	refereeClientID, _ := common.GetField(r, "refereeClientID")
 	filePathHash := fileref.GetReferenceLookup(allocationID, path)
 	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})

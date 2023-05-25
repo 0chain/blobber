@@ -302,11 +302,6 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 		return common.NewError("challenge_validation_failed", "Failed to verify the object path."+err.Error())
 	}
 
-	err = cr.verifyBlockNum(challengeObj)
-	if err != nil {
-		return common.NewError("challenge_validation_failed", "Failed to verify block num."+err.Error())
-	}
-
 	if len(cr.WriteMarkers) == 0 {
 		return common.NewError("challenge_validation_failed", "Invalid write marker")
 	}
@@ -340,6 +335,15 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 
 	if rootRef.NumBlocks == 0 {
 		return nil
+	}
+
+	if cr.ChallengeProof == nil {
+		return common.NewError("challenge_validation_failed", "Challenge proof is missing")
+	}
+
+	err = cr.verifyBlockNum(challengeObj)
+	if err != nil {
+		return common.NewError("challenge_validation_failed", "Failed to verify block num."+err.Error())
 	}
 
 	logging.Logger.Info("Verifying data block and merkle path", zap.String("challenge_id", challengeObj.ID))

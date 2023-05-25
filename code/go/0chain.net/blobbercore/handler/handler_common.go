@@ -26,6 +26,7 @@ func objectTreeHandler(ctx context.Context, r *http.Request) (interface{}, int, 
 		if errors.Is(common.ErrNotFound, err) {
 			return response, http.StatusNotFound, nil
 		}
+		Logger.Error("objectTreeHandler_request_failed", zap.Error(err))
 		return nil, http.StatusBadRequest, err
 	}
 

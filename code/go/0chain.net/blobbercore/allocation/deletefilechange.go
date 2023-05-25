@@ -30,15 +30,11 @@ type DeleteFileChange struct {
 	Hash         string `json:"hash"`
 }
 
-func (nf *DeleteFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
+func (nf *DeleteFileChange) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, _ map[string]string) (*reference.Ref, error) {
 
-	rootRef, err := reference.DeleteObject(ctx, nf.AllocationID, filepath.Clean(nf.Path), ts)
+	err := reference.DeleteObject(ctx, rootRef, nf.AllocationID, filepath.Clean(nf.Path), ts)
 	if err != nil {
-		return nil, err
-	}
-
-	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
 		return nil, err
 	}
 
@@ -107,14 +103,14 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 								zap.String("validation_root", res.ValidationRoot))
 						}
 					}
-
-					if res.ThumbnailHash != "" {
-						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ThumbnailHash)
-						if err != nil {
-							logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
-								zap.String("thumbnail", res.ThumbnailHash))
-						}
-					}
+					// We don't increase alloc size for thumbnail so we don't need to decrease it
+					// if res.ThumbnailHash != "" {
+					// 	err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ThumbnailHash)
+					// 	if err != nil {
+					// 		logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
+					// 			zap.String("thumbnail", res.ThumbnailHash))
+					// 	}
+					// }
 
 				}(res, count)
 
@@ -129,4 +125,8 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 	// 	Delete(&reference.Ref{},
 	// 		"allocation_id = ? AND path LIKE ? AND deleted_at IS NOT NULL",
 	// 		nf.AllocationID, nf.Path+"%").Error
+}
+
+func (nf *DeleteFileChange) GetPath() []string {
+	return []string{nf.Path}
 }
