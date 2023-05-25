@@ -27,33 +27,33 @@ const (
 	REPAIR_TIMEOUT     = 900             // 15 Minutes
 )
 
-//func StartUpdateWorker(ctx context.Context, interval time.Duration) {
-//	//go UpdateWorker(ctx, interval)
-//}
+func StartUpdateWorker(ctx context.Context, interval time.Duration) {
+	go UpdateWorker(ctx, interval)
+}
 
 // UpdateWorker updates all not finalized and not cleaned allocations
 // requesting SC through REST API. The worker required to fetch allocations
 // updates in DB.
-//func UpdateWorker(ctx context.Context, interval time.Duration) {
-//	logging.Logger.Info("start update allocations worker")
-//
-//	var tk = time.NewTicker(interval)
-//	defer tk.Stop()
-//
-//	var (
-//		tick = tk.C
-//		quit = ctx.Done()
-//	)
-//
-//	for {
-//		select {
-//		case <-tick:
-//			updateWork(ctx)
-//		case <-quit:
-//			return
-//		}
-//	}
-//}
+func UpdateWorker(ctx context.Context, interval time.Duration) {
+	logging.Logger.Info("start update allocations worker")
+
+	var tk = time.NewTicker(interval)
+	defer tk.Stop()
+
+	var (
+		tick = tk.C
+		quit = ctx.Done()
+	)
+
+	for {
+		select {
+		case <-tick:
+			updateWork(ctx)
+		case <-quit:
+			return
+		}
+	}
+}
 
 func waitOrQuit(ctx context.Context, d time.Duration) (quit bool) {
 	var tm = time.NewTimer(d)
@@ -72,43 +72,43 @@ func waitOrQuit(ctx context.Context, d time.Duration) (quit bool) {
 	}
 }
 
-//func updateWork(ctx context.Context) {
-//	defer func() {
-//		if r := recover(); r != nil {
-//			logging.Logger.Error("[recover] updateWork", zap.Any("err", r))
-//		}
-//	}()
-//
-//	var (
-//		allocs []*Allocation
-//		count  int64
-//		offset int64
-//
-//		err error
-//	)
-//
-//	// iterate all in loop accepting allocations with limit
-//
-//	for start := true; start || (offset < count); start = false {
-//		allocs, count, err = findAllocations(ctx, offset)
-//		if err != nil {
-//			logging.Logger.Error("finding allocations in DB", zap.Error(err))
-//			if waitOrQuit(ctx, UPDATE_DB_INTERVAL) {
-//				return
-//			}
-//			continue
-//		}
-//
-//		offset += int64(len(allocs))
-//
-//		for _, a := range allocs {
-//			updateAllocation(ctx, a)
-//			if waitOrQuit(ctx, REQUEST_TIMEOUT) {
-//				return
-//			}
-//		}
-//	}
-//}
+func updateWork(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Logger.Error("[recover] updateWork", zap.Any("err", r))
+		}
+	}()
+
+	var (
+		allocs []*Allocation
+		count  int64
+		offset int64
+
+		err error
+	)
+
+	// iterate all in loop accepting allocations with limit
+
+	for start := true; start || (offset < count); start = false {
+		allocs, count, err = findAllocations(ctx, offset)
+		if err != nil {
+			logging.Logger.Error("finding allocations in DB", zap.Error(err))
+			if waitOrQuit(ctx, UPDATE_DB_INTERVAL) {
+				return
+			}
+			continue
+		}
+
+		offset += int64(len(allocs))
+
+		for _, a := range allocs {
+			updateAllocation(ctx, a)
+			if waitOrQuit(ctx, REQUEST_TIMEOUT) {
+				return
+			}
+		}
+	}
+}
 
 // not finalized, not cleaned up
 func findAllocations(ctx context.Context, offset int64) (allocs []*Allocation, count int64, err error) {
