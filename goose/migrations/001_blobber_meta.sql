@@ -11,6 +11,7 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+
 --
 -- Name: allocation_changes; Type: TABLE; Schema: public; Owner: blobber_user
 --
@@ -137,7 +138,7 @@ CREATE TABLE public.challenges (
     last_commit_txn_ids jsonb,
     ref_id bigint,
     object_path jsonb,
-    sequence bigint,
+    sequence bigint NOT NULL,
     created_at bigint,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
@@ -453,7 +454,7 @@ CREATE TABLE public.write_markers (
     close_txn_id character varying(64),
     connection_id character varying(64),
     client_key character varying(256),
-    sequence bigint,
+    sequence bigint NOT NULL,
     created_at timestamp with time zone,
     updated_at timestamp with time zone
 );
