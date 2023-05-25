@@ -21,7 +21,7 @@ type UploadFileChanger struct {
 }
 
 // ApplyChange update references, and create a new FileRef
-func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *AllocationChange,
+func (nf *UploadFileChanger) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 
 	totalRefs, err := reference.CountRefs(nf.AllocationID)
@@ -35,11 +35,6 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	}
 
 	fields, err := common.GetPathFields(filepath.Dir(nf.Path))
-	if err != nil {
-		return nil, err
-	}
-
-	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, nf.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -119,11 +114,7 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	newFile.FileID = fileID
 
 	dirRef.AddChild(newFile)
-	if _, err := rootRef.CalculateHash(ctx, true); err != nil {
-		return nil, err
-	}
 
-	reference.NewFileCreated(ctx, newFile.ID)
 	return rootRef, nil
 }
 
@@ -143,4 +134,8 @@ func (nf *UploadFileChanger) Unmarshal(input string) error {
 	}
 
 	return util.UnmarshalValidation(nf)
+}
+
+func (nf *UploadFileChanger) GetPath() []string {
+	return []string{nf.Path}
 }

@@ -31,8 +31,9 @@ const (
 type AllocationChangeProcessor interface {
 	CommitToFileStore(ctx context.Context) error
 	DeleteTempFile() error
-	ApplyChange(ctx context.Context, change *AllocationChange, allocationRoot string,
+	ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange, allocationRoot string,
 		ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error)
+	GetPath() []string
 	Marshal() (string, error)
 	Unmarshal(string) error
 }
@@ -204,15 +205,21 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 
 func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot string,
 	ts common.Timestamp, fileIDMeta map[string]string) error {
-
+	rootRef, err := cc.GetRootRef(ctx)
+	logging.Logger.Info("GetRootRef", zap.Any("rootRef", rootRef))
+	if err != nil {
+		return err
+	}
 	for idx, change := range cc.Changes {
 		changeProcessor := cc.AllocationChanges[idx]
-		_, err := changeProcessor.ApplyChange(ctx, change, allocationRoot, ts, fileIDMeta)
+		_, err := changeProcessor.ApplyChange(ctx, rootRef, change, allocationRoot, ts, fileIDMeta)
 		if err != nil {
 			return err
 		}
 	}
-	return nil
+	logging.Logger.Info("ApplyChanges", zap.Any("rootRef", rootRef))
+	_, err = rootRef.CalculateHash(ctx, true)
+	return err
 }
 
 func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error {
@@ -258,6 +265,11 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 			for _, ref := range refs {
 
+				var count int64
+				tx.Model(&reference.Ref{}).
+					Where("allocation_id=? AND validation_root=? AND type=?", a.AllocationID, ref.PrevValidationRoot, reference.FILE).
+					Count(&count)
+
 				limitCh <- struct{}{}
 				wg.Add(1)
 
@@ -267,7 +279,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 						wg.Done()
 					}()
 
-					if ref.ValidationRoot != ref.PrevValidationRoot {
+					if count == 0 {
 						if ref.PrevValidationRoot != "" {
 							err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevValidationRoot)
 							if err != nil {
@@ -275,11 +287,11 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 									zap.String("validation_root", ref.ValidationRoot))
 							}
 						}
-						err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ValidationRoot)
-						if err != nil {
-							logging.Logger.Error(fmt.Sprintf("Error while moving file: %s", err.Error()),
-								zap.String("validation_root", ref.ValidationRoot))
-						}
+					}
+					err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ValidationRoot)
+					if err != nil {
+						logging.Logger.Error(fmt.Sprintf("Error while moving file: %s", err.Error()),
+							zap.String("validation_root", ref.ValidationRoot))
 					}
 
 					if ref.ThumbnailHash != "" && ref.ThumbnailHash != ref.PrevThumbnailHash {
@@ -380,4 +392,18 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 		Delete(&reference.Ref{},
 			"allocation_id = ? AND deleted_at IS NOT NULL",
 			allocationID).Error
+}
+
+// Note: We are also fetching refPath for srcPath in copy operation
+func (a *AllocationChangeCollector) GetRootRef(ctx context.Context) (*reference.Ref, error) {
+	paths := make([]string, 0)
+	objTreePath := make([]string, 0)
+	for _, change := range a.AllocationChanges {
+		allPaths := change.GetPath()
+		paths = append(paths, allPaths...)
+		if len(allPaths) > 1 {
+			objTreePath = append(objTreePath, allPaths[1])
+		}
+	}
+	return reference.GetReferencePathFromPaths(ctx, a.AllocationID, paths, objTreePath)
 }

@@ -63,7 +63,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
 
-				query := `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","file_meta_hash","path_hash","validation_root","fixed_merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","allocation_root","level","created_at","updated_at","file_id" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().WithQuery(query).WithReply(
 					[]map[string]interface{}{
 						{
@@ -155,7 +155,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
 
-				query := `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","file_meta_hash","path_hash","validation_root","fixed_merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","allocation_root","level","created_at","updated_at","file_id" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().WithQuery(query).WithReply(
 					[]map[string]interface{}{
 						{
@@ -246,7 +246,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 			expectingError: false,
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
-				query := `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","file_meta_hash","path_hash","validation_root","fixed_merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","allocation_root","level","created_at","updated_at","file_id" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				query := `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().WithQuery(query).WithReply(
 					[]map[string]interface{}{
 						{
@@ -358,8 +358,9 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
+			rootRef, _ := reference.GetReferencePathFromPaths(ctx, tc.allocationID, []string{change.Path}, []string{})
 			_, err := func() (*reference.Ref, error) {
-				resp, err := change.ApplyChange(ctx, tc.allocChange, tc.allocRoot, common.Now()-1, nil)
+				resp, err := change.ApplyChange(ctx, rootRef, tc.allocChange, tc.allocRoot, common.Now()-1, nil)
 				if err != nil {
 					return nil, err
 				}

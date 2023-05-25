@@ -40,12 +40,15 @@ func (f *FileStats) BeforeSave(tx *gorm.DB) error {
 	return nil
 }
 
-func NewDirCreated(ctx context.Context, refID int64) error {
+func NewDirCreated(ctx context.Context, refID int64) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	stats := &FileStats{RefID: refID}
 	stats.NumBlockDownloads = 0
 	stats.NumUpdates = 1
-	return db.Save(stats).Error
+	err := db.Save(stats).Error
+	if err != nil {
+		logging.Logger.Error("NewDirCreated", zap.Error(err))
+	}
 }
 
 func NewFileCreated(ctx context.Context, refID int64) {
@@ -56,7 +59,6 @@ func NewFileCreated(ctx context.Context, refID int64) {
 	db.Save(&stats)
 }
 
-// TODO: Wrap the following functions in a transaction
 func FileUpdated(ctx context.Context, refID, newRefID int64) {
 	if refID == 0 {
 		return

@@ -12,6 +12,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/config"
@@ -218,7 +219,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 						},
 					)
 
-				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","file_meta_hash","path_hash","validation_root","fixed_merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","allocation_root","level","created_at","updated_at","file_id" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR (parent_path = $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				query = `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).WithReply(
 					[]map[string]interface{}{
 						{
@@ -352,7 +353,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 					},
 				)
 
-				query = `SELECT "id","allocation_id","type","name","path","parent_path","size","hash","file_meta_hash","path_hash","validation_root","fixed_merkle_root","actual_file_size","actual_file_hash","chunk_size","lookup_hash","thumbnail_hash","allocation_root","level","created_at","updated_at","file_id" FROM "reference_objects" WHERE ((allocation_id=$1 AND parent_path=$2) OR (parent_path = $3 AND allocation_id = $4)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
+				query = `SELECT * FROM "reference_objects" WHERE ("reference_objects"."allocation_id" = $1 AND "reference_objects"."parent_path" = $2 OR ("reference_objects"."allocation_id" = $3 AND "reference_objects"."parent_path" = $4) OR (parent_path = $5 AND allocation_id = $6)) AND "reference_objects"."deleted_at" IS NULL ORDER BY path`
 				mocket.Catcher.NewMock().OneTime().WithQuery(query).WithReply(
 					[]map[string]interface{}{
 						{
@@ -433,10 +434,11 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 		ctx := context.TODO()
 		db := datastore.GetStore().GetDB().Begin()
 		ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
-
 		t.Run(tc.name, func(t *testing.T) {
 			change := &RenameFileChange{AllocationID: alloc.ID, Path: tc.path, NewName: tc.newName}
-			response, err := change.ApplyChange(ctx, tc.allocChange, tc.allocRoot, common.Now()-1, nil)
+			rootRef, err := reference.GetReferencePathFromPaths(ctx, alloc.ID, []string{change.Path}, []string{})
+			require.Nil(t, err)
+			response, err := change.ApplyChange(ctx, rootRef, tc.allocChange, tc.allocRoot, common.Now()-1, nil)
 
 			if tc.expectingError {
 				require.Error(t, err)
