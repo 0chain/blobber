@@ -88,8 +88,39 @@ func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID s
 	return &refs[0], nil
 }
 
+func (rootRef *Ref) GetSrcPath(path string) (*Ref, error) {
+
+	path = filepath.Clean(path)
+
+	if path == "/" {
+		newRoot := *rootRef
+		return &newRoot, nil
+	}
+
+	fields, err := common.GetPathFields(path)
+	if err != nil {
+		return nil, err
+	}
+
+	dirRef := rootRef
+	for i := 0; i < len(fields); i++ {
+		found := false
+		for _, child := range dirRef.Children {
+			if child.Name == fields[i] {
+				dirRef = child
+				found = true
+			}
+		}
+		if !found {
+			return nil, common.NewError("invalid_path", "ref is not found")
+		}
+	}
+	newDirRef := *dirRef
+	return &newDirRef, nil
+}
+
 // GetReferencePathFromPaths validate and build full dir tree from db, and CalculateHash and return root Ref
-func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
+func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths, objTreePath []string) (*Ref, error) {
 	var refs []Ref
 	db := datastore.GetStore().GetTransaction(ctx)
 	pathsAdded := make(map[string]bool)
@@ -139,9 +170,26 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths [
 		if _, ok := refMap[refs[i].ParentPath]; !ok {
 			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
 		}
-		if _, ok := refMap[refs[i].Path]; !ok {
-			refMap[refs[i].ParentPath].AddChild(&refs[i])
-			refMap[refs[i].Path] = &refs[i]
+		refMap[refs[i].ParentPath].AddChild(&refs[i])
+		refMap[refs[i].Path] = &refs[i]
+
+	}
+
+	for _, path := range objTreePath {
+		ref, err := GetObjectTree(ctx, allocationID, path)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := refMap[path]; !ok {
+			_, found := refMap[ref.ParentPath]
+			if !found {
+				return nil, common.NewError("invalid_dir_tree", "DB has invalid tree Parent path not found for object tree.")
+			}
+			refMap[ref.ParentPath].AddChild(ref)
+			refMap[ref.Path] = ref
+		} else {
+			refMap[ref.Path].Children = ref.Children
+			refMap[ref.Path].childrenLoaded = true
 		}
 	}
 

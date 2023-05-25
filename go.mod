@@ -36,7 +36,10 @@ require (
 	gorm.io/gorm v1.25.1
 )
 
-require golang.org/x/sync v0.2.0
+require (
+	github.com/lithammer/shortuuid/v3 v3.0.7
+	golang.org/x/sync v0.2.0
+)
 
 require (
 	github.com/0chain/common v0.0.6-0.20230127095721-8df4d1d72565 // indirect

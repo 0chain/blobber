@@ -24,7 +24,7 @@ func (rf *RenameFileChange) DeleteTempFile() error {
 	return nil
 }
 
-func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationChange,
+func (rf *RenameFileChange) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, _ map[string]string) (*reference.Ref, error) {
 
 	if rf.Path == "/" {
@@ -41,11 +41,10 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 		return nil, common.NewError("invalid_reference_path", "file already exists")
 	}
 
-	affectedRef, err := reference.GetObjectTree(ctx, rf.AllocationID, rf.Path)
+	affectedRef, err := rootRef.GetSrcPath(rf.Path)
 	if err != nil {
 		return nil, err
 	}
-
 	affectedRef.HashToBeComputed = true
 	affectedRef.Name = rf.NewName
 	affectedRef.Path = newPath
@@ -58,11 +57,6 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 
 	parentPath := filepath.Dir(rf.Path)
 	fields, err := common.GetPathFields(parentPath)
-	if err != nil {
-		return nil, err
-	}
-
-	rootRef, err := reference.GetReferencePath(ctx, rf.AllocationID, parentPath)
 	if err != nil {
 		return nil, err
 	}
@@ -101,8 +95,7 @@ func (rf *RenameFileChange) ApplyChange(ctx context.Context, change *AllocationC
 		return nil, common.NewError("file_not_found", "File to rename not found in blobber")
 	}
 
-	_, err = rootRef.CalculateHash(ctx, true)
-	return rootRef, err
+	return rootRef, nil
 }
 
 func (rf *RenameFileChange) processChildren(ctx context.Context, curRef *reference.Ref, ts common.Timestamp) {
@@ -135,4 +128,9 @@ func (rf *RenameFileChange) Unmarshal(input string) error {
 
 func (rf *RenameFileChange) CommitToFileStore(ctx context.Context) error {
 	return nil
+}
+
+func (rf *RenameFileChange) GetPath() []string {
+
+	return []string{rf.Path}
 }

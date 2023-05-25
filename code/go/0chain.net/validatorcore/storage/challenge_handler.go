@@ -82,11 +82,6 @@ func NewChallengeRequest(r *http.Request) (*ChallengeRequest, string, error) {
 		return nil, "", common.NewError("invalid_parameters", "Empty object path or merkle path")
 	}
 
-	if challengeRequest.ChallengeProof == nil {
-		logging.Logger.Error("No challenge proof is found")
-		return nil, "", common.NewError("invalid_parameters", "Challenge proof is empty")
-	}
-
 	return &challengeRequest, challengeHash, err
 }
 

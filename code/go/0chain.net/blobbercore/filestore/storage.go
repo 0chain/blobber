@@ -350,27 +350,12 @@ func (fs *FileStore) DeleteFile(allocID, validationRoot string) error {
 	if err != nil {
 		return err
 	}
-	// toDecrAlloc := true
 
 	finfo, err := os.Stat(fileObjectPath)
 	if err != nil {
 		return err
 	}
-	// if err != nil {
 
-	// 	//FinalPath doesn't exist. Check if file exists in PreCommitPath
-	// 	fileObjectPath = fs.getPreCommitPathForFile(allocID, validationRoot)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	finfo, err = os.Stat(fileObjectPath)
-
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	toDecrAlloc = false
-	// }
 	size := finfo.Size()
 
 	key := getKey(allocID, validationRoot)
@@ -390,11 +375,6 @@ func (fs *FileStore) DeleteFile(allocID, validationRoot string) error {
 	}
 	l.Lock()
 	defer l.Unlock()
-
-	// err = os.Remove(fileObjectPath)
-	// if err != nil {
-	// 	return err
-	// }
 
 	fs.incrDecrAllocFileSizeAndNumber(allocID, -size, -1)
 
@@ -443,7 +423,18 @@ func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloa
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
-		return nil, common.NewError("read_error", err.Error())
+		if readBlockIn.IsPrecommit {
+			fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
+			if err != nil {
+				return nil, common.NewError("get_file_path_error", err.Error())
+			}
+			file, err = os.Open(fileObjectPath)
+			if err != nil {
+				return nil, common.NewError("read_error", err.Error())
+			}
+		} else {
+			return nil, common.NewError("read_error", err.Error())
+		}
 	}
 	defer file.Close()
 
@@ -509,10 +500,20 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 			return nil, common.NewError("get_file_path_error", err.Error())
 		}
 	}
-
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
-		return nil, err
+		if readBlockIn.IsPrecommit {
+			fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
+			if err != nil {
+				return nil, common.NewError("get_file_path_error", err.Error())
+			}
+			file, err = os.Open(fileObjectPath)
+			if err != nil {
+				return nil, common.NewError("read_error", err.Error())
+			}
+		} else {
+			return nil, err
+		}
 	}
 	defer file.Close()
 
@@ -578,7 +579,18 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
-		return nil, err
+		if in.IsPrecommit {
+			fileObjectPath, err = fs.GetPathForFile(in.AllocationID, in.Hash)
+			if err != nil {
+				return nil, common.NewError("get_file_path_error", err.Error())
+			}
+			file, err = os.Open(fileObjectPath)
+			if err != nil {
+				return nil, common.NewError("read_error", err.Error())
+			}
+		} else {
+			return nil, err
+		}
 	}
 
 	defer file.Close()
