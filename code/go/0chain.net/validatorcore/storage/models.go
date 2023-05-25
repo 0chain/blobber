@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -311,7 +310,10 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 	logging.Logger.Info("Verifying write marker", zap.String("challenge_id", challengeObj.ID))
 	err = cr.WriteMarkers[0].WM.Verify(allocationObj.ID, challengeObj.AllocationRoot, cr.WriteMarkers[0].ClientPublicKey)
 	if err != nil {
-		return err
+		return common.NewError("write_marker_validation_failed", "Failed to verify the write marker. "+err.Error())
+	}
+	if cr.WriteMarkers[0].WM.Timestamp != challengeObj.Timestamp {
+		return common.NewError("write_marker_validation_failed", "Write marker timestamp does not match with challenge timestamp")
 	}
 	for i := 1; i < len(cr.WriteMarkers); i++ {
 		err = cr.WriteMarkers[i].WM.Verify(allocationObj.ID, cr.WriteMarkers[i].WM.AllocationRoot, cr.WriteMarkers[i].ClientPublicKey)
@@ -319,12 +321,14 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 			return err
 		}
 		if cr.WriteMarkers[i].WM.PreviousAllocationRoot != cr.WriteMarkers[i-1].WM.AllocationRoot {
-			return common.NewError("write_marker_validation_failed", "Write markers chain is invalid")
+			if cr.WriteMarkers[i].WM.Timestamp != cr.WriteMarkers[i-1].WM.Timestamp {
+				return common.NewError("write_marker_validation_failed", "Write markers chain is invalid")
+			}
 		}
 	}
 	latestWM := cr.WriteMarkers[len(cr.WriteMarkers)-1].WM
 	rootRef := cr.ObjPath.RootObject
-	allocationRootCalculated := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(latestWM.Timestamp), 10))
+	allocationRootCalculated := rootRef.Hash
 
 	if latestWM.AllocationRoot != allocationRootCalculated {
 		return common.NewError("challenge_validation_failed", "Allocation root does not match")
@@ -352,12 +356,13 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 }
 
 type Challenge struct {
-	ID             string         `json:"id"`
-	Validators     []*StorageNode `json:"validators"`
-	RandomNumber   int64          `json:"seed"`
-	AllocationID   string         `json:"allocation_id"`
-	AllocationRoot string         `json:"allocation_root"`
-	BlobberID      string         `json:"blobber_id"`
+	ID             string           `json:"id"`
+	Validators     []*StorageNode   `json:"validators"`
+	RandomNumber   int64            `json:"seed"`
+	AllocationID   string           `json:"allocation_id"`
+	AllocationRoot string           `json:"allocation_root"`
+	BlobberID      string           `json:"blobber_id"`
+	Timestamp      common.Timestamp `json:"timestamp"`
 }
 
 type ValidationTicket struct {

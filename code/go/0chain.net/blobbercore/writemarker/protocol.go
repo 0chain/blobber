@@ -28,6 +28,35 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 	if wme == nil {
 		return common.NewError("invalid_write_marker", "No Write Marker was found")
 	}
+
+	if len(wme.WM.AllocationRoot) > 64 {
+		return common.NewError("write_marker_validation_failed", "AllocationRoot exceeds maximum length")
+	}
+
+	if len(wme.WM.PreviousAllocationRoot) > 64 {
+		return common.NewError("write_marker_validation_failed", "PreviousAllocationRoot exceeds maximum length")
+	}
+
+	if len(wme.WM.FileMetaRoot) > 64 {
+		return common.NewError("write_marker_validation_failed", "FileMetaRoot exceeds maximum length")
+	}
+
+	if len(wme.WM.AllocationID) > 64 {
+		return common.NewError("write_marker_validation_failed", "AllocationID exceeds maximum length")
+	}
+
+	if len(wme.WM.BlobberID) > 64 {
+		return common.NewError("write_marker_validation_failed", "BlobberID exceeds maximum length")
+	}
+
+	if len(wme.WM.ClientID) > 64 {
+		return common.NewError("write_marker_validation_failed", "ClientID exceeds maximum length")
+	}
+
+	if len(wme.WM.Signature) > 64 {
+		return common.NewError("write_marker_validation_failed", "Signature exceeds maximum length")
+	}
+
 	if wme.WM.PreviousAllocationRoot != dbAllocation.AllocationRoot {
 		return common.NewError("invalid_write_marker", "Invalid write marker. Prev Allocation root does not match the allocation root on record")
 	}
@@ -60,11 +89,8 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 		return common.NewError("write_marker_validation_failed", "Error during verifying signature. "+err.Error())
 	}
 	if !sigOK {
+		Logger.Error("write_marker_sig_error", zap.Any("wm", wme.WM))
 		return common.NewError("write_marker_validation_failed", "Write marker signature is not valid")
-	}
-
-	if err := AllocationRootMustUnique(ctx, wme.WM.AllocationRoot); err != nil {
-		return err
 	}
 
 	return nil
@@ -128,4 +154,51 @@ func (wme *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 	wme.CloseTxnID = t.Hash
 	err = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
 	return err
+}
+
+func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAllocation *allocation.Allocation, latestWM *WriteMarkerEntity) error {
+
+	if wme == nil {
+		return common.NewError("invalid_write_marker", "No Write Marker was found")
+	}
+	if wme.WM.PreviousAllocationRoot != wme.WM.AllocationRoot {
+		return common.NewError("invalid_write_marker", "Invalid write marker. Prev Allocation root does not match the allocation root of write marker")
+	}
+	if wme.WM.BlobberID != node.Self.ID {
+		return common.NewError("write_marker_validation_failed", "Write Marker is not for the blobber")
+	}
+
+	if wme.WM.AllocationID != dbAllocation.ID {
+		return common.NewError("write_marker_validation_failed", "Write Marker is not for the same allocation transaction")
+	}
+
+	if wme.WM.Size != 0 {
+		return common.NewError("empty write_marker_validation_failed", fmt.Sprintf("Write Marker size is %v but should be 0", wme.WM.Size))
+	}
+
+	if wme.WM.AllocationRoot != latestWM.WM.PreviousAllocationRoot {
+		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker allocation root %v does not match the previous allocation root of latest write marker %v", wme.WM.AllocationRoot, latestWM.WM.PreviousAllocationRoot))
+	}
+
+	clientPublicKey := ctx.Value(constants.ContextKeyClientKey).(string)
+	if clientPublicKey == "" {
+		return common.NewError("write_marker_validation_failed", "Could not get the public key of the client")
+	}
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID == "" || clientID != wme.WM.ClientID {
+		return common.NewError("write_marker_validation_failed", "Write Marker is not by the same client who uploaded")
+	}
+
+	hashData := wme.WM.GetHashData()
+	signatureHash := encryption.Hash(hashData)
+	sigOK, err := encryption.Verify(clientPublicKey, wme.WM.Signature, signatureHash)
+	if err != nil {
+		return common.NewError("write_marker_validation_failed", "Error during verifying signature. "+err.Error())
+	}
+	if !sigOK {
+		return common.NewError("write_marker_validation_failed", "Write marker signature is not valid")
+	}
+
+	return nil
 }

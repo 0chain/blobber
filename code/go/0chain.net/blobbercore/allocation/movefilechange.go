@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
@@ -77,7 +76,7 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 		}
 	}
 
-	fileRefs := rf.processCopyRefs(ctx, srcRef, dirRef, allocationRoot, ts)
+	fileRefs := rf.processMoveRefs(ctx, srcRef, dirRef, allocationRoot, ts, true)
 
 	srcParentPath, srcFileName := filepath.Split(rf.SrcPath)
 	srcFields, err := common.GetPathFields(srcParentPath)
@@ -118,31 +117,35 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, change *AllocationCha
 	}
 
 	for _, fileRef := range fileRefs {
-		stats.FileUpdated(ctx, fileRef.ID)
+		fileRef.IsPrecommit = true
 	}
 	return rootRef, err
 }
 
-func (rf *MoveFileChange) processCopyRefs(
+func (rf *MoveFileChange) processMoveRefs(
 	ctx context.Context, srcRef, destRef *reference.Ref,
-	allocationRoot string, ts common.Timestamp) (fileRefs []*reference.Ref) {
+	allocationRoot string, ts common.Timestamp, toAdd bool) (fileRefs []*reference.Ref) {
 
 	if srcRef.Type == reference.DIRECTORY {
 		srcRef.Path = filepath.Join(destRef.Path, srcRef.Name)
 		srcRef.ParentPath = destRef.Path
 		srcRef.UpdatedAt = ts
 		srcRef.HashToBeComputed = true
-		destRef.AddChild(srcRef)
+		if toAdd {
+			destRef.AddChild(srcRef)
+		}
 
 		for _, childRef := range srcRef.Children {
-			fileRefs = append(fileRefs, rf.processCopyRefs(ctx, childRef, srcRef, allocationRoot, ts)...)
+			fileRefs = append(fileRefs, rf.processMoveRefs(ctx, childRef, srcRef, allocationRoot, ts, false)...)
 		}
 	} else if srcRef.Type == reference.FILE {
 		srcRef.ParentPath = destRef.Path
 		srcRef.Path = filepath.Join(destRef.Path, srcRef.Name)
 		srcRef.UpdatedAt = ts
 		srcRef.HashToBeComputed = true
-		destRef.AddChild(srcRef)
+		if toAdd {
+			destRef.AddChild(srcRef)
+		}
 		fileRefs = append(fileRefs, srcRef)
 	}
 

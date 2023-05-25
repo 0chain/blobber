@@ -9,12 +9,10 @@ import (
 	"math"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 
 	"github.com/0chain/gosdk/constants"
 
@@ -30,6 +28,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"go.uber.org/zap"
 
@@ -163,7 +162,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 	return
 }
 
-func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (resp interface{}, err error) {
+func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (interface{}, error) {
 	// get client and allocation ids
 	var (
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
@@ -175,34 +174,14 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		return nil, common.NewError("download_file", "invalid client")
 	}
 
-	alloc, err = fsh.verifyAllocation(ctx, allocationTx, false)
+	alloc, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid allocation id passed: %v", err)
 	}
 
-	key := clientID + ":" + alloc.ID
-	lock, isNewLock := readmarker.ReadmarkerMapLock.GetLock(key)
-	if !isNewLock {
-		return nil, common.NewErrorf("lock_exists", fmt.Sprintf("lock exists for key: %v", key))
-	}
-
-	lock.Lock()
-	defer lock.Unlock()
-
 	dr, err := FromDownloadRequest(allocationTx, r)
 	if err != nil {
 		return nil, err
-	}
-
-	if dr.ReadMarker.ClientID != clientID { // We might well remove client id from request header
-		return nil, common.NewError("invalid_client", "header clientID and readmarker clientID are different")
-	}
-
-	rmObj := new(readmarker.ReadMarkerEntity)
-	rmObj.LatestRM = &dr.ReadMarker
-
-	if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
-		return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
 	}
 
 	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)
@@ -214,6 +193,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		return nil, common.NewErrorf("download_file", "path is not a file: %v", err)
 	}
 
+	key := clientID + ":" + alloc.ID
+	quotaManager := getQuotaManager()
+
 	isOwner := clientID == alloc.OwnerID
 
 	var authToken *readmarker.AuthTicket
@@ -222,20 +204,20 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 	if !isOwner {
 		authTokenString := dr.AuthToken
 		if authTokenString == "" {
-			return nil, common.NewError("invalid_client", "authticket is required")
+			return nil, common.NewError("invalid_authticket", "authticket is required")
 		}
 
 		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
-			return nil, common.NewErrorf("download_file", "cannot verify auth ticket: %v", err)
+			return nil, common.NewErrorf("invalid_authticket", "cannot verify auth ticket: %v", err)
 		}
 
 		shareInfo, err = reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
 		if err != nil || shareInfo == nil {
-			return nil, errors.New("client does not have permission to download the file. share does not exist")
+			return nil, common.NewError("invalid_share", "client does not have permission to download the file. share does not exist")
 		}
 
 		if shareInfo.Revoked {
-			return nil, errors.New("client does not have permission to download the file. share revoked")
+			return nil, common.NewError("invalid_share", "client does not have permission to download the file. share revoked")
 		}
 
 		availableAt := shareInfo.AvailableAt.Unix()
@@ -244,53 +226,102 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		}
 
 	}
-	// create read marker
-	var (
-		rme           *readmarker.ReadMarkerEntity
-		latestRM      *readmarker.ReadMarker
-		pendNumBlocks int64
-	)
 
-	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID, alloc.ID)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, common.NewErrorf("download_file", "couldn't get read marker from DB: %v", err)
-	}
+	if dr.SubmitRM {
+		lock, isNewLock := readmarker.ReadmarkerMapLock.GetLock(key)
+		if !isNewLock {
+			return nil, common.NewErrorf("lock_exists", fmt.Sprintf("lock exists for key: %v", key))
+		}
 
-	if rme != nil {
-		latestRM = rme.LatestRM
-		if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
-			return nil, common.NewErrorf("download_file", "couldn't get number of blocks pending redeeming: %v", err)
+		lock.Lock()
+		defer lock.Unlock()
+
+		// create read marker
+		var (
+			rme              *readmarker.ReadMarkerEntity
+			latestRM         *readmarker.ReadMarker
+			latestRedeemedRC int64
+			pendNumBlocks    int64
+		)
+
+		rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID, alloc.ID)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, common.NewErrorf("download_file", "couldn't get read marker from DB: %v", err)
+		}
+
+		if rme != nil {
+			latestRM = rme.LatestRM
+			latestRedeemedRC = rme.LatestRedeemedRC
+			if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
+				return nil, common.NewErrorf("download_file", "couldn't get number of blocks pending redeeming: %v", err)
+			}
+		}
+
+		// check out read pool tokens if read_price > 0
+		err = readPreRedeem(ctx, alloc, dr.ReadMarker.SessionRC, pendNumBlocks, clientID)
+		if err != nil {
+			return nil, common.NewErrorf("not_enough_tokens", "pre-redeeming read marker: %v", err)
+		}
+
+		if latestRM != nil && latestRM.ReadCounter+(dr.ReadMarker.SessionRC) > dr.ReadMarker.ReadCounter {
+			latestRM.BlobberID = node.Self.ID
+			return &blobberhttp.DownloadResponse{
+				Success:      false,
+				LatestRM:     latestRM,
+				Path:         fileref.Path,
+				AllocationID: fileref.AllocationID,
+			}, common.NewError("stale_read_marker", "")
+		}
+
+		if dr.ReadMarker.ClientID != clientID {
+			return nil, common.NewError("invalid_client", "header clientID and readmarker clientID are different")
+		}
+
+		rmObj := new(readmarker.ReadMarkerEntity)
+		rmObj.LatestRM = &dr.ReadMarker
+
+		if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
+			return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
+		}
+
+		err = readmarker.SaveLatestReadMarker(ctx, &dr.ReadMarker, latestRedeemedRC, latestRM == nil)
+		if err != nil {
+			Logger.Error(err.Error())
+			return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
+		}
+
+		quotaManager.createOrUpdateQuota(dr.ReadMarker.SessionRC, dr.ConnectionID)
+
+		if dr.NumBlocks == 0 {
+			return nil, nil
 		}
 	}
 
-	if latestRM != nil && latestRM.ReadCounter+(dr.NumBlocks) > dr.ReadMarker.ReadCounter {
-		latestRM.BlobberID = node.Self.ID
-		return &blobberhttp.DownloadResponse{
-			Success:      false,
-			LatestRM:     latestRM,
-			Path:         fileref.Path,
-			AllocationID: fileref.AllocationID,
-		}, common.NewError("stale_read_marker", "")
+	dq := quotaManager.getDownloadQuota(dr.ConnectionID)
+	if dq == nil {
+		return nil, common.NewError("download_file", fmt.Sprintf("no download quota for %v", dr.ConnectionID))
 	}
 
-	// check out read pool tokens if read_price > 0
-	err = readPreRedeem(ctx, alloc, dr.NumBlocks, pendNumBlocks, clientID)
-	if err != nil {
-		return nil, common.NewErrorf("download_file", "pre-redeeming read marker: %v", err)
+	if dq.Quota < dr.NumBlocks {
+		return nil, common.NewError("download_file", fmt.Sprintf("insufficient quota: available %v, requested %v", dq.Quota, dr.NumBlocks))
 	}
 
-	// reading is allowed
 	var (
 		downloadMode         = dr.DownloadMode
 		fileDownloadResponse *filestore.FileDownloadResponse
-		// respData             []byte
 	)
 
 	if dr.BlockNum > math.MaxInt32 || dr.NumBlocks > math.MaxInt32 {
 		return nil, common.NewErrorf("download_file", "BlockNum or NumBlocks is too large to convert to int")
 	}
 
+	fromPreCommit := false
 	if downloadMode == DownloadContentThumb {
+
+		if fileref.IsPrecommit {
+			fromPreCommit = fileref.ThumbnailHash != fileref.PrevThumbnailHash
+		}
+
 		rbi := &filestore.ReadBlockInput{
 			AllocationID:  alloc.ID,
 			FileSize:      fileref.ThumbnailSize,
@@ -298,6 +329,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			StartBlockNum: int(dr.BlockNum),
 			NumBlocks:     int(dr.NumBlocks),
 			IsThumbnail:   true,
+			IsPrecommit:   fromPreCommit,
 		}
 
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
@@ -305,6 +337,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			return nil, common.NewErrorf("download_file", "couldn't get thumbnail block: %v", err)
 		}
 	} else {
+
+		if fileref.IsPrecommit {
+			fromPreCommit = fileref.ValidationRoot != fileref.PrevValidationRoot
+		}
+
 		rbi := &filestore.ReadBlockInput{
 			AllocationID:   alloc.ID,
 			FileSize:       fileref.Size,
@@ -312,17 +349,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 			StartBlockNum:  int(dr.BlockNum),
 			NumBlocks:      int(dr.NumBlocks),
 			VerifyDownload: dr.VerifyDownload,
+			IsPrecommit:    fromPreCommit,
 		}
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
 		if err != nil {
 			return nil, common.NewErrorf("download_file", "couldn't get file block: %v", err)
 		}
-	}
-
-	err = readmarker.SaveLatestReadMarker(ctx, &dr.ReadMarker, 0, latestRM == nil)
-	if err != nil {
-		Logger.Error(err.Error())
-		return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
 	}
 
 	var chunkEncoder ChunkEncoder
@@ -341,8 +373,13 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (r
 		return nil, err
 	}
 
+	err = quotaManager.consumeQuota(dr.ConnectionID, dr.NumBlocks)
+	if err != nil {
+		return nil, common.NewError("download_file", err.Error())
+	}
+
 	fileDownloadResponse.Data = chunkData
-	stats.FileBlockDownloaded(ctx, fileref.ID)
+	reference.FileBlockDownloaded(ctx, fileref.ID)
 	return fileDownloadResponse, nil
 }
 
@@ -428,7 +465,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	defer mutex.Unlock()
 
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
+
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+
 	if err != nil {
 		// might be good to check if blobber already has stored writemarker
 		return nil, common.NewErrorf("invalid_parameters",
@@ -442,7 +481,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	elapsedGetConnObj := time.Since(startTime) - elapsedAllocation - elapsedGetLock
 
 	if clientID == "" || clientKey == "" {
-		return nil, common.NewError("invalid_params", "Please provide clientID and clientKey")
+		return nil, common.NewError("invalid_parameters", "Please provide clientID and clientKey")
 	}
 
 	if allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID {
@@ -455,6 +494,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	writeMarkerString := r.FormValue("write_marker")
+	if writeMarkerString == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid write marker passed")
+	}
 	writeMarker := writemarker.WriteMarker{}
 	err = json.Unmarshal([]byte(writeMarkerString), &writeMarker)
 	if err != nil {
@@ -469,7 +511,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		latestWriteMarkerEntity = nil
 	} else {
 		latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
-			allocationObj.AllocationRoot)
+			allocationObj.AllocationRoot, allocationID)
 		if err != nil {
 			return nil, common.NewErrorf("latest_write_marker_read_error",
 				"Error reading the latest write marker for allocation: %v", err)
@@ -487,6 +529,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		if latestWriteMarkerEntity != nil {
 			result.WriteMarker = &latestWriteMarkerEntity.WM
 		}
+		Logger.Error("verify_writemarker_failed", zap.Error(err))
 		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
 	}
 
@@ -502,12 +545,23 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		elapsedGetConnObj - elapsedVerifyWM
 
 	fileIDMetaStr := r.FormValue("file_id_meta")
+	if fileIDMetaStr == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid file ID meta passed")
+	}
 	fileIDMeta := make(map[string]string, 0)
 	err = json.Unmarshal([]byte(fileIDMetaStr), &fileIDMeta)
 	if err != nil {
 		return nil, common.NewError("unmarshall_error",
 			fmt.Sprintf("Error while unmarshalling file ID meta data: %s", err.Error()))
 	}
+
+	// Move preCommitDir to finalDir
+	err = connectionObj.MoveToFilestore(ctx)
+	if err != nil {
+		return nil, common.NewError("move_to_filestore_error", fmt.Sprintf("Error while moving to filestore: %s", err.Error()))
+	}
+
+	elapsedMoveToFilestore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
 
 	err = connectionObj.ApplyChanges(
 		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
@@ -522,7 +576,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err != nil {
 		return nil, err
 	}
-	allocationRoot := encryption.Hash(rootRef.Hash + ":" + strconv.FormatInt(int64(writeMarker.Timestamp), 10))
+	allocationRoot := rootRef.Hash
 	fileMetaRoot := rootRef.FileMetaHash
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
@@ -553,7 +607,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	err = db.Transaction(func(tx *gorm.DB) error {
 
-		if err = tx.Save(writemarkerEntity).Error; err != nil {
+		if err = tx.Create(writemarkerEntity).Error; err != nil {
 			return common.NewError("write_marker_error", "Error persisting the write marker")
 		}
 
@@ -592,11 +646,13 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	connectionObj.DeleteChanges(ctx)
 
 	db.Model(connectionObj).Updates(allocation.AllocationChangeCollector{Status: allocation.CommittedConnection})
-
+	reference.GetAllRefs()
 	result.AllocationRoot = allocationObj.AllocationRoot
 	result.WriteMarker = &writeMarker
 	result.Success = true
 	result.ErrorMessage = ""
+	commitOperation := connectionObj.Changes[0].Operation
+	input := connectionObj.Changes[0].Input
 
 	//Delete connection object and its changes
 	for _, c := range connectionObj.Changes {
@@ -606,9 +662,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	db.Delete(connectionObj)
 	go allocation.DeleteConnectionObjEntry(connectionID)
 
-	commitOperation := connectionObj.Changes[0].Operation
-	input := connectionObj.Changes[0].Input
-
 	Logger.Info("[commit]"+commitOperation,
 		zap.String("alloc_id", allocationID),
 		zap.String("input", input),
@@ -617,6 +670,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		zap.Duration("get-conn-obj", elapsedGetConnObj),
 		zap.Duration("verify-wm", elapsedVerifyWM),
 		zap.Duration("write-pre-redeem", elapsedWritePreRedeem),
+		zap.Duration("move-to-filestore", elapsedMoveToFilestore),
 		zap.Duration("apply-changes", elapsedApplyChanges),
 		zap.Duration("total", time.Since(startTime)),
 	)
@@ -864,7 +918,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	}
 
 	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(
-		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
+		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root", "thumbnail_filename"})
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -929,7 +983,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 	fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, connectionObj.AllocationID, path,
-		[]string{"path", "name", "size", "hash", "validation_root", "fixed_merkle_root"})
+		[]string{"path", "name", "size", "hash", "validation_root", "fixed_merkle_root", "thumbnail_filename"})
 
 	if err != nil {
 		Logger.Error("invalid_file", zap.Error(err))
@@ -1170,4 +1224,204 @@ func sanitizeString(input string) string {
 	sanitized := strings.ReplaceAll(input, "\n", "")
 	sanitized = strings.ReplaceAll(sanitized, "\r", "")
 	return sanitized
+}
+
+func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
+
+	startTime := time.Now()
+	if r.Method == "GET" {
+		return nil, common.NewError("invalid_method", "Invalid method used for the rolllback URL. Use POST instead")
+	}
+
+	Logger.Info("Rollback request received")
+
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
+	clientKeyBytes, _ := hex.DecodeString(clientKey)
+
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	if err != nil {
+		Logger.Error("Error in verifying allocation", zap.Error(err))
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	if allocationObj.AllocationRoot == "" {
+		Logger.Error("Allocation root is not set", zap.String("allocation_id", allocationObj.ID))
+		return nil, common.NewError("invalid_parameters", "Allocation root is not set")
+	}
+
+	elapsedAllocation := time.Since(startTime)
+
+	allocationID := allocationObj.ID
+	connectionID, ok := common.GetField(r, "connection_id")
+	if !ok {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+	// Lock will compete with other CommitWrites and Challenge validation
+	mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	elapsedGetLock := time.Since(startTime) - elapsedAllocation
+
+	if clientID == "" || clientKey == "" {
+		return nil, common.NewError("invalid_params", "Please provide clientID and clientKey")
+	}
+
+	if allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	writeMarkerString := r.FormValue("write_marker")
+	writeMarker := writemarker.WriteMarker{}
+	err = json.Unmarshal([]byte(writeMarkerString), &writeMarker)
+	if err != nil {
+		return nil, common.NewErrorf("invalid_parameters",
+			"Invalid parameters. Error parsing the writemarker for commit: %v",
+			err)
+	}
+
+	var result blobberhttp.CommitResult
+
+	var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
+	latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
+		allocationObj.AllocationRoot, allocationObj.ID)
+	if err != nil {
+		return nil, common.NewErrorf("latest_write_marker_read_error",
+			"Error reading the latest write marker for allocation: %v", err)
+	}
+	if latestWriteMarkerEntity == nil {
+		return nil, common.NewError("latest_write_marker_not_found",
+			"Latest write marker not found for allocation")
+	}
+
+	writemarkerEntity := &writemarker.WriteMarkerEntity{}
+	writemarkerEntity.WM = writeMarker
+
+	err = writemarkerEntity.VerifyRollbackMarker(ctx, allocationObj, latestWriteMarkerEntity)
+	if err != nil {
+		return nil, common.NewError("write_marker_verification_failed", "Verification of the write marker failed: "+err.Error())
+	}
+
+	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock
+
+	var clientIDForWriteRedeem = writeMarker.ClientID
+
+	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
+		return nil, err
+	}
+
+	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM
+
+	err = allocation.ApplyRollback(ctx, allocationID)
+	if err != nil {
+		return nil, common.NewError("allocation_rollback_error", "Error applying the rollback for allocation: "+err.Error())
+	}
+	elapsedApplyRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM - elapsedWritePreRedeem
+
+	//get allocation root and ref
+	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash", "is_precommit"})
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, common.NewError("root_ref_read_error", "Error reading the root reference: "+err.Error())
+	}
+	if err == gorm.ErrRecordNotFound {
+		rootRef = &reference.Ref{}
+	}
+
+	Logger.Info("rollback_root_ref", zap.Any("root_ref", rootRef))
+	allocationRoot := rootRef.Hash
+	fileMetaRoot := rootRef.FileMetaHash
+
+	if allocationRoot != writeMarker.AllocationRoot {
+		result.AllocationRoot = allocationObj.AllocationRoot
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = &latestWriteMarkerEntity.WM
+		}
+		result.Success = false
+		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
+			" Expected hash: " + allocationRoot
+		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
+	}
+
+	if fileMetaRoot != writeMarker.FileMetaRoot {
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = &latestWriteMarkerEntity.WM
+		}
+		result.Success = false
+		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
+			" Expected hash: " + fileMetaRoot + "; Got: " + writeMarker.FileMetaRoot
+		return &result, common.NewError("file_meta_root_mismatch", result.ErrorMessage)
+	}
+
+	writemarkerEntity.ConnectionID = connectionID
+	writemarkerEntity.ClientPublicKey = clientKey
+	Logger.Info("rollback_writemarker", zap.Any("writemarker", writemarkerEntity.WM))
+
+	db := datastore.GetStore().GetDB()
+	alloc := &allocation.Allocation{}
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+
+		err := tx.Model(&allocation.Allocation{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("is_redeem_required").Where("id=?", allocationID).First(alloc).Error
+		if err != nil {
+			return common.NewError("allocation_read_error", "Error reading the allocation object")
+		}
+
+		allocationUpdates := make(map[string]interface{})
+		allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used - ?", latestWriteMarkerEntity.WM.Size)
+		allocationUpdates["used_size"] = gorm.Expr("used_size - ?", latestWriteMarkerEntity.WM.Size)
+		allocationUpdates["is_redeem_required"] = true
+		allocationUpdates["allocation_root"] = allocationRoot
+		allocationUpdates["file_meta_root"] = fileMetaRoot
+
+		if alloc.IsRedeemRequired {
+			writemarkerEntity.Status = writemarker.Rollbacked
+			allocationUpdates["is_redeem_required"] = false
+		}
+		err = tx.Create(writemarkerEntity).Error
+		if err != nil {
+			return common.NewError("write_marker_error", "Error persisting the write marker "+err.Error())
+		}
+
+		if err = tx.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
+			return common.NewError("allocation_write_error", "Error persisting the allocation object "+err.Error())
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !alloc.IsRedeemRequired {
+		err = writemarkerEntity.SendToChan(ctx)
+		if err != nil {
+			return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
+		}
+	}
+	err = allocation.CommitRollback(allocationID)
+	if err != nil {
+		Logger.Error("Error committing the rollback for allocation", zap.Error(err))
+	}
+
+	elapsedCommitRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM - elapsedWritePreRedeem
+	reference.GetAllRefs()
+	result.AllocationRoot = allocationObj.AllocationRoot
+	result.WriteMarker = &writeMarker
+	result.Success = true
+	result.ErrorMessage = ""
+	commitOperation := "rollback"
+
+	Logger.Info("[rollback]"+commitOperation,
+		zap.String("alloc_id", allocationID),
+		zap.Duration("get_alloc", elapsedAllocation),
+		zap.Duration("get-lock", elapsedGetLock),
+		zap.Duration("verify-wm", elapsedVerifyWM),
+		zap.Duration("write-pre-redeem", elapsedWritePreRedeem),
+		zap.Duration("apply-rollback", elapsedApplyRollback),
+		zap.Duration("total", time.Since(startTime)),
+		zap.Duration("commit-rollback", elapsedCommitRollback),
+	)
+
+	return &result, nil
 }
