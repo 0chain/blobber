@@ -166,7 +166,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	// get client and allocation ids
 	var (
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
-		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
+		allocationID = ctx.Value(constants.ContextKeyAllocation).(string)
 		alloc        *allocation.Allocation
 	)
 
@@ -174,12 +174,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("download_file", "invalid client")
 	}
 
-	alloc, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	alloc, err := fsh.verifyAllocation(ctx, allocationID, false)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid allocation id passed: %v", err)
 	}
 
-	dr, err := FromDownloadRequest(allocationTx, r)
+	dr, err := FromDownloadRequest(allocationID, r)
 	if err != nil {
 		return nil, err
 	}
@@ -384,8 +384,8 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 }
 
 func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request) error {
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationId := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
 	if err != nil {
 		return common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -397,7 +397,7 @@ func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	_ = ctx.Value(constants.ContextKeyClientKey).(string)
 
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationId, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -430,12 +430,12 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
 	}
 
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
 	clientKeyBytes, _ := hex.DecodeString(clientKey)
 
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -678,8 +678,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 }
 
 func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (interface{}, error) {
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationId := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -693,7 +693,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	_ = ctx.Value(constants.ContextKeyClientKey).(string)
 
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationId, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -763,8 +763,8 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 
 func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
 
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationId := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -773,7 +773,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("prohibited_allocation_file_options", "Cannot copy data from this allocation.")
 	}
 
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationId, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -868,8 +868,8 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 
 func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (interface{}, error) {
 
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationId := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -879,7 +879,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	}
 
 	valid, err := verifySignatureFromRequest(
-		allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+		allocationId, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -1018,14 +1018,14 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 }
 
 func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationId, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -1112,10 +1112,10 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE / PATCH instead")
 	}
 
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -1148,7 +1148,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	publicKey := allocationObj.OwnerPublicKey
 
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
+	valid, err := verifySignatureFromRequest(allocationId, r.Header.Get(common.ClientSignatureHeader), publicKey)
 
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
@@ -1235,12 +1235,12 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	Logger.Info("Rollback request received")
 
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
 	clientKeyBytes, _ := hex.DecodeString(clientKey)
 
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
 	if err != nil {
 		Logger.Error("Error in verifying allocation", zap.Error(err))
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
