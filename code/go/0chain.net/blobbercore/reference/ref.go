@@ -478,9 +478,9 @@ func (r *Ref) AddChild(child *Ref) {
 			return
 		}
 		if child.ParentPath != ref.ParentPath {
-			logging.Logger.Error("Invalid parent path for child", zap.String("child", child.Path), zap.String("parent", ref.Path))
+			logging.Logger.Error("invalid parent path", zap.String("child", child.Path), zap.String("parent", ref.Path))
 		}
-		if strings.Compare(child.Path, ref.Name) == -1 {
+		if strings.Compare(child.Path, ref.Path) == -1 {
 			index = i
 			ltFound = true
 			break
