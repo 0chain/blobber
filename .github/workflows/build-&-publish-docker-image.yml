@@ -174,7 +174,7 @@ jobs:
           zdns_image: staging
           explorer_image: latest
           zsearch_image: staging
-          zbox_cli_branch: staging
+          zbox_cli_branch: fix/allocation
           zwallet_cli_branch: staging
           custom_go_sdk_version: staging
           SUBGRAPH_API_URL: ${{ secrets.SUBGRAPH_API_URL }}
@@ -188,7 +188,7 @@ jobs:
         with:
           system_tests_branch: master
           network: ${{ env.NETWORK_URL }}
-          zbox_cli_branch: staging
+          zbox_cli_branch: fix/allocation
           zwallet_cli_branch: staging
           svc_account_secret: ${{ secrets.SVC_ACCOUNT_SECRET }}
           deploy_report_page: false
