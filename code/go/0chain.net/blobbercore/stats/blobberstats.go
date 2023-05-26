@@ -280,7 +280,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 		Joins(`
             INNER JOIN allocations
             ON allocations.id = reference_objects.allocation_id`).
-		Where(`reference_objects.type = 'f' AND reference_objects.finalized = 'f'`).
+		Where(`reference_objects.type = 'f' AND allocations.finalized = 'f'`).
 		Group(`reference_objects.allocation_id, allocations.expiration_date`).
 		Group(`reference_objects.allocation_id, allocations.blobber_size`).
 		Rows()
