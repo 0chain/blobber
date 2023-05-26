@@ -144,13 +144,6 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 
 	result := fileref.GetListingData(ctx)
 
-	commitMetaTxns, err := reference.GetCommitMetaTxns(ctx, fileref.ID)
-	if err != nil {
-		Logger.Error("Failed to get commitMetaTxns from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
-	}
-
-	result["commit_meta_txns"] = commitMetaTxns
-
 	if !isOwner && !isRepairer {
 		var authTokenString = r.FormValue("auth_token")
 
@@ -200,11 +193,6 @@ func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Reque
 
 	for _, fileref := range filerefs {
 		converted := fileref.GetListingData(ctx)
-		commitMetaTxns, err := reference.GetCommitMetaTxns(ctx, fileref.ID)
-		if err != nil {
-			Logger.Error("Failed to get commitMetaTxns from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
-		}
-		converted["commit_meta_txns"] = commitMetaTxns
 		result = append(result, converted)
 	}
 
@@ -219,70 +207,6 @@ func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Reque
 
 			delete(result[i], "path")
 		}
-	}
-
-	return result, nil
-}
-
-func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, true)
-
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-	allocationID := allocationObj.ID
-
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if clientID == "" {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
-	_ = ctx.Value(constants.ContextKeyClientKey).(string)
-
-	pathHash, err := pathHashFromReq(r, allocationID)
-	if err != nil {
-		return nil, err
-	}
-
-	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "path", "lookup_hash", "type", "name"})
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-
-	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
-	}
-
-	authTokenString := r.FormValue("auth_token")
-
-	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		authToken, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
-		if err != nil {
-			return nil, err
-		}
-		if authToken == nil {
-			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
-		}
-	}
-
-	txnID := r.FormValue("txn_id")
-	if txnID == "" {
-		return nil, common.NewError("invalid_parameter", "TxnID not present in the params")
-	}
-
-	err = reference.AddCommitMetaTxn(ctx, fileref.ID, txnID)
-	if err != nil {
-		return nil, common.NewError("add_commit_meta_txn_failed", "Failed to add commitMetaTxn with err :"+err.Error())
-	}
-
-	result := struct {
-		Msg string `json:"msg"`
-	}{
-		Msg: "Added commitMetaTxn successfully",
 	}
 
 	return result, nil
