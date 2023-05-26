@@ -36,7 +36,7 @@ func TestDirMetaData_CalculateHash(t *testing.T) {
 			dmd: storage.DirMetaData{
 				Hash: "hash0",
 			},
-			want: "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+			want: "f21ce1bdeefa1a99e9c611a4ae207efdffe5008e057486d7df93b91c78022440",
 		},
 		{
 			name: "with children",
@@ -48,7 +48,7 @@ func TestDirMetaData_CalculateHash(t *testing.T) {
 					},
 				},
 			},
-			want: "5f2ec2d6c64c3e0bed5af21673e7e824d1f91f484ebcfe7a4758949e6d9eb6e0",
+			want: "9dd3eebc02b5b973440113dcdc2c3f81cc6ed888aecc890ebc86c6b163f4487e",
 		},
 		{
 			name: "with nested children",
@@ -65,7 +65,7 @@ func TestDirMetaData_CalculateHash(t *testing.T) {
 					},
 				},
 			},
-			want: "5f2ec2d6c64c3e0bed5af21673e7e824d1f91f484ebcfe7a4758949e6d9eb6e0",
+			want: "9dd3eebc02b5b973440113dcdc2c3f81cc6ed888aecc890ebc86c6b163f4487e",
 		},
 	}
 
@@ -272,20 +272,23 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 		{
 			name: "empty",
 			objPath: &storage.ObjectPath{
-				RootHash: "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+				RootHash: "9ed470d11d340098abf99015a6b52fbda55f18f470733544c777ec3d127b169a",
 				Path: map[string]interface{}{
-					"hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					"hash":          "9ed470d11d340098abf99015a6b52fbda55f18f470733544c777ec3d127b169a",
+					"allocation_id": "1",
+					"file_id":       "1",
 				},
 				RootObject: &storage.DirMetaData{
 					CreationDate: common.Timestamp(0),
 					Type:         "",
 					Name:         "",
 					Path:         "",
-					Hash:         "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					Hash:         "9ed470d11d340098abf99015a6b52fbda55f18f470733544c777ec3d127b169a",
 					PathHash:     "",
 					NumBlocks:    int64(0),
-					AllocationID: "",
+					AllocationID: "1",
 					Children:     nil,
+					FileID:       "1",
 				},
 			},
 			allocID: "1",
@@ -293,18 +296,19 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 		{
 			name: "root",
 			objPath: &storage.ObjectPath{
-				RootHash: "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+				RootHash: "980b103f2d78856eb8c5be014bbf7f12bb074eb61ac9bcfbb46ad6e4486cc737",
 				Path: map[string]interface{}{
-					"path": "file.txt",
-					"hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
-					"type": "f",
+					"path":          "file.txt",
+					"hash":          "980b103f2d78856eb8c5be014bbf7f12bb074eb61ac9bcfbb46ad6e4486cc737",
+					"type":          "f",
+					"allocation_id": "1",
 				},
 				RootObject: &storage.DirMetaData{
 					CreationDate: common.Timestamp(0),
 					Type:         storage.FILE,
 					Name:         "",
 					Path:         "file.txt",
-					Hash:         "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					Hash:         "980b103f2d78856eb8c5be014bbf7f12bb074eb61ac9bcfbb46ad6e4486cc737",
 					PathHash:     "",
 					NumBlocks:    int64(0),
 					AllocationID: "",
@@ -316,12 +320,13 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 		{
 			name: "dir/file",
 			objPath: &storage.ObjectPath{
-				RootHash: "8b1e23f3ca7b660354ae147fe259664cd2b7661f2b254ed09f47d925801d1be6",
+				RootHash: "7dc9b7734a27401b9d55d28e45f88738d99596345679375c321ba6cb9c449820",
 				Path: map[string]interface{}{
-					"path":    "dir1",
-					"hash":    "8b1e23f3ca7b660354ae147fe259664cd2b7661f2b254ed09f47d925801d1be6",
-					"type":    "d",
-					"file_id": "2",
+					"path":          "dir1",
+					"hash":          "7dc9b7734a27401b9d55d28e45f88738d99596345679375c321ba6cb9c449820",
+					"type":          "d",
+					"file_id":       "2",
+					"allocation_id": "1",
 					"list": []map[string]interface{}{
 						{
 							"path":    "file.txt",
@@ -337,10 +342,10 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 					Name:         "",
 					Path:         "dir1",
 					FileID:       "2",
-					Hash:         "8b1e23f3ca7b660354ae147fe259664cd2b7661f2b254ed09f47d925801d1be6",
+					Hash:         "7dc9b7734a27401b9d55d28e45f88738d99596345679375c321ba6cb9c449820",
 					PathHash:     "",
 					NumBlocks:    int64(0),
-					AllocationID: "",
+					AllocationID: "1",
 					Children: []storage.ObjectEntity{
 						&storage.FileMetaData{
 							DirMetaData: storage.DirMetaData{
@@ -372,10 +377,11 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 			objPath: &storage.ObjectPath{
 				RootHash: "87177591985fdf5c010d7781f0dc82b5d3c40b6bf8892b3c69000eb000f1e33a",
 				Path: map[string]interface{}{
-					"path":    "dir1",
-					"hash":    "8b1e23f3ca7b660354ae147fe259664cd2b7661f2b254ed09f47d925801d1be6",
-					"type":    "d",
-					"file_id": "2",
+					"path":          "dir1",
+					"hash":          "7dc9b7734a27401b9d55d28e45f88738d99596345679375c321ba6cb9c449820",
+					"type":          "d",
+					"file_id":       "2",
+					"allocation_id": "1",
 					"list": []map[string]interface{}{
 						{
 							"path":    "file.txt",
@@ -391,10 +397,10 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 					Name:         "",
 					Path:         "dir1",
 					FileID:       "2",
-					Hash:         "8b1e23f3ca7b660354ae147fe259664cd2b7661f2b254ed09f47d925801d1be6",
+					Hash:         "7dc9b7734a27401b9d55d28e45f88738d99596345679375c321ba6cb9c449820",
 					PathHash:     "",
 					NumBlocks:    int64(0),
-					AllocationID: "",
+					AllocationID: "1",
 					Children: []storage.ObjectEntity{
 						&storage.FileMetaData{
 							DirMetaData: storage.DirMetaData{
@@ -426,18 +432,20 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 		{
 			name: "dir/dir/file",
 			objPath: &storage.ObjectPath{
-				RootHash: "24bd2ca359ba809654c6c169e51298b6c4ddc3bd4a0eb522d748a53d73def92e",
+				RootHash: "a2c5d9cb929ea365d28a7d024e2c9bdd2d9e55a4d456235b1fcecfb7efb072f9",
 				Path: map[string]interface{}{
-					"path":    "dir1",
-					"hash":    "24bd2ca359ba809654c6c169e51298b6c4ddc3bd4a0eb522d748a53d73def92e",
-					"type":    "d",
-					"file_id": "2",
+					"path":          "dir1",
+					"hash":          "a2c5d9cb929ea365d28a7d024e2c9bdd2d9e55a4d456235b1fcecfb7efb072f9",
+					"type":          "d",
+					"file_id":       "2",
+					"allocation_id": "1",
 					"list": []map[string]interface{}{
 						{
-							"path":    "dir2",
-							"hash":    "99f8c50accd7090635d9f1fa7094724665a2aede0fb629139e1502fa1cae8954",
-							"type":    "d",
-							"file_id": "3",
+							"path":          "dir2",
+							"hash":          "632d0271b78791b24970321b823b9987b23e812f31bbed6c0229e7dc0e0c037a",
+							"type":          "d",
+							"file_id":       "3",
+							"allocation_id": "1",
 							"list": []map[string]interface{}{
 								{
 									"path":    "file.txt",
@@ -455,10 +463,10 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 					Type:         storage.DIRECTORY,
 					Name:         "",
 					Path:         "dir1",
-					Hash:         "24bd2ca359ba809654c6c169e51298b6c4ddc3bd4a0eb522d748a53d73def92e",
+					Hash:         "a2c5d9cb929ea365d28a7d024e2c9bdd2d9e55a4d456235b1fcecfb7efb072f9",
 					PathHash:     "",
 					NumBlocks:    int64(0),
-					AllocationID: "",
+					AllocationID: "1",
 					Children: []storage.ObjectEntity{
 						&storage.DirMetaData{
 							CreationDate: 0,
@@ -466,7 +474,7 @@ func TestObjectPath_VerifyPath(t *testing.T) {
 							FileID:       "3",
 							Name:         "",
 							Path:         "dir2",
-							Hash:         "99f8c50accd7090635d9f1fa7094724665a2aede0fb629139e1502fa1cae8954",
+							Hash:         "632d0271b78791b24970321b823b9987b23e812f31bbed6c0229e7dc0e0c037a",
 							PathHash:     "",
 							NumBlocks:    int64(0),
 							AllocationID: "1",
@@ -531,21 +539,22 @@ func TestChallengeRequest_VerifyChallenge(t *testing.T) {
 			name: "verify object path fails",
 			chReq: &storage.ChallengeRequest{
 				ObjPath: &storage.ObjectPath{
-					RootHash: "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					RootHash: "980b103f2d78856eb8c5be014bbf7f12bb074eb61ac9bcfbb46ad6e4486cc737",
 					Path: map[string]interface{}{
-						"path": "file.txt",
-						"hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
-						"type": "f",
+						"path":          "file.txt",
+						"hash":          "980b103f2d78856eb8c5be014bbf7f12bb074eb61ac9bcfbb46ad6e4486cc737",
+						"type":          "f",
+						"allocation_id": "1",
 					},
 					RootObject: &storage.DirMetaData{
 						CreationDate: common.Timestamp(0),
 						Type:         storage.FILE,
 						Name:         "",
 						Path:         "file.txt",
-						Hash:         "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+						Hash:         "980b103f2d78856eb8c5be014bbf7f12bb074eb61ac9bcfbb46ad6e4486cc737",
 						PathHash:     "",
 						NumBlocks:    int64(0),
-						AllocationID: "",
+						AllocationID: "1",
 						Children:     nil,
 					},
 				},
@@ -570,21 +579,22 @@ func TestChallengeRequest_VerifyChallenge(t *testing.T) {
 			name: "invalid write marker",
 			chReq: &storage.ChallengeRequest{
 				ObjPath: &storage.ObjectPath{
-					RootHash: "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+					RootHash: "980b103f2d78856eb8c5be014bbf7f12bb074eb61ac9bcfbb46ad6e4486cc737",
 					Path: map[string]interface{}{
-						"path": "file.txt",
-						"hash": "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
-						"type": "f",
+						"path":          "file.txt",
+						"hash":          "980b103f2d78856eb8c5be014bbf7f12bb074eb61ac9bcfbb46ad6e4486cc737",
+						"type":          "f",
+						"allocation_id": "1",
 					},
 					RootObject: &storage.DirMetaData{
 						CreationDate: common.Timestamp(0),
 						Type:         storage.FILE,
 						Name:         "",
 						Path:         "file.txt",
-						Hash:         "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+						Hash:         "980b103f2d78856eb8c5be014bbf7f12bb074eb61ac9bcfbb46ad6e4486cc737",
 						PathHash:     "",
 						NumBlocks:    int64(0),
-						AllocationID: "",
+						AllocationID: "1",
 						Children:     nil,
 					},
 				},

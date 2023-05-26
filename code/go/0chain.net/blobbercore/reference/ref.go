@@ -398,6 +398,10 @@ func (fr *Ref) GetFileHashData() string {
 	)
 }
 
+func (r *Ref) GetHashData() string {
+	return fmt.Sprintf("%s:%s:%s", r.AllocationID, r.Path, r.FileID)
+}
+
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
 	fr.FileMetaHash = encryption.Hash(fr.GetFileMetaHashData())
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
@@ -447,8 +451,9 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
 	}
-	r.FileMetaHash = encryption.Hash(strings.Join(childFileMetaHashes, ":"))
-	r.Hash = encryption.Hash(strings.Join(childHashes, ":"))
+
+	r.FileMetaHash = encryption.Hash(r.GetHashData() + strings.Join(childFileMetaHashes, ":"))
+	r.Hash = encryption.Hash(r.GetHashData() + strings.Join(childHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.NumBlocks = refNumBlocks
 	r.Size = size
