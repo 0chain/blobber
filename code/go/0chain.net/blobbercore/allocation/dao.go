@@ -2,6 +2,8 @@ package allocation
 
 import (
 	"context"
+	"github.com/0chain/common/core/logging"
+	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -17,6 +19,8 @@ func GetOrCreate(ctx context.Context, store datastore.Store, allocationId string
 	if len(allocationId) == 0 {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "tx")
 	}
+
+	logging.Logger.Info("jayash GetOrCreate", zap.String("allocationId", allocationId))
 
 	alloc := &Allocation{}
 	result := db.Table(TableNameAllocation).Where(SQLWhereGetById, allocationId).First(alloc)
