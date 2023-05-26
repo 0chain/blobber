@@ -566,6 +566,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	err = connectionObj.ApplyChanges(
 		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
 	if err != nil {
+		Logger.Error("Error applying changes", zap.Error(err))
 		return nil, err
 	}
 
@@ -633,6 +634,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err != nil {
 		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
 	}
+	Logger.Info("write_marker_redeemed", zap.String("alloc_id", allocationID), zap.String("allocation_root", writeMarker.AllocationRoot))
 
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
@@ -816,6 +818,9 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
+	if objectRef.ParentPath == destPath || objectRef.Path == destPath {
+		return nil, common.NewError("invalid_parameters", "Invalid destination path. Cannot copy to the same parent directory.")
+	}
 	newPath := filepath.Join(destPath, objectRef.Name)
 	paths, err := common.GetParentPaths(newPath)
 	if err != nil {
@@ -922,6 +927,10 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	if objectRef.ParentPath == destPath {
+		return nil, common.NewError("invalid_parameters", "Invalid destination path. Cannot move to the same parent directory.")
 	}
 	newPath := filepath.Join(destPath, objectRef.Name)
 	paths, err := common.GetParentPaths(newPath)

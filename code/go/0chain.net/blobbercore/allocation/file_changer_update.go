@@ -27,16 +27,11 @@ const (
 	CONTENT
 )
 
-func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *AllocationChange,
+func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, _ map[string]string) (*reference.Ref, error) {
 
 	path := filepath.Clean(nf.Path)
 	fields, err := common.GetPathFields(path)
-	if err != nil {
-		return nil, err
-	}
-
-	rootRef, err := reference.GetReferencePath(ctx, nf.AllocationID, path)
 	if err != nil {
 		return nil, err
 	}
@@ -81,9 +76,6 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	fileRef.HashToBeComputed = true
 	nf.deleteHash = make(map[string]int)
 
-	if fileRef.ThumbnailHash != "" && fileRef.ThumbnailHash != nf.ThumbnailHash {
-		nf.deleteHash[fileRef.ThumbnailHash] = int(THUMBNAIL)
-	}
 	if fileRef.ValidationRoot != "" && fileRef.ValidationRoot != nf.ValidationRoot {
 		nf.deleteHash[fileRef.ValidationRoot] = int(CONTENT)
 	}
@@ -107,43 +99,22 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, change *Allocation
 	fileRef.IsPrecommit = true
 	fileRef.ThumbnailFilename = nf.ThumbnailFilename
 
-	_, err = rootRef.CalculateHash(ctx, true)
-	if err != nil {
-		return nil, err
-	}
-
-	return rootRef, err
+	return rootRef, nil
 }
 
 func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	for hash, fileType := range nf.deleteHash {
+	for hash := range nf.deleteHash {
+		var count int64
+		err := db.Table((&reference.Ref{}).TableName()).
+			Where(&reference.Ref{ValidationRoot: hash}).
+			Where(&reference.Ref{AllocationID: nf.AllocationID}).
+			Count(&count).Error
 
-		if fileType == int(THUMBNAIL) {
-			var count int64
-			err := db.Table((&reference.Ref{}).TableName()).
-				Where(&reference.Ref{ThumbnailHash: hash}).
-				Where(&reference.Ref{AllocationID: nf.AllocationID}).
-				Count(&count).Error
-
-			if err == nil && count == 0 {
-				logging.Logger.Info("Deleting thumbnail file", zap.String("thumbnail_hash", hash))
-				if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash); err != nil {
-					logging.Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
-				}
-			}
-		} else {
-			var count int64
-			err := db.Table((&reference.Ref{}).TableName()).
-				Where(&reference.Ref{ValidationRoot: hash}).
-				Where(&reference.Ref{AllocationID: nf.AllocationID}).
-				Count(&count).Error
-
-			if err == nil && count == 0 {
-				logging.Logger.Info("Deleting content file", zap.String("validation_root", hash))
-				if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash); err != nil {
-					logging.Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
-				}
+		if err == nil && count == 0 {
+			logging.Logger.Info("Deleting content file", zap.String("validation_root", hash))
+			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash); err != nil {
+				logging.Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
 			}
 		}
 	}
@@ -165,4 +136,8 @@ func (nf *UpdateFileChanger) Unmarshal(input string) error {
 	}
 
 	return util.UnmarshalValidation(nf)
+}
+
+func (nf *UpdateFileChanger) GetPath() []string {
+	return []string{nf.Path}
 }
