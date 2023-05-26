@@ -6,14 +6,12 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	"github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/zboxcore/zboxutil"
 
 	"gorm.io/gorm"
 
@@ -272,7 +270,7 @@ func sendFinalizeAllocation(a *Allocation) {
 
 func cleanupAllocation(ctx context.Context, a *Allocation) {
 	var err error
-	if err = deleteInFakeConnection(ctx, a); err != nil {
+	if err = deleteAllocation(ctx, a); err != nil {
 		logging.Logger.Error("cleaning finalized allocation", zap.Error(err))
 	}
 
@@ -286,82 +284,15 @@ func cleanupAllocation(ctx context.Context, a *Allocation) {
 	}
 }
 
-func deleteInFakeConnection(ctx context.Context, a *Allocation) (err error) {
+func deleteAllocation(ctx context.Context, a *Allocation) (err error) {
 	ctx = datastore.GetStore().CreateTransaction(ctx)
 	var tx = datastore.GetStore().GetTransaction(ctx)
 	defer commit(tx, &err)
 
-	var (
-		connID = zboxutil.NewConnectionId()
-		conn   *AllocationChangeCollector
-	)
-	conn, err = GetAllocationChanges(ctx, connID, a.ID, a.OwnerID)
-	if err != nil {
-		return
-	}
-
-	var mutex = lock.GetMutex(conn.TableName(), connID)
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	// list files, delete files
-	if err = deleteFiles(ctx, a.ID, conn); err != nil {
-		return
-	}
-
-	return conn.Save(ctx) // save the fake connection
-}
-
-// delete references
-func deleteFiles(ctx context.Context, allocID string, conn *AllocationChangeCollector) (err error) {
-	var (
-		tx   = datastore.GetStore().GetTransaction(ctx)
-		refs = make([]*reference.Ref, 0)
-	)
-	err = tx.Where(&reference.Ref{
-		Type:         reference.FILE,
-		AllocationID: allocID,
-	}).Find(&refs).Error
-	if err != nil {
-		return
-	}
-
-	for _, ref := range refs {
-		if err = deleteFile(ctx, ref.Path, conn); err != nil {
-			return
-		}
-	}
-
-	return
-}
-
-// delete reference
-func deleteFile(ctx context.Context, path string, conn *AllocationChangeCollector) (err error) {
-	var fileRef *reference.Ref
-	fileRef, err = reference.GetLimitedRefFieldsByPath(ctx, conn.AllocationID, path, []string{"path", "name", "size", "hash", "fixed_merkle_root"})
-	if err != nil {
-		return
-	}
-
-	var (
-		deleteSize = fileRef.Size
-		change     = new(AllocationChange)
-	)
-
-	change.ConnectionID = conn.ID
-	change.Size = 0 - deleteSize
-	change.Operation = constants.FileOperationDelete
-
-	var dfc = &DeleteFileChange{
-		ConnectionID: conn.ID,
-		AllocationID: conn.AllocationID,
-		Name:         fileRef.Name,
-		Hash:         fileRef.Hash,
-		Path:         fileRef.Path,
-		Size:         deleteSize,
-	}
-
-	conn.Size += change.Size
-	conn.AddChange(change, dfc)
-	return
+	filestore.GetFileStore().DeleteAllocation(a.ID)
+	err = tx.Model(&reference.Ref{}).Unscoped().
+		Delete(&reference.Ref{},
+			"allocation_id = ?",
+			a.ID).Error
+	return err
 }
