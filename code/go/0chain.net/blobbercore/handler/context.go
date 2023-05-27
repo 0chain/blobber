@@ -186,9 +186,6 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 
 // WithVerify verify allocation and signature
 func WithVerify(r *http.Request) (*Context, error) {
-
-	logging.Logger.Info("jayash WithVerify", zap.Any("r", r))
-
 	ctx := &Context{
 		Context: context.TODO(),
 		Request: r,
@@ -207,9 +204,10 @@ func WithVerify(r *http.Request) (*Context, error) {
 	ctx.AllocationId = ctx.Vars["allocation"]
 	ctx.Signature = r.Header.Get(common.ClientSignatureHeader)
 
-	logging.Logger.Info("jayash allocationID", zap.Any("allocationID", ctx.AllocationId), zap.Any("ctx", ctx))
+	logging.Logger.Info("jayash allocationID", zap.Any("allocationID", ctx.AllocationId))
 
 	if len(ctx.AllocationId) > 0 {
+		logging.Logger.Info("jayash allocationID is not empty")
 		alloc, err := allocation.GetOrCreate(ctx, ctx.Store, ctx.AllocationId)
 
 		logging.Logger.Info("jayash alloc", zap.Any("alloc", alloc), zap.Any("err", err))
@@ -241,6 +239,10 @@ func WithVerify(r *http.Request) (*Context, error) {
 			ctx.StatusCode = http.StatusInternalServerError
 			return ctx, errors.ThrowLog(err.Error(), common.ErrInternal, "invalid signature "+ctx.Signature)
 		}
+	} else {
+		logging.Logger.Info("jayash allocationID is empty")
+		ctx.StatusCode = http.StatusBadRequest
+		return ctx, errors.Throw(common.ErrBadRequest, "allocation id is empty")
 	}
 
 	return ctx, nil
