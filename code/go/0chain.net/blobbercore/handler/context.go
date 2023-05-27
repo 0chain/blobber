@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"strconv"
 	"time"
 
@@ -192,7 +194,9 @@ func WithVerify(r *http.Request) (*Context, error) {
 	}
 
 	ctx.Vars = mux.Vars(r)
+	logging.Logger.Info("jayash Vars", zap.Any("Vars", ctx.Vars))
 	if ctx.Vars == nil {
+		logging.Logger.Info("jayash Vars is nil")
 		ctx.Vars = make(map[string]string)
 	}
 
@@ -201,10 +205,15 @@ func WithVerify(r *http.Request) (*Context, error) {
 	ctx.AllocationId = ctx.Vars["allocation"]
 	ctx.Signature = r.Header.Get(common.ClientSignatureHeader)
 
+	logging.Logger.Info("jayash allocationID", zap.Any("allocationID", ctx.AllocationId), zap.Any("ctx", ctx))
+
 	if len(ctx.AllocationId) > 0 {
 		alloc, err := allocation.GetOrCreate(ctx, ctx.Store, ctx.AllocationId)
 
+		logging.Logger.Info("jayash alloc", zap.Any("alloc", alloc), zap.Any("err", err))
+
 		if err != nil {
+			logging.Logger.Info("jayash get or create err", zap.Any("err", err))
 			if errors.Is(common.ErrBadRequest, err) {
 				ctx.StatusCode = http.StatusBadRequest
 
