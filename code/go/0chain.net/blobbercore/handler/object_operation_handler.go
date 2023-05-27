@@ -511,7 +511,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		latestWriteMarkerEntity = nil
 	} else {
 		latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
-			allocationObj.AllocationRoot, allocationID)
+			allocationObj.AllocationRoot)
 		if err != nil {
 			return nil, common.NewErrorf("latest_write_marker_read_error",
 				"Error reading the latest write marker for allocation: %v", err)
@@ -1295,7 +1295,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
 	latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
-		allocationObj.AllocationRoot, allocationObj.ID)
+		allocationObj.AllocationRoot)
 	if err != nil {
 		return nil, common.NewErrorf("latest_write_marker_read_error",
 			"Error reading the latest write marker for allocation: %v", err)
