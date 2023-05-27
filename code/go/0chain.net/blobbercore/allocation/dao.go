@@ -14,22 +14,29 @@ import (
 
 // GetOrCreate, get allocation if it exists in db. if not, try to sync it from blockchain, and insert it in db.
 func GetOrCreate(ctx context.Context, store datastore.Store, allocationId string) (*Allocation, error) {
+	logging.Logger.Info("jayash GetOrCreate", zap.String("allocationId", allocationId))
+
 	db := store.GetDB()
 
+	logging.Logger.Info("jayash GetOrCreate 2", zap.Any("db", db))
+
 	if len(allocationId) == 0 {
+		logging.Logger.Info("jayash GetOrCreate 3", zap.Any("allocationId", allocationId))
 		return nil, errors.Throw(constants.ErrInvalidParameter, "tx")
 	}
 
-	logging.Logger.Info("jayash GetOrCreate", zap.String("allocationId", allocationId))
-
 	alloc := &Allocation{}
 	result := db.Table(TableNameAllocation).Where(SQLWhereGetById, allocationId).First(alloc)
+
+	logging.Logger.Info("jayash GetOrCreate 4", zap.Any("result", result))
 
 	if result.Error == nil {
 		return alloc, nil
 	}
 
 	if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		logging.Logger.Info("jayash GetOrCreate 5", zap.Any("result.Error", result.Error))
+
 		return nil, errors.ThrowLog(result.Error.Error(), common.ErrBadDataStore)
 	}
 
