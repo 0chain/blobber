@@ -187,6 +187,8 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 // WithVerify verify allocation and signature
 func WithVerify(r *http.Request) (*Context, error) {
 
+	logging.Logger.Info("jayash WithVerify", zap.Any("r", r))
+
 	ctx := &Context{
 		Context: context.TODO(),
 		Request: r,
