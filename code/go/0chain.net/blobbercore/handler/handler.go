@@ -314,6 +314,14 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 		r.Header.Get(common.ClientKeyHeader))
 	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
 		vars["allocation"])
+
+	allocationID := r.URL.Query().Get("allocation_id")
+	if allocationID == "" {
+		allocationID = vars["allocation"]
+	}
+
+	ctx = context.WithValue(ctx, "allocation_id", allocationID)
+
 	// signature is not requered for all requests, but if header is empty it won`t affect anything
 	ctx = context.WithValue(ctx, constants.ContextKeyClientSignatureHeaderKey, r.Header.Get(common.ClientSignatureHeader))
 	return ctx
