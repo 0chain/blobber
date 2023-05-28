@@ -604,37 +604,22 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	writemarkerEntity.ConnectionID = connectionObj.ID
 	writemarkerEntity.ClientPublicKey = clientKey
 
-	db := datastore.GetStore().GetDB()
+	db := datastore.GetStore().GetTransaction(ctx)
 
-	err = db.Transaction(func(tx *gorm.DB) error {
-
-		if err = tx.Create(writemarkerEntity).Error; err != nil {
-			return common.NewError("write_marker_error", "Error persisting the write marker")
-		}
-
-		allocationUpdates := make(map[string]interface{})
-		allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
-		allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
-		allocationUpdates["allocation_root"] = allocationRoot
-		allocationUpdates["file_meta_root"] = fileMetaRoot
-		allocationUpdates["is_redeem_required"] = true
-
-		if err = tx.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
-			return common.NewError("allocation_write_error", "Error persisting the allocation object")
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
+	if err = db.Create(writemarkerEntity).Error; err != nil {
+		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
 	}
 
-	err = writemarkerEntity.SendToChan(ctx)
-	if err != nil {
-		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
+	allocationUpdates := make(map[string]interface{})
+	allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
+	allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
+	allocationUpdates["allocation_root"] = allocationRoot
+	allocationUpdates["file_meta_root"] = fileMetaRoot
+	allocationUpdates["is_redeem_required"] = true
+
+	if err = db.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
+		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
-	Logger.Info("write_marker_redeemed", zap.String("alloc_id", allocationID), zap.String("allocation_root", writeMarker.AllocationRoot))
 
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
@@ -648,7 +633,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	connectionObj.DeleteChanges(ctx)
 
 	db.Model(connectionObj).Updates(allocation.AllocationChangeCollector{Status: allocation.CommittedConnection})
-	reference.GetAllRefs()
 	result.AllocationRoot = allocationObj.AllocationRoot
 	result.WriteMarker = &writeMarker
 	result.Success = true
@@ -662,6 +646,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	db.Delete(connectionObj)
+	err = writemarkerEntity.SendToChan(ctx)
+	if err != nil {
+		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
+	}
+	Logger.Info("write_marker_redeemed", zap.String("alloc_id", allocationID), zap.String("allocation_root", writeMarker.AllocationRoot))
 	go allocation.DeleteConnectionObjEntry(connectionID)
 
 	Logger.Info("[commit]"+commitOperation,
@@ -1414,7 +1403,6 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	}
 
 	elapsedCommitRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM - elapsedWritePreRedeem
-	reference.GetAllRefs()
 	result.AllocationRoot = allocationObj.AllocationRoot
 	result.WriteMarker = &writeMarker
 	result.Success = true

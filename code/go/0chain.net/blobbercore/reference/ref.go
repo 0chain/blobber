@@ -12,8 +12,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -666,11 +664,4 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 		}
 	}
 	return result
-}
-
-func GetAllRefs() {
-	var refs []*Ref
-	db := datastore.GetStore().GetDB()
-	db.Find(&refs)
-	logging.Logger.Info("GetAllRefs", zap.Any("refs", refs), zap.Int("len", len(refs)))
 }
