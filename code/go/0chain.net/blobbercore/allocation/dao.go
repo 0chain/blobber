@@ -2,6 +2,8 @@ package allocation
 
 import (
 	"context"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -12,6 +14,8 @@ import (
 
 // GetOrCreate, get allocation if it exists in db. if not, try to sync it from blockchain, and insert it in db.
 func GetOrCreate(ctx context.Context, store datastore.Store, allocationTx string) (*Allocation, error) {
+
+	logging.Logger.Info("jayash GetOrCreate", zap.Any("allocationTx", allocationTx))
 	db := store.GetDB()
 
 	if len(allocationTx) == 0 {
