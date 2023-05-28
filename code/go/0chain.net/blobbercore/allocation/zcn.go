@@ -15,6 +15,9 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 	logging.Logger.Info("jayash SyncAllocation", zap.String("allocationId", allocationId))
 
 	sa, err := requestAllocation(allocationId)
+	if err != nil {
+		return nil, err
+	}
 
 	logging.Logger.Info("jayash SyncAllocation 2", zap.Any("sa", sa))
 

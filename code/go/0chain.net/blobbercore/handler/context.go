@@ -212,7 +212,7 @@ func WithVerify(r *http.Request) (*Context, error) {
 
 	ctx.ClientID = r.Header.Get(common.ClientHeader)
 	ctx.ClientKey = r.Header.Get(common.ClientKeyHeader)
-	ctx.AllocationId = ctx.Vars["allocation"]
+	ctx.AllocationId = r.Header.Get("Allocation-Id")
 	ctx.Signature = r.Header.Get(common.ClientSignatureHeader)
 
 	logging.Logger.Info("jayash allocationID", zap.Any("allocationID", ctx.AllocationId))
