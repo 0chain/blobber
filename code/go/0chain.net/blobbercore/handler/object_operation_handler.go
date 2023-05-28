@@ -1050,7 +1050,11 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
 	}
 
+	Logger.Info("jayash CreateDir", zap.Any("dirPath", dirPath), zap.Any("allocationID", allocationID))
+
 	exisitingRef, err := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
+
+	Logger.Info("jayash CreateDir", zap.Any("exisitingRef", exisitingRef), zap.Any("err", err))
 	if err != nil {
 		Logger.Error("Error file reference", zap.Error(err))
 	}

@@ -199,6 +199,7 @@ func GetLimitedRefFieldsByPath(ctx context.Context, allocationID, path string, s
 	db := datastore.GetStore().GetTransaction(ctx)
 	db = db.Select(selectedFields)
 	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
+	logging.Logger.Info("jayash GetLimitedRefFieldsByPath", zap.Any("ref", ref), zap.Error(err))
 	if err != nil {
 		return nil, err
 	}
