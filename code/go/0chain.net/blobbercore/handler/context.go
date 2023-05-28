@@ -196,6 +196,7 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 
 // WithVerify verify allocation and signature
 func WithVerify(r *http.Request) (*Context, error) {
+
 	ctx := &Context{
 		Context: context.TODO(),
 		Request: r,
@@ -203,11 +204,11 @@ func WithVerify(r *http.Request) (*Context, error) {
 	}
 
 	ctx.Vars = mux.Vars(r)
-	logging.Logger.Info("jayash Vars", zap.Any("Vars", ctx.Vars), zap.Any("headers", r.Header))
 	if ctx.Vars == nil {
 		logging.Logger.Info("jayash Vars is nil")
 		ctx.Vars = make(map[string]string)
 	}
+	logging.Logger.Info("jayash Vars", zap.Any("Vars", ctx.Vars), zap.Any("headers", r.Header))
 
 	ctx.ClientID = r.Header.Get(common.ClientHeader)
 	ctx.ClientKey = r.Header.Get(common.ClientKeyHeader)
