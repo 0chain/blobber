@@ -316,6 +316,7 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 		vars["allocation"])
 
 	ctx = context.WithValue(ctx, "allocation_id", r.Header.Get("allocation_id"))
+	Logger.Info("jayash setupHandler", zap.Any("ctx", ctx), zap.Any("allocation_id", r.Header.Get("allocation_id")), zap.Any("header", r.Header), zap.String("allocation", vars["allocation"]), zap.Any("vars", vars), zap.Any("r", r))
 
 	// signature is not requered for all requests, but if header is empty it won`t affect anything
 	ctx = context.WithValue(ctx, constants.ContextKeyClientSignatureHeaderKey, r.Header.Get(common.ClientSignatureHeader))
@@ -796,8 +797,9 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
 
+	allocationTx := ctx.Value("allocation_id").(string)
 	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
+	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, allocationTx, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation ID passed."+err.Error())
 	}
@@ -853,11 +855,12 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 
 	var (
-		allocationID = ctx.Value(constants.ContextKeyAllocation).(string)
+		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
+		allocationID = ctx.Value("allocation_id").(string)
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
 	)
 
-	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
+	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, allocationTx, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation ID passed."+err.Error())
 	}
@@ -938,7 +941,8 @@ func ListShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 
 	var (
-		allocationID = ctx.Value(constants.ContextKeyAllocation).(string)
+		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
+		allocationID = ctx.Value("allocation_id").(string)
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
 	)
 
@@ -947,7 +951,7 @@ func ListShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 
-	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
+	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, allocationTx, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}

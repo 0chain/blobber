@@ -37,13 +37,13 @@ const (
 type StorageHandler struct{}
 
 // verifyAllocation try to get allocation from postgres.if it doesn't exists, get it from sharders, and insert it into postgres.
-func (fsh *StorageHandler) verifyAllocation(ctx context.Context, allocationID string, readonly bool) (alloc *allocation.Allocation, err error) {
+func (fsh *StorageHandler) verifyAllocation(ctx context.Context, allocationID, allocationTx string, readonly bool) (alloc *allocation.Allocation, err error) {
 	if allocationID == "" {
 		return nil, common.NewError("verify_allocation",
 			"invalid allocation id")
 	}
 
-	alloc, err = allocation.VerifyAllocationTransaction(ctx, allocationID, readonly)
+	alloc, err = allocation.FetchAllocationFromEventsDB(ctx, allocationID, allocationTx, readonly)
 	if err != nil {
 		return nil, common.NewErrorf("verify_allocation",
 			"verifying allocation transaction error: %v", err)
@@ -77,7 +77,8 @@ func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString
 
 func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Request) (interface{}, error) {
 	allocationId := r.FormValue("allocation_id")
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
+	Logger.Info("jayash GetAllocationDetails", zap.String("allocation_id", allocationId), zap.Any("r", r.GetBody), zap.Any("r", r.Header))
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationId, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -91,7 +92,9 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
 	allocationId := r.FormValue("allocation_id")
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
+	Logger.Info("jayash GetAllocationDetails", zap.String("allocation_id", allocationId), zap.Any("r", r.GetBody), zap.Any("r", r.Header))
+
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationId, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -109,7 +112,7 @@ func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocat
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
 	allocationId := ctx.Value("allocation_id").(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	alloc, err := fsh.verifyAllocation(ctx, allocationId, true)
+	alloc, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -169,7 +172,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Request, name string) (result []map[string]interface{}, err error) {
 	allocationId := ctx.Value("allocation_id").(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	alloc, err := fsh.verifyAllocation(ctx, allocationId, true)
+	alloc, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -231,7 +234,8 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
 	}
 	allocationId := ctx.Value("allocation_id").(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, true)
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -293,7 +297,7 @@ func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request
 func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (interface{}, error) {
 	allocationId := ctx.Value("allocation_id").(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, true)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -351,8 +355,9 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 
 func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*blobberhttp.ListResult, error) {
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	allocationId := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
+	allocationId := ctx.Value("allocation_id").(string)
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -456,7 +461,7 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 
 	allocationId := ctx.Value("allocation_id").(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -520,7 +525,7 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request, resCh chan<- *blobberhttp.ReferencePathResult, errCh chan<- error) {
 	allocationId := ctx.Value("allocation_id").(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		errCh <- common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 		return
@@ -597,7 +602,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 
 	allocationId := ctx.Value("allocation_id").(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -662,7 +667,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Request) (*blobberhttp.RecentRefResult, error) {
 	allocationId := ctx.Value("allocation_id").(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -739,7 +744,7 @@ func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Req
 func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobberhttp.RefResult, error) {
 	allocationId := ctx.Value("allocation_id").(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())

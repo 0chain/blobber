@@ -49,17 +49,12 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 }
 
 // VerifyAllocationTransaction try to get allocation from postgres.if it doesn't exists, get it from sharders, and insert it into postgres.
-func VerifyAllocationTransaction(ctx context.Context, allocationID string, readonly bool) (a *Allocation, err error) {
+func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
-
-	sa, err := requestAllocation(allocationID)
-	if err != nil {
-		return nil, err
-	}
 
 	a = new(Allocation)
 	err = tx.Model(&Allocation{}).
-		Where(&Allocation{ID: allocationID, Tx: sa.Tx}).
+		Where(&Allocation{ID: allocationID, Tx: allocationTx}).
 		First(a).Error
 
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -77,6 +72,11 @@ func VerifyAllocationTransaction(ctx context.Context, allocationID string, reado
 		}
 		a.Terms = terms // set field
 		return          // found in DB
+	}
+
+	sa, err := requestAllocation(allocationID)
+	if err != nil {
+		return nil, err
 	}
 
 	var isExist bool
