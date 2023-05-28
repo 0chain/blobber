@@ -148,12 +148,16 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 
 		common.TryParseForm(r)
 
+		logging.Logger.Info("jayash here 2 ", zap.Any("request", r.Header))
+
 		w.Header().Set("Content-Type", "application/json")
 
 		ctx, err := WithVerify(r)
+		logging.Logger.Info("jayash WithVerify", zap.Any("error", err), zap.Any("ctx", ctx))
 		statusCode := ctx.StatusCode
 
 		if err != nil {
+			logging.Logger.Info("jayash WithVerify error", zap.Any("error", err.Error()))
 			if statusCode == 0 {
 				statusCode = http.StatusInternalServerError
 			}
@@ -163,9 +167,11 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 		}
 
 		result, err := handler(ctx)
+		logging.Logger.Info("jayash handler", zap.Any("error", err), zap.Any("result", result))
 		statusCode = ctx.StatusCode
 
 		if err != nil {
+			logging.Logger.Info("jayash handler error", zap.Any("error", err.Error()))
 			if statusCode == 0 {
 				statusCode = http.StatusInternalServerError
 			}
@@ -178,6 +184,8 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 			statusCode = http.StatusOK
 		}
 		w.WriteHeader(statusCode)
+
+		logging.Logger.Info("jayash Reaching till end")
 
 		if result != nil {
 			json.NewEncoder(w).Encode(result) //nolint
@@ -209,7 +217,15 @@ func WithVerify(r *http.Request) (*Context, error) {
 	logging.Logger.Info("jayash allocationID", zap.Any("allocationID", ctx.AllocationId))
 
 	if len(ctx.AllocationId) > 0 {
-		logging.Logger.Info("jayash allocationID is not empty")
+		logging.Logger.Info("jayash allocationID is not empty",
+			zap.Any("allocationID", ctx.AllocationId),
+			zap.Any("clientID", ctx.ClientID),
+			zap.Any("clientKey", ctx.ClientKey),
+			zap.Any("signature", ctx.Signature),
+			zap.Any("ctx", ctx),
+			zap.Any("store", ctx.Store),
+		)
+
 		alloc, err := allocation.GetOrCreate(ctx, ctx.Store, ctx.AllocationId)
 
 		logging.Logger.Info("jayash alloc", zap.Any("alloc", alloc), zap.Any("err", err))
