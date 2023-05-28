@@ -223,7 +223,6 @@ func WithVerify(r *http.Request) (*Context, error) {
 			zap.Any("clientID", ctx.ClientID),
 			zap.Any("clientKey", ctx.ClientKey),
 			zap.Any("signature", ctx.Signature),
-			zap.Any("ctx", ctx),
 			zap.Any("store", ctx.Store),
 		)
 
