@@ -16,8 +16,6 @@ import (
 func GetOrCreate(ctx context.Context, store datastore.Store, allocationId string) (*Allocation, error) {
 	logging.Logger.Info("jayash GetOrCreate", zap.String("allocationId", allocationId))
 
-	return nil, nil
-
 	db := store.GetDB()
 
 	logging.Logger.Info("jayash GetOrCreate 2", zap.Any("db", db))
