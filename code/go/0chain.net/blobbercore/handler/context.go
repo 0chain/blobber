@@ -144,6 +144,8 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 			return
 		}
 
+		logging.Logger.Info("jayash request", zap.Any("request", r.Header))
+
 		common.TryParseForm(r)
 
 		w.Header().Set("Content-Type", "application/json")
@@ -193,7 +195,7 @@ func WithVerify(r *http.Request) (*Context, error) {
 	}
 
 	ctx.Vars = mux.Vars(r)
-	logging.Logger.Info("jayash Vars", zap.Any("Vars", ctx.Vars))
+	logging.Logger.Info("jayash Vars", zap.Any("Vars", ctx.Vars), zap.Any("headers", r.Header))
 	if ctx.Vars == nil {
 		logging.Logger.Info("jayash Vars is nil")
 		ctx.Vars = make(map[string]string)
