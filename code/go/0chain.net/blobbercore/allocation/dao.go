@@ -2,7 +2,7 @@ package allocation
 
 import (
 	"context"
-	"github.com/0chain/common/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
