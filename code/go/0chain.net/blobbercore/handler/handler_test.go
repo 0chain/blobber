@@ -284,6 +284,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			args: args{
 				w: httptest.NewRecorder(),
 				r: func() *http.Request {
+
 					url, err := router.Get(name).URL("allocation", alloc.Tx)
 					if err != nil {
 						t.Fatal()
@@ -453,6 +454,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+
+					r.Header.Set("Allocation-Id", alloc.ID)
 
 					return r
 				}(),

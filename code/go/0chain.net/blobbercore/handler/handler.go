@@ -796,8 +796,8 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
 
-	allocationTx := ctx.Value("allocation_id").(string)
-	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationID := ctx.Value("allocation_id").(string)
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, allocationTx, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation ID passed."+err.Error())
