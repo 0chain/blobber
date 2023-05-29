@@ -3,23 +3,18 @@ package allocation
 import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/errors"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 // SyncAllocation try to pull allocation from blockchain, and insert it in db.
 func SyncAllocation(allocationId string) (*Allocation, error) {
-	logging.Logger.Info("jayash SyncAllocation", zap.String("allocationId", allocationId))
 
 	sa, err := requestAllocation(allocationId)
 	if err != nil {
 		return nil, err
 	}
-
-	logging.Logger.Info("jayash SyncAllocation 2", zap.Any("sa", sa))
 
 	alloc := &Allocation{}
 
@@ -36,8 +31,6 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 			break
 		}
 	}
-
-	logging.Logger.Info("jayash SyncAllocation 3", zap.Any("belongToThisBlobber", belongToThisBlobber))
 
 	if !belongToThisBlobber {
 		return nil, errors.Throw(common.ErrBadRequest,
@@ -57,8 +50,6 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 	alloc.TimeUnit = sa.TimeUnit
 	alloc.FileOptions = sa.FileOptions
 
-	logging.Logger.Info("jayash SyncAllocation 4", zap.Any("alloc", alloc))
-
 	// related terms
 	terms := make([]*Terms, 0, len(sa.BlobberDetails))
 	for _, d := range sa.BlobberDetails {
@@ -69,8 +60,6 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 			WritePrice:   d.Terms.WritePrice,
 		})
 	}
-
-	logging.Logger.Info("jayash SyncAllocation 5", zap.Any("terms", terms))
 
 	err = datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
 		if err := tx.Table(TableNameAllocation).Create(alloc).Error; err != nil {
@@ -85,8 +74,6 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 
 		return nil
 	})
-
-	logging.Logger.Info("jayash SyncAllocation 6", zap.Any("err", err))
 
 	return alloc, err
 }

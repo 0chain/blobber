@@ -77,7 +77,6 @@ func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString
 
 func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Request) (interface{}, error) {
 	allocationId := r.FormValue("allocation_id")
-	Logger.Info("jayash GetAllocationDetails", zap.String("allocation_id", allocationId), zap.Any("r", r.GetBody), zap.Any("r", r.Header))
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationId, false)
 
 	if err != nil {
@@ -92,7 +91,6 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 		return nil, common.NewError("invalid_method", "Invalid method used. Use GET instead")
 	}
 	allocationId := r.FormValue("allocation_id")
-	Logger.Info("jayash GetAllocationDetails", zap.String("allocation_id", allocationId), zap.Any("r", r.GetBody), zap.Any("r", r.Header))
 
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationId, false)
 

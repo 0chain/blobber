@@ -1058,6 +1058,9 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 	}
 
 	exisitingRef, err := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
+	if err != nil {
+		Logger.Error("Error file reference", zap.Error(err))
+	}
 
 	result := &blobberhttp.UploadResult{
 		Filename: dirPath,

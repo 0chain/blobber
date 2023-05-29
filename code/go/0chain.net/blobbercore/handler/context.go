@@ -3,8 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
 	"strconv"
 	"time"
 
@@ -144,20 +142,14 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 			return
 		}
 
-		logging.Logger.Info("jayash request", zap.Any("request", r.Header))
-
 		common.TryParseForm(r)
-
-		logging.Logger.Info("jayash here 2 ", zap.Any("request", r.Header))
 
 		w.Header().Set("Content-Type", "application/json")
 
 		ctx, err := WithVerify(r)
-		logging.Logger.Info("jayash WithVerify", zap.Any("error", err), zap.Any("ctx", ctx))
 		statusCode := ctx.StatusCode
 
 		if err != nil {
-			logging.Logger.Info("jayash WithVerify error", zap.Any("error", err.Error()))
 			if statusCode == 0 {
 				statusCode = http.StatusInternalServerError
 			}
@@ -167,11 +159,9 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 		}
 
 		result, err := handler(ctx)
-		logging.Logger.Info("jayash handler", zap.Any("error", err), zap.Any("result", result))
 		statusCode = ctx.StatusCode
 
 		if err != nil {
-			logging.Logger.Info("jayash handler error", zap.Any("error", err.Error()))
 			if statusCode == 0 {
 				statusCode = http.StatusInternalServerError
 			}
@@ -184,8 +174,6 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 			statusCode = http.StatusOK
 		}
 		w.WriteHeader(statusCode)
-
-		logging.Logger.Info("jayash Reaching till end")
 
 		if result != nil {
 			json.NewEncoder(w).Encode(result) //nolint
@@ -205,33 +193,19 @@ func WithVerify(r *http.Request) (*Context, error) {
 
 	ctx.Vars = mux.Vars(r)
 	if ctx.Vars == nil {
-		logging.Logger.Info("jayash Vars is nil")
 		ctx.Vars = make(map[string]string)
 	}
-	logging.Logger.Info("jayash Vars", zap.Any("Vars", ctx.Vars), zap.Any("headers", r.Header))
 
 	ctx.ClientID = r.Header.Get(common.ClientHeader)
 	ctx.ClientKey = r.Header.Get(common.ClientKeyHeader)
 	ctx.AllocationId = r.Header.Get("Allocation-Id")
 	ctx.Signature = r.Header.Get(common.ClientSignatureHeader)
 
-	logging.Logger.Info("jayash allocationID", zap.Any("allocationID", ctx.AllocationId))
-
 	if len(ctx.AllocationId) > 0 {
-		logging.Logger.Info("jayash allocationID is not empty",
-			zap.Any("allocationID", ctx.AllocationId),
-			zap.Any("clientID", ctx.ClientID),
-			zap.Any("clientKey", ctx.ClientKey),
-			zap.Any("signature", ctx.Signature),
-			zap.Any("store", ctx.Store),
-		)
 
 		alloc, err := allocation.GetOrCreate(ctx, ctx.Store, ctx.AllocationId)
 
-		logging.Logger.Info("jayash alloc", zap.Any("alloc", alloc), zap.Any("err", err))
-
 		if err != nil {
-			logging.Logger.Info("jayash get or create err", zap.Any("err", err))
 			if errors.Is(common.ErrBadRequest, err) {
 				ctx.StatusCode = http.StatusBadRequest
 
@@ -257,10 +231,6 @@ func WithVerify(r *http.Request) (*Context, error) {
 			ctx.StatusCode = http.StatusInternalServerError
 			return ctx, errors.ThrowLog(err.Error(), common.ErrInternal, "invalid signature "+ctx.Signature)
 		}
-	} else {
-		logging.Logger.Info("jayash allocationID is empty")
-		ctx.StatusCode = http.StatusBadRequest
-		return ctx, errors.Throw(common.ErrBadRequest, "allocation id is empty")
 	}
 
 	return ctx, nil

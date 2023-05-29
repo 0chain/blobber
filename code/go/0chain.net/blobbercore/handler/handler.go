@@ -316,11 +316,8 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 		vars["allocation"])
 
 	ctx = context.WithValue(ctx, "allocation_id", r.Header.Get("Allocation-Id"))
-	Logger.Info("jayash setupHandler", zap.Any("ctx", ctx), zap.Any("allocation_id", r.Header.Get("Allocation-Id")), zap.Any("header", r.Header), zap.String("allocation", vars["allocation"]), zap.Any("vars", vars), zap.Any("r", r))
 
 	allocationId := ctx.Value("allocation_id").(string)
-
-	Logger.Info("jayash setupHandler", zap.Any("allocationId", allocationId))
 
 	// signature is not requered for all requests, but if header is empty it won`t affect anything
 	ctx = context.WithValue(ctx, constants.ContextKeyClientSignatureHeaderKey, r.Header.Get(common.ClientSignatureHeader))
