@@ -140,6 +140,8 @@ func TestHandlers_Share(t *testing.T) {
 						t.Fatal(err)
 					}
 
+					r.Header.Set("Allocation-Id", alloc.ID)
+
 					return r
 				}(),
 			},
