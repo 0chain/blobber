@@ -209,6 +209,7 @@ func TestHandlers_Download(t *testing.T) {
 			args: args{
 				w: httptest.NewRecorder(),
 				r: func() *http.Request {
+					fmt.Println("Allocation : ", alloc)
 					handlerName := handlers["/v1/file/download/{allocation}"]
 					url, err := router.Get(handlerName).URL("allocation", alloc.Tx)
 					if err != nil {

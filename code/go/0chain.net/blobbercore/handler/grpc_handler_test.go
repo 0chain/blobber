@@ -60,9 +60,9 @@ func makeTestClient() (blobbergrpc.BlobberServiceClient, *grpc.ClientConn, error
 }
 
 func makeTestAllocation(exp common.Timestamp) *allocation.Allocation {
-	allocID := "allocation id"
+	allocID := "allocation_id"
 	alloc := allocation.Allocation{
-		Tx: "allocation id",
+		Tx: "allocation_id",
 		ID: allocID,
 		Terms: []*allocation.Terms{
 			{
@@ -70,7 +70,7 @@ func makeTestAllocation(exp common.Timestamp) *allocation.Allocation {
 				AllocationID: allocID,
 			},
 		},
-		Expiration: exp,
+		Expiration:  exp,
 		FileOptions: 63, // 0011 1111 (All Allowed)
 	}
 	return &alloc
