@@ -184,7 +184,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, err
 	}
 
-	fileref, err := reference.GetReferenceByLookupHashForDownload(ctx, alloc.ID, dr.PathHash)
+	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid file path: %v", err)
 	}
