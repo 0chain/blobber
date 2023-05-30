@@ -179,12 +179,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, common.NewErrorf("download_file", "invalid allocation id passed: %v", err)
 	}
 
-	dr, err := FromDownloadRequest(allocationTx, r)
+	dr, err := FromDownloadRequest(alloc.ID, r)
 	if err != nil {
 		return nil, err
 	}
 
-	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)
+	fileref, err := reference.GetReferenceByLookupHashForDownload(ctx, alloc.ID, dr.PathHash)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid file path: %v", err)
 	}
