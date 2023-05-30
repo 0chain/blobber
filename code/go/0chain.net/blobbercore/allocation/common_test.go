@@ -37,6 +37,9 @@ func (mfs *MockFileStore) MoveToFilestore(allocID, hash string) error {
 	return nil
 }
 
+func (mfs *MockFileStore) DeleteAllocation(allocID string) {
+}
+
 func (mfs *MockFileStore) DeleteFromFilestore(allocID, hash string) error {
 	return nil
 }

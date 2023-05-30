@@ -12,8 +12,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -62,10 +60,8 @@ type Ref struct {
 	EncryptedKey            string `gorm:"column:encrypted_key;size:64" filelist:"encrypted_key"`
 	Children                []*Ref `gorm:"-"`
 	childrenLoaded          bool
-
-	CommitMetaTxns []CommitMetaTxn  `gorm:"foreignkey:ref_id" filelist:"commit_meta_txns"`
-	CreatedAt      common.Timestamp `gorm:"column:created_at;index:idx_created_at,sort:desc" dirlist:"created_at" filelist:"created_at"`
-	UpdatedAt      common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" dirlist:"updated_at" filelist:"updated_at"`
+	CreatedAt               common.Timestamp `gorm:"column:created_at;index:idx_created_at,sort:desc" dirlist:"created_at" filelist:"created_at"`
+	UpdatedAt               common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" dirlist:"updated_at" filelist:"updated_at"`
 
 	DeletedAt        gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
 	IsPrecommit      bool           `gorm:"column:is_precommit;not null;default:false" filelist:"is_precommit" dirlist:"is_precommit"`
@@ -666,11 +662,4 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 		}
 	}
 	return result
-}
-
-func GetAllRefs() {
-	var refs []*Ref
-	db := datastore.GetStore().GetDB()
-	db.Find(&refs)
-	logging.Logger.Info("GetAllRefs", zap.Any("refs", refs), zap.Int("len", len(refs)))
 }
