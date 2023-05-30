@@ -38,7 +38,6 @@ type StorageHandler struct{}
 
 // verifyAllocation try to get allocation from postgres.if it doesn't exists, get it from sharders, and insert it into postgres.
 func (fsh *StorageHandler) verifyAllocation(ctx context.Context, allocationID, allocationTx string, readonly bool) (alloc *allocation.Allocation, err error) {
-	fmt.Println("verifyAllocation", allocationID, allocationTx)
 
 	if allocationTx == "" {
 		return nil, common.NewError("verify_allocation",
@@ -80,8 +79,6 @@ func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString
 func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Request) (interface{}, error) {
 	allocationId := r.FormValue("id")
 
-	fmt.Println(allocationId)
-	fmt.Println("Here")
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationId, false)
 
 	if err != nil {

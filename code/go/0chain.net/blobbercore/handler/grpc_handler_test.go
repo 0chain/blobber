@@ -6,7 +6,6 @@ package handler
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"regexp"
 	"testing"
@@ -142,10 +141,6 @@ func Test_GetAllocation(t *testing.T) {
 			name: "Committing_Transaction_ERR",
 			mockSetup: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
-
-				fmt.Println("alloc.Tx", alloc.Tx)
-				fmt.Println("jayash Logging : ", alloc.ID, alloc.Tx, alloc.Expiration)
-				fmt.Println(alloc.Terms[0].ID, alloc.Terms[0].AllocationID)
 
 				mock.ExpectQuery(
 					regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
