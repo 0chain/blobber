@@ -217,71 +217,6 @@ func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Reque
 	return result, nil
 }
 
-func (fsh *StorageHandler) AddCommitMetaTxn(ctx context.Context, r *http.Request) (interface{}, error) {
-	if r.Method == "GET" {
-		return nil, common.NewError("invalid_method", "Invalid method used. Use POST instead")
-	}
-	allocationId := ctx.Value("allocation_id").(string)
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
-
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
-	allocationID := allocationObj.ID
-
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if clientID == "" {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
-
-	_ = ctx.Value(constants.ContextKeyClientKey).(string)
-
-	pathHash, err := pathHashFromReq(r, allocationID)
-	if err != nil {
-		return nil, err
-	}
-
-	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "path", "lookup_hash", "type", "name"})
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-
-	if fileref.Type != reference.FILE {
-		return nil, common.NewError("invalid_parameters", "Path is not a file.")
-	}
-
-	authTokenString := r.FormValue("auth_token")
-
-	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		authToken, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID)
-		if err != nil {
-			return nil, err
-		}
-		if authToken == nil {
-			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
-		}
-	}
-
-	txnID := r.FormValue("txn_id")
-	if txnID == "" {
-		return nil, common.NewError("invalid_parameter", "TxnID not present in the params")
-	}
-
-	err = reference.AddCommitMetaTxn(ctx, fileref.ID, txnID)
-	if err != nil {
-		return nil, common.NewError("add_commit_meta_txn_failed", "Failed to add commitMetaTxn with err :"+err.Error())
-	}
-
-	result := struct {
-		Msg string `json:"msg"`
-	}{
-		Msg: "Added commitMetaTxn successfully",
-	}
-
-	return result, nil
-}
-
 func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (interface{}, error) {
 	allocationId := ctx.Value("allocation_id").(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
@@ -322,7 +257,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, common.NewError("bad_db_operation", "Error retrieving file stats. "+err.Error())
 	}
-	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.AllocationRoot, allocationID)
+	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.AllocationRoot)
 	if wm != nil && fileStats != nil {
 		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
 		fileStats.OnChain = wm.OnChain()
@@ -467,7 +402,7 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot, allocationObj.ID)
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
 		if err != nil {
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
@@ -475,7 +410,7 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 			return nil, common.NewError("latest_write_marker_read_error", "Latest write marker not found for allocation.")
 		}
 		if latestWM.WM.PreviousAllocationRoot != "" {
-			prevWM, err = writemarker.GetWriteMarkerEntity(ctx, latestWM.WM.PreviousAllocationRoot, allocationObj.ID)
+			prevWM, err = writemarker.GetWriteMarkerEntity(ctx, latestWM.WM.PreviousAllocationRoot)
 			if err != nil {
 				return nil, common.NewError("latest_write_marker_read_error", "Error reading the previous write marker for allocation."+err.Error())
 			}
@@ -570,7 +505,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot, allocationObj.ID)
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
 		if err != nil {
 			errCh <- common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 			return
@@ -639,7 +574,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot, allocationObj.ID)
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
 		if err != nil {
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
@@ -900,7 +835,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot, allocationObj.ID)
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
 		if err != nil {
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
