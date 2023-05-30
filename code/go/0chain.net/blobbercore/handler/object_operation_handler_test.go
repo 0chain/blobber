@@ -485,8 +485,13 @@ func TestDownloadFile(t *testing.T) {
 				setupInMock(t, test.parameters, *rm)
 				setupOutMock(t, test.parameters, *rm)
 
+				ctx := setupCtx(test.parameters)
+				ctx = context.WithValue(ctx, "allocation_id", mockAllocationId)
+
+				fmt.Println("ctx", ctx)
+
 				var sh StorageHandler
-				_, err := sh.DownloadFile(setupCtx(test.parameters), request)
+				_, err := sh.DownloadFile(ctx, request)
 
 				require.EqualValues(t, test.want.err, err != nil)
 				if err != nil {
