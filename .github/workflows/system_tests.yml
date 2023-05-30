@@ -13,7 +13,7 @@ on:
         required: true
       zbox_cli_branch:
         description: '0Box CLI branch which the tests will use'
-        default: 'staging'
+        default: 'fix/allocation'
         required: true
       zwallet_cli_branch:
         description: '0Wallet CLI branch which the tests will use'
@@ -21,7 +21,7 @@ on:
         required: true
       zbox_branch:
         description: '0box branch to deploy'
-        default: 'staging'
+        default: 'fix/allocation'
         required: true
       zblock_branch:
         description: '0block branch to deploy'
