@@ -52,9 +52,6 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
-	fmt.Println("AllocationTX : ", allocationTx)
-	fmt.Println("AllocationID : ", allocationID)
-
 	a = new(Allocation)
 	err = tx.Model(&Allocation{}).
 		Where(&Allocation{Tx: allocationTx}).
