@@ -305,6 +305,8 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 
 func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	var vars = mux.Vars(r)
+	AllocationIdKey := "allocation_id"
+
 	ctx = context.WithValue(ctx, constants.ContextKeyClient,
 		r.Header.Get(common.ClientHeader))
 	ctx = context.WithValue(ctx, constants.ContextKeyClientKey,
@@ -312,7 +314,7 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
 		vars["allocation"])
 
-	ctx = context.WithValue(ctx, "allocation_id", r.Header.Get("Allocation-Id"))
+	ctx = context.WithValue(ctx, AllocationIdKey, r.Header.Get("Allocation-Id"))
 
 	// signature is not requered for all requests, but if header is empty it won`t affect anything
 	ctx = context.WithValue(ctx, constants.ContextKeyClientSignatureHeaderKey, r.Header.Get(common.ClientSignatureHeader))
