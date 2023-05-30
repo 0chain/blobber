@@ -136,7 +136,7 @@ func (fs *FileStore) DeleteFromFilestore(allocID, hash string) error {
 	if err != nil {
 		return common.NewError("get_file_path_error", err.Error())
 	}
-
+	logging.Logger.Info("Deleting file from filestore", zap.String("path", fPath))
 	err = os.Remove(fPath)
 	if err != nil {
 		return common.NewError("blob_object_dir_creation_error", err.Error())
@@ -185,25 +185,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 
 	r, err := os.Open(tempFilePath)
 	if err != nil {
-
-		if errors.Is(err, os.ErrNotExist) {
-			f.Close()
-			_ = os.Remove(preCommitPath)
-			return true, nil
-		}
 		return false, err
-	} else {
-		// check if file is empty
-		check_file, err := os.Stat(tempFilePath)
-		if err == nil && check_file.Size() == 0 {
-			f.Close()
-			_ = os.Remove(preCommitPath)
-			return true, nil
-		} else if err != nil {
-			f.Close()
-			_ = os.Remove(preCommitPath)
-			return false, err
-		}
 	}
 
 	defer f.Close()
@@ -621,14 +603,14 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 	}
 	merkleProof, err := fmp.GetMerkleProof(file)
 	if err != nil {
+		if stat != nil {
+			logging.Logger.Error("merkle_proof_error", zap.Error(err), zap.String("file_path", fileObjectPath), zap.Int64("file_size", stat.Size()), zap.Int64("file_offset", in.FileSize))
+		}
 		return nil, common.NewError("get_merkle_proof_error", err.Error())
 	}
 
 	proofByte, err := fmp.GetLeafContent(file)
 	if err != nil {
-		if stat != nil {
-			logging.Logger.Error("merkle_proof_error", zap.Error(err), zap.String("file_path", fileObjectPath), zap.Int64("file_size", stat.Size()), zap.Int64("file_offset", in.FileSize))
-		}
 		return nil, common.NewError("get_leaf_content_error", err.Error())
 	}
 
