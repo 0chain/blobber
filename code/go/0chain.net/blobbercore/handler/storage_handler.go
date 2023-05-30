@@ -40,7 +40,7 @@ type StorageHandler struct{}
 func (fsh *StorageHandler) verifyAllocation(ctx context.Context, allocationID, allocationTx string, readonly bool) (alloc *allocation.Allocation, err error) {
 	fmt.Println("allocation ID : ", allocationID)
 	fmt.Println("allocation TX : ", allocationTx)
-	if allocationID == "" {
+	if allocationTx == "" {
 		return nil, common.NewError("verify_allocation",
 			"invalid allocation id")
 	}
@@ -148,13 +148,6 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 
 	result := fileref.GetListingData(ctx)
 
-	commitMetaTxns, err := reference.GetCommitMetaTxns(ctx, fileref.ID)
-	if err != nil {
-		Logger.Error("Failed to get commitMetaTxns from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
-	}
-
-	result["commit_meta_txns"] = commitMetaTxns
-
 	if !isOwner && !isRepairer {
 		var authTokenString = r.FormValue("auth_token")
 
@@ -205,11 +198,6 @@ func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Reque
 
 	for _, fileref := range filerefs {
 		converted := fileref.GetListingData(ctx)
-		commitMetaTxns, err := reference.GetCommitMetaTxns(ctx, fileref.ID)
-		if err != nil {
-			Logger.Error("Failed to get commitMetaTxns from refID", zap.Error(err), zap.Any("ref_id", fileref.ID))
-		}
-		converted["commit_meta_txns"] = commitMetaTxns
 		result = append(result, converted)
 	}
 

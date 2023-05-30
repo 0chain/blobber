@@ -274,14 +274,7 @@ func FileRefToFileRefGRPC(ref *reference.Ref) *blobbergrpc.FileRef {
 }
 
 func convertFileRefToFileMetaDataGRPC(fileref *reference.Ref) *blobbergrpc.FileMetaData {
-	var commitMetaTxnsGRPC []*blobbergrpc.CommitMetaTxn
-	for _, c := range fileref.CommitMetaTxns {
-		commitMetaTxnsGRPC = append(commitMetaTxnsGRPC, &blobbergrpc.CommitMetaTxn{
-			RefId:     c.RefID,
-			TxnId:     c.TxnID,
-			CreatedAt: c.CreatedAt.UnixNano(),
-		})
-	}
+
 	return &blobbergrpc.FileMetaData{
 		Type:                fileref.Type,
 		LookupHash:          fileref.LookupHash,
@@ -302,7 +295,6 @@ func convertFileRefToFileMetaDataGRPC(fileref *reference.Ref) *blobbergrpc.FileM
 		ActualThumbnailSize: fileref.ActualThumbnailSize,
 		ActualThumbnailHash: fileref.ActualThumbnailHash,
 		EncryptedKey:        fileref.EncryptedKey,
-		CommitMetaTxns:      commitMetaTxnsGRPC,
 		CreatedAt:           int64(fileref.CreatedAt),
 		UpdatedAt:           int64(fileref.UpdatedAt),
 	}
@@ -339,14 +331,6 @@ func FileRefGRPCToFileRef(ref *blobbergrpc.FileRef) *reference.Ref {
 }
 
 func convertFileMetaDataGRPCToFileRef(metaData *blobbergrpc.FileMetaData) *reference.Ref {
-	var commitMetaTxnsGRPC []reference.CommitMetaTxn
-	for _, c := range metaData.CommitMetaTxns {
-		commitMetaTxnsGRPC = append(commitMetaTxnsGRPC, reference.CommitMetaTxn{
-			RefID:     c.RefId,
-			TxnID:     c.TxnId,
-			CreatedAt: time.Unix(0, c.CreatedAt),
-		})
-	}
 	return &reference.Ref{
 		Type:                metaData.Type,
 		LookupHash:          metaData.LookupHash,
@@ -367,7 +351,6 @@ func convertFileMetaDataGRPCToFileRef(metaData *blobbergrpc.FileMetaData) *refer
 		ActualThumbnailSize: metaData.ActualThumbnailSize,
 		ActualThumbnailHash: metaData.ActualThumbnailHash,
 		EncryptedKey:        metaData.EncryptedKey,
-		CommitMetaTxns:      commitMetaTxnsGRPC,
 		CreatedAt:           common.Timestamp(metaData.CreatedAt),
 		UpdatedAt:           common.Timestamp(metaData.UpdatedAt),
 	}

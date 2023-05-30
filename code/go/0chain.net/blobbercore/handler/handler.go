@@ -178,9 +178,6 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/connection/rollback/{allocation}",
 		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnection(RollbackHandler))))
 
-	r.HandleFunc("/v1/file/commitmetatxn/{allocation}",
-		RateLimitByCommmitRL(common.ToJSONResponse(WithConnection(CommitMetaTxnHandler))))
-
 	//object info related apis
 	r.HandleFunc("/allocation",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(AllocationHandler))))
@@ -391,17 +388,6 @@ func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 //	200:
 //	400:
 //	500:
-
-func CommitMetaTxnHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
-	ctx = setupHandlerContext(ctx, r)
-
-	response, err := storageHandler.AddCommitMetaTxn(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
-}
 
 // TODO: add swagger
 func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
