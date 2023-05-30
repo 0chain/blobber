@@ -6,6 +6,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"regexp"
 	"testing"
@@ -142,6 +143,10 @@ func Test_GetAllocation(t *testing.T) {
 			mockSetup: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
 
+				fmt.Println("alloc.Tx", alloc.Tx)
+				fmt.Println("jayash Logging : ", alloc.ID, alloc.Tx, alloc.Expiration)
+				fmt.Println(alloc.Terms[0].ID, alloc.Terms[0].AllocationID)
+
 				mock.ExpectQuery(
 					regexp.QuoteMeta(`SELECT * FROM "allocations" WHERE`)).
 					WithArgs(alloc.Tx).
@@ -238,7 +243,6 @@ func Test_GetAllocation(t *testing.T) {
 				}
 
 				resp, err := grpcCl.GetAllocation(context.TODO(), test.args.allocationR)
-
 				assert.Equal(t, test.wantCode, status.Code(err).String())
 				if err == nil {
 					assert.Equal(t, test.wantAlloc, resp.Allocation)
