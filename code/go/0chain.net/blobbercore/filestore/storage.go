@@ -408,6 +408,16 @@ func (fs *FileStore) DeleteTempFile(allocID, conID string, fd *FileInputData) er
 	return nil
 }
 
+func (fs *FileStore) DeleteAllocation(allocID string) {
+	preCommitDir := fs.getPreCommitDir(allocID)
+	_ = os.RemoveAll(preCommitDir)
+	tempDir := fs.getAllocTempDir(allocID)
+	_ = os.RemoveAll(tempDir)
+	alloDir := fs.getAllocDir(allocID)
+	_ = os.RemoveAll(alloDir)
+	fs.removeAllocation(allocID)
+}
+
 func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error) {
 	var fileObjectPath string
 	var err error

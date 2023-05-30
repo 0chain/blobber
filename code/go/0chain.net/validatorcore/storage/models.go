@@ -52,13 +52,12 @@ func (r *DirMetaData) GetHash() string {
 }
 
 func (r *DirMetaData) CalculateHash() string {
-
 	childHashes := make([]string, len(r.Children))
 	for index, childRef := range r.Children {
 		childHashes[index] = childRef.GetHash()
 	}
 
-	return encryption.Hash(strings.Join(childHashes, ":"))
+	return encryption.Hash(r.GetHashData() + strings.Join(childHashes, ":"))
 }
 
 func (r *DirMetaData) GetNumBlocks() int64 {
@@ -67,6 +66,11 @@ func (r *DirMetaData) GetNumBlocks() int64 {
 
 func (r *DirMetaData) GetType() string {
 	return r.Type
+}
+
+func (r *DirMetaData) GetHashData() string {
+	return fmt.Sprintf("%s:%s:%s", r.AllocationID, r.Path, r.FileID)
+
 }
 
 type FileMetaData struct {

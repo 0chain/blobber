@@ -81,8 +81,6 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 					Where("allocation_id=? AND validation_root=?", nf.AllocationID, res.ValidationRoot).
 					Count(&count)
 
-				db.Model(&reference.CommitMetaTxn{}).Delete("ref_id = ?", res.Id)
-
 				if count != 0 && res.ThumbnailHash == "" {
 					continue
 				}

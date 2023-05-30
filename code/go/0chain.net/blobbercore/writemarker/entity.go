@@ -15,10 +15,10 @@ import (
 )
 
 type WriteMarker struct {
-	AllocationRoot         string           `gorm:"column:allocation_root;size:64;primaryKey;index:idx_alloc" json:"allocation_root"`
+	AllocationRoot         string           `gorm:"column:allocation_root;size:64;primaryKey" json:"allocation_root"`
 	PreviousAllocationRoot string           `gorm:"column:prev_allocation_root;size:64" json:"prev_allocation_root"`
 	FileMetaRoot           string           `gorm:"column:file_meta_root;size:64" json:"file_meta_root"`
-	AllocationID           string           `gorm:"column:allocation_id;size:64;index:idx_seq,unique,priority:1;index:idx_alloc" json:"allocation_id"`
+	AllocationID           string           `gorm:"column:allocation_id;size:64;index:idx_seq,unique,priority:1" json:"allocation_id"`
 	Size                   int64            `gorm:"column:size" json:"size"`
 	BlobberID              string           `gorm:"column:blobber_id;size:64" json:"blobber_id"`
 	Timestamp              common.Timestamp `gorm:"column:timestamp;primaryKey" json:"timestamp"`
@@ -112,13 +112,13 @@ func (wm *WriteMarkerEntity) OnChain() bool {
 }
 
 // GetWriteMarkerEntity get WriteMarkerEntity from postgres
-func GetWriteMarkerEntity(ctx context.Context, allocation_root, allocationID string) (*WriteMarkerEntity, error) {
+func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	wm := &WriteMarkerEntity{}
 	// err := db.First(wm, "allocation_root = ?", allocation_root).Error
 	err := db.Table((WriteMarkerEntity{}).TableName()).
-		Where("allocation_root=? and allocation_id=?", allocation_root, allocationID).
-		Order("sequence desc").
+		Where("allocation_root=?", allocation_root).
+		Order("timestamp desc").
 		Take(wm).Error
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAlloc
 	// seq of end allocation root
 	endWM := WriteMarkerEntity{}
 	err = db.Table((WriteMarkerEntity{}).TableName()).
-		Where("allocation_id=? AND allocation_root=?", allocationID, endAllocationRoot).
+		Where("allocation_root=?", endAllocationRoot).
 		Select("sequence").
 		Order("sequence desc").
 		Take(&endWM).Error

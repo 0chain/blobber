@@ -22,7 +22,6 @@ type tableNameI interface {
 
 var tableModels = []tableNameI{
 	new(reference.Ref),
-	new(reference.CommitMetaTxn),
 	new(reference.ShareInfo),
 	new(challenge.ChallengeEntity),
 	new(challenge.ChallengeTiming),
