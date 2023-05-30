@@ -2,8 +2,6 @@ package writemarker
 
 import (
 	"context"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -39,11 +37,6 @@ type Mutex struct {
 // If lock exists and is of same connection ID then lock's createdAt is updated
 // If lock exists and is of other connection ID then `pending` response is sent.
 func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string) (*LockResult, error) {
-	logging.Logger.Info("Locking write marker",
-		zap.String("allocation_id", allocationID),
-		zap.String("connection_id", connectionID),
-		zap.Any("allocation ID ", ctx.Value("Allocation-Id")))
-
 	if allocationID == "" {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "allocationID")
 	}
