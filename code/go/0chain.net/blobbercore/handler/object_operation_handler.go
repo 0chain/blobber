@@ -165,7 +165,6 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (interface{}, error) {
 	// get client and allocation ids
 
-	fmt.Println("DownloadFile", ctx)
 	var (
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
