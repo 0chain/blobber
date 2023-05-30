@@ -169,7 +169,7 @@ jobs:
           sharder_image: staging
           blobber_image: ${{ env.TAG }}-${{ env.SHORT_SHA }}
           validator_image: ${{ env.TAG }}-${{ env.SHORT_SHA }}
-          zbox_image: staging
+          zbox_image: fix-allocation-56cc9101
           zblock_image: staging
           zdns_image: staging
           explorer_image: latest
