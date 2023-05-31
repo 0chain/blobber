@@ -171,6 +171,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		challengeResponse, err := filestore.GetFileStore().GetBlocksMerkleTreeForChallenge(challengeReadInput)
 
 		if err != nil {
+			logging.Logger.Error("Block number to be challenged:", zap.Error(err), zap.Any("fromPreCommit", fromPreCommit), zap.Any("obejct_path", objectPath))
 			allocMu.RUnlock()
 			cr.CancelChallenge(ctx, err)
 			return common.NewError("blockdata_not_found", err.Error())
