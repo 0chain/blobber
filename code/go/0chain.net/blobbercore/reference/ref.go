@@ -435,7 +435,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 	childHashes := make([]string, l)
 	childFileMetaHashes := make([]string, l)
 	childPathHashes := make([]string, l)
-	var refNumBlocks, size int64
+	var refNumBlocks, size, actualSize int64
 
 	for i, childRef := range r.Children {
 		if childRef.HashToBeComputed {
@@ -450,6 +450,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 		childPathHashes[i] = childRef.PathHash
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
+		actualSize += childRef.ActualFileSize
 	}
 
 	r.FileMetaHash = encryption.Hash(r.GetHashData() + strings.Join(childFileMetaHashes, ":"))
@@ -457,6 +458,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.NumBlocks = refNumBlocks
 	r.Size = size
+	r.ActualFileSize = actualSize
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
 	return r.Hash, err
