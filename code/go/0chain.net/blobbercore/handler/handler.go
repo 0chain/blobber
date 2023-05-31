@@ -224,6 +224,7 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/getstats", RateLimitByCommmitRL(common.ToJSONResponse(stats.GetStatsHandler)))
 	// r.HandleFunc("/challengetimings", common.AuthenticateAdmin(common.ToJSONResponse(GetChallengeTimings)))
 	r.HandleFunc("/challengetimings", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTimings)))
+	r.HandleFunc("/challenge-timings-by-challengeId", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTiming)))
 
 	//marketplace related
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
@@ -336,6 +337,8 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
+
+	fmt.Println(ctx)
 
 	response, err := storageHandler.GetAllocationDetails(ctx, r)
 	if err != nil {
