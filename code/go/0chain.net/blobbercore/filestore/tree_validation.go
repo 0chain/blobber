@@ -139,7 +139,7 @@ func (fp fixedMerkleTreeProof) GetMerkleProof(r io.ReaderAt) (proof [][]byte, er
 	b := make([]byte, FMTSize)
 	n, err := r.ReadAt(b, io.SeekStart)
 	if n != FMTSize {
-		return nil, errors.New("incomplete read" + fmt.Sprintf(" read %d bytes", n))
+		return nil, fmt.Errorf("invalid fixed merkle tree size: %d", n)
 	}
 	if err != nil {
 		return nil, err
