@@ -163,7 +163,8 @@ func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 
 func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
 
-	logging.Logger.Info("Committing file")
+	logging.Logger.Info("Committing write", zap.String("allocation_id", allocID), zap.Any("file_data", fileData))
+
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
 
 	fileHash := fileData.ValidationRoot
