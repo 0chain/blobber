@@ -35,7 +35,6 @@ type Ref struct {
 	AllocationID            string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_lookup_hash_alloc,priority:1" dirlist:"allocation_id" filelist:"allocation_id"`
 	LookupHash              string `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash_alloc,priority:2" dirlist:"lookup_hash" filelist:"lookup_hash"`
 	Name                    string `gorm:"column:name;size:100;not null;index:idx_name_gin:gin" dirlist:"name" filelist:"name"`
-	ThumbnailFilename       string `gorm:"column:thumbnail_filename" dirlist:"thumbnail_filename" filelist:"thumbnail_filename"`
 	Path                    string `gorm:"column:path;size:1000;not null;index:idx_path_alloc,priority:2;index:path_idx" dirlist:"path" filelist:"path"`
 	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
 	Hash                    string `gorm:"column:hash;size:64;not null" dirlist:"hash" filelist:"hash"`
