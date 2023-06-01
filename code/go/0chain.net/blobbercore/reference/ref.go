@@ -244,8 +244,6 @@ func GetReferenceByLookupHashForDownload(ctx context.Context, allocationID, path
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	err := db.Transaction(func(tx *gorm.DB) error {
-
-		// err := tx.Exec("SELECT * FROM reference_objects WHERE allocation_id=? AND lookup_hash=? FOR UPDATE", allocationID, pathHash).First(ref).Error
 		err := tx.Clauses(clause.Locking{Strength: "SHARE"}).Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
 		if err != nil {
 			return err
