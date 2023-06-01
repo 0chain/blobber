@@ -5,10 +5,10 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  push: 
+  push:
     branches:
       - staging
-    tags: 
+    tags:
       - '*'
   pull_request:
   workflow_dispatch:
@@ -22,59 +22,7 @@ jobs:
   blobber:
     runs-on: [self-hosted, arc-runner]
     steps:
-      - name: Set docker image tag 
-        run: |
-          if [[ "${{github.ref}}" == refs/pull/* ]]; then
-            tag=${GITHUB_REF/\/merge/}
-            echo "TAG=$(echo pr-${tag:10})" >> $GITHUB_ENV
-          else
-            echo "TAG=$(echo ${GITHUB_REF#refs/*/} | sed 's/\//-/g')" >> $GITHUB_ENV
-          fi
-
-          echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
-          echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
-          
-      - name: Setup go 
-        uses: actions/setup-go@v3
-        with:
-          go-version: ^1.19 # The Go version to download (if necessary) and use.
-
-      - name: Clone blobber
-        uses: actions/checkout@v1
-      
-      - name: Set up Docker Buildx
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install wget
-          sudo apt-get install ca-certificates curl gnupg lsb-release -y
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-          sudo apt-get update -y
-          sudo apt-get install docker-ce docker-ce-cli containerd.io -y
-          export DOCKER_CLI_EXPERIMENTAL=enabled
-          docker run --privileged --rm tonistiigi/binfmt --install all
-          docker context create blobber_buildx
-      
-      - name: Login to Docker Hub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
-      - name: Build blobber
-        run: |
-          SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
-          export DOCKER_IMAGE_BASE="${BLOBBER_REGISTRY}:base"
-          export DOCKER_IMAGE_SWAGGER="${BLOBBER_REGISTRY}:swagger_test"
-          export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
-          export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
-          docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
-          ./docker.local/bin/build.base.sh && ./docker.local/bin/build.blobber.sh
-
-  validator:
-    runs-on: [self-hosted, arc-runner]
-    steps:
-      - name: Set docker image tag 
+      - name: Set docker image tag
         run: |
           if [[ "${{github.ref}}" == refs/pull/* ]]; then
             tag=${GITHUB_REF/\/merge/}
@@ -106,7 +54,59 @@ jobs:
           export DOCKER_CLI_EXPERIMENTAL=enabled
           docker run --privileged --rm tonistiigi/binfmt --install all
           docker context create blobber_buildx
-        
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build blobber
+        run: |
+          SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
+          export DOCKER_IMAGE_BASE="${BLOBBER_REGISTRY}:base"
+          export DOCKER_IMAGE_SWAGGER="${BLOBBER_REGISTRY}:swagger_test"
+          export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
+          export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
+          docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
+          ./docker.local/bin/build.base.sh && ./docker.local/bin/build.blobber.sh
+
+  validator:
+    runs-on: [self-hosted, arc-runner]
+    steps:
+      - name: Set docker image tag
+        run: |
+          if [[ "${{github.ref}}" == refs/pull/* ]]; then
+            tag=${GITHUB_REF/\/merge/}
+            echo "TAG=$(echo pr-${tag:10})" >> $GITHUB_ENV
+          else
+            echo "TAG=$(echo ${GITHUB_REF#refs/*/} | sed 's/\//-/g')" >> $GITHUB_ENV
+          fi
+
+          echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
+          echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
+
+      - name: Setup go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ^1.19 # The Go version to download (if necessary) and use.
+
+      - name: Clone blobber
+        uses: actions/checkout@v1
+
+      - name: Set up Docker Buildx
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install wget
+          sudo apt-get install ca-certificates curl gnupg lsb-release -y
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update -y
+          sudo apt-get install docker-ce docker-ce-cli containerd.io -y
+          export DOCKER_CLI_EXPERIMENTAL=enabled
+          docker run --privileged --rm tonistiigi/binfmt --install all
+          docker context create blobber_buildx
+
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
@@ -169,12 +169,12 @@ jobs:
           sharder_image: staging
           blobber_image: ${{ env.TAG }}-${{ env.SHORT_SHA }}
           validator_image: ${{ env.TAG }}-${{ env.SHORT_SHA }}
-          zbox_image:  fix-allocation-bd901afb
+          zbox_image: staging
           zblock_image: staging
           zdns_image: staging
           explorer_image: latest
           zsearch_image: staging
-          zbox_cli_branch: fix/allocation
+          zbox_cli_branch: staging
           zwallet_cli_branch: staging
           custom_go_sdk_version: staging
           SUBGRAPH_API_URL: ${{ secrets.SUBGRAPH_API_URL }}
@@ -188,7 +188,7 @@ jobs:
         with:
           system_tests_branch: master
           network: ${{ env.NETWORK_URL }}
-          zbox_cli_branch: fix/allocation
+          zbox_cli_branch: staging
           zwallet_cli_branch: staging
           svc_account_secret: ${{ secrets.SVC_ACCOUNT_SECRET }}
           deploy_report_page: false
