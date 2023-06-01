@@ -203,8 +203,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		if err != nil {
 			return false, common.NewError("read_error", err.Error())
 		}
-		pathWriter := fs.pathWriter(fileData.Path)
-		_, err = io.Copy(h, pathWriter)
+		_, err = h.Write([]byte(fileData.Path))
 		if err != nil {
 			return false, common.NewError("read_error", err.Error())
 		}
