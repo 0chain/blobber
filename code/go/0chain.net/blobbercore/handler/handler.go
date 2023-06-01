@@ -842,9 +842,8 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	var (
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
-		allocationID = ctx.Value(constants.ContextKeyAllocationID)
-	).(string)
-	clientID = ctx.Value(constants.ContextKeyClient).(string)
+		allocationID = ctx.Value(constants.ContextKeyAllocationID).(string)
+		clientID     = ctx.Value(constants.ContextKeyClient).(string)
 	)
 
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, allocationTx, true)
@@ -929,9 +928,8 @@ func ListShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	var (
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
-		allocationID = ctx.Value(constants.ContextKeyAllocationID)
-	).(string)
-	clientID = ctx.Value(constants.ContextKeyClient).(string)
+		allocationID = ctx.Value(constants.ContextKeyAllocationID).(string)
+		clientID     = ctx.Value(constants.ContextKeyClient).(string)
 	)
 
 	limit, err := common.GetOffsetLimitOrderParam(r.URL.Query())

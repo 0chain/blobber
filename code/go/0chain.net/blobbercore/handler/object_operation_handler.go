@@ -168,9 +168,8 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	var (
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
-		allocationID = ctx.Value(constants.ContextKeyAllocationID)
-	).(string)
-	alloc * allocation.Allocation
+		allocationID = ctx.Value(constants.ContextKeyAllocationID).(string)
+		alloc        *allocation.Allocation
 	)
 
 	if clientID == "" {
