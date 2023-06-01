@@ -42,6 +42,8 @@ github.com/0chain/errors v1.0.3 h1:QQZPFxTfnMcRdt32DXbzRQIfGWmBsKoEdszKQDb0rRM=
 github.com/0chain/errors v1.0.3/go.mod h1:xymD6nVgrbgttWwkpSCfLLEJbFO6iHGQwk/yeSuYkIc=
 github.com/0chain/gosdk v1.8.17-0.20230530150540-d006fa6a5300 h1:fRb76Vc2E7CVwCpeLPZ5SCb1m0PwCzMfESeSYb+HFRM=
 github.com/0chain/gosdk v1.8.17-0.20230530150540-d006fa6a5300/go.mod h1:kkL++gHtfbTQwVIxk3uVkViVbEnzhasUOSHrKyKprFU=
+github.com/0chain/gosdk v1.8.17-0.20230531192622-a959cd93adfe h1:iB1DoUQs4ntqTYkseAz0Y2ePNVkwXM4VbrH2t6+7ZXw=
+github.com/0chain/gosdk v1.8.17-0.20230531192622-a959cd93adfe/go.mod h1:cF5lKOuSSkml6AzUfWFSoPeA80gnRoR1zuXCFlqCWzY=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DATA-DOG/go-sqlmock v1.5.0 h1:Shsta01QNfFxHCfpW6YH2STWB0MudeXXEWMr20OEh60=
@@ -417,6 +419,8 @@ github.com/hashicorp/memberlist v0.1.3/go.mod h1:ajVTdAv/9Im8oMAAj5G31PhhMCZJV2p
 github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/JwenrHc=
 github.com/herumi/bls-go-binary v1.28.2 h1:F0AezsC0M1a9aZjk7g0l2hMb1F56Xtpfku97pDndNZE=
 github.com/herumi/bls-go-binary v1.28.2/go.mod h1:O4Vp1AfR4raRGwFeQpr9X/PQtncEicMoOe6BQt1oX0Y=
+github.com/herumi/bls-go-binary v1.30.4 h1:djGiorPb4lFVRF/lsyB+EHVGVlcE7CYRmJKu72Vdpnk=
+github.com/herumi/bls-go-binary v1.30.4/go.mod h1:O4Vp1AfR4raRGwFeQpr9X/PQtncEicMoOe6BQt1oX0Y=
 github.com/holiman/bloomfilter/v2 v2.0.3 h1:73e0e/V0tCydx14a0SCYS/EWCxgwLZ18CZcZKVu0fao=
 github.com/holiman/uint256 v1.2.0 h1:gpSYcPLWGv4sG43I2mVLiDZCNDh/EpGjSk8tmtxitHM=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=

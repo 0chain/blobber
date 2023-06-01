@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.8.17-0.20230530150540-d006fa6a5300
+	github.com/0chain/gosdk v1.8.17-0.20230531192622-a959cd93adfe
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-openapi/runtime v0.26.0
@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.2
-	github.com/herumi/bls-go-binary v1.28.2
+	github.com/herumi/bls-go-binary v1.30.4
 	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/koding/cache v0.0.0-20161222233015-e8a81b0b3f20
 	github.com/mitchellh/mapstructure v1.5.0
