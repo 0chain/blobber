@@ -266,9 +266,11 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 			for _, ref := range refs {
 
 				var count int64
-				tx.Model(&reference.Ref{}).
-					Where("allocation_id=? AND validation_root=?", a.AllocationID, ref.PrevValidationRoot).
-					Count(&count)
+				if ref.PrevValidationRoot != "" {
+					tx.Model(&reference.Ref{}).
+						Where("allocation_id=? AND validation_root=?", a.AllocationID, ref.PrevValidationRoot).
+						Count(&count)
+				}
 
 				limitCh <- struct{}{}
 				wg.Add(1)
@@ -279,13 +281,11 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 						wg.Done()
 					}()
 
-					if count == 0 {
-						if ref.PrevValidationRoot != "" {
-							err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevValidationRoot)
-							if err != nil {
-								logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
-									zap.String("validation_root", ref.ValidationRoot))
-							}
+					if count == 0 && ref.PrevValidationRoot != "" {
+						err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevValidationRoot)
+						if err != nil {
+							logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
+								zap.String("validation_root", ref.ValidationRoot))
 						}
 					}
 					err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ValidationRoot)
