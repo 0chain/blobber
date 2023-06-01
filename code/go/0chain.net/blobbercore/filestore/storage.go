@@ -26,6 +26,7 @@ package filestore
 //
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -122,11 +123,6 @@ func (fs *FileStore) MoveToFilestore(allocID, hash string) error {
 	}
 
 	_ = os.Rename(preCommitPath, fPath)
-	afterRename, err := os.Stat(fPath)
-	if err == nil {
-		logging.Logger.Info("File moved to filestore", zap.String("path", fPath), zap.Int64("size", afterRename.Size()))
-	}
-
 	return nil
 }
 
@@ -204,6 +200,11 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 
 		h := sha3.New256()
 		_, err = io.Copy(h, r)
+		if err != nil {
+			return false, common.NewError("read_error", err.Error())
+		}
+		pathWriter := fs.pathWriter(fileData.Path)
+		_, err = io.Copy(h, pathWriter)
 		if err != nil {
 			return false, common.NewError("read_error", err.Error())
 		}
@@ -792,6 +793,13 @@ func (fs *FileStore) updateAllocTempFileSize(allocID string, size int64) {
 	defer alloc.tmpMU.Unlock()
 
 	alloc.tmpFileSize += uint64(size)
+}
+
+func (fs *FileStore) pathWriter(path string) io.Reader {
+
+	pathBytes := []byte(path)
+	buf := bytes.NewBuffer(pathBytes)
+	return buf
 }
 
 // GetTempFilesSizeOfAllocation Get total file sizes of all allocation that are not yet committed
