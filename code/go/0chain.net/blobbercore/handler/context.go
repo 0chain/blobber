@@ -198,7 +198,7 @@ func WithVerify(r *http.Request) (*Context, error) {
 
 	ctx.ClientID = r.Header.Get(common.ClientHeader)
 	ctx.ClientKey = r.Header.Get(common.ClientKeyHeader)
-	ctx.AllocationId = r.Header.Get("Allocation-Id")
+	ctx.AllocationId = r.Header.Get(common.AllocationIdHeader)
 	ctx.Signature = r.Header.Get(common.ClientSignatureHeader)
 
 	if len(ctx.AllocationId) > 0 {

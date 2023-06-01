@@ -110,7 +110,7 @@ func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocat
 }
 
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	alloc, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
 	if err != nil {
@@ -163,7 +163,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 }
 
 func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Request, name string) (result []map[string]interface{}, err error) {
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	alloc, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
 	if err != nil {
@@ -218,7 +218,7 @@ func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Reque
 }
 
 func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (interface{}, error) {
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
 	if err != nil {
@@ -278,7 +278,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 
 func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*blobberhttp.ListResult, error) {
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
@@ -382,7 +382,7 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
@@ -446,7 +446,7 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 }
 
 func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request, resCh chan<- *blobberhttp.ReferencePathResult, errCh chan<- error) {
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
@@ -523,7 +523,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 
 func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResult, error) {
 
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 
@@ -588,7 +588,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 }
 
 func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Request) (*blobberhttp.RecentRefResult, error) {
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 
@@ -665,7 +665,7 @@ func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Req
 // Updated gives rows that is updated compared to the date given. And deleted gives deleted refs compared to the date given.
 // Updated date time format should be as declared in above constant; OffsetDateLayout
 func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobberhttp.RefResult, error) {
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 

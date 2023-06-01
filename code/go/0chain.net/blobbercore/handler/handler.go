@@ -305,7 +305,6 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 
 func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	var vars = mux.Vars(r)
-	AllocationIdKey := "allocation_id"
 
 	ctx = context.WithValue(ctx, constants.ContextKeyClient,
 		r.Header.Get(common.ClientHeader))
@@ -314,7 +313,7 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
 		vars["allocation"])
 
-	ctx = context.WithValue(ctx, AllocationIdKey, r.Header.Get("Allocation-Id"))
+	ctx = context.WithValue(ctx, constants.ContextKeyAllocationID, r.Header.Get(common.AllocationIdHeader))
 
 	// signature is not requered for all requests, but if header is empty it won`t affect anything
 	ctx = context.WithValue(ctx, constants.ContextKeyClientSignatureHeaderKey, r.Header.Get(common.ClientSignatureHeader))
@@ -784,7 +783,7 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
 
-	allocationID := ctx.Value("allocation_id").(string)
+	allocationID := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, allocationTx, true)
 	if err != nil {
@@ -843,8 +842,9 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	var (
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
-		allocationID = ctx.Value("allocation_id").(string)
-		clientID     = ctx.Value(constants.ContextKeyClient).(string)
+		allocationID = ctx.Value(constants.ContextKeyAllocationID)
+	).(string)
+	clientID = ctx.Value(constants.ContextKeyClient).(string)
 	)
 
 	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, allocationTx, true)
@@ -929,8 +929,9 @@ func ListShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	var (
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
-		allocationID = ctx.Value("allocation_id").(string)
-		clientID     = ctx.Value(constants.ContextKeyClient).(string)
+		allocationID = ctx.Value(constants.ContextKeyAllocationID)
+	).(string)
+	clientID = ctx.Value(constants.ContextKeyClient).(string)
 	)
 
 	limit, err := common.GetOffsetLimitOrderParam(r.URL.Query())

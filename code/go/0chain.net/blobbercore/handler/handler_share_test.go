@@ -140,7 +140,7 @@ func TestHandlers_Share(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					r.Header.Set("Allocation-Id", alloc.ID)
+					r.Header.Set(common.AllocationIdHeader, alloc.ID)
 
 					return r
 				}(),
@@ -175,7 +175,7 @@ func TestHandlers_Share(t *testing.T) {
 
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-					r.Header.Set("Allocation-Id", alloc.ID)
+					r.Header.Set(common.AllocationIdHeader, alloc.ID)
 
 					return r
 				}(),
@@ -231,7 +231,7 @@ func TestHandlers_Share(t *testing.T) {
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
-					r.Header.Set("Allocation-Id", alloc.ID)
+					r.Header.Set(common.AllocationIdHeader, alloc.ID)
 
 					return r
 				}(),
@@ -323,7 +323,7 @@ func TestHandlers_Share(t *testing.T) {
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
-					r.Header.Set("Allocation-Id", alloc.ID)
+					r.Header.Set(common.AllocationIdHeader, alloc.ID)
 
 					return r
 				}(),
@@ -406,7 +406,7 @@ func TestHandlers_Share(t *testing.T) {
 
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-					r.Header.Set("Allocation-Id", alloc.ID)
+					r.Header.Set(common.AllocationIdHeader, alloc.ID)
 
 					return r
 				}(),
@@ -481,7 +481,7 @@ func TestHandlers_Share(t *testing.T) {
 
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
-					r.Header.Set("Allocation-Id", alloc.ID)
+					r.Header.Set(common.AllocationIdHeader, alloc.ID)
 
 					return r
 				}(),

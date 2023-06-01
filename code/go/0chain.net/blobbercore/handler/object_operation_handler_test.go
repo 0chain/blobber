@@ -127,7 +127,7 @@ func TestDownloadFile(t *testing.T) {
 		req.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", p.inData.numBlocks))
 		req.Header.Set("X-Submit-RM", fmt.Sprint(true))
 		req.Header.Set("X-Read-Marker", string(rmData))
-		req.Header.Set("Allocation-Id", mockAllocationId)
+		req.Header.Set(common.AllocationIdHeader, mockAllocationId)
 
 		if p.useAuthTicket {
 			authTicket := &marker.AuthTicket{

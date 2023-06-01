@@ -20,6 +20,8 @@ const (
 
 	// ClientSignatureHeader represents http request header contains signature.
 	ClientSignatureHeader = "X-App-Client-Signature"
+
+	AllocationIdHeader = "ALLOCATION-ID"
 )
 
 /*ReqRespHandlerf - a type for the default handler signature */

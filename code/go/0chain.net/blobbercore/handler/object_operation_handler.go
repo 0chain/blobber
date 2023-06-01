@@ -168,8 +168,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	var (
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
-		allocationID = ctx.Value("allocation_id").(string)
-		alloc        *allocation.Allocation
+		allocationID = ctx.Value(constants.ContextKeyAllocationID)
+	).(string)
+	alloc * allocation.Allocation
 	)
 
 	if clientID == "" {
@@ -387,7 +388,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request) error {
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		return common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -433,7 +434,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
 	}
 
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
@@ -674,7 +675,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (interface{}, error) {
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -760,7 +761,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -868,7 +869,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 
 func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (interface{}, error) {
 
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
@@ -1023,7 +1024,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 }
 
 func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
@@ -1118,7 +1119,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE / PATCH instead")
 	}
 
-	allocationId := ctx.Value("allocation_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 
