@@ -19,7 +19,7 @@ require (
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/selvatico/go-mocket v1.0.7
 	github.com/spf13/viper v1.16.0
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.9.0
 	golang.org/x/net v0.10.0 // indirect
