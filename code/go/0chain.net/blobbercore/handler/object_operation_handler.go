@@ -913,7 +913,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	}
 
 	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(
-		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root", "thumbnail_filename"})
+		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -982,7 +982,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 	fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, connectionObj.AllocationID, path,
-		[]string{"path", "name", "size", "hash", "validation_root", "fixed_merkle_root", "thumbnail_filename"})
+		[]string{"path", "name", "size", "hash", "validation_root", "fixed_merkle_root"})
 
 	if err != nil {
 		Logger.Error("invalid_file", zap.Error(err))
