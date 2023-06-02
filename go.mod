@@ -61,7 +61,7 @@ require (
 	github.com/ethereum/go-ethereum v1.11.4 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/gin-gonic/gin v1.9.0 // indirect
+	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
 	github.com/go-openapi/errors v0.20.3 // indirect
@@ -96,7 +96,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.16 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/pelletier/go-toml/v2 v2.0.7 // indirect
+	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/philhofer/fwd v1.1.2-0.20210722190033-5c56ac6d0bb9 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
