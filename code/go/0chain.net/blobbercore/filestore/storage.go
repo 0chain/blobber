@@ -590,7 +590,6 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 		}
 	}
 
-	stat, _ := file.Stat()
 	defer file.Close()
 
 	fmp := &fixedMerkleTreeProof{
@@ -604,9 +603,6 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 	}
 	merkleProof, err := fmp.GetMerkleProof(file)
 	if err != nil {
-		if stat != nil {
-			logging.Logger.Error("merkle_proof_error", zap.Error(err), zap.String("file_path", fileObjectPath), zap.Int64("file_size", stat.Size()), zap.Int64("file_offset", in.FileSize))
-		}
 		return nil, common.NewError("get_merkle_proof_error", err.Error())
 	}
 

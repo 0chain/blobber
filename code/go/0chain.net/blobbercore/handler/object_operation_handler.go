@@ -620,13 +620,15 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err = db.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
-	Logger.Info("write_marker_redeemed", zap.String("alloc_id", allocationID), zap.String("allocation_root", writeMarker.AllocationRoot))
-
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
 		if !errors.Is(common.ErrFileWasDeleted, err) {
 			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 		}
+	}
+	err = writemarkerEntity.SendToChan(ctx)
+	if err != nil {
+		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
 	}
 
 	result.Changes = connectionObj.Changes
@@ -647,15 +649,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	db.Delete(connectionObj)
-	err = writemarkerEntity.SendToChan(ctx)
-	if err != nil {
-		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
-	}
-	Logger.Info("write_marker_redeemed", zap.String("alloc_id", allocationID), zap.String("allocation_root", writeMarker.AllocationRoot))
 	go allocation.DeleteConnectionObjEntry(connectionID)
 
 	Logger.Info("[commit]"+commitOperation,
 		zap.String("alloc_id", allocationID),
+		zap.String("allocation_root", writeMarker.AllocationRoot),
 		zap.String("input", input),
 		zap.Duration("get_alloc", elapsedAllocation),
 		zap.Duration("get-lock", elapsedGetLock),
