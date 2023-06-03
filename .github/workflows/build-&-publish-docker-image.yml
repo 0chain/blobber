@@ -37,7 +37,7 @@ jobs:
       - name: Setup go 
         uses: actions/setup-go@v3
         with:
-          go-version: ^1.19 # The Go version to download (if necessary) and use.
+          go-version: ^1.20 # The Go version to download (if necessary) and use.
 
       - name: Clone blobber
         uses: actions/checkout@v1
@@ -89,7 +89,7 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@v3
         with:
-          go-version: ^1.19 # The Go version to download (if necessary) and use.
+          go-version: ^1.20 # The Go version to download (if necessary) and use.
 
       - name: Clone blobber
         uses: actions/checkout@v1
@@ -179,6 +179,7 @@ jobs:
           custom_go_sdk_version: staging
           SUBGRAPH_API_URL: ${{ secrets.SUBGRAPH_API_URL }}
           TENDERLY_FORK_ID: ${{ secrets.TENDERLY_FORK_ID }}
+          graphnode_sc: ${{ secrets.GRAPHNODE_SC }}
           graphnode_network: ${{ secrets.GRAPHNODE_NETWORK }}
           graphnode_ethereum_node_url: https://rpc.tenderly.co/fork/${{ secrets.TENDERLY_FORK_ID }}
 
