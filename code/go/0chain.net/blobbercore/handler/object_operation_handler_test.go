@@ -486,8 +486,7 @@ func TestDownloadFile(t *testing.T) {
 				setupOutMock(t, test.parameters, *rm)
 
 				ctx := setupCtx(test.parameters)
-				AllocationIdKey := "allocation_id"
-				ctx = context.WithValue(ctx, AllocationIdKey, mockAllocationId)
+				ctx = context.WithValue(ctx, constants.ContextKeyAllocationID, mockAllocationId)
 
 				var sh StorageHandler
 				_, err := sh.DownloadFile(ctx, request)
