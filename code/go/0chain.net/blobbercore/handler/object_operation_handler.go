@@ -1242,7 +1242,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	Logger.Info("Rollback request received")
 
-	allocationId := ctx.Value("allocaton_id").(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
