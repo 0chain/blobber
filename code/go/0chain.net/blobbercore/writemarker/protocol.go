@@ -172,10 +172,6 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 		return common.NewError("write_marker_validation_failed", "Write Marker is not for the same allocation transaction")
 	}
 
-	if wme.WM.AllocationRoot == "" {
-		return common.NewError("write_marker_validation_failed", "Write Marker allocation root is empty")
-	}
-
 	if wme.WM.Size != 0 {
 		return common.NewError("empty write_marker_validation_failed", fmt.Sprintf("Write Marker size is %v but should be 0", wme.WM.Size))
 	}
