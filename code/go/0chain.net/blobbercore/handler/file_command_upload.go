@@ -51,6 +51,10 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 	fileChanger := &allocation.UploadFileChanger{}
 
+	if fileChanger.Path == "/" {
+		return common.NewError("invalid_path", "Invalid path. Cannot upload to root directory")
+	}
+
 	uploadMetaString := req.FormValue(UploadMeta)
 	err := json.Unmarshal([]byte(uploadMetaString), fileChanger)
 	if err != nil {
