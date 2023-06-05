@@ -194,6 +194,9 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		postData["challenge_proof"] = challengeResponse
 	}
 
+	if objectPath == nil {
+		objectPath = &reference.ObjectPath{}
+	}
 	err = UpdateChallengeTimingProofGenerationAndFileSize(
 		cr.ChallengeID,
 		proofGenTime,
