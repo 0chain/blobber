@@ -200,6 +200,7 @@ func WithVerify(r *http.Request) (*Context, error) {
 	ctx.ClientKey = r.Header.Get(common.ClientKeyHeader)
 	ctx.AllocationId = r.Header.Get(common.AllocationIdHeader)
 	ctx.Signature = r.Header.Get(common.ClientSignatureHeader)
+	allocationTx := ctx.Vars["allocation"]
 
 	if len(ctx.AllocationId) > 0 {
 
@@ -220,7 +221,7 @@ func WithVerify(r *http.Request) (*Context, error) {
 
 		publicKey := alloc.OwnerPublicKey
 
-		valid, err := verifySignatureFromRequest(ctx.AllocationId, ctx.Signature, publicKey)
+		valid, err := verifySignatureFromRequest(allocationTx, ctx.Signature, publicKey)
 
 		if !valid {
 			ctx.StatusCode = http.StatusBadRequest

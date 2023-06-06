@@ -792,7 +792,7 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
 
-	valid, err := verifySignatureFromRequest(allocationID, sign, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, sign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -853,7 +853,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
 
-	valid, err := verifySignatureFromRequest(allocationID, sign, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, sign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -944,7 +944,7 @@ func ListShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
 
-	valid, err := verifySignatureFromRequest(allocationID, sign, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, sign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
