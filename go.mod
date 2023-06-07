@@ -129,3 +129,4 @@ require (
 
 // temporary, for development
 // replace github.com/0chain/gosdk => ../gosdk
+replace github.com/herumi/bls-go-binary => github.com/cnlangzi/bls-go-binary v1.30.7
