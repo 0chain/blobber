@@ -156,7 +156,7 @@ func setupHandlers(r *mux.Router) {
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CreateConnectionHandler)))).
 		Methods(http.MethodPost)
 
-	r.HandleFunc("/v1/file/redeem/{allocation}",
+	r.HandleFunc("/v1/connection/redeem/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RedeemHandler)))).
 		Methods(http.MethodPost, http.MethodOptions)
 
