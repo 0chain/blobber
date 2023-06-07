@@ -127,5 +127,7 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
+replace github.com/herumi/bls-go-binary => github.com/boddumanohar/bls-go-binary v1.30.7
+
 // temporary, for development
 // replace github.com/0chain/gosdk => ../gosdk
