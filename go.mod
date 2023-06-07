@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.8.17-0.20230606102125-d30bc0b95c06
+	github.com/0chain/gosdk v1.8.17-0.20230606143658-3b2f16886e2c
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-openapi/runtime v0.26.0
@@ -129,3 +129,4 @@ require (
 
 // temporary, for development
 // replace github.com/0chain/gosdk => ../gosdk
+replace github.com/herumi/bls-go-binary => github.com/cnlangzi/bls-go-binary v1.30.7
