@@ -156,6 +156,10 @@ func setupHandlers(r *mux.Router) {
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CreateConnectionHandler)))).
 		Methods(http.MethodPost)
 
+	r.HandleFunc("/v1/file/redeem/{allocation}",
+		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RedeemHandler)))).
+		Methods(http.MethodPost, http.MethodOptions)
+
 	r.HandleFunc("/v1/file/rename/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RenameHandler)))).
 		Methods(http.MethodPost, http.MethodOptions)
@@ -402,6 +406,12 @@ func downloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 
 	ctx = setupHandlerContext(ctx, r)
 	return storageHandler.DownloadFile(ctx, r)
+}
+
+func redeemHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
+	ctx = setupHandlerContext(ctx, r)
+	return storageHandler.RedeemReadMarker(ctx, r)
 }
 
 /*listHandler is the handler to respond to list requests from clients*/
