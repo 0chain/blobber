@@ -246,7 +246,10 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 
 	quotaManager.createOrUpdateQuota(dr.ReadMarker.SessionRC, dr.ConnectionID)
 
-	return nil, nil
+	return &blobberhttp.DownloadResponse{
+		Success:  true,
+		LatestRM: &dr.ReadMarker,
+	}, nil
 }
 
 func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (interface{}, error) {

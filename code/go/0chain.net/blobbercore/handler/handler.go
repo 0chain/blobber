@@ -44,6 +44,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
@@ -411,7 +412,12 @@ func downloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 func redeemHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
-	return storageHandler.RedeemReadMarker(ctx, r)
+	resp, err := storageHandler.RedeemReadMarker(ctx, r)
+	if err != nil {
+		logging.Logger.Error("redeemHandler", zap.Error(err))
+		return nil, err
+	}
+	return resp, nil
 }
 
 /*listHandler is the handler to respond to list requests from clients*/
