@@ -413,11 +413,8 @@ func redeemHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
 	resp, err := storageHandler.RedeemReadMarker(ctx, r)
-	if err != nil {
-		logging.Logger.Error("redeemHandler", zap.Error(err))
-		return resp, err
-	}
-	return resp, nil
+	logging.Logger.Info("redeemHandler", zap.Any("resp", resp), zap.Error(err))
+	return resp, err
 }
 
 /*listHandler is the handler to respond to list requests from clients*/

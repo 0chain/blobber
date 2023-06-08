@@ -222,6 +222,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 	}
 
 	if latestRM != nil && latestRM.ReadCounter+(dr.ReadMarker.SessionRC) > dr.ReadMarker.ReadCounter {
+		latestRM.BlobberID = node.Self.ID
 		return &blobberhttp.DownloadResponse{
 			Success:  false,
 			LatestRM: latestRM,
