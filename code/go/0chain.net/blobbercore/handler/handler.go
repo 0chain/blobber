@@ -415,7 +415,7 @@ func redeemHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	resp, err := storageHandler.RedeemReadMarker(ctx, r)
 	if err != nil {
 		logging.Logger.Error("redeemHandler", zap.Error(err))
-		return nil, err
+		return resp, err
 	}
 	return resp, nil
 }
