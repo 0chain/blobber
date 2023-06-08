@@ -38,6 +38,10 @@ func DownloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 	return downloadHandler(ctx, r)
 }
 
+func RedeemHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	return redeemHandler(ctx, r)
+}
+
 /*UploadHandler is the handler to respond to upload requests fro clients*/
 func UploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return uploadHandler(ctx, r)
