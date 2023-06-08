@@ -23,8 +23,10 @@ ENV GIT_COMMIT=$GIT_COMMIT
 RUN CGO_ENABLED=1 go build -v -tags "bn256 development" -ldflags "-X github.com/0chain/blobber/code/go/0chain.net/core/build.BuildTag=$GIT_COMMIT"
 
 # Copy the build artifact into a minimal runtime image:
-FROM alpine:3.17
-RUN apk add gmp gmp-dev openssl-dev
+FROM alpine:3.18
+
+RUN apk add --update --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/main libstdc++ gmp openssl vips
+
 COPY --from=validator_build  /usr/local/lib/libmcl*.so \
                         /usr/local/lib/libbls*.so \
                         /usr/local/lib/
