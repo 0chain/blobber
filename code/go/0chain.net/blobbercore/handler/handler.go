@@ -158,7 +158,7 @@ func setupHandlers(r *mux.Router) {
 		Methods(http.MethodPost)
 
 	r.HandleFunc("/v1/connection/redeem/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RedeemHandler)))).
+		RateLimitByGeneralRL(common.ToByteStream(WithConnection(RedeemHandler)))).
 		Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/rename/{allocation}",
