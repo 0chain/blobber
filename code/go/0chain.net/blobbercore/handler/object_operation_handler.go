@@ -172,7 +172,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 	if clientID == "" {
 		return nil, common.NewError("redeem_readmarker", "invalid client")
 	}
-	Logger.Info("RedeemRequest", zap.Any("clientID", clientID))
+
 	alloc, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
 		return nil, common.NewErrorf("redeem_readmarker", "invalid allocation id passed: %v", err)
@@ -182,7 +182,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 	if err != nil {
 		return nil, err
 	}
-	Logger.Info("RedeemRequest", zap.Any("dr", dr))
+
 	key := clientID + ":" + alloc.ID
 	quotaManager := getQuotaManager()
 
@@ -214,7 +214,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 			return nil, common.NewErrorf("redeem_readmarker", "couldn't get number of blocks pending redeeming: %v", err)
 		}
 	}
-	Logger.Info("ReadMarker", zap.Any("latestMarker", dr.ReadMarker))
+
 	// check out read pool tokens if read_price > 0
 	err = readPreRedeem(ctx, alloc, dr.ReadMarker.SessionRC, pendNumBlocks, clientID)
 	if err != nil {
@@ -239,7 +239,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 	if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
 		return nil, common.NewErrorf("redeem_readmarker", "invalid read marker, "+"failed to verify the read marker: %v", err)
 	}
-	Logger.Info("saving_readmarker", zap.Any("rmObj", rmObj))
+
 	err = readmarker.SaveLatestReadMarker(ctx, &dr.ReadMarker, latestRedeemedRC, latestRM == nil)
 	if err != nil {
 		Logger.Error(err.Error())
