@@ -28,7 +28,7 @@ type DownloadRequestHeader struct {
 	ConnectionID   string
 }
 
-func FromDownloadRequest(allocationID string, req *http.Request) (*DownloadRequestHeader, error) {
+func FromDownloadRequest(allocationID string, req *http.Request, isRedeem bool) (*DownloadRequestHeader, error) {
 	if allocationID == "" {
 		return nil, errors.Throw(common.ErrInvalidParameter, "allocationID")
 	}
@@ -42,7 +42,7 @@ func FromDownloadRequest(allocationID string, req *http.Request) (*DownloadReque
 		req:          req,
 	}
 
-	err := dr.Parse()
+	err := dr.Parse(isRedeem)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func FromDownloadRequest(allocationID string, req *http.Request) (*DownloadReque
 	return dr, nil
 }
 
-func (dr *DownloadRequestHeader) Parse() error {
+func (dr *DownloadRequestHeader) Parse(isRedeem bool) error {
 	if dr.req == nil {
 		return errors.Throw(common.ErrInvalidParameter, "req")
 	}
@@ -64,18 +64,19 @@ func (dr *DownloadRequestHeader) Parse() error {
 	if connectionID != "" {
 		dr.ConnectionID = connectionID
 	}
-
-	pathHash := dr.Get("X-Path-Hash")
-	path := dr.Get("X-Path")
-	if pathHash == "" {
-		if path == "" {
-			return errors.Throw(common.ErrInvalidParameter, "X-Path")
+	if !isRedeem {
+		pathHash := dr.Get("X-Path-Hash")
+		path := dr.Get("X-Path")
+		if pathHash == "" {
+			if path == "" {
+				return errors.Throw(common.ErrInvalidParameter, "X-Path")
+			}
+			pathHash = reference.GetReferenceLookup(dr.allocationID, path)
 		}
-		pathHash = reference.GetReferenceLookup(dr.allocationID, path)
-	}
 
-	dr.PathHash = pathHash
-	dr.Path = path
+		dr.PathHash = pathHash
+		dr.Path = path
+	}
 
 	blockNum := dr.GetInt64("X-Block-Num", 0)
 	if blockNum < 0 {
@@ -96,6 +97,8 @@ func (dr *DownloadRequestHeader) Parse() error {
 			return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
 		}
 		dr.SubmitRM = true
+	} else if isRedeem {
+		return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
 	}
 
 	dr.AuthToken = dr.Get("X-Auth-Token")
