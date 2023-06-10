@@ -166,6 +166,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 	var (
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
+		allocationID = ctx.Value(constants.ContextKeyAllocationID).(string)
 		alloc        *allocation.Allocation
 	)
 
@@ -173,7 +174,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 		return nil, common.NewError("redeem_readmarker", "invalid client")
 	}
 
-	alloc, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	alloc, err := fsh.verifyAllocation(ctx, allocationID, allocationTx, false)
 	if err != nil {
 		return nil, common.NewErrorf("redeem_readmarker", "invalid allocation id passed: %v", err)
 	}
