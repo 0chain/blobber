@@ -22,6 +22,13 @@ type UploadResult struct {
 	UploadOffset int64 `json:"upload_offset"`
 }
 
+// swagger:model ConnectionResult
+type ConnectionResult struct {
+	AllocationRoot string `json:"allocation_root"`
+	ConnectionID   string `json:"connection_id"`
+	Success        bool   `json:"success"`
+}
+
 // swagger:model CommitResult
 type CommitResult struct {
 	AllocationRoot string                         `json:"allocation_root"`
