@@ -47,7 +47,7 @@ type Ref struct {
 	ValidationRootSignature string `gorm:"column:validation_root_signature;size:64" filelist:"validation_root_signature" json:"validation_root_signature,omitempty"`
 	Size                    int64  `gorm:"column:size;not null;default:0" dirlist:"size" filelist:"size"`
 	FixedMerkleRoot         string `gorm:"column:fixed_merkle_root;size:64;not null" filelist:"fixed_merkle_root"`
-	ActualFileSize          int64  `gorm:"column:actual_file_size;not null;default:0" dirlist:"actual_file_size" filelist:"actual_file_size"`
+	ActualFileSize          int64  `gorm:"column:actual_file_size;not null;default:0" filelist:"actual_file_size"`
 	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature;size:64" filelist:"actual_file_hash_signature"  json:"actual_file_hash_signature,omitempty"`
 	ActualFileHash          string `gorm:"column:actual_file_hash;size:64;not null" filelist:"actual_file_hash"`
 	MimeType                string `gorm:"column:mimetype;size:64;not null" filelist:"mimetype"`
@@ -429,7 +429,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 	childHashes := make([]string, l)
 	childFileMetaHashes := make([]string, l)
 	childPathHashes := make([]string, l)
-	var refNumBlocks, size, actualSize int64
+	var refNumBlocks, size int64
 
 	for i, childRef := range r.Children {
 		if childRef.HashToBeComputed {
@@ -444,7 +444,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 		childPathHashes[i] = childRef.PathHash
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
-		actualSize += childRef.ActualFileSize
 	}
 
 	r.FileMetaHash = encryption.Hash(r.GetHashData() + strings.Join(childFileMetaHashes, ":"))
@@ -452,7 +451,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.NumBlocks = refNumBlocks
 	r.Size = size
-	r.ActualFileSize = actualSize
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
 	return r.Hash, err
