@@ -707,6 +707,10 @@ func uploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
+func RedeemHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	return redeemHandler(ctx, r)
+}
+
 func writeResponse(w http.ResponseWriter, resp []byte) {
 	_, err := w.Write(resp)
 
