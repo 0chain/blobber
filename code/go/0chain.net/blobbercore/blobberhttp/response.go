@@ -26,7 +26,6 @@ type UploadResult struct {
 type ConnectionResult struct {
 	AllocationRoot string `json:"allocation_root"`
 	ConnectionID   string `json:"connection_id"`
-	Success        bool   `json:"success"`
 }
 
 // swagger:model CommitResult

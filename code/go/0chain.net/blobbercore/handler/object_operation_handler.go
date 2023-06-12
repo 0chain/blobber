@@ -514,7 +514,6 @@ func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request
 	}
 
 	return &blobberhttp.ConnectionResult{
-		Success:        true,
 		ConnectionID:   connectionID,
 		AllocationRoot: allocationObj.AllocationRoot,
 	}, nil
