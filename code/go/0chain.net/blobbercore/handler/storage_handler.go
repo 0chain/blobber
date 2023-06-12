@@ -354,7 +354,6 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 
 		dirref = r
 	}
-	Logger.Info("ListDir RESULT", zap.Any("dirref", dirref))
 
 	var result blobberhttp.ListResult
 	result.AllocationRoot = allocationObj.AllocationRoot
