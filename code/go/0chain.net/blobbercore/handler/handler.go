@@ -44,6 +44,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/stats"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
@@ -155,6 +156,10 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/connection/create/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CreateConnectionHandler)))).
 		Methods(http.MethodPost)
+
+	r.HandleFunc("/v1/connection/redeem/{allocation}",
+		RateLimitByGeneralRL(common.ToByteStream(WithConnection(RedeemHandler)))).
+		Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/rename/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RenameHandler)))).
@@ -402,6 +407,14 @@ func downloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 
 	ctx = setupHandlerContext(ctx, r)
 	return storageHandler.DownloadFile(ctx, r)
+}
+
+func redeemHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+
+	ctx = setupHandlerContext(ctx, r)
+	resp, err := storageHandler.RedeemReadMarker(ctx, r)
+	logging.Logger.Info("redeemHandler", zap.Any("resp", resp), zap.Error(err))
+	return resp, err
 }
 
 /*listHandler is the handler to respond to list requests from clients*/
@@ -688,6 +701,10 @@ func uploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 	return response, nil
+}
+
+func RedeemHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	return redeemHandler(ctx, r)
 }
 
 func writeResponse(w http.ResponseWriter, resp []byte) {
