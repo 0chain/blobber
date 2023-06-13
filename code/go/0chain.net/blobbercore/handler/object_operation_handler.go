@@ -475,15 +475,15 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	return fileDownloadResponse, nil
 }
 
-func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request) error {
+func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request) (interface{}, error) {
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
 	if err != nil {
-		return common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
 	if !allocationObj.CanRename() {
-		return common.NewError("prohibited_allocation_file_options", "Cannot rename data in this allocation.")
+		return nil, common.NewError("prohibited_allocation_file_options", "Cannot rename data in this allocation.")
 	}
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
@@ -491,29 +491,32 @@ func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		return common.NewError("invalid_signature", "Invalid signature")
+		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
 	if clientID == "" {
-		return common.NewError("invalid_operation", "Invalid client")
+		return nil, common.NewError("invalid_operation", "Invalid client")
 	}
 
 	connectionID := r.FormValue("connection_id")
 	if connectionID == "" {
-		return common.NewError("invalid_parameters", "Invalid connection id passed")
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationObj.ID, clientID)
 	if err != nil {
-		return common.NewError("meta_error", "Error reading metadata for connection")
+		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
 	err = connectionObj.Save(ctx)
 	if err != nil {
 		Logger.Error("Error in writing the connection meta data", zap.Error(err))
-		return common.NewError("connection_write_error", "Error writing the connection meta data")
+		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
 	}
 
-	return nil
+	return &blobberhttp.ConnectionResult{
+		ConnectionID:   connectionID,
+		AllocationRoot: allocationObj.AllocationRoot,
+	}, nil
 }
 
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {

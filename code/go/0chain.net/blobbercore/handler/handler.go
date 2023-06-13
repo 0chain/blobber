@@ -447,11 +447,11 @@ func listHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 //	500:
 func CreateConnectionHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
-	err := storageHandler.CreateConnection(ctx, r)
+	res, err := storageHandler.CreateConnection(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return res, nil
 }
 
 // swagger:route GET /v1/connection/commit/{allocation} commithandler
