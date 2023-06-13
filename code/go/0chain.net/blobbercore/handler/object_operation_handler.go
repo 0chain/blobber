@@ -299,24 +299,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			return nil, common.NewError("invalid_authticket", "authticket is required")
 		}
 
-		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
-			return nil, common.NewErrorf("invalid_authticket", "cannot verify auth ticket: %v", err)
+		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); err != nil {
+			return nil, err
 		}
-
-		shareInfo, err = reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
-		if err != nil || shareInfo == nil {
-			return nil, common.NewError("invalid_share", "client does not have permission to download the file. share does not exist")
-		}
-
-		if shareInfo.Revoked {
-			return nil, common.NewError("invalid_share", "client does not have permission to download the file. share revoked")
-		}
-
-		availableAt := shareInfo.AvailableAt.Unix()
-		if common.Timestamp(availableAt) > common.Now() {
-			return nil, common.NewErrorf("download_file", "the file is not available until: %v", shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
-		}
-
 	}
 
 	if dr.SubmitRM {

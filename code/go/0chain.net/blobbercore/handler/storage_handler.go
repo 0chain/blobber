@@ -148,7 +148,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 		var authTokenString = r.FormValue("auth_token")
 
 		// check auth token
-		if authToken, err := fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
+		if _, err := fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); err != nil {
 			return nil, common.NewErrorf("file_meta", "cannot verify auth ticket: %v", err)
 		}
 
@@ -201,7 +201,7 @@ func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Reque
 
 		// check auth token
 		for i, fileref := range filerefs {
-			if authToken, err := fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
+			if _, err := fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); err != nil {
 				return nil, common.NewErrorf("file_meta", "cannot verify auth ticket: %v", err)
 			}
 

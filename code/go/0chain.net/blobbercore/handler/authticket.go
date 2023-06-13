@@ -39,5 +39,19 @@ func verifyAuthTicket(ctx context.Context, db *gorm.DB, authTokenString string, 
 		}
 	}
 
+	shareInfo, err := reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
+	if err != nil || shareInfo == nil {
+		return nil, common.NewError("invalid_share", "client does not have permission to get the file meta. share does not exist")
+	}
+
+	if shareInfo.Revoked {
+		return nil, common.NewError("invalid_share", "client does not have permission to get the file meta. share revoked")
+	}
+
+	availableAt := shareInfo.AvailableAt.Unix()
+	if common.Timestamp(availableAt) > common.Now() {
+		return nil, common.NewErrorf("invalid_share", "the file is not available until: %v", shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
+	}
+
 	return authToken, nil
 }

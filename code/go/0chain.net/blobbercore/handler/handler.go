@@ -888,6 +888,9 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 
 	authToken, err := storageHandler.verifyAuthTicket(ctx, authTicketString, allocationObj, fileRef, authTicket.ClientID)
+	if err != nil {
+		return nil, err
+	}
 	if authToken == nil {
 		return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket. "+err.Error())
 	}
