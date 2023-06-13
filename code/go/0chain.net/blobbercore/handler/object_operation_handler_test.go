@@ -257,7 +257,7 @@ func TestDownloadFile(t *testing.T) {
 				}},
 			)
 
-			mocket.Catcher.NewMock().OneTime().WithQuery(
+			mocket.Catcher.NewMock().WithQuery(
 				`SELECT * FROM "marketplace_share_info" WHERE`,
 			).WithArgs(
 				mockClient.ClientID, p.inData.pathHash,

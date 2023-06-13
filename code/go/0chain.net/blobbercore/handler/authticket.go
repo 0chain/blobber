@@ -14,7 +14,7 @@ import (
 )
 
 // verifyAuthTicket verifies authTicket and returns authToken and error if any. For any error authToken is nil
-func verifyAuthTicket(ctx context.Context, db *gorm.DB, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string) (*readmarker.AuthTicket, error) {
+func verifyAuthTicket(ctx context.Context, db *gorm.DB, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string, verifyShare bool) (*readmarker.AuthTicket, error) {
 	if authTokenString == "" {
 		return nil, common.NewError("invalid_parameters", "Auth ticket is required")
 	}
@@ -36,6 +36,21 @@ func verifyAuthTicket(ctx context.Context, db *gorm.DB, authTokenString string, 
 
 		if matched, _ := regexp.MatchString(fmt.Sprintf("^%v", authTokenRef.Path), refRequested.Path); !matched {
 			return nil, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
+		}
+	}
+	if verifyShare {
+		shareInfo, err := reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
+		if err != nil || shareInfo == nil {
+			return nil, common.NewError("invalid_share", "client does not have permission to get the file meta. share does not exist")
+		}
+
+		if shareInfo.Revoked {
+			return nil, common.NewError("invalid_share", "client does not have permission to get the file meta. share revoked")
+		}
+
+		availableAt := shareInfo.AvailableAt.Unix()
+		if common.Timestamp(availableAt) > common.Now() {
+			return nil, common.NewErrorf("download_file", "the file is not available until: %v", shareInfo.AvailableAt.UTC().Format("2006-01-02T15:04:05"))
 		}
 	}
 
