@@ -1,28 +1,19 @@
 package allocation
 
 import (
-	"encoding/json"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/errors"
 	"gorm.io/gorm"
 )
 
 // SyncAllocation try to pull allocation from blockchain, and insert it in db.
-func SyncAllocation(allocationTx string) (*Allocation, error) {
-	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
+func SyncAllocation(allocationId string) (*Allocation, error) {
+
+	sa, err := requestAllocation(allocationId)
 	if err != nil {
-		return nil, errors.Throw(common.ErrBadRequest,
-			"Invalid Allocation id. Allocation not found in blockchain.")
-	}
-	var sa transaction.StorageAllocation
-	err = json.Unmarshal([]byte(t.TransactionOutput), &sa)
-	if err != nil {
-		return nil, errors.ThrowLog(err.Error(), common.ErrInternal, "Error decoding the allocation transaction output.")
+		return nil, err
 	}
 
 	alloc := &Allocation{}
@@ -40,6 +31,7 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 			break
 		}
 	}
+
 	if !belongToThisBlobber {
 		return nil, errors.Throw(common.ErrBadRequest,
 			"Blobber is not part of the open connection transaction")
@@ -51,7 +43,7 @@ func SyncAllocation(allocationTx string) (*Allocation, error) {
 	alloc.Expiration = sa.Expiration
 	alloc.OwnerID = sa.OwnerID
 	alloc.OwnerPublicKey = sa.OwnerPublicKey
-	alloc.RepairerID = t.ClientID // blobber node id
+	alloc.RepairerID = node.Self.ID // blobber node id
 	alloc.TotalSize = sa.Size
 	alloc.UsedSize = sa.UsedSize
 	alloc.Finalized = sa.Finalized

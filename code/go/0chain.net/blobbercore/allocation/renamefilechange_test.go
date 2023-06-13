@@ -456,9 +456,9 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 }
 
 func makeTestAllocation(exp common.Timestamp) *Allocation {
-	allocID := "allocation id"
+	allocID := "allocation_id"
 	alloc := Allocation{
-		Tx: "allocation tx",
+		Tx: "allocation_tx",
 		ID: allocID,
 		Terms: []*Terms{
 			{

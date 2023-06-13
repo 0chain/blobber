@@ -310,12 +310,16 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 
 func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	var vars = mux.Vars(r)
+
 	ctx = context.WithValue(ctx, constants.ContextKeyClient,
 		r.Header.Get(common.ClientHeader))
 	ctx = context.WithValue(ctx, constants.ContextKeyClientKey,
 		r.Header.Get(common.ClientKeyHeader))
 	ctx = context.WithValue(ctx, constants.ContextKeyAllocation,
 		vars["allocation"])
+
+	ctx = context.WithValue(ctx, constants.ContextKeyAllocationID, r.Header.Get(common.AllocationIdHeader))
+
 	// signature is not requered for all requests, but if header is empty it won`t affect anything
 	ctx = context.WithValue(ctx, constants.ContextKeyClientSignatureHeaderKey, r.Header.Get(common.ClientSignatureHeader))
 	return ctx
@@ -796,15 +800,16 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
 
-	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
+	allocationID := ctx.Value(constants.ContextKeyAllocationID).(string)
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, allocationTx, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation ID passed."+err.Error())
 	}
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
 
-	valid, err := verifySignatureFromRequest(allocationID, sign, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, sign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -853,18 +858,19 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 
 	var (
-		allocationID = ctx.Value(constants.ContextKeyAllocation).(string)
+		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
+		allocationID = ctx.Value(constants.ContextKeyAllocationID).(string)
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
 	)
 
-	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
+	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, allocationTx, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation ID passed."+err.Error())
 	}
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
 
-	valid, err := verifySignatureFromRequest(allocationID, sign, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, sign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -938,7 +944,8 @@ func ListShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 
 	var (
-		allocationID = ctx.Value(constants.ContextKeyAllocation).(string)
+		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
+		allocationID = ctx.Value(constants.ContextKeyAllocationID).(string)
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
 	)
 
@@ -947,14 +954,14 @@ func ListShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 
-	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, true)
+	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, allocationTx, true)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
 
-	valid, err := verifySignatureFromRequest(allocationID, sign, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, sign, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
