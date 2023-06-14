@@ -49,7 +49,7 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 }
 
 // VerifyAllocationTransaction try to get allocation from postgres.if it doesn't exists, get it from sharders, and insert it into postgres.
-func VerifyAllocationTransaction(ctx context.Context, allocationTx string, readonly bool) (a *Allocation, err error) {
+func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
 	a = new(Allocation)
@@ -74,16 +74,9 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 		return          // found in DB
 	}
 
-	t, err := transaction.VerifyTransaction(allocationTx, chain.GetServerChain())
+	sa, err := requestAllocation(allocationID)
 	if err != nil {
-		return nil, common.NewError("invalid_allocation",
-			"Invalid Allocation id. Allocation not found in blockchain. "+err.Error())
-	}
-	var sa transaction.StorageAllocation
-	err = json.Unmarshal([]byte(t.TransactionOutput), &sa)
-	if err != nil {
-		return nil, common.NewError("transaction_output_decode_error",
-			"Error decoding the allocation transaction output."+err.Error())
+		return nil, err
 	}
 
 	var isExist bool
@@ -94,7 +87,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
 	}
 
-	isExist = (a.ID != "")
+	isExist = a.ID != ""
 
 	logging.Logger.Info("VerifyAllocationTransaction",
 		zap.Bool("isExist", isExist),
@@ -127,7 +120,7 @@ func VerifyAllocationTransaction(ctx context.Context, allocationTx string, reado
 	a.Expiration = sa.Expiration
 	a.OwnerID = sa.OwnerID
 	a.OwnerPublicKey = sa.OwnerPublicKey
-	a.RepairerID = t.ClientID // blobber node id
+	a.RepairerID = node.Self.ID // blobber node id
 	a.TotalSize = sa.Size
 	a.UsedSize = sa.UsedSize
 	a.Finalized = sa.Finalized
