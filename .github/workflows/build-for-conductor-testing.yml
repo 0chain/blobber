@@ -5,12 +5,12 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  push: 
-    branches:
-      - staging
-    tags: 
-      - '*'
-  pull_request:
+#   push: 
+#     branches:
+#       - staging
+#     tags: 
+#       - '*'
+#   pull_request:
   workflow_dispatch:
 
 env:
