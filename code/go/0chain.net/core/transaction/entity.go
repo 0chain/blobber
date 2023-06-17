@@ -142,17 +142,17 @@ func (t *Transaction) GetTransaction() zcncore.TransactionScheme {
 
 func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val uint64) error {
 	t.wg.Add(1)
-	nonce := monitor.getNextUnusedNonce()
-	if err := t.zcntxn.SetTransactionNonce(nonce); err != nil {
-		logging.Logger.Error("Failed to set nonce.",
-			zap.Any("hash", t.zcntxn.GetTransactionHash()),
-			zap.Any("nonce", nonce),
-			zap.Any("error", err))
-	}
-
-	logging.Logger.Info("Transaction nonce set.",
-		zap.Any("hash", t.zcntxn.GetTransactionHash()),
-		zap.Any("nonce", nonce))
+	//nonce := monitor.getNextUnusedNonce()
+	//if err := t.zcntxn.SetTransactionNonce(nonce); err != nil {
+	//	logging.Logger.Error("Failed to set nonce.",
+	//		zap.Any("hash", t.zcntxn.GetTransactionHash()),
+	//		zap.Any("nonce", nonce),
+	//		zap.Any("error", err))
+	//}
+	//
+	//logging.Logger.Info("Transaction nonce set.",
+	//	zap.Any("hash", t.zcntxn.GetTransactionHash()),
+	//	zap.Any("nonce", nonce))
 
 	_, err := t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
 	if err != nil {
