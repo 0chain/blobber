@@ -4,7 +4,7 @@ set -e
 GIT_COMMIT=$(git rev-list -1 HEAD)
 echo $GIT_COMMIT
 echo "1> set DOCKER_IMAGE & DOCKER_BUILD"
-if [ -z "$DOCKER_BUILD" ]; then  
+if [ -z "$DOCKER_BUILD" ]; then
     if [ "x86_64" != "$(uname -m)" ]; then
         #docker buildx use blobber_buildx || docker buildx create --name blobber_buildx --use
         DOCKER_BUILD="buildx build --platform linux/arm64"
@@ -13,7 +13,7 @@ if [ -z "$DOCKER_BUILD" ]; then
     fi
 fi
 
-if [ -z "$DOCKER_IMAGE_BASE" ]; then  
+if [ -z "$DOCKER_IMAGE_BASE" ]; then
     DOCKER_IMAGE_BASE="blobber_base"
 fi
 echo "  DOCKER_BUILD=$DOCKER_BUILD"
