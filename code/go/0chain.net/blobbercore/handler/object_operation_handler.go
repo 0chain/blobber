@@ -162,11 +162,106 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 	return
 }
 
-func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (interface{}, error) {
-	// get client and allocation ids
+func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request) (interface{}, error) {
 	var (
 		clientID     = ctx.Value(constants.ContextKeyClient).(string)
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
+		allocationID = ctx.Value(constants.ContextKeyAllocationID).(string)
+		alloc        *allocation.Allocation
+	)
+
+	if clientID == "" {
+		return nil, common.NewError("redeem_readmarker", "invalid client")
+	}
+
+	alloc, err := fsh.verifyAllocation(ctx, allocationID, allocationTx, false)
+	if err != nil {
+		return nil, common.NewErrorf("redeem_readmarker", "invalid allocation id passed: %v", err)
+	}
+
+	dr, err := FromDownloadRequest(alloc.ID, r, true)
+	if err != nil {
+		return nil, err
+	}
+
+	key := clientID + ":" + alloc.ID
+	quotaManager := getQuotaManager()
+
+	lock, isNewLock := readmarker.ReadmarkerMapLock.GetLock(key)
+	if !isNewLock {
+		return nil, common.NewErrorf("lock_exists", fmt.Sprintf("lock exists for key: %v", key))
+	}
+
+	lock.Lock()
+	defer lock.Unlock()
+
+	// create read marker
+	var (
+		rme              *readmarker.ReadMarkerEntity
+		latestRM         *readmarker.ReadMarker
+		latestRedeemedRC int64
+		pendNumBlocks    int64
+	)
+
+	rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID, alloc.ID)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, common.NewErrorf("redeem_readmarker", "couldn't get read marker from DB: %v", err)
+	}
+
+	if rme != nil {
+		latestRM = rme.LatestRM
+		latestRedeemedRC = rme.LatestRedeemedRC
+		if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
+			return nil, common.NewErrorf("redeem_readmarker", "couldn't get number of blocks pending redeeming: %v", err)
+		}
+	}
+
+	// check out read pool tokens if read_price > 0
+	err = readPreRedeem(ctx, alloc, dr.ReadMarker.SessionRC, pendNumBlocks, clientID)
+	if err != nil {
+		return nil, common.NewErrorf("not_enough_tokens", "pre-redeeming read marker: %v", err)
+	}
+
+	if latestRM != nil && latestRM.ReadCounter+(dr.ReadMarker.SessionRC) > dr.ReadMarker.ReadCounter {
+		latestRM.BlobberID = node.Self.ID
+		return &blobberhttp.DownloadResponse{
+			Success:  false,
+			LatestRM: latestRM,
+		}, common.NewError("stale_read_marker", "")
+	}
+
+	if dr.ReadMarker.ClientID != clientID {
+		return nil, common.NewError("invalid_client", "header clientID and readmarker clientID are different")
+	}
+
+	rmObj := new(readmarker.ReadMarkerEntity)
+	rmObj.LatestRM = &dr.ReadMarker
+
+	if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
+		return nil, common.NewErrorf("redeem_readmarker", "invalid read marker, "+"failed to verify the read marker: %v", err)
+	}
+
+	err = readmarker.SaveLatestReadMarker(ctx, &dr.ReadMarker, latestRedeemedRC, latestRM == nil)
+	if err != nil {
+		Logger.Error(err.Error())
+		return nil, common.NewError("redeem_readmarker", "couldn't save latest read marker")
+	}
+
+	quotaManager.createOrUpdateQuota(dr.ReadMarker.SessionRC, dr.ConnectionID)
+	Logger.Info("readmarker_saved", zap.Any("rmObj", rmObj))
+	return &blobberhttp.DownloadResponse{
+		Success:  true,
+		LatestRM: &dr.ReadMarker,
+	}, nil
+}
+
+func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (interface{}, error) {
+	// get client and allocation ids
+
+	var (
+		clientID     = ctx.Value(constants.ContextKeyClient).(string)
+		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
+		allocationID = ctx.Value(constants.ContextKeyAllocationID).(string)
 		alloc        *allocation.Allocation
 	)
 
@@ -174,12 +269,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("download_file", "invalid client")
 	}
 
-	alloc, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	alloc, err := fsh.verifyAllocation(ctx, allocationID, allocationTx, false)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid allocation id passed: %v", err)
 	}
 
-	dr, err := FromDownloadRequest(alloc.ID, r)
+	dr, err := FromDownloadRequest(alloc.ID, r, false)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +302,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			return nil, common.NewError("invalid_authticket", "authticket is required")
 		}
 
-		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID); authToken == nil {
+		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID, false); authToken == nil {
 			return nil, common.NewErrorf("invalid_authticket", "cannot verify auth ticket: %v", err)
 		}
 
@@ -383,15 +478,16 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	return fileDownloadResponse, nil
 }
 
-func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request) error {
+func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request) (interface{}, error) {
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
-		return common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
 	if !allocationObj.CanRename() {
-		return common.NewError("prohibited_allocation_file_options", "Cannot rename data in this allocation.")
+		return nil, common.NewError("prohibited_allocation_file_options", "Cannot rename data in this allocation.")
 	}
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
@@ -399,29 +495,32 @@ func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
-		return common.NewError("invalid_signature", "Invalid signature")
+		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
 	if clientID == "" {
-		return common.NewError("invalid_operation", "Invalid client")
+		return nil, common.NewError("invalid_operation", "Invalid client")
 	}
 
 	connectionID := r.FormValue("connection_id")
 	if connectionID == "" {
-		return common.NewError("invalid_parameters", "Invalid connection id passed")
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationObj.ID, clientID)
 	if err != nil {
-		return common.NewError("meta_error", "Error reading metadata for connection")
+		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
 	err = connectionObj.Save(ctx)
 	if err != nil {
 		Logger.Error("Error in writing the connection meta data", zap.Error(err))
-		return common.NewError("connection_write_error", "Error writing the connection meta data")
+		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
 	}
 
-	return nil
+	return &blobberhttp.ConnectionResult{
+		ConnectionID:   connectionID,
+		AllocationRoot: allocationObj.AllocationRoot,
+	}, nil
 }
 
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
@@ -430,12 +529,13 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
 	}
 
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
 	clientKeyBytes, _ := hex.DecodeString(clientKey)
 
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -670,7 +770,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (interface{}, error) {
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -755,7 +856,8 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -862,8 +964,9 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 
 func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (interface{}, error) {
 
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -1016,9 +1119,10 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 }
 
 func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -1110,10 +1214,11 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE / PATCH instead")
 	}
 
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -1233,12 +1338,13 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	Logger.Info("Rollback request received")
 
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
 	clientKeyBytes, _ := hex.DecodeString(clientKey)
 
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationTx, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		Logger.Error("Error in verifying allocation", zap.Error(err))
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())

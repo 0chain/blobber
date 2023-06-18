@@ -35,7 +35,7 @@ func LoadPlaylist(ctx *Context) (interface{}, error) {
 			return nil, common.NewError("invalid_auth_ticket", err.Error())
 		}
 
-		authToken, err := verifyAuthTicket(ctx, ctx.Store.GetDB(), string(at), ctx.Allocation, fileRef, ctx.ClientID)
+		authToken, err := verifyAuthTicket(ctx, ctx.Store.GetDB(), string(at), ctx.Allocation, fileRef, ctx.ClientID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +75,7 @@ func LoadPlaylistFile(ctx *Context) (interface{}, error) {
 		if err != nil {
 			return nil, common.NewError("invalid_auth_ticket", err.Error())
 		}
-		authToken, err := verifyAuthTicket(ctx, ctx.Store.GetDB(), string(at), ctx.Allocation, fileRef, ctx.ClientID)
+		authToken, err := verifyAuthTicket(ctx, ctx.Store.GetDB(), string(at), ctx.Allocation, fileRef, ctx.ClientID, true)
 		if err != nil {
 			return nil, err
 		}
