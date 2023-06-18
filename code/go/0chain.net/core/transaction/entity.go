@@ -172,7 +172,7 @@ func (t *Transaction) ExecuteSmartContract(address, methodName string, input int
 		logging.Logger.Error("Failed to submit SC.",
 			zap.Any("hash", t.zcntxn.GetTransactionHash()),
 			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
-			zap.Any("error", err))
+			zap.Any("error", t.zcntxn.GetTransactionError()))
 		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
 		return common.NewError("transaction_send_error", t.zcntxn.GetTransactionError())
 	}
