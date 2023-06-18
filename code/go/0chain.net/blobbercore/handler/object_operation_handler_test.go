@@ -127,6 +127,8 @@ func TestDownloadFile(t *testing.T) {
 		req.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", p.inData.numBlocks))
 		req.Header.Set("X-Submit-RM", fmt.Sprint(true))
 		req.Header.Set("X-Read-Marker", string(rmData))
+		req.Header.Set(common.AllocationIdHeader, mockAllocationId)
+
 		if p.useAuthTicket {
 			authTicket := &marker.AuthTicket{
 				AllocationID: p.inData.allocationID,
@@ -255,7 +257,7 @@ func TestDownloadFile(t *testing.T) {
 				}},
 			)
 
-			mocket.Catcher.NewMock().OneTime().WithQuery(
+			mocket.Catcher.NewMock().WithQuery(
 				`SELECT * FROM "marketplace_share_info" WHERE`,
 			).WithArgs(
 				mockClient.ClientID, p.inData.pathHash,
@@ -483,8 +485,11 @@ func TestDownloadFile(t *testing.T) {
 				setupInMock(t, test.parameters, *rm)
 				setupOutMock(t, test.parameters, *rm)
 
+				ctx := setupCtx(test.parameters)
+				ctx = context.WithValue(ctx, constants.ContextKeyAllocationID, mockAllocationId)
+
 				var sh StorageHandler
-				_, err := sh.DownloadFile(setupCtx(test.parameters), request)
+				_, err := sh.DownloadFile(ctx, request)
 
 				require.EqualValues(t, test.want.err, err != nil)
 				if err != nil {

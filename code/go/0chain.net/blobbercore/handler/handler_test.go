@@ -284,6 +284,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			args: args{
 				w: httptest.NewRecorder(),
 				r: func() *http.Request {
+
 					url, err := router.Get(name).URL("allocation", alloc.Tx)
 					if err != nil {
 						t.Fatal()
@@ -329,6 +330,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					r.Header.Set("Content-Type", formWriter.FormDataContentType())
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+					r.Header.Set(common.AllocationIdHeader, alloc.ID)
 
 					return r
 				}(),
@@ -396,6 +398,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					}
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+					r.Header.Set(common.AllocationIdHeader, alloc.ID)
 					return r
 				}(),
 			},
@@ -452,6 +455,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						t.Fatal(err)
 					}
 
+					r.Header.Set(common.AllocationIdHeader, alloc.ID)
+
 					return r
 				}(),
 			},
@@ -489,6 +494,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+					r.Header.Set(common.AllocationIdHeader, alloc.ID)
 
 					return r
 				}(),
@@ -529,6 +535,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+					r.Header.Set(common.AllocationIdHeader, alloc.ID)
 
 					return r
 				}(),
@@ -602,6 +609,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+					r.Header.Set(common.AllocationIdHeader, alloc.ID)
 
 					return r
 				}(),
@@ -682,6 +690,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
+					r.Header.Set(common.AllocationIdHeader, alloc.ID)
 
 					return r
 				}(),
@@ -797,6 +806,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
+					r.Header.Set(common.AllocationIdHeader, alloc.ID)
 					return r
 				}(),
 			},
