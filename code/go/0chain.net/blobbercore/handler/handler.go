@@ -347,8 +347,6 @@ func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error
 
 	ctx = setupHandlerContext(ctx, r)
 
-	fmt.Println(ctx)
-
 	response, err := storageHandler.GetAllocationDetails(ctx, r)
 	if err != nil {
 		return nil, err
