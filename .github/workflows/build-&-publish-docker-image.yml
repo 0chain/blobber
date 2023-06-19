@@ -70,9 +70,12 @@ jobs:
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
           docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
+          docker image ls
           docker pull $ZCHAIN_BUILD_BASE_REGISTRY:staging
           docker tag $ZCHAIN_BUILD_BASE_REGISTRY:staging $DOCKER_IMAGE_BASE
+          docker image ls
           ./docker.local/bin/build.base.sh && ./docker.local/bin/build.blobber.sh
+          docker image ls
 
   validator:
     runs-on: [self-hosted, arc-runner]
