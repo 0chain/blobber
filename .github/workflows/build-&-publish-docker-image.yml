@@ -16,6 +16,7 @@ on:
 env:
   BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY }}
   VALIDATOR_REGISTRY: ${{ secrets.VALIDATOR_REGISTRY }}
+  ZCHAIN_BUILD_BASE_REGISTRY: ${{ secrets.ZCHAIN_BUILD_BASE_REGISTRY }}
   DOCKER_CLI_EXPERIMENTAL: enabled
 
 jobs:
@@ -69,6 +70,8 @@ jobs:
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
           docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
+          docker pull $ZCHAIN_BUILD_BASE_REGISTRY:staging
+          docker tag $ZCHAIN_BUILD_BASE_REGISTRY:staging $DOCKER_IMAGE_BASE
           ./docker.local/bin/build.base.sh && ./docker.local/bin/build.blobber.sh
 
   validator:
