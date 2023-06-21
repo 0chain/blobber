@@ -138,9 +138,10 @@ CREATE TABLE public.challenges (
     last_commit_txn_ids jsonb,
     ref_id bigint,
     object_path jsonb,
-    sequence bigint NOT NULL,
+    sequence bigint,
     created_at bigint,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "timestamp" bigint DEFAULT 0 NOT NULL
 );
 
 
@@ -193,7 +194,8 @@ CREATE TABLE public.file_stats (
     num_of_failed_challenges bigint,
     last_challenge_txn character varying(64),
     created_at timestamp with time zone,
-    updated_at timestamp with time zone
+    updated_at timestamp with time zone,
+    deleted_at timestamp with time zone
 );
 
 
@@ -218,6 +220,42 @@ ALTER TABLE public.file_stats_id_seq OWNER TO blobber_user;
 --
 
 ALTER SEQUENCE public.file_stats_id_seq OWNED BY public.file_stats.id;
+
+
+--
+-- Name: goose_db_version; Type: TABLE; Schema: public; Owner: blobber_user
+--
+
+CREATE TABLE public.goose_db_version (
+    id integer NOT NULL,
+    version_id bigint NOT NULL,
+    is_applied boolean NOT NULL,
+    tstamp timestamp without time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.goose_db_version OWNER TO blobber_user;
+
+--
+-- Name: goose_db_version_id_seq; Type: SEQUENCE; Schema: public; Owner: blobber_user
+--
+
+CREATE SEQUENCE public.goose_db_version_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.goose_db_version_id_seq OWNER TO blobber_user;
+
+--
+-- Name: goose_db_version_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: blobber_user
+--
+
+ALTER SEQUENCE public.goose_db_version_id_seq OWNED BY public.goose_db_version.id;
 
 
 --
@@ -286,7 +324,8 @@ CREATE TABLE public.read_markers (
     signature character varying(64),
     latest_redeemed_rc bigint,
     created_at timestamp with time zone,
-    updated_at timestamp with time zone
+    updated_at timestamp with time zone,
+    session_rc bigint
 );
 
 
@@ -340,7 +379,11 @@ CREATE TABLE public.reference_objects (
     created_at bigint,
     updated_at bigint,
     deleted_at timestamp with time zone,
-    chunk_size bigint DEFAULT 65536 NOT NULL
+    chunk_size bigint DEFAULT 65536 NOT NULL,
+    thumbnail_filename text,
+    prev_validation_root text,
+    prev_thumbnail_hash text,
+    is_precommit boolean DEFAULT false NOT NULL
 );
 
 
@@ -454,7 +497,7 @@ CREATE TABLE public.write_markers (
     close_txn_id character varying(64),
     connection_id character varying(64),
     client_key character varying(256),
-    sequence bigint NOT NULL,
+    sequence bigint,
     created_at timestamp with time zone,
     updated_at timestamp with time zone
 );
@@ -514,6 +557,13 @@ ALTER TABLE ONLY public.challenges ALTER COLUMN sequence SET DEFAULT nextval('pu
 --
 
 ALTER TABLE ONLY public.file_stats ALTER COLUMN id SET DEFAULT nextval('public.file_stats_id_seq'::regclass);
+
+
+--
+-- Name: goose_db_version id; Type: DEFAULT; Schema: public; Owner: blobber_user
+--
+
+ALTER TABLE ONLY public.goose_db_version ALTER COLUMN id SET DEFAULT nextval('public.goose_db_version_id_seq'::regclass);
 
 
 --
@@ -614,6 +664,14 @@ ALTER TABLE ONLY public.file_stats
 
 ALTER TABLE ONLY public.file_stats
     ADD CONSTRAINT file_stats_ref_id_key UNIQUE (ref_id);
+
+
+--
+-- Name: goose_db_version goose_db_version_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
+--
+
+ALTER TABLE ONLY public.goose_db_version
+    ADD CONSTRAINT goose_db_version_pkey PRIMARY KEY (id);
 
 
 --

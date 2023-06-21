@@ -134,6 +134,12 @@ func main() {
 		Logger.Info("self identity", zap.Any("id", node.Self.ID))
 	}
 
+	fmt.Println("*== Validator Wallet Info ==*")
+	fmt.Println("	ID: ", node.Self.ID)
+	fmt.Println("	Public Key: ", publicKey)
+	fmt.Println("	Private Key: ", privateKey)
+	fmt.Println("*===========================*")
+
 	chain.SetServerChain(serverChain)
 
 	if err := SetupValidatorOnBC(*logDir); err != nil {
