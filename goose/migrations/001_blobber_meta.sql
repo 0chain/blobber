@@ -139,9 +139,9 @@ CREATE TABLE public.challenges (
     ref_id bigint,
     object_path jsonb,
     sequence bigint,
+    "timestamp" bigint DEFAULT 0 NOT NULL,
     created_at bigint,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "timestamp" bigint DEFAULT 0 NOT NULL
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 
@@ -169,19 +169,6 @@ ALTER SEQUENCE public.challenges_sequence_seq OWNED BY public.challenges.sequenc
 
 
 --
--- Name: commit_meta_txns; Type: TABLE; Schema: public; Owner: blobber_user
---
-
-CREATE TABLE public.commit_meta_txns (
-    ref_id bigint NOT NULL,
-    txn_id character varying(64) NOT NULL,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
-
-ALTER TABLE public.commit_meta_txns OWNER TO blobber_user;
-
---
 -- Name: file_stats; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
@@ -193,9 +180,9 @@ CREATE TABLE public.file_stats (
     num_of_challenges bigint,
     num_of_failed_challenges bigint,
     last_challenge_txn character varying(64),
+    deleted_at timestamp with time zone,
     created_at timestamp with time zone,
-    updated_at timestamp with time zone,
-    deleted_at timestamp with time zone
+    updated_at timestamp with time zone
 );
 
 
@@ -220,6 +207,7 @@ ALTER TABLE public.file_stats_id_seq OWNER TO blobber_user;
 --
 
 ALTER SEQUENCE public.file_stats_id_seq OWNED BY public.file_stats.id;
+
 
 --
 -- Name: marketplace_share_info; Type: TABLE; Schema: public; Owner: blobber_user
@@ -285,10 +273,10 @@ CREATE TABLE public.read_markers (
     "timestamp" bigint,
     counter bigint,
     signature character varying(64),
+    session_rc bigint,
     latest_redeemed_rc bigint,
     created_at timestamp with time zone,
-    updated_at timestamp with time zone,
-    session_rc bigint
+    updated_at timestamp with time zone
 );
 
 
@@ -317,6 +305,7 @@ CREATE TABLE public.reference_objects (
     allocation_id character varying(64) NOT NULL,
     lookup_hash character varying(64) NOT NULL,
     name character varying(100) NOT NULL,
+    thumbnail_filename text,
     path character varying(1000) NOT NULL COLLATE pg_catalog."POSIX",
     file_meta_hash character varying(64) NOT NULL,
     hash character varying(64) NOT NULL,
@@ -326,6 +315,7 @@ CREATE TABLE public.reference_objects (
     level bigint DEFAULT 0 NOT NULL,
     custom_meta text NOT NULL,
     validation_root character varying(64) NOT NULL,
+    prev_validation_root text,
     validation_root_signature character varying(64),
     size bigint DEFAULT 0 NOT NULL,
     fixed_merkle_root character varying(64) NOT NULL,
@@ -336,17 +326,15 @@ CREATE TABLE public.reference_objects (
     allocation_root character varying(64) NOT NULL,
     thumbnail_size bigint DEFAULT 0 NOT NULL,
     thumbnail_hash character varying(64) NOT NULL,
+    prev_thumbnail_hash text,
     actual_thumbnail_size bigint DEFAULT 0 NOT NULL,
     actual_thumbnail_hash character varying(64) NOT NULL,
     encrypted_key character varying(64),
     created_at bigint,
     updated_at bigint,
     deleted_at timestamp with time zone,
-    chunk_size bigint DEFAULT 65536 NOT NULL,
-    thumbnail_filename text,
-    prev_validation_root text,
-    prev_thumbnail_hash text,
-    is_precommit boolean DEFAULT false NOT NULL
+    is_precommit boolean DEFAULT false NOT NULL,
+    chunk_size bigint DEFAULT 65536 NOT NULL
 );
 
 
@@ -451,7 +439,7 @@ CREATE TABLE public.write_markers (
     allocation_id character varying(64),
     size bigint,
     blobber_id character varying(64),
-    "timestamp" bigint,
+    "timestamp" bigint NOT NULL,
     client_id character varying(64),
     signature character varying(64),
     status bigint DEFAULT 0 NOT NULL,
@@ -691,7 +679,7 @@ ALTER TABLE ONLY public.write_locks
 --
 
 ALTER TABLE ONLY public.write_markers
-    ADD CONSTRAINT write_markers_pkey PRIMARY KEY (allocation_root);
+    ADD CONSTRAINT write_markers_pkey PRIMARY KEY (allocation_root, "timestamp");
 
 
 --
@@ -807,14 +795,6 @@ ALTER TABLE ONLY public.allocation_changes
 
 ALTER TABLE ONLY public.file_stats
     ADD CONSTRAINT fk_file_stats_ref FOREIGN KEY (ref_id) REFERENCES public.reference_objects(id) ON DELETE CASCADE;
-
-
---
--- Name: commit_meta_txns fk_reference_objects_commit_meta_txns; Type: FK CONSTRAINT; Schema: public; Owner: blobber_user
---
-
-ALTER TABLE ONLY public.commit_meta_txns
-    ADD CONSTRAINT fk_reference_objects_commit_meta_txns FOREIGN KEY (ref_id) REFERENCES public.reference_objects(id);
 
 
 --
