@@ -221,43 +221,6 @@ ALTER TABLE public.file_stats_id_seq OWNER TO blobber_user;
 
 ALTER SEQUENCE public.file_stats_id_seq OWNED BY public.file_stats.id;
 
-
---
--- Name: goose_db_version; Type: TABLE; Schema: public; Owner: blobber_user
---
-
-CREATE TABLE public.goose_db_version (
-    id integer NOT NULL,
-    version_id bigint NOT NULL,
-    is_applied boolean NOT NULL,
-    tstamp timestamp without time zone DEFAULT now()
-);
-
-
-ALTER TABLE public.goose_db_version OWNER TO blobber_user;
-
---
--- Name: goose_db_version_id_seq; Type: SEQUENCE; Schema: public; Owner: blobber_user
---
-
-CREATE SEQUENCE public.goose_db_version_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.goose_db_version_id_seq OWNER TO blobber_user;
-
---
--- Name: goose_db_version_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: blobber_user
---
-
-ALTER SEQUENCE public.goose_db_version_id_seq OWNED BY public.goose_db_version.id;
-
-
 --
 -- Name: marketplace_share_info; Type: TABLE; Schema: public; Owner: blobber_user
 --
@@ -560,13 +523,6 @@ ALTER TABLE ONLY public.file_stats ALTER COLUMN id SET DEFAULT nextval('public.f
 
 
 --
--- Name: goose_db_version id; Type: DEFAULT; Schema: public; Owner: blobber_user
---
-
-ALTER TABLE ONLY public.goose_db_version ALTER COLUMN id SET DEFAULT nextval('public.goose_db_version_id_seq'::regclass);
-
-
---
 -- Name: marketplace_share_info id; Type: DEFAULT; Schema: public; Owner: blobber_user
 --
 
@@ -664,14 +620,6 @@ ALTER TABLE ONLY public.file_stats
 
 ALTER TABLE ONLY public.file_stats
     ADD CONSTRAINT file_stats_ref_id_key UNIQUE (ref_id);
-
-
---
--- Name: goose_db_version goose_db_version_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
---
-
-ALTER TABLE ONLY public.goose_db_version
-    ADD CONSTRAINT goose_db_version_pkey PRIMARY KEY (id);
 
 
 --
