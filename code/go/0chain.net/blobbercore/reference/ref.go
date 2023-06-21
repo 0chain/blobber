@@ -665,3 +665,4 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 	}
 	return result
 }
+ 
