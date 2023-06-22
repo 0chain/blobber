@@ -56,7 +56,7 @@ func (m *nonceMonitor) recordFailedNonce(nonce int64) {
 	m.failed[nonce]++
 
 	// when failing for same nonce often, should reschedule nonce for refresh from balance.
-	if m.failed[nonce] > 0 {
+	if m.failed[nonce] >= 3 {
 		m.shouldRefreshFromBalance = true
 		logging.Logger.Info("Frequent failures at nonce.", zap.Any("nonce", nonce), zap.Any("highestSuccess", m.highestSuccess))
 	}
