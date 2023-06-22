@@ -95,26 +95,19 @@ func (m *nonceMonitor) refreshFromBalance() {
 
 	<-cb.waitCh
 
+	newNonce := int64(0)
 	if cb.hasError {
-		return
+		logging.Logger.Info("Couldn't get nonce from remote, use 0")
+		newNonce = int64(0)
+	} else {
+		logging.Logger.Info("Got nonce from balance.", zap.Any("nonce", cb.nonce), zap.Any("highestSuccess", m.highestSuccess))
+		newNonce = cb.nonce
 	}
 
-	logging.Logger.Info("Got nonce from balance.", zap.Any("nonce", cb.nonce), zap.Any("highestSuccess", m.highestSuccess))
-
-	newNonce := cb.nonce
-
-	oldHighest := m.highestSuccess
 	m.highestSuccess = newNonce
 
-	// no clean up necessary if failed is empty
-	if len(m.failed) == 0 {
-		return
-	}
-
-	// (clean up) delete entries on failed up to this new highest success
-	for i := oldHighest; i <= m.highestSuccess; i++ {
-		delete(m.failed, i)
-	}
+	m.failed = make(map[int64]int64)
+	m.used = make(map[int64]time.Time)
 }
 
 type getNonceCallBack struct {
