@@ -447,7 +447,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 		actualSize += childRef.ActualFileSize
 	}
 
-	r.FileMetaHash = encryption.Hash(strings.Join(childFileMetaHashes, ":"))
+	r.FileMetaHash = encryption.Hash(r.Path + strings.Join(childFileMetaHashes, ":"))
 	r.Hash = encryption.Hash(r.GetHashData() + strings.Join(childHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.NumBlocks = refNumBlocks
@@ -665,4 +665,3 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 	}
 	return result
 }
- 
