@@ -62,7 +62,7 @@ func CreateChallengeTiming(challengeID string, createdAt common.Timestamp) error
 	}
 
 	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		return tx.Save(c).Error
+		return tx.Create(c).Error
 	})
 
 	return err
@@ -108,13 +108,18 @@ func UpdateChallengeTimingProofGenerationAndFileSize(
 	}
 
 	c := &ChallengeTiming{
-		ChallengeID:  challengeID,
-		ProofGenTime: proofGenTime,
-		FileSize:     size,
+		ChallengeID: challengeID,
 	}
 
-	db := datastore.GetStore().GetDB()
-	return db.Save(c).Error
+	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
+		values := map[string]interface{}{
+			"proof_gen_time": proofGenTime,
+			"file_size":      size,
+		}
+		return tx.Model(&c).Updates(values).Error
+	})
+
+	return err
 }
 
 func UpdateChallengeTimingTxnSubmission(challengeID string, txnSubmission common.Timestamp) error {
