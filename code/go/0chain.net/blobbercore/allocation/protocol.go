@@ -193,8 +193,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 		}
 	}
 
-	// saving allocation to cache
-
+	// create or update allocation to cache
 	if isAllocationDetailsCached {
 		err = lru.Delete(allocationID)
 		if err != nil {
