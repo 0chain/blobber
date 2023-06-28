@@ -66,7 +66,15 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 		)
 
 		isAllocationDetailsCached = true
-		cachedAllocation := cachedAllocationInterface.(*Allocation)
+		cachedAllocation, ok := cachedAllocationInterface.(*Allocation)
+		if !ok {
+			logging.Logger.Info("VerifyAllocationTransaction 1.1",
+				zap.String("allocationID", allocationID),
+				zap.String("allocationTx", allocationTx),
+				zap.Any("cachedAllocationInterface", cachedAllocationInterface),
+			)
+			return nil, common.NewError("bad_cache_data", "invalid cache data")
+		}
 
 		if a.Tx == allocationTx {
 			a = cachedAllocation
