@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/cache"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -16,6 +16,8 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
+
+var lru = cache.NewLRUCache(10000)
 
 // GetAllocationByID from DB. This function doesn't load related terms.
 func GetAllocationByID(ctx context.Context, allocID string) (a *Allocation, err error) {
@@ -52,16 +54,31 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
-	a = new(Allocation)
-	err = tx.Model(&Allocation{}).
-		Where(&Allocation{Tx: allocationTx}).
-		First(a).Error
+	isAllocationUpdated := false
+	isAllocationDetailsCached := false
 
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
+	cachedAllocationInterface, err := lru.Get(allocationID)
+	if err == nil {
+		isAllocationDetailsCached = true
+		cachedAllocation := cachedAllocationInterface.(*Allocation)
+
+		if a.Tx == allocationTx {
+			a = cachedAllocation
+		} else {
+			isAllocationUpdated = true
+		}
+	} else {
+		a = new(Allocation)
+		err = tx.Model(&Allocation{}).
+			Where(&Allocation{Tx: allocationTx}).
+			First(a).Error
+
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
+		}
 	}
 
-	if err == nil {
+	if !isAllocationUpdated {
 		// load related terms
 		var terms []*Terms
 		err = tx.Model(terms).
@@ -174,6 +191,20 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// saving allocation to cache
+
+	if isAllocationDetailsCached {
+		err = lru.Delete(allocationID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = lru.Add(a.ID, a)
+	if err != nil {
+		return nil, err
 	}
 
 	return a, nil

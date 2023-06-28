@@ -75,5 +75,10 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 		return nil
 	})
 
+	err = lru.Add(allocationId, alloc)
+	if err != nil {
+		return nil, err
+	}
+
 	return alloc, err
 }
