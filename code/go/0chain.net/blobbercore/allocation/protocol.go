@@ -59,6 +59,12 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 
 	cachedAllocationInterface, err := lru.Get(allocationID)
 	if err == nil {
+		logging.Logger.Info("VerifyAllocationTransaction 1",
+			zap.String("allocationID", allocationID),
+			zap.String("allocationTx", allocationTx),
+			zap.Any("cachedAllocationInterface", cachedAllocationInterface),
+		)
+
 		isAllocationDetailsCached = true
 		cachedAllocation := cachedAllocationInterface.(*Allocation)
 
@@ -68,6 +74,11 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			isAllocationUpdated = true
 		}
 	} else {
+		logging.Logger.Info("VerifyAllocationTransaction 2",
+			zap.String("allocationID", allocationID),
+			zap.String("allocationTx", allocationTx),
+			zap.Any("cachedAllocationInterface", cachedAllocationInterface),
+		)
 		a = new(Allocation)
 		err = tx.Model(&Allocation{}).
 			Where(&Allocation{Tx: allocationTx}).

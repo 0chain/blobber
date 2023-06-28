@@ -247,6 +247,8 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 		}
 	}
 
+	logging.Logger.Info("allocation updated", zap.String("id", a.ID), zap.Any("a", a))
+
 	err = lru.Add(a.ID, a)
 	if err != nil {
 		return nil, err
