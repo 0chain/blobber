@@ -241,7 +241,10 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 
 	_, err = lru.Get(a.ID)
 	if err == nil {
-		lru.Delete(a.ID)
+		errInRemovingAllocationFromLRU := lru.Delete(a.ID)
+		if errInRemovingAllocationFromLRU != nil {
+			return nil, err
+		}
 	}
 
 	err = lru.Add(a.ID, a)
