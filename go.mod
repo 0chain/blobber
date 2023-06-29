@@ -33,7 +33,7 @@ require (
 	gorm.io/datatypes v1.2.0
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/driver/sqlite v1.5.2
-	gorm.io/gorm v1.25.2-0.20230530020048-26663ab9bf55
+	gorm.io/gorm v1.25.2
 )
 
 require (
@@ -44,10 +44,7 @@ require (
 
 require google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
 
-require (
-	github.com/lithammer/shortuuid/v3 v3.0.7
-	github.com/pressly/goose/v3 v3.11.2
-)
+require github.com/pressly/goose/v3 v3.11.2
 
 require (
 	github.com/0chain/common v0.0.6-0.20230127095721-8df4d1d72565 // indirect
