@@ -11,6 +11,7 @@ services:
 #expose_ci_port
     volumes:
       - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
+      - ./sql_init:/docker-entrypoint-initdb.d
     networks:
       default:
   postgres-post:
