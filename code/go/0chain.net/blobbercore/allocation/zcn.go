@@ -3,8 +3,10 @@ package allocation
 import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/errors"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -80,6 +82,15 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 	}
 
 	err = lru.Add(allocationId, alloc)
+	logging.Logger.Info("Saving the allocation to DB", zap.Any(
+		"allocation", alloc), zap.Error(err))
+	if err != nil {
+		return nil, err
+	}
+
+	cachedAllocationTest, err := lru.Get(allocationId)
+	logging.Logger.Info("Getting the allocation from DB", zap.Any(
+		"allocation", cachedAllocationTest), zap.Error(err))
 	if err != nil {
 		return nil, err
 	}

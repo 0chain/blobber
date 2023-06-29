@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/0chain/common/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"net/http"
 	"regexp"
 	"strconv"
