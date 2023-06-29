@@ -76,7 +76,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			return nil, common.NewError("bad_cache_data", "invalid cache data")
 		}
 
-		if a.Tx == allocationTx {
+		if cachedAllocation.Tx == allocationTx {
 			a = cachedAllocation
 		} else {
 			isAllocationUpdated = true
@@ -94,6 +94,8 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
+		} else if errors.Is(err, gorm.ErrRecordNotFound) {
+			isAllocationUpdated = true
 		}
 	}
 
