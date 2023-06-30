@@ -144,7 +144,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 	isExist = a.ID != ""
 
 	logging.Logger.Info("VerifyAllocationTransaction",
-		zap.Bool("isExist", isExist),
+		zap.Bool("isExist ", isExist),
 		zap.Any("allocation", a),
 		zap.Any("storageAllocation", sa),
 		zap.String("node.Self.ID", node.Self.ID))
