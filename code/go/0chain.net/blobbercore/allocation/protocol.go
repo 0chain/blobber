@@ -136,6 +136,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 		logging.Logger.Info("bad_db_operation 3",
 			zap.String("allocationID", allocationID),
 			zap.String("allocationTx", allocationTx),
+			zap.Any("sa", sa),
 			zap.Error(err),
 		)
 		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
@@ -157,8 +158,8 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			}
 			foundBlobber = true
 			a.AllocationRoot = ""
-			a.BlobberSize = (sa.Size + int64(len(sa.BlobberDetails)-1)) /
-				int64(len(sa.BlobberDetails))
+			a.BlobberSize = (sa.Size + sa.DataShards) /
+				sa.DataShards
 			a.BlobberSizeUsed = 0
 			break
 		}

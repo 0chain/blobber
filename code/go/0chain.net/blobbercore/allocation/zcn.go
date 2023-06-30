@@ -26,8 +26,8 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 			belongToThisBlobber = true
 
 			alloc.AllocationRoot = ""
-			alloc.BlobberSize = (sa.Size + int64(len(sa.BlobberDetails)-1)) /
-				int64(len(sa.BlobberDetails))
+			alloc.BlobberSize = (sa.Size + sa.DataShards) /
+				sa.DataShards
 			alloc.BlobberSizeUsed = 0
 
 			break
