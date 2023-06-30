@@ -50,7 +50,7 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 	return          // found in DB
 }
 
-// VerifyAllocationTransaction try to get allocation from postgres.if it doesn't exists, get it from sharders, and insert it into postgres.
+// FetchAllocationFromEventsDB try to get allocation from postgres.if it doesn't exists, get it from sharders, and insert it into postgres.
 func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
@@ -93,6 +93,12 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			First(a).Error
 
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			logging.Logger.Info("bad_db_operation 1",
+				zap.String("allocationID", allocationID),
+				zap.String("allocationTx", allocationTx),
+				zap.Error(err),
+			)
+
 			return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
 		} else if errors.Is(err, gorm.ErrRecordNotFound) {
 			isAllocationUpdated = true
@@ -106,6 +112,11 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			Where("allocation_id = ?", a.ID).
 			Find(&terms).Error
 		if err != nil {
+			logging.Logger.Info("bad_db_operation 2",
+				zap.String("allocationID", allocationID),
+				zap.String("allocationTx", allocationTx),
+				zap.Error(err),
+			)
 			return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
 		}
 		a.Terms = terms // set field
@@ -122,6 +133,11 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 		Where("id = ?", sa.ID).
 		First(a).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		logging.Logger.Info("bad_db_operation 3",
+			zap.String("allocationID", allocationID),
+			zap.String("allocationTx", allocationTx),
+			zap.Error(err),
+		)
 		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
 	}
 
