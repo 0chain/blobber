@@ -90,7 +90,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 		a = new(Allocation)
 		err = tx.Model(&Allocation{}).
 			Where(&Allocation{Tx: allocationTx}).
-			First(a).Error
+			First(&a).Error
 
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			logging.Logger.Info("bad_db_operation 1",
