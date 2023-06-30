@@ -81,16 +81,9 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 		return nil, errors.Throw(err, "meta_data_update_error", err.Error())
 	}
 
-	err = lru.Add(allocationId, alloc)
+	err = LRU.Add(allocationId, alloc)
 	logging.Logger.Info("Saving the allocation to DB", zap.Any(
 		"allocation", alloc), zap.Error(err))
-	if err != nil {
-		return nil, err
-	}
-
-	cachedAllocationTest, err := lru.Get(allocationId)
-	logging.Logger.Info("Getting the allocation from DB", zap.Any(
-		"allocation", cachedAllocationTest), zap.Error(err))
 	if err != nil {
 		return nil, err
 	}

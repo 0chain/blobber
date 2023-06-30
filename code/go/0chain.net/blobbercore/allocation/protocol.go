@@ -17,7 +17,7 @@ import (
 	"gorm.io/gorm"
 )
 
-var lru = cache.NewLRUCache(10000)
+var LRU = cache.NewLRUCache(10000)
 
 // GetAllocationByID from DB. This function doesn't load related terms.
 func GetAllocationByID(ctx context.Context, allocID string) (a *Allocation, err error) {
@@ -54,8 +54,9 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
+	lru := LRU
+
 	isAllocationUpdated := false
-	isAllocationDetailsCached := false
 
 	cachedAllocationInterface, err := lru.Get(allocationID)
 	if err == nil {
@@ -65,7 +66,6 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			zap.Any("cachedAllocationInterface", cachedAllocationInterface),
 		)
 
-		isAllocationDetailsCached = true
 		cachedAllocation, ok := cachedAllocationInterface.(*Allocation)
 		if !ok {
 			logging.Logger.Info("VerifyAllocationTransaction 1.1",
@@ -209,14 +209,6 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 		} else {
 			err = tx.Create(t).Error
 		}
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// create or update allocation to cache
-	if isAllocationDetailsCached {
-		err = lru.Delete(allocationID)
 		if err != nil {
 			return nil, err
 		}
