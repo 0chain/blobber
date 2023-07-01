@@ -106,7 +106,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	origfile, _, err := req.FormFile(UploadFile)
 	if err != nil {
-		return result, common.NewError("invalid_parameters ", "Error Reading multi parts for file."+err.Error())
+		return result, common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
 	}
 	defer origfile.Close()
 
