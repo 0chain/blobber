@@ -18,6 +18,12 @@ func GetOrCreate(ctx context.Context, store datastore.Store, allocationId string
 		return nil, errors.Throw(constants.ErrInvalidParameter, "tx")
 	}
 
+	cachedAllocationInterface, err := LRU.Get(allocationId)
+	if err == nil {
+		cachedAllocation := cachedAllocationInterface.(*Allocation)
+		return cachedAllocation, nil
+	}
+
 	alloc := &Allocation{}
 	result := db.Table(TableNameAllocation).Where(SQLWhereGetById, allocationId).First(alloc)
 
