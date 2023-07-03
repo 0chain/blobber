@@ -34,7 +34,7 @@ services:
       - ./keys_config:/validator/keysconfig
     ports:
       - "506${BLOBBER}:506${BLOBBER}"
-    command: ./bin/validator --port 506${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0vnode${BLOBBER}_keys.txt --log_dir /validator/log  --hosturl https://helm.0chain.net/validator0${BLOBBER}
+    command: ./bin/validator --port 506${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0vnode${BLOBBER}_keys.txt --log_dir /validator/log  --hosturl https://domain-name/validator0${BLOBBER}
     networks:
       testnet0:
         ipv4_address: 198.18.7.${BLOBBER}
@@ -57,7 +57,7 @@ services:
     ports:
       - "505${BLOBBER}:505${BLOBBER}"
       - "703${BLOBBER}:703${BLOBBER}"
-    command: ./bin/blobber --port 505${BLOBBER} --grpc_port 703${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --hosturl https://helm.0chain.net/blobber0${BLOBBER}
+    command: ./bin/blobber --port 505${BLOBBER} --grpc_port 703${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --hosturl https://domain-name/blobber0${BLOBBER}
     networks:
       testnet0:
         ipv4_address: 198.18.6.${BLOBBER}
