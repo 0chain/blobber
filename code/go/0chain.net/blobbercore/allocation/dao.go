@@ -4,8 +4,10 @@ import (
 	"context"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/constants"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -20,8 +22,12 @@ func GetOrCreate(ctx context.Context, store datastore.Store, allocationId string
 
 	cachedAllocationInterface, err := LRU.Get(allocationId)
 	if err == nil {
-		cachedAllocation := cachedAllocationInterface.(*Allocation)
-		return cachedAllocation, nil
+		cachedAllocation, ok := cachedAllocationInterface.(*Allocation)
+		if !ok {
+			logging.Logger.Error("LRU cache error", zap.Error(err))
+		} else {
+			return cachedAllocation, nil
+		}
 	}
 
 	alloc := &Allocation{}
