@@ -1,6 +1,7 @@
 version: "3"
 services:
   postgres:
+    container_name: blobber-postgres-${BLOBBER}
     image: postgres:14
     environment:
       POSTGRES_PORT: 5432
@@ -9,78 +10,62 @@ services:
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - ../config/postgresql.conf:/etc/postgresql/postgresql.conf
-      - /mnt/ssd/blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
+      - ${PROJECT_ROOT_SSD}/blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
+      - ./sql_init:/docker-entrypoint-initdb.d
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    # ports:
+    #   - 5432:5432
     networks:
-      default:
-
-  postgres-post:
-    image: postgres:14
-    environment:
-      POSTGRES_PORT: 5432
-      POSTGRES_HOST: postgres
-      POSTGRES_USER: postgres
-    volumes:
-      - ../bin:/blobber/bin
-    command: bash /blobber/bin/postgres-entrypoint.sh
-    links:
-      - postgres:postgres
+      testnet0:
+        ipv4_address: 198.18.8.${BLOBBER}
+    restart: on-failure:5
 
   validator:
+    container_name: validator-${BLOBBER}
     image: 0chaindev/validator:staging
     environment:
-      - DOCKER= true
+      - DOCKER=true
     depends_on:
-      - postgres-post
-    links:
-      - postgres-post:postgres-post
+      - postgres
     volumes:
       - ../config:/validator/config
-      - /mnt/hdd/validator${BLOBBER}/data:/validator/data
-      - /mnt/hdd/validator${BLOBBER}/log:/validator/log
+      - ${PROJECT_ROOT_HDD}/validator${BLOBBER}/data:/validator/data
+      - ${PROJECT_ROOT_HDD}/validator${BLOBBER}/log:/validator/log
       - ./keys_config:/validator/keysconfig
     ports:
       - "506${BLOBBER}:506${BLOBBER}"
-    command: ./bin/validator --port 506${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0vnode${BLOBBER}_keys.txt --log_dir /validator/log  --hosturl https://<your-domain>/validator0${BLOBBER}
+    command: ./bin/validator --port 506${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0vnode${BLOBBER}_keys.txt --log_dir /validator/log  --hosturl https://helm.0chain.net/validator0${BLOBBER}
     networks:
-      default:
       testnet0:
-        ipv4_address: 198.18.0.6${BLOBBER}
+        ipv4_address: 198.18.7.${BLOBBER}
+    restart: on-failure:5
 
   blobber:
+    container_name: blobber-${BLOBBER}
     image: 0chaindev/blobber:staging
     environment:
-      - DOCKER= true
+      - DOCKER=true
     depends_on:
       - validator
-    links:
-      - validator:validator
     volumes:
       - ../config:/blobber/config
-      - /mnt/hdd/blobber${BLOBBER}/files:/blobber/files
-      - /mnt/hdd/blobber${BLOBBER}/data:/blobber/data
-      - /mnt/hdd/blobber${BLOBBER}/log:/blobber/log
+      - ${PROJECT_ROOT_HDD}/blobber${BLOBBER}/files:/blobber/files
+      - ${PROJECT_ROOT_HDD}/blobber${BLOBBER}/data:/blobber/data
+      - ${PROJECT_ROOT_HDD}/blobber${BLOBBER}/log:/blobber/log
       - ./keys_config:/blobber/keysconfig
-      - /mnt/hdd/blobber${BLOBBER}/data/tmp:/tmp
+      - ${PROJECT_ROOT_HDD}/blobber${BLOBBER}/data/tmp:/tmp
     ports:
       - "505${BLOBBER}:505${BLOBBER}"
       - "703${BLOBBER}:703${BLOBBER}"
-    command: ./bin/blobber --port 505${BLOBBER} --grpc_port 703${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --hosturl https://<your-domain>/blobber0${BLOBBER}
+    command: ./bin/blobber --port 505${BLOBBER} --grpc_port 703${BLOBBER} --hostname localhost --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data --hosturl https://helm.0chain.net/blobber0${BLOBBER}
     networks:
-      default:
       testnet0:
-        ipv4_address: 198.18.0.9${BLOBBER}
+        ipv4_address: 198.18.6.${BLOBBER}
+    restart: on-failure:5
 
 networks:
-  default:
-    driver: bridge
   testnet0:
     external: true
-    # driver: bridge
-    # ipam:
-    #   config:
-    #     - subnet: 198.18.0.0/15
-    #     - gateway: 198.18.0.255
 
 volumes:
   data:
