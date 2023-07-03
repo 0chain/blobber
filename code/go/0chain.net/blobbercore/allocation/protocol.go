@@ -158,7 +158,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			}
 			foundBlobber = true
 			a.AllocationRoot = ""
-			a.BlobberSize = (sa.Size + sa.DataShards) /
+			a.BlobberSize = sa.Size /
 				sa.DataShards
 			a.BlobberSizeUsed = 0
 			break
