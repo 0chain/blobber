@@ -720,12 +720,15 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err = db.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
-
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
 		if !errors.Is(common.ErrFileWasDeleted, err) {
 			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 		}
+	}
+	err = writemarkerEntity.SendToChan(ctx)
+	if err != nil {
+		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
 	}
 
 	result.Changes = connectionObj.Changes
@@ -746,15 +749,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	db.Delete(connectionObj)
-	err = writemarkerEntity.SendToChan(ctx)
-	if err != nil {
-		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
-	}
-	Logger.Info("write_marker_redeemed", zap.String("alloc_id", allocationID), zap.String("allocation_root", writeMarker.AllocationRoot))
 	go allocation.DeleteConnectionObjEntry(connectionID)
 
 	Logger.Info("[commit]"+commitOperation,
 		zap.String("alloc_id", allocationID),
+		zap.String("allocation_root", writeMarker.AllocationRoot),
 		zap.String("input", input),
 		zap.Duration("get_alloc", elapsedAllocation),
 		zap.Duration("get-lock", elapsedGetLock),
@@ -1015,7 +1014,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	}
 
 	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(
-		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root", "thumbnail_filename"})
+		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -1084,7 +1083,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 	fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, connectionObj.AllocationID, path,
-		[]string{"path", "name", "size", "hash", "validation_root", "fixed_merkle_root", "thumbnail_filename"})
+		[]string{"path", "name", "size", "hash", "validation_root", "fixed_merkle_root"})
 
 	if err != nil {
 		Logger.Error("invalid_file", zap.Error(err))
