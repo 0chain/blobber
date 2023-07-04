@@ -13,7 +13,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -60,19 +59,10 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 
 	cachedAllocationInterface, err := lru.Get(allocationID)
 	if err == nil {
-		logging.Logger.Info("VerifyAllocationTransaction 1",
-			zap.String("allocationID", allocationID),
-			zap.String("allocationTx", allocationTx),
-			zap.Any("cachedAllocationInterface", cachedAllocationInterface),
-		)
 
 		cachedAllocation, ok := cachedAllocationInterface.(*Allocation)
 		if !ok {
-			logging.Logger.Info("VerifyAllocationTransaction 1.1",
-				zap.String("allocationID", allocationID),
-				zap.String("allocationTx", allocationTx),
-				zap.Any("cachedAllocationInterface", cachedAllocationInterface),
-			)
+
 			return nil, common.NewError("bad_cache_data", "invalid cache data")
 		}
 
@@ -82,22 +72,13 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			isAllocationUpdated = true
 		}
 	} else {
-		logging.Logger.Info("VerifyAllocationTransaction 2",
-			zap.String("allocationID", allocationID),
-			zap.String("allocationTx", allocationTx),
-			zap.Any("cachedAllocationInterface", cachedAllocationInterface),
-		)
+
 		a = new(Allocation)
 		err = tx.Model(&Allocation{}).
 			Where(&Allocation{Tx: allocationTx}).
 			First(&a).Error
 
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			logging.Logger.Info("bad_db_operation 1",
-				zap.String("allocationID", allocationID),
-				zap.String("allocationTx", allocationTx),
-				zap.Error(err),
-			)
 
 			return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
 		} else if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -112,11 +93,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			Where("allocation_id = ?", a.ID).
 			Find(&terms).Error
 		if err != nil {
-			logging.Logger.Info("bad_db_operation 2",
-				zap.String("allocationID", allocationID),
-				zap.String("allocationTx", allocationTx),
-				zap.Error(err),
-			)
+
 			return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
 		}
 		a.Terms = terms // set field
@@ -133,22 +110,11 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 		Where("id = ?", sa.ID).
 		First(&a).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		logging.Logger.Info("bad_db_operation 3",
-			zap.String("allocationID", allocationID),
-			zap.String("allocationTx", allocationTx),
-			zap.Any("sa", sa),
-			zap.Error(err),
-		)
+
 		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
 	}
 
 	isExist = a.ID != ""
-
-	logging.Logger.Info("VerifyAllocationTransaction",
-		zap.Bool("isExist ", isExist),
-		zap.Any("allocation", a),
-		zap.Any("storageAllocation", sa),
-		zap.String("node.Self.ID", node.Self.ID))
 
 	if !isExist {
 		foundBlobber := false
