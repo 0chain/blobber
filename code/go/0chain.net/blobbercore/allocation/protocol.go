@@ -14,6 +14,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"gorm.io/gorm"
+	"math"
 )
 
 var LRU = cache.NewLRUCache(10000)
@@ -124,8 +125,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			}
 			foundBlobber = true
 			a.AllocationRoot = ""
-			a.BlobberSize = sa.Size /
-				sa.DataShards
+			a.BlobberSize = int64(math.Ceil(float64(sa.Size) / float64(sa.DataShards)))
 			a.BlobberSizeUsed = 0
 			break
 		}

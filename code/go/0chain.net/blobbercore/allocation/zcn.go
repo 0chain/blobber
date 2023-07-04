@@ -8,6 +8,7 @@ import (
 	"github.com/0chain/errors"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"math"
 )
 
 // SyncAllocation try to pull allocation from blockchain, and insert it in db.
@@ -26,8 +27,7 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 			belongToThisBlobber = true
 
 			alloc.AllocationRoot = ""
-			alloc.BlobberSize = sa.Size /
-				sa.DataShards
+			alloc.BlobberSize = int64(math.Ceil(float64(sa.Size) / float64(sa.DataShards)))
 			alloc.BlobberSizeUsed = 0
 
 			break
