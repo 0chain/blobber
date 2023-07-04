@@ -371,8 +371,8 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*
 
 func (r *Ref) GetFileMetaHashData() string {
 	return fmt.Sprintf(
-		"%s:%d:%s:%d:%s",
-		r.Path, r.Size, r.FileID,
+		"%s:%d:%d:%s",
+		r.Path, r.Size,
 		r.ActualFileSize, r.ActualFileHash)
 }
 
@@ -448,7 +448,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 		actualSize += childRef.ActualFileSize
 	}
 
-	r.FileMetaHash = encryption.Hash(r.GetHashData() + strings.Join(childFileMetaHashes, ":"))
+	r.FileMetaHash = encryption.Hash(r.Path + strings.Join(childFileMetaHashes, ":"))
 	r.Hash = encryption.Hash(r.GetHashData() + strings.Join(childHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.NumBlocks = refNumBlocks
@@ -603,7 +603,6 @@ func ListingDataToRef(refMap map[string]interface{}) *Ref {
 	if len(refMap) < 1 {
 		return nil
 	}
-
 	ref := &Ref{}
 
 	refType, _ := refMap["type"].(string)
