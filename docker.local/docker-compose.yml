@@ -4,6 +4,7 @@ services:
     image: postgres:14
     volumes:
       - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
+      - ./sql_init:/docker-entrypoint-initdb.d
     networks:
       default:
     ports:

@@ -11,6 +11,7 @@ COPY ./go.mod          ./go.sum          $SRC_DIR/
 RUN cd $SRC_DIR && go mod download
 
 #Add the source code
+ADD ./goose          $SRC_DIR/goose
 ADD ./code/go/0chain.net $SRC_DIR/code/go/0chain.net
 
 WORKDIR $SRC_DIR/code/go/0chain.net/blobber
