@@ -36,7 +36,7 @@ services:
     links:
       - postgres-post:postgres-post
     volumes:
-      - ../${CONFIG:-config}:/validator/config
+      - ${CONFIG_PATH:-../config}:/validator/config #value after :- is default value
       - ./blobber${BLOBBER}/data:/validator/data
       - ./blobber${BLOBBER}/log:/validator/log
       - ./keys_config:/validator/keysconfig
