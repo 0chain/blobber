@@ -717,6 +717,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	allocationUpdates["file_meta_root"] = fileMetaRoot
 	allocationUpdates["is_redeem_required"] = true
 
+	if err = db.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
+		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
+	}
+
 	lru := allocation.LRU
 	cachedAllocationInterface, err := lru.Get(allocationId)
 	if err != nil {
@@ -738,9 +742,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("cache_error", "Error adding allocation to cache: "+err.Error())
 	}
 
-	if err = db.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
-		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
-	}
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
 		if !errors.Is(common.ErrFileWasDeleted, err) {
