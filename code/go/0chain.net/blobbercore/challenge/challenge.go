@@ -247,5 +247,4 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 	}
 
 	return txn, nil
-
 }
