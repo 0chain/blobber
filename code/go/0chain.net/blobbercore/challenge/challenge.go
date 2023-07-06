@@ -42,6 +42,7 @@ func syncOpenChallenges(ctx context.Context) {
 	if lastChallengeTimestamp > 0 {
 		params["from"] = strconv.Itoa(lastChallengeTimestamp)
 	}
+	logging.Logger.Info("[challenge]sync:pull", zap.Any("params", params))
 	start := time.Now()
 
 	var downloadElapsed, jsonElapsed time.Duration
