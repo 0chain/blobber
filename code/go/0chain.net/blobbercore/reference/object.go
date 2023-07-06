@@ -31,6 +31,7 @@ func DeleteObject(ctx context.Context, rootRef *Ref, allocationID, objPath strin
 		rootRef.Children = nil
 		rootRef.HashToBeComputed = true
 		rootRef.childrenLoaded = true
+		rootRef.UpdatedAt = ts
 		return nil
 	}
 	parentPath, deleteFileName := filepath.Split(objPath)
