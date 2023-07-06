@@ -2,6 +2,7 @@ package logging
 
 import (
 	"os"
+	"sync"
 
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -11,9 +12,16 @@ import (
 
 var (
 	Logger *zap.Logger
+	once   sync.Once
 )
 
 func InitLogging(mode, logDir, logFile string) {
+	once.Do(func() {
+		initLogging(mode, logDir, logFile)
+	})
+}
+
+func initLogging(mode, logDir, logFile string) {
 	var logName = logDir + "/" + logFile
 
 	var logWriter = getWriteSyncer(logName)
