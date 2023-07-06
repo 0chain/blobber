@@ -97,7 +97,6 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	fileRef.EncryptedKey = nf.EncryptedKey
 	fileRef.ChunkSize = nf.ChunkSize
 	fileRef.IsPrecommit = true
-	fileRef.ThumbnailFilename = nf.ThumbnailFilename
 
 	return rootRef, nil
 }

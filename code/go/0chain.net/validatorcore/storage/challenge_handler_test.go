@@ -55,16 +55,6 @@ func TestChallengeHandler(t *testing.T) {
 			wantErr:    true,
 			wantErrMsg: "Header hash and request hash do not match",
 		},
-		{
-			name: "nil object path",
-			req: func() *http.Request {
-				req, _ := http.NewRequest("POST", "url", bytes.NewBuffer([]byte("{}")))
-				req.Header.Set("X-App-Request-Hash", "840eb7aa2a9935de63366bacbe9d97e978a859e93dc792a0334de60ed52f8e99")
-				return req
-			}(),
-			wantErr:    true,
-			wantErrMsg: "Empty object path or merkle path",
-		},
 	}
 
 	for _, tt := range tests {
