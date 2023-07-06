@@ -57,7 +57,7 @@ services:
     links:
       - validator:validator
     volumes:
-      - ../${CONFIG:-config}:/blobber/config
+      - ${CONFIG_PATH:-../config}:/blobber/config
       - ./blobber${BLOBBER}/files:/blobber/files
       - ./blobber${BLOBBER}/data:/blobber/data
       - ./blobber${BLOBBER}/log:/blobber/log
