@@ -37,7 +37,7 @@ jobs:
           path: ./0helm
           token: ${{ secrets.ACCESS_TOKEN }}
 
-      - name: "Copy 0chain.yaml and sc.yaml in 0helm one-pool-staging-test branch"
+      - name: "Copy 0chain_blobber.yaml and 0chain_validator.yaml in 0helm one-pool-staging-test branch"
         if: ${{ contains(steps.changed-files.outputs.modified_files, 'config/0chain_blobber.yaml') || contains(steps.changed-files.outputs.modified_files, 'config/0chain_validator.yaml') }}
         run: |
           touch 0helm/updated_configs/0chain_blobber.yaml
