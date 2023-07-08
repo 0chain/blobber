@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
@@ -103,8 +104,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			}
 			foundBlobber = true
 			a.AllocationRoot = ""
-			a.BlobberSize = (sa.Size + int64(len(sa.BlobberDetails)-1)) /
-				int64(len(sa.BlobberDetails))
+			a.BlobberSize = int64(math.Ceil(float64(sa.Size) / float64(sa.DataShards)))
 			a.BlobberSizeUsed = 0
 			break
 		}
