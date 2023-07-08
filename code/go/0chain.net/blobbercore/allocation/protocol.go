@@ -9,27 +9,17 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/blobber/code/go/0chain.net/core/cache"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"gorm.io/gorm"
-	"math"
 )
-
-var LRU = cache.NewLRUCache(10000)
 
 // GetAllocationByID from DB. This function doesn't load related terms.
 func GetAllocationByID(ctx context.Context, allocID string) (a *Allocation, err error) {
-	var tx = datastore.GetStore().GetTransaction(ctx)
-
-	a = new(Allocation)
-	err = tx.Model(&Allocation{}).
-		Where("id=?", allocID).
-		First(a).Error
-	return
+	return Repo.GetById(ctx, allocID)
 }
 
 // LoadTerms loads corresponding terms from DB. Since, the GetAllocationByID
@@ -56,47 +46,19 @@ func (a *Allocation) LoadTerms(ctx context.Context) (err error) {
 func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, allocationTx string, readonly bool) (a *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
-	lru := LRU
+	a, err = Repo.GetByTx(ctx, allocationID, allocationTx)
 
-	isAllocationUpdated := false
-
-	cachedAllocationInterface, err := lru.Get(allocationID)
-	if err == nil {
-
-		cachedAllocation, ok := cachedAllocationInterface.(*Allocation)
-		if !ok {
-
-			return nil, common.NewError("bad_cache_data", "invalid cache data")
-		}
-
-		if cachedAllocation.Tx == allocationTx {
-			a = cachedAllocation
-		} else {
-			isAllocationUpdated = true
-		}
-	} else {
-
-		a = new(Allocation)
-		err = tx.Model(&Allocation{}).
-			Where(&Allocation{Tx: allocationTx}).
-			First(&a).Error
-
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-
-			return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
-		} else if errors.Is(err, gorm.ErrRecordNotFound) {
-			isAllocationUpdated = true
-		}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
 	}
 
-	if !isAllocationUpdated {
+	if err == nil {
 		// load related terms
 		var terms []*Terms
 		err = tx.Model(terms).
 			Where("allocation_id = ?", a.ID).
 			Find(&terms).Error
 		if err != nil {
-
 			return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
 		}
 		a.Terms = terms // set field
@@ -109,9 +71,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 	}
 
 	var isExist bool
-	err = tx.Model(&Allocation{}).
-		Where("id = ?", sa.ID).
-		First(&a).Error
+	a, err = Repo.GetById(ctx, sa.ID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 
 		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
@@ -177,11 +137,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 
 	logging.Logger.Info("Saving the allocation to DB")
 
-	if isExist {
-		err = tx.Save(a).Error
-	} else {
-		err = tx.Create(a).Error
-	}
+	err = Repo.Save(ctx, a)
 
 	if err != nil {
 		return nil, err
@@ -197,11 +153,6 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	err = lru.Add(a.ID, a)
-	if err != nil {
-		return nil, err
 	}
 
 	return a, nil

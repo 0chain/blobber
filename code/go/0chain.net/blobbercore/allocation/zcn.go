@@ -1,6 +1,9 @@
 package allocation
 
 import (
+	"context"
+	"math"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -8,7 +11,6 @@ import (
 	"github.com/0chain/errors"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"math"
 )
 
 // SyncAllocation try to pull allocation from blockchain, and insert it in db.
@@ -64,7 +66,8 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 	}
 
 	err = datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		if err := tx.Table(TableNameAllocation).Save(alloc).Error; err != nil {
+		ctx := datastore.GetStore().WithTransaction(context.Background(), tx)
+		if err := Repo.Save(ctx, alloc); err != nil {
 			return err
 		}
 
@@ -81,7 +84,6 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 		return nil, errors.Throw(err, "meta_data_update_error", err.Error())
 	}
 
-	err = LRU.Add(allocationId, alloc)
 	logging.Logger.Info("Saving the allocation to DB", zap.Any(
 		"allocation", alloc), zap.Error(err))
 	if err != nil {

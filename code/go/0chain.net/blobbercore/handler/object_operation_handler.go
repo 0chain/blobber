@@ -27,10 +27,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
-
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
@@ -52,7 +50,6 @@ func readPreRedeem(
 
 	// check out read pool tokens if read_price > 0
 	var (
-		db        = datastore.GetStore().GetTransaction(ctx)
 		blobberID = node.Self.ID
 	)
 
@@ -60,7 +57,7 @@ func readPreRedeem(
 		return // skip if read price is zero
 	}
 
-	readPoolBalance, err := allocation.GetReadPoolsBalance(db, payerID)
+	readPoolBalance, err := allocation.GetReadPoolsBalance(ctx, payerID)
 	if err != nil {
 		return common.NewError("read_pre_redeem", "database error while reading read pools balance")
 	}
@@ -73,7 +70,7 @@ func readPreRedeem(
 		}
 
 		rp.ClientID = payerID
-		err = allocation.UpdateReadPool(db, rp)
+		err = allocation.UpdateReadPool(ctx, rp)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem", "can't save requested read pools: %v", err)
 		}
@@ -108,7 +105,6 @@ func checkPendingMarkers(ctx context.Context, allocationID string) error {
 func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMarker *writemarker.WriteMarker, payerID string) (err error) {
 	// check out read pool tokens if read_price > 0
 	var (
-		db              = datastore.GetStore().GetTransaction(ctx)
 		blobberID       = node.Self.ID
 		requiredBalance = alloc.GetRequiredWriteBalance(blobberID, writeMarker.Size, writeMarker.Timestamp)
 		wp              *allocation.WritePool
@@ -118,13 +114,13 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 		return
 	}
 
-	writePoolBalance, err := allocation.GetWritePoolsBalance(db, alloc.ID)
+	writePoolBalance, err := allocation.GetWritePoolsBalance(ctx, alloc.ID)
 	if err != nil {
 		Logger.Error("write_pre_redeem:get_write_pools_balance", zap.Error(err), zap.String("allocation_id", alloc.ID))
 		return common.NewError("write_pre_redeem", "database error while getting write pool balance")
 	}
 
-	pendingWriteSize, err := allocation.GetPendingWrite(db, payerID, alloc.ID)
+	pendingWriteSize, err := allocation.GetPendingWrite(ctx, payerID, alloc.ID)
 	if err != nil {
 		escapedPayerID := sanitizeString(payerID)
 		Logger.Error("write_pre_redeem:get_pending_write", zap.Error(err), zap.String("allocation_id", alloc.ID), zap.String("payer_id", escapedPayerID))
@@ -139,7 +135,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 			return common.NewErrorf("write_pre_redeem", "can't request write pools from sharders: %v", err)
 		}
 
-		err = allocation.SetWritePool(db, alloc.ID, wp)
+		err = allocation.SetWritePool(ctx, alloc.ID, wp)
 		if err != nil {
 			return common.NewErrorf("write_pre_redeem", "can't save requested write pools: %v", err)
 		}
@@ -154,7 +150,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 			alloc.ID, writeMarker.BlobberID, writePoolBalance, requiredBalance)
 	}
 
-	if err := allocation.AddToPending(db, payerID, alloc.ID, writeMarker.Size); err != nil {
+	if err := allocation.AddToPending(ctx, payerID, alloc.ID, writeMarker.Size); err != nil {
 		Logger.Error(err.Error())
 		return common.NewErrorf("write_pre_redeem", "can't save pending writes in DB")
 
@@ -720,28 +716,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err = db.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
-
-	lru := allocation.LRU
-	cachedAllocationInterface, err := lru.Get(allocationId)
-	if err != nil {
-		return nil, common.NewError("cache_error", "Error getting cached allocation: "+err.Error())
-	}
-
-	cachedAllocation, ok := cachedAllocationInterface.(*allocation.Allocation)
-	if !ok {
-		return nil, common.NewError("cache_error", "Error getting cached allocation")
-	}
-
-	cachedAllocation.AllocationRoot = allocationRoot
-	cachedAllocation.FileMetaRoot = fileMetaRoot
-	cachedAllocation.IsRedeemRequired = true
-	cachedAllocation.UsedSize += connectionObj.Size
-	cachedAllocation.BlobberSizeUsed += connectionObj.Size
-
-	if err = lru.Add(allocationId, cachedAllocation); err != nil {
-		return nil, common.NewError("cache_error", "Error adding allocation to cache: "+err.Error())
-	}
-
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
 		if !errors.Is(common.ErrFileWasDeleted, err) {
@@ -1484,11 +1458,12 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	Logger.Info("rollback_writemarker", zap.Any("writemarker", writemarkerEntity.WM))
 
 	db := datastore.GetStore().GetDB()
-	alloc := &allocation.Allocation{}
+	var alloc *allocation.Allocation
 
 	err = db.Transaction(func(tx *gorm.DB) error {
+		c := datastore.GetStore().WithTransaction(ctx, tx)
 
-		err := tx.Model(&allocation.Allocation{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("is_redeem_required").Where("id=?", allocationID).First(alloc).Error
+		alloc, err := allocation.Repo.GetByIdAndLock(c, allocationID)
 		if err != nil {
 			return common.NewError("allocation_read_error", "Error reading the allocation object")
 		}
@@ -1511,27 +1486,6 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 		if err = tx.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
 			return common.NewError("allocation_write_error", "Error persisting the allocation object "+err.Error())
-		}
-
-		lru := allocation.LRU
-		cachedAllocationInterface, err := lru.Get(allocationId)
-		if err != nil {
-			return common.NewError("cache_error", "Error getting cached allocation: "+err.Error())
-		}
-
-		cachedAllocation, ok := cachedAllocationInterface.(*allocation.Allocation)
-		if !ok {
-			return common.NewError("cache_error", "Error getting cached allocation")
-		}
-
-		cachedAllocation.AllocationRoot = allocationRoot
-		cachedAllocation.FileMetaRoot = fileMetaRoot
-		cachedAllocation.IsRedeemRequired = true
-		cachedAllocation.UsedSize += latestWriteMarkerEntity.WM.Size
-		cachedAllocation.BlobberSizeUsed += latestWriteMarkerEntity.WM.Size
-
-		if err = lru.Add(allocationId, cachedAllocation); err != nil {
-			return common.NewError("cache_error", "Error adding allocation to cache: "+err.Error())
 		}
 
 		return nil

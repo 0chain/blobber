@@ -140,7 +140,7 @@ func unMarshalField(stringObj datatypes.JSON, dest interface{}) error {
 
 func (cr *ChallengeEntity) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	return cr.SaveWith(db)
+	return cr.SaveWith(db.DB)
 }
 
 func (cr *ChallengeEntity) SaveWith(db *gorm.DB) error {

@@ -5,16 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"net/http"
 	"regexp"
 	"strconv"
 
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-
 	"github.com/0chain/gosdk/constants"
 	"go.uber.org/zap"
 
@@ -73,10 +72,7 @@ func (fsh *StorageHandler) convertGormError(err error) error {
 
 // verifyAuthTicket verifies authTicket and returns authToken and error if any. For any error authToken is nil
 func (fsh *StorageHandler) verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string, verifyShare bool) (*readmarker.AuthTicket, error) {
-
-	db := datastore.GetStore().GetTransaction(ctx)
-
-	return verifyAuthTicket(ctx, db, authTokenString, allocationObj, refRequested, clientID, verifyShare)
+	return verifyAuthTicket(ctx, authTokenString, allocationObj, refRequested, clientID, verifyShare)
 }
 
 func (fsh *StorageHandler) GetAllocationDetails(ctx context.Context, r *http.Request) (interface{}, error) {

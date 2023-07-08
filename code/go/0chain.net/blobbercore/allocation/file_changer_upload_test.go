@@ -95,9 +95,7 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 
 			config.Configuration.MaxAllocationDirFiles = tc.maxDirFilesPerAlloc
 
-			ctx := context.TODO()
-			db := datastore.GetStore().GetDB().Begin()
-			ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
+			ctx := datastore.GetStore().CreateTransaction(context.TODO())
 
 			fPath := "/new"
 			change := &UploadFileChanger{
