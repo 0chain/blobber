@@ -263,6 +263,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
 		allocationID = ctx.Value(constants.ContextKeyAllocationID).(string)
 		alloc        *allocation.Allocation
+		blobberID    = node.Self.ID
 	)
 
 	if clientID == "" {
@@ -322,7 +323,13 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 	}
 
+	isReadFree := alloc.IsReadFree(blobberID)
+
 	if dr.SubmitRM {
+		if isReadFree {
+			return nil, nil
+		}
+
 		lock, isNewLock := readmarker.ReadmarkerMapLock.GetLock(key)
 		if !isNewLock {
 			return nil, common.NewErrorf("lock_exists", fmt.Sprintf("lock exists for key: %v", key))
@@ -392,13 +399,15 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		}
 	}
 
-	dq := quotaManager.getDownloadQuota(dr.ConnectionID)
-	if dq == nil {
-		return nil, common.NewError("download_file", fmt.Sprintf("no download quota for %v", dr.ConnectionID))
-	}
-
-	if dq.Quota < dr.NumBlocks {
-		return nil, common.NewError("download_file", fmt.Sprintf("insufficient quota: available %v, requested %v", dq.Quota, dr.NumBlocks))
+	var dq *DownloadQuota
+	if !isReadFree {
+		dq = quotaManager.getDownloadQuota(dr.ConnectionID)
+		if dq == nil {
+			return nil, common.NewError("download_file", fmt.Sprintf("no download quota for %v", dr.ConnectionID))
+		}
+		if dq.Quota < dr.NumBlocks {
+			return nil, common.NewError("download_file", fmt.Sprintf("insufficient quota: available %v, requested %v", dq.Quota, dr.NumBlocks))
+		}
 	}
 
 	var (
@@ -468,9 +477,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, err
 	}
 
-	err = quotaManager.consumeQuota(dr.ConnectionID, dr.NumBlocks)
-	if err != nil {
-		return nil, common.NewError("download_file", err.Error())
+	if !isReadFree {
+		err = quotaManager.consumeQuota(dr.ConnectionID, dr.NumBlocks)
+		if err != nil {
+			return nil, common.NewError("download_file", err.Error())
+		}
 	}
 
 	fileDownloadResponse.Data = chunkData
