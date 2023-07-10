@@ -119,6 +119,8 @@ func validateOnValidators(c *ChallengeEntity) {
 		logging.Logger.Error("[challengetiming]add: ",
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Error(err))
+		deleteChallenge(int64(c.CreatedAt))
+		tx.Rollback()
 	}
 
 	createdTime := common.ToTime(c.CreatedAt)
