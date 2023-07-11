@@ -63,25 +63,25 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-    - name: Get changed files using defaults
-      id: changed-files
-      uses: tj-actions/changed-files@v18.4
+      - name: Get changed files using defaults
+        id: changed-files
+        uses: tj-actions/changed-files@v18.4
 
-    - name: Pull Build Base & Run Base
-      run: |
-        docker pull $BLOBBER_BUILD_BASE_REGISTRY:staging
-        docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $ZCHAIN_BUILDBASE
+      - name: Pull Build Base & Run Base
+        run: |
+          docker pull $BLOBBER_BUILD_BASE_REGISTRY:staging
+          docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $ZCHAIN_BUILDBASE
 
-    - name: Build Base image
-      if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
-      run: |
-        SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
+      - name: Build Base image
+        if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
+        run: |
+          SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
 
-        ./docker.local/bin/build.base.sh &&
-        docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG
-        docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
-        docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG
-        docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
+          ./docker.local/bin/build.base.sh &&
+          docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG
+          docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
+          docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG
+          docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
 
       - name: Build blobber
         run: |
