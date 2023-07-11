@@ -1,5 +1,6 @@
 passphrase.txt
 logs/
+docs/
 .git
 *.md
 .cache
