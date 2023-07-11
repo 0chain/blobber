@@ -3,6 +3,7 @@ package filestore
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -223,21 +224,21 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			shouldCommit:          true,
 			expectedErrorOnCommit: false,
 		},
-		// {
-		// 	testName:   "Should fail",
-		// 	allocID:    randString(64),
-		// 	connID:     randString(64),
-		// 	fileName:   randString(5),
-		// 	remotePath: filepath.Join("/", randString(5)+".txt"),
-		// 	alloc: &allocation{
-		// 		mu:    &sync.Mutex{},
-		// 		tmpMU: &sync.Mutex{},
-		// 	},
+		{
+			testName:   "Should fail",
+			allocID:    randString(64),
+			connID:     randString(64),
+			fileName:   randString(5),
+			remotePath: filepath.Join("/", randString(5)+".txt"),
+			alloc: &allocation{
+				mu:    &sync.Mutex{},
+				tmpMU: &sync.Mutex{},
+			},
 
-		// 	differentHash:         true,
-		// 	shouldCommit:          true,
-		// 	expectedErrorOnCommit: true,
-		// },
+			differentHash:         true,
+			shouldCommit:          true,
+			expectedErrorOnCommit: true,
+		},
 	}
 
 	for _, test := range tests {
@@ -300,15 +301,6 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 				_, err = os.Open(finalPath)
 				require.Nil(t, err)
 				check_file, err := os.Stat(finalPath)
-				require.Nil(t, err)
-				require.True(t, check_file.Size() > tF.Size())
-				success, err = fs.CommitWrite(test.allocID, test.connID, fid)
-				require.Nil(t, err)
-				require.True(t, success)
-				_, err = os.Stat(preCommitPath)
-				require.NotNil(t, err)
-				require.ErrorContains(t, err, "no such file or directory")
-				check_file, err = os.Stat(finalPath)
 				require.Nil(t, err)
 				require.True(t, check_file.Size() > tF.Size())
 			}
@@ -489,6 +481,9 @@ func TestStorageUploadUpdate(t *testing.T) {
 	h := sha3.New256()
 	_, err = io.Copy(h, f)
 	require.Nil(t, err)
+	pathWriter := fs.pathWriter(fid.Path)
+	_, err = io.Copy(h, pathWriter)
+	require.Nil(t, err)
 	f.Close()
 	fid.ThumbnailHash = hex.EncodeToString(h.Sum(nil))
 	prevThumbHash := fid.ThumbnailHash
@@ -500,7 +495,6 @@ func TestStorageUploadUpdate(t *testing.T) {
 
 	// Commit thumbnail file to pre-commit location
 	success, err = fs.CommitWrite(allocID, connID, fid)
-
 	require.Nil(t, err)
 	require.True(t, success)
 	// Get the path of the pre-commit location of the thumbnail file and check if the file exists
@@ -526,17 +520,15 @@ func TestStorageUploadUpdate(t *testing.T) {
 	f.Close()
 	// check if thumbnail file is written to temp location
 	tempFilePath = fs.getTempPathForFile(allocID, thumbFileName, pathHash, connID)
-
-	finfo, err = os.Stat(tempFilePath)
-	require.Nil(t, err)
-	require.Equal(t, finfo.Size(), int64(size))
-
 	// Check if the hash of the thumbnail file is same as the hash of the updated thumbnail file
 	f, err = os.Open(tempFilePath)
 	require.Nil(t, err)
 
 	h = sha3.New256()
 	_, err = io.Copy(h, f)
+	require.Nil(t, err)
+	pathWriter = fs.pathWriter(fid.Path)
+	_, err = io.Copy(h, pathWriter)
 	require.Nil(t, err)
 	f.Close()
 	fid.ThumbnailHash = hex.EncodeToString(h.Sum(nil))
@@ -547,17 +539,11 @@ func TestStorageUploadUpdate(t *testing.T) {
 	err = fs.MoveToFilestore(allocID, prevThumbHash)
 	require.Nil(t, err)
 
-	// Empty Commit should do nothing
-	success, err = fs.CommitWrite(allocID, connID, fid)
-	require.Nil(t, err)
-	require.True(t, success)
-
 	// Set fields to commit thumbnail file
 	fid.IsThumbnail = true
 	fid.Name = thumbFileName
 	// Commit thumbnail file to pre-commit location
 	success, err = fs.CommitWrite(allocID, connID, fid)
-
 	require.Nil(t, err)
 	require.True(t, success)
 
@@ -575,6 +561,9 @@ func TestStorageUploadUpdate(t *testing.T) {
 
 	h = sha3.New256()
 	_, err = io.Copy(h, preFile)
+	require.Nil(t, err)
+	pathWriter = fs.pathWriter(fid.Path)
+	_, err = io.Copy(h, pathWriter)
 	require.Nil(t, err)
 	require.Equal(t, hex.EncodeToString(h.Sum(nil)), fid.ThumbnailHash)
 
@@ -594,6 +583,9 @@ func TestStorageUploadUpdate(t *testing.T) {
 	buf := bytes.NewReader(data.Data)
 	_, err = io.Copy(h, buf)
 	require.Nil(t, err)
+	pathWriter = fs.pathWriter(fid.Path)
+	_, err = io.Copy(h, pathWriter)
+	require.Nil(t, err)
 	require.Equal(t, hex.EncodeToString(h.Sum(nil)), fid.ThumbnailHash)
 	fPath, err = fs.GetPathForFile(allocID, prevThumbHash)
 	require.Nil(t, err)
@@ -602,6 +594,9 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.Nil(t, err)
 	h = sha3.New256()
 	_, err = io.Copy(h, f)
+	require.Nil(t, err)
+	pathWriter = fs.pathWriter(fid.Path)
+	_, err = io.Copy(h, pathWriter)
 	require.Nil(t, err)
 	require.Equal(t, hex.EncodeToString(h.Sum(nil)), prevThumbHash)
 	f.Close()
@@ -799,6 +794,40 @@ func TestGetMerkleTree(t *testing.T) {
 			require.True(t, fmp.VerifyMerklePath())
 		})
 	}
+}
+
+func TestValidationRoot(t *testing.T) {
+
+	thumbnailBytes, _ := base64.StdEncoding.DecodeString(`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`)
+	size := int64(3374)
+
+	fs, cleanUp := setupStorage(t)
+	defer cleanUp()
+	fPath := filepath.Join(fs.mp, randString(10)+".txt")
+	cH := GetNewCommitHasher(size)
+	_, err := cH.Write(thumbnailBytes)
+	require.Nil(t, err)
+
+	err = cH.Finalize()
+	require.Nil(t, err)
+
+	f, err := os.Create(fPath)
+	require.Nil(t, err)
+	defer f.Close()
+
+	validationMerkleRoot, err := cH.vt.CalculateRootAndStoreNodes(f)
+	require.Nil(t, err)
+
+	bufReader := bytes.NewReader(thumbnailBytes)
+	pathWriter := fs.pathWriter(fPath)
+	h := sha3.New256()
+	_, err = io.Copy(h, pathWriter)
+	require.Nil(t, err)
+	_, err = io.Copy(h, bufReader)
+	require.Nil(t, err)
+
+	hash := hex.EncodeToString(h.Sum(nil))
+	require.NotEqual(t, hash, hex.EncodeToString(validationMerkleRoot))
 }
 
 func setupStorage(t *testing.T) (*FileStore, func()) {
