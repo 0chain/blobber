@@ -230,6 +230,15 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 		return nil, err
 	}
 
+	err = UpdateChallengeTimingTxnSubmission(c.ChallengeID, txn.CreationDate)
+	if err != nil {
+		logging.Logger.Error("[challengetiming]txn_submission",
+			zap.Any("challenge_id", c.ChallengeID),
+			zap.Time("created", createdTime),
+			zap.Any("txn_submission", txn.CreationDate),
+			zap.Error(err))
+	}
+
 	if err := tx.Commit().Error; err != nil {
 		logging.Logger.Error("[challenge]verify(Commit): ",
 			zap.Any("challenge_id", c.ChallengeID),
