@@ -66,10 +66,10 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@v18.4
 
-      - name: Pull Build Base & Run Base
+      - name: Pull Build Base
         run: |
           docker pull $BLOBBER_BUILD_BASE_REGISTRY:staging
-          docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $ZCHAIN_BUILDBASE
+          docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
 
       - name: Build Base image
         if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
@@ -138,10 +138,10 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@v18.4
 
-      - name: Pull Build Base & Run Base
+      - name: Pull Build Base
         run: |
           docker pull $BLOBBER_BUILD_BASE_REGISTRY:staging
-          docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $ZCHAIN_BUILDBASE
+          docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
 
       - name: Build Base image
         if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
