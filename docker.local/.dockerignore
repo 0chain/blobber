@@ -6,4 +6,8 @@ docs/
 .cache
 awsnet
 docker.local/blobber*
+docker.aws/*
+config/
+docker-clean/
+keys_config
 **/pkg
