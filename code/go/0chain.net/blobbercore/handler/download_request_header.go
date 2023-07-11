@@ -24,6 +24,7 @@ type DownloadRequestHeader struct {
 	AuthToken      string
 	VerifyDownload bool
 	DownloadMode   string
+	SubmitRM       bool
 	ConnectionID   string
 }
 
@@ -95,6 +96,7 @@ func (dr *DownloadRequestHeader) Parse(isRedeem bool) error {
 		if err != nil {
 			return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
 		}
+		dr.SubmitRM = true
 	} else if isRedeem {
 		return errors.Throw(common.ErrInvalidParameter, "X-Read-Marker")
 	}

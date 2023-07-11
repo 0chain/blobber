@@ -77,6 +77,11 @@ func NewChallengeRequest(r *http.Request) (*ChallengeRequest, string, error) {
 		return nil, "", common.NewError("invalid_parameters", "Header hash and request hash do not match")
 	}
 
+	if challengeRequest.ObjPath == nil {
+		logging.Logger.Error("Not object path found in the input")
+		return nil, "", common.NewError("invalid_parameters", "Empty object path or merkle path")
+	}
+
 	return &challengeRequest, challengeHash, err
 }
 

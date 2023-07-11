@@ -12,8 +12,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -32,9 +30,10 @@ type Ref struct {
 	ID                      int64  `gorm:"column:id;primaryKey"`
 	FileID                  string `gorm:"column:file_id" dirlist:"file_id" filelist:"file_id"`
 	Type                    string `gorm:"column:type;size:1" dirlist:"type" filelist:"type"`
-	AllocationID            string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_lookup_hash_alloc,priority:1;index:idx_validation_alloc,priority:1" dirlist:"allocation_id" filelist:"allocation_id"`
+	AllocationID            string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_lookup_hash_alloc,priority:1" dirlist:"allocation_id" filelist:"allocation_id"`
 	LookupHash              string `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash_alloc,priority:2" dirlist:"lookup_hash" filelist:"lookup_hash"`
 	Name                    string `gorm:"column:name;size:100;not null;index:idx_name_gin:gin" dirlist:"name" filelist:"name"`
+	ThumbnailFilename       string `gorm:"column:thumbnail_filename" dirlist:"thumbnail_filename" filelist:"thumbnail_filename"`
 	Path                    string `gorm:"column:path;size:1000;not null;index:idx_path_alloc,priority:2;index:path_idx" dirlist:"path" filelist:"path"`
 	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
 	Hash                    string `gorm:"column:hash;size:64;not null" dirlist:"hash" filelist:"hash"`
@@ -43,7 +42,7 @@ type Ref struct {
 	ParentPath              string `gorm:"column:parent_path;size:999"`
 	PathLevel               int    `gorm:"column:level;not null;default:0"`
 	CustomMeta              string `gorm:"column:custom_meta;not null" filelist:"custom_meta"`
-	ValidationRoot          string `gorm:"column:validation_root;size:64;not null;index:idx_validation_alloc,priority:2" filelist:"validation_root"`
+	ValidationRoot          string `gorm:"column:validation_root;size:64;not null" filelist:"validation_root"`
 	PrevValidationRoot      string `gorm:"column:prev_validation_root" filelist:"prev_validation_root" json:"prev_validation_root"`
 	ValidationRootSignature string `gorm:"column:validation_root_signature;size:64" filelist:"validation_root_signature" json:"validation_root_signature,omitempty"`
 	Size                    int64  `gorm:"column:size;not null;default:0" dirlist:"size" filelist:"size"`
@@ -371,8 +370,8 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*
 
 func (r *Ref) GetFileMetaHashData() string {
 	return fmt.Sprintf(
-		"%s:%d:%d:%s",
-		r.Path, r.Size,
+		"%s:%d:%s:%d:%s",
+		r.Path, r.Size, r.FileID,
 		r.ActualFileSize, r.ActualFileHash)
 }
 
@@ -448,7 +447,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 		actualSize += childRef.ActualFileSize
 	}
 
-	r.FileMetaHash = encryption.Hash(r.Path + strings.Join(childFileMetaHashes, ":"))
+	r.FileMetaHash = encryption.Hash(r.GetHashData() + strings.Join(childFileMetaHashes, ":"))
 	r.Hash = encryption.Hash(r.GetHashData() + strings.Join(childHashes, ":"))
 	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.NumBlocks = refNumBlocks
@@ -479,9 +478,6 @@ func (r *Ref) AddChild(child *Ref) {
 			r.Children[i] = child
 
 			return
-		}
-		if child.ParentPath != ref.ParentPath {
-			logging.Logger.Error("invalid parent path", zap.String("child", child.Path), zap.String("parent", ref.Path))
 		}
 		if strings.Compare(child.Path, ref.Path) == -1 {
 			index = i
@@ -603,6 +599,7 @@ func ListingDataToRef(refMap map[string]interface{}) *Ref {
 	if len(refMap) < 1 {
 		return nil
 	}
+
 	ref := &Ref{}
 
 	refType, _ := refMap["type"].(string)

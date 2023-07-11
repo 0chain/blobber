@@ -22,7 +22,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
 	sdkUtil "github.com/0chain/gosdk/core/util"
 	"github.com/remeh/sizedwaitgroup"
-	"gorm.io/gorm"
 
 	"go.uber.org/zap"
 )
@@ -97,40 +96,35 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 
 	rootRef, err := reference.GetReference(ctx, cr.AllocationID, "/")
-	if err != nil && err != gorm.ErrRecordNotFound {
+	if err != nil {
 		allocMu.RUnlock()
 		cr.CancelChallenge(ctx, err)
 		return err
 	}
 
 	blockNum := int64(0)
-	var objectPath *reference.ObjectPath
-	if rootRef != nil {
-		if rootRef.NumBlocks > 0 {
-			r := rand.New(rand.NewSource(cr.RandomNumber))
-			blockNum = r.Int63n(rootRef.NumBlocks)
-			blockNum++
-			cr.BlockNum = blockNum
-		}
-
-		logging.Logger.Info("[challenge]rand: ", zap.Any("rootRef.NumBlocks", rootRef.NumBlocks), zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ChallengeID), zap.Any("random_seed", cr.RandomNumber))
-		objectPath, err = reference.GetObjectPath(ctx, cr.AllocationID, blockNum)
-		if err != nil {
-			allocMu.RUnlock()
-			cr.CancelChallenge(ctx, err)
-			return err
-		}
-
-		cr.RefID = objectPath.RefID
-		cr.ObjectPath = objectPath
+	if rootRef.NumBlocks > 0 {
+		r := rand.New(rand.NewSource(cr.RandomNumber))
+		blockNum = r.Int63n(rootRef.NumBlocks)
+		blockNum++
+		cr.BlockNum = blockNum
 	}
+
+	logging.Logger.Info("[challenge]rand: ", zap.Any("rootRef.NumBlocks", rootRef.NumBlocks), zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ChallengeID), zap.Any("random_seed", cr.RandomNumber))
+	objectPath, err := reference.GetObjectPath(ctx, cr.AllocationID, blockNum)
+	if err != nil {
+		allocMu.RUnlock()
+		cr.CancelChallenge(ctx, err)
+		return err
+	}
+
+	cr.RefID = objectPath.RefID
 	cr.RespondedAllocationRoot = allocationObj.AllocationRoot
+	cr.ObjectPath = objectPath
 
 	postData := make(map[string]interface{})
 	postData["challenge_id"] = cr.ChallengeID
-	if objectPath != nil {
-		postData["object_path"] = objectPath
-	}
+	postData["object_path"] = objectPath
 	markersArray := make([]map[string]interface{}, 0)
 	for _, wm := range wms {
 		markersMap := make(map[string]interface{})
@@ -194,9 +188,6 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		postData["challenge_proof"] = challengeResponse
 	}
 
-	if objectPath == nil {
-		objectPath = &reference.ObjectPath{}
-	}
 	err = UpdateChallengeTimingProofGenerationAndFileSize(
 		cr.ChallengeID,
 		proofGenTime,

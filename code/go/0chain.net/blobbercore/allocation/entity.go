@@ -139,18 +139,6 @@ func (a *Allocation) GetRequiredWriteBalance(blobberID string, writeSize int64, 
 	return
 }
 
-// IsReadFree Determine if read price is 0
-func (a *Allocation) IsReadFree(blobberID string) bool {
-	for _, d := range a.Terms {
-		if d.BlobberID == blobberID {
-			if d.ReadPrice == 0 {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 type Pending struct {
 	// ID of format client_id:allocation_id
 	ID           string `gorm:"column:id;primaryKey"`

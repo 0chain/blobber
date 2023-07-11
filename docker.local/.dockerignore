@@ -3,6 +3,3 @@ logs/
 .git
 *.md
 .cache
-awsnet
-docker.local/blobber*
-**/pkg

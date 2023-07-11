@@ -168,8 +168,6 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
 		allocationID = ctx.Value(constants.ContextKeyAllocationID).(string)
 		alloc        *allocation.Allocation
-		blobberID    = node.Self.ID
-		quotaManager = getQuotaManager()
 	)
 
 	if clientID == "" {
@@ -186,17 +184,9 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 		return nil, err
 	}
 
-	isReadFree := alloc.IsReadFree(blobberID)
-	if isReadFree {
-		Logger.Info("free_read: readmarker not saved",
-			zap.String("clientID", clientID),
-			zap.String("allocationID", allocationID))
-		return &blobberhttp.DownloadResponse{
-			Success: true,
-		}, nil
-	}
-
 	key := clientID + ":" + alloc.ID
+	quotaManager := getQuotaManager()
+
 	lock, isNewLock := readmarker.ReadmarkerMapLock.GetLock(key)
 	if !isNewLock {
 		return nil, common.NewErrorf("lock_exists", fmt.Sprintf("lock exists for key: %v", key))
@@ -273,8 +263,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
 		allocationID = ctx.Value(constants.ContextKeyAllocationID).(string)
 		alloc        *allocation.Allocation
-		blobberID    = node.Self.ID
-		quotaManager = getQuotaManager()
 	)
 
 	if clientID == "" {
@@ -299,6 +287,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	if fileref.Type != reference.FILE {
 		return nil, common.NewErrorf("download_file", "path is not a file: %v", err)
 	}
+
+	key := clientID + ":" + alloc.ID
+	quotaManager := getQuotaManager()
 
 	isOwner := clientID == alloc.OwnerID
 
@@ -331,17 +322,83 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 	}
 
-	isReadFree := alloc.IsReadFree(blobberID)
-	var dq *DownloadQuota
+	if dr.SubmitRM {
+		lock, isNewLock := readmarker.ReadmarkerMapLock.GetLock(key)
+		if !isNewLock {
+			return nil, common.NewErrorf("lock_exists", fmt.Sprintf("lock exists for key: %v", key))
+		}
 
-	if !isReadFree {
-		dq = quotaManager.getDownloadQuota(dr.ConnectionID)
-		if dq == nil {
-			return nil, common.NewError("download_file", fmt.Sprintf("no download quota for %v", dr.ConnectionID))
+		lock.Lock()
+		defer lock.Unlock()
+
+		// create read marker
+		var (
+			rme              *readmarker.ReadMarkerEntity
+			latestRM         *readmarker.ReadMarker
+			latestRedeemedRC int64
+			pendNumBlocks    int64
+		)
+
+		rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID, alloc.ID)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, common.NewErrorf("download_file", "couldn't get read marker from DB: %v", err)
 		}
-		if dq.Quota < dr.NumBlocks {
-			return nil, common.NewError("download_file", fmt.Sprintf("insufficient quota: available %v, requested %v", dq.Quota, dr.NumBlocks))
+
+		if rme != nil {
+			latestRM = rme.LatestRM
+			latestRedeemedRC = rme.LatestRedeemedRC
+			if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
+				return nil, common.NewErrorf("download_file", "couldn't get number of blocks pending redeeming: %v", err)
+			}
 		}
+
+		// check out read pool tokens if read_price > 0
+		err = readPreRedeem(ctx, alloc, dr.ReadMarker.SessionRC, pendNumBlocks, clientID)
+		if err != nil {
+			return nil, common.NewErrorf("not_enough_tokens", "pre-redeeming read marker: %v", err)
+		}
+
+		if latestRM != nil && latestRM.ReadCounter+(dr.ReadMarker.SessionRC) > dr.ReadMarker.ReadCounter {
+			latestRM.BlobberID = node.Self.ID
+			return &blobberhttp.DownloadResponse{
+				Success:      false,
+				LatestRM:     latestRM,
+				Path:         fileref.Path,
+				AllocationID: fileref.AllocationID,
+			}, common.NewError("stale_read_marker", "")
+		}
+
+		if dr.ReadMarker.ClientID != clientID {
+			return nil, common.NewError("invalid_client", "header clientID and readmarker clientID are different")
+		}
+
+		rmObj := new(readmarker.ReadMarkerEntity)
+		rmObj.LatestRM = &dr.ReadMarker
+
+		if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
+			return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
+		}
+
+		err = readmarker.SaveLatestReadMarker(ctx, &dr.ReadMarker, latestRedeemedRC, latestRM == nil)
+		if err != nil {
+			Logger.Error(err.Error())
+			return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
+		}
+
+		quotaManager.createOrUpdateQuota(dr.ReadMarker.SessionRC, dr.ConnectionID)
+
+		if dr.NumBlocks == 0 {
+			return nil, nil
+		}
+	}
+
+	dq := quotaManager.getDownloadQuota(dr.ConnectionID)
+	if dq == nil {
+		return nil, common.NewError("download_file", fmt.Sprintf("no download quota for %v", dr.ConnectionID))
+	}
+
+	if dq.Quota < dr.NumBlocks {
+		return nil, common.NewError("download_file", fmt.Sprintf("insufficient quota: available %v, requested %v", dq.Quota, dr.NumBlocks))
 	}
 
 	var (
@@ -411,11 +468,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, err
 	}
 
-	if !isReadFree {
-		err = quotaManager.consumeQuota(dr.ConnectionID, dr.NumBlocks)
-		if err != nil {
-			return nil, common.NewError("download_file", err.Error())
-		}
+	err = quotaManager.consumeQuota(dr.ConnectionID, dr.NumBlocks)
+	if err != nil {
+		return nil, common.NewError("download_file", err.Error())
 	}
 
 	fileDownloadResponse.Data = chunkData
@@ -665,15 +720,12 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err = db.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
+
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
 		if !errors.Is(common.ErrFileWasDeleted, err) {
 			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 		}
-	}
-	err = writemarkerEntity.SendToChan(ctx)
-	if err != nil {
-		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
 	}
 
 	result.Changes = connectionObj.Changes
@@ -694,11 +746,15 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	db.Delete(connectionObj)
+	err = writemarkerEntity.SendToChan(ctx)
+	if err != nil {
+		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
+	}
+	Logger.Info("write_marker_redeemed", zap.String("alloc_id", allocationID), zap.String("allocation_root", writeMarker.AllocationRoot))
 	go allocation.DeleteConnectionObjEntry(connectionID)
 
 	Logger.Info("[commit]"+commitOperation,
 		zap.String("alloc_id", allocationID),
-		zap.String("allocation_root", writeMarker.AllocationRoot),
 		zap.String("input", input),
 		zap.Duration("get_alloc", elapsedAllocation),
 		zap.Duration("get-lock", elapsedGetLock),
@@ -959,7 +1015,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	}
 
 	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(
-		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
+		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root", "thumbnail_filename"})
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -1028,7 +1084,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 	fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, connectionObj.AllocationID, path,
-		[]string{"path", "name", "size", "hash", "validation_root", "fixed_merkle_root"})
+		[]string{"path", "name", "size", "hash", "validation_root", "fixed_merkle_root", "thumbnail_filename"})
 
 	if err != nil {
 		Logger.Error("invalid_file", zap.Error(err))

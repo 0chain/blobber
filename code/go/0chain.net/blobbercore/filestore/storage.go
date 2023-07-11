@@ -26,7 +26,6 @@ package filestore
 //
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -123,6 +122,7 @@ func (fs *FileStore) MoveToFilestore(allocID, hash string) error {
 	}
 
 	_ = os.Rename(preCommitPath, fPath)
+
 	return nil
 }
 
@@ -132,7 +132,7 @@ func (fs *FileStore) DeleteFromFilestore(allocID, hash string) error {
 	if err != nil {
 		return common.NewError("get_file_path_error", err.Error())
 	}
-	logging.Logger.Info("Deleting file from filestore", zap.String("path", fPath))
+
 	err = os.Remove(fPath)
 	if err != nil {
 		return common.NewError("blob_object_dir_creation_error", err.Error())
@@ -159,8 +159,7 @@ func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 
 func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
 
-	logging.Logger.Info("Committing write", zap.String("allocation_id", allocID), zap.Any("file_data", fileData))
-
+	logging.Logger.Info("Committing file")
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
 
 	fileHash := fileData.ValidationRoot
@@ -182,7 +181,25 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 
 	r, err := os.Open(tempFilePath)
 	if err != nil {
+
+		if errors.Is(err, os.ErrNotExist) {
+			f.Close()
+			_ = os.Remove(preCommitPath)
+			return true, nil
+		}
 		return false, err
+	} else {
+		// check if file is empty
+		check_file, err := os.Stat(tempFilePath)
+		if err == nil && check_file.Size() == 0 {
+			f.Close()
+			_ = os.Remove(preCommitPath)
+			return true, nil
+		} else if err != nil {
+			f.Close()
+			_ = os.Remove(preCommitPath)
+			return false, err
+		}
 	}
 
 	defer f.Close()
@@ -200,10 +217,6 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 
 		h := sha3.New256()
 		_, err = io.Copy(h, r)
-		if err != nil {
-			return false, common.NewError("read_error", err.Error())
-		}
-		_, err = h.Write([]byte(fileData.Path))
 		if err != nil {
 			return false, common.NewError("read_error", err.Error())
 		}
@@ -788,13 +801,6 @@ func (fs *FileStore) updateAllocTempFileSize(allocID string, size int64) {
 	defer alloc.tmpMU.Unlock()
 
 	alloc.tmpFileSize += uint64(size)
-}
-
-func (fs *FileStore) pathWriter(path string) io.Reader {
-
-	pathBytes := []byte(path)
-	buf := bytes.NewBuffer(pathBytes)
-	return buf
 }
 
 // GetTempFilesSizeOfAllocation Get total file sizes of all allocation that are not yet committed

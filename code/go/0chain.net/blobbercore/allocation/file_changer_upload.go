@@ -103,6 +103,7 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 		UpdatedAt:               ts,
 		HashToBeComputed:        true,
 		IsPrecommit:             true,
+		ThumbnailFilename:       nf.ThumbnailFilename,
 	}
 
 	fileID, ok := fileIDMeta[newFile.Path]

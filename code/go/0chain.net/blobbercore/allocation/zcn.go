@@ -6,7 +6,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/errors"
 	"gorm.io/gorm"
-	"math"
 )
 
 // SyncAllocation try to pull allocation from blockchain, and insert it in db.
@@ -25,7 +24,8 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 			belongToThisBlobber = true
 
 			alloc.AllocationRoot = ""
-			alloc.BlobberSize = int64(math.Ceil(float64(sa.Size) / float64(sa.DataShards)))
+			alloc.BlobberSize = (sa.Size + int64(len(sa.BlobberDetails)-1)) /
+				int64(len(sa.BlobberDetails))
 			alloc.BlobberSizeUsed = 0
 
 			break

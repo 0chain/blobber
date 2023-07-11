@@ -103,7 +103,7 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 		return common.NewError("read_marker_validation_failed", "Read Marker clientID does not match request clientID")
 	}
 	currentTS := common.Now()
-	if rm.LatestRM.Timestamp > (currentTS + 2) {
+	if rm.LatestRM.Timestamp > currentTS {
 		zLogger.Logger.Error("Timestamp is for future in the read marker", zap.Any("rm", rm), zap.Any("now", currentTS))
 		return common.NewError("read_marker_validation_failed", "Timestamp is for future in the read marker")
 	}

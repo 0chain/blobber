@@ -53,7 +53,6 @@ func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return common.NewError("invalid_parameters",
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 	}
-	logging.Logger.Info("UpdateFileCommand", zap.Any("allocation_id", allocationObj.ID), zap.Any("validation_rooot", cmd.fileChanger.ValidationRoot), zap.Any("thumb_hash", cmd.fileChanger.ThumbnailHash))
 
 	if cmd.fileChanger.ChunkSize <= 0 {
 		cmd.fileChanger.ChunkSize = fileref.CHUNK_SIZE

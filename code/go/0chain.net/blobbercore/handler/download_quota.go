@@ -67,9 +67,7 @@ func (qm *QuotaManager) consumeQuota(key string, numBlocks int64) error {
 		return err
 	}
 	if dq.Quota == 0 {
-		qm.mux.Lock()
 		delete(qm.m, key)
-		qm.mux.Unlock()
 	}
 	return nil
 }

@@ -6,7 +6,6 @@ package filestore
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"math"
 
@@ -139,7 +138,7 @@ func (fp fixedMerkleTreeProof) GetMerkleProof(r io.ReaderAt) (proof [][]byte, er
 	b := make([]byte, FMTSize)
 	n, err := r.ReadAt(b, io.SeekStart)
 	if n != FMTSize {
-		return nil, fmt.Errorf("invalid fixed merkle tree size: %d", n)
+		return nil, errors.New("incomplete read")
 	}
 	if err != nil {
 		return nil, err
@@ -357,9 +356,9 @@ func (v *validationTreeProof) getFileOffsetsAndNodeIndexes(startInd, endInd int)
 }
 
 // getNodeIndexes returns two slices.
-//  1. NodeOffsets will return offset index of node in each level. Each level starts with index zero.
-//  2. leftRightIndexes will return whether the node should be appended to the left or right
-//     with other hash
+// 1. NodeOffsets will return offset index of node in each level. Each level starts with index zero.
+// 2. leftRightIndexes will return whether the node should be appended to the left or right
+//    with other hash
 func (v *validationTreeProof) getNodeIndexes(startInd, endInd int) ([][]int, [][]int) {
 
 	indexes := make([][]int, 0)
