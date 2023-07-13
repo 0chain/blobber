@@ -42,6 +42,7 @@ func syncOpenChallenges(ctx context.Context) {
 	if lastChallengeTimestamp > 0 {
 		params["from"] = strconv.Itoa(lastChallengeTimestamp)
 	}
+	logging.Logger.Info("[challenge]sync:pull", zap.Any("params", params))
 	start := time.Now()
 
 	var downloadElapsed, jsonElapsed time.Duration
@@ -118,6 +119,8 @@ func validateOnValidators(c *ChallengeEntity) {
 		logging.Logger.Error("[challengetiming]add: ",
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Error(err))
+		deleteChallenge(int64(c.CreatedAt))
+		tx.Rollback()
 	}
 
 	createdTime := common.ToTime(c.CreatedAt)
@@ -246,5 +249,4 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 	}
 
 	return txn, nil
-
 }
