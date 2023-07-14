@@ -137,7 +137,6 @@ func main() {
 	fmt.Println("*== Validator Wallet Info ==*")
 	fmt.Println("	ID: ", node.Self.ID)
 	fmt.Println("	Public Key: ", publicKey)
-	fmt.Println("	Private Key: ", privateKey)
 	fmt.Println("*===========================*")
 
 	chain.SetServerChain(serverChain)
