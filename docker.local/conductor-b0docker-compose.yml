@@ -18,10 +18,6 @@ services:
     image: validator
     environment:
       - DOCKER= true
-    depends_on:
-      - postgres-post
-    links:
-      - postgres-post:postgres-post
     volumes:
       - ./conductor-config:/validator/config
       - ./blobber${BLOBBER}/data:/validator/data
