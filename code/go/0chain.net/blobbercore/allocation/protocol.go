@@ -166,11 +166,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 
 	// save/update related terms
 	for _, t := range a.Terms {
-		if isExist {
-			err = tx.Save(t).Error
-		} else {
-			err = tx.Create(t).Error
-		}
+		err = tx.Create(t).Error
 		if err != nil {
 			return nil, err
 		}
