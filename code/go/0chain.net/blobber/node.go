@@ -39,10 +39,9 @@ func setupNode() error {
 		}
 	}
 
-	fmt.Println("*== Validator Wallet Info ==*")
+	fmt.Println("*== Blobber Wallet Info ==*")
 	fmt.Println("	ID: ", node.Self.ID)
 	fmt.Println("	Public Key: ", publicKey)
-	fmt.Println("	Private Key: ", privateKey)
 	fmt.Println("*===========================*")
 
 	logging.Logger.Info(" Base URL" + node.Self.GetURLBase())
