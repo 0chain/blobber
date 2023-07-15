@@ -62,12 +62,12 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 	}
 
 	err = datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		if err := tx.Table(TableNameAllocation).FirstOrCreate(alloc).Error; err != nil {
+		if err := tx.Table(TableNameAllocation).Save(alloc).Error; err != nil {
 			return err
 		}
 
 		for _, term := range terms {
-			if err := tx.Table(TableNameTerms).FirstOrCreate(term).Error; err != nil {
+			if err := tx.Table(TableNameTerms).Save(term).Error; err != nil {
 				return err
 			}
 		}
