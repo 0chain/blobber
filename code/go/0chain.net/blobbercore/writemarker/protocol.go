@@ -82,6 +82,12 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 		return common.NewError("write_marker_validation_failed", "Write Marker is not by the same client who uploaded")
 	}
 
+	currTime := common.Now()
+	// blobber clock is allowed to be 10 seconds behing the current time
+	if wme.WM.Timestamp > currTime+10 {
+		return common.NewError("write_marker_validation_failed", "Write Marker timestamp is in the future")
+	}
+
 	hashData := wme.WM.GetHashData()
 	signatureHash := encryption.Hash(hashData)
 	sigOK, err := encryption.Verify(clientPublicKey, wme.WM.Signature, signatureHash)
@@ -178,6 +184,10 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 
 	if wme.WM.AllocationRoot != latestWM.WM.PreviousAllocationRoot {
 		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker allocation root %v does not match the previous allocation root of latest write marker %v", wme.WM.AllocationRoot, latestWM.WM.PreviousAllocationRoot))
+	}
+
+	if wme.WM.Timestamp != latestWM.WM.Timestamp {
+		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker timestamp %v does not match the timestamp of latest write marker %v", wme.WM.Timestamp, latestWM.WM.Timestamp))
 	}
 
 	clientPublicKey := ctx.Value(constants.ContextKeyClientKey).(string)

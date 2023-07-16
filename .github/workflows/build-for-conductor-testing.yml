@@ -1,7 +1,7 @@
 name: "Build Docker Image for conductor testing"
 
 concurrency:
-  group: "publish-${{ github.ref }}"
+  group: "conductor-${{ github.ref }}"
   cancel-in-progress: true
 
 on:

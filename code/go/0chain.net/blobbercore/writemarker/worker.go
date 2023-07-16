@@ -99,7 +99,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 		elapsedTime := time.Since(start)
 		logging.Logger.Error("Error redeeming the write marker.",
 			zap.Any("allocation", allocationID),
-			zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err), zap.Any("elapsedTime", elapsedTime))
+			zap.Any("wm", wm), zap.Any("error", err), zap.Any("elapsedTime", elapsedTime))
 		go tryAgain(wm)
 		shouldRollback = true
 
