@@ -297,9 +297,11 @@ func (cr *ChallengeRequest) verifyBlockNum(challengeObj *Challenge) error {
 
 func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationObj *Allocation) error {
 	logging.Logger.Info("Verifying object path", zap.String("challenge_id", challengeObj.ID), zap.Int64("seed", challengeObj.RandomNumber))
-	err := cr.ObjPath.Verify(challengeObj.AllocationID, challengeObj.RandomNumber)
-	if err != nil {
-		return common.NewError("challenge_validation_failed", "Failed to verify the object path."+err.Error())
+	if cr.ObjPath != nil {
+		err := cr.ObjPath.Verify(challengeObj.AllocationID, challengeObj.RandomNumber)
+		if err != nil {
+			return common.NewError("challenge_validation_failed", "Failed to verify the object path."+err.Error())
+		}
 	}
 
 	if len(cr.WriteMarkers) == 0 {
@@ -307,7 +309,7 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 	}
 
 	logging.Logger.Info("Verifying write marker", zap.String("challenge_id", challengeObj.ID))
-	err = cr.WriteMarkers[0].WM.Verify(allocationObj.ID, challengeObj.AllocationRoot, cr.WriteMarkers[0].ClientPublicKey)
+	err := cr.WriteMarkers[0].WM.Verify(allocationObj.ID, challengeObj.AllocationRoot, cr.WriteMarkers[0].ClientPublicKey)
 	if err != nil {
 		return common.NewError("write_marker_validation_failed", "Failed to verify the write marker. "+err.Error())
 	}
@@ -326,14 +328,21 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 		}
 	}
 	latestWM := cr.WriteMarkers[len(cr.WriteMarkers)-1].WM
-	rootRef := cr.ObjPath.RootObject
-	allocationRootCalculated := rootRef.Hash
+	if cr.ObjPath != nil {
+		rootRef := cr.ObjPath.RootObject
+		allocationRootCalculated := rootRef.Hash
 
-	if latestWM.AllocationRoot != allocationRootCalculated {
-		return common.NewError("challenge_validation_failed", "Allocation root does not match")
-	}
+		if latestWM.AllocationRoot != allocationRootCalculated {
+			return common.NewError("challenge_validation_failed", "Allocation root does not match")
+		}
 
-	if rootRef.NumBlocks == 0 {
+		if rootRef.NumBlocks == 0 {
+			return nil
+		}
+	} else {
+		if latestWM.AllocationRoot != "" || latestWM.PreviousAllocationRoot != "" {
+			return common.NewError("challenge_validation_failed", "Allocation root is not empty")
+		}
 		return nil
 	}
 

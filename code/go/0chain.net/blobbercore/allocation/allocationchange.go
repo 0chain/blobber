@@ -250,25 +250,27 @@ type Result struct {
 }
 
 // TODO: Need to speed up this function
-func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
+func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) (err error) {
 
 	logging.Logger.Info("Move to filestore", zap.String("allocation_id", a.AllocationID))
 
-	tx := datastore.GetStore().GetTransaction(ctx)
+	tx := datastore.GetStore().GetDB().Begin()
 
 	var refs []*Result
 	limitCh := make(chan struct{}, 10)
 	wg := &sync.WaitGroup{}
 
-	err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
+	err = tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
 		FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
 
 			for _, ref := range refs {
 
 				var count int64
-				tx.Model(&reference.Ref{}).
-					Where("allocation_id=? AND validation_root=? AND type=?", a.AllocationID, ref.PrevValidationRoot, reference.FILE).
-					Count(&count)
+				if ref.PrevValidationRoot != "" {
+					tx.Model(&reference.Ref{}).
+						Where("allocation_id=? AND validation_root=?", a.AllocationID, ref.PrevValidationRoot).
+						Count(&count)
+				}
 
 				limitCh <- struct{}{}
 				wg.Add(1)
@@ -279,13 +281,11 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 						wg.Done()
 					}()
 
-					if count == 0 {
-						if ref.PrevValidationRoot != "" {
-							err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevValidationRoot)
-							if err != nil {
-								logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
-									zap.String("validation_root", ref.ValidationRoot))
-							}
+					if count == 0 && ref.PrevValidationRoot != "" {
+						err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevValidationRoot)
+						if err != nil {
+							logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
+								zap.String("validation_root", ref.ValidationRoot))
 						}
 					}
 					err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ValidationRoot)
@@ -319,20 +319,23 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 	if err != nil {
 		logging.Logger.Error("Error while moving to filestore", zap.Error(err))
+		tx.Rollback()
 		return err
 	}
 
 	err = tx.Exec("UPDATE reference_objects SET is_precommit=?, prev_validation_root=validation_root, prev_thumbnail_hash=thumbnail_hash WHERE allocation_id=? AND is_precommit=? AND deleted_at is NULL", false, a.AllocationID, true).Error
 
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
+	tx.Commit()
 	return deleteFromFileStore(ctx, a.AllocationID)
 }
 
 func deleteFromFileStore(ctx context.Context, allocationID string) error {
 
-	db := datastore.GetStore().GetTransaction(ctx)
+	db := datastore.GetStore().GetDB().Begin()
 	limitCh := make(chan struct{}, 10)
 	wg := &sync.WaitGroup{}
 	var results []Result
@@ -385,13 +388,20 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 	wg.Wait()
 	if err != nil && err != gorm.ErrRecordNotFound {
 		logging.Logger.Error("DeleteFromFileStore", zap.Error(err))
+		db.Rollback()
 		return err
 	}
 
-	return db.Model(&reference.Ref{}).Unscoped().
+	err = db.Model(&reference.Ref{}).Unscoped().
 		Delete(&reference.Ref{},
 			"allocation_id = ? AND deleted_at IS NOT NULL",
 			allocationID).Error
+	if err != nil {
+		db.Rollback()
+		return err
+	}
+	db.Commit()
+	return nil
 }
 
 // Note: We are also fetching refPath for srcPath in copy operation
