@@ -33,10 +33,19 @@ jobs:
           echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
           echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
 
-      - name: Setup go
-        uses: actions/setup-go@v3
-        with:
-          go-version: ^1.20 # The Go version to download (if necessary) and use.
+      - name: "Setup Go"
+        shell: 'script --return --quiet --command "bash {0}"'
+        run: |
+          [ -f ./https://go.dev/dl/go1.20.3.linux-amd64.tar.gz ] || wget https://go.dev/dl/go1.20.3.linux-amd64.tar.gz
+          [ -d /usr/local/go ] &&  rm -rf /usr/local/go
+          [ -f /usr/local/bin/go ] &&  rm -rf /usr/local/bin/go
+          tar -C /usr/local -xzf ./go1.20.3.linux-amd64.tar.gz
+
+          echo "PATH=$PATH:/usr/local/go/bin" >> $GITHUB_ENV
+          export PATH=$PATH:/usr/local/go/bin
+          export HOME="/root"
+          which go
+          go env
 
       - name: Clone blobber
         uses: actions/checkout@v1
@@ -85,10 +94,19 @@ jobs:
           echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
           echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
 
-      - name: Setup go
-        uses: actions/setup-go@v3
-        with:
-          go-version: ^1.20 # The Go version to download (if necessary) and use.
+      - name: "Setup Go"
+        shell: 'script --return --quiet --command "bash {0}"'
+        run: |
+          [ -f ./https://go.dev/dl/go1.20.3.linux-amd64.tar.gz ] || wget https://go.dev/dl/go1.20.3.linux-amd64.tar.gz
+          [ -d /usr/local/go ] &&  rm -rf /usr/local/go
+          [ -f /usr/local/bin/go ] &&  rm -rf /usr/local/bin/go
+          tar -C /usr/local -xzf ./go1.20.3.linux-amd64.tar.gz
+
+          echo "PATH=$PATH:/usr/local/go/bin" >> $GITHUB_ENV
+          export PATH=$PATH:/usr/local/go/bin
+          export HOME="/root"
+          which go
+          go env
 
       - name: Clone blobber
         uses: actions/checkout@v1
