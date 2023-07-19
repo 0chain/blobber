@@ -41,7 +41,7 @@ func syncOpenChallenges(ctx context.Context) {
 	if lastChallengeTimestamp > 0 {
 		params["from"] = strconv.Itoa(lastChallengeTimestamp)
 	}
-	logging.Logger.Info("[challenge]sync:pull", zap.Any("params", params))
+
 	start := time.Now()
 
 	var downloadElapsed, jsonElapsed time.Duration
@@ -54,6 +54,8 @@ func syncOpenChallenges(ctx context.Context) {
 		default:
 		}
 		params["offset"] = strconv.Itoa(offset)
+		logging.Logger.Info("[challenge]sync:pull", zap.Any("params", params))
+
 		var challenges BCChallengeResponse
 		var challengeIDs []string
 		challenges.Challenges = make([]*ChallengeEntity, 0)
@@ -93,7 +95,7 @@ func syncOpenChallenges(ctx context.Context) {
 		if len(challenges.Challenges) == 0 {
 			break
 		}
-		offset += incrOffset
+		offset += len(challenges.Challenges)
 		params["offset"] = strconv.Itoa(offset)
 	}
 
