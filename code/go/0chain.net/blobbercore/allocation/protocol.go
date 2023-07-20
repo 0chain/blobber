@@ -119,6 +119,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 	if err != nil {
 		return nil, common.NewError("meta_data_update_error", err.Error())
 	}
+
 	// go update allocation data in file store map
 	// related terms
 	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))
