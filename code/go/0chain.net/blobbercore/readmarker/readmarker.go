@@ -102,10 +102,10 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 	if clientID == "" || clientID != rm.LatestRM.ClientID {
 		return common.NewError("read_marker_validation_failed", "Read Marker clientID does not match request clientID")
 	}
-	currentTS := common.Now()
-	if rm.LatestRM.Timestamp > (currentTS + 2) {
-		zLogger.Logger.Error("Timestamp is for future in the read marker", zap.Any("rm", rm), zap.Any("now", currentTS))
-		return common.NewError("read_marker_validation_failed", "Timestamp is for future in the read marker")
+
+	if rm.LatestRM.Timestamp > sa.Expiration {
+		zLogger.Logger.Error("Readmarker is for an expired allocation", zap.Any("rm", rm))
+		return common.NewError("read_marker_validation_failed", "Readmarker is for an expired allocation")
 	}
 
 	hashData := rm.LatestRM.GetHashData()

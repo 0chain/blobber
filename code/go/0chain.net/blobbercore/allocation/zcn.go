@@ -11,6 +11,7 @@ import (
 	"github.com/0chain/errors"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"math"
 )
 
 // SyncAllocation try to pull allocation from blockchain, and insert it in db.
