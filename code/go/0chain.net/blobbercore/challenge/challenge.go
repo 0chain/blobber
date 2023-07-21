@@ -25,9 +25,10 @@ type BCChallengeResponse struct {
 }
 
 var lastChallengeTimestamp int
+var lastChallengeId string
 
 func syncOpenChallenges(ctx context.Context) {
-	const incrOffset = 20
+	const incrOffset = 50
 	defer func() {
 		if r := recover(); r != nil {
 			logging.Logger.Error("[recover]challenge", zap.Any("err", r))
@@ -37,12 +38,13 @@ func syncOpenChallenges(ctx context.Context) {
 	offset := 0
 	params := make(map[string]string)
 	params["blobber"] = node.Self.ID
-	params["offset"] = strconv.Itoa(offset)
-	params["limit"] = "20"
+
+	params["limit"] = "50"
 	if lastChallengeTimestamp > 0 {
 		params["from"] = strconv.Itoa(lastChallengeTimestamp)
+		params["last_challenge_id"] = lastChallengeId
 	}
-	logging.Logger.Info("[challenge]sync:pull", zap.Any("params", params))
+
 	start := time.Now()
 
 	var downloadElapsed, jsonElapsed time.Duration
@@ -54,6 +56,12 @@ func syncOpenChallenges(ctx context.Context) {
 			return
 		default:
 		}
+
+		params["offset"] = strconv.Itoa(offset)
+		offset += incrOffset
+
+		logging.Logger.Info("[challenge]sync:pull", zap.Any("params", params))
+
 		var challenges BCChallengeResponse
 		var challengeIDs []string
 		challenges.Challenges = make([]*ChallengeEntity, 0)
@@ -80,8 +88,9 @@ func syncOpenChallenges(ctx context.Context) {
 		count += len(challenges.Challenges)
 		for _, c := range challenges.Challenges {
 			challengeIDs = append(challengeIDs, c.ChallengeID)
-			if c.CreatedAt > common.Timestamp(lastChallengeTimestamp) {
+			if c.CreatedAt >= common.Timestamp(lastChallengeTimestamp) {
 				lastChallengeTimestamp = int(c.CreatedAt)
+				lastChallengeId = c.ChallengeID
 			}
 			toProcessChallenge <- c
 		}
