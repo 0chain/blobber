@@ -95,7 +95,6 @@ type ChallengeEntity struct {
 	ObjectPath              *reference.ObjectPath `gorm:"-" json:"object_path"`
 	Sequence                int64                 `gorm:"column:sequence;unique;autoIncrement;<-:false"`
 	Timestamp               common.Timestamp      `gorm:"column:timestamp;not null;default:0" json:"timestamp"`
-	Responded               int                   `gorm:"column:responded;not null;default:0" json:"responded"`
 
 	// This time is taken from Blockchain challenge object.
 	CreatedAt common.Timestamp `gorm:"created_at" json:"created"`
