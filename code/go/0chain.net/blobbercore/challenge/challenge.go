@@ -86,6 +86,10 @@ func syncOpenChallenges(ctx context.Context) {
 		})
 		count += len(challenges.Challenges)
 		for _, c := range challenges.Challenges {
+			if c.Responded != 0 {
+				continue
+			}
+
 			challengeIDs = append(challengeIDs, c.ChallengeID)
 			if c.CreatedAt >= common.Timestamp(lastChallengeTimestamp) {
 				lastChallengeTimestamp = int(c.CreatedAt)
