@@ -58,7 +58,6 @@ func syncOpenChallenges(ctx context.Context) {
 		}
 
 		params["offset"] = strconv.Itoa(offset)
-		offset += incrOffset
 
 		logging.Logger.Info("[challenge]sync:pull", zap.Any("params", params))
 
@@ -102,7 +101,7 @@ func syncOpenChallenges(ctx context.Context) {
 		if len(challenges.Challenges) == 0 {
 			break
 		}
-		offset += incrOffset
+		offset += len(challenges.Challenges)
 		params["offset"] = strconv.Itoa(offset)
 	}
 
