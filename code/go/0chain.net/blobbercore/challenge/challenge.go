@@ -87,9 +87,6 @@ func syncOpenChallenges(ctx context.Context) {
 		})
 		count += len(challenges.Challenges)
 		for _, c := range challenges.Challenges {
-			if c.ChallengeID == lastChallengeId {
-				continue
-			}
 			challengeIDs = append(challengeIDs, c.ChallengeID)
 			if c.CreatedAt >= common.Timestamp(lastChallengeTimestamp) {
 				lastChallengeTimestamp = int(c.CreatedAt)
@@ -121,6 +118,11 @@ func syncOpenChallenges(ctx context.Context) {
 }
 
 func validateOnValidators(c *ChallengeEntity) {
+
+	logging.Logger.Info("[challenge]validate: ",
+		zap.Any("challenge", c),
+		zap.String("challenge_id", c.ChallengeID),
+	)
 
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	defer ctx.Done()

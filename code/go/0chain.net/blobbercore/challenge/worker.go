@@ -81,6 +81,8 @@ func challengeProcessor(ctx context.Context) {
 			return
 
 		case it := <-toProcessChallenge:
+
+			logging.Logger.Info("processing_challenge", zap.Any("challenge_id", it.ChallengeID))
 			if ok := it.createChallenge(); !ok {
 				continue
 			}
