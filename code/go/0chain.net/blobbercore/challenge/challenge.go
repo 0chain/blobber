@@ -27,7 +27,6 @@ type BCChallengeResponse struct {
 var lastChallengeRound int64
 
 func syncOpenChallenges(ctx context.Context) {
-	const incrOffset = 50
 	defer func() {
 		if r := recover(); r != nil {
 			logging.Logger.Error("[recover]challenge", zap.Any("err", r))
@@ -155,7 +154,7 @@ func validateOnValidators(c *ChallengeEntity) {
 			zap.Time("created", createdTime),
 			zap.Error(err))
 		//TODO: Should we delete the challenge from map or send it back to the todo channel?
-		deleteChallenge(int64(c.RoundCreatedAt))
+		deleteChallenge(c.RoundCreatedAt)
 		tx.Rollback()
 		return
 	}
