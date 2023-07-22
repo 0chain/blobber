@@ -144,7 +144,7 @@ func commitOnChainWorker(ctx context.Context) {
 					}()
 					err := challenge.VerifyChallengeTransaction(txn)
 					if err == nil || err != ErrEntityNotFound {
-						deleteChallenge(int64(challenge.CreatedAt))
+						deleteChallenge(int64(challenge.RoundCreatedAt))
 					}
 				}(&chall)
 			}
@@ -177,11 +177,11 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 
 func (it *ChallengeEntity) createChallenge() bool {
 	challengeMapLock.Lock()
-	if _, ok := challengeMap.Get(int64(it.CreatedAt)); ok {
+	if _, ok := challengeMap.Get(it.RoundCreatedAt); ok {
 		challengeMapLock.Unlock()
 		return false
 	}
-	challengeMap.Put(int64(it.CreatedAt), it)
+	challengeMap.Put(it.RoundCreatedAt, it)
 	challengeMapLock.Unlock()
 	return true
 }

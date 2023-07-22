@@ -24,8 +24,7 @@ type BCChallengeResponse struct {
 	Challenges []*ChallengeEntity `json:"challenges"`
 }
 
-var lastChallengeTimestamp int
-var lastChallengeId string
+var lastChallengeRound int64
 
 func syncOpenChallenges(ctx context.Context) {
 	const incrOffset = 50
@@ -35,14 +34,12 @@ func syncOpenChallenges(ctx context.Context) {
 		}
 	}()
 
-	offset := 0
 	params := make(map[string]string)
 	params["blobber"] = node.Self.ID
 
 	params["limit"] = "50"
-	if lastChallengeTimestamp > 0 {
-		params["from"] = strconv.Itoa(lastChallengeTimestamp)
-		params["last_challenge_id"] = lastChallengeId
+	if lastChallengeRound > 0 {
+		params["from"] = strconv.FormatInt(lastChallengeRound, 10)
 	}
 
 	start := time.Now()
@@ -56,9 +53,6 @@ func syncOpenChallenges(ctx context.Context) {
 			return
 		default:
 		}
-
-		params["offset"] = strconv.Itoa(offset)
-		params["last_challenge_id"] = lastChallengeId
 
 		logging.Logger.Info("[challenge]sync:pull", zap.Any("params", params))
 
@@ -83,14 +77,13 @@ func syncOpenChallenges(ctx context.Context) {
 			break
 		}
 		sort.Slice(challenges.Challenges, func(i, j int) bool {
-			return challenges.Challenges[i].CreatedAt < challenges.Challenges[j].CreatedAt
+			return challenges.Challenges[i].RoundCreatedAt < challenges.Challenges[j].RoundCreatedAt
 		})
 		count += len(challenges.Challenges)
 		for _, c := range challenges.Challenges {
 			challengeIDs = append(challengeIDs, c.ChallengeID)
-			if c.CreatedAt >= common.Timestamp(lastChallengeTimestamp) {
-				lastChallengeTimestamp = int(c.CreatedAt)
-				lastChallengeId = c.ChallengeID
+			if c.RoundCreatedAt >= lastChallengeRound {
+				lastChallengeRound = c.RoundCreatedAt
 			}
 			toProcessChallenge <- c
 		}
@@ -102,8 +95,6 @@ func syncOpenChallenges(ctx context.Context) {
 		if len(challenges.Challenges) == 0 {
 			break
 		}
-		offset += len(challenges.Challenges)
-		params["offset"] = strconv.Itoa(offset)
 	}
 
 	dbTimeStart := time.Now()
@@ -133,7 +124,7 @@ func validateOnValidators(c *ChallengeEntity) {
 		logging.Logger.Error("[challengetiming]add: ",
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Error(err))
-		deleteChallenge(int64(c.CreatedAt))
+		deleteChallenge(c.RoundCreatedAt)
 		tx.Rollback()
 	}
 
@@ -164,7 +155,7 @@ func validateOnValidators(c *ChallengeEntity) {
 			zap.Time("created", createdTime),
 			zap.Error(err))
 		//TODO: Should we delete the challenge from map or send it back to the todo channel?
-		deleteChallenge(int64(c.CreatedAt))
+		deleteChallenge(int64(c.RoundCreatedAt))
 		tx.Rollback()
 		return
 	}
