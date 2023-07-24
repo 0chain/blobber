@@ -40,6 +40,7 @@ func syncOpenChallenges(ctx context.Context) {
 	if lastChallengeRound > 0 {
 		params["from"] = strconv.FormatInt(lastChallengeRound, 10)
 	}
+
 	start := time.Now()
 
 	var downloadElapsed, jsonElapsed time.Duration
