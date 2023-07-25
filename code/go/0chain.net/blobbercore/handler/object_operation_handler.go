@@ -171,7 +171,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 		blobberID    = node.Self.ID
 		quotaManager = getQuotaManager()
 	)
-
+	now := time.Now()
 	if clientID == "" {
 		return nil, common.NewError("redeem_readmarker", "invalid client")
 	}
@@ -180,7 +180,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 	if err != nil {
 		return nil, common.NewErrorf("redeem_readmarker", "invalid allocation id passed: %v", err)
 	}
-
+	elapsedAllocation := time.Since(now)
 	dr, err := FromDownloadRequest(alloc.ID, r, true)
 	if err != nil {
 		return nil, err
@@ -217,7 +217,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, common.NewErrorf("redeem_readmarker", "couldn't get read marker from DB: %v", err)
 	}
-
+	elapsedReadMarker := time.Since(now) - elapsedAllocation
 	if rme != nil {
 		latestRM = rme.LatestRM
 		latestRedeemedRC = rme.LatestRedeemedRC
@@ -231,7 +231,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 	if err != nil {
 		return nil, common.NewErrorf("not_enough_tokens", "pre-redeeming read marker: %v", err)
 	}
-
+	elapsedRedeem := time.Since(now) - elapsedAllocation - elapsedReadMarker
 	if latestRM != nil && latestRM.ReadCounter+(dr.ReadMarker.SessionRC) > dr.ReadMarker.ReadCounter {
 		latestRM.BlobberID = node.Self.ID
 		return &blobberhttp.DownloadResponse{
@@ -256,9 +256,9 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 		Logger.Error(err.Error())
 		return nil, common.NewError("redeem_readmarker", "couldn't save latest read marker")
 	}
-
+	elapsedSaveMarker := time.Since(now) - elapsedAllocation - elapsedReadMarker - elapsedRedeem
 	quotaManager.createOrUpdateQuota(dr.ReadMarker.SessionRC, dr.ConnectionID)
-	Logger.Info("readmarker_saved", zap.Any("rmObj", rmObj))
+	Logger.Info("[redeemMarker]", zap.String("alloc_id", allocationID), zap.Duration("get_alloc", elapsedAllocation), zap.Duration("get-lock", elapsedReadMarker), zap.Duration("redeem", elapsedRedeem), zap.Duration("save", elapsedSaveMarker), zap.Duration("total", time.Since(now)))
 	return &blobberhttp.DownloadResponse{
 		Success:  true,
 		LatestRM: &dr.ReadMarker,
@@ -290,12 +290,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, err
 	}
-
+	now := time.Now()
 	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid file path: %v", err)
 	}
-
+	elapsedGetRef := time.Since(now)
 	if fileref.Type != reference.FILE {
 		return nil, common.NewErrorf("download_file", "path is not a file: %v", err)
 	}
@@ -343,7 +343,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			return nil, common.NewError("download_file", fmt.Sprintf("insufficient quota: available %v, requested %v", dq.Quota, dr.NumBlocks))
 		}
 	}
-
+	elapsedMarker := time.Since(now) - elapsedGetRef
 	var (
 		downloadMode         = dr.DownloadMode
 		fileDownloadResponse *filestore.FileDownloadResponse
@@ -394,7 +394,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			return nil, common.NewErrorf("download_file", "couldn't get file block: %v", err)
 		}
 	}
-
+	elapsedResponse := time.Since(now) - elapsedGetRef - elapsedMarker
 	var chunkEncoder ChunkEncoder
 	if len(fileref.EncryptedKey) > 0 && authToken != nil {
 		chunkEncoder = &PREChunkEncoder{
@@ -417,9 +417,18 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			return nil, common.NewError("download_file", err.Error())
 		}
 	}
-
+	elapsedData := time.Since(now) - elapsedGetRef - elapsedMarker - elapsedResponse
 	fileDownloadResponse.Data = chunkData
 	reference.FileBlockDownloaded(ctx, fileref.ID)
+	elapsedStats := time.Since(now) - elapsedGetRef - elapsedMarker - elapsedResponse - elapsedData
+	Logger.Info("[download]", zap.String("allocation_id", alloc.ID),
+		zap.Any("download_request", dr),
+		zap.Duration("get_ref", elapsedGetRef),
+		zap.Duration("get_marker", elapsedMarker),
+		zap.Duration("get_response", elapsedResponse),
+		zap.Duration("get_data", elapsedData),
+		zap.Duration("stats", elapsedStats))
+
 	return fileDownloadResponse, nil
 }
 
