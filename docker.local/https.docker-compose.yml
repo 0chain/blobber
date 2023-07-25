@@ -4,34 +4,17 @@ services:
     image: postgres:14
     volumes:
       - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
+      - ./sql_init:/docker-entrypoint-initdb.d
     networks:
       default:
     ports:
       - "543${BLOBBER}:5432"
     labels:
       zchain: "postgres"
-  postgres-post:
-    image: postgres:14
-    environment:
-      POSTGRES_PORT: 5432
-      POSTGRES_HOST: postgres
-      POSTGRES_USER: postgres
-    volumes:
-      - ../bin:/blobber/bin
-      - ../sql:/blobber/sql
-    labels:
-      zchain: "postgres-post"
-    command: bash /blobber/bin/postgres-entrypoint.sh
-    links:
-      - postgres:postgres
   validator:
     image: validator
     environment:
       - DOCKER= true
-    depends_on:
-      - postgres-post
-    links:
-      - postgres-post:postgres-post
     volumes:
       - ../config:/validator/config
       - ./blobber${BLOBBER}/data:/validator/data
