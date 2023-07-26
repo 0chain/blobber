@@ -7,12 +7,11 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/constants"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 // LockStatus lock status
@@ -40,7 +39,7 @@ type Mutex struct {
 // If lock exists and is of same connection ID then lock's createdAt is updated
 // If lock exists and is of other connection ID then `pending` response is sent.
 func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string) (*LockResult, error) {
-	Logger.Info("Locking write marker", zap.String("allocation_id", allocationID), zap.String("connection_id", connectionID))
+	logging.Logger.Info("Locking write marker", zap.String("allocation_id", allocationID), zap.String("connection_id", connectionID))
 	if allocationID == "" {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "allocationID")
 	}
@@ -59,7 +58,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string) (*L
 	err := db.Table(TableNameWriteLock).Where("allocation_id=?", allocationID).First(&lock).Error
 	if err != nil {
 		// new lock
-		Logger.Info("Creating new lock")
+		logging.Logger.Info("Creating new lock")
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			lock = WriteLock{
 				AllocationID: allocationID,
@@ -77,7 +76,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string) (*L
 				CreatedAt: lock.CreatedAt.Unix(),
 			}, nil
 		}
-		Logger.Error("Could not create lock")
+		logging.Logger.Error("Could not create lock")
 		//native postgres error
 		return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
 	}
