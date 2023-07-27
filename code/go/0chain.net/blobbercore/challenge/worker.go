@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/emirpasic/gods/maps/treemap"
 	"go.uber.org/zap"
@@ -177,12 +178,21 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 
 func (it *ChallengeEntity) createChallenge() bool {
 	challengeMapLock.Lock()
+	defer challengeMapLock.Unlock()
 	if _, ok := challengeMap.Get(it.RoundCreatedAt); ok {
-		challengeMapLock.Unlock()
+		return false
+	}
+	db := datastore.GetStore().GetDB()
+	var Found bool
+	err := db.Raw("SELECT EXISTS(SELECT 1 FROM challenge_timing WHERE challenge_id = ?) AS found", it.ChallengeID).Scan(&Found).Error
+	if err != nil {
+		logging.Logger.Error("createChallenge", zap.Error(err))
+		return false
+	} else if Found {
+		logging.Logger.Info("createChallenge", zap.String("challenge_id", it.ChallengeID), zap.String("status", "already exists"))
 		return false
 	}
 	challengeMap.Put(it.RoundCreatedAt, it)
-	challengeMapLock.Unlock()
 	return true
 }
 
