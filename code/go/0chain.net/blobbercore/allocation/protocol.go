@@ -77,7 +77,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
 	}
 
-	isExist = a.ID != ""
+	isExist = a != nil && a.ID != ""
 
 	if !isExist {
 		foundBlobber := false
@@ -166,13 +166,16 @@ func RequestReadPoolStat(clientID string) (*ReadPool, error) {
 		return nil, fmt.Errorf("requesting read pools stat: %v", err)
 	}
 
-	var readPool ReadPool
-	if err = json.Unmarshal(resp, &readPool); err != nil {
-		return nil, fmt.Errorf("decoding read pools stat response: %v, \n==> resp: %s", err, string(resp))
+	if resp != nil {
+		var readPool ReadPool
+		if err = json.Unmarshal(resp, &readPool); err != nil {
+			return nil, fmt.Errorf("decoding read pools stat response: %v, \n==> resp: %s", err, string(resp))
+		}
+		readPool.ClientID = clientID
+		return &readPool, nil
 	}
 
-	readPool.ClientID = clientID
-	return &readPool, nil
+	return nil, errors.New("empty response received from MakeSCRestAPICall")
 }
 
 func RequestWritePool(allocationID string) (wps *WritePool, err error) {
@@ -190,16 +193,20 @@ func RequestWritePool(allocationID string) (wps *WritePool, err error) {
 		return nil, fmt.Errorf("requesting write pools stat: %v", err)
 	}
 
-	var allocation = struct {
-		ID        string `json:"id"`
-		WritePool uint64 `json:"write_pool"`
-	}{}
-	if err = json.Unmarshal(resp, &allocation); err != nil {
-		return nil, fmt.Errorf("decoding write pools stat response: %v", err)
+	if resp != nil {
+		var allocation = struct {
+			ID        string `json:"id"`
+			WritePool uint64 `json:"write_pool"`
+		}{}
+		if err = json.Unmarshal(resp, &allocation); err != nil {
+			return nil, fmt.Errorf("decoding write pools stat response: %v", err)
+		}
+
+		return &WritePool{
+			AllocationID: allocationID,
+			Balance:      allocation.WritePool,
+		}, nil
 	}
 
-	return &WritePool{
-		AllocationID: allocationID,
-		Balance:      allocation.WritePool,
-	}, nil
+	return nil, errors.New("empty response received from MakeSCRestAPICall")
 }
