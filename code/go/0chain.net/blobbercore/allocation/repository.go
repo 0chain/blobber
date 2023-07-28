@@ -49,7 +49,7 @@ func (r *Repository) GetById(ctx context.Context, id string) (*Allocation, error
 	alloc := &Allocation{}
 	err = tx.Table(TableNameAllocation).Where(SQLWhereGetById, id).First(alloc).Error
 	if err != nil {
-		return nil, err
+		return alloc, err
 	}
 
 	cache[id] = alloc

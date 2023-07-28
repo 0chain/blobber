@@ -73,11 +73,10 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 	var isExist bool
 	a, err = Repo.GetById(ctx, sa.ID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-
 		return nil, common.NewError("bad_db_operation", err.Error()) // unexpected
 	}
 
-	isExist = a != nil && a.ID != ""
+	isExist = a.ID != ""
 
 	if !isExist {
 		foundBlobber := false
