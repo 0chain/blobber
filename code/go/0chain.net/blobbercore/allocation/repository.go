@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -31,30 +32,29 @@ type Res struct {
 }
 
 func (r *Repository) GetById(ctx context.Context, id string) (*Allocation, error) {
-	var tx = datastore.GetStore().GetTransaction(ctx)
+	tx := datastore.GetStore().GetTransaction(ctx)
 	if tx == nil {
 		logging.Logger.Panic("no transaction in the context")
 	}
-	var cache map[string]*Allocation
-	c, ok := tx.SessionCache[TableNameAllocation]
-	if !ok {
-		cache = make(map[string]*Allocation)
-		tx.SessionCache[TableNameAllocation] = cache
+
+	cache, err := getCache(tx)
+	if err != nil {
+		return nil, err
 	}
-	cache = c.(map[string]*Allocation)
+
 	if a, ok := cache[id]; ok {
 		return a, nil
 	}
 
 	alloc := &Allocation{}
-	err := tx.Table(TableNameAllocation).Where(SQLWhereGetById, id).First(alloc).Error
+	err = tx.Table(TableNameAllocation).Where(SQLWhereGetById, id).First(alloc).Error
 	if err != nil {
-		return alloc, err
+		return nil, err
 	}
 
 	cache[id] = alloc
 
-	return alloc, err
+	return alloc, nil
 }
 
 func (r *Repository) GetByIdAndLock(ctx context.Context, id string) (*Allocation, error) {
@@ -62,17 +62,15 @@ func (r *Repository) GetByIdAndLock(ctx context.Context, id string) (*Allocation
 	if tx == nil {
 		logging.Logger.Panic("no transaction in the context")
 	}
-	var cache map[string]*Allocation
-	c, ok := tx.SessionCache[TableNameAllocation]
-	if !ok {
-		cache = make(map[string]*Allocation)
-		tx.SessionCache[TableNameAllocation] = cache
+
+	cache, err := getCache(tx)
+	if err != nil {
+		return nil, err
 	}
-	cache = c.(map[string]*Allocation)
 
 	alloc := &Allocation{}
 
-	err := tx.Model(&Allocation{}).
+	err = tx.Model(&Allocation{}).
 		Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).
 		Where("id=?", id).
 		First(alloc).Error
@@ -89,13 +87,11 @@ func (r *Repository) GetByTx(ctx context.Context, allocationID, txHash string) (
 	if tx == nil {
 		logging.Logger.Panic("no transaction in the context")
 	}
-	var cache map[string]*Allocation
-	c, ok := tx.SessionCache[TableNameAllocation]
-	if !ok {
-		c = make(map[string]*Allocation)
-		tx.SessionCache[TableNameAllocation] = c
+
+	cache, err := getCache(tx)
+	if err != nil {
+		return nil, err
 	}
-	cache = c.(map[string]*Allocation)
 	if a, ok := cache[allocationID]; ok {
 		if a.Tx == txHash {
 			return a, nil
@@ -103,7 +99,7 @@ func (r *Repository) GetByTx(ctx context.Context, allocationID, txHash string) (
 	}
 
 	alloc := &Allocation{}
-	err := tx.Table(TableNameAllocation).Where(SQLWhereGetByTx, txHash).First(alloc).Error
+	err = tx.Table(TableNameAllocation).Where(SQLWhereGetByTx, txHash).First(alloc).Error
 	if err != nil {
 		return alloc, err
 	}
@@ -148,16 +144,14 @@ func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, A
 	if tx == nil {
 		logging.Logger.Panic("no transaction in the context")
 	}
-	var cache map[string]*Allocation
-	c, ok := tx.SessionCache[TableNameAllocation]
-	if !ok {
-		c = make(map[string]*Allocation)
-		tx.SessionCache[TableNameAllocation] = c
+
+	cache, err := getCache(tx)
+	if err != nil {
+		return err
 	}
-	cache = c.(map[string]*Allocation)
 	delete(cache, allocationID)
 
-	err := tx.Exec("UPDATE allocations SET latest_redeemed_write_marker=?,is_redeem_required=? WHERE id=?",
+	err = tx.Exec("UPDATE allocations SET latest_redeemed_write_marker=?,is_redeem_required=? WHERE id=?",
 		AllocationRoot, false, allocationID).Error
 
 	return err
@@ -168,14 +162,26 @@ func (r *Repository) Save(ctx context.Context, a *Allocation) error {
 	if tx == nil {
 		logging.Logger.Panic("no transaction in the context")
 	}
-	var cache map[string]*Allocation
-	c, ok := tx.SessionCache[TableNameAllocation]
-	if !ok {
-		c = make(map[string]*Allocation)
-		tx.SessionCache[TableNameAllocation] = c
+
+	cache, err := getCache(tx)
+	if err != nil {
+		return err
 	}
-	cache = c.(map[string]*Allocation)
 
 	cache[a.ID] = a
 	return tx.Save(a).Error
+}
+
+func getCache(tx *datastore.EnhancedDB) (map[string]*Allocation, error) {
+	c, ok := tx.SessionCache[TableNameAllocation]
+	if ok {
+		cache, ok := c.(map[string]*Allocation)
+		if !ok {
+			return nil, fmt.Errorf("type assertion failed")
+		}
+		return cache, nil
+	}
+	cache := make(map[string]*Allocation)
+	tx.SessionCache[TableNameAllocation] = cache
+	return cache, nil
 }
