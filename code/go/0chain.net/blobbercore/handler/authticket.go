@@ -10,11 +10,10 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"gorm.io/gorm"
 )
 
 // verifyAuthTicket verifies authTicket and returns authToken and error if any. For any error authToken is nil
-func verifyAuthTicket(ctx context.Context, db *gorm.DB, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string, verifyShare bool) (*readmarker.AuthTicket, error) {
+func verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj *allocation.Allocation, refRequested *reference.Ref, clientID string, verifyShare bool) (*readmarker.AuthTicket, error) {
 	if authTokenString == "" {
 		return nil, common.NewError("invalid_parameters", "Auth ticket is required")
 	}
@@ -29,7 +28,7 @@ func verifyAuthTicket(ctx context.Context, db *gorm.DB, authTokenString string, 
 	}
 
 	if refRequested.LookupHash != authToken.FilePathHash {
-		authTokenRef, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, db, authToken.AllocationID, authToken.FilePathHash, []string{"id", "path"})
+		authTokenRef, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, authToken.AllocationID, authToken.FilePathHash, []string{"id", "path"})
 		if err != nil {
 			return nil, err
 		}

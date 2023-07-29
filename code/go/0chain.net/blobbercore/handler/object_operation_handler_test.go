@@ -290,8 +290,8 @@ func TestDownloadFile(t *testing.T) {
 		ctx = context.WithValue(ctx, constants.ContextKeyAllocation, p.inData.allocationTx)
 		ctx = context.WithValue(ctx, constants.ContextKeyClientKey, client.GetClientPublicKey())
 
-		db := datastore.GetStore().GetDB().Begin()
-		ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
+		ctx = datastore.GetStore().CreateTransaction(ctx)
+
 		return ctx
 	}
 

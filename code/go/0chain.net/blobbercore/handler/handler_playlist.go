@@ -25,7 +25,7 @@ func LoadPlaylist(ctx *Context) (interface{}, error) {
 			return nil, errors.New("lookup_hash_missed: auth_token and lookup_hash are required")
 		}
 
-		fileRef, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, ctx.Store.GetDB(), ctx.AllocationId, lookupHash, []string{"id", "path", "lookup_hash", "type", "name"})
+		fileRef, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, ctx.AllocationId, lookupHash, []string{"id", "path", "lookup_hash", "type", "name"})
 		if err != nil {
 			return nil, common.NewError("invalid_lookup_hash", err.Error())
 		}
@@ -35,7 +35,7 @@ func LoadPlaylist(ctx *Context) (interface{}, error) {
 			return nil, common.NewError("invalid_auth_ticket", err.Error())
 		}
 
-		authToken, err := verifyAuthTicket(ctx, ctx.Store.GetDB(), string(at), ctx.Allocation, fileRef, ctx.ClientID, true)
+		authToken, err := verifyAuthTicket(ctx, string(at), ctx.Allocation, fileRef, ctx.ClientID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +67,7 @@ func LoadPlaylistFile(ctx *Context) (interface{}, error) {
 
 	//load playlist with auth ticket
 	if len(authTokenString) > 0 {
-		fileRef, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, ctx.Store.GetDB(), ctx.AllocationId, lookupHash, []string{"id", "path", "lookup_hash", "type", "name"})
+		fileRef, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, ctx.AllocationId, lookupHash, []string{"id", "path", "lookup_hash", "type", "name"})
 		if err != nil {
 			return nil, common.NewError("invalid_lookup_hash", err.Error())
 		}
@@ -75,7 +75,7 @@ func LoadPlaylistFile(ctx *Context) (interface{}, error) {
 		if err != nil {
 			return nil, common.NewError("invalid_auth_ticket", err.Error())
 		}
-		authToken, err := verifyAuthTicket(ctx, ctx.Store.GetDB(), string(at), ctx.Allocation, fileRef, ctx.ClientID, true)
+		authToken, err := verifyAuthTicket(ctx, string(at), ctx.Allocation, fileRef, ctx.ClientID, true)
 		if err != nil {
 			return nil, err
 		}
