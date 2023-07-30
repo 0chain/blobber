@@ -1365,8 +1365,8 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	}
 
 	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM
-	c := context.TODO()
-	datastore.GetStore().CreateTransaction(c)
+	c := datastore.GetStore().CreateTransaction(context.TODO())
+	defer c.Done()
 	txn := datastore.GetStore().GetTransaction(c)
 	err = allocation.ApplyRollback(c, allocationID)
 	if err != nil {
