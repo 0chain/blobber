@@ -8,9 +8,15 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	gomocket "github.com/selvatico/go-mocket"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
+
+func init() {
+	logging.Logger = zap.NewNop()
+}
 
 func TestMutext_LockShouldWork(t *testing.T) {
 
