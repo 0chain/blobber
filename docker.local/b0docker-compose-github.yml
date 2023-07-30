@@ -14,18 +14,6 @@ services:
       - ./sql_init:/docker-entrypoint-initdb.d
     networks:
       default:
-  postgres-post:
-    image: postgres:14
-    environment:
-      POSTGRES_PORT: 5432
-      POSTGRES_HOST: postgres
-      POSTGRES_USER: postgres
-    volumes:
-      - ../bin:/blobber/bin
-      - ../sql:/blobber/sql
-    command: bash /blobber/bin/postgres-entrypoint.sh
-    links:
-      - postgres:postgres
 
 networks:
   default:
