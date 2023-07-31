@@ -655,20 +655,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	allocationObj.IsRedeemRequired = true
 	allocationObj.BlobberSizeUsed += connectionObj.Size
 	allocationObj.UsedSize += connectionObj.Size
-	// allocationUpdates := make(map[string]interface{})
-	// allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
-	// allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
-	// allocationUpdates["allocation_root"] = allocationRoot
-	// allocationUpdates["file_meta_root"] = fileMetaRoot
-	// allocationUpdates["is_redeem_required"] = true
 
 	if err = allocation.Repo.Save(ctx, allocationObj); err != nil {
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
 
-	// if err = db.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
-	// 	return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
-	// }
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
 		if !errors.Is(common.ErrFileWasDeleted, err) {
@@ -1422,16 +1413,10 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return &result, common.NewError("allocation_read_error", "Error reading the allocation object")
 	}
 
-	// allocationUpdates := make(map[string]interface{})
 	alloc.BlobberSizeUsed -= latestWriteMarkerEntity.WM.Size
 	alloc.UsedSize -= latestWriteMarkerEntity.WM.Size
 	alloc.AllocationRoot = allocationRoot
 	alloc.FileMetaRoot = fileMetaRoot
-	// allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used - ?", latestWriteMarkerEntity.WM.Size)
-	// allocationUpdates["used_size"] = gorm.Expr("used_size - ?", latestWriteMarkerEntity.WM.Size)
-	// allocationUpdates["is_redeem_required"] = true
-	// allocationUpdates["allocation_root"] = allocationRoot
-	// allocationUpdates["file_meta_root"] = fileMetaRoot
 
 	if alloc.IsRedeemRequired {
 		writemarkerEntity.Status = writemarker.Rollbacked
@@ -1446,9 +1431,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		txn.Rollback()
 		return &result, common.NewError("allocation_write_error", "Error persisting the allocation object "+err.Error())
 	}
-	// if err = tx.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
-	// 	return common.NewError("allocation_write_error", "Error persisting the allocation object "+err.Error())
-	// }
+
 	err = txn.Commit().Error
 	if err != nil {
 		return &result, common.NewError("allocation_commit_error", "Error committing the transaction "+err.Error())
