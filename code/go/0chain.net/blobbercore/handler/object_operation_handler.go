@@ -650,17 +650,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err = db.Create(writemarkerEntity).Error; err != nil {
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
 	}
+	allocationObj.AllocationRoot = allocationRoot
+	allocationObj.FileMetaRoot = fileMetaRoot
+	allocationObj.IsRedeemRequired = true
+	allocationObj.BlobberSizeUsed += connectionObj.Size
+	allocationObj.UsedSize += connectionObj.Size
 
-	allocationUpdates := make(map[string]interface{})
-	allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
-	allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
-	allocationUpdates["allocation_root"] = allocationRoot
-	allocationUpdates["file_meta_root"] = fileMetaRoot
-	allocationUpdates["is_redeem_required"] = true
-
-	if err = db.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
+	if err = allocation.Repo.Save(ctx, allocationObj); err != nil {
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
+
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
 		if !errors.Is(common.ErrFileWasDeleted, err) {
@@ -1357,16 +1356,20 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	}
 
 	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM
-
-	err = allocation.ApplyRollback(ctx, allocationID)
+	c := datastore.GetStore().CreateTransaction(context.TODO())
+	defer c.Done()
+	txn := datastore.GetStore().GetTransaction(c)
+	err = allocation.ApplyRollback(c, allocationID)
 	if err != nil {
+		txn.Rollback()
 		return nil, common.NewError("allocation_rollback_error", "Error applying the rollback for allocation: "+err.Error())
 	}
 	elapsedApplyRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM - elapsedWritePreRedeem
 
 	//get allocation root and ref
-	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash", "is_precommit"})
+	rootRef, err := reference.GetLimitedRefFieldsByPath(c, allocationID, "/", []string{"hash", "file_meta_hash", "is_precommit"})
 	if err != nil && err != gorm.ErrRecordNotFound {
+		txn.Rollback()
 		return nil, common.NewError("root_ref_read_error", "Error reading the root reference: "+err.Error())
 	}
 	if err == gorm.ErrRecordNotFound {
@@ -1385,6 +1388,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		result.Success = false
 		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
 			" Expected hash: " + allocationRoot
+		txn.Rollback()
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
 
@@ -1395,6 +1399,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		result.Success = false
 		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
 			" Expected hash: " + fileMetaRoot + "; Got: " + writeMarker.FileMetaRoot
+		txn.Rollback()
 		return &result, common.NewError("file_meta_root_mismatch", result.ErrorMessage)
 	}
 
@@ -1402,43 +1407,36 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	writemarkerEntity.ClientPublicKey = clientKey
 	Logger.Info("rollback_writemarker", zap.Any("writemarker", writemarkerEntity.WM))
 
-	db := datastore.GetStore().GetDB()
-	var alloc *allocation.Allocation
-
-	err = db.Transaction(func(tx *gorm.DB) error {
-		c := datastore.GetStore().WithTransaction(ctx, tx)
-
-		alloc, err := allocation.Repo.GetByIdAndLock(c, allocationID)
-		if err != nil {
-			return common.NewError("allocation_read_error", "Error reading the allocation object")
-		}
-
-		allocationUpdates := make(map[string]interface{})
-		allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used - ?", latestWriteMarkerEntity.WM.Size)
-		allocationUpdates["used_size"] = gorm.Expr("used_size - ?", latestWriteMarkerEntity.WM.Size)
-		allocationUpdates["is_redeem_required"] = true
-		allocationUpdates["allocation_root"] = allocationRoot
-		allocationUpdates["file_meta_root"] = fileMetaRoot
-
-		if alloc.IsRedeemRequired {
-			writemarkerEntity.Status = writemarker.Rollbacked
-			allocationUpdates["is_redeem_required"] = false
-		}
-		err = tx.Create(writemarkerEntity).Error
-		if err != nil {
-			return common.NewError("write_marker_error", "Error persisting the write marker "+err.Error())
-		}
-
-		if err = tx.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
-			return common.NewError("allocation_write_error", "Error persisting the allocation object "+err.Error())
-		}
-
-		return nil
-	})
+	alloc, err := allocation.Repo.GetByIdAndLock(c, allocationID)
 	if err != nil {
-		return nil, err
+		txn.Rollback()
+		return &result, common.NewError("allocation_read_error", "Error reading the allocation object")
 	}
-	if !alloc.IsRedeemRequired {
+
+	alloc.BlobberSizeUsed -= latestWriteMarkerEntity.WM.Size
+	alloc.UsedSize -= latestWriteMarkerEntity.WM.Size
+	alloc.AllocationRoot = allocationRoot
+	alloc.FileMetaRoot = fileMetaRoot
+
+	if alloc.IsRedeemRequired {
+		writemarkerEntity.Status = writemarker.Rollbacked
+		alloc.IsRedeemRequired = false
+	}
+	err = txn.Create(writemarkerEntity).Error
+	if err != nil {
+		txn.Rollback()
+		return &result, common.NewError("write_marker_error", "Error persisting the write marker "+err.Error())
+	}
+	if err = allocation.Repo.Save(c, alloc); err != nil {
+		txn.Rollback()
+		return &result, common.NewError("allocation_write_error", "Error persisting the allocation object "+err.Error())
+	}
+
+	err = txn.Commit().Error
+	if err != nil {
+		return &result, common.NewError("allocation_commit_error", "Error committing the transaction "+err.Error())
+	}
+	if alloc.IsRedeemRequired {
 		err = writemarkerEntity.SendToChan(ctx)
 		if err != nil {
 			return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
