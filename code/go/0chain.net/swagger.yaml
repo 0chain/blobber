@@ -8,7 +8,7 @@ definitions:
             filename:
                 type: string
                 x-go-name: Filename
-            merkle_root: 
+            merkle_root:
                 type: string
                 x-go-name: MerkleRoot
             size:
