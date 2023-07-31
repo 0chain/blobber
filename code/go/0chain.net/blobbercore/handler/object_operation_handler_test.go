@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -48,6 +49,7 @@ func TestDownloadFile(t *testing.T) {
 		mockClientWallet   = "{\"client_id\":\"9a566aa4f8e8c342fed97c8928040a21f21b8f574e5782c28568635ba9c75a85\",\"client_key\":\"40cd10039913ceabacf05a7c60e1ad69bb2964987bc50f77495e514dc451f907c3d8ebcdab20eedde9c8f39b9a1d66609a637352f318552fb69d4b3672516d1a\",\"keys\":[{\"public_key\":\"40cd10039913ceabacf05a7c60e1ad69bb2964987bc50f77495e514dc451f907c3d8ebcdab20eedde9c8f39b9a1d66609a637352f318552fb69d4b3672516d1a\",\"private_key\":\"a3a88aad5d89cec28c6e37c2925560ce160ac14d2cdcf4a4654b2bb358fe7514\"}],\"mnemonics\":\"inside february piece turkey offer merry select combine tissue wave wet shift room afraid december gown mean brick speak grant gain become toy clown\",\"version\":\"1.0\",\"date_created\":\"2021-05-21 17:32:29.484657 +0545 +0545 m=+0.072791323\"}"
 		mockOwnerWallet    = "{\"client_id\":\"5d0229e0141071c1f88785b1faba4b612582f9d446b02e8d893f1e0d0ce92cdc\",\"client_key\":\"aefef5778906680360cf55bf462823367161520ad95ca183445a879a59c9bf0470b74e41fc12f2ee0ce9c19c4e77878d734226918672d089f561ecf1d5435720\",\"keys\":[{\"public_key\":\"aefef5778906680360cf55bf462823367161520ad95ca183445a879a59c9bf0470b74e41fc12f2ee0ce9c19c4e77878d734226918672d089f561ecf1d5435720\",\"private_key\":\"4f8af6fb1098a3817d705aef96db933f31755674b00a5d38bb2439c0a27b0117\"}],\"mnemonics\":\"erode transfer noble civil ridge cloth sentence gauge board wheel sight caution okay sand ranch ice frozen frown grape lion feed fox game zone\",\"version\":\"1.0\",\"date_created\":\"2021-09-04T14:11:06+01:00\"}"
 		mockReadPrice      = int64(0.1 * 1e10)
+		mockReadPriceFree  = int64(0)
 		mockWritePrice     = int64(0.5 * 1e10)
 		mockBigBalance     = int64(10000 * 1e10)
 	)
@@ -106,27 +108,11 @@ func TestDownloadFile(t *testing.T) {
 		t *testing.T,
 		req *http.Request,
 		p parameters,
-	) *marker.ReadMarker {
-		rm := &marker.ReadMarker{}
-		rm.ClientID = client.GetClientID()
-		rm.ClientPublicKey = client.GetClientPublicKey()
-		rm.BlobberID = p.inData.blobber.ID
-		rm.AllocationID = p.inData.allocationID
-		rm.OwnerID = mockOwner.ClientID
-		rm.Timestamp = now
-		// set another value to size
-		rm.ReadCounter = p.inData.numBlocks
-		rm.SessionRC = p.inData.numBlocks
-		err := rm.Sign()
-		require.NoError(t, err)
-		rmData, err := json.Marshal(rm)
-		require.NoError(t, err)
+	) {
 		req.Header.Set("X-Path-Hash", p.inData.pathHash)
 		req.Header.Set("X-Path", p.inData.remotefilepath)
 		req.Header.Set("X-Block-Num", fmt.Sprintf("%d", p.inData.blockNum))
 		req.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", p.inData.numBlocks))
-		req.Header.Set("X-Submit-RM", fmt.Sprint(true))
-		req.Header.Set("X-Read-Marker", string(rmData))
 		req.Header.Set(common.AllocationIdHeader, mockAllocationId)
 
 		if p.useAuthTicket {
@@ -147,7 +133,6 @@ func TestDownloadFile(t *testing.T) {
 		if len(p.inData.contentMode) > 0 {
 			req.Header.Set("X-Mode", p.inData.contentMode)
 		}
-		return rm
 	}
 
 	makeMockMakeSCRestAPICall := func(t *testing.T, p parameters) func(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) ([]byte, error) {
@@ -184,7 +169,6 @@ func TestDownloadFile(t *testing.T) {
 	setupInMock := func(
 		t *testing.T,
 		p parameters,
-		rm marker.ReadMarker,
 	) {
 		if p.isRepairer {
 			mocket.Catcher.NewMock().OneTime().WithQuery(
@@ -215,17 +199,31 @@ func TestDownloadFile(t *testing.T) {
 			)
 		}
 
-		mocket.Catcher.NewMock().OneTime().WithQuery(
-			`SELECT * FROM "terms" WHERE`,
-		).WithArgs(
-			"mock_allocation_id",
-		).OneTime().WithReply(
-			[]map[string]interface{}{{
-				"blobber_id":  mockBlobberId,
-				"read_price":  mockReadPrice,
-				"write_price": mockWritePrice,
-			}},
-		)
+		if p.isFunded0Chain || p.isFundedBlobber {
+			mocket.Catcher.NewMock().OneTime().WithQuery(
+				`SELECT * FROM "terms" WHERE`,
+			).WithArgs(
+				"mock_allocation_id",
+			).OneTime().WithReply(
+				[]map[string]interface{}{{
+					"blobber_id":  mockBlobberId,
+					"read_price":  mockReadPriceFree,
+					"write_price": mockWritePrice,
+				}},
+			)
+		} else {
+			mocket.Catcher.NewMock().OneTime().WithQuery(
+				`SELECT * FROM "terms" WHERE`,
+			).WithArgs(
+				"mock_allocation_id",
+			).OneTime().WithReply(
+				[]map[string]interface{}{{
+					"blobber_id":  mockBlobberId,
+					"read_price":  mockReadPrice,
+					"write_price": mockWritePrice,
+				}},
+			)
+		}
 
 		mocket.Catcher.NewMock().OneTime().WithQuery(
 			`SELECT * FROM "reference_objects" WHERE`,
@@ -282,29 +280,7 @@ func TestDownloadFile(t *testing.T) {
 	setupOutMock := func(
 		t *testing.T,
 		p parameters,
-		rm marker.ReadMarker,
 	) {
-
-		mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
-			require.EqualValues(t, client.GetClientID(), args[0].Value)
-			require.EqualValues(t, mockAllocationId, args[1].Value)
-			require.EqualValues(t, client.GetClientPublicKey(), args[2].Value)
-			require.EqualValues(t, mockOwner.ClientID, args[3].Value)
-			require.EqualValues(t, now, args[4].Value)
-			require.EqualValues(t, p.inData.numBlocks, args[5].Value)
-		}).WithQuery(`INSERT INTO "read_markers"`).WithID(11)
-
-		mocket.Catcher.NewMock().WithCallback(func(par1 string, args []driver.NamedValue) {
-			//require.EqualValues(t, p.payerId.ClientKey, args[0].Value)
-			require.EqualValues(t, client.GetClientPublicKey(), args[0].Value)
-			// require.EqualValues(t, mockBlobberId, args[1].Value)
-			require.EqualValues(t, mockAllocationId, args[1].Value)
-			require.EqualValues(t, mockOwner.ClientID, args[2].Value)
-			require.EqualValues(t, now, args[3].Value)
-			require.EqualValues(t, p.inData.numBlocks, args[4].Value)
-			require.EqualValues(t, p.payerId.ClientID, args[6].Value)
-		}).WithQuery(`UPDATE "read_markers" SET`).WithID(1)
-
 		mocket.Catcher.NewMock().WithQuery(`UPDATE "file_stats" SET`).WithID(1)
 	}
 
@@ -314,15 +290,15 @@ func TestDownloadFile(t *testing.T) {
 		ctx = context.WithValue(ctx, constants.ContextKeyAllocation, p.inData.allocationTx)
 		ctx = context.WithValue(ctx, constants.ContextKeyClientKey, client.GetClientPublicKey())
 
-		db := datastore.GetStore().GetDB().Begin()
-		ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
+		ctx = datastore.GetStore().CreateTransaction(ctx)
+
 		return ctx
 	}
 
-	setupRequest := func(p parameters) (*http.Request, *marker.ReadMarker) {
+	setupRequest := func(p parameters) *http.Request {
 		req := httptest.NewRequest(http.MethodGet, "/v1/file/download/", nil)
-		rm := addToForm(t, req, p)
-		return req, rm
+		addToForm(t, req, p)
+		return req
 	}
 
 	setupParams := func(p *parameters) {
@@ -333,7 +309,7 @@ func TestDownloadFile(t *testing.T) {
 			remotefilepath: mockRemoteFilePath,
 			blockNum:       mockBlockNumber,
 			encryptedKey:   mockEncryptKey,
-			contentMode:    "",
+			contentMode:    DownloadContentFull,
 			numBlocks:      1,
 		}
 		if p.isRepairer {
@@ -392,7 +368,7 @@ func TestDownloadFile(t *testing.T) {
 			},
 			want: want{
 				err:    true,
-				errMsg: "not_enough_tokens: pre-redeeming read marker: read_pre_redeem: not enough tokens in client's read pools associated with the allocation->blobber",
+				errMsg: "download_file: no download quota for ",
 			},
 		},
 		{
@@ -480,16 +456,17 @@ func TestDownloadFile(t *testing.T) {
 					require.NoError(t, client.PopulateClient(mockClientWallet, "bls0chain"))
 				}
 				transaction.MakeSCRestAPICall = makeMockMakeSCRestAPICall(t, test.parameters)
-				request, rm := setupRequest(test.parameters)
+				request := setupRequest(test.parameters)
 				datastore.MocketTheStore(t, mocketLogging)
-				setupInMock(t, test.parameters, *rm)
-				setupOutMock(t, test.parameters, *rm)
+				setupInMock(t, test.parameters)
+				setupOutMock(t, test.parameters)
 
 				ctx := setupCtx(test.parameters)
 				ctx = context.WithValue(ctx, constants.ContextKeyAllocationID, mockAllocationId)
 
 				var sh StorageHandler
 				_, err := sh.DownloadFile(ctx, request)
+				log.Println("==============", err)
 
 				require.EqualValues(t, test.want.err, err != nil)
 				if err != nil {

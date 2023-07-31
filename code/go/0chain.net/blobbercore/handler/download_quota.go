@@ -56,9 +56,9 @@ func (qm *QuotaManager) createOrUpdateQuota(numBlocks int64, key string) {
 
 func (qm *QuotaManager) consumeQuota(key string, numBlocks int64) error {
 	qm.mux.Lock()
-	dq, ok := qm.m[key]
-	qm.mux.Unlock()
+	defer qm.mux.Unlock()
 
+	dq, ok := qm.m[key]
 	if !ok {
 		return common.NewError("consume_quota", "no download quota")
 	}

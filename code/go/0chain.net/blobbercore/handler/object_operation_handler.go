@@ -27,10 +27,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
-
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
@@ -52,7 +50,6 @@ func readPreRedeem(
 
 	// check out read pool tokens if read_price > 0
 	var (
-		db        = datastore.GetStore().GetTransaction(ctx)
 		blobberID = node.Self.ID
 	)
 
@@ -60,7 +57,7 @@ func readPreRedeem(
 		return // skip if read price is zero
 	}
 
-	readPoolBalance, err := allocation.GetReadPoolsBalance(db, payerID)
+	readPoolBalance, err := allocation.GetReadPoolsBalance(ctx, payerID)
 	if err != nil {
 		return common.NewError("read_pre_redeem", "database error while reading read pools balance")
 	}
@@ -73,7 +70,7 @@ func readPreRedeem(
 		}
 
 		rp.ClientID = payerID
-		err = allocation.UpdateReadPool(db, rp)
+		err = allocation.UpdateReadPool(ctx, rp)
 		if err != nil {
 			return common.NewErrorf("read_pre_redeem", "can't save requested read pools: %v", err)
 		}
@@ -108,7 +105,6 @@ func checkPendingMarkers(ctx context.Context, allocationID string) error {
 func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMarker *writemarker.WriteMarker, payerID string) (err error) {
 	// check out read pool tokens if read_price > 0
 	var (
-		db              = datastore.GetStore().GetTransaction(ctx)
 		blobberID       = node.Self.ID
 		requiredBalance = alloc.GetRequiredWriteBalance(blobberID, writeMarker.Size, writeMarker.Timestamp)
 		wp              *allocation.WritePool
@@ -118,13 +114,13 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 		return
 	}
 
-	writePoolBalance, err := allocation.GetWritePoolsBalance(db, alloc.ID)
+	writePoolBalance, err := allocation.GetWritePoolsBalance(ctx, alloc.ID)
 	if err != nil {
 		Logger.Error("write_pre_redeem:get_write_pools_balance", zap.Error(err), zap.String("allocation_id", alloc.ID))
 		return common.NewError("write_pre_redeem", "database error while getting write pool balance")
 	}
 
-	pendingWriteSize, err := allocation.GetPendingWrite(db, payerID, alloc.ID)
+	pendingWriteSize, err := allocation.GetPendingWrite(ctx, payerID, alloc.ID)
 	if err != nil {
 		escapedPayerID := sanitizeString(payerID)
 		Logger.Error("write_pre_redeem:get_pending_write", zap.Error(err), zap.String("allocation_id", alloc.ID), zap.String("payer_id", escapedPayerID))
@@ -139,7 +135,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 			return common.NewErrorf("write_pre_redeem", "can't request write pools from sharders: %v", err)
 		}
 
-		err = allocation.SetWritePool(db, alloc.ID, wp)
+		err = allocation.SetWritePool(ctx, alloc.ID, wp)
 		if err != nil {
 			return common.NewErrorf("write_pre_redeem", "can't save requested write pools: %v", err)
 		}
@@ -154,7 +150,7 @@ func writePreRedeem(ctx context.Context, alloc *allocation.Allocation, writeMark
 			alloc.ID, writeMarker.BlobberID, writePoolBalance, requiredBalance)
 	}
 
-	if err := allocation.AddToPending(db, payerID, alloc.ID, writeMarker.Size); err != nil {
+	if err := allocation.AddToPending(ctx, payerID, alloc.ID, writeMarker.Size); err != nil {
 		Logger.Error(err.Error())
 		return common.NewErrorf("write_pre_redeem", "can't save pending writes in DB")
 
@@ -168,6 +164,8 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
 		allocationID = ctx.Value(constants.ContextKeyAllocationID).(string)
 		alloc        *allocation.Allocation
+		blobberID    = node.Self.ID
+		quotaManager = getQuotaManager()
 	)
 
 	if clientID == "" {
@@ -184,9 +182,17 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 		return nil, err
 	}
 
-	key := clientID + ":" + alloc.ID
-	quotaManager := getQuotaManager()
+	isReadFree := alloc.IsReadFree(blobberID)
+	if isReadFree {
+		Logger.Info("free_read: readmarker not saved",
+			zap.String("clientID", clientID),
+			zap.String("allocationID", allocationID))
+		return &blobberhttp.DownloadResponse{
+			Success: true,
+		}, nil
+	}
 
+	key := clientID + ":" + alloc.ID
 	lock, isNewLock := readmarker.ReadmarkerMapLock.GetLock(key)
 	if !isNewLock {
 		return nil, common.NewErrorf("lock_exists", fmt.Sprintf("lock exists for key: %v", key))
@@ -263,6 +269,8 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
 		allocationID = ctx.Value(constants.ContextKeyAllocationID).(string)
 		alloc        *allocation.Allocation
+		blobberID    = node.Self.ID
+		quotaManager = getQuotaManager()
 	)
 
 	if clientID == "" {
@@ -287,9 +295,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	if fileref.Type != reference.FILE {
 		return nil, common.NewErrorf("download_file", "path is not a file: %v", err)
 	}
-
-	key := clientID + ":" + alloc.ID
-	quotaManager := getQuotaManager()
 
 	isOwner := clientID == alloc.OwnerID
 
@@ -322,83 +327,17 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 	}
 
-	if dr.SubmitRM {
-		lock, isNewLock := readmarker.ReadmarkerMapLock.GetLock(key)
-		if !isNewLock {
-			return nil, common.NewErrorf("lock_exists", fmt.Sprintf("lock exists for key: %v", key))
+	isReadFree := alloc.IsReadFree(blobberID)
+	var dq *DownloadQuota
+
+	if !isReadFree {
+		dq = quotaManager.getDownloadQuota(dr.ConnectionID)
+		if dq == nil {
+			return nil, common.NewError("download_file", fmt.Sprintf("no download quota for %v", dr.ConnectionID))
 		}
-
-		lock.Lock()
-		defer lock.Unlock()
-
-		// create read marker
-		var (
-			rme              *readmarker.ReadMarkerEntity
-			latestRM         *readmarker.ReadMarker
-			latestRedeemedRC int64
-			pendNumBlocks    int64
-		)
-
-		rme, err = readmarker.GetLatestReadMarkerEntity(ctx, clientID, alloc.ID)
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, common.NewErrorf("download_file", "couldn't get read marker from DB: %v", err)
+		if dq.Quota < dr.NumBlocks {
+			return nil, common.NewError("download_file", fmt.Sprintf("insufficient quota: available %v, requested %v", dq.Quota, dr.NumBlocks))
 		}
-
-		if rme != nil {
-			latestRM = rme.LatestRM
-			latestRedeemedRC = rme.LatestRedeemedRC
-			if pendNumBlocks, err = rme.PendNumBlocks(); err != nil {
-				return nil, common.NewErrorf("download_file", "couldn't get number of blocks pending redeeming: %v", err)
-			}
-		}
-
-		// check out read pool tokens if read_price > 0
-		err = readPreRedeem(ctx, alloc, dr.ReadMarker.SessionRC, pendNumBlocks, clientID)
-		if err != nil {
-			return nil, common.NewErrorf("not_enough_tokens", "pre-redeeming read marker: %v", err)
-		}
-
-		if latestRM != nil && latestRM.ReadCounter+(dr.ReadMarker.SessionRC) > dr.ReadMarker.ReadCounter {
-			latestRM.BlobberID = node.Self.ID
-			return &blobberhttp.DownloadResponse{
-				Success:      false,
-				LatestRM:     latestRM,
-				Path:         fileref.Path,
-				AllocationID: fileref.AllocationID,
-			}, common.NewError("stale_read_marker", "")
-		}
-
-		if dr.ReadMarker.ClientID != clientID {
-			return nil, common.NewError("invalid_client", "header clientID and readmarker clientID are different")
-		}
-
-		rmObj := new(readmarker.ReadMarkerEntity)
-		rmObj.LatestRM = &dr.ReadMarker
-
-		if err = rmObj.VerifyMarker(ctx, alloc); err != nil {
-			return nil, common.NewErrorf("download_file", "invalid read marker, "+"failed to verify the read marker: %v", err)
-		}
-
-		err = readmarker.SaveLatestReadMarker(ctx, &dr.ReadMarker, latestRedeemedRC, latestRM == nil)
-		if err != nil {
-			Logger.Error(err.Error())
-			return nil, common.NewErrorf("download_file", "couldn't save latest read marker")
-		}
-
-		quotaManager.createOrUpdateQuota(dr.ReadMarker.SessionRC, dr.ConnectionID)
-
-		if dr.NumBlocks == 0 {
-			return nil, nil
-		}
-	}
-
-	dq := quotaManager.getDownloadQuota(dr.ConnectionID)
-	if dq == nil {
-		return nil, common.NewError("download_file", fmt.Sprintf("no download quota for %v", dr.ConnectionID))
-	}
-
-	if dq.Quota < dr.NumBlocks {
-		return nil, common.NewError("download_file", fmt.Sprintf("insufficient quota: available %v, requested %v", dq.Quota, dr.NumBlocks))
 	}
 
 	var (
@@ -468,9 +407,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, err
 	}
 
-	err = quotaManager.consumeQuota(dr.ConnectionID, dr.NumBlocks)
-	if err != nil {
-		return nil, common.NewError("download_file", err.Error())
+	if !isReadFree {
+		err = quotaManager.consumeQuota(dr.ConnectionID, dr.NumBlocks)
+		if err != nil {
+			return nil, common.NewError("download_file", err.Error())
+		}
 	}
 
 	fileDownloadResponse.Data = chunkData
@@ -709,15 +650,13 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err = db.Create(writemarkerEntity).Error; err != nil {
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
 	}
+	allocationObj.AllocationRoot = allocationRoot
+	allocationObj.FileMetaRoot = fileMetaRoot
+	allocationObj.IsRedeemRequired = true
+	allocationObj.BlobberSizeUsed += connectionObj.Size
+	allocationObj.UsedSize += connectionObj.Size
 
-	allocationUpdates := make(map[string]interface{})
-	allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used + ?", connectionObj.Size)
-	allocationUpdates["used_size"] = gorm.Expr("used_size + ?", connectionObj.Size)
-	allocationUpdates["allocation_root"] = allocationRoot
-	allocationUpdates["file_meta_root"] = fileMetaRoot
-	allocationUpdates["is_redeem_required"] = true
-
-	if err = db.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
+	if err = allocation.Repo.Save(ctx, allocationObj); err != nil {
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
 	err = connectionObj.CommitToFileStore(ctx)
@@ -1416,16 +1355,20 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	}
 
 	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM
-
-	err = allocation.ApplyRollback(ctx, allocationID)
+	c := datastore.GetStore().CreateTransaction(context.TODO())
+	defer c.Done()
+	txn := datastore.GetStore().GetTransaction(c)
+	err = allocation.ApplyRollback(c, allocationID)
 	if err != nil {
+		txn.Rollback()
 		return nil, common.NewError("allocation_rollback_error", "Error applying the rollback for allocation: "+err.Error())
 	}
 	elapsedApplyRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM - elapsedWritePreRedeem
 
 	//get allocation root and ref
-	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash", "is_precommit"})
+	rootRef, err := reference.GetLimitedRefFieldsByPath(c, allocationID, "/", []string{"hash", "file_meta_hash", "is_precommit"})
 	if err != nil && err != gorm.ErrRecordNotFound {
+		txn.Rollback()
 		return nil, common.NewError("root_ref_read_error", "Error reading the root reference: "+err.Error())
 	}
 	if err == gorm.ErrRecordNotFound {
@@ -1444,6 +1387,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		result.Success = false
 		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
 			" Expected hash: " + allocationRoot
+		txn.Rollback()
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
 
@@ -1454,6 +1398,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		result.Success = false
 		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
 			" Expected hash: " + fileMetaRoot + "; Got: " + writeMarker.FileMetaRoot
+		txn.Rollback()
 		return &result, common.NewError("file_meta_root_mismatch", result.ErrorMessage)
 	}
 
@@ -1461,42 +1406,36 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	writemarkerEntity.ClientPublicKey = clientKey
 	Logger.Info("rollback_writemarker", zap.Any("writemarker", writemarkerEntity.WM))
 
-	db := datastore.GetStore().GetDB()
-	alloc := &allocation.Allocation{}
-
-	err = db.Transaction(func(tx *gorm.DB) error {
-
-		err := tx.Model(&allocation.Allocation{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("is_redeem_required").Where("id=?", allocationID).First(alloc).Error
-		if err != nil {
-			return common.NewError("allocation_read_error", "Error reading the allocation object")
-		}
-
-		allocationUpdates := make(map[string]interface{})
-		allocationUpdates["blobber_size_used"] = gorm.Expr("blobber_size_used - ?", latestWriteMarkerEntity.WM.Size)
-		allocationUpdates["used_size"] = gorm.Expr("used_size - ?", latestWriteMarkerEntity.WM.Size)
-		allocationUpdates["is_redeem_required"] = true
-		allocationUpdates["allocation_root"] = allocationRoot
-		allocationUpdates["file_meta_root"] = fileMetaRoot
-
-		if alloc.IsRedeemRequired {
-			writemarkerEntity.Status = writemarker.Rollbacked
-			allocationUpdates["is_redeem_required"] = false
-		}
-		err = tx.Create(writemarkerEntity).Error
-		if err != nil {
-			return common.NewError("write_marker_error", "Error persisting the write marker "+err.Error())
-		}
-
-		if err = tx.Model(allocationObj).Updates(allocationUpdates).Error; err != nil {
-			return common.NewError("allocation_write_error", "Error persisting the allocation object "+err.Error())
-		}
-
-		return nil
-	})
+	alloc, err := allocation.Repo.GetByIdAndLock(c, allocationID)
 	if err != nil {
-		return nil, err
+		txn.Rollback()
+		return &result, common.NewError("allocation_read_error", "Error reading the allocation object")
 	}
-	if !alloc.IsRedeemRequired {
+
+	alloc.BlobberSizeUsed -= latestWriteMarkerEntity.WM.Size
+	alloc.UsedSize -= latestWriteMarkerEntity.WM.Size
+	alloc.AllocationRoot = allocationRoot
+	alloc.FileMetaRoot = fileMetaRoot
+
+	if alloc.IsRedeemRequired {
+		writemarkerEntity.Status = writemarker.Rollbacked
+		alloc.IsRedeemRequired = false
+	}
+	err = txn.Create(writemarkerEntity).Error
+	if err != nil {
+		txn.Rollback()
+		return &result, common.NewError("write_marker_error", "Error persisting the write marker "+err.Error())
+	}
+	if err = allocation.Repo.Save(c, alloc); err != nil {
+		txn.Rollback()
+		return &result, common.NewError("allocation_write_error", "Error persisting the allocation object "+err.Error())
+	}
+
+	err = txn.Commit().Error
+	if err != nil {
+		return &result, common.NewError("allocation_commit_error", "Error committing the transaction "+err.Error())
+	}
+	if alloc.IsRedeemRequired {
 		err = writemarkerEntity.SendToChan(ctx)
 		if err != nil {
 			return nil, common.NewError("write_marker_error", "Error redeeming the write marker")

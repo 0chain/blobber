@@ -6,8 +6,7 @@ concurrency:
 
 on:
   push: 
-    branches:
-      - staging
+    branches: [ master,staging, sprint* ]
     tags: 
       - '*'
   pull_request:
@@ -17,6 +16,8 @@ env:
   BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY }}
   VALIDATOR_REGISTRY: ${{ secrets.VALIDATOR_REGISTRY }}
   DOCKER_CLI_EXPERIMENTAL: enabled
+  BLOBBER_BUILDBASE: blobber_base
+  BLOBBER_BUILD_BASE_REGISTRY: ${{ secrets.BLOBBER_BUILD_BASE_REGISTRY }}
 
 jobs:
   blobber:
@@ -40,7 +41,7 @@ jobs:
           go-version: ^1.20 # The Go version to download (if necessary) and use.
 
       - name: Clone blobber
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
 
       - name: Set up Docker Buildx
         run: |
@@ -61,6 +62,26 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
+      - name: Get changed files using defaults
+        id: changed-files
+        uses: tj-actions/changed-files@v18.4
+
+      - name: Pull Build Base
+        run: |
+          docker pull $BLOBBER_BUILD_BASE_REGISTRY:staging
+          docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
+
+      - name: Build Base image
+        if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
+        run: |
+          SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
+
+          ./docker.local/bin/build.base.sh &&
+          docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG
+          docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
+          docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG
+          docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
+
       - name: Build blobber
         run: |
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
@@ -69,7 +90,7 @@ jobs:
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
           docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
-          ./docker.local/bin/build.base.sh && ./docker.local/bin/build.blobber.sh
+          ./docker.local/bin/build.blobber.sh
 
   validator:
     runs-on: [self-hosted, arc-runner]
@@ -113,6 +134,26 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
+      - name: Get changed files using defaults
+        id: changed-files
+        uses: tj-actions/changed-files@v18.4
+
+      - name: Pull Build Base
+        run: |
+          docker pull $BLOBBER_BUILD_BASE_REGISTRY:staging
+          docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
+
+      - name: Build Base image
+        if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
+        run: |
+          SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
+
+          ./docker.local/bin/build.base.sh 
+          docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG
+          docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
+          docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG
+          docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
+
       - name: Build validator
         run: |
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
@@ -120,7 +161,7 @@ jobs:
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_VALIDATOR="-t ${VALIDATOR_REGISTRY}:${TAG} -t ${VALIDATOR_REGISTRY}:${TAG}-${SHORT_SHA}"
           docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
-          ./docker.local/bin/build.base.sh && ./docker.local/bin/build.validator.sh
+          ./docker.local/bin/build.validator.sh
 
 
   system-tests:
@@ -163,31 +204,24 @@ jobs:
       - name: "Deploy 0Chain"
         uses: 0chain/actions/deploy-0chain@master
         with:
+          repo_snapshots_branch: "<CURRENT BRANCH WITH FALLBACK TO CURRENT_SPRINT>"
           kube_config: ${{ secrets[format('DEV{0}KC', env.RUNNER_NUMBER)] }}
           teardown_condition: "TESTS_PASSED"
-          miner_image:  staging
-          sharder_image: staging
           blobber_image: ${{ env.TAG }}-${{ env.SHORT_SHA }}
           validator_image: ${{ env.TAG }}-${{ env.SHORT_SHA }}
-          zbox_image: staging
-          zdns_image: staging
-          zbox_cli_branch: staging
-          zwallet_cli_branch: staging
-          custom_go_sdk_version: staging
           SUBGRAPH_API_URL: ${{ secrets.SUBGRAPH_API_URL }}
           TENDERLY_FORK_ID: ${{ secrets.TENDERLY_FORK_ID }}
           graphnode_sc: ${{ secrets.GRAPHNODE_SC }}
           graphnode_network: ${{ secrets.GRAPHNODE_NETWORK }}
           graphnode_ethereum_node_url: https://rpc.tenderly.co/fork/${{ secrets.TENDERLY_FORK_ID }}
+          svc_account_secret: ${{ secrets.SVC_ACCOUNT_SECRET }}
 
 
       - name: "Run System tests"
         uses: 0chain/actions/run-system-tests@master
         with:
-          system_tests_branch: master
+          repo_snapshots_branch: "<CURRENT BRANCH WITH FALLBACK TO CURRENT_SPRINT>"
           network: ${{ env.NETWORK_URL }}
-          zbox_cli_branch: staging
-          zwallet_cli_branch: staging
           svc_account_secret: ${{ secrets.SVC_ACCOUNT_SECRET }}
           deploy_report_page: false
           archive_results: true

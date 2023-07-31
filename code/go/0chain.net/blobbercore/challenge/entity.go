@@ -97,8 +97,9 @@ type ChallengeEntity struct {
 	Timestamp               common.Timestamp      `gorm:"column:timestamp;not null;default:0" json:"timestamp"`
 
 	// This time is taken from Blockchain challenge object.
-	CreatedAt common.Timestamp `gorm:"created_at" json:"created"`
-	UpdatedAt time.Time        `gorm:"updated_at;type:timestamp without time zone;not null;default:current_timestamp" json:"-"`
+	RoundCreatedAt int64            `gorm:"round_created_at" json:"round_created_at"`
+	CreatedAt      common.Timestamp `gorm:"created_at" json:"created"`
+	UpdatedAt      time.Time        `gorm:"updated_at;type:timestamp without time zone;not null;default:current_timestamp" json:"-"`
 }
 
 func (ChallengeEntity) TableName() string {
@@ -140,7 +141,7 @@ func unMarshalField(stringObj datatypes.JSON, dest interface{}) error {
 
 func (cr *ChallengeEntity) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	return cr.SaveWith(db)
+	return cr.SaveWith(db.DB)
 }
 
 func (cr *ChallengeEntity) SaveWith(db *gorm.DB) error {

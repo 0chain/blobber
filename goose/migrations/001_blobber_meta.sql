@@ -140,6 +140,7 @@ CREATE TABLE public.challenges (
     object_path jsonb,
     sequence bigint,
     "timestamp" bigint DEFAULT 0 NOT NULL,
+    round_created_at bigint,
     created_at bigint,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );

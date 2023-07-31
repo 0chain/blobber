@@ -193,8 +193,8 @@ func GetReference(ctx context.Context, allocationID, path string) (*Ref, error) 
 // GetLimitedRefFieldsByPath get FileRef selected fields with allocationID and path from postgres
 func GetLimitedRefFieldsByPath(ctx context.Context, allocationID, path string, selectedFields []string) (*Ref, error) {
 	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select(selectedFields)
+	t := datastore.GetStore().GetTransaction(ctx)
+	db := t.Select(selectedFields)
 	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
 	if err != nil {
 		return nil, err
@@ -203,8 +203,9 @@ func GetLimitedRefFieldsByPath(ctx context.Context, allocationID, path string, s
 }
 
 // GetLimitedRefFieldsByLookupHash get FileRef selected fields with allocationID and lookupHash from postgres
-func GetLimitedRefFieldsByLookupHashWith(ctx context.Context, db *gorm.DB, allocationID, lookupHash string, selectedFields []string) (*Ref, error) {
+func GetLimitedRefFieldsByLookupHashWith(ctx context.Context, allocationID, lookupHash string, selectedFields []string) (*Ref, error) {
 	ref := &Ref{}
+	db := datastore.GetStore().GetTransaction(ctx)
 
 	err := db.
 		Select(selectedFields).
@@ -220,8 +221,8 @@ func GetLimitedRefFieldsByLookupHashWith(ctx context.Context, db *gorm.DB, alloc
 // GetLimitedRefFieldsByLookupHash get FileRef selected fields with allocationID and lookupHash from postgres
 func GetLimitedRefFieldsByLookupHash(ctx context.Context, allocationID, lookupHash string, selectedFields []string) (*Ref, error) {
 	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select(selectedFields)
+	t := datastore.GetStore().GetTransaction(ctx)
+	db := t.Select(selectedFields)
 	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: lookupHash}).First(ref).Error
 	if err != nil {
 		return nil, err
@@ -286,8 +287,8 @@ func GetRefsTypeFromPaths(ctx context.Context, allocationID string, paths []stri
 		return
 	}
 
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("path", "type")
+	t := datastore.GetStore().GetTransaction(ctx)
+	db := t.Select("path", "type")
 	for _, p := range paths {
 		db = db.Or(Ref{AllocationID: allocationID, Path: p})
 	}
@@ -314,8 +315,8 @@ func GetSubDirsFromPath(p string) []string {
 
 func GetRefWithChildren(ctx context.Context, allocationID, path string) (*Ref, error) {
 	var refs []Ref
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
+	t := datastore.GetStore().GetTransaction(ctx)
+	db := t.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
 	err := db.Order("path").Find(&refs).Error
 	if err != nil {
 		return nil, err
@@ -339,8 +340,8 @@ func GetRefWithChildren(ctx context.Context, allocationID, path string) (*Ref, e
 
 func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*Ref, error) {
 	var refs []*Ref
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Where(
+	t := datastore.GetStore().GetTransaction(ctx)
+	db := t.Where(
 		Ref{ParentPath: path, AllocationID: allocationID}).
 		Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
 
