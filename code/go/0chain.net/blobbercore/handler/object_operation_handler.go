@@ -1422,6 +1422,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		writemarkerEntity.Status = writemarker.Rollbacked
 		alloc.IsRedeemRequired = false
 	}
+	Logger.Info("is_redeem_required", zap.Bool("is_redeem_required", alloc.IsRedeemRequired))
 	err = txn.Create(writemarkerEntity).Error
 	if err != nil {
 		txn.Rollback()
@@ -1437,6 +1438,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return &result, common.NewError("allocation_commit_error", "Error committing the transaction "+err.Error())
 	}
 	if alloc.IsRedeemRequired {
+		Logger.Info("rollback_redeem", zap.Any("writemarker", writemarkerEntity.WM.AllocationRoot))
 		err = writemarkerEntity.SendToChan(ctx)
 		if err != nil {
 			return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
