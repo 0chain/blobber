@@ -1417,12 +1417,11 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	alloc.UsedSize -= latestWriteMarkerEntity.WM.Size
 	alloc.AllocationRoot = allocationRoot
 	alloc.FileMetaRoot = fileMetaRoot
-
+	sendWM := !alloc.IsRedeemRequired
 	if alloc.IsRedeemRequired {
 		writemarkerEntity.Status = writemarker.Rollbacked
 		alloc.IsRedeemRequired = false
 	}
-	Logger.Info("is_redeem_required", zap.Bool("is_redeem_required", alloc.IsRedeemRequired))
 	err = txn.Create(writemarkerEntity).Error
 	if err != nil {
 		txn.Rollback()
@@ -1437,8 +1436,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	if err != nil {
 		return &result, common.NewError("allocation_commit_error", "Error committing the transaction "+err.Error())
 	}
-	if alloc.IsRedeemRequired {
-		Logger.Info("rollback_redeem", zap.Any("writemarker", writemarkerEntity.WM.AllocationRoot))
+	if sendWM {
 		err = writemarkerEntity.SendToChan(ctx)
 		if err != nil {
 			return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
