@@ -103,10 +103,6 @@ func (store *postgresStore) GetTransaction(ctx context.Context) *EnhancedDB {
 }
 
 func (store *postgresStore) WithTransaction(ctx context.Context, tx *gorm.DB) context.Context {
-	conn := ctx.Value(ContextKeyTransaction)
-	if conn != nil {
-		return ctx
-	}
 	return context.WithValue(ctx, ContextKeyTransaction, EnhanceDB(tx))
 }
 
