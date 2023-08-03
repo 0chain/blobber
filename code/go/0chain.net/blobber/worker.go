@@ -8,6 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/challenge"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -18,7 +19,7 @@ import (
 func setupWorkers(ctx context.Context) {
 	// handler.SetupWorkers(ctx)
 	challenge.SetupWorkers(ctx)
-	// readmarker.SetupWorkers(ctx)
+	readmarker.SetupWorkers(ctx)
 	writemarker.SetupWorkers(ctx)
 	// allocation.StartUpdateWorker(ctx, config.Configuration.UpdateAllocationsInterval)
 	allocation.SetupWorkers(ctx)
