@@ -114,6 +114,8 @@ jobs:
 
       - name: Clone blobber
         uses: actions/checkout@v1
+        with:
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         run: |
