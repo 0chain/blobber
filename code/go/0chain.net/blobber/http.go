@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/http/pprof"
 	"runtime"
 	"strconv"
 	"sync"
@@ -53,6 +54,7 @@ func startServer(wg *sync.WaitGroup, r *mux.Router, mode string, port int, isTls
 	//address := publicIP + ":" + portString
 	address := ":" + strconv.Itoa(port)
 	var server *http.Server
+	var profServer *http.Server
 
 	if config.Development() {
 		// No WriteTimeout setup to enable pprof
@@ -65,6 +67,20 @@ func startServer(wg *sync.WaitGroup, r *mux.Router, mode string, port int, isTls
 			MaxHeaderBytes:    1 << 20,
 			Handler:           r,
 		}
+
+		pprofMux := http.NewServeMux()
+		profServer = &http.Server{
+			Addr:           fmt.Sprintf(":%d", port-1000),
+			ReadTimeout:    30 * time.Second,
+			MaxHeaderBytes: 1 << 20,
+			Handler:        pprofMux,
+		}
+		initProfHandlers(pprofMux)
+		go func() {
+			err2 := profServer.ListenAndServe()
+			logging.Logger.Error("Http server shut down", zap.Error(err2))
+		}()
+
 	} else {
 		server = &http.Server{
 			Addr:              address,
@@ -94,4 +110,12 @@ func initHandlers(r *mux.Router) {
 	handler.SetupHandlers(r)
 	handler.SetupSwagger()
 	common.SetAdminCredentials()
+}
+
+func initProfHandlers(mux *http.ServeMux) {
+	mux.HandleFunc("/debug/pprof/", handler.RateLimitByGeneralRL(pprof.Index))
+	mux.HandleFunc("/debug/pprof/cmdline", handler.RateLimitByGeneralRL(pprof.Cmdline))
+	mux.HandleFunc("/debug/pprof/profile", handler.RateLimitByGeneralRL(pprof.Profile))
+	mux.HandleFunc("/debug/pprof/symbol", handler.RateLimitByGeneralRL(pprof.Symbol))
+	mux.HandleFunc("/debug/pprof/trace", handler.RateLimitByGeneralRL(pprof.Trace))
 }
