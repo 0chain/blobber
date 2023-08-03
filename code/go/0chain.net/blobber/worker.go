@@ -22,7 +22,7 @@ func setupWorkers(ctx context.Context) {
 	challenge.SetupWorkers(ctx)
 	readmarker.SetupWorkers(ctx)
 	writemarker.SetupWorkers(ctx)
-	allocation.StartUpdateWorker(ctx, config.Configuration.UpdateAllocationsInterval)
+	// allocation.StartUpdateWorker(ctx, config.Configuration.UpdateAllocationsInterval)
 	allocation.SetupWorkers(ctx)
 	updateCCTWorker(ctx)
 }
