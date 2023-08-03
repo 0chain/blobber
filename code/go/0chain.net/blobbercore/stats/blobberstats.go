@@ -178,6 +178,7 @@ func (bs *BlobberStats) loadInfraStats(ctx context.Context) {
 func (bs *BlobberStats) loadDBStats() {
 	bs.DBStats = &DBStats{Status: "✗"}
 
+	//todo hide inside wrapper to db
 	db := datastore.GetStore().GetDB()
 	sqldb, err := db.DB()
 	if err != nil {
@@ -197,7 +198,7 @@ func (bs *BlobberStats) loadFailedChallengeList(ctx context.Context) {
 	}
 	fcrd := fcrdI.(RequestData)
 
-	fcs, count, err := getAllFailedChallenges(fcrd.Offset, fcrd.Limit)
+	fcs, count, err := getAllFailedChallenges(ctx, fcrd.Offset, fcrd.Limit)
 	if err != nil {
 		Logger.Error("", zap.Any("err", err))
 		return
@@ -496,7 +497,7 @@ type ReadMarkerEntity struct {
 
 func loadAllocReadMarkersStat(ctx context.Context, allocationID string) (*ReadMarkersStat, error) {
 	var (
-		db  = datastore.GetStore().GetDB()
+		db  = datastore.GetStore().GetTransaction(ctx)
 		rme ReadMarkerEntity
 	)
 

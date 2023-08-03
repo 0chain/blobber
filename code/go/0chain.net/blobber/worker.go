@@ -11,7 +11,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"go.uber.org/zap"
@@ -30,13 +29,15 @@ func setupWorkers(ctx context.Context) {
 // startRefreshSettings sync settings from blockchain
 func startRefreshSettings(ctx context.Context) {
 	const REPEAT_DELAY = 60 * 3 // 3 minutes
-	var err error
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(REPEAT_DELAY * time.Second):
-			_, err = config.ReloadFromChain(common.GetRootContext(), datastore.GetStore().GetDB())
+			err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				_, e := config.ReloadFromChain(ctx, datastore.GetStore().GetDB())
+				return e
+			})
 			if err != nil {
 				logging.Logger.Warn("failed to refresh blobber settings from chain", zap.Error(err))
 				continue

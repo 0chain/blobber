@@ -10,7 +10,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/errors"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 // SyncAllocation try to pull allocation from blockchain, and insert it in db.
@@ -65,19 +64,18 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 		})
 	}
 
-	err = datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		ctx := datastore.GetStore().WithTransaction(context.Background(), tx)
-		if err := Repo.Save(ctx, alloc); err != nil {
-			return err
+	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		var e error
+		if e := Repo.Save(ctx, alloc); e != nil {
+			return e
 		}
-
+		tx := datastore.GetStore().GetTransaction(ctx)
 		for _, term := range terms {
 			if err := tx.Table(TableNameTerms).Save(term).Error; err != nil {
-				return err
+				return e
 			}
 		}
-
-		return nil
+		return e
 	})
 
 	if err != nil {

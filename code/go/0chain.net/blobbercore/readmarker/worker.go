@@ -82,9 +82,13 @@ func redeemReadMarkers(ctx context.Context) {
 		}
 	}()
 
-	rctx := datastore.GetStore().CreateTransaction(ctx)
-	db := datastore.GetStore().GetTransaction(rctx)
-	readMarkers, err := GetRedeemRequiringRMEntities(rctx)
+	var readMarkers []*ReadMarkerEntity
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		var err error
+		readMarkers, err = GetRedeemRequiringRMEntities(ctx)
+		return err
+	})
+
 	if err != nil {
 		logging.Logger.Error("redeem_readmarker", zap.Any("database_error", err))
 		return
@@ -104,24 +108,16 @@ func redeemReadMarkers(ctx context.Context) {
 				wg.Done()
 			}()
 
-			redeemCtx = datastore.GetStore().CreateTransaction(redeemCtx)
-			defer redeemCtx.Done()
-
-			err := redeemReadMarker(redeemCtx, rmEntity)
+			err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				return redeemReadMarker(ctx, rmEntity)
+			})
 			if err != nil {
 				logging.Logger.Error("Error redeeming the read marker.", zap.Error(err))
-				datastore.GetStore().GetTransaction(redeemCtx).Rollback()
 				return
-			}
-			if err := datastore.GetStore().GetTransaction(redeemCtx).Commit().Error; err != nil {
-				logging.Logger.Error("Error committing the readmarker redeem", zap.Error(err))
 			}
 		}(ctx, rmEntity, &wg, guideCh)
 	}
 	wg.Wait()
-
-	db.Rollback()
-	rctx.Done()
 }
 
 func startRedeemMarkers(ctx context.Context) {

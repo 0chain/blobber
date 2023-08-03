@@ -9,7 +9,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/challenge"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
@@ -37,36 +36,6 @@ var tableModels = []tableNameI{
 	new(writemarker.WriteLock),
 	new(reference.FileStats),
 	new(config.Settings),
-}
-
-func AutoMigrate(pgDB *gorm.DB) error {
-	if err := createUser(pgDB); err != nil {
-		return err
-	}
-
-	if err := createDB(pgDB); err != nil {
-		return err
-	}
-
-	if err := grantPrivileges(pgDB); err != nil {
-		return err
-	}
-
-	d, err := pgDB.DB()
-	if err != nil {
-		return err
-	}
-
-	if err := d.Close(); err != nil {
-		return err
-	}
-
-	if err := datastore.GetStore().Open(); err != nil {
-		return err
-	}
-
-	db := datastore.GetStore().GetDB()
-	return MigrateSchema(db)
 }
 
 func createDB(db *gorm.DB) (err error) {

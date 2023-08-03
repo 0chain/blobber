@@ -84,9 +84,15 @@ func challengeProcessor(ctx context.Context) {
 		case it := <-toProcessChallenge:
 
 			logging.Logger.Info("processing_challenge", zap.Any("challenge_id", it.ChallengeID))
-			if ok := it.createChallenge(); !ok {
+			var result bool
+			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				result = it.createChallenge(ctx)
+				return nil
+			})
+			if !result {
 				continue
 			}
+
 			err := sem.Acquire(ctx, 1)
 			if err != nil {
 				logging.Logger.Error("failed to acquire semaphore", zap.Error(err))
@@ -176,13 +182,14 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 	return
 }
 
-func (it *ChallengeEntity) createChallenge() bool {
+func (it *ChallengeEntity) createChallenge(ctx context.Context) bool {
+	db := datastore.GetStore().GetTransaction(ctx)
+
 	challengeMapLock.Lock()
 	defer challengeMapLock.Unlock()
 	if _, ok := challengeMap.Get(it.RoundCreatedAt); ok {
 		return false
 	}
-	db := datastore.GetStore().GetDB()
 	var Found bool
 	err := db.Raw("SELECT EXISTS(SELECT 1 FROM challenge_timing WHERE challenge_id = ?) AS found", it.ChallengeID).Scan(&Found).Error
 	if err != nil {
