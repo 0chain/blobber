@@ -84,10 +84,10 @@ func (store *postgresStore) Close() {
 }
 
 func (store *postgresStore) CreateTransaction(ctx context.Context) context.Context {
-	conn := ctx.Value(ContextKeyTransaction)
-	if conn != nil {
-		return ctx
-	}
+	//conn := ctx.Value(ContextKeyTransaction)
+	//if conn != nil {
+	//	return ctx
+	//}
 
 	db := store.db.Begin()
 	return context.WithValue(ctx, ContextKeyTransaction, EnhanceDB(db))
