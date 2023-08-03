@@ -91,7 +91,7 @@ func (store *Mocket) WithNewTransaction(f func(ctx context.Context) error) error
 
 	tx := store.GetTransaction(ctx)
 	err := f(ctx)
-	if err == nil {
+	if err != nil {
 		tx.Rollback()
 		return err
 	}

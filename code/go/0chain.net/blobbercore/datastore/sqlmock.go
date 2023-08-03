@@ -86,7 +86,7 @@ func (store *Sqlmock) WithNewTransaction(f func(ctx context.Context) error) erro
 
 	tx := store.GetTransaction(ctx)
 	err := f(ctx)
-	if err == nil {
+	if err != nil {
 		tx.Rollback()
 		return err
 	}
