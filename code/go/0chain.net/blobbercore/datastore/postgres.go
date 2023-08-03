@@ -109,7 +109,7 @@ func (store *postgresStore) WithNewTransaction(f func(ctx context.Context) error
 
 	tx := store.GetTransaction(ctx)
 	err := f(ctx)
-	if err == nil {
+	if err != nil {
 		tx.Rollback()
 		return err
 	}
