@@ -167,3 +167,10 @@ func GetChallengeTimings(from common.Timestamp, limit common.Pagination) ([]*Cha
 	}
 	return chs, nil
 }
+
+func GetChallengeTiming(challengeID string) (*ChallengeTiming, error) {
+	var ch *ChallengeTiming
+
+	err := datastore.GetStore().GetDB().Model(&ChallengeTiming{}).Where("challenge_id = ?", challengeID).First(&ch).Error
+	return ch, err
+}

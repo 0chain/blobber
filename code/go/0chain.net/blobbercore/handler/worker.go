@@ -4,14 +4,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
-	"gorm.io/gorm"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
@@ -27,15 +25,16 @@ func CleanupDiskFiles(ctx context.Context) error {
 	db.Find(&allocations)
 
 	for _, allocationObj := range allocations {
-		cleanupAllocationFiles(db, allocationObj)
+		cleanupAllocationFiles(ctx, allocationObj)
 	}
 	return nil
 }
 
-func cleanupAllocationFiles(db *gorm.DB, allocationObj allocation.Allocation) {
+func cleanupAllocationFiles(ctx context.Context, allocationObj allocation.Allocation) {
 	mutex := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
 	mutex.Lock()
 	defer mutex.Unlock()
+	db := datastore.GetStore().GetTransaction(ctx)
 
 	_ = filestore.GetFileStore().IterateObjects(allocationObj.ID, func(hash string, contentSize int64) {
 		var refs []reference.Ref
