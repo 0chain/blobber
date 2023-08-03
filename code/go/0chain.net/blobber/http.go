@@ -59,6 +59,9 @@ func startServer(wg *sync.WaitGroup, r *mux.Router, mode string, port int, isTls
 		server = &http.Server{
 			Addr:              address,
 			ReadHeaderTimeout: 30 * time.Second,
+			ReadTimeout:       30 * time.Second,
+			WriteTimeout:      30 * time.Second,
+			IdleTimeout:       30 * time.Second,
 			MaxHeaderBytes:    1 << 20,
 			Handler:           r,
 		}
@@ -66,6 +69,7 @@ func startServer(wg *sync.WaitGroup, r *mux.Router, mode string, port int, isTls
 		server = &http.Server{
 			Addr:              address,
 			ReadHeaderTimeout: 30 * time.Second,
+			ReadTimeout:       30 * time.Second,
 			WriteTimeout:      30 * time.Second,
 			IdleTimeout:       30 * time.Second,
 			MaxHeaderBytes:    1 << 20,

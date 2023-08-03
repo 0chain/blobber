@@ -204,7 +204,7 @@ func WithVerify(r *http.Request) (*Context, error) {
 
 	if len(ctx.AllocationId) > 0 {
 
-		alloc, err := allocation.GetOrCreate(ctx, ctx.Store, ctx.AllocationId)
+		alloc, err := allocation.GetOrCreate(ctx, ctx.AllocationId)
 
 		if err != nil {
 			if errors.Is(common.ErrBadRequest, err) {
