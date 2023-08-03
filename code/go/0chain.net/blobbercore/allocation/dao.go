@@ -20,6 +20,9 @@ func GetOrCreate(ctx context.Context, store datastore.Store, allocationId string
 	}
 
 	alloc, err := Repo.GetById(db, allocationId)
+	tx := store.GetTransaction(ctx)
+	tx.Rollback()
+
 	if err == nil {
 		return alloc, nil
 	}
