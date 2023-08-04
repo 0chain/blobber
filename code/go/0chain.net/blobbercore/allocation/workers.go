@@ -88,7 +88,7 @@ func updateWork(ctx context.Context) {
 	// iterate all in loop accepting allocations with limit
 
 	for start := true; start || (offset < count); start = false {
-		allocs, count, err = findAllocations(ctx, offset)
+		allocs, count, err = FindAllocations(ctx, offset)
 		if err != nil {
 			logging.Logger.Error("finding allocations in DB", zap.Error(err))
 			if waitOrQuit(ctx, UPDATE_DB_INTERVAL) {
@@ -109,7 +109,7 @@ func updateWork(ctx context.Context) {
 }
 
 // not finalized, not cleaned up
-func findAllocations(ctx context.Context, offset int64) (allocs []*Allocation, count int64, err error) {
+func FindAllocations(ctx context.Context, offset int64) (allocs []*Allocation, count int64, err error) {
 	const query = `finalized = false AND cleaned_up = false`
 
 	ctx = datastore.GetStore().CreateTransaction(ctx)
