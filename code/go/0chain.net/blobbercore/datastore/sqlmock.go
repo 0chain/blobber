@@ -71,13 +71,17 @@ func (store *Sqlmock) CreateTransaction(ctx context.Context) context.Context {
 	return context.WithValue(ctx, ContextKeyTransaction, db)
 }
 
-func (store *Sqlmock) GetTransaction(ctx context.Context) *gorm.DB {
+func (store *Sqlmock) GetTransaction(ctx context.Context) *EnhancedDB {
 	conn := ctx.Value(ContextKeyTransaction)
 	if conn != nil {
-		return conn.(*gorm.DB)
+		return conn.(*EnhancedDB)
 	}
 	Logger.Error("No connection in the context.")
 	return nil
+}
+
+func (store *Sqlmock) WithTransaction(ctx context.Context, tx *gorm.DB) context.Context {
+	return context.WithValue(ctx, ContextKeyTransaction, EnhanceDB(tx))
 }
 
 func (store *Sqlmock) GetDB() *gorm.DB {

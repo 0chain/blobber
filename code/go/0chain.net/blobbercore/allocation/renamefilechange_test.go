@@ -431,9 +431,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 		datastore.MocketTheStore(t, true)
 		tc.setupDbMock()
 
-		ctx := context.TODO()
-		db := datastore.GetStore().GetDB().Begin()
-		ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
+		ctx := datastore.GetStore().CreateTransaction(context.TODO())
 		t.Run(tc.name, func(t *testing.T) {
 			change := &RenameFileChange{AllocationID: alloc.ID, Path: tc.path, NewName: tc.newName}
 			rootRef, err := reference.GetReferencePathFromPaths(ctx, alloc.ID, []string{change.Path}, []string{})

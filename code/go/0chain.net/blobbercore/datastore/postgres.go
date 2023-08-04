@@ -85,16 +85,20 @@ func (store *postgresStore) Close() {
 
 func (store *postgresStore) CreateTransaction(ctx context.Context) context.Context {
 	db := store.db.Begin()
-	return context.WithValue(ctx, ContextKeyTransaction, db)
+	return context.WithValue(ctx, ContextKeyTransaction, EnhanceDB(db))
 }
 
-func (store *postgresStore) GetTransaction(ctx context.Context) *gorm.DB {
+func (store *postgresStore) GetTransaction(ctx context.Context) *EnhancedDB {
 	conn := ctx.Value(ContextKeyTransaction)
 	if conn != nil {
-		return conn.(*gorm.DB)
+		return conn.(*EnhancedDB)
 	}
 	logging.Logger.Error("No connection in the context.")
 	return nil
+}
+
+func (store *postgresStore) WithTransaction(ctx context.Context, tx *gorm.DB) context.Context {
+	return context.WithValue(ctx, ContextKeyTransaction, EnhanceDB(tx))
 }
 
 func (store *postgresStore) GetDB() *gorm.DB {

@@ -48,7 +48,7 @@ type ChallengeResponse struct {
 func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error) {
 	cancellation := time.Now()
 	db := datastore.GetStore().GetTransaction(ctx)
-	deleteChallenge(int64(cr.CreatedAt))
+	deleteChallenge(cr.RoundCreatedAt)
 	cr.Status = Cancelled
 	cr.StatusMessage = errReason.Error()
 	cr.UpdatedAt = cancellation.UTC()

@@ -14,26 +14,10 @@ services:
       - ./sql_init:/docker-entrypoint-initdb.d
     networks:
       default:
-  postgres-post:
-    image: postgres:14
-    environment:
-      POSTGRES_PORT: 5432
-      POSTGRES_HOST: postgres
-      POSTGRES_USER: postgres
-    volumes:
-      - ../bin:/blobber/bin
-      - ../sql:/blobber/sql
-    command: bash /blobber/bin/postgres-entrypoint.sh
-    links:
-      - postgres:postgres
   validator:
     image: validator
     environment:
       - DOCKER= true
-    depends_on:
-      - postgres-post
-    links:
-      - postgres-post:postgres-post
     volumes:
       - ../config:/validator/config
       - ./blobber${BLOBBER}/data:/validator/data

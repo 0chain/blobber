@@ -101,7 +101,7 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarke
 	}
 
 	// work on pre-redeemed tokens and write-pools balances tracking
-	if err := allocation.AddToPending(db, wm.WM.ClientID, wm.WM.AllocationID, -wm.WM.Size); err != nil {
+	if err := allocation.AddToPending(ctx, wm.WM.ClientID, wm.WM.AllocationID, -wm.WM.Size); err != nil {
 		return fmt.Errorf("can't save allocation pending value: %v", err)
 	}
 	return

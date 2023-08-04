@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/emirpasic/gods/maps/treemap"
 	"go.uber.org/zap"
@@ -81,6 +82,8 @@ func challengeProcessor(ctx context.Context) {
 			return
 
 		case it := <-toProcessChallenge:
+
+			logging.Logger.Info("processing_challenge", zap.Any("challenge_id", it.ChallengeID))
 			if ok := it.createChallenge(); !ok {
 				continue
 			}
@@ -142,7 +145,7 @@ func commitOnChainWorker(ctx context.Context) {
 					}()
 					err := challenge.VerifyChallengeTransaction(txn)
 					if err == nil || err != ErrEntityNotFound {
-						deleteChallenge(int64(challenge.CreatedAt))
+						deleteChallenge(int64(challenge.RoundCreatedAt))
 					}
 				}(&chall)
 			}
@@ -175,12 +178,21 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 
 func (it *ChallengeEntity) createChallenge() bool {
 	challengeMapLock.Lock()
-	if _, ok := challengeMap.Get(int64(it.CreatedAt)); ok {
-		challengeMapLock.Unlock()
+	defer challengeMapLock.Unlock()
+	if _, ok := challengeMap.Get(it.RoundCreatedAt); ok {
 		return false
 	}
-	challengeMap.Put(int64(it.CreatedAt), it)
-	challengeMapLock.Unlock()
+	db := datastore.GetStore().GetDB()
+	var Found bool
+	err := db.Raw("SELECT EXISTS(SELECT 1 FROM challenge_timing WHERE challenge_id = ?) AS found", it.ChallengeID).Scan(&Found).Error
+	if err != nil {
+		logging.Logger.Error("createChallenge", zap.Error(err))
+		return false
+	} else if Found {
+		logging.Logger.Info("createChallenge", zap.String("challenge_id", it.ChallengeID), zap.String("status", "already exists"))
+		return false
+	}
+	challengeMap.Put(it.RoundCreatedAt, it)
 	return true
 }
 
