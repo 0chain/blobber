@@ -33,7 +33,7 @@ func (e *Entity) State() (state *State) {
 func (e *Entity) SetState(state *State) {
 	e.state.Store(state) // update
 
-	if state.GetFileMetaRoot != nil {
+	if state.GetFileMetaRoot {
 		go SendFileMetaRoot()
 	}
 }
