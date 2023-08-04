@@ -63,6 +63,7 @@ type State struct {
 	BlobberDelete        BlobberDelete
 	AdversarialValidator AdversarialValidator
 	StopWMCommit         *bool
+	FailRenameCommit     []string
 	GetFileMetaRoot      bool
 }
 
