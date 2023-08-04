@@ -335,24 +335,33 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type,
 
 			return err
 		})
-		logging.Logger.Error("error", zap.Error(err))
+		if err != nil {
+			logging.Logger.Error("error", zap.Error(err))
+		}
 	}()
 
 	go func() {
-		tx := datastore.GetStore().GetTransaction(ctx)
-		db2 := tx.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-			Where("path = ?", path).Or("path LIKE ?", path+"%")
-		if _type != "" {
-			db2 = db2.Where("type > ?", level)
+		err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			tx := datastore.GetStore().GetTransaction(ctx)
+			db2 := tx.Model(&Ref{}).Where("allocation_id = ?", allocationID).
+				Where("path = ?", path).Or("path LIKE ?", path+"%")
+			if _type != "" {
+				db2 = db2.Where("type > ?", level)
+			}
+			if level != 0 {
+				db2 = db2.Where("level = ?", level)
+			}
+			if updatedDate != "" {
+				db2 = db2.Where("updated_at > ?", updatedDate)
+			}
+			err = db2.Count(&totalRows).Error
+			wg.Done()
+
+			return err
+		})
+		if err != nil {
+			logging.Logger.Error("error", zap.Error(err))
 		}
-		if level != 0 {
-			db2 = db2.Where("level = ?", level)
-		}
-		if updatedDate != "" {
-			db2 = db2.Where("updated_at > ?", updatedDate)
-		}
-		db2 = db2.Count(&totalRows)
-		wg.Done()
 	}()
 	wg.Wait()
 	if err != nil {

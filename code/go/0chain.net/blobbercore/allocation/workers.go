@@ -13,8 +13,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
-	"gorm.io/gorm"
-
 	"go.uber.org/zap"
 )
 
@@ -167,14 +165,6 @@ func requestAllocation(allocID string) (sa *transaction.StorageAllocation, err e
 	sa = new(transaction.StorageAllocation)
 	err = json.Unmarshal(b, sa)
 	return
-}
-
-func commit(tx *gorm.DB, err *error) {
-	if (*err) != nil {
-		tx.Rollback()
-		return
-	}
-	(*err) = tx.Commit().Error
 }
 
 func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.StorageAllocation) (ua *Allocation, err error) {
