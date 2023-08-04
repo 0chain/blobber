@@ -51,6 +51,8 @@ jobs:
 
       - name: Clone blobber
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       # - name: Set up Docker Buildx
       #   run: docker context create blobber_buildx
@@ -121,7 +123,9 @@ jobs:
       #     go env
 
       - name: Clone blobber
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       # - name: Set up Docker Buildx
       #   run: docker context create blobber_buildx
