@@ -2,11 +2,11 @@ package conductrpc
 
 import (
 	"context"
-	"errors"
 
 	"log"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
 
@@ -49,13 +49,14 @@ func SendFileMetaRoot() {
 }
 
 func getFileMetaRoot() (string, error) {
-	allocs, _, err := allocation.FindAllocations(context.TODO(), 0)
+	db := datastore.GetStore().GetDB()
+	var fmr string
+
+	err := db.Raw("SELECT file_meta_root FROM allocations LIMIT 1").Scan(&fmr).Error
+
 	if err != nil {
 		return "", err
 	}
-	if len(allocs) == 0 {
-		return "", errors.New("allocation not found")
-	}
-	alloc := allocs[0]
-	return alloc.FileMetaRoot, nil
+
+	return fmr, nil
 }
