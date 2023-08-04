@@ -101,7 +101,10 @@ func (e *Entity) isMonitor() bool { //nolint:unused,deadcode // might be used la
 }
 
 func (e *Entity) BlobberCommitted(blobberID string) {
-	e.client.blobberCommitted(blobberID)
+	err := e.client.blobberCommitted(blobberID)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 //
