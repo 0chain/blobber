@@ -8,11 +8,9 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"golang.org/x/sync/semaphore"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
-
-	"go.uber.org/zap"
 )
 
 var (
@@ -22,14 +20,14 @@ var (
 )
 
 func SetupWorkers(ctx context.Context) {
-
 	db := datastore.GetStore().GetDB()
-	type Res struct {
-		ID string
-	}
-	var res []Res
+	var res []allocation.Res
 
-	err := db.Model(&allocation.Allocation{}).Select("id").Find(&res).Error
+	err := db.Transaction(func(tx *gorm.DB) error {
+		c := datastore.GetStore().WithTransaction(ctx, tx)
+		res = allocation.Repo.GetAllocationIds(c)
+		return nil
+	})
 	if err != nil && err != gorm.ErrRecordNotFound {
 		logging.Logger.Error("error_getting_allocations_worker",
 			zap.Any("error", err))
@@ -72,8 +70,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 			}
 		}
 	}()
-	alloc := &allocation.Allocation{}
-	err := db.Model(&allocation.Allocation{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("allocation_root").Where("id=?", allocationID).First(alloc).Error
+	alloc, err := allocation.Repo.GetByIdAndLock(ctx, allocationID)
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker.", zap.Any("allocation", allocationID), zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
 		go tryAgain(wm)
@@ -110,8 +107,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 		mut.Release(1)
 	}
 
-	err = db.Exec("UPDATE allocations SET latest_redeemed_write_marker=?,is_redeem_required=? WHERE id=?",
-		wm.WM.AllocationRoot, false, allocationID).Error
+	err = allocation.Repo.UpdateAllocationRedeem(ctx, wm.WM.AllocationRoot, allocationID)
 
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",

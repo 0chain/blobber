@@ -184,7 +184,6 @@ func SaveLatestReadMarker(ctx context.Context, rm *ReadMarker, latestRedeemedRC 
 
 // Sync read marker with 0chain to be sure its correct.
 func (rm *ReadMarkerEntity) Sync(ctx context.Context) error {
-	var db = datastore.GetStore().GetTransaction(ctx)
 	// update local read pools cache from sharders
 	rp, err := allocation.RequestReadPoolStat(rm.LatestRM.ClientID)
 	if err != nil {
@@ -192,7 +191,7 @@ func (rm *ReadMarkerEntity) Sync(ctx context.Context) error {
 	}
 
 	// save the fresh read pools information
-	err = allocation.UpsertReadPool(db, rp)
+	err = allocation.UpsertReadPool(ctx, rp)
 	if err != nil {
 		return common.NewErrorf("rme_sync", "can't update read pools from sharders: %v", err)
 	}
@@ -222,7 +221,7 @@ func (rme *ReadMarkerEntity) UpdateStatus(ctx context.Context, txOutput, redeemT
 		return common.NewErrorf("rme_update_status", "can't get read pools from sharders: %v", err)
 	}
 
-	if err := allocation.UpdateReadPool(db, rp); err != nil {
+	if err := allocation.UpdateReadPool(ctx, rp); err != nil {
 		return common.NewErrorf("rme_update_status", "can't update local read pools cache: %v", err)
 	}
 
