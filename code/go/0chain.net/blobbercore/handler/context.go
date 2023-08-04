@@ -147,6 +147,7 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 		w.Header().Set("Content-Type", "application/json")
 
 		ctx, err := WithVerify(r)
+		txn := datastore.GetStore().GetTransaction(ctx)
 		statusCode := ctx.StatusCode
 
 		if err != nil {
@@ -155,6 +156,7 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 			}
 
 			http.Error(w, err.Error(), statusCode)
+			txn.Rollback()
 			return
 		}
 
@@ -165,7 +167,7 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 			if statusCode == 0 {
 				statusCode = http.StatusInternalServerError
 			}
-
+			txn.Rollback()
 			http.Error(w, err.Error(), statusCode)
 			return
 		}
@@ -174,7 +176,7 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 			statusCode = http.StatusOK
 		}
 		w.WriteHeader(statusCode)
-
+		txn.Commit()
 		if result != nil {
 			json.NewEncoder(w).Encode(result) //nolint
 		}

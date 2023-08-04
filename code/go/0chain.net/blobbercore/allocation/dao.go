@@ -14,14 +14,14 @@ import (
 func GetOrCreate(ctx context.Context, allocationId string) (*Allocation, error) {
 
 	db := datastore.GetStore().CreateTransaction(ctx)
-	tx := datastore.GetStore().GetTransaction(ctx)
+	// tx := datastore.GetStore().GetTransaction(ctx)
 
 	if len(allocationId) == 0 {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "tx")
 	}
 
 	alloc, err := Repo.GetById(db, allocationId)
-	tx.Rollback()
+	// tx.Rollback()
 
 	if err == nil {
 		return alloc, nil
