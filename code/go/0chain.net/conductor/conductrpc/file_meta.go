@@ -52,6 +52,8 @@ func getFileMetaRoot() (string, error) {
 	db := datastore.GetStore().GetDB()
 	var fmr string
 
+	// It will work fine because this blobber will have only single allocation
+	// created by conductor
 	err := db.Raw("SELECT file_meta_root FROM allocations LIMIT 1").Scan(&fmr).Error
 
 	if err != nil {
