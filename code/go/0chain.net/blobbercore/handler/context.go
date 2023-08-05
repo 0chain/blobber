@@ -174,7 +174,7 @@ func WithTxHandler(handler func(ctx *Context) (interface{}, error)) func(w http.
 			result, err = handler(ctx)
 			statusCode = ctx.StatusCode
 
-			return nil
+			return err
 		})
 
 		if err != nil {
