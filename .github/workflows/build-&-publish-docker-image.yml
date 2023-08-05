@@ -42,6 +42,8 @@ jobs:
 
       - name: Clone blobber
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         run: |
@@ -113,7 +115,7 @@ jobs:
           go-version: ^1.20 # The Go version to download (if necessary) and use.
 
       - name: Clone blobber
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
