@@ -52,7 +52,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string) (*L
 	l.Lock()
 	defer l.Unlock()
 
-	db := datastore.GetStore().GetDB()
+	db := datastore.GetStore().GetTransaction(ctx)
 
 	var lock WriteLock
 	err := db.Table(TableNameWriteLock).Where("allocation_id=?", allocationID).First(&lock).Error
@@ -119,7 +119,7 @@ func (*Mutex) Unlock(ctx context.Context, allocationID string, connectionID stri
 		return nil
 	}
 
-	db := datastore.GetStore().GetDB()
+	db := datastore.GetStore().GetTransaction(ctx)
 
 	err := db.Exec("DELETE FROM write_locks WHERE allocation_id = ? and connection_id = ? ", allocationID, connectionID).Error
 	if err != nil {

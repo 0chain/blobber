@@ -85,7 +85,7 @@ FROM reference_objects`).
 	}
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(WithHandler(func(ctx *Context) (interface{}, error) {
+	handler := http.HandlerFunc(WithTxHandler(func(ctx *Context) (interface{}, error) {
 		ctx.AllocationId = "allocation_handler_load_root"
 		return LoadRootHashnode(ctx)
 	}))
