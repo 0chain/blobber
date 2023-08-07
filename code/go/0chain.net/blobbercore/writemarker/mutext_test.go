@@ -148,7 +148,14 @@ func TestMutext_LockShouldWork(t *testing.T) {
 				if it.mock != nil {
 					it.mock()
 				}
-				r, err := m.Lock(context.TODO(), it.allocationID, it.connectionID)
+				var (
+					r   *LockResult
+					err error
+				)
+				err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+					r, err = m.Lock(ctx, it.allocationID, it.connectionID)
+					return nil
+				})
 
 				it.assert(test, r, err)
 

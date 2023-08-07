@@ -31,7 +31,8 @@ type Store interface {
 	CreateTransaction(ctx context.Context) context.Context
 	// GetTransaction get transaction from context
 	GetTransaction(ctx context.Context) *EnhancedDB
-	WithTransaction(ctx context.Context, tx *gorm.DB) context.Context
+	WithNewTransaction(f func(ctx context.Context) error) error
+	WithTransaction(ctx context.Context, f func(ctx context.Context) error) error
 	// Get db connection with user that creates roles and databases. Its dialactor does not contain database name
 	GetPgDB() (*gorm.DB, error)
 	Open() error

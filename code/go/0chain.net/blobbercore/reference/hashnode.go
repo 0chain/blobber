@@ -11,9 +11,9 @@ import (
 // LoadRootHashnode load root node with its descendant nodes
 func LoadRootHashnode(ctx context.Context, allocationID string) (*Hashnode, error) {
 
-	db := datastore.GetStore().GetDB()
+	tx := datastore.GetStore().GetTransaction(ctx)
 
-	db = db.Raw(`
+	db := tx.Raw(`
 SELECT allocation_id, type, name, path, validation_root, fixed_merkle_root, actual_file_hash, chunk_size,size,actual_file_size, parent_path
 FROM reference_objects
 WHERE allocation_id = ?
