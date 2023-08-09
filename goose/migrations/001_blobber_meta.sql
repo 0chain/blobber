@@ -706,10 +706,16 @@ CREATE INDEX idx_created_at ON public.reference_objects USING btree (created_at 
 
 
 --
--- Name: idx_lookup_hash_alloc; Type: INDEX; Schema: public; Owner: blobber_user
+-- Name: idx_lookup_hash; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_lookup_hash_alloc ON public.reference_objects USING btree (allocation_id, lookup_hash);
+CREATE INDEX idx_lookup_hash ON public.reference_objects USING btree (lookup_hash);
+
+--
+-- Name: idx_parent_path_alloc; Type: INDEX; Schema: public; Owner: blobber_user
+--
+
+CREATE INDEX idx_parent_path_alloc ON public.reference_objects USING btree (allocation_id, parent_path);
 
 
 --

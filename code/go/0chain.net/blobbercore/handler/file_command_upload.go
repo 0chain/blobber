@@ -83,10 +83,6 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	if err := validateParentPathType(ctx, allocationObj.ID, fileChanger.Path); err != nil {
-		return err
-	}
-
 	_, thumbHeader, _ := req.FormFile(UploadThumbnailFile)
 	if thumbHeader != nil {
 		if thumbHeader.Size > MaxThumbnailSize {
