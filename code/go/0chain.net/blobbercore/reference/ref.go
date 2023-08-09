@@ -277,7 +277,7 @@ func IsRefExist(ctx context.Context, allocationID, path string) (bool, error) {
 	lookUpHash := GetReferenceLookup(allocationID, path)
 	var Found bool
 
-	err := db.Raw("SELECT EXISTS(SELECT 1 FROM reference_objects WHERE lookup_hash=? AND delete_at is NULL) AS found", lookUpHash).Scan(&Found).Error
+	err := db.Raw("SELECT EXISTS(SELECT 1 FROM reference_objects WHERE lookup_hash=? AND deleted_at is NULL) AS found", lookUpHash).Scan(&Found).Error
 	if err != nil {
 		return false, err
 	}
