@@ -721,6 +721,7 @@ func TestGetMerkleTree(t *testing.T) {
 	finfo, _ := f.Stat()
 	fmt.Println("Size: ", finfo.Size())
 	mr, err := getFixedMerkleRoot(f, int64(size))
+	require.Equal(t, fixedMerkleRoot, mr)
 	require.Nil(t, err)
 	t.Logf("Merkle root: %s", mr)
 	allocID := randString(64)
@@ -907,12 +908,15 @@ func generateRandomDataAndStoreNodes(fPath string, size int64) (string, string, 
 	}
 	defer f.Close()
 
+	_, err = f.Write(p)
+	if err != nil {
+		return "", "", err
+	}
 	cH := GetNewCommitHasher(size)
 	_, err = cH.Write(p)
 	if err != nil {
 		return "", "", err
 	}
-
 	err = cH.Finalize()
 	if err != nil {
 		return "", "", err
@@ -928,26 +932,26 @@ func generateRandomDataAndStoreNodes(fPath string, size int64) (string, string, 
 		return "", "", err
 	}
 
-	_, err = f.Write(p)
-	if err != nil {
-		return "", "", err
-	}
-
 	return hex.EncodeToString(validationMerkleRoot), hex.EncodeToString(fixedMerkleRoot), nil
 }
 
 func getFixedMerkleRoot(r io.ReadSeeker, dataSize int64) (mr string, err error) {
-	_, err = r.Seek(-dataSize, io.SeekEnd)
+	_, err = r.Seek(0, io.SeekStart)
 	if err != nil {
 		return
 	}
 
 	fixedMT := util.NewFixedMerkleTree()
 	var count int
+	var dataRead int
 mainloop:
 	for {
-
-		b := make([]byte, 64*KB)
+		dataLeft := dataSize - int64(dataRead)
+		toRead := 64 * KB
+		if dataLeft < 64*KB {
+			toRead = int(dataLeft)
+		}
+		b := make([]byte, toRead)
 		var n int
 		n, err = r.Read(b)
 		if err != nil {
@@ -958,6 +962,13 @@ mainloop:
 				goto final
 			}
 			return
+		}
+		dataRead += n
+		if toRead < 64*KB {
+			if n == 0 {
+				break
+			}
+			goto final
 		}
 		if n != 64*KB {
 			fmt.Println("n is ", n)

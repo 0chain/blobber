@@ -180,14 +180,14 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		return false, common.NewError("file_create_error", err.Error())
 	}
 
-	r, err := os.Open(tempFilePath)
+	r, err := os.OpenFile(tempFilePath, os.O_RDWR|os.O_APPEND, 0644)
 	if err != nil {
+		f.Close()
 		return false, err
 	}
 
-	defer f.Close()
-
 	defer func() {
+		f.Close()
 		r.Close()
 		if err != nil {
 			os.Remove(preCommitPath)
@@ -214,12 +214,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 					fileData.ThumbnailHash, hash))
 		}
 
-		_, err = r.Seek(0, io.SeekStart)
-		if err != nil {
-			return false, err
-		}
-
-		_, err = io.Copy(f, r)
+		err = os.Rename(tempFilePath, preCommitPath)
 		if err != nil {
 			return false, err
 		}
@@ -252,12 +247,12 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	if err != nil {
 		return false, common.NewError("finalize_error", err.Error())
 	}
-	fmtRootBytes, err := hasher.fmt.CalculateRootAndStoreNodes(f)
+	fmtRootBytes, err := hasher.fmt.CalculateRootAndStoreNodes(r)
 	if err != nil {
 		return false, common.NewError("fmt_hash_calculation_error", err.Error())
 	}
 
-	validationRootBytes, err := hasher.vt.CalculateRootAndStoreNodes(f)
+	validationRootBytes, err := hasher.vt.CalculateRootAndStoreNodes(r)
 	if err != nil {
 		return false, common.NewError("validation_hash_calculation_error", err.Error())
 	}
@@ -274,12 +269,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 			"calculated validation root does not match with client's validation root")
 	}
 
-	_, err = r.Seek(0, io.SeekStart)
-	if err != nil {
-		return false, common.NewError("seek_error", err.Error())
-	}
-
-	_, err = io.Copy(f, r)
+	err = os.Rename(tempFilePath, preCommitPath)
 	if err != nil {
 		return false, common.NewError("write_error", err.Error())
 	}
@@ -530,7 +520,10 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 		vp := validationTreeProof{
 			dataSize: readBlockIn.FileSize,
 		}
-
+		_, err = file.Seek(-FMTSize, io.SeekEnd)
+		if err != nil {
+			return nil, common.NewError("seek_error", err.Error())
+		}
 		nodes, indexes, err := vp.GetMerkleProofOfMultipleIndexes(file, nodesSize, startBlock, endBlock)
 		if err != nil {
 			return nil, common.NewError("get_merkle_proof_error", err.Error())
@@ -538,15 +531,11 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 
 		vmp.Nodes = nodes
 		vmp.Indexes = indexes
+		_, err = file.Seek(0, io.SeekStart)
+		if err != nil {
+			return nil, common.NewError("seek_error", err.Error())
+		}
 	}
-
-	fileOffset := FMTSize + nodesSize + int64(startBlock)*ChunkSize
-
-	_, err = file.Seek(fileOffset, io.SeekStart)
-	if err != nil {
-		return nil, common.NewError("seek_error", err.Error())
-	}
-
 	buffer := make([]byte, readBlockIn.NumBlocks*ChunkSize)
 	n, err := file.Read(buffer)
 	if err != nil && err != io.EOF {
@@ -597,7 +586,7 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 		dataSize: in.FileSize,
 	}
 
-	_, err = file.Seek(-in.FileSize, io.SeekEnd)
+	_, err = file.Seek(in.FileSize, io.SeekStart)
 	if err != nil {
 		return nil, common.NewError("seek_error", err.Error())
 	}
@@ -605,7 +594,10 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 	if err != nil {
 		return nil, common.NewError("get_merkle_proof_error", err.Error())
 	}
-
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, common.NewError("seek_error", err.Error())
+	}
 	proofByte, err := fmp.GetLeafContent(file)
 	if err != nil {
 		return nil, common.NewError("get_leaf_content_error", err.Error())

@@ -286,12 +286,13 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 			resp interface{}
 			err  error
 		)
+		start := time.Now()
 		err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 			resp, err = handler(ctx, r)
 
 			return err
 		})
-
+		logging.Logger.Info("WithConnection", zap.Duration("duration", time.Duration(time.Since(start).Milliseconds())))
 		return resp, err
 	}
 }
