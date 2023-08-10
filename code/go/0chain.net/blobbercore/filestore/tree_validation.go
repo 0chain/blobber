@@ -132,12 +132,12 @@ func (fp *fixedMerkleTreeProof) CalculateLeafContentLevelForIndex() int {
 }
 
 // GetMerkleProof is used to get merkle proof of leaf or index to be specific.
-func (fp fixedMerkleTreeProof) GetMerkleProof(r io.Reader) (proof [][]byte, err error) {
+func (fp fixedMerkleTreeProof) GetMerkleProof(r io.ReaderAt) (proof [][]byte, err error) {
 	var levelOffset int
 	totalLevelNodes := util.FixedMerkleLeaves
 	proof = make([][]byte, util.FixedMTDepth-1)
 	b := make([]byte, FMTSize)
-	n, err := r.Read(b)
+	n, err := r.ReadAt(b, io.SeekStart)
 	if n != FMTSize {
 		return nil, fmt.Errorf("invalid fixed merkle tree size: %d", n)
 	}
@@ -170,15 +170,10 @@ func (fp *fixedMerkleTreeProof) GetLeafContent(r io.Reader) (proofByte []byte, e
 	levels := fp.CalculateLeafContentLevelForIndex() + 1
 	proofByte = make([]byte, levels*util.MerkleChunkSize)
 	var proofWritten int
-	var dataRead int
 	idxOffset := fp.idx * util.MerkleChunkSize
 	idxLimit := idxOffset + util.MerkleChunkSize
 	b := make([]byte, FMTDisKRead)
 	for {
-		dataLeft := fp.dataSize - int64(dataRead)
-		if dataLeft < FMTDisKRead {
-			b = b[:dataLeft]
-		}
 		n, err := r.Read(b)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
@@ -189,7 +184,7 @@ func (fp *fixedMerkleTreeProof) GetLeafContent(r io.Reader) (proofByte []byte, e
 			}
 		}
 		b = b[:n]
-		dataRead += n
+
 		for i := 0; i < len(b); i += util.MaxMerkleLeavesSize {
 			endIndex := i + util.MaxMerkleLeavesSize
 			if endIndex > len(b) {
@@ -205,9 +200,6 @@ func (fp *fixedMerkleTreeProof) GetLeafContent(r io.Reader) (proofByte []byte, e
 
 			proofWritten += copy(proofByte[proofWritten:proofWritten+util.MerkleChunkSize],
 				data[idxOffset:idxLimit])
-		}
-		if dataLeft < FMTDisKRead {
-			break
 		}
 	}
 	return proofByte[:proofWritten], nil
@@ -227,7 +219,7 @@ type validationTree struct {
 // CalculateRootAndStoreNodes is used to calculate root and write intermediate nodes excluding root
 // node to f
 func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoot []byte, err error) {
-	_, err = f.Seek(0, io.SeekEnd)
+	_, err = f.Seek(FMTSize, io.SeekStart)
 	if err != nil {
 		return
 	}
