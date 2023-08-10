@@ -660,12 +660,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
 
+	elapsedSaveAllocation := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
+		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedApplyChanges
+
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
 		if !errors.Is(common.ErrFileWasDeleted, err) {
 			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 		}
 	}
+	elapsedCommitStore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedApplyChanges - elapsedSaveAllocation
 	err = writemarkerEntity.SendToChan(ctx)
 	if err != nil {
 		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
@@ -684,9 +688,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	input := connectionObj.Changes[0].Input
 
 	//Delete connection object and its changes
-	for _, c := range connectionObj.Changes {
-		db.Delete(c)
-	}
 
 	db.Delete(connectionObj)
 	go allocation.DeleteConnectionObjEntry(connectionID)
@@ -702,6 +703,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		zap.Duration("write-pre-redeem", elapsedWritePreRedeem),
 		zap.Duration("move-to-filestore", elapsedMoveToFilestore),
 		zap.Duration("apply-changes", elapsedApplyChanges),
+		zap.Duration("save-allocation", elapsedSaveAllocation),
+		zap.Duration("commit-store", elapsedCommitStore),
 		zap.Duration("total", time.Since(startTime)),
 	)
 	return &result, nil

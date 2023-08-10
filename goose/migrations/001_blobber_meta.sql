@@ -793,7 +793,7 @@ CREATE INDEX path_idx ON public.reference_objects USING btree (path);
 --
 
 ALTER TABLE ONLY public.allocation_changes
-    ADD CONSTRAINT fk_allocation_connections_changes FOREIGN KEY (connection_id) REFERENCES public.allocation_connections(id);
+    ADD CONSTRAINT fk_allocation_connections_changes FOREIGN KEY (connection_id) REFERENCES public.allocation_connections(id) ON DELETE CASCADE;
 
 
 --
