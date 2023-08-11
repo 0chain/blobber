@@ -54,12 +54,13 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 	fileChanger := &allocation.UploadFileChanger{}
 
 	uploadMetaString := req.FormValue(UploadMeta)
+	elapsedReadForm := time.Since(start)
 	err := json.Unmarshal([]byte(uploadMetaString), fileChanger)
 	if err != nil {
 		return common.NewError("invalid_parameters",
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 	}
-	elapsedUnmarshal := time.Since(start)
+	elapsedUnmarshal := time.Since(start) - elapsedReadForm
 
 	if fileChanger.Path == "/" {
 		return common.NewError("invalid_path", "Invalid path. Cannot upload to root directory")
@@ -99,7 +100,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 	}
 
 	cmd.fileChanger = fileChanger
-	logging.Logger.Info("isValidated", zap.Duration("elapsedUnmarshal", elapsedUnmarshal), zap.Duration("elapsedRefExist", elapsedRefExist), zap.Duration("elapsed", time.Since(start)))
+	logging.Logger.Info("isValidated", zap.Duration("elapsedReamForm", elapsedReadForm), zap.Duration("elapsedUnmarshal", elapsedUnmarshal), zap.Duration("elapsedRefExist", elapsedRefExist), zap.Duration("elapsed", time.Since(start)))
 	return nil
 }
 

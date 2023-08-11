@@ -56,6 +56,7 @@ const (
 	PreCommitDir    = "precommit"
 	MerkleChunkSize = 64
 	ChunkSize       = 64 * KB
+	BufferSize      = 10 * MB
 )
 
 func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
@@ -245,7 +246,8 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	fileSize := rStat.Size()
 	start := time.Now()
 	hasher := GetNewCommitHasher(fileSize)
-	_, err = io.Copy(hasher, r)
+	buffer := make([]byte, BufferSize)
+	_, err = io.CopyBuffer(hasher, r, buffer)
 	if err != nil {
 		return false, common.NewError("read_write_error", err.Error())
 	}
