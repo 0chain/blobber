@@ -18,4 +18,6 @@ func SetupHandlers(r *mux.Router) {
 		RateLimit(common.ToJSONResponse(SetupContext(ChallengeHandler))))
 
 	r.HandleFunc("/debug", common.ToJSONResponse(DumpGoRoutines))
+
+	r.HandleFunc("/stats", statsHandler)
 }
