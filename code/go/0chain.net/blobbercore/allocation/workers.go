@@ -13,8 +13,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
-	"gorm.io/gorm"
-
 	"go.uber.org/zap"
 )
 
@@ -46,7 +44,10 @@ func UpdateWorker(ctx context.Context, interval time.Duration) {
 	for {
 		select {
 		case <-tick:
-			updateWork(ctx)
+			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				updateWork(ctx)
+				return nil
+			})
 		case <-quit:
 			return
 		}
@@ -110,12 +111,6 @@ func updateWork(ctx context.Context) {
 
 // not finalized, not cleaned up
 func findAllocations(ctx context.Context, offset int64) (allocs []*Allocation, count int, err error) {
-
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-
-	var tx = datastore.GetStore().GetTransaction(ctx)
-	defer tx.Rollback()
-
 	allocations, err := Repo.GetAllocations(ctx, offset)
 	return allocations, len(allocations), err
 }
@@ -172,20 +167,8 @@ func requestAllocation(allocID string) (sa *transaction.StorageAllocation, err e
 	return
 }
 
-func commit(tx *gorm.DB, err *error) {
-	if (*err) != nil {
-		tx.Rollback()
-		return
-	}
-	(*err) = tx.Commit().Error
-}
-
 func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.StorageAllocation) (ua *Allocation, err error) {
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-
 	var tx = datastore.GetStore().GetTransaction(ctx)
-	defer commit(tx.DB, &err)
-
 	var changed bool = a.Tx != sa.Tx
 
 	// transaction
@@ -262,9 +245,7 @@ func cleanupAllocation(ctx context.Context, a *Allocation) {
 		logging.Logger.Error("cleaning finalized allocation", zap.Error(err))
 	}
 
-	ctx = datastore.GetStore().CreateTransaction(ctx)
 	var tx = datastore.GetStore().GetTransaction(ctx)
-	defer commit(tx.DB, &err)
 
 	a.CleanedUp = true
 	if err = tx.Model(a).Updates(a).Error; err != nil {
@@ -273,10 +254,7 @@ func cleanupAllocation(ctx context.Context, a *Allocation) {
 }
 
 func deleteAllocation(ctx context.Context, a *Allocation) (err error) {
-	ctx = datastore.GetStore().CreateTransaction(ctx)
 	var tx = datastore.GetStore().GetTransaction(ctx)
-	defer commit(tx.DB, &err)
-
 	filestore.GetFileStore().DeleteAllocation(a.ID)
 	err = tx.Model(&reference.Ref{}).Unscoped().
 		Delete(&reference.Ref{},

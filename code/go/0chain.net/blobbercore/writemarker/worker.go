@@ -20,12 +20,10 @@ var (
 )
 
 func SetupWorkers(ctx context.Context) {
-	db := datastore.GetStore().GetDB()
 	var res []allocation.Res
 
-	err := db.Transaction(func(tx *gorm.DB) error {
-		c := datastore.GetStore().WithTransaction(ctx, tx)
-		res = allocation.Repo.GetAllocationIds(c)
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		res = allocation.Repo.GetAllocationIds(ctx)
 		return nil
 	})
 	if err != nil && err != gorm.ErrRecordNotFound {
@@ -137,11 +135,12 @@ func startRedeem(ctx context.Context) {
 	logging.Logger.Info("Start redeeming writemarkers")
 	writeMarkerChan = make(chan *WriteMarkerEntity, 200)
 	go startRedeemWorker(ctx)
-	db := datastore.GetStore().GetDB()
 
 	var writemarkers []*WriteMarkerEntity
-
-	err := db.Not(WriteMarkerEntity{Status: Committed}).Find(&writemarkers).Error
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
+		return tx.Not(WriteMarkerEntity{Status: Committed}).Find(&writemarkers).Error
+	})
 	if err != nil && err != gorm.ErrRecordNotFound {
 		logging.Logger.Error("Error redeeming the write marker. failed to load allocation's writemarker ",
 			zap.Any("error", err))

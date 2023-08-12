@@ -1,6 +1,7 @@
 package challenge
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -61,7 +62,8 @@ func CreateChallengeTiming(challengeID string, createdAt common.Timestamp) error
 		CreatedAtChain: createdAt,
 	}
 
-	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
 		return tx.Create(c).Error
 	})
 
@@ -73,7 +75,8 @@ func UpdateChallengeTimingCancellation(challengeID string, cancellation common.T
 		ChallengeID: challengeID,
 	}
 
-	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
 		values := map[string]interface{}{
 			"closed_at": cancellation,
 		}
@@ -92,8 +95,8 @@ func UpdateChallengeTimingCompleteValidation(challengeID string, completeValidat
 	c := &ChallengeTiming{
 		ChallengeID: challengeID,
 	}
-
-	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
 		return tx.Model(&c).Update("complete_validation", completeValidation).Error
 	})
 
@@ -111,7 +114,8 @@ func UpdateChallengeTimingProofGenerationAndFileSize(
 		ChallengeID: challengeID,
 	}
 
-	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
 		values := map[string]interface{}{
 			"proof_gen_time": proofGenTime,
 			"file_size":      size,
@@ -127,7 +131,8 @@ func UpdateChallengeTimingTxnSubmission(challengeID string, txnSubmission common
 		ChallengeID: challengeID,
 	}
 
-	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
 		return tx.Model(&c).Update("txn_submission", txnSubmission).Error
 	})
 
@@ -139,7 +144,8 @@ func UpdateChallengeTimingTxnVerification(challengeID string, txnVerification co
 		ChallengeID: challengeID,
 	}
 
-	err := datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
 		values := map[string]interface{}{
 			"txn_verification": txnVerification,
 			"closed_at":        txnVerification,
@@ -152,18 +158,21 @@ func UpdateChallengeTimingTxnVerification(challengeID string, txnVerification co
 }
 
 func GetChallengeTimings(from common.Timestamp, limit common.Pagination) ([]*ChallengeTiming, error) {
-	query := datastore.GetStore().GetDB().Model(&ChallengeTiming{}).
-		Where("closed_at > ?", from).Limit(limit.Limit).Offset(limit.Offset).Order(clause.OrderByColumn{
-		Column: clause.Column{Name: "closed_at"},
-		Desc:   limit.IsDescending,
+	var chs []*ChallengeTiming
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
+		query := tx.Model(&ChallengeTiming{}).
+			Where("closed_at > ?", from).Limit(limit.Limit).Offset(limit.Offset).Order(clause.OrderByColumn{
+			Column: clause.Column{Name: "closed_at"},
+			Desc:   limit.IsDescending,
+		})
+
+		return query.Find(&chs).Error
 	})
 
-	var chs []*ChallengeTiming
-
-	result := query.Find(&chs)
-	if result.Error != nil {
+	if err != nil {
 		return nil, fmt.Errorf("error retrieving updated challenge timings with %v; error: %v",
-			from, result.Error)
+			from, err)
 	}
 	return chs, nil
 }
@@ -171,6 +180,9 @@ func GetChallengeTimings(from common.Timestamp, limit common.Pagination) ([]*Cha
 func GetChallengeTiming(challengeID string) (*ChallengeTiming, error) {
 	var ch *ChallengeTiming
 
-	err := datastore.GetStore().GetDB().Model(&ChallengeTiming{}).Where("challenge_id = ?", challengeID).First(&ch).Error
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
+		return tx.Model(&ChallengeTiming{}).Where("challenge_id = ?", challengeID).First(&ch).Error
+	})
 	return ch, err
 }

@@ -105,29 +105,30 @@ func setupConfig(configDir string, deploymentMode int) {
 func reloadConfig() error {
 	fmt.Print("> reload config")
 
-	db := datastore.GetStore().GetDB()
+	return datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		s, ok := config.Get(ctx, datastore.GetStore().GetDB())
+		if ok {
+			if err := s.CopyTo(&config.Configuration); err != nil {
+				return err
+			}
+			fmt.Print("		[OK]\n")
+			return nil
+		}
 
-	s, ok := config.Get(context.TODO(), db)
-	if ok {
-		if err := s.CopyTo(&config.Configuration); err != nil {
+		config.Configuration.Capacity = viper.GetInt64("capacity")
+
+		config.Configuration.MinLockDemand = viper.GetFloat64("min_lock_demand")
+		config.Configuration.NumDelegates = viper.GetInt("num_delegates")
+		config.Configuration.ReadPrice = viper.GetFloat64("read_price")
+		config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
+		config.Configuration.WritePrice = viper.GetFloat64("write_price")
+
+		if err := config.Update(ctx, datastore.GetStore().GetDB()); err != nil {
 			return err
 		}
+
 		fmt.Print("		[OK]\n")
 		return nil
-	}
 
-	config.Configuration.Capacity = viper.GetInt64("capacity")
-
-	config.Configuration.MinLockDemand = viper.GetFloat64("min_lock_demand")
-	config.Configuration.NumDelegates = viper.GetInt("num_delegates")
-	config.Configuration.ReadPrice = viper.GetFloat64("read_price")
-	config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")
-	config.Configuration.WritePrice = viper.GetFloat64("write_price")
-
-	if err := config.Update(context.TODO(), db); err != nil {
-		return err
-	}
-
-	fmt.Print("		[OK]\n")
-	return nil
+	})
 }

@@ -226,7 +226,7 @@ func setupHandlers(r *mux.Router) {
 	// r.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
 	r.HandleFunc("/_cleanupdisk", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
 	// r.HandleFunc("/getstats", common.AuthenticateAdmin(common.ToJSONResponse(stats.GetStatsHandler)))
-	r.HandleFunc("/getstats", RateLimitByCommmitRL(common.ToJSONResponse(stats.GetStatsHandler)))
+	r.HandleFunc("/getstats", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(stats.GetStatsHandler))))
 	// r.HandleFunc("/challengetimings", common.AuthenticateAdmin(common.ToJSONResponse(GetChallengeTimings)))
 	r.HandleFunc("/challengetimings", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTimings)))
 	r.HandleFunc("/challenge-timings-by-challengeId", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTiming)))
@@ -248,23 +248,23 @@ func setupHandlers(r *mux.Router) {
 	// lightweight http handler without heavy postgres transaction to improve performance
 
 	r.HandleFunc("/v1/writemarker/lock/{allocation}",
-		RateLimitByGeneralRL(WithHandler(LockWriteMarker))).
+		RateLimitByGeneralRL(WithTxHandler(LockWriteMarker))).
 		Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/v1/writemarker/lock/{allocation}/{connection}",
-		RateLimitByGeneralRL(WithHandler(UnlockWriteMarker))).
+		RateLimitByGeneralRL(WithTxHandler(UnlockWriteMarker))).
 		Methods(http.MethodDelete, http.MethodOptions)
 
 	r.HandleFunc("/v1/hashnode/root/{allocation}",
-		RateLimitByObjectRL(WithHandler(LoadRootHashnode))).
+		RateLimitByObjectRL(WithTxHandler(LoadRootHashnode))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/playlist/latest/{allocation}",
-		RateLimitByGeneralRL(WithHandler(LoadPlaylist))).
+		RateLimitByGeneralRL(WithTxHandler(LoadPlaylist))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/playlist/file/{allocation}",
-		RateLimitByGeneralRL(WithHandler(LoadPlaylistFile))).
+		RateLimitByGeneralRL(WithTxHandler(LoadPlaylistFile))).
 		Methods(http.MethodGet, http.MethodOptions)
 }
 
@@ -281,31 +281,18 @@ func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF
 }
 
 func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
-	return func(ctx context.Context, r *http.Request) (resp interface{}, err error) {
-		ctx = GetMetaDataStore().CreateTransaction(ctx)
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		var (
+			resp interface{}
+			err  error
+		)
+		err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			resp, err = handler(ctx, r)
 
-		resp, err = handler(ctx, r)
+			return err
+		})
 
-		defer func() {
-			if err != nil {
-				var rollErr = GetMetaDataStore().GetTransaction(ctx).
-					Rollback().Error
-				if rollErr != nil {
-					Logger.Error("couldn't rollback", zap.Error(err))
-				}
-			}
-		}()
-
-		if err != nil {
-			Logger.Error("Error in handling the request." + err.Error())
-			return
-		}
-		err = GetMetaDataStore().GetTransaction(ctx).Commit().Error
-		if err != nil {
-			return resp, common.NewErrorf("commit_error",
-				"error committing to meta store: %v", err)
-		}
-		return
+		return resp, err
 	}
 }
 
@@ -720,6 +707,7 @@ func writeResponse(w http.ResponseWriter, resp []byte) {
 	}
 }
 
+// todo wrap with connection
 func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	isJSON := r.Header.Get("Accept") == "application/json"
 

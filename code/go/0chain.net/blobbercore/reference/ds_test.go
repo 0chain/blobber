@@ -1,6 +1,7 @@
 package reference
 
 import (
+	"context"
 	"testing"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -18,14 +19,14 @@ func TestMockDb(t *testing.T) {
 	config.Configuration.DBPassword = ""
 
 	require.NoError(t, datastore.GetStore().Open())
-	db := datastore.GetStore().GetDB()
-	if db == nil {
-		t.Log("err connecting to database")
-		return
-	}
-	ref := &Ref{}
-	err := db.Where(&Ref{AllocationID: "4f928c7857fabb5737347c42204eea919a4777f893f35724f563b932f64e2367", Path: "/hack.txt"}).
-		First(ref).
-		Error
-	require.NoError(t, err)
+	_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
+		ref := &Ref{}
+		err := tx.Where(&Ref{AllocationID: "4f928c7857fabb5737347c42204eea919a4777f893f35724f563b932f64e2367", Path: "/hack.txt"}).
+			First(ref).
+			Error
+		require.NoError(t, err)
+
+		return nil
+	})
 }

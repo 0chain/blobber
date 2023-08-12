@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"context"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -34,8 +35,8 @@ type ChallengeEntity struct {
 func (ChallengeEntity) TableName() string {
 	return "challenges"
 }
-func getAllFailedChallenges(offset, limit int) ([]ChallengeEntity, int, error) {
-	db := datastore.GetStore().GetDB()
+func getAllFailedChallenges(ctx context.Context, offset, limit int) ([]ChallengeEntity, int, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
 	crs := []ChallengeEntity{}
 	err := db.Offset(offset).Limit(limit).Order("challenge_id DESC").Table(ChallengeEntity{}.TableName()).Find(&crs, ChallengeEntity{Result: 2}).Error
 	if err != nil {

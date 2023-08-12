@@ -130,8 +130,8 @@ type ErrorResponse struct {
 	Error string
 }
 
-// WithHandler process handler to respond request
-func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.ResponseWriter, r *http.Request) {
+// WithTxHandler process handler to respond request
+func WithTxHandler(handler func(ctx *Context) (interface{}, error)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
@@ -143,23 +143,39 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 		}
 
 		common.TryParseForm(r)
-
 		w.Header().Set("Content-Type", "application/json")
 
-		ctx, err := WithVerify(r)
-		statusCode := ctx.StatusCode
-
-		if err != nil {
-			if statusCode == 0 {
-				statusCode = http.StatusInternalServerError
+		statusCode := 0
+		var result interface{}
+		err := datastore.GetStore().WithNewTransaction(func(c context.Context) error {
+			ctx := &Context{
+				Context: c,
+				Request: r,
+				Store:   datastore.GetStore(),
 			}
 
-			http.Error(w, err.Error(), statusCode)
-			return
-		}
+			ctx.Vars = mux.Vars(r)
+			if ctx.Vars == nil {
+				ctx.Vars = make(map[string]string)
+			}
 
-		result, err := handler(ctx)
-		statusCode = ctx.StatusCode
+			ctx.ClientID = r.Header.Get(common.ClientHeader)
+			ctx.ClientKey = r.Header.Get(common.ClientKeyHeader)
+			ctx.AllocationId = r.Header.Get(common.AllocationIdHeader)
+			ctx.Signature = r.Header.Get(common.ClientSignatureHeader)
+
+			ctx, err := WithVerify(ctx, r)
+			statusCode = ctx.StatusCode
+
+			if err != nil {
+				return err
+			}
+
+			result, err = handler(ctx)
+			statusCode = ctx.StatusCode
+
+			return err
+		})
 
 		if err != nil {
 			if statusCode == 0 {
@@ -183,28 +199,13 @@ func WithHandler(handler func(ctx *Context) (interface{}, error)) func(w http.Re
 }
 
 // WithVerify verify allocation and signature
-func WithVerify(r *http.Request) (*Context, error) {
+func WithVerify(ctx *Context, r *http.Request) (*Context, error) {
 
-	ctx := &Context{
-		Context: context.TODO(),
-		Request: r,
-		Store:   datastore.GetStore(),
-	}
-
-	ctx.Vars = mux.Vars(r)
-	if ctx.Vars == nil {
-		ctx.Vars = make(map[string]string)
-	}
-
-	ctx.ClientID = r.Header.Get(common.ClientHeader)
-	ctx.ClientKey = r.Header.Get(common.ClientKeyHeader)
-	ctx.AllocationId = r.Header.Get(common.AllocationIdHeader)
-	ctx.Signature = r.Header.Get(common.ClientSignatureHeader)
 	allocationTx := ctx.Vars["allocation"]
 
 	if len(ctx.AllocationId) > 0 {
 
-		alloc, err := allocation.GetOrCreate(ctx, ctx.Store, ctx.AllocationId)
+		alloc, err := allocation.GetOrCreate(ctx, ctx.AllocationId)
 
 		if err != nil {
 			if errors.Is(common.ErrBadRequest, err) {
