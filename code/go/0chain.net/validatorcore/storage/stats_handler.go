@@ -77,5 +77,8 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 	`
 
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(statsHTML))
+	_, err := w.Write([]byte(statsHTML))
+	if err != nil {
+		return
+	}
 }
