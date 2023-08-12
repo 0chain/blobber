@@ -9,7 +9,6 @@ type Stats struct {
 	TotalChallenges      int
 	SuccessfulChallenges int
 	FailedChallenges     int
-	// Add more fields as needed
 }
 
 var appStats Stats
@@ -19,8 +18,6 @@ func init() {
 }
 
 func updateStats(success bool) {
-	// Process the request
-
 	appStats.TotalChallenges++
 
 	if success {
@@ -31,11 +28,54 @@ func updateStats(success bool) {
 }
 
 func statsHandler(w http.ResponseWriter, r *http.Request) {
-	// You might want to use a template engine to format the HTML
-	// Here, I'm using a simple text format for demonstration
-	statsText := fmt.Sprintf("Total Requests: %d\nSuccessful Requests: %d\nFailed Requests: %d\n",
-		appStats.TotalChallenges, appStats.SuccessfulChallenges, appStats.FailedChallenges)
+	statsHTML := `
+	<!DOCTYPE html>
+	<html>
+	<head>
+		<style>
+			table {
+				font-family: Arial, sans-serif;
+				border-collapse: collapse;
+				width: 50%;
+				margin: auto;
+				margin-top: 50px;
+			}
 
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(statsText))
+			th, td {
+				border: 1px solid #dddddd;
+				text-align: left;
+				padding: 8px;
+			}
+
+			th {
+				background-color: #f2f2f2;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Challenges Statistics</h1>
+		<table>
+			<tr>
+				<th>Statistic</th>
+				<th>Count</th>
+			</tr>
+			<tr>
+				<td>Total Challenges</td>
+				<td>` + fmt.Sprintf("%d", appStats.TotalChallenges) + `</td>
+			</tr>
+			<tr>
+				<td>Successful Challenges</td>
+				<td>` + fmt.Sprintf("%d", appStats.SuccessfulChallenges) + `</td>
+			</tr>
+			<tr>
+				<td>Failed Challenges</td>
+				<td>` + fmt.Sprintf("%d", appStats.FailedChallenges) + `</td>
+			</tr>
+		</table>
+	</body>
+	</html>
+	`
+
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(statsHTML))
 }
