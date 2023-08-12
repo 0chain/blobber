@@ -49,11 +49,15 @@ func challengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 
 	err = challengeRequest.VerifyChallenge(challengeObj, allocationObj)
 	if err != nil {
+		statsMutex.Lock()
 		updateStats(false)
+		statsMutex.Unlock()
 		return InvalidValidationTicket(challengeObj, err)
 	}
 
-	updateStats(true)
+	statsMutex.Lock()
+	updateStats(false)
+	statsMutex.Unlock()
 
 	return ValidValidationTicket(challengeObj, challengeRequest.ChallengeID, challengeHash)
 }
