@@ -35,7 +35,15 @@ func updateStats(success bool) {
 	}
 }
 
+func getStats() Stats {
+	statsMutex.Lock()
+	defer statsMutex.Unlock()
+	return appStats
+}
+
 func statsHandler(w http.ResponseWriter, r *http.Request) {
+	result := getStats()
+
 	statsHTML := `
 	<!DOCTYPE html>
 	<html>
@@ -69,15 +77,15 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 			</tr>
 			<tr>
 				<td>Total Challenges</td>
-				<td>` + fmt.Sprintf("%d", appStats.TotalChallenges) + `</td>
+				<td>` + fmt.Sprintf("%d", result.TotalChallenges) + `</td>
 			</tr>
 			<tr>
 				<td>Successful Challenges</td>
-				<td>` + fmt.Sprintf("%d", appStats.SuccessfulChallenges) + `</td>
+				<td>` + fmt.Sprintf("%d", result.SuccessfulChallenges) + `</td>
 			</tr>
 			<tr>
 				<td>Failed Challenges</td>
-				<td>` + fmt.Sprintf("%d", appStats.FailedChallenges) + `</td>
+				<td>` + fmt.Sprintf("%d", result.FailedChallenges) + `</td>
 			</tr>
 		</table>
 	</body>
