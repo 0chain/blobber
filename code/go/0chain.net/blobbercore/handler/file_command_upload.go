@@ -76,7 +76,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 		logging.Logger.Error(err.Error())
 		return common.NewError("database_error", "Got db error while getting ref")
 	}
-	elapsedRefExist := time.Since(start) - elapsedUnmarshal
+	elapsedRefExist := time.Since(start) - elapsedUnmarshal - elapsedReadForm
 	if isExist {
 		msg := fmt.Sprintf("File at path :%s: already exists", fileChanger.Path)
 		return common.NewError("duplicate_file", msg)

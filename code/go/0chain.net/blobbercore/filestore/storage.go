@@ -246,7 +246,11 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	fileSize := rStat.Size()
 	start := time.Now()
 	hasher := GetNewCommitHasher(fileSize)
-	buffer := make([]byte, BufferSize)
+	bufSize := BufferSize
+	if fileSize < BufferSize {
+		bufSize = int(fileSize)
+	}
+	buffer := make([]byte, bufSize)
 	_, err = io.CopyBuffer(hasher, r, buffer)
 	if err != nil {
 		return false, common.NewError("read_write_error", err.Error())
