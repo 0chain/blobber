@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"net/http"
+	"sync"
 )
 
 type Stats struct {
@@ -11,13 +12,20 @@ type Stats struct {
 	FailedChallenges     int
 }
 
-var appStats Stats
+var (
+	appStats   Stats
+	statsMutex sync.Mutex
+)
 
 func init() {
 	appStats = Stats{}
+
 }
 
 func updateStats(success bool) {
+	statsMutex.Lock()
+	defer statsMutex.Unlock()
+
 	appStats.TotalChallenges++
 
 	if success {
