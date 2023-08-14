@@ -50,37 +50,8 @@ type State struct {
 	// Nodes maps NodeID -> NodeName.
 	Nodes map[NodeID]NodeName
 
-	IsMonitor  bool // send monitor events (round, phase, etc)
-	IsLock     bool // node locked
-	IsRevealed bool // revealed shares
-	// Byzantine state. Below, if a value is nil, then node behaves as usual
-	// for it.
-	//
-	// Byzantine blockchain
-	VRFS                        *config.Bad
-	RoundTimeout                *config.Bad
-	CompetingBlock              *config.Bad
-	SignOnlyCompetingBlocks     *config.Bad
-	DoubleSpendTransaction      *config.Bad
-	WrongBlockSignHash          *config.Bad
-	WrongBlockSignKey           *config.Bad
-	WrongBlockHash              *config.Bad
-	VerificationTicketGroup     *config.Bad
-	WrongVerificationTicketHash *config.Bad
-	WrongVerificationTicketKey  *config.Bad
-	WrongNotarizedBlockHash     *config.Bad
-	WrongNotarizedBlockKey      *config.Bad
-	NotarizeOnlyCompetingBlock  *config.Bad
-	NotarizedBlock              *config.Bad
-	// Byzantine blockchain sharders
-	FinalizedBlock    *config.Bad
-	MagicBlock        *config.Bad
-	VerifyTransaction *config.Bad
-	// Byzantine View Change
-	MPK        *config.Bad
-	Shares     *config.Bad
-	Signatures *config.Bad
-	Publish    *config.Bad
+	IsMonitor bool // send monitor events (round, phase, etc)
+	IsLock    bool // node locked
 
 	// Blobbers related states
 	StorageTree          *config.Bad // blobber sends bad files/tree responses
@@ -91,6 +62,7 @@ type State struct {
 	BlobberUpload        BlobberUpload
 	BlobberDelete        BlobberDelete
 	AdversarialValidator AdversarialValidator
+	StopWMCommit         *bool
 }
 
 // Name returns NodeName by given NodeID.

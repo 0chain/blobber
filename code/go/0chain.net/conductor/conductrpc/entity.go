@@ -100,6 +100,13 @@ func (e *Entity) isMonitor() bool { //nolint:unused,deadcode // might be used la
 	return state != nil && state.IsMonitor
 }
 
+func (e *Entity) BlobberCommitted(blobberID string) {
+	err := e.client.blobberCommitted(blobberID)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
 //
 // global
 //
@@ -120,17 +127,16 @@ func Shutdown() {
 
 // Client returns global Entity to interact with. Use it, for example,
 //
-//     var state = conductrpc.Client().State()
-//     for _, minerID := range miners {
-//         if state.VRFS.IsBad(state, minerID) {
-//             // send bad VRFS to this miner
-//         } else if state.VRFS.IsGood(state, minerID) {
-//             // send good VRFS to this miner
-//         } else {
-//             // don't send a VRFS to this miner
-//         }
-//     }
-//
+//	var state = conductrpc.Client().State()
+//	for _, minerID := range miners {
+//	    if state.VRFS.IsBad(state, minerID) {
+//	        // send bad VRFS to this miner
+//	    } else if state.VRFS.IsGood(state, minerID) {
+//	        // send good VRFS to this miner
+//	    } else {
+//	        // don't send a VRFS to this miner
+//	    }
+//	}
 func Client() *Entity {
 	return global
 }
