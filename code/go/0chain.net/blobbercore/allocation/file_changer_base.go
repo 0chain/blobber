@@ -2,12 +2,9 @@ package allocation
 
 import (
 	"context"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
 )
 
 // BaseFileChanger base file change processor
@@ -95,12 +92,9 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 	fileInputData.ValidationRoot = fc.ValidationRoot
 	fileInputData.FixedMerkleRoot = fc.FixedMerkleRoot
 	fileInputData.ChunkSize = fc.ChunkSize
-	start := time.Now()
 	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
 	if err != nil {
 		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 	}
-	elapsed := time.Since(start)
-	logging.Logger.Info("CommitToFileStore", zap.String("path", fc.Path), zap.Duration("elapsed", elapsed))
 	return nil
 }

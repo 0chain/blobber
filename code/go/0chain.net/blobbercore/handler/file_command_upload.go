@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 
@@ -46,7 +45,6 @@ func (cmd *UploadFileCommand) GetPath() string {
 
 // IsValidated validate request.
 func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
-	start := time.Now()
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
@@ -54,13 +52,11 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 	fileChanger := &allocation.UploadFileChanger{}
 
 	uploadMetaString := req.FormValue(UploadMeta)
-	elapsedReadForm := time.Since(start)
 	err := json.Unmarshal([]byte(uploadMetaString), fileChanger)
 	if err != nil {
 		return common.NewError("invalid_parameters",
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 	}
-	elapsedUnmarshal := time.Since(start) - elapsedReadForm
 
 	if fileChanger.Path == "/" {
 		return common.NewError("invalid_path", "Invalid path. Cannot upload to root directory")
@@ -76,7 +72,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 		logging.Logger.Error(err.Error())
 		return common.NewError("database_error", "Got db error while getting ref")
 	}
-	elapsedRefExist := time.Since(start) - elapsedUnmarshal - elapsedReadForm
+
 	if isExist {
 		msg := fmt.Sprintf("File at path :%s: already exists", fileChanger.Path)
 		return common.NewError("duplicate_file", msg)
@@ -100,7 +96,6 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 	}
 
 	cmd.fileChanger = fileChanger
-	logging.Logger.Info("isValidated", zap.Duration("elapsedReamForm", elapsedReadForm), zap.Duration("elapsedUnmarshal", elapsedUnmarshal), zap.Duration("elapsedRefExist", elapsedRefExist), zap.Duration("elapsed", time.Since(start)))
 	return nil
 }
 

@@ -40,7 +40,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
@@ -244,7 +243,6 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	}
 
 	fileSize := rStat.Size()
-	start := time.Now()
 	hasher := GetNewCommitHasher(fileSize)
 	bufSize := BufferSize
 	if fileSize < BufferSize {
@@ -260,18 +258,15 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	if err != nil {
 		return false, common.NewError("finalize_error", err.Error())
 	}
-	elapsedHash := time.Since(start)
 	fmtRootBytes, err := hasher.fmt.CalculateRootAndStoreNodes(f)
 	if err != nil {
 		return false, common.NewError("fmt_hash_calculation_error", err.Error())
 	}
-	elapsedMerkle := time.Since(start) - elapsedHash
 
 	validationRootBytes, err := hasher.vt.CalculateRootAndStoreNodes(f)
 	if err != nil {
 		return false, common.NewError("validation_hash_calculation_error", err.Error())
 	}
-	elapsedValidation := time.Since(start) - elapsedMerkle - elapsedHash
 	fmtRoot := hex.EncodeToString(fmtRootBytes)
 	validationRoot := hex.EncodeToString(validationRootBytes)
 
@@ -305,7 +300,6 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	// 5. Move: It is Copy + Delete. Delete will not delete file if ref exists in database. i.e. copy would create
 	// ref that refers to this file therefore it will be skipped
 	fs.incrDecrAllocFileSizeAndNumber(allocID, fileSize, 1)
-	logging.Logger.Info("CommitWrite", zap.Duration("elapsedHash", elapsedHash), zap.Duration("elapsedMerkle", elapsedMerkle), zap.Duration("elapsedValidation", elapsedValidation), zap.Duration("elapsedTotal", time.Since(start)))
 	return true, nil
 }
 
