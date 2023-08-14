@@ -291,7 +291,6 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 
 			return err
 		})
-
 		return resp, err
 	}
 }

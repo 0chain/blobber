@@ -435,7 +435,7 @@ const tpl = `
 func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	t := template.Must(template.New("diagnostics").Funcs(funcMap).Parse(tpl))
 	ctx := datastore.GetStore().CreateTransaction(r.Context())
-	ctx = setStatsRequestDataInContext(r, ctx)
+	ctx = setStatsRequestDataInContext(ctx, r)
 	db := datastore.GetStore().GetTransaction(ctx)
 	defer db.Rollback()
 	bs := LoadBlobberStats(ctx)
@@ -446,7 +446,7 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func setStatsRequestDataInContext(r *http.Request, ctx context.Context) context.Context {
+func setStatsRequestDataInContext(ctx context.Context, r *http.Request) context.Context {
 	ctx = context.WithValue(ctx, HealthDataKey, r.Header.Get(HealthDataKey.String()))
 
 	allocationPage := r.URL.Query().Get("alp")

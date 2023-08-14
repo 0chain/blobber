@@ -228,7 +228,7 @@ func TestDownloadFile(t *testing.T) {
 		mocket.Catcher.NewMock().OneTime().WithQuery(
 			`SELECT * FROM "reference_objects" WHERE`,
 		).WithArgs(
-			"mock_allocation_id", p.inData.pathHash,
+			p.inData.pathHash,
 		).WithReply(
 			[]map[string]interface{}{{
 				"allocation_id": p.allocation.ID,
@@ -244,7 +244,7 @@ func TestDownloadFile(t *testing.T) {
 				require.EqualValues(t, p.payerId.ClientID, args[0].Value)
 				require.EqualValues(t, mockAllocationId, args[1].Value)
 				require.EqualValues(t, mockBlobberId, args[2].Value)
-			}).WithArgs(mockAllocationId).WithReply(
+			}).WithReply(
 				[]map[string]interface{}{{
 					"path":          "",
 					"client_id":     p.payerId.ClientID,
