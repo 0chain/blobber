@@ -266,7 +266,7 @@ func TestHandlers_Download(t *testing.T) {
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, filePathHash).WillReturnError(gorm.ErrRecordNotFound)
+					WithArgs(filePathHash).WillReturnError(gorm.ErrRecordNotFound)
 
 			},
 			wantCode: http.StatusBadRequest,
@@ -335,7 +335,7 @@ func TestHandlers_Download(t *testing.T) {
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, filePathHash).
+					WithArgs(filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "lookup_hash", "validation_root"}).
 							AddRow("/file.txt", "f", filePathHash, "abcd"),
@@ -517,7 +517,7 @@ func TestHandlers_Download(t *testing.T) {
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
 
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, filePathHash).
+					WithArgs(filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "chunk_size"}).
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "validation_root", "qCj3sXXeXUAByi1ERIbcfXzWN75dyocYzyRXnkStXio=", 65536),
@@ -612,7 +612,7 @@ func TestHandlers_Download(t *testing.T) {
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, filePathHash).
+					WithArgs(filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "chunk_size"}).
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "validation_root", ownerScheme.GetEncryptedKey(), 65536),
@@ -726,7 +726,7 @@ func TestHandlers_Download(t *testing.T) {
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/file.txt")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, filePathHash).
+					WithArgs(filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path", "chunk_size"}).
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "validation_root", ownerScheme.GetEncryptedKey(), "/", fileref.CHUNK_SIZE),
@@ -734,7 +734,7 @@ func TestHandlers_Download(t *testing.T) {
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, rootPathHash).
+					WithArgs(rootPathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path"}).
 							AddRow("/", "d", rootPathHash, rootPathHash, "validation_root", "", "."),
@@ -846,7 +846,7 @@ func TestHandlers_Download(t *testing.T) {
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder1/subfolder1/file.txt")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, filePathHash).
+					WithArgs(filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path", "chunk_size"}).
 							AddRow("/folder1/subfolder1/file.txt", "f", filePathHash, filePathHash, "validation_root", ownerScheme.GetEncryptedKey(), "/folder1/subfolder1", filestore.CHUNK_SIZE),
@@ -854,7 +854,7 @@ func TestHandlers_Download(t *testing.T) {
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder1")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, rootPathHash).
+					WithArgs(rootPathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path"}).
 							AddRow("/folder1", "d", rootPathHash, rootPathHash, "validation_root", "", "."),
@@ -965,7 +965,7 @@ func TestHandlers_Download(t *testing.T) {
 
 				filePathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder2/subfolder1/file.txt")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, filePathHash).
+					WithArgs(filePathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path", "chunk_size"}).
 							AddRow("/file.txt", "f", filePathHash, filePathHash, "validation_root", ownerScheme.GetEncryptedKey(), "/folder2/subfolder1", fileref.CHUNK_SIZE),
@@ -973,7 +973,7 @@ func TestHandlers_Download(t *testing.T) {
 
 				rootPathHash := fileref.GetReferenceLookup(alloc.Tx, "/folder1")
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","path" FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, rootPathHash).
+					WithArgs(rootPathHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"path", "type", "path_hash", "lookup_hash", "validation_root", "encrypted_key", "parent_path"}).
 							AddRow("/folder1", "d", rootPathHash, rootPathHash, "validation_root", "", "/"),
