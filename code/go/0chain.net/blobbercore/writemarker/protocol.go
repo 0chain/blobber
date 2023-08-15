@@ -9,6 +9,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
@@ -81,10 +82,14 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 	if clientID == "" || clientID != wme.WM.ClientID || clientID != co.ClientID || co.ClientID != wme.WM.ClientID {
 		return common.NewError("write_marker_validation_failed", "Write Marker is not by the same client who uploaded")
 	}
+	logging.Logger.Info("WriteMarkerEntity.VerifyMarker", zap.Any("startTime", dbAllocation.StartTime))
+	if wme.WM.Timestamp < dbAllocation.StartTime {
+		return common.NewError("write_marker_validation_failed", "Write Marker timestamp is before the allocation start time")
+	}
 
 	currTime := common.Now()
 	// blobber clock is allowed to be 10 seconds behind the current time
-	if wme.WM.Timestamp > currTime+10 {
+	if wme.WM.Timestamp > currTime+60 {
 		return common.NewError("write_marker_validation_failed", "Write Marker timestamp is in the future")
 	}
 
