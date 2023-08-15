@@ -1230,10 +1230,11 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		zap.String("connectionID", connectionID),
 	)
 	st = time.Now()
-
-	reqWg.Wait()
-	if reqError != nil {
-		return nil, common.NewError("invalid_parameters", "Error Reading multi parts for file."+reqError.Error())
+	if r.Method != http.MethodDelete {
+		reqWg.Wait()
+		if reqError != nil {
+			return nil, common.NewError("invalid_parameters", "Error Reading multi parts for file."+reqError.Error())
+		}
 	}
 	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
 
