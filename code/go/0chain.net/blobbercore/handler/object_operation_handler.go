@@ -1233,7 +1233,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	reqWg.Wait()
 	if reqError != nil {
-		return nil, common.NewError("req_parse_form_error", "Error in parsing form data "+reqError.Error())
+		return nil, common.NewError("invalid_parameters", "Error Reading multi parts for file."+reqError.Error())
 	}
 	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
 
