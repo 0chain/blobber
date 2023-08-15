@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
@@ -1149,9 +1150,14 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 // WriteFile stores the file into the blobber files system from the HTTP request
 func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
-
+	var reqWg sync.WaitGroup
+	var reqError error
+	reqWg.Add(1)
 	startTime := time.Now()
-
+	go func() {
+		reqError = r.ParseMultipartForm(64 << 20)
+		reqWg.Done()
+	}()
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE / PATCH instead")
 	}
@@ -1182,14 +1188,15 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	st := time.Now()
 	allocationID := allocationObj.ID
 	cmd := createFileCommand(r)
-	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
+	// reqWg.Wait()
+	// if reqError != nil {
+	// 	return nil, common.NewError("req_parse_form_error", "Error in parsing form data "+reqError.Error())
+	// }
+	// err = cmd.IsValidated(ctx, r, allocationObj, clientID)
 
-	if err != nil {
-		return nil, err
-	}
-
-	elapsedValidate := time.Since(st)
-	st = time.Now()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	publicKey := allocationObj.OwnerPublicKey
 
@@ -1223,6 +1230,19 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		zap.String("connectionID", connectionID),
 	)
 	st = time.Now()
+
+	reqWg.Wait()
+	if reqError != nil {
+		return nil, common.NewError("req_parse_form_error", "Error in parsing form data "+reqError.Error())
+	}
+	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
+
+	if err != nil {
+		return nil, err
+	}
+	elapsedValidate := time.Since(st)
+	st = time.Now()
+
 	result, err := cmd.ProcessContent(ctx, r, allocationObj, connectionObj)
 
 	if err != nil {
