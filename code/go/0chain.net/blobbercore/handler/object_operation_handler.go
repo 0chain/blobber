@@ -1152,14 +1152,16 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
 	var reqWg sync.WaitGroup
 	var reqError error
-	reqWg.Add(1)
 	startTime := time.Now()
-	go func() {
-		reqError = r.ParseMultipartForm(64 << 20)
-		reqWg.Done()
-	}()
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE / PATCH instead")
+	}
+	if r.Method != http.MethodDelete {
+		reqWg.Add(1)
+		go func() {
+			reqError = r.ParseMultipartForm(64 << 20)
+			reqWg.Done()
+		}()
 	}
 
 	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
@@ -1200,12 +1202,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	publicKey := allocationObj.OwnerPublicKey
 
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
-
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
 	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
@@ -1243,6 +1239,12 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	}
 	elapsedValidate := time.Since(st)
 	st = time.Now()
+
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
+
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
 
 	result, err := cmd.ProcessContent(ctx, r, allocationObj, connectionObj)
 
