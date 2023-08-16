@@ -50,7 +50,9 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 	}
 
 	fileChanger := &allocation.UploadFileChanger{}
-
+	if req.Form == nil || req.MultipartForm == nil {
+		logging.Logger.Info("UploadFileCommand: req.Form is nil")
+	}
 	uploadMetaString := req.FormValue(UploadMeta)
 	err := json.Unmarshal([]byte(uploadMetaString), fileChanger)
 	if err != nil {

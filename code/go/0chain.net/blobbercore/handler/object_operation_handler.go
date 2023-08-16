@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
@@ -1150,18 +1149,11 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 
 // WriteFile stores the file into the blobber files system from the HTTP request
 func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
-	var reqWg sync.WaitGroup
-	var reqError error
+
 	startTime := time.Now()
+
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE / PATCH instead")
-	}
-	if r.Method != http.MethodDelete {
-		reqWg.Add(1)
-		go func() {
-			reqError = r.ParseMultipartForm(64 << 20)
-			reqWg.Done()
-		}()
 	}
 
 	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
@@ -1190,17 +1182,22 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	st := time.Now()
 	allocationID := allocationObj.ID
 	cmd := createFileCommand(r)
-	// reqWg.Wait()
-	// if reqError != nil {
-	// 	return nil, common.NewError("req_parse_form_error", "Error in parsing form data "+reqError.Error())
-	// }
-	// err = cmd.IsValidated(ctx, r, allocationObj, clientID)
+	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
 
-	// if err != nil {
-	// 	return nil, err
-	// }
+	if err != nil {
+		return nil, err
+	}
+
+	elapsedValidate := time.Since(st)
+	st = time.Now()
 
 	publicKey := allocationObj.OwnerPublicKey
+
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
+
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
 
 	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
@@ -1226,26 +1223,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 		zap.String("connectionID", connectionID),
 	)
 	st = time.Now()
-	if r.Method != http.MethodDelete {
-		reqWg.Wait()
-		if reqError != nil {
-			return nil, common.NewError("invalid_parameters", "Error Reading multi parts for file."+reqError.Error())
-		}
-	}
-	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
-
-	if err != nil {
-		return nil, err
-	}
-	elapsedValidate := time.Since(st)
-	st = time.Now()
-
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
-
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
 	result, err := cmd.ProcessContent(ctx, r, allocationObj, connectionObj)
 
 	if err != nil {
