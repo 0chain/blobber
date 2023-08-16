@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/emirpasic/gods/maps/treemap"
 	"go.uber.org/zap"
@@ -83,9 +84,15 @@ func challengeProcessor(ctx context.Context) {
 		case it := <-toProcessChallenge:
 
 			logging.Logger.Info("processing_challenge", zap.Any("challenge_id", it.ChallengeID))
-			if ok := it.createChallenge(); !ok {
+			var result bool
+			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				result = it.createChallenge(ctx)
+				return nil
+			})
+			if !result {
 				continue
 			}
+
 			err := sem.Acquire(ctx, 1)
 			if err != nil {
 				logging.Logger.Error("failed to acquire semaphore", zap.Error(err))
@@ -175,14 +182,24 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 	return
 }
 
-func (it *ChallengeEntity) createChallenge() bool {
+func (it *ChallengeEntity) createChallenge(ctx context.Context) bool {
+	db := datastore.GetStore().GetTransaction(ctx)
+
 	challengeMapLock.Lock()
+	defer challengeMapLock.Unlock()
 	if _, ok := challengeMap.Get(it.RoundCreatedAt); ok {
-		challengeMapLock.Unlock()
+		return false
+	}
+	var Found bool
+	err := db.Raw("SELECT EXISTS(SELECT 1 FROM challenge_timing WHERE challenge_id = ?) AS found", it.ChallengeID).Scan(&Found).Error
+	if err != nil {
+		logging.Logger.Error("createChallenge", zap.Error(err))
+		return false
+	} else if Found {
+		logging.Logger.Info("createChallenge", zap.String("challenge_id", it.ChallengeID), zap.String("status", "already exists"))
 		return false
 	}
 	challengeMap.Put(it.RoundCreatedAt, it)
-	challengeMapLock.Unlock()
 	return true
 }
 

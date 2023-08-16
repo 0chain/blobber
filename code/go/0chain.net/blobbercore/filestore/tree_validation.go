@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"sync"
 
 	"github.com/0chain/gosdk/core/util"
 	"golang.org/x/crypto/sha3"
@@ -402,7 +403,6 @@ func getNewValidationTree(dataSize int64) *validationTree {
 type commitHasher struct {
 	fmt           *fixedMerkleTree
 	vt            *validationTree
-	writer        io.Writer
 	isInitialized bool
 }
 
@@ -410,22 +410,67 @@ func GetNewCommitHasher(dataSize int64) *commitHasher {
 	c := new(commitHasher)
 	c.fmt = getNewFixedMerkleTree()
 	c.vt = getNewValidationTree(dataSize)
-	c.writer = io.MultiWriter(c.fmt, c.vt)
 	c.isInitialized = true
 	return c
 }
 
 func (c *commitHasher) Write(b []byte) (int, error) {
-	return c.writer.Write(b)
+	var (
+		wg      sync.WaitGroup
+		errChan = make(chan error, 2)
+		n       int
+	)
+	wg.Add(2)
+	go func() {
+		_, err := c.fmt.Write(b)
+		if err != nil {
+			errChan <- err
+		}
+
+		wg.Done()
+	}()
+	go func() {
+		written, err := c.vt.Write(b)
+		if err != nil {
+			errChan <- err
+		}
+		n = written
+		wg.Done()
+	}()
+	wg.Wait()
+	close(errChan)
+	for err := range errChan {
+		return n, err
+	}
+	return n, nil
 }
 
 func (c *commitHasher) Finalize() error {
-	err := c.fmt.Finalize()
-	if err != nil {
+	var (
+		wg      sync.WaitGroup
+		errChan = make(chan error, 2)
+	)
+	wg.Add(2)
+	go func() {
+		err := c.fmt.Finalize()
+		if err != nil {
+			errChan <- err
+		}
+		wg.Done()
+	}()
+	go func() {
+		err := c.vt.Finalize()
+		if err != nil {
+			errChan <- err
+		}
+		wg.Done()
+	}()
+	wg.Wait()
+	close(errChan)
+	for err := range errChan {
 		return err
 	}
-
-	return c.vt.Finalize()
+	return nil
 }
 
 func (c *commitHasher) GetFixedMerkleRoot() string {

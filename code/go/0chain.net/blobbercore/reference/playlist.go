@@ -22,26 +22,30 @@ type PlaylistFile struct {
 
 // LoadPlaylist load playlist
 func LoadPlaylist(ctx context.Context, allocationID, path, since string) ([]PlaylistFile, error) {
-
-	db := datastore.GetStore().GetDB()
-
-	sinceId := 0
-
-	if len(since) > 0 {
-		db.Raw("SELECT id FROM reference_objects WHERE allocation_id = ? and lookup_hash = ? ", allocationID, since).Row().Scan(&sinceId) //nolint: errcheck
-	}
-
 	var files []PlaylistFile
 
-	db = db.Table("reference_objects").
-		Select([]string{"lookup_hash", "name", "path", "num_of_blocks", "parent_path", "size", "mimetype", "type"}).Order("id")
-	if sinceId > 0 {
-		db.Where("allocation_id = ? and parent_path = ? and type='f' and id > ? and name like '%.ts'", allocationID, path, sinceId)
-	} else {
-		db.Where("allocation_id = ? and parent_path = ? and type='f' and name like '%.ts'", allocationID, path)
-	}
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
 
-	if err := db.Find(&files).Error; err != nil {
+		sinceId := 0
+
+		if len(since) > 0 {
+			tx.Raw("SELECT id FROM reference_objects WHERE allocation_id = ? and lookup_hash = ? ", allocationID, since).Row().Scan(&sinceId) //nolint: errcheck
+		}
+
+		db := tx.Table("reference_objects").
+			Select([]string{"lookup_hash", "name", "path", "num_of_blocks", "parent_path", "size", "mimetype", "type"}).Order("id")
+		if sinceId > 0 {
+			db.Where("allocation_id = ? and parent_path = ? and type='f' and id > ? and name like '%.ts'", allocationID, path, sinceId)
+		} else {
+			db.Where("allocation_id = ? and parent_path = ? and type='f' and name like '%.ts'", allocationID, path)
+		}
+
+		return db.Find(&files).Error
+
+	})
+
+	if err != nil {
 		return nil, err
 	}
 
@@ -49,21 +53,22 @@ func LoadPlaylist(ctx context.Context, allocationID, path, since string) ([]Play
 }
 
 func LoadPlaylistFile(ctx context.Context, allocationID, lookupHash string) (*PlaylistFile, error) {
-
-	db := datastore.GetStore().GetDB()
-
 	file := &PlaylistFile{}
 
-	result := db.Table("reference_objects").
-		Select([]string{"lookup_hash", "name", "path", "num_of_blocks", "parent_path", "size", "mimetype", "type"}).
-		Where("allocation_id = ? and lookup_hash = ?", allocationID, lookupHash).
-		First(file)
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
+		result := tx.Table("reference_objects").
+			Select([]string{"lookup_hash", "name", "path", "num_of_blocks", "parent_path", "size", "mimetype", "type"}).
+			Where("allocation_id = ? and lookup_hash = ?", allocationID, lookupHash).
+			First(file)
 
-	escapedLookupHash := sanitizeString(lookupHash)
-	logging.Logger.Info("playlist", zap.String("allocation_id", allocationID), zap.String("lookup_hash", escapedLookupHash))
+		escapedLookupHash := sanitizeString(lookupHash)
+		logging.Logger.Info("playlist", zap.String("allocation_id", allocationID), zap.String("lookup_hash", escapedLookupHash))
+		return result.Error
+	})
 
-	if result.Error != nil {
-		return nil, result.Error
+	if err != nil {
+		return nil, err
 	}
 
 	return file, nil

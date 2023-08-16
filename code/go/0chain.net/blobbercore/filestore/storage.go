@@ -55,6 +55,7 @@ const (
 	PreCommitDir    = "precommit"
 	MerkleChunkSize = 64
 	ChunkSize       = 64 * KB
+	BufferSize      = 10 * MB
 )
 
 func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
@@ -243,7 +244,12 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 
 	fileSize := rStat.Size()
 	hasher := GetNewCommitHasher(fileSize)
-	_, err = io.Copy(hasher, r)
+	bufSize := BufferSize
+	if fileSize < BufferSize {
+		bufSize = int(fileSize)
+	}
+	buffer := make([]byte, bufSize)
+	_, err = io.CopyBuffer(hasher, r, buffer)
 	if err != nil {
 		return false, common.NewError("read_write_error", err.Error())
 	}
@@ -261,7 +267,6 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	if err != nil {
 		return false, common.NewError("validation_hash_calculation_error", err.Error())
 	}
-
 	fmtRoot := hex.EncodeToString(fmtRootBytes)
 	validationRoot := hex.EncodeToString(validationRootBytes)
 

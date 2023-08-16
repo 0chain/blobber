@@ -125,6 +125,7 @@ func validateOnValidators(c *ChallengeEntity) {
 			zap.Error(err))
 		deleteChallenge(c.RoundCreatedAt)
 		tx.Rollback()
+		return
 	}
 
 	createdTime := common.ToTime(c.CreatedAt)

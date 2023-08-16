@@ -15,20 +15,6 @@ read_price: 0.00     # token / GB for reading
 write_price: 0.10    # token / GB / time_unit for writing
 price_in_usd: false
 price_worker_in_hours: 12
-# the time_unit configured in Storage SC and can be given using
-#
-#     ./zbox sc-config
-#
-
-# min_lock_demand is value in [0; 1] range; it represents number of tokens the
-# blobber earned even if a user will not read or write something
-# to an allocation; the number of tokens will be calculated by the following
-# formula (regarding the time_unit and allocation duration)
-#
-#     allocation_size * write_price * min_lock_demand
-#
-min_lock_demand: 0.1
-
 
 # update_allocations_interval used to refresh known allocation objects from SC
 update_allocations_interval: 1m
@@ -38,11 +24,11 @@ max_dirs_files: 50000
 
 # delegate wallet (must be set)
 delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'
-# maximum allowed number of stake holders
+`# maximum allowed number of stake holders
 num_delegates: 50
 # service charge of the blobber
 service_charge: 0.10
-# min submit from miners
+# min submit from miners`
 min_submit: 50
 # min confirmation from sharder
 min_confirmation: 50

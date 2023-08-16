@@ -82,7 +82,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
 	if err != nil {
 		allocMu.RUnlock()
-		cr.CancelChallenge(ctx, ErrNoValidator)
+		cr.CancelChallenge(ctx, err)
 		return err
 	}
 
@@ -255,7 +255,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			resp, err := util.SendPostRequest(url, postDataBytes, nil)
 			if err != nil {
 				//network issue, don't cancel it, and try it again
-				logging.Logger.Info("[challenge]post: ", zap.Any("error", err.Error()))
+				logging.Logger.Error("[challenge]post: ", zap.Any("error", err.Error()))
 				updateMapAndSlice(validatorID, i, nil)
 				return
 			}

@@ -53,7 +53,7 @@ func TestPlaylist_LoadPlaylist(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(WithHandler(func(ctx *Context) (interface{}, error) {
+	handler := http.HandlerFunc(WithTxHandler(func(ctx *Context) (interface{}, error) {
 		ctx.AllocationId = "AllocationId"
 		ctx.ClientID = "ownerid"
 		ctx.Allocation = &allocation.Allocation{
@@ -123,7 +123,7 @@ func TestPlaylist_LoadPlaylistFile(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(WithHandler(func(ctx *Context) (interface{}, error) {
+	handler := http.HandlerFunc(WithTxHandler(func(ctx *Context) (interface{}, error) {
 		ctx.AllocationId = "AllocationId"
 		ctx.ClientID = "ownerid"
 		ctx.Allocation = &allocation.Allocation{
