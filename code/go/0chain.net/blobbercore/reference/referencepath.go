@@ -9,7 +9,8 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"gorm.io/gorm"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
 type ReferencePath struct {
@@ -25,8 +26,8 @@ func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, err
 // GetReferenceForHashCalculationFromPaths validate and build full dir tree from db, and CalculateHash and return root Ref without saving in DB
 func GetReferenceForHashCalculationFromPaths(ctx context.Context, allocationID string, paths []string) (*Ref, error) {
 	var refs []Ref
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Model(&Ref{}).Select("id", "allocation_id", "type", "name", "path", "parent_path", "size", "hash", "file_meta_hash",
+	t := datastore.GetStore().GetTransaction(ctx)
+	db := t.Model(&Ref{}).Select("id", "allocation_id", "type", "name", "path", "parent_path", "size", "hash", "file_meta_hash",
 		"path_hash", "validation_root", "fixed_merkle_root", "actual_file_size", "actual_file_hash", "chunk_size",
 		"lookup_hash", "thumbnail_hash", "allocation_root", "level", "created_at", "updated_at", "file_id")
 
@@ -122,7 +123,9 @@ func (rootRef *Ref) GetSrcPath(path string) (*Ref, error) {
 // GetReferencePathFromPaths validate and build full dir tree from db, and CalculateHash and return root Ref
 func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths, objTreePath []string) (*Ref, error) {
 	var refs []Ref
-	db := datastore.GetStore().GetTransaction(ctx)
+	t := datastore.GetStore().GetTransaction(ctx)
+	db := t.DB
+
 	pathsAdded := make(map[string]bool)
 	var shouldOr bool
 	for _, path := range paths {
@@ -199,8 +202,8 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths, 
 func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error) {
 	path = filepath.Clean(path)
 	var refs []Ref
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Where(Ref{Path: path, AllocationID: allocationID})
+	t := datastore.GetStore().GetTransaction(ctx)
+	db := t.Where(Ref{Path: path, AllocationID: allocationID})
 	if path != "/" {
 		db = db.Or("path LIKE ? AND allocation_id = ?", path+"/%", allocationID)
 	} else {
@@ -239,44 +242,59 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 	var pRefs []PaginatedRef
 	path = filepath.Clean(path)
 
-	db := datastore.GetStore().GetDB()
-	db1 := db.Session(&gorm.Session{})
-	db2 := db.Session(&gorm.Session{})
-
 	wg := sync.WaitGroup{}
 	wg.Add(2)
+	errChan := make(chan error, 2)
 	go func() {
-		db1 = db1.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-			Where(db1.Where("path = ?", path).Or("path LIKE ?", path+"%"))
-		if _type != "" {
-			db1 = db1.Where("type = ?", _type)
-		}
-		if level != 0 {
-			db1 = db1.Where("level = ?", level)
+		err1 := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			tx := datastore.GetStore().GetTransaction(ctx)
+			db1 := tx.Model(&Ref{}).Where("allocation_id = ? AND (path=? OR path LIKE ?)", allocationID, path, path+"%")
+			if _type != "" {
+				db1 = db1.Where("type = ?", _type)
+			}
+			if level != 0 {
+				db1 = db1.Where("level = ?", level)
+			}
+
+			db1 = db1.Where("path > ?", offsetPath)
+
+			db1 = db1.Order("path")
+			err1 := db1.Limit(pageLimit).Find(&pRefs).Error
+			wg.Done()
+
+			return err1
+		})
+		if err1 != nil {
+			errChan <- err1
 		}
 
-		db1 = db1.Where("path > ?", offsetPath)
-
-		db1 = db1.Order("path")
-		err = db1.Limit(pageLimit).Find(&pRefs).Error
-		wg.Done()
 	}()
 
 	go func() {
-		db2 = db2.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-			Where(db2.Where("path = ?", path).Or("path LIKE ?", path+"%"))
-		if _type != "" {
-			db2 = db2.Where("type = ?", _type)
+		err2 := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			tx := datastore.GetStore().GetTransaction(ctx)
+			db2 := tx.Model(&Ref{}).Where("allocation_id = ? AND (path=? OR path LIKE ?)", allocationID, path, path+"%")
+			if _type != "" {
+				db2 = db2.Where("type = ?", _type)
+			}
+			if level != 0 {
+				db2 = db2.Where("level = ?", level)
+			}
+			err2 := db2.Count(&totalRows).Error
+			wg.Done()
+
+			return err2
+		})
+		if err2 != nil {
+			errChan <- err2
 		}
-		if level != 0 {
-			db2 = db2.Where("level = ?", level)
-		}
-		db2.Count(&totalRows)
-		wg.Done()
 	}()
 	wg.Wait()
-	if err != nil {
-		return
+	close(errChan)
+	for err := range errChan {
+		if err != nil {
+			return nil, 0, "", err
+		}
 	}
 
 	refs = &pRefs
@@ -296,49 +314,60 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type,
 
 	var totalRows int64
 	var pRefs []PaginatedRef
-	db := datastore.GetStore().GetDB()
-	db1 := db.Session(&gorm.Session{})
-	db2 := db.Session(&gorm.Session{})
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
 	go func() {
-		db1 = db1.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-			Where(db1.Where("path = ?", path).Or("path LIKE ?", path+"%"))
-		if _type != "" {
-			db1 = db1.Where("type = ?", _type)
-		}
-		if level != 0 {
-			db1 = db1.Where("level = ?", level)
-		}
-		if updatedDate != "" {
-			db1 = db1.Where("updated_at > ?", updatedDate)
-		}
+		err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			tx := datastore.GetStore().GetTransaction(ctx)
+			db1 := tx.Model(&Ref{}).Where("allocation_id = ? AND (path=? OR path LIKE ?)", allocationID, path, path+"%")
+			if _type != "" {
+				db1 = db1.Where("type = ?", _type)
+			}
+			if level != 0 {
+				db1 = db1.Where("level = ?", level)
+			}
+			if updatedDate != "" {
+				db1 = db1.Where("updated_at > ?", updatedDate)
+			}
 
-		if offsetDate != "" {
-			db1 = db1.Where("(updated_at, path) > (?, ?)", offsetDate, offsetPath)
+			if offsetDate != "" {
+				db1 = db1.Where("(updated_at, path) > (?, ?)", offsetDate, offsetPath)
+			}
+			db1 = db1.Order("updated_at, path")
+			db1 = db1.Limit(pageLimit)
+			err = db1.Find(&pRefs).Error
+			wg.Done()
+
+			return err
+		})
+		if err != nil {
+			logging.Logger.Error("error", zap.Error(err))
 		}
-		db1 = db1.Order("updated_at, path")
-		db1 = db1.Limit(pageLimit)
-		err = db1.Find(&pRefs).Error
-		wg.Done()
 	}()
 
 	go func() {
-		db2 = db2.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-			Where(db2.Where("path = ?", path).Or("path LIKE ?", path+"%"))
-		if _type != "" {
-			db2 = db2.Where("type > ?", level)
+		err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			tx := datastore.GetStore().GetTransaction(ctx)
+			db2 := tx.Model(&Ref{}).Where("allocation_id = ? AND (path=? OR path LIKE ?)", allocationID, path, path+"%")
+			if _type != "" {
+				db2 = db2.Where("type > ?", level)
+			}
+			if level != 0 {
+				db2 = db2.Where("level = ?", level)
+			}
+			if updatedDate != "" {
+				db2 = db2.Where("updated_at > ?", updatedDate)
+			}
+			err = db2.Count(&totalRows).Error
+			wg.Done()
+
+			return err
+		})
+		if err != nil {
+			logging.Logger.Error("error", zap.Error(err))
 		}
-		if level != 0 {
-			db2 = db2.Where("level = ?", level)
-		}
-		if updatedDate != "" {
-			db2 = db2.Where("updated_at > ?", updatedDate)
-		}
-		db2 = db2.Count(&totalRows)
-		wg.Done()
 	}()
 	wg.Wait()
 	if err != nil {
@@ -384,12 +413,11 @@ func GetRecentlyCreatedRefs(
 	return
 }
 
-func CountRefs(allocationID string) (int64, error) {
+func CountRefs(ctx context.Context, allocationID string) (int64, error) {
 	var totalRows int64
+	tx := datastore.GetStore().GetTransaction(ctx)
 
-	db := datastore.GetStore().GetDB()
-
-	err := db.Model(&Ref{}).
+	err := tx.Model(&Ref{}).
 		Where("allocation_id = ?", allocationID).
 		Count(&totalRows).Error
 

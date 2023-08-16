@@ -71,12 +71,42 @@ func (store *Sqlmock) CreateTransaction(ctx context.Context) context.Context {
 	return context.WithValue(ctx, ContextKeyTransaction, db)
 }
 
-func (store *Sqlmock) GetTransaction(ctx context.Context) *gorm.DB {
+func (store *Sqlmock) GetTransaction(ctx context.Context) *EnhancedDB {
 	conn := ctx.Value(ContextKeyTransaction)
 	if conn != nil {
-		return conn.(*gorm.DB)
+		return conn.(*EnhancedDB)
 	}
 	Logger.Error("No connection in the context.")
+	return nil
+}
+
+func (store *Sqlmock) WithNewTransaction(f func(ctx context.Context) error) error {
+	ctx := store.CreateTransaction(context.TODO())
+	defer ctx.Done()
+
+	tx := store.GetTransaction(ctx)
+	err := f(ctx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
+}
+
+func (store *Sqlmock) WithTransaction(ctx context.Context, f func(ctx context.Context) error) error {
+	tx := store.GetTransaction(ctx)
+	if tx == nil {
+		ctx = store.CreateTransaction(ctx)
+		tx = store.GetTransaction(ctx)
+	}
+
+	err := f(ctx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
 	return nil
 }
 

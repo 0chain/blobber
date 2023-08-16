@@ -336,9 +336,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 		datastore.MocketTheStore(t, true)
 		tc.setupDbMock()
 
-		ctx := context.TODO()
-		db := datastore.GetStore().GetDB().Begin()
-		ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
+		ctx := datastore.GetStore().CreateTransaction(context.TODO())
 
 		change := &UpdateFileChanger{
 			BaseFileChanger: BaseFileChanger{
