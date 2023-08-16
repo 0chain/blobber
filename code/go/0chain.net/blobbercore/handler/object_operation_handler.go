@@ -427,10 +427,6 @@ func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	if !allocationObj.CanRename() {
-		return nil, common.NewError("prohibited_allocation_file_options", "Cannot rename data in this allocation.")
-	}
-
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	_ = ctx.Value(constants.ContextKeyClientKey).(string)
 
