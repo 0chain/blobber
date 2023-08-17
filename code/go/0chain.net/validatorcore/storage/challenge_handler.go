@@ -53,7 +53,7 @@ func challengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 		return InvalidValidationTicket(challengeObj, err)
 	}
 
-	updateStats(false)
+	updateStats(true)
 
 	return ValidValidationTicket(challengeObj, challengeRequest.ChallengeID, challengeHash)
 }

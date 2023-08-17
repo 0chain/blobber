@@ -244,11 +244,11 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
+	errChan := make(chan error, 2)
 	go func() {
-		_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		err1 := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 			tx := datastore.GetStore().GetTransaction(ctx)
-			db1 := tx.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-				Where("path = ?", path).Or("path LIKE ?", path+"%")
+			db1 := tx.Model(&Ref{}).Where("allocation_id = ? AND (path=? OR path LIKE ?)", allocationID, path, path+"%")
 			if _type != "" {
 				db1 = db1.Where("type = ?", _type)
 			}
@@ -259,34 +259,42 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 			db1 = db1.Where("path > ?", offsetPath)
 
 			db1 = db1.Order("path")
-			err = db1.Limit(pageLimit).Find(&pRefs).Error
+			err1 := db1.Limit(pageLimit).Find(&pRefs).Error
 			wg.Done()
 
-			return nil
+			return err1
 		})
+		if err1 != nil {
+			errChan <- err1
+		}
 
 	}()
 
 	go func() {
-		_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		err2 := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 			tx := datastore.GetStore().GetTransaction(ctx)
-			db2 := tx.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-				Where("path = ?", path).Or("path LIKE ?", path+"%")
+			db2 := tx.Model(&Ref{}).Where("allocation_id = ? AND (path=? OR path LIKE ?)", allocationID, path, path+"%")
 			if _type != "" {
 				db2 = db2.Where("type = ?", _type)
 			}
 			if level != 0 {
 				db2 = db2.Where("level = ?", level)
 			}
-			db2.Count(&totalRows)
+			err2 := db2.Count(&totalRows).Error
 			wg.Done()
 
-			return nil
+			return err2
 		})
+		if err2 != nil {
+			errChan <- err2
+		}
 	}()
 	wg.Wait()
-	if err != nil {
-		return
+	close(errChan)
+	for err := range errChan {
+		if err != nil {
+			return nil, 0, "", err
+		}
 	}
 
 	refs = &pRefs
@@ -313,8 +321,7 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type,
 	go func() {
 		err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 			tx := datastore.GetStore().GetTransaction(ctx)
-			db1 := tx.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-				Where("path = ?", path).Or("path LIKE ?", path+"%")
+			db1 := tx.Model(&Ref{}).Where("allocation_id = ? AND (path=? OR path LIKE ?)", allocationID, path, path+"%")
 			if _type != "" {
 				db1 = db1.Where("type = ?", _type)
 			}
@@ -343,8 +350,7 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type,
 	go func() {
 		err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 			tx := datastore.GetStore().GetTransaction(ctx)
-			db2 := tx.Model(&Ref{}).Where("allocation_id = ?", allocationID).
-				Where("path = ?", path).Or("path LIKE ?", path+"%")
+			db2 := tx.Model(&Ref{}).Where("allocation_id = ? AND (path=? OR path LIKE ?)", allocationID, path, path+"%")
 			if _type != "" {
 				db2 = db2.Where("type > ?", level)
 			}
