@@ -13,6 +13,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
@@ -110,6 +111,21 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	cmd.reloadChange(connectionObj)
 
+	var hasher *filestore.CommitHasher
+	filePathHash := encryption.Hash(cmd.fileChanger.Path)
+	if cmd.fileChanger.Size == 0 {
+		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
+	}
+	if cmd.fileChanger.UploadOffset == 0 {
+		hasher = filestore.GetNewCommitHasher(cmd.fileChanger.Size)
+		allocation.UpdateConnectionObjWithHasher(connectionObj.ID, filePathHash, hasher)
+	} else {
+		hasher = allocation.GetHasher(connectionObj.ID, filePathHash)
+		if hasher == nil {
+			return result, common.NewError("invalid_parameters", "Error getting hasher for upload.")
+		}
+	}
+
 	fileInputData := &filestore.FileInputData{
 		Name: cmd.fileChanger.Filename,
 		Path: cmd.fileChanger.Path,
@@ -117,10 +133,19 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		ChunkSize:    cmd.fileChanger.ChunkSize,
 		UploadOffset: cmd.fileChanger.UploadOffset,
 		IsFinal:      cmd.fileChanger.IsFinal,
+		FilePathHash: filePathHash,
+		Hasher:       hasher,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionObj.ID, fileInputData, origfile)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
+	}
+
+	if cmd.fileChanger.IsFinal {
+		err = hasher.Finalize()
+		if err != nil {
+			return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
+		}
 	}
 
 	result.Filename = cmd.fileChanger.Filename

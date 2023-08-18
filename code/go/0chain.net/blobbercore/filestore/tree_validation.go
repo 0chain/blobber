@@ -400,21 +400,21 @@ func getNewValidationTree(dataSize int64) *validationTree {
 
 // commitHasher is used to calculate and store tree nodes for fixed merkle tree and
 // validation tree when client commits file with the writemarker.
-type commitHasher struct {
+type CommitHasher struct {
 	fmt           *fixedMerkleTree
 	vt            *validationTree
 	isInitialized bool
 }
 
-func GetNewCommitHasher(dataSize int64) *commitHasher {
-	c := new(commitHasher)
+func GetNewCommitHasher(dataSize int64) *CommitHasher {
+	c := new(CommitHasher)
 	c.fmt = getNewFixedMerkleTree()
 	c.vt = getNewValidationTree(dataSize)
 	c.isInitialized = true
 	return c
 }
 
-func (c *commitHasher) Write(b []byte) (int, error) {
+func (c *CommitHasher) Write(b []byte) (int, error) {
 	var (
 		wg      sync.WaitGroup
 		errChan = make(chan error, 2)
@@ -445,7 +445,7 @@ func (c *commitHasher) Write(b []byte) (int, error) {
 	return n, nil
 }
 
-func (c *commitHasher) Finalize() error {
+func (c *CommitHasher) Finalize() error {
 	var (
 		wg      sync.WaitGroup
 		errChan = make(chan error, 2)
@@ -473,10 +473,10 @@ func (c *commitHasher) Finalize() error {
 	return nil
 }
 
-func (c *commitHasher) GetFixedMerkleRoot() string {
+func (c *CommitHasher) GetFixedMerkleRoot() string {
 	return c.fmt.GetMerkleRoot()
 }
 
-func (c *commitHasher) GetValidationMerkleRoot() string {
+func (c *CommitHasher) GetValidationMerkleRoot() string {
 	return hex.EncodeToString(c.vt.GetValidationRoot())
 }
