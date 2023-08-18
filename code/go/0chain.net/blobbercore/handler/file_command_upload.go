@@ -165,7 +165,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 
 	cmd.fileChanger.AllocationID = allocationObj.ID
-	cmd.fileChanger.Size += fileOutputData.Size
+	// cmd.fileChanger.Size += fileOutputData.Size
 
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionObj.ID
