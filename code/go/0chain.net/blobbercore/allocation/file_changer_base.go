@@ -94,6 +94,9 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 	fileInputData.FixedMerkleRoot = fc.FixedMerkleRoot
 	fileInputData.ChunkSize = fc.ChunkSize
 	fileInputData.Hasher = GetHasher(fc.ConnectionID, encryption.Hash(fc.Path))
+	if fileInputData.Hasher == nil {
+		return common.NewError("invalid_parameters", "Invalid parameters. Error getting hasher for commit.")
+	}
 	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
 	if err != nil {
 		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
