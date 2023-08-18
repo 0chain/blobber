@@ -83,8 +83,8 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	if err != nil {
 		return nil, common.NewError("file_seek_error", err.Error())
 	}
-
-	writtenSize, err := io.Copy(f, infile)
+	buf := make([]byte, BufferSize)
+	writtenSize, err := io.CopyBuffer(f, infile, buf)
 	if err != nil {
 		return nil, common.NewError("file_write_error", err.Error())
 	}

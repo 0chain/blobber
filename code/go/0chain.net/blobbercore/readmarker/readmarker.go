@@ -103,8 +103,11 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 		return common.NewError("read_marker_validation_failed", "Read Marker clientID does not match request clientID")
 	}
 
+	if rm.LatestRM.Timestamp < sa.StartTime {
+		return common.NewError("read_marker_validation_failed", "Readmarker timestamp is before the allocation start time")
+	}
+
 	if rm.LatestRM.Timestamp > sa.Expiration {
-		zLogger.Logger.Error("Readmarker is for an expired allocation", zap.Any("rm", rm))
 		return common.NewError("read_marker_validation_failed", "Readmarker is for an expired allocation")
 	}
 
