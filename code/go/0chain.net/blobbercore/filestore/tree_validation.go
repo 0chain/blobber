@@ -415,6 +415,10 @@ func GetNewCommitHasher(dataSize int64) *CommitHasher {
 }
 
 func (c *CommitHasher) Write(b []byte) (int, error) {
+	if !c.isInitialized || c.fmt == nil || c.vt == nil {
+		return 0, errors.New("commit hasher is not initialized")
+	}
+
 	var (
 		wg      sync.WaitGroup
 		errChan = make(chan error, 2)

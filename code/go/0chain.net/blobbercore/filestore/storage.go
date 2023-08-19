@@ -84,18 +84,19 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 		return nil, common.NewError("file_seek_error", err.Error())
 	}
 	buf := make([]byte, BufferSize)
-	_, err = io.CopyBuffer(fileData.Hasher, infile, buf)
+	writtenSize, err := io.CopyBuffer(f, infile, buf)
 	if err != nil {
-		return nil, common.NewError("file_read_error", err.Error())
+		return nil, common.NewError("file_write_error", err.Error())
 	}
-	_, err = infile.Seek(0, io.SeekStart)
+
+	_, err = f.Seek(fileData.UploadOffset, io.SeekStart)
 	if err != nil {
 		return nil, common.NewError("file_seek_error", err.Error())
 	}
 
-	writtenSize, err := io.CopyBuffer(f, infile, buf)
+	_, err = io.CopyBuffer(fileData.Hasher, f, buf)
 	if err != nil {
-		return nil, common.NewError("file_write_error", err.Error())
+		return nil, common.NewError("file_read_error", err.Error())
 	}
 
 	finfo, err = f.Stat()
