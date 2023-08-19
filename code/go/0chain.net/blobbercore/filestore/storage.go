@@ -73,7 +73,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 		return nil, common.NewError("dir_creation_error", err.Error())
 	}
 
-	f, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return nil, common.NewError("file_open_error", err.Error())
 	}
