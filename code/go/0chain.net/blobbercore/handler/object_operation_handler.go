@@ -490,18 +490,18 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	err = checkPendingMarkers(ctx, allocationObj.ID)
-	if err != nil {
-		Logger.Error("Error checking pending markers", zap.Error(err))
-		return nil, common.NewError("pending_markers", "previous marker is still pending to be redeemed")
-	}
-
 	// Lock will compete with other CommitWrites and Challenge validation
 	mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
 	mutex.Lock()
 	defer mutex.Unlock()
 
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
+
+	err = checkPendingMarkers(ctx, allocationObj.ID)
+	if err != nil {
+		Logger.Error("Error checking pending markers", zap.Error(err))
+		return nil, common.NewError("pending_markers", "previous marker is still pending to be redeemed")
+	}
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 

@@ -21,6 +21,7 @@ env:
 
 jobs:
   blobber:
+    timeout-minutes: 25
     runs-on: [self-hosted, arc-runner]
     steps:
       - name: Set docker image tag
@@ -95,6 +96,7 @@ jobs:
           ./docker.local/bin/build.blobber.sh
 
   validator:
+    timeout-minutes: 20
     runs-on: [self-hosted, arc-runner]
     steps:
       - name: Set docker image tag 
