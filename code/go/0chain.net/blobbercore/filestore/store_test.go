@@ -374,6 +374,8 @@ func TestDeletePreCommitDir(t *testing.T) {
 
 	fid.ValidationRoot = validationRoot
 	fid.FixedMerkleRoot = fixedMerkleRoot
+	hasher = GetNewCommitHasher(int64(size))
+	fid.Hasher = hasher
 
 	// Write file to temp location
 	f, err = os.Open(fPath)
@@ -384,6 +386,8 @@ func TestDeletePreCommitDir(t *testing.T) {
 	f.Close()
 	tempFilePath = fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	_, err = os.Stat(tempFilePath)
+	require.Nil(t, err)
+	err = hasher.Finalize()
 	require.Nil(t, err)
 
 	success, err = fs.CommitWrite(allocID, connID, fid)
