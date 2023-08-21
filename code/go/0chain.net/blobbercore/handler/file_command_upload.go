@@ -116,6 +116,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	if cmd.fileChanger.Size == 0 {
 		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
 	}
+	fmt.Println("cmd.fileChanger.Size", cmd.fileChanger.Size)
 	if cmd.fileChanger.UploadOffset == 0 {
 		hasher = filestore.GetNewCommitHasher(cmd.fileChanger.Size)
 		allocation.UpdateConnectionObjWithHasher(connectionObj.ID, filePathHash, hasher)
@@ -138,13 +139,13 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionObj.ID, fileInputData, origfile)
 	if err != nil {
-		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
+		return result, common.NewError("upload_error", "Failed to write file. "+err.Error())
 	}
 
 	if cmd.fileChanger.IsFinal {
 		err = hasher.Finalize()
 		if err != nil {
-			return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
+			return result, common.NewError("upload_error", "Failed to finalize the hasher. "+err.Error())
 		}
 	}
 
