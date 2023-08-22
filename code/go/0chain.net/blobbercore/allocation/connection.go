@@ -66,6 +66,9 @@ func GetHasher(connectionID, pathHash string) *filestore.CommitHasher {
 	if connectionObj == nil {
 		return nil
 	}
+	if connectionObj.Changes[pathHash] == nil {
+		return nil
+	}
 	return connectionObj.Changes[pathHash].Hasher
 }
 

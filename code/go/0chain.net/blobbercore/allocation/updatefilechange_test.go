@@ -9,6 +9,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/zboxcore/client"
@@ -337,6 +338,9 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 		tc.setupDbMock()
 
 		ctx := datastore.GetStore().CreateTransaction(context.TODO())
+		hasher := filestore.GetNewCommitHasher(2310)
+		pathHash := encryption.Hash(tc.path)
+		UpdateConnectionObjWithHasher("connection_id", pathHash, hasher)
 
 		change := &UpdateFileChanger{
 			BaseFileChanger: BaseFileChanger{
@@ -352,6 +356,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 				ThumbnailSize:       92,
 				ChunkSize:           65536,
 				IsFinal:             true,
+				ConnectionID:        "connection_id",
 			},
 		}
 
