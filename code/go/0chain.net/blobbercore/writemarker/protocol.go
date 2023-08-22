@@ -57,6 +57,10 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 		return common.NewError("write_marker_validation_failed", "Signature exceeds maximum length")
 	}
 
+	if wme.WM.AllocationRoot == dbAllocation.AllocationRoot {
+		return common.NewError("write_marker_validation_failed", "Write Marker allocation root is the same as the allocation root on record")
+	}
+
 	if wme.WM.PreviousAllocationRoot != dbAllocation.AllocationRoot {
 		return common.NewError("invalid_write_marker", "Invalid write marker. Prev Allocation root does not match the allocation root on record")
 	}
@@ -183,6 +187,10 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 
 	if wme.WM.Size != 0 {
 		return common.NewError("empty write_marker_validation_failed", fmt.Sprintf("Write Marker size is %v but should be 0", wme.WM.Size))
+	}
+
+	if wme.WM.AllocationRoot == dbAllocation.AllocationRoot {
+		return common.NewError("write_marker_validation_failed", "Write Marker allocation root is the same as the allocation root on record")
 	}
 
 	if wme.WM.AllocationRoot != latestWM.WM.PreviousAllocationRoot {
