@@ -57,6 +57,10 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 		return common.NewError("write_marker_validation_failed", "Signature exceeds maximum length")
 	}
 
+	if wme.WM.AllocationRoot == dbAllocation.AllocationRoot {
+		return common.NewError("write_marker_validation_failed", "Write Marker allocation root is the same as the allocation root on record")
+	}
+
 	if wme.WM.PreviousAllocationRoot != dbAllocation.AllocationRoot {
 		return common.NewError("invalid_write_marker", "Invalid write marker. Prev Allocation root does not match the allocation root on record")
 	}
@@ -86,7 +90,7 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 	}
 
 	currTime := common.Now()
-	// blobber clock is allowed to be 10 seconds behind the current time
+	// blobber clock is allowed to be 60 seconds behind the current time
 	if wme.WM.Timestamp > currTime+60 {
 		return common.NewError("write_marker_validation_failed", "Write Marker timestamp is in the future")
 	}
@@ -183,6 +187,10 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 
 	if wme.WM.Size != 0 {
 		return common.NewError("empty write_marker_validation_failed", fmt.Sprintf("Write Marker size is %v but should be 0", wme.WM.Size))
+	}
+
+	if wme.WM.AllocationRoot == dbAllocation.AllocationRoot {
+		return common.NewError("write_marker_validation_failed", "Write Marker allocation root is the same as the allocation root on record")
 	}
 
 	if wme.WM.AllocationRoot != latestWM.WM.PreviousAllocationRoot {
