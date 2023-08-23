@@ -385,7 +385,7 @@ func (r *Ref) GetFileMetaHashData() string {
 
 func (fr *Ref) GetFileHashData() string {
 	return fmt.Sprintf(
-		"%s:%s:%s:%s:%d:%s:%s:%d:%s:%d:%s:%s",
+		"%s:%s:%s:%s:%d:%s:%s:%d:%s:%d:%s",
 		fr.AllocationID,
 		fr.Type, // don't need to add it as well
 		fr.Name, // don't see any utility as fr.Path below has name in it
@@ -397,7 +397,6 @@ func (fr *Ref) GetFileHashData() string {
 		fr.ActualFileHash,
 		fr.ChunkSize,
 		fr.FileID,
-		fr.EncryptedKey,
 	)
 }
 
