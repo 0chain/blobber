@@ -45,8 +45,9 @@ type BaseFileChanger struct {
 	ThumbnailSize     int64  `json:"thumbnail_size"`
 	ThumbnailFilename string `json:"thumbnail_filename"`
 
-	EncryptedKey string `json:"encrypted_key,omitempty"`
-	CustomMeta   string `json:"custom_meta,omitempty"`
+	EncryptedKey      string `json:"encrypted_key,omitempty"`
+	EncryptedKeyPoint string `json:"encrypted_key_point,omitempty"`
+	CustomMeta        string `json:"custom_meta,omitempty"`
 
 	ChunkSize int64 `json:"chunk_size,omitempty"` // the size of achunk. 64*1024 is default
 	IsFinal   bool  `json:"is_final,omitempty"`   // current chunk is last or not
