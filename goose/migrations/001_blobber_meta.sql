@@ -332,6 +332,7 @@ CREATE TABLE public.reference_objects (
     actual_thumbnail_size bigint DEFAULT 0 NOT NULL,
     actual_thumbnail_hash character varying(64) NOT NULL,
     encrypted_key character varying(64),
+    encrypted_key_point character varying(64),
     created_at bigint,
     updated_at bigint,
     deleted_at timestamp with time zone,
