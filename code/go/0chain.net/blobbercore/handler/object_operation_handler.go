@@ -675,8 +675,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
 	}
 
-	result.Changes = connectionObj.Changes
-
 	connectionObj.DeleteChanges(ctx)
 
 	db.Model(connectionObj).Updates(allocation.AllocationChangeCollector{Status: allocation.CommittedConnection})
@@ -785,7 +783,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
 	}
 
-	result := &blobberhttp.UploadResult{}
+	result := &allocation.UploadResult{}
 	result.Filename = new_name
 	result.Hash = objectRef.Hash
 	result.ValidationRoot = objectRef.ValidationRoot
@@ -895,7 +893,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
 	}
 
-	result := &blobberhttp.UploadResult{}
+	result := &allocation.UploadResult{}
 	result.Filename = objectRef.Name
 	result.Hash = objectRef.Hash
 	result.ValidationRoot = objectRef.ValidationRoot
@@ -1010,7 +1008,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
 	}
 
-	result := &blobberhttp.UploadResult{}
+	result := &allocation.UploadResult{}
 	result.Filename = objectRef.Name
 	result.Hash = objectRef.Hash
 	result.ValidationRoot = objectRef.ValidationRoot
@@ -1019,7 +1017,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	return result, nil
 }
 
-func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*blobberhttp.UploadResult, error) {
+func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*allocation.UploadResult, error) {
 
 	path := r.FormValue("path")
 	if path == "" {
@@ -1047,7 +1045,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 
 		connectionObj.AddChange(allocationChange, dfc)
 
-		result := &blobberhttp.UploadResult{}
+		result := &allocation.UploadResult{}
 		result.Filename = fileRef.Name
 		result.Hash = fileRef.Hash
 		result.ValidationRoot = fileRef.ValidationRoot
@@ -1060,7 +1058,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 	return nil, common.NewError("invalid_file", "File does not exist at path")
 }
 
-func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
+func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*allocation.UploadResult, error) {
 	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
@@ -1090,7 +1088,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 		Logger.Error("Error file reference", zap.Error(err))
 	}
 
-	result := &blobberhttp.UploadResult{
+	result := &allocation.UploadResult{
 		Filename: dirPath,
 	}
 
@@ -1148,7 +1146,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*blo
 }
 
 // WriteFile stores the file into the blobber files system from the HTTP request
-func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blobberhttp.UploadResult, error) {
+func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*allocation.UploadResult, error) {
 
 	startTime := time.Now()
 
@@ -1159,11 +1157,26 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
-
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	connectionID, ok := common.GetField(r, "connection_id")
+	if !ok {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
+
+	connectionProcessor := allocation.GetConnectionProcessor(connectionID)
+	if connectionProcessor == nil {
+		connectionProcessor = allocation.CreateConnectionProcessor(connectionID)
+	}
+
+	if connectionProcessor.AllocationObj == nil {
+		allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		}
+		connectionProcessor.AllocationObj = allocationObj
+		connectionProcessor.ClientID = clientID
+	}
+
+	allocationObj := connectionProcessor.AllocationObj
 
 	elapsedAllocation := time.Since(startTime)
 
@@ -1180,17 +1193,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	}
 
 	st := time.Now()
-	allocationID := allocationObj.ID
-	cmd := createFileCommand(r)
-	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
-
-	if err != nil {
-		return nil, err
-	}
-
-	elapsedValidate := time.Since(st)
-	st = time.Now()
-
 	publicKey := allocationObj.OwnerPublicKey
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
@@ -1202,67 +1204,23 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
+	elapsedVerifySig := time.Since(st)
 
-	connectionID, ok := common.GetField(r, "connection_id")
-	if !ok {
-		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
-	}
-
-	elapsedRef := time.Since(st)
-	st = time.Now()
-
-	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
-	if err != nil {
-		return nil, common.NewError("meta_error", "Error reading metadata for connection")
-	}
-
-	elapsedAllocationChanges := time.Since(st)
-
-	Logger.Info("[upload] Processing content for allocation and connection",
-		zap.String("allocationID", allocationID),
-		zap.String("connectionID", connectionID),
-	)
-	st = time.Now()
-	result, err := cmd.ProcessContent(ctx, r, allocationObj, connectionObj)
-
+	allocationID := allocationObj.ID
+	cmd := createFileCommand(r)
+	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
 	if err != nil {
 		return nil, err
 	}
-	Logger.Info("[upload] Content processed for allocation and connection",
-		zap.String("allocationID", allocationID),
-		zap.String("connectionID", connectionID),
-	)
-
-	err = cmd.ProcessThumbnail(ctx, r, allocationObj, connectionObj)
-
-	if err != nil {
-		return nil, err
-	}
-
-	elapsedProcess := time.Since(st)
-	st = time.Now()
-	err = cmd.UpdateChange(ctx, connectionObj)
-
-	if err != nil {
-		Logger.Error("Error in writing the connection meta data", zap.Error(err))
-		return nil, common.NewError("connection_write_error", err.Error()) //"Error writing the connection meta data")
-	}
-
-	elapsedUpdateChange := time.Since(st)
-
+	result := allocation.UploadResult{}
 	Logger.Info("[upload]elapsed",
 		zap.String("alloc_id", allocationID),
 		zap.String("file", cmd.GetPath()),
 		zap.Duration("get_alloc", elapsedAllocation),
-		zap.Duration("validate", elapsedValidate),
-		zap.Duration("ref", elapsedRef),
-		zap.Duration("load_changes", elapsedAllocationChanges),
-		zap.Duration("process", elapsedProcess),
-		zap.Duration("update_changes", elapsedUpdateChange),
-		zap.Duration("total", time.Since(startTime)),
-	)
-
+		zap.Duration("sig", elapsedVerifySig),
+		zap.Duration("total", time.Since(startTime)))
 	return &result, nil
+
 }
 
 func sanitizeString(input string) string {
