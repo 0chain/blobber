@@ -340,6 +340,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 		ctx := datastore.GetStore().CreateTransaction(context.TODO())
 		hasher := filestore.GetNewCommitHasher(2310)
 		pathHash := encryption.Hash(tc.path)
+		CreateConnectionChange("connection_id", pathHash)
 		UpdateConnectionObjWithHasher("connection_id", pathHash, hasher)
 
 		change := &UpdateFileChanger{
