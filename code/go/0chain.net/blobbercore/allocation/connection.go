@@ -8,6 +8,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
 var (
@@ -52,6 +54,7 @@ func CreateConnectionChange(connectionID, pathHash string) *ConnectionChange {
 	}
 	connChange := &ConnectionChange{
 		ProcessChan: make(chan FileCommand, 2),
+		wg:          sync.WaitGroup{},
 	}
 	connectionProcessor[connectionID].changes[pathHash] = connChange
 	connChange.wg.Add(1)
@@ -112,6 +115,7 @@ func SetFinalized(connectionID, pathHash string, cmd FileCommand) error {
 	}
 	connChange.isFinalized = true
 	connectionObjMutex.Unlock()
+	logging.Logger.Info("Sending final command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()))
 	connChange.ProcessChan <- cmd
 	close(connChange.ProcessChan)
 	connChange.wg.Wait()
@@ -130,11 +134,16 @@ func SendCommand(connectionID, pathHash string, cmd FileCommand) error {
 		connectionObjMutex.RUnlock()
 		return common.NewError("connection_change_not_found", "connection change not found")
 	}
+	if connChange.processError != nil {
+		connectionObjMutex.RUnlock()
+		return connChange.processError
+	}
 	if connChange.isFinalized {
 		connectionObjMutex.RUnlock()
 		return common.NewError("connection_change_finalized", "connection change finalized")
 	}
 	connectionObjMutex.RUnlock()
+	logging.Logger.Info("Sending command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()))
 	connChange.ProcessChan <- cmd
 	return nil
 }
@@ -142,10 +151,6 @@ func SendCommand(connectionID, pathHash string, cmd FileCommand) error {
 func GetConnectionProcessor(connectionID string) *ConnectionProcessor {
 	connectionObjMutex.RLock()
 	defer connectionObjMutex.RUnlock()
-	connectionObj := connectionProcessor[connectionID]
-	if connectionObj == nil {
-		return nil
-	}
 	return connectionProcessor[connectionID]
 }
 
@@ -154,12 +159,13 @@ func CreateConnectionProcessor(connectionID string) *ConnectionProcessor {
 	defer connectionObjMutex.Unlock()
 	connectionObj := connectionProcessor[connectionID]
 	if connectionObj == nil {
-		connectionProcessor[connectionID] = &ConnectionProcessor{
+		connectionObj = &ConnectionProcessor{
 			UpdatedAt: time.Now(),
 			changes:   make(map[string]*ConnectionChange),
 		}
+		connectionProcessor[connectionID] = connectionObj
 	}
-	return connectionProcessor[connectionID]
+	return connectionObj
 }
 
 func SetError(connectionID, pathHash string, err error) {
@@ -240,9 +246,7 @@ func UpdateConnectionObjWithHasher(connectionID, pathHash string, hasher *filest
 			changes:   make(map[string]*ConnectionChange),
 		}
 	}
-	connectionProcessor[connectionID].changes[pathHash] = &ConnectionChange{
-		hasher: hasher,
-	}
+	connectionProcessor[connectionID].changes[pathHash].hasher = hasher
 }
 
 func processCommand(processorChan chan FileCommand, allocationObj *Allocation, connectionID, clientID, pathHash string) {
@@ -251,13 +255,16 @@ func processCommand(processorChan chan FileCommand, allocationObj *Allocation, c
 		if cmd == nil {
 			return
 		}
+		logging.Logger.Info("Processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()))
 		res, err := cmd.ProcessContent(allocationObj)
 		if err != nil {
+			logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
 			SetError(connectionID, pathHash, err)
 			return
 		}
 		err = cmd.ProcessThumbnail(allocationObj)
 		if err != nil {
+			logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
 			SetError(connectionID, pathHash, err)
 			return
 		}
@@ -270,6 +277,7 @@ func processCommand(processorChan chan FileCommand, allocationObj *Allocation, c
 				return cmd.UpdateChange(ctx, connectionObj)
 			})
 			if err != nil {
+				logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
 				SetError(connectionID, pathHash, err)
 			}
 			return

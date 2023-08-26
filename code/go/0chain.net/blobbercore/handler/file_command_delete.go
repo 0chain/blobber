@@ -62,6 +62,7 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 		}
 		return common.NewError("bad_db_operation", err.Error())
 	}
+	allocation.CreateConnectionChange(connectionID, pathHash)
 
 	return allocation.SetFinalized(connectionID, pathHash, cmd)
 }

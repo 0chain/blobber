@@ -1167,6 +1167,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 		connectionProcessor = allocation.CreateConnectionProcessor(connectionID)
 	}
 
+	elapsedGetConnectionProcessor := time.Since(startTime)
+	startTime = time.Now()
 	if connectionProcessor.AllocationObj == nil {
 		allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 		if err != nil {
@@ -1216,6 +1218,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	Logger.Info("[upload]elapsed",
 		zap.String("alloc_id", allocationID),
 		zap.String("file", cmd.GetPath()),
+		zap.Duration("get_processor", elapsedGetConnectionProcessor),
 		zap.Duration("get_alloc", elapsedAllocation),
 		zap.Duration("sig", elapsedVerifySig),
 		zap.Duration("total", time.Since(startTime)))

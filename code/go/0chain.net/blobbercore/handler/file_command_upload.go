@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
@@ -94,11 +95,6 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 		allocation.CreateConnectionChange(fileChanger.ConnectionID, fileChanger.PathHash)
 	}
 
-	if allocationObj.OwnerID != clientID &&
-		allocationObj.RepairerID != clientID {
-		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
-	}
-
 	thumbFile, thumbHeader, _ := req.FormFile(UploadThumbnailFile)
 	if thumbHeader != nil {
 		if thumbHeader.Size > MaxThumbnailSize {
@@ -119,7 +115,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 	}
 	cmd.contentFile = origfile
 	cmd.fileChanger = fileChanger
-
+	logging.Logger.Info("UploadFileCommand.IsValidated")
 	if fileChanger.IsFinal {
 		return allocation.SetFinalized(fileChanger.ConnectionID, fileChanger.PathHash, cmd)
 	}
@@ -160,6 +156,7 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionID, fileInputData, cmd.contentFile)
 	if err != nil {
+		logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
 		return result, common.NewError("upload_error", "Failed to write file. "+err.Error())
 	}
 
@@ -194,7 +191,7 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	cmd.allocationChange.ConnectionID = connectionID
 	cmd.allocationChange.Size = cmd.fileChanger.Size
 	cmd.allocationChange.Operation = constants.FileOperationInsert
-
+	logging.Logger.Info("Chunk processed")
 	return result, nil
 }
 
