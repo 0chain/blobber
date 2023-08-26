@@ -56,7 +56,7 @@ func CreateConnectionChange(connectionID, pathHash string) *ConnectionChange {
 	connectionProcessor[connectionID].changes[pathHash] = connChange
 	connChange.wg.Add(1)
 	go func() {
-		processCommand(connChange.ProcessChan, connectionObj.AllocationObj, connectionID, connectionObj.ClientID)
+		processCommand(connChange.ProcessChan, connectionObj.AllocationObj, connectionID, connectionObj.ClientID, pathHash)
 		connChange.wg.Done()
 	}()
 	return connectionProcessor[connectionID].changes[pathHash]
@@ -243,38 +243,37 @@ func UpdateConnectionObjWithHasher(connectionID, pathHash string, hasher *filest
 	}
 }
 
-func processCommand(processorChan chan FileCommand, allocationObj *Allocation, connectionID, clientID string) {
-	for {
-		select {
-		case cmd, ok := <-processorChan:
-			if !ok || cmd == nil {
-				return
-			}
-			res, err := cmd.ProcessContent(allocationObj)
-			if err != nil {
-				SetError(connectionID, cmd.GetPath(), err)
-				return
-			}
-			err = cmd.ProcessThumbnail(allocationObj)
-			if err != nil {
-				SetError(connectionID, cmd.GetPath(), err)
-				return
-			}
-			if res.IsFinal {
-				err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-					connectionObj, err := GetAllocationChanges(ctx, connectionID, allocationObj.ID, clientID)
-					if err != nil {
-						return err
-					}
-					return cmd.UpdateChange(ctx, connectionObj)
-				})
+func processCommand(processorChan chan FileCommand, allocationObj *Allocation, connectionID, clientID, pathHash string) {
+
+	for cmd := range processorChan {
+		if cmd == nil {
+			return
+		}
+		res, err := cmd.ProcessContent(allocationObj)
+		if err != nil {
+			SetError(connectionID, pathHash, err)
+			return
+		}
+		err = cmd.ProcessThumbnail(allocationObj)
+		if err != nil {
+			SetError(connectionID, pathHash, err)
+			return
+		}
+		if res.IsFinal {
+			err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				connectionObj, err := GetAllocationChanges(ctx, connectionID, allocationObj.ID, clientID)
 				if err != nil {
-					SetError(connectionID, cmd.GetPath(), err)
+					return err
 				}
-				return
+				return cmd.UpdateChange(ctx, connectionObj)
+			})
+			if err != nil {
+				SetError(connectionID, pathHash, err)
 			}
+			return
 		}
 	}
+
 }
 
 func drainChan(processorChan chan FileCommand) {
