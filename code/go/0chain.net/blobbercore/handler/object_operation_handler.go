@@ -430,13 +430,17 @@ func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	_ = ctx.Value(constants.ContextKeyClientKey).(string)
 
+	if clientID == "" {
+		return nil, common.NewError("invalid_operation", "Invalid client")
+	}
+
+	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+	}
+
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	if clientID == "" {
-		return nil, common.NewError("invalid_operation", "Invalid client")
 	}
 
 	connectionID := r.FormValue("connection_id")
@@ -1193,10 +1197,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*blo
 
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
-
-	if clientID == "" {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
 	connectionID, ok := common.GetField(r, "connection_id")
