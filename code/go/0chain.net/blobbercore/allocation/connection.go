@@ -127,9 +127,11 @@ func SendCommand(connectionID, pathHash string, cmd FileCommand) error {
 	}
 	connChange := connectionProcessor[connectionID].changes[pathHash]
 	if connChange == nil {
+		connectionObjMutex.RUnlock()
 		return common.NewError("connection_change_not_found", "connection change not found")
 	}
 	if connChange.isFinalized {
+		connectionObjMutex.RUnlock()
 		return common.NewError("connection_change_finalized", "connection change finalized")
 	}
 	connectionObjMutex.RUnlock()
