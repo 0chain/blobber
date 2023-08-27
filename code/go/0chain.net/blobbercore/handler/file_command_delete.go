@@ -20,6 +20,7 @@ type DeleteFileCommand struct {
 	changeProcessor  *allocation.DeleteFileChange
 	allocationChange *allocation.AllocationChange
 	path             string
+	connectionID     string
 }
 
 func (cmd *DeleteFileCommand) GetExistingFileRef() *reference.Ref {
@@ -47,7 +48,7 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 	if !ok {
 		return common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
-	cmd.changeProcessor.ConnectionID = connectionID
+	cmd.connectionID = connectionID
 	var err error
 	pathHash := encryption.Hash(path)
 	err = allocation.GetError(connectionID, pathHash)
@@ -77,7 +78,7 @@ func (cmd *DeleteFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 // ProcessContent flush file to FileStorage
 func (cmd *DeleteFileCommand) ProcessContent(allocationObj *allocation.Allocation) (allocation.UploadResult, error) {
 	deleteSize := cmd.existingFileRef.Size
-	connectionID := cmd.changeProcessor.ConnectionID
+	connectionID := cmd.connectionID
 	cmd.changeProcessor = &allocation.DeleteFileChange{ConnectionID: connectionID,
 		AllocationID: allocationObj.ID, Name: cmd.existingFileRef.Name,
 		Hash: cmd.existingFileRef.Hash, Path: cmd.existingFileRef.Path, Size: deleteSize}

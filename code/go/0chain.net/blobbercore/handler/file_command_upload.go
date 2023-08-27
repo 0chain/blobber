@@ -208,7 +208,7 @@ func (cmd *UploadFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 
 		cmd.fileChanger.ThumbnailSize = thumbOutputData.Size
 		cmd.fileChanger.ThumbnailFilename = thumbInputData.Name
-		allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
+		return allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
 	}
 	return nil
 }

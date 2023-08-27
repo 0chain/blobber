@@ -1214,7 +1214,9 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	if err != nil {
 		return nil, err
 	}
-	result := allocation.UploadResult{}
+	result := allocation.UploadResult{
+		Filename: cmd.GetPath(),
+	}
 	Logger.Info("[upload]elapsed",
 		zap.String("alloc_id", allocationID),
 		zap.String("file", cmd.GetPath()),
