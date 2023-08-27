@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"go.uber.org/zap"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -35,6 +36,8 @@ func (c *cctCB) OnInfoAvailable(op int, status int, info string, errStr string) 
 	}
 
 	m = m["fields"].(map[string]interface{})
+
+	logging.Logger.Info("cctCB.OnInfoAvailable", zap.Any("m", m))
 	cct := m["max_challenge_completion_rounds"].(int64)
 	c.cct = cct
 }
