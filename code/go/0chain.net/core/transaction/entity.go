@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 
@@ -48,10 +47,6 @@ type Terms struct {
 	// WritePrice is price for reading. Token / GB. Also,
 	// it used to calculate min_lock_demand value.
 	WritePrice uint64 `json:"write_price"`
-	// MinLockDemand in number in [0; 1] range. It represents part of
-	// allocation should be locked for the blobber rewards even if
-	// user never write something to the blobber.
-	MinLockDemand float64 `json:"min_lock_demand"`
 }
 
 type StakePoolSettings struct {
@@ -94,10 +89,6 @@ type StorageAllocation struct {
 
 	DataShards   int64 `json:"data_shards"`
 	ParityShards int64 `json:"parity_shards"`
-}
-
-func (sa *StorageAllocation) Until() common.Timestamp {
-	return sa.Expiration + common.Timestamp(config.StorageSCConfig.ChallengeCompletionTime/time.Second)
 }
 
 type StorageAllocationBlobber struct {

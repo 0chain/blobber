@@ -72,10 +72,9 @@ type BlobberStats struct {
 	AllocationListPagination  *Pagination       `json:"allocation_list_pagination,omitempty"`
 
 	// configurations
-	Capacity      int64   `json:"capacity"`
-	ReadPrice     float64 `json:"read_price"`
-	WritePrice    float64 `json:"write_price"`
-	MinLockDemand float64 `json:"min_lock_demand"`
+	Capacity   int64   `json:"capacity"`
+	ReadPrice  float64 `json:"read_price"`
+	WritePrice float64 `json:"write_price"`
 
 	AllocationStats []*AllocationStats `json:"-"`
 
@@ -106,7 +105,6 @@ func (bs *BlobberStats) loadBasicStats(ctx context.Context) {
 	bs.Capacity = config.Configuration.Capacity
 	bs.ReadPrice = config.Configuration.ReadPrice
 	bs.WritePrice = config.Configuration.WritePrice
-	bs.MinLockDemand = config.Configuration.MinLockDemand
 	//
 	du := filestore.GetFileStore().GetTotalFilesSize()
 
