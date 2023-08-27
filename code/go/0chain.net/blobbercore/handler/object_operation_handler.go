@@ -1148,8 +1148,6 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 // WriteFile stores the file into the blobber files system from the HTTP request
 func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*allocation.UploadResult, error) {
 
-	startTime := time.Now()
-
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE / PATCH instead")
 	}
@@ -1161,14 +1159,14 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	if !ok {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
-
+	startTime := time.Now()
 	connectionProcessor := allocation.GetConnectionProcessor(connectionID)
 	if connectionProcessor == nil {
 		connectionProcessor = allocation.CreateConnectionProcessor(connectionID)
 	}
 
 	elapsedGetConnectionProcessor := time.Since(startTime)
-	startTime = time.Now()
+	st := time.Now()
 	if connectionProcessor.AllocationObj == nil {
 		allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 		if err != nil {
@@ -1180,7 +1178,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 
 	allocationObj := connectionProcessor.AllocationObj
 
-	elapsedAllocation := time.Since(startTime)
+	elapsedAllocation := time.Since(st)
 
 	if r.Method == http.MethodPost && !allocationObj.CanUpload() {
 		return nil, common.NewError("prohibited_allocation_file_options", "Cannot upload data to this allocation.")
@@ -1194,7 +1192,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 		return nil, common.NewError("prohibited_allocation_file_options", "Cannot delete data in this allocation.")
 	}
 
-	st := time.Now()
+	st = time.Now()
 	publicKey := allocationObj.OwnerPublicKey
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
@@ -1223,6 +1221,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 		zap.Duration("get_processor", elapsedGetConnectionProcessor),
 		zap.Duration("get_alloc", elapsedAllocation),
 		zap.Duration("sig", elapsedVerifySig),
+		zap.Duration("validate", time.Since(st)),
 		zap.Duration("total", time.Since(startTime)))
 	return &result, nil
 

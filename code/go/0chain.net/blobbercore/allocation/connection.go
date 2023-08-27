@@ -132,6 +132,7 @@ func GetExistingRef(connectionID, pathHash string) *reference.Ref {
 }
 
 func SetFinalized(connectionID, pathHash string, cmd FileCommand) error {
+	start := time.Now()
 	connectionObjMutex.Lock()
 	connectionObj := connectionProcessor[connectionID]
 	if connectionObj == nil {
@@ -145,7 +146,7 @@ func SetFinalized(connectionID, pathHash string, cmd FileCommand) error {
 	}
 	connChange.isFinalized = true
 	connectionObjMutex.Unlock()
-	logging.Logger.Info("Sending final command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()))
+	logging.Logger.Info("Sending final command", zap.String("connection_id", connectionID), zap.Duration("duration", time.Since(start)))
 	connChange.ProcessChan <- cmd
 	close(connChange.ProcessChan)
 	connChange.wg.Wait()
@@ -153,6 +154,7 @@ func SetFinalized(connectionID, pathHash string, cmd FileCommand) error {
 }
 
 func SendCommand(connectionID, pathHash string, cmd FileCommand) error {
+	start := time.Now()
 	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
 	if connectionObj == nil {
@@ -173,13 +175,15 @@ func SendCommand(connectionID, pathHash string, cmd FileCommand) error {
 		return common.NewError("connection_change_finalized", "connection change finalized")
 	}
 	connectionObjMutex.RUnlock()
-	logging.Logger.Info("Sending command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()))
+	logging.Logger.Info("Sending command", zap.String("connection_id", connectionID), zap.Duration("duration", time.Since(start)))
 	connChange.ProcessChan <- cmd
 	return nil
 }
 
 func GetConnectionProcessor(connectionID string) *ConnectionProcessor {
+	start := time.Now()
 	connectionObjMutex.RLock()
+	logging.Logger.Info("GetConnectionProcessor", zap.String("connection_id", connectionID), zap.Duration("duration", time.Since(start)))
 	defer connectionObjMutex.RUnlock()
 	return connectionProcessor[connectionID]
 }
@@ -254,6 +258,7 @@ func UpdateConnectionObjSize(connectionID string, addSize int64) {
 }
 
 func GetHasher(connectionID, pathHash string) *filestore.CommitHasher {
+	start := time.Now()
 	connectionObjMutex.RLock()
 	defer connectionObjMutex.RUnlock()
 	connectionObj := connectionProcessor[connectionID]
@@ -263,6 +268,7 @@ func GetHasher(connectionID, pathHash string) *filestore.CommitHasher {
 	if connectionObj.changes[pathHash] == nil {
 		return nil
 	}
+	logging.Logger.Info("GetHasher", zap.String("connection_id", connectionID), zap.Duration("duration", time.Since(start)))
 	return connectionObj.changes[pathHash].hasher
 }
 
