@@ -11,6 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	sdkConst "github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
@@ -94,15 +95,40 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	cmd.reloadChange(connectionObj)
 
+	if cmd.fileChanger.Size == 0 {
+		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
+	}
+
+	var hasher *filestore.CommitHasher
+	filePathHash := encryption.Hash(cmd.fileChanger.Path)
+	if cmd.fileChanger.UploadOffset == 0 {
+		hasher = filestore.GetNewCommitHasher(cmd.fileChanger.Size)
+		allocation.UpdateConnectionObjWithHasher(connectionObj.ID, filePathHash, hasher)
+	} else {
+		hasher = allocation.GetHasher(connectionObj.ID, filePathHash)
+		if hasher == nil {
+			return result, common.NewError("invalid_parameters", "Invalid parameters. Error getting hasher for upload.")
+		}
+	}
+
 	fileInputData := &filestore.FileInputData{
 		Name:         cmd.fileChanger.Filename,
 		Path:         cmd.fileChanger.Path,
 		UploadOffset: cmd.fileChanger.UploadOffset,
 		IsFinal:      cmd.fileChanger.IsFinal,
+		FilePathHash: filePathHash,
+		Hasher:       hasher,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionObj.ID, fileInputData, origfile)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
+	}
+
+	if cmd.fileChanger.IsFinal {
+		err = hasher.Finalize()
+		if err != nil {
+			return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
+		}
 	}
 
 	result.ValidationRoot = fileOutputData.ValidationRoot
@@ -121,7 +147,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 
 	cmd.fileChanger.AllocationID = allocationObj.ID
-	cmd.fileChanger.Size += fileOutputData.Size
+	// cmd.fileChanger.Size += fileOutputData.Size
 
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionObj.ID
@@ -145,7 +171,7 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 	if thumbHeader != nil {
 		defer thumbfile.Close()
 
-		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
+		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path, IsThumbnail: true, FilePathHash: encryption.Hash(cmd.fileChanger.Path)}
 		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionObj.ID, thumbInputData, thumbfile)
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())

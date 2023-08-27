@@ -89,7 +89,8 @@ CREATE TABLE public.allocations (
     time_unit bigint DEFAULT '172800000000000'::bigint NOT NULL,
     cleaned_up boolean DEFAULT false NOT NULL,
     finalized boolean DEFAULT false NOT NULL,
-    file_options integer DEFAULT 63 NOT NULL
+    file_options integer DEFAULT 63 NOT NULL,
+    start_time bigint NOT NULL
 );
 
 
@@ -331,6 +332,7 @@ CREATE TABLE public.reference_objects (
     actual_thumbnail_size bigint DEFAULT 0 NOT NULL,
     actual_thumbnail_hash character varying(64) NOT NULL,
     encrypted_key character varying(64),
+    encrypted_key_point character varying(64),
     created_at bigint,
     updated_at bigint,
     deleted_at timestamp with time zone,

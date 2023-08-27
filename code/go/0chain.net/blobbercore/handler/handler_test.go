@@ -756,11 +756,20 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if err != nil {
 						t.Fatal()
 					}
-
+					root, _ := os.Getwd()
+					file, err := os.Open(root + "/handler_test.go")
+					if err != nil {
+						t.Fatal(err)
+					}
+					stat, err := file.Stat()
+					if err != nil {
+						t.Fatal(err)
+					}
+					size := stat.Size()
 					q := url.Query()
 					formFieldByt, err := json.Marshal(
 						&allocation.UploadFileChanger{
-							BaseFileChanger: allocation.BaseFileChanger{Path: path}})
+							BaseFileChanger: allocation.BaseFileChanger{Path: path, Size: size}})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -772,20 +781,15 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					body := bytes.NewBuffer(nil)
 					formWriter := multipart.NewWriter(body)
-					root, _ := os.Getwd()
-					file, err := os.Open(root + "/handler_test.go")
-					if err != nil {
-						t.Fatal(err)
-					}
 					fileField, err := formWriter.CreateFormFile("uploadFile", file.Name())
 					if err != nil {
 						t.Fatal(err)
 					}
-					fileB := make([]byte, 0)
-					if _, err := io.ReadFull(file, fileB); err != nil {
+					data, err := io.ReadAll(file)
+					if err != nil {
 						t.Fatal(err)
 					}
-					if _, err := fileField.Write(fileB); err != nil {
+					if _, err := fileField.Write(data); err != nil {
 						t.Fatal(err)
 					}
 					if err := formWriter.Close(); err != nil {
