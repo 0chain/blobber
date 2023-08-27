@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/0chain/gosdk/zboxcore/sdk"
 	"sort"
 	"strconv"
 	"time"
@@ -191,12 +192,23 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 	tx := datastore.GetStore().GetTransaction(ctx)
 
 	createdTime := common.ToTime(c.CreatedAt)
+
+	currentRound, err := sdk.GetRoundFromSharders()
+	if err != nil {
+		logging.Logger.Error("[challenge]verify: ",
+			zap.Any("challenge_id", c.ChallengeID),
+			zap.Time("created", createdTime),
+			zap.Error(err))
+		return nil, err
+	}
+
 	logging.Logger.Info("[challenge]commit",
+		zap.Any("current_round", currentRound),
 		zap.Any("challenge_id", c.ChallengeID),
 		zap.Time("created", createdTime),
 		zap.Any("openchallenge", c))
 
-	if c.RoundCreatedAt > config.StorageSCConfig.ChallengeCompletionTime {
+	if currentRound-c.RoundCreatedAt > config.StorageSCConfig.ChallengeCompletionTime {
 		c.CancelChallenge(ctx, ErrExpiredCCT)
 		if err := tx.Commit().Error; err != nil {
 			logging.Logger.Error("[challenge]verify(Commit): ",
