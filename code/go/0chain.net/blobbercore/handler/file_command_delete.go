@@ -54,8 +54,8 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 	if err != nil {
 		return err
 	}
-
-	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByLookupHashWith(ctx, allocationObj.ID, path, []string{"path", "name", "size", "hash", "fixed_merkle_root"})
+	lookUpHash := reference.GetReferenceLookup(allocationObj.ID, path)
+	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByLookupHashWith(ctx, allocationObj.ID, lookUpHash, []string{"path", "name", "size", "hash", "fixed_merkle_root"})
 	if err != nil {
 		if errors.Is(gorm.ErrRecordNotFound, err) {
 			return common.ErrFileWasDeleted

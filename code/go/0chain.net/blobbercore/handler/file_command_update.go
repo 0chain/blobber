@@ -12,8 +12,10 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	sdkConst "github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
+	"go.uber.org/zap"
 )
 
 const (
@@ -75,12 +77,14 @@ func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return err
 	}
 
-	// Check if ref exists at start of upload and end of upload
+	// Check if ref exists at start of update
 	if cmd.fileChanger.UploadOffset == 0 {
+		logging.Logger.Info("UpdateFile ref exists check")
 		cmd.existingFileRef, _ = reference.GetReference(ctx, allocationObj.ID, cmd.fileChanger.Path)
 		if cmd.existingFileRef == nil {
 			return common.NewError("invalid_file_update", "File at path does not exist for update")
 		}
+		logging.Logger.Info("UpdateFile ref exists check done", zap.Any("ref", cmd.existingFileRef))
 		allocation.CreateConnectionChange(cmd.fileChanger.ConnectionID, cmd.fileChanger.PathHash)
 	}
 
@@ -107,6 +111,11 @@ func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 // ProcessContent flush file to FileStorage
 func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocation) (allocation.UploadResult, error) {
+
+	if cmd.existingFileRef == nil {
+		return allocation.UploadResult{}, common.NewError("invalid_file_update", "Existing file reference is nil")
+	}
+
 	result := allocation.UploadResult{}
 
 	result.Filename = cmd.fileChanger.Filename
@@ -170,7 +179,6 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	}
 
 	cmd.fileChanger.AllocationID = allocationObj.ID
-	// cmd.fileChanger.Size += fileOutputData.Size
 
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connID
@@ -198,8 +206,8 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 
 		cmd.fileChanger.ThumbnailSize = thumbOutputData.Size
 		cmd.fileChanger.ThumbnailFilename = thumbInputData.Name
+		allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
 	}
-	allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
 	return nil
 }
 

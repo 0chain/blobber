@@ -185,7 +185,6 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	}
 
 	cmd.fileChanger.AllocationID = allocationObj.ID
-	// cmd.fileChanger.Size += fileOutputData.Size
 
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionID
@@ -209,9 +208,8 @@ func (cmd *UploadFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 
 		cmd.fileChanger.ThumbnailSize = thumbOutputData.Size
 		cmd.fileChanger.ThumbnailFilename = thumbInputData.Name
+		allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
 	}
-	allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
-
 	return nil
 }
 

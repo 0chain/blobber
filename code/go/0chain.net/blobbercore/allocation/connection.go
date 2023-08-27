@@ -251,6 +251,13 @@ func UpdateConnectionObjWithHasher(connectionID, pathHash string, hasher *filest
 
 func processCommand(processorChan chan FileCommand, allocationObj *Allocation, connectionID, clientID, pathHash string) {
 
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Logger.Error("Recovered panic", zap.String("connection_id", connectionID), zap.Any("error", r))
+			SetError(connectionID, pathHash, common.NewError("panic", "Recovered panic"))
+		}
+	}()
+
 	for cmd := range processorChan {
 		if cmd == nil {
 			return
