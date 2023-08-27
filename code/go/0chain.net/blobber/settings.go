@@ -13,7 +13,7 @@ import (
 
 type cctCB struct {
 	done chan struct{}
-	cct  time.Duration
+	cct  int64
 	err  error
 }
 
@@ -35,14 +35,8 @@ func (c *cctCB) OnInfoAvailable(op int, status int, info string, errStr string) 
 	}
 
 	m = m["fields"].(map[string]interface{})
-	cct := m["max_challenge_completion_time"].(string)
-
-	d, err := time.ParseDuration(cct)
-	if err != nil {
-		c.err = err
-		return
-	}
-	c.cct = d
+	cct := m["max_challenge_completion_rounds"].(int64)
+	c.cct = cct
 }
 
 func setCCTFromChain() error {

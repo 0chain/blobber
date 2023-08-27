@@ -196,7 +196,7 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 		zap.Time("created", createdTime),
 		zap.Any("openchallenge", c))
 
-	if time.Since(common.ToTime(c.CreatedAt)) > config.StorageSCConfig.ChallengeCompletionTime {
+	if c.RoundCreatedAt > config.StorageSCConfig.ChallengeCompletionTime {
 		c.CancelChallenge(ctx, ErrExpiredCCT)
 		if err := tx.Commit().Error; err != nil {
 			logging.Logger.Error("[challenge]verify(Commit): ",
