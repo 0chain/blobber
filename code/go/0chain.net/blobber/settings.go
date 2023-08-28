@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"go.uber.org/zap"
+	"strconv"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -38,7 +39,19 @@ func (c *cctCB) OnInfoAvailable(op int, status int, info string, errStr string) 
 	m = m["fields"].(map[string]interface{})
 
 	logging.Logger.Info("cctCB.OnInfoAvailable", zap.Any("m", m))
-	cct := m["max_challenge_completion_rounds"].(int64)
+	cctString := m["max_challenge_completion_rounds"].(string)
+
+	logging.Logger.Info("2 cctCB.OnInfoAvailable", zap.Any("cctString", cctString))
+
+	cct, err := strconv.ParseInt(cctString, 10, 64)
+
+	logging.Logger.Info("3 cctCB.OnInfoAvailable", zap.Any("cct", cct))
+
+	if err != nil {
+		c.err = err
+		return
+	}
+
 	c.cct = cct
 }
 
