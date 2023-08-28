@@ -78,11 +78,6 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return common.NewError("duplicate_file", msg)
 	}
 
-	if allocationObj.OwnerID != clientID &&
-		allocationObj.RepairerID != clientID {
-		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
-	}
-
 	_, thumbHeader, _ := req.FormFile(UploadThumbnailFile)
 	if thumbHeader != nil {
 		if thumbHeader.Size > MaxThumbnailSize {
