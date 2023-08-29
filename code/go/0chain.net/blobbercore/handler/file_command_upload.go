@@ -103,15 +103,21 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 		return result, common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
 	}
 	defer origfile.Close()
-
+	isFinal := cmd.fileChanger.IsFinal
+	cmd.fileChanger.IsFinal = false
 	cmd.reloadChange(connectionObj)
+	if cmd.fileChanger.IsFinal {
+		result.Filename = cmd.fileChanger.Filename
+		return result, nil
+	}
+	cmd.fileChanger.IsFinal = isFinal
 
 	var hasher *filestore.CommitHasher
 	filePathHash := encryption.Hash(cmd.fileChanger.Path)
 	if cmd.fileChanger.Size == 0 {
 		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
 	}
-	fmt.Println("cmd.fileChanger.Size", cmd.fileChanger.Size)
+
 	if cmd.fileChanger.UploadOffset == 0 {
 		hasher = filestore.GetNewCommitHasher(cmd.fileChanger.Size)
 		allocation.UpdateConnectionObjWithHasher(connectionObj.ID, filePathHash, hasher)
@@ -207,11 +213,10 @@ func (cmd *UploadFileCommand) reloadChange(connectionObj *allocation.AllocationC
 			logging.Logger.Error("reloadChange", zap.Error(err))
 		}
 
-		cmd.fileChanger.Size = dbChangeProcessor.Size
 		cmd.fileChanger.ThumbnailFilename = dbChangeProcessor.ThumbnailFilename
 		cmd.fileChanger.ThumbnailSize = dbChangeProcessor.ThumbnailSize
 		cmd.fileChanger.ThumbnailHash = dbChangeProcessor.ThumbnailHash
-
+		cmd.fileChanger.IsFinal = dbChangeProcessor.IsFinal
 		return
 	}
 }
