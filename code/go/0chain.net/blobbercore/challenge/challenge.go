@@ -193,16 +193,26 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 
 	createdTime := common.ToTime(c.CreatedAt)
 
+	logging.Logger.Error("[challenge]verify: ",
+		zap.Any("challenge_id", c.ChallengeID),
+		zap.Time("created", createdTime))
+
 	currentRound, err := sdk.GetRoundFromSharders()
+	logging.Logger.Error("1 [challenge]verify: ",
+		zap.Any("challenge_id", c.ChallengeID),
+		zap.Time("created", createdTime),
+		zap.Any("currentRound", currentRound),
+		zap.Error(err))
+
 	if err != nil {
-		logging.Logger.Error("[challenge]verify: ",
+		logging.Logger.Error("3 [challenge]verify: ",
 			zap.Any("challenge_id", c.ChallengeID),
 			zap.Time("created", createdTime),
 			zap.Error(err))
 		return nil, err
 	}
 
-	logging.Logger.Info("[challenge]commit",
+	logging.Logger.Error("[challenge]commit",
 		zap.Any("current_round", currentRound),
 		zap.Any("challenge_id", c.ChallengeID),
 		zap.Time("created", createdTime),
