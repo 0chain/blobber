@@ -1147,7 +1147,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 
 // WriteFile stores the file into the blobber files system from the HTTP request
 func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*allocation.UploadResult, error) {
-
+	startTime := time.Now()
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE / PATCH instead")
 	}
@@ -1159,14 +1159,15 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	if !ok {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
-	startTime := time.Now()
+	elapsedParseForm := time.Since(startTime)
+	st := time.Now()
 	connectionProcessor := allocation.GetConnectionProcessor(connectionID)
 	if connectionProcessor == nil {
 		connectionProcessor = allocation.CreateConnectionProcessor(connectionID)
 	}
 
-	elapsedGetConnectionProcessor := time.Since(startTime)
-	st := time.Now()
+	elapsedGetConnectionProcessor := time.Since(st)
+	st = time.Now()
 	if connectionProcessor.AllocationObj == nil {
 		allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 		if err != nil {
@@ -1218,6 +1219,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	Logger.Info("[upload]elapsed",
 		zap.String("alloc_id", allocationID),
 		zap.String("file", cmd.GetPath()),
+		zap.Duration("parse_form", elapsedParseForm),
 		zap.Duration("get_processor", elapsedGetConnectionProcessor),
 		zap.Duration("get_alloc", elapsedAllocation),
 		zap.Duration("sig", elapsedVerifySig),

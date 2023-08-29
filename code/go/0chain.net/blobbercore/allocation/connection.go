@@ -299,7 +299,7 @@ func processCommand(processorChan chan FileCommand, allocationObj *Allocation, c
 		if cmd == nil {
 			return
 		}
-		logging.Logger.Info("Processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()))
+		start := time.Now()
 		res, err := cmd.ProcessContent(allocationObj)
 		if err != nil {
 			logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
@@ -326,6 +326,7 @@ func processCommand(processorChan chan FileCommand, allocationObj *Allocation, c
 			}
 			return
 		}
+		logging.Logger.Info("Processed command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Duration("duration", time.Since(start)))
 	}
 
 }
