@@ -198,6 +198,9 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 		zap.Time("created", createdTime))
 
 	currentRound, err := sdk.GetRoundFromSharders()
+	logging.Logger.Error("500 [challenge]verify: ",
+		zap.Error(err))
+
 	logging.Logger.Error("1 [challenge]verify: ",
 		zap.Any("challenge_id", c.ChallengeID),
 		zap.Time("created", createdTime),
