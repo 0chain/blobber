@@ -88,17 +88,6 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	if err != nil {
 		return nil, common.NewError("file_write_error", err.Error())
 	}
-	if !fileData.IsThumbnail {
-		_, err = f.Seek(fileData.UploadOffset, io.SeekStart)
-		if err != nil {
-			return nil, common.NewError("file_seek_error", err.Error())
-		}
-
-		_, err = io.CopyBuffer(fileData.Hasher, f, buf)
-		if err != nil {
-			return nil, common.NewError("file_read_error", err.Error())
-		}
-	}
 
 	finfo, err = f.Stat()
 	if err != nil {
@@ -109,6 +98,17 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 
 	currentSize := finfo.Size()
 	if currentSize > initialSize { // Is chunk new or rewritten
+		if !fileData.IsThumbnail {
+			_, err = f.Seek(fileData.UploadOffset, io.SeekStart)
+			if err != nil {
+				return nil, common.NewError("file_seek_error", err.Error())
+			}
+
+			_, err = io.CopyBuffer(fileData.Hasher, f, buf)
+			if err != nil {
+				return nil, common.NewError("file_read_error", err.Error())
+			}
+		}
 		fileRef.ChunkUploaded = true
 		fs.updateAllocTempFileSize(allocID, currentSize-initialSize)
 	}
