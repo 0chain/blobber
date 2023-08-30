@@ -119,11 +119,11 @@ func SaveExistingRef(connectionID, pathHash string, existingRef *reference.Ref) 
 		return common.NewError("connection_not_found", "connection not found")
 	}
 	connectionObj.lock.Lock()
+	defer connectionObj.lock.Unlock()
 	if connectionObj.changes[pathHash] == nil {
 		return common.NewError("connection_change_not_found", "connection change not found")
 	}
 	connectionObj.changes[pathHash].existingRef = existingRef
-	connectionObj.lock.Unlock()
 	return nil
 }
 
@@ -153,6 +153,7 @@ func SetFinalized(connectionID, pathHash string, cmd FileCommand) error {
 	connectionObj.lock.Lock()
 	connChange := connectionObj.changes[pathHash]
 	if connChange.isFinalized {
+		connectionObj.lock.Unlock()
 		return common.NewError("connection_change_finalized", "connection change finalized")
 	}
 	connChange.isFinalized = true
@@ -168,10 +169,11 @@ func SendCommand(connectionID, pathHash string, cmd FileCommand) error {
 	start := time.Now()
 	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
-	connectionObj.lock.RLock()
+	connectionObjMutex.RUnlock()
 	if connectionObj == nil {
 		return common.NewError("connection_not_found", "connection not found")
 	}
+	connectionObj.lock.RLock()
 	defer connectionObj.lock.RUnlock()
 	connChange := connectionObj.changes[pathHash]
 	if connChange == nil {
