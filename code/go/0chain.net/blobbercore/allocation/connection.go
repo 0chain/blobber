@@ -29,6 +29,7 @@ type ConnectionProcessor struct {
 	Size          int64
 	UpdatedAt     time.Time
 	AllocationObj *Allocation
+	lock          sync.RWMutex
 	changes       map[string]*ConnectionChange
 	ClientID      string
 }
@@ -45,7 +46,6 @@ type ConnectionChange struct {
 
 func CreateConnectionChange(connectionID, pathHash string) *ConnectionChange {
 	connectionObjMutex.Lock()
-	defer connectionObjMutex.Unlock()
 	connectionObj := connectionProcessor[connectionID]
 	if connectionObj == nil {
 		connectionObj = &ConnectionProcessor{
@@ -54,11 +54,14 @@ func CreateConnectionChange(connectionID, pathHash string) *ConnectionChange {
 		}
 		connectionProcessor[connectionID] = connectionObj
 	}
+	connectionObjMutex.Unlock()
+	connectionObj.lock.Lock()
 	connChange := &ConnectionChange{
 		ProcessChan: make(chan FileCommand, 2),
 		wg:          sync.WaitGroup{},
 	}
 	connectionObj.changes[pathHash] = connChange
+	connectionObj.lock.Unlock()
 	connChange.wg.Add(1)
 	go func() {
 		processCommand(connChange.ProcessChan, connectionObj.AllocationObj, connectionID, connectionObj.ClientID, pathHash)
@@ -69,8 +72,8 @@ func CreateConnectionChange(connectionID, pathHash string) *ConnectionChange {
 
 func GetConnectionChange(connectionID, pathHash string) *ConnectionChange {
 	connectionObjMutex.RLock()
-	defer connectionObjMutex.RUnlock()
 	connectionObj := connectionProcessor[connectionID]
+	connectionObjMutex.RUnlock()
 	if connectionObj == nil {
 		return nil
 	}
@@ -79,11 +82,13 @@ func GetConnectionChange(connectionID, pathHash string) *ConnectionChange {
 
 func GetFileChanger(connectionID, pathHash string) *BaseFileChanger {
 	connectionObjMutex.RLock()
-	defer connectionObjMutex.RUnlock()
 	connectionObj := connectionProcessor[connectionID]
+	connectionObjMutex.RUnlock()
 	if connectionObj == nil {
 		return nil
 	}
+	connectionObj.lock.RLock()
+	defer connectionObj.lock.RUnlock()
 	if connectionObj.changes[pathHash] == nil {
 		return nil
 	}
@@ -91,40 +96,46 @@ func GetFileChanger(connectionID, pathHash string) *BaseFileChanger {
 }
 
 func SaveFileChanger(connectionID string, fileChanger *BaseFileChanger) error {
-	connectionObjMutex.Lock()
-	defer connectionObjMutex.Unlock()
+	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
+	connectionObjMutex.RUnlock()
 	if connectionObj == nil {
 		return common.NewError("connection_not_found", "connection not found")
 	}
+	connectionObj.lock.Lock()
 	if connectionObj.changes[fileChanger.PathHash] == nil {
 		return common.NewError("connection_change_not_found", "connection change not found")
 	}
 	connectionObj.changes[fileChanger.PathHash].baseChanger = fileChanger
+	connectionObj.lock.Unlock()
 	return nil
 }
 
 func SaveExistingRef(connectionID, pathHash string, existingRef *reference.Ref) error {
-	connectionObjMutex.Lock()
-	defer connectionObjMutex.Unlock()
+	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
+	connectionObjMutex.RUnlock()
 	if connectionObj == nil {
 		return common.NewError("connection_not_found", "connection not found")
 	}
+	connectionObj.lock.Lock()
 	if connectionObj.changes[pathHash] == nil {
 		return common.NewError("connection_change_not_found", "connection change not found")
 	}
 	connectionObj.changes[pathHash].existingRef = existingRef
+	connectionObj.lock.Unlock()
 	return nil
 }
 
 func GetExistingRef(connectionID, pathHash string) *reference.Ref {
 	connectionObjMutex.RLock()
-	defer connectionObjMutex.RUnlock()
 	connectionObj := connectionProcessor[connectionID]
+	connectionObjMutex.RUnlock()
 	if connectionObj == nil {
 		return nil
 	}
+	connectionObj.lock.RLock()
+	defer connectionObj.lock.RUnlock()
 	if connectionObj.changes[pathHash] == nil {
 		return nil
 	}
@@ -133,19 +144,19 @@ func GetExistingRef(connectionID, pathHash string) *reference.Ref {
 
 func SetFinalized(connectionID, pathHash string, cmd FileCommand) error {
 	start := time.Now()
-	connectionObjMutex.Lock()
+	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
+	connectionObjMutex.RUnlock()
 	if connectionObj == nil {
-		connectionObjMutex.Unlock()
 		return common.NewError("connection_not_found", "connection not found")
 	}
+	connectionObj.lock.Lock()
 	connChange := connectionObj.changes[pathHash]
 	if connChange.isFinalized {
-		connectionObjMutex.Unlock()
 		return common.NewError("connection_change_finalized", "connection change finalized")
 	}
 	connChange.isFinalized = true
-	connectionObjMutex.Unlock()
+	connectionObj.lock.Unlock()
 	logging.Logger.Info("Sending final command", zap.String("connection_id", connectionID), zap.Duration("duration", time.Since(start)))
 	connChange.ProcessChan <- cmd
 	close(connChange.ProcessChan)
@@ -157,24 +168,21 @@ func SendCommand(connectionID, pathHash string, cmd FileCommand) error {
 	start := time.Now()
 	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
+	connectionObj.lock.RLock()
 	if connectionObj == nil {
-		connectionObjMutex.RUnlock()
 		return common.NewError("connection_not_found", "connection not found")
 	}
+	defer connectionObj.lock.RUnlock()
 	connChange := connectionObj.changes[pathHash]
 	if connChange == nil {
-		connectionObjMutex.RUnlock()
 		return common.NewError("connection_change_not_found", "connection change not found")
 	}
 	if connChange.processError != nil {
-		connectionObjMutex.RUnlock()
 		return connChange.processError
 	}
 	if connChange.isFinalized {
-		connectionObjMutex.RUnlock()
 		return common.NewError("connection_change_finalized", "connection change finalized")
 	}
-	connectionObjMutex.RUnlock()
 	logging.Logger.Info("Sending command", zap.String("connection_id", connectionID), zap.Duration("duration", time.Since(start)))
 	connChange.ProcessChan <- cmd
 	return nil
@@ -203,25 +211,29 @@ func CreateConnectionProcessor(connectionID string) *ConnectionProcessor {
 }
 
 func SetError(connectionID, pathHash string, err error) {
-	connectionObjMutex.Lock()
-	defer connectionObjMutex.Unlock()
+	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
+	connectionObjMutex.RUnlock()
 	if connectionObj == nil {
 		return
 	}
+	connectionObj.lock.Lock()
 	connChange := connectionObj.changes[pathHash]
 	connChange.processError = err
+	connectionObj.lock.Unlock()
 	drainChan(connChange.ProcessChan) // drain the channel so that the no commands are blocked
 }
 
 func GetError(connectionID, pathHash string) error {
 	connectionObjMutex.RLock()
-	defer connectionObjMutex.RUnlock()
 	connectionObj := connectionProcessor[connectionID]
+	connectionObjMutex.RUnlock()
 	if connectionObj == nil {
 		return nil
 	}
+	connectionObj.lock.RLock()
 	connChange := connectionObj.changes[pathHash]
+	connectionObj.lock.RUnlock()
 	if connChange == nil {
 		return nil
 	}
@@ -231,8 +243,8 @@ func GetError(connectionID, pathHash string) error {
 // GetConnectionObjSize gets the connection size from the memory
 func GetConnectionObjSize(connectionID string) int64 {
 	connectionObjMutex.RLock()
-	defer connectionObjMutex.RUnlock()
 	connectionObj := connectionProcessor[connectionID]
+	connectionObjMutex.RUnlock()
 	if connectionObj == nil {
 		return 0
 	}
@@ -260,21 +272,22 @@ func UpdateConnectionObjSize(connectionID string, addSize int64) {
 func GetHasher(connectionID, pathHash string) *filestore.CommitHasher {
 	start := time.Now()
 	connectionObjMutex.RLock()
-	defer connectionObjMutex.RUnlock()
 	connectionObj := connectionProcessor[connectionID]
+	connectionObjMutex.RUnlock()
 	if connectionObj == nil {
 		return nil
 	}
+	connectionObj.lock.RLock()
 	if connectionObj.changes[pathHash] == nil {
 		return nil
 	}
+	connectionObj.lock.RUnlock()
 	logging.Logger.Info("GetHasher", zap.String("connection_id", connectionID), zap.Duration("duration", time.Since(start)))
 	return connectionObj.changes[pathHash].hasher
 }
 
 func UpdateConnectionObjWithHasher(connectionID, pathHash string, hasher *filestore.CommitHasher) {
 	connectionObjMutex.Lock()
-	defer connectionObjMutex.Unlock()
 	connectionObj := connectionProcessor[connectionID]
 	if connectionObj == nil {
 		connectionObj = &ConnectionProcessor{
@@ -283,7 +296,10 @@ func UpdateConnectionObjWithHasher(connectionID, pathHash string, hasher *filest
 		}
 		connectionProcessor[connectionID] = connectionObj
 	}
+	connectionObjMutex.Unlock()
+	connectionObj.lock.Lock()
 	connectionObj.changes[pathHash].hasher = hasher
+	connectionObj.lock.Unlock()
 }
 
 func processCommand(processorChan chan FileCommand, allocationObj *Allocation, connectionID, clientID, pathHash string) {
