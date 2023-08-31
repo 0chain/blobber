@@ -107,6 +107,13 @@ func (e *Entity) BlobberCommitted(blobberID string) {
 	}
 }
 
+func (e *Entity) ValidatorTicket(ticket ValidtorTicket) {
+	err := e.client.validationTicketGenerated(ticket)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
 //
 // global
 //
