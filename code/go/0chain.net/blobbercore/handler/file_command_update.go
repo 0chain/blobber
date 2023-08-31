@@ -87,13 +87,19 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	result.Filename = cmd.fileChanger.Filename
 
+	isFinal := cmd.fileChanger.IsFinal
+	cmd.fileChanger.IsFinal = false
+	cmd.reloadChange(connectionObj)
+	if cmd.fileChanger.IsFinal {
+		return result, nil
+	}
+	cmd.fileChanger.IsFinal = isFinal
+
 	origfile, _, err := req.FormFile(UploadFile)
 	if err != nil {
 		return result, common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
 	}
 	defer origfile.Close()
-
-	cmd.reloadChange(connectionObj)
 
 	if cmd.fileChanger.Size == 0 {
 		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
@@ -199,10 +205,10 @@ func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationC
 		}
 
 		// reload uploaded size from db, it was chunk size from client
-		cmd.fileChanger.Size = dbFileChanger.Size
 		cmd.fileChanger.ThumbnailFilename = dbFileChanger.ThumbnailFilename
 		cmd.fileChanger.ThumbnailSize = dbFileChanger.ThumbnailSize
 		cmd.fileChanger.ThumbnailHash = dbFileChanger.ThumbnailHash
+		cmd.fileChanger.IsFinal = dbFileChanger.IsFinal
 		return
 	}
 }
