@@ -117,7 +117,6 @@ func reloadConfig() error {
 
 		config.Configuration.Capacity = viper.GetInt64("capacity")
 
-		config.Configuration.MinLockDemand = viper.GetFloat64("min_lock_demand")
 		config.Configuration.NumDelegates = viper.GetInt("num_delegates")
 		config.Configuration.ReadPrice = viper.GetFloat64("read_price")
 		config.Configuration.ServiceCharge = viper.GetFloat64("service_charge")

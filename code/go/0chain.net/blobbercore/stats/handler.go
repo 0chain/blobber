@@ -135,7 +135,6 @@ const tpl = `
                 <tr><td>Capacity</td><td>{{ byte_count_in_string .Capacity }}</td></tr>
                 <tr><td>Read price</td><td>{{ .ReadPrice }}</td></tr>
                 <tr><td>Write price</td><td>{{ .WritePrice }}</td></tr>
-                <tr><td>Min lock demand</td><td>{{ .MinLockDemand }}</td></tr>
             </table>
         </td>
         <td valign='top'>

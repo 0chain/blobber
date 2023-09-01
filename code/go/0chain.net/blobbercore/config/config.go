@@ -90,10 +90,9 @@ type Config struct {
 
 	HealthCheckWorkerFreq time.Duration
 
-	ReadPrice     float64
-	WritePrice    float64
-	PriceInUSD    bool
-	MinLockDemand float64
+	ReadPrice  float64
+	WritePrice float64
+	PriceInUSD bool
 
 	// WriteMarkerLockTimeout lock is released automatically if it is timeout
 	WriteMarkerLockTimeout time.Duration
