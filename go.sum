@@ -48,6 +48,8 @@ github.com/0chain/gosdk v1.8.18-0.20230901113403-a8b76da967da h1:mGb7cegIveIVTof
 github.com/0chain/gosdk v1.8.18-0.20230901113403-a8b76da967da/go.mod h1:3NKNYzmnMIYqZwwwOgZwMmTW1DT1ZUAmKyVPmYQOiT4=
 github.com/0chain/gosdk v1.8.18-0.20230901180549-5a03346ece2e h1:wA5yfVSDR+QLm56ibYoo/UEe8n+FvB2fhCT0PQbHCew=
 github.com/0chain/gosdk v1.8.18-0.20230901180549-5a03346ece2e/go.mod h1:3NKNYzmnMIYqZwwwOgZwMmTW1DT1ZUAmKyVPmYQOiT4=
+github.com/0chain/gosdk v1.8.18-0.20230901181700-e4414474f335 h1:2GvOe1xRqNy8+B7peD2aXSeIrf+I0JTGcGELf0DM4rI=
+github.com/0chain/gosdk v1.8.18-0.20230901181700-e4414474f335/go.mod h1:3NKNYzmnMIYqZwwwOgZwMmTW1DT1ZUAmKyVPmYQOiT4=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DATA-DOG/go-sqlmock v1.5.0 h1:Shsta01QNfFxHCfpW6YH2STWB0MudeXXEWMr20OEh60=
