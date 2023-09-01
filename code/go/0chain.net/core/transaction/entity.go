@@ -48,10 +48,6 @@ type Terms struct {
 	// WritePrice is price for reading. Token / GB. Also,
 	// it used to calculate min_lock_demand value.
 	WritePrice uint64 `json:"write_price"`
-	// MinLockDemand in number in [0; 1] range. It represents part of
-	// allocation should be locked for the blobber rewards even if
-	// user never write something to the blobber.
-	MinLockDemand float64 `json:"min_lock_demand"`
 }
 
 type StakePoolSettings struct {
