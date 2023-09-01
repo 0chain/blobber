@@ -123,7 +123,6 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	result := allocation.UploadResult{}
 
 	result.Filename = cmd.fileChanger.Filename
-
 	defer cmd.contentFile.Close()
 	if cmd.fileChanger.IsFinal {
 		cmd.reloadChange()

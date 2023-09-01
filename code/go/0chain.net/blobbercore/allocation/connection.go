@@ -156,9 +156,11 @@ func SetFinalized(connectionID, pathHash string, cmd FileCommand) error {
 	}
 	connectionObj.lock.Lock()
 	connChange := connectionObj.changes[pathHash]
+	// Can happen due to resume or redundant call
 	if connChange.isFinalized {
 		connectionObj.lock.Unlock()
-		return common.NewError("connection_change_finalized", "connection change finalized")
+		connChange.wg.Wait()
+		return nil
 	}
 	connChange.isFinalized = true
 	connectionObj.lock.Unlock()
