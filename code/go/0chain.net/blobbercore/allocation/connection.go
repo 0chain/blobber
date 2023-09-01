@@ -32,6 +32,8 @@ type ConnectionProcessor struct {
 	lock          sync.RWMutex
 	changes       map[string]*ConnectionChange
 	ClientID      string
+	ctx           context.Context
+	ctxCancel     context.CancelFunc
 }
 
 type ConnectionChange struct {
@@ -48,9 +50,12 @@ func CreateConnectionChange(connectionID, pathHash string) *ConnectionChange {
 	connectionObjMutex.Lock()
 	connectionObj := connectionProcessor[connectionID]
 	if connectionObj == nil {
+		ctx, cancel := context.WithCancel(context.Background())
 		connectionObj = &ConnectionProcessor{
 			UpdatedAt: time.Now(),
 			changes:   make(map[string]*ConnectionChange),
+			ctx:       ctx,
+			ctxCancel: cancel,
 		}
 		connectionProcessor[connectionID] = connectionObj
 	}
@@ -64,7 +69,7 @@ func CreateConnectionChange(connectionID, pathHash string) *ConnectionChange {
 	connectionObj.lock.Unlock()
 	connChange.wg.Add(1)
 	go func() {
-		processCommand(connChange.ProcessChan, connectionObj.AllocationObj, connectionID, connectionObj.ClientID, pathHash)
+		processCommand(connectionObj.ctx, connChange.ProcessChan, connectionObj.AllocationObj, connectionID, connectionObj.ClientID, pathHash)
 		connChange.wg.Done()
 	}()
 	return connChange
@@ -143,7 +148,6 @@ func GetExistingRef(connectionID, pathHash string) *reference.Ref {
 }
 
 func SetFinalized(connectionID, pathHash string, cmd FileCommand) error {
-	start := time.Now()
 	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
 	connectionObjMutex.RUnlock()
@@ -158,7 +162,6 @@ func SetFinalized(connectionID, pathHash string, cmd FileCommand) error {
 	}
 	connChange.isFinalized = true
 	connectionObj.lock.Unlock()
-	logging.Logger.Info("Sending final command", zap.String("connection_id", connectionID), zap.Duration("duration", time.Since(start)))
 	connChange.ProcessChan <- cmd
 	close(connChange.ProcessChan)
 	connChange.wg.Wait()
@@ -166,7 +169,6 @@ func SetFinalized(connectionID, pathHash string, cmd FileCommand) error {
 }
 
 func SendCommand(connectionID, pathHash string, cmd FileCommand) error {
-	start := time.Now()
 	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
 	connectionObjMutex.RUnlock()
@@ -185,15 +187,12 @@ func SendCommand(connectionID, pathHash string, cmd FileCommand) error {
 	if connChange.isFinalized {
 		return common.NewError("connection_change_finalized", "connection change finalized")
 	}
-	logging.Logger.Info("Sending command", zap.String("connection_id", connectionID), zap.Duration("duration", time.Since(start)))
 	connChange.ProcessChan <- cmd
 	return nil
 }
 
 func GetConnectionProcessor(connectionID string) *ConnectionProcessor {
-	start := time.Now()
 	connectionObjMutex.RLock()
-	logging.Logger.Info("GetConnectionProcessor", zap.String("connection_id", connectionID), zap.Duration("duration", time.Since(start)))
 	defer connectionObjMutex.RUnlock()
 	return connectionProcessor[connectionID]
 }
@@ -203,9 +202,12 @@ func CreateConnectionProcessor(connectionID string) *ConnectionProcessor {
 	defer connectionObjMutex.Unlock()
 	connectionObj := connectionProcessor[connectionID]
 	if connectionObj == nil {
+		ctx, cancel := context.WithCancel(context.Background())
 		connectionObj = &ConnectionProcessor{
 			UpdatedAt: time.Now(),
 			changes:   make(map[string]*ConnectionChange),
+			ctx:       ctx,
+			ctxCancel: cancel,
 		}
 		connectionProcessor[connectionID] = connectionObj
 	}
@@ -234,8 +236,8 @@ func GetError(connectionID, pathHash string) error {
 		return nil
 	}
 	connectionObj.lock.RLock()
+	defer connectionObj.lock.RUnlock()
 	connChange := connectionObj.changes[pathHash]
-	connectionObj.lock.RUnlock()
 	if connChange == nil {
 		return nil
 	}
@@ -245,8 +247,8 @@ func GetError(connectionID, pathHash string) error {
 // GetConnectionObjSize gets the connection size from the memory
 func GetConnectionObjSize(connectionID string) int64 {
 	connectionObjMutex.RLock()
+	defer connectionObjMutex.RUnlock()
 	connectionObj := connectionProcessor[connectionID]
-	connectionObjMutex.RUnlock()
 	if connectionObj == nil {
 		return 0
 	}
@@ -272,7 +274,6 @@ func UpdateConnectionObjSize(connectionID string, addSize int64) {
 }
 
 func GetHasher(connectionID, pathHash string) *filestore.CommitHasher {
-	start := time.Now()
 	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
 	connectionObjMutex.RUnlock()
@@ -280,11 +281,10 @@ func GetHasher(connectionID, pathHash string) *filestore.CommitHasher {
 		return nil
 	}
 	connectionObj.lock.RLock()
+	defer connectionObj.lock.RUnlock()
 	if connectionObj.changes[pathHash] == nil {
 		return nil
 	}
-	connectionObj.lock.RUnlock()
-	logging.Logger.Info("GetHasher", zap.String("connection_id", connectionID), zap.Duration("duration", time.Since(start)))
 	return connectionObj.changes[pathHash].hasher
 }
 
@@ -304,7 +304,7 @@ func UpdateConnectionObjWithHasher(connectionID, pathHash string, hasher *filest
 	connectionObj.lock.Unlock()
 }
 
-func processCommand(processorChan chan FileCommand, allocationObj *Allocation, connectionID, clientID, pathHash string) {
+func processCommand(ctx context.Context, processorChan chan FileCommand, allocationObj *Allocation, connectionID, clientID, pathHash string) {
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -313,38 +313,41 @@ func processCommand(processorChan chan FileCommand, allocationObj *Allocation, c
 		}
 	}()
 
-	for cmd := range processorChan {
-		if cmd == nil {
+	for {
+		select {
+		case <-ctx.Done():
 			return
-		}
-		start := time.Now()
-		res, err := cmd.ProcessContent(allocationObj)
-		if err != nil {
-			logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
-			SetError(connectionID, pathHash, err)
-			return
-		}
-		err = cmd.ProcessThumbnail(allocationObj)
-		if err != nil {
-			logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
-			SetError(connectionID, pathHash, err)
-			return
-		}
-		if res.IsFinal {
-			err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-				connectionObj, err := GetAllocationChanges(ctx, connectionID, allocationObj.ID, clientID)
-				if err != nil {
-					return err
-				}
-				return cmd.UpdateChange(ctx, connectionObj)
-			})
+		case cmd, ok := <-processorChan:
+			if cmd == nil || !ok {
+				return
+			}
+			res, err := cmd.ProcessContent(allocationObj)
 			if err != nil {
 				logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
 				SetError(connectionID, pathHash, err)
+				return
 			}
-			return
+			err = cmd.ProcessThumbnail(allocationObj)
+			if err != nil {
+				logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
+				SetError(connectionID, pathHash, err)
+				return
+			}
+			if res.IsFinal {
+				err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+					connectionObj, err := GetAllocationChanges(ctx, connectionID, allocationObj.ID, clientID)
+					if err != nil {
+						return err
+					}
+					return cmd.UpdateChange(ctx, connectionObj)
+				})
+				if err != nil {
+					logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
+					SetError(connectionID, pathHash, err)
+				}
+				return
+			}
 		}
-		logging.Logger.Info("Processed command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Duration("duration", time.Since(start)))
 	}
 
 }
@@ -366,6 +369,10 @@ func drainChan(processorChan chan FileCommand) {
 // If the given connectionID is not present, then it is no-op.
 func DeleteConnectionObjEntry(connectionID string) {
 	connectionObjMutex.Lock()
+	connectionObj := connectionProcessor[connectionID]
+	if connectionObj != nil {
+		connectionObj.ctxCancel()
+	}
 	delete(connectionProcessor, connectionID)
 	connectionObjMutex.Unlock()
 }
@@ -377,6 +384,7 @@ func cleanConnectionObj() {
 	for connectionID, connectionObj := range connectionProcessor {
 		diff := time.Since(connectionObj.UpdatedAt)
 		if diff >= ConnectionObjTimeout {
+			connectionObj.ctxCancel()
 			delete(connectionProcessor, connectionID)
 		}
 	}
