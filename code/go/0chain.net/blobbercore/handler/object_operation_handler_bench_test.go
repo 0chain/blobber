@@ -65,8 +65,9 @@ func BenchmarkUploadFileWithDisk(b *testing.B) {
 			}
 
 			hasher := sdk.CreateHasher(int64(bm.ChunkSize))
+			isFinal := false
 
-			body, formData, _ := formBuilder.Build(fileMeta, hasher, strconv.FormatInt(time.Now().UnixNano(), 10), int64(bm.ChunkSize), 0, 0, false, "", "", [][]byte{chunkBytes}, nil, 0)
+			body, formData, _ := formBuilder.Build(fileMeta, hasher, strconv.FormatInt(time.Now().UnixNano(), 10), int64(bm.ChunkSize), 0, 0, isFinal, "", "", [][]byte{chunkBytes}, nil, 0)
 
 			req, err := blobber.NewRequest(http.MethodPost, "http://127.0.0.1:5051/v1/file/upload/benchmark_upload", body)
 
@@ -157,8 +158,9 @@ func BenchmarkUploadFileWithNoDisk(b *testing.B) {
 			}
 
 			hasher := sdk.CreateHasher(int64(bm.ChunkSize))
+			isFinal := false
 
-			body, formData, _ := formBuilder.Build(fileMeta, hasher, strconv.FormatInt(time.Now().UnixNano(), 10), int64(bm.ChunkSize), 0, 0, false, "", "", [][]byte{chunkBytes}, nil, 0)
+			body, formData, _ := formBuilder.Build(fileMeta, hasher, strconv.FormatInt(time.Now().UnixNano(), 10), int64(bm.ChunkSize), 0, 0, isFinal, "", "", [][]byte{chunkBytes}, nil, 0)
 
 			req, err := blobber.NewRequest(http.MethodPost, "http://127.0.0.1:5051/v1/file/upload/benchmark_upload", body)
 
