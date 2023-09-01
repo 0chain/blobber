@@ -199,6 +199,13 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 		zap.Time("created", createdTime))
 
 	network := zcncore.GetNetwork()
+
+	logging.Logger.Info("2 [challenge]verify: ",
+		zap.Any("challenge_id", c.ChallengeID),
+		zap.Time("created", createdTime),
+		zap.Any("network", network),
+		zap.Any("sharders", network.Sharders))
+
 	currentRound, err := sdk.GetRoundFromSharders(network.Sharders)
 	logging.Logger.Info("500 [challenge]verify: ",
 		zap.Error(err))
