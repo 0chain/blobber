@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/0chain/gosdk/zboxcore/sdk"
+	"github.com/0chain/gosdk/zcncore"
 	"sort"
 	"strconv"
 	"time"
@@ -197,7 +198,8 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 		zap.Any("challenge_id", c.ChallengeID),
 		zap.Time("created", createdTime))
 
-	currentRound, err := sdk.GetRoundFromSharders()
+	network := zcncore.GetNetwork()
+	currentRound, err := sdk.GetRoundFromSharders(network.Sharders)
 	logging.Logger.Info("500 [challenge]verify: ",
 		zap.Error(err))
 
