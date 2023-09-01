@@ -48,13 +48,14 @@ type Allocation struct {
 	RepairerID     string           `gorm:"column:repairer_id;size:64;not null"`
 	Expiration     common.Timestamp `gorm:"column:expiration_date;not null"`
 	// AllocationRoot allcation_root of last write_marker
-	AllocationRoot   string        `gorm:"column:allocation_root;size:64;not null;default:''"`
-	FileMetaRoot     string        `gorm:"column:file_meta_root;size:64;not null;default:''"`
-	BlobberSize      int64         `gorm:"column:blobber_size;not null;default:0"`
-	BlobberSizeUsed  int64         `gorm:"column:blobber_size_used;not null;default:0"`
-	LatestRedeemedWM string        `gorm:"column:latest_redeemed_write_marker;size:64"`
-	IsRedeemRequired bool          `gorm:"column:is_redeem_required"`
-	TimeUnit         time.Duration `gorm:"column:time_unit;not null;default:172800000000000"`
+	AllocationRoot   string           `gorm:"column:allocation_root;size:64;not null;default:''"`
+	FileMetaRoot     string           `gorm:"column:file_meta_root;size:64;not null;default:''"`
+	BlobberSize      int64            `gorm:"column:blobber_size;not null;default:0"`
+	BlobberSizeUsed  int64            `gorm:"column:blobber_size_used;not null;default:0"`
+	LatestRedeemedWM string           `gorm:"column:latest_redeemed_write_marker;size:64"`
+	IsRedeemRequired bool             `gorm:"column:is_redeem_required"`
+	TimeUnit         time.Duration    `gorm:"column:time_unit;not null;default:172800000000000"`
+	StartTime        common.Timestamp `gorm:"column:start_time;not null"`
 	// Ending and cleaning
 	CleanedUp bool `gorm:"column:cleaned_up;not null;default:false"`
 	Finalized bool `gorm:"column:finalized;not null;default:false"`
