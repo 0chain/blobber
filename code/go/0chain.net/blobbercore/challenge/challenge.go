@@ -213,6 +213,7 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 		zap.Any("challenge_id", c.ChallengeID),
 		zap.Time("created", createdTime),
 		zap.Any("currentRound", currentRound),
+		zap.Any("config.StorageSCConfig.ChallengeCompletionTime", config.StorageSCConfig.ChallengeCompletionTime),
 		zap.Any("openchallenge", c))
 
 	if currentRound-c.RoundCreatedAt > config.StorageSCConfig.ChallengeCompletionTime {
