@@ -480,7 +480,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-
+	Logger.Info("[commitWrite]", zap.String("latest_redeemed_wm", allocationObj.LatestRedeemedWM), zap.Bool("is_redeemed_required", allocationObj.IsRedeemRequired))
 	if allocationObj.FileOptions == 0 {
 		return nil, common.NewError("immutable_allocation", "Cannot write to an immutable allocation")
 	}

@@ -151,8 +151,10 @@ func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, A
 	}
 	delete(cache, allocationID)
 
-	err = tx.Exec("UPDATE allocations SET latest_redeemed_write_marker=?,is_redeem_required=? WHERE id=?",
-		AllocationRoot, false, allocationID).Error
+	tx.Model(&Allocation{}).Where("id = ?", allocationID).Updates(map[string]interface{}{
+		"latest_redeemed_write_marker": AllocationRoot,
+		"is_redeem_required":           false,
+	})
 
 	return err
 }
