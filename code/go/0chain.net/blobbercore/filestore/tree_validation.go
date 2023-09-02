@@ -403,7 +403,6 @@ func getNewValidationTree(dataSize int64) *validationTree {
 type CommitHasher struct {
 	fmt           *fixedMerkleTree
 	vt            *validationTree
-	tempFile      io.WriteSeeker
 	isInitialized bool
 }
 
@@ -417,25 +416,15 @@ func GetNewCommitHasher(dataSize int64) *CommitHasher {
 
 func (c *CommitHasher) Write(b []byte) (int, error) {
 	if !c.isInitialized || c.fmt == nil || c.vt == nil {
-		fmt.Println("tmp file", c.tempFile == nil)
 		return 0, errors.New("commit hasher is not initialized")
 	}
 
 	var (
 		wg      sync.WaitGroup
-		errChan = make(chan error, 3)
+		errChan = make(chan error, 2)
 		n       int
 	)
-	wg.Add(3)
-	go func() {
-		if c.tempFile != nil {
-			_, err := c.tempFile.Write(b)
-			if err != nil {
-				errChan <- err
-			}
-		}
-		wg.Done()
-	}()
+	wg.Add(2)
 	go func() {
 		_, err := c.fmt.Write(b)
 		if err != nil {
@@ -457,7 +446,6 @@ func (c *CommitHasher) Write(b []byte) (int, error) {
 	for err := range errChan {
 		return n, err
 	}
-	c.tempFile = nil
 	return n, nil
 }
 

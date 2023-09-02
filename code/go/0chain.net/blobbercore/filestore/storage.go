@@ -73,7 +73,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 		return nil, common.NewError("dir_creation_error", err.Error())
 	}
 
-	f, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return nil, common.NewError("file_open_error", err.Error())
 	}
@@ -84,20 +84,9 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 		return nil, common.NewError("file_seek_error", err.Error())
 	}
 	buf := make([]byte, BufferSize)
-	var writtenSize int64
-	if !fileData.IsThumbnail {
-		if fileData.UploadOffset >= initialSize {
-			fileData.Hasher.tempFile = f
-			writtenSize, err = io.CopyBuffer(fileData.Hasher, infile, buf)
-			if err != nil {
-				return nil, common.NewError("file_write_error", err.Error())
-			}
-		}
-	} else {
-		writtenSize, err = io.CopyBuffer(f, infile, buf)
-		if err != nil {
-			return nil, common.NewError("file_write_error", err.Error())
-		}
+	writtenSize, err := io.CopyBuffer(f, infile, buf)
+	if err != nil {
+		return nil, common.NewError("file_write_error", err.Error())
 	}
 
 	finfo, err = f.Stat()
@@ -109,6 +98,17 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 
 	currentSize := finfo.Size()
 	if currentSize > initialSize { // Is chunk new or rewritten
+		if !fileData.IsThumbnail {
+			_, err = f.Seek(fileData.UploadOffset, io.SeekStart)
+			if err != nil {
+				return nil, common.NewError("file_seek_error", err.Error())
+			}
+
+			_, err = io.CopyBuffer(fileData.Hasher, f, buf)
+			if err != nil {
+				return nil, common.NewError("file_read_error", err.Error())
+			}
+		}
 		fileRef.ChunkUploaded = true
 		fs.updateAllocTempFileSize(allocID, currentSize-initialSize)
 	}
