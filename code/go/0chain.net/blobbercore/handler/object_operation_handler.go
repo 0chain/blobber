@@ -1407,6 +1407,8 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	Logger.Info("rollback_writemarker", zap.Any("writemarker", writemarkerEntity.WM))
 
 	alloc, err := allocation.Repo.GetByIdAndLock(c, allocationID)
+	now := time.Now()
+	Logger.Info("[rollback]Lock Allocation", zap.Int64("now", now.Unix()), zap.Bool("is_redeem_required", alloc.IsRedeemRequired), zap.String("allocation_root", alloc.AllocationRoot), zap.String("latest_wm_redeemed", alloc.LatestRedeemedWM))
 	if err != nil {
 		txn.Rollback()
 		return &result, common.NewError("allocation_read_error", "Error reading the allocation object")
@@ -1436,6 +1438,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return &result, common.NewError("allocation_commit_error", "Error committing the transaction "+err.Error())
 	}
 	if sendWM {
+		Logger.Info("[rollback]Sending WM to channel", zap.String("alloc_id", allocationID))
 		err = writemarkerEntity.SendToChan(ctx)
 		if err != nil {
 			return nil, common.NewError("write_marker_error", "Error redeeming the write marker")

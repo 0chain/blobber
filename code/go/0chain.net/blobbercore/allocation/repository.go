@@ -47,7 +47,7 @@ func (r *Repository) GetById(ctx context.Context, id string) (*Allocation, error
 	}
 
 	alloc := &Allocation{}
-	err = tx.Table(TableNameAllocation).Where(SQLWhereGetById, id).First(alloc).Error
+	err = tx.Table(TableNameAllocation).Where(SQLWhereGetById, id).Take(alloc).Error
 	if err != nil {
 		return alloc, err
 	}
@@ -73,7 +73,7 @@ func (r *Repository) GetByIdAndLock(ctx context.Context, id string) (*Allocation
 	err = tx.Model(&Allocation{}).
 		Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).
 		Where("id=?", id).
-		First(alloc).Error
+		Take(alloc).Error
 	if err != nil {
 		return alloc, err
 	}
@@ -99,7 +99,7 @@ func (r *Repository) GetByTx(ctx context.Context, allocationID, txHash string) (
 	}
 
 	alloc := &Allocation{}
-	err = tx.Table(TableNameAllocation).Where(SQLWhereGetByTx, txHash).First(alloc).Error
+	err = tx.Table(TableNameAllocation).Where(SQLWhereGetByTx, txHash).Take(alloc).Error
 	if err != nil {
 		return alloc, err
 	}
