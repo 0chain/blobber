@@ -64,7 +64,6 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	}
 	sn.Terms.ReadPrice = zcncore.ConvertToValue(readPrice)
 	sn.Terms.WritePrice = zcncore.ConvertToValue(writePrice)
-	sn.Terms.MinLockDemand = config.Configuration.MinLockDemand
 
 	sn.StakePoolSettings.DelegateWallet = config.Configuration.DelegateWallet
 	sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
