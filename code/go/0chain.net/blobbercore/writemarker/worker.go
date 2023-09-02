@@ -70,7 +70,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 	}()
 	alloc, err := allocation.Repo.GetByIdAndLock(ctx, allocationID)
 	now := time.Now()
-	logging.Logger.Info("[writemarker]Lock Allocation", zap.Int64("now", now.Unix()))
+	logging.Logger.Info("[writemarker]Lock Allocation", zap.Int64("now", now.Unix()), zap.String("allocation_root", wm.WM.AllocationRoot))
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker.", zap.Any("allocation", allocationID), zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
 		go tryAgain(wm)
@@ -105,7 +105,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 
 	err = allocation.Repo.UpdateAllocationRedeem(ctx, wm.WM.AllocationRoot, allocationID)
 	now = time.Now()
-	logging.Logger.Info("[writemarker]Update Allocation", zap.Int64("now", now.Unix()))
+	logging.Logger.Info("[writemarker]Update Allocation", zap.Int64("now", now.Unix()), zap.String("allocation_root", wm.WM.AllocationRoot))
 	if err != nil {
 		mut := GetLock(allocationID)
 		if mut != nil {
@@ -120,7 +120,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 
 	err = db.Commit().Error
 	now = time.Now()
-	logging.Logger.Info("[writemarker]Unlock Allocation", zap.Int64("now", now.Unix()))
+	logging.Logger.Info("[writemarker]Unlock Allocation", zap.Int64("now", now.Unix()), zap.String("allocation_root", wm.WM.AllocationRoot))
 	mut := GetLock(allocationID)
 	if mut != nil {
 		mut.Release(1)
