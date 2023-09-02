@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"go.uber.org/zap"
 	"strconv"
 	"time"
 
@@ -38,15 +37,9 @@ func (c *cctCB) OnInfoAvailable(op int, status int, info string, errStr string) 
 
 	m = m["fields"].(map[string]interface{})
 
-	logging.Logger.Info("cctCB.OnInfoAvailable", zap.Any("m", m))
 	cctString := m["max_challenge_completion_rounds"].(string)
 
-	logging.Logger.Info("2 cctCB.OnInfoAvailable", zap.Any("cctString", cctString))
-
 	cct, err := strconv.ParseInt(cctString, 10, 64)
-
-	logging.Logger.Info("3 cctCB.OnInfoAvailable", zap.Any("cct", cct))
-
 	if err != nil {
 		c.err = err
 		return
