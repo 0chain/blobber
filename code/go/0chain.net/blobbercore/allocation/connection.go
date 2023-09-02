@@ -372,7 +372,7 @@ func drainChan(processorChan chan FileCommand) {
 func DeleteConnectionObjEntry(connectionID string) {
 	connectionObjMutex.Lock()
 	connectionObj := connectionProcessor[connectionID]
-	if connectionObj != nil {
+	if connectionObj != nil && connectionObj.ctxCancel != nil {
 		connectionObj.ctxCancel()
 	}
 	delete(connectionProcessor, connectionID)
@@ -386,7 +386,9 @@ func cleanConnectionObj() {
 	for connectionID, connectionObj := range connectionProcessor {
 		diff := time.Since(connectionObj.UpdatedAt)
 		if diff >= ConnectionObjTimeout {
-			connectionObj.ctxCancel()
+			if connectionObj.ctxCancel != nil {
+				connectionObj.ctxCancel()
+			}
 			delete(connectionProcessor, connectionID)
 		}
 	}
