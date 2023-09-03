@@ -151,10 +151,11 @@ func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, A
 	}
 	delete(cache, allocationID)
 
-	err = tx.Exec("UPDATE allocations SET latest_redeemed_write_marker=?,is_redeem_required=? WHERE id=?",
-		AllocationRoot, false, allocationID).Error
+	res := tx.Exec("UPDATE allocations SET latest_redeemed_write_marker=?,is_redeem_required=? WHERE id=?",
+		AllocationRoot, false, allocationID)
+	logging.Logger.Info("update_allocation", zap.Int64("rows", res.RowsAffected))
 
-	return err
+	return res.Error
 }
 
 func (r *Repository) Save(ctx context.Context, a *Allocation) error {
