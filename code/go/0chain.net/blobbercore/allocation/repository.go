@@ -151,7 +151,6 @@ func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, A
 	}
 	delete(cache, allocationID)
 
-	logging.Logger.Info("UpdateAllocationRedeem", zap.Any("allocationID", allocationID), zap.Any("AllocationRoot", AllocationRoot), zap.Any("is_redeem_required", false))
 	allocationUpdates := make(map[string]interface{})
 	allocationUpdates["latest_redeemed_write_marker"] = AllocationRoot
 	allocationUpdates["is_redeem_required"] = false
