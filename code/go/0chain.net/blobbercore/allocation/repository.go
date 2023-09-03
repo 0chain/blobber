@@ -71,7 +71,7 @@ func (r *Repository) GetByIdAndLock(ctx context.Context, id string) (*Allocation
 	alloc := &Allocation{}
 
 	err = tx.Model(&Allocation{}).
-		Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where("id=?", id).
 		Take(alloc).Error
 	if err != nil {
@@ -151,10 +151,10 @@ func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, A
 	}
 	delete(cache, allocationID)
 
-	tx.Model(&Allocation{}).Where("id = ?", allocationID).Updates(map[string]interface{}{
+	err = tx.Model(&Allocation{}).Where("id = ?", allocationID).Updates(map[string]interface{}{
 		"latest_redeemed_write_marker": AllocationRoot,
 		"is_redeem_required":           false,
-	})
+	}).Error
 
 	return err
 }
