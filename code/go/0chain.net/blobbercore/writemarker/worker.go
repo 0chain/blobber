@@ -103,7 +103,10 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 		return err
 	}
 
-	err = allocation.Repo.UpdateAllocationRedeem(ctx, wm.WM.AllocationRoot, allocationID)
+	// err = allocation.Repo.UpdateAllocationRedeem(ctx, wm.WM.AllocationRoot, allocationID)
+	alloc.LatestRedeemedWM = wm.WM.AllocationRoot
+	alloc.IsRedeemRequired = false
+	err = allocation.Repo.Save(ctx, alloc)
 	now = time.Now()
 	logging.Logger.Info("[writemarker]Update Allocation", zap.Int64("now", now.Unix()), zap.String("allocation_root", wm.WM.AllocationRoot))
 	if err != nil {
