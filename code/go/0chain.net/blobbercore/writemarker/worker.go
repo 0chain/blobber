@@ -71,7 +71,9 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 	alloc, err := allocation.Repo.GetByIdAndLock(ctx, allocationID)
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker.", zap.Any("allocation", allocationID), zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
-		go tryAgain(wm)
+		if err != gorm.ErrRecordNotFound {
+			go tryAgain(wm)
+		}
 		shouldRollback = true
 		return err
 	}
