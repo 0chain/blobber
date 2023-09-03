@@ -139,7 +139,7 @@ func (r *Repository) GetAllocationIds(ctx context.Context) []Res {
 
 }
 
-func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, AllocationRoot string) error {
+func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, AllocationRoot string, allocationObj *Allocation) error {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 	if tx == nil {
 		logging.Logger.Panic("no transaction in the context")
@@ -152,11 +152,10 @@ func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, A
 	delete(cache, allocationID)
 
 	logging.Logger.Info("UpdateAllocationRedeem", zap.Any("allocationID", allocationID), zap.Any("AllocationRoot", AllocationRoot), zap.Any("is_redeem_required", false))
-	err = tx.Model(&Allocation{}).Where(SQLWhereGetById, allocationID).Updates(map[string]interface{}{
-		"latest_redeemed_write_marker": AllocationRoot,
-		"is_redeem_required":           false,
-	}).Error
-
+	allocationUpdates := make(map[string]interface{})
+	allocationUpdates["latest_redeemed_write_marker"] = AllocationRoot
+	allocationUpdates["is_redeem_required"] = false
+	err = tx.Model(allocationObj).Updates(allocationUpdates).Error
 	return err
 }
 
