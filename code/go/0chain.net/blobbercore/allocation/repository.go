@@ -47,7 +47,7 @@ func (r *Repository) GetById(ctx context.Context, id string) (*Allocation, error
 	}
 
 	alloc := &Allocation{}
-	err = tx.Table(TableNameAllocation).Where(SQLWhereGetById, id).First(alloc).Error
+	err = tx.Table(TableNameAllocation).Where(SQLWhereGetById, id).Take(alloc).Error
 	if err != nil {
 		return alloc, err
 	}
@@ -73,7 +73,7 @@ func (r *Repository) GetByIdAndLock(ctx context.Context, id string) (*Allocation
 	err = tx.Model(&Allocation{}).
 		Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).
 		Where("id=?", id).
-		First(alloc).Error
+		Take(alloc).Error
 	if err != nil {
 		return alloc, err
 	}
@@ -99,7 +99,7 @@ func (r *Repository) GetByTx(ctx context.Context, allocationID, txHash string) (
 	}
 
 	alloc := &Allocation{}
-	err = tx.Table(TableNameAllocation).Where(SQLWhereGetByTx, txHash).First(alloc).Error
+	err = tx.Table(TableNameAllocation).Where(SQLWhereGetByTx, txHash).Take(alloc).Error
 	if err != nil {
 		return alloc, err
 	}
@@ -139,7 +139,7 @@ func (r *Repository) GetAllocationIds(ctx context.Context) []Res {
 
 }
 
-func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, AllocationRoot string) error {
+func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, AllocationRoot string, allocationObj *Allocation) error {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 	if tx == nil {
 		logging.Logger.Panic("no transaction in the context")
@@ -151,9 +151,10 @@ func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, A
 	}
 	delete(cache, allocationID)
 
-	err = tx.Exec("UPDATE allocations SET latest_redeemed_write_marker=?,is_redeem_required=? WHERE id=?",
-		AllocationRoot, false, allocationID).Error
-
+	allocationUpdates := make(map[string]interface{})
+	allocationUpdates["latest_redeemed_write_marker"] = AllocationRoot
+	allocationUpdates["is_redeem_required"] = false
+	err = tx.Model(allocationObj).Updates(allocationUpdates).Error
 	return err
 }
 
