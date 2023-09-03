@@ -100,13 +100,14 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 
 		return err
 	}
-
-	err = allocation.Repo.UpdateAllocationRedeem(ctx, wm.WM.AllocationRoot, allocationID, alloc)
-	if err != nil {
+	defer func() {
 		mut := GetLock(allocationID)
 		if mut != nil {
 			mut.Release(1)
 		}
+	}()
+	err = allocation.Repo.UpdateAllocationRedeem(ctx, wm.WM.AllocationRoot, allocationID, alloc)
+	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
 			zap.Any("allocation", allocationID),
 			zap.Any("wm", wm.WM.AllocationRoot), zap.Any("error", err))
@@ -115,10 +116,6 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 	}
 
 	err = db.Commit().Error
-	mut := GetLock(allocationID)
-	if mut != nil {
-		mut.Release(1)
-	}
 	if err != nil {
 		logging.Logger.Error("Error committing the writemarker redeem",
 			zap.Any("allocation", allocationID),
