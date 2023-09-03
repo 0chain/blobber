@@ -150,7 +150,7 @@ func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, A
 		return err
 	}
 	delete(cache, allocationID)
-
+	logging.Logger.Info("UpdateAllocationRedeem", zap.Any("allocationID", allocationID), zap.Any("AllocationRoot", AllocationRoot), zap.Any("is_redeem_required", false))
 	err = tx.Model(&Allocation{}).Where("id = ?", allocationID).Updates(map[string]interface{}{
 		"latest_redeemed_write_marker": AllocationRoot,
 		"is_redeem_required":           false,
