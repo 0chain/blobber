@@ -107,9 +107,9 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 	// alloc.LatestRedeemedWM = wm.WM.AllocationRoot
 	// alloc.IsRedeemRequired = false
 	// err = allocation.Repo.Save(ctx, alloc)
-	err = db.Exec("UPDATE allocations SET latest_redeemed_write_marker = ?, is_redeem_required = ? WHERE id = ?", wm.WM.AllocationRoot, false, allocationID).Error
+	affected := db.Exec("UPDATE allocations SET latest_redeemed_write_marker = ?, is_redeem_required = ? WHERE id = ?", wm.WM.AllocationRoot, false, allocationID).RowsAffected
 	now = time.Now()
-	logging.Logger.Info("[writemarker]Update Allocation", zap.Int64("now", now.Unix()), zap.String("allocation_root", wm.WM.AllocationRoot))
+	logging.Logger.Info("[writemarker]Update Allocation", zap.Int64("now", now.Unix()), zap.String("allocation_root", wm.WM.AllocationRoot), zap.Int64("affected", affected))
 	if err != nil {
 		mut := GetLock(allocationID)
 		if mut != nil {
