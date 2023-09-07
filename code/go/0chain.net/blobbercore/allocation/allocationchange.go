@@ -217,7 +217,6 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 			return err
 		}
 	}
-	logging.Logger.Info("ApplyChanges", zap.Any("rootRef", rootRef))
 	_, err = rootRef.CalculateHash(ctx, true)
 	return err
 }
