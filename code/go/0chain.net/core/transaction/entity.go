@@ -2,6 +2,8 @@ package transaction
 
 import (
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
+	"github.com/0chain/gosdk/core/transaction"
 	"sync"
 	"time"
 
@@ -134,6 +136,16 @@ func (t *Transaction) GetTransaction() zcncore.TransactionScheme {
 
 func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val uint64) error {
 	t.wg.Add(1)
+
+	sn := transaction.SmartContractTxnData{Name: methodName, InputArgs: input}
+	snBytes, err := json.Marshal(sn)
+	if err != nil {
+		logging.Logger.Error("Jayash", zap.Error(err))
+		return err
+	}
+
+	util.Last50Transactions.Add(string(snBytes), time.Now())
+
 	nonce := monitor.getNextUnusedNonce()
 	if err := t.zcntxn.SetTransactionNonce(nonce); err != nil {
 		logging.Logger.Error("Failed to set nonce.",
@@ -146,7 +158,7 @@ func (t *Transaction) ExecuteSmartContract(address, methodName string, input int
 		zap.Any("hash", t.zcntxn.GetTransactionHash()),
 		zap.Any("nonce", nonce))
 
-	_, err := t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
+	_, err = t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
 	if err != nil {
 		t.wg.Done()
 		logging.Logger.Error("Failed to execute SC.",

@@ -154,7 +154,6 @@ func validateOnValidators(c *ChallengeEntity) {
 			zap.Any("challenge_id", c.ChallengeID),
 			zap.Time("created", createdTime),
 			zap.Error(err))
-		//TODO: Should we delete the challenge from map or send it back to the todo channel?
 		deleteChallenge(c.RoundCreatedAt)
 		tx.Rollback()
 		return

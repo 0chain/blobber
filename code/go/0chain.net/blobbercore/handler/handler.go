@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"net/http"
 	"os"
 	"runtime/pprof"
@@ -221,6 +222,9 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/_config", RateLimitByCommmitRL(common.ToJSONResponse(GetConfig)))
 	// r.HandleFunc("/_stats", common.AuthenticateAdmin(StatsHandler))
 	r.HandleFunc("/_stats", RateLimitByCommmitRL(StatsHandler))
+
+	r.HandleFunc("/logs", RateLimitByCommmitRL(common.ToJSONResponse(GetLogs)))
+
 	// r.HandleFunc("/_statsJSON", common.AuthenticateAdmin(common.ToJSONResponse(stats.StatsJSONHandler)))
 	r.HandleFunc("/_statsJSON", RateLimitByCommmitRL(common.ToJSONResponse(stats.StatsJSONHandler)))
 	// r.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
@@ -776,6 +780,10 @@ func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
 func GetConfig(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	return config.Configuration, nil
+}
+
+func GetLogs(ctx context.Context, r *http.Request) (interface{}, error) {
+	return util.Last50Transactions.GetTransactions(), nil
 }
 
 func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, error) {
