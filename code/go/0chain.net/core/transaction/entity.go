@@ -137,6 +137,8 @@ func (t *Transaction) GetTransaction() zcncore.TransactionScheme {
 func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val uint64) error {
 	t.wg.Add(1)
 
+	logging.Logger.Info("Jayash", zap.Any("address", address), zap.Any("methodName", methodName), zap.Any("input", input), zap.Any("val", val))
+
 	sn := transaction.SmartContractTxnData{Name: methodName, InputArgs: input}
 	snBytes, err := json.Marshal(sn)
 	if err != nil {
