@@ -241,6 +241,8 @@ const tpl = `
     </tr>
 </table>
 
+<h3><a href='logs'>Last 50 Transactions</a></h3>
+
 <h1>
     Allocation Stats
 </h1>
