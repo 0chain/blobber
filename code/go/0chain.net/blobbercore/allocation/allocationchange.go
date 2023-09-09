@@ -30,7 +30,7 @@ const (
 
 // AllocationChangeProcessor request transaction of file operation. it is president in postgres, and can be rebuilt for next http reqeust(eg CommitHandler)
 type AllocationChangeProcessor interface {
-	CommitToFileStore(ctx context.Context) error
+	CommitToFileStore(ctx context.Context, mut *sync.Mutex) error
 	DeleteTempFile() error
 	ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange, allocationRoot string,
 		ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error)
@@ -227,6 +227,7 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 	defer cancel()
 	// Can be configured at runtime, this number will depend on the number of active allocations
 	swg := sizedwaitgroup.New(5)
+	mut := &sync.Mutex{}
 	for _, change := range a.AllocationChanges {
 		select {
 		case <-commitCtx.Done():
@@ -235,7 +236,7 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 		}
 		swg.Add()
 		go func(change AllocationChangeProcessor) {
-			err := change.CommitToFileStore(ctx)
+			err := change.CommitToFileStore(ctx, mut)
 			if err != nil && !errors.Is(common.ErrFileWasDeleted, err) {
 				cancel()
 			}

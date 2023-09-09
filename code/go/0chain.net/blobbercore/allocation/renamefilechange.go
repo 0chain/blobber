@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -126,7 +127,7 @@ func (rf *RenameFileChange) Unmarshal(input string) error {
 	return err
 }
 
-func (rf *RenameFileChange) CommitToFileStore(ctx context.Context) error {
+func (rf *RenameFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
 	return nil
 }
 
