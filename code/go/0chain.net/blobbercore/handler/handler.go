@@ -47,6 +47,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+
+	coreLogging "github.com/0chain/common/core/logging"
 )
 
 const (
@@ -222,6 +224,9 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/_config", RateLimitByCommmitRL(common.ToJSONResponse(GetConfig)))
 	// r.HandleFunc("/_stats", common.AuthenticateAdmin(StatsHandler))
 	r.HandleFunc("/_stats", RateLimitByCommmitRL(StatsHandler))
+
+	r.HandleFunc("/_logs", RateLimitByCommmitRL(coreLogging.LogWriter))
+
 
 	r.HandleFunc("/logs", RateLimitByCommmitRL(common.ToJSONResponse(GetLogs)))
 
