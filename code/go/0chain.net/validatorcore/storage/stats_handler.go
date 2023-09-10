@@ -6,6 +6,8 @@ import (
 	"sync"
 )
 
+var Last5Transactions []string
+
 type Stats struct {
 	TotalChallenges      int
 	SuccessfulChallenges int
@@ -88,9 +90,20 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 				<td>` + fmt.Sprintf("%d", result.FailedChallenges) + `</td>
 			</tr>
 		</table>
-	</body>
-	</html>
-	`
+	 <div class="transactions">
+            <h2>Last 5 Transactions</h2>
+            <ul>
+    `
+	for _, transaction := range Last5Transactions {
+		statsHTML += "<li>" + transaction + "</li>"
+	}
+
+	statsHTML += `
+            </ul>
+        </div>
+    </body>
+    </html>
+    `
 
 	w.Header().Set("Content-Type", "text/html")
 	_, err := w.Write([]byte(statsHTML))
