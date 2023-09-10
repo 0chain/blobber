@@ -2,7 +2,6 @@ package transaction
 
 import (
 	"encoding/json"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"github.com/0chain/gosdk/core/transaction"
 	"sync"
 	"time"
@@ -16,6 +15,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
+
+var Last50Transactions []string
 
 // Transaction entity that encapsulates the transaction related data and meta data
 type Transaction struct {
@@ -146,7 +147,11 @@ func (t *Transaction) ExecuteSmartContract(address, methodName string, input int
 		return err
 	}
 
-	util.Last50Transactions.Add(string(snBytes), time.Now())
+	if len(Last50Transactions) == 50 {
+		Last50Transactions = Last50Transactions[1:]
+	} else {
+		Last50Transactions = append(Last50Transactions, string(snBytes))
+	}
 
 	nonce := monitor.getNextUnusedNonce()
 	if err := t.zcntxn.SetTransactionNonce(nonce); err != nil {

@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
+	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"net/http"
 	"os"
 	"runtime/pprof"
@@ -783,7 +783,7 @@ func GetConfig(ctx context.Context, r *http.Request) (interface{}, error) {
 }
 
 func GetLogs(ctx context.Context, r *http.Request) (interface{}, error) {
-	return util.Last50Transactions.GetTransactions(), nil
+	return transaction.Last50Transactions, nil
 }
 
 func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, error) {
