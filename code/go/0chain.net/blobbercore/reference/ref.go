@@ -234,16 +234,12 @@ func GetLimitedRefFieldsByLookupHash(ctx context.Context, allocationID, lookupHa
 }
 
 func GetReferenceByLookupHash(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
-	ref := &Ref{ID: 1}
-	deleteRef := make([]*Ref, 0)
-	// deleteRef = append(deleteRef, ref)
-	// deleteRef = append(deleteRef, &Ref{ID: 2})
+	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	db.Delete(&deleteRef).Debug()
-	// err := db.Where(&Ref{LookupHash: pathHash}).First(ref).Error
-	// if err != nil {
-	// 	return nil, err
-	// }
+	err := db.Where(&Ref{LookupHash: pathHash}).First(ref).Error
+	if err != nil {
+		return nil, err
+	}
 	return ref, nil
 }
 
