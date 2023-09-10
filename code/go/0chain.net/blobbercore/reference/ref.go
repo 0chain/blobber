@@ -69,6 +69,7 @@ type Ref struct {
 	IsPrecommit      bool           `gorm:"column:is_precommit;not null;default:false" filelist:"is_precommit" dirlist:"is_precommit"`
 	ChunkSize        int64          `gorm:"column:chunk_size;not null;default:65536" dirlist:"chunk_size" filelist:"chunk_size"`
 	HashToBeComputed bool           `gorm:"-"`
+	prevID           int64          `gorm:"-"`
 }
 
 // BeforeCreate Hook that gets executed to update create and update date
@@ -404,7 +405,7 @@ func (r *Ref) GetHashData() string {
 	return fmt.Sprintf("%s:%s:%s", r.AllocationID, r.Path, r.FileID)
 }
 
-func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, error) {
+func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool, collector QueryCollector) (string, error) {
 	fr.FileMetaHash = encryption.Hash(fr.GetFileMetaHashData())
 	fr.Hash = encryption.Hash(fr.GetFileHashData())
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
@@ -414,12 +415,12 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool) (string, er
 
 	var err error
 	if saveToDB && fr.HashToBeComputed {
-		err = fr.SaveFileRef(ctx)
+		err = fr.SaveFileRef(ctx, collector)
 	}
 	return fr.Hash, err
 }
 
-func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, err error) {
+func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool, collector QueryCollector) (h string, err error) {
 	if !r.HashToBeComputed {
 		h = r.Hash
 		return
@@ -429,7 +430,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 
 	defer func() {
 		if err == nil && saveToDB {
-			err = r.SaveDirRef(ctx)
+			err = r.SaveDirRef(ctx, collector)
 
 		}
 	}()
@@ -441,7 +442,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 
 	for i, childRef := range r.Children {
 		if childRef.HashToBeComputed {
-			_, err := childRef.CalculateHash(ctx, saveToDB)
+			_, err := childRef.CalculateHash(ctx, saveToDB, collector)
 			if err != nil {
 				return "", err
 			}
@@ -466,11 +467,11 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool) (h string, er
 	return r.Hash, err
 }
 
-func (r *Ref) CalculateHash(ctx context.Context, saveToDB bool) (string, error) {
+func (r *Ref) CalculateHash(ctx context.Context, saveToDB bool, collector QueryCollector) (string, error) {
 	if r.Type == DIRECTORY {
-		return r.CalculateDirHash(ctx, saveToDB)
+		return r.CalculateDirHash(ctx, saveToDB, collector)
 	}
-	return r.CalculateFileHash(ctx, saveToDB)
+	return r.CalculateFileHash(ctx, saveToDB, collector)
 }
 
 func (r *Ref) AddChild(child *Ref) {
@@ -527,65 +528,28 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 	return db.Where("path_hash = ?", pathHash).Delete(&Ref{ID: refID}).Error
 }
 
-func (r *Ref) SaveFileRef(ctx context.Context) error {
-	db := datastore.GetStore().GetTransaction(ctx)
-	toUpdateFileStat := r.IsPrecommit
-	prevID := r.ID
+func (r *Ref) SaveFileRef(ctx context.Context, collector QueryCollector) error {
+	r.prevID = r.ID
+	r.IsPrecommit = true
 	if r.ID > 0 {
-		err := db.Delete(&Ref{}, "id=?", r.ID).Error
-		if err != nil && err != gorm.ErrRecordNotFound {
-			return err
-		}
-
+		deleteRef := &Ref{ID: r.ID}
+		collector.DeleteRefRecord(deleteRef)
 		r.ID = 0
-		r.IsPrecommit = true
-		err = db.Create(r).Error
-		if err != nil {
-			return err
-		}
-
-		if toUpdateFileStat {
-			FileUpdated(ctx, prevID, r.ID)
-		}
-	} else {
-		r.IsPrecommit = true
-		err := db.Create(r).Error
-		if err != nil {
-			return err
-		}
-		NewFileCreated(ctx, r.ID)
 	}
+	collector.CreateRefRecord(r)
 
 	return nil
 }
 
-func (r *Ref) SaveDirRef(ctx context.Context) error {
-	db := datastore.GetStore().GetTransaction(ctx)
-	toUpdateFileStat := r.IsPrecommit
-	prevID := r.ID
+func (r *Ref) SaveDirRef(ctx context.Context, collector QueryCollector) error {
+	r.prevID = r.ID
+	r.IsPrecommit = true
 	if r.ID > 0 {
-		err := db.Delete(&Ref{}, "id=?", r.ID).Error
-		if err != nil && err != gorm.ErrRecordNotFound {
-			return err
-		}
+		deleteRef := &Ref{ID: r.ID}
+		collector.DeleteRefRecord(deleteRef)
 		r.ID = 0
-		r.IsPrecommit = true
-		err = db.Create(r).Error
-		if err != nil {
-			return err
-		}
-
-		if toUpdateFileStat {
-			FileUpdated(ctx, prevID, r.ID)
-		}
-	} else {
-		r.IsPrecommit = true
-		err := db.Create(r).Error
-		if err != nil {
-			return err
-		}
-		NewDirCreated(ctx, r.ID)
 	}
+	collector.CreateRefRecord(r)
 	return nil
 }
 

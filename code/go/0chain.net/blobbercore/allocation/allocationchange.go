@@ -218,7 +218,12 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 			return rootRef, err
 		}
 	}
-	_, err = rootRef.CalculateHash(ctx, true)
+	collector := reference.NewCollector(len(cc.Changes))
+	_, err = rootRef.CalculateHash(ctx, true, collector)
+	if err != nil {
+		return rootRef, err
+	}
+	err = collector.Finalize(ctx)
 	return rootRef, err
 }
 
