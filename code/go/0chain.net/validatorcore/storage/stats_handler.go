@@ -1,12 +1,13 @@
 package storage
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
 )
 
-var Last5Transactions []string
+var Last5Transactions []interface{}
 
 type Stats struct {
 	TotalChallenges      int
@@ -95,9 +96,13 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
             <ul>
     `
 	for _, transaction := range Last5Transactions {
-		statsHTML += "<li>" + transaction + "</li>"
+		jsonData, err := json.Marshal(transaction)
+		if err != nil {
+			statsHTML += "<li>Failed to marshal transaction</li>"
+			continue
+		}
+		statsHTML += "<li>" + string(jsonData) + "</li>"
 	}
-
 	statsHTML += `
             </ul>
         </div>
