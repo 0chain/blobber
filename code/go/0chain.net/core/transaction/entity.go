@@ -16,7 +16,10 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
 
-var Last50Transactions []string
+var (
+	Last50Transactions      []string
+	last50TransactionsMutex sync.Mutex
+)
 
 // Transaction entity that encapsulates the transaction related data and meta data
 type Transaction struct {
@@ -138,20 +141,13 @@ func (t *Transaction) GetTransaction() zcncore.TransactionScheme {
 func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val uint64) error {
 	t.wg.Add(1)
 
-	logging.Logger.Info("Jayash", zap.Any("address", address), zap.Any("methodName", methodName), zap.Any("input", input), zap.Any("val", val))
-
 	sn := transaction.SmartContractTxnData{Name: methodName, InputArgs: input}
 	snBytes, err := json.Marshal(sn)
 	if err != nil {
-		logging.Logger.Error("Jayash", zap.Error(err))
 		return err
 	}
 
-	if len(Last50Transactions) == 50 {
-		Last50Transactions = Last50Transactions[1:]
-	} else {
-		Last50Transactions = append(Last50Transactions, string(snBytes))
-	}
+	updateLast50Transactions(string(snBytes))
 
 	nonce := monitor.getNextUnusedNonce()
 	if err := t.zcntxn.SetTransactionNonce(nonce); err != nil {
@@ -273,4 +269,15 @@ func (t *Transaction) OnVerifyComplete(zcntxn *zcncore.Transaction, status int) 
 
 func (t *Transaction) OnAuthComplete(zcntxn *zcncore.Transaction, status int) {
 
+}
+
+func updateLast50Transactions(data string) {
+	last50TransactionsMutex.Lock()
+	defer last50TransactionsMutex.Unlock()
+
+	if len(Last50Transactions) == 50 {
+		Last50Transactions = Last50Transactions[1:]
+	} else {
+		Last50Transactions = append(Last50Transactions, data)
+	}
 }
