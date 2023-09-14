@@ -107,3 +107,5 @@ func DeleteFileStats(ctx context.Context, refID int64) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Unscoped().Delete(&FileStats{}, "ref_id=?", refID).Error
 }
+
+// only have lookuphash and update using that, have cache for that and save periodically to db

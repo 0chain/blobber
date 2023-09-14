@@ -53,9 +53,7 @@ func (dc *dbCollector) Finalize(ctx context.Context) error {
 				NewFileCreated(ctx, ref.ID)
 			}
 		default:
-			if ref.prevID != 0 {
-				FileUpdated(ctx, ref.prevID, ref.ID)
-			} else {
+			if ref.prevID == 0 {
 				NewDirCreated(ctx, ref.ID)
 			}
 		}
