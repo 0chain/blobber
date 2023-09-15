@@ -52,3 +52,8 @@ func (c *client) blobberCommitted(blobberID string) (err error) {
 	err = c.client.Call("Server.BlobberCommitted", blobberID, nil)
 	return
 }
+
+func (c *client) sendFileMetaRoot(m map[string]string) (err error) {
+	err = c.client.Call("Server.GetFileMetaRoot", m, nil)
+	return
+}

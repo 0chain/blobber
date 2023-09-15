@@ -480,7 +480,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-
 	if allocationObj.FileOptions == 0 {
 		return nil, common.NewError("immutable_allocation", "Cannot write to an immutable allocation")
 	}
@@ -1403,6 +1402,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	Logger.Info("rollback_writemarker", zap.Any("writemarker", writemarkerEntity.WM))
 
 	alloc, err := allocation.Repo.GetByIdAndLock(c, allocationID)
+	Logger.Info("[rollback]Lock Allocation", zap.Bool("is_redeem_required", alloc.IsRedeemRequired), zap.String("allocation_root", alloc.AllocationRoot), zap.String("latest_wm_redeemed", alloc.LatestRedeemedWM))
 	if err != nil {
 		txn.Rollback()
 		return &result, common.NewError("allocation_read_error", "Error reading the allocation object")
