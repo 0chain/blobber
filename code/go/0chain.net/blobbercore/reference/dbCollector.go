@@ -44,19 +44,19 @@ func (dc *dbCollector) Finalize(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	for _, ref := range dc.createdRefs {
-		switch ref.Type {
-		case FILE:
-			if ref.prevID != 0 {
-				FileUpdated(ctx, ref.prevID, ref.ID)
-			} else {
-				NewFileCreated(ctx, ref.ID)
-			}
-		default:
-			if ref.prevID == 0 {
-				NewDirCreated(ctx, ref.ID)
-			}
-		}
-	}
+	// for _, ref := range dc.createdRefs {
+	// 	switch ref.Type {
+	// 	case FILE:
+	// 		if ref.prevID != 0 {
+	// 			FileUpdated(ctx, ref.prevID, ref.ID)
+	// 		} else {
+	// 			NewFileCreated(ctx, ref.ID)
+	// 		}
+	// 	default:
+	// 		if ref.prevID == 0 {
+	// 			NewDirCreated(ctx, ref.ID)
+	// 		}
+	// 	}
+	// }
 	return nil
 }

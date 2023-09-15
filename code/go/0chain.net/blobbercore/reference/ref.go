@@ -65,11 +65,13 @@ type Ref struct {
 	CreatedAt               common.Timestamp `gorm:"column:created_at;index:idx_created_at,sort:desc" dirlist:"created_at" filelist:"created_at"`
 	UpdatedAt               common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" dirlist:"updated_at" filelist:"updated_at"`
 
-	DeletedAt        gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
-	IsPrecommit      bool           `gorm:"column:is_precommit;not null;default:false" filelist:"is_precommit" dirlist:"is_precommit"`
-	ChunkSize        int64          `gorm:"column:chunk_size;not null;default:65536" dirlist:"chunk_size" filelist:"chunk_size"`
-	HashToBeComputed bool           `gorm:"-"`
-	prevID           int64          `gorm:"-"`
+	DeletedAt         gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
+	IsPrecommit       bool           `gorm:"column:is_precommit;not null;default:false" filelist:"is_precommit" dirlist:"is_precommit"`
+	ChunkSize         int64          `gorm:"column:chunk_size;not null;default:65536" dirlist:"chunk_size" filelist:"chunk_size"`
+	NumUpdates        int64          `gorm:"column:num_of_updates" json:"num_of_updates"`
+	NumBlockDownloads int64          `gorm:"column:num_of_block_downloads" json:"num_of_block_downloads"`
+	HashToBeComputed  bool           `gorm:"-"`
+	prevID            int64          `gorm:"-"`
 }
 
 // BeforeCreate Hook that gets executed to update create and update date
@@ -531,6 +533,7 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 func (r *Ref) SaveFileRef(ctx context.Context, collector QueryCollector) error {
 	r.prevID = r.ID
 	r.IsPrecommit = true
+	r.NumUpdates += 1
 	if r.ID > 0 {
 		deleteRef := &Ref{ID: r.ID}
 		collector.DeleteRefRecord(deleteRef)
@@ -544,6 +547,7 @@ func (r *Ref) SaveFileRef(ctx context.Context, collector QueryCollector) error {
 func (r *Ref) SaveDirRef(ctx context.Context, collector QueryCollector) error {
 	r.prevID = r.ID
 	r.IsPrecommit = true
+	r.NumUpdates += 1
 	if r.ID > 0 {
 		deleteRef := &Ref{ID: r.ID}
 		collector.DeleteRefRecord(deleteRef)
