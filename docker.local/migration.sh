@@ -173,8 +173,10 @@ services:
       MINIO_SERVER: "minioserver:9000"
 
   s3mgrt:
-    image: 0chaindev/s3mgrt:pr-573-da9e1226
-    restart: always
+    image: 0chaindev/s3mgrt:pr-756-c5dcad5c
+    restart: always 
+    environment:
+      BUCKET: "${BUCKET}"
     volumes:
       - ${MIGRATION_ROOT}:/migrate
       - ${MIGRATION_LOGS}:/migratelogs
