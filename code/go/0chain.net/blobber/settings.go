@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -13,7 +14,7 @@ import (
 
 type cctCB struct {
 	done chan struct{}
-	cct  time.Duration
+	cct  int64
 	err  error
 }
 
@@ -35,14 +36,16 @@ func (c *cctCB) OnInfoAvailable(op int, status int, info string, errStr string) 
 	}
 
 	m = m["fields"].(map[string]interface{})
-	cct := m["max_challenge_completion_time"].(string)
 
-	d, err := time.ParseDuration(cct)
+	cctString := m["max_challenge_completion_rounds"].(string)
+
+	cct, err := strconv.ParseInt(cctString, 10, 64)
 	if err != nil {
 		c.err = err
 		return
 	}
-	c.cct = d
+
+	c.cct = cct
 }
 
 func setCCTFromChain() error {
