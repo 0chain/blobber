@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/google/uuid"
 	"sort"
 	"strconv"
 	"time"
@@ -52,9 +51,7 @@ func syncOpenChallenges(ctx context.Context) {
 		params["limit"] = "20"
 		params["from"] = strconv.FormatInt(lastChallengeRound, 10)
 
-		uniqueIdForLogging := uuid.NewString()
-
-		logging.Logger.Info("[challenge]sync:pull : "+uniqueIdForLogging, zap.Any("params", params))
+		logging.Logger.Info("[challenge]sync:pull", zap.Any("params", params))
 
 		var challenges BCChallengeResponse
 		var challengeIDs []string
@@ -79,15 +76,8 @@ func syncOpenChallenges(ctx context.Context) {
 		sort.Slice(challenges.Challenges, func(i, j int) bool {
 			return challenges.Challenges[i].RoundCreatedAt < challenges.Challenges[j].RoundCreatedAt
 		})
-
 		count += len(challenges.Challenges)
 		for _, c := range challenges.Challenges {
-			logging.Logger.Info(uniqueIdForLogging+"[challenge]sync:pull",
-				zap.Int("challenges", len(challenges.Challenges)),
-				zap.Any("lastChallengeRound", lastChallengeRound),
-				zap.Any("c.RoundCreatedAt", c.RoundCreatedAt),
-			)
-
 			challengeIDs = append(challengeIDs, c.ChallengeID)
 			if c.RoundCreatedAt >= lastChallengeRound {
 				lastChallengeRound = c.RoundCreatedAt
@@ -213,7 +203,7 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 	)
 
 	if currentRound-c.RoundCreatedAt > config.StorageSCConfig.ChallengeCompletionTime {
-		c.CancelChallenge(ctx, ErrExpiredCCT, currentRound)
+		c.CancelChallenge(ctx, ErrExpiredCCT)
 		if err := tx.Commit().Error; err != nil {
 			logging.Logger.Error("[challenge]verify(Commit): ",
 				zap.Any("challenge_id", c.ChallengeID),
