@@ -46,19 +46,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Docker Buildx
-        run: |
-          sudo flock /var/lib/apt/lists/lock -c "sudo apt-get update -y"
-          sudo flock /var/lib/apt/lists/lock -c "sudo apt-get install wget git -y"
-          sudo flock /var/lib/apt/lists/lock -c "sudo apt-get install ca-certificates curl gnupg lsb-release -y"
-          rm -f /usr/share/keyrings/docker-archive-keyring.gpg && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-          sudo flock /var/lib/apt/lists/lock -c "sudo apt-get update -y"
-          sudo flock /var/lib/apt/lists/lock -c "sudo apt-get install docker-ce docker-ce-cli containerd.io -y"
-          export DOCKER_CLI_EXPERIMENTAL=enabled
-          docker run --privileged --rm tonistiigi/binfmt --install all
-          CONTEXT_NAME="blobber_buildx" && (docker context inspect "$CONTEXT_NAME" >/dev/null 2>&1 || docker context create "$CONTEXT_NAME")
-
+      -
+        # Add support for more platforms with QEMU (optional)
+        # https://github.com/docker/setup-qemu-action
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
@@ -121,19 +117,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Docker Buildx
-        run: |
-          sudo flock /var/lib/apt/lists/lock -c "sudo apt-get update -y"
-          sudo flock /var/lib/apt/lists/lock -c "sudo apt-get install wget git -y"
-          sudo flock /var/lib/apt/lists/lock -c "sudo apt-get install ca-certificates curl gnupg lsb-release -y"
-          rm -f /usr/share/keyrings/docker-archive-keyring.gpg && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-          sudo flock /var/lib/apt/lists/lock -c "sudo apt-get update -y"
-          sudo flock /var/lib/apt/lists/lock -c "sudo apt-get install docker-ce docker-ce-cli containerd.io -y"
-          export DOCKER_CLI_EXPERIMENTAL=enabled
-          docker run --privileged --rm tonistiigi/binfmt --install all
-          CONTEXT_NAME="blobber_buildx" && (docker context inspect "$CONTEXT_NAME" >/dev/null 2>&1 || docker context create "$CONTEXT_NAME")
-
+      -
+        # Add support for more platforms with QEMU (optional)
+        # https://github.com/docker/setup-qemu-action
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
