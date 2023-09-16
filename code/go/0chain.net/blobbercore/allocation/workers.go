@@ -143,6 +143,7 @@ func updateAllocation(ctx context.Context, a *Allocation) {
 	// send finalize allocation transaction
 	if shouldFinalize(sa) {
 		sendFinalizeAllocation(a)
+		cleanupAllocation(ctx, a)
 		return
 	}
 
