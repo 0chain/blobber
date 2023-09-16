@@ -77,9 +77,7 @@ func UpdateChallengeTimingCancellation(challengeID string, cancellation common.T
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
 		values := map[string]interface{}{
-			"closed_at":        cancellation,
-			"txn_submission":   cancellation,
-			"txn_verification": cancellation,
+			"closed_at": cancellation,
 		}
 
 		if reason == ErrExpiredCCT {

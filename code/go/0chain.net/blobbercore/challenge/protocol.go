@@ -280,7 +280,10 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			logging.Logger.Info(
 				"[challenge]resp: Got response from the validator.",
 				zap.Any("validator_response", validationTicket),
+				zap.Any("numSuccess", numSuccess),
+				zap.Any("numFailed", numFailed),
 			)
+
 			verified, err := validationTicket.VerifySign()
 			if err != nil || !verified {
 				numFailed++
@@ -298,16 +301,11 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 
 	for {
-		if numSuccess+numFailed == len(cr.Validators) {
-			break
-		}
-
-		if numSuccess > (len(cr.Validators) / 2) {
+		logging.Logger.Info("[challenge]validator response stats", zap.Any("challenge_id", cr.ChallengeID), zap.Any("num_success", numSuccess), zap.Any("num_failed", numFailed))
+		if numSuccess > (len(cr.Validators)/2) || numSuccess+numFailed == len(cr.Validators) {
 			break
 		}
 	}
-
-	swg.Done()
 
 	logging.Logger.Info("[challenge]validator response stats", zap.Any("challenge_id", cr.ChallengeID), zap.Any("validator_responses", responses), zap.Any("num_success", numSuccess), zap.Any("num_failed", numFailed))
 	if numSuccess > (len(cr.Validators) / 2) {
