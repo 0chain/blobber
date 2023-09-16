@@ -309,7 +309,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 	swg.Done()
 
-	logging.Logger.Info("[challenge]validator response stats", zap.Any("challenge_id", cr.ChallengeID), zap.Any("validator_responses", responses))
+	logging.Logger.Info("[challenge]validator response stats", zap.Any("challenge_id", cr.ChallengeID), zap.Any("validator_responses", responses), zap.Any("num_success", numSuccess), zap.Any("num_failed", numFailed))
 	if numSuccess > (len(cr.Validators) / 2) {
 		cr.Result = ChallengeSuccess
 		cr.Status = Processed
