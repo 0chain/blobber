@@ -90,10 +90,9 @@ type Config struct {
 
 	HealthCheckWorkerFreq time.Duration
 
-	ReadPrice     float64
-	WritePrice    float64
-	PriceInUSD    bool
-	MinLockDemand float64
+	ReadPrice  float64
+	WritePrice float64
+	PriceInUSD bool
 
 	// WriteMarkerLockTimeout lock is released automatically if it is timeout
 	WriteMarkerLockTimeout time.Duration
@@ -181,7 +180,7 @@ func ValidChain(chain string) error {
 // If any field it required then it can simply be added in this struct and we are
 // good to go
 type StorageSCConfiguration struct {
-	ChallengeCompletionTime time.Duration
+	ChallengeCompletionTime int64
 }
 
 var StorageSCConfig StorageSCConfiguration

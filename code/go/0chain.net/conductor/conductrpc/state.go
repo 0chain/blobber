@@ -64,6 +64,8 @@ type State struct {
 	AdversarialValidator AdversarialValidator
 	NotifyOnValidationTicketGeneration bool
 	StopWMCommit         *bool
+	FailRenameCommit     []string
+	GetFileMetaRoot      bool
 }
 
 // Name returns NodeName by given NodeID.

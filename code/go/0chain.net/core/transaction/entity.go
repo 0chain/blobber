@@ -2,10 +2,10 @@ package transaction
 
 import (
 	"encoding/json"
+	"github.com/0chain/gosdk/core/transaction"
 	"sync"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 
@@ -14,6 +14,11 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+)
+
+var (
+	Last50Transactions      []string
+	last50TransactionsMutex sync.Mutex
 )
 
 // Transaction entity that encapsulates the transaction related data and meta data
@@ -48,10 +53,6 @@ type Terms struct {
 	// WritePrice is price for reading. Token / GB. Also,
 	// it used to calculate min_lock_demand value.
 	WritePrice uint64 `json:"write_price"`
-	// MinLockDemand in number in [0; 1] range. It represents part of
-	// allocation should be locked for the blobber rewards even if
-	// user never write something to the blobber.
-	MinLockDemand float64 `json:"min_lock_demand"`
 }
 
 type StakePoolSettings struct {
@@ -94,10 +95,6 @@ type StorageAllocation struct {
 
 	DataShards   int64 `json:"data_shards"`
 	ParityShards int64 `json:"parity_shards"`
-}
-
-func (sa *StorageAllocation) Until() common.Timestamp {
-	return sa.Expiration + common.Timestamp(config.StorageSCConfig.ChallengeCompletionTime/time.Second)
 }
 
 type StorageAllocationBlobber struct {
@@ -143,6 +140,15 @@ func (t *Transaction) GetTransaction() zcncore.TransactionScheme {
 
 func (t *Transaction) ExecuteSmartContract(address, methodName string, input interface{}, val uint64) error {
 	t.wg.Add(1)
+
+	sn := transaction.SmartContractTxnData{Name: methodName, InputArgs: input}
+	snBytes, err := json.Marshal(sn)
+	if err != nil {
+		return err
+	}
+
+	updateLast50Transactions(string(snBytes))
+
 	nonce := monitor.getNextUnusedNonce()
 	if err := t.zcntxn.SetTransactionNonce(nonce); err != nil {
 		logging.Logger.Error("Failed to set nonce.",
@@ -155,7 +161,7 @@ func (t *Transaction) ExecuteSmartContract(address, methodName string, input int
 		zap.Any("hash", t.zcntxn.GetTransactionHash()),
 		zap.Any("nonce", nonce))
 
-	_, err := t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
+	_, err = t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
 	if err != nil {
 		t.wg.Done()
 		logging.Logger.Error("Failed to execute SC.",
@@ -263,4 +269,15 @@ func (t *Transaction) OnVerifyComplete(zcntxn *zcncore.Transaction, status int) 
 
 func (t *Transaction) OnAuthComplete(zcntxn *zcncore.Transaction, status int) {
 
+}
+
+func updateLast50Transactions(data string) {
+	last50TransactionsMutex.Lock()
+	defer last50TransactionsMutex.Unlock()
+
+	if len(Last50Transactions) == 50 {
+		Last50Transactions = Last50Transactions[1:]
+	} else {
+		Last50Transactions = append(Last50Transactions, data)
+	}
 }
