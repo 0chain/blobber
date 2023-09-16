@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/google/uuid"
 	"sort"
 	"strconv"
 	"time"
@@ -53,7 +54,9 @@ func syncOpenChallenges(ctx context.Context) {
 		default:
 		}
 
-		logging.Logger.Info("[challenge]sync:pull", zap.Any("params", params))
+		uniqueIdForLogging := uuid.NewString()
+
+		logging.Logger.Info("[challenge]sync:pull : "+uniqueIdForLogging, zap.Any("params", params))
 
 		var challenges BCChallengeResponse
 		var challengeIDs []string
@@ -78,8 +81,16 @@ func syncOpenChallenges(ctx context.Context) {
 		sort.Slice(challenges.Challenges, func(i, j int) bool {
 			return challenges.Challenges[i].RoundCreatedAt < challenges.Challenges[j].RoundCreatedAt
 		})
+
 		count += len(challenges.Challenges)
 		for _, c := range challenges.Challenges {
+			logging.Logger.Info(uniqueIdForLogging+"[challenge]sync:pull",
+				zap.Int("challenges", len(challenges.Challenges)),
+				zap.Any("lastChallengeRound", lastChallengeRound),
+				zap.Any("challenges[0].RoundCreatedAt", challenges.Challenges[0].RoundCreatedAt),
+				zap.Any("challenges[len(challenges)-1].RoundCreatedAt", challenges.Challenges[len(challenges.Challenges)-1].RoundCreatedAt),
+			)
+
 			challengeIDs = append(challengeIDs, c.ChallengeID)
 			if c.RoundCreatedAt >= lastChallengeRound {
 				lastChallengeRound = c.RoundCreatedAt
