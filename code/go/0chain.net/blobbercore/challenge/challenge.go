@@ -87,8 +87,7 @@ func syncOpenChallenges(ctx context.Context) {
 			logging.Logger.Info(uniqueIdForLogging+"[challenge]sync:pull",
 				zap.Int("challenges", len(challenges.Challenges)),
 				zap.Any("lastChallengeRound", lastChallengeRound),
-				zap.Any("challenges[0].RoundCreatedAt", challenges.Challenges[0].RoundCreatedAt),
-				zap.Any("challenges[len(challenges)-1].RoundCreatedAt", challenges.Challenges[len(challenges.Challenges)-1].RoundCreatedAt),
+				zap.Any("c.RoundCreatedAt", c.RoundCreatedAt),
 			)
 
 			challengeIDs = append(challengeIDs, c.ChallengeID)
