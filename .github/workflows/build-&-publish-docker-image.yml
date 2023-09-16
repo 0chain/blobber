@@ -88,7 +88,7 @@ jobs:
           export DOCKER_IMAGE_SWAGGER="${BLOBBER_REGISTRY}:swagger_test"
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
-          docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
+          docker buildx create --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use "$RUNNER_NAME"
           ./docker.local/bin/build.blobber.sh
 
   validator:
@@ -157,7 +157,7 @@ jobs:
           export DOCKER_IMAGE_BASE="${VALIDATOR_REGISTRY}:base"
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_VALIDATOR="-t ${VALIDATOR_REGISTRY}:${TAG} -t ${VALIDATOR_REGISTRY}:${TAG}-${SHORT_SHA}"
-          docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
+          docker buildx create --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use "$RUNNER_NAME"
           ./docker.local/bin/build.validator.sh
 
 
