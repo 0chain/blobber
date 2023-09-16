@@ -3,7 +3,6 @@ package challenge
 import (
 	"context"
 	"fmt"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -78,7 +77,9 @@ func UpdateChallengeTimingCancellation(challengeID string, cancellation common.T
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
 		values := map[string]interface{}{
-			"closed_at": cancellation,
+			"closed_at":        cancellation,
+			"txn_submission":   cancellation,
+			"txn_verification": cancellation,
 		}
 
 		if reason == ErrExpiredCCT {

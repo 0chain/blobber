@@ -50,9 +50,7 @@ func syncOpenChallenges(ctx context.Context) {
 		params["blobber"] = node.Self.ID
 
 		params["limit"] = "50"
-		if lastChallengeRound > 0 {
-			params["from"] = strconv.FormatInt(lastChallengeRound, 10)
-		}
+		params["from"] = strconv.FormatInt(lastChallengeRound, 10)
 
 		uniqueIdForLogging := uuid.NewString()
 
