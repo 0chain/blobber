@@ -22,7 +22,7 @@ env:
 jobs:
   blobber:
     timeout-minutes: 25
-    runs-on: [self-hosted, arc-runner]
+    runs-on: [Ubuntu-2004-focal-64-minimal]
     steps:
       - name: Set docker image tag
         run: |
@@ -97,7 +97,7 @@ jobs:
 
   validator:
     timeout-minutes: 20
-    runs-on: [self-hosted, arc-runner]
+    runs-on: [Ubuntu-2004-focal-64-minimal]
     steps:
       - name: Set docker image tag 
         run: |
