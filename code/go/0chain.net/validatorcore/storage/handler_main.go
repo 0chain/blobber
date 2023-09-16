@@ -19,5 +19,5 @@ func SetupHandlers(r *mux.Router) {
 
 	r.HandleFunc("/debug", common.ToJSONResponse(DumpGoRoutines))
 
-	r.HandleFunc("/stats", statsHandler)
+	r.HandleFunc("/_stats", statsHandler)
 }

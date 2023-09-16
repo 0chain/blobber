@@ -180,7 +180,7 @@ func ValidChain(chain string) error {
 // If any field it required then it can simply be added in this struct and we are
 // good to go
 type StorageSCConfiguration struct {
-	ChallengeCompletionTime time.Duration
+	ChallengeCompletionTime int64
 }
 
 var StorageSCConfig StorageSCConfiguration

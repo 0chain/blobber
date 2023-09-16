@@ -36,7 +36,7 @@ func syncOpenChallenges(ctx context.Context) {
 	params := make(map[string]string)
 	params["blobber"] = node.Self.ID
 
-	params["limit"] = "50"
+	params["limit"] = "20"
 	if lastChallengeRound > 0 {
 		params["from"] = strconv.FormatInt(lastChallengeRound, 10)
 	}
@@ -154,7 +154,6 @@ func validateOnValidators(c *ChallengeEntity) {
 			zap.Any("challenge_id", c.ChallengeID),
 			zap.Time("created", createdTime),
 			zap.Error(err))
-		//TODO: Should we delete the challenge from map or send it back to the todo channel?
 		deleteChallenge(c.RoundCreatedAt)
 		tx.Rollback()
 		return
@@ -191,12 +190,21 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 	tx := datastore.GetStore().GetTransaction(ctx)
 
 	createdTime := common.ToTime(c.CreatedAt)
-	logging.Logger.Info("[challenge]commit",
-		zap.Any("challenge_id", c.ChallengeID),
-		zap.Time("created", createdTime),
-		zap.Any("openchallenge", c))
 
-	if time.Since(common.ToTime(c.CreatedAt)) > config.StorageSCConfig.ChallengeCompletionTime {
+	logging.Logger.Info("[challenge]verify: ",
+		zap.Any("challenge_id", c.ChallengeID),
+		zap.Time("created", createdTime))
+
+	currentRound := roundInfo.CurrentRound + int64(float64(roundInfo.LastRoundDiff)*(float64(time.Since(roundInfo.CurrentRoundCaptureTime).Milliseconds())/float64(GetRoundInterval.Milliseconds())))
+	logging.Logger.Info("[challenge]commit",
+		zap.Any("currentRound", currentRound),
+		zap.Any("roundInfo.LastRoundDiff", roundInfo.LastRoundDiff),
+		zap.Any("roundInfo.CurrentRound", roundInfo.CurrentRound),
+		zap.Any("roundInfo.CurrentRoundCaptureTime", roundInfo.CurrentRoundCaptureTime),
+		zap.Any("time.Since(roundInfo.CurrentRoundCaptureTime).Milliseconds()", time.Since(roundInfo.CurrentRoundCaptureTime).Milliseconds()),
+	)
+
+	if currentRound-c.RoundCreatedAt > config.StorageSCConfig.ChallengeCompletionTime {
 		c.CancelChallenge(ctx, ErrExpiredCCT)
 		if err := tx.Commit().Error; err != nil {
 			logging.Logger.Error("[challenge]verify(Commit): ",
