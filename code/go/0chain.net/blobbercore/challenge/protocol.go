@@ -298,7 +298,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 
 	for {
-		if numSuccess >= (len(cr.Validators) / 2) {
+		if numSuccess > (len(cr.Validators) / 2) {
 			break
 		}
 	}
