@@ -45,7 +45,7 @@ type ChallengeResponse struct {
 	ValidationTickets []*ValidationTicket `json:"validation_tickets"`
 }
 
-func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error) {
+func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error, options ...int64) {
 	cancellation := time.Now()
 	db := datastore.GetStore().GetTransaction(ctx)
 	deleteChallenge(cr.RoundCreatedAt)
@@ -62,7 +62,7 @@ func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error)
 			zap.Time("cancellation", cancellation),
 			zap.Error(err))
 	}
-	logging.Logger.Error("[challenge]canceled", zap.String("challenge_id", cr.ChallengeID), zap.Error(errReason))
+	logging.Logger.Error("[challenge]canceled", zap.String("challenge_id", cr.ChallengeID), zap.Any("round_created_at", cr.RoundCreatedAt), zap.Any("options", options), zap.Error(errReason))
 }
 
 // LoadValidationTickets load validation tickets

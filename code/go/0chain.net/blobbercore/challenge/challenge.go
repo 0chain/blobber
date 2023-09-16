@@ -205,7 +205,7 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 	)
 
 	if currentRound-c.RoundCreatedAt > config.StorageSCConfig.ChallengeCompletionTime {
-		c.CancelChallenge(ctx, ErrExpiredCCT)
+		c.CancelChallenge(ctx, ErrExpiredCCT, currentRound)
 		if err := tx.Commit().Error; err != nil {
 			logging.Logger.Error("[challenge]verify(Commit): ",
 				zap.Any("challenge_id", c.ChallengeID),
