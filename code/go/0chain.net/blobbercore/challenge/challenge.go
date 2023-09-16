@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/google/uuid"
 	"sort"
 	"strconv"
@@ -13,7 +14,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"go.uber.org/zap"
 
@@ -34,14 +34,6 @@ func syncOpenChallenges(ctx context.Context) {
 		}
 	}()
 
-	params := make(map[string]string)
-	params["blobber"] = node.Self.ID
-
-	params["limit"] = "50"
-	if lastChallengeRound > 0 {
-		params["from"] = strconv.FormatInt(lastChallengeRound, 10)
-	}
-
 	start := time.Now()
 
 	var downloadElapsed, jsonElapsed time.Duration
@@ -52,6 +44,14 @@ func syncOpenChallenges(ctx context.Context) {
 			logging.Logger.Info("sync open challenges main loop ended")
 			return
 		default:
+		}
+
+		params := make(map[string]string)
+		params["blobber"] = node.Self.ID
+
+		params["limit"] = "50"
+		if lastChallengeRound > 0 {
+			params["from"] = strconv.FormatInt(lastChallengeRound, 10)
 		}
 
 		uniqueIdForLogging := uuid.NewString()
