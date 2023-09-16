@@ -36,7 +36,7 @@ func syncOpenChallenges(ctx context.Context) {
 	params := make(map[string]string)
 	params["blobber"] = node.Self.ID
 
-	params["limit"] = "20"
+	params["limit"] = "50"
 	if lastChallengeRound > 0 {
 		params["from"] = strconv.FormatInt(lastChallengeRound, 10)
 	}
