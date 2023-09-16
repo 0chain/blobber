@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -27,6 +28,10 @@ func StartUpdateWorker(ctx context.Context, interval time.Duration) {
 	go UpdateWorker(ctx, interval)
 }
 
+func StartFinalizeWorker(ctx context.Context, interval time.Duration) {
+	go FinalizeAllocationsWorker(ctx, interval)
+}
+
 // UpdateWorker updates all not finalized and not cleaned allocations
 // requesting SC through REST API. The worker required to fetch allocations
 // updates in DB.
@@ -46,6 +51,30 @@ func UpdateWorker(ctx context.Context, interval time.Duration) {
 		case <-tick:
 			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 				updateWork(ctx)
+				return nil
+			})
+		case <-quit:
+			return
+		}
+	}
+}
+
+func FinalizeAllocationsWorker(ctx context.Context, interval time.Duration) {
+	logging.Logger.Info("start finalize allocations worker")
+
+	var tk = time.NewTicker(interval)
+	defer tk.Stop()
+
+	var (
+		tick = tk.C
+		quit = ctx.Done()
+	)
+
+	for {
+		select {
+		case <-tick:
+			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				finalizeExpiredAllocations(ctx)
 				return nil
 			})
 		case <-quit:
@@ -101,7 +130,7 @@ func updateWork(ctx context.Context) {
 		offset += int64(len(allocs))
 
 		for _, a := range allocs {
-			updateAllocation(ctx, a)
+			updateAllocation(ctx, a, node.Self.ID)
 			if waitOrQuit(ctx, REQUEST_TIMEOUT) {
 				return
 			}
@@ -120,7 +149,7 @@ func shouldFinalize(sa *transaction.StorageAllocation) bool {
 	return sa.Expiration < now && !sa.Finalized
 }
 
-func updateAllocation(ctx context.Context, a *Allocation) {
+func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) {
 	if a.Finalized {
 		cleanupAllocation(ctx, a)
 		return
@@ -142,7 +171,7 @@ func updateAllocation(ctx context.Context, a *Allocation) {
 
 	// send finalize allocation transaction
 	if shouldFinalize(sa) {
-		sendFinalizeAllocation(a)
+		sendFinalizeAllocation(a.ID)
 		cleanupAllocation(ctx, a)
 		return
 	}
@@ -150,6 +179,18 @@ func updateAllocation(ctx context.Context, a *Allocation) {
 	// remove data
 	if a.Finalized && !a.CleanedUp {
 		cleanupAllocation(ctx, a)
+	}
+}
+
+func finalizeExpiredAllocations(ctx context.Context) {
+	var allocs, err = requestExpiredAllocations()
+	if err != nil {
+		logging.Logger.Error("requesting expired allocations from SC", zap.Error(err))
+		return
+	}
+
+	for _, allocID := range allocs {
+		sendFinalizeAllocation(allocID)
 	}
 }
 
@@ -165,6 +206,20 @@ func requestAllocation(allocID string) (sa *transaction.StorageAllocation, err e
 	}
 	sa = new(transaction.StorageAllocation)
 	err = json.Unmarshal(b, sa)
+	return
+}
+
+func requestExpiredAllocations() (allocs []string, err error) {
+	var b []byte
+	b, err = transaction.MakeSCRestAPICall(
+		transaction.STORAGE_CONTRACT_ADDRESS,
+		"/expired-allocations",
+		map[string]string{"blobber_id": node.Self.ID},
+		chain.GetServerChain())
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(b, &allocs)
 	return
 }
 
@@ -218,7 +273,7 @@ type finalizeRequest struct {
 	AllocationID string `json:"allocation_id"`
 }
 
-func sendFinalizeAllocation(a *Allocation) {
+func sendFinalizeAllocation(allocationID string) {
 	var tx, err = transaction.NewTransactionEntity()
 	if err != nil {
 		logging.Logger.Error("creating new transaction entity", zap.Error(err))
@@ -226,9 +281,8 @@ func sendFinalizeAllocation(a *Allocation) {
 	}
 
 	var request finalizeRequest
-	request.AllocationID = a.ID
+	request.AllocationID = allocationID
 
-	// TODO should this be verified?
 	err = tx.ExecuteSmartContract(
 		transaction.STORAGE_CONTRACT_ADDRESS,
 		transaction.FINALIZE_ALLOCATION,

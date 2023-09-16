@@ -37,6 +37,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("service_charge", 0.3)
 
 	viper.SetDefault("update_allocations_interval", time.Duration(-1))
+	viper.SetDefault("finalize_allocations_interval", time.Duration(-1))
 }
 
 /*SetupConfig - setup the configuration system */
@@ -97,7 +98,8 @@ type Config struct {
 	// WriteMarkerLockTimeout lock is released automatically if it is timeout
 	WriteMarkerLockTimeout time.Duration
 
-	UpdateAllocationsInterval time.Duration
+	UpdateAllocationsInterval   time.Duration
+	FinalizeAllocationsInterval time.Duration
 
 	MaxAllocationDirFiles int
 
