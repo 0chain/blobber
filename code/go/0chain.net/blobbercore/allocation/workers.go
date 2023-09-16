@@ -117,7 +117,7 @@ func findAllocations(ctx context.Context, offset int64) (allocs []*Allocation, c
 
 func shouldFinalize(sa *transaction.StorageAllocation) bool {
 	var now = common.Now()
-	return sa.Until() < now && !sa.Finalized
+	return sa.Expiration < now && !sa.Finalized
 }
 
 func updateAllocation(ctx context.Context, a *Allocation) {
