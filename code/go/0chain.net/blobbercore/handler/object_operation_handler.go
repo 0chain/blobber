@@ -287,6 +287,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, err
 	}
 
+	if dr.NumBlocks > 500 {
+		return nil, common.NewErrorf("download_file", "too many blocks requested: %v, max limit is 500", dr.NumBlocks)
+	}
+
 	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid file path: %v", err)
