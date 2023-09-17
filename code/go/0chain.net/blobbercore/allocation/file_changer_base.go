@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"context"
+	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -74,7 +75,7 @@ func (fc *BaseFileChanger) DeleteTempFile() error {
 	return err
 }
 
-func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
+func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
 
 	if fc.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{}

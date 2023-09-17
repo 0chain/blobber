@@ -56,50 +56,43 @@ func NewFileCreated(ctx context.Context, refID int64) {
 	stats := &FileStats{RefID: refID}
 	stats.NumBlockDownloads = 0
 	stats.NumUpdates = 1
-	db.Save(&stats)
+	db.Save(stats)
 }
 
 func FileUpdated(ctx context.Context, refID, newRefID int64) {
 	if refID == 0 {
 		return
 	}
-	db := datastore.GetStore().GetTransaction(ctx)
-	stats, err := GetFileStats(ctx, refID)
-	if err != nil {
-		logging.Logger.Error("FileUpdatedGetFileStats", zap.Error(err))
-		return
-	} else {
-		logging.Logger.Info("FileUpdatedGetFileStats", zap.Any("stats", stats))
-	}
-	db.Delete(&FileStats{}, "id=?", stats.ID)
-	newStats := &FileStats{RefID: newRefID}
-	newStats.NumUpdates = stats.NumUpdates + 1
-	newStats.NumBlockDownloads = stats.NumBlockDownloads
-	newStats.SuccessChallenges = stats.SuccessChallenges
-	newStats.FailedChallenges = stats.FailedChallenges
-	newStats.LastChallengeResponseTxn = stats.LastChallengeResponseTxn
-	newStats.WriteMarkerRedeemTxn = stats.WriteMarkerRedeemTxn
-	newStats.OnChain = stats.OnChain
-	err = db.Create(newStats).Error
-	if err != nil {
-		logging.Logger.Error("FileUpdatedCreate", zap.Error(err))
-	}
+	// db := datastore.GetStore().GetTransaction(ctx)
+	// stats, err := GetFileStats(ctx, refID)
+	// if err != nil {
+	// 	logging.Logger.Error("FileUpdatedGetFileStats", zap.Error(err))
+	// 	return
+	// } else {
+	// 	logging.Logger.Info("FileUpdatedGetFileStats", zap.Any("stats", stats))
+	// }
+	// db.Delete(&FileStats{}, "id=?", stats.ID)
+	// newStats := &FileStats{RefID: newRefID}
+	// newStats.NumUpdates = stats.NumUpdates + 1
+	// newStats.NumBlockDownloads = stats.NumBlockDownloads
+	// newStats.SuccessChallenges = stats.SuccessChallenges
+	// newStats.FailedChallenges = stats.FailedChallenges
+	// newStats.LastChallengeResponseTxn = stats.LastChallengeResponseTxn
+	// newStats.WriteMarkerRedeemTxn = stats.WriteMarkerRedeemTxn
+	// newStats.OnChain = stats.OnChain
+	// err = db.Create(newStats).Error
+	// if err != nil {
+	// 	logging.Logger.Error("FileUpdatedCreate", zap.Error(err))
+	// }
 }
 
-func FileBlockDownloaded(ctx context.Context, refID int64) {
+func FileBlockDownloaded(ctx context.Context, refID, blocks int64) {
 	db := datastore.GetStore().GetTransaction(ctx)
-	stats := &FileStats{RefID: refID}
-	db.Model(stats).Where(FileStats{RefID: refID}).Update("num_of_block_downloads", gorm.Expr("num_of_block_downloads + ?", 1))
+	db.Model(&Ref{}).Where("id=?", refID).Update("num_of_block_downloads", gorm.Expr("num_of_block_downloads + ?", blocks))
 }
 
-func GetFileStats(ctx context.Context, refID int64) (*FileStats, error) {
-	db := datastore.GetStore().GetTransaction(ctx)
-	stats := &FileStats{RefID: refID}
-	err := db.Unscoped().Model(stats).Where(FileStats{RefID: refID}).Preload("Ref").First(stats).Error
-	if err != nil {
-		return nil, err
-	}
-
+func GetFileStats(ctx context.Context, ref *Ref) (*FileStats, error) {
+	stats := &FileStats{RefID: ref.ID, Ref: *ref, NumUpdates: ref.NumUpdates, NumBlockDownloads: ref.NumBlockDownloads}
 	return stats, nil
 }
 
