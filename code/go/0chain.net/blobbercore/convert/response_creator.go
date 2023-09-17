@@ -155,7 +155,7 @@ func CopyObjectResponseCreator(r interface{}) *blobbergrpc.CopyObjectResponse {
 		return nil
 	}
 
-	httpResp, _ := r.(*blobberhttp.UploadResult)
+	httpResp, _ := r.(*allocation.UploadResult)
 	return &blobbergrpc.CopyObjectResponse{
 		Filename:        httpResp.Filename,
 		Size:            httpResp.Size,
@@ -171,7 +171,7 @@ func RenameObjectResponseCreator(r interface{}) *blobbergrpc.RenameObjectRespons
 		return nil
 	}
 
-	httpResp, _ := r.(*blobberhttp.UploadResult)
+	httpResp, _ := r.(*allocation.UploadResult)
 	return &blobbergrpc.RenameObjectResponse{
 		Filename:        httpResp.Filename,
 		Size:            httpResp.Size,
@@ -209,7 +209,7 @@ func UploadFileResponseCreator(r interface{}) *blobbergrpc.UploadFileResponse {
 		return nil
 	}
 
-	httpResp, _ := r.(*blobberhttp.UploadResult)
+	httpResp, _ := r.(*allocation.UploadResult)
 	return &blobbergrpc.UploadFileResponse{
 		Filename:        httpResp.Filename,
 		Size:            httpResp.Size,
