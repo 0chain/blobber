@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -194,12 +195,25 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 
 	currentRound := roundInfo.CurrentRound + int64(float64(roundInfo.LastRoundDiff)*(float64(time.Since(roundInfo.CurrentRoundCaptureTime).Milliseconds())/float64(GetRoundInterval.Milliseconds())))
 	logging.Logger.Info("[challenge]commit",
+		zap.Any("ChallengeID", c.ChallengeID),
+		zap.Any("RoundCreatedAt", c.RoundCreatedAt),
+		zap.Any("ChallengeCompletionTime", config.StorageSCConfig.ChallengeCompletionTime),
 		zap.Any("currentRound", currentRound),
 		zap.Any("roundInfo.LastRoundDiff", roundInfo.LastRoundDiff),
 		zap.Any("roundInfo.CurrentRound", roundInfo.CurrentRound),
 		zap.Any("roundInfo.CurrentRoundCaptureTime", roundInfo.CurrentRoundCaptureTime),
 		zap.Any("time.Since(roundInfo.CurrentRoundCaptureTime).Milliseconds()", time.Since(roundInfo.CurrentRoundCaptureTime).Milliseconds()),
 	)
+
+	if currentRound-c.RoundCreatedAt > config.StorageSCConfig.ChallengeCompletionTime {
+		c.CancelChallenge(ctx, ErrExpiredCCT)
+		if err := tx.Commit().Error; err != nil {
+			logging.Logger.Error("[challenge]verify(Commit): ",
+				zap.Any("challenge_id", c.ChallengeID),
+				zap.Error(err))
+		}
+		return nil, ErrExpiredCCT
+	}
 
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
