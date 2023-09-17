@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -101,7 +102,7 @@ func updateWork(ctx context.Context) {
 		offset += int64(len(allocs))
 
 		for _, a := range allocs {
-			updateAllocation(ctx, a)
+			updateAllocation(ctx, a, node.Self.ID)
 			if waitOrQuit(ctx, REQUEST_TIMEOUT) {
 				return
 			}
@@ -120,7 +121,7 @@ func shouldFinalize(sa *transaction.StorageAllocation) bool {
 	return sa.Expiration < now && !sa.Finalized
 }
 
-func updateAllocation(ctx context.Context, a *Allocation) {
+func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) {
 	if a.Finalized {
 		cleanupAllocation(ctx, a)
 		return
@@ -130,6 +131,19 @@ func updateAllocation(ctx context.Context, a *Allocation) {
 	if err != nil {
 		logging.Logger.Error("requesting allocations from SC", zap.Error(err))
 		return
+	}
+
+	removedBlobber := true
+	for _, d := range sa.BlobberDetails {
+		if d.BlobberID == selfBlobberID {
+			removedBlobber = false
+			break
+		}
+	}
+
+	if removedBlobber {
+		logging.Logger.Info("blobber removed from allocation", zap.String("blobber", selfBlobberID), zap.String("allocation", a.ID))
+		cleanupAllocation(ctx, a)
 	}
 
 	// if new Tx, then we have to update the allocation
@@ -142,7 +156,7 @@ func updateAllocation(ctx context.Context, a *Allocation) {
 
 	// send finalize allocation transaction
 	if shouldFinalize(sa) {
-		sendFinalizeAllocation(a)
+		sendFinalizeAllocation(a.ID)
 		return
 	}
 
@@ -217,7 +231,7 @@ type finalizeRequest struct {
 	AllocationID string `json:"allocation_id"`
 }
 
-func sendFinalizeAllocation(a *Allocation) {
+func sendFinalizeAllocation(allocationID string) {
 	var tx, err = transaction.NewTransactionEntity()
 	if err != nil {
 		logging.Logger.Error("creating new transaction entity", zap.Error(err))
@@ -225,9 +239,8 @@ func sendFinalizeAllocation(a *Allocation) {
 	}
 
 	var request finalizeRequest
-	request.AllocationID = a.ID
+	request.AllocationID = allocationID
 
-	// TODO should this be verified?
 	err = tx.ExecuteSmartContract(
 		transaction.STORAGE_CONTRACT_ADDRESS,
 		transaction.FINALIZE_ALLOCATION,
