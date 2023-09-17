@@ -426,6 +426,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 	fileDownloadResponse.Data = chunkData
 	reference.FileBlockDownloaded(ctx, fileref.ID, dr.NumBlocks)
+	addDailyBlocks(clientID, dr.NumBlocks)
 	return fileDownloadResponse, nil
 }
 
