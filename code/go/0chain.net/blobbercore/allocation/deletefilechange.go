@@ -58,7 +58,7 @@ func (nf *DeleteFileChange) DeleteTempFile() error {
 	return nil
 }
 
-func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
+func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	type Result struct {
 		Id             string
@@ -69,6 +69,7 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 	limitCh := make(chan struct{}, 10)
 	wg := &sync.WaitGroup{}
 	var results []Result
+	mut.Lock()
 	err := db.Model(&reference.Ref{}).Unscoped().
 		Select("id", "validation_root", "thumbnail_hash").
 		Where("allocation_id=? AND path LIKE ? AND type=? AND deleted_at is not NULL",
@@ -115,7 +116,7 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context) error {
 			}
 			return nil
 		}).Error
-
+	mut.Unlock()
 	wg.Wait()
 
 	return err
