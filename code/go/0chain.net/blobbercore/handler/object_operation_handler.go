@@ -289,7 +289,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	}
 
 	if dr.NumBlocks > config.Configuration.BlockLimitRequest {
-		return nil, common.NewErrorf("download_file", "too many blocks requested: %v, max limit is 500", dr.NumBlocks)
+		return nil, common.NewErrorf("download_file", "too many blocks requested: %v, max limit is %v", dr.NumBlocks, config.Configuration.BlockLimitRequest)
 	}
 
 	dailyBlocksConsumed := getDailyBlocks(clientID)
