@@ -755,10 +755,14 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
 
-	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
+	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root", "type"})
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	if objectRef.Type == reference.DIRECTORY {
+		return nil, common.NewError("invalid_operation", "Cannot rename a directory use move instead")
 	}
 
 	if objectRef.Path == "/" {
