@@ -85,7 +85,7 @@ func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request
 			return common.NewError("invalid_file_update", "File at path does not exist for update")
 		}
 		logging.Logger.Info("UpdateFile ref exists check done", zap.Any("ref", cmd.existingFileRef))
-		allocation.CreateConnectionChange(cmd.fileChanger.ConnectionID, cmd.fileChanger.PathHash)
+		allocation.CreateConnectionChange(cmd.fileChanger.ConnectionID, cmd.fileChanger.PathHash, allocationObj)
 		err = allocation.SaveExistingRef(cmd.fileChanger.ConnectionID, cmd.fileChanger.PathHash, cmd.existingFileRef)
 		if err != nil {
 			return common.NewError("invalid_file_update", "Error saving existing ref")

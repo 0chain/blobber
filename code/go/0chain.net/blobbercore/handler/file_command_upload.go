@@ -92,7 +92,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 			msg := fmt.Sprintf("File at path :%s: already exists", fileChanger.Path)
 			return common.NewError("duplicate_file", msg)
 		}
-		allocation.CreateConnectionChange(fileChanger.ConnectionID, fileChanger.PathHash)
+		allocation.CreateConnectionChange(fileChanger.ConnectionID, fileChanger.PathHash, allocationObj)
 	}
 
 	thumbFile, thumbHeader, _ := req.FormFile(UploadThumbnailFile)

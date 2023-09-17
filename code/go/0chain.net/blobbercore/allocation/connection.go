@@ -26,14 +26,13 @@ var (
 )
 
 type ConnectionProcessor struct {
-	Size          int64
-	UpdatedAt     time.Time
-	AllocationObj *Allocation
-	lock          sync.RWMutex
-	changes       map[string]*ConnectionChange
-	ClientID      string
-	ctx           context.Context
-	ctxCancel     context.CancelFunc
+	Size      int64
+	UpdatedAt time.Time
+	lock      sync.RWMutex
+	changes   map[string]*ConnectionChange
+	ClientID  string
+	ctx       context.Context
+	ctxCancel context.CancelFunc
 }
 
 type ConnectionChange struct {
@@ -46,7 +45,7 @@ type ConnectionChange struct {
 	isFinalized  bool
 }
 
-func CreateConnectionChange(connectionID, pathHash string) *ConnectionChange {
+func CreateConnectionChange(connectionID, pathHash string, allocationObj *Allocation) *ConnectionChange {
 	connectionObjMutex.Lock()
 	connectionObj := connectionProcessor[connectionID]
 	if connectionObj == nil {
@@ -69,7 +68,7 @@ func CreateConnectionChange(connectionID, pathHash string) *ConnectionChange {
 	connectionObj.lock.Unlock()
 	connChange.wg.Add(1)
 	go func() {
-		processCommand(connectionObj.ctx, connChange.ProcessChan, connectionObj.AllocationObj, connectionID, connectionObj.ClientID, pathHash)
+		processCommand(connectionObj.ctx, connChange.ProcessChan, allocationObj, connectionID, connectionObj.ClientID, pathHash)
 		connChange.wg.Done()
 	}()
 	return connChange

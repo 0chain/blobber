@@ -1167,16 +1167,12 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 
 	elapsedGetConnectionProcessor := time.Since(st)
 	st = time.Now()
-	if connectionProcessor.AllocationObj == nil {
-		allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
-		if err != nil {
-			return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-		}
-		connectionProcessor.AllocationObj = allocationObj
-		connectionProcessor.ClientID = clientID
-	}
 
-	allocationObj := connectionProcessor.AllocationObj
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+	connectionProcessor.ClientID = clientID
 
 	elapsedAllocation := time.Since(st)
 
