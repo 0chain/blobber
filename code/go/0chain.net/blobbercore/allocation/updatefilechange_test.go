@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -359,7 +360,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 				ConnectionID:        "connection_id",
 			},
 		}
-
+		mut := &sync.Mutex{}
 		t.Run(tc.name, func(t *testing.T) {
 			rootRef, _ := reference.GetReferencePathFromPaths(ctx, tc.allocationID, []string{change.Path}, []string{})
 			_, err := func() (*reference.Ref, error) {
@@ -368,7 +369,7 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 					return nil, err
 				}
 
-				err = change.CommitToFileStore(ctx)
+				err = change.CommitToFileStore(ctx, mut)
 				return resp, err
 			}()
 

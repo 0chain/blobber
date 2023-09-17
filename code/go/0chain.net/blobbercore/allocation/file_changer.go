@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"context"
+	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 )
@@ -18,5 +19,5 @@ type FileChanger interface {
 	// DeleteTempFile delete temp file and thumbnail from disk
 	DeleteTempFile() error
 	// CommitToFileStore move temp file and thumbnail from temp dir to persistent folder
-	CommitToFileStore(ctx context.Context) error
+	CommitToFileStore(ctx context.Context, mut *sync.Mutex) error
 }

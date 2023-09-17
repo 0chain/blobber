@@ -415,7 +415,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	}
 
 	fileDownloadResponse.Data = chunkData
-	reference.FileBlockDownloaded(ctx, fileref.ID)
+	reference.FileBlockDownloaded(ctx, fileref.ID, dr.NumBlocks)
 	return fileDownloadResponse, nil
 }
 
@@ -603,7 +603,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	elapsedMoveToFilestore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
 
-	err = connectionObj.ApplyChanges(
+	rootRef, err := connectionObj.ApplyChanges(
 		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
 	if err != nil {
 		Logger.Error("Error applying changes", zap.Error(err))
@@ -613,10 +613,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
 
-	rootRef, err := reference.GetLimitedRefFieldsByPath(ctx, allocationID, "/", []string{"hash", "file_meta_hash"})
-	if err != nil {
-		return nil, err
-	}
 	allocationRoot := rootRef.Hash
 	fileMetaRoot := rootRef.FileMetaHash
 	if allocationRoot != writeMarker.AllocationRoot {

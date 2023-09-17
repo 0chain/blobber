@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -84,7 +85,7 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 
 	for _, tt := range testCases {
 		tc := tt
-
+		mut := &sync.Mutex{}
 		t.Run(t.Name(), func(t *testing.T) {
 			fs := &MockFileStore{}
 			if err := fs.Initialize(); err != nil {
@@ -126,7 +127,7 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 					return err
 				}
 
-				return change.CommitToFileStore(ctx)
+				return change.CommitToFileStore(ctx, mut)
 			}()
 
 			if tc.expectingError {
