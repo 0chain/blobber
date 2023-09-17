@@ -21,7 +21,7 @@ env:
 
 jobs:
   blobber:
-    timeout-minutes: 25
+    timeout-minutes: 30
     runs-on: [Ubuntu-2004-focal-64-minimal]
     steps:
       - name: Set docker image tag
@@ -93,7 +93,7 @@ jobs:
           ./docker.local/bin/build.blobber.sh
 
   validator:
-    timeout-minutes: 20
+    timeout-minutes: 30
     runs-on: [Ubuntu-2004-focal-64-minimal]
     steps:
       - name: Set docker image tag 
