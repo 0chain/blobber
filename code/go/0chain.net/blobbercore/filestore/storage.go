@@ -103,7 +103,6 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 			if err != nil {
 				return nil, common.NewError("file_seek_error", err.Error())
 			}
-
 			_, err = io.CopyBuffer(fileData.Hasher, f, buf)
 			if err != nil {
 				return nil, common.NewError("file_read_error", err.Error())
