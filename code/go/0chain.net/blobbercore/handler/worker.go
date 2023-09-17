@@ -17,6 +17,7 @@ import (
 
 func SetupWorkers(ctx context.Context) {
 	go startCleanupTempFiles(ctx)
+	go startDownloadLimitCleanup(ctx)
 }
 
 func CleanupDiskFiles(ctx context.Context) error {

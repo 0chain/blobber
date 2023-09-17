@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
 	"github.com/0chain/gosdk/constants"
 
@@ -287,8 +288,13 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, err
 	}
 
-	if dr.NumBlocks > 500 {
+	if dr.NumBlocks > config.Configuration.BlockLimitRequest {
 		return nil, common.NewErrorf("download_file", "too many blocks requested: %v, max limit is 500", dr.NumBlocks)
+	}
+
+	dailyBlocksConsumed := getDailyBlocks(clientID)
+	if dailyBlocksConsumed+dr.NumBlocks > config.Configuration.BlockLimitDaily {
+		return nil, common.NewErrorf("download_file", "daily block limit reached: %v, max limit is %v", dailyBlocksConsumed, config.Configuration.BlockLimitDaily)
 	}
 
 	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)
@@ -420,6 +426,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 	fileDownloadResponse.Data = chunkData
 	reference.FileBlockDownloaded(ctx, fileref.ID)
+	addDailyBlocks(clientID, dr.NumBlocks)
 	return fileDownloadResponse, nil
 }
 

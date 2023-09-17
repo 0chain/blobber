@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
@@ -17,8 +19,37 @@ type QuotaManager struct {
 	mux sync.RWMutex
 }
 
-var quotaManagerInstance *QuotaManager
-var quotaManagerOnce sync.Once
+var (
+	quotaManagerInstance *QuotaManager
+	quotaManagerOnce     sync.Once
+	downloadLimit        = make(map[string]int64)
+	downloadLock         sync.RWMutex
+)
+
+func addDailyBlocks(key string, numBlocks int64) {
+	downloadLock.Lock()
+	defer downloadLock.Unlock()
+	downloadLimit[key] += numBlocks
+}
+
+func getDailyBlocks(key string) int64 {
+	downloadLock.RLock()
+	defer downloadLock.RUnlock()
+	return downloadLimit[key]
+}
+
+func startDownloadLimitCleanup(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(24 * time.Hour):
+			downloadLock.Lock()
+			downloadLimit = make(map[string]int64)
+			downloadLock.Unlock()
+		}
+	}
+}
 
 func getQuotaManager() *QuotaManager {
 	quotaManagerOnce.Do(func() {
