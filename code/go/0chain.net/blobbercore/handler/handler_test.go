@@ -28,6 +28,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	blobConfig "github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -72,6 +73,8 @@ func init() {
 	resetMockFileBlock()
 	chain.SetServerChain(&chain.Chain{})
 	config.Configuration.SignatureScheme = "bls0chain"
+	blobConfig.Configuration.BlockLimitDaily = 1562500
+	blobConfig.Configuration.BlockLimitRequest = 500
 	logging.Logger = zap.NewNop()
 	ConfigRateLimits()
 
