@@ -37,7 +37,7 @@ jobs:
           echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
 
       - name: Setup go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ^1.20 # The Go version to download (if necessary) and use.
 
@@ -46,13 +46,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      -
-        # Add support for more platforms with QEMU (optional)
-        # https://github.com/docker/setup-qemu-action
-        name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      -
-        name: Set up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
       - name: Login to Docker Hub
@@ -110,7 +104,7 @@ jobs:
           echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
 
       - name: Setup go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ^1.20 # The Go version to download (if necessary) and use.
 
@@ -119,13 +113,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      -
-        # Add support for more platforms with QEMU (optional)
-        # https://github.com/docker/setup-qemu-action
-        name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      -
-        name: Set up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
         uses: docker/login-action@v1
