@@ -89,8 +89,8 @@ jobs:
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
           export CONTEXT_NAME="$RUNNER_NAME" && (docker context inspect "$CONTEXT_NAME" >/dev/null 2>&1 || docker context create "$CONTEXT_NAME")
-          docker buildx inspect blobber || docker buildx create --name blobber --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure' "$CONTEXT_NAME"
-          docker buildx use blobber
+          docker buildx inspect "blobber-$RUNNER_NAME" || docker buildx create --name "blobber-$RUNNER_NAME" --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure' "$CONTEXT_NAME"
+          docker buildx use "blobber-$RUNNER_NAME"
           ./docker.local/bin/build.blobber.sh
 
   validator:
@@ -160,8 +160,8 @@ jobs:
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_VALIDATOR="-t ${VALIDATOR_REGISTRY}:${TAG} -t ${VALIDATOR_REGISTRY}:${TAG}-${SHORT_SHA}"
           export CONTEXT_NAME="$RUNNER_NAME" && (docker context inspect "$CONTEXT_NAME" >/dev/null 2>&1 || docker context create "$CONTEXT_NAME")
-          docker buildx inspect validator || docker buildx create --name validator --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure' "$CONTEXT_NAME"
-          docker buildx use validator
+          docker buildx inspect "validator-$RUNNER_NAME" || docker buildx create --name "validator-$RUNNER_NAME" --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure' "$CONTEXT_NAME"
+          docker buildx use "validator-$RUNNER_NAME"
           ./docker.local/bin/build.validator.sh
 
 
