@@ -89,7 +89,11 @@ func getRoundWorker(ctx context.Context) {
 			network := zcncore.GetNetwork()
 			currentRound, _ := sdk.GetRoundFromSharders(network.Sharders)
 
-			roundInfo.LastRoundDiff = currentRound - roundInfo.CurrentRound
+			if roundInfo.LastRoundDiff == 0 {
+				roundInfo.LastRoundDiff = 1000
+			} else {
+				roundInfo.LastRoundDiff = currentRound - roundInfo.CurrentRound
+			}
 			roundInfo.CurrentRound = currentRound
 			roundInfo.CurrentRoundCaptureTime = time.Now()
 		}
