@@ -97,6 +97,9 @@ func setupConfig(configDir string, deploymentMode int) {
 		config.Configuration.MinConfirmation = 100
 	}
 
+	config.Configuration.BlockLimitDaily = viper.GetInt64("rate_limiters.block_limit_daily")
+	config.Configuration.BlockLimitRequest = viper.GetInt64("rate_limiters.block_limit_request")
+
 	transaction.MinConfirmation = config.Configuration.MinConfirmation
 
 	fmt.Print("		[OK]\n")

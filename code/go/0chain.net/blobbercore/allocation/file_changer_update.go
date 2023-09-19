@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
@@ -101,15 +102,16 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	return rootRef, nil
 }
 
-func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
+func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	for hash := range nf.deleteHash {
 		var count int64
+		mut.Lock()
 		err := db.Table((&reference.Ref{}).TableName()).
 			Where(&reference.Ref{ValidationRoot: hash}).
 			Where(&reference.Ref{AllocationID: nf.AllocationID}).
 			Count(&count).Error
-
+		mut.Unlock()
 		if err == nil && count == 0 {
 			logging.Logger.Info("Deleting content file", zap.String("validation_root", hash))
 			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash); err != nil {
@@ -118,7 +120,7 @@ func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context) error {
 		}
 	}
 
-	return nf.BaseFileChanger.CommitToFileStore(ctx)
+	return nf.BaseFileChanger.CommitToFileStore(ctx, mut)
 }
 
 func (nf *UpdateFileChanger) Marshal() (string, error) {
