@@ -28,6 +28,10 @@ func StartUpdateWorker(ctx context.Context, interval time.Duration) {
 	go UpdateWorker(ctx, interval)
 }
 
+func StartFinalizeWorker(ctx context.Context, interval time.Duration) {
+	go FinalizeAllocationsWorker(ctx, interval)
+}
+
 // UpdateWorker updates all not finalized and not cleaned allocations
 // requesting SC through REST API. The worker required to fetch allocations
 // updates in DB.
@@ -47,6 +51,30 @@ func UpdateWorker(ctx context.Context, interval time.Duration) {
 		case <-tick:
 			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 				updateWork(ctx)
+				return nil
+			})
+		case <-quit:
+			return
+		}
+	}
+}
+
+func FinalizeAllocationsWorker(ctx context.Context, interval time.Duration) {
+	logging.Logger.Info("start finalize allocations worker")
+
+	var tk = time.NewTicker(interval)
+	defer tk.Stop()
+
+	var (
+		tick = tk.C
+		quit = ctx.Done()
+	)
+
+	for {
+		select {
+		case <-tick:
+			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				finalizeExpiredAllocations(ctx)
 				return nil
 			})
 		case <-quit:
@@ -157,12 +185,25 @@ func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) 
 	// send finalize allocation transaction
 	if shouldFinalize(sa) {
 		sendFinalizeAllocation(a.ID)
+		cleanupAllocation(ctx, a)
 		return
 	}
 
 	// remove data
 	if a.Finalized && !a.CleanedUp {
 		cleanupAllocation(ctx, a)
+	}
+}
+
+func finalizeExpiredAllocations(ctx context.Context) {
+	var allocs, err = requestExpiredAllocations()
+	if err != nil {
+		logging.Logger.Error("requesting expired allocations from SC", zap.Error(err))
+		return
+	}
+
+	for _, allocID := range allocs {
+		sendFinalizeAllocation(allocID)
 	}
 }
 
@@ -178,6 +219,20 @@ func requestAllocation(allocID string) (sa *transaction.StorageAllocation, err e
 	}
 	sa = new(transaction.StorageAllocation)
 	err = json.Unmarshal(b, sa)
+	return
+}
+
+func requestExpiredAllocations() (allocs []string, err error) {
+	var b []byte
+	b, err = transaction.MakeSCRestAPICall(
+		transaction.STORAGE_CONTRACT_ADDRESS,
+		"/expired-allocations",
+		map[string]string{"blobber_id": node.Self.ID},
+		chain.GetServerChain())
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(b, &allocs)
 	return
 }
 
