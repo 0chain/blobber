@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
@@ -105,7 +106,7 @@ func (nf *NewDir) DeleteTempFile() error {
 	return nil
 }
 
-func (nfch *NewDir) CommitToFileStore(ctx context.Context) error {
+func (nfch *NewDir) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
 	return nil
 }
 

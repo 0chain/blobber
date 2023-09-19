@@ -337,7 +337,9 @@ CREATE TABLE public.reference_objects (
     updated_at bigint,
     deleted_at timestamp with time zone,
     is_precommit boolean DEFAULT false NOT NULL,
-    chunk_size bigint DEFAULT 65536 NOT NULL
+    chunk_size bigint DEFAULT 65536 NOT NULL,
+    num_of_updates bigint,
+    num_of_block_downloads bigint
 );
 
 

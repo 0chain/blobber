@@ -1,26 +1,11 @@
 package blobberhttp
 
 import (
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
-
-// swagger:model UploadResult
-type UploadResult struct {
-	Filename        string `json:"filename"`
-	Size            int64  `json:"size"`
-	Hash            string `json:"hash"`
-	ValidationRoot  string `json:"validation_root"`
-	FixedMerkleRoot string `json:"fixed_merkle_root"`
-
-	// UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
-	UploadLength int64 `json:"upload_length"`
-	// Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
-	UploadOffset int64 `json:"upload_offset"`
-}
 
 // swagger:model ConnectionResult
 type ConnectionResult struct {
@@ -30,11 +15,10 @@ type ConnectionResult struct {
 
 // swagger:model CommitResult
 type CommitResult struct {
-	AllocationRoot string                         `json:"allocation_root"`
-	WriteMarker    *writemarker.WriteMarker       `json:"write_marker"`
-	Success        bool                           `json:"success"`
-	ErrorMessage   string                         `json:"error_msg,omitempty"`
-	Changes        []*allocation.AllocationChange `json:"-"`
+	AllocationRoot string                   `json:"allocation_root"`
+	WriteMarker    *writemarker.WriteMarker `json:"write_marker"`
+	Success        bool                     `json:"success"`
+	ErrorMessage   string                   `json:"error_msg,omitempty"`
 	//Result         []*UploadResult         `json:"result"`
 }
 
