@@ -117,8 +117,8 @@ func GetCommitMetaTxnHandlerResponse(response *blobbergrpc.CommitMetaTxnResponse
 	return result
 }
 
-func CopyObjectResponseHandler(copyObjectResponse *blobbergrpc.CopyObjectResponse) *blobberhttp.UploadResult {
-	return &blobberhttp.UploadResult{
+func CopyObjectResponseHandler(copyObjectResponse *blobbergrpc.CopyObjectResponse) *allocation.UploadResult {
+	return &allocation.UploadResult{
 		Filename:        copyObjectResponse.Filename,
 		Size:            copyObjectResponse.Size,
 		ValidationRoot:  copyObjectResponse.ValidationRoot,

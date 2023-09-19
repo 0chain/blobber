@@ -28,6 +28,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	blobConfig "github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -72,6 +73,8 @@ func init() {
 	resetMockFileBlock()
 	chain.SetServerChain(&chain.Chain{})
 	config.Configuration.SignatureScheme = "bls0chain"
+	blobConfig.Configuration.BlockLimitDaily = 1562500
+	blobConfig.Configuration.BlockLimitRequest = 500
 	logging.Logger = zap.NewNop()
 	ConfigRateLimits()
 
@@ -354,7 +357,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q := url.Query()
 					formFieldByt, err := json.Marshal(
 						&allocation.UploadFileChanger{
-							BaseFileChanger: allocation.BaseFileChanger{Path: path}})
+							BaseFileChanger: allocation.BaseFileChanger{Path: path, ConnectionID: connectionID}})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -640,7 +643,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","name","path","hash","size","validation_root","fixed_merkle_root" FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","name","path","hash","size","validation_root","fixed_merkle_root","type" FROM "reference_objects" WHERE`)).
 					WithArgs(lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
@@ -769,7 +772,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					q := url.Query()
 					formFieldByt, err := json.Marshal(
 						&allocation.UploadFileChanger{
-							BaseFileChanger: allocation.BaseFileChanger{Path: path, Size: size}})
+							BaseFileChanger: allocation.BaseFileChanger{Path: path, Size: size, ConnectionID: connectionID}})
 					if err != nil {
 						t.Fatal(err)
 					}

@@ -22,6 +22,8 @@ func SetupDefaultConfig() {
 	viper.SetDefault("challenge_response.frequency", 10)
 	viper.SetDefault("challenge_response.num_workers", 5)
 	viper.SetDefault("challenge_response.max_retries", 10)
+	viper.SetDefault("rate_limiters.block_limit_daily", 1562500)
+	viper.SetDefault("rate_limiters.block_limit_request", 500)
 
 	viper.SetDefault("healthcheck.frequency", "60s")
 
@@ -88,6 +90,8 @@ type Config struct {
 	ChallengeMaxRetires           int
 	TempFilesCleanupFreq          int64
 	TempFilesCleanupNumWorkers    int
+	BlockLimitDaily               int64
+	BlockLimitRequest             int64
 
 	HealthCheckWorkerFreq time.Duration
 
