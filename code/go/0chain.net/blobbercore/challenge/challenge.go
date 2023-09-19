@@ -195,6 +195,9 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 
 	currentRound := roundInfo.CurrentRound + int64(float64(roundInfo.LastRoundDiff)*(float64(time.Since(roundInfo.CurrentRoundCaptureTime).Milliseconds())/float64(GetRoundInterval.Milliseconds())))
 	logging.Logger.Info("[challenge]commit",
+		zap.Any("ChallengeID", c.ChallengeID),
+		zap.Any("RoundCreatedAt", c.RoundCreatedAt),
+		zap.Any("ChallengeCompletionTime", config.StorageSCConfig.ChallengeCompletionTime),
 		zap.Any("currentRound", currentRound),
 		zap.Any("roundInfo.LastRoundDiff", roundInfo.LastRoundDiff),
 		zap.Any("roundInfo.CurrentRound", roundInfo.CurrentRound),
