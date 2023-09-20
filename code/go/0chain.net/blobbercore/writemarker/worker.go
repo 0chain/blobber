@@ -125,6 +125,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 		shouldRollback = true
 		return err
 	}
+	allocation.Repo.Commit(ctx)
 	elapsedTime := time.Since(start)
 	logging.Logger.Info("Success Redeeming the write marker",
 		zap.Any("allocation", allocationID),

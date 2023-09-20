@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/core/build"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -135,6 +136,7 @@ func WithStatusConnection(handler common.StatusCodeResponderF) common.StatusCode
 			return resp, statusCode, common.NewErrorf("commit_error",
 				"error committing to meta store: %v", err)
 		}
+		allocation.Repo.Commit(ctx)
 		return
 	}
 }

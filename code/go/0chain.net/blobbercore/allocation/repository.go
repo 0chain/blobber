@@ -6,6 +6,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -14,17 +15,29 @@ import (
 const (
 	SQLWhereGetById = "allocations.id = ?"
 	SQLWhereGetByTx = "allocations.tx = ?"
+	lruSize         = 100
 )
 
 var (
 	Repo *Repository
 )
 
+type AllocationUpdate func(a *Allocation)
+
 func init() {
-	Repo = &Repository{}
+	allocCache, _ := lru.New[string, *Allocation](lruSize)
+	Repo = &Repository{
+		allocCache: allocCache,
+	}
 }
 
 type Repository struct {
+	allocCache *lru.Cache[string, *Allocation]
+}
+
+type AllocationCache struct {
+	Allocation        *Allocation
+	AllocationUpdates []AllocationUpdate
 }
 
 type Res struct {
@@ -43,6 +56,11 @@ func (r *Repository) GetById(ctx context.Context, id string) (*Allocation, error
 	}
 
 	if a, ok := cache[id]; ok {
+		return a.Allocation, nil
+	}
+
+	a := r.getAllocFromGlobalCache(id)
+	if a != nil {
 		return a, nil
 	}
 
@@ -52,8 +70,10 @@ func (r *Repository) GetById(ctx context.Context, id string) (*Allocation, error
 		return alloc, err
 	}
 
-	cache[id] = alloc
-
+	cache[id] = AllocationCache{
+		Allocation: alloc,
+	}
+	r.setAllocToGlobalCache(alloc)
 	return alloc, nil
 }
 
@@ -77,8 +97,10 @@ func (r *Repository) GetByIdAndLock(ctx context.Context, id string) (*Allocation
 	if err != nil {
 		return alloc, err
 	}
-	cache[id] = alloc
-
+	cache[id] = AllocationCache{
+		Allocation: alloc,
+	}
+	r.setAllocToGlobalCache(alloc)
 	return alloc, err
 }
 
@@ -93,9 +115,14 @@ func (r *Repository) GetByTx(ctx context.Context, allocationID, txHash string) (
 		return nil, err
 	}
 	if a, ok := cache[allocationID]; ok {
-		if a.Tx == txHash {
-			return a, nil
+		if a.Allocation.Tx == txHash {
+			return a.Allocation, nil
 		}
+	}
+
+	a := r.getAllocFromGlobalCache(allocationID)
+	if a != nil && a.Tx == txHash {
+		return a, nil
 	}
 
 	alloc := &Allocation{}
@@ -103,8 +130,10 @@ func (r *Repository) GetByTx(ctx context.Context, allocationID, txHash string) (
 	if err != nil {
 		return alloc, err
 	}
-	cache[allocationID] = alloc
-
+	cache[allocationID] = AllocationCache{
+		Allocation: alloc,
+	}
+	r.setAllocToGlobalCache(alloc)
 	return alloc, err
 }
 
@@ -112,13 +141,23 @@ func (r *Repository) GetAllocations(ctx context.Context, offset int64) ([]*Alloc
 	var tx = datastore.GetStore().GetTransaction(ctx)
 
 	const query = `finalized = false AND cleaned_up = false`
-	allocs := make([]*Allocation, 0)
-	return allocs, tx.Model(&Allocation{}).
+	allocs := make([]*Allocation, 0, 10)
+	err := tx.Model(&Allocation{}).
 		Where(query).
 		Limit(UPDATE_LIMIT).
 		Offset(int(offset)).
 		Order("id ASC").
 		Find(&allocs).Error
+	if err != nil {
+		return allocs, err
+	}
+	for ind, alloc := range allocs {
+		if ind == lruSize {
+			break
+		}
+		r.setAllocToGlobalCache(alloc)
+	}
+	return allocs, nil
 }
 
 func (r *Repository) GetAllocationIds(ctx context.Context) []Res {
@@ -149,16 +188,72 @@ func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, A
 	if err != nil {
 		return err
 	}
-	delete(cache, allocationID)
 
 	allocationUpdates := make(map[string]interface{})
 	allocationUpdates["latest_redeemed_write_marker"] = AllocationRoot
 	allocationUpdates["is_redeem_required"] = false
 	err = tx.Model(allocationObj).Updates(allocationUpdates).Error
-	return err
+	if err != nil {
+		return err
+	}
+	allocationObj.LatestRedeemedWM = AllocationRoot
+	allocationObj.IsRedeemRequired = false
+	txnCache := cache[allocationID]
+	txnCache.Allocation = allocationObj
+	updateAlloc := func(a *Allocation) {
+		a.LatestRedeemedWM = AllocationRoot
+		a.IsRedeemRequired = false
+	}
+	txnCache.AllocationUpdates = append(txnCache.AllocationUpdates, updateAlloc)
+	cache[allocationID] = txnCache
+	return nil
 }
 
-func (r *Repository) Save(ctx context.Context, a *Allocation) error {
+func (r *Repository) UpdateAllocation(ctx context.Context, allocationObj *Allocation, updateMap map[string]interface{}, updateOption AllocationUpdate) error {
+	var tx = datastore.GetStore().GetTransaction(ctx)
+	if tx == nil {
+		logging.Logger.Panic("no transaction in the context")
+	}
+	cache, err := getCache(tx)
+	if err != nil {
+		return err
+	}
+	err = tx.Model(allocationObj).Updates(updateMap).Error
+	if err != nil {
+		return err
+	}
+	txnCache := cache[allocationObj.ID]
+	updateOption(allocationObj)
+	txnCache.Allocation = allocationObj
+	txnCache.AllocationUpdates = append(txnCache.AllocationUpdates, updateOption)
+	cache[allocationObj.ID] = txnCache
+	return nil
+}
+
+func (r *Repository) Commit(ctx context.Context) error {
+	var tx = datastore.GetStore().GetTransaction(ctx)
+	if tx == nil {
+		logging.Logger.Panic("no transaction in the context")
+	}
+	// Maybe we can have a global commit which commits the data to cache also
+	// err := tx.Commit().Error
+	// if err != nil {
+	// 	return err
+	// }
+	cache, _ := getCache(tx)
+	if cache == nil {
+		return nil
+	}
+	for _, txnCache := range cache {
+		for _, update := range txnCache.AllocationUpdates {
+			update(txnCache.Allocation)
+		}
+		r.setAllocToGlobalCache(txnCache.Allocation)
+	}
+	return nil
+}
+
+func (r *Repository) Save(ctx context.Context, alloc *Allocation) error {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 	if tx == nil {
 		logging.Logger.Panic("no transaction in the context")
@@ -169,20 +264,38 @@ func (r *Repository) Save(ctx context.Context, a *Allocation) error {
 		return err
 	}
 
-	cache[a.ID] = a
-	return tx.Save(a).Error
+	txnCache := cache[alloc.ID]
+	txnCache.Allocation = alloc
+	updateAlloc := func(a *Allocation) {
+		a = alloc
+	}
+	txnCache.AllocationUpdates = append(txnCache.AllocationUpdates, updateAlloc)
+	cache[alloc.ID] = txnCache
+	return tx.Save(alloc).Error
 }
 
-func getCache(tx *datastore.EnhancedDB) (map[string]*Allocation, error) {
+func getCache(tx *datastore.EnhancedDB) (map[string]AllocationCache, error) {
 	c, ok := tx.SessionCache[TableNameAllocation]
 	if ok {
-		cache, ok := c.(map[string]*Allocation)
+		cache, ok := c.(map[string]AllocationCache)
 		if !ok {
 			return nil, fmt.Errorf("type assertion failed")
 		}
 		return cache, nil
 	}
-	cache := make(map[string]*Allocation)
+	cache := make(map[string]AllocationCache)
 	tx.SessionCache[TableNameAllocation] = cache
 	return cache, nil
+}
+
+func (r *Repository) getAllocFromGlobalCache(id string) *Allocation {
+	a, ok := r.allocCache.Get(id)
+	if !ok {
+		return nil
+	}
+	return a
+}
+
+func (r *Repository) setAllocToGlobalCache(a *Allocation) {
+	r.allocCache.Add(a.ID, a)
 }

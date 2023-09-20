@@ -1391,17 +1391,31 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	alloc.UsedSize -= latestWriteMarkerEntity.WM.Size
 	alloc.AllocationRoot = allocationRoot
 	alloc.FileMetaRoot = fileMetaRoot
+	updateMap := map[string]interface{}{
+		"blobber_size_used": alloc.BlobberSizeUsed,
+		"used_size":         alloc.UsedSize,
+		"allocation_root":   alloc.AllocationRoot,
+		"file_meta_root":    alloc.FileMetaRoot,
+	}
 	sendWM := !alloc.IsRedeemRequired
 	if alloc.IsRedeemRequired {
 		writemarkerEntity.Status = writemarker.Rollbacked
 		alloc.IsRedeemRequired = false
+		updateMap["is_redeem_required"] = alloc.IsRedeemRequired
+	}
+	updateOption := func(a *allocation.Allocation) {
+		a.BlobberSizeUsed = alloc.BlobberSizeUsed
+		a.UsedSize = alloc.UsedSize
+		a.AllocationRoot = alloc.AllocationRoot
+		a.FileMetaRoot = alloc.FileMetaRoot
+		a.IsRedeemRequired = alloc.IsRedeemRequired
 	}
 	err = txn.Create(writemarkerEntity).Error
 	if err != nil {
 		txn.Rollback()
 		return &result, common.NewError("write_marker_error", "Error persisting the write marker "+err.Error())
 	}
-	if err = allocation.Repo.Save(c, alloc); err != nil {
+	if err = allocation.Repo.UpdateAllocation(c, alloc, updateMap, updateOption); err != nil {
 		txn.Rollback()
 		return &result, common.NewError("allocation_write_error", "Error persisting the allocation object "+err.Error())
 	}
@@ -1410,6 +1424,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	if err != nil {
 		return &result, common.NewError("allocation_commit_error", "Error committing the transaction "+err.Error())
 	}
+	allocation.Repo.Commit(c)
 	if sendWM {
 		err = writemarkerEntity.SendToChan(ctx)
 		if err != nil {
