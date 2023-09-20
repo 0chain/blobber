@@ -230,7 +230,7 @@ func (r *Repository) UpdateAllocation(ctx context.Context, allocationObj *Alloca
 	return nil
 }
 
-func (r *Repository) Commit(ctx context.Context) error {
+func (r *Repository) Commit(ctx context.Context) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 	if tx == nil {
 		logging.Logger.Panic("no transaction in the context")
@@ -242,7 +242,7 @@ func (r *Repository) Commit(ctx context.Context) error {
 	// }
 	cache, _ := getCache(tx)
 	if cache == nil {
-		return nil
+		return
 	}
 	for _, txnCache := range cache {
 		for _, update := range txnCache.AllocationUpdates {
@@ -250,7 +250,6 @@ func (r *Repository) Commit(ctx context.Context) error {
 		}
 		r.setAllocToGlobalCache(txnCache.Allocation)
 	}
-	return nil
 }
 
 func (r *Repository) Save(ctx context.Context, alloc *Allocation) error {
