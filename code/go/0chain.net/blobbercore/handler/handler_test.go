@@ -871,7 +871,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)
 			test.setupDbMock(mock)
-
+			allocation.Repo.DeleteAllocation(alloc.ID)
 			if test.begin != nil {
 				test.begin()
 			}

@@ -662,7 +662,22 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	allocationObj.BlobberSizeUsed += connectionObj.Size
 	allocationObj.UsedSize += connectionObj.Size
 
-	if err = allocation.Repo.Save(ctx, allocationObj); err != nil {
+	updateMap := map[string]interface{}{
+		"allocation_root":    allocationRoot,
+		"file_meta_root":     fileMetaRoot,
+		"used_size":          allocationObj.UsedSize,
+		"blobber_size":       allocationObj.BlobberSizeUsed,
+		"is_redeem_required": true,
+	}
+	updateOption := func(a *allocation.Allocation) {
+		a.AllocationRoot = allocationRoot
+		a.FileMetaRoot = fileMetaRoot
+		a.IsRedeemRequired = true
+		a.BlobberSizeUsed += connectionObj.Size
+		a.UsedSize += connectionObj.Size
+	}
+
+	if err = allocation.Repo.UpdateAllocation(ctx, allocationObj, updateMap, updateOption); err != nil {
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
 

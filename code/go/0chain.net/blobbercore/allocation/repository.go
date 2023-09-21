@@ -265,12 +265,36 @@ func (r *Repository) Save(ctx context.Context, alloc *Allocation) error {
 
 	txnCache := cache[alloc.ID]
 	txnCache.Allocation = alloc
+	err = tx.Save(alloc).Error
+	if err != nil {
+		return err
+	}
 	updateAlloc := func(a *Allocation) {
 		a = alloc
 	}
 	txnCache.AllocationUpdates = append(txnCache.AllocationUpdates, updateAlloc)
 	cache[alloc.ID] = txnCache
-	return tx.Save(alloc).Error
+	return nil
+}
+
+func (r *Repository) Create(ctx context.Context, alloc *Allocation) error {
+	var tx = datastore.GetStore().GetTransaction(ctx)
+	if tx == nil {
+		logging.Logger.Panic("no transaction in the context")
+	}
+	cache, err := getCache(tx)
+	if err != nil {
+		return err
+	}
+
+	txnCache := cache[alloc.ID]
+	txnCache.Allocation = alloc
+	err = tx.Create(alloc).Error
+	if err != nil {
+		return err
+	}
+	cache[alloc.ID] = txnCache
+	return nil
 }
 
 func getCache(tx *datastore.EnhancedDB) (map[string]AllocationCache, error) {
@@ -297,4 +321,8 @@ func (r *Repository) getAllocFromGlobalCache(id string) *Allocation {
 
 func (r *Repository) setAllocToGlobalCache(a *Allocation) {
 	r.allocCache.Add(a.ID, a)
+}
+
+func (r *Repository) DeleteAllocation(allocationID string) {
+	r.allocCache.Remove(allocationID)
 }
