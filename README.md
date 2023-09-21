@@ -88,6 +88,13 @@ block_worker: https://demo.zus.network/dns
 Note: Run all scripts as sudo. 
 This would take few minutes.
 
+Sometimes in Apple Silicon devices (m1/m2 macbooks), buildx will not work for build scripts. To force a regular blobber build, run the following instead of the build commands mentioned above:
+```
+DOCKER_BUILD=build ./docker.local/bin/build.base.sh
+DOCKER_BUILD=build ./docker.local/bin/build.blobber.sh
+DOCKER_BUILD=build ./docker.local/bin/build.validator.sh.
+```
+
 To link to local gosdk so that the changes are reflected on the blobber build please use the below command(optional)
 
 ```
