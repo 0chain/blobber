@@ -73,6 +73,9 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.UpdateAllocationsInterval =
 		viper.GetDuration("update_allocations_interval")
 
+	config.Configuration.FinalizeAllocationsInterval =
+		viper.GetDuration("finalize_allocations_interval")
+
 	config.Configuration.MaxAllocationDirFiles =
 		viper.GetInt("max_dirs_files")
 	if config.Configuration.MaxAllocationDirFiles < 50000 {
@@ -96,6 +99,9 @@ func setupConfig(configDir string, deploymentMode int) {
 	} else if config.Configuration.MinConfirmation > 100 {
 		config.Configuration.MinConfirmation = 100
 	}
+
+	config.Configuration.BlockLimitDaily = viper.GetInt64("rate_limiters.block_limit_daily")
+	config.Configuration.BlockLimitRequest = viper.GetInt64("rate_limiters.block_limit_request")
 
 	transaction.MinConfirmation = config.Configuration.MinConfirmation
 

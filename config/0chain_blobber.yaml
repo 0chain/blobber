@@ -19,6 +19,9 @@ price_worker_in_hours: 12
 # update_allocations_interval used to refresh known allocation objects from SC
 update_allocations_interval: 1m
 
+#finalize_allocations_interval used to get and finalize empty allocations
+finalize_allocations_interval: 24h
+
 # maximum limit on the number of combined directories and files on each allocation
 max_dirs_files: 50000
 
@@ -59,7 +62,10 @@ rate_limiters:
   # General Request Per Second. This rps is used to rate limit endpoints like copy, rename, get file metadata,
   # get paginated refs, etc. Default is 5
   general_rps: 1600
-
+  # Number of blocks downloaded in a day. Default is 100GB(the value needs to be in blocks which is data/64KB)
+  block_limit_daily: 1562500
+  # Max blocks per download request. Default is 500
+  block_limit_request: 500  
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
   owner: "edb90b850f2e7e7cbd0a1fa370fdcc5cd378ffbec95363a7bc0e5a98b8ba5759"

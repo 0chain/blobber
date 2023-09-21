@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -156,7 +157,7 @@ func (rf *MoveFileChange) Unmarshal(input string) error {
 	return err
 }
 
-func (rf *MoveFileChange) CommitToFileStore(ctx context.Context) error {
+func (rf *MoveFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
 	return nil
 }
 

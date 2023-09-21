@@ -122,7 +122,7 @@ func main() {
 
 	Logger.Info(" Base URL" + node.Self.GetURLBase())
 
-	prepare("validator-" + node.Self.ID)
+	prepare(node.Self.ID)
 
 	config.SetServerChainID(config.Configuration.ChainID)
 	common.SetupRootContext(node.GetNodeContext())

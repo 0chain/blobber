@@ -252,7 +252,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 
 	result := fileref.GetListingData(ctx)
-	fileStats, err := reference.GetFileStats(ctx, fileref.ID)
+	fileStats, err := reference.GetFileStats(ctx, fileref)
 	if err != nil {
 		return nil, common.NewError("bad_db_operation", "Error retrieving file stats. "+err.Error())
 	}
