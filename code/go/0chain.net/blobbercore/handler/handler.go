@@ -271,11 +271,12 @@ func setupHandlers(r *mux.Router) {
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
+		tx := GetMetaDataStore().GetTransaction(ctx)
+		defer func() {
+			tx.Rollback()
+		}()
 
 		res, err := handler(ctx, r)
-		defer func() {
-			GetMetaDataStore().GetTransaction(ctx).Rollback()
-		}()
 		return res, err
 	}
 }
