@@ -19,7 +19,6 @@ const TableNameSettings = "settings"
 type Settings struct {
 	ID            string    `gorm:"column:id;size:10;primaryKey"`
 	Capacity      int64     `gorm:"column:capacity;not null;default:0"`
-	MinLockDemand float64   `gorm:"column:min_lock_demand;not null;default:0"`
 	NumDelegates  int       `gorm:"column:num_delegates;not null;default:100"`
 	ReadPrice     float64   `gorm:"column:read_price;not null;default:0"`
 	WritePrice    float64   `gorm:"column:write_price;not null;default:0"`
@@ -40,7 +39,6 @@ func (s *Settings) CopyTo(c *Config) error {
 
 	c.Capacity = s.Capacity
 
-	c.MinLockDemand = s.MinLockDemand
 	c.NumDelegates = s.NumDelegates
 	c.ReadPrice = s.ReadPrice
 	c.ServiceCharge = s.ServiceCharge
@@ -56,7 +54,6 @@ func (s *Settings) CopyFrom(c *Config) error {
 	}
 
 	s.Capacity = c.Capacity
-	s.MinLockDemand = c.MinLockDemand
 	s.NumDelegates = c.NumDelegates
 	s.ReadPrice = c.ReadPrice
 	s.ServiceCharge = c.ServiceCharge
@@ -118,8 +115,7 @@ func ReloadFromChain(ctx context.Context, db *gorm.DB) (*zcncore.Blobber, error)
 	}
 
 	Configuration.Capacity = int64(b.Capacity)
-	Configuration.MinLockDemand = b.Terms.MinLockDemand
-	Configuration.NumDelegates = b.StakePoolSettings.NumDelegates
+	Configuration.NumDelegates = *b.StakePoolSettings.NumDelegates
 
 	if token, err := b.Terms.ReadPrice.ToToken(); err != nil {
 		return nil, err
@@ -133,6 +129,6 @@ func ReloadFromChain(ctx context.Context, db *gorm.DB) (*zcncore.Blobber, error)
 		Configuration.WritePrice = token
 	}
 
-	Configuration.ServiceCharge = b.StakePoolSettings.ServiceCharge
+	Configuration.ServiceCharge = *b.StakePoolSettings.ServiceCharge
 	return b, Update(ctx, db)
 }
