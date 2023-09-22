@@ -111,7 +111,9 @@ func processChallenge(ctx context.Context, it *ChallengeEntity) {
 	logging.Logger.Info("processing_challenge",
 		zap.String("challenge_id", it.ChallengeID))
 
-	validateOnValidators(it)
+	_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		return validateOnValidators(ctx, it)
+	})
 }
 
 func commitOnChainWorker(ctx context.Context) {
