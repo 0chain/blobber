@@ -27,9 +27,8 @@ jobs:
       - name: Cleanup before restarting conductor tests.
         run: |
           echo 'y' | docker system prune -a
-          rm -rf *
           cd /tmp
-          rm -rf ./*
+          sudo rm -rf ./*
 
       - name: Set docker image tag
         run: |
@@ -101,9 +100,8 @@ jobs:
       - name: Cleanup before restarting conductor tests.
         run: |
           echo 'y' | docker system prune -a
-          rm -rf *
           cd /tmp
-          rm -rf ./*
+          sudo rm -rf ./*
 
       - name: Set docker image tag
         run: |
