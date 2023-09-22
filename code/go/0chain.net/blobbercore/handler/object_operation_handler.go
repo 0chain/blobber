@@ -518,7 +518,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
-
+	Logger.Info("[commit]GetAllocationChanges", zap.Any("connectionObjSize", connectionObj.Size), zap.Any("allocation", allocationObj))
 	if err != nil {
 		// might be good to check if blobber already has stored writemarker
 		return nil, common.NewErrorf("invalid_parameters",
@@ -1270,8 +1270,16 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
 	clientKeyBytes, _ := hex.DecodeString(clientKey)
+	var (
+		allocationObj *allocation.Allocation
+		err           error
+	)
+	// Lock will compete with other CommitWrites and Challenge validation
+	mutex := lock.GetMutex(allocationObj.TableName(), allocationId)
+	mutex.Lock()
+	defer mutex.Unlock()
 
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
+	allocationObj, err = fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		Logger.Error("Error in verifying allocation", zap.Error(err))
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -1289,10 +1297,6 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	if !ok {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
-	// Lock will compete with other CommitWrites and Challenge validation
-	mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
-	mutex.Lock()
-	defer mutex.Unlock()
 
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
 
