@@ -250,15 +250,15 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 	}
 
 	// transaction
-	// a.Tx = sa.Tx
-	// a.OwnerID = sa.OwnerID
-	// a.OwnerPublicKey = sa.OwnerPublicKey
+	a.Tx = sa.Tx
+	a.OwnerID = sa.OwnerID
+	a.OwnerPublicKey = sa.OwnerPublicKey
 
 	// // update fields
-	// a.Expiration = sa.Expiration
-	// a.TotalSize = sa.Size
-	// a.Finalized = sa.Finalized
-	// a.FileOptions = sa.FileOptions
+	a.Expiration = sa.Expiration
+	a.TotalSize = sa.Size
+	a.Finalized = sa.Finalized
+	a.FileOptions = sa.FileOptions
 
 	updateMap := make(map[string]interface{})
 	updateMap["tx"] = a.Tx

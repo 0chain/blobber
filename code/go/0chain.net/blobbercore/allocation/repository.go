@@ -223,7 +223,6 @@ func (r *Repository) UpdateAllocation(ctx context.Context, allocationObj *Alloca
 		return err
 	}
 	txnCache := cache[allocationObj.ID]
-	updateOption(allocationObj)
 	txnCache.Allocation = allocationObj
 	txnCache.AllocationUpdates = append(txnCache.AllocationUpdates, updateOption)
 	cache[allocationObj.ID] = txnCache
