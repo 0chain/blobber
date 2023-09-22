@@ -673,8 +673,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		a.AllocationRoot = allocationRoot
 		a.FileMetaRoot = fileMetaRoot
 		a.IsRedeemRequired = true
-		a.BlobberSizeUsed += connectionObj.Size
-		a.UsedSize += connectionObj.Size
+		a.BlobberSizeUsed = allocationObj.BlobberSizeUsed
+		a.UsedSize = allocationObj.UsedSize
 	}
 
 	if err = allocation.Repo.UpdateAllocation(ctx, allocationObj, updateMap, updateOption); err != nil {
