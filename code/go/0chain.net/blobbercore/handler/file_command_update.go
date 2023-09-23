@@ -215,6 +215,7 @@ func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationC
 
 // UpdateChange add UpdateFileChanger in db
 func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
+	cmd.fileChanger.AllocationID = connectionObj.AllocationID
 	for _, c := range connectionObj.Changes {
 		filePath, _ := c.GetOrParseAffectedFilePath()
 		if c.Operation != sdkConst.FileOperationUpdate || cmd.fileChanger.Path != filePath {

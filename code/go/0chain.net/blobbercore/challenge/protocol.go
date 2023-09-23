@@ -327,12 +327,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	return nil
 }
 
-func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transaction) error {
-	ctx := datastore.GetStore().CreateTransaction(context.TODO())
-	defer ctx.Done()
-
-	tx := datastore.GetStore().GetTransaction(ctx)
-
+func (cr *ChallengeEntity) VerifyChallengeTransaction(ctx context.Context, txn *transaction.Transaction) error {
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
 			logging.Logger.Info("[challenge]commit: Verifying the transaction : " + lastTxn)
@@ -373,11 +368,6 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(txn *transaction.Transacti
 			err = ErrEntityNotFound
 		}
 		_ = cr.Save(ctx)
-		if commitErr := tx.Commit().Error; commitErr != nil {
-			logging.Logger.Error("[challenge]verify(Commit): ",
-				zap.Any("challenge_id", cr.ChallengeID),
-				zap.Error(commitErr))
-		}
 		return err
 	}
 	logging.Logger.Info("Success response from BC for challenge response transaction", zap.String("txn", txn.TransactionOutput), zap.String("challenge_id", cr.ChallengeID))
@@ -394,7 +384,6 @@ func IsEntityNotFoundError(err error) bool {
 }
 
 func (cr *ChallengeEntity) SaveChallengeResult(ctx context.Context, t *transaction.Transaction, toAdd bool) {
-	tx := datastore.GetStore().GetTransaction(ctx)
 	cr.Status = Committed
 	cr.StatusMessage = t.TransactionOutput
 	cr.CommitTxnID = t.Hash
@@ -415,11 +404,6 @@ func (cr *ChallengeEntity) SaveChallengeResult(ctx context.Context, t *transacti
 			zap.Any("challenge_id", cr.ChallengeID),
 			zap.Time("created", common.ToTime(cr.CreatedAt)),
 			zap.Time("txn_verified", txnVerification),
-			zap.Error(err))
-	}
-	if err := tx.Commit().Error; err != nil {
-		logging.Logger.Error("[challenge]verify(Commit): ",
-			zap.Any("challenge_id", cr.ChallengeID),
 			zap.Error(err))
 	}
 }
