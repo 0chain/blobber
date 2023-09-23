@@ -8,6 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/emirpasic/gods/maps/treemap"
 	"go.uber.org/zap"
 	"golang.org/x/sync/semaphore"
@@ -141,7 +142,15 @@ func commitOnChainWorker(ctx context.Context) {
 
 		for _, challenge := range challenges {
 			chall := challenge
-			txn, _ := chall.getCommitTransaction()
+			var (
+				txn *transaction.Transaction
+				err error
+			)
+			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				txn, err = chall.getCommitTransaction(ctx)
+				return err
+			})
+
 			if txn != nil {
 				wg.Add(1)
 				go func(challenge *ChallengeEntity) {
@@ -151,10 +160,13 @@ func commitOnChainWorker(ctx context.Context) {
 							logging.Logger.Error("verifyChallengeTransaction", zap.Any("err", r))
 						}
 					}()
-					err := challenge.VerifyChallengeTransaction(txn)
-					if err == nil || err != ErrEntityNotFound {
-						deleteChallenge(int64(challenge.RoundCreatedAt))
-					}
+					_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+						err := challenge.VerifyChallengeTransaction(ctx, txn)
+						if err == nil || err != ErrEntityNotFound {
+							deleteChallenge(int64(challenge.RoundCreatedAt))
+						}
+						return nil
+					})
 				}(&chall)
 			}
 		}
