@@ -244,10 +244,16 @@ func (r *Repository) Commit(ctx context.Context) {
 		return
 	}
 	for _, txnCache := range cache {
+		var alloc *Allocation
 		for _, update := range txnCache.AllocationUpdates {
-			update(txnCache.Allocation)
+			alloc = r.getAllocFromGlobalCache(txnCache.Allocation.ID)
+			if alloc != nil {
+				update(alloc)
+			}
 		}
-		r.setAllocToGlobalCache(txnCache.Allocation)
+		if alloc != nil {
+			r.setAllocToGlobalCache(alloc)
+		}
 	}
 }
 

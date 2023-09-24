@@ -25,7 +25,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"go.uber.org/zap"
@@ -503,11 +502,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if !ok {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
-
-	// Lock will compete with other CommitWrites and Challenge validation
-	mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
-	mutex.Lock()
-	defer mutex.Unlock()
 
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
 
@@ -1275,10 +1269,6 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		allocationObj *allocation.Allocation
 		err           error
 	)
-	// Lock will compete with other CommitWrites and Challenge validation
-	mutex := lock.GetMutex(allocationObj.TableName(), allocationId)
-	mutex.Lock()
-	defer mutex.Unlock()
 
 	allocationObj, err = fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {

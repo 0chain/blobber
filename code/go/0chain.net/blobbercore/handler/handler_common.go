@@ -11,8 +11,10 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/build"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/zcncore"
+	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -112,9 +114,19 @@ func GetBlobberInfoJson() BlobberInfo {
 	return blobberInfo
 }
 
-func WithStatusConnection(handler common.StatusCodeResponderF) common.StatusCodeResponderF {
+// Should only be used for handlers where the writemarker is submitted
+func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.StatusCodeResponderF {
 	return func(ctx context.Context, r *http.Request) (resp interface{}, statusCode int, err error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
+		var vars = mux.Vars(r)
+		allocationID := vars["allocation_id"]
+		if allocationID != "" {
+			// Lock will compete with other CommitWrites and Challenge validation
+			var allocationObj *allocation.Allocation
+			mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
+			mutex.Lock()
+			defer mutex.Unlock()
+		}
 		resp, statusCode, err = handler(ctx, r)
 
 		defer func() {
