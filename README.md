@@ -101,11 +101,10 @@ To link to local gosdk so that the changes are reflected on the blobber build pl
 ./docker.local/bin/build.blobber.dev.sh
 
 ```
-For Mac with Apple M1 chip use the following [guide](https://github.com/0chain/blobber/blob/staging/dev.local/README.md) to build and start blobbers.
 
-4. Now create a wallet using zwalletcli and install zboxcli to perform storage operations on blobbers.Instructions for creating wallet and installing zboxcli are available [here](https://github.com/0chain/zboxcli#installation-guides)
+4. Now create a wallet using zwalletcli and install zboxcli to perform storage operations on blobbers.Instructions for [creating wallet](https://github.com/0chain/zwalletcli#creating-wallet---any-command) and installing zboxcli are available [here](https://github.com/0chain/zboxcli#installation-guides)
 
-5. Once the wallet is created , the wallet information will be stored in wallet.json located in the .zcn folder of the Linux home directory. Now navigate to the .zcn folder (this is created during zbox build) 
+5. Once the wallet is created, the wallet information will be stored in wallet.json located in the .zcn folder of the Linux home directory. Now navigate to the .zcn folder (this is created during zbox build) 
 ```
 cd $HOME/.zcn/
 ```
