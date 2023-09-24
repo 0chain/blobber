@@ -660,7 +660,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		"allocation_root":    allocationRoot,
 		"file_meta_root":     fileMetaRoot,
 		"used_size":          allocationObj.UsedSize,
-		"blobber_size":       allocationObj.BlobberSizeUsed,
+		"blobber_size_used":  allocationObj.BlobberSizeUsed,
 		"is_redeem_required": true,
 	}
 	updateOption := func(a *allocation.Allocation) {
