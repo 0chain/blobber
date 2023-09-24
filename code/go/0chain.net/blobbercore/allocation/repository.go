@@ -89,7 +89,6 @@ func (r *Repository) GetByIdAndLock(ctx context.Context, id string) (*Allocation
 	}
 
 	alloc := &Allocation{}
-
 	err = tx.Model(&Allocation{}).
 		Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).
 		Where("id=?", id).
