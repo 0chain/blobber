@@ -275,7 +275,7 @@ func (r *Repository) Save(ctx context.Context, alloc *Allocation) error {
 		return err
 	}
 	updateAlloc := func(a *Allocation) {
-		a = alloc
+		*a = *alloc
 	}
 	txnCache.AllocationUpdates = append(txnCache.AllocationUpdates, updateAlloc)
 	cache[alloc.ID] = txnCache
