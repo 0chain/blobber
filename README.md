@@ -13,7 +13,9 @@ This readme provides instructions on how to setup and register blobber to the Z�
 - [Züs Overview](#züs-overview) 
 - [Initial Setup](#initial-setup) 
 - [Directory Setup for Blobbers](#directory-setup-for-blobbers)
-- [Building and Starting the Blobber](#building-and-starting-the-nodes) 
+- [Building and Starting the Blobber](#building-and-starting-the-nodes)
+  - [Building on Standard Hardware](#building-on-standard-hardware)
+  - [Building on apple silicon](#building-on-apple-silicon) 
 - [Connect to other network](#connect-to-other-network)
 - [Miscellaneous](#miscellaneous) 
 - [Cleanup](#cleanup)
@@ -78,6 +80,7 @@ A block worker URL is a field in the `blobber/config/0chain_validator.yaml` and 
 ```
 block_worker: https://demo.zus.network/dns
 ```
+### Building on standard hardware
 
 3. Go back to the blobber directory and build blobber containers using the scripts below
 ```
@@ -88,6 +91,8 @@ block_worker: https://demo.zus.network/dns
 Note: Run all scripts as sudo. 
 This would take few minutes.
 
+### Building on apple silicon 
+
 Sometimes in Apple Silicon devices (m1/m2 macbooks), buildx will not work for build scripts. To force a regular blobber build, run the following instead of the build commands mentioned above:
 ```
 DOCKER_BUILD=build ./docker.local/bin/build.base.sh
@@ -95,31 +100,31 @@ DOCKER_BUILD=build ./docker.local/bin/build.blobber.sh
 DOCKER_BUILD=build ./docker.local/bin/build.validator.sh.
 ```
 
-To link to local gosdk so that the changes are reflected on the blobber build please use the below command(optional)
+4. To link to local gosdk so that the changes are reflected on the blobber build please use the below command(optional)
 
 ```
 ./docker.local/bin/build.blobber.dev.sh
 
 ```
 
-4. Now create a wallet using zwalletcli and install zboxcli to perform storage operations on blobbers.Instructions for [creating wallet](https://github.com/0chain/zwalletcli#creating-wallet---any-command) and installing zboxcli are available [here](https://github.com/0chain/zboxcli#installation-guides)
+5. Now create a wallet using zwalletcli and install zboxcli to perform storage operations on blobbers.Instructions for [creating wallet](https://github.com/0chain/zwalletcli#creating-wallet---any-command) and installing zboxcli are available [here](https://github.com/0chain/zboxcli#installation-guides)
 
-5. Once the wallet is created, the wallet information will be stored in wallet.json located in the .zcn folder of the Linux home directory. Now navigate to the .zcn folder (this is created during zbox build) 
+6. Once the wallet is created, the wallet information will be stored in wallet.json located in the .zcn folder of the Linux home directory. Now navigate to the .zcn folder (this is created during zbox build) 
 ```
 cd $HOME/.zcn/
 ```
-6. Open the wallet.json file. It should be similar to the similar to the output below:
+7. Open the wallet.json file. It should be similar to the similar to the output below:
 ```
 {"client_id":"4af719e1fdb6244159f17922382f162387bae3708250cab6bc1c20cd85fb594c",
 "client_key":"da1769bd0203b9c84dc19846ed94155b58d1ffeb3bbe35d38db5bf2fddf5a91c91b22bc7c89dd87e1f1fecbb17ef0db93517dd3886a64274997ea46824d2c119","keys":[{"public_key":"da1769bd0203b9c84dc19846ed94155b58d1ffeb3bbe35d38db5bf2fddf5a91c91b22bc7c89dd87e1f1fecbb17ef0db93517dd3886a64274997ea46824d2c1>
 "private_key":"542f6be49108f52203ce75222601397aad32e554451371581ba0eca56b093d19"}],"mnemonics":"butter whisper wheat hope duck mention bird half wedding aim good regret maximum illegal much inch immune unlock resource congress drift>
 "version":"1.0","date_created":"2021-09-09T20:22:56+05:30"}
 ```
-7. Copy the client_id value and paste it into blobbers and validators settings. The files can be found in `blobber/config` directory.
+8. Copy the client_id value and paste it into blobbers and validators settings. The files can be found in `blobber/config` directory.
   
-8. Open both the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` and edit the `delegate_wallet` value with your `client_id` value.
+9. Open both the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` and edit the `delegate_wallet` value with your `client_id` value.
 
-9. Now run the blobbers by navigating into blobber directories for Blobber1 (git/blobber/docker.local/blobber1) and run the container using
+10. Now run the blobbers by navigating into blobber directories for Blobber1 (git/blobber/docker.local/blobber1) and run the container using
 
 ```
 # For locally build images
@@ -137,7 +142,7 @@ by adjusting true to false.
 
 ## Troubleshooting
 
-10. Ensure the port mapping is all correct:
+1. Ensure the port mapping is all correct:
 
 ```
 docker ps
@@ -145,7 +150,7 @@ docker ps
 ```
 This should display the container image blobber_blobber and should have the ports mapped like "0.0.0.0:5050->5050/tcp"
 
-11. Now check whether the blobber has registered to the blockchain by running the following zbox command
+2. Now check whether the blobber has registered to the blockchain by running the following zbox command
 
 ```
 ./zbox ls-blobbers
@@ -200,7 +205,7 @@ Note: When starting multiple blobbers, it could happen that blobbers are not bei
    
 Blobber registration takes some time and adding at least 5 second wait before starting the next blobber usually avoids the issue.
   
-12. Now you can create allocations on blobber and store files. 
+3. Now you can create allocations on blobber and store files. 
 
 Note: If unable to create new allocations as shown below.
 
@@ -236,7 +241,6 @@ block_worker: https://demo.zus.network/dns
 
 ```
 
-
 ## Miscellaneous
  
 ### Cleanup
@@ -252,7 +256,6 @@ docker system prune
 
 ```
 
-  
 
 2. To get rid of all the docker resources and start afresh:
 
@@ -263,12 +266,10 @@ docker system prune
 docker system prune -a
 
 ```
-
   
 
 3. Stop All Containers
 
-  
 
 ```
 
