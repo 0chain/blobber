@@ -49,8 +49,11 @@ func challengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 
 	err = challengeRequest.VerifyChallenge(challengeObj, allocationObj)
 	if err != nil {
+		updateStats(false)
 		return InvalidValidationTicket(challengeObj, err)
 	}
+
+	updateStats(true)
 
 	return ValidValidationTicket(challengeObj, challengeRequest.ChallengeID, challengeHash)
 }
@@ -75,11 +78,6 @@ func NewChallengeRequest(r *http.Request) (*ChallengeRequest, string, error) {
 	if requestHash != challengeHash {
 		logging.Logger.Error("Header hash and request hash do not match")
 		return nil, "", common.NewError("invalid_parameters", "Header hash and request hash do not match")
-	}
-
-	if challengeRequest.ObjPath == nil {
-		logging.Logger.Error("Not object path found in the input")
-		return nil, "", common.NewError("invalid_parameters", "Empty object path or merkle path")
 	}
 
 	return &challengeRequest, challengeHash, err

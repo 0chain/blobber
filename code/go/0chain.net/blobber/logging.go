@@ -17,7 +17,7 @@ func setupLogging() {
 		logging.InitLogging("production", logDir, "0chainBlobber.log")
 	}
 
-	zcncore.SetLogFile(logDir+"/0chainBlobber.log", false)
+	zcncore.SetLogFile(logDir+"/0chainBlobber-sdk.log", false)
 	zcncore.SetLogLevel(3)
 	fmt.Print("		[OK]\n")
 }

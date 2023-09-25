@@ -131,8 +131,14 @@ FROM reference_objects`).
 				if it.mock != nil {
 					it.mock()
 				}
-
-				r, err := LoadRootHashnode(context.TODO(), it.allocationID)
+				var (
+					r   *Hashnode
+					err error
+				)
+				err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+					r, err = LoadRootHashnode(ctx, it.allocationID)
+					return err
+				})
 
 				it.assert(test, it.allocationID, r, err)
 
@@ -357,8 +363,14 @@ FROM reference_objects`).
 					it.mock()
 				}
 
-				r, err := LoadRootHashnode(context.TODO(), it.allocationID)
-
+				var (
+					r   *Hashnode
+					err error
+				)
+				err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+					r, err = LoadRootHashnode(ctx, it.allocationID)
+					return err
+				})
 				it.assert(test, it.allocationID, r, err)
 
 			},

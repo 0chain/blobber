@@ -14,6 +14,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/core/zcncrypto"
@@ -95,11 +96,12 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 
 			config.Configuration.MaxAllocationDirFiles = tc.maxDirFilesPerAlloc
 
-			ctx := context.TODO()
-			db := datastore.GetStore().GetDB().Begin()
-			ctx = context.WithValue(ctx, datastore.ContextKeyTransaction, db)
+			ctx := datastore.GetStore().CreateTransaction(context.TODO())
 
 			fPath := "/new"
+			hasher := filestore.GetNewCommitHasher(2310)
+			pathHash := encryption.Hash(fPath)
+			UpdateConnectionObjWithHasher("connection_id", pathHash, hasher)
 			change := &UploadFileChanger{
 				BaseFileChanger: BaseFileChanger{
 					Filename:       filepath.Base(fPath),
@@ -109,6 +111,7 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 					ValidationRoot: tc.validationRoot,
 					Size:           2310,
 					ChunkSize:      65536,
+					ConnectionID:   "connection_id",
 				},
 			}
 

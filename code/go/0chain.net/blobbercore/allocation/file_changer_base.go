@@ -5,6 +5,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 )
 
 // BaseFileChanger base file change processor
@@ -44,8 +45,9 @@ type BaseFileChanger struct {
 	ThumbnailSize     int64  `json:"thumbnail_size"`
 	ThumbnailFilename string `json:"thumbnail_filename"`
 
-	EncryptedKey string `json:"encrypted_key,omitempty"`
-	CustomMeta   string `json:"custom_meta,omitempty"`
+	EncryptedKey      string `json:"encrypted_key,omitempty"`
+	EncryptedKeyPoint string `json:"encrypted_key_point,omitempty"`
+	CustomMeta        string `json:"custom_meta,omitempty"`
 
 	ChunkSize int64 `json:"chunk_size,omitempty"` // the size of achunk. 64*1024 is default
 	IsFinal   bool  `json:"is_final,omitempty"`   // current chunk is last or not
@@ -74,16 +76,6 @@ func (fc *BaseFileChanger) DeleteTempFile() error {
 
 func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 
-	fileInputData := &filestore.FileInputData{}
-	fileInputData.Name = fc.Filename
-	fileInputData.Path = fc.Path
-	fileInputData.ValidationRoot = fc.ValidationRoot
-	fileInputData.FixedMerkleRoot = fc.FixedMerkleRoot
-	fileInputData.ChunkSize = fc.ChunkSize
-	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
-	if err != nil {
-		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-	}
 	if fc.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{}
 		fileInputData.Name = fc.ThumbnailFilename
@@ -96,6 +88,19 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context) error {
 			return common.NewError("file_store_error", "Error committing thumbnail to file store. "+err.Error())
 		}
 	}
-
+	fileInputData := &filestore.FileInputData{}
+	fileInputData.Name = fc.Filename
+	fileInputData.Path = fc.Path
+	fileInputData.ValidationRoot = fc.ValidationRoot
+	fileInputData.FixedMerkleRoot = fc.FixedMerkleRoot
+	fileInputData.ChunkSize = fc.ChunkSize
+	fileInputData.Hasher = GetHasher(fc.ConnectionID, encryption.Hash(fc.Path))
+	if fileInputData.Hasher == nil {
+		return common.NewError("invalid_parameters", "Invalid parameters. Error getting hasher for commit.")
+	}
+	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
+	if err != nil {
+		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+	}
 	return nil
 }

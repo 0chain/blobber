@@ -1,5 +1,13 @@
 passphrase.txt
 logs/
+docs/
 .git
 *.md
 .cache
+awsnet
+docker.local/blobber*
+docker.aws/*
+config/
+docker-clean/
+keys_config
+**/pkg

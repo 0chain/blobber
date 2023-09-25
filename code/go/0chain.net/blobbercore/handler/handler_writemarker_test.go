@@ -41,7 +41,7 @@ func TestWriteMarkerHandlers_Lock(t *testing.T) {
 	req.Header.Set("Content-Type", formWriter.FormDataContentType())
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(WithHandler(func(ctx *Context) (interface{}, error) {
+	handler := http.HandlerFunc(WithTxHandler(func(ctx *Context) (interface{}, error) {
 		ctx.AllocationId = "TestHandlers_Lock_allocation_id"
 		return LockWriteMarker(ctx)
 	}))
@@ -81,7 +81,7 @@ func TestWriteMarkerHandlers_Unlock(t *testing.T) {
 	req.Header.Set("Content-Type", formWriter.FormDataContentType())
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(WithHandler(func(ctx *Context) (interface{}, error) {
+	handler := http.HandlerFunc(WithTxHandler(func(ctx *Context) (interface{}, error) {
 		ctx.AllocationId = "TestHandlers_Unlock_allocation_id"
 		ctx.Vars["connection"] = "connection_id"
 		return UnlockWriteMarker(ctx)

@@ -13,8 +13,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
-	"gorm.io/gorm"
-
 	"go.uber.org/zap"
 )
 
@@ -46,7 +44,10 @@ func UpdateWorker(ctx context.Context, interval time.Duration) {
 	for {
 		select {
 		case <-tick:
-			updateWork(ctx)
+			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				updateWork(ctx)
+				return nil
+			})
 		case <-quit:
 			return
 		}
@@ -79,7 +80,7 @@ func updateWork(ctx context.Context) {
 
 	var (
 		allocs []*Allocation
-		count  int64
+		count  int
 		offset int64
 
 		err error
@@ -87,7 +88,7 @@ func updateWork(ctx context.Context) {
 
 	// iterate all in loop accepting allocations with limit
 
-	for start := true; start || (offset < count); start = false {
+	for start := true; start || (offset < int64(count)); start = false {
 		allocs, count, err = findAllocations(ctx, offset)
 		if err != nil {
 			logging.Logger.Error("finding allocations in DB", zap.Error(err))
@@ -109,28 +110,9 @@ func updateWork(ctx context.Context) {
 }
 
 // not finalized, not cleaned up
-func findAllocations(ctx context.Context, offset int64) (allocs []*Allocation, count int64, err error) {
-	const query = `finalized = false AND cleaned_up = false`
-
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-
-	var tx = datastore.GetStore().GetTransaction(ctx)
-	defer tx.Rollback()
-
-	err = tx.Model(&Allocation{}).Where(query).Count(&count).Error
-	if err != nil {
-		logging.Logger.Error(err.Error())
-		return
-	}
-
-	allocs = make([]*Allocation, 0)
-	err = tx.Model(&Allocation{}).
-		Where(query).
-		Limit(UPDATE_LIMIT).
-		Offset(int(offset)).
-		Order("id ASC").
-		Find(&allocs).Error
-	return
+func findAllocations(ctx context.Context, offset int64) (allocs []*Allocation, count int, err error) {
+	allocations, err := Repo.GetAllocations(ctx, offset)
+	return allocations, len(allocations), err
 }
 
 func shouldFinalize(sa *transaction.StorageAllocation) bool {
@@ -185,20 +167,8 @@ func requestAllocation(allocID string) (sa *transaction.StorageAllocation, err e
 	return
 }
 
-func commit(tx *gorm.DB, err *error) {
-	if (*err) != nil {
-		tx.Rollback()
-		return
-	}
-	(*err) = tx.Commit().Error
-}
-
 func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.StorageAllocation) (ua *Allocation, err error) {
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-
 	var tx = datastore.GetStore().GetTransaction(ctx)
-	defer commit(tx, &err)
-
 	var changed bool = a.Tx != sa.Tx
 
 	// transaction
@@ -224,7 +194,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 	}
 
 	// save allocations
-	if err := tx.Save(a).Error; err != nil {
+	if err := Repo.Save(ctx, a); err != nil {
 		return nil, err
 	}
 
@@ -239,6 +209,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 		}
 	}
 
+	logging.Logger.Info("allocation updated", zap.String("id", a.ID), zap.Any("a", a))
 	return a, nil // ok
 }
 
@@ -274,9 +245,7 @@ func cleanupAllocation(ctx context.Context, a *Allocation) {
 		logging.Logger.Error("cleaning finalized allocation", zap.Error(err))
 	}
 
-	ctx = datastore.GetStore().CreateTransaction(ctx)
 	var tx = datastore.GetStore().GetTransaction(ctx)
-	defer commit(tx, &err)
 
 	a.CleanedUp = true
 	if err = tx.Model(a).Updates(a).Error; err != nil {
@@ -285,10 +254,7 @@ func cleanupAllocation(ctx context.Context, a *Allocation) {
 }
 
 func deleteAllocation(ctx context.Context, a *Allocation) (err error) {
-	ctx = datastore.GetStore().CreateTransaction(ctx)
 	var tx = datastore.GetStore().GetTransaction(ctx)
-	defer commit(tx, &err)
-
 	filestore.GetFileStore().DeleteAllocation(a.ID)
 	err = tx.Model(&reference.Ref{}).Unscoped().
 		Delete(&reference.Ref{},

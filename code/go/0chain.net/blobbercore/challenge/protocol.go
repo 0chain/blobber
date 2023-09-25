@@ -22,6 +22,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
 	sdkUtil "github.com/0chain/gosdk/core/util"
 	"github.com/remeh/sizedwaitgroup"
+	"gorm.io/gorm"
 
 	"go.uber.org/zap"
 )
@@ -47,7 +48,7 @@ type ChallengeResponse struct {
 func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error) {
 	cancellation := time.Now()
 	db := datastore.GetStore().GetTransaction(ctx)
-	deleteChallenge(int64(cr.CreatedAt))
+	deleteChallenge(cr.RoundCreatedAt)
 	cr.Status = Cancelled
 	cr.StatusMessage = errReason.Error()
 	cr.UpdatedAt = cancellation.UTC()
@@ -81,7 +82,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
 	if err != nil {
 		allocMu.RUnlock()
-		cr.CancelChallenge(ctx, ErrNoValidator)
+		cr.CancelChallenge(ctx, err)
 		return err
 	}
 
@@ -96,35 +97,40 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 
 	rootRef, err := reference.GetReference(ctx, cr.AllocationID, "/")
-	if err != nil {
+	if err != nil && err != gorm.ErrRecordNotFound {
 		allocMu.RUnlock()
 		cr.CancelChallenge(ctx, err)
 		return err
 	}
 
 	blockNum := int64(0)
-	if rootRef.NumBlocks > 0 {
-		r := rand.New(rand.NewSource(cr.RandomNumber))
-		blockNum = r.Int63n(rootRef.NumBlocks)
-		blockNum++
-		cr.BlockNum = blockNum
-	}
+	var objectPath *reference.ObjectPath
+	if rootRef != nil {
+		if rootRef.NumBlocks > 0 {
+			r := rand.New(rand.NewSource(cr.RandomNumber))
+			blockNum = r.Int63n(rootRef.NumBlocks)
+			blockNum++
+			cr.BlockNum = blockNum
+		}
 
-	logging.Logger.Info("[challenge]rand: ", zap.Any("rootRef.NumBlocks", rootRef.NumBlocks), zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ChallengeID), zap.Any("random_seed", cr.RandomNumber))
-	objectPath, err := reference.GetObjectPath(ctx, cr.AllocationID, blockNum)
-	if err != nil {
-		allocMu.RUnlock()
-		cr.CancelChallenge(ctx, err)
-		return err
-	}
+		logging.Logger.Info("[challenge]rand: ", zap.Any("rootRef.NumBlocks", rootRef.NumBlocks), zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ChallengeID), zap.Any("random_seed", cr.RandomNumber))
+		objectPath, err = reference.GetObjectPath(ctx, cr.AllocationID, blockNum)
+		if err != nil {
+			allocMu.RUnlock()
+			cr.CancelChallenge(ctx, err)
+			return err
+		}
 
-	cr.RefID = objectPath.RefID
+		cr.RefID = objectPath.RefID
+		cr.ObjectPath = objectPath
+	}
 	cr.RespondedAllocationRoot = allocationObj.AllocationRoot
-	cr.ObjectPath = objectPath
 
 	postData := make(map[string]interface{})
 	postData["challenge_id"] = cr.ChallengeID
-	postData["object_path"] = objectPath
+	if objectPath != nil {
+		postData["object_path"] = objectPath
+	}
 	markersArray := make([]map[string]interface{}, 0)
 	for _, wm := range wms {
 		markersMap := make(map[string]interface{})
@@ -188,6 +194,9 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		postData["challenge_proof"] = challengeResponse
 	}
 
+	if objectPath == nil {
+		objectPath = &reference.ObjectPath{}
+	}
 	err = UpdateChallengeTimingProofGenerationAndFileSize(
 		cr.ChallengeID,
 		proofGenTime,
@@ -246,7 +255,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			resp, err := util.SendPostRequest(url, postDataBytes, nil)
 			if err != nil {
 				//network issue, don't cancel it, and try it again
-				logging.Logger.Info("[challenge]post: ", zap.Any("error", err.Error()))
+				logging.Logger.Error("[challenge]post: ", zap.Any("error", err.Error()))
 				updateMapAndSlice(validatorID, i, nil)
 				return
 			}

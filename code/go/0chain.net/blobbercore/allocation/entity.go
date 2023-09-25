@@ -1,10 +1,12 @@
 package allocation
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"gorm.io/gorm/clause"
 
@@ -46,13 +48,14 @@ type Allocation struct {
 	RepairerID     string           `gorm:"column:repairer_id;size:64;not null"`
 	Expiration     common.Timestamp `gorm:"column:expiration_date;not null"`
 	// AllocationRoot allcation_root of last write_marker
-	AllocationRoot   string        `gorm:"column:allocation_root;size:64;not null;default:''"`
-	FileMetaRoot     string        `gorm:"column:file_meta_root;size:64;not null;default:''"`
-	BlobberSize      int64         `gorm:"column:blobber_size;not null;default:0"`
-	BlobberSizeUsed  int64         `gorm:"column:blobber_size_used;not null;default:0"`
-	LatestRedeemedWM string        `gorm:"column:latest_redeemed_write_marker;size:64"`
-	IsRedeemRequired bool          `gorm:"column:is_redeem_required"`
-	TimeUnit         time.Duration `gorm:"column:time_unit;not null;default:172800000000000"`
+	AllocationRoot   string           `gorm:"column:allocation_root;size:64;not null;default:''"`
+	FileMetaRoot     string           `gorm:"column:file_meta_root;size:64;not null;default:''"`
+	BlobberSize      int64            `gorm:"column:blobber_size;not null;default:0"`
+	BlobberSizeUsed  int64            `gorm:"column:blobber_size_used;not null;default:0"`
+	LatestRedeemedWM string           `gorm:"column:latest_redeemed_write_marker;size:64"`
+	IsRedeemRequired bool             `gorm:"column:is_redeem_required"`
+	TimeUnit         time.Duration    `gorm:"column:time_unit;not null;default:172800000000000"`
+	StartTime        common.Timestamp `gorm:"column:start_time;not null"`
 	// Ending and cleaning
 	CleanedUp bool `gorm:"column:cleaned_up;not null;default:false"`
 	Finalized bool `gorm:"column:finalized;not null;default:false"`
@@ -139,6 +142,18 @@ func (a *Allocation) GetRequiredWriteBalance(blobberID string, writeSize int64, 
 	return
 }
 
+// IsReadFree Determine if read price is 0
+func (a *Allocation) IsReadFree(blobberID string) bool {
+	for _, d := range a.Terms {
+		if d.BlobberID == blobberID {
+			if d.ReadPrice == 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 type Pending struct {
 	// ID of format client_id:allocation_id
 	ID           string `gorm:"column:id;primaryKey"`
@@ -150,7 +165,8 @@ func (*Pending) TableName() string {
 }
 
 // GetPendingWrite Get write size that is not yet redeemed
-func GetPendingWrite(db *gorm.DB, clientID, allocationID string) (pendingWriteSize int64, err error) {
+func GetPendingWrite(ctx context.Context, clientID, allocationID string) (pendingWriteSize int64, err error) {
+	db := datastore.GetStore().GetTransaction(ctx)
 	err = db.Model(&Pending{}).Select("pending_write").Where(
 		"id=?", fmt.Sprintf("%v:%v", clientID, allocationID),
 	).Scan(&pendingWriteSize).Error
@@ -165,7 +181,8 @@ func GetPendingWrite(db *gorm.DB, clientID, allocationID string) (pendingWriteSi
 }
 
 // GetPendingRead Get read size that is not yet redeemed
-func GetPendingRead(db *gorm.DB, clientID, allocationID string) (pendingReadSize int64, err error) {
+func GetPendingRead(ctx context.Context, clientID, allocationID string) (pendingReadSize int64, err error) {
+	db := datastore.GetStore().GetTransaction(ctx)
 	err = db.Model(&Pending{}).Select("pending_read").Where(
 		"id=?", fmt.Sprintf("%v:%v", clientID, allocationID),
 	).Scan(&pendingReadSize).Error
@@ -179,7 +196,8 @@ func GetPendingRead(db *gorm.DB, clientID, allocationID string) (pendingReadSize
 	return
 }
 
-func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite int64) (err error) {
+func AddToPending(ctx context.Context, clientID, allocationID string, pendingWrite int64) (err error) {
+	db := datastore.GetStore().GetTransaction(ctx)
 	key := clientID + ":" + allocationID
 	// Lock is required because two process can simultaneously call this function and read pending data
 	// thus giving same value leading to inconsistent data
@@ -203,7 +221,8 @@ func AddToPending(db *gorm.DB, clientID, allocationID string, pendingWrite int64
 	return nil
 }
 
-func GetWritePoolsBalance(db *gorm.DB, allocationID string) (balance uint64, err error) {
+func GetWritePoolsBalance(ctx context.Context, allocationID string) (balance uint64, err error) {
+	db := datastore.GetStore().GetTransaction(ctx)
 	err = db.Model(&WritePool{}).Select("COALESCE(SUM(balance),0) as tot_balance").Where(
 		"allocation_id = ?", allocationID,
 	).Scan(&balance).Error
@@ -254,13 +273,14 @@ func (WritePool) TableName() string {
 	return "write_pools"
 }
 
-func GetReadPool(db *gorm.DB, clientID string) (*ReadPool, error) {
+func GetReadPool(ctx context.Context, clientID string) (*ReadPool, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
 	var rp ReadPool
 	return &rp, db.Model(&ReadPool{}).Where("client_id = ?", clientID).Scan(&rp).Error
 }
 
-func GetReadPoolsBalance(db *gorm.DB, clientID string) (int64, error) {
-	rp, err := GetReadPool(db, clientID)
+func GetReadPoolsBalance(ctx context.Context, clientID string) (int64, error) {
+	rp, err := GetReadPool(ctx, clientID)
 	if err != nil {
 		return 0, err
 	}
@@ -268,22 +288,24 @@ func GetReadPoolsBalance(db *gorm.DB, clientID string) (int64, error) {
 	return rp.Balance, nil
 }
 
-func UpsertReadPool(db *gorm.DB, rp *ReadPool) error {
+func UpsertReadPool(ctx context.Context, rp *ReadPool) error {
 	updateFields := []string{"balance"}
-
+	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "client_id"}},
 		DoUpdates: clause.AssignmentColumns(updateFields), // column needed to be updated
 	}).Create(&rp).Error
 }
 
-func UpdateReadPool(db *gorm.DB, rp *ReadPool) error {
+func UpdateReadPool(ctx context.Context, rp *ReadPool) error {
+	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Model(&ReadPool{}).Where("client_id = ?", rp.ClientID).Updates(map[string]interface{}{
 		"balance": rp.Balance,
 	}).Error
 }
 
-func SetWritePool(db *gorm.DB, allocationID string, wp *WritePool) (err error) {
+func SetWritePool(ctx context.Context, allocationID string, wp *WritePool) (err error) {
+	db := datastore.GetStore().GetTransaction(ctx)
 	err = db.Delete(&WritePool{}, "allocation_id = ?", allocationID).Error
 	if err != nil {
 		return

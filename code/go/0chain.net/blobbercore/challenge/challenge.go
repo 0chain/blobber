@@ -24,24 +24,23 @@ type BCChallengeResponse struct {
 	Challenges []*ChallengeEntity `json:"challenges"`
 }
 
-var lastChallengeTimestamp int
+var lastChallengeRound int64
 
 func syncOpenChallenges(ctx context.Context) {
-	const incrOffset = 20
 	defer func() {
 		if r := recover(); r != nil {
 			logging.Logger.Error("[recover]challenge", zap.Any("err", r))
 		}
 	}()
 
-	offset := 0
 	params := make(map[string]string)
 	params["blobber"] = node.Self.ID
-	params["offset"] = strconv.Itoa(offset)
-	params["limit"] = "20"
-	if lastChallengeTimestamp > 0 {
-		params["from"] = strconv.Itoa(lastChallengeTimestamp)
+
+	params["limit"] = "50"
+	if lastChallengeRound > 0 {
+		params["from"] = strconv.FormatInt(lastChallengeRound, 10)
 	}
+
 	start := time.Now()
 
 	var downloadElapsed, jsonElapsed time.Duration
@@ -53,6 +52,9 @@ func syncOpenChallenges(ctx context.Context) {
 			return
 		default:
 		}
+
+		logging.Logger.Info("[challenge]sync:pull", zap.Any("params", params))
+
 		var challenges BCChallengeResponse
 		var challengeIDs []string
 		challenges.Challenges = make([]*ChallengeEntity, 0)
@@ -74,13 +76,13 @@ func syncOpenChallenges(ctx context.Context) {
 			break
 		}
 		sort.Slice(challenges.Challenges, func(i, j int) bool {
-			return challenges.Challenges[i].CreatedAt < challenges.Challenges[j].CreatedAt
+			return challenges.Challenges[i].RoundCreatedAt < challenges.Challenges[j].RoundCreatedAt
 		})
 		count += len(challenges.Challenges)
 		for _, c := range challenges.Challenges {
 			challengeIDs = append(challengeIDs, c.ChallengeID)
-			if c.CreatedAt > common.Timestamp(lastChallengeTimestamp) {
-				lastChallengeTimestamp = int(c.CreatedAt)
+			if c.RoundCreatedAt >= lastChallengeRound {
+				lastChallengeRound = c.RoundCreatedAt
 			}
 			toProcessChallenge <- c
 		}
@@ -92,8 +94,6 @@ func syncOpenChallenges(ctx context.Context) {
 		if len(challenges.Challenges) == 0 {
 			break
 		}
-		offset += incrOffset
-		params["offset"] = strconv.Itoa(offset)
 	}
 
 	dbTimeStart := time.Now()
@@ -107,17 +107,19 @@ func syncOpenChallenges(ctx context.Context) {
 
 }
 
-func validateOnValidators(c *ChallengeEntity) {
+func validateOnValidators(ctx context.Context, c *ChallengeEntity) error {
 
-	ctx := datastore.GetStore().CreateTransaction(context.TODO())
-	defer ctx.Done()
-
-	tx := datastore.GetStore().GetTransaction(ctx)
+	logging.Logger.Info("[challenge]validate: ",
+		zap.Any("challenge", c),
+		zap.String("challenge_id", c.ChallengeID),
+	)
 
 	if err := CreateChallengeTiming(c.ChallengeID, c.CreatedAt); err != nil {
 		logging.Logger.Error("[challengetiming]add: ",
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Error(err))
+		deleteChallenge(c.RoundCreatedAt)
+		return err
 	}
 
 	createdTime := common.ToTime(c.CreatedAt)
@@ -135,10 +137,8 @@ func validateOnValidators(c *ChallengeEntity) {
 			zap.String("validationTickets", string(c.ValidationTicketsString)),
 			zap.String("ObjectPath", string(c.ObjectPathString)),
 			zap.Error(err))
-		tx.Rollback()
-
 		c.CancelChallenge(ctx, err)
-		return
+		return nil
 	}
 
 	if err := c.LoadValidationTickets(ctx); err != nil {
@@ -147,18 +147,8 @@ func validateOnValidators(c *ChallengeEntity) {
 			zap.Time("created", createdTime),
 			zap.Error(err))
 		//TODO: Should we delete the challenge from map or send it back to the todo channel?
-		deleteChallenge(int64(c.CreatedAt))
-		tx.Rollback()
-		return
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		logging.Logger.Error("[challenge]validate(Commit): ",
-			zap.Any("challenge_id", c.ChallengeID),
-			zap.Time("created", createdTime),
-			zap.Error(err))
-		tx.Rollback()
-		return
+		deleteChallenge(c.RoundCreatedAt)
+		return err
 	}
 
 	completedValidation := time.Now()
@@ -173,7 +163,7 @@ func validateOnValidators(c *ChallengeEntity) {
 	logging.Logger.Info("[challenge]validate: ",
 		zap.Any("challenge_id", c.ChallengeID),
 		zap.Time("created", createdTime))
-
+	return nil
 }
 
 func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, error) {
@@ -246,5 +236,4 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 	}
 
 	return txn, nil
-
 }

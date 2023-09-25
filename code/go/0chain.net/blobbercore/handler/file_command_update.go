@@ -11,6 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	sdkConst "github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
@@ -53,6 +54,7 @@ func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return common.NewError("invalid_parameters",
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
 	}
+	logging.Logger.Info("UpdateFileCommand", zap.Any("allocation_id", allocationObj.ID), zap.Any("validation_rooot", cmd.fileChanger.ValidationRoot), zap.Any("thumb_hash", cmd.fileChanger.ThumbnailHash))
 
 	if cmd.fileChanger.ChunkSize <= 0 {
 		cmd.fileChanger.ChunkSize = fileref.CHUNK_SIZE
@@ -85,23 +87,54 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 
 	result.Filename = cmd.fileChanger.Filename
 
+	isFinal := cmd.fileChanger.IsFinal
+	cmd.fileChanger.IsFinal = false
+	cmd.reloadChange(connectionObj)
+	if cmd.fileChanger.IsFinal {
+		return result, nil
+	}
+	cmd.fileChanger.IsFinal = isFinal
+
 	origfile, _, err := req.FormFile(UploadFile)
 	if err != nil {
 		return result, common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
 	}
 	defer origfile.Close()
 
-	cmd.reloadChange(connectionObj)
+	if cmd.fileChanger.Size == 0 {
+		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
+	}
+
+	var hasher *filestore.CommitHasher
+	filePathHash := encryption.Hash(cmd.fileChanger.Path)
+	if cmd.fileChanger.UploadOffset == 0 {
+		hasher = filestore.GetNewCommitHasher(cmd.fileChanger.Size)
+		allocation.UpdateConnectionObjWithHasher(connectionObj.ID, filePathHash, hasher)
+	} else {
+		hasher = allocation.GetHasher(connectionObj.ID, filePathHash)
+		if hasher == nil {
+			return result, common.NewError("invalid_parameters", "Invalid parameters. Error getting hasher for upload.")
+		}
+	}
 
 	fileInputData := &filestore.FileInputData{
 		Name:         cmd.fileChanger.Filename,
 		Path:         cmd.fileChanger.Path,
 		UploadOffset: cmd.fileChanger.UploadOffset,
 		IsFinal:      cmd.fileChanger.IsFinal,
+		FilePathHash: filePathHash,
+		Hasher:       hasher,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionObj.ID, fileInputData, origfile)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
+	}
+
+	if cmd.fileChanger.IsFinal {
+		err = hasher.Finalize()
+		if err != nil {
+			return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
+		}
 	}
 
 	result.ValidationRoot = fileOutputData.ValidationRoot
@@ -120,7 +153,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, req *http.Requ
 	}
 
 	cmd.fileChanger.AllocationID = allocationObj.ID
-	cmd.fileChanger.Size += fileOutputData.Size
+	// cmd.fileChanger.Size += fileOutputData.Size
 
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connectionObj.ID
@@ -144,7 +177,7 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(ctx context.Context, req *http.Re
 	if thumbHeader != nil {
 		defer thumbfile.Close()
 
-		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path}
+		thumbInputData := &filestore.FileInputData{Name: thumbHeader.Filename, Path: cmd.fileChanger.Path, IsThumbnail: true, FilePathHash: encryption.Hash(cmd.fileChanger.Path)}
 		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionObj.ID, thumbInputData, thumbfile)
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
@@ -172,16 +205,17 @@ func (cmd *UpdateFileCommand) reloadChange(connectionObj *allocation.AllocationC
 		}
 
 		// reload uploaded size from db, it was chunk size from client
-		cmd.fileChanger.Size = dbFileChanger.Size
 		cmd.fileChanger.ThumbnailFilename = dbFileChanger.ThumbnailFilename
 		cmd.fileChanger.ThumbnailSize = dbFileChanger.ThumbnailSize
 		cmd.fileChanger.ThumbnailHash = dbFileChanger.ThumbnailHash
+		cmd.fileChanger.IsFinal = dbFileChanger.IsFinal
 		return
 	}
 }
 
 // UpdateChange add UpdateFileChanger in db
 func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
+	cmd.fileChanger.AllocationID = connectionObj.AllocationID
 	for _, c := range connectionObj.Changes {
 		filePath, _ := c.GetOrParseAffectedFilePath()
 		if c.Operation != sdkConst.FileOperationUpdate || cmd.fileChanger.Path != filePath {

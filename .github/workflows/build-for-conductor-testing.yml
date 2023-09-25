@@ -1,7 +1,7 @@
 name: "Build Docker Image for conductor testing"
 
 concurrency:
-  group: "publish-${{ github.ref }}"
+  group: "conductor-${{ github.ref }}"
   cancel-in-progress: true
 
 on:
@@ -21,6 +21,12 @@ jobs:
   build_blobber_for_conductor_testing:
     runs-on: [self-hosted, arc-runner]
     steps:
+      - name: Cleanup before restarting conductor tests.
+        run: |
+          echo 'y' | docker system prune -a
+          rm -rf *
+          cd /tmp
+          rm -rf ./*
       - name: Set docker image tag
         run: |
           if [[ "${{github.ref}}" == refs/pull/* ]]; then

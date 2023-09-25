@@ -6,8 +6,10 @@ package filestore
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"math"
+	"sync"
 
 	"github.com/0chain/gosdk/core/util"
 	"golang.org/x/crypto/sha3"
@@ -138,7 +140,7 @@ func (fp fixedMerkleTreeProof) GetMerkleProof(r io.ReaderAt) (proof [][]byte, er
 	b := make([]byte, FMTSize)
 	n, err := r.ReadAt(b, io.SeekStart)
 	if n != FMTSize {
-		return nil, errors.New("incomplete read")
+		return nil, fmt.Errorf("invalid fixed merkle tree size: %d", n)
 	}
 	if err != nil {
 		return nil, err
@@ -356,9 +358,9 @@ func (v *validationTreeProof) getFileOffsetsAndNodeIndexes(startInd, endInd int)
 }
 
 // getNodeIndexes returns two slices.
-// 1. NodeOffsets will return offset index of node in each level. Each level starts with index zero.
-// 2. leftRightIndexes will return whether the node should be appended to the left or right
-//    with other hash
+//  1. NodeOffsets will return offset index of node in each level. Each level starts with index zero.
+//  2. leftRightIndexes will return whether the node should be appended to the left or right
+//     with other hash
 func (v *validationTreeProof) getNodeIndexes(startInd, endInd int) ([][]int, [][]int) {
 
 	indexes := make([][]int, 0)
@@ -398,39 +400,87 @@ func getNewValidationTree(dataSize int64) *validationTree {
 
 // commitHasher is used to calculate and store tree nodes for fixed merkle tree and
 // validation tree when client commits file with the writemarker.
-type commitHasher struct {
+type CommitHasher struct {
 	fmt           *fixedMerkleTree
 	vt            *validationTree
-	writer        io.Writer
 	isInitialized bool
 }
 
-func GetNewCommitHasher(dataSize int64) *commitHasher {
-	c := new(commitHasher)
+func GetNewCommitHasher(dataSize int64) *CommitHasher {
+	c := new(CommitHasher)
 	c.fmt = getNewFixedMerkleTree()
 	c.vt = getNewValidationTree(dataSize)
-	c.writer = io.MultiWriter(c.fmt, c.vt)
 	c.isInitialized = true
 	return c
 }
 
-func (c *commitHasher) Write(b []byte) (int, error) {
-	return c.writer.Write(b)
-}
-
-func (c *commitHasher) Finalize() error {
-	err := c.fmt.Finalize()
-	if err != nil {
-		return err
+func (c *CommitHasher) Write(b []byte) (int, error) {
+	if !c.isInitialized || c.fmt == nil || c.vt == nil {
+		return 0, errors.New("commit hasher is not initialized")
 	}
 
-	return c.vt.Finalize()
+	var (
+		wg      sync.WaitGroup
+		errChan = make(chan error, 2)
+		n       int
+	)
+	wg.Add(2)
+	go func() {
+		_, err := c.fmt.Write(b)
+		if err != nil {
+			errChan <- err
+		}
+
+		wg.Done()
+	}()
+	go func() {
+		written, err := c.vt.Write(b)
+		if err != nil {
+			errChan <- err
+		}
+		n = written
+		wg.Done()
+	}()
+	wg.Wait()
+	close(errChan)
+	for err := range errChan {
+		return n, err
+	}
+	return n, nil
 }
 
-func (c *commitHasher) GetFixedMerkleRoot() string {
+func (c *CommitHasher) Finalize() error {
+	var (
+		wg      sync.WaitGroup
+		errChan = make(chan error, 2)
+	)
+	wg.Add(2)
+	go func() {
+		err := c.fmt.Finalize()
+		if err != nil {
+			errChan <- err
+		}
+		wg.Done()
+	}()
+	go func() {
+		err := c.vt.Finalize()
+		if err != nil {
+			errChan <- err
+		}
+		wg.Done()
+	}()
+	wg.Wait()
+	close(errChan)
+	for err := range errChan {
+		return err
+	}
+	return nil
+}
+
+func (c *CommitHasher) GetFixedMerkleRoot() string {
 	return c.fmt.GetMerkleRoot()
 }
 
-func (c *commitHasher) GetValidationMerkleRoot() string {
+func (c *CommitHasher) GetValidationMerkleRoot() string {
 	return hex.EncodeToString(c.vt.GetValidationRoot())
 }

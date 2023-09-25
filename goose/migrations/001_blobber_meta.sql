@@ -89,7 +89,8 @@ CREATE TABLE public.allocations (
     time_unit bigint DEFAULT '172800000000000'::bigint NOT NULL,
     cleaned_up boolean DEFAULT false NOT NULL,
     finalized boolean DEFAULT false NOT NULL,
-    file_options integer DEFAULT 63 NOT NULL
+    file_options integer DEFAULT 63 NOT NULL,
+    start_time bigint NOT NULL
 );
 
 
@@ -140,6 +141,7 @@ CREATE TABLE public.challenges (
     object_path jsonb,
     sequence bigint,
     "timestamp" bigint DEFAULT 0 NOT NULL,
+    round_created_at bigint,
     created_at bigint,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
@@ -330,6 +332,7 @@ CREATE TABLE public.reference_objects (
     actual_thumbnail_size bigint DEFAULT 0 NOT NULL,
     actual_thumbnail_hash character varying(64) NOT NULL,
     encrypted_key character varying(64),
+    encrypted_key_point character varying(64),
     created_at bigint,
     updated_at bigint,
     deleted_at timestamp with time zone,
@@ -705,10 +708,16 @@ CREATE INDEX idx_created_at ON public.reference_objects USING btree (created_at 
 
 
 --
--- Name: idx_lookup_hash_alloc; Type: INDEX; Schema: public; Owner: blobber_user
+-- Name: idx_lookup_hash; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_lookup_hash_alloc ON public.reference_objects USING btree (allocation_id, lookup_hash);
+CREATE INDEX idx_lookup_hash ON public.reference_objects USING btree (lookup_hash);
+
+--
+-- Name: idx_parent_path_alloc; Type: INDEX; Schema: public; Owner: blobber_user
+--
+
+CREATE INDEX idx_parent_path_alloc ON public.reference_objects USING btree (allocation_id, parent_path);
 
 
 --
@@ -786,7 +795,7 @@ CREATE INDEX path_idx ON public.reference_objects USING btree (path);
 --
 
 ALTER TABLE ONLY public.allocation_changes
-    ADD CONSTRAINT fk_allocation_connections_changes FOREIGN KEY (connection_id) REFERENCES public.allocation_connections(id);
+    ADD CONSTRAINT fk_allocation_connections_changes FOREIGN KEY (connection_id) REFERENCES public.allocation_connections(id) ON DELETE CASCADE;
 
 
 --

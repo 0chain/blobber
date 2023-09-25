@@ -257,11 +257,11 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					sqlmock.NewRows([]string{"id", "allocation_id"}).
 						AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 				)
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects"`)).
-				WithArgs(aa, aa).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT EXISTS(SELECT 1 FROM reference_objects WHERE lookup_hash=$1 AND deleted_at is NULL) AS found`)).
+				WithArgs(aa).
 				WillReturnRows(
-					sqlmock.NewRows([]string{"count"}).
-						AddRow(0),
+					sqlmock.NewRows([]string{"found"}).
+						AddRow(false),
 				)
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
 				WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).
@@ -560,7 +560,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, lookUpHash).
+					WithArgs(lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
 							AddRow(reference.FILE),
@@ -641,7 +641,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","name","path","hash","size","validation_root","fixed_merkle_root" FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, lookUpHash).
+					WithArgs(lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
 							AddRow(reference.FILE),
@@ -724,7 +724,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","name","path","hash","size","validation_root","fixed_merkle_root" FROM "reference_objects" WHERE`)).
-					WithArgs(alloc.ID, lookUpHash).
+					WithArgs(lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type", "name"}).
 							AddRow(reference.FILE, "path"),
@@ -756,11 +756,20 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					if err != nil {
 						t.Fatal()
 					}
-
+					root, _ := os.Getwd()
+					file, err := os.Open(root + "/handler_test.go")
+					if err != nil {
+						t.Fatal(err)
+					}
+					stat, err := file.Stat()
+					if err != nil {
+						t.Fatal(err)
+					}
+					size := stat.Size()
 					q := url.Query()
 					formFieldByt, err := json.Marshal(
 						&allocation.UploadFileChanger{
-							BaseFileChanger: allocation.BaseFileChanger{Path: path}})
+							BaseFileChanger: allocation.BaseFileChanger{Path: path, Size: size}})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -772,20 +781,15 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 
 					body := bytes.NewBuffer(nil)
 					formWriter := multipart.NewWriter(body)
-					root, _ := os.Getwd()
-					file, err := os.Open(root + "/handler_test.go")
-					if err != nil {
-						t.Fatal(err)
-					}
 					fileField, err := formWriter.CreateFormFile("uploadFile", file.Name())
 					if err != nil {
 						t.Fatal(err)
 					}
-					fileB := make([]byte, 0)
-					if _, err := io.ReadFull(file, fileB); err != nil {
+					data, err := io.ReadAll(file)
+					if err != nil {
 						t.Fatal(err)
 					}
-					if _, err := fileField.Write(fileB); err != nil {
+					if _, err := fileField.Write(data); err != nil {
 						t.Fatal(err)
 					}
 					if err := formWriter.Close(); err != nil {
@@ -833,11 +837,11 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						sqlmock.NewRows([]string{"id", "allocation_id"}).
 							AddRow(alloc.Terms[0].ID, alloc.Terms[0].AllocationID),
 					)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects"`)).
-					WithArgs(aa, aa).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT EXISTS(SELECT 1 FROM reference_objects WHERE lookup_hash=$1 AND deleted_at is NULL) AS found`)).
+					WithArgs(aa).
 					WillReturnRows(
-						sqlmock.NewRows([]string{"count"}).
-							AddRow(0),
+						sqlmock.NewRows([]string{"found"}).
+							AddRow(false),
 					)
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
 					WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).

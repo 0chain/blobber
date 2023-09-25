@@ -1,11 +1,15 @@
 package allocation
 
 import (
+	"context"
+	"math"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/errors"
-	"gorm.io/gorm"
+	"go.uber.org/zap"
 )
 
 // SyncAllocation try to pull allocation from blockchain, and insert it in db.
@@ -24,8 +28,7 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 			belongToThisBlobber = true
 
 			alloc.AllocationRoot = ""
-			alloc.BlobberSize = (sa.Size + int64(len(sa.BlobberDetails)-1)) /
-				int64(len(sa.BlobberDetails))
+			alloc.BlobberSize = int64(math.Ceil(float64(sa.Size) / float64(sa.DataShards)))
 			alloc.BlobberSizeUsed = 0
 
 			break
@@ -61,19 +64,29 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 		})
 	}
 
-	err = datastore.GetStore().GetDB().Transaction(func(tx *gorm.DB) error {
-		if err := tx.Table(TableNameAllocation).Create(alloc).Error; err != nil {
-			return err
+	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		var e error
+		if e := Repo.Save(ctx, alloc); e != nil {
+			return e
 		}
-
+		tx := datastore.GetStore().GetTransaction(ctx)
 		for _, term := range terms {
-			if err := tx.Table(TableNameTerms).Create(term).Error; err != nil {
-				return err
+			if err := tx.Table(TableNameTerms).Save(term).Error; err != nil {
+				return e
 			}
 		}
-
-		return nil
+		return e
 	})
+
+	if err != nil {
+		return nil, errors.Throw(err, "meta_data_update_error", err.Error())
+	}
+
+	logging.Logger.Info("Saving the allocation to DB", zap.Any(
+		"allocation", alloc), zap.Error(err))
+	if err != nil {
+		return nil, err
+	}
 
 	return alloc, err
 }
