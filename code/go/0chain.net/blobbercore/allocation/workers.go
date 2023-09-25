@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
@@ -259,6 +260,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 	a.TotalSize = sa.Size
 	a.Finalized = sa.Finalized
 	a.FileOptions = sa.FileOptions
+	a.BlobberSize = int64(math.Ceil(float64(sa.Size) / float64(sa.DataShards)))
 
 	updateMap := make(map[string]interface{})
 	updateMap["tx"] = a.Tx
@@ -268,15 +270,17 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 	updateMap["total_size"] = a.TotalSize
 	updateMap["finalized"] = a.Finalized
 	updateMap["file_options"] = a.FileOptions
+	updateMap["blobber_size"] = a.BlobberSize
 
-	updateOption := func(a *Allocation) {
-		a.Tx = sa.Tx
-		a.OwnerID = sa.OwnerID
-		a.OwnerPublicKey = sa.OwnerPublicKey
-		a.Expiration = sa.Expiration
-		a.TotalSize = sa.Size
-		a.Finalized = sa.Finalized
-		a.FileOptions = sa.FileOptions
+	updateOption := func(alloc *Allocation) {
+		alloc.Tx = a.Tx
+		alloc.OwnerID = a.OwnerID
+		alloc.OwnerPublicKey = a.OwnerPublicKey
+		alloc.Expiration = a.Expiration
+		alloc.TotalSize = a.TotalSize
+		alloc.Finalized = a.Finalized
+		alloc.FileOptions = a.FileOptions
+		alloc.BlobberSize = a.BlobberSize
 	}
 
 	// update terms

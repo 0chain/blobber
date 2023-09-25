@@ -14,7 +14,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -137,7 +136,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 		return a, nil
 	}
 
-	logging.Logger.Info("Saving the allocation to DB", zap.String("allocationID", a.ID), zap.Any("blobberSize", a.BlobberSize), zap.Any("blobberSizeUsed", a.BlobberSizeUsed))
+	logging.Logger.Info("Saving the allocation to DB")
 
 	err = Repo.Save(ctx, a)
 

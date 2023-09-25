@@ -512,7 +512,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
-	Logger.Info("[commit]GetAllocationChanges", zap.Any("connectionObjSize", connectionObj.Size), zap.Any("allocation", allocationObj))
 	if err != nil {
 		// might be good to check if blobber already has stored writemarker
 		return nil, common.NewErrorf("invalid_parameters",
@@ -1192,7 +1191,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-	Logger.Info("[upload]Allocation", zap.Any("allocation", allocationObj))
 	connectionProcessor.ClientID = clientID
 
 	elapsedAllocation := time.Since(st)
