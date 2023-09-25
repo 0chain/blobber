@@ -135,6 +135,7 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
 	}
 	if cmd.fileChanger.UploadOffset == 0 {
+		result.UpdateChange = true
 		hasher = filestore.GetNewCommitHasher(cmd.fileChanger.Size)
 		allocation.UpdateConnectionObjWithHasher(connectionID, cmd.fileChanger.PathHash, hasher)
 	} else {
@@ -210,7 +211,7 @@ func (cmd *UploadFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 		cmd.fileChanger.ThumbnailFilename = thumbInputData.Name
 		return allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
 	}
-	return nil
+	return common.ErrNoThumbnail
 }
 
 func (cmd *UploadFileCommand) reloadChange() {
@@ -224,6 +225,26 @@ func (cmd *UploadFileCommand) reloadChange() {
 
 // UpdateChange replace AddFileChange in db
 func (cmd *UploadFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
+	cmd.fileChanger.AllocationID = connectionObj.AllocationID
+	for _, c := range connectionObj.Changes {
+		filePath, _ := c.GetOrParseAffectedFilePath()
+		if c.Operation != constants.FileOperationInsert || cmd.fileChanger.Path != filePath {
+			continue
+		}
+		c.Size = connectionObj.Size
+		c.Input, _ = cmd.fileChanger.Marshal()
+
+		//c.ModelWithTS.UpdatedAt = time.Now()
+		err := connectionObj.Save(ctx)
+		if err != nil {
+			return err
+		}
+
+		return c.Save(ctx)
+	}
+
+	//NOT FOUND
 	connectionObj.AddChange(cmd.allocationChange, cmd.fileChanger)
+
 	return connectionObj.Save(ctx)
 }

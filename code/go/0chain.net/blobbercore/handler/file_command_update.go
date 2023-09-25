@@ -136,6 +136,7 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	filePathHash := cmd.fileChanger.PathHash
 	connID := cmd.fileChanger.ConnectionID
 	if cmd.fileChanger.UploadOffset == 0 {
+		result.UpdateChange = true
 		hasher = filestore.GetNewCommitHasher(cmd.fileChanger.Size)
 		allocation.UpdateConnectionObjWithHasher(connID, filePathHash, hasher)
 	} else {
@@ -212,7 +213,7 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 		err = allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
 		return err
 	}
-	return nil
+	return common.ErrNoThumbnail
 }
 
 func (cmd *UpdateFileCommand) reloadChange() {
@@ -226,6 +227,27 @@ func (cmd *UpdateFileCommand) reloadChange() {
 
 // UpdateChange add UpdateFileChanger in db
 func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
+	cmd.fileChanger.AllocationID = connectionObj.AllocationID
+	for _, c := range connectionObj.Changes {
+		filePath, _ := c.GetOrParseAffectedFilePath()
+		if c.Operation != sdkConst.FileOperationUpdate || cmd.fileChanger.Path != filePath {
+			continue
+		}
+
+		c.Size = connectionObj.Size
+		c.Input, _ = cmd.fileChanger.Marshal()
+
+		//c.ModelWithTS.UpdatedAt = time.Now()
+		err := connectionObj.Save(ctx)
+		if err != nil {
+			return err
+		}
+
+		return c.Save(ctx)
+	}
+
+	//NOT FOUND
 	connectionObj.AddChange(cmd.allocationChange, cmd.fileChanger)
+
 	return connectionObj.Save(ctx)
 }
