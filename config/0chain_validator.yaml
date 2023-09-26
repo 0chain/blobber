@@ -1,5 +1,5 @@
 version: 1.0
-# for testing
+# for testing # TS
 # delegate wallet (must be set)
 delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'
 # maximum allowed number of stake holders
