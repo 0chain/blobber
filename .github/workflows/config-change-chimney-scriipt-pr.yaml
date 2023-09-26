@@ -1,32 +1,62 @@
 name: TRIGGER CHIMNEY SCRIPT ON CONFIG CHANGE
 
+# on:
+#   push:
+#    branches: 
+#      - staging
+#    paths:
+#       - config/0chain_blobber.yaml
+#       - config/0chain_validator.yaml
+  
+#   pull_request:
+#     branches: 
+#       - staging
+#     types:
+#       - closed
+#     paths:
+#       - config/0chain_blobber.yaml
+#       - config/0chain_validator.yaml
 on:
   push:
    branches: 
-     - staging
+     - update/chimney-script
    paths:
       - config/0chain_blobber.yaml
       - config/0chain_validator.yaml
   
-  pull_request:
-    branches: 
-      - staging
-    types:
-      - closed
-    paths:
-      - config/0chain_blobber.yaml
-      - config/0chain_validator.yaml
+  # pull_request:
+  #   branches: 
+  #     - staging
+  #   types:
+  #     - closed
+  #   paths:
+  #     - config/0chain_blobber.yaml
+  #     - config/0chain_validator.yaml
    
-jobs:
-  RunChimneyConfigChange:
-    runs-on: 'arc-runner'
-    steps:
-      - uses: actions/checkout@v3
+# jobs:
+#   RunChimneyConfigChange:
+#     runs-on: 'arc-runner'
+#     steps:
+#       - uses: actions/checkout@v3
 
-      - name: Trigger git-action in zcnwebappscripts repo
-        run: |
-          curl -X POST \
-          -H "Authorization: Bearer ${{secrets.ACCESS_TOKEN}}" \
-          -H "Accept: application/vnd.github.v3+json" \
-          https://api.github.com/repos/0chain/zcnwebappscripts/actions/workflows/chimney-script-config-change-pr.yaml/dispatches \
-          -d '{"ref": "main"}'
+#       - name: Trigger git-action in zcnwebappscripts repo
+#         run: |
+#           curl -X POST \
+#           -H "Authorization: Bearer ${{secrets.ACCESS_TOKEN}}" \
+#           -H "Accept: application/vnd.github.v3+json" \
+#           https://api.github.com/repos/0chain/zcnwebappscripts/actions/workflows/chimney-script-config-change-pr.yaml/dispatches \
+#           -d '{"ref": "main"}'
+
+jobs:
+    RunChimneyConfigChange:
+      runs-on: 'arc-runner'
+      steps:
+        - uses: actions/checkout@v3
+  
+        - name: Trigger git-action in zcnwebappscripts repo
+          run: |
+            curl -X POST \
+            -H "Authorization: Bearer ${{secrets.ACCESS_TOKEN}}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/0chain/zcnwebappscripts/actions/workflows/chimney-script-config-change-pr.yaml/dispatches \
+            -d '{"ref": "feature/config-ci"}'
