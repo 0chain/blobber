@@ -79,7 +79,7 @@ func EnhanceDB(db *gorm.DB) *EnhancedDB {
 	guard.Unlock()
 
 	cache := make(map[string]interface{})
-	return &EnhancedDB{DB: db, SessionCache: cache}
+	return &EnhancedDB{DB: db, SessionCache: cache, id: newUUID.String()}
 }
 
 type Store interface {
