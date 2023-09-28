@@ -123,6 +123,7 @@ type Config struct {
 	MountPoint    string
 	AllocDirLevel []int
 	FileDirLevel  []int
+	MaxFileSize   int64
 	// AutomacitUpdate Whether to automatically update blobber updates to blockchain
 	AutomaticUpdate       bool
 	BlobberUpdateInterval time.Duration
