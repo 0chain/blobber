@@ -196,7 +196,6 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 		if acp == nil {
 			continue // unknown operation (impossible case?)
 		}
-
 		if err := acp.Unmarshal(change.Input); err != nil { // error is not handled
 			logging.Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
 		}
