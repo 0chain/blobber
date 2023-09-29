@@ -24,7 +24,7 @@ func (rf *MoveFileChange) DeleteTempFile() error {
 }
 
 func (rf *MoveFileChange) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp, _ map[string]string) (*reference.Ref, error) {
+	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 
 	srcRef, err := rootRef.GetSrcPath(rf.SrcPath)
 	if err != nil {
@@ -100,6 +100,12 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 			newRef.HashToBeComputed = true
 			newRef.CreatedAt = ts
 			newRef.UpdatedAt = ts
+			fileID, ok := fileIDMeta[newRef.Path]
+			if !ok || fileID == "" {
+				return nil, common.NewError("invalid_parameter",
+					fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
+			}
+			newRef.FileID = fileID
 			dirRef.AddChild(newRef)
 			dirRef = newRef
 		}
