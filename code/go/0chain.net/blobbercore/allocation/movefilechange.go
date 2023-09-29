@@ -34,7 +34,42 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 	rootRef.UpdatedAt = ts
 	rootRef.HashToBeComputed = true
 
+	srcParentPath, srcFileName := filepath.Split(rf.SrcPath)
+	srcFields, err := common.GetPathFields(srcParentPath)
+	if err != nil {
+		return nil, err
+	}
 	dirRef := rootRef
+	for i := 0; i < len(srcFields); i++ {
+		found := false
+		for _, child := range dirRef.Children {
+			if child.Name == srcFields[i] {
+				dirRef = child
+				found = true
+				dirRef.HashToBeComputed = true
+				break
+			}
+		}
+		if !found {
+			return nil, common.NewError("invalid_reference_path",
+				fmt.Sprintf("path %s does not exist", strings.Join(srcFields[:i+1], "/")))
+		}
+	}
+
+	var removed bool
+	for i, child := range dirRef.Children {
+		if child.Name == srcFileName {
+			dirRef.RemoveChild(i)
+			removed = true
+			break
+		}
+	}
+	if !removed {
+		return nil, common.NewError("incomplete_move",
+			"move operation rejected as it cannot be completed")
+	}
+
+	dirRef = rootRef
 	fields, err := common.GetPathFields(rf.DestPath)
 	if err != nil {
 		return nil, err
@@ -69,43 +104,7 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 			dirRef = newRef
 		}
 	}
-
 	fileRefs := rf.processMoveRefs(ctx, srcRef, dirRef, allocationRoot, ts, true)
-
-	srcParentPath, srcFileName := filepath.Split(rf.SrcPath)
-	srcFields, err := common.GetPathFields(srcParentPath)
-	if err != nil {
-		return nil, err
-	}
-	dirRef = rootRef
-	for i := 0; i < len(srcFields); i++ {
-		found := false
-		for _, child := range dirRef.Children {
-			if child.Name == srcFields[i] {
-				dirRef = child
-				found = true
-				dirRef.HashToBeComputed = true
-				break
-			}
-		}
-		if !found {
-			return nil, common.NewError("invalid_reference_path",
-				fmt.Sprintf("path %s does not exist", strings.Join(srcFields[:i+1], "/")))
-		}
-	}
-
-	var removed bool
-	for i, child := range dirRef.Children {
-		if child.Name == srcFileName {
-			dirRef.RemoveChild(i)
-			removed = true
-			break
-		}
-	}
-	if !removed {
-		return nil, common.NewError("incomplete_move",
-			"move operation rejected as it cannot be completed")
-	}
 
 	for _, fileRef := range fileRefs {
 		fileRef.IsPrecommit = true
@@ -116,7 +115,6 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 func (rf *MoveFileChange) processMoveRefs(
 	ctx context.Context, srcRef, destRef *reference.Ref,
 	allocationRoot string, ts common.Timestamp, toAdd bool) (fileRefs []*reference.Ref) {
-
 	if srcRef.Type == reference.DIRECTORY {
 		srcRef.Path = filepath.Join(destRef.Path, srcRef.Name)
 		srcRef.ParentPath = destRef.Path
