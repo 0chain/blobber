@@ -49,6 +49,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 		maxDirFilesPerAlloc int
 		expectedMessage     string
 		expectingError      bool
+		fileIDMeta          map[string]string
 		setupDbMock         func()
 	}{
 		{
@@ -58,6 +59,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 			allocationID:        alloc.ID,
 			maxDirFilesPerAlloc: 5,
 			expectingError:      false,
+			fileIDMeta:          map[string]string{},
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
 
@@ -178,6 +180,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 			allocationID:        alloc.ID,
 			maxDirFilesPerAlloc: 5,
 			expectingError:      false,
+			fileIDMeta:          map[string]string{"/target": "file_id"},
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
 
@@ -297,6 +300,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 			allocationID:        alloc.ID,
 			maxDirFilesPerAlloc: 5,
 			expectingError:      false,
+			fileIDMeta:          map[string]string{"/target": "file_id"},
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
 
@@ -479,7 +483,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 			rootRef, err := reference.GetReferencePathFromPaths(ctx, tc.allocationID, []string{change.DestPath, change.SrcPath}, []string{change.SrcPath})
 			require.Nil(t, err)
 			err = func() error {
-				_, err := change.ApplyChange(ctx, rootRef, tc.allocChange, "/", common.Now()-1, nil)
+				_, err := change.ApplyChange(ctx, rootRef, tc.allocChange, "/", common.Now()-1, tc.fileIDMeta)
 				if err != nil {
 					return err
 				}
