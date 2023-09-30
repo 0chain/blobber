@@ -544,6 +544,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			"Max size reached for the allocation with this blobber")
 	}
 
+	if connectionObj.Size > config.Configuration.MaxFileSize {
+		return nil, common.NewError("max_file_size",
+			"Max file size reached for this blobber")
+	}
+
 	writeMarkerString := r.FormValue("write_marker")
 	if writeMarkerString == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid write marker passed")
