@@ -105,25 +105,19 @@ func syncOpenChallenges(ctx context.Context) {
 
 }
 
-func validateOnValidators(c *ChallengeEntity) {
+func validateOnValidators(ctx context.Context, c *ChallengeEntity) error {
 
 	logging.Logger.Info("[challenge]validate: ",
 		zap.Any("challenge", c),
 		zap.String("challenge_id", c.ChallengeID),
 	)
 
-	ctx := datastore.GetStore().CreateTransaction(context.TODO())
-	defer ctx.Done()
-
-	tx := datastore.GetStore().GetTransaction(ctx)
-
 	if err := CreateChallengeTiming(c.ChallengeID, c.CreatedAt); err != nil {
 		logging.Logger.Error("[challengetiming]add: ",
 			zap.String("challenge_id", c.ChallengeID),
 			zap.Error(err))
 		deleteChallenge(c.RoundCreatedAt)
-		tx.Rollback()
-		return
+		return err
 	}
 
 	createdTime := common.ToTime(c.CreatedAt)
@@ -141,10 +135,8 @@ func validateOnValidators(c *ChallengeEntity) {
 			zap.String("validationTickets", string(c.ValidationTicketsString)),
 			zap.String("ObjectPath", string(c.ObjectPathString)),
 			zap.Error(err))
-		tx.Rollback()
-
 		c.CancelChallenge(ctx, err)
-		return
+		return nil
 	}
 
 	if err := c.LoadValidationTickets(ctx); err != nil {
@@ -153,17 +145,7 @@ func validateOnValidators(c *ChallengeEntity) {
 			zap.Time("created", createdTime),
 			zap.Error(err))
 		deleteChallenge(c.RoundCreatedAt)
-		tx.Rollback()
-		return
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		logging.Logger.Error("[challenge]validate(Commit): ",
-			zap.Any("challenge_id", c.ChallengeID),
-			zap.Time("created", createdTime),
-			zap.Error(err))
-		tx.Rollback()
-		return
+		return err
 	}
 
 	completedValidation := time.Now()
@@ -178,7 +160,7 @@ func validateOnValidators(c *ChallengeEntity) {
 	logging.Logger.Info("[challenge]validate: ",
 		zap.Any("challenge_id", c.ChallengeID),
 		zap.Time("created", createdTime))
-
+	return nil
 }
 
 func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, error) {
