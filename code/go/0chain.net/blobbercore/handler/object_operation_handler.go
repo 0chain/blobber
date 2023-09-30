@@ -544,7 +544,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			"Max size reached for the allocation with this blobber")
 	}
 
-	if connectionObj.Size > config.Configuration.MaxFileSize {
+	if connectionObj.Size > config.StorageSCConfig.MaxFileSize {
 		return nil, common.NewError("max_file_size",
 			"Max file size reached for this blobber")
 	}

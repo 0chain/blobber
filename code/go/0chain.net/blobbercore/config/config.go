@@ -123,7 +123,6 @@ type Config struct {
 	MountPoint    string
 	AllocDirLevel []int
 	FileDirLevel  []int
-	MaxFileSize   int64
 	// AutomacitUpdate Whether to automatically update blobber updates to blockchain
 	AutomaticUpdate       bool
 	BlobberUpdateInterval time.Duration
@@ -188,6 +187,7 @@ func ValidChain(chain string) error {
 // good to go
 type StorageSCConfiguration struct {
 	ChallengeCompletionTime int64
+	MaxFileSize             int64
 }
 
 var StorageSCConfig StorageSCConfiguration

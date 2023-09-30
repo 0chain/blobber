@@ -18,6 +18,12 @@ type cctCB struct {
 	err  error
 }
 
+type maxFileSizeCB struct {
+	done chan struct{}
+	mfs  int64
+	err  error
+}
+
 func (c *cctCB) OnInfoAvailable(op int, status int, info string, errStr string) {
 	defer func() {
 		c.done <- struct{}{}
@@ -48,6 +54,36 @@ func (c *cctCB) OnInfoAvailable(op int, status int, info string, errStr string) 
 	c.cct = cct
 }
 
+func (c *maxFileSizeCB) OnInfoAvailable(op int, status int, info string, errStr string) {
+	defer func() {
+		c.done <- struct{}{}
+	}()
+
+	if errStr != "" {
+		c.err = errors.New(errStr)
+		return
+	}
+
+	m := make(map[string]interface{})
+	err := json.Unmarshal([]byte(info), &m)
+	if err != nil {
+		c.err = err
+		return
+	}
+
+	m = m["fields"].(map[string]interface{})
+
+	mfsString := m["max_file_size"].(string)
+
+	mfs, err := strconv.ParseInt(mfsString, 10, 64)
+	if err != nil {
+		c.err = err
+		return
+	}
+
+	c.mfs = mfs
+}
+
 func setCCTFromChain() error {
 	cb := &cctCB{
 		done: make(chan struct{}),
@@ -62,6 +98,23 @@ func setCCTFromChain() error {
 	}
 
 	config.StorageSCConfig.ChallengeCompletionTime = cb.cct
+	return nil
+}
+
+func setMaxFileSizeFromChain() error {
+	cb := &maxFileSizeCB{
+		done: make(chan struct{}),
+	}
+	err := zcncore.GetStorageSCConfig(cb)
+	if err != nil {
+		return err
+	}
+	<-cb.done
+	if cb.err != nil {
+		return err
+	}
+
+	config.StorageSCConfig.MaxFileSize = cb.mfs
 	return nil
 }
 

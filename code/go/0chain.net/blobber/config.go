@@ -31,7 +31,6 @@ func setupConfig(configDir string, deploymentMode int) {
 	}
 	config.Configuration.AllocDirLevel = viper.GetIntSlice("storage.alloc_dir_level")
 	config.Configuration.FileDirLevel = viper.GetIntSlice("storage.file_dir_level")
-	config.Configuration.MaxFileSize = viper.GetInt64("storage.max_file_size")
 	config.Configuration.DeploymentMode = byte(deploymentMode)
 	config.Configuration.ChainID = viper.GetString("server_chain.id")
 	config.Configuration.SignatureScheme = viper.GetString("server_chain.signature_scheme")
