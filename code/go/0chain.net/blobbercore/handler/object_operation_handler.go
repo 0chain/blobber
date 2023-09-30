@@ -526,7 +526,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 	if len(connectionObj.Changes) == 0 {
 		return nil, common.NewError("invalid_parameters",
-			"Invalid connection id. Connection does not have any changes.")
+			"Invalid connection id.  Connection does not have any changes.")
 	}
 
 	elapsedGetConnObj := time.Since(startTime) - elapsedAllocation - elapsedGetLock
