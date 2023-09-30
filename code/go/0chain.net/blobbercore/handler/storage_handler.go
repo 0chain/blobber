@@ -293,11 +293,11 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	if err != nil {
 		return nil, err
 	}
-
+	_, ok := common.GetField(r, "list")
 	escapedPathHash := sanitizeString(pathHash)
 
 	Logger.Info("Path Hash for list dir :" + escapedPathHash)
-	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "path", "lookup_hash", "type", "name"})
+	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "path", "lookup_hash", "type", "name", "file_meta_hash"})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// `/` always is valid even it doesn't exists in db. so ignore RecordNotFound error
@@ -309,15 +309,29 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		}
 	}
 
-	authTokenString := r.FormValue("auth_token")
+	authTokenString, _ := common.GetField(r, "auth_token")
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		authToken, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID, true)
+		authToken, err := fsh.verifyAuthTicket(ctx, authTokenString, allocationObj, fileref, clientID, true)
 		if err != nil {
 			return nil, err
 		}
 		if authToken == nil {
 			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
 		}
+	}
+
+	if !ok {
+		var listResult blobberhttp.ListResult
+		listResult.AllocationRoot = allocationObj.AllocationRoot
+		if fileref == nil {
+			fileref = &reference.Ref{Type: reference.DIRECTORY, Path: path, AllocationID: allocationID}
+		}
+		listResult.Meta = fileref.GetListingData(ctx)
+		if clientID != allocationObj.OwnerID {
+			delete(listResult.Meta, "path")
+		}
+		listResult.Entities = make([]map[string]interface{}, 0)
+		return &listResult, nil
 	}
 
 	// when '/' is not available in database we ignore 'record not found' error. which results into nil fileRef
