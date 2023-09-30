@@ -116,7 +116,7 @@ storage:
   alloc_dir_level: [2, 1]
   file_dir_level: [2, 2, 1]
 
-  max_file_size: 1000000000 # 1GB
+  max_file_size: 40000000000000 # 5TB
 
 disk_update:
   # defaults to true. If false, blobber has to manually update blobber's capacity upon increase/decrease
