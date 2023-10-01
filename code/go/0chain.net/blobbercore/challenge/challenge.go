@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
@@ -163,12 +162,7 @@ func validateOnValidators(ctx context.Context, c *ChallengeEntity) error {
 	return nil
 }
 
-func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, error) {
-	ctx := datastore.GetStore().CreateTransaction(context.TODO())
-	defer ctx.Done()
-
-	tx := datastore.GetStore().GetTransaction(ctx)
-
+func (c *ChallengeEntity) getCommitTransaction(ctx context.Context) (*transaction.Transaction, error) {
 	createdTime := common.ToTime(c.CreatedAt)
 
 	logging.Logger.Info("[challenge]verify: ",
@@ -189,24 +183,14 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 
 	if currentRound-c.RoundCreatedAt > config.StorageSCConfig.ChallengeCompletionTime {
 		c.CancelChallenge(ctx, ErrExpiredCCT)
-		if err := tx.Commit().Error; err != nil {
-			logging.Logger.Error("[challenge]verify(Commit): ",
-				zap.Any("challenge_id", c.ChallengeID),
-				zap.Error(err))
-		}
-		return nil, ErrExpiredCCT
+		return nil, nil
 	}
 
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		logging.Logger.Error("[challenge]createTxn", zap.Error(err))
 		c.CancelChallenge(ctx, err)
-		if err := tx.Commit().Error; err != nil {
-			logging.Logger.Error("[challenge]verify(Commit): ",
-				zap.Any("challenge_id", c.ChallengeID),
-				zap.Error(err))
-		}
-		return nil, err
+		return nil, nil
 	}
 
 	sn := &ChallengeResponse{}
@@ -221,12 +205,7 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 	if err != nil {
 		logging.Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
 		c.CancelChallenge(ctx, err)
-		if err := tx.Commit().Error; err != nil {
-			logging.Logger.Error("[challenge]verify(Commit): ",
-				zap.Any("challenge_id", c.ChallengeID),
-				zap.Error(err))
-		}
-		return nil, err
+		return nil, nil
 	}
 
 	err = UpdateChallengeTimingTxnSubmission(c.ChallengeID, txn.CreationDate)
@@ -235,12 +214,6 @@ func (c *ChallengeEntity) getCommitTransaction() (*transaction.Transaction, erro
 			zap.Any("challenge_id", c.ChallengeID),
 			zap.Time("created", createdTime),
 			zap.Any("txn_submission", txn.CreationDate),
-			zap.Error(err))
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		logging.Logger.Error("[challenge]verify(Commit): ",
-			zap.Any("challenge_id", c.ChallengeID),
 			zap.Error(err))
 	}
 
