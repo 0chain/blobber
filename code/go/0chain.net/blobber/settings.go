@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"go.uber.org/zap"
 	"strconv"
 	"time"
 
@@ -81,6 +82,8 @@ func (c *maxFileSizeCB) OnInfoAvailable(op int, status int, info string, errStr 
 		return
 	}
 
+	logging.Logger.Info("max file size from chain", zap.Int64("max_file_size", mfs))
+
 	c.mfs = mfs
 }
 
@@ -102,6 +105,8 @@ func setCCTFromChain() error {
 }
 
 func setMaxFileSizeFromChain() error {
+	logging.Logger.Info("getting max file size from chain")
+
 	cb := &maxFileSizeCB{
 		done: make(chan struct{}),
 	}
