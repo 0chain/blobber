@@ -142,10 +142,11 @@ func WithStatusConnection(handler common.StatusCodeResponderF) common.StatusCode
 func WithStatusReadOnlyConnection(handler common.StatusCodeResponderF) common.StatusCodeResponderF {
 	return func(ctx context.Context, r *http.Request) (interface{}, int, error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
-		resp, statusCode, err := handler(ctx, r)
+		tx := GetMetaDataStore().GetTransaction(ctx)
 		defer func() {
-			GetMetaDataStore().GetTransaction(ctx).Rollback()
+			tx.Rollback()
 		}()
+		resp, statusCode, err := handler(ctx, r)
 		return resp, statusCode, err
 	}
 }
