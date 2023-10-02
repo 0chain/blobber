@@ -233,11 +233,6 @@ func (r *Repository) Commit(ctx context.Context) {
 	if tx == nil {
 		logging.Logger.Panic("no transaction in the context")
 	}
-	// Maybe we can have a global commit which commits the data to cache also
-	// err := tx.Commit().Error
-	// if err != nil {
-	// 	return err
-	// }
 	cache, _ := getCache(tx)
 	if cache == nil {
 		return
