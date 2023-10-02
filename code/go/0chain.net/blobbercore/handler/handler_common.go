@@ -127,11 +127,12 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 			mutex.Lock()
 			defer mutex.Unlock()
 		}
+		tx := GetMetaDataStore().GetTransaction(ctx)
 		resp, statusCode, err = handler(ctx, r)
 
 		defer func() {
 			if err != nil {
-				var rollErr = GetMetaDataStore().GetTransaction(ctx).
+				var rollErr = tx.
 					Rollback().Error
 				if rollErr != nil {
 					Logger.Error("couldn't rollback", zap.Error(err))
@@ -143,12 +144,11 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 			Logger.Error("Error in handling the request." + err.Error())
 			return
 		}
-		err = GetMetaDataStore().GetTransaction(ctx).Commit().Error
+		err = tx.Commit().Error
 		if err != nil {
 			return resp, statusCode, common.NewErrorf("commit_error",
 				"error committing to meta store: %v", err)
 		}
-		allocation.Repo.Commit(ctx)
 		return
 	}
 }

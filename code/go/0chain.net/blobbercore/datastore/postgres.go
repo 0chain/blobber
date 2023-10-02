@@ -113,7 +113,11 @@ func (store *postgresStore) WithNewTransaction(f func(ctx context.Context) error
 		tx.Rollback()
 		return err
 	}
-	return tx.Commit().Error
+	err = tx.Commit().Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 func (store *postgresStore) WithTransaction(ctx context.Context, f func(ctx context.Context) error) error {
 	tx := store.GetTransaction(ctx)
@@ -127,7 +131,11 @@ func (store *postgresStore) WithTransaction(ctx context.Context, f func(ctx cont
 		tx.Rollback()
 		return err
 	}
-	return tx.Commit().Error
+	err = tx.Commit().Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (store *postgresStore) GetDB() *gorm.DB {

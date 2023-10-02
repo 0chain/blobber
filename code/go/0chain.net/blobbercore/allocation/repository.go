@@ -228,8 +228,7 @@ func (r *Repository) UpdateAllocation(ctx context.Context, allocationObj *Alloca
 	return nil
 }
 
-func (r *Repository) Commit(ctx context.Context) {
-	var tx = datastore.GetStore().GetTransaction(ctx)
+func (r *Repository) Commit(tx *datastore.EnhancedDB) {
 	if tx == nil {
 		logging.Logger.Panic("no transaction in the context")
 	}
@@ -307,6 +306,11 @@ func getCache(tx *datastore.EnhancedDB) (map[string]AllocationCache, error) {
 	}
 	cache := make(map[string]AllocationCache)
 	tx.SessionCache[TableNameAllocation] = cache
+	if tx.CommitAllocCache == nil {
+		tx.CommitAllocCache = func(tx *datastore.EnhancedDB) {
+			Repo.Commit(tx)
+		}
+	}
 	return cache, nil
 }
 

@@ -1428,7 +1428,6 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	if err != nil {
 		return &result, common.NewError("allocation_commit_error", "Error committing the transaction "+err.Error())
 	}
-	allocation.Repo.Commit(c)
 	if sendWM {
 		err = writemarkerEntity.SendToChan(ctx)
 		if err != nil {

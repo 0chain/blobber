@@ -52,13 +52,10 @@ func UpdateWorker(ctx context.Context, interval time.Duration) {
 		select {
 		case <-tick:
 			updateCtx := datastore.GetStore().CreateTransaction(context.TODO())
-			err := datastore.GetStore().WithTransaction(updateCtx, func(ctx context.Context) error {
+			_ = datastore.GetStore().WithTransaction(updateCtx, func(ctx context.Context) error {
 				updateWork(ctx)
 				return nil
 			})
-			if err == nil {
-				Repo.Commit(updateCtx)
-			}
 			updateCtx.Done()
 		case <-quit:
 			return
