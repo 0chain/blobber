@@ -715,12 +715,16 @@ func writeResponse(w http.ResponseWriter, resp []byte) {
 // todo wrap with connection
 func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	isJSON := r.Header.Get("Accept") == "application/json"
-
 	if isJSON {
+		var (
+			blobberStats any
+			err          error
+		)
 		blobberInfo := GetBlobberInfoJson()
-
-		ctx := datastore.GetStore().CreateTransaction(r.Context())
-		blobberStats, err := stats.StatsJSONHandler(ctx, r)
+		err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			blobberStats, err = stats.StatsJSONHandler(ctx, r)
+			return err
+		})
 
 		if err != nil {
 			Logger.Error("Error getting blobber JSON stats", zap.Error(err))
