@@ -50,7 +50,7 @@ var (
 	roundInfo          = RoundInfo{}
 )
 
-const batchSize = 500
+const batchSize = 10
 
 // SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {
