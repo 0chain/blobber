@@ -75,6 +75,7 @@ type UploadResult struct {
 	// Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
 	UploadOffset int64 `json:"upload_offset"`
 	IsFinal      bool  `json:"-"`
+	UpdateChange bool  `json:"-"`
 }
 
 type FileCommand interface {

@@ -5,9 +5,9 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  push: 
+  push:
     branches: [ master,staging, sprint* ]
-    tags: 
+    tags:
       - '*'
   pull_request:
   workflow_dispatch:
@@ -21,9 +21,15 @@ env:
 
 jobs:
   blobber:
-    timeout-minutes: 25
-    runs-on: [self-hosted, arc-runner]
+    timeout-minutes: 30
+    runs-on: [blobber-runner]
     steps:
+      - name: Cleanup before restarting conductor tests.
+        run: |
+          echo 'y' | docker system prune -a
+          cd /tmp
+          sudo rm -rf ./*
+
       - name: Set docker image tag
         run: |
           if [[ "${{github.ref}}" == refs/pull/* ]]; then
@@ -37,7 +43,7 @@ jobs:
           echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
 
       - name: Setup go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ^1.20 # The Go version to download (if necessary) and use.
 
@@ -47,17 +53,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Docker Buildx
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install wget
-          sudo apt-get install ca-certificates curl gnupg lsb-release -y
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-          sudo apt-get update -y
-          sudo apt-get install docker-ce docker-ce-cli containerd.io -y
-          export DOCKER_CLI_EXPERIMENTAL=enabled
-          docker run --privileged --rm tonistiigi/binfmt --install all
-          docker context create blobber_buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
@@ -92,14 +88,22 @@ jobs:
           export DOCKER_IMAGE_SWAGGER="${BLOBBER_REGISTRY}:swagger_test"
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
-          docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
+          export CONTEXT_NAME="$RUNNER_NAME" && (docker context inspect "$CONTEXT_NAME" >/dev/null 2>&1 || docker context create "$CONTEXT_NAME")
+          docker buildx inspect "blobber-$RUNNER_NAME" || docker buildx create --name "blobber-$RUNNER_NAME" --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure' "$CONTEXT_NAME"
+          docker buildx use "blobber-$RUNNER_NAME"
           ./docker.local/bin/build.blobber.sh
 
   validator:
-    timeout-minutes: 25
-    runs-on: [self-hosted, arc-runner]
+    timeout-minutes: 30
+    runs-on: [blobber-runner]
     steps:
-      - name: Set docker image tag 
+      - name: Cleanup before restarting conductor tests.
+        run: |
+          echo 'y' | docker system prune -a
+          cd /tmp
+          sudo rm -rf ./*
+
+      - name: Set docker image tag
         run: |
           if [[ "${{github.ref}}" == refs/pull/* ]]; then
             tag=${GITHUB_REF/\/merge/}
@@ -112,7 +116,7 @@ jobs:
           echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
 
       - name: Setup go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ^1.20 # The Go version to download (if necessary) and use.
 
@@ -122,18 +126,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Docker Buildx
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install wget
-          sudo apt-get install ca-certificates curl gnupg lsb-release -y
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-          sudo apt-get update -y
-          sudo apt-get install docker-ce docker-ce-cli containerd.io -y
-          export DOCKER_CLI_EXPERIMENTAL=enabled
-          docker run --privileged --rm tonistiigi/binfmt --install all
-          docker context create blobber_buildx
-
+        uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
@@ -154,7 +147,7 @@ jobs:
         run: |
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
 
-          ./docker.local/bin/build.base.sh 
+          ./docker.local/bin/build.base.sh
           docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG
           docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
           docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG
@@ -166,7 +159,9 @@ jobs:
           export DOCKER_IMAGE_BASE="${VALIDATOR_REGISTRY}:base"
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_VALIDATOR="-t ${VALIDATOR_REGISTRY}:${TAG} -t ${VALIDATOR_REGISTRY}:${TAG}-${SHORT_SHA}"
-          docker buildx create --driver-opt network=host --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use blobber_buildx
+          export CONTEXT_NAME="$RUNNER_NAME" && (docker context inspect "$CONTEXT_NAME" >/dev/null 2>&1 || docker context create "$CONTEXT_NAME")
+          docker buildx inspect "validator-$RUNNER_NAME" || docker buildx create --name "validator-$RUNNER_NAME" --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure' "$CONTEXT_NAME"
+          docker buildx use "validator-$RUNNER_NAME"
           ./docker.local/bin/build.validator.sh
 
 
