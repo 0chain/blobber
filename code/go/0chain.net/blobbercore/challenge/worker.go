@@ -211,7 +211,7 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 		ticket := it.Value().(*ChallengeEntity)
 
 		_, ok := allocations[ticket.AllocationID]
-		if ticket.Status != Processed || !ok {
+		if ticket.Status != Processed || ok {
 			continue
 		}
 		chall = append(chall, *ticket)
