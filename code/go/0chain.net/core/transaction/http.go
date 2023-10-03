@@ -13,6 +13,8 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/core/resty"
@@ -106,7 +108,7 @@ func makeSCRestAPICall(scAddress string, relativePath string, params map[string]
 
 		urls = append(urls, u+"?"+q.Encode())
 	}
-
+	logging.Logger.Info("sharder", zap.Any("URL", urls))
 	header := map[string]string{
 		"Content-Type":                "application/json; charset=utf-8",
 		"Access-Control-Allow-Origin": "*",
