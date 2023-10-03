@@ -19,6 +19,9 @@ price_worker_in_hours: 12
 # update_allocations_interval used to refresh known allocation objects from SC
 update_allocations_interval: 1m
 
+#finalize_allocations_interval used to get and finalize empty allocations
+finalize_allocations_interval: 24h
+
 # maximum limit on the number of combined directories and files on each allocation
 max_dirs_files: 50000
 
