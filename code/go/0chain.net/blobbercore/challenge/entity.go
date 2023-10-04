@@ -48,6 +48,11 @@ const (
 	ChallengeFailure
 )
 
+const (
+	cleanupInterval = 30 * time.Minute
+	cleanupGap      = 1 * time.Hour
+)
+
 type ValidationTicket struct {
 	ChallengeID  string           `json:"challenge_id"`
 	BlobberID    string           `json:"blobber_id"`
@@ -205,4 +210,24 @@ func GetChallengeEntity(ctx context.Context, challengeID string) (*ChallengeEnti
 		return nil, err
 	}
 	return cr, nil
+}
+
+func SetupChallengeCleanUpWorker(ctx context.Context) {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(cleanupInterval):
+				cleanUpWorker()
+			}
+		}
+	}()
+}
+
+func cleanUpWorker() {
+	_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		db := datastore.GetStore().GetTransaction(ctx)
+		return db.Model(&ChallengeEntity{}).Unscoped().Delete(&ChallengeEntity{}, "status <> ? AND created_at < ?", Cancelled, time.Now().Add(-cleanupGap).Unix()).Error
+	})
 }

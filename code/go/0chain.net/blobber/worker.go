@@ -24,6 +24,8 @@ func setupWorkers(ctx context.Context) {
 	allocation.StartUpdateWorker(ctx, config.Configuration.UpdateAllocationsInterval)
 	allocation.StartFinalizeWorker(ctx, config.Configuration.FinalizeAllocationsInterval)
 	allocation.SetupWorkers(ctx)
+	challenge.SetupChallengeCleanUpWorker(ctx)
+	challenge.SetupChallengeTimingsCleanupWorker(ctx)
 	updateCCTWorker(ctx)
 }
 
