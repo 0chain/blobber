@@ -228,7 +228,7 @@ func setupHandlers(r *mux.Router) {
 	// r.HandleFunc("/_statsJSON", common.AuthenticateAdmin(common.ToJSONResponse(stats.StatsJSONHandler)))
 	r.HandleFunc("/_statsJSON", RateLimitByCommmitRL(common.ToJSONResponse(stats.StatsJSONHandler)))
 	// r.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
-	r.HandleFunc("/_cleanupdisk", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
+	// r.HandleFunc("/_cleanupdisk", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
 	// r.HandleFunc("/getstats", common.AuthenticateAdmin(common.ToJSONResponse(stats.GetStatsHandler)))
 	r.HandleFunc("/getstats", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(stats.GetStatsHandler))))
 	// r.HandleFunc("/challengetimings", common.AuthenticateAdmin(common.ToJSONResponse(GetChallengeTimings)))
@@ -275,11 +275,12 @@ func setupHandlers(r *mux.Router) {
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
+		tx := GetMetaDataStore().GetTransaction(ctx)
+		defer func() {
+			tx.Rollback()
+		}()
 
 		res, err := handler(ctx, r)
-		defer func() {
-			GetMetaDataStore().GetTransaction(ctx).Rollback()
-		}()
 		return res, err
 	}
 }
@@ -713,12 +714,16 @@ func writeResponse(w http.ResponseWriter, resp []byte) {
 // todo wrap with connection
 func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	isJSON := r.Header.Get("Accept") == "application/json"
-
 	if isJSON {
+		var (
+			blobberStats any
+			err          error
+		)
 		blobberInfo := GetBlobberInfoJson()
-
-		ctx := datastore.GetStore().CreateTransaction(r.Context())
-		blobberStats, err := stats.StatsJSONHandler(ctx, r)
+		err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			blobberStats, err = stats.StatsJSONHandler(ctx, r)
+			return err
+		})
 
 		if err != nil {
 			Logger.Error("Error getting blobber JSON stats", zap.Error(err))
