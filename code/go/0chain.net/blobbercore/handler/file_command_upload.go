@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
@@ -51,6 +52,11 @@ func (cmd *UploadFileCommand) GetPath() string {
 func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+	}
+
+	if cmd.fileChanger.Size > config.StorageSCConfig.MaxFileSize {
+		return common.NewError("max_file_size",
+			fmt.Sprintf("file size %d should not be greater than %d", cmd.fileChanger.Size, config.StorageSCConfig.MaxFileSize))
 	}
 
 	fileChanger := &allocation.UploadFileChanger{}
