@@ -54,17 +54,17 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	if cmd.fileChanger.Size > config.StorageSCConfig.MaxFileSize {
-		return common.NewError("max_file_size",
-			fmt.Sprintf("file size %d should not be greater than %d", cmd.fileChanger.Size, config.StorageSCConfig.MaxFileSize))
-	}
-
 	fileChanger := &allocation.UploadFileChanger{}
 	uploadMetaString := req.FormValue(UploadMeta)
 	err := json.Unmarshal([]byte(uploadMetaString), fileChanger)
 	if err != nil {
 		return common.NewError("invalid_parameters",
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
+	}
+
+	if fileChanger.Size > config.StorageSCConfig.MaxFileSize {
+		return common.NewError("max_file_size",
+			fmt.Sprintf("file size %d should not be greater than %d", cmd.fileChanger.Size, config.StorageSCConfig.MaxFileSize))
 	}
 
 	if fileChanger.Path == "/" {
