@@ -64,7 +64,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 	if fileChanger.Size > config.StorageSCConfig.MaxFileSize {
 		return common.NewError("max_file_size",
-			fmt.Sprintf("file size %d should not be greater than %d", cmd.fileChanger.Size, config.StorageSCConfig.MaxFileSize))
+			fmt.Sprintf("file size %d should not be greater than %d", fileChanger.Size, config.StorageSCConfig.MaxFileSize))
 	}
 
 	if fileChanger.Path == "/" {
