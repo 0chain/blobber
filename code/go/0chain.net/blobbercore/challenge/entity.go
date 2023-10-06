@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -226,8 +227,9 @@ func SetupChallengeCleanUpWorker(ctx context.Context) {
 }
 
 func cleanUpWorker() {
+	currentRound := roundInfo.CurrentRound + int64(float64(roundInfo.LastRoundDiff)*(float64(time.Since(roundInfo.CurrentRoundCaptureTime).Milliseconds())/float64(GetRoundInterval.Milliseconds())))
 	_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		db := datastore.GetStore().GetTransaction(ctx)
-		return db.Model(&ChallengeEntity{}).Unscoped().Delete(&ChallengeEntity{}, "status <> ? AND created_at < ?", Cancelled, time.Now().Add(-cleanupGap).Unix()).Error
+		return db.Model(&ChallengeEntity{}).Unscoped().Delete(&ChallengeEntity{}, "status <> ? AND round_created_at < ?", Cancelled, currentRound-config.Configuration.ChallengeCleanupGap).Error
 	})
 }
