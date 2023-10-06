@@ -50,7 +50,7 @@ var (
 	roundInfo          = RoundInfo{}
 )
 
-const batchSize = 10
+const batchSize = 5
 
 // SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {
@@ -217,23 +217,16 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 		return
 	}
 
-	// create a set of string
-	allocations := make(map[string]bool)
-
 	it := challengeMap.Iterator()
 	for it.Next() {
 		if len(chall) >= batchSize {
 			break
 		}
-
 		ticket := it.Value().(*ChallengeEntity)
-
-		_, ok := allocations[ticket.AllocationID]
-		if ticket.Status != Processed || ok {
-			continue
+		if ticket.Status != Processed {
+			break
 		}
 		chall = append(chall, *ticket)
-		allocations[ticket.AllocationID] = true
 	}
 	return
 }
